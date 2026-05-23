@@ -1,4 +1,4 @@
-# &lt;APP_NAME&gt;
+# MajorCycle
 
 A premium financial terminal for Major Cycle analysis on US, Australian, and Canadian equities.
 

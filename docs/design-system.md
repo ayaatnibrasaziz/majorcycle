@@ -1,6 +1,6 @@
 # Design System
 
-> **Purpose:** Defines every visual primitive — colours, fonts, spacing, components, chart standards, labels — used in `<APP_NAME>`. Read this before any UI task. Pair it with the visual parity rule from CLAUDE.md and the reference HTML.
+> **Purpose:** Defines every visual primitive — colours, fonts, spacing, components, chart standards, labels — used in `MajorCycle`. Read this before any UI task. Pair it with the visual parity rule from CLAUDE.md and the reference HTML.
 >
 > See also: `CLAUDE.md`, `/reference/original-design.html`.
 

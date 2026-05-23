@@ -8,7 +8,7 @@
 
 ## 1. System Overview
 
-`<APP_NAME>` runs on a **three-tier model** that keeps costs at $0 and avoids yfinance rate limits while preserving SEO and on-demand flexibility.
+`MajorCycle` runs on a **three-tier model** that keeps costs at $0 and avoids yfinance rate limits while preserving SEO and on-demand flexibility.
 
 ```mermaid
 flowchart TB

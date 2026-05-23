@@ -540,10 +540,10 @@ The cron script reads all three, processes each ticker, writes to `stocks` + `pr
 ## 10. Stripe Subscription Schema
 
 Two products in Stripe:
-1. **`<APP_NAME>` Monthly**
+1. **`MajorCycle` Monthly**
    - 3 prices: USD $15, AUD $19, CAD $20
    - `trial_period_days: 7`
-2. **`<APP_NAME>` Annual**
+2. **`MajorCycle` Annual**
    - 3 prices: USD $126, AUD $159, CAD $168 (~30% off monthly equivalent)
    - `trial_period_days: 7`
 

@@ -1,6 +1,6 @@
 # Glossary
 
-> **Purpose:** Every domain term used in `<APP_NAME>` is defined here exactly once. When you encounter an unfamiliar term in code, copy, or conversation, this is where you look it up. When you add a new term, add its definition here in the same commit.
+> **Purpose:** Every domain term used in `MajorCycle` is defined here exactly once. When you encounter an unfamiliar term in code, copy, or conversation, this is where you look it up. When you add a new term, add its definition here in the same commit.
 >
 > See also: `data-contracts.md` (for type definitions of these concepts).
 

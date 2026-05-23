@@ -50,7 +50,7 @@
 - [ ] Run naming session with Cloudflare MCP — produce 15-20 candidate names with availability + cost check
 - [ ] Owner selects name
 - [ ] Purchase domain via Cloudflare
-- [ ] Replace `<APP_NAME>` placeholder throughout repo
+- [x] Replace `<APP_NAME>` placeholder throughout repo
 - [ ] Configure DNS pointing to Vercel
 
 ### Exit criteria for Phase 0

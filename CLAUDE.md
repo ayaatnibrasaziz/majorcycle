@@ -3,13 +3,13 @@
 > **READ THIS FIRST. Every session. Before any code.**
 > If anything in this codebase conflicts with this file, **this file wins.**
 
-This is the master brief for `<APP_NAME>` (final name TBD). Any AI assistant working on this project must read this top-to-bottom, then read the relevant doc in `/docs/` for the task at hand.
+This is the master brief for **MajorCycle** (`majorcycle.com`). Any AI assistant working on this project must read this top-to-bottom, then read the relevant doc in `/docs/` for the task at hand.
 
 ---
 
 ## 🎯 Mission
 
-`<APP_NAME>` is a premium financial terminal that runs a proprietary **Major Cycle** analysis on US, Australian, and Canadian equities. Users discover where stocks sit relative to their historical drawdown/recovery cycles, alongside fundamental health scores, valuation positioning, and analyst data.
+**MajorCycle** is a premium financial terminal that runs a proprietary **Major Cycle** analysis on US, Australian, and Canadian equities. Users discover where stocks sit relative to their historical drawdown/recovery cycles, alongside fundamental health scores, valuation positioning, and analyst data.
 
 The product launches as a **web app** with a **7-day free trial** that converts to a monthly or annual subscription.
 
@@ -195,7 +195,7 @@ These were agreed during planning. Do not relitigate.
 | 24 | Compliance posture | Educational/informational only; disclaimers appropriate but not heavy |
 | 25 | Brand colours | Deep #1A3A6E / Mid #1E5CB3 / Bright #2E7DE8 |
 | 26 | Fonts | Sora (UI), JetBrains Mono (numbers/code) |
-| 27 | App name & logo | Deferred — placeholder `<APP_NAME>` until naming session |
+| 27 | App name & logo | **MajorCycle** · domain `majorcycle.com` · logo TBD |
 | 28 | Mobile | Mobile-first responsive |
 | 29 | Phase 1 launch scope | All 14 Stock Detail sections from current HTML + 3 existing tabs + Methodology/Contact/Disclaimer/Terms + Auth |
 | 30 | Phase 2 | Smart Money Activity, watchlists, alerts, sector heatmaps, FMP migration |
