@@ -1,0 +1,424 @@
+# Design System
+
+> **Purpose:** Defines every visual primitive — colours, fonts, spacing, components, chart standards, labels — used in `<APP_NAME>`. Read this before any UI task. Pair it with the visual parity rule from CLAUDE.md and the reference HTML.
+>
+> See also: `CLAUDE.md`, `/reference/original-design.html`.
+
+---
+
+## 1. The Visual Parity Rule (Repeat, Important)
+
+Every UI section that has an equivalent in `/reference/original-design.html` MUST visually match it: same layout, same spacing, same hover behaviour, same tooltips, same colours. Before building any UI component:
+
+1. Open `/reference/original-design.html`
+2. Locate the equivalent section (search for distinctive text or class names)
+3. Inspect its HTML structure, CSS values, and behaviour
+4. Replicate in React + Tailwind
+
+The new build's job is to **rebuild the same product on a modern foundation**, not to redesign it. Where reference exists, reference wins.
+
+---
+
+## 2. Brand Colours
+
+```css
+:root {
+  /* Brand — primary identity */
+  --brand-deep:    #1A3A6E;
+  --brand-mid:     #1E5CB3;
+  --brand-bright:  #2E7DE8;
+  --brand-light:   #EBF3FF;
+
+  /* Surfaces */
+  --bg-page:       #F0F4F8;
+  --bg-surface:    #FFFFFF;
+  --bg-sidebar:    #FFFFFF;
+  --bg-header:     #FFFFFF;
+  --bg-hover:      #F5F8FF;
+  --bg-stripe:     #F8FAFC;
+
+  /* Text */
+  --text-primary:   #0F1923;
+  --text-secondary: #4A5568;
+  --text-muted:     #8A97A8;
+  --text-white:     #FFFFFF;
+
+  /* Borders */
+  --border:        #E2E8F0;
+  --border-strong: #CBD5E1;
+  --border-faint:        rgba(26,58,110,.08);
+  --border-faint-strong: rgba(26,58,110,.10);
+
+  /* Rating tier semantic colours (the underlying hex values do not change,
+     only the label text changes — see section 4 below) */
+  --c-tier-1:      #006400;  /* High Conviction */
+  --c-tier-2:      #228B22;  /* Constructive */
+  --c-tier-3:      #D4A017;  /* Neutral */
+  --c-tier-4:      #FF4500;  /* Cautious */
+  --c-tier-5:      #B22222;  /* Bearish */
+
+  /* Ink shades — for text on tinted backgrounds */
+  --c-tier-2-ink:  #0D5C0D;
+  --c-tier-5-ink:  #8B1414;
+  --c-tier-3-ink:  #8A6710;
+
+  /* Tint scale — 10/12% alpha for pills, cells, hover states */
+  --tint-tier-2:        rgba(34,139,34,.10);
+  --tint-tier-2-strong: rgba(34,139,34,.12);
+  --tint-tier-5:        rgba(178,34,34,.10);
+  --tint-tier-5-strong: rgba(178,34,34,.12);
+  --tint-tier-3:        rgba(212,160,23,.10);
+  --tint-tier-3-strong: rgba(212,160,23,.12);
+  --tint-brand:         rgba(46,125,232,.10);
+}
+```
+
+These are exposed as Tailwind v4 theme tokens in `tailwind.config.ts`:
+
+```ts
+theme: {
+  colors: {
+    'brand-deep': 'var(--brand-deep)',
+    'brand-mid': 'var(--brand-mid)',
+    'brand-bright': 'var(--brand-bright)',
+    'tier-1': 'var(--c-tier-1)',
+    // ...
+  }
+}
+```
+
+---
+
+## 3. Typography
+
+```css
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+```
+
+| Use | Font | Weight | Size |
+|---|---|---|---|
+| All UI text (body, labels, buttons) | Sora | 400 / 500 / 600 / 700 | 11px – 16px |
+| Numbers, prices, scores, percentages, code | JetBrains Mono | 400 / 500 / 600 | 11px – 26px |
+| Hero values (KPI cards, headline metrics) | JetBrains Mono | 600 | 26px (`--font-hero`) |
+| Card titles | Sora | 600 | 13px |
+| Tooltips | Sora | 400 (title 600) | 11px |
+| Body small | Sora | 400 | 12px |
+| Body | Sora | 400 | 14px |
+
+**Rule:** Every numeric value uses JetBrains Mono. Every word uses Sora. No exceptions.
+
+---
+
+## 4. Rating Tier Labels — THE Most Important Spec
+
+The five composite rating tiers display as **neutral, advice-free language**. The colours and score bands stay identical to the original; only the label words change.
+
+| Score Range | Label (use exactly this text) | Colour Token | Semantic |
+|---|---|---|---|
+| 80–100 | **High Conviction** | `--c-tier-1` (#006400) | Best-in-class opportunity |
+| 65–79 | **Constructive** | `--c-tier-2` (#228B22) | Favourable setup |
+| 50–64 | **Neutral** | `--c-tier-3` (#D4A017) | Mixed signal |
+| 35–49 | **Cautious** | `--c-tier-4` (#FF4500) | Elevated risk |
+| 0–34 | **Bearish** | `--c-tier-5` (#B22222) | Significant concerns |
+
+**Forbidden everywhere in our scoring outputs:** Buy, Sell, Strong Buy, Hold, Avoid, Recommend, Outperform, Underperform, Overweight, Underweight.
+
+**Allowed verbatim from yfinance for the Analyst Consensus field only:** "Strong Buy / Buy / Hold / Underperform / Sell" — these are reported as third-party data, with an "Analyst consensus from Yahoo Finance" attribution underneath.
+
+### Valuation Zone Labels (a separate dimension)
+
+The Major Cycle valuation_zone is also re-labelled:
+
+| Old | New |
+|---|---|
+| STRONG BUY | DEEP VALUE |
+| BUY | VALUE |
+| WATCH | FAIR |
+| HOLD | STRETCHED |
+
+---
+
+## 5. Chart Colour Standards
+
+Every chart MUST follow these. Hard rule.
+
+| Direction / Meaning | Fill | Border |
+|---|---|---|
+| Positive / up / profit / good | `#228B22` | `#006400` |
+| Negative / down / drawdown / bad | `#B22222` | `#8B0000` |
+| Neutral / informational | `#1E5CB3` | `#1A3A6E` |
+| Highlight / cursor / focus | `#2E7DE8` | `#1A3A6E` |
+| Grid lines | `#E2E8F0` (10% alpha for major, 5% for minor) | — |
+| Axis labels | `#8A97A8` | — |
+
+### Candlestick colours (Lightweight Charts config)
+
+```ts
+{
+  upColor: '#228B22',
+  downColor: '#B22222',
+  borderUpColor: '#006400',
+  borderDownColor: '#8B0000',
+  wickUpColor: '#006400',
+  wickDownColor: '#8B0000',
+}
+```
+
+### 50/200 DMA line colours
+
+- 50 DMA: `#2E7DE8` (brand-bright), 1.5px solid
+- 200 DMA: `#1A3A6E` (brand-deep), 1.5px dashed (`[6, 4]` dash pattern)
+
+---
+
+## 6. Spacing Scale
+
+Tailwind defaults work but the reference uses these specific values for cards and content stacks:
+
+| Token | Value | Use |
+|---|---|---|
+| `--space-stack-tight` | 8px | Header strip elements |
+| `--space-stack-snug` | 14px | Paired/related cards |
+| `--space-stack-base` | 18px | Distinct sections |
+| Card padding (default) | 14–18px | Card body interior |
+| Card padding (`--bleed`) | 0 | Full-width tables inside cards |
+| Page outer padding | 20–24px | Main content area |
+| Sidebar width | 220px | Fixed |
+| Header height | 58px | Fixed |
+
+---
+
+## 7. Border Radius
+
+| Token | Value | Use |
+|---|---|---|
+| `--radius` | 10px | Cards, modals, large surfaces |
+| `--radius-sm` | 6px | Pills, buttons, badges, inputs |
+
+---
+
+## 8. Shadows
+
+```css
+--shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+--shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+--shadow-lg: 0 10px 30px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
+```
+
+- `sm`: default for cards, sidebar
+- `md`: hover state on cards, dropdowns
+- `lg`: modals, popovers, tooltips
+
+---
+
+## 9. Component Vocabulary
+
+These are the canonical components. Use them. Don't invent new variants without owner sign-off.
+
+### Card
+
+White surface, subtle border, slight shadow. Standard wrapper for any data section.
+
+```
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.card-header {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.card-title {
+  font: 600 13px Sora; color: var(--text-primary);
+}
+.card-body { padding: 14px 18px; }
+```
+
+### Stat Pill
+
+Small inline chip showing label + value, used in stat rows.
+
+```
+.stat-pill {
+  background: var(--bg-stripe);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  text-align: center;
+}
+.stat-pill-label {
+  font: 600 9px Sora; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-muted);
+}
+.stat-pill-val {
+  font: 600 15px JetBrains Mono; color: var(--text-primary);
+}
+```
+
+### Tier Badge / Pill
+
+The headline rating badge. Coloured by tier.
+
+```
+.tier-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 999px;
+  font: 600 11px Sora; letter-spacing: 0.3px;
+}
+.tier-badge--tier-1 { background: rgba(0,100,0,0.12); color: var(--c-tier-1); }
+.tier-badge--tier-2 { background: var(--tint-tier-2-strong); color: var(--c-tier-2-ink); }
+.tier-badge--tier-3 { background: var(--tint-tier-3-strong); color: var(--c-tier-3-ink); }
+.tier-badge--tier-4 { background: rgba(255,69,0,0.10); color: #B23A00; }
+.tier-badge--tier-5 { background: var(--tint-tier-5-strong); color: var(--c-tier-5-ink); }
+```
+
+### Tooltip
+
+Standard pattern: `data-tip="TITLE|body"`. The first segment is bold title, second is body.
+
+Reference: search `has-tip` in the reference HTML.
+
+### Range Buttons
+
+For chart timeframe selectors (1Y / 3Y / Max).
+
+```
+.range-btn {
+  padding: 4px 10px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: transparent;
+  font: 500 11px JetBrains Mono; color: var(--text-muted);
+  cursor: pointer; transition: all 0.15s;
+}
+.range-btn:hover { border-color: var(--brand-mid); color: var(--brand-mid); }
+.range-btn.active {
+  background: var(--brand-mid); border-color: var(--brand-mid); color: white;
+}
+```
+
+### Provenance Bar
+
+The "Data via yfinance · Major Cycle engine" status strip at the top of Results.
+
+### Briefing Card
+
+The "Analyst Briefing" callout at the top of Results. Has the icon-left, content-right layout.
+
+### Empty State
+
+Pattern: centered icon + bold heading + muted descriptive text + optional CTA link.
+
+---
+
+## 10. Responsive Breakpoints
+
+Mobile-first. Tailwind defaults:
+
+| Breakpoint | Width | Layout |
+|---|---|---|
+| Default (mobile) | < 768px | Single column, sidebar becomes drawer |
+| `md` | ≥ 768px | Two-column where appropriate |
+| `lg` | ≥ 1024px | Sidebar visible, full desktop layout |
+| `xl` | ≥ 1280px | Wider content area, larger charts |
+
+**Critical:** the existing reference HTML is desktop-only. Mobile layouts are NEW and must be designed during the build — see roadmap.md for which screens need mobile-specific treatment.
+
+**Mobile patterns:**
+- Sidebar nav becomes hamburger drawer
+- Tables: horizontal scroll OR collapse to cards (case by case)
+- Multi-column grids stack vertically
+- Tooltips become tap-to-reveal popovers (not hover)
+
+---
+
+## 11. Loading & Empty States
+
+### Loading
+
+- **Page-level:** Skeleton shimmer matching the eventual content shape. Never a spinner blocking the whole viewport.
+- **Chart-level:** Render an empty chart canvas with axis but no data, plus a small "Loading…" pill bottom-right.
+- **Button-level:** Replace button text with spinner icon + disabled state.
+
+### Empty (no data)
+
+Pattern: icon (40px, muted stroke) + bold 14px title + muted 12px description + optional CTA.
+
+Example from the reference:
+> "No analysis run yet — Upload a CSV of tickers in the Run Analysis tab and your ranked results will appear here."
+
+### Error
+
+Pattern: red-tint card + 16px title + body explanation + CTA to retry or contact support.
+
+---
+
+## 12. Animations
+
+Subtle, fast, purposeful. No bouncy easings.
+
+| Transition | Duration | Easing |
+|---|---|---|
+| Hover state changes | 150ms | `ease-out` |
+| Card fade-in on mount | 250ms | `ease-out` |
+| Modal open/close | 200ms | `ease-in-out` |
+| Tab switch | 0ms (instant) | — |
+| Chart updates | 300ms | `ease-out` (built into chart libs) |
+
+Use `prefers-reduced-motion` to disable on user request.
+
+---
+
+## 13. Iconography
+
+Use **Lucide React** (`lucide-react`) exclusively. Stroke width 1.5 by default, 24px size for most uses, 16-18px inline with text.
+
+Common icons used:
+- `TrendingUp` / `TrendingDown` — direction
+- `Info` — tooltips
+- `ChevronDown` — dropdowns
+- `Search` — search inputs
+- `Upload` — file upload
+- `RotateCw` — refresh
+- `LogIn` / `LogOut` — auth
+- `User` — account
+- `Settings` — preferences
+
+---
+
+## 14. Accessibility Floor
+
+Phase 1 minimums (not aspirations — requirements):
+
+- All interactive elements have `:focus-visible` ring (2px brand-bright outline)
+- Contrast ratio ≥ 4.5:1 for body text, ≥ 3:1 for large text
+- All charts have a `aria-label` describing their data
+- All form inputs have a visible `<label>`
+- Keyboard navigable: Tab moves through everything in document order
+- Screen-reader announces tier badges as "High Conviction rating" (via `aria-label`)
+
+---
+
+## 15. Disclaimers — Visual Treatment
+
+Disclaimers are mandatory on any page showing a rating. Visual style:
+
+- **Inline (under rating):** 11px italic muted text, brief: *"Information only — not financial advice."*
+- **Footer (every page):** Full disclaimer block, 12px muted text, with link to `/disclaimer`.
+- **First-login modal:** Modal with full methodology + disclaimer summary, "I understand and acknowledge" checkbox required to proceed.
+- **Methodology page (`/methodology`):** Top banner restating compliance posture + ASIC/SEC-relevant disclaimers.
+
+Wording must include: "Information only", "Not financial advice", "Past performance does not indicate future results", "Conduct your own research".
+
+---
+
+## 16. Where The Reference Diverges From This Doc
+
+The reference HTML uses old labels (STRONG BUY etc.). The new build uses the labels defined in section 4. **Everything else** in the reference is canonical: layouts, sizes, colours, spacing, tooltips, hover behaviour.
+
+If you find another conflict during build, surface it. Don't silently choose.
+
+---
+
+**End of design-system.md.**

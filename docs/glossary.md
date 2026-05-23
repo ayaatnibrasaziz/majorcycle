@@ -1,0 +1,267 @@
+# Glossary
+
+> **Purpose:** Every domain term used in `<APP_NAME>` is defined here exactly once. When you encounter an unfamiliar term in code, copy, or conversation, this is where you look it up. When you add a new term, add its definition here in the same commit.
+>
+> See also: `data-contracts.md` (for type definitions of these concepts).
+
+---
+
+## A
+
+**Analyst Consensus** — The aggregate recommendation from all covering Wall Street analysts, sourced from Yahoo Finance via yfinance. Values: `Strong Buy`, `Buy`, `Hold`, `Sell`, `Strong Sell`. **Displayed verbatim** in the UI — this is third-party data, not our judgment, so it's exempt from the neutral-label rule.
+
+**Analyst Target Price** — The mean 12-month price target set by Wall Street analysts. Used to compute Implied Upside.
+
+**ASIC** — Australian Securities and Investments Commission. Regulator we are NOT licensed by. All copy must respect the line between "general information / education" and "personal financial advice".
+
+**ASX 200** — The 200 largest publicly listed companies on the Australian Securities Exchange. One of three universes we cover in Phase 1.
+
+---
+
+## B
+
+**Batch tier** — Tier 1 of the architecture. Scheduled GitHub Actions cron job that pre-fetches yfinance data nightly. See `architecture.md` §2.
+
+**Bearish** — The lowest of the five rating tiers (score 0-34). Indicates significant concerns. Replaces the original "AVOID" label.
+
+**Beta** — Statistical measure of a stock's volatility relative to the broader market. Beta > 1 = more volatile than market, Beta < 1 = less volatile. Sourced from yfinance.
+
+---
+
+## C
+
+**Card** — The standard UI container: white surface, subtle border, slight shadow. See `design-system.md` §9.
+
+**Cautious** — Rating tier 4 (score 35-49). Indicates elevated risk. Replaces the original "HOLD" label.
+
+**Constructive** — Rating tier 2 (score 65-79). Indicates a favourable setup. Replaces the original "BUY" label.
+
+**Current Drawdown** — How far the current price has fallen from the peak inside the lookback window. Always a negative number (or zero). E.g. "-18%" means the stock is 18% below its recent high.
+
+**Current Profit** — How far the current price has recovered from the trough inside the lookback window. Always a positive number (or zero).
+
+**Cycle** — In Major Cycle terminology, one complete drawdown-and-recovery loop: peak → trough → next peak.
+
+**Cycle Analysis** — The full output of `major_cycle.py` for a given ticker + params. See `CycleAnalysis` dataclass in `data-contracts.md`.
+
+**Cycle Params** — The three values that govern a Major Cycle run: pullback threshold, profit threshold, lookback bars. Set by user via presets or custom input.
+
+---
+
+## D
+
+**Data Provider** — Abstract interface in `analytics/providers/base.py` that defines the contract for any data source. Phase 1 implements `YFinanceProvider`. Phase 2 adds `FMPProvider`. No code outside `analytics/providers/` may bypass this.
+
+**DataFrame** — A pandas DataFrame. Used internally in Python for OHLCV time series. Never crosses an API boundary — always serialised to plain JSON first.
+
+**DEEP VALUE** — Valuation Zone label when current drawdown ≤ lower bound (at or beyond worst-ever pullback). Replaces "STRONG BUY".
+
+**DMA (Daily Moving Average)** — Rolling average of closing prices over N days. The app uses 50-day and 200-day DMAs overlaid on price charts.
+
+**Drawdown** — A peak-to-trough decline expressed as a percentage. Negative number. See also Current Drawdown, Lower Bound, Typical Drawdown.
+
+---
+
+## E
+
+**Earnings Growth YoY** — Year-over-year change in net earnings per share. Sourced from yfinance.
+
+**EBITDA** — Earnings Before Interest, Taxes, Depreciation, and Amortisation. A measure of operating profitability.
+
+**EBITDA Margin** — EBITDA ÷ Revenue × 100. Higher = more profitable operations.
+
+**EV/EBITDA** — Enterprise Value ÷ EBITDA. Valuation multiple. Lower = cheaper relative to operating profitability.
+
+---
+
+## F
+
+**FAIR** — Valuation Zone label when current drawdown sits between 0.5×typical and -5% (mild pullback, not yet attractive). Replaces "WATCH".
+
+**FCF Yield** — Free Cash Flow ÷ Market Cap × 100. A measure of how much cash a company generates relative to its market price. Higher = better.
+
+**Financial Health Score (FH)** — Composite 0-100 score derived from five sub-pillars: profitability, balance sheet, growth, cashflow, shareholder returns. Computed by `analytics/scoring/financial_health.py`. Weighted at 40% in the Overall Rating.
+
+**FMP (Financial Modeling Prep)** — Paid data provider planned for Phase 2 migration. Drop-in replacement for yfinance via the DataProvider interface.
+
+**Free Cashflow** — Operating cashflow minus capital expenditures. The cash a business generates after maintaining its operations.
+
+**Fundamentals Snapshot** — The canonical fundamentals data shape returned by any DataProvider. Defined in `data-contracts.md` §2.
+
+---
+
+## G
+
+**Gross Margin** — Gross Profit ÷ Revenue × 100. The fundamental profitability of a product/service before operating costs.
+
+---
+
+## H
+
+**High Conviction** — The highest of the five rating tiers (score 80-100). Replaces the original "STRONG BUY" label.
+
+---
+
+## I
+
+**Implied Upside** — `(analyst target price - current price) / current price × 100`. Positive = analysts see room to rise; negative = stock trades above target.
+
+**Insider Ownership %** — Percentage of shares held by company insiders (executives, directors). Sourced from yfinance.
+
+**Institutional Ownership %** — Percentage of shares held by institutional investors (mutual funds, pension funds, ETFs). Sourced from yfinance.
+
+**Interest Coverage** — EBIT ÷ Interest Expense. Measures how easily a company can pay interest on its debt. Higher = safer.
+
+---
+
+## L
+
+**Lookback Bars** — The number of daily price bars used to compute "current" drawdown and profit. One of the three Cycle Params. 63 = ~3 months, 252 = ~1 year, 756 = ~3 years.
+
+**Lower Bound** — The worst-case historical drawdown across all detected cycles. The deepest dip ever seen for this stock in the data we have.
+
+---
+
+## M
+
+**Major Cycle** — Our proprietary methodology: detect pullback and profit events across a stock's price history via pivot detection, compute typical and extreme dip/recovery magnitudes, score current state against those historical norms. The "engine" of the product.
+
+**Market** — One of `us`, `au`, `ca`. Determines exchange, currency, and URL prefix.
+
+**Market Cap** — Market Capitalization. Share price × shares outstanding.
+
+**Momentum Score** — A 0-100 sub-score for the Overall Rating, derived from (a) number of historical events (calibration confidence) and (b) reward/risk ratio. Weighted at 25% in the Overall Rating.
+
+---
+
+## N
+
+**Net Margin** — Net Income ÷ Revenue × 100. The "bottom line" — how many cents of profit are kept from each dollar of sales.
+
+**Neutral** — Rating tier 3 (score 50-64). Mixed signal. Same label as the original UI.
+
+**News Item** — A single news article entry: title, URL, publish date, source. Stored in `stocks.news` JSONB column. Sourced from yfinance in Phase 1; quality is mediocre.
+
+---
+
+## O
+
+**OHLCV** — Open, High, Low, Close, Volume. The five canonical fields of a daily price bar.
+
+**On-Demand tier** — Tier 3 of the architecture. User-triggered analyses via `/api/analyze` endpoint. See `architecture.md` §2.
+
+**Operating Cashflow** — Cash generated from a company's normal business operations. Distinct from net income (which includes non-cash items).
+
+**Overall Label** — One of: High Conviction, Constructive, Neutral, Cautious, Bearish. Derived from Overall Rating.
+
+**Overall Rating** — Composite 0-100 score combining Financial Health (40%), Valuation Zone score (35%), and Momentum (25%).
+
+---
+
+## P
+
+**Payout Ratio** — Dividends Paid ÷ Net Income × 100. How much of earnings is returned to shareholders as dividends. >100% means the company is paying out more than it earns (unsustainable).
+
+**P/E (Price-to-Earnings)** — Share price ÷ earnings per share. Trailing P/E uses last 12 months earnings; Forward P/E uses analyst estimates.
+
+**PEG (P/E to Growth)** — P/E ÷ earnings growth rate. < 1 generally considered attractive (growth justifies the P/E).
+
+**Pivot High / Pivot Low** — A local maximum or minimum in the price series, confirmed by N bars on each side being lower/higher respectively. Default `PIVOT_BARS = 5`. The mechanism Major Cycle uses to detect peaks and troughs.
+
+**Preset** — One of the three Run Analysis presets — `short`, `medium`, `long` — each specifying a pullback threshold, profit threshold, and lookback. Plus `custom` for user-defined values. See `data-contracts.md` §7.
+
+**Price Bar** — One row of OHLCV data for a single date. Stored in the `price_bars` table.
+
+**Pullback Event** — A confirmed peak-to-trough decline that exceeded the pullback threshold. Used to compute typical drawdown and lower bound.
+
+**Profit Event** — A confirmed trough-to-peak rally that exceeded the profit threshold. Used to compute typical profit and upper bound.
+
+---
+
+## Q
+
+**Quick Ratio** — (Current Assets - Inventory) ÷ Current Liabilities. Stricter than current ratio — measures ability to cover short-term obligations without selling inventory.
+
+---
+
+## R
+
+**Rating Tier** — One of the five composite tiers: High Conviction, Constructive, Neutral, Cautious, Bearish. See `design-system.md` §4.
+
+**Reward / Risk Ratio** — Typical Profit ÷ |Typical Drawdown|. Used in Momentum scoring. >1.5 = decent; 3.0 = max score.
+
+**ROE (Return on Equity)** — Net Income ÷ Shareholder Equity × 100. How efficiently a company generates profit from its equity base.
+
+**ROA (Return on Assets)** — Net Income ÷ Total Assets × 100. Similar to ROE but measured against total assets.
+
+**Rover Verdict** — The headline composite (Overall Rating + Valuation Score + Health Score + Cycle Position gauge) shown on Results and Stock Detail. Original name from reference HTML — may be renamed when app name finalises.
+
+---
+
+## S
+
+**S&P 500** — Standard & Poor's 500 Index — the 500 largest publicly traded US companies. One of three universes we cover in Phase 1.
+
+**S&P/TSX 60** — The 60 largest companies on the Toronto Stock Exchange. One of three universes we cover in Phase 1.
+
+**Serve tier** — Tier 2 of the architecture. Request-time rendering with Vercel edge caching. See `architecture.md` §2.
+
+**Short % of Float** — Percentage of a stock's freely-tradeable shares that have been sold short. High = bearish positioning by traders.
+
+**Short Ratio (Days to Cover)** — Short Interest ÷ Average Daily Volume. How many trading days it would take short sellers to cover their positions.
+
+**Snowflake Radar** — The pentagonal radar chart on Stock Detail showing the five Financial Health sub-pillar scores. Visual at-a-glance summary.
+
+**STRETCHED** — Valuation Zone label when current drawdown > -5% (stock is near recent highs). Replaces "HOLD" (the original valuation-zone HOLD, not the rating-tier HOLD).
+
+---
+
+## T
+
+**Technical Levels Strip** — Compact row of computed support/resistance/MA values shown on Stock Detail. Derived client-side from price history.
+
+**Tier Badge** — The visual pill displaying a rating tier with its semantic colour. See `design-system.md` §9.
+
+**Ticker** — A stock's exchange symbol. We use yfinance native format internally (`AAPL`, `BHP.AX`, `SHOP.TO`).
+
+**Trial** — 7-day free trial period at signup. Card required upfront, auto-converts to paid subscription.
+
+**Typical Drawdown** — Mean of all historical pullback events that exceeded the pullback threshold. The "average dip" for this stock.
+
+**Typical Profit** — Mean of all historical profit events that exceeded the profit threshold. The "average recovery" for this stock.
+
+---
+
+## U
+
+**Universe** — The set of tickers we have data for. Pre-seeded with S&P 500, ASX 200, S&P/TSX 60. Auto-expands when users upload new tickers.
+
+**Upper Bound** — The best-case historical profit across all detected cycles. The biggest recovery ever seen for this stock.
+
+---
+
+## V
+
+**VALUE** — Valuation Zone label when current drawdown is between 0.5×typical and typical (in the "discount zone" but not at the worst). Replaces "BUY".
+
+**Valuation Score** — A 0-100 score derived from how today's drawdown compares to typical and lower bound. Weighted at 35% in the Overall Rating.
+
+**Valuation Zone** — Categorical label: DEEP VALUE, VALUE, FAIR, or STRETCHED. Derived from Valuation Score.
+
+---
+
+## W
+
+**Week52 Change %** — Percentage change in price over the last 52 weeks.
+
+**Week52 High / Low** — Highest and lowest closing price in the past 52 weeks.
+
+---
+
+## Y
+
+**yfinance** — Python library that scrapes Yahoo Finance for free. Our Phase 1 data provider. Wrapped behind the DataProvider interface so it can be swapped for FMP in Phase 2.
+
+---
+
+**End of glossary.md.**

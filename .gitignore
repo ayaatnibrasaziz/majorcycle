@@ -1,0 +1,35 @@
+# Next.js
+web/.next/
+web/out/
+web/node_modules/
+
+# Python
+analytics/__pycache__/
+analytics/**/__pycache__/
+analytics/.venv/
+analytics/*.egg-info/
+analytics/dist/
+analytics/.mypy_cache/
+analytics/.ruff_cache/
+analytics/.pytest_cache/
+*.pyc
+*.pyo
+
+# Environment files — NEVER commit these
+.env.local
+.env.*.local
+.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+
+# Vercel
+.vercel
+
+# Claude Code local session data
+.claude/
