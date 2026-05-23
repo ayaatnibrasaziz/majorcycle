@@ -49,9 +49,9 @@
 
 - [x] Run naming session — checked 40 domains, 10 available
 - [x] Owner selects name: **MajorCycle** (`majorcycle.com`)
-- [ ] Purchase domain via Cloudflare
+- [x] Purchase domain via Cloudflare
 - [x] Replace `<APP_NAME>` placeholder throughout repo
-- [ ] Configure DNS pointing to Vercel
+- [x] Configure DNS pointing to Vercel
 
 ### Exit criteria for Phase 0
 

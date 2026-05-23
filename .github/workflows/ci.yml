@@ -52,8 +52,8 @@ jobs:
           cache: 'pip'
           cache-dependency-path: analytics/pyproject.toml
 
-      - name: Install dev tools
-        run: pip install ruff mypy pytest
+      - name: Install analytics package with dev extras
+        run: pip install -e "analytics[dev]"
 
       - name: Ruff lint
         run: python -m ruff check analytics/
