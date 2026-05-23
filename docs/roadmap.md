@@ -20,35 +20,35 @@
 
 ### Accounts to create
 
-- [ ] GitHub
-- [ ] Vercel (sign in via GitHub)
-- [ ] Supabase (sign in via GitHub)
-- [ ] Cloudflare (any email)
+- [x] GitHub
+- [x] Vercel (sign in via GitHub)
+- [x] Supabase (sign in via GitHub)
+- [x] Cloudflare (any email)
 - [ ] Stripe (defer to Phase 1 payment work)
 - [ ] Resend (defer to Phase 1 email work)
 
 ### MCP servers to connect via Claude
 
-- [ ] GitHub MCP
-- [ ] Vercel MCP
-- [ ] Supabase MCP
-- [ ] Cloudflare MCP
+- [x] GitHub MCP (via gh CLI — ayaatnibrasaziz)
+- [x] Vercel MCP (team: Ayaat Nibras Aziz's projects)
+- [x] Supabase MCP (project: Stock Project)
+- [x] Cloudflare MCP (account: Ayaatnibrasaziz@gmail.com)
 
 ### Repository scaffolding
 
-- [ ] Create new GitHub repo (private initially)
-- [ ] Add `CLAUDE.md` at root
-- [ ] Add all 6 docs under `docs/`
-- [ ] Copy original HTML to `/reference/original-design.html`
-- [ ] Initialise `/web` with `npx create-next-app@latest --typescript --tailwind --app --eslint`
-- [ ] Initialise `/analytics` with Python venv + `pyproject.toml`
-- [ ] Add `.env.example` documenting required vars
-- [ ] Configure CI in `.github/workflows/ci.yml`
+- [x] Create new GitHub repo (private — github.com/ayaatnibrasaziz/majorcycle)
+- [x] Add `CLAUDE.md` at root
+- [x] Add all 6 docs under `docs/`
+- [x] Copy original HTML to `/reference/original-design.html`
+- [x] Initialise `/web` with Next.js 16 + pnpm (TypeScript, Tailwind v4, App Router, ESLint)
+- [x] Initialise `/analytics` with Python `pyproject.toml` + module skeleton
+- [x] Add `.env.example` documenting required vars
+- [x] Configure CI in `.github/workflows/ci.yml`
 
 ### Naming decision
 
-- [ ] Run naming session with Cloudflare MCP — produce 15-20 candidate names with availability + cost check
-- [ ] Owner selects name
+- [x] Run naming session — checked 40 domains, 10 available
+- [x] Owner selects name: **MajorCycle** (`majorcycle.com`)
 - [ ] Purchase domain via Cloudflare
 - [x] Replace `<APP_NAME>` placeholder throughout repo
 - [ ] Configure DNS pointing to Vercel
