@@ -30,7 +30,7 @@ export function OnboardingModal({ userId }: OnboardingModalProps) {
     const supabase = createBrowserClient();
     await supabase
       .from('profiles')
-      .update({ onboarding_complete: true })
+      .update({ acknowledged_disclaimer_at: new Date().toISOString() })
       .eq('id', userId);
     router.refresh();
   }

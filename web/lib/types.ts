@@ -181,6 +181,6 @@ export interface UserProfile {
     | 'incomplete'
     | null;
   trialEndsAt: string | null;
-  onboardingComplete: boolean;
+  acknowledgedDisclaimerAt: string | null;
   createdAt: string;
 }

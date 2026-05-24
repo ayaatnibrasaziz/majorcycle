@@ -20,11 +20,11 @@ export default async function AppLayout({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('subscription_status, onboarding_complete')
+    .select('subscription_status, acknowledged_disclaimer_at')
     .eq('id', user.id)
     .single();
 
-  const needsOnboarding = profile && !profile.onboarding_complete;
+  const needsOnboarding = profile && !profile.acknowledged_disclaimer_at;
 
   return (
     <div className="min-h-screen bg-[var(--bg-page)]">
