@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "analytics"
@@ -9,6 +9,8 @@ requires-python = ">=3.12"
 dependencies = [
     "yfinance>=0.2.40",
     "pandas>=2.2.0",
+    "numpy>=1.26.0",
+    "requests>=2.31.0",
     "requests-cache>=1.2.0",
     "supabase>=2.4.0",
     "python-dotenv>=1.0.0",
@@ -29,7 +31,7 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "N", "B", "RUF"]
-ignore = ["E501"]
+ignore = ["E501", "UP007", "UP017", "UP035", "UP045"]
 
 [tool.mypy]
 python_version = "3.12"

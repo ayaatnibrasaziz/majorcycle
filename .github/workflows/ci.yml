@@ -42,6 +42,8 @@ jobs:
   backend:
     name: Python checks
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
 
     steps:
       - uses: actions/checkout@v4
@@ -52,8 +54,21 @@ jobs:
           cache: 'pip'
           cache-dependency-path: analytics/pyproject.toml
 
-      - name: Install dev tools
-        run: pip install ruff mypy pytest
+      - name: Install Python dependencies
+        run: |
+          pip install \
+            "yfinance>=0.2.40" \
+            "pandas>=2.2.0" \
+            "numpy>=1.26.0" \
+            "requests>=2.31.0" \
+            "requests-cache>=1.2.0" \
+            "supabase>=2.4.0" \
+            "python-dotenv>=1.0.0" \
+            "ruff>=0.4.0" \
+            "mypy>=1.10.0" \
+            "pandas-stubs>=2.2.0" \
+            "pytest>=8.2.0" \
+            "types-requests>=2.31.0"
 
       - name: Ruff lint
         run: python -m ruff check analytics/
