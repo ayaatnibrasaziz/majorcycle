@@ -104,32 +104,36 @@
   --font-hero: 26px;
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* Base layer — wraps resets/typography so Tailwind utility classes can override.
+   Without @layer base, an unlayered `* { padding: 0 }` rule wins against
+   `.px-6` (which lives inside @layer utilities), silently breaking all
+   padding utilities. */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
 
-html {
-  font-size: 14px;
-}
+  html {
+    font-size: 14px;
+  }
 
-body {
-  font-family: var(--font-sans);
-  background: var(--bg-page);
-  color: var(--text-primary);
-  min-height: 100vh;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  body {
+    font-family: var(--font-sans);
+    background: var(--bg-page);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-/* Focus ring — accessibility floor */
-*:focus-visible {
-  outline: 2px solid var(--brand-bright);
-  outline-offset: 2px;
+  /* Focus ring — accessibility floor */
+  *:focus-visible {
+    outline: 2px solid var(--brand-bright);
+    outline-offset: 2px;
+  }
 }
 
 /* Reduce motion */

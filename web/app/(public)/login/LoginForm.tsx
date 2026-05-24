@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
 import { AuthCard } from '@/components/AuthCard';
+import { AuthDivider } from '@/components/AuthDivider';
 import { GoogleButton } from '@/components/GoogleButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,7 +63,7 @@ export function LoginForm() {
     >
       <form onSubmit={handleEmailLogin} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email address</Label>
+          <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
@@ -73,16 +74,9 @@ export function LoginForm() {
             placeholder="you@example.com"
           />
         </div>
+
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
-            <Link
-              href="/reset-password"
-              className="text-[11.5px] font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-bright)] hover:underline transition-colors"
-            >
-              Forgot password?
-            </Link>
-          </div>
+          <Label htmlFor="password">Password</Label>
           <Input
             id="password"
             type="password"
@@ -92,6 +86,14 @@ export function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
           />
+          <div className="flex justify-end">
+            <Link
+              href="/reset-password"
+              className="text-[11.5px] font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-bright)] transition-colors"
+            >
+              Forgot password?
+            </Link>
+          </div>
         </div>
 
         {error && (
@@ -104,28 +106,19 @@ export function LoginForm() {
           </div>
         )}
 
-        <Button type="submit" size="lg" disabled={loading} className="w-full mt-2">
+        <Button type="submit" size="lg" disabled={loading} className="w-full mt-1">
           {loading ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
 
-      <div className="relative my-5">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-[var(--border)]" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-[var(--bg-surface)] px-3 text-[11px] uppercase tracking-[1px] font-semibold text-[var(--text-muted)]">
-            or
-          </span>
-        </div>
-      </div>
+      <AuthDivider />
 
       <GoogleButton onClick={handleGoogleLogin} disabled={loading} />
 
-      <p className="mt-6 text-center text-[13px] text-[var(--text-secondary)]">
-        Don&apos;t have an account?{' '}
-        <Link href="/signup" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] hover:underline transition-colors">
-          Start free trial
+      <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
+        New to MajorCycle?{' '}
+        <Link href="/signup" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">
+          Start your free trial
         </Link>
       </p>
     </AuthCard>

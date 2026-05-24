@@ -2,13 +2,20 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, Mail, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, Mail, Check } from 'lucide-react';
 import { AuthCard } from '@/components/AuthCard';
+import { AuthDivider } from '@/components/AuthDivider';
 import { GoogleButton } from '@/components/GoogleButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createBrowserClient } from '@/lib/supabase/client';
+
+const trialFeatures = [
+  'Full access to every ticker, chart, and analysis tool',
+  'Cancel anytime — no charge until day 7',
+  'Email reminder 2 days before trial ends',
+];
 
 export function SignupForm() {
   const [email, setEmail] = useState('');
@@ -60,7 +67,7 @@ export function SignupForm() {
   if (sent) {
     return (
       <AuthCard title="Check your email">
-        <div className="bg-gradient-to-br from-[var(--brand-light)] to-white border border-[#bfdbfe] rounded-[var(--radius)] p-6 text-center">
+        <div className="bg-gradient-to-br from-white to-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius)] p-6 text-center">
           <div className="w-14 h-14 mx-auto rounded-full bg-white shadow-[var(--shadow-md)] flex items-center justify-center mb-4">
             <Mail className="w-7 h-7 text-[var(--brand-mid)]" strokeWidth={2} />
           </div>
@@ -72,9 +79,9 @@ export function SignupForm() {
             Click it to activate your 7-day free trial.
           </p>
         </div>
-        <p className="mt-6 text-center text-[13px] text-[var(--text-secondary)]">
+        <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
           Already confirmed?{' '}
-          <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] hover:underline transition-colors">
+          <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">
             Sign in
           </Link>
         </p>
@@ -85,25 +92,25 @@ export function SignupForm() {
   return (
     <AuthCard
       title="Start your free trial"
-      subtitle="7 days free — no charge until trial ends. Card required."
+      subtitle="7 days free. Card required — no charge until day 7."
     >
-      {/* Trial value props */}
-      <ul className="flex flex-col gap-2 mb-5 bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[var(--radius-sm)] p-3.5">
-        {[
-          'Full access to every stock and tab',
-          'Cancel anytime in account settings',
-          'Email reminder 2 days before trial ends',
-        ].map((line) => (
-          <li key={line} className="flex items-center gap-2 text-[12.5px] text-[var(--text-secondary)]">
-            <CheckCircle2 className="w-[15px] h-[15px] text-[var(--c-tier-2)] flex-shrink-0" strokeWidth={2.5} />
-            {line}
-          </li>
-        ))}
-      </ul>
+      {/* Trial value props — matches reference briefing-card aesthetic */}
+      <div className="mb-6 bg-gradient-to-br from-white to-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius)] px-4 py-3.5">
+        <ul className="flex flex-col gap-2">
+          {trialFeatures.map((line) => (
+            <li key={line} className="flex items-start gap-2.5 text-[12.5px] text-[var(--text-secondary)] leading-snug">
+              <span className="mt-[2px] w-[15px] h-[15px] rounded-full bg-[var(--c-tier-2)] flex items-center justify-center flex-shrink-0">
+                <Check className="w-[10px] h-[10px] text-white" strokeWidth={3.5} />
+              </span>
+              {line}
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <form onSubmit={handleSignup} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email address</Label>
+          <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
@@ -114,6 +121,7 @@ export function SignupForm() {
             placeholder="you@example.com"
           />
         </div>
+
         <div className="flex flex-col gap-2">
           <Label htmlFor="password">Password</Label>
           <Input
@@ -124,7 +132,7 @@ export function SignupForm() {
             minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Min. 8 characters"
+            placeholder="Minimum 8 characters"
           />
         </div>
 
@@ -138,27 +146,18 @@ export function SignupForm() {
           </div>
         )}
 
-        <Button type="submit" size="lg" disabled={loading} className="w-full mt-2">
+        <Button type="submit" size="lg" disabled={loading} className="w-full mt-1">
           {loading ? 'Creating account…' : 'Create account & start trial'}
         </Button>
       </form>
 
-      <div className="relative my-5">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-[var(--border)]" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-[var(--bg-surface)] px-3 text-[11px] uppercase tracking-[1px] font-semibold text-[var(--text-muted)]">
-            or
-          </span>
-        </div>
-      </div>
+      <AuthDivider />
 
       <GoogleButton onClick={handleGoogleSignup} disabled={loading} label="Sign up with Google" />
 
-      <p className="mt-6 text-center text-[13px] text-[var(--text-secondary)]">
+      <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
         Already have an account?{' '}
-        <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] hover:underline transition-colors">
+        <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">
           Sign in
         </Link>
       </p>

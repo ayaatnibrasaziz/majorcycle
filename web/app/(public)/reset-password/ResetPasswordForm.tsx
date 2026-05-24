@@ -34,7 +34,7 @@ export function ResetPasswordForm() {
   if (sent) {
     return (
       <AuthCard title="Check your email">
-        <div className="bg-gradient-to-br from-[var(--brand-light)] to-white border border-[#bfdbfe] rounded-[var(--radius)] p-6 text-center">
+        <div className="bg-gradient-to-br from-white to-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius)] p-6 text-center">
           <div className="w-14 h-14 mx-auto rounded-full bg-white shadow-[var(--shadow-md)] flex items-center justify-center mb-4">
             <KeyRound className="w-7 h-7 text-[var(--brand-mid)]" strokeWidth={2} />
           </div>
@@ -48,7 +48,7 @@ export function ResetPasswordForm() {
         </div>
         <Link
           href="/login"
-          className="mt-6 flex items-center justify-center gap-1.5 text-[13px] text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] hover:underline transition-colors"
+          className="mt-7 flex items-center justify-center gap-1.5 text-[13px] text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to sign in
@@ -64,7 +64,7 @@ export function ResetPasswordForm() {
     >
       <form onSubmit={handleReset} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email address</Label>
+          <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
@@ -86,14 +86,14 @@ export function ResetPasswordForm() {
           </div>
         )}
 
-        <Button type="submit" size="lg" disabled={loading} className="w-full mt-2">
+        <Button type="submit" size="lg" disabled={loading} className="w-full mt-1">
           {loading ? 'Sending…' : 'Send reset link'}
         </Button>
       </form>
 
-      <p className="mt-6 text-center text-[13px] text-[var(--text-secondary)]">
-        Remember it?{' '}
-        <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] hover:underline transition-colors">
+      <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
+        Remembered it?{' '}
+        <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">
           Sign in
         </Link>
       </p>
