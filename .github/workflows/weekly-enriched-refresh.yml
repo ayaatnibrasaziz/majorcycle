@@ -1,15 +1,15 @@
-name: Daily Data Refresh
+name: Weekly Enriched Data Refresh
 
 on:
   schedule:
-    - cron: '0 23 * * 1-6'  # 23:00 UTC Mon–Sat — after US, AU, CA markets close (Sunday handled by weekly job)
-  workflow_dispatch:        # allow manual trigger from Actions tab for testing
+    - cron: '0 1 * * 0'    # 01:00 UTC every Sunday — full refresh of all enriched data
+  workflow_dispatch:         # allow manual trigger from Actions tab
 
 jobs:
   refresh:
-    name: Run daily pipeline
+    name: Run full pipeline
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 360
     env:
       PYTHONPATH: .
 
@@ -33,10 +33,10 @@ jobs:
             "supabase>=2.4.0" \
             "python-dotenv>=1.0.0"
 
-      - name: Run daily refresh
+      - name: Run full refresh
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
           OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
-        run: python -m analytics.cron.daily_refresh
+        run: python -m analytics.cron.daily_refresh --mode full

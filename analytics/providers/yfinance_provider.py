@@ -87,7 +87,7 @@ class YFinanceProvider(DataProvider):
             return False
 
     def fetch_price_history(self, ticker: str, period: str = "max") -> Optional[pd.DataFrame]:
-        df, _ = self._download_with_retry(ticker)
+        df, _ = self._download_with_retry(ticker, period=period)
         return df
 
     def fetch_fundamentals(self, ticker: str) -> Optional[FundamentalsSnapshot]:
@@ -362,10 +362,10 @@ class YFinanceProvider(DataProvider):
             logger.debug("_compute_pe_history %s: %s", ticker, e)
             return []
 
-    def _download_yfinance(self, ticker_str: str) -> tuple[Optional[pd.DataFrame], Any]:
+    def _download_yfinance(self, ticker_str: str, period: str = _DOWNLOAD_PERIOD) -> tuple[Optional[pd.DataFrame], Any]:
         try:
             t = yf.Ticker(ticker_str)
-            raw: Any = t.history(period=_DOWNLOAD_PERIOD, interval="1d", auto_adjust=True)
+            raw: Any = t.history(period=period, interval="1d", auto_adjust=True)
             if raw is None or raw.empty:
                 return None, None
             df = pd.DataFrame(raw)
@@ -377,7 +377,7 @@ class YFinanceProvider(DataProvider):
             df[["Open", "High", "Low", "Volume"]] = (
                 df[["Open", "High", "Low", "Volume"]].ffill()
             )
-            if len(df) < _MIN_BARS:
+            if period == _DOWNLOAD_PERIOD and len(df) < _MIN_BARS:
                 return None, None
             return df, t
         except Exception as e:
@@ -411,9 +411,9 @@ class YFinanceProvider(DataProvider):
             logger.debug("stooq error for %s: %s", ticker_str, e)
             return None, None
 
-    def _download_with_retry(self, ticker_str: str) -> tuple[Optional[pd.DataFrame], Any]:
+    def _download_with_retry(self, ticker_str: str, period: str = _DOWNLOAD_PERIOD) -> tuple[Optional[pd.DataFrame], Any]:
         for attempt in range(1, _MAX_RETRIES + 1):
-            df, t = self._download_yfinance(ticker_str)
+            df, t = self._download_yfinance(ticker_str, period=period)
             if df is not None:
                 return df, t
             sleep_time = _RETRY_BACKOFF_BASE ** attempt + random.uniform(0, 1)
@@ -422,11 +422,12 @@ class YFinanceProvider(DataProvider):
             )
             time.sleep(sleep_time)
 
-        logger.debug("%s: trying stooq fallback", ticker_str)
-        df, _ = self._download_stooq(ticker_str)
-        if df is not None:
-            logger.info("%s: using stooq data (Yahoo failed)", ticker_str)
-            return df, None
+        if period == _DOWNLOAD_PERIOD:
+            logger.debug("%s: trying stooq fallback", ticker_str)
+            df, _ = self._download_stooq(ticker_str)
+            if df is not None:
+                logger.info("%s: using stooq data (Yahoo failed)", ticker_str)
+                return df, None
 
         logger.warning("%s: all data sources failed", ticker_str)
         return None, None
