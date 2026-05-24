@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { AlertCircle, KeyRound, ArrowLeft } from 'lucide-react';
 import { AuthCard } from '@/components/AuthCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,19 +34,25 @@ export function ResetPasswordForm() {
   if (sent) {
     return (
       <AuthCard title="Check your email">
-        <div className="text-center py-2">
-          <div className="text-[32px] mb-4">🔑</div>
-          <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
+        <div className="bg-gradient-to-br from-[var(--brand-light)] to-white border border-[#bfdbfe] rounded-[var(--radius)] p-6 text-center">
+          <div className="w-14 h-14 mx-auto rounded-full bg-white shadow-[var(--shadow-md)] flex items-center justify-center mb-4">
+            <KeyRound className="w-7 h-7 text-[var(--brand-mid)]" strokeWidth={2} />
+          </div>
+          <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">
             We sent a password reset link to{' '}
-            <strong className="text-[var(--text-primary)]">{email}</strong>.
+            <strong className="text-[var(--brand-deep)]">{email}</strong>.
           </p>
-          <Link
-            href="/login"
-            className="mt-4 block text-[12px] text-[var(--brand-mid)] font-semibold hover:underline"
-          >
-            Back to sign in
-          </Link>
+          <p className="text-[12.5px] text-[var(--text-secondary)] mt-2 leading-relaxed">
+            Check your inbox and follow the link to set a new password.
+          </p>
         </div>
+        <Link
+          href="/login"
+          className="mt-6 flex items-center justify-center gap-1.5 text-[13px] text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] hover:underline transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Back to sign in
+        </Link>
       </AuthCard>
     );
   }
@@ -53,10 +60,10 @@ export function ResetPasswordForm() {
   return (
     <AuthCard
       title="Reset your password"
-      subtitle="Enter your email and we'll send a reset link"
+      subtitle="Enter your email and we'll send a secure reset link."
     >
       <form onSubmit={handleReset} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <Label htmlFor="email">Email address</Label>
           <Input
             id="email"
@@ -70,19 +77,23 @@ export function ResetPasswordForm() {
         </div>
 
         {error && (
-          <p role="alert" className="text-[11px] text-[var(--c-tier-5)] bg-[var(--tint-tier-5)] border border-[var(--tint-tier-5-strong)] rounded-[var(--radius-sm)] px-3 py-2">
-            {error}
-          </p>
+          <div
+            role="alert"
+            className="flex items-start gap-2 text-[12px] text-[var(--c-tier-5-ink)] bg-[var(--tint-tier-5)] border border-[var(--tint-tier-5-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
+          >
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" />
+            <span className="leading-relaxed">{error}</span>
+          </div>
         )}
 
-        <Button type="submit" disabled={loading} className="w-full mt-1">
+        <Button type="submit" size="lg" disabled={loading} className="w-full mt-2">
           {loading ? 'Sending…' : 'Send reset link'}
         </Button>
       </form>
 
-      <p className="mt-4 text-center text-[12px] text-[var(--text-muted)]">
+      <p className="mt-6 text-center text-[13px] text-[var(--text-secondary)]">
         Remember it?{' '}
-        <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:underline">
+        <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] hover:underline transition-colors">
           Sign in
         </Link>
       </p>
