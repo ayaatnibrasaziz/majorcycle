@@ -31,5 +31,6 @@ Thumbs.db
 # Vercel
 .vercel
 
-# Claude Code local session data
-.claude/
+# Claude Code local session data — except shared dev-server launch config
+.claude/*
+!.claude/launch.json

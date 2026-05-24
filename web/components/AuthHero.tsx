@@ -1,54 +1,60 @@
 import Link from 'next/link';
-import { TrendingUp, ShieldCheck, BarChart3, Activity } from 'lucide-react';
+import { TrendingUp, ShieldCheck, BarChart3, Activity, Sparkles } from 'lucide-react';
 
 const tiers = [
-  { label: 'High Conviction', score: '82', color: 'var(--c-tier-1)', bg: 'rgba(0,100,0,0.18)' },
-  { label: 'Constructive',    score: '71', color: 'var(--c-tier-2)', bg: 'rgba(34,139,34,0.18)' },
-  { label: 'Neutral',         score: '58', color: 'var(--c-tier-3)', bg: 'rgba(212,160,23,0.18)' },
-  { label: 'Cautious',        score: '42', color: 'var(--c-tier-4)', bg: 'rgba(255,69,0,0.18)' },
-  { label: 'Bearish',         score: '28', color: 'var(--c-tier-5)', bg: 'rgba(178,34,34,0.18)' },
+  { label: 'High Conviction', color: '#22c55e', glow: '#16a34a' },
+  { label: 'Constructive',    color: '#84cc16', glow: '#65a30d' },
+  { label: 'Neutral',         color: '#fbbf24', glow: '#d97706' },
+  { label: 'Cautious',        color: '#fb923c', glow: '#ea580c' },
+  { label: 'Bearish',         color: '#f87171', glow: '#dc2626' },
 ];
 
 const features = [
-  { icon: BarChart3,   text: 'S&P 500 · ASX 200 · S&P/TSX 60 coverage' },
-  { icon: Activity,    text: 'Major Cycle drawdown & recovery analysis' },
-  { icon: ShieldCheck, text: '5-pillar financial health scoring' },
+  { icon: BarChart3,   text: 'Coverage across S&P 500, ASX 200, and S&P/TSX 60' },
+  { icon: Activity,    text: 'Major Cycle drawdown & recovery analysis on every ticker' },
+  { icon: ShieldCheck, text: 'Five-pillar financial health scoring' },
 ];
 
 export function AuthHero() {
   return (
-    <div className="relative hidden lg:flex flex-col justify-between p-10 xl:p-12 overflow-hidden bg-gradient-to-br from-[var(--brand-deep)] via-[#1E5CB3] to-[var(--brand-bright)] text-white">
-      {/* Decorative grid overlay */}
+    <div className="relative hidden lg:flex flex-col justify-between p-10 xl:p-14 overflow-hidden text-white">
+      {/* Layered background */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 opacity-[0.08]"
+        className="absolute inset-0 z-0"
         style={{
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
-          backgroundSize: '32px 32px',
+          background:
+            'radial-gradient(circle at 18% 18%, #2E7DE8 0%, transparent 38%), radial-gradient(circle at 82% 82%, #1A3A6E 0%, transparent 42%), linear-gradient(135deg, #14274a 0%, #1A3A6E 50%, #1E5CB3 100%)',
         }}
       />
-      {/* Glow orbs */}
+      {/* Grid */}
       <div
         aria-hidden="true"
-        className="absolute -top-32 -right-32 w-96 h-96 rounded-full blur-3xl opacity-30"
-        style={{ background: 'radial-gradient(circle, #2E7DE8 0%, transparent 70%)' }}
+        className="absolute inset-0 z-0 opacity-[0.06]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+        }}
       />
+      {/* Vignette */}
       <div
         aria-hidden="true"
-        className="absolute -bottom-40 -left-32 w-[420px] h-[420px] rounded-full blur-3xl opacity-25"
-        style={{ background: 'radial-gradient(circle, #EBF3FF 0%, transparent 70%)' }}
+        className="absolute inset-0 z-0"
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 50%, rgba(10,20,40,0.45) 100%)',
+        }}
       />
 
       {/* Logo */}
-      <div className="relative z-10">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-11 h-11 rounded-[10px] bg-white/95 flex items-center justify-center shadow-[0_4px_14px_rgba(0,0,0,0.25)] transition-transform group-hover:scale-105">
-            <TrendingUp className="w-6 h-6 text-[var(--brand-deep)]" strokeWidth={2.5} />
+      <div className="relative">
+        <Link href="/" className="inline-flex items-center gap-3 group">
+          <div className="w-11 h-11 rounded-[10px] bg-white flex items-center justify-center shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-transform group-hover:scale-[1.04]">
+            <TrendingUp className="w-[22px] h-[22px] text-[var(--brand-deep)]" strokeWidth={2.5} />
           </div>
           <div>
-            <div className="text-[18px] font-bold tracking-[-0.4px] leading-none">MajorCycle</div>
-            <div className="text-[10px] font-medium uppercase tracking-[1.2px] text-white/70 mt-1">
+            <div className="text-[19px] font-bold tracking-[-0.4px] leading-none">MajorCycle</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[1.4px] text-white/65 mt-1.5 font-mono">
               Financial Terminal
             </div>
           </div>
@@ -56,47 +62,53 @@ export function AuthHero() {
       </div>
 
       {/* Center content */}
-      <div className="relative z-10 max-w-md">
-        <h2 className="text-[34px] xl:text-[38px] font-bold leading-[1.12] tracking-[-0.6px] mb-5">
-          Discover where stocks sit in their{' '}
-          <span className="bg-gradient-to-r from-white to-[var(--brand-light)] bg-clip-text text-transparent">
-            Major Cycle.
+      <div className="relative max-w-[460px]">
+        {/* Eyebrow */}
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-6 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 text-[10.5px] font-bold uppercase tracking-[1.4px] text-white/85">
+          <Sparkles className="w-3 h-3" strokeWidth={2.5} />
+          Premium financial terminal
+        </div>
+
+        <h2 className="text-[40px] xl:text-[44px] font-bold leading-[1.08] tracking-[-0.8px] mb-5">
+          Know exactly where each stock sits in its{' '}
+          <span className="relative inline-block">
+            <span className="relative bg-gradient-to-r from-white via-[#bfdbfe] to-[#7dd3fc] bg-clip-text text-transparent">
+              Major Cycle.
+            </span>
           </span>
         </h2>
-        <p className="text-[14.5px] leading-[1.65] text-white/80 mb-8">
-          A premium financial terminal that maps every stock against its historical drawdown and
-          recovery cycles — alongside fundamental health, valuation positioning, and analyst data.
+        <p className="text-[15px] leading-[1.6] text-white/75 mb-10 max-w-[420px]">
+          Map every ticker against its historical drawdown and recovery cycles — alongside fundamental
+          health, valuation positioning, and analyst data.
         </p>
 
-        <ul className="flex flex-col gap-3.5 mb-10">
+        <ul className="flex flex-col gap-4 mb-12">
           {features.map(({ icon: Icon, text }) => (
-            <li key={text} className="flex items-center gap-3 text-[13.5px] text-white/90">
-              <span className="w-8 h-8 rounded-[8px] bg-white/12 backdrop-blur-sm border border-white/20 flex items-center justify-center flex-shrink-0">
-                <Icon className="w-[17px] h-[17px]" strokeWidth={2} />
+            <li key={text} className="flex items-center gap-3.5">
+              <span className="w-9 h-9 rounded-[9px] bg-white/8 backdrop-blur-sm border border-white/15 flex items-center justify-center flex-shrink-0 shadow-[0_4px_12px_rgba(0,0,0,0.15)]">
+                <Icon className="w-[18px] h-[18px] text-white" strokeWidth={2} />
               </span>
-              <span>{text}</span>
+              <span className="text-[14px] text-white/90 leading-snug">{text}</span>
             </li>
           ))}
         </ul>
 
         {/* Tier legend */}
-        <div className="bg-white/8 backdrop-blur-sm border border-white/15 rounded-[var(--radius)] p-4">
-          <div className="text-[10px] font-bold tracking-[1px] uppercase text-white/60 mb-3">
-            Our Rating Tiers
+        <div>
+          <div className="text-[10px] font-bold tracking-[1.4px] uppercase text-white/55 mb-3 font-mono">
+            Our 5 rating tiers
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {tiers.map((t) => (
               <div
                 key={t.label}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold"
-                style={{ background: t.bg, color: 'white', border: `1px solid ${t.color}66` }}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11.5px] font-semibold bg-white/10 backdrop-blur-sm border border-white/15"
               >
                 <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: t.color, boxShadow: `0 0 6px ${t.color}` }}
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: t.color, boxShadow: `0 0 8px ${t.glow}` }}
                 />
-                {t.label}
-                <span className="font-mono text-white/70 ml-0.5">{t.score}</span>
+                <span className="text-white/95">{t.label}</span>
               </div>
             ))}
           </div>
@@ -104,7 +116,7 @@ export function AuthHero() {
       </div>
 
       {/* Footer */}
-      <div className="relative z-10 text-[11px] text-white/55 leading-relaxed max-w-md italic">
+      <div className="relative text-[11px] text-white/45 leading-relaxed max-w-[420px] italic">
         Information only — not financial advice. Past performance does not indicate future results.
       </div>
     </div>
