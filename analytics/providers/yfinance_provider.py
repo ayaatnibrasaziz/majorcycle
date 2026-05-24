@@ -261,7 +261,7 @@ class YFinanceProvider(DataProvider):
                     divs_series.index = divs_series.index.tz_convert(None)
                 by_year = divs_series.groupby(divs_series.index.year).sum()
                 dividend_history = [
-                    {"year": int(yr), "amount": round(float(amt), 4)}  # type: ignore[arg-type]
+                    {"year": int(yr), "amount": round(float(amt), 4)}  # type: ignore[call-overload]
                     for yr, amt in by_year.items()
                 ]
         except Exception:
