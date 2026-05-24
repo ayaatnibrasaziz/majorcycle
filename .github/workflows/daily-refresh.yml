@@ -9,6 +9,8 @@ jobs:
   refresh:
     name: Run daily pipeline
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: .
 
     steps:
       - uses: actions/checkout@v4
@@ -20,8 +22,15 @@ jobs:
           cache-dependency-path: analytics/pyproject.toml
 
       - name: Install analytics dependencies
-        working-directory: analytics
-        run: pip install -e .
+        run: |
+          pip install \
+            "yfinance>=0.2.40" \
+            "pandas>=2.2.0" \
+            "numpy>=1.26.0" \
+            "requests>=2.31.0" \
+            "requests-cache>=1.2.0" \
+            "supabase>=2.4.0" \
+            "python-dotenv>=1.0.0"
 
       - name: Run daily refresh
         env:
