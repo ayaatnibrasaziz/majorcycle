@@ -5,6 +5,9 @@ on:
     - cron: '0 23 * * *'    # 23:00 UTC daily — after US, AU, CA markets close
   workflow_dispatch:        # allow manual trigger from Actions tab for testing
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   refresh:
     name: Run daily pipeline

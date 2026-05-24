@@ -3,6 +3,9 @@ name: Weekly Enriched Data Refresh
 on:
   workflow_dispatch:         # manual trigger only — used when a forced full refresh is needed
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   refresh:
     name: Run full pipeline
