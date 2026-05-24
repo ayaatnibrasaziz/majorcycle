@@ -44,7 +44,7 @@ def _pct(v: Any) -> Optional[float]:
 
 def _safe_int(v: Any) -> Optional[int]:
     f = _safe(v)
-    return int(round(f)) if f is not None else None
+    return round(f) if f is not None else None
 
 
 def _infer_market(ticker: str) -> Market:

@@ -1,7 +1,5 @@
 """Unit tests for scoring modules — financial_health, valuation, overall."""
 
-import pytest
-
 from analytics.providers.base import FundamentalsSnapshot
 from analytics.scoring.financial_health import score_financial_health
 from analytics.scoring.overall import calculate_overall_rating
@@ -55,7 +53,7 @@ class TestScoreFinancialHealth:
 
     def test_all_none_returns_midpoint(self) -> None:
         f = _fund()
-        score, subscores = score_financial_health(f)
+        score, _subscores = score_financial_health(f)
         assert 40.0 <= score <= 65.0  # neutral defaults
 
     def test_score_clamped_0_to_100(self) -> None:
@@ -79,7 +77,7 @@ class TestCalculateValuationZone:
 
     def test_fair_zone(self) -> None:
         cycle = {"current_drawdown_pct": -6.0, "typical_drawdown": None, "lower_bound": None}
-        zone, score = calculate_valuation_zone(cycle)
+        zone, _score = calculate_valuation_zone(cycle)
         assert zone == "FAIR"
 
     def test_stretched_when_near_highs(self) -> None:
@@ -90,7 +88,7 @@ class TestCalculateValuationZone:
 
     def test_lower_bound_gives_max_score(self) -> None:
         cycle = {"current_drawdown_pct": -25.0, "typical_drawdown": -10.0, "lower_bound": -20.0}
-        zone, score = calculate_valuation_zone(cycle)
+        _zone, score = calculate_valuation_zone(cycle)
         assert score == 100.0
 
     def test_missing_drawdown_returns_fair(self) -> None:
@@ -107,7 +105,7 @@ class TestCalculateOverallRating:
             "typical_drawdown": -10.0,
             "typical_profit": 30.0,
         }
-        rating, label, momentum = calculate_overall_rating(90.0, 90.0, cycle)
+        rating, label, _momentum = calculate_overall_rating(90.0, 90.0, cycle)
         assert rating >= 80
         assert label == "High Conviction"
 
@@ -118,7 +116,7 @@ class TestCalculateOverallRating:
             "typical_drawdown": None,
             "typical_profit": None,
         }
-        rating, label, momentum = calculate_overall_rating(10.0, 5.0, cycle)
+        rating, label, _momentum = calculate_overall_rating(10.0, 5.0, cycle)
         assert rating < 35
         assert label == "Bearish"
 
@@ -141,13 +139,13 @@ class TestCalculateOverallRating:
             "total_pullback_events": 10,
             "total_profit_events": 10,
             "typical_drawdown": -10.0,
-            "typical_profit": 30.0,   # R/R = 3.0 → 100%
+            "typical_profit": 30.0,   # R/R = 3.0 -> 100%
         }
         cycle_bad_rr = {
             "total_pullback_events": 10,
             "total_profit_events": 10,
             "typical_drawdown": -10.0,
-            "typical_profit": 3.0,    # R/R = 0.3 → 10%
+            "typical_profit": 3.0,    # R/R = 0.3 -> 10%
         }
         _, _, mom_good = calculate_overall_rating(70.0, 70.0, cycle_good_rr)
         _, _, mom_bad = calculate_overall_rating(70.0, 70.0, cycle_bad_rr)

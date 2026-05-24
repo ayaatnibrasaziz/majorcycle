@@ -17,7 +17,7 @@ def _clamp(v: float, lo: float = 0.0, hi: float = 100.0) -> float:
 
 def score_financial_health(f: FundamentalsSnapshot) -> tuple[float, dict[str, float]]:
     """
-    Five-pillar financial health score (0–100).
+    Five-pillar financial health score (0-100).
 
     Returns (total_score, subscores) where subscores keys are:
     profitability, balance_sheet, growth, cashflow, shareholder

@@ -19,7 +19,7 @@ def calculate_overall_rating(
     cycle: dict[str, Any],
 ) -> tuple[int, OverallLabel, float]:
     """
-    Three-pillar weighted rating (0–100).
+    Three-pillar weighted rating (0-100).
 
     Returns (overall_rating, overall_label, momentum_score).
 
@@ -47,7 +47,7 @@ def calculate_overall_rating(
         + momentum_score * _RATING_WEIGHTS["momentum"]         / 100.0
     )
 
-    rating = int(round(_clamp(raw)))
+    rating = round(_clamp(raw))
 
     label: OverallLabel
     if rating >= 80:

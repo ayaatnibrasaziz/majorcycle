@@ -9,7 +9,7 @@ def _clamp(v: float, lo: float = 0.0, hi: float = 100.0) -> float:
 
 def calculate_valuation_zone(cycle: dict[str, Any]) -> tuple[ValuationZone, float]:
     """
-    Determine valuation zone and score (0–100) from cycle metrics.
+    Determine valuation zone and score (0-100) from cycle metrics.
 
     Zones map the current drawdown position relative to historical cycle:
       DEEP VALUE : at or beyond typical_drawdown (historically deep dip)
