@@ -20,7 +20,8 @@ jobs:
           cache-dependency-path: analytics/pyproject.toml
 
       - name: Install analytics dependencies
-        run: pip install -e analytics
+        working-directory: analytics
+        run: pip install -e .
 
       - name: Run daily refresh
         env:
