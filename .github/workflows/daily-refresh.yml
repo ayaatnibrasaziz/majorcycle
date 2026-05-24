@@ -2,7 +2,7 @@ name: Daily Data Refresh
 
 on:
   schedule:
-    - cron: '0 23 * * 1-6'  # 23:00 UTC Mon–Sat — after US, AU, CA markets close (Sunday handled by weekly job)
+    - cron: '0 23 * * *'    # 23:00 UTC daily — after US, AU, CA markets close
   workflow_dispatch:        # allow manual trigger from Actions tab for testing
 
 jobs:

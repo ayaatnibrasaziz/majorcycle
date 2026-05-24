@@ -192,6 +192,7 @@ export interface EnrichedData {
   insider_transactions: InsiderTransaction[];
   analyst_upgrades_downgrades: AnalystUpgrade[];
   pe_history: PeHistoryItem[];
+  next_earnings_date: string | null;
 }
 
 export interface StockRecord {
@@ -218,6 +219,8 @@ export interface StockRecord {
   insiderTransactions?: InsiderTransaction[];
   analystUpgradesDowngrades?: AnalystUpgrade[];
   peHistory?: PeHistoryItem[];
+  nextEarningsDate?: string | null;
+  enrichedUpdatedAt?: string | null;
 }
 
 export interface AnalyzeRequest {

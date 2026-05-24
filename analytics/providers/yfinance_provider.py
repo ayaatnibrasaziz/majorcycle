@@ -91,10 +91,22 @@ class YFinanceProvider(DataProvider):
         return df
 
     def fetch_fundamentals(self, ticker: str) -> Optional[FundamentalsSnapshot]:
-        df, t = self._download_with_retry(ticker)
-        if df is None or t is None:
+        try:
+            t = yf.Ticker(ticker)
+            info: dict[str, Any] = {}
+            try:
+                info = t.info or {}
+            except Exception:
+                pass
+            if not info or not any(
+                k in info
+                for k in ("symbol", "longName", "currentPrice", "regularMarketPrice")
+            ):
+                return None
+            return self._extract_fundamentals(ticker, t)
+        except Exception as e:
+            logger.warning("fetch_fundamentals %s: %s", ticker, e)
             return None
-        return self._extract_fundamentals(ticker, t)
 
     def fetch_news(self, ticker: str, limit: int = 10) -> list[NewsItem]:
         try:
@@ -148,6 +160,7 @@ class YFinanceProvider(DataProvider):
                 self._safe_attr(t, "upgrades_downgrades")
             )
             pe_hist = self._compute_pe_history(t, ticker)
+            next_ed = self._extract_next_earnings_date(t)
 
             return EnrichedData(
                 company_overview=company_overview,
@@ -162,9 +175,37 @@ class YFinanceProvider(DataProvider):
                 insider_transactions=insider_tx,
                 analyst_upgrades_downgrades=analyst_ud,
                 pe_history=pe_hist,
+                next_earnings_date=next_ed,
             )
         except Exception as e:
             logger.warning("fetch_enriched_data %s: %s", ticker, e)
+            return None
+
+    @staticmethod
+    def _extract_next_earnings_date(ticker_obj: Any) -> Optional[str]:
+        try:
+            cal = YFinanceProvider._safe_attr(ticker_obj, "calendar")
+            if cal is None:
+                return None
+            if isinstance(cal, dict):
+                ed = cal.get("Earnings Date")
+                if ed is None:
+                    return None
+                if isinstance(ed, (list, tuple)) and len(ed) > 0:
+                    ed = ed[0]
+                if hasattr(ed, "date"):
+                    return str(ed.date())
+                return str(ed)[:10]
+            if isinstance(cal, pd.DataFrame):
+                if "Earnings Date" in cal.columns:
+                    vals = cal["Earnings Date"].dropna()
+                    if not vals.empty:
+                        ed = vals.iloc[0]
+                        if hasattr(ed, "date"):
+                            return str(ed.date())
+                        return str(ed)[:10]
+            return None
+        except Exception:
             return None
 
     @staticmethod

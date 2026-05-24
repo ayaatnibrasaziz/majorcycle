@@ -114,6 +114,7 @@ class EnrichedData:
     insider_transactions: list[dict[str, Any]] = field(default_factory=list)
     analyst_upgrades_downgrades: list[dict[str, Any]] = field(default_factory=list)
     pe_history: list[dict[str, Any]] = field(default_factory=list)
+    next_earnings_date: Optional[str] = None
 
 
 class DataProvider(ABC):
