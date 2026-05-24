@@ -126,6 +126,35 @@ class FundamentalsSnapshot:
     dividend_history: list[dict] = field(default_factory=list)  # [{year: 2024, amount: 0.92}, ...]
 
 
+@dataclass
+class EnrichedData:
+    """
+    Extended Phase 1+2 data. Fetched only when the staleness check fires
+    (earnings-date-driven or 7-day fallback). Stored as JSONB columns in stocks.
+    """
+    company_overview: Optional[str] = None
+
+    # Financial statements — shape: {"labels": ["2024-12-31", ...], "total_revenue": [...], ...}
+    income_statement_annual:    dict = field(default_factory=dict)
+    income_statement_quarterly: dict = field(default_factory=dict)
+    balance_sheet_annual:       dict = field(default_factory=dict)
+    balance_sheet_quarterly:    dict = field(default_factory=dict)
+    cashflow_annual:            dict = field(default_factory=dict)
+    cashflow_quarterly:         dict = field(default_factory=dict)
+
+    # Lists — each item is a flat dict with a 'date' key
+    earnings_history:            list[dict] = field(default_factory=list)  # last 20 quarters
+    top_holders:                 list[dict] = field(default_factory=list)  # top 15 institutions
+    insider_transactions:        list[dict] = field(default_factory=list)  # last 50 transactions
+    analyst_upgrades_downgrades: list[dict] = field(default_factory=list)  # last 50 changes
+
+    # Computed from quarterly EPS + price history (5-year window)
+    pe_history: list[dict] = field(default_factory=list)  # [{"date": "2024-03-31", "pe": 28.5}, ...]
+
+    # Next scheduled earnings date from yfinance t.calendar — drives the staleness check
+    next_earnings_date: Optional[str] = None  # 'YYYY-MM-DD' or None if unavailable
+
+
 class DataProvider(ABC):
     """All concrete providers implement this exactly. No deviations."""
 
@@ -142,6 +171,11 @@ class DataProvider(ABC):
     @abstractmethod
     def fetch_news(self, ticker: str, limit: int = 10) -> list[NewsItem]:
         """Return list of news items. Empty list if none."""
+        ...
+
+    @abstractmethod
+    def fetch_enriched_data(self, ticker: str) -> Optional[EnrichedData]:
+        """Return enriched data (financials, holders, insider tx, etc.) or None."""
         ...
 
     @abstractmethod
@@ -362,6 +396,64 @@ export interface PriceBar {
   volume: number;
 }
 
+// Enriched data types — mirrors EnrichedData Python dataclass
+
+export interface FinancialStatement {
+  labels: string[];           // period-end dates e.g. ["2024-12-31", "2023-12-31"]
+  [key: string]: unknown;     // snake_case row names → parallel number arrays
+}
+
+export interface EarningsHistoryItem {
+  date: string;
+  [key: string]: number | string | null | undefined;
+}
+
+export interface TopHolder {
+  holder: string;
+  shares: number | null;
+  pct_out: number | null;
+  value: number | null;
+  date_reported: string;
+}
+
+export interface InsiderTransaction {
+  date: string;
+  insider: string;
+  position: string;
+  transaction: string;
+  shares: number | null;
+  value: number | null;
+}
+
+export interface AnalystUpgrade {
+  date: string;
+  firm: string;
+  to_grade: string;
+  from_grade: string;
+  action: string;
+}
+
+export interface PeHistoryItem {
+  date: string;
+  pe: number;
+}
+
+export interface EnrichedData {
+  company_overview: string | null;
+  income_statement_annual: FinancialStatement;
+  income_statement_quarterly: FinancialStatement;
+  balance_sheet_annual: FinancialStatement;
+  balance_sheet_quarterly: FinancialStatement;
+  cashflow_annual: FinancialStatement;
+  cashflow_quarterly: FinancialStatement;
+  earnings_history: EarningsHistoryItem[];
+  top_holders: TopHolder[];
+  insider_transactions: InsiderTransaction[];
+  analyst_upgrades_downgrades: AnalystUpgrade[];
+  pe_history: PeHistoryItem[];
+  next_earnings_date: string | null;
+}
+
 export interface StockRecord {
   ticker: string;
   market: Market;
@@ -374,6 +466,21 @@ export interface StockRecord {
   fundamentals: FundamentalsSnapshot;
   news: NewsItem[];
   updatedAt: string;
+  // Enriched fields — present when enriched data has been fetched (optional until first enrich run)
+  companyOverview?: string | null;
+  incomeStatementAnnual?: FinancialStatement;
+  incomeStatementQuarterly?: FinancialStatement;
+  balanceSheetAnnual?: FinancialStatement;
+  balanceSheetQuarterly?: FinancialStatement;
+  cashflowAnnual?: FinancialStatement;
+  cashflowQuarterly?: FinancialStatement;
+  earningsHistory?: EarningsHistoryItem[];
+  topHolders?: TopHolder[];
+  insiderTransactions?: InsiderTransaction[];
+  analystUpgradesDowngrades?: AnalystUpgrade[];
+  peHistory?: PeHistoryItem[];
+  nextEarningsDate?: string | null;
+  enrichedUpdatedAt?: string | null;
 }
 ```
 
@@ -559,9 +666,11 @@ Webhook events handled:
 
 - ❌ Storing computed scores (`overall_rating`, `valuation_zone`) in the DB — they're always derived
 - ❌ Bypassing the `DataProvider` interface — never call `yfinance` directly anywhere except inside `yfinance_provider.py`
-- ❌ Adding fields to `FundamentalsSnapshot` without updating BOTH the Python dataclass AND the TS type in the same commit
+- ❌ Adding fields to `FundamentalsSnapshot` or `EnrichedData` without updating BOTH the Python dataclass AND the TS type in the same commit
 - ❌ Storing camelCase keys in Supabase — always snake_case at the DB boundary
 - ❌ Returning raw provider responses to the frontend — always go through the canonical shapes
+- ❌ Calling `fetch_enriched_data` on every cron run — the `_should_fetch_enriched` helper in `daily_refresh.py` is the single gatekeeper; bypass it only via `--mode full`
+- ❌ Storing `next_earnings_date` anywhere other than `stocks.next_earnings_date` — it is the source of truth for the staleness check and the future earnings calendar UI
 
 ---
 

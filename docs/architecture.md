@@ -57,16 +57,25 @@ flowchart TB
 
 ### Tier 1 — Batch (scheduled, free)
 
-**What:** A GitHub Actions workflow runs once per day at 23:00 UTC. It executes the Python pipeline in `analytics/cron/daily_refresh.py`, which:
+**What:** A GitHub Actions workflow runs once per day at 23:00 UTC. It executes the Python pipeline in `analytics/cron/daily_refresh.py` in **smart mode** (the default), which:
 
 1. Reads the universe CSV (`analytics/universe/sp500.csv`, `asx200.csv`, `tsx60.csv`)
-2. For each ticker, calls `DataProvider.fetch_price_history()` and `DataProvider.fetch_fundamentals()`
-3. Upserts the results into Supabase `stocks` and `price_bars` tables
-4. Logs runtime metrics and failures
+2. Pre-fetches the current DB state for all tickers — specifically `enriched_updated_at` and `next_earnings_date` — in a single query
+3. For each ticker, runs a staleness check (`_should_fetch_enriched`) to decide whether enriched data needs refreshing:
+   - **New ticker** (not in DB) → full fetch including price history (`period="max"`) + fundamentals + all enriched data
+   - **Known ticker, earnings date has passed since last enrich** → refresh enriched data
+   - **Known ticker, no earnings date stored** → refresh enriched data if last enrich was ≥7 days ago
+   - **Everything else** → price bars (`period="5d"`) + fundamentals only (~2 seconds per ticker)
+4. Always upserts `stocks` (fundamentals refreshed daily) and `price_bars`; enriched columns only written when the staleness check fires
+5. Logs runtime metrics and failures; emails owner on any failures via Resend
 
-**Why this works:** Yfinance rate limits become irrelevant when calls happen overnight in one batch. The frontend never calls yfinance.
+**Why this works:** Enriched data (financial statements, holders, insider transactions, PE history) changes only when a company reports earnings — typically quarterly. Fetching it daily was 95% wasted work. The earnings-date-driven approach cuts nightly runtime from ~2 hours to ~20–30 minutes while keeping data fresh where it matters.
 
-**Cost:** ~20 Actions minutes/day = ~600/month, well within the 2,000 free monthly minutes.
+**Modes:**
+- `smart` (default) — staleness-driven as described above
+- `full` — forces enriched refresh for every ticker regardless of staleness; used for the initial data population or after a data incident. Triggered manually via the `manual-full-refresh.yml` workflow in GitHub Actions.
+
+**Cost:** ~25 Actions minutes/day = ~750/month, well within the 2,000 free monthly minutes (private repo limit).
 
 ### Tier 2 — Serve (request-time, edge-cached)
 
@@ -174,6 +183,8 @@ class DataProvider(ABC):
 
 Then `analytics/providers/yfinance_provider.py` implements this with yfinance calls. `fmp_provider.py` exists as a stub in Phase 1 (raises `NotImplementedError`) and gets filled in Phase 2.
 
+The provider now exposes four methods: `fetch_price_history`, `fetch_fundamentals`, `fetch_news`, and `fetch_enriched_data`. The last one returns an `EnrichedData` dataclass containing financial statements (annual + quarterly), earnings history, institutional holders, insider transactions, analyst upgrades/downgrades, PE history, and `next_earnings_date` — the scheduled earnings date from `t.calendar`, which drives the nightly staleness check. See `data-contracts.md` section 2 for the full `EnrichedData` shape.
+
 The active provider is selected once, in `analytics/config.py`:
 
 ```python
@@ -205,13 +216,36 @@ CREATE TABLE stocks (
   fundamentals    jsonb NOT NULL DEFAULT '{}',-- full FundamentalsSnapshot blob
   news            jsonb NOT NULL DEFAULT '[]',-- last 10 news items
   updated_at      timestamptz NOT NULL DEFAULT now(),
+
+  -- Enriched data (Phase 1+2) — written only when staleness check fires
+  company_overview            text,
+  income_statement_annual     jsonb NOT NULL DEFAULT '{}',
+  income_statement_quarterly  jsonb NOT NULL DEFAULT '{}',
+  balance_sheet_annual        jsonb NOT NULL DEFAULT '{}',
+  balance_sheet_quarterly     jsonb NOT NULL DEFAULT '{}',
+  cashflow_annual             jsonb NOT NULL DEFAULT '{}',
+  cashflow_quarterly          jsonb NOT NULL DEFAULT '{}',
+  earnings_history            jsonb NOT NULL DEFAULT '[]',
+  top_holders                 jsonb NOT NULL DEFAULT '[]',
+  insider_transactions        jsonb NOT NULL DEFAULT '[]',
+  analyst_upgrades_downgrades jsonb NOT NULL DEFAULT '[]',
+  pe_history                  jsonb NOT NULL DEFAULT '[]',
+
+  -- Staleness tracking for the smart cron pipeline
+  enriched_updated_at  timestamptz,           -- when enriched data was last fetched
+  next_earnings_date   date,                  -- next scheduled earnings from yfinance t.calendar
+
   CONSTRAINT valid_market CHECK (market IN ('us', 'au', 'ca'))
 );
 
 CREATE INDEX idx_stocks_market ON stocks (market);
 CREATE INDEX idx_stocks_sector ON stocks (sector);
 CREATE INDEX idx_stocks_updated ON stocks (updated_at);
+CREATE INDEX idx_stocks_next_earnings_date ON stocks (next_earnings_date);
+CREATE INDEX idx_stocks_enriched_updated_at ON stocks (enriched_updated_at);
 ```
+
+**Statement storage format:** Financial statements (income, balance sheet, cash flow) are stored as JSONB objects with the shape `{"labels": ["2024-12-31", "2023-12-31", ...], "total_revenue": [145000000, 120000000, ...], ...}`. The `labels` array contains the period-end dates; every other key is a snake_case row name with a parallel array of values. This lets charts iterate directly over the arrays without re-pivoting.
 
 ### `price_bars` — daily OHLCV history
 
@@ -309,18 +343,18 @@ All API routes live under `/web/app/api/`. Built as Next.js Route Handlers (TS) 
 
 ## 8. Cron Job Specification
 
-**File:** `.github/workflows/daily-refresh.yml`
+### Daily smart refresh — `.github/workflows/daily-refresh.yml`
 
-**Schedule:** `cron: '0 23 * * *'` (daily at 23:00 UTC)
+**Schedule:** `cron: '0 23 * * *'` (daily at 23:00 UTC, 7 days a week)
 
-**Runtime:** ~15-20 minutes for ~760 tickers (S&P 500 + ASX 200 + TSX 60)
+**Runtime:** ~20–30 minutes for ~720 tickers (S&P 500 + ASX 200 + TSX 60) in smart mode. On a night when many earnings have just passed the runtime extends proportionally — each enriched fetch takes ~30s per ticker vs ~2s for price-only.
 
 **Steps:**
 1. Checkout repo
 2. Set up Python 3.12
-3. Install requirements
-4. Run `python -m analytics.cron.daily_refresh`
-5. On failure: email owner via Resend with error summary
+3. Install requirements (yfinance, pandas, supabase, etc.)
+4. Run `python -m analytics.cron.daily_refresh` (smart mode by default)
+5. On failure: email owner via Resend with a summary of failed tickers
 
 **Required GitHub Secrets:**
 - `SUPABASE_URL`
@@ -328,7 +362,20 @@ All API routes live under `/web/app/api/`. Built as Next.js Route Handlers (TS) 
 - `RESEND_API_KEY`
 - `OWNER_EMAIL`
 
-**Idempotency:** The refresh script uses UPSERT (`ON CONFLICT DO UPDATE`) so re-runs are safe.
+**Idempotency:** All writes use UPSERT (`ON CONFLICT DO UPDATE`) so re-runs are safe.
+
+### Manual full refresh — `.github/workflows/manual-full-refresh.yml`
+
+**Schedule:** None — `workflow_dispatch` only (triggered manually from the GitHub Actions tab)
+
+**Purpose:** Forces enriched data refresh for every ticker regardless of staleness. Use after:
+- Initial database population (first run after seeding tickers)
+- A data provider incident that left enriched data stale
+- Adding a large batch of new tickers to the universe
+
+**Runtime:** ~4–5 hours for 720 tickers. GitHub Actions `timeout-minutes: 360`.
+
+**Command:** `python -m analytics.cron.daily_refresh --mode full`
 
 ---
 
