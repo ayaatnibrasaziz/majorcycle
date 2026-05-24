@@ -13,7 +13,7 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import pandas as pd
 import requests
@@ -145,8 +145,9 @@ def run(mode: str = "smart") -> None:
     result = supabase.table("stocks").select(
         "ticker,enriched_updated_at,next_earnings_date"
     ).execute()
+    raw_states = cast(list[dict[str, Any]], result.data or [])
     ticker_states: dict[str, dict[str, Any]] = {
-        row["ticker"]: row for row in result.data
+        str(row["ticker"]): row for row in raw_states
     }
     today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     logger.info(
