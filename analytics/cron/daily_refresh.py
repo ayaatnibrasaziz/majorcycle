@@ -67,7 +67,7 @@ def _upsert_price_bars(supabase: Client, ticker: str, df: pd.DataFrame) -> None:
         vol = row["Volume"]
         bars.append({
             "ticker": ticker,
-            "date":   ts.strftime("%Y-%m-%d"),  # type: ignore[union-attr]
+            "date":   ts.strftime("%Y-%m-%d"),  # type: ignore[attr-defined]
             "open":   float(row["Open"]),
             "high":   float(row["High"]),
             "low":    float(row["Low"]),

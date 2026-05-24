@@ -1,5 +1,7 @@
 """Unit tests for cycle math — ta_pivotlow/pivothigh and calculate_cycle_metrics."""
 
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
 
@@ -15,7 +17,7 @@ from analytics.major_cycle import (
 _MEDIUM = CycleParams(pullback_threshold=-5.0, profit_threshold=5.0, lookback_bars=252)
 
 
-def _make_df(closes: list[float]) -> pd.DataFrame:
+def _make_df(closes: Sequence[float]) -> pd.DataFrame:
     """Build a minimal OHLCV DataFrame from a close price sequence."""
     closes_arr = np.array(closes, dtype=float)
     n = len(closes_arr)
