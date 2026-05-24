@@ -35,6 +35,10 @@ _SLEEP_BETWEEN_BATCHES = 2.0
 _DB_CHUNK = 500
 
 
+def _jsonb(obj: Any) -> Any:
+    return json.loads(json.dumps(obj, default=str))
+
+
 def _get_supabase() -> Client:
     url = os.environ["SUPABASE_URL"]
     key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
@@ -127,12 +131,14 @@ def run() -> None:
 
                 fund = DATA_PROVIDER.fetch_fundamentals(ticker)
                 news = DATA_PROVIDER.fetch_news(ticker)
+                enriched = DATA_PROVIDER.fetch_enriched_data(ticker)
 
                 now = datetime.now(timezone.utc).isoformat()
                 market = _infer_market(ticker)
 
                 fund_dict: dict[str, Any] = dataclasses.asdict(fund) if fund else {}
                 news_list: list[dict[str, Any]] = [dataclasses.asdict(n) for n in news]
+                enriched_dict: dict[str, Any] = dataclasses.asdict(enriched) if enriched else {}
 
                 stock_row: dict[str, Any] = {
                     "ticker":       ticker,
@@ -143,8 +149,20 @@ def run() -> None:
                     "currency":     fund.currency if fund else "USD",
                     "exchange":     fund.exchange if fund else None,
                     "market_cap":   fund.market_cap if fund else None,
-                    "fundamentals": json.loads(json.dumps(fund_dict, default=str)),
-                    "news":         json.loads(json.dumps(news_list, default=str)),
+                    "fundamentals": _jsonb(fund_dict),
+                    "news":         _jsonb(news_list),
+                    "company_overview":            enriched.company_overview if enriched else None,
+                    "income_statement_annual":     _jsonb(enriched_dict.get("income_statement_annual", {})),
+                    "income_statement_quarterly":  _jsonb(enriched_dict.get("income_statement_quarterly", {})),
+                    "balance_sheet_annual":        _jsonb(enriched_dict.get("balance_sheet_annual", {})),
+                    "balance_sheet_quarterly":     _jsonb(enriched_dict.get("balance_sheet_quarterly", {})),
+                    "cashflow_annual":             _jsonb(enriched_dict.get("cashflow_annual", {})),
+                    "cashflow_quarterly":          _jsonb(enriched_dict.get("cashflow_quarterly", {})),
+                    "earnings_history":            _jsonb(enriched_dict.get("earnings_history", [])),
+                    "top_holders":                 _jsonb(enriched_dict.get("top_holders", [])),
+                    "insider_transactions":        _jsonb(enriched_dict.get("insider_transactions", [])),
+                    "analyst_upgrades_downgrades": _jsonb(enriched_dict.get("analyst_upgrades_downgrades", [])),
+                    "pe_history":                  _jsonb(enriched_dict.get("pe_history", [])),
                     "updated_at":   now,
                 }
 

@@ -2,7 +2,7 @@ from typing import Optional
 
 import pandas as pd
 
-from analytics.providers.base import DataProvider, FundamentalsSnapshot, NewsItem
+from analytics.providers.base import DataProvider, EnrichedData, FundamentalsSnapshot, NewsItem
 
 
 class FMPProvider(DataProvider):
@@ -22,4 +22,7 @@ class FMPProvider(DataProvider):
         raise NotImplementedError("FMPProvider is a Phase 2 stub")
 
     def is_healthy(self) -> bool:
+        raise NotImplementedError("FMPProvider is a Phase 2 stub")
+
+    def fetch_enriched_data(self, ticker: str) -> Optional[EnrichedData]:
         raise NotImplementedError("FMPProvider is a Phase 2 stub")

@@ -14,6 +14,7 @@ import yfinance as yf  # type: ignore[import-untyped]
 from analytics.providers.base import (
     Currency,
     DataProvider,
+    EnrichedData,
     FundamentalsSnapshot,
     Market,
     NewsItem,
@@ -113,6 +114,252 @@ class YFinanceProvider(DataProvider):
             return items
         except Exception as e:
             logger.debug("fetch_news %s: %s", ticker, e)
+            return []
+
+    def fetch_enriched_data(self, ticker: str) -> Optional[EnrichedData]:
+        try:
+            t = yf.Ticker(ticker)
+            info: dict[str, Any] = {}
+            try:
+                info = t.info or {}
+            except Exception:
+                pass
+
+            overview_raw = info.get("longBusinessSummary")
+            company_overview: Optional[str] = str(overview_raw) if overview_raw else None
+
+            inc_a = self._extract_statement(self._safe_attr(t, "income_stmt"))
+            inc_q = self._extract_statement(self._safe_attr(t, "quarterly_income_stmt"))
+            bs_a = self._extract_statement(self._safe_attr(t, "balance_sheet"))
+            bs_q = self._extract_statement(self._safe_attr(t, "quarterly_balance_sheet"))
+            cf_a = self._extract_statement(self._safe_attr(t, "cashflow"))
+            cf_q = self._extract_statement(self._safe_attr(t, "quarterly_cashflow"))
+
+            earnings_hist = self._extract_earnings_history(
+                self._safe_attr(t, "earnings_history")
+            )
+            top_holders = self._extract_top_holders(
+                self._safe_attr(t, "institutional_holders")
+            )
+            insider_tx = self._extract_insider_transactions(
+                self._safe_attr(t, "insider_transactions")
+            )
+            analyst_ud = self._extract_upgrades_downgrades(
+                self._safe_attr(t, "upgrades_downgrades")
+            )
+            pe_hist = self._compute_pe_history(t, ticker)
+
+            return EnrichedData(
+                company_overview=company_overview,
+                income_statement_annual=inc_a,
+                income_statement_quarterly=inc_q,
+                balance_sheet_annual=bs_a,
+                balance_sheet_quarterly=bs_q,
+                cashflow_annual=cf_a,
+                cashflow_quarterly=cf_q,
+                earnings_history=earnings_hist,
+                top_holders=top_holders,
+                insider_transactions=insider_tx,
+                analyst_upgrades_downgrades=analyst_ud,
+                pe_history=pe_hist,
+            )
+        except Exception as e:
+            logger.warning("fetch_enriched_data %s: %s", ticker, e)
+            return None
+
+    @staticmethod
+    def _safe_attr(obj: Any, attr: str) -> Any:
+        try:
+            return getattr(obj, attr, None)
+        except Exception:
+            return None
+
+    def _extract_statement(self, df: Any) -> dict[str, Any]:
+        if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+            return {}
+        try:
+            labels = [
+                str(c.date()) if hasattr(c, "date") else str(c)
+                for c in df.columns
+            ]
+            result: dict[str, Any] = {"labels": labels}
+            for row in df.index:
+                raw_key = str(row).lower().strip()
+                key = (
+                    raw_key
+                    .replace(" ", "_")
+                    .replace("/", "_")
+                    .replace("-", "_")
+                    .replace(".", "")
+                    .replace(",", "")
+                    .replace("(", "")
+                    .replace(")", "")
+                )
+                vals: list[Any] = []
+                for v in df.loc[row]:
+                    try:
+                        fv = float(v)
+                        vals.append(None if (np.isnan(fv) or np.isinf(fv)) else round(fv, 0))
+                    except Exception:
+                        vals.append(None)
+                result[key] = vals
+            return result
+        except Exception as e:
+            logger.debug("_extract_statement error: %s", e)
+            return {}
+
+    def _extract_earnings_history(self, df: Any) -> list[dict[str, Any]]:
+        if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+            return []
+        try:
+            rows: list[dict[str, Any]] = []
+            for idx, row in df.iterrows():
+                date_str = str(idx.date()) if hasattr(idx, "date") else str(idx)
+                entry: dict[str, Any] = {"date": date_str}
+                for col in df.columns:
+                    col_key = (
+                        str(col)
+                        .lower()
+                        .replace(" ", "_")
+                        .replace("(", "")
+                        .replace(")", "")
+                        .replace("%", "pct")
+                    )
+                    entry[col_key] = _safe(row[col])
+                rows.append(entry)
+            return rows[-20:]
+        except Exception as e:
+            logger.debug("_extract_earnings_history error: %s", e)
+            return []
+
+    def _extract_top_holders(self, df: Any) -> list[dict[str, Any]]:
+        if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+            return []
+        try:
+            holders: list[dict[str, Any]] = []
+            for _, row in df.iterrows():
+                holders.append({
+                    "holder": str(row.get("Holder", row.get("Name", ""))),
+                    "shares": _safe_int(row.get("Shares")),
+                    "pct_out": _safe(row.get("% Out", row.get("pctHeld"))),
+                    "value": _safe(row.get("Value")),
+                    "date_reported": str(row.get("Date Reported", "")),
+                })
+            return holders[:15]
+        except Exception as e:
+            logger.debug("_extract_top_holders error: %s", e)
+            return []
+
+    def _extract_insider_transactions(self, df: Any) -> list[dict[str, Any]]:
+        if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+            return []
+        try:
+            df_sorted = df.sort_index(ascending=False)
+            txs: list[dict[str, Any]] = []
+            for idx, row in df_sorted.iterrows():
+                date_str = str(idx.date()) if hasattr(idx, "date") else str(idx)
+                txs.append({
+                    "date": date_str,
+                    "insider": str(row.get("Insider", "")),
+                    "position": str(row.get("Position", "")),
+                    "transaction": str(row.get("Transaction", "")),
+                    "shares": _safe_int(row.get("Shares")),
+                    "value": _safe(row.get("Value")),
+                })
+            return txs[:50]
+        except Exception as e:
+            logger.debug("_extract_insider_transactions error: %s", e)
+            return []
+
+    def _extract_upgrades_downgrades(self, df: Any) -> list[dict[str, Any]]:
+        if df is None or not isinstance(df, pd.DataFrame) or df.empty:
+            return []
+        try:
+            df_sorted = df.sort_index(ascending=False)
+            changes: list[dict[str, Any]] = []
+            for idx, row in df_sorted.iterrows():
+                date_str = str(idx.date()) if hasattr(idx, "date") else str(idx)
+                changes.append({
+                    "date": date_str,
+                    "firm": str(row.get("Firm", "")),
+                    "to_grade": str(row.get("ToGrade", "")),
+                    "from_grade": str(row.get("FromGrade", "")),
+                    "action": str(row.get("Action", "")),
+                })
+            return changes[:50]
+        except Exception as e:
+            logger.debug("_extract_upgrades_downgrades error: %s", e)
+            return []
+
+    def _compute_pe_history(self, ticker_obj: Any, ticker: str) -> list[dict[str, Any]]:
+        try:
+            qis = self._safe_attr(ticker_obj, "quarterly_income_stmt")
+            if qis is None or not isinstance(qis, pd.DataFrame) or qis.empty:
+                return []
+
+            eps_row = None
+            for candidate in qis.index:
+                if "diluted" in str(candidate).lower() and "eps" in str(candidate).lower():
+                    eps_row = candidate
+                    break
+            if eps_row is None:
+                for candidate in qis.index:
+                    if "basic" in str(candidate).lower() and "eps" in str(candidate).lower():
+                        eps_row = candidate
+                        break
+            if eps_row is None:
+                return []
+
+            eps_by_date: dict[Any, Optional[float]] = {
+                c: _safe(qis.loc[eps_row, c]) for c in qis.columns
+            }
+            dates_sorted = sorted(eps_by_date.keys())
+            if len(dates_sorted) < 4:
+                return []
+
+            try:
+                price_df: Any = ticker_obj.history(period="5y", interval="1d", auto_adjust=True)
+            except Exception:
+                return []
+            if price_df is None or price_df.empty:
+                return []
+
+            p_idx = price_df.index
+            if p_idx.tz is not None:
+                p_idx = p_idx.tz_convert(None)
+
+            results: list[dict[str, Any]] = []
+            for i in range(3, len(dates_sorted)):
+                ttm_dates = dates_sorted[i - 3: i + 1]
+                eps_vals = [eps_by_date[d] for d in ttm_dates if eps_by_date.get(d) is not None]
+                eps_filtered: list[float] = [v for v in eps_vals if v is not None]
+                if len(eps_filtered) < 4:
+                    continue
+                ttm_eps: float = sum(eps_filtered)
+                if ttm_eps <= 0:
+                    continue
+
+                end_ts = pd.Timestamp(dates_sorted[i])
+                if end_ts.tz is not None:
+                    end_ts = end_ts.tz_convert(None)
+
+                mask_arr = np.asarray(p_idx <= end_ts, dtype=bool)
+                if not mask_arr.any():
+                    continue
+
+                last_pos = int(np.where(mask_arr)[0][-1])
+                close_price = float(price_df.iloc[last_pos]["Close"])
+                pe_val = round(close_price / ttm_eps, 2)
+                if 0 < pe_val < 2000:
+                    end_date = dates_sorted[i]
+                    date_str = (
+                        str(end_date.date()) if hasattr(end_date, "date") else str(end_date)
+                    )
+                    results.append({"date": date_str, "pe": pe_val})
+
+            return results
+        except Exception as e:
+            logger.debug("_compute_pe_history %s: %s", ticker, e)
             return []
 
     def _download_yfinance(self, ticker_str: str) -> tuple[Optional[pd.DataFrame], Any]:

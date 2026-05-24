@@ -98,6 +98,24 @@ class FundamentalsSnapshot:
     dividend_history: list[dict[str, Any]] = field(default_factory=list)
 
 
+@dataclass
+class EnrichedData:
+    """Extended Phase 1+2 data stored as JSONB columns in the stocks table."""
+
+    company_overview: Optional[str] = None
+    income_statement_annual: dict[str, Any] = field(default_factory=dict)
+    income_statement_quarterly: dict[str, Any] = field(default_factory=dict)
+    balance_sheet_annual: dict[str, Any] = field(default_factory=dict)
+    balance_sheet_quarterly: dict[str, Any] = field(default_factory=dict)
+    cashflow_annual: dict[str, Any] = field(default_factory=dict)
+    cashflow_quarterly: dict[str, Any] = field(default_factory=dict)
+    earnings_history: list[dict[str, Any]] = field(default_factory=list)
+    top_holders: list[dict[str, Any]] = field(default_factory=list)
+    insider_transactions: list[dict[str, Any]] = field(default_factory=list)
+    analyst_upgrades_downgrades: list[dict[str, Any]] = field(default_factory=list)
+    pe_history: list[dict[str, Any]] = field(default_factory=list)
+
+
 class DataProvider(ABC):
     """Abstract data provider. All concrete providers implement this exactly."""
 
@@ -114,6 +132,11 @@ class DataProvider(ABC):
     @abstractmethod
     def fetch_news(self, ticker: str, limit: int = 10) -> list[NewsItem]:
         """Return list of news items. Empty list if none."""
+        ...
+
+    @abstractmethod
+    def fetch_enriched_data(self, ticker: str) -> Optional[EnrichedData]:
+        """Return enriched data (financials, holders, insider tx, etc.) or None."""
         ...
 
     @abstractmethod

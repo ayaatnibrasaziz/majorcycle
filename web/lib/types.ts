@@ -139,6 +139,61 @@ export interface PriceBar {
   volume: number;
 }
 
+export interface FinancialStatement {
+  labels: string[];
+  [key: string]: unknown;
+}
+
+export interface EarningsHistoryItem {
+  date: string;
+  [key: string]: number | string | null | undefined;
+}
+
+export interface TopHolder {
+  holder: string;
+  shares: number | null;
+  pct_out: number | null;
+  value: number | null;
+  date_reported: string;
+}
+
+export interface InsiderTransaction {
+  date: string;
+  insider: string;
+  position: string;
+  transaction: string;
+  shares: number | null;
+  value: number | null;
+}
+
+export interface AnalystUpgrade {
+  date: string;
+  firm: string;
+  to_grade: string;
+  from_grade: string;
+  action: string;
+}
+
+export interface PeHistoryItem {
+  date: string;
+  pe: number;
+}
+
+export interface EnrichedData {
+  company_overview: string | null;
+  income_statement_annual: FinancialStatement;
+  income_statement_quarterly: FinancialStatement;
+  balance_sheet_annual: FinancialStatement;
+  balance_sheet_quarterly: FinancialStatement;
+  cashflow_annual: FinancialStatement;
+  cashflow_quarterly: FinancialStatement;
+  earnings_history: EarningsHistoryItem[];
+  top_holders: TopHolder[];
+  insider_transactions: InsiderTransaction[];
+  analyst_upgrades_downgrades: AnalystUpgrade[];
+  pe_history: PeHistoryItem[];
+}
+
 export interface StockRecord {
   ticker: string;
   market: Market;
@@ -151,6 +206,18 @@ export interface StockRecord {
   fundamentals: FundamentalsSnapshot;
   news: NewsItem[];
   updatedAt: string;
+  companyOverview?: string | null;
+  incomeStatementAnnual?: FinancialStatement;
+  incomeStatementQuarterly?: FinancialStatement;
+  balanceSheetAnnual?: FinancialStatement;
+  balanceSheetQuarterly?: FinancialStatement;
+  cashflowAnnual?: FinancialStatement;
+  cashflowQuarterly?: FinancialStatement;
+  earningsHistory?: EarningsHistoryItem[];
+  topHolders?: TopHolder[];
+  insiderTransactions?: InsiderTransaction[];
+  analystUpgradesDowngrades?: AnalystUpgrade[];
+  peHistory?: PeHistoryItem[];
 }
 
 export interface AnalyzeRequest {
