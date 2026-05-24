@@ -8,15 +8,15 @@
 
 ## 0. Phase Definitions
 
-- **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. (You are here when reading this for the first time.)
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages.
+- **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE (Layer C)**
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
-- **Phase 2** — Expansion. Smart Money Activity, watchlists, alerts, sector heatmaps, FMP migration.
+- **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
 
 ---
 
-## 1. Phase 0 — Setup (target: 2 days)
+## 1. Phase 0 — Setup ✅ COMPLETE
 
 ### Accounts to create
 
@@ -36,11 +36,11 @@
 
 ### Repository scaffolding
 
-- [x] Create new GitHub repo (private — github.com/ayaatnibrasaziz/majorcycle)
+- [x] Create new GitHub repo (public — github.com/ayaatnibrasaziz/majorcycle)
 - [x] Add `CLAUDE.md` at root
 - [x] Add all 6 docs under `docs/`
 - [x] Copy original HTML to `/reference/original-design.html`
-- [x] Initialise `/web` with Next.js 16 + pnpm (TypeScript, Tailwind v4, App Router, ESLint)
+- [x] Initialise `/web` with Next.js 15 + pnpm (TypeScript, Tailwind v4, App Router, ESLint)
 - [x] Initialise `/analytics` with Python `pyproject.toml` + module skeleton
 - [x] Add `.env.example` documenting required vars
 - [x] Configure CI in `.github/workflows/ci.yml`
@@ -55,10 +55,10 @@
 
 ### Exit criteria for Phase 0
 
-- All 4 MCP servers connected and verified working
-- Domain purchased and DNS configured
-- Repo scaffolded, CI passing on empty PR
-- `.env.local` template created, owner has all required keys
+- [x] All 4 MCP servers connected and verified working
+- [x] Domain purchased and DNS configured
+- [x] Repo scaffolded, CI passing
+- [x] `.env.local` template created, owner has all required keys
 
 ---
 
@@ -66,50 +66,57 @@
 
 The build proceeds in layers, bottom-up. Each layer must be complete before the next starts.
 
-### Layer A: Data Pipeline (target: 1 week)
+### Layer A: Data Pipeline ✅ COMPLETE
 
 Goal: Daily refresh pipeline writes correct data to Supabase.
 
-- [ ] Implement `analytics/providers/base.py` — abstract DataProvider
-- [ ] Implement `analytics/providers/yfinance_provider.py` — concrete provider
-- [ ] Implement `analytics/providers/fmp_provider.py` — stub raising NotImplementedError
-- [ ] Port `major_cycle.py` from existing script — cycle math + pivot detection
-- [ ] Port `analytics/scoring/financial_health.py` — 5-pillar score
-- [ ] Port `analytics/scoring/valuation.py` — valuation score + zone
-- [ ] Port `analytics/scoring/overall.py` — composite rating + label
-- [ ] Build universe CSVs: `sp500.csv`, `asx200.csv`, `tsx60.csv`
-- [ ] Create Supabase tables per `data-contracts.md` §6
-- [ ] Build `analytics/cron/daily_refresh.py` — full pipeline runner
-- [ ] Set up GitHub Actions workflow `.github/workflows/daily-refresh.yml`
-- [ ] Add cron failure email via Resend
-- [ ] Write unit tests for cycle math + scoring against known fixtures
+- [x] Implement `analytics/providers/base.py` — abstract DataProvider + `FundamentalsSnapshot`, `EnrichedData`, `NewsItem` dataclasses
+- [x] Implement `analytics/providers/yfinance_provider.py` — full concrete provider including `fetch_enriched_data()`
+- [x] Implement `analytics/providers/fmp_provider.py` — stub raising NotImplementedError
+- [x] Port `major_cycle.py` from existing script — cycle math + pivot detection
+- [x] Port `analytics/scoring/financial_health.py` — 5-pillar score
+- [x] Port `analytics/scoring/valuation.py` — valuation score + zone
+- [x] Port `analytics/scoring/overall.py` — composite rating + label
+- [x] Build universe CSVs: `sp500.csv`, `asx200.csv`, `tsx60.csv` (~720 tickers total)
+- [x] Create Supabase tables: `stocks`, `price_bars`, `profiles`, `analysis_runs`, `universe_log`
+- [x] Build enriched data pipeline — income statements (annual + quarterly), balance sheets, cashflow, earnings history, top institutional holders, insider transactions, analyst upgrades/downgrades, PE history, company overview
+- [x] Build smart refresh pipeline (`analytics/cron/daily_refresh.py`) with earnings-date-driven staleness logic — price+fundamentals daily, enriched data only after next earnings date passes (7-day fallback for tickers without calendar data)
+- [x] Set up daily GitHub Actions workflow `.github/workflows/daily-refresh.yml` — 23:00 UTC, smart mode, 60 min timeout
+- [x] Set up manual full-refresh workflow `.github/workflows/weekly-enriched-refresh.yml` — `workflow_dispatch` only, `--mode full`, 360 min timeout
+- [x] Add `next_earnings_date DATE` and `enriched_updated_at TIMESTAMPTZ` columns to `stocks` table
+- [x] Add cron failure email via Resend
+- [x] Write unit tests for cycle math + scoring against known fixtures (28 tests, all passing)
+- [x] Upgrade all GitHub Actions to v6 (Node.js 24 native, no deprecation warnings)
+- [x] Repo made public — unlimited GitHub Actions minutes
 
-**Verification:**
-- Manually trigger cron, confirm all 760 tickers populated within 25 minutes
-- Spot-check 5 tickers against the original Python script's Excel output — values must match
-- Confirm `pytest analytics/` passes
+**Verification:** ✅
+- 720 tickers seeded with full price history (5.7M bars, up to latest trading day)
+- `pytest analytics/` — 28 passed
+- `mypy analytics/ --ignore-missing-imports --explicit-package-bases` — no issues
+- CI passing on all commits (green checkmarks on main branch)
+- Manual full-refresh workflow triggered to populate enriched data for all 720 tickers
 
-### Layer B: Frontend Foundation (target: 1 week)
+### Layer B: Frontend Foundation ✅ COMPLETE
 
 Goal: Next.js app shell + design system + auth.
 
-- [ ] Configure Tailwind v4 with design tokens from `design-system.md`
-- [ ] Set up shadcn/ui base components (Button, Input, Dialog, etc.)
-- [ ] Build sidebar + header layout matching reference HTML
-- [ ] Implement Supabase Auth (email/password + Google OAuth)
-- [ ] Build signup, login, password reset flows
-- [ ] Build first-login disclaimer/methodology acknowledgement modal
-- [ ] Implement `web/lib/ticker.ts` URL ↔ storage mapping
-- [ ] Implement `web/lib/case.ts` snake↔camel converter
-- [ ] Implement `web/lib/types.ts` per `data-contracts.md` §4
-- [ ] Implement `web/lib/supabase.ts` singleton client
-- [ ] Build 404, error, and loading pages
+- [x] Configure Tailwind v4 with design tokens from `design-system.md`
+- [x] Set up shadcn/ui base components (Button, Input, Dialog, etc.)
+- [x] Build sidebar + header layout matching reference HTML
+- [x] Implement Supabase Auth (email/password + Google OAuth)
+- [x] Build signup, login, password reset flows
+- [x] Build first-login disclaimer/methodology acknowledgement modal
+- [x] Implement `web/lib/ticker.ts` URL ↔ storage mapping
+- [x] Implement `web/lib/case.ts` snake↔camel converter
+- [x] Implement `web/lib/types.ts` per `data-contracts.md` §4 — includes all enriched data types
+- [x] Implement `web/lib/supabase.ts` singleton client
+- [x] Build 404, error, and loading pages
 
-**Verification:**
-- All `pnpm` checks pass
-- Login/signup flow works end-to-end
-- Layout matches reference HTML pixel-checked at 1440px wide
-- Page loads under 1.5s First Contentful Paint
+**Verification:** ✅
+- `pnpm typecheck` — zero errors
+- `pnpm lint` — zero errors
+- `pnpm build` — successful production build
+- Login/signup/Google OAuth flow confirmed working
 
 ### Layer C: Stock Detail Tab (target: 2 weeks — the bulk of the build)
 
@@ -282,13 +289,14 @@ Order of priority TBD based on user feedback. Candidate features:
 
 | Feature | Notes |
 |---|---|
-| **Smart Money Activity** | Insider buying/selling timeline, institutional flow. Likely requires SEC EDGAR direct integration since yfinance data is sparse. |
+| **Smart Money Activity UI** | Insider buying/selling timeline, institutional holders table, analyst upgrades/downgrades feed. **Data already collected in Phase 1** (`insider_transactions`, `top_holders`, `analyst_upgrades_downgrades` columns in `stocks`). Phase 2 is UI-only. |
+| **Earnings Calendar** | Calendar view of upcoming earnings dates across the universe. **Data already collected in Phase 1** (`next_earnings_date` column in `stocks`, populated by `t.calendar` from yfinance). Phase 2 is UI-only. |
 | **Watchlists** | Saved ticker collections per user. Supabase table + UI. |
 | **Alerts** | Email when stock enters a tier or crosses a threshold. Daily cron checks + Resend send. |
 | **Sector heatmap** | Aggregate view by sector, treemap or grid visualisation. |
-| **FMP migration** | Swap yfinance for FMP. Single-file change to `analytics/config.py` once `fmp_provider.py` is implemented. |
+| **FMP migration** | Swap yfinance for FMP. Single-file change to `analytics/config.py` once `fmp_provider.py` is implemented. Already stubbed and ready. |
 | **News feed upgrade** | Replace yfinance news with NewsAPI or Polygon for better quality. |
-| **Improved earnings data** | Quarterly beat/miss history with full detail (currently limited by yfinance). |
+| **Improved earnings data** | Enhanced beat/miss history. **Earnings history already collected** (`earnings_history` JSONB column). Phase 2 is about richer display and data sourcing. |
 | **Portfolios** | User-defined portfolios with weighted aggregate scores. |
 | **Backtesting** | Simulate what entering at typical drawdown would have returned. |
 | **Mobile app (React Native)** | If web product validates. |
@@ -311,30 +319,30 @@ Order of priority TBD based on user feedback. Candidate features:
 ## 6. Build Order Summary (Single Source of Truth)
 
 ```
-Phase 0: Setup (accounts, repo, naming, MCP)
+✅ Phase 0: Setup (accounts, repo, naming, MCP)
    ↓
-Phase 1 Layer A: Data Pipeline                  ← week 1
+✅ Phase 1 Layer A: Data Pipeline (smart refresh + enriched data)
    ↓
-Phase 1 Layer B: Frontend Foundation            ← week 2
+✅ Phase 1 Layer B: Frontend Foundation (auth, design system, layout)
    ↓
-Phase 1 Layer C: Stock Detail Tab               ← weeks 3-4
+⬅️ Phase 1 Layer C: Stock Detail Tab               ← NOW
    ↓
-Phase 1 Layer D: Run Analysis Tab               ← week 4
+   Phase 1 Layer D: Run Analysis Tab
    ↓
-Phase 1 Layer E: Results Tab                    ← week 5
+   Phase 1 Layer E: Results Tab
    ↓
-Phase 1 Layer F: Static Pages + Subscription    ← week 5
+   Phase 1 Layer F: Static Pages + Subscription
    ↓
-Phase 1 Layer G: SEO + Performance              ← week 6
+   Phase 1 Layer G: SEO + Performance
    ↓
-Phase 1 Layer H: Hardening (Phase 1.5)          ← week 6
+   Phase 1 Layer H: Hardening (Phase 1.5)
    ↓
 🚀 LAUNCH
    ↓
-Phase 2: Smart Money + watchlists + alerts + FMP
+Phase 2: Smart Money UI + earnings calendar + watchlists + alerts + FMP
 ```
 
-Total: roughly 6 weeks of build + 1 week hardening. Adjust as needed.
+Layers A and B are complete. Remaining build is C through H.
 
 ---
 

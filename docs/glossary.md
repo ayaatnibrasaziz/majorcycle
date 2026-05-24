@@ -64,7 +64,11 @@
 
 ## E
 
+**Earnings Calendar** — A planned Phase 2 UI feature showing upcoming earnings dates across the universe. The underlying data (`next_earnings_date` per ticker) is already collected in Phase 1 via `t.calendar` from yfinance and stored in `stocks.next_earnings_date`.
+
 **Earnings Growth YoY** — Year-over-year change in net earnings per share. Sourced from yfinance.
+
+**Enriched Data** — The extended dataset fetched per ticker beyond price bars and fundamentals: income statements (annual + quarterly), balance sheets, cashflow statements, earnings history, top institutional holders, insider transactions, analyst upgrades/downgrades, PE history, and company overview. Stored as JSONB columns in the `stocks` table. Fetched selectively by the smart refresh pipeline — only when the staleness check fires. See `EnrichedData` dataclass in `data-contracts.md` §2.
 
 **EBITDA** — Earnings Before Interest, Taxes, Depreciation, and Amortisation. A measure of operating profitability.
 
@@ -142,6 +146,8 @@
 
 **News Item** — A single news article entry: title, URL, publish date, source. Stored in `stocks.news` JSONB column. Sourced from yfinance in Phase 1; quality is mediocre.
 
+**next_earnings_date** — The next scheduled earnings report date for a ticker, sourced from `yfinance.Ticker.calendar`. Stored in `stocks.next_earnings_date` (DATE column). Used by the smart refresh pipeline to know when enriched data is stale. Also the data source for the future Earnings Calendar UI. Returns `None` for many ASX stocks where yfinance doesn't publish calendar data.
+
 ---
 
 ## O
@@ -199,6 +205,10 @@
 ---
 
 ## S
+
+**Smart Refresh Pipeline** — The nightly cron logic in `analytics/cron/daily_refresh.py` (default mode: `smart`). Runs at 23:00 UTC daily. For every ticker it always refreshes price bars (5-day lookback for existing tickers, full history for new ones) and fundamentals. It only fetches Enriched Data when the staleness check returns true. Use `--mode full` to force enriched refresh for all tickers regardless. See `architecture.md` §8 for full specification.
+
+**Staleness Check** — The `_should_fetch_enriched()` function in `daily_refresh.py`. Returns `True` (fetch enriched data) in three cases: (1) ticker is new — no `enriched_updated_at` in DB; (2) ticker has a `next_earnings_date` that has passed since the last enrich; (3) ticker has no earnings date — last enrich was ≥7 days ago. Returns `False` (skip enriched fetch) otherwise.
 
 **S&P 500** — Standard & Poor's 500 Index — the 500 largest publicly traded US companies. One of three universes we cover in Phase 1.
 

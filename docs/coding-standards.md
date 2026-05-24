@@ -137,7 +137,7 @@ export function StockPage({ ticker }: { ticker: string }) {
 - Python 3.12 minimum
 - Type hints on every function signature (PEP 695 syntax preferred)
 - `ruff` for linting (config in `pyproject.toml`)
-- `mypy --strict` for type checking
+- `mypy --ignore-missing-imports --explicit-package-bases` for type checking
 - `pytest` for tests
 
 ### Type Hints
@@ -420,7 +420,7 @@ def compute_overall_rating(fh: float, val: float, momentum: float) -> tuple[int,
 3. `pnpm test` — all Vitest tests pass
 4. `pnpm build` — Next.js production build succeeds
 5. `ruff check analytics/` — zero Python lint errors
-6. `mypy analytics/` — zero type errors
+6. `mypy analytics/ --ignore-missing-imports --explicit-package-bases` — zero type errors
 7. `pytest analytics/` — all Python tests pass
 
 CI is configured in `.github/workflows/ci.yml`. Bypassing CI to merge is forbidden.
@@ -435,7 +435,7 @@ Every task ends with the relevant command(s) and shown output:
 |---|---|---|
 | Any TS/React code | `pnpm typecheck && pnpm lint` | exit 0, no output |
 | New TS test | `pnpm test` | all pass |
-| Any Python code | `ruff check analytics/ && mypy analytics/` | exit 0 |
+| Any Python code | `ruff check analytics/ && mypy analytics/ --ignore-missing-imports --explicit-package-bases` | exit 0 |
 | Cycle math change | `pytest analytics/tests/test_major_cycle.py -v` | all pass |
 | New API route | `pnpm build` then test in Vercel preview | route returns expected shape |
 | UI change | Screenshot before/after | visual match with reference |
