@@ -1,26 +1,143 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Brand */
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-mid: var(--brand-mid);
+  --color-brand-bright: var(--brand-bright);
+  --color-brand-light: var(--brand-light);
+
+  /* Surfaces */
+  --color-bg-page: var(--bg-page);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-bg-header: var(--bg-header);
+  --color-bg-hover: var(--bg-hover);
+  --color-bg-stripe: var(--bg-stripe);
+
+  /* Text */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+
+  /* Borders */
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  /* Rating tiers */
+  --color-tier-1: var(--c-tier-1);
+  --color-tier-2: var(--c-tier-2);
+  --color-tier-3: var(--c-tier-3);
+  --color-tier-4: var(--c-tier-4);
+  --color-tier-5: var(--c-tier-5);
+
+  /* Fonts */
+  --font-sans: var(--font-sora), 'Sora', sans-serif;
+  --font-mono: var(--font-jetbrains), 'JetBrains Mono', monospace;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius: 10px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  /* Brand */
+  --brand-deep: #1A3A6E;
+  --brand-mid: #1E5CB3;
+  --brand-bright: #2E7DE8;
+  --brand-light: #EBF3FF;
+
+  /* Surfaces */
+  --bg-page: #F0F4F8;
+  --bg-surface: #FFFFFF;
+  --bg-sidebar: #FFFFFF;
+  --bg-header: #FFFFFF;
+  --bg-hover: #F5F8FF;
+  --bg-stripe: #F8FAFC;
+
+  /* Text */
+  --text-primary: #0F1923;
+  --text-secondary: #4A5568;
+  --text-muted: #8A97A8;
+
+  /* Borders */
+  --border: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --border-faint: rgba(26, 58, 110, 0.08);
+  --border-faint-strong: rgba(26, 58, 110, 0.10);
+
+  /* Rating tier colours */
+  --c-tier-1: #006400;
+  --c-tier-2: #228B22;
+  --c-tier-3: #D4A017;
+  --c-tier-4: #FF4500;
+  --c-tier-5: #B22222;
+
+  /* Tier ink (text on tinted bg) */
+  --c-tier-2-ink: #0D5C0D;
+  --c-tier-5-ink: #8B1414;
+  --c-tier-3-ink: #8A6710;
+
+  /* Tier tints */
+  --tint-tier-2: rgba(34, 139, 34, 0.10);
+  --tint-tier-2-strong: rgba(34, 139, 34, 0.12);
+  --tint-tier-5: rgba(178, 34, 34, 0.10);
+  --tint-tier-5-strong: rgba(178, 34, 34, 0.12);
+  --tint-tier-3: rgba(212, 160, 23, 0.10);
+  --tint-tier-3-strong: rgba(212, 160, 23, 0.12);
+  --tint-brand: rgba(46, 125, 232, 0.10);
+
+  /* Chart heights */
+  --chart-h-sm: 200px;
+  --chart-h-md: 220px;
+  --chart-h-radar: 260px;
+  --chart-h-lg: 300px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.10), 0 4px 8px rgba(0, 0, 0, 0.06);
+
+  /* Layout */
+  --sidebar-w: 220px;
+  --header-h: 58px;
+  --font-hero: 26px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 14px;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Focus ring — accessibility floor */
+*:focus-visible {
+  outline: 2px solid var(--brand-bright);
+  outline-offset: 2px;
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
