@@ -1,5 +1,6 @@
 import logging
 import random
+import re
 import time
 from datetime import timedelta
 from io import StringIO
@@ -10,6 +11,8 @@ import pandas as pd
 import requests
 import requests_cache
 import yfinance as yf  # type: ignore[import-untyped]
+
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 from analytics.providers.base import (
     Currency,
@@ -183,28 +186,51 @@ class YFinanceProvider(DataProvider):
 
     @staticmethod
     def _extract_next_earnings_date(ticker_obj: Any) -> Optional[str]:
+        """Pull next-earnings DATE from yfinance t.calendar.
+
+        Returns 'YYYY-MM-DD' or None. Guaranteed never to return a
+        malformed string like '[]' (yfinance returns empty lists for
+        many ASX/TSX stocks; sending that to a DATE column kills the
+        whole row upsert).
+        """
         try:
             cal = YFinanceProvider._safe_attr(ticker_obj, "calendar")
             if cal is None:
                 return None
+
+            # Pull the raw value out of either dict or DataFrame shape
+            raw: Any = None
             if isinstance(cal, dict):
-                ed = cal.get("Earnings Date")
-                if ed is None:
-                    return None
-                if isinstance(ed, (list, tuple)) and len(ed) > 0:
-                    ed = ed[0]
-                if hasattr(ed, "date"):
-                    return str(ed.date())
-                return str(ed)[:10]
-            if isinstance(cal, pd.DataFrame):
+                raw = cal.get("Earnings Date")
+            elif isinstance(cal, pd.DataFrame):
                 if "Earnings Date" in cal.columns:
                     vals = cal["Earnings Date"].dropna()
                     if not vals.empty:
-                        ed = vals.iloc[0]
-                        if hasattr(ed, "date"):
-                            return str(ed.date())
-                        return str(ed)[:10]
-            return None
+                        raw = vals.iloc[0]
+
+            if raw is None:
+                return None
+
+            # Unwrap list/tuple — yfinance returns [Timestamp(...)] sometimes,
+            # and empty [] when the calendar is unavailable
+            if isinstance(raw, (list, tuple)):
+                if len(raw) == 0:
+                    return None
+                raw = raw[0]
+                if raw is None:
+                    return None
+
+            # Timestamp / datetime-like
+            date_attr = getattr(raw, "date", None)
+            if callable(date_attr):
+                try:
+                    return str(date_attr())
+                except Exception:
+                    return None
+
+            # Last resort: only accept strings that already look like ISO dates
+            s = str(raw)[:10] if raw is not None else ""
+            return s if _ISO_DATE_RE.match(s) else None
         except Exception:
             return None
 

@@ -10,10 +10,13 @@ import dataclasses
 import json
 import logging
 import os
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, cast
+
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 import pandas as pd
 import requests
@@ -235,8 +238,11 @@ def run(mode: str = "smart") -> None:
                         enriched_dict.get("pe_history", [])
                     )
                     stock_row["enriched_updated_at"] = now
+                    # Defensive: only send a real ISO date to the DATE column.
+                    # Anything else (None, '', '[]', other garbage) is dropped
+                    # — the column will keep its previous value.
                     next_ed = enriched_dict.get("next_earnings_date") if enriched else None
-                    if next_ed:
+                    if isinstance(next_ed, str) and _ISO_DATE_RE.match(next_ed):
                         stock_row["next_earnings_date"] = next_ed
 
                     enriched_count += 1
