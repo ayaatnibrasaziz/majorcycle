@@ -12,8 +12,6 @@ import requests
 import requests_cache
 import yfinance as yf  # type: ignore[import-untyped]
 
-_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
 from analytics.providers.base import (
     Currency,
     DataProvider,
@@ -24,6 +22,8 @@ from analytics.providers.base import (
 )
 
 logger = logging.getLogger(__name__)
+
+_ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 _MAX_RETRIES = 3
 _RETRY_BACKOFF_BASE = 2
