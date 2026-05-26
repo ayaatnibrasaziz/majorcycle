@@ -1,0 +1,10 @@
+# Python dependencies for Vercel serverless functions in web/api/.
+# These get bundled into each function's runtime image. Keep tight to stay
+# well under the 250 MB function bundle limit.
+#
+# The data pipeline in analytics/ uses a superset of these (with yfinance etc.)
+# — see analytics/pyproject.toml. The serverless functions never import
+# yfinance: all data is read from Supabase, which the daily cron populates.
+pandas>=2.2.0
+numpy>=1.26.0
+supabase>=2.4.0

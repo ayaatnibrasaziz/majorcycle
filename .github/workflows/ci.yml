@@ -71,10 +71,40 @@ jobs:
             "types-requests>=2.31.0"
 
       - name: Ruff lint
-        run: python -m ruff check analytics/
+        run: |
+          python -m ruff check analytics/
+          # web/_engine/ uses `_engine.` imports, so ruff needs to know the
+          # package root is web/. Lint from there with explicit paths.
+          (cd web && python -m ruff check _engine/ api/)
 
       - name: Mypy type check
-        run: python -m mypy analytics/ --ignore-missing-imports --explicit-package-bases
+        run: |
+          python -m mypy analytics/ --ignore-missing-imports --explicit-package-bases
+          (cd web && python -m mypy _engine/ api/ --ignore-missing-imports --explicit-package-bases)
 
       - name: Pytest
         run: python -m pytest analytics/ -v
+
+      - name: Check _engine drift from analytics
+        run: |
+          # Every file in web/_engine/ must match analytics/<same path>, modulo
+          # the `from analytics.` → `from _engine.` import rewrite. If you edit
+          # one without the other, this step fails.
+          set -e
+          fail=0
+          for f in major_cycle.py presets.py providers/base.py \
+                   scoring/financial_health.py scoring/overall.py scoring/valuation.py; do
+            if ! diff -u \
+                <(sed 's|from analytics\.|from _engine.|g' "analytics/$f") \
+                "web/_engine/$f"; then
+              echo "DRIFT: web/_engine/$f differs from analytics/$f"
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            echo ""
+            echo "The vendored cycle math in web/_engine/ is out of sync with"
+            echo "the canonical files in analytics/. Update both in the same"
+            echo "commit. See web/_engine/__init__.py for context."
+            exit 1
+          fi

@@ -19,7 +19,7 @@ flowchart TB
     subgraph Vercel["▲ Vercel Edge Network — FREE"]
         Edge["CDN + Edge Cache<br/>Stale-While-Revalidate"]
         SSR["Next.js Server Components<br/>Reads Supabase, renders HTML"]
-        PyFn["Python Serverless Functions<br/>/api/analyze (on-demand)<br/>/api/fetch-ticker (universe expansion)"]
+        PyFn["Python Serverless Functions<br/>/api/cycle (per-ticker analysis)<br/>/api/analyze (batch on-demand)<br/>/api/fetch-ticker (universe expansion)"]
     end
 
     subgraph Supabase["🟢 Supabase — FREE TIER"]
@@ -81,10 +81,10 @@ flowchart TB
 
 **What:** When a user lands on `/stocks/us/AAPL`, the Next.js Server Component:
 
-1. Reads stored AAPL data from Supabase (1 query)
-2. Computes the cycle math live in Python (via Vercel Python function) using **Medium Term defaults** (-5%/+5%/252 bars)
+1. Reads stored AAPL data from Supabase (1 query — stock row + price_bars)
+2. Calls `/api/cycle?ticker=AAPL&preset=medium` — a Vercel Python serverless function (`web/api/cycle.py`) that reads the same Supabase data and computes the Major Cycle math via the vendored `_engine` package. Default preset is **Medium** (-5%/+5%/252 bars). The function never calls yfinance — that's the cron's job.
 3. Renders HTML with full data baked in (good for SEO)
-4. Vercel Edge caches the HTML for 24 hours (stale-while-revalidate)
+4. Vercel Edge caches the HTML for 24 hours (stale-while-revalidate); `/api/cycle` itself returns `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
 
 **Why this works:** Pages load in ~500ms first time, ~5ms after cache. Googlebot sees rich content, not a loading spinner. No DB write churn.
 
@@ -325,19 +325,27 @@ CREATE TABLE universe_log (
 
 ## 7. API Surface
 
-All API routes live under `/web/app/api/`. Built as Next.js Route Handlers (TS) for light endpoints, Vercel Python functions (`/web/api/*.py`) for analysis-heavy ones.
+Two runtimes, two locations under `web/`:
 
-| Route | Method | Runtime | Auth | Purpose |
-|---|---|---|---|---|
-| `/api/analyze` | POST | Python | Required (trial or active) | Run cycle analysis on a list of tickers with given params |
-| `/api/fetch-ticker` | POST | Python | Required | Add a new ticker to the universe + return its data |
-| `/api/ticker/[symbol]` | GET | TS | Public | Read stored stock + price bars for SSR |
-| `/api/search` | GET | TS | Public | Autocomplete ticker search (queries `stocks` table) |
-| `/api/checkout` | POST | TS | Required | Create Stripe Checkout session |
-| `/api/webhooks/stripe` | POST | TS | Stripe signature | Receive subscription events |
-| `/api/health` | GET | TS | Public | System health (DB + provider) |
+- **Next.js TS Route Handlers** live in `web/app/api/` — light reads, auth, webhooks. Built by Next.js, run on Vercel's Node runtime.
+- **Vercel Python serverless functions** live in `web/api/*.py`. Each `.py` file becomes one function. Imports the vendored cycle math from `web/_engine/` (a snapshot of `analytics/` — see §5 and CLAUDE.md). The Python function never calls yfinance — only Supabase.
+
+| Route | Method | Runtime | Path on disk | Auth | Purpose |
+|---|---|---|---|---|---|
+| `/api/cycle` | GET | Python | `web/api/cycle.py` | Required (page) | Compute Major Cycle for one ticker + preset. Called by Stock Detail Server Component. |
+| `/api/analyze` | POST | Python | `web/api/analyze.py` *(Layer D)* | Required | Run cycle analysis on a batch of tickers with given params |
+| `/api/fetch-ticker` | POST | Python | `web/api/fetch_ticker.py` *(Layer D)* | Required | Add a new ticker to the universe + return its data |
+| `/api/ticker/[symbol]` | GET | TS | `web/app/api/ticker/[symbol]/route.ts` | Public | Read stored stock + price bars for SSR |
+| `/api/search` | GET | TS | `web/app/api/search/route.ts` | Public | Autocomplete ticker search |
+| `/api/checkout` | POST | TS | `web/app/api/checkout/route.ts` | Required | Create Stripe Checkout session |
+| `/api/webhooks/stripe` | POST | TS | `web/app/api/webhooks/stripe/route.ts` | Stripe signature | Receive subscription events |
+| `/api/health` | GET | TS | `web/app/api/health/route.ts` | Public | System health (DB + provider) |
 
 **Auth pattern:** Every authenticated route uses the Supabase server client and checks `subscription_status IN ('trialing', 'active')` plus trial-end-date logic.
+
+**Python function env vars:** `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` must be set in Vercel project env (the same values as `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`, but the Python side reads the prefix-less names, matching the cron).
+
+**Why `web/_engine/` exists:** Vercel's auto-install pipeline can't reliably bundle Python code from outside the project's `rootDirectory` (which is `web/`). To keep `analytics/` as the canonical home of the cycle math (cron uses it) while letting `web/api/cycle.py` import it on Vercel, we vendor the relevant files into `web/_engine/`. A CI step `Check _engine drift from analytics` diffs the two copies (after rewriting `from analytics.` → `from _engine.`) and fails if they've drifted. Edit `analytics/<file>.py` first, then mirror into `web/_engine/<file>.py` in the same commit.
 
 ---
 

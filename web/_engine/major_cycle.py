@@ -1,0 +1,218 @@
+import logging
+from dataclasses import dataclass, field
+from datetime import date
+from typing import Any, Optional
+
+import numpy as np
+import pandas as pd
+
+from _engine.providers.base import (
+    FundamentalsSnapshot,
+    OverallLabel,
+    ValuationZone,
+)
+from _engine.scoring.financial_health import score_financial_health
+from _engine.scoring.overall import calculate_overall_rating
+from _engine.scoring.valuation import calculate_valuation_zone
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class CycleParams:
+    """User-chosen analysis parameters."""
+    pullback_threshold: float   # negative %, e.g. -5.0
+    profit_threshold: float     # positive %, e.g. 5.0
+    lookback_bars: int          # e.g. 252
+    pivot_bars: int = 5
+
+
+@dataclass
+class CycleAnalysis:
+    """The Major Cycle output for one ticker."""
+    ticker: str
+    params: CycleParams
+    as_of: str                      # ISO date of analysis
+
+    current_close: float
+    current_drawdown_pct: float
+    current_profit_pct: float
+
+    typical_drawdown: Optional[float]
+    lower_bound: Optional[float]
+    typical_profit: Optional[float]
+    upper_bound: Optional[float]
+    total_pullback_events: int
+    total_profit_events: int
+
+    financial_health_score: Optional[float]
+    valuation_score: float
+    valuation_zone: ValuationZone
+    momentum_score: float
+    overall_rating: int
+    overall_label: OverallLabel
+
+    fh_subscores: dict[str, float] = field(default_factory=dict)
+
+
+def ta_highest(series: pd.Series, length: int) -> pd.Series:  # type: ignore[type-arg]
+    """Replicates Pine Script ta.highest(series, length)."""
+    return series.rolling(window=length, min_periods=length).max()
+
+
+def ta_lowest(series: pd.Series, length: int) -> pd.Series:  # type: ignore[type-arg]
+    """Replicates Pine Script ta.lowest(series, length)."""
+    return series.rolling(window=length, min_periods=length).min()
+
+
+def ta_pivotlow(
+    series: pd.Series, left_bars: int, right_bars: int  # type: ignore[type-arg]
+) -> pd.Series:  # type: ignore[type-arg]
+    """
+    Exact Pine Script ta.pivotlow replication.
+    Strict inequality on both sides. Value placed at bar[i + right_bars].
+    """
+    arr: np.ndarray[Any, np.dtype[Any]] = series.values  # type: ignore[assignment]
+    n = len(arr)
+    out = np.full(n, np.nan)
+    for i in range(left_bars, n - right_bars):
+        val = arr[i]
+        if np.isnan(val):
+            continue
+        if any(np.isnan(arr[i - j]) for j in range(1, left_bars + 1)):
+            continue
+        if any(np.isnan(arr[i + j]) for j in range(1, right_bars + 1)):
+            continue
+        if (all(arr[i - j] > val for j in range(1, left_bars + 1))
+                and all(arr[i + j] > val for j in range(1, right_bars + 1))):
+            out[i + right_bars] = val
+    return pd.Series(out, index=series.index)
+
+
+def ta_pivothigh(
+    series: pd.Series, left_bars: int, right_bars: int  # type: ignore[type-arg]
+) -> pd.Series:  # type: ignore[type-arg]
+    """
+    Exact Pine Script ta.pivothigh replication.
+    Strict inequality on both sides. Value placed at bar[i + right_bars].
+    """
+    arr: np.ndarray[Any, np.dtype[Any]] = series.values  # type: ignore[assignment]
+    n = len(arr)
+    out = np.full(n, np.nan)
+    for i in range(left_bars, n - right_bars):
+        val = arr[i]
+        if np.isnan(val):
+            continue
+        if any(np.isnan(arr[i - j]) for j in range(1, left_bars + 1)):
+            continue
+        if any(np.isnan(arr[i + j]) for j in range(1, right_bars + 1)):
+            continue
+        if (all(arr[i - j] < val for j in range(1, left_bars + 1))
+                and all(arr[i + j] < val for j in range(1, right_bars + 1))):
+            out[i + right_bars] = val
+    return pd.Series(out, index=series.index)
+
+
+def _safe(v: Any) -> Optional[float]:
+    try:
+        f = float(v)
+        if np.isnan(f) or np.isinf(f):
+            return None
+        return round(f, 4)
+    except Exception:
+        return None
+
+
+def calculate_cycle_metrics(df: pd.DataFrame, params: CycleParams) -> dict[str, Any]:
+    """Compute raw cycle metrics from OHLCV price history."""
+    high = df["High"]
+    low = df["Low"]
+    close = df["Close"]
+
+    rolling_ath = ta_highest(high, params.lookback_bars)
+    drawdown_pct = ((close - rolling_ath) / rolling_ath) * 100
+    trough_series = ta_pivotlow(drawdown_pct, params.pivot_bars, params.pivot_bars)
+    pullback_list = (
+        trough_series.dropna()[trough_series.dropna() < params.pullback_threshold].tolist()
+    )
+
+    rolling_atl = ta_lowest(low, params.lookback_bars)
+    profit_pct = ((close - rolling_atl) / rolling_atl) * 100
+    peak_series = ta_pivothigh(profit_pct, params.pivot_bars, params.pivot_bars)
+    profit_list = (
+        peak_series.dropna()[peak_series.dropna() > params.profit_threshold].tolist()
+    )
+
+    last_date = (
+        df.index[-1].strftime("%Y-%m-%d")
+        if hasattr(df.index[-1], "strftime")
+        else str(df.index[-1])
+    )
+
+    return {
+        "current_close":         _safe(close.iloc[-1]),
+        "current_drawdown_pct":  _safe(drawdown_pct.iloc[-1]),
+        "current_profit_pct":    _safe(profit_pct.iloc[-1]),
+        "lower_bound":           _safe(min(pullback_list)) if pullback_list else None,
+        "upper_bound":           _safe(max(profit_list)) if profit_list else None,
+        "typical_drawdown":      _safe(float(np.mean(pullback_list))) if pullback_list else None,
+        "typical_profit":        _safe(float(np.mean(profit_list))) if profit_list else None,
+        "total_pullback_events": len(pullback_list),
+        "total_profit_events":   len(profit_list),
+        "as_of":                 last_date,
+    }
+
+
+def analyze_ticker(
+    ticker: str,
+    df: pd.DataFrame,
+    fundamentals: Optional[FundamentalsSnapshot],
+    params: CycleParams,
+) -> Optional[CycleAnalysis]:
+    """Full analysis for one ticker: cycle metrics + scoring → CycleAnalysis."""
+    min_bars = params.lookback_bars + params.pivot_bars * 2 + 10
+    if len(df) < min_bars:
+        logger.warning("%s: insufficient data (%d bars, need %d)", ticker, len(df), min_bars)
+        return None
+
+    cycle = calculate_cycle_metrics(df, params)
+
+    current_close = cycle.get("current_close")
+    current_drawdown_pct = cycle.get("current_drawdown_pct")
+    current_profit_pct = cycle.get("current_profit_pct")
+    if current_close is None or current_drawdown_pct is None or current_profit_pct is None:
+        return None
+
+    fh_score: Optional[float] = None
+    fh_subscores: dict[str, float] = {}
+    if fundamentals is not None:
+        fh_score, fh_subscores = score_financial_health(fundamentals)
+
+    valuation_zone, valuation_score = calculate_valuation_zone(cycle)
+
+    effective_fh = fh_score if fh_score is not None else 50.0
+    overall_rating, overall_label, momentum_score = calculate_overall_rating(
+        effective_fh, valuation_score, cycle
+    )
+
+    return CycleAnalysis(
+        ticker=ticker,
+        params=params,
+        as_of=str(cycle.get("as_of") or date.today().isoformat()),
+        current_close=current_close,
+        current_drawdown_pct=current_drawdown_pct,
+        current_profit_pct=current_profit_pct,
+        typical_drawdown=cycle.get("typical_drawdown"),
+        lower_bound=cycle.get("lower_bound"),
+        typical_profit=cycle.get("typical_profit"),
+        upper_bound=cycle.get("upper_bound"),
+        total_pullback_events=int(cycle.get("total_pullback_events") or 0),
+        total_profit_events=int(cycle.get("total_profit_events") or 0),
+        financial_health_score=fh_score,
+        valuation_score=valuation_score,
+        valuation_zone=valuation_zone,
+        momentum_score=momentum_score,
+        overall_rating=overall_rating,
+        overall_label=overall_label,
+        fh_subscores=fh_subscores,
+    )
