@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
+import { StockHeader } from '@/components/stocks/StockHeader';
 import { StockSubnav } from '@/components/stocks/StockSubnav';
 import { fetchStockDetail } from '@/lib/stocks';
 import { urlPartsToTicker } from '@/lib/ticker';
@@ -48,11 +49,10 @@ export default async function StockDetailPage({
       <StockSubnav />
 
       <div className="pt-5 space-y-[18px]">
-        <SectionAnchor
-          id="sec-thesis"
-          title="Thesis"
-          note={`Header strip, verdict card, and insight grid land here. Loaded: ${stored} · ${stock.priceBars.length} price bars.`}
-        />
+        <section id="sec-thesis" className="scroll-mt-[120px]">
+          <StockHeader stock={stock} />
+          {/* Verdict card + insight grid land in Section 2. */}
+        </section>
         <SectionAnchor
           id="sec-scorecard"
           title="Scorecard"
