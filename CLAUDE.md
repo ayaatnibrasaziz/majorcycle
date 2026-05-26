@@ -64,14 +64,22 @@ When in doubt about any decision: **ask, don't guess.**
 │   ├── coding-standards.md         ← conventions, anti-patterns, file rules
 │   ├── glossary.md                 ← every domain term defined once
 │   └── roadmap.md                  ← Phase 1 / Phase 2 scope and build order
-├── web/                            ← Next.js app (frontend + Python API routes)
+├── web/                            ← Next.js app (frontend + Vercel Python functions)
 │   ├── app/                        ← App Router routes
+│   │   └── api/                    ← Next.js TS route handlers (auth, light reads)
+│   ├── api/                        ← Vercel Python serverless functions (api/cycle.py → /api/cycle)
+│   ├── _engine/                    ← Vendored snapshot of analytics/ for the Python function
+│   │   ├── major_cycle.py          ← (kept in sync with analytics/ via CI drift check)
+│   │   ├── presets.py
+│   │   ├── providers/base.py
+│   │   └── scoring/{financial_health,valuation,overall}.py
 │   ├── components/                 ← React components
 │   ├── lib/                        ← utilities, DB client, types
-│   ├── api/                        ← Vercel Python serverless functions
-│   └── public/                     ← static assets, favicons, OG images
-├── analytics/                      ← Python analysis (cron-runnable)
-│   ├── major_cycle.py              ← cycle math (ported from existing script)
+│   ├── public/                     ← static assets, favicons, OG images
+│   ├── requirements.txt            ← Python deps for the Vercel function bundle
+│   └── vercel.json                 ← functions config (includeFiles, memory, maxDuration)
+├── analytics/                      ← Python analysis (cron-runnable; canonical cycle math)
+│   ├── major_cycle.py              ← cycle math (canonical — web/_engine/ mirrors this)
 │   ├── providers/                  ← DataProvider abstraction
 │   │   ├── base.py                 ← abstract interface — DO NOT BYPASS
 │   │   ├── yfinance_provider.py    ← Phase 1 implementation
@@ -81,9 +89,18 @@ When in doubt about any decision: **ask, don't guess.**
 │   ├── universe/                   ← ticker list CSVs (sp500, asx200, tsx60)
 │   └── tests/
 ├── .github/
-│   └── workflows/                  ← daily cron + Vercel deploys
+│   └── workflows/                  ← daily cron + Vercel deploys + CI (includes _engine drift check)
 └── .env.example                    ← documents every required env var
 ```
+
+**Cycle math lives in two places by design.** `analytics/` is the canonical
+home (cron runs it). `web/_engine/` is a vendored snapshot so the Vercel
+Python function at `web/api/cycle.py` can import it locally (Vercel's
+auto-install doesn't cleanly bundle code from outside the project root).
+The two copies are kept in sync by a CI drift check that fails if they
+diverge. **Edit `analytics/<file>.py` first**, then update the matching
+`web/_engine/<file>.py` (with `from analytics.` rewritten to `from _engine.`),
+in the same commit.
 
 ---
 

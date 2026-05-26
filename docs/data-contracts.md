@@ -490,6 +490,51 @@ export interface StockRecord {
 
 ## 5. API Request/Response Contracts
 
+### `GET /api/cycle`
+
+Single-ticker Major Cycle analysis. Called by the Stock Detail Server Component on every page render (cached by Vercel edge for 1h, stale-while-revalidate 24h). Implemented in `web/api/cycle.py` (Python serverless function); reads price bars and fundamentals from Supabase, runs the cycle math via the vendored `web/_engine/` package, never calls yfinance.
+
+**Query params:**
+```typescript
+interface CycleQuery {
+  ticker: string;                              // storage format: 'AAPL', 'BHP.AX', 'SHOP.TO'
+  preset?: 'short' | 'medium' | 'long';        // default: 'medium'
+}
+```
+
+**Response (200):** the full `CycleAnalysis` shape from section 3, serialised with snake_case keys (the Python dataclass field names). The frontend converts to camelCase via `web/lib/case.ts` if typed consumption is needed. Sample:
+
+```json
+{
+  "ticker": "AAPL",
+  "params": { "pullback_threshold": -5.0, "profit_threshold": 5.0, "lookback_bars": 252, "pivot_bars": 5 },
+  "as_of": "2026-05-25",
+  "current_close": 187.42,
+  "current_drawdown_pct": -3.21,
+  "current_profit_pct": 18.55,
+  "typical_drawdown": -7.8,
+  "lower_bound": -22.4,
+  "typical_profit": 12.3,
+  "upper_bound": 41.7,
+  "total_pullback_events": 18,
+  "total_profit_events": 15,
+  "financial_health_score": 78.5,
+  "valuation_score": 42.0,
+  "valuation_zone": "STRETCHED",
+  "momentum_score": 71.4,
+  "overall_rating": 64,
+  "overall_label": "Neutral",
+  "fh_subscores": { "profitability": 92, "balance_sheet": 68, "growth": 71, "cashflow": 80, "shareholder": 65 }
+}
+```
+
+**Errors:**
+- `400` — missing `ticker` or invalid `preset` → `{ "error": "..." }`
+- `404` — ticker not in `stocks` table OR no `price_bars` rows → `{ "error": "..." }`
+- `500` — internal (insufficient bars for cycle math, env var missing, etc.) → `{ "error": "...", "detail": "..." }`
+
+**Caching headers (200 only):** `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
+
 ### `POST /api/analyze`
 
 **Request:**

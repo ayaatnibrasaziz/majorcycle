@@ -33,11 +33,12 @@ The owner is non-coder. Future-Claude reading this six months from now is the au
 | Type | PascalCase, lives in `lib/types.ts` or co-located | `interface StockRecord` |
 | Test | `*.test.ts` or `*.test.tsx` next to source | `lib/ticker.test.ts` |
 
-### Backend (`/analytics`)
+### Backend (`/analytics`, `/web/_engine`, `/web/api`)
 
 | Type | Convention | Example |
 |---|---|---|
-| Module | lowercase, snake_case | `analytics/major_cycle.py` |
+| Module | lowercase, snake_case | `analytics/major_cycle.py`, `web/api/cycle.py` |
+| Serverless function | one file per endpoint, filename matches URL | `web/api/cycle.py` → `/api/cycle` |
 | Class | PascalCase | `class YFinanceProvider` |
 | Function / variable | snake_case | `def fetch_price_history()` |
 | Constant | `UPPER_SNAKE_CASE` | `PIVOT_BARS = 5` |
@@ -191,6 +192,26 @@ except Exception as e:
 ### Async / Sync
 
 Phase 1 is synchronous (yfinance is sync). Vercel Python functions wrap blocking calls in async with `asyncio.to_thread()`. Don't try to make yfinance async — wrap it.
+
+### Vercel Python Serverless Functions (the `web/api/` directory)
+
+Each `.py` file in `web/api/` becomes one Vercel serverless function (file path → URL path). Conventions:
+
+- **Function shape.** Implement a class named `handler` inheriting from `http.server.BaseHTTPRequestHandler`. Define `do_GET` / `do_POST` as needed. See `web/api/cycle.py` for the canonical example.
+- **Cycle math imports come from `_engine`, NOT `analytics`.** Vercel's project rootDirectory is `web/`, so `analytics/` (a sibling of `web/`) isn't reachable from the function bundle. We vendor the relevant files into `web/_engine/`. The CI drift check enforces parity. **Never edit files in `web/_engine/` without making the same edit in `analytics/<same_path>` in the same commit.**
+- **sys.path setup.** Insert `web/` into sys.path at the top of the function so `from _engine.X import ...` resolves regardless of how Vercel launches the script:
+  ```python
+  import sys
+  from pathlib import Path
+  sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+  ```
+- **Never call yfinance from a serverless function.** Data is already in Supabase from the daily cron. Functions read from Supabase only.
+- **Dependencies.** Add Python deps to `web/requirements.txt`, NOT `analytics/pyproject.toml`. Keep the function bundle small — every function gets its own copy.
+- **Env vars.** Functions read `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (set in Vercel project env). The `NEXT_PUBLIC_` prefix is for client-side JS only.
+- **JSON serialisation.** Use `dataclasses.asdict(obj)` then `json.dumps(d, default=str)`.
+- **Caching.** GET responses that don't depend on per-user state should set `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400` so Vercel's edge serves repeated hits without re-invoking the function.
+- **Errors.** Catch broad `Exception` at the top of the handler, log via `logger.exception`, return a structured JSON error: `{ "error": "...", "detail": "..." }`. Never expose stack traces directly.
+- **Bundling.** Configure `includeFiles` in `web/vercel.json` to pull `_engine/**` into the function bundle (Vercel's auto-tracing may not catch the `sys.path` indirection).
 
 ---
 
@@ -419,9 +440,10 @@ def compute_overall_rating(fh: float, val: float, momentum: float) -> tuple[int,
 2. `pnpm lint` — zero ESLint errors
 3. `pnpm test` — all Vitest tests pass
 4. `pnpm build` — Next.js production build succeeds
-5. `ruff check analytics/` — zero Python lint errors
-6. `mypy analytics/ --ignore-missing-imports --explicit-package-bases` — zero type errors
+5. `ruff check analytics/` + `(cd web && ruff check _engine/ api/)` — zero Python lint errors
+6. `mypy analytics/` + `(cd web && mypy _engine/ api/)` — zero type errors (`--ignore-missing-imports --explicit-package-bases`)
 7. `pytest analytics/` — all Python tests pass
+8. `_engine` drift check — `web/_engine/<file>.py` matches `analytics/<file>.py` modulo the `from analytics.` → `from _engine.` rewrite
 
 CI is configured in `.github/workflows/ci.yml`. Bypassing CI to merge is forbidden.
 
@@ -435,7 +457,8 @@ Every task ends with the relevant command(s) and shown output:
 |---|---|---|
 | Any TS/React code | `pnpm typecheck && pnpm lint` | exit 0, no output |
 | New TS test | `pnpm test` | all pass |
-| Any Python code | `ruff check analytics/ && mypy analytics/ --ignore-missing-imports --explicit-package-bases` | exit 0 |
+| Any Python code | `ruff check analytics/ && (cd web && ruff check _engine/ api/) && mypy analytics/ --ignore-missing-imports --explicit-package-bases && (cd web && mypy _engine/ api/ --ignore-missing-imports --explicit-package-bases)` | exit 0 |
+| Edit to cycle math / scoring | Mirror the edit in `web/_engine/<same_file>.py` (replace `from analytics.` with `from _engine.`); run the drift check from `.github/workflows/ci.yml` locally | drift check exits 0 |
 | Cycle math change | `pytest analytics/tests/test_major_cycle.py -v` | all pass |
 | New API route | `pnpm build` then test in Vercel preview | route returns expected shape |
 | UI change | Screenshot before/after | visual match with reference |

@@ -44,6 +44,8 @@
 
 **Cycle Analysis** — The full output of `major_cycle.py` for a given ticker + params. See `CycleAnalysis` dataclass in `data-contracts.md`.
 
+**Cycle Endpoint** — `/api/cycle?ticker=X&preset=medium` — the Vercel Python serverless function at `web/api/cycle.py` that computes one ticker's Major Cycle on demand. Reads from Supabase (never yfinance), runs the cycle math via the vendored `web/_engine/` package, returns `CycleAnalysis` JSON. Called by every Stock Detail page render.
+
 **Cycle Params** — The three values that govern a Major Cycle run: pullback threshold, profit threshold, lookback bars. Set by user via presets or custom input.
 
 ---
@@ -206,6 +208,8 @@
 
 ## S
 
+**Serverless Function** — A Python file in `web/api/` that becomes one Vercel Function on deploy. Uses `BaseHTTPRequestHandler`, imports cycle math from the vendored `_engine` package (see Vendored Engine), reads from Supabase, never calls yfinance. See `coding-standards.md` §4 and `architecture.md` §7. Phase 1's only serverless function is `web/api/cycle.py` (`/api/cycle` endpoint); Layer D adds `/api/analyze` and `/api/fetch-ticker`.
+
 **Smart Refresh Pipeline** — The nightly cron logic in `analytics/cron/daily_refresh.py` (default mode: `smart`). Runs at 23:00 UTC daily. For every ticker it always refreshes price bars (5-day lookback for existing tickers, full history for new ones) and fundamentals. It only fetches Enriched Data when the staleness check returns true. Use `--mode full` to force enriched refresh for all tickers regardless. See `architecture.md` §8 for full specification.
 
 **Staleness Check** — The `_should_fetch_enriched()` function in `daily_refresh.py`. Returns `True` (fetch enriched data) in three cases: (1) ticker is new — no `enriched_updated_at` in DB; (2) ticker has a `next_earnings_date` that has passed since the last enrich; (3) ticker has no earnings date — last enrich was ≥7 days ago. Returns `False` (skip enriched fetch) otherwise.
@@ -269,6 +273,8 @@
 ---
 
 ## Y
+
+**Vendored Engine** — The `web/_engine/` package — a snapshot of the cycle math + scoring files from `analytics/` (with imports rewritten from `from analytics.` to `from _engine.`). Exists so the Vercel Python function at `web/api/cycle.py` can import the algorithm; Vercel's auto-install can't reliably bundle Python from outside `web/`. CI runs a drift check on every PR that fails if `web/_engine/<file>.py` diverges from `analytics/<file>.py`. **Edit `analytics/` first**, then mirror into `web/_engine/` in the same commit.
 
 **yfinance** — Python library that scrapes Yahoo Finance for free. Our Phase 1 data provider. Wrapped behind the DataProvider interface so it can be swapped for FMP in Phase 2.
 
