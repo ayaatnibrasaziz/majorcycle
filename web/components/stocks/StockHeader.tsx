@@ -75,7 +75,7 @@ export function StockHeader({ stock }: Props) {
     ? null
     : upsidePct >= 0
       ? 'var(--c-tier-2)'
-      : 'var(--c-tier-4)';
+      : 'var(--c-tier-3)';
   const upsideText = upsidePct === null
     ? null
     : upsidePct >= 0
