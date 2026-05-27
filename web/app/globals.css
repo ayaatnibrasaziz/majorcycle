@@ -153,6 +153,221 @@
   animation: fadeIn 250ms ease-out;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Tier badges — overall label / valuation zone / analyst consensus pills.
+   Visual parity with `.badge-wrap .badge` in /reference/original-design.html.
+   ───────────────────────────────────────────────────────────────────────── */
+.tier-badge {
+  display: inline-flex; align-items: center;
+  padding: 4px 10px; border-radius: 999px;
+  font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.tier-badge--1 { background: rgba(0,100,0,0.12);              color: var(--c-tier-1); }
+.tier-badge--2 { background: var(--tint-tier-2-strong);        color: var(--c-tier-2-ink); }
+.tier-badge--3 { background: var(--tint-tier-3-strong);        color: var(--c-tier-3-ink); }
+.tier-badge--4 { background: rgba(255,69,0,0.10);              color: #B23A00; }
+.tier-badge--5 { background: var(--tint-tier-5-strong);        color: var(--c-tier-5-ink); }
+.tier-badge--analyst { background: rgba(74,85,104,0.12);       color: #4A5568; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   KPI strip — 4-card accent grid below the header strip.
+   Visual parity with `.detail-kpi-grid` / `.kpi-card--accent--dense`
+   in /reference/original-design.html (CSS lines 709-714).
+   ───────────────────────────────────────────────────────────────────────── */
+.detail-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.kpi-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.2s;
+  cursor: help;
+}
+.kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.kpi-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, var(--brand-mid), var(--brand-bright));
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.kpi-card--accent::before { background: var(--kpi-accent, var(--brand-mid)); }
+.kpi-label {
+  font-family: 'Sora', sans-serif;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.8px;
+  text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.kpi-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px; font-weight: 600;
+  color: var(--kpi-value-color, var(--text-primary));
+  line-height: 1.1;
+}
+@media (max-width: 640px) {
+  .detail-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Verdict hero card — the main Section 2 card.
+   Visual parity with `.card--verdict` and its sub-elements in
+   /reference/original-design.html (CSS lines 503-547).
+   ───────────────────────────────────────────────────────────────────────── */
+.card--verdict {
+  position: relative;
+  background: linear-gradient(135deg, #FAFBFC 0%, #F4F7FB 60%, #EDF2F8 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 26px 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 14px -4px rgba(26,58,110,.10), 0 1px 3px rgba(26,58,110,.05);
+  overflow: hidden;
+}
+.card--verdict::before {
+  content: '';
+  position: absolute; top: 0; left: 0; bottom: 0; width: 5px;
+  background: linear-gradient(180deg, var(--verdict-color, #1E5CB3), var(--verdict-color-deep, #1A3A6E));
+}
+.verdict-watermark {
+  position: absolute; top: 14px; right: 18px;
+  font-family: 'Sora', sans-serif;
+  font-size: 9px; font-weight: 700; letter-spacing: 2.2px;
+  color: var(--brand-deep); opacity: .18;
+  text-transform: uppercase;
+  pointer-events: none; user-select: none;
+  display: flex; align-items: center; gap: 5px;
+}
+.verdict-watermark-icon {
+  width: 10px; height: 10px;
+  background: var(--brand-deep);
+  clip-path: polygon(50% 0, 100% 38%, 82% 100%, 18% 100%, 0 38%);
+  opacity: .85; flex-shrink: 0;
+}
+.verdict-top {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 24px; align-items: flex-start;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.verdict-headline { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.verdict-eyebrow {
+  font-family: 'Sora', sans-serif;
+  font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+  color: var(--text-muted); text-transform: uppercase;
+  display: flex; align-items: center; gap: 8px;
+}
+.verdict-eyebrow::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, rgba(138,151,168,.4), transparent);
+  max-width: 180px;
+}
+.verdict-label {
+  font-family: 'Sora', sans-serif;
+  font-size: var(--font-hero); font-weight: 700;
+  letter-spacing: -.5px; line-height: 1.05;
+  color: var(--verdict-color, var(--brand-mid));
+  margin-top: 2px;
+}
+.verdict-confidence {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,.7); border: 1px solid var(--border);
+  padding: 4px 10px; border-radius: 20px;
+  margin-top: 8px; width: fit-content; letter-spacing: .3px;
+  cursor: help;
+}
+.verdict-confidence-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--verdict-color, var(--brand-mid));
+}
+.verdict-score-block {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; flex-shrink: 0; cursor: help;
+}
+.verdict-score-ring { position: relative; width: 84px; height: 84px; }
+.verdict-score-ring svg { width: 84px; height: 84px; transform: rotate(-90deg); }
+.verdict-score-ring-bg  { stroke: var(--border-faint); stroke-width: 6; fill: none; }
+.verdict-score-ring-fg  {
+  stroke: var(--verdict-color, var(--brand-mid));
+  stroke-width: 6; fill: none; stroke-linecap: round;
+  transition: stroke-dashoffset .6s cubic-bezier(.4,0,.2,1);
+}
+.verdict-score-num {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px; font-weight: 700;
+  color: var(--verdict-color, var(--brand-mid)); line-height: 1;
+}
+.verdict-score-caption {
+  font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 600;
+  color: var(--text-muted); letter-spacing: 1.2px; text-transform: uppercase;
+}
+.verdict-thesis {
+  padding: 14px 0 4px;
+  font-family: 'Sora', sans-serif; font-size: 13px;
+  line-height: 1.65; color: var(--text-primary); letter-spacing: -.05px;
+}
+.verdict-thesis p { margin: 0 0 8px; display: flex; gap: 10px; align-items: flex-start; }
+.verdict-thesis p:last-child { margin-bottom: 0; }
+.verdict-thesis-num {
+  flex-shrink: 0; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--verdict-color, var(--brand-mid));
+  color: white;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-top: 2px; opacity: .85;
+}
+.verdict-bands {
+  display: grid; grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 0; margin-top: 14px;
+  background: rgba(255,255,255,.6);
+  border: 1px solid var(--border-faint-strong);
+  border-radius: var(--radius-sm); overflow: hidden;
+}
+.verdict-band { padding: 11px 14px; border-right: 1px solid var(--border-faint); }
+.verdict-band:last-child { border-right: none; }
+.verdict-band-label {
+  font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 700;
+  letter-spacing: 1.2px; color: var(--text-muted); text-transform: uppercase;
+  margin-bottom: 4px; display: flex; align-items: center; gap: 5px;
+}
+.verdict-band-val {
+  font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 600;
+  color: var(--text-primary); line-height: 1.1;
+}
+.verdict-band-sub {
+  font-family: 'Sora', sans-serif; font-size: 10px;
+  color: var(--text-muted); margin-top: 3px; letter-spacing: .1px;
+}
+.verdict-band.is-active { background: rgba(34,139,34,.06); }
+.verdict-band.is-active .verdict-band-label { color: var(--c-tier-2); }
+.verdict-band-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; display: inline-block;
+}
+.verdict-footnote {
+  margin-top: 12px;
+  font-family: 'Sora', sans-serif; font-size: 10px; color: var(--text-muted);
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; letter-spacing: .1px;
+}
+.verdict-footnote-divider { width: 1px; height: 10px; background: var(--border); }
+@media (max-width: 640px) {
+  .verdict-top { grid-template-columns: 1fr; gap: 14px; }
+  .verdict-bands { grid-template-columns: 1fr; }
+  .verdict-band { border-right: none; border-bottom: 1px solid var(--border-faint); }
+  .verdict-band:last-child { border-bottom: none; }
+}
+
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
   *,

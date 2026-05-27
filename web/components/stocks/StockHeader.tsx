@@ -1,9 +1,16 @@
 import { WeekRangeGauge } from '@/components/stocks/WeekRangeGauge';
 import type { StockDetail } from '@/lib/stocks';
-import type { Currency } from '@/lib/types';
+import type {
+  AnalystRecommendation,
+  CycleAnalysis,
+  Currency,
+  OverallLabel,
+  ValuationZone,
+} from '@/lib/types';
 
 interface Props {
   stock: StockDetail;
+  cycle?: CycleAnalysis | null;
 }
 
 function formatPrice(amount: number, currency: Currency): string {
@@ -53,7 +60,7 @@ function dailyChange(latest: number, previous: number): DailyChange {
  * (overall rating, valuation zone, analyst consensus) — all three need cycle
  * data that the Verdict card PR will introduce.
  */
-export function StockHeader({ stock }: Props) {
+export function StockHeader({ stock, cycle }: Props) {
   const { fundamentals, priceBars } = stock;
   const currency = fundamentals.currency;
 
@@ -104,8 +111,14 @@ export function StockHeader({ stock }: Props) {
           />
           <span>Updated {formatUpdatedAt(stock.updatedAt)}</span>
         </div>
-        {/* Badges row (rating / valuation zone / analyst consensus) lands in
-            Section 2 — Verdict card. Reserved space kept for layout continuity. */}
+        {cycle && (
+          <BadgeRow
+            overallLabel={cycle.overallLabel}
+            valuationZone={cycle.valuationZone}
+            analystRecommendation={stock.fundamentals.analystRecommendation}
+            numAnalysts={stock.fundamentals.numAnalystOpinions}
+          />
+        )}
       </div>
 
       {/* Right column: price + delta + upside + 52W gauge */}
@@ -143,6 +156,57 @@ export function StockHeader({ stock }: Props) {
           />
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Badge row ────────────────────────────────────────────────────────────────
+
+const LABEL_TIER: Record<OverallLabel, number> = {
+  'High Conviction': 1, Constructive: 2, Neutral: 3, Cautious: 4, Bearish: 5,
+};
+
+const ZONE_TIER: Record<ValuationZone, number> = {
+  'DEEP VALUE': 1, VALUE: 2, FAIR: 3, STRETCHED: 4,
+};
+
+const ZONE_DISPLAY: Record<ValuationZone, string> = {
+  'DEEP VALUE': 'Deep Value', VALUE: 'Value', FAIR: 'Fair', STRETCHED: 'Stretched',
+};
+
+function BadgeRow({
+  overallLabel,
+  valuationZone,
+  analystRecommendation,
+  numAnalysts,
+}: {
+  overallLabel: OverallLabel;
+  valuationZone: ValuationZone;
+  analystRecommendation: AnalystRecommendation | null;
+  numAnalysts: number | null;
+}) {
+  return (
+    <div className="flex flex-wrap gap-[6px] mt-[10px]">
+      <span
+        className={`tier-badge tier-badge--${LABEL_TIER[overallLabel]}`}
+        title={`Overall rating: ${overallLabel}. Composite of Financial Health (40%) + Valuation Zone (35%) + Momentum (25%).`}
+      >
+        {overallLabel}
+      </span>
+      <span
+        className={`tier-badge tier-badge--${ZONE_TIER[valuationZone]}`}
+        title={`Valuation zone: ${ZONE_DISPLAY[valuationZone]}. Derived from the current drawdown vs the stock's typical historical pullback.`}
+      >
+        {ZONE_DISPLAY[valuationZone]}
+      </span>
+      {analystRecommendation && (
+        <span
+          className="tier-badge tier-badge--analyst"
+          title={`Analyst consensus: ${analystRecommendation}${numAnalysts ? ` (${numAnalysts} analysts)` : ''}. Third-party data from Yahoo Finance — not our rating.`}
+        >
+          {analystRecommendation}
+        </span>
+      )}
     </div>
   );
 }

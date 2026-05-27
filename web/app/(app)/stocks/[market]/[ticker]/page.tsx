@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
+import { KpiStrip } from '@/components/stocks/KpiStrip';
 import { StockHeader } from '@/components/stocks/StockHeader';
 import { StockSubnav } from '@/components/stocks/StockSubnav';
+import { VerdictCard } from '@/components/stocks/VerdictCard';
+import { fetchCycleAnalysis } from '@/lib/cycle';
 import { fetchStockDetail } from '@/lib/stocks';
 import { urlPartsToTicker } from '@/lib/ticker';
 import type { Market } from '@/lib/types';
@@ -41,7 +44,11 @@ export default async function StockDetailPage({
   if (!isValidMarket(market)) notFound();
 
   const stored = urlPartsToTicker(market, ticker);
-  const stock = await fetchStockDetail(stored);
+  // Parallel fetch — stock data and cycle analysis are independent
+  const [stock, cycle] = await Promise.all([
+    fetchStockDetail(stored),
+    fetchCycleAnalysis(stored),
+  ]);
   if (!stock) notFound();
 
   return (
@@ -50,8 +57,15 @@ export default async function StockDetailPage({
 
       <div className="pt-5 space-y-[18px]">
         <section id="sec-thesis" className="scroll-mt-[120px]">
-          <StockHeader stock={stock} />
-          {/* Verdict card + insight grid land in Section 2. */}
+          <StockHeader stock={stock} cycle={cycle} />
+          {cycle && <KpiStrip cycle={cycle} />}
+          {cycle && (
+            <VerdictCard
+              cycle={cycle}
+              fundamentals={stock.fundamentals}
+              currency={stock.fundamentals.currency}
+            />
+          )}
         </section>
         <SectionAnchor
           id="sec-scorecard"
