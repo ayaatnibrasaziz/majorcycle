@@ -30,7 +30,7 @@ import os
 import sys
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import parse_qs, urlparse
 
 # Ensure web/ is on sys.path so `from _engine.X import ...` resolves regardless
@@ -67,7 +67,7 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
         .order("date")
         .execute()
     )
-    rows: list[dict[str, Any]] = resp.data or []
+    rows: list[Any] = resp.data or []
     if not rows:
         return None
     df = pd.DataFrame(rows)
@@ -95,7 +95,9 @@ def _load_fundamentals(
     only the known fields to be defensive against schema additions.
     """
     resp = sb.table("stocks").select("*").eq("ticker", ticker).maybe_single().execute()
-    row: dict[str, Any] | None = resp.data
+    if resp is None:
+        return None, None
+    row: dict[str, Any] | None = cast(dict[str, Any] | None, resp.data)
     if not row:
         return None, None
 
