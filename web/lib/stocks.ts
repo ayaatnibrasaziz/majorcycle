@@ -54,11 +54,21 @@ export const fetchStockDetail = cache(
       return null;
     }
 
+    // Supabase's default page size is 1000 rows. AAPL has data from ~1980;
+    // without a cutoff the query returns the oldest 1000 rows (split-adjusted
+    // prices ~$0.08) instead of recent prices. Three years (~756 trading days)
+    // is more than enough for chart sections.
+    const cutoffDate = new Date();
+    cutoffDate.setFullYear(cutoffDate.getFullYear() - 3);
+    const cutoff = cutoffDate.toISOString().slice(0, 10);
+
     const { data: barsRows, error: barsErr } = await supabase
       .from('price_bars')
       .select('date,open,high,low,close,volume')
       .eq('ticker', ticker)
-      .order('date', { ascending: true });
+      .gte('date', cutoff)
+      .order('date', { ascending: true })
+      .limit(1000);
 
     if (barsErr) {
       return null;
