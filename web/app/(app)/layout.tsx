@@ -9,6 +9,27 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Dev-only bypass: skip auth so the local preview server can render pages
+  // without a Supabase session. Guard by NODE_ENV so this can never fire in prod.
+  if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {
+    return (
+      <div className="min-h-screen bg-[var(--bg-page)]">
+        <Sidebar subscriptionStatus={null} />
+        <Header />
+        <main
+          className="ml-[var(--sidebar-w)] mt-[var(--header-h)] p-6 min-h-[calc(100vh-var(--header-h))]"
+          id="main-content"
+        >
+          <div className="mb-4 px-3 py-2 bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[var(--radius-sm)] text-[11px] text-[var(--text-muted)] italic">
+            ⚠ For educational and research purposes only. Not financial advice.
+            Always conduct independent due diligence.
+          </div>
+          {children}
+        </main>
+      </div>
+    );
+  }
+
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
