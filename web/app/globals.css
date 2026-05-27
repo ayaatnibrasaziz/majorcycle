@@ -136,6 +136,23 @@
   }
 }
 
+/* Data-freshness pulse dot — used in the Stock Detail meta strip and elsewhere.
+   Subtle 2.4s opacity heartbeat that signals "this data is live but cached". */
+@keyframes metaPulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+/* Standard fade-in for cards / sections on mount.
+   Matches `.fade-in` referenced throughout /reference/original-design.html. */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in {
+  animation: fadeIn 250ms ease-out;
+}
+
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
   *,
