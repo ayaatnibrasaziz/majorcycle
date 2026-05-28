@@ -54,24 +54,24 @@ export const fetchStockDetail = cache(
       return null;
     }
 
-    // Supabase's default page size is 1000 rows. AAPL has data from ~1980;
-    // without a cutoff the query returns the oldest 1000 rows (split-adjusted
-    // prices ~$0.08) instead of recent prices. Three years (~756 trading days)
-    // is more than enough for chart sections.
-    const cutoffDate = new Date();
-    cutoffDate.setFullYear(cutoffDate.getFullYear() - 3);
-    const cutoff = cutoffDate.toISOString().slice(0, 10);
+    // PostgREST caps each response at 1000 rows. Paginate until exhausted so
+    // the price chart receives the full lifetime history of the stock.
+    const PAGE = 1000;
+    const priceBars: PriceBar[] = [];
+    let from = 0;
+    while (true) {
+      const { data: page, error: barsErr } = await supabase
+        .from('price_bars')
+        .select('date,open,high,low,close,volume')
+        .eq('ticker', ticker)
+        .order('date', { ascending: true })
+        .range(from, from + PAGE - 1);
 
-    const { data: barsRows, error: barsErr } = await supabase
-      .from('price_bars')
-      .select('date,open,high,low,close,volume')
-      .eq('ticker', ticker)
-      .gte('date', cutoff)
-      .order('date', { ascending: true })
-      .limit(1000);
-
-    if (barsErr) {
-      return null;
+      if (barsErr) return null;
+      if (!page || page.length === 0) break;
+      priceBars.push(...(page as PriceBar[]));
+      if (page.length < PAGE) break;
+      from += PAGE;
     }
 
     const camelRow = shallowCamel(stockRow as Record<string, unknown>);
@@ -88,7 +88,6 @@ export const fetchStockDetail = cache(
     }
 
     const record = camelRow as unknown as StockRecord;
-    const priceBars = (barsRows ?? []) as PriceBar[];
 
     return { ...record, priceBars };
   },

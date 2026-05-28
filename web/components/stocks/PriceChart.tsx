@@ -73,8 +73,6 @@ export function PriceChart({ priceBars, ticker }: Props) {
         borderColor: '#E2E8F0',
         timeVisible: false,
         secondsVisible: false,
-        fixLeftEdge: true,
-        fixRightEdge: true,
       },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
@@ -112,8 +110,7 @@ export function PriceChart({ priceBars, ticker }: Props) {
         color: '#1E5CB3',
         lineWidth: 2,
         priceLineVisible: false,
-        lastValueVisible: true,
-        title: '50D',
+        lastValueVisible: false,
         crosshairMarkerVisible: false,
       }).setData(sma50);
     }
@@ -124,8 +121,7 @@ export function PriceChart({ priceBars, ticker }: Props) {
         color: '#D4A017',
         lineWidth: 2,
         priceLineVisible: false,
-        lastValueVisible: true,
-        title: '200D',
+        lastValueVisible: false,
         crosshairMarkerVisible: false,
       }).setData(sma200);
     }
@@ -169,6 +165,16 @@ export function PriceChart({ priceBars, ticker }: Props) {
           >
             Max
           </button>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 6 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 16, height: 2, background: '#1E5CB3', display: 'inline-block', borderRadius: 1 }} />
+              <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: '#1E5CB3', fontWeight: 600 }}>50D</span>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 16, height: 2, background: '#D4A017', display: 'inline-block', borderRadius: 1 }} />
+              <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: '#D4A017', fontWeight: 600 }}>200D</span>
+            </span>
+          </span>
           <span
             className="chart-hint"
             style={{
