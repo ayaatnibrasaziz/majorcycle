@@ -195,7 +195,7 @@ export function PriceChart({ priceBars, ticker }: Props) {
           <button className={`range-btn${range === 'max' ? ' active' : ''}`} onClick={() => setRange('max')}>Max</button>
           <button
             className="chart-info-btn"
-            title="Scroll to zoom · Drag to pan · Range buttons set the starting view but you can scroll freely beyond it"
+            title="Daily chart · Scroll to zoom · Drag to pan"
             aria-label="Chart navigation help"
           >
             i
