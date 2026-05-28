@@ -14,6 +14,12 @@ const PUBLIC_PATHS = [
 ];
 
 export async function proxy(request: NextRequest) {
+  // Dev-only bypass: skip auth so the local preview server can render pages
+  // without a Supabase session. NODE_ENV guard ensures this never fires in prod.
+  if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
