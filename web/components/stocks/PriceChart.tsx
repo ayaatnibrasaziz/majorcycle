@@ -6,12 +6,16 @@ import {
   CrosshairMode,
   createChart,
   type IChartApi,
+  type ISeriesApi,
   type Time,
 } from 'lightweight-charts';
 
 import type { PriceBar } from '@/lib/types';
 
 type Range = '1y' | '3y' | 'max';
+
+const SMA_50_COLOR  = '#1E5CB3';
+const SMA_200_COLOR = '#D4A017';
 
 function computeSMA(bars: PriceBar[], period: number): { time: Time; value: number }[] {
   const result: { time: Time; value: number }[] = [];
@@ -23,13 +27,12 @@ function computeSMA(bars: PriceBar[], period: number): { time: Time; value: numb
   return result;
 }
 
-function filterByRange(bars: PriceBar[], range: Range): PriceBar[] {
-  if (range === 'max') return bars;
-  const cutoff = new Date();
-  if (range === '1y') cutoff.setFullYear(cutoff.getFullYear() - 1);
-  else cutoff.setFullYear(cutoff.getFullYear() - 3);
-  const cutoffStr = cutoff.toISOString().slice(0, 10);
-  return bars.filter((b) => b.date >= cutoffStr);
+function rangeStartDate(range: Range): string | null {
+  if (range === 'max') return null;
+  const d = new Date();
+  if (range === '1y') d.setFullYear(d.getFullYear() - 1);
+  else d.setFullYear(d.getFullYear() - 3);
+  return d.toISOString().slice(0, 10);
 }
 
 interface Props {
@@ -39,17 +42,25 @@ interface Props {
 
 export function PriceChart({ priceBars, ticker }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const [range, setRange] = useState<Range>('1y');
+  const chartRef     = useRef<IChartApi | null>(null);
+  const sma50Ref     = useRef<ISeriesApi<'Line'> | null>(null);
+  const sma200Ref    = useRef<ISeriesApi<'Line'> | null>(null);
 
+  const [range,   setRange]   = useState<Range>('1y');
+  const [show50,  setShow50]  = useState(true);
+  const [show200, setShow200] = useState(true);
+
+  // ── Build chart once on mount (data never filtered — range only pans the view) ──
   useEffect(() => {
     const el = containerRef.current;
     if (!el || priceBars.length === 0) return;
 
     if (chartRef.current) {
       try { chartRef.current.remove(); } catch { /* ignore */ }
-      chartRef.current = null;
     }
+    chartRef.current = null;
+    sma50Ref.current  = null;
+    sma200Ref.current = null;
 
     const chart = createChart(el, {
       width: el.clientWidth,
@@ -69,64 +80,50 @@ export function PriceChart({ priceBars, ticker }: Props) {
         horzLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
       },
       rightPriceScale: { borderColor: '#E2E8F0', textColor: '#8A97A8' },
-      timeScale: {
-        borderColor: '#E2E8F0',
-        timeVisible: false,
-        secondsVisible: false,
-      },
+      timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
     });
     chartRef.current = chart;
 
-    const filtered = filterByRange(priceBars, range);
-
-    const candleSeries = chart.addCandlestickSeries({
-      upColor: '#228B22',
-      downColor: '#B22222',
-      borderUpColor: '#006400',
-      borderDownColor: '#8B0000',
-      wickUpColor: '#006400',
-      wickDownColor: '#8B0000',
-      borderVisible: true,
-      priceLineVisible: false,
-    });
-    candleSeries.setData(
-      filtered.map((b) => ({
-        time: b.date as Time,
-        open: b.open,
-        high: b.high,
-        low: b.low,
-        close: b.close,
+    // All candlestick data — no date filtering
+    chart.addCandlestickSeries({
+      upColor: '#228B22', downColor: '#B22222',
+      borderUpColor: '#006400', borderDownColor: '#8B0000',
+      wickUpColor: '#006400', wickDownColor: '#8B0000',
+      borderVisible: true, priceLineVisible: false,
+    }).setData(
+      priceBars.map((b) => ({
+        time: b.date as Time, open: b.open, high: b.high, low: b.low, close: b.close,
       })),
     );
 
-    // SMAs computed over all available bars so values at range boundary are accurate
-    const rangeStart = filtered.length > 0 ? filtered[0]!.date : '';
-
-    const sma50 = computeSMA(priceBars, 50).filter((d) => (d.time as string) >= rangeStart);
-    if (sma50.length > 0) {
-      chart.addLineSeries({
-        color: '#1E5CB3',
-        lineWidth: 2,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false,
-      }).setData(sma50);
+    const sma50Data = computeSMA(priceBars, 50);
+    if (sma50Data.length > 0) {
+      sma50Ref.current = chart.addLineSeries({
+        color: SMA_50_COLOR, lineWidth: 2,
+        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+      });
+      sma50Ref.current.setData(sma50Data);
     }
 
-    const sma200 = computeSMA(priceBars, 200).filter((d) => (d.time as string) >= rangeStart);
-    if (sma200.length > 0) {
-      chart.addLineSeries({
-        color: '#D4A017',
-        lineWidth: 2,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false,
-      }).setData(sma200);
+    const sma200Data = computeSMA(priceBars, 200);
+    if (sma200Data.length > 0) {
+      sma200Ref.current = chart.addLineSeries({
+        color: SMA_200_COLOR, lineWidth: 2,
+        priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+      });
+      sma200Ref.current.setData(sma200Data);
     }
 
-    chart.timeScale().fitContent();
+    // Set initial viewport to 1Y
+    const fromStr = rangeStartDate('1y');
+    const lastBar = priceBars[priceBars.length - 1]!;
+    if (fromStr) {
+      chart.timeScale().setVisibleRange({ from: fromStr as Time, to: lastBar.date as Time });
+    } else {
+      chart.timeScale().fitContent();
+    }
 
     const ro = new ResizeObserver(() => {
       if (chartRef.current) chartRef.current.applyOptions({ width: el.clientWidth });
@@ -135,12 +132,35 @@ export function PriceChart({ priceBars, ticker }: Props) {
 
     return () => {
       ro.disconnect();
+      sma50Ref.current  = null;
+      sma200Ref.current = null;
       if (chartRef.current) {
         try { chartRef.current.remove(); } catch { /* ignore */ }
         chartRef.current = null;
       }
     };
-  }, [priceBars, range]);
+  }, [priceBars]); // range / show* changes handled by dedicated effects below
+
+  // ── Pan to selected range without rebuilding ──
+  useEffect(() => {
+    if (!chartRef.current || priceBars.length === 0) return;
+    const lastBar = priceBars[priceBars.length - 1]!;
+    const fromStr = rangeStartDate(range);
+    if (fromStr) {
+      chartRef.current.timeScale().setVisibleRange({ from: fromStr as Time, to: lastBar.date as Time });
+    } else {
+      chartRef.current.timeScale().fitContent();
+    }
+  }, [range, priceBars]);
+
+  // ── Toggle MA visibility without rebuilding ──
+  useEffect(() => {
+    sma50Ref.current?.applyOptions({ visible: show50 });
+  }, [show50]);
+
+  useEffect(() => {
+    sma200Ref.current?.applyOptions({ visible: show200 });
+  }, [show200]);
 
   return (
     <section id="sec-cycle" className="scroll-mt-[120px] card card--stack-snug">
@@ -148,46 +168,38 @@ export function PriceChart({ priceBars, ticker }: Props) {
         <div className="card-title">Price Chart — {ticker}</div>
         <div className="chart-controls">
           <button
-            className={`range-btn${range === '1y' ? ' active' : ''}`}
-            onClick={() => setRange('1y')}
+            className={`ma-pill ma-pill--50${show50 ? ' active' : ''}`}
+            onClick={() => setShow50((v) => !v)}
+            title="Toggle 50-day moving average"
+            aria-pressed={show50}
           >
-            1Y
+            <svg width="12" height="4" viewBox="0 0 12 4" aria-hidden="true">
+              <line x1="0" y1="2" x2="12" y2="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            50D
           </button>
           <button
-            className={`range-btn${range === '3y' ? ' active' : ''}`}
-            onClick={() => setRange('3y')}
+            className={`ma-pill ma-pill--200${show200 ? ' active' : ''}`}
+            onClick={() => setShow200((v) => !v)}
+            title="Toggle 200-day moving average"
+            aria-pressed={show200}
           >
-            3Y
+            <svg width="12" height="4" viewBox="0 0 12 4" aria-hidden="true">
+              <line x1="0" y1="2" x2="12" y2="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            200D
           </button>
+          <span className="chart-divider" aria-hidden="true" />
+          <button className={`range-btn${range === '1y' ? ' active' : ''}`} onClick={() => setRange('1y')}>1Y</button>
+          <button className={`range-btn${range === '3y' ? ' active' : ''}`} onClick={() => setRange('3y')}>3Y</button>
+          <button className={`range-btn${range === 'max' ? ' active' : ''}`} onClick={() => setRange('max')}>Max</button>
           <button
-            className={`range-btn${range === 'max' ? ' active' : ''}`}
-            onClick={() => setRange('max')}
-          >
-            Max
-          </button>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 6 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 16, height: 2, background: '#1E5CB3', display: 'inline-block', borderRadius: 1 }} />
-              <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: '#1E5CB3', fontWeight: 600 }}>50D</span>
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 16, height: 2, background: '#D4A017', display: 'inline-block', borderRadius: 1 }} />
-              <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: '#D4A017', fontWeight: 600 }}>200D</span>
-            </span>
-          </span>
-          <span
-            className="chart-hint"
-            style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 18, height: 18, border: '1px solid var(--border)', borderRadius: '50%',
-              fontSize: 10, fontWeight: 600, fontFamily: "'Sora', sans-serif", marginLeft: 'auto',
-              cursor: 'help', flexShrink: 0,
-            }}
-            title="Chart Navigation — Scroll to zoom, drag to pan. Blue line = 50-day MA · Amber line = 200-day MA."
-            aria-label="Chart navigation info"
+            className="chart-info-btn"
+            title="Scroll to zoom · Drag to pan · Range buttons set the starting view but you can scroll freely beyond it"
+            aria-label="Chart navigation help"
           >
             i
-          </span>
+          </button>
         </div>
       </div>
       <div className="card-body card-body--chart">
