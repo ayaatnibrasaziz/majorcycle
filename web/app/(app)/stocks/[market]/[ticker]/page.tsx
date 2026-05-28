@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { KpiStrip } from '@/components/stocks/KpiStrip';
+import { PriceChart } from '@/components/stocks/PriceChart';
 import { StockHeader } from '@/components/stocks/StockHeader';
 import { StockSubnav } from '@/components/stocks/StockSubnav';
 import { VerdictCard } from '@/components/stocks/VerdictCard';
@@ -72,11 +73,7 @@ export default async function StockDetailPage({
           title="Scorecard"
           note="Snowflake radar and technical levels strip land here."
         />
-        <SectionAnchor
-          id="sec-cycle"
-          title="Cycle"
-          note="Price chart, drawdown/profit overlay, Major Cycle stats, analyst target track, and relative performance land here."
-        />
+        <PriceChart priceBars={stock.priceBars} ticker={stored} />
         <SectionAnchor
           id="sec-fundamentals"
           title="Fundamentals"

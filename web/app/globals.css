@@ -368,6 +368,53 @@
   .verdict-band:last-child { border-bottom: none; }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Base card — used across all Detail section cards.
+   Visual parity with `.card`, `.card-header`, `.card-title`, `.card-body`
+   in /reference/original-design.html (CSS lines 95-99).
+   ───────────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 12px; border-bottom: 1px solid var(--border);
+}
+.card-title {
+  font-size: 12px; font-weight: 700; color: var(--text-primary);
+  letter-spacing: .2px; text-transform: uppercase; font-family: 'Sora', sans-serif;
+}
+.card-body { padding: 16px 18px; }
+.card-body--chart { padding-bottom: 8px; }
+.card--stack-tight { margin-bottom: 8px; }
+.card--stack-snug  { margin-bottom: 14px; }
+.card--stack-base  { margin-bottom: 18px; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Chart canvas wrappers and range button controls.
+   Visual parity with `.chart-canvas-wrap`, `.range-btn`, `.chart-controls`
+   in /reference/original-design.html (CSS lines 578-590).
+   ───────────────────────────────────────────────────────────────────────── */
+.chart-canvas-wrap { position: relative; width: 100%; overflow: hidden; }
+.chart-h-sm  { height: var(--chart-h-sm); }
+.chart-h-md  { height: var(--chart-h-md); }
+.chart-h-lg  { height: var(--chart-h-lg); }
+.chart-controls { display: flex; align-items: center; gap: 6px; }
+.range-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 11px; font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted); cursor: pointer; transition: all .15s;
+}
+.range-btn:hover  { border-color: var(--brand-mid); color: var(--brand-mid); }
+.range-btn.active { background: var(--brand-mid); border-color: var(--brand-mid); color: white; }
+.chart-hint { font-size: 10px; color: var(--text-muted); }
+
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
   *,
