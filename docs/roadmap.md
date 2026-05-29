@@ -131,24 +131,24 @@ Goal: Every section in the reference HTML's Stock Detail tab ported to React, fu
 
 Build order (each item = one PR):
 
-1. [ ] **Header strip** — ticker, company name, sector, currency, current price + delta
-2. [ ] **Verdict card** — Overall Rating + Valuation Score + Health Score + Cycle Position gauge
-3. [ ] **Price chart with 50/200 DMA** — Lightweight Charts candlesticks + line overlays
-4. [ ] **Drawdown / profit overlay** — switches between drawdown and profit visualisation
-5. [ ] **Major Cycle stats strip** — current drawdown, typical, lower bound, events count, etc.
-6. [ ] **Analyst target track** — gradient bar with current price marker + target marker
-7. [ ] **Snowflake radar scorecard** — 5-pillar financial health radar
-8. [ ] **Quarterly financials table** — revenue, EBITDA, margins by quarter
-9. [ ] **Balance sheet card** — debt, cash, ratios, net cash stat row
-10. [ ] **Valuation history** — P/E over time line chart
+1. [x] **Header strip** — ticker, company name, sector, current price + delta, upside-to-target, 52W gauge, pulse dot, 3 rating badges (overall label, valuation zone, analyst consensus). Merged PR #5.
+2. [x] **KPI strip + Verdict card** — 4-card KPI accent strip (Overall Rating, Health Score, Current Drawdown, Typical Drawdown) + hero Verdict card (score ring, thesis sentences, band tiles, footnote). Badge row in header uses cycle data. Merged PR #6.
+3. [x] **Price chart with 50/200 DMA** — Lightweight Charts candlesticks + 50/200 SMA line overlays with toggle buttons and 1Y/3Y/Max range selector. `PriceChart.tsx`.
+4. [x] **Drawdown / profit overlay** — Drawdown/Profit mode toggle, LWC area chart with avg + bound reference lines + pivot markers. `DrawdownOverlay.tsx`.
+5. [x] **Major Cycle stats strip** — 4 stat pills (Current, Typical, Lower/Upper Bound, Events) rendered inside DrawdownOverlay.
+6. [x] **Analyst target track** — Rainbow gradient bar, current price (blue) + consensus (gold) markers, Bear/Consensus/Bull stat grid. `AnalystTargetTrack.tsx`. Uses Supabase data only (independent of cycle).
+7. [x] **Snowflake radar scorecard** — Recharts RadarChart (5-axis polygon) + axis bar strip. `SnowflakeRadar.tsx`. Gated on `cycle` data.
+8. [x] **Quarterly financials table** — Revenue/GP/OpInc/FCF tab bar chart. `QuarterlyFinancials.tsx`.
+9. [x] **Balance sheet card** — stacked asset bars + debt line overlay + net cash stat row. `BalanceSheet.tsx`.
+10. [x] **Valuation history** — P/E area chart with avg + current reference lines; empty state when history < 4 pts. `ValuationHistory.tsx`.
 11. [ ] **Relative performance vs S&P 500** — area chart
-12. [ ] **Dividend history** — bar chart of annual dividends
-13. [ ] **Technical levels strip** — support, resistance, 52w high/low
+12. [x] **Dividend history** — bar chart of annual dividends; green/red coloring; "no dividend" empty state. `DividendHistory.tsx`.
+13. [x] **Technical levels strip** — 50 DMA, vs 50 DMA %, 200 DMA, vs 200 DMA %, MA Signal (Golden/Death Cross). Values computed from `priceBars` at render time. `TechnicalLevels.tsx`. Carries `id="sec-cycle"` scroll anchor (Cycle subnav pill targets this card). Always shown when `priceBars.length > 0`, independent of cycle data.
 14. [ ] **Short interest gauge** — half-circle gauge
 15. [ ] **Ownership structure** — insider/institutional/public donut + holders table
 16. [ ] **News feed** — top 10 yfinance news items
-17. [ ] **Earnings dashboard** — beat/miss history
-18. [ ] **Metrics table** — all fundamentals in a sortable, filterable table
+17. [x] **Earnings dashboard** — EPS beat/miss bar chart with estimate vs actual, summary strip (beat rate, avg surprise, trend, last EPS). `EarningsHistory.tsx`.
+18. [x] **Metrics table** — sortable 3-column table with 25 metrics across 7 categories; category pills. `MetricsTable.tsx`.
 19. [ ] **Synced crosshair** — drag cursor across charts, info panel updates
 
 **Verification per section:**

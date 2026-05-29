@@ -388,6 +388,7 @@
   letter-spacing: .2px; text-transform: uppercase; font-family: 'Sora', sans-serif;
 }
 .card-body { padding: 16px 18px; }
+.card-body--compact { padding: 12px 18px; }
 .card-body--chart { padding-bottom: 8px; }
 .card--stack-tight { margin-bottom: 8px; }
 .card--stack-snug  { margin-bottom: 14px; }
@@ -448,6 +449,207 @@
   transition: border-color .15s, color .15s; margin-left: auto;
 }
 .chart-info-btn:hover { border-color: var(--brand-mid); color: var(--brand-mid); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Drawdown / profit overlay — segmented mode toggle + stats strip.
+   Visual parity with `.overlay-toggle`, `.ovl-btn`, `.stats-row`, `.stat-pill`
+   in /reference/original-design.html (CSS lines 592-601).
+   ───────────────────────────────────────────────────────────────────────── */
+.overlay-toggle {
+  display: flex;
+  background: var(--bg-stripe);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  width: fit-content;
+}
+.ovl-btn {
+  padding: 8px 20px;
+  border: none; background: transparent;
+  font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.ovl-btn.active  { background: var(--brand-mid); color: white; font-weight: 600; }
+.ovl-btn:first-child { border-right: 1px solid var(--border); }
+
+.stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 10px; margin: 12px 0;
+}
+.stat-pill {
+  background: var(--bg-stripe); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 14px; text-align: center;
+}
+.stat-pill-label {
+  font-size: 9px; font-weight: 600; letter-spacing: .8px;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;
+}
+.stat-pill-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px; font-weight: 600; color: var(--text-primary);
+}
+.stat-pill-val.green { color: #228B22; }
+.stat-pill-val.amber { color: #D4A017; }
+.stat-pill-val.red   { color: #B22222; }
+
+@media (max-width: 640px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .ovl-btn   { padding: 7px 14px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Analyst price target track.
+   Visual parity with `.target-track-wrap`, `.target-marker`, `.target-stats`
+   in /reference/original-design.html (CSS lines 603-612).
+   ───────────────────────────────────────────────────────────────────────── */
+.target-track-wrap { padding: 8px 0 18px; overflow: visible; }
+.target-track {
+  position: relative; height: 12px; border-radius: 30px;
+  background: linear-gradient(90deg, #B22222 0%, #FF4500 25%, #D4A017 50%, #228B22 75%, #006400 100%);
+  margin: 20px 0 30px;
+}
+.target-marker {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+  z-index: 2;
+}
+.target-label {
+  position: absolute; top: 18px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+  white-space: nowrap; text-align: center;
+}
+.target-label-top {
+  position: absolute; bottom: 18px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+  white-space: nowrap; color: var(--text-muted); text-align: center;
+}
+.target-stats {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px; margin-top: 8px;
+}
+.target-stat { text-align: center; padding: 10px; }
+.target-stat-label {
+  font-size: 10px; color: var(--text-muted); font-weight: 500;
+  margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px;
+}
+.target-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; }
+.target-stat-caption {
+  font-family: 'Sora', sans-serif; font-size: 10px; font-style: italic;
+  color: var(--text-muted); margin-top: 4px; letter-spacing: .1px;
+}
+@media (max-width: 480px) {
+  .target-stats { grid-template-columns: 1fr; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Snowflake radar scorecard — 2-column layout (chart left, axis bars right).
+   Visual parity with `.radar-grid`, `.radar-axis-row`, `.radar-axis-bar-track`
+   in /reference/original-design.html (CSS lines 693-699).
+   ───────────────────────────────────────────────────────────────────────── */
+.radar-grid {
+  display: grid; grid-template-columns: 280px 1fr;
+  gap: 24px; align-items: center;
+}
+.radar-axis-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.radar-axis-row:last-child { border-bottom: none; }
+.radar-axis-label {
+  font-size: 11px; color: var(--text-secondary);
+  width: 120px; flex-shrink: 0;
+}
+.radar-axis-bar-track {
+  flex: 1; background: var(--bg-stripe); border-radius: 20px;
+  height: 6px; overflow: hidden; border: 1px solid var(--border);
+}
+.radar-axis-bar-fill { height: 100%; border-radius: 20px; transition: width .6s ease; }
+.radar-axis-score {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+  width: 28px; text-align: right; flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .radar-grid { grid-template-columns: 1fr; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Technical Levels pill grid — 5-column strip (50 DMA, vs 50, 200 DMA,
+   vs 200, MA Signal). Visual parity with `.tech-pill-grid` in
+   /reference/original-design.html (CSS line 716).
+   ───────────────────────────────────────────────────────────────────────── */
+.tech-pill-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .tech-pill-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Fundamentals block: fin-tabs, summary-strip, balance-sheet stat row,
+   metrics table, category pills. Visual parity with reference HTML.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Tab buttons (EPS / Revenue / Gross Profit etc.) */
+.fin-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.fin-tab  { padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: all .15s; }
+.fin-tab:hover  { border-color: var(--brand-mid); color: var(--brand-mid); }
+.fin-tab.active { background: var(--brand-mid); border-color: var(--brand-mid); color: white; font-weight: 600; }
+
+/* Summary strip under charts */
+.summary-strip       { display: flex; gap: 24px; padding: 10px 0 0; border-top: 1px solid var(--border); margin-top: 10px; flex-wrap: wrap; }
+.summary-strip-item  { text-align: center; }
+.summary-strip-label { font-size: 9px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; }
+.summary-strip-val   { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; }
+
+/* Balance sheet stat row */
+.bs-stat-row                  { display: flex; align-items: stretch; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border); margin-top: 14px; flex-wrap: wrap; }
+.bs-stat-row .net-cash-card   { flex: 1.2; min-width: 120px; background: var(--bg-stripe); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; text-align: center; }
+.bs-stat-row .stat-pill       { flex: 1; min-width: 90px; display: flex; flex-direction: column; justify-content: center; }
+.net-cash-label { font-size: 10px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+.net-cash-val   { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; line-height: 1; }
+.net-cash-sub   { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* Metrics table base styles */
+table              { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--bg-surface); }
+thead th           { background: var(--bg-stripe); color: var(--text-muted); font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; transition: color .15s; }
+thead th:hover     { color: var(--brand-mid); }
+thead th.sorted    { color: var(--brand-mid); }
+tbody tr           { border-bottom: 1px solid var(--border); transition: background .1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover     { background: var(--bg-hover); }
+td                 { padding: 9px 12px; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-primary); vertical-align: middle; }
+td.text-cell       { font-family: 'Sora', sans-serif; font-size: 12px; }
+th.num, td.num     { text-align: right; }
+td.num             { font-weight: 600; }
+
+.card-body--bleed  { padding: 0; }
+
+/* Metrics table column widths + active sort */
+.table--metrics                           { table-layout: fixed; }
+.table--metrics thead th:nth-child(1)     { width: 42%; }
+.table--metrics thead th:nth-child(2)     { width: 25%; }
+.table--metrics thead th:nth-child(3)     { width: 33%; }
+.table--metrics thead th.is-active        { color: var(--brand-mid); }
+.table--metrics tbody tr:nth-child(even)  { background: var(--bg-stripe); }
+.table--metrics tbody tr:nth-child(even):hover { background: var(--bg-hover); }
+.table--metrics tbody tr                  { cursor: help; }
+.table--metrics .sort-arrow               { display: inline-block; margin-left: 6px; font-size: 9px; width: 9px; color: var(--brand-mid); opacity: .85; font-family: 'JetBrains Mono', monospace; }
+
+/* Key metrics category pills */
+.mt-cat-pill        { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 4px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap; }
+.mt-cat-valuation   { background: var(--tint-brand);        color: var(--brand-deep);     border: 1px solid rgba(46,125,232,.22); }
+.mt-cat-growth      { background: var(--tint-tier-2);       color: var(--c-tier-2-ink);   border: 1px solid rgba(34,139,34,.22); }
+.mt-cat-profitability { background: var(--tint-tier-3);     color: var(--c-tier-3-ink);   border: 1px solid rgba(212,160,23,.28); }
+.mt-cat-balance     { background: rgba(74,85,104,.10);      color: #4A5568;               border: 1px solid rgba(74,85,104,.22); }
+.mt-cat-cashflow    { background: rgba(46,125,232,.08);     color: #1E5CB3;               border: 1px solid rgba(46,125,232,.18); }
+.mt-cat-income      { background: rgba(212,160,23,.08);     color: #8A6710;               border: 1px solid rgba(212,160,23,.22); }
+.mt-cat-market      { background: rgba(138,151,168,.10);    color: #4A5568;               border: 1px solid rgba(138,151,168,.22); }
 
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {

@@ -1,10 +1,20 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
+import { AnalystTargetTrack } from '@/components/stocks/AnalystTargetTrack';
+import { BalanceSheet } from '@/components/stocks/BalanceSheet';
+import { DividendHistory } from '@/components/stocks/DividendHistory';
+import { DrawdownOverlay } from '@/components/stocks/DrawdownOverlay';
+import { EarningsHistory } from '@/components/stocks/EarningsHistory';
 import { KpiStrip } from '@/components/stocks/KpiStrip';
+import { MetricsTable } from '@/components/stocks/MetricsTable';
 import { PriceChart } from '@/components/stocks/PriceChart';
+import { QuarterlyFinancials } from '@/components/stocks/QuarterlyFinancials';
+import { SnowflakeRadar } from '@/components/stocks/SnowflakeRadar';
 import { StockHeader } from '@/components/stocks/StockHeader';
+import { TechnicalLevels } from '@/components/stocks/TechnicalLevels';
 import { StockSubnav } from '@/components/stocks/StockSubnav';
+import { ValuationHistory } from '@/components/stocks/ValuationHistory';
 import { VerdictCard } from '@/components/stocks/VerdictCard';
 import { fetchCycleAnalysis } from '@/lib/cycle';
 import { fetchStockDetail } from '@/lib/stocks';
@@ -68,17 +78,55 @@ export default async function StockDetailPage({
             />
           )}
         </section>
-        <SectionAnchor
-          id="sec-scorecard"
-          title="Scorecard"
-          note="Snowflake radar and technical levels strip land here."
-        />
+        {cycle ? (
+          <SnowflakeRadar cycle={cycle} />
+        ) : (
+          <SectionAnchor
+            id="sec-scorecard"
+            title="Scorecard"
+            note="Snowflake radar scorecard lands here once cycle data loads."
+          />
+        )}
+        {stock.priceBars.length > 0 && (
+          <TechnicalLevels
+            priceBars={stock.priceBars}
+            currency={stock.fundamentals.currency}
+          />
+        )}
         <PriceChart priceBars={stock.priceBars} ticker={stored} />
-        <SectionAnchor
-          id="sec-fundamentals"
-          title="Fundamentals"
-          note="Earnings dashboard, quarterly financials, valuation history, balance sheet, dividends, and the metrics table land here."
-        />
+        {cycle && <DrawdownOverlay priceBars={stock.priceBars} cycle={cycle} />}
+        {stock.priceBars.length > 0 && (
+          <AnalystTargetTrack
+            fundamentals={stock.fundamentals}
+            currentClose={stock.priceBars[stock.priceBars.length - 1]!.close}
+            currency={stock.fundamentals.currency}
+          />
+        )}
+        <section id="sec-fundamentals" className="scroll-mt-[120px] space-y-[18px]">
+          <EarningsHistory earningsHistory={stock.earningsHistory ?? []} />
+          <QuarterlyFinancials
+            incomeStatementQuarterly={stock.incomeStatementQuarterly}
+            cashflowQuarterly={stock.cashflowQuarterly}
+          />
+          <ValuationHistory
+            peHistory={stock.peHistory ?? []}
+            currentPe={stock.fundamentals.pe}
+          />
+          <BalanceSheet
+            balanceSheetAnnual={stock.balanceSheetAnnual}
+            fundamentals={stock.fundamentals}
+          />
+          <DividendHistory
+            dividendHistory={stock.fundamentals.dividendHistory}
+            fundamentals={stock.fundamentals}
+            currentClose={
+              stock.priceBars.length > 0
+                ? stock.priceBars[stock.priceBars.length - 1]!.close
+                : null
+            }
+          />
+          <MetricsTable fundamentals={stock.fundamentals} />
+        </section>
         <SectionAnchor
           id="sec-sentiment"
           title="Sentiment"
