@@ -16,8 +16,11 @@ import type { FinancialStatement } from '@/lib/types';
 interface Props {
   incomeStatementQuarterly?: FinancialStatement;
   cashflowQuarterly?: FinancialStatement;
+  incomeStatementAnnual?: FinancialStatement;
+  cashflowAnnual?: FinancialStatement;
 }
 
+type Period = 'quarterly' | 'annual';
 type Mode = 'rev' | 'gp' | 'op' | 'fcf';
 
 const MODE_LABELS: Record<Mode, string> = {
@@ -42,6 +45,10 @@ function toQtrLabel(dateStr: string): string {
   return `Q${q}'${String(d.getFullYear()).slice(2)}`;
 }
 
+function toYearLabel(dateStr: string): string {
+  return `FY${new Date(dateStr + 'T00:00:00').getFullYear()}`;
+}
+
 function stmtVals(stmt: FinancialStatement | undefined, key: string): (number | null)[] {
   if (!stmt) return [];
   const raw = stmt[key];
@@ -49,60 +56,99 @@ function stmtVals(stmt: FinancialStatement | undefined, key: string): (number | 
   return (raw as unknown[]).map((v) => (typeof v === 'number' ? v : null));
 }
 
-export function QuarterlyFinancials({ incomeStatementQuarterly, cashflowQuarterly }: Props) {
-  const [mode, setMode] = useState<Mode>('rev');
+function buildFcf(
+  cashflow: FinancialStatement | undefined,
+  targetLen: number,
+): (number | null)[] {
+  if (!cashflow?.labels?.length) return [];
+  const raw = [...stmtVals(cashflow, 'free_cash_flow')].reverse();
+  while (raw.length < targetLen) raw.unshift(null);
+  return raw.slice(raw.length - targetLen);
+}
 
-  if (!incomeStatementQuarterly?.labels?.length) return null;
+export function QuarterlyFinancials({
+  incomeStatementQuarterly,
+  cashflowQuarterly,
+  incomeStatementAnnual,
+  cashflowAnnual,
+}: Props) {
+  const [mode, setMode]     = useState<Mode>('rev');
+  const [period, setPeriod] = useState<Period>('quarterly');
 
-  // yfinance gives newest-first — reverse to oldest→newest for the chart
-  const allLabels = [...incomeStatementQuarterly.labels].reverse();
-  const allRev    = [...stmtVals(incomeStatementQuarterly, 'total_revenue')].reverse();
-  const allGp     = [...stmtVals(incomeStatementQuarterly, 'gross_profit')].reverse();
-  const allOp     = [...stmtVals(incomeStatementQuarterly, 'operating_income')].reverse();
+  const hasQuarterly = !!incomeStatementQuarterly?.labels?.length;
+  const hasAnnual    = !!incomeStatementAnnual?.labels?.length;
 
-  // FCF lives in cashflow statement; align length to income statement
-  let allFcf: (number | null)[] = [];
-  if (cashflowQuarterly?.labels?.length) {
-    const raw = [...stmtVals(cashflowQuarterly, 'free_cash_flow')].reverse();
-    // Trim or pad to match income statement length
-    while (raw.length < allLabels.length) raw.unshift(null);
-    allFcf = raw.slice(raw.length - allLabels.length);
-  }
+  if (!hasQuarterly && !hasAnnual) return null;
 
-  const modeData: Record<Mode, (number | null)[]> = {
-    rev: allRev,
-    gp:  allGp,
-    op:  allOp,
-    fcf: allFcf,
-  };
+  // If only one period has data, lock to it regardless of state
+  const activePeriod: Period = !hasQuarterly ? 'annual' : !hasAnnual ? 'quarterly' : period;
 
-  // Last 8 quarters
-  const n      = Math.min(8, allLabels.length);
+  // --- Quarterly arrays (oldest → newest) ---
+  const qLabels = hasQuarterly ? [...incomeStatementQuarterly!.labels].reverse() : [];
+  const qRev    = hasQuarterly ? [...stmtVals(incomeStatementQuarterly, 'total_revenue')].reverse()    : [];
+  const qGp     = hasQuarterly ? [...stmtVals(incomeStatementQuarterly, 'gross_profit')].reverse()     : [];
+  const qOp     = hasQuarterly ? [...stmtVals(incomeStatementQuarterly, 'operating_income')].reverse() : [];
+  const qFcf    = buildFcf(cashflowQuarterly, qLabels.length);
+
+  // --- Annual arrays (oldest → newest) ---
+  const aLabels = hasAnnual ? [...incomeStatementAnnual!.labels].reverse() : [];
+  const aRev    = hasAnnual ? [...stmtVals(incomeStatementAnnual, 'total_revenue')].reverse()    : [];
+  const aGp     = hasAnnual ? [...stmtVals(incomeStatementAnnual, 'gross_profit')].reverse()     : [];
+  const aOp     = hasAnnual ? [...stmtVals(incomeStatementAnnual, 'operating_income')].reverse() : [];
+  const aFcf    = buildFcf(cashflowAnnual, aLabels.length);
+
+  const isAnnual  = activePeriod === 'annual';
+  const allLabels = isAnnual ? aLabels : qLabels;
+  const modeData: Record<Mode, (number | null)[]> = isAnnual
+    ? { rev: aRev, gp: aGp, op: aOp, fcf: aFcf }
+    : { rev: qRev, gp: qGp, op: qOp, fcf: qFcf };
+
+  // Quarterly: last 8 bars; Annual: show all years
+  const n      = isAnnual ? allLabels.length : Math.min(8, allLabels.length);
   const labels = allLabels.slice(-n);
   const vals   = modeData[mode].slice(-n);
 
   const chartData = labels.map((label, i) => ({
-    label: toQtrLabel(label),
-    val:   vals[i],
+    label:   isAnnual ? toYearLabel(label) : toQtrLabel(label),
+    val:     vals[i],
     isFirst: i === 0,
-    isUp:    i > 0 && vals[i] !== null && vals[i - 1] !== null && (vals[i] as number) >= (vals[i - 1] as number),
+    isUp:    i > 0 && vals[i] !== null && vals[i - 1] !== null
+             && (vals[i] as number) >= (vals[i - 1] as number),
   }));
 
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">Quarterly Financial Trends</div>
-        <div className="fin-tabs">
-          {(Object.keys(MODE_LABELS) as Mode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              className={`fin-tab${mode === m ? ' active' : ''}`}
-              onClick={() => setMode(m)}
-            >
-              {MODE_LABELS[m]}
-            </button>
-          ))}
+        <div className="card-title">
+          {isAnnual ? 'Annual' : 'Quarterly'} Financial Trends
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {hasQuarterly && hasAnnual && (
+            <div className="period-toggle">
+              {(['quarterly', 'annual'] as Period[]).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  className={`period-btn${activePeriod === p ? ' active' : ''}`}
+                  onClick={() => setPeriod(p)}
+                >
+                  {p === 'quarterly' ? 'Quarterly' : 'Annual'}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="fin-tabs">
+            {(Object.keys(MODE_LABELS) as Mode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                className={`fin-tab${mode === m ? ' active' : ''}`}
+                onClick={() => setMode(m)}
+              >
+                {MODE_LABELS[m]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
       <div className="card-body">
@@ -134,11 +180,9 @@ export function QuarterlyFinancials({ incomeStatementQuarterly, cashflowQuarterl
                 cursor={{ fill: 'rgba(46,125,232,.05)' }}
                 content={({ active, payload, label }) => {
                   if (!active || !payload?.length) return null;
-                  const row = chartData.find((d) => d.label === label);
-                  const prev = row
-                    ? chartData[chartData.indexOf(row) - 1]
-                    : null;
-                  const qoq =
+                  const row  = chartData.find((d) => d.label === label);
+                  const prev = row ? chartData[chartData.indexOf(row) - 1] : null;
+                  const pct =
                     row?.val !== null &&
                     prev?.val !== null &&
                     prev?.val !== undefined &&
@@ -179,16 +223,15 @@ export function QuarterlyFinancials({ incomeStatementQuarterly, cashflowQuarterl
                         {MODE_LABELS[mode]}:{' '}
                         {row?.val != null ? fmtB(row.val) : '—'}
                       </div>
-                      {qoq !== null && (
+                      {pct !== null && (
                         <div
                           style={{
-                            color: qoq >= 0 ? '#228B22' : '#B22222',
+                            color: pct >= 0 ? '#228B22' : '#B22222',
                             fontFamily: "'JetBrains Mono', monospace",
                             fontSize: 11,
                           }}
                         >
-                          QoQ: {qoq >= 0 ? '+' : ''}
-                          {qoq}%
+                          {isAnnual ? 'YoY' : 'QoQ'}: {pct >= 0 ? '+' : ''}{pct}%
                         </div>
                       )}
                     </div>

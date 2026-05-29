@@ -49,40 +49,33 @@ function ratioColor(val: number | null, thresholds: [number, number]): string {
 export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
   const hasChart = !!balanceSheetAnnual?.labels?.length;
 
-  // Build chart data if balance sheet data is available
   let chartData: { label: string; cash: number; other: number; debt: number | null }[] = [];
 
   if (hasChart) {
-    const stmt = balanceSheetAnnual!;
-    // yfinance newest-first — reverse for oldest→newest
-    const labels  = [...stmt.labels].reverse();
-    const assets  = [...stmtVals(stmt, 'total_assets')].reverse();
-    const cashA   = [...stmtVals(stmt, 'cash_and_cash_equivalents')].reverse();
-    const cashB   = [...stmtVals(stmt, 'cash_cash_equivalents_and_short_term_investments')].reverse();
-    const debt    = [...stmtVals(stmt, 'total_debt')].reverse();
-
+    const stmt   = balanceSheetAnnual!;
+    const labels = [...stmt.labels].reverse();
+    const assets = [...stmtVals(stmt, 'total_assets')].reverse();
+    const cashA  = [...stmtVals(stmt, 'cash_and_cash_equivalents')].reverse();
+    const cashB  = [...stmtVals(stmt, 'cash_cash_equivalents_and_short_term_investments')].reverse();
+    const debt   = [...stmtVals(stmt, 'total_debt')].reverse();
     const cashVals = cashA.map((v, i) => v ?? cashB[i] ?? null);
 
     chartData = labels.slice(0, 5).map((lbl, i) => {
       const totalAssets = assets[i] ?? 0;
       const cashVal     = cashVals[i] ?? 0;
-      const otherAssets = Math.max(0, totalAssets - cashVal);
       return {
         label: toYearLabel(lbl),
         cash:  cashVal / 1e9,
-        other: otherAssets / 1e9,
+        other: Math.max(0, totalAssets - cashVal) / 1e9,
         debt:  debt[i] !== null ? (debt[i]! / 1e9) : null,
       };
     });
   }
 
-  // Net cash from fundamentals
   const totalCash = fundamentals.totalCash;
   const totalDebt = fundamentals.totalDebt;
-  const netCash =
-    totalCash !== null && totalDebt !== null ? totalCash - totalDebt : null;
+  const netCash   = totalCash !== null && totalDebt !== null ? totalCash - totalDebt : null;
   const isNetCash = netCash !== null ? netCash >= 0 : null;
-
   const { currentRatio, debtToEquity, interestCoverage } = fundamentals;
 
   return (
@@ -97,7 +90,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
       </div>
       <div className="card-body">
         {hasChart && chartData.length > 0 && (
-          <div className="chart-canvas-wrap chart-h-md" style={{ marginBottom: 0 }}>
+          <div className="chart-canvas-wrap chart-h-lg">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart
                 data={chartData}
@@ -196,17 +189,16 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
           </div>
         )}
 
-        <div className="bs-stat-row">
-          {/* Net cash / net debt card */}
+        <div className="summary-strip">
           <div
-            className="net-cash-card"
+            className="summary-strip-item"
             title="Net Cash / Net Debt — Cash & Equivalents minus Total Debt. Net Cash = company has more cash than debt (healthy). Net Debt = owes more than it holds in cash."
           >
-            <div className="net-cash-label">
+            <div className="summary-strip-label">
               {isNetCash === null ? 'Net Position' : isNetCash ? 'Net Cash' : 'Net Debt'}
             </div>
             <div
-              className="net-cash-val"
+              className="summary-strip-val"
               style={{
                 color:
                   isNetCash === null
@@ -218,33 +210,28 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
             >
               {netCash !== null ? fmtB(Math.abs(netCash)) : '—'}
             </div>
-            <div className="net-cash-sub">
-              {isNetCash === null ? '—' : isNetCash ? 'Net Cash Position' : 'Net Debt Position'}
-            </div>
           </div>
 
-          {/* Current Ratio */}
           <div
-            className="stat-pill"
+            className="summary-strip-item"
             title="Current Ratio — Current Assets ÷ Current Liabilities. Above 2 = very safe · 1–2 = adequate · Below 1 = may struggle to cover short-term obligations."
           >
-            <div className="stat-pill-label">Current Ratio</div>
+            <div className="summary-strip-label">Current Ratio</div>
             <div
-              className="stat-pill-val"
+              className="summary-strip-val"
               style={{ color: ratioColor(currentRatio, [2, 1]) }}
             >
               {currentRatio !== null ? currentRatio.toFixed(2) : '—'}
             </div>
           </div>
 
-          {/* Debt / Equity */}
           <div
-            className="stat-pill"
+            className="summary-strip-item"
             title="Debt / Equity — Total Debt ÷ Shareholders Equity. Below 0.5 = low leverage · 0.5–1.5 = moderate · Above 1.5 = high leverage, higher risk."
           >
-            <div className="stat-pill-label">Debt / Equity</div>
+            <div className="summary-strip-label">Debt / Equity</div>
             <div
-              className="stat-pill-val"
+              className="summary-strip-val"
               style={{
                 color:
                   debtToEquity === null
@@ -260,14 +247,13 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
             </div>
           </div>
 
-          {/* Interest Coverage */}
           <div
-            className="stat-pill"
+            className="summary-strip-item"
             title="Interest Coverage — EBIT ÷ Interest Expense. Above 5x = very comfortable · 2–5x = adequate · Below 2x = financial stress risk."
           >
-            <div className="stat-pill-label">Interest Coverage</div>
+            <div className="summary-strip-label">Interest Coverage</div>
             <div
-              className="stat-pill-val"
+              className="summary-strip-val"
               style={{ color: ratioColor(interestCoverage, [5, 2]) }}
             >
               {interestCoverage !== null ? `${interestCoverage.toFixed(1)}x` : '—'}

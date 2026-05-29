@@ -601,6 +601,13 @@
 .fin-tab:hover  { border-color: var(--brand-mid); color: var(--brand-mid); }
 .fin-tab.active { background: var(--brand-mid); border-color: var(--brand-mid); color: white; font-weight: 600; }
 
+/* Period segmented toggle (Quarterly / Annual) — distinct from fin-tabs */
+.period-toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--bg-stripe); flex-shrink: 0; }
+.period-btn { padding: 4px 13px; font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: all .15s; white-space: nowrap; }
+.period-btn + .period-btn { border-left: 1px solid var(--border); }
+.period-btn.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.period-btn:hover:not(.active) { color: var(--brand-mid); }
+
 /* Summary strip under charts */
 .summary-strip       { display: flex; gap: 24px; padding: 10px 0 0; border-top: 1px solid var(--border); margin-top: 10px; flex-wrap: wrap; }
 .summary-strip-item  { text-align: center; }
@@ -630,16 +637,19 @@ td.num             { font-weight: 600; }
 
 .card-body--bleed  { padding: 0; }
 
-/* Metrics table column widths + active sort */
-.table--metrics                           { table-layout: fixed; }
-.table--metrics thead th:nth-child(1)     { width: 42%; }
-.table--metrics thead th:nth-child(2)     { width: 25%; }
-.table--metrics thead th:nth-child(3)     { width: 33%; }
-.table--metrics thead th.is-active        { color: var(--brand-mid); }
-.table--metrics tbody tr:nth-child(even)  { background: var(--bg-stripe); }
-.table--metrics tbody tr:nth-child(even):hover { background: var(--bg-hover); }
-.table--metrics tbody tr                  { cursor: help; }
-.table--metrics .sort-arrow               { display: inline-block; margin-left: 6px; font-size: 9px; width: 9px; color: var(--brand-mid); opacity: .85; font-family: 'JetBrains Mono', monospace; }
+/* Key metrics tile grid */
+.metrics-section { padding: 0 0 12px; }
+.metrics-cat-label { font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); padding: 14px 0 7px; border-top: 1px solid var(--border); }
+.metrics-section:first-child .metrics-cat-label { border-top: none; padding-top: 4px; }
+.metrics-tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.metric-tile { background: var(--bg-stripe); border-radius: 7px; padding: 10px 12px; cursor: help; transition: background .12s; }
+.metric-tile:hover { background: var(--bg-hover); }
+.metric-tile-label { font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px; line-height: 1.3; }
+.metric-tile-val { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1; }
+.metric-tile-val.green { color: #228B22; }
+.metric-tile-val.amber { color: #D4A017; }
+.metric-tile-val.red   { color: #B22222; }
+@media (max-width: 640px) { .metrics-tile-grid { grid-template-columns: repeat(2, 1fr); } }
 
 /* Key metrics category pills */
 .mt-cat-pill        { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 4px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap; }

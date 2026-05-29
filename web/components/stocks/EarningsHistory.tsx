@@ -85,7 +85,7 @@ export function EarningsHistory({ earningsHistory }: Props) {
         </div>
       </div>
       <div className="card-body">
-        <div className="chart-canvas-wrap chart-h-md">
+        <div className="chart-canvas-wrap chart-h-lg">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}

@@ -360,29 +360,57 @@ class YFinanceProvider(DataProvider):
 
     def _compute_pe_history(self, ticker_obj: Any, ticker: str) -> list[dict[str, Any]]:
         try:
-            qis = self._safe_attr(ticker_obj, "quarterly_income_stmt")
-            if qis is None or not isinstance(qis, pd.DataFrame) or qis.empty:
-                return []
-
-            eps_row = None
-            for candidate in qis.index:
-                if "diluted" in str(candidate).lower() and "eps" in str(candidate).lower():
-                    eps_row = candidate
-                    break
-            if eps_row is None:
-                for candidate in qis.index:
+            def _find_eps_row(df: pd.DataFrame) -> Any:
+                for candidate in df.index:
+                    if "diluted" in str(candidate).lower() and "eps" in str(candidate).lower():
+                        return candidate
+                for candidate in df.index:
                     if "basic" in str(candidate).lower() and "eps" in str(candidate).lower():
-                        eps_row = candidate
-                        break
-            if eps_row is None:
+                        return candidate
+                return None
+
+            # Build an EPS timeline: (timestamp, eps_value) pairs, oldest first.
+            # Annual entries (income_stmt) cover ~4 fiscal years; quarterly TTM
+            # entries add more-accurate recent data. Monthly price samples are
+            # divided against the most recently known EPS for ~60 data points.
+            eps_timeline: list[tuple[pd.Timestamp, float]] = []
+
+            ais = self._safe_attr(ticker_obj, "income_stmt")
+            if ais is not None and isinstance(ais, pd.DataFrame) and not ais.empty:
+                eps_row = _find_eps_row(ais)
+                if eps_row is not None:
+                    for col in ais.columns:
+                        val = _safe(ais.loc[eps_row, col])
+                        if val is not None and val > 0:
+                            ts = pd.Timestamp(col)
+                            if ts.tz is not None:
+                                ts = ts.tz_convert(None)
+                            eps_timeline.append((ts, val))
+
+            qis = self._safe_attr(ticker_obj, "quarterly_income_stmt")
+            if qis is not None and isinstance(qis, pd.DataFrame) and not qis.empty:
+                eps_row_q = _find_eps_row(qis)
+                if eps_row_q is not None:
+                    q_eps: dict[Any, Optional[float]] = {
+                        c: _safe(qis.loc[eps_row_q, c]) for c in qis.columns
+                    }
+                    q_dates = sorted(q_eps.keys())
+                    for i in range(3, len(q_dates)):
+                        window = q_dates[i - 3: i + 1]
+                        clean: list[float] = [v for d in window if (v := q_eps.get(d)) is not None]
+                        if len(clean) < 4:
+                            continue
+                        ttm = sum(clean)
+                        if ttm > 0:
+                            ts = pd.Timestamp(q_dates[i])
+                            if ts.tz is not None:
+                                ts = ts.tz_convert(None)
+                            eps_timeline.append((ts, ttm))
+
+            if not eps_timeline:
                 return []
 
-            eps_by_date: dict[Any, Optional[float]] = {
-                c: _safe(qis.loc[eps_row, c]) for c in qis.columns
-            }
-            dates_sorted = sorted(eps_by_date.keys())
-            if len(dates_sorted) < 4:
-                return []
+            eps_timeline.sort(key=lambda x: x[0])
 
             try:
                 price_df: Any = ticker_obj.history(period="5y", interval="1d", auto_adjust=True)
@@ -391,38 +419,29 @@ class YFinanceProvider(DataProvider):
             if price_df is None or price_df.empty:
                 return []
 
-            p_idx = price_df.index
+            p_idx = pd.DatetimeIndex(price_df.index)
             if p_idx.tz is not None:
                 p_idx = p_idx.tz_convert(None)
+            close_series = pd.Series(price_df["Close"].values, index=p_idx, dtype=float)
+            monthly = close_series.resample("ME").last().dropna()
+
+            eps_dates = [e[0] for e in eps_timeline]
+            eps_values = [e[1] for e in eps_timeline]
 
             results: list[dict[str, Any]] = []
-            for i in range(3, len(dates_sorted)):
-                ttm_dates = dates_sorted[i - 3: i + 1]
-                eps_vals = [eps_by_date[d] for d in ttm_dates if eps_by_date.get(d) is not None]
-                eps_filtered: list[float] = [v for v in eps_vals if v is not None]
-                if len(eps_filtered) < 4:
-                    continue
-                ttm_eps: float = sum(eps_filtered)
-                if ttm_eps <= 0:
-                    continue
+            for month_end, price in monthly.items():
+                applicable_eps: Optional[float] = None
+                for j in range(len(eps_dates) - 1, -1, -1):
+                    if eps_dates[j] <= month_end:
+                        applicable_eps = eps_values[j]
+                        break
 
-                end_ts = pd.Timestamp(dates_sorted[i])
-                if end_ts.tz is not None:
-                    end_ts = end_ts.tz_convert(None)
-
-                mask_arr = np.asarray(p_idx <= end_ts, dtype=bool)
-                if not mask_arr.any():
+                if applicable_eps is None or applicable_eps <= 0:
                     continue
 
-                last_pos = int(np.where(mask_arr)[0][-1])
-                close_price = float(price_df.iloc[last_pos]["Close"])
-                pe_val = round(close_price / ttm_eps, 2)
+                pe_val = round(float(price) / applicable_eps, 2)
                 if 0 < pe_val < 2000:
-                    end_date = dates_sorted[i]
-                    date_str = (
-                        str(end_date.date()) if hasattr(end_date, "date") else str(end_date)
-                    )
-                    results.append({"date": date_str, "pe": pe_val})
+                    results.append({"date": month_end.strftime("%Y-%m-%d"), "pe": pe_val})
 
             return results
         except Exception as e:
