@@ -317,19 +317,55 @@ class YFinanceProvider(DataProvider):
             logger.debug("_extract_top_holders error: %s", e)
             return []
 
+    @staticmethod
+    def _classify_transaction(text: str) -> str:
+        t = text.lower()
+        if "sale" in t:
+            return "Sale"
+        if "purchase" in t:
+            return "Purchase"
+        if "award" in t or "grant" in t:
+            return "Award"
+        if "gift" in t:
+            return "Gift"
+        return "Other"
+
     def _extract_insider_transactions(self, df: Any) -> list[dict[str, Any]]:
         if df is None or not isinstance(df, pd.DataFrame) or df.empty:
             return []
         try:
-            df_sorted = df.sort_index(ascending=False)
+            # yfinance returns a RangeIndex; the actual transaction date is in
+            # the "Start Date" column (not the index).
+            date_col = next(
+                (c for c in ["Start Date", "startDate", "Date", "date"] if c in df.columns),
+                None,
+            )
+            df_sorted = (
+                df.sort_values(date_col, ascending=False)
+                if date_col
+                else df.sort_index(ascending=False)
+            )
             txs: list[dict[str, Any]] = []
-            for idx, row in df_sorted.iterrows():
-                date_str = str(idx.date()) if hasattr(idx, "date") else str(idx)
+            for _, row in df_sorted.iterrows():
+                if date_col:
+                    date_val = row.get(date_col)
+                    if date_val is not None and not pd.isna(date_val):
+                        date_str = (
+                            str(date_val.date())
+                            if hasattr(date_val, "date")
+                            else str(date_val)[:10]
+                        )
+                    else:
+                        date_str = ""
+                else:
+                    date_str = ""
+                text = str(row.get("Text", "")).strip()
                 txs.append({
                     "date": date_str,
                     "insider": str(row.get("Insider", "")),
                     "position": str(row.get("Position", "")),
-                    "transaction": str(row.get("Transaction", "")),
+                    "type": self._classify_transaction(text),
+                    "text": text,
                     "shares": _safe_int(row.get("Shares")),
                     "value": _safe(row.get("Value")),
                 })

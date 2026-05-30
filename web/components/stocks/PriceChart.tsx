@@ -163,7 +163,7 @@ export function PriceChart({ priceBars, ticker }: Props) {
   }, [show200]);
 
   return (
-    <section id="sec-cycle" className="scroll-mt-[120px] card card--stack-snug">
+    <section className="card card--stack-snug">
       <div className="card-header">
         <div className="card-title">Price Chart — {ticker}</div>
         <div className="chart-controls">

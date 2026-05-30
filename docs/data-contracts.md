@@ -420,7 +420,8 @@ export interface InsiderTransaction {
   date: string;
   insider: string;
   position: string;
-  transaction: string;
+  type: 'Sale' | 'Purchase' | 'Award' | 'Gift' | 'Other';
+  text: string;
   shares: number | null;
   value: number | null;
 }
