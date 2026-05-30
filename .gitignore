@@ -4,6 +4,7 @@ web/out/
 web/node_modules/
 
 # Python
+*.sqlite
 analytics/__pycache__/
 analytics/**/__pycache__/
 analytics/.venv/
