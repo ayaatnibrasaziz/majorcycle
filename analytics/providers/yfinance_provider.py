@@ -117,14 +117,32 @@ class YFinanceProvider(DataProvider):
             raw: list[dict[str, Any]] = t.news or []
             items: list[NewsItem] = []
             for item in raw[:limit]:
-                title: str = str(item.get("title", ""))
-                url: str = str(item.get("link") or item.get("url", ""))
-                ts: int = int(item.get("providerPublishTime", 0))
-                published_at = pd.Timestamp(ts, unit="s").isoformat() if ts else ""
-                source: str = str(item.get("publisher", "Yahoo Finance"))
+                # yfinance ≥0.2.50 wraps everything in item['content']; older
+                # versions returned a flat dict — support both.
+                content: dict[str, Any] = item.get("content") or {}
+                title: str = str(content.get("title") or item.get("title", ""))
+                canon: dict[str, Any] = (
+                    content.get("canonicalUrl")
+                    or content.get("clickThroughUrl")
+                    or {}
+                )
+                url: str = str(
+                    canon.get("url")
+                    or item.get("link")
+                    or item.get("url", "")
+                )
+                pub_date: str = str(content.get("pubDate") or "")
+                if not pub_date:
+                    ts: int = int(item.get("providerPublishTime", 0))
+                    pub_date = pd.Timestamp(ts, unit="s").isoformat() if ts else ""
+                provider: dict[str, Any] = content.get("provider") or {}
+                source: str = str(
+                    provider.get("displayName")
+                    or item.get("publisher", "Yahoo Finance")
+                )
                 if title and url:
                     items.append(
-                        NewsItem(title=title, url=url, published_at=published_at, source=source)
+                        NewsItem(title=title, url=url, published_at=pub_date, source=source)
                     )
             return items
         except Exception as e:

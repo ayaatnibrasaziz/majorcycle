@@ -6,10 +6,14 @@ import { BalanceSheet } from '@/components/stocks/BalanceSheet';
 import { DividendHistory } from '@/components/stocks/DividendHistory';
 import { DrawdownOverlay } from '@/components/stocks/DrawdownOverlay';
 import { EarningsHistory } from '@/components/stocks/EarningsHistory';
+import { InsiderActivity } from '@/components/stocks/InsiderActivity';
 import { KpiStrip } from '@/components/stocks/KpiStrip';
 import { MetricsTable } from '@/components/stocks/MetricsTable';
+import { NewsFeed } from '@/components/stocks/NewsFeed';
+import { OwnershipStructure } from '@/components/stocks/OwnershipStructure';
 import { PriceChart } from '@/components/stocks/PriceChart';
 import { QuarterlyFinancials } from '@/components/stocks/QuarterlyFinancials';
+import { ShortInterest } from '@/components/stocks/ShortInterest';
 import { SnowflakeRadar } from '@/components/stocks/SnowflakeRadar';
 import { StockHeader } from '@/components/stocks/StockHeader';
 import { TechnicalLevels } from '@/components/stocks/TechnicalLevels';
@@ -129,11 +133,15 @@ export default async function StockDetailPage({
           />
           <MetricsTable fundamentals={stock.fundamentals} />
         </section>
-        <SectionAnchor
-          id="sec-sentiment"
-          title="Sentiment"
-          note="Smart money activity, ownership structure, short interest, and news feed land here."
-        />
+        <section id="sec-sentiment" className="scroll-mt-[120px] space-y-[18px]">
+          <OwnershipStructure
+            topHolders={stock.topHolders}
+            fundamentals={stock.fundamentals}
+          />
+          <InsiderActivity insiderTransactions={stock.insiderTransactions} />
+          <ShortInterest fundamentals={stock.fundamentals} />
+          <NewsFeed news={stock.news} />
+        </section>
       </div>
     </div>
   );
