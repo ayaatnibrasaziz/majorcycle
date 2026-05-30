@@ -484,9 +484,12 @@ class YFinanceProvider(DataProvider):
 
             results: list[dict[str, Any]] = []
             for month_end, price in monthly.items():
+                # monthly.items() keys are typed Hashable; cast to Timestamp for
+                # comparison with eps_dates (list[Timestamp]) and for strftime.
+                me = pd.Timestamp(month_end)
                 applicable_eps: Optional[float] = None
                 for j in range(len(eps_dates) - 1, -1, -1):
-                    if eps_dates[j] <= month_end:
+                    if eps_dates[j] <= me:
                         applicable_eps = eps_values[j]
                         break
 
@@ -495,7 +498,7 @@ class YFinanceProvider(DataProvider):
 
                 pe_val = round(float(price) / applicable_eps, 2)
                 if 0 < pe_val < 2000:
-                    results.append({"date": month_end.strftime("%Y-%m-%d"), "pe": pe_val})
+                    results.append({"date": me.strftime("%Y-%m-%d"), "pe": pe_val})
 
             return results
         except Exception as e:
