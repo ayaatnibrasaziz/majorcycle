@@ -137,6 +137,7 @@ export default async function StockDetailPage({
           <SmartMoneyActivity
             insiderTransactions={stock.insiderTransactions}
             analystUpgradesDowngrades={stock.analystUpgradesDowngrades}
+            priceBars={stock.priceBars}
           />
           <OwnershipStructure
             topHolders={stock.topHolders}
