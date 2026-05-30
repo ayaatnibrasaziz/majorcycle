@@ -677,6 +677,18 @@ td.num             { font-weight: 600; }
 .ownership-table tbody tr                   { cursor: default; }
 .table-section-label                        { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
 
+/* Smart Money card — 2-col grid + section headers */
+.smart-money-grid                           { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; }
+.smart-section-head                         { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.smart-section-title                        { font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-muted); }
+.smart-section-tag                          { font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; padding: 2px 8px; border-radius: 4px; background: rgba(26,58,110,.06); }
+.smart-legend                               { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.smart-legend-chip                          { display: inline-flex; align-items: center; gap: 5px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: .3px; }
+.smart-legend-chip-dot                      { width: 7px; height: 7px; border-radius: 50%; background: var(--lg, #1E5CB3); flex-shrink: 0; }
+.smart-pill.is-upgrade                      { background: var(--tint-buy-strong,rgba(34,139,34,.10)); color: #228B22; border: 1px solid rgba(34,139,34,.25); }
+.smart-pill.is-downgrade                    { background: rgba(178,34,34,.10); color: #B22222; border: 1px solid rgba(178,34,34,.22); }
+.smart-pill.is-initiate                     { background: rgba(217,119,6,.10); color: #D97706; border: 1px solid rgba(217,119,6,.30); }
+
 /* Insider activity timeline */
 .smart-timeline                             { position: relative; padding: 2px 0 2px 18px; }
 .smart-timeline::before                     { content: ''; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 2px; background: var(--border); border-radius: 1px; }
@@ -699,6 +711,7 @@ td.num             { font-weight: 600; }
 @media (max-width: 600px) {
   .ownership-grid                           { grid-template-columns: 1fr; }
   .si-grid                                  { grid-template-columns: 1fr; }
+  .smart-money-grid                         { grid-template-columns: 1fr; }
   .smart-event                              { grid-template-columns: 1fr; row-gap: 3px; }
   .smart-event-date                         { text-align: left; }
 }
