@@ -661,6 +661,48 @@ td.num             { font-weight: 600; }
 .mt-cat-income      { background: rgba(212,160,23,.08);     color: #8A6710;               border: 1px solid rgba(212,160,23,.22); }
 .mt-cat-market      { background: rgba(138,151,168,.10);    color: #4A5568;               border: 1px solid rgba(138,151,168,.22); }
 
+/* ============================================================
+   Sentiment section — Ownership, Insider Activity, Short Interest
+   ============================================================ */
+
+/* Ownership structure */
+.ownership-grid                             { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: start; }
+.ownership-stats                            { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.ownership-stat-row                         { display: flex; justify-content: space-between; font-size: 11px; }
+.ownership-table                            { table-layout: auto; }
+.ownership-table thead th:nth-child(2),
+.ownership-table thead th:nth-child(3)      { width: 96px; }
+.ownership-table thead th                   { cursor: default; }
+.ownership-table thead th:hover             { color: var(--text-muted); }
+.ownership-table tbody tr                   { cursor: default; }
+.table-section-label                        { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+
+/* Insider activity timeline */
+.smart-timeline                             { position: relative; padding: 2px 0 2px 18px; }
+.smart-timeline::before                     { content: ''; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 2px; background: var(--border); border-radius: 1px; }
+.smart-event                                { position: relative; display: grid; grid-template-columns: 1fr auto; column-gap: 10px; row-gap: 2px; padding: 6px 0; font-family: 'Sora', sans-serif; }
+.smart-event + .smart-event                 { border-top: 1px dotted var(--border); }
+.smart-event::before                        { content: ''; position: absolute; left: -18px; top: 9px; width: 11px; height: 11px; border-radius: 50%; background: var(--dot, #1E5CB3); box-shadow: 0 0 0 2.5px var(--bg-surface), 0 0 0 3.5px var(--border-faint); }
+.smart-event-head                           { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; min-width: 0; }
+.smart-event-date                           { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); text-align: right; white-space: nowrap; letter-spacing: .1px; padding-top: 1px; }
+.smart-pill                                 { display: inline-flex; align-items: center; font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; line-height: 1.3; flex-shrink: 0; }
+.smart-event-name                           { font-size: 11.5px; font-weight: 600; color: var(--text-primary); letter-spacing: -.05px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+.smart-event-meta                           { font-size: 11px; color: var(--text-secondary); line-height: 1.4; letter-spacing: .05px; }
+.smart-event-meta-mono                      { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-primary); }
+.smart-event-title                          { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+
+/* Short interest */
+.si-grid                                    { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: start; }
+.si-arc-wrap                                { text-align: center; padding: 8px 0; }
+
+/* Responsive — stack single column on narrow screens */
+@media (max-width: 600px) {
+  .ownership-grid                           { grid-template-columns: 1fr; }
+  .si-grid                                  { grid-template-columns: 1fr; }
+  .smart-event                              { grid-template-columns: 1fr; row-gap: 3px; }
+  .smart-event-date                         { text-align: left; }
+}
+
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
   *,

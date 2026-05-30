@@ -48,7 +48,7 @@ export function InsiderActivity({ insiderTransactions }: Props) {
           {txs.slice(0, 20).map((tx, i) => {
             const style = TYPE_STYLES[tx.type];
             return (
-              <div key={i} className="smart-event">
+              <div key={i} className="smart-event" style={{ '--dot': style.color } as React.CSSProperties}>
                 <div>
                   <div className="smart-event-head">
                     <span
