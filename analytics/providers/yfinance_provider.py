@@ -4,7 +4,7 @@ import re
 import time
 from datetime import timedelta
 from io import StringIO
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import numpy as np
 import pandas as pd
@@ -486,7 +486,7 @@ class YFinanceProvider(DataProvider):
             for month_end, price in monthly.items():
                 # monthly.items() keys are typed Hashable; cast to Timestamp for
                 # comparison with eps_dates (list[Timestamp]) and for strftime.
-                me = pd.Timestamp(month_end)
+                me = pd.Timestamp(cast(Any, month_end))
                 applicable_eps: Optional[float] = None
                 for j in range(len(eps_dates) - 1, -1, -1):
                     if eps_dates[j] <= me:
