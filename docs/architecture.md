@@ -59,7 +59,7 @@ flowchart TB
 
 **What:** A GitHub Actions workflow runs once per day at 23:00 UTC. It executes the Python pipeline in `analytics/cron/daily_refresh.py` in **smart mode** (the default), which:
 
-1. Reads the universe CSV (`analytics/universe/sp500.csv`, `asx200.csv`, `tsx60.csv`)
+1. Reads the universe CSV (`analytics/universe/sp500.csv`, `asx200.csv`, `tsx60.csv`, `indices.csv`). `indices.csv` holds benchmark indices (`^GSPC`, `^IXIC`, `^AXJO`, `^GSPTSE`) stored as `market='index'` **price-only** rows — used by the Relative Performance chart, excluded from stock listings. A one-off run can be scoped with `--only TICKER[,TICKER…]`.
 2. Pre-fetches the current DB state for all tickers — specifically `enriched_updated_at` and `next_earnings_date` — in a single query
 3. For each ticker, runs a staleness check (`_should_fetch_enriched`) to decide whether enriched data needs refreshing:
    - **New ticker** (not in DB) → full fetch including price history (`period="max"`) + fundamentals + all enriched data

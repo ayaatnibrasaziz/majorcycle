@@ -10,6 +10,14 @@ import {
   type Time,
 } from 'lightweight-charts';
 
+import {
+  createSyncSource,
+  emitCrosshairSync,
+  emitTimeRangeSync,
+  subscribeCrosshairSync,
+  subscribeTimeRangeSync,
+  timeToMs,
+} from '@/lib/chartSync';
 import type { PriceBar } from '@/lib/types';
 
 type Range = '1y' | '3y' | 'max';
@@ -45,6 +53,12 @@ export function PriceChart({ priceBars, ticker }: Props) {
   const chartRef     = useRef<IChartApi | null>(null);
   const sma50Ref     = useRef<ISeriesApi<'Line'> | null>(null);
   const sma200Ref    = useRef<ISeriesApi<'Line'> | null>(null);
+  const candleRef    = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const valueAtRef   = useRef<Map<string, number>>(new Map());
+  const applyingRemoteRef = useRef(false);
+  const applyingRemoteRangeRef = useRef(false);
+  const syncSourceRef = useRef<symbol | null>(null);
+  if (syncSourceRef.current === null) syncSourceRef.current = createSyncSource();
 
   const [range,   setRange]   = useState<Range>('1y');
   const [show50,  setShow50]  = useState(true);
@@ -87,16 +101,22 @@ export function PriceChart({ priceBars, ticker }: Props) {
     chartRef.current = chart;
 
     // All candlestick data — no date filtering
-    chart.addCandlestickSeries({
+    const candleSeries = chart.addCandlestickSeries({
       upColor: '#228B22', downColor: '#B22222',
       borderUpColor: '#006400', borderDownColor: '#8B0000',
       wickUpColor: '#006400', wickDownColor: '#8B0000',
       borderVisible: true, priceLineVisible: false,
-    }).setData(
+    });
+    candleSeries.setData(
       priceBars.map((b) => ({
         time: b.date as Time, open: b.open, high: b.high, low: b.low, close: b.close,
       })),
     );
+    candleRef.current = candleSeries;
+
+    // Crosshair-sync lookup: trading day → close (the target price the synced
+    // crosshair snaps its horizontal line to on this chart).
+    valueAtRef.current = new Map(priceBars.map((b) => [b.date, b.close]));
 
     const sma50Data = computeSMA(priceBars, 50);
     if (sma50Data.length > 0) {
@@ -130,10 +150,69 @@ export function PriceChart({ priceBars, ticker }: Props) {
     });
     ro.observe(el);
 
+    // ── Crosshair sync with the other date-axis chart (Drawdown overlay) ──
+    const sourceId = syncSourceRef.current!;
+    chart.subscribeCrosshairMove((param) => {
+      if (applyingRemoteRef.current) return;
+      emitCrosshairSync((param.time as Time) ?? null, sourceId);
+    });
+    const unsubSync = subscribeCrosshairSync((time, source) => {
+      if (source === sourceId) return;
+      const c = chartRef.current;
+      const s = candleRef.current;
+      if (!c || !s) return;
+      applyingRemoteRef.current = true;
+      try {
+        if (time == null) {
+          c.clearCrosshairPosition();
+        } else {
+          const v = valueAtRef.current.get(String(time));
+          if (v != null) c.setCrosshairPosition(v, time, s);
+          else c.clearCrosshairPosition();
+        }
+      } catch {
+        /* sync is best-effort; never break the chart */
+      } finally {
+        applyingRemoteRef.current = false;
+      }
+    });
+
+    // ── Visible date-range sync (the Price chart is the initial authority) ──
+    chart.timeScale().subscribeVisibleTimeRangeChange((range) => {
+      if (applyingRemoteRangeRef.current || !range) return;
+      emitTimeRangeSync({ from: range.from, to: range.to }, sourceId);
+    });
+    const unsubRange = subscribeTimeRangeSync((range, source) => {
+      if (source === sourceId) return;
+      const c = chartRef.current;
+      if (!c) return;
+      // Already roughly in sync? Skip. A tolerance (~2% of the span) absorbs the
+      // small margin differences between the two charts, so the sync settles in
+      // one step instead of drifting inward on every echo.
+      const cur = c.timeScale().getVisibleRange();
+      if (cur) {
+        const span = Math.abs(timeToMs(range.to) - timeToMs(range.from)) || 1;
+        const tol = span * 0.02;
+        if (Math.abs(timeToMs(cur.from) - timeToMs(range.from)) < tol &&
+            Math.abs(timeToMs(cur.to) - timeToMs(range.to)) < tol) return;
+      }
+      applyingRemoteRangeRef.current = true;
+      try { c.timeScale().setVisibleRange(range); } catch { /* best effort */ }
+      // Reset on the next frame so the (async) range-change event that
+      // setVisibleRange triggers is also suppressed — prevents echo drift.
+      requestAnimationFrame(() => { applyingRemoteRangeRef.current = false; });
+    });
+    // Broadcast the current (initial 1Y) range so the Drawdown overlay adopts it.
+    const r0 = chart.timeScale().getVisibleRange();
+    if (r0) emitTimeRangeSync({ from: r0.from, to: r0.to }, sourceId);
+
     return () => {
       ro.disconnect();
+      unsubSync();
+      unsubRange();
       sma50Ref.current  = null;
       sma200Ref.current = null;
+      candleRef.current = null;
       if (chartRef.current) {
         try { chartRef.current.remove(); } catch { /* ignore */ }
         chartRef.current = null;

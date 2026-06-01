@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Bar,
   BarChart,
@@ -40,6 +41,16 @@ const TOOLTIP_DARK = {
 
 export function EarningsHistory({ earningsHistory }: Props) {
   const items = earningsHistory.slice(-8);
+
+  // Clickable legend — toggles each series (est / act) on and off.
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const toggleSeries = (key: string) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const data: ChartRow[] = items.map((item) => {
     const est = typeof item['epsestimate'] === 'number' ? (item['epsestimate'] as number) : null;
@@ -86,7 +97,7 @@ export function EarningsHistory({ earningsHistory }: Props) {
       </div>
       <div className="card-body">
         <div className="chart-canvas-wrap chart-h-lg">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 300 }}>
             <BarChart
               data={data}
               barGap={2}
@@ -157,8 +168,25 @@ export function EarningsHistory({ earningsHistory }: Props) {
                 }}
               />
               <Legend
-                wrapperStyle={{ fontSize: 10, fontFamily: 'Sora', paddingTop: 4 }}
+                wrapperStyle={{ fontSize: 10, fontFamily: 'Sora', paddingTop: 4, cursor: 'pointer' }}
                 iconSize={10}
+                onClick={(data) => {
+                  const key = (data as { dataKey?: unknown }).dataKey;
+                  if (typeof key === 'string') toggleSeries(key);
+                }}
+                formatter={(value, entry) => {
+                  const key = (entry as { dataKey?: unknown }).dataKey;
+                  const off = typeof key === 'string' && hidden.has(key);
+                  // Only restyle hidden series; visible labels keep recharts'
+                  // default series-coloured text.
+                  return off ? (
+                    <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                      {value}
+                    </span>
+                  ) : (
+                    <span>{value}</span>
+                  );
+                }}
               />
               <Bar
                 dataKey="est"
@@ -167,8 +195,9 @@ export function EarningsHistory({ earningsHistory }: Props) {
                 stroke="rgba(139,157,168,.50)"
                 strokeWidth={1}
                 radius={[2, 2, 0, 0]}
+                hide={hidden.has('est')}
               />
-              <Bar dataKey="act" name="Actual" radius={[2, 2, 0, 0]}>
+              <Bar dataKey="act" name="Actual" radius={[2, 2, 0, 0]} hide={hidden.has('act')}>
                 {data.map((row, idx) => (
                   <Cell
                     key={idx}

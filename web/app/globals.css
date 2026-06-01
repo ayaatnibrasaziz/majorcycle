@@ -394,15 +394,69 @@
 .card--stack-snug  { margin-bottom: 14px; }
 .card--stack-base  { margin-bottom: 18px; }
 
+/* Company Overview body copy — visual parity with `.overview-text`
+   in /reference/original-design.html (CSS line 560). */
+.overview-text { font-size: 13px; line-height: 1.75; color: var(--text-secondary); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Why Attractive / Key Risks insight grid — Thesis section.
+   Visual parity with `.insight-*` + `.card-header--accent-*`
+   in /reference/original-design.html (CSS lines 562-576, 744-747).
+   The reference's --c-buy / --c-hold / --c-watch tokens are inlined here.
+   ───────────────────────────────────────────────────────────────────────── */
+.insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+.insight-item {
+  position: relative; display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.insight-item:last-child { border-bottom: none; }
+.insight-icon {
+  width: 16px; height: 16px; margin-top: 1px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.insight-icon svg { width: 16px; height: 16px; display: block; }
+.insight-text { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+.insight-strength {
+  display: inline-flex; align-items: center; gap: 1px; margin-left: 8px;
+  letter-spacing: .5px; vertical-align: 1px; font-size: 9px; font-weight: 600;
+  cursor: help; user-select: none;
+}
+.insight-strength.is-attr { color: #228B22; }
+.insight-strength.is-risk { color: #B58800; }
+.insight-strength-label {
+  font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 700;
+  letter-spacing: 1.2px; text-transform: uppercase; margin-right: 4px; opacity: .75;
+}
+.insight-invalidation {
+  display: flex; align-items: flex-start; gap: 6px; margin-top: 6px;
+  padding: 7px 10px; background: rgba(180,140,40,.06);
+  border-left: 2px solid #D4A017; border-radius: 0 4px 4px 0;
+  font-family: 'Sora', sans-serif; font-size: 11px; font-style: italic;
+  color: #7A5A10; line-height: 1.5;
+}
+.insight-invalidation-icon { flex-shrink: 0; color: #9A7010; margin-top: 2px; }
+.insight-invalidation-icon svg { width: 11px; height: 11px; display: block; }
+.insight-invalidation strong { font-style: normal; font-weight: 700; color: #5A4408; }
+
+.card-header--accent-buy  { border-left: 3px solid #228B22; }
+.card-header--accent-buy .card-title  { color: #228B22; }
+.card-header--accent-hold { border-left: 3px solid #D4A017; }
+.card-header--accent-hold .card-title { color: #D4A017; }
+
+@media (max-width: 640px) {
+  .insight-grid { grid-template-columns: 1fr; }
+}
+
 /* ─────────────────────────────────────────────────────────────────────────
    Chart canvas wrappers and range button controls.
    Visual parity with `.chart-canvas-wrap`, `.range-btn`, `.chart-controls`
    in /reference/original-design.html (CSS lines 578-590).
    ───────────────────────────────────────────────────────────────────────── */
 .chart-canvas-wrap { position: relative; width: 100%; overflow: hidden; }
-.chart-h-sm  { height: var(--chart-h-sm); }
-.chart-h-md  { height: var(--chart-h-md); }
-.chart-h-lg  { height: var(--chart-h-lg); }
+.chart-h-sm    { height: var(--chart-h-sm); }
+.chart-h-md    { height: var(--chart-h-md); }
+.chart-h-radar { height: var(--chart-h-radar); }
+.chart-h-lg    { height: var(--chart-h-lg); }
 .chart-controls { display: flex; align-items: center; gap: 6px; }
 .range-btn {
   padding: 4px 10px;
@@ -685,14 +739,17 @@ td.num             { font-weight: 600; }
 .smart-legend                               { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .smart-legend-chip                          { display: inline-flex; align-items: center; gap: 5px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: .3px; }
 .smart-legend-chip-dot                      { width: 7px; height: 7px; border-radius: 50%; background: var(--lg, #1E5CB3); flex-shrink: 0; }
-.smart-pill.is-upgrade                      { background: var(--tint-buy-strong,rgba(34,139,34,.10)); color: #228B22; border: 1px solid rgba(34,139,34,.25); }
-.smart-pill.is-downgrade                    { background: rgba(178,34,34,.10); color: #B22222; border: 1px solid rgba(178,34,34,.22); }
-.smart-pill.is-initiate                     { background: rgba(217,119,6,.10); color: #D97706; border: 1px solid rgba(217,119,6,.30); }
+.smart-pill.is-buy        { background: rgba(34,139,34,.12); color: #0D5C0D; border: 1px solid rgba(34,139,34,.25); }
+.smart-pill.is-sell       { background: rgba(178,34,34,.10); color: #8B1414; border: 1px solid rgba(178,34,34,.22); }
+.smart-pill.is-upgrade    { background: rgba(34,139,34,.12); color: #0D5C0D; border: 1px solid rgba(34,139,34,.25); }
+.smart-pill.is-downgrade  { background: rgba(178,34,34,.10); color: #8B1414; border: 1px solid rgba(178,34,34,.22); }
+.smart-pill.is-reiterate  { background: var(--tint-brand); color: var(--brand-deep); border: 1px solid rgba(46,125,232,.22); }
+.smart-pill.is-initiate   { background: rgba(217,119,6,.10); color: #D97706; border: 1px solid rgba(217,119,6,.30); }
 
 /* Insider activity timeline */
 .smart-timeline                             { position: relative; padding: 2px 0 2px 18px; }
 .smart-timeline::before                     { content: ''; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 2px; background: var(--border); border-radius: 1px; }
-.smart-event                                { position: relative; display: grid; grid-template-columns: 1fr auto; column-gap: 10px; row-gap: 2px; padding: 6px 0; font-family: 'Sora', sans-serif; }
+.smart-event                                { position: relative; display: grid; grid-template-columns: 1fr auto; column-gap: 10px; row-gap: 2px; padding: 8px 0; min-height: 52px; align-content: center; font-family: 'Sora', sans-serif; }
 .smart-event + .smart-event                 { border-top: 1px dotted var(--border); }
 .smart-event::before                        { content: ''; position: absolute; left: -18px; top: 9px; width: 11px; height: 11px; border-radius: 50%; background: var(--dot, #1E5CB3); box-shadow: 0 0 0 2.5px var(--bg-surface), 0 0 0 3.5px var(--border-faint); }
 .smart-event-head                           { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; min-width: 0; }

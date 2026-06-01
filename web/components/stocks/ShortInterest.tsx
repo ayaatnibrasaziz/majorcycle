@@ -6,18 +6,18 @@ interface Props {
   fundamentals: FundamentalsSnapshot;
 }
 
-const GAUGE_MAX = 20; // 20%+ fills the gauge to 100%
+const GAUGE_MAX = 20;
 
 function gaugeColor(pct: number): string {
-  if (pct < 5)  return '#228B22';
-  if (pct < 15) return '#D97706';
-  return '#B22222';
+  if (pct < 5)  return 'var(--c-tier-2)';
+  if (pct < 15) return 'var(--c-tier-4)';
+  return 'var(--c-tier-5)';
 }
 
-function signal(pct: number): { label: string; color: string } {
-  if (pct < 5)  return { label: 'Low',      color: '#228B22' };
-  if (pct < 15) return { label: 'Moderate', color: '#D97706' };
-  return           { label: 'High',     color: '#B22222' };
+function signalInfo(pct: number): { label: string; color: string } {
+  if (pct < 5)  return { label: 'Bullish', color: 'var(--c-tier-2)' };
+  if (pct < 15) return { label: 'Neutral', color: 'var(--c-tier-4)' };
+  return           { label: 'Bearish', color: 'var(--c-tier-5)' };
 }
 
 function ArcGauge({ pct }: { pct: number }) {
@@ -27,10 +27,8 @@ function ArcGauge({ pct }: { pct: number }) {
   const f  = Math.min(pct / GAUGE_MAX, 0.999);
   const color = gaugeColor(pct);
 
-  // Background: full half-circle left → right
   const bgD = `M ${cx - R} ${cy} A ${R} ${R} 0 0 1 ${cx + R} ${cy}`;
 
-  // Value arc: sweep from left to f-fraction across the half-circle
   const angleRad = Math.PI * (1 - f);
   const x = cx + R * Math.cos(angleRad);
   const y = cy - R * Math.sin(angleRad);
@@ -39,14 +37,14 @@ function ArcGauge({ pct }: { pct: number }) {
 
   return (
     <svg viewBox="0 0 200 100" width="180" height="100" aria-label={`Short interest gauge: ${pct.toFixed(1)}%`}>
-      <path d={bgD} fill="none" stroke="#2E3347" strokeWidth={16} strokeLinecap="round" />
+      <path d={bgD} fill="none" stroke="var(--border-strong)" strokeWidth={16} strokeLinecap="round" />
       {f > 0.01 && (
         <path d={valD} fill="none" stroke={color} strokeWidth={16} strokeLinecap="round" />
       )}
       <text
         x={cx} y={cy - 10}
         textAnchor="middle"
-        fill="#E8EAF0"
+        fill="var(--text-primary)"
         fontSize={22}
         fontWeight={700}
         fontFamily="'JetBrains Mono', monospace"
@@ -56,7 +54,7 @@ function ArcGauge({ pct }: { pct: number }) {
       <text
         x={cx} y={cy + 6}
         textAnchor="middle"
-        fill="#8A97A8"
+        fill="var(--text-muted)"
         fontSize={10}
         fontFamily="Sora, sans-serif"
       >
@@ -73,7 +71,22 @@ export function ShortInterest({ fundamentals }: Props) {
   if (shortPct == null && shortRatio == null) return null;
 
   const pct = shortPct ?? 0;
-  const sig = signal(pct);
+  const sig = signalInfo(pct);
+
+  const statRows = [
+    {
+      label: 'Days to Cover',
+      value: shortRatio != null ? shortRatio.toFixed(1) : '—',
+      tip: 'Days to Cover (Short Ratio)\nShort Interest ÷ Average Daily Volume. This tells you how many trading days it would take all short sellers to buy back their shares. Below 3 days = Low risk · 3–7 days = Moderate · Above 7 days = High — a sudden price rise could trigger a \'short squeeze\' as shorts are forced to cover.',
+      color: undefined as string | undefined,
+    },
+    {
+      label: 'Signal',
+      value: sig.label,
+      tip: 'Short Interest Signal\nDerived from Short % of Float and Days to Cover. Bullish = below 5% float shorted, low bearish pressure. Neutral = 5–15%, some caution warranted. Bearish = above 15%, significant short conviction — but elevated short interest can also fuel a short squeeze rally if positive news arrives.',
+      color: sig.color,
+    },
+  ];
 
   return (
     <div className="card card--stack-base">
@@ -82,37 +95,30 @@ export function ShortInterest({ fundamentals }: Props) {
       </div>
       <div className="card-body">
         <div className="si-grid">
-          <div className="si-arc-wrap">
-            <ArcGauge pct={pct} />
+          <div>
+            <div className="si-arc-wrap">
+              <ArcGauge pct={pct} />
+            </div>
+            <div className="ownership-stats">
+              {statRows.map((row) => (
+                <div key={row.label} className="ownership-stat-row" title={row.tip}>
+                  <span style={{ color: 'var(--text-muted)' }}>{row.label}</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, color: row.color ?? 'var(--text-primary)' }}>
+                    {row.value}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
           <div>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
               What does short interest mean?
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
               Short interest measures what percentage of a company&apos;s available shares are currently
-              sold short — investors betting the price will fall. High short interest can signal
-              bearish conviction, but can also create a short squeeze if the stock rises.
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <div
-                className="stat-pill has-tip"
-                style={{ flex: 1 }}
-                data-tip="Days to Cover (Short Ratio)|Short Interest ÷ Average Daily Volume. How many trading days it would take all short sellers to buy back their shares. Below 3 = Low · 3–7 = Moderate · Above 7 = High — a sudden price rise could trigger a short squeeze."
-              >
-                <div className="stat-pill-label">Days to Cover</div>
-                <div className="stat-pill-val">
-                  {shortRatio != null ? shortRatio.toFixed(1) : '—'}
-                </div>
-              </div>
-              <div
-                className="stat-pill has-tip"
-                style={{ flex: 1 }}
-                data-tip="Short Interest Signal|Derived from Short % of Float. Low = below 5%, low bearish pressure. Moderate = 5–15%, some caution warranted. High = above 15%, significant short conviction — but elevated short interest can also fuel a short squeeze rally."
-              >
-                <div className="stat-pill-label">Signal</div>
-                <div className="stat-pill-val" style={{ color: sig.color }}>{sig.label}</div>
-              </div>
+              being sold short — i.e. investors betting the price will fall. High short interest can
+              signal bearish conviction from sophisticated traders, but can also create a short squeeze
+              if the stock rises.
             </div>
           </div>
         </div>

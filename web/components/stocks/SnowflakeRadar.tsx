@@ -16,6 +16,37 @@ interface Props {
   cycle: CycleAnalysis;
 }
 
+/**
+ * Custom angle-axis tick. Recharts (unlike Chart.js) doesn't reserve space for
+ * radar labels, so long side labels ("Balance Sheet", "Shareholder") overflow
+ * the narrow 280px column. We anchor each label by its side — right labels grow
+ * inward (end), left labels grow inward (start), top/bottom stay centred — so
+ * they always fit within the container.
+ */
+function AngleAxisTick(props: {
+  x?: number;
+  y?: number;
+  cx?: number;
+  payload?: { value?: string };
+}) {
+  const { x = 0, y = 0, cx = 0, payload } = props;
+  const anchor = x > cx + 6 ? 'end' : x < cx - 6 ? 'start' : 'middle';
+  return (
+    <text
+      x={x}
+      y={y}
+      textAnchor={anchor}
+      dominantBaseline="central"
+      fill="#4A5568"
+      fontSize={10.5}
+      fontFamily="Sora"
+      fontWeight={600}
+    >
+      {payload?.value}
+    </text>
+  );
+}
+
 const AXES = [
   {
     key:   'profitability' as const,
@@ -71,13 +102,10 @@ export function SnowflakeRadar({ cycle }: Props) {
         <div className="radar-grid">
           {/* Left: radar chart */}
           <div className="chart-canvas-wrap chart-h-radar">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={data} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 260 }}>
+              <RadarChart data={data} outerRadius="72%" margin={{ top: 14, right: 18, bottom: 14, left: 18 }}>
                 <PolarGrid gridType="polygon" stroke="#E2E8F0" />
-                <PolarAngleAxis
-                  dataKey="subject"
-                  tick={{ fill: '#4A5568', fontSize: 11, fontFamily: 'Sora', fontWeight: 600 }}
-                />
+                <PolarAngleAxis dataKey="subject" tick={<AngleAxisTick />} />
                 <PolarRadiusAxis
                   angle={90}
                   domain={[0, 100]}

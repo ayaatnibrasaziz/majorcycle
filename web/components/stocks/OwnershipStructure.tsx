@@ -16,13 +16,11 @@ function fmt(v: number | null | undefined, dec = 2): string {
 
 function fmtShares(v: number | null | undefined): string {
   if (v == null) return '—';
-  if (v >= 1e9) return `${(v / 1e9).toFixed(2)}B`;
-  if (v >= 1e6) return `${(v / 1e6).toFixed(1)}M`;
-  if (v >= 1e3) return `${(v / 1e3).toFixed(0)}K`;
-  return String(v);
+  const m = v / 1e6;
+  return `${m.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
 }
 
-const DONUT_COLORS = ['#2E7DE8', '#1E5CB3', '#2E3347'];
+const DONUT_COLORS = ['#1E5CB3', '#228B22', '#CBD5E1'];
 
 export function OwnershipStructure({ topHolders, fundamentals }: Props) {
   const inst    = fundamentals.institutionOwnershipPct ?? null;
@@ -46,17 +44,17 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
     {
       label: 'Institutions',
       value: inst != null ? `${fmt(inst)}%` : '—',
-      tip: 'Institutional Ownership %|The percentage of shares held by large professional investors: mutual funds, pension funds, ETFs, and hedge funds. High institutional ownership (60%+) signals that professional money trusts this company.',
+      tip: 'Institutional Ownership %\nThe percentage of shares held by large professional investors: mutual funds, pension funds, ETFs, hedge funds, and insurance companies. High institutional ownership (60%+) signals that professional money trusts this company. Very low institutional ownership may indicate higher risk or limited analyst coverage.',
     },
     {
       label: 'Insiders',
       value: insider != null ? `${fmt(insider)}%` : '—',
-      tip: "Insider Ownership %|The percentage of shares held by company executives, directors, and major shareholders. High insider ownership (10%+) can be bullish — it means management has significant 'skin in the game'.",
+      tip: "Insider Ownership %\nThe percentage of shares held by company executives, directors, and major shareholders. High insider ownership (10%+) can be bullish — it means management has significant 'skin in the game' and is aligned with shareholders. Very high insider ownership may also limit liquidity.",
     },
     {
       label: 'Public Float',
       value: float != null ? `${fmt(float)}%` : '—',
-      tip: 'Public Float %|The percentage of shares available for ordinary investors to buy and sell on the open market. A larger float means more liquidity and less price volatility.',
+      tip: 'Public Float %\nThe percentage of shares available for ordinary investors to buy and sell on the open market (total shares minus institutional and insider holdings). A larger float means more liquidity and easier to trade without moving the price. A very small float can lead to higher volatility.',
     },
   ];
 
@@ -70,7 +68,7 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
           {/* Left — donut + stat rows */}
           {hasDonut && (
             <div>
-              <div className="chart-canvas-wrap chart-h-sm" style={{ display: 'flex', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <PieChart width={160} height={160}>
                   <Pie
                     data={donutData}
@@ -99,9 +97,18 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
                   />
                 </PieChart>
               </div>
+              {/* Colour legend */}
+              <div style={{ display: 'flex', justifyContent: 'center', columnGap: 14, rowGap: 4, marginTop: 10, marginBottom: 0, flexWrap: 'wrap' }}>
+                {donutData.map((entry, i) => (
+                  <div key={entry.name} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: DONUT_COLORS[i], display: 'inline-block', flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'Sora' }}>{entry.name}</span>
+                  </div>
+                ))}
+              </div>
               <div className="ownership-stats">
                 {statRows.map((row) => (
-                  <div key={row.label} className="has-tip ownership-stat-row" data-tip={row.tip}>
+                  <div key={row.label} className="ownership-stat-row" title={row.tip}>
                     <span style={{ color: 'var(--text-muted)' }}>{row.label}</span>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{row.value}</span>
                   </div>
@@ -120,7 +127,7 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
                     <tr>
                       <th>Holder</th>
                       <th className="num">% Out</th>
-                      <th className="num">Shares</th>
+                      <th className="num">Shares (M)</th>
                     </tr>
                   </thead>
                   <tbody>

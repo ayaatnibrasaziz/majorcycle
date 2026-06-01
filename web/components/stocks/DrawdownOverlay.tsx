@@ -7,9 +7,18 @@ import {
   createChart,
   LineStyle,
   type IChartApi,
+  type ISeriesApi,
   type Time,
 } from 'lightweight-charts';
 
+import {
+  createSyncSource,
+  emitCrosshairSync,
+  emitTimeRangeSync,
+  subscribeCrosshairSync,
+  subscribeTimeRangeSync,
+  timeToMs,
+} from '@/lib/chartSync';
 import type { CycleAnalysis, PriceBar } from '@/lib/types';
 
 type Mode = 'drawdown' | 'profit';
@@ -94,6 +103,12 @@ interface Props {
 export function DrawdownOverlay({ priceBars, cycle }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef     = useRef<IChartApi | null>(null);
+  const mainSeriesRef = useRef<ISeriesApi<'Area'> | null>(null);
+  const valueAtRef    = useRef<Map<string, number>>(new Map());
+  const applyingRemoteRef = useRef(false);
+  const applyingRemoteRangeRef = useRef(false);
+  const syncSourceRef = useRef<symbol | null>(null);
+  if (syncSourceRef.current === null) syncSourceRef.current = createSyncSource();
   const [mode, setMode] = useState<Mode>('drawdown');
 
   const ddSeries = useMemo(() => computeDrawdown(priceBars), [priceBars]);
@@ -152,6 +167,9 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       crosshairMarkerVisible: true,
     });
     mainSeries.setData(series);
+    mainSeriesRef.current = mainSeries;
+    // Crosshair-sync lookup: trading day → drawdown/profit value.
+    valueAtRef.current = new Map(series.map((p) => [String(p.time), p.value]));
 
     if (typLine !== null) {
       chart.addLineSeries({
@@ -194,8 +212,63 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
     });
     ro.observe(el);
 
+    // ── Crosshair sync with the other date-axis chart (Price chart) ──
+    const sourceId = syncSourceRef.current!;
+    chart.subscribeCrosshairMove((param) => {
+      if (applyingRemoteRef.current) return;
+      emitCrosshairSync((param.time as Time) ?? null, sourceId);
+    });
+    const unsubSync = subscribeCrosshairSync((time, source) => {
+      if (source === sourceId) return;
+      const c = chartRef.current;
+      const s = mainSeriesRef.current;
+      if (!c || !s) return;
+      applyingRemoteRef.current = true;
+      try {
+        if (time == null) {
+          c.clearCrosshairPosition();
+        } else {
+          const v = valueAtRef.current.get(String(time));
+          if (v != null) c.setCrosshairPosition(v, time, s);
+          else c.clearCrosshairPosition();
+        }
+      } catch {
+        /* sync is best-effort; never break the chart */
+      } finally {
+        applyingRemoteRef.current = false;
+      }
+    });
+
+    // ── Visible date-range sync — adopt the Price chart's range ──
+    chart.timeScale().subscribeVisibleTimeRangeChange((range) => {
+      if (applyingRemoteRangeRef.current || !range) return;
+      emitTimeRangeSync({ from: range.from, to: range.to }, sourceId);
+    });
+    const unsubRange = subscribeTimeRangeSync((range, source) => {
+      if (source === sourceId) return;
+      const c = chartRef.current;
+      if (!c) return;
+      // Skip if already roughly in sync (~2% tolerance) — absorbs the charts'
+      // small margin differences so the sync settles in one step.
+      const cur = c.timeScale().getVisibleRange();
+      if (cur) {
+        const span = Math.abs(timeToMs(range.to) - timeToMs(range.from)) || 1;
+        const tol = span * 0.02;
+        if (Math.abs(timeToMs(cur.from) - timeToMs(range.from)) < tol &&
+            Math.abs(timeToMs(cur.to) - timeToMs(range.to)) < tol) return;
+      }
+      applyingRemoteRangeRef.current = true;
+      try { c.timeScale().setVisibleRange(range); } catch { /* best effort */ }
+      // Reset on the next frame so the (async) range-change event that
+      // setVisibleRange triggers is also suppressed — prevents echo drift.
+      requestAnimationFrame(() => { applyingRemoteRangeRef.current = false; });
+    });
+
     return () => {
       ro.disconnect();
+      unsubSync();
+      unsubRange();
+      mainSeriesRef.current = null;
       if (chartRef.current) {
         try { chartRef.current.remove(); } catch { /* ignore */ }
         chartRef.current = null;

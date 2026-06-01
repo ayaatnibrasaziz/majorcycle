@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Bar,
   ComposedChart,
@@ -49,6 +50,16 @@ function ratioColor(val: number | null, thresholds: [number, number]): string {
 export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
   const hasChart = !!balanceSheetAnnual?.labels?.length;
 
+  // Clickable legend — toggles each series (cash / other / debt) on and off.
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const toggleSeries = (key: string) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
   let chartData: { label: string; cash: number; other: number; debt: number | null }[] = [];
 
   if (hasChart) {
@@ -91,7 +102,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
       <div className="card-body">
         {hasChart && chartData.length > 0 && (
           <div className="chart-canvas-wrap chart-h-lg">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 300 }}>
               <ComposedChart
                 data={chartData}
                 margin={{ top: 6, right: 12, left: 0, bottom: 0 }}
@@ -154,8 +165,25 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                   }}
                 />
                 <Legend
-                  wrapperStyle={{ fontSize: 10, fontFamily: 'Sora', paddingTop: 4 }}
+                  wrapperStyle={{ fontSize: 10, fontFamily: 'Sora', paddingTop: 4, cursor: 'pointer' }}
                   iconSize={10}
+                  onClick={(data) => {
+                    const key = (data as { dataKey?: unknown }).dataKey;
+                    if (typeof key === 'string') toggleSeries(key);
+                  }}
+                  formatter={(value, entry) => {
+                    const key = (entry as { dataKey?: unknown }).dataKey;
+                    const off = typeof key === 'string' && hidden.has(key);
+                    // Only restyle hidden series; visible labels keep recharts'
+                    // default series-coloured text.
+                    return off ? (
+                      <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                        {value}
+                      </span>
+                    ) : (
+                      <span>{value}</span>
+                    );
+                  }}
                 />
                 <Bar
                   dataKey="cash"
@@ -165,6 +193,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                   stroke="#006400"
                   strokeWidth={1.5}
                   radius={[0, 0, 0, 0]}
+                  hide={hidden.has('cash')}
                 />
                 <Bar
                   dataKey="other"
@@ -174,6 +203,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                   stroke="#1A3A6E"
                   strokeWidth={1}
                   radius={[3, 3, 0, 0]}
+                  hide={hidden.has('other')}
                 />
                 <Line
                   dataKey="debt"
@@ -183,6 +213,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                   strokeWidth={2.5}
                   dot={{ r: 5, fill: '#B22222', stroke: 'white', strokeWidth: 2 }}
                   activeDot={{ r: 7 }}
+                  hide={hidden.has('debt')}
                 />
               </ComposedChart>
             </ResponsiveContainer>

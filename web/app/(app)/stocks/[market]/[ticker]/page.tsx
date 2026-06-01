@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { AnalystTargetTrack } from '@/components/stocks/AnalystTargetTrack';
 import { BalanceSheet } from '@/components/stocks/BalanceSheet';
+import { CompanyOverview } from '@/components/stocks/CompanyOverview';
 import { DividendHistory } from '@/components/stocks/DividendHistory';
 import { DrawdownOverlay } from '@/components/stocks/DrawdownOverlay';
 import { EarningsHistory } from '@/components/stocks/EarningsHistory';
@@ -12,7 +13,9 @@ import { NewsFeed } from '@/components/stocks/NewsFeed';
 import { OwnershipStructure } from '@/components/stocks/OwnershipStructure';
 import { PriceChart } from '@/components/stocks/PriceChart';
 import { QuarterlyFinancials } from '@/components/stocks/QuarterlyFinancials';
+import { RelativePerformance } from '@/components/stocks/RelativePerformance';
 import { ShortInterest } from '@/components/stocks/ShortInterest';
+import { ThesisInsights } from '@/components/stocks/ThesisInsights';
 import { SmartMoneyActivity } from '@/components/stocks/SmartMoneyActivity';
 import { SnowflakeRadar } from '@/components/stocks/SnowflakeRadar';
 import { StockHeader } from '@/components/stocks/StockHeader';
@@ -20,6 +23,7 @@ import { TechnicalLevels } from '@/components/stocks/TechnicalLevels';
 import { StockSubnav } from '@/components/stocks/StockSubnav';
 import { ValuationHistory } from '@/components/stocks/ValuationHistory';
 import { VerdictCard } from '@/components/stocks/VerdictCard';
+import { fetchBenchmarks } from '@/lib/benchmarks.server';
 import { fetchCycleAnalysis } from '@/lib/cycle';
 import { fetchStockDetail } from '@/lib/stocks';
 import { urlPartsToTicker } from '@/lib/ticker';
@@ -66,6 +70,16 @@ export default async function StockDetailPage({
   ]);
   if (!stock) notFound();
 
+  // Benchmark index series for the Relative Performance chart. Capped to the
+  // later of the stock's first bar and ~20 years ago, so we never pull decades
+  // of unneeded index history (the chart's Max range tops out around 20Y).
+  const twentyYearsAgo = new Date();
+  twentyYearsAgo.setFullYear(twentyYearsAgo.getFullYear() - 20);
+  const benchFloor = twentyYearsAgo.toISOString().slice(0, 10);
+  const firstBar = stock.priceBars[0]?.date;
+  const benchSince = firstBar ? (firstBar > benchFloor ? firstBar : benchFloor) : undefined;
+  const benchmarks = benchSince ? await fetchBenchmarks(benchSince) : {};
+
   return (
     <div className="-mt-2">
       <StockSubnav />
@@ -76,6 +90,14 @@ export default async function StockDetailPage({
           {cycle && <KpiStrip cycle={cycle} />}
           {cycle && (
             <VerdictCard
+              cycle={cycle}
+              fundamentals={stock.fundamentals}
+              currency={stock.fundamentals.currency}
+            />
+          )}
+          <CompanyOverview overview={stock.companyOverview} />
+          {cycle && (
+            <ThesisInsights
               cycle={cycle}
               fundamentals={stock.fundamentals}
               currency={stock.fundamentals.currency}
@@ -104,6 +126,14 @@ export default async function StockDetailPage({
             fundamentals={stock.fundamentals}
             currentClose={stock.priceBars[stock.priceBars.length - 1]!.close}
             currency={stock.fundamentals.currency}
+          />
+        )}
+        {stock.priceBars.length > 0 && (
+          <RelativePerformance
+            ticker={stored}
+            market={market}
+            priceBars={stock.priceBars}
+            benchmarks={benchmarks}
           />
         )}
         <section id="sec-fundamentals" className="scroll-mt-[120px] space-y-[18px]">
