@@ -201,6 +201,11 @@ DATA_PROVIDER = YFinanceProvider()
 
 ## 6. Database Schema (Supabase Postgres)
 
+> The schema below is illustrative. The **authoritative, versioned schema history**
+> lives in `supabase/migrations/` (one timestamped SQL file per change), mirroring
+> Supabase's own migration log. When changing the schema, add a matching migration
+> file in the same PR. Note: `market` also accepts `'index'` (benchmark price-only rows).
+
 ### `stocks` — one row per ticker, the master table
 
 ```sql

@@ -88,6 +88,8 @@ When in doubt about any decision: **ask, don't guess.**
 │   ├── cron/                       ← GitHub Actions runner scripts
 │   ├── universe/                   ← ticker list CSVs (sp500, asx200, tsx60, indices)
 │   └── tests/
+├── supabase/
+│   └── migrations/                 ← versioned DB schema history (mirrors Supabase migration log)
 ├── .github/
 │   └── workflows/                  ← daily cron + Vercel deploys + CI (includes _engine drift check)
 └── .env.example                    ← documents every required env var
