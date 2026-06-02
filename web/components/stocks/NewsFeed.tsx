@@ -44,6 +44,7 @@ export function NewsFeed({ news }: Props) {
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
+            className="news-row"
             style={{
               display: 'block',
               padding: '12px 18px',
@@ -51,8 +52,6 @@ export function NewsFeed({ news }: Props) {
               textDecoration: 'none',
               transition: 'background 0.15s',
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(46,125,232,.04)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = ''; }}
           >
             <div style={{
               fontSize: 13,
