@@ -36,6 +36,11 @@ import pandas as pd
 Market = Literal["us", "au", "ca"]
 Currency = Literal["USD", "AUD", "CAD"]
 
+# NOTE: the DB `stocks.market` CHECK constraint also permits 'index' — used ONLY
+# for benchmark price-only rows (^GSPC / ^AXJO / ^GSPTSE) that back the Relative
+# Performance chart. 'index' is intentionally NOT part of the user-facing `Market`
+# type and such rows are excluded from stock listings/routing.
+
 @dataclass
 class NewsItem:
     title: str
@@ -420,7 +425,8 @@ export interface InsiderTransaction {
   date: string;
   insider: string;
   position: string;
-  transaction: string;
+  type: 'Sale' | 'Purchase' | 'Award' | 'Gift' | 'Other';
+  text: string;
   shares: number | null;
   value: number | null;
 }

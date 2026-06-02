@@ -61,7 +61,19 @@ def _load_universe() -> list[dict[str, str]]:
     return rows
 
 
+# Benchmark indices are stored as price-only rows (market='index') used by the
+# Relative Performance chart. Each maps to a home currency for display.
+_INDEX_CURRENCY: dict[str, str] = {
+    "^GSPC": "USD",    # S&P 500
+    "^IXIC": "USD",    # NASDAQ Composite
+    "^AXJO": "AUD",    # S&P/ASX 200
+    "^GSPTSE": "CAD",  # S&P/TSX Composite
+}
+
+
 def _infer_market(ticker: str) -> str:
+    if ticker.startswith("^"):
+        return "index"
     if ticker.endswith(".AX"):
         return "au"
     if ticker.endswith(".TO"):
@@ -135,12 +147,24 @@ def _send_failure_email(subject: str, body: str) -> None:
         logger.error("Failed to send failure email: %s", e)
 
 
-def run(mode: str = "smart") -> None:
+def run(mode: str = "smart", only: Optional[list[str]] = None) -> None:
     started_at = datetime.now(timezone.utc)
     logger.info("Daily refresh started at %s (mode=%s)", started_at.isoformat(), mode)
 
     supabase = _get_supabase()
     universe = _load_universe()
+
+    # One-off runs: restrict to an explicit ticker list. Any requested ticker not
+    # present in the universe CSVs is injected as an ad-hoc row (market inferred
+    # from its suffix) so single-ticker / index seeding works without CSV edits.
+    if only:
+        wanted = [t.strip() for t in only if t.strip()]
+        by_ticker = {row["ticker"]: row for row in universe}
+        selected: list[dict[str, str]] = []
+        for t in wanted:
+            selected.append(by_ticker.get(t, {"ticker": t, "name": "", "sector": ""}))
+        universe = selected
+        logger.info("--only restricted run: %d ticker(s): %s", len(universe), ", ".join(wanted))
     failed: list[str] = []
     succeeded = 0
     enriched_count = 0
@@ -174,9 +198,30 @@ def run(mode: str = "smart") -> None:
                     failed.append(ticker)
                     continue
 
-                fund = DATA_PROVIDER.fetch_fundamentals(ticker)
                 now = datetime.now(timezone.utc).isoformat()
                 market = _infer_market(ticker)
+
+                # Benchmark indices: price-only. They have no meaningful
+                # fundamentals/enriched data — write a minimal stocks row (so the
+                # staleness/period logic works) plus their price bars, then move on.
+                if market == "index":
+                    supabase.table("stocks").upsert(
+                        {
+                            "ticker":       ticker,
+                            "market":       "index",
+                            "name":         item.get("name") or ticker,
+                            "currency":     _INDEX_CURRENCY.get(ticker, "USD"),
+                            "fundamentals": {},
+                            "updated_at":   now,
+                        },
+                        on_conflict="ticker",
+                    ).execute()
+                    _upsert_price_bars(supabase, ticker, df)
+                    succeeded += 1
+                    logger.info("%s | index price-only | bars=%d", ticker, len(df))
+                    continue
+
+                fund = DATA_PROVIDER.fetch_fundamentals(ticker)
 
                 fund_dict: dict[str, Any] = dataclasses.asdict(fund) if fund else {}
 
@@ -193,14 +238,21 @@ def run(mode: str = "smart") -> None:
                     "updated_at":   now,
                 }
 
+                # News is time-sensitive, so refresh it on every run rather than
+                # only on the (≈quarterly) enriched-data cadence. It's one cheap
+                # call and failures are non-fatal. Only overwrite when we actually
+                # got items, so a transient yfinance hiccup never wipes the
+                # previously-stored news for a ticker.
+                news = DATA_PROVIDER.fetch_news(ticker)
+                if news:
+                    news_list: list[dict[str, Any]] = [dataclasses.asdict(n) for n in news]
+                    stock_row["news"] = _jsonb(news_list)
+
                 if fetch_enriched:
-                    news = DATA_PROVIDER.fetch_news(ticker)
                     enriched = DATA_PROVIDER.fetch_enriched_data(ticker)
 
-                    news_list: list[dict[str, Any]] = [dataclasses.asdict(n) for n in news]
                     enriched_dict: dict[str, Any] = dataclasses.asdict(enriched) if enriched else {}
 
-                    stock_row["news"] = _jsonb(news_list)
                     stock_row["company_overview"] = (
                         enriched.company_overview if enriched else None
                     )
@@ -295,5 +347,11 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="MajorCycle data refresh pipeline")
     parser.add_argument("--mode", choices=["smart", "full"], default="smart")
+    parser.add_argument(
+        "--only",
+        default=None,
+        help="Comma-separated ticker(s) to refresh in isolation, e.g. --only AAPL or --only ^GSPC,^AXJO",
+    )
     args = parser.parse_args()
-    run(mode=args.mode)
+    only_list = args.only.split(",") if args.only else None
+    run(mode=args.mode, only=only_list)

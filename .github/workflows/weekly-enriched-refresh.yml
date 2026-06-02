@@ -1,4 +1,4 @@
-name: Weekly Enriched Data Refresh
+name: Full Enriched Data Refresh
 
 on:
   workflow_dispatch:         # manual trigger only — used when a forced full refresh is needed

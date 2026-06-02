@@ -368,6 +368,424 @@
   .verdict-band:last-child { border-bottom: none; }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Base card — used across all Detail section cards.
+   Visual parity with `.card`, `.card-header`, `.card-title`, `.card-body`
+   in /reference/original-design.html (CSS lines 95-99).
+   ───────────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px 12px; border-bottom: 1px solid var(--border);
+}
+.card-title {
+  font-size: 12px; font-weight: 700; color: var(--text-primary);
+  letter-spacing: .2px; text-transform: uppercase; font-family: 'Sora', sans-serif;
+}
+.card-body { padding: 16px 18px; }
+.card-body--compact { padding: 12px 18px; }
+.card-body--chart { padding-bottom: 8px; }
+.card--stack-tight { margin-bottom: 8px; }
+.card--stack-snug  { margin-bottom: 14px; }
+.card--stack-base  { margin-bottom: 18px; }
+
+/* Company Overview body copy — visual parity with `.overview-text`
+   in /reference/original-design.html (CSS line 560). */
+.overview-text { font-size: 13px; line-height: 1.75; color: var(--text-secondary); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Why Attractive / Key Risks insight grid — Thesis section.
+   Visual parity with `.insight-*` + `.card-header--accent-*`
+   in /reference/original-design.html (CSS lines 562-576, 744-747).
+   The reference's --c-buy / --c-hold / --c-watch tokens are inlined here.
+   ───────────────────────────────────────────────────────────────────────── */
+.insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+.insight-item {
+  position: relative; display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.insight-item:last-child { border-bottom: none; }
+.insight-icon {
+  width: 16px; height: 16px; margin-top: 1px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.insight-icon svg { width: 16px; height: 16px; display: block; }
+.insight-text { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+.insight-strength {
+  display: inline-flex; align-items: center; gap: 1px; margin-left: 8px;
+  letter-spacing: .5px; vertical-align: 1px; font-size: 9px; font-weight: 600;
+  cursor: help; user-select: none;
+}
+.insight-strength.is-attr { color: #228B22; }
+.insight-strength.is-risk { color: #B58800; }
+.insight-strength-label {
+  font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 700;
+  letter-spacing: 1.2px; text-transform: uppercase; margin-right: 4px; opacity: .75;
+}
+.insight-invalidation {
+  display: flex; align-items: flex-start; gap: 6px; margin-top: 6px;
+  padding: 7px 10px; background: rgba(180,140,40,.06);
+  border-left: 2px solid #D4A017; border-radius: 0 4px 4px 0;
+  font-family: 'Sora', sans-serif; font-size: 11px; font-style: italic;
+  color: #7A5A10; line-height: 1.5;
+}
+.insight-invalidation-icon { flex-shrink: 0; color: #9A7010; margin-top: 2px; }
+.insight-invalidation-icon svg { width: 11px; height: 11px; display: block; }
+.insight-invalidation strong { font-style: normal; font-weight: 700; color: #5A4408; }
+
+.card-header--accent-buy  { border-left: 3px solid #228B22; }
+.card-header--accent-buy .card-title  { color: #228B22; }
+.card-header--accent-hold { border-left: 3px solid #D4A017; }
+.card-header--accent-hold .card-title { color: #D4A017; }
+
+@media (max-width: 640px) {
+  .insight-grid { grid-template-columns: 1fr; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Chart canvas wrappers and range button controls.
+   Visual parity with `.chart-canvas-wrap`, `.range-btn`, `.chart-controls`
+   in /reference/original-design.html (CSS lines 578-590).
+   ───────────────────────────────────────────────────────────────────────── */
+.chart-canvas-wrap { position: relative; width: 100%; overflow: hidden; }
+.chart-h-sm    { height: var(--chart-h-sm); }
+.chart-h-md    { height: var(--chart-h-md); }
+.chart-h-radar { height: var(--chart-h-radar); }
+.chart-h-lg    { height: var(--chart-h-lg); }
+.chart-controls { display: flex; align-items: center; gap: 6px; }
+.range-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  font-size: 11px; font-family: 'JetBrains Mono', monospace;
+  color: var(--text-muted); cursor: pointer; transition: all .15s;
+}
+.range-btn:hover  { border-color: var(--brand-mid); color: var(--brand-mid); }
+.range-btn.active { background: var(--brand-mid); border-color: var(--brand-mid); color: white; }
+.chart-hint { font-size: 10px; color: var(--text-muted); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   MA toggle pills — on/off buttons for moving average overlays.
+   Inactive = muted outline pill. Active = coloured border + tinted fill.
+   ───────────────────────────────────────────────────────────────────────── */
+.ma-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 999px;
+  border: 1.5px solid var(--border); background: transparent;
+  font-size: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+  color: var(--text-muted); cursor: pointer; transition: all .15s; line-height: 1;
+}
+.ma-pill:hover { border-color: var(--text-secondary); color: var(--text-secondary); }
+.ma-pill--50.active  { color: #1E5CB3; border-color: #1E5CB3; background: rgba(30,92,179,.08); }
+.ma-pill--200.active { color: #C08000; border-color: #C08000; background: rgba(212,160,23,.10); }
+.ma-pill--50.active:hover  { background: rgba(30,92,179,.14); }
+.ma-pill--200.active:hover { background: rgba(212,160,23,.16); }
+
+/* Thin vertical separator in .chart-controls */
+.chart-divider {
+  display: inline-block; width: 1px; height: 14px;
+  background: var(--border); flex-shrink: 0; margin: 0 2px;
+}
+
+/* Circular info button */
+.chart-info-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 1px solid var(--border); background: transparent;
+  font-size: 10px; font-weight: 700; font-family: 'Sora', sans-serif;
+  color: var(--text-muted); cursor: help; flex-shrink: 0;
+  transition: border-color .15s, color .15s; margin-left: auto;
+}
+.chart-info-btn:hover { border-color: var(--brand-mid); color: var(--brand-mid); }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Drawdown / profit overlay — segmented mode toggle + stats strip.
+   Visual parity with `.overlay-toggle`, `.ovl-btn`, `.stats-row`, `.stat-pill`
+   in /reference/original-design.html (CSS lines 592-601).
+   ───────────────────────────────────────────────────────────────────────── */
+.overlay-toggle {
+  display: flex;
+  background: var(--bg-stripe);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  width: fit-content;
+}
+.ovl-btn {
+  padding: 8px 20px;
+  border: none; background: transparent;
+  font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; gap: 6px;
+}
+.ovl-btn.active  { background: var(--brand-mid); color: white; font-weight: 600; }
+.ovl-btn:first-child { border-right: 1px solid var(--border); }
+
+.stats-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 10px; margin: 12px 0;
+}
+.stat-pill {
+  background: var(--bg-stripe); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 10px 14px; text-align: center;
+}
+.stat-pill-label {
+  font-size: 9px; font-weight: 600; letter-spacing: .8px;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;
+}
+.stat-pill-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px; font-weight: 600; color: var(--text-primary);
+}
+.stat-pill-val.green { color: #228B22; }
+.stat-pill-val.amber { color: #D4A017; }
+.stat-pill-val.red   { color: #B22222; }
+
+@media (max-width: 640px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .ovl-btn   { padding: 7px 14px; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Analyst price target track.
+   Visual parity with `.target-track-wrap`, `.target-marker`, `.target-stats`
+   in /reference/original-design.html (CSS lines 603-612).
+   ───────────────────────────────────────────────────────────────────────── */
+.target-track-wrap { padding: 8px 0 18px; overflow: visible; }
+.target-track {
+  position: relative; height: 12px; border-radius: 30px;
+  background: linear-gradient(90deg, #B22222 0%, #FF4500 25%, #D4A017 50%, #228B22 75%, #006400 100%);
+  margin: 20px 0 30px;
+}
+.target-marker {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+  z-index: 2;
+}
+.target-label {
+  position: absolute; top: 18px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+  white-space: nowrap; text-align: center;
+}
+.target-label-top {
+  position: absolute; bottom: 18px;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 600;
+  white-space: nowrap; color: var(--text-muted); text-align: center;
+}
+.target-stats {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px; margin-top: 8px;
+}
+.target-stat { text-align: center; padding: 10px; }
+.target-stat-label {
+  font-size: 10px; color: var(--text-muted); font-weight: 500;
+  margin-bottom: 4px; text-transform: uppercase; letter-spacing: .5px;
+}
+.target-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; }
+.target-stat-caption {
+  font-family: 'Sora', sans-serif; font-size: 10px; font-style: italic;
+  color: var(--text-muted); margin-top: 4px; letter-spacing: .1px;
+}
+@media (max-width: 480px) {
+  .target-stats { grid-template-columns: 1fr; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Snowflake radar scorecard — 2-column layout (chart left, axis bars right).
+   Visual parity with `.radar-grid`, `.radar-axis-row`, `.radar-axis-bar-track`
+   in /reference/original-design.html (CSS lines 693-699).
+   ───────────────────────────────────────────────────────────────────────── */
+.radar-grid {
+  display: grid; grid-template-columns: 280px 1fr;
+  gap: 24px; align-items: center;
+}
+.radar-axis-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0; border-bottom: 1px solid var(--border);
+}
+.radar-axis-row:last-child { border-bottom: none; }
+.radar-axis-label {
+  font-size: 11px; color: var(--text-secondary);
+  width: 120px; flex-shrink: 0;
+}
+.radar-axis-bar-track {
+  flex: 1; background: var(--bg-stripe); border-radius: 20px;
+  height: 6px; overflow: hidden; border: 1px solid var(--border);
+}
+.radar-axis-bar-fill { height: 100%; border-radius: 20px; transition: width .6s ease; }
+.radar-axis-score {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+  width: 28px; text-align: right; flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .radar-grid { grid-template-columns: 1fr; }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Technical Levels pill grid — 5-column strip (50 DMA, vs 50, 200 DMA,
+   vs 200, MA Signal). Visual parity with `.tech-pill-grid` in
+   /reference/original-design.html (CSS line 716).
+   ───────────────────────────────────────────────────────────────────────── */
+.tech-pill-grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .tech-pill-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Fundamentals block: fin-tabs, summary-strip, balance-sheet stat row,
+   metrics table, category pills. Visual parity with reference HTML.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Tab buttons (EPS / Revenue / Gross Profit etc.) */
+.fin-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.fin-tab  { padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border); background: transparent; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 500; color: var(--text-muted); cursor: pointer; transition: all .15s; }
+.fin-tab:hover  { border-color: var(--brand-mid); color: var(--brand-mid); }
+.fin-tab.active { background: var(--brand-mid); border-color: var(--brand-mid); color: white; font-weight: 600; }
+
+/* Period segmented toggle (Quarterly / Annual) — distinct from fin-tabs */
+.period-toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--bg-stripe); flex-shrink: 0; }
+.period-btn { padding: 4px 13px; font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: all .15s; white-space: nowrap; }
+.period-btn + .period-btn { border-left: 1px solid var(--border); }
+.period-btn.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.period-btn:hover:not(.active) { color: var(--brand-mid); }
+
+/* Summary strip under charts */
+.summary-strip       { display: flex; gap: 24px; padding: 10px 0 0; border-top: 1px solid var(--border); margin-top: 10px; flex-wrap: wrap; }
+.summary-strip-item  { text-align: center; }
+.summary-strip-label { font-size: 9px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px; }
+.summary-strip-val   { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; }
+
+/* Balance sheet stat row */
+.bs-stat-row                  { display: flex; align-items: stretch; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border); margin-top: 14px; flex-wrap: wrap; }
+.bs-stat-row .net-cash-card   { flex: 1.2; min-width: 120px; background: var(--bg-stripe); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; text-align: center; }
+.bs-stat-row .stat-pill       { flex: 1; min-width: 90px; display: flex; flex-direction: column; justify-content: center; }
+.net-cash-label { font-size: 10px; font-weight: 600; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+.net-cash-val   { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; line-height: 1; }
+.net-cash-sub   { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* Metrics table base styles */
+table              { width: 100%; border-collapse: collapse; font-size: 12px; background: var(--bg-surface); }
+thead th           { background: var(--bg-stripe); color: var(--text-muted); font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; cursor: pointer; user-select: none; transition: color .15s; }
+thead th:hover     { color: var(--brand-mid); }
+thead th.sorted    { color: var(--brand-mid); }
+tbody tr           { border-bottom: 1px solid var(--border); transition: background .1s; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover     { background: var(--bg-hover); }
+td                 { padding: 9px 12px; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--text-primary); vertical-align: middle; }
+td.text-cell       { font-family: 'Sora', sans-serif; font-size: 12px; }
+th.num, td.num     { text-align: right; }
+td.num             { font-weight: 600; }
+
+.card-body--bleed  { padding: 0; }
+
+/* Key Metrics comparison table (vs sector & market median) */
+.km-subtitle { font-size: 10px; color: var(--text-muted); }
+.km-scroll { overflow-x: auto; }
+.km-table { width: 100%; border-collapse: collapse; min-width: 380px; }
+.km-table thead th {
+  font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: .6px;
+  text-transform: uppercase; color: var(--text-muted); padding: 9px 18px; white-space: nowrap;
+  border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; transition: color .12s;
+}
+.km-table thead th:hover { color: var(--brand-mid); }
+.km-th-metric { text-align: left; }
+.km-num { text-align: right; font-family: 'JetBrains Mono', monospace; }
+.km-table tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; }
+.km-table tbody tr:nth-child(even) { background: var(--bg-stripe); }
+.km-table tbody tr:hover { background: var(--bg-hover); }
+.km-table tbody td { padding: 9px 18px; vertical-align: middle; }
+.km-metric-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.km-metric-label { font-family: 'Sora', sans-serif; font-size: 12.5px; font-weight: 500; color: var(--text-primary); cursor: help; }
+.km-value { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.km-cmp { font-size: 12.5px; font-weight: 600; cursor: help; }
+.km-cmp--better { color: #228B22; }
+.km-cmp--worse  { color: #B22222; }
+.km-cmp--inline { color: var(--text-muted); }
+.km-cmp--na     { color: var(--border-strong); }
+.km-footnote { padding: 11px 18px 2px; font-size: 11px; font-style: italic; color: var(--text-muted); line-height: 1.5; }
+.km-empty { color: var(--text-muted); font-size: 13px; text-align: center; padding: 24px 0; }
+
+/* Key metrics category pills */
+.mt-cat-pill        { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 4px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap; }
+.mt-cat-valuation   { background: var(--tint-brand);        color: var(--brand-deep);     border: 1px solid rgba(46,125,232,.22); }
+.mt-cat-growth      { background: var(--tint-tier-2);       color: var(--c-tier-2-ink);   border: 1px solid rgba(34,139,34,.22); }
+.mt-cat-profitability { background: var(--tint-tier-3);     color: var(--c-tier-3-ink);   border: 1px solid rgba(212,160,23,.28); }
+.mt-cat-balance     { background: rgba(74,85,104,.10);      color: #4A5568;               border: 1px solid rgba(74,85,104,.22); }
+.mt-cat-cashflow    { background: rgba(46,125,232,.08);     color: #1E5CB3;               border: 1px solid rgba(46,125,232,.18); }
+.mt-cat-income      { background: rgba(212,160,23,.08);     color: #8A6710;               border: 1px solid rgba(212,160,23,.22); }
+.mt-cat-market      { background: rgba(138,151,168,.10);    color: #4A5568;               border: 1px solid rgba(138,151,168,.22); }
+
+/* ============================================================
+   Sentiment section — Ownership, Insider Activity, Short Interest
+   ============================================================ */
+
+/* Ownership structure */
+.ownership-grid                             { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: start; }
+.ownership-stats                            { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.ownership-stat-row                         { display: flex; justify-content: space-between; font-size: 11px; }
+.ownership-table                            { table-layout: auto; }
+.ownership-table thead th:nth-child(2),
+.ownership-table thead th:nth-child(3)      { width: 96px; }
+.ownership-table thead th                   { cursor: default; }
+.ownership-table thead th:hover             { color: var(--text-muted); }
+.ownership-table tbody tr                   { cursor: default; }
+.table-section-label                        { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+
+/* Smart Money card — 2-col grid + section headers */
+.smart-money-grid                           { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; }
+.smart-section-head                         { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.smart-section-title                        { font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-muted); }
+.smart-section-tag                          { font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; padding: 2px 8px; border-radius: 4px; background: rgba(26,58,110,.06); }
+.smart-legend                               { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.smart-legend-chip                          { display: inline-flex; align-items: center; gap: 5px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: .3px; }
+.smart-legend-chip-dot                      { width: 7px; height: 7px; border-radius: 50%; background: var(--lg, #1E5CB3); flex-shrink: 0; }
+.smart-pill.is-buy        { background: rgba(34,139,34,.12); color: #0D5C0D; border: 1px solid rgba(34,139,34,.25); }
+.smart-pill.is-sell       { background: rgba(178,34,34,.10); color: #8B1414; border: 1px solid rgba(178,34,34,.22); }
+.smart-pill.is-upgrade    { background: rgba(34,139,34,.12); color: #0D5C0D; border: 1px solid rgba(34,139,34,.25); }
+.smart-pill.is-downgrade  { background: rgba(178,34,34,.10); color: #8B1414; border: 1px solid rgba(178,34,34,.22); }
+.smart-pill.is-reiterate  { background: var(--tint-brand); color: var(--brand-deep); border: 1px solid rgba(46,125,232,.22); }
+.smart-pill.is-initiate   { background: rgba(217,119,6,.10); color: #D97706; border: 1px solid rgba(217,119,6,.30); }
+
+/* Insider activity timeline */
+.smart-timeline                             { position: relative; padding: 2px 0 2px 18px; }
+.smart-timeline::before                     { content: ''; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 2px; background: var(--border); border-radius: 1px; }
+.smart-event                                { position: relative; display: grid; grid-template-columns: 1fr auto; column-gap: 10px; row-gap: 2px; padding: 8px 0; min-height: 52px; align-content: center; font-family: 'Sora', sans-serif; }
+.smart-event + .smart-event                 { border-top: 1px dotted var(--border); }
+.smart-event::before                        { content: ''; position: absolute; left: -18px; top: 9px; width: 11px; height: 11px; border-radius: 50%; background: var(--dot, #1E5CB3); box-shadow: 0 0 0 2.5px var(--bg-surface), 0 0 0 3.5px var(--border-faint); }
+.smart-event-head                           { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; min-width: 0; }
+.smart-event-date                           { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); text-align: right; white-space: nowrap; letter-spacing: .1px; padding-top: 1px; }
+.smart-pill                                 { display: inline-flex; align-items: center; font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; line-height: 1.3; flex-shrink: 0; }
+.smart-event-name                           { font-size: 11.5px; font-weight: 600; color: var(--text-primary); letter-spacing: -.05px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+.smart-event-meta                           { font-size: 11px; color: var(--text-secondary); line-height: 1.4; letter-spacing: .05px; }
+.smart-event-meta-mono                      { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-primary); }
+.smart-event-title                          { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+
+/* Short interest */
+.si-grid                                    { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: start; }
+.si-arc-wrap                                { text-align: center; padding: 8px 0; }
+
+/* Responsive — stack single column on narrow screens */
+@media (max-width: 600px) {
+  .ownership-grid                           { grid-template-columns: 1fr; }
+  .si-grid                                  { grid-template-columns: 1fr; }
+  .smart-money-grid                         { grid-template-columns: 1fr; }
+  .smart-event                              { grid-template-columns: 1fr; row-gap: 3px; }
+  .smart-event-date                         { text-align: left; }
+}
+
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
   *,

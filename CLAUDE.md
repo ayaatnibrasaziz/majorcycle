@@ -86,8 +86,10 @@ When in doubt about any decision: **ask, don't guess.**
 │   │   └── fmp_provider.py         ← Phase 2 stub
 │   ├── scoring/                    ← health / valuation / overall rating
 │   ├── cron/                       ← GitHub Actions runner scripts
-│   ├── universe/                   ← ticker list CSVs (sp500, asx200, tsx60)
+│   ├── universe/                   ← ticker list CSVs (sp500, asx200, tsx60, indices)
 │   └── tests/
+├── supabase/
+│   └── migrations/                 ← versioned DB schema history (mirrors Supabase migration log)
 ├── .github/
 │   └── workflows/                  ← daily cron + Vercel deploys + CI (includes _engine drift check)
 └── .env.example                    ← documents every required env var
