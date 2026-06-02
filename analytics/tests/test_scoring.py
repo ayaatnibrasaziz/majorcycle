@@ -3,7 +3,12 @@
 from analytics.providers.base import FundamentalsSnapshot
 from analytics.scoring.financial_health import score_financial_health
 from analytics.scoring.overall import calculate_overall_rating
-from analytics.scoring.valuation import calculate_valuation_zone
+from analytics.scoring.valuation import (
+    QUALITY_GATE_FLOOR,
+    apply_quality_gate,
+    calculate_valuation_zone,
+    quality_factor,
+)
 
 
 def _fund(**kwargs) -> FundamentalsSnapshot:  # type: ignore[return]
@@ -95,6 +100,38 @@ class TestCalculateValuationZone:
         zone, score = calculate_valuation_zone({"current_drawdown_pct": None})
         assert zone == "FAIR"
         assert score == 0.0
+
+
+class TestQualityGate:
+    def test_factor_is_monotonic_in_fh(self) -> None:
+        # Healthier company -> higher (or equal) factor, never lower.
+        factors = [quality_factor(fh) for fh in range(0, 101, 10)]
+        assert factors == sorted(factors)
+
+    def test_factor_bounds(self) -> None:
+        assert quality_factor(0.0) == QUALITY_GATE_FLOOR        # weakest -> floor
+        assert quality_factor(100.0) == 1.0                     # strongest -> no discount
+        assert all(QUALITY_GATE_FLOOR <= quality_factor(fh) <= 1.0
+                   for fh in range(0, 101, 5))
+
+    def test_no_fh_means_no_discount(self) -> None:
+        # Can't measure quality -> don't penalise it.
+        assert quality_factor(None) == 1.0
+        gated, qf = apply_quality_gate(80.0, None)
+        assert gated == 80.0
+        assert qf == 1.0
+
+    def test_value_trap_is_discounted(self) -> None:
+        # Deep-value raw score (90) on a weak company (FH 20) drops hard.
+        gated, qf = apply_quality_gate(90.0, 20.0)
+        assert gated < 45.0
+        assert qf < 0.5
+
+    def test_healthy_bargain_barely_touched(self) -> None:
+        # Strong company (FH 85) in a real dip keeps most of its valuation.
+        gated, qf = apply_quality_gate(70.0, 85.0)
+        assert gated > 58.0
+        assert qf > 0.8
 
 
 class TestCalculateOverallRating:
