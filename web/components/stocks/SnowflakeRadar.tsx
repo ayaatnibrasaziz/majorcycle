@@ -83,10 +83,18 @@ const AXES = [
 export function SnowflakeRadar({ cycle }: Props) {
   const { fhSubscores, financialHealthScore } = cycle;
 
-  const data = AXES.map((ax) => ({
+  // Only plot pillars that actually have data — a missing pillar is omitted
+  // (Proposal P3), never drawn as a misleading 0-spike. The right-hand bar list
+  // still lists all five pillars, showing "—" for the ones without data.
+  const availableAxes = AXES.filter((ax) => fhSubscores[ax.key] !== undefined);
+  const data = availableAxes.map((ax) => ({
     subject: ax.label,
-    value:   Math.round(fhSubscores[ax.key] ?? 0),
+    value:   Math.round(fhSubscores[ax.key] as number),
   }));
+  const hasScore = financialHealthScore !== null && data.length >= 3;
+  const missingLabels = AXES
+    .filter((ax) => fhSubscores[ax.key] === undefined)
+    .map((ax) => ax.label);
 
   return (
     <section id="sec-scorecard" className="scroll-mt-[120px] card card--stack-base">
@@ -95,13 +103,29 @@ export function SnowflakeRadar({ cycle }: Props) {
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           {financialHealthScore !== null
             ? `Health Score ${Math.round(financialHealthScore)}/100 · Each axis scored 0–100`
-            : 'Each axis scored 0–100 · Larger shape = stronger stock'}
+            : 'Not enough data to score financial health'}
         </div>
       </div>
       <div className="card-body">
         <div className="radar-grid">
           {/* Left: radar chart */}
           <div className="chart-canvas-wrap chart-h-radar">
+            {!hasScore ? (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  textAlign: 'center',
+                  padding: '0 16px',
+                  fontSize: 12,
+                  color: 'var(--text-muted)',
+                }}
+              >
+                Not enough fundamental data to plot the scorecard.
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 260 }}>
               <RadarChart data={data} outerRadius="72%" margin={{ top: 14, right: 18, bottom: 14, left: 18 }}>
                 <PolarGrid gridType="polygon" stroke="#E2E8F0" />
@@ -140,6 +164,7 @@ export function SnowflakeRadar({ cycle }: Props) {
                 />
               </RadarChart>
             </ResponsiveContainer>
+            )}
           </div>
 
           {/* Right: axis bars */}
@@ -164,6 +189,11 @@ export function SnowflakeRadar({ cycle }: Props) {
             })}
           </div>
         </div>
+        {hasScore && missingLabels.length > 0 && (
+          <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--text-muted)' }}>
+            {`Not scored: ${missingLabels.join(', ')} — not enough data (common for banks & REITs). The health score reflects the remaining pillars.`}
+          </div>
+        )}
       </div>
     </section>
   );

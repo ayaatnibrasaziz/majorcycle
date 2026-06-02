@@ -232,9 +232,11 @@ class CycleAnalysis:
 
     # Scores (0–100)
     financial_health_score: Optional[float]
-    valuation_score: float
+    valuation_score: float                  # quality-gated — feeds the overall rating
+    valuation_score_raw: float              # un-gated cycle-position score
+    quality_factor: Optional[float]         # gate multiplier (None if no FH to gate by)
     valuation_zone: Literal["DEEP VALUE", "VALUE", "FAIR", "STRETCHED"]
-    momentum_score: float
+    cycle_payoff_score: float               # signal-reliability + reward/risk (was "momentum_score")
     overall_rating: int                     # 0–100, rounded
     overall_label: Literal[
         "High Conviction", "Constructive", "Neutral", "Cautious", "Bearish"
@@ -377,9 +379,11 @@ export interface CycleAnalysis {
   totalProfitEvents: number;
 
   financialHealthScore: number | null;
-  valuationScore: number;
+  valuationScore: number; // quality-gated — feeds the overall rating
+  valuationScoreRaw: number; // un-gated cycle-position score
+  qualityFactor: number | null; // gate multiplier (null if no FH to gate by)
   valuationZone: ValuationZone;
-  momentumScore: number;
+  cyclePayoffScore: number; // signal-reliability + reward/risk (was "momentumScore")
   overallRating: number;
   overallLabel: OverallLabel;
 
@@ -525,9 +529,11 @@ interface CycleQuery {
   "total_pullback_events": 18,
   "total_profit_events": 15,
   "financial_health_score": 78.5,
-  "valuation_score": 42.0,
+  "valuation_score": 38.2,
+  "valuation_score_raw": 42.0,
+  "quality_factor": 0.9095,
   "valuation_zone": "STRETCHED",
-  "momentum_score": 71.4,
+  "cycle_payoff_score": 71.4,
   "overall_rating": 64,
   "overall_label": "Neutral",
   "fh_subscores": { "profitability": 92, "balance_sheet": 68, "growth": 71, "cashflow": 80, "shareholder": 65 }

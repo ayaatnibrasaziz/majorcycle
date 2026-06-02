@@ -13,7 +13,7 @@ from _engine.providers.base import (
 )
 from _engine.scoring.financial_health import score_financial_health
 from _engine.scoring.overall import calculate_overall_rating
-from _engine.scoring.valuation import calculate_valuation_zone
+from _engine.scoring.valuation import apply_quality_gate, calculate_valuation_zone
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +46,11 @@ class CycleAnalysis:
     total_profit_events: int
 
     financial_health_score: Optional[float]
-    valuation_score: float
+    valuation_score: float            # quality-gated (feeds the Overall rating)
+    valuation_score_raw: float        # un-gated cycle-position score
+    quality_factor: Optional[float]   # gate multiplier applied (None if no FH to gate by)
     valuation_zone: ValuationZone
-    momentum_score: float
+    cycle_payoff_score: float         # signal-reliability + reward/risk (was "momentum")
     overall_rating: int
     overall_label: OverallLabel
 
@@ -188,11 +190,11 @@ def analyze_ticker(
     if fundamentals is not None:
         fh_score, fh_subscores = score_financial_health(fundamentals)
 
-    valuation_zone, valuation_score = calculate_valuation_zone(cycle)
+    valuation_zone, valuation_score_raw = calculate_valuation_zone(cycle)
+    valuation_score, quality_factor = apply_quality_gate(valuation_score_raw, fh_score)
 
-    effective_fh = fh_score if fh_score is not None else 50.0
-    overall_rating, overall_label, momentum_score = calculate_overall_rating(
-        effective_fh, valuation_score, cycle
+    overall_rating, overall_label, cycle_payoff_score = calculate_overall_rating(
+        fh_score, valuation_score, cycle
     )
 
     return CycleAnalysis(
@@ -210,8 +212,10 @@ def analyze_ticker(
         total_profit_events=int(cycle.get("total_profit_events") or 0),
         financial_health_score=fh_score,
         valuation_score=valuation_score,
+        valuation_score_raw=valuation_score_raw,
+        quality_factor=quality_factor,
         valuation_zone=valuation_zone,
-        momentum_score=momentum_score,
+        cycle_payoff_score=cycle_payoff_score,
         overall_rating=overall_rating,
         overall_label=overall_label,
         fh_subscores=fh_subscores,

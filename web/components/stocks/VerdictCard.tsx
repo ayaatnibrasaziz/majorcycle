@@ -274,7 +274,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
 
         <div
           className="verdict-score-block"
-          title="Overall MajorCycle Rating (0–100) — Composite score: Financial Health (40%) + Valuation Zone (35%) + Momentum (25%). Higher is better."
+          title="Overall MajorCycle Rating (0–100) — Composite score: Financial Health (40%) + Valuation Zone (35%) + Cycle Payoff (25%). Higher is better."
         >
           <div className="verdict-score-ring">
             <svg viewBox="0 0 84 84" aria-hidden="true">

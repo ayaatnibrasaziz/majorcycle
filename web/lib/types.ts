@@ -115,9 +115,11 @@ export interface CycleAnalysis {
   totalProfitEvents: number;
 
   financialHealthScore: number | null;
-  valuationScore: number;
+  valuationScore: number; // quality-gated (feeds the overall rating)
+  valuationScoreRaw: number; // un-gated cycle-position score
+  qualityFactor: number | null; // gate multiplier applied (null if no FH to gate by)
   valuationZone: ValuationZone;
-  momentumScore: number;
+  cyclePayoffScore: number; // signal-reliability + reward/risk (was "momentumScore")
   overallRating: number;
   overallLabel: OverallLabel;
 

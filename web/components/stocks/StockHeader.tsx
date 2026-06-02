@@ -189,7 +189,7 @@ function BadgeRow({
     <div className="flex flex-wrap gap-[6px] mt-[10px]">
       <span
         className={`tier-badge tier-badge--${LABEL_TIER[overallLabel]}`}
-        title={`Overall rating: ${overallLabel}. Composite of Financial Health (40%) + Valuation Zone (35%) + Momentum (25%).`}
+        title={`Overall rating: ${overallLabel}. Composite of Financial Health (40%) + Valuation Zone (35%) + Cycle Payoff (25%).`}
       >
         {overallLabel}
       </span>
