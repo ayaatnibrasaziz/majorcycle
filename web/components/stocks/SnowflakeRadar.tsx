@@ -191,8 +191,7 @@ export function SnowflakeRadar({ cycle }: Props) {
         </div>
         {hasScore && missingLabels.length > 0 && (
           <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--text-muted)' }}>
-            Not scored: {missingLabels.join(', ')} — not enough data (common for
-            banks &amp; REITs). The health score reflects the remaining pillars.
+            {`Not scored: ${missingLabels.join(', ')} — not enough data (common for banks & REITs). The health score reflects the remaining pillars.`}
           </div>
         )}
       </div>
