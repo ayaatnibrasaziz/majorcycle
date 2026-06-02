@@ -54,7 +54,7 @@ Status key: ✅ pass · ⚠️ issue logged · ❌ fail · ⬜ not yet audited �
 
 ## Cross-cutting items (apply site-wide)
 
-- ⬜ Insufficient-data states (replace fabricated "neutral 50"; no fake scores). — S2/S3/S9
+- 🔧 Insufficient-data states (replace fabricated "neutral 50"; no fake scores). — **S3 engine done** (FH pillars omit-not-fabricate + renormalise; FH withheld <3 pillars; cycle-only overall when no FH; radar plots only real pillars + insufficient/"not scored" states). Sanity-bounds + source labels still S9.
 - ⬜ Sanity-bounds on absurd values ($0.08-class). — S9
 - ⬜ "via Yahoo Finance, may be delayed/estimated" source labels. — S9
 - ⬜ Beginner explainers/tooltips/onboarding on jargon. — S5
@@ -90,3 +90,11 @@ Status key: ✅ pass · ⚠️ issue logged · ❌ fail · ⬜ not yet audited �
   - **P6 carried:** sanity bounds + provenance labels (S9).
 - **S3 order:** (P1+P5)→reverify→P3→P4; defer 2a/2b + Option-A.
 - No engine code touched. Doc awaiting owner sign-off.
+
+### S3 — Methodology engine implementation (2026-06-03) — PR #14, awaiting CI + owner merge
+Owner signed off (P2c revised to **Option C now**, P5 **declined → keep mean**). Implemented on `feat/s3-methodology-engine` (4 commits), `analytics/` + `web/_engine/` synced (drift check green):
+- **P1 quality-gate (`509fd14`):** `qf = 0.30 + 0.70·(FH/100)^1.5` applied in `analyze_ticker`; new `valuation_score_raw` + `quality_factor` fields. Verified: FMC 63→42, BAX 68→54, KMX 63→47, SHOP 84→80, AAPL/BHP unchanged.
+- **P3 insufficient-data (`ad821c1`):** `score_financial_health` omits empty pillars + renormalises; returns None <3 pillars; `calculate_overall_rating` takes Optional FH → cycle-only renormalised when None; SnowflakeRadar plots only real pillars + "not scored"/insufficient states. Verified BAC FH 64.5→74.2 (balance-sheet+cashflow omitted), 3-axis radar (SSR + screenshot). Full-data tickers byte-identical.
+- **P4 rename (`5544549`):** `momentum_score`→`cycle_payoff_score` (engine + contract + TS + 3 tooltips). Pure rename, values unchanged.
+- **`1aa8ee0`:** caption em-dash spacing fix.
+- All green: pnpm typecheck/lint/build, ruff, mypy, pytest (36), drift check. **Visual venue for final sign-off = Vercel preview (BAC scorecard).** Same pause-before-merge rule.
