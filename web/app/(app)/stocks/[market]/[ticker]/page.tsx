@@ -25,6 +25,7 @@ import { ValuationHistory } from '@/components/stocks/ValuationHistory';
 import { VerdictCard } from '@/components/stocks/VerdictCard';
 import { fetchBenchmarks } from '@/lib/benchmarks.server';
 import { fetchCycleAnalysis } from '@/lib/cycle';
+import { fetchMetricMedians } from '@/lib/medians.server';
 import { fetchStockDetail } from '@/lib/stocks';
 import { urlPartsToTicker } from '@/lib/ticker';
 import type { Market } from '@/lib/types';
@@ -64,9 +65,10 @@ export default async function StockDetailPage({
 
   const stored = urlPartsToTicker(market, ticker);
   // Parallel fetch — stock data and cycle analysis are independent
-  const [stock, cycle] = await Promise.all([
+  const [stock, cycle, medians] = await Promise.all([
     fetchStockDetail(stored),
     fetchCycleAnalysis(stored),
+    fetchMetricMedians(),
   ]);
   if (!stock) notFound();
 
@@ -161,7 +163,12 @@ export default async function StockDetailPage({
                 : null
             }
           />
-          <MetricsTable fundamentals={stock.fundamentals} />
+          <MetricsTable
+            fundamentals={stock.fundamentals}
+            sector={stock.sector}
+            market={market}
+            medians={medians}
+          />
         </section>
         <section id="sec-sentiment" className="scroll-mt-[120px] space-y-[18px]">
           <SmartMoneyActivity

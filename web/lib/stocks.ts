@@ -10,6 +10,7 @@
 import { cache } from 'react';
 
 import { toCamel } from '@/lib/case';
+import { normalizeAnalystRecommendation } from '@/lib/format';
 import { createAdminClient } from '@/lib/supabase/server';
 import type {
   FundamentalsSnapshot,
@@ -77,9 +78,14 @@ export const fetchStockDetail = cache(
     const camelRow = shallowCamel(stockRow as Record<string, unknown>);
 
     if (camelRow.fundamentals && typeof camelRow.fundamentals === 'object') {
-      camelRow.fundamentals = toCamel<FundamentalsSnapshot>(
-        camelRow.fundamentals as never,
+      const f = toCamel<FundamentalsSnapshot>(camelRow.fundamentals as never);
+      // yfinance stores the analyst consensus as a raw recommendationKey
+      // (e.g. "strong_buy"); normalize to the Title-Case union so it displays
+      // correctly and string comparisons against the union work.
+      f.analystRecommendation = normalizeAnalystRecommendation(
+        f.analystRecommendation as unknown as string,
       );
+      camelRow.fundamentals = f;
     }
     if (Array.isArray(camelRow.news)) {
       camelRow.news = (camelRow.news as unknown[]).map((n) =>

@@ -691,19 +691,32 @@ td.num             { font-weight: 600; }
 
 .card-body--bleed  { padding: 0; }
 
-/* Key metrics tile grid */
-.metrics-section { padding: 0 0 12px; }
-.metrics-cat-label { font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); padding: 14px 0 7px; border-top: 1px solid var(--border); }
-.metrics-section:first-child .metrics-cat-label { border-top: none; padding-top: 4px; }
-.metrics-tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.metric-tile { background: var(--bg-stripe); border-radius: 7px; padding: 10px 12px; cursor: help; transition: background .12s; }
-.metric-tile:hover { background: var(--bg-hover); }
-.metric-tile-label { font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px; line-height: 1.3; }
-.metric-tile-val { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1; }
-.metric-tile-val.green { color: #228B22; }
-.metric-tile-val.amber { color: #D4A017; }
-.metric-tile-val.red   { color: #B22222; }
-@media (max-width: 640px) { .metrics-tile-grid { grid-template-columns: repeat(2, 1fr); } }
+/* Key Metrics comparison table (vs sector & market median) */
+.km-subtitle { font-size: 10px; color: var(--text-muted); }
+.km-scroll { overflow-x: auto; }
+.km-table { width: 100%; border-collapse: collapse; min-width: 380px; }
+.km-table thead th {
+  font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: .6px;
+  text-transform: uppercase; color: var(--text-muted); padding: 9px 18px; white-space: nowrap;
+  border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; transition: color .12s;
+}
+.km-table thead th:hover { color: var(--brand-mid); }
+.km-th-metric { text-align: left; }
+.km-num { text-align: right; font-family: 'JetBrains Mono', monospace; }
+.km-table tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; }
+.km-table tbody tr:nth-child(even) { background: var(--bg-stripe); }
+.km-table tbody tr:hover { background: var(--bg-hover); }
+.km-table tbody td { padding: 9px 18px; vertical-align: middle; }
+.km-metric-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.km-metric-label { font-family: 'Sora', sans-serif; font-size: 12.5px; font-weight: 500; color: var(--text-primary); cursor: help; }
+.km-value { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.km-cmp { font-size: 12.5px; font-weight: 600; cursor: help; }
+.km-cmp--better { color: #228B22; }
+.km-cmp--worse  { color: #B22222; }
+.km-cmp--inline { color: var(--text-muted); }
+.km-cmp--na     { color: var(--border-strong); }
+.km-footnote { padding: 11px 18px 2px; font-size: 11px; font-style: italic; color: var(--text-muted); line-height: 1.5; }
+.km-empty { color: var(--text-muted); font-size: 13px; text-align: center; padding: 24px 0; }
 
 /* Key metrics category pills */
 .mt-cat-pill        { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 4px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap; }

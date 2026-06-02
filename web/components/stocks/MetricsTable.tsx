@@ -1,189 +1,249 @@
 'use client';
 
+import { useMemo, useState } from 'react';
+
 import type { FundamentalsSnapshot } from '@/lib/types';
+import type { MedianTables, MetricKey, MetricMedians } from '@/lib/medians.server';
 
 interface Props {
   fundamentals: FundamentalsSnapshot;
+  sector: string | null;
+  market: string;
+  medians: MedianTables;
 }
 
-type Category =
-  | 'Valuation'
-  | 'Profitability'
-  | 'Growth'
-  | 'Balance Sheet'
-  | 'Cash Flow'
-  | 'Income'
-  | 'Market';
+type Category = 'Valuation' | 'Profitability' | 'Growth' | 'Balance Sheet';
+type Unit = 'pct' | 'mult' | 'ratio';
 
-type ValColor = 'green' | 'amber' | 'red' | '';
-
-interface MetricRow {
+interface MetricDef {
+  key: MetricKey;
   label: string;
-  category: Category;
-  raw: number | null;
-  disp: string;
+  cat: Category;
+  unit: Unit;
+  higherBetter: boolean;
   tip: string;
-  color: ValColor;
 }
 
-const CAT_ORDER: Category[] = [
-  'Valuation',
-  'Profitability',
-  'Growth',
-  'Balance Sheet',
-  'Cash Flow',
-  'Income',
-  'Market',
+// Trimmed to the metrics where a sector/market median comparison is genuinely
+// meaningful. Value is shown neutral; the colour now lives on the *relative*
+// columns, so green/red means "better/worse than peers", not an arbitrary
+// fixed threshold.
+const METRICS: MetricDef[] = [
+  { key: 'pe', label: 'Trailing P/E', cat: 'Valuation', unit: 'mult', higherBetter: false,
+    tip: 'Price ÷ EPS (last 12 months). Lower = cheaper relative to earnings.' },
+  { key: 'evToEbitda', label: 'EV / EBITDA', cat: 'Valuation', unit: 'mult', higherBetter: false,
+    tip: 'Enterprise Value ÷ EBITDA. Lower = cheaper on a capital-structure-neutral basis.' },
+  { key: 'peg', label: 'PEG Ratio', cat: 'Valuation', unit: 'ratio', higherBetter: false,
+    tip: 'P/E ÷ earnings growth. Below 1 = cheap for its growth; above 2 = expensive.' },
+  { key: 'fcfYieldPct', label: 'FCF Yield', cat: 'Valuation', unit: 'pct', higherBetter: true,
+    tip: 'Free Cash Flow ÷ Market Cap. Higher = more cash generated per dollar invested.' },
+  { key: 'grossMargin', label: 'Gross Margin', cat: 'Profitability', unit: 'pct', higherBetter: true,
+    tip: '(Revenue − COGS) ÷ Revenue. Higher = more pricing power.' },
+  { key: 'operatingMargin', label: 'Operating Margin', cat: 'Profitability', unit: 'pct', higherBetter: true,
+    tip: 'Operating income ÷ Revenue. Profitability after operating costs.' },
+  { key: 'netMargin', label: 'Net Margin', cat: 'Profitability', unit: 'pct', higherBetter: true,
+    tip: 'Net income ÷ Revenue. Bottom-line profit per dollar of sales.' },
+  { key: 'roe', label: 'Return on Equity', cat: 'Profitability', unit: 'pct', higherBetter: true,
+    tip: 'Net income ÷ shareholders equity. How efficiently equity generates profit.' },
+  { key: 'roa', label: 'Return on Assets', cat: 'Profitability', unit: 'pct', higherBetter: true,
+    tip: 'Net income ÷ total assets. How efficiently assets generate profit.' },
+  { key: 'revenueGrowthYoy', label: 'Revenue Growth', cat: 'Growth', unit: 'pct', higherBetter: true,
+    tip: 'Year-over-year revenue growth.' },
+  { key: 'debtToEquity', label: 'Debt / Equity', cat: 'Balance Sheet', unit: 'ratio', higherBetter: false,
+    tip: 'Total debt ÷ equity. Lower = less leverage.' },
+  { key: 'currentRatio', label: 'Current Ratio', cat: 'Balance Sheet', unit: 'ratio', higherBetter: true,
+    tip: 'Current assets ÷ current liabilities. Above 1 = covers short-term obligations.' },
 ];
 
-function fmt(v: number | null, decimals = 2): string {
-  if (v === null) return '—';
-  return v.toFixed(decimals);
+const CAT_PILL: Record<Category, string> = {
+  Valuation: 'mt-cat-valuation',
+  Profitability: 'mt-cat-profitability',
+  Growth: 'mt-cat-growth',
+  'Balance Sheet': 'mt-cat-balance',
+};
+
+const MARKET_LABEL: Record<string, string> = { us: 'US market', au: 'ASX', ca: 'TSX' };
+
+function fmtVal(v: number, unit: Unit): string {
+  if (unit === 'pct') return `${v.toFixed(1)}%`;
+  if (unit === 'mult') return `${v.toFixed(1)}x`;
+  return v.toFixed(2);
 }
 
-// Higher-is-better: green ≥ good, red < warn, amber in between
-function hi(v: number | null, good: number, warn: number): ValColor {
-  if (v === null) return '';
-  if (v >= good) return 'green';
-  if (v < warn)  return 'red';
-  return '';
+function fmtDelta(delta: number, unit: Unit): string {
+  const sign = delta >= 0 ? '+' : '−';
+  const a = Math.abs(delta);
+  if (unit === 'pct') return `${sign}${a.toFixed(1)}pp`;
+  if (unit === 'mult') return `${sign}${a.toFixed(1)}x`;
+  return `${sign}${a.toFixed(2)}`;
 }
 
-// Lower-is-better: green ≤ good, red > warn, amber in between
-function lo(v: number | null, good: number, warn: number): ValColor {
-  if (v === null) return '';
-  if (v <= good) return 'green';
-  if (v > warn)  return 'red';
-  return '';
+type Verdict = 'better' | 'worse' | 'inline' | 'na';
+
+interface Comparison {
+  verdict: Verdict;
+  /** Signed favourability score for sorting: + = better than peers. */
+  score: number;
+  text: string;
+  tip: string;
 }
 
-function buildRows(f: FundamentalsSnapshot): MetricRow[] {
-  const rows: MetricRow[] = [
-    // ── Valuation ──────────────────────────────────────────────────────────
-    { label: 'Trailing P/E',      category: 'Valuation', raw: f.pe,            color: '',
-      disp: f.pe !== null ? `${fmt(f.pe)}x` : '—',
-      tip:  'Trailing P/E — Price ÷ EPS (last 12 months). Lower = cheaper relative to earnings.' },
-    { label: 'Forward P/E',       category: 'Valuation', raw: f.forwardPe,     color: '',
-      disp: f.forwardPe !== null ? `${fmt(f.forwardPe)}x` : '—',
-      tip:  'Forward P/E — Price ÷ estimated next-year EPS. Reflects market growth expectations.' },
-    { label: 'PEG Ratio',         category: 'Valuation', raw: f.peg,           color: lo(f.peg, 1, 2),
-      disp: f.peg !== null ? fmt(f.peg) : '—',
-      tip:  'PEG — P/E ÷ Earnings Growth Rate. Below 1 = potentially undervalued. Above 2 = expensive relative to growth.' },
-    { label: 'Price / Book',      category: 'Valuation', raw: f.priceToBook,   color: '',
-      disp: f.priceToBook !== null ? `${fmt(f.priceToBook)}x` : '—',
-      tip:  'Price/Book — Market Cap ÷ Book Value. Below 1 = trading below asset value.' },
-    { label: 'Price / Sales',     category: 'Valuation', raw: f.priceToSales,  color: '',
-      disp: f.priceToSales !== null ? `${fmt(f.priceToSales)}x` : '—',
-      tip:  'Price/Sales — Market Cap ÷ Revenue. Useful for pre-profit companies. Lower = cheaper.' },
-    { label: 'EV / EBITDA',       category: 'Valuation', raw: f.evToEbitda,    color: lo(f.evToEbitda, 10, 20),
-      disp: f.evToEbitda !== null ? `${fmt(f.evToEbitda)}x` : '—',
-      tip:  'EV/EBITDA — Enterprise Value ÷ EBITDA. Below 10x often considered value territory.' },
-    { label: 'FCF Yield',         category: 'Valuation', raw: f.fcfYieldPct,   color: hi(f.fcfYieldPct, 4, 2),
-      disp: f.fcfYieldPct !== null ? `${fmt(f.fcfYieldPct)}%` : '—',
-      tip:  'FCF Yield % — Free Cash Flow ÷ Market Cap × 100. Above 4% generally considered attractive.' },
+function compare(
+  def: MetricDef,
+  value: number,
+  group: MetricMedians | undefined,
+  groupLabel: string,
+): Comparison {
+  const stat = group?.[def.key];
+  if (!stat) return { verdict: 'na', score: -Infinity, text: '—', tip: `No ${groupLabel} median available.` };
 
-    // ── Profitability ───────────────────────────────────────────────────────
-    { label: 'Gross Margin',      category: 'Profitability', raw: f.grossMargin,     color: hi(f.grossMargin, 40, 15),
-      disp: f.grossMargin !== null ? `${fmt(f.grossMargin, 1)}%` : '—',
-      tip:  'Gross Margin % — (Revenue − COGS) ÷ Revenue × 100. Higher = more pricing power.' },
-    { label: 'Operating Margin',  category: 'Profitability', raw: f.operatingMargin, color: hi(f.operatingMargin, 20, 5),
-      disp: f.operatingMargin !== null ? `${fmt(f.operatingMargin, 1)}%` : '—',
-      tip:  'Operating Margin % — Operating Income ÷ Revenue × 100. Above 20% strong for most industries.' },
-    { label: 'Net Margin',        category: 'Profitability', raw: f.netMargin,       color: hi(f.netMargin, 15, 3),
-      disp: f.netMargin !== null ? `${fmt(f.netMargin, 1)}%` : '—',
-      tip:  'Net Margin % — Net Income ÷ Revenue × 100. Bottom-line profit per dollar of sales.' },
-    { label: 'EBITDA Margin',     category: 'Profitability', raw: f.ebitdaMargin,    color: hi(f.ebitdaMargin, 20, 8),
-      disp: f.ebitdaMargin !== null ? `${fmt(f.ebitdaMargin, 1)}%` : '—',
-      tip:  'EBITDA Margin % — EBITDA ÷ Revenue × 100. Operating profitability before non-cash items.' },
-    { label: 'ROE',               category: 'Profitability', raw: f.roe,             color: hi(f.roe, 15, 5),
-      disp: f.roe !== null ? `${fmt(f.roe, 1)}%` : '—',
-      tip:  'Return on Equity % — Net Income ÷ Shareholders Equity × 100. Above 15% generally strong.' },
-    { label: 'ROA',               category: 'Profitability', raw: f.roa,             color: hi(f.roa, 8, 2),
-      disp: f.roa !== null ? `${fmt(f.roa, 1)}%` : '—',
-      tip:  'Return on Assets % — Net Income ÷ Total Assets × 100. Measures efficiency of asset use.' },
+  const delta = value - stat.median;
+  // Relative size of the gap, used to call "in line" when the difference is small.
+  const rel = Math.abs(stat.median) > 1e-9 ? delta / Math.abs(stat.median) : delta;
+  const favScore = def.higherBetter ? rel : -rel;
 
-    // ── Growth ──────────────────────────────────────────────────────────────
-    { label: 'Revenue Growth',    category: 'Growth', raw: f.revenueGrowthYoy,  color: hi(f.revenueGrowthYoy, 10, 0),
-      disp: f.revenueGrowthYoy !== null ? `${fmt(f.revenueGrowthYoy, 1)}%` : '—',
-      tip:  'Revenue Growth % (YoY) — how much total sales grew vs. prior year.' },
-    { label: 'Earnings Growth',   category: 'Growth', raw: f.earningsGrowthYoy, color: hi(f.earningsGrowthYoy, 10, 0),
-      disp: f.earningsGrowthYoy !== null ? `${fmt(f.earningsGrowthYoy, 1)}%` : '—',
-      tip:  'Earnings Growth % (YoY) — how much EPS grew vs. prior year.' },
+  let verdict: Verdict;
+  if (Math.abs(rel) < 0.05) verdict = 'inline';
+  else verdict = favScore > 0 ? 'better' : 'worse';
 
-    // ── Balance Sheet ────────────────────────────────────────────────────────
-    { label: 'Current Ratio',     category: 'Balance Sheet', raw: f.currentRatio,    color: hi(f.currentRatio, 2, 1),
-      disp: f.currentRatio !== null ? fmt(f.currentRatio) : '—',
-      tip:  'Current Ratio — Current Assets ÷ Current Liabilities. Above 2 = very safe. Below 1 = liquidity risk.' },
-    { label: 'Quick Ratio',       category: 'Balance Sheet', raw: f.quickRatio,      color: hi(f.quickRatio, 1.5, 0.8),
-      disp: f.quickRatio !== null ? fmt(f.quickRatio) : '—',
-      tip:  'Quick Ratio — (Current Assets − Inventory) ÷ Current Liabilities. Stricter liquidity test.' },
-    { label: 'Debt / Equity',     category: 'Balance Sheet', raw: f.debtToEquity,    color: lo(f.debtToEquity, 0.5, 1.5),
-      disp: f.debtToEquity !== null ? fmt(f.debtToEquity) : '—',
-      tip:  'Debt/Equity — Total Debt ÷ Shareholders Equity. Below 0.5 = low leverage. Above 1.5 = high leverage.' },
-    { label: 'Interest Coverage', category: 'Balance Sheet', raw: f.interestCoverage, color: hi(f.interestCoverage, 5, 2),
-      disp: f.interestCoverage !== null ? `${fmt(f.interestCoverage, 1)}x` : '—',
-      tip:  'Interest Coverage — EBIT ÷ Interest Expense. Above 5x = very safe. Below 2x = financial stress risk.' },
+  const dir = delta >= 0 ? 'above' : 'below';
+  const quality =
+    verdict === 'inline' ? 'in line with' : verdict === 'better' ? 'stronger than' : 'weaker than';
+  const tip = `${groupLabel} median: ${fmtVal(stat.median, def.unit)} across ${stat.n} peers. ` +
+    `This stock is ${fmtDelta(delta, def.unit).replace(/^[+−]/, '')} ${dir} — ${quality} the typical peer.`;
 
-    // ── Cash Flow ────────────────────────────────────────────────────────────
-    { label: 'FCF Margin',        category: 'Cash Flow', raw: f.fcfMarginPct, color: hi(f.fcfMarginPct, 10, 3),
-      disp: f.fcfMarginPct !== null ? `${fmt(f.fcfMarginPct, 1)}%` : '—',
-      tip:  'FCF Margin % — Free Cash Flow ÷ Revenue × 100. High FCF margin = strong cash-generating business.' },
-
-    // ── Income ───────────────────────────────────────────────────────────────
-    { label: 'Dividend Yield',    category: 'Income', raw: f.dividendYieldPct, color: hi(f.dividendYieldPct, 3, 1),
-      disp: f.dividendYieldPct !== null ? `${fmt(f.dividendYieldPct, 2)}%` : '—',
-      tip:  'Dividend Yield % — Annual Dividend ÷ Stock Price × 100. Income return per dollar invested.' },
-    { label: 'Payout Ratio',      category: 'Income', raw: f.payoutRatioPct,  color: lo(f.payoutRatioPct, 60, 80),
-      disp: f.payoutRatioPct !== null ? `${fmt(f.payoutRatioPct, 1)}%` : '—',
-      tip:  'Payout Ratio % — Dividends ÷ Net Income × 100. Below 60% = sustainable. Above 80% = potential risk.' },
-
-    // ── Market ───────────────────────────────────────────────────────────────
-    { label: 'Beta',              category: 'Market', raw: f.beta,               color: '',
-      disp: f.beta !== null ? fmt(f.beta) : '—',
-      tip:  'Beta — volatility vs. the market. 1 = market-like. Above 1 = more volatile. Below 1 = more stable.' },
-    { label: 'Short % of Float',  category: 'Market', raw: f.shortPctOfFloat,    color: lo(f.shortPctOfFloat, 5, 15),
-      disp: f.shortPctOfFloat !== null ? `${fmt(f.shortPctOfFloat, 1)}%` : '—',
-      tip:  'Short % of Float — % of available shares sold short. Above 15% = significant bearish conviction.' },
-    { label: 'Shares Chg (YoY)', category: 'Market', raw: f.sharesChangeYoyPct, color: lo(f.sharesChangeYoyPct, 0, 2),
-      disp: f.sharesChangeYoyPct !== null ? `${fmt(f.sharesChangeYoyPct, 1)}%` : '—',
-      tip:  'Shares Outstanding Change % YoY — negative = buybacks (shareholder-friendly). Positive = dilution.' },
-  ];
-  return rows.filter((r) => r.raw !== null);
+  return { verdict, score: favScore, text: fmtDelta(delta, def.unit), tip };
 }
 
-export function MetricsTable({ fundamentals }: Props) {
-  const rows = buildRows(fundamentals);
+interface BuiltRow {
+  def: MetricDef;
+  value: number;
+  disp: string;
+  sectorCmp: Comparison;
+  marketCmp: Comparison;
+}
 
-  const grouped = CAT_ORDER.reduce<Record<Category, MetricRow[]>>((acc, cat) => {
-    acc[cat] = rows.filter((r) => r.category === cat);
-    return acc;
-  }, {} as Record<Category, MetricRow[]>);
+type SortKey = 'default' | 'metric' | 'value' | 'sector' | 'market';
+
+const VERDICT_CLASS: Record<Verdict, string> = {
+  better: 'km-cmp--better',
+  worse: 'km-cmp--worse',
+  inline: 'km-cmp--inline',
+  na: 'km-cmp--na',
+};
+
+export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
+  const [sortKey, setSortKey] = useState<SortKey>('default');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+
+  const sectorGroup = sector ? medians.sector[sector] : undefined;
+  const marketGroup = medians.market[market];
+  const sectorLabel = sector ?? 'Sector';
+  const marketLabel = MARKET_LABEL[market] ?? 'Market';
+
+  const rows: BuiltRow[] = useMemo(() => {
+    const f = fundamentals as unknown as Record<MetricKey, number | null>;
+    return METRICS.flatMap((def) => {
+      const value = f[def.key];
+      if (value === null || value === undefined || !Number.isFinite(value)) return [];
+      return [{
+        def,
+        value,
+        disp: fmtVal(value, def.unit),
+        sectorCmp: compare(def, value, sectorGroup, sectorLabel),
+        marketCmp: compare(def, value, marketGroup, marketLabel),
+      }];
+    });
+  }, [fundamentals, sectorGroup, marketGroup, sectorLabel, marketLabel]);
+
+  const sorted = useMemo(() => {
+    if (sortKey === 'default') return rows;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const keyed = rows.map((r) => {
+      let v: number | string;
+      if (sortKey === 'metric') v = r.def.label;
+      else if (sortKey === 'value') v = r.value;
+      else if (sortKey === 'sector') v = r.sectorCmp.score;
+      else v = r.marketCmp.score;
+      return { r, v };
+    });
+    keyed.sort((a, b) =>
+      typeof a.v === 'string'
+        ? a.v.localeCompare(b.v as string) * dir
+        : ((a.v as number) - (b.v as number)) * dir,
+    );
+    return keyed.map((k) => k.r);
+  }, [rows, sortKey, sortDir]);
+
+  function onSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir(key === 'metric' ? 'asc' : 'desc');
+    }
+  }
+
+  function arrow(key: SortKey) {
+    if (key !== sortKey) return '';
+    return sortDir === 'asc' ? ' ▲' : ' ▼';
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="card card--stack-base">
+        <div className="card-header"><div className="card-title">Key Metrics</div></div>
+        <div className="card-body">
+          <div className="km-empty">No fundamental metrics available for this stock.</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card card--stack-base">
       <div className="card-header">
         <div className="card-title">Key Metrics</div>
+        <div className="km-subtitle">vs sector &amp; market median · click a column to sort</div>
       </div>
-      <div className="card-body">
-        {CAT_ORDER.map((cat) => {
-          const catRows = grouped[cat];
-          if (!catRows.length) return null;
-          return (
-            <div key={cat} className="metrics-section">
-              <div className="metrics-cat-label">{cat}</div>
-              <div className="metrics-tile-grid">
-                {catRows.map((row, i) => (
-                  <div key={i} className="metric-tile" title={row.tip}>
-                    <div className="metric-tile-label">{row.label}</div>
-                    <div className={`metric-tile-val${row.color ? ` ${row.color}` : ''}`}>
-                      {row.disp}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+      <div className="card-body card-body--bleed">
+        <div className="km-scroll">
+          <table className="km-table">
+            <thead>
+              <tr>
+                <th className="km-th-metric" onClick={() => onSort('metric')}>Metric{arrow('metric')}</th>
+                <th className="km-num" onClick={() => onSort('value')}>Value{arrow('value')}</th>
+                <th className="km-num" onClick={() => onSort('sector')}>
+                  vs Sector{arrow('sector')}
+                </th>
+                <th className="km-num" onClick={() => onSort('market')}>
+                  vs {marketLabel}{arrow('market')}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((r) => (
+                <tr key={r.def.key}>
+                  <td className="km-metric-cell">
+                    <span className="km-metric-label" title={r.def.tip}>{r.def.label}</span>
+                    <span className={`mt-cat-pill ${CAT_PILL[r.def.cat]}`}>{r.def.cat}</span>
+                  </td>
+                  <td className="km-num km-value">{r.disp}</td>
+                  <td className={`km-num km-cmp ${VERDICT_CLASS[r.sectorCmp.verdict]}`} title={r.sectorCmp.tip}>
+                    {r.sectorCmp.text}
+                  </td>
+                  <td className={`km-num km-cmp ${VERDICT_CLASS[r.marketCmp.verdict]}`} title={r.marketCmp.tip}>
+                    {r.marketCmp.text}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="km-footnote">
+          Compared against the median of {sectorLabel} peers and the broader {marketLabel}.
+          Green = stronger than the typical peer, red = weaker. Information only — not financial advice.
+        </div>
       </div>
     </div>
   );

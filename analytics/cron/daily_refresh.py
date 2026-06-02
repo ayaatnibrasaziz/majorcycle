@@ -238,14 +238,21 @@ def run(mode: str = "smart", only: Optional[list[str]] = None) -> None:
                     "updated_at":   now,
                 }
 
+                # News is time-sensitive, so refresh it on every run rather than
+                # only on the (≈quarterly) enriched-data cadence. It's one cheap
+                # call and failures are non-fatal. Only overwrite when we actually
+                # got items, so a transient yfinance hiccup never wipes the
+                # previously-stored news for a ticker.
+                news = DATA_PROVIDER.fetch_news(ticker)
+                if news:
+                    news_list: list[dict[str, Any]] = [dataclasses.asdict(n) for n in news]
+                    stock_row["news"] = _jsonb(news_list)
+
                 if fetch_enriched:
-                    news = DATA_PROVIDER.fetch_news(ticker)
                     enriched = DATA_PROVIDER.fetch_enriched_data(ticker)
 
-                    news_list: list[dict[str, Any]] = [dataclasses.asdict(n) for n in news]
                     enriched_dict: dict[str, Any] = dataclasses.asdict(enriched) if enriched else {}
 
-                    stock_row["news"] = _jsonb(news_list)
                     stock_row["company_overview"] = (
                         enriched.company_overview if enriched else None
                     )
