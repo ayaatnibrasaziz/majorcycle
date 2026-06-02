@@ -79,5 +79,14 @@ Status key: ✅ pass · ⚠️ issue logged · ❌ fail · ⬜ not yet audited �
 - **Verification lesson:** `next dev` hides Server/Client boundary errors and local prod builds are auth-gated → RSC-boundary regressions are only confirmable on a real Vercel deploy via `get_runtime_logs` (filter by `deploymentId`, check the previously-failing path is clean).
 - **Deferred:** `cycle.py` parallel fetch (owner deferred — 1h-cached, lower value); Layer H mobile (section-tab nav overflows at 375px — pre-existing app shell, not a Layer C component).
 
-### S2 — Methodology proposal (next, no code)
-See the continuation prompt / plan. Write `docs/methodology-audit.md` with proposed engine changes for owner sign-off before any code.
+### S2 — Methodology proposal (2026-06-03) ✅ doc written, awaiting sign-off
+- Merged PR #12 (docs S1) first — was clean/green.
+- Wrote **`docs/methodology-audit.md`** — 6 proposals, each grounded in real engine output (ran `web/api/cycle.py` on AAPL/BHP/SHOP + FMC/BAX/KMX/BAC, medium preset):
+  - **P1 Quality-gate valuation (HIGH):** `qf = FLOOR + (1−FLOOR)·(FH/100)^GAMMA` (rec. 0.30/1.5, no cliffs). FMC 63→42, BAX 68→54, KMX 63→47; SHOP.TO 84→80 (healthy dip preserved).
+  - **P2 sector-blind FH:** BAC balance-sheet & cashflow pillars both fabricated 50 (banks report no D/E/current-ratio/interest-coverage). Rec. Option C now (insufficient-data), Option A (sector-relative) Phase 2. Keep 40/35/25 weights; defer reweight.
+  - **P3 insufficient-data (HIGH):** kill fabricated 50; withhold FH when <3/5 pillars; cycle-only read + banner when no fundamentals.
+  - **P4 rename "Momentum" → "Cycle Payoff":** it's signal-reliability + reward/risk, no trend. events_score saturates at 20 events → permanently 100 for established stocks. Rename only.
+  - **P5 mean→median typical dd/profit:** mean overstates (crash-skewed); AAPL dd −24.4→−19.3. Bundle with P1.
+  - **P6 carried:** sanity bounds + provenance labels (S9).
+- **S3 order:** (P1+P5)→reverify→P3→P4; defer 2a/2b + Option-A.
+- No engine code touched. Doc awaiting owner sign-off.
