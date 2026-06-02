@@ -214,7 +214,7 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
                 <th className="km-th-metric" onClick={() => onSort('metric')}>Metric{arrow('metric')}</th>
                 <th className="km-num" onClick={() => onSort('value')}>Value{arrow('value')}</th>
                 <th className="km-num" onClick={() => onSort('sector')}>
-                  vs Sector{arrow('sector')}
+                  vs {sectorLabel}{arrow('sector')}
                 </th>
                 <th className="km-num" onClick={() => onSort('market')}>
                   vs {marketLabel}{arrow('market')}
