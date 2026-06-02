@@ -11,6 +11,12 @@ const PUBLIC_PATHS = [
   '/terms',
   '/privacy',
   '/pricing',
+  // Public stock-analysis endpoint (Vercel Python fn). Stock Detail pages render
+  // on the server and fetch their own /api/cycle WITHOUT the viewer's cookies;
+  // if this were gated the internal fetch would be redirected to /login and the
+  // page would get no cycle data (blank rating/KPI/radar). It returns only
+  // ticker→math (no user data), and the pages that surface it stay auth-gated.
+  '/api/cycle',
 ];
 
 export async function proxy(request: NextRequest) {
