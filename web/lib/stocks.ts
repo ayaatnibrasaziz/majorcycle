@@ -55,24 +55,36 @@ export const fetchStockDetail = cache(
       return null;
     }
 
-    // PostgREST caps each response at 1000 rows. Paginate until exhausted so
-    // the price chart receives the full lifetime history of the stock.
+    // PostgREST caps each response at 1000 rows, so we still page — but a
+    // long-history ticker (AAPL ~11.5k bars) is ~12 pages, and fetching them
+    // sequentially costs ~7s of round-trip latency. Get the count once, then
+    // pull every page in parallel so the whole lifetime history arrives in
+    // roughly two round-trips instead of twelve.
     const PAGE = 1000;
-    const priceBars: PriceBar[] = [];
-    let from = 0;
-    while (true) {
-      const { data: page, error: barsErr } = await supabase
-        .from('price_bars')
-        .select('date,open,high,low,close,volume')
-        .eq('ticker', ticker)
-        .order('date', { ascending: true })
-        .range(from, from + PAGE - 1);
+    const { count, error: countErr } = await supabase
+      .from('price_bars')
+      .select('date', { count: 'exact', head: true })
+      .eq('ticker', ticker);
+    if (countErr) return null;
 
+    const pageCount = Math.ceil((count ?? 0) / PAGE);
+    const pages = await Promise.all(
+      Array.from({ length: pageCount }, (_, i) =>
+        supabase
+          .from('price_bars')
+          .select('date,open,high,low,close,volume')
+          .eq('ticker', ticker)
+          .order('date', { ascending: true })
+          .range(i * PAGE, i * PAGE + PAGE - 1),
+      ),
+    );
+
+    // Pages are date-ordered slices concatenated in order, so the result stays
+    // globally ordered by date.
+    const priceBars: PriceBar[] = [];
+    for (const { data: page, error: barsErr } of pages) {
       if (barsErr) return null;
-      if (!page || page.length === 0) break;
-      priceBars.push(...(page as PriceBar[]));
-      if (page.length < PAGE) break;
-      from += PAGE;
+      if (page) priceBars.push(...(page as PriceBar[]));
     }
 
     const camelRow = shallowCamel(stockRow as Record<string, unknown>);

@@ -16,30 +16,50 @@ const BENCHMARKS_TTL_MS = 86_400_000; // 1 day — index data changes once per t
 let _cache: { at: number; data: BenchmarkSeries } | null = null;
 let _inflight: Promise<BenchmarkSeries> | null = null;
 
-async function _loadAllBenchmarks(): Promise<BenchmarkSeries> {
-  const supabase = createAdminClient();
-  const out: BenchmarkSeries = {};
+async function _loadOneBenchmark(
+  supabase: ReturnType<typeof createAdminClient>,
+  ticker: string,
+): Promise<BenchmarkBar[]> {
+  // PostgREST caps each response at 1000 rows. ^GSPC alone is ~25 pages, so we
+  // count once then pull all pages in parallel (mirrors web/lib/stocks.ts) —
+  // sequential paging here cost ~14s of round-trip latency on a cold instance.
+  const PAGE = 1000;
+  const { count } = await supabase
+    .from('price_bars')
+    .select('date', { count: 'exact', head: true })
+    .eq('ticker', ticker);
 
-  for (const b of BENCHMARKS) {
-    const bars: BenchmarkBar[] = [];
-    const PAGE = 1000;
-    let from = 0;
-    // Mirrors the pagination in web/lib/stocks.ts (PostgREST caps at 1000 rows).
-    while (true) {
-      const { data, error } = await supabase
+  const pageCount = Math.ceil((count ?? 0) / PAGE);
+  const pages = await Promise.all(
+    Array.from({ length: pageCount }, (_, i) =>
+      supabase
         .from('price_bars')
         .select('date,close')
-        .eq('ticker', b.ticker)
+        .eq('ticker', ticker)
         .order('date', { ascending: true })
-        .range(from, from + PAGE - 1);
-      if (error || !data || data.length === 0) break;
-      bars.push(...(data as BenchmarkBar[]));
-      if (data.length < PAGE) break;
-      from += PAGE;
-    }
-    out[b.ticker] = bars;
-  }
+        .range(i * PAGE, i * PAGE + PAGE - 1),
+    ),
+  );
 
+  const bars: BenchmarkBar[] = [];
+  for (const { data, error } of pages) {
+    if (error || !data) continue;
+    bars.push(...(data as BenchmarkBar[]));
+  }
+  return bars;
+}
+
+async function _loadAllBenchmarks(): Promise<BenchmarkSeries> {
+  const supabase = createAdminClient();
+  // Each index series is independent — load them all concurrently.
+  const series = await Promise.all(
+    BENCHMARKS.map((b) => _loadOneBenchmark(supabase, b.ticker)),
+  );
+
+  const out: BenchmarkSeries = {};
+  BENCHMARKS.forEach((b, i) => {
+    out[b.ticker] = series[i]!;
+  });
   return out;
 }
 
