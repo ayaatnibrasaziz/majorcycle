@@ -81,12 +81,12 @@ flowchart TB
 
 **What:** When a user lands on `/stocks/us/AAPL`, the Next.js Server Component:
 
-1. Reads stored AAPL data from Supabase (1 query — stock row + price_bars)
-2. Calls `/api/cycle?ticker=AAPL&preset=medium` — a Vercel Python serverless function (`web/api/cycle.py`) that reads the same Supabase data and computes the Major Cycle math via the vendored `_engine` package. Default preset is **Medium** (-5%/+5%/252 bars). The function never calls yfinance — that's the cron's job.
+1. Reads stored data from Supabase (`fetchStockDetail`): the stock row + the **full** `price_bars` history. PostgREST caps each response at 1000 rows, so a long-history ticker pages (AAPL ≈ 11.5k bars ≈ 12 pages). **These pages are fetched in parallel** — count the rows once, then issue every `range()` page concurrently via `Promise.all` — so the whole history arrives in ~2 round-trips, not ~12 sequential ones (AAPL bar fetch ~7s → ~1.7s). Pages are date-ordered slices concatenated in order, so the result is identical to a sequential fetch. The benchmark loader (`benchmarks.server.ts`) uses the same parallel-paging pattern.
+2. Calls `/api/cycle?ticker=AAPL&preset=medium` — a Vercel Python serverless function (`web/api/cycle.py`) that reads the same Supabase data and computes the Major Cycle math via the vendored `_engine` package. Default preset is **Medium** (-5%/+5%/252 bars). The function never calls yfinance — that's the cron's job. Result is cached via Next's data cache (`revalidate: 3600`), so the ~7s cold compute only bites the first viewer of a ticker per hour. *(`cycle.py`'s own price-bar fetch is still sequential — an optional future parallelization.)*
 3. Renders HTML with full data baked in (good for SEO)
 4. Vercel Edge caches the HTML for 24 hours (stale-while-revalidate); `/api/cycle` itself returns `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
 
-**Why this works:** Pages load in ~500ms first time, ~5ms after cache. Googlebot sees rich content, not a loading spinner. No DB write churn.
+**Why this works:** Warm pages load fast (cycle + benchmarks cached); cold pages pay the per-stock bar fetch (now parallel). Googlebot sees rich content, not a loading spinner. No DB write churn.
 
 ### Tier 3 — On-Demand (user-driven)
 
@@ -110,8 +110,9 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 |---|---|---|---|
 | **1. requests_cache** | Inside Python (`requests_cache` package) | 6 hours | Prevents duplicate yfinance calls within a single batch run |
 | **2. Supabase tables** | `stocks.updated_at`, `price_bars.date` | 24 hours | Source of truth. 99% of page views hit only this. |
-| **3. Vercel Data Cache** | Edge CDN, set via `revalidate: 86400` | 24 hours | Caches rendered HTML and Supabase reads at every Vercel edge location worldwide |
+| **3. Vercel Data Cache** | Edge CDN, set via `revalidate: 86400` | 24 hours | Caches rendered HTML and Supabase reads at every Vercel edge location worldwide. `/api/cycle` results cached here via `revalidate: 3600`. |
 | **4. Browser HTTP cache** | User's browser | Per asset (1yr static, max-age=0 dynamic) | Standard cache headers |
+| **+. Benchmark module cache** | In-memory module scope (`benchmarks.server.ts`), reused across requests on a warm Fluid Compute instance | 24 hours | The full benchmark index series (~3MB, e.g. `^GSPC` ≈ 24.7k bars) is identical for every stock, so it's fetched once per instance. **Deliberately not Vercel Data Cache** — the ~3MB value exceeds that cache's 2MB entry limit (which previously threw an `unhandledRejection` on every render). A single shared in-flight promise dedupes concurrent first requests; an empty result is not cached. |
 
 **Decision rule:** A user request never hits yfinance directly unless their ticker is brand new (universe expansion). All other requests resolve in tiers 2-4.
 

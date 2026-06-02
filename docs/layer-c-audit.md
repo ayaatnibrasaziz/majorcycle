@@ -30,7 +30,7 @@ Status key: ✅ pass · ⚠️ issue logged · ❌ fail · ⬜ not yet audited �
 
 | # | Component | Section | Planned session | Status | Notes |
 |---|---|---|---|---|---|
-| 1 | StockHeader | Thesis | done (S0) | ✅ | Analyst badge lowercase→Title-Case fixed (format.ts). Visual re-confirm pending in S1. |
+| 1 | StockHeader | Thesis | done (S0) | ✅ | Analyst badge lowercase→Title-Case fixed (format.ts). **S1: visually re-confirmed** — Buy/Hold/Buy on AAPL/BHP/SHOP. |
 | 2 | KpiStrip | Thesis | done (S0) | ✅ | Values + tier colors correct. |
 | 3 | VerdictCard | Thesis | done (S0) | ✅ | Faithful port; ring/peak/band math sound; inline disclaimer present. |
 | 4 | CompanyOverview | Thesis | done (S0) | ✅ | Simple, correct; collapses when no overview. |
@@ -46,11 +46,11 @@ Status key: ✅ pass · ⚠️ issue logged · ❌ fail · ⬜ not yet audited �
 | 14 | ValuationHistory | Fundamentals | S8 | ⬜ | PE history; empty state <4 pts. |
 | 15 | BalanceSheet | Fundamentals | S8 | ⬜ | Recompute net cash; stacked bars + debt line. |
 | 16 | DividendHistory | Fundamentals | S8 | ⬜ | Annual totals; non-payer empty state. |
-| 17 | MetricsTable (Key Metrics) | Fundamentals | rebuilt (S0) | ⚠️ | Rebuilt as sector/market comparison; data verified vs SQL. PENDING: visual + 375px + sort/tooltips re-verify (S1); beginner-clarity softening (S5). |
+| 17 | MetricsTable (Key Metrics) | Fundamentals | rebuilt (S0) | ✅ | Rebuilt as sector/market comparison; data verified vs SQL. **S1: re-verified** — 12 rows, columns Metric/Value/vs Sector/vs {market} (localised US market/ASX/TSX), green/red/gray color-coding correct, tooltips correct, table contains own horizontal scroll at 375px (`.km-scroll`). 🔧 Fixed: sector header now names the sector (`vs Technology`, was generic `vs Sector`). PENDING: beginner-clarity softening (S5). |
 | 18 | SmartMoneyActivity | Sentiment | S6 | ⬜ | 548 lines; flagged as built without full design-system adherence. Kept despite Phase-2 spec. |
 | 19 | OwnershipStructure | Sentiment | S6 | ⬜ | Recompute donut %; verify holders table. |
 | 20 | ShortInterest | Sentiment | S6 | ⬜ | Recompute short %/days-to-cover; null AU handling. |
-| 21 | NewsFeed | Sentiment | S6 | ⚠️ | Decoupled to daily refresh (backend proven). PENDING: populate via merge + render re-verify (S1). |
+| 21 | NewsFeed | Sentiment | S6 | ⚠️ | Decoupled to daily refresh. **S1: news now populating** (refresh run after PR #9 merge); empty-state + populated cards render correctly. 🔧 **Critical prod-crash fixed**: NewsFeed is a Server Component but had `onMouseEnter`/`onMouseLeave` handlers → "Event handlers cannot be passed to Client Component props" → "Something went wrong" on every news-bearing ticker in production (PR #11; replaced with `.news-row:hover` CSS; verified clean in prod logs). Full design-system/parity audit still pending in S6. |
 
 ## Cross-cutting items (apply site-wide)
 
@@ -63,6 +63,21 @@ Status key: ✅ pass · ⚠️ issue logged · ❌ fail · ⬜ not yet audited �
 
 ## Known data issues (carry-over)
 
-- News column 0/720 until PR #9 merges to main + cron/manual refresh runs.
+- ~~News column 0/720~~ — **resolved**: PR #9 merged + "Full Enriched Data Refresh" run; news populating across the 720 (6–10 items/ticker). Refresh continues to fill remaining tickers.
 - Short interest null for some ASX tickers (yfinance limitation) — handle gracefully.
 - CA universe ~67 stocks → some sector medians/scores will show "Insufficient data".
+
+## Session log
+
+### S1 — Foundation + re-verify (2026-06-02) ✅ complete
+- **Merged PR #9** (Layer C baseline) → main. Triggered the news refresh; news now populating.
+- **Re-verified S0 work** on AAPL/BHP/SHOP: analyst badge Title-Case, Key Metrics layout/columns/colors/tooltips/375px, News render. All pass (see rows 1, 17, 21).
+- **Production hardening (3 follow-up PRs, all merged + live on majorcycle.com):**
+  - PR #9 follow-up (`af3abe6`): benchmark cache was storing a ~3MB value in `unstable_cache` (2MB limit) → `unhandledRejection` on every render + zero caching → replaced with a module-scope cache. Also named the KM sector header (`vs Technology`).
+  - **PR #10** (`perf/parallel-price-bar-fetch`): parallel price-bar paging — AAPL bar fetch 7.0s → 1.7s, warm page 6.5s → 2.8s; byte-identical output verified. Owner chose to **keep full history** (no depth cap).
+  - **PR #11** (`fix/news-server-component-handlers`): the NewsFeed Server-Component crash (see row 21). **Verified in production logs**: previously-crashing `/stocks/us/BLK` now 200, zero errors on the new deployment.
+- **Verification lesson:** `next dev` hides Server/Client boundary errors and local prod builds are auth-gated → RSC-boundary regressions are only confirmable on a real Vercel deploy via `get_runtime_logs` (filter by `deploymentId`, check the previously-failing path is clean).
+- **Deferred:** `cycle.py` parallel fetch (owner deferred — 1h-cached, lower value); Layer H mobile (section-tab nav overflows at 375px — pre-existing app shell, not a Layer C component).
+
+### S2 — Methodology proposal (next, no code)
+See the continuation prompt / plan. Write `docs/methodology-audit.md` with proposed engine changes for owner sign-off before any code.
