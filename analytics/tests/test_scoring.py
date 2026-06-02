@@ -34,6 +34,7 @@ class TestScoreFinancialHealth:
             shares_change_yoy_pct=-3.0,
         )
         score, subscores = score_financial_health(f)
+        assert score is not None
         assert score >= 80.0
         assert set(subscores.keys()) == {"profitability", "balance_sheet", "growth", "cashflow", "shareholder"}
         assert all(0.0 <= v <= 100.0 for v in subscores.values())
@@ -54,17 +55,45 @@ class TestScoreFinancialHealth:
             shares_change_yoy_pct=15.0,
         )
         score, _ = score_financial_health(f)
+        assert score is not None
         assert score < 40.0
 
-    def test_all_none_returns_midpoint(self) -> None:
+    def test_all_none_is_withheld(self) -> None:
+        # No usable fundamentals -> insufficient data, not a fabricated 50.
         f = _fund()
-        score, _subscores = score_financial_health(f)
-        assert 40.0 <= score <= 65.0  # neutral defaults
+        score, subscores = score_financial_health(f)
+        assert score is None
+        assert "balance_sheet" not in subscores
+        assert "profitability" not in subscores
 
     def test_score_clamped_0_to_100(self) -> None:
-        f = _fund(roe=999.0, gross_margin=999.0, operating_margin=999.0)
+        f = _fund(
+            roe=999.0, gross_margin=999.0, operating_margin=999.0,
+            debt_to_equity=0.1, revenue_growth_yoy=50.0,
+        )
         score, _ = score_financial_health(f)
+        assert score is not None
         assert 0.0 <= score <= 100.0
+
+    def test_missing_pillar_is_omitted_not_fabricated(self) -> None:
+        # Bank-like: profitability + growth + shareholder present, but no
+        # balance-sheet or cash-flow inputs (banks report neither in this shape).
+        f = _fund(
+            roe=18.0, net_margin=20.0,            # profitability
+            revenue_growth_yoy=12.0,              # growth
+            payout_ratio_pct=35.0,                # shareholder
+        )
+        score, subscores = score_financial_health(f)
+        assert score is not None                  # >=3 pillars -> scored
+        assert "balance_sheet" not in subscores   # omitted, not 50
+        assert "cashflow" not in subscores
+        assert {"profitability", "growth", "shareholder"} <= set(subscores)
+
+    def test_fewer_than_three_pillars_withheld(self) -> None:
+        # Only profitability + shareholder have data -> withhold.
+        f = _fund(roe=18.0, payout_ratio_pct=35.0)
+        score, _ = score_financial_health(f)
+        assert score is None
 
 
 class TestCalculateValuationZone:
@@ -192,3 +221,17 @@ class TestCalculateOverallRating:
         cycle: dict = {"total_pullback_events": 0, "total_profit_events": 0}
         rating, _, _ = calculate_overall_rating(100.0, 100.0, cycle)
         assert 0 <= rating <= 100
+
+    def test_cycle_only_when_fh_none(self) -> None:
+        # FH withheld -> rate on valuation + momentum alone (renormalised),
+        # not as if FH were a fabricated 50.
+        cycle: dict = {"total_pullback_events": 10, "total_profit_events": 10,
+                       "typical_drawdown": -10.0, "typical_profit": 30.0}
+        rating_none, label_none, _ = calculate_overall_rating(None, 80.0, cycle)
+        rating_fifty, _, _ = calculate_overall_rating(50.0, 80.0, cycle)
+        assert 0 <= rating_none <= 100
+        assert label_none in (
+            "High Conviction", "Constructive", "Neutral", "Cautious", "Bearish"
+        )
+        # With a high valuation, dropping a fabricated 50 FH lifts the rating.
+        assert rating_none > rating_fifty

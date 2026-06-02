@@ -193,9 +193,8 @@ def analyze_ticker(
     valuation_zone, valuation_score_raw = calculate_valuation_zone(cycle)
     valuation_score, quality_factor = apply_quality_gate(valuation_score_raw, fh_score)
 
-    effective_fh = fh_score if fh_score is not None else 50.0
     overall_rating, overall_label, momentum_score = calculate_overall_rating(
-        effective_fh, valuation_score, cycle
+        fh_score, valuation_score, cycle
     )
 
     return CycleAnalysis(
