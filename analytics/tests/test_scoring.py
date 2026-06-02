@@ -171,7 +171,7 @@ class TestCalculateOverallRating:
             "typical_drawdown": -10.0,
             "typical_profit": 30.0,
         }
-        rating, label, _momentum = calculate_overall_rating(90.0, 90.0, cycle)
+        rating, label, _payoff = calculate_overall_rating(90.0, 90.0, cycle)
         assert rating >= 80
         assert label == "High Conviction"
 
@@ -182,7 +182,7 @@ class TestCalculateOverallRating:
             "typical_drawdown": None,
             "typical_profit": None,
         }
-        rating, label, _momentum = calculate_overall_rating(10.0, 5.0, cycle)
+        rating, label, _payoff = calculate_overall_rating(10.0, 5.0, cycle)
         assert rating < 35
         assert label == "Bearish"
 
@@ -200,7 +200,7 @@ class TestCalculateOverallRating:
             _, label, _ = calculate_overall_rating(fh, val, cycle)
             assert label == expected_label, f"fh={fh} val={val}: expected {expected_label}, got {label}"
 
-    def test_momentum_uses_rr_ratio(self) -> None:
+    def test_cycle_payoff_uses_rr_ratio(self) -> None:
         cycle_good_rr = {
             "total_pullback_events": 10,
             "total_profit_events": 10,
@@ -213,9 +213,9 @@ class TestCalculateOverallRating:
             "typical_drawdown": -10.0,
             "typical_profit": 3.0,    # R/R = 0.3 -> 10%
         }
-        _, _, mom_good = calculate_overall_rating(70.0, 70.0, cycle_good_rr)
-        _, _, mom_bad = calculate_overall_rating(70.0, 70.0, cycle_bad_rr)
-        assert mom_good > mom_bad
+        _, _, cp_good = calculate_overall_rating(70.0, 70.0, cycle_good_rr)
+        _, _, cp_bad = calculate_overall_rating(70.0, 70.0, cycle_bad_rr)
+        assert cp_good > cp_bad
 
     def test_rating_clamped_0_to_100(self) -> None:
         cycle: dict = {"total_pullback_events": 0, "total_profit_events": 0}
@@ -223,7 +223,7 @@ class TestCalculateOverallRating:
         assert 0 <= rating <= 100
 
     def test_cycle_only_when_fh_none(self) -> None:
-        # FH withheld -> rate on valuation + momentum alone (renormalised),
+        # FH withheld -> rate on valuation + cycle-payoff alone (renormalised),
         # not as if FH were a fabricated 50.
         cycle: dict = {"total_pullback_events": 10, "total_profit_events": 10,
                        "typical_drawdown": -10.0, "typical_profit": 30.0}

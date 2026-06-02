@@ -50,7 +50,7 @@ class CycleAnalysis:
     valuation_score_raw: float        # un-gated cycle-position score
     quality_factor: Optional[float]   # gate multiplier applied (None if no FH to gate by)
     valuation_zone: ValuationZone
-    momentum_score: float
+    cycle_payoff_score: float         # signal-reliability + reward/risk (was "momentum")
     overall_rating: int
     overall_label: OverallLabel
 
@@ -193,7 +193,7 @@ def analyze_ticker(
     valuation_zone, valuation_score_raw = calculate_valuation_zone(cycle)
     valuation_score, quality_factor = apply_quality_gate(valuation_score_raw, fh_score)
 
-    overall_rating, overall_label, momentum_score = calculate_overall_rating(
+    overall_rating, overall_label, cycle_payoff_score = calculate_overall_rating(
         fh_score, valuation_score, cycle
     )
 
@@ -215,7 +215,7 @@ def analyze_ticker(
         valuation_score_raw=valuation_score_raw,
         quality_factor=quality_factor,
         valuation_zone=valuation_zone,
-        momentum_score=momentum_score,
+        cycle_payoff_score=cycle_payoff_score,
         overall_rating=overall_rating,
         overall_label=overall_label,
         fh_subscores=fh_subscores,

@@ -5,7 +5,7 @@ from analytics.providers.base import OverallLabel
 _RATING_WEIGHTS: dict[str, int] = {
     "financial_health": 40,
     "valuation_zone":   35,
-    "momentum":         25,
+    "cycle_payoff":     25,
 }
 
 
@@ -21,13 +21,14 @@ def calculate_overall_rating(
     """
     Three-pillar weighted rating (0-100).
 
-    Returns (overall_rating, overall_label, momentum_score).
+    Returns (overall_rating, overall_label, cycle_payoff_score).
 
     When ``fh_score`` is None (fundamentals unavailable / insufficient data) the
     rating is computed on the price cycle alone, renormalising the valuation +
-    momentum weights — no fabricated Financial Health contribution (Proposal P3).
+    cycle-payoff weights — no fabricated Financial Health contribution (P3).
 
-    Momentum sub-score:
+    Cycle Payoff sub-score (formerly mislabelled "Momentum" — it has no price
+    trend component):
       events_score (50%): calibration — more pivot events = more reliable signal
       rr_score     (50%): typical_profit / |typical_drawdown| — reward/risk ratio
     """
@@ -43,16 +44,16 @@ def calculate_overall_rating(
         rr = typ_pr / abs(typ_dd)
         rr_score = _clamp(rr / 3.0 * 100.0)
 
-    momentum_score = round(events_score * 0.5 + rr_score * 0.5, 1)
+    cycle_payoff_score = round(events_score * 0.5 + rr_score * 0.5, 1)
 
     w_fh = _RATING_WEIGHTS["financial_health"]
     w_val = _RATING_WEIGHTS["valuation_zone"]
-    w_mom = _RATING_WEIGHTS["momentum"]
+    w_cp = _RATING_WEIGHTS["cycle_payoff"]
     if fh_score is None:
-        denom = w_val + w_mom
-        raw = (val_score * w_val + momentum_score * w_mom) / denom
+        denom = w_val + w_cp
+        raw = (val_score * w_val + cycle_payoff_score * w_cp) / denom
     else:
-        raw = (fh_score * w_fh + val_score * w_val + momentum_score * w_mom) / 100.0
+        raw = (fh_score * w_fh + val_score * w_val + cycle_payoff_score * w_cp) / 100.0
 
     rating = round(_clamp(raw))
 
@@ -68,4 +69,4 @@ def calculate_overall_rating(
     else:
         label = "Bearish"
 
-    return rating, label, momentum_score
+    return rating, label, cycle_payoff_score

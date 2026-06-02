@@ -57,7 +57,7 @@ export function KpiStrip({ cycle }: Props) {
         label="Overall Rating"
         value={`${overallRating}/100`}
         accentColor={ratingColor(overallRating)}
-        tooltip={`Overall Rating (0–100) — Composite score: Financial Health (40%) + Valuation Zone (35%) + Momentum (25%). 80–100 = High Conviction · 65–79 = Constructive · 50–64 = Neutral · 35–49 = Cautious · 0–34 = Bearish. Higher is better.`}
+        tooltip={`Overall Rating (0–100) — Composite score: Financial Health (40%) + Valuation Zone (35%) + Cycle Payoff (25%). 80–100 = High Conviction · 65–79 = Constructive · 50–64 = Neutral · 35–49 = Cautious · 0–34 = Bearish. Higher is better.`}
       />
       <KpiCard
         label="Health Score"
