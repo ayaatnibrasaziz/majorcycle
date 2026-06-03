@@ -94,7 +94,12 @@ export function PriceChart({ priceBars, ticker }: Props) {
         horzLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
       },
       rightPriceScale: { borderColor: '#E2E8F0', textColor: '#8A97A8' },
-      timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false },
+      // fixLeftEdge/fixRightEdge stop scrolling past the first/last bar into
+      // empty whitespace. The Drawdown overlay shares this exact date extent but
+      // can't follow a range that runs into no-data space (setVisibleRange clamps
+      // to the data edge), which desynced the two charts. Pinning both edges
+      // keeps them locked together.
+      timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
     });
