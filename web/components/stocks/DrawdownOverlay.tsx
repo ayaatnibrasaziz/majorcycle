@@ -25,11 +25,14 @@ type Mode = 'drawdown' | 'profit';
 
 type DataPoint = { time: Time; value: number };
 
-function computeDrawdown(bars: PriceBar[]): DataPoint[] {
-  const LOOKBACK = 252;
+// The rolling window MUST match the preset the cycle was computed with
+// (Short 63 / Medium 252 / Long 756 bars), otherwise the plotted curve sits on
+// a different basis than the engine's Typical/Bound lines and Current stat that
+// are overlaid on it. The window comes from cycle.params.lookbackBars.
+function computeDrawdown(bars: PriceBar[], lookback: number): DataPoint[] {
   const result: DataPoint[] = [];
   for (let i = 0; i < bars.length; i++) {
-    const start = Math.max(0, i - LOOKBACK + 1);
+    const start = Math.max(0, i - lookback + 1);
     let peak = -Infinity;
     for (let j = start; j <= i; j++) {
       const h = bars[j]!.high;
@@ -41,11 +44,10 @@ function computeDrawdown(bars: PriceBar[]): DataPoint[] {
   return result;
 }
 
-function computeProfit(bars: PriceBar[]): DataPoint[] {
-  const LOOKBACK = 252;
+function computeProfit(bars: PriceBar[], lookback: number): DataPoint[] {
   const result: DataPoint[] = [];
   for (let i = 0; i < bars.length; i++) {
-    const start = Math.max(0, i - LOOKBACK + 1);
+    const start = Math.max(0, i - lookback + 1);
     let trough = Infinity;
     for (let j = start; j <= i; j++) {
       const l = bars[j]!.low;
@@ -111,8 +113,13 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
   if (syncSourceRef.current === null) syncSourceRef.current = createSyncSource();
   const [mode, setMode] = useState<Mode>('drawdown');
 
-  const ddSeries = useMemo(() => computeDrawdown(priceBars), [priceBars]);
-  const prSeries = useMemo(() => computeProfit(priceBars),  [priceBars]);
+  // Match the engine's window + pivot confirmation to the active preset so the
+  // curve, its markers, and the overlaid Typical/Bound/Current values all agree.
+  const lookback = cycle.params.lookbackBars;
+  const pivotBars = cycle.params.pivotBars ?? 5;
+
+  const ddSeries = useMemo(() => computeDrawdown(priceBars, lookback), [priceBars, lookback]);
+  const prSeries = useMemo(() => computeProfit(priceBars, lookback),  [priceBars, lookback]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -196,7 +203,9 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       }).setData(series.map(p => ({ time: p.time, value: boundLine })));
     }
 
-    const pivots = isDD ? findPivotLows(series) : findPivotHighs(series);
+    const pivots = isDD
+      ? findPivotLows(series, pivotBars, pivotBars)
+      : findPivotHighs(series, pivotBars, pivotBars);
     if (pivots.length > 0) {
       mainSeries.setMarkers(pivots.map(p => ({
         time: p.time,
@@ -277,7 +286,7 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
         chartRef.current = null;
       }
     };
-  }, [mode, priceBars, ddSeries, prSeries, cycle]);
+  }, [mode, priceBars, ddSeries, prSeries, cycle, pivotBars]);
 
   const isDD       = mode === 'drawdown';
   const currentVal = isDD ? cycle.currentDrawdownPct  : cycle.currentProfitPct;
@@ -321,8 +330,8 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
           <div
             className="stat-pill"
             title={isDD
-              ? 'Current Drawdown — How far the stock has fallen from its recent 252-day peak. A deeper negative number means a bigger pullback. Larger dips (near Typical) often represent better entry opportunities.'
-              : 'Current Profit Recovery — How far above the recent 252-day trough the stock is sitting right now. A larger number means more recovery has already occurred.'}
+              ? `Current Drawdown — How far the stock has fallen from its recent ${lookback}-day peak. A deeper negative number means a bigger pullback. Larger dips (near Typical) often represent better entry opportunities.`
+              : `Current Profit Recovery — How far above the recent ${lookback}-day trough the stock is sitting right now. A larger number means more recovery has already occurred.`}
           >
             <div className="stat-pill-label">Current</div>
             <div className={`stat-pill-val ${isDD ? 'red' : 'green'}`}>{fmt(currentVal)}%</div>
