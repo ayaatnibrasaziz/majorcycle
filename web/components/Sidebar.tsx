@@ -18,7 +18,7 @@ const NAV_ANALYSIS: NavItem[] = [
     icon: <BarChart3 className="w-[15px] h-[15px]" strokeWidth={1.8} />,
   },
   {
-    label: 'Stock Detail',
+    label: 'Browse',
     href: '/stocks',
     icon: <TrendingUp className="w-[15px] h-[15px]" strokeWidth={1.8} />,
   },

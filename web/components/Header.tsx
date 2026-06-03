@@ -14,8 +14,8 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
     subtitle: 'Configure and run Major Cycle analysis',
   },
   '/stocks': {
-    title: 'Stock Detail',
-    subtitle: 'Full Major Cycle breakdown for a single stock',
+    title: 'Browse Stocks',
+    subtitle: 'Search and explore the universe',
   },
   '/account': {
     title: 'Account',
@@ -24,6 +24,14 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
 };
 
 function getPageMeta(pathname: string) {
+  // A deeper /stocks/[market]/[ticker] path is a single-stock detail view, not
+  // the browse landing — keep its own title rather than inheriting "Browse".
+  if (pathname.startsWith('/stocks/')) {
+    return {
+      title: 'Stock Detail',
+      subtitle: 'Full Major Cycle breakdown for a single stock',
+    };
+  }
   for (const [prefix, meta] of Object.entries(PAGE_TITLES)) {
     if (pathname === prefix || pathname.startsWith(prefix + '/')) return meta;
   }
