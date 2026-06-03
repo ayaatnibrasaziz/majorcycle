@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
 
 import { AnalystTargetTrack } from '@/components/stocks/AnalystTargetTrack';
 import { BalanceSheet } from '@/components/stocks/BalanceSheet';
@@ -18,7 +19,7 @@ import { ShortInterest } from '@/components/stocks/ShortInterest';
 import { ThesisInsights } from '@/components/stocks/ThesisInsights';
 import { SmartMoneyActivity } from '@/components/stocks/SmartMoneyActivity';
 import { SnowflakeRadar } from '@/components/stocks/SnowflakeRadar';
-import { StockHeader } from '@/components/stocks/StockHeader';
+import { BadgeRow, StockHeader } from '@/components/stocks/StockHeader';
 import { TechnicalLevels } from '@/components/stocks/TechnicalLevels';
 import { StockSubnav } from '@/components/stocks/StockSubnav';
 import { ValuationHistory } from '@/components/stocks/ValuationHistory';
@@ -28,12 +29,142 @@ import { fetchCycleAnalysis } from '@/lib/cycle';
 import { fetchMetricMedians } from '@/lib/medians.server';
 import { fetchStockDetail } from '@/lib/stocks';
 import { urlPartsToTicker } from '@/lib/ticker';
-import type { Market } from '@/lib/types';
+import type { FundamentalsSnapshot, Market, PriceBar } from '@/lib/types';
 
 type RouteParams = { market: string; ticker: string };
+type RouteSearch = { preset?: string };
+
+type CyclePreset = 'short' | 'medium' | 'long';
 
 function isValidMarket(value: string): value is Market {
   return value === 'us' || value === 'au' || value === 'ca';
+}
+
+// The Browse page picks the Major Cycle horizon and passes it via ?preset=.
+// Anything unknown (incl. a future "custom") falls back to the Medium headline.
+function parsePreset(value: string | undefined): CyclePreset {
+  return value === 'short' || value === 'long' ? value : 'medium';
+}
+
+const PRESET_LABEL: Record<CyclePreset, string> = {
+  short: 'Short-term (≈ 3 months)',
+  medium: 'Medium-term (≈ 1 year)',
+  long: 'Long-term (≈ 3 years)',
+};
+
+// ── Streamed cycle sections ──────────────────────────────────────────────────
+// The cycle analysis is the slow part of the page (a cold compute can take a few
+// seconds). Rather than block the whole page on it, the stock-only sections
+// (header, price chart, fundamentals, sentiment) render immediately and each
+// cycle-dependent section streams in via Suspense. All wrappers call the same
+// React-cached fetchCycleAnalysis(ticker, preset), so there is still exactly one
+// underlying compute shared across them.
+
+type CycleProps = { ticker: string; preset: CyclePreset };
+
+/** A muted placeholder matching a section's height, to limit layout shift. */
+function SectionSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={`bg-[var(--bg-stripe)] rounded-[var(--radius)] animate-pulse ${className ?? 'h-[200px]'}`}
+    />
+  );
+}
+
+async function CycleBadges({
+  ticker,
+  preset,
+  fundamentals,
+}: CycleProps & { fundamentals: FundamentalsSnapshot }) {
+  const cycle = await fetchCycleAnalysis(ticker, preset);
+  if (!cycle) return null;
+  return (
+    <BadgeRow
+      overallLabel={cycle.overallLabel}
+      valuationZone={cycle.valuationZone}
+      analystRecommendation={fundamentals.analystRecommendation}
+      numAnalysts={fundamentals.numAnalystOpinions}
+    />
+  );
+}
+
+async function CycleKpi({ ticker, preset }: CycleProps) {
+  const cycle = await fetchCycleAnalysis(ticker, preset);
+  return cycle ? <KpiStrip cycle={cycle} /> : null;
+}
+
+async function CycleVerdict({
+  ticker,
+  preset,
+  fundamentals,
+}: CycleProps & { fundamentals: FundamentalsSnapshot }) {
+  const cycle = await fetchCycleAnalysis(ticker, preset);
+  return cycle ? (
+    <VerdictCard
+      cycle={cycle}
+      fundamentals={fundamentals}
+      currency={fundamentals.currency}
+    />
+  ) : null;
+}
+
+async function CycleThesis({
+  ticker,
+  preset,
+  fundamentals,
+}: CycleProps & { fundamentals: FundamentalsSnapshot }) {
+  const cycle = await fetchCycleAnalysis(ticker, preset);
+  return cycle ? (
+    <ThesisInsights
+      cycle={cycle}
+      fundamentals={fundamentals}
+      currency={fundamentals.currency}
+    />
+  ) : null;
+}
+
+async function CycleScorecard({ ticker, preset }: CycleProps) {
+  const cycle = await fetchCycleAnalysis(ticker, preset);
+  return cycle ? (
+    <SnowflakeRadar cycle={cycle} />
+  ) : (
+    <SectionAnchor
+      id="sec-scorecard"
+      title="Scorecard"
+      note="Snowflake radar scorecard is unavailable for this stock."
+    />
+  );
+}
+
+async function CycleDrawdown({
+  ticker,
+  preset,
+  priceBars,
+}: CycleProps & { priceBars: PriceBar[] }) {
+  const cycle = await fetchCycleAnalysis(ticker, preset);
+  return cycle ? <DrawdownOverlay priceBars={priceBars} cycle={cycle} /> : null;
+}
+
+async function RelativePerformanceSection({
+  ticker,
+  market,
+  priceBars,
+  benchSince,
+}: {
+  ticker: string;
+  market: Market;
+  priceBars: PriceBar[];
+  benchSince: string | undefined;
+}) {
+  const benchmarks = benchSince ? await fetchBenchmarks(benchSince) : {};
+  return (
+    <RelativePerformance
+      ticker={ticker}
+      market={market}
+      priceBars={priceBars}
+      benchmarks={benchmarks}
+    />
+  );
 }
 
 export async function generateMetadata({
@@ -57,17 +188,23 @@ export async function generateMetadata({
 
 export default async function StockDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<RouteParams>;
+  searchParams: Promise<RouteSearch>;
 }) {
   const { market, ticker } = await params;
   if (!isValidMarket(market)) notFound();
 
+  const { preset: presetParam } = await searchParams;
+  const preset = parsePreset(presetParam);
+
   const stored = urlPartsToTicker(market, ticker);
-  // Parallel fetch — stock data and cycle analysis are independent
-  const [stock, cycle, medians] = await Promise.all([
+  // Only the stock row + sector medians block the initial render — both are
+  // fast. The slow cycle analysis and the benchmark series are streamed in via
+  // Suspense below, so the bulk of the page paints without waiting on them.
+  const [stock, medians] = await Promise.all([
     fetchStockDetail(stored),
-    fetchCycleAnalysis(stored),
     fetchMetricMedians(),
   ]);
   if (!stock) notFound();
@@ -80,41 +217,64 @@ export default async function StockDetailPage({
   const benchFloor = twentyYearsAgo.toISOString().slice(0, 10);
   const firstBar = stock.priceBars[0]?.date;
   const benchSince = firstBar ? (firstBar > benchFloor ? firstBar : benchFloor) : undefined;
-  const benchmarks = benchSince ? await fetchBenchmarks(benchSince) : {};
 
   return (
     <div className="-mt-2">
       <StockSubnav />
 
       <div className="pt-5 space-y-[18px]">
-        <section id="sec-thesis" className="scroll-mt-[120px]">
-          <StockHeader stock={stock} cycle={cycle} />
-          {cycle && <KpiStrip cycle={cycle} />}
-          {cycle && (
-            <VerdictCard
-              cycle={cycle}
-              fundamentals={stock.fundamentals}
-              currency={stock.fundamentals.currency}
-            />
-          )}
-          <CompanyOverview overview={stock.companyOverview} />
-          {cycle && (
-            <ThesisInsights
-              cycle={cycle}
-              fundamentals={stock.fundamentals}
-              currency={stock.fundamentals.currency}
-            />
-          )}
-        </section>
-        {cycle ? (
-          <SnowflakeRadar cycle={cycle} />
-        ) : (
-          <SectionAnchor
-            id="sec-scorecard"
-            title="Scorecard"
-            note="Snowflake radar scorecard lands here once cycle data loads."
-          />
+        {/* Read-only note when a non-default horizon was chosen on Browse.
+            (No horizon selector lives on the detail page by design.) */}
+        {preset !== 'medium' && (
+          <div
+            className="flex items-center gap-1.5 text-[11px] text-[var(--brand-mid)] bg-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius-sm)] px-3 py-2"
+            role="note"
+          >
+            <span className="font-semibold uppercase tracking-[0.5px] text-[10px]">
+              Major Cycle horizon
+            </span>
+            <span className="text-[var(--text-secondary)]">
+              {PRESET_LABEL[preset]}
+            </span>
+          </div>
         )}
+        <section id="sec-thesis" className="scroll-mt-[120px]">
+          <StockHeader
+            stock={stock}
+            badgeSlot={
+              <Suspense fallback={null}>
+                <CycleBadges
+                  ticker={stored}
+                  preset={preset}
+                  fundamentals={stock.fundamentals}
+                />
+              </Suspense>
+            }
+          />
+          <Suspense fallback={<SectionSkeleton className="h-[96px]" />}>
+            <CycleKpi ticker={stored} preset={preset} />
+          </Suspense>
+          <Suspense fallback={<SectionSkeleton className="h-[200px]" />}>
+            <CycleVerdict
+              ticker={stored}
+              preset={preset}
+              fundamentals={stock.fundamentals}
+            />
+          </Suspense>
+          <CompanyOverview overview={stock.companyOverview} />
+          <Suspense fallback={<SectionSkeleton className="h-[160px]" />}>
+            <CycleThesis
+              ticker={stored}
+              preset={preset}
+              fundamentals={stock.fundamentals}
+            />
+          </Suspense>
+        </section>
+        <Suspense
+          fallback={<SectionSkeleton className="h-[320px] scroll-mt-[120px]" />}
+        >
+          <CycleScorecard ticker={stored} preset={preset} />
+        </Suspense>
         {stock.priceBars.length > 0 && (
           <TechnicalLevels
             priceBars={stock.priceBars}
@@ -122,7 +282,13 @@ export default async function StockDetailPage({
           />
         )}
         <PriceChart priceBars={stock.priceBars} ticker={stored} />
-        {cycle && <DrawdownOverlay priceBars={stock.priceBars} cycle={cycle} />}
+        <Suspense fallback={<SectionSkeleton className="h-[260px]" />}>
+          <CycleDrawdown
+            ticker={stored}
+            preset={preset}
+            priceBars={stock.priceBars}
+          />
+        </Suspense>
         {stock.priceBars.length > 0 && (
           <AnalystTargetTrack
             fundamentals={stock.fundamentals}
@@ -131,12 +297,14 @@ export default async function StockDetailPage({
           />
         )}
         {stock.priceBars.length > 0 && (
-          <RelativePerformance
-            ticker={stored}
-            market={market}
-            priceBars={stock.priceBars}
-            benchmarks={benchmarks}
-          />
+          <Suspense fallback={<SectionSkeleton className="h-[300px]" />}>
+            <RelativePerformanceSection
+              ticker={stored}
+              market={market}
+              priceBars={stock.priceBars}
+              benchSince={benchSince}
+            />
+          </Suspense>
         )}
         <section id="sec-fundamentals" className="scroll-mt-[120px] space-y-[18px]">
           <EarningsHistory earningsHistory={stock.earningsHistory ?? []} />

@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
+import { Info, Search } from 'lucide-react';
 
 import type { UniverseStock } from '@/lib/universe.server';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
@@ -24,6 +24,55 @@ const MARKET_FILTERS: { value: MarketFilter; label: string }[] = [
   { value: 'ca', label: 'TSX' },
 ];
 
+// Major Cycle horizon chosen on the Browse page and carried into the opened
+// stock via a ?preset= query param. Only the three named presets the cycle
+// engine supports today (Custom needs explicit params — deferred to Layer D).
+type Horizon = 'short' | 'medium' | 'long';
+
+const HORIZONS: { value: Horizon; label: string; hint: string }[] = [
+  { value: 'short', label: 'Short', hint: '≈ 3 months' },
+  { value: 'medium', label: 'Medium', hint: '≈ 1 year' },
+  { value: 'long', label: 'Long', hint: '≈ 3 years' },
+];
+
+const HORIZON_STORAGE_KEY = 'mc:browse-horizon';
+
+function isHorizon(value: string | null): value is Horizon {
+  return value === 'short' || value === 'medium' || value === 'long';
+}
+
+// Persist the horizon in localStorage and read it via useSyncExternalStore so
+// the choice sticks across visits without a hydration mismatch (server snapshot
+// is always 'medium'; the client re-syncs after hydration). `storage` only
+// fires in other tabs, so selectHorizon dispatches it manually for this tab.
+function subscribeHorizon(onChange: () => void): () => void {
+  window.addEventListener('storage', onChange);
+  return () => window.removeEventListener('storage', onChange);
+}
+
+function getHorizonSnapshot(): Horizon {
+  try {
+    const saved = localStorage.getItem(HORIZON_STORAGE_KEY);
+    if (isHorizon(saved)) return saved;
+  } catch {
+    // localStorage unavailable (private mode etc.) — fall through to default.
+  }
+  return 'medium';
+}
+
+function getHorizonServerSnapshot(): Horizon {
+  return 'medium';
+}
+
+function persistHorizon(value: Horizon): void {
+  try {
+    localStorage.setItem(HORIZON_STORAGE_KEY, value);
+    window.dispatchEvent(new StorageEvent('storage', { key: HORIZON_STORAGE_KEY }));
+  } catch {
+    // Non-fatal — the choice just won't persist.
+  }
+}
+
 const MARKET_BADGE: Record<Market, string> = { us: 'US', au: 'ASX', ca: 'TSX' };
 const CURRENCY_SYMBOL: Record<Currency, string> = {
   USD: '$',
@@ -44,6 +93,17 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
   const [query, setQuery] = useState('');
   const [market, setMarket] = useState<MarketFilter>('all');
   const [sector, setSector] = useState<string>('all');
+  const horizon = useSyncExternalStore(
+    subscribeHorizon,
+    getHorizonSnapshot,
+    getHorizonServerSnapshot,
+  );
+
+  // Medium is the default headline, so its links stay clean (no query param).
+  function hrefFor(ticker: string): string {
+    const path = tickerToPath(ticker);
+    return horizon === 'medium' ? path : `${path}?preset=${horizon}`;
+  }
 
   // Distinct sectors, alphabetical — derived once from the index.
   const sectors = useMemo(() => {
@@ -71,6 +131,52 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
 
   return (
     <div>
+      {/* Cycle horizon — chosen before opening a stock; carried into the
+          detail page via ?preset=. Distinct from the list filters below. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap mb-3 px-3 py-2.5 bg-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius-sm)]">
+        <div
+          className="flex items-center gap-1.5 cursor-help"
+          title={
+            'Cycle horizon\nSets the Major Cycle window used when you open a stock. Short ≈ 3 months, Medium ≈ 1 year, Long ≈ 3 years.'
+          }
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[var(--brand-mid)]">
+            Cycle horizon
+          </span>
+          <Info
+            className="w-[13px] h-[13px] text-[var(--brand-mid)] flex-shrink-0"
+            strokeWidth={2}
+            aria-hidden="true"
+          />
+        </div>
+        <div
+          className="flex items-center gap-1.5"
+          role="group"
+          aria-label="Major Cycle horizon"
+        >
+          {HORIZONS.map((h) => (
+            <button
+              key={h.value}
+              type="button"
+              onClick={() => persistHorizon(h.value)}
+              aria-pressed={horizon === h.value}
+              title={`${h.label} — ${h.hint}`}
+              className={cn(
+                'px-[10px] py-[5px] rounded-[var(--radius-sm)] border text-[11px] font-medium transition-all duration-150',
+                horizon === h.value
+                  ? 'bg-[var(--brand-mid)] border-[var(--brand-mid)] text-white'
+                  : 'bg-[var(--bg-surface)] border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--brand-mid)] hover:text-[var(--brand-mid)]'
+              )}
+            >
+              {h.label}
+            </button>
+          ))}
+        </div>
+        <span className="text-[11px] text-[var(--text-muted)] sm:ml-1">
+          Opens each stock with this Major Cycle window.
+        </span>
+      </div>
+
       {/* Toolbar: search + market pills + sector */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:flex-wrap mb-4">
         <div className="flex items-center gap-2 bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-sm)] px-3 py-[7px] flex-1 min-w-0 sm:min-w-[200px] sm:max-w-[340px] focus-within:border-[var(--brand-bright)] transition-colors">
@@ -152,7 +258,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
             return (
               <li key={s.ticker}>
                 <Link
-                  href={tickerToPath(s.ticker)}
+                  href={hrefFor(s.ticker)}
                   className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-[var(--bg-hover)] transition-colors duration-150 group"
                 >
                   <div className="min-w-0 flex-1">

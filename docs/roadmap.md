@@ -166,6 +166,7 @@ Build order (each item = one PR):
 Goal: Users can upload tickers (or pick from universe), run analysis with presets/custom, get scored results.
 
 - [ ] **Preset selector** — Short / Medium / Long / Custom segmented control
+  - [x] **Horizon selector on the Browse page (`/stocks`), NOT the detail page** — the user picks a Major Cycle horizon **before** opening a stock; the choice is carried into the opened stock via a `?preset=` query param, and the Stock Detail page honours it (default **Medium**). **No selector/option on the Stock Detail page itself** (explicit owner decision — they did not want it there). Short / Medium / Long shipped in S4-follow-up (cycle path already supports those three); **Custom deferred to Layer D** (needs the custom-params panel + `/api/cycle` accepting explicit pullback/profit/lookback). Beginner-framed label + tooltip. The cycle cache is already keyed per ticker **and** preset, so each horizon caches independently. *(Decision + initial Short/Medium/Long build with owner, 2026-06-04.)*
 - [ ] **Custom params panel** — three inputs with validation
 - [ ] **Ticker upload zone** — drag-drop + click-to-upload CSV
 - [ ] **Manual ticker entry** — paste/type tickers, autocomplete via `/api/search`
