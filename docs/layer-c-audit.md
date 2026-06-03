@@ -58,7 +58,7 @@ Status key: ✅ pass · ⚠️ issue logged · ❌ fail · ⬜ not yet audited �
 - ⬜ Sanity-bounds on absurd values ($0.08-class). — S9
 - ⬜ "via Yahoo Finance, may be delayed/estimated" source labels. — S9
 - ⬜ Beginner explainers/tooltips/onboarding on jargon. — S5
-- ⬜ Stock search + curated landing (fix /stocks 404). — S4
+- 🔧 Stock search + curated landing (fix /stocks 404). — **S4 done** (PR #19): `/stocks` Browse & Search page over the 720-stock universe; search by ticker+name, market/sector filters, market-cap-desc list; links via ticker.ts helpers. Live-add of unknown tickers deferred.
 - ⬜ Methodology page (heuristic framing, ASIC-honest). — S10
 
 ## Known data issues (carry-over)
@@ -98,3 +98,11 @@ Owner signed off (P2c revised to **Option C now**, P5 **declined → keep mean**
 - **P4 rename (`5544549`):** `momentum_score`→`cycle_payoff_score` (engine + contract + TS + 3 tooltips). Pure rename, values unchanged.
 - **`1aa8ee0`:** caption em-dash spacing fix.
 - All green: pnpm typecheck/lint/build, ruff, mypy, pytest (36), drift check. **Visual venue for final sign-off = Vercel preview (BAC scorecard).** Same pause-before-merge rule.
+
+### S4 — Stock search + curated landing (2026-06-03) — PR #19, awaiting CI + owner merge
+Fixed the `/stocks` 404 (no landing route existed — only `/stocks/[market]/[ticker]`). Owner approved the unified search + browse approach, deferring live-add of unknown tickers, and renaming the nav item to "Browse".
+- **`web/lib/universe.server.ts`** — `unstable_cache` (daily) loads only the light columns (`ticker, market, name, sector, industry, currency, market_cap`) for the **720 non-index equities**; never ships the `fundamentals` JSONB to the client. `market_cap` (numeric) coerced to number; `market='index'` excluded.
+- **`web/components/stocks/StockBrowser.tsx`** (client) — search by ticker AND company name; market pills (All/US/ASX/TSX); sector dropdown; market-cap-desc list (top 120 painted for Lighthouse); no-match empty state → Run Analysis; links via `ticker.ts` helpers.
+- **`web/app/(app)/stocks/page.tsx`** — server shell.
+- **Sidebar** `Stock Detail` → **Browse**; **Header** `/stocks` → **Browse Stocks** (depth-aware so detail pages keep "Stock Detail").
+- **Verified in-browser** (local dev — this page doesn't touch `/api/cycle`, so local is representative): 720 stocks market-cap sorted; ticker + name search; TSX filter = 67 (full CA universe); TSX+Energy = 12; empty state CTA; correct hrefs (`BHP.AX`→`/stocks/au/BHP`); no console errors. **375px:** component fits 375px on its own; remaining overflow is the pre-existing 220px fixed sidebar / no mobile drawer (Layer H, out of scope). typecheck/lint/build green. Same pause-before-merge rule.
