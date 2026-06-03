@@ -31,10 +31,25 @@ import { urlPartsToTicker } from '@/lib/ticker';
 import type { Market } from '@/lib/types';
 
 type RouteParams = { market: string; ticker: string };
+type RouteSearch = { preset?: string };
+
+type CyclePreset = 'short' | 'medium' | 'long';
 
 function isValidMarket(value: string): value is Market {
   return value === 'us' || value === 'au' || value === 'ca';
 }
+
+// The Browse page picks the Major Cycle horizon and passes it via ?preset=.
+// Anything unknown (incl. a future "custom") falls back to the Medium headline.
+function parsePreset(value: string | undefined): CyclePreset {
+  return value === 'short' || value === 'long' ? value : 'medium';
+}
+
+const PRESET_LABEL: Record<CyclePreset, string> = {
+  short: 'Short-term (≈ 3 months)',
+  medium: 'Medium-term (≈ 1 year)',
+  long: 'Long-term (≈ 3 years)',
+};
 
 export async function generateMetadata({
   params,
@@ -57,17 +72,22 @@ export async function generateMetadata({
 
 export default async function StockDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<RouteParams>;
+  searchParams: Promise<RouteSearch>;
 }) {
   const { market, ticker } = await params;
   if (!isValidMarket(market)) notFound();
+
+  const { preset: presetParam } = await searchParams;
+  const preset = parsePreset(presetParam);
 
   const stored = urlPartsToTicker(market, ticker);
   // Parallel fetch — stock data and cycle analysis are independent
   const [stock, cycle, medians] = await Promise.all([
     fetchStockDetail(stored),
-    fetchCycleAnalysis(stored),
+    fetchCycleAnalysis(stored, preset),
     fetchMetricMedians(),
   ]);
   if (!stock) notFound();
@@ -87,6 +107,21 @@ export default async function StockDetailPage({
       <StockSubnav />
 
       <div className="pt-5 space-y-[18px]">
+        {/* Read-only note when a non-default horizon was chosen on Browse.
+            (No horizon selector lives on the detail page by design.) */}
+        {preset !== 'medium' && (
+          <div
+            className="flex items-center gap-1.5 text-[11px] text-[var(--brand-mid)] bg-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius-sm)] px-3 py-2"
+            role="note"
+          >
+            <span className="font-semibold uppercase tracking-[0.5px] text-[10px]">
+              Major Cycle horizon
+            </span>
+            <span className="text-[var(--text-secondary)]">
+              {PRESET_LABEL[preset]}
+            </span>
+          </div>
+        )}
         <section id="sec-thesis" className="scroll-mt-[120px]">
           <StockHeader stock={stock} cycle={cycle} />
           {cycle && <KpiStrip cycle={cycle} />}
