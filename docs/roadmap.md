@@ -166,6 +166,7 @@ Build order (each item = one PR):
 Goal: Users can upload tickers (or pick from universe), run analysis with presets/custom, get scored results.
 
 - [ ] **Preset selector** — Short / Medium / Long / Custom segmented control
+  - [ ] **Reuse on the Stock Detail page (`/stocks/[market]/[ticker]`)** — surface this same horizon selector there so a user can re-run the Major Cycle at a different horizon on a single stock. Build the control **once** in Layer D and reuse it; do not bolt a one-off toggle onto the detail page earlier. **Default = Medium** (the locked "headline" rating); the toggle must be clearly labelled as the *analysis horizon* with one line explaining why the read shifts (beginner framing). On change, refetch **only** the cycle-dependent sections (Verdict / KPI / Scorecard radar / Drawdown), not the whole page. The cycle cache is already keyed per ticker **and** preset, so each horizon caches independently. *(Decision recorded with owner, S4 planning, 2026-06-04.)*
 - [ ] **Custom params panel** — three inputs with validation
 - [ ] **Ticker upload zone** — drag-drop + click-to-upload CSV
 - [ ] **Manual ticker entry** — paste/type tickers, autocomplete via `/api/search`
