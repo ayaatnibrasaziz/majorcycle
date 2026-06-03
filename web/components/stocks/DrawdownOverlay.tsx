@@ -150,7 +150,10 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
         horzLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
       },
       rightPriceScale: { borderColor: '#E2E8F0', textColor: '#8A97A8' },
-      timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false },
+      // Pin both edges so this overlay (and the Price chart, which does the same)
+      // can't scroll past the data into empty whitespace — that desynced the two
+      // charts because setVisibleRange can't reproduce an out-of-data range.
+      timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
     });
