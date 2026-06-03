@@ -28,6 +28,7 @@ import json
 import logging
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from typing import Any, cast
@@ -41,6 +42,7 @@ if str(_WEB_ROOT) not in sys.path:
     sys.path.insert(0, str(_WEB_ROOT))
 
 import pandas as pd  # noqa: E402
+from postgrest.types import CountMethod  # noqa: E402
 from supabase import Client, create_client  # noqa: E402
 
 from _engine.major_cycle import CycleParams, analyze_ticker  # noqa: E402
@@ -64,15 +66,17 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
     """Read all price_bars for one ticker. Returns DataFrame with yfinance-style
     OHLCV column names (Open, High, Low, Close, Volume) and a DatetimeIndex.
 
-    PostgREST caps each response at 1000 rows, so we paginate until exhausted —
-    otherwise the cycle math would only see the oldest 1000 bars (decades-old,
-    split-adjusted prices) and produce nonsense. Mirrors the pagination in
-    web/lib/stocks.ts.
+    PostgREST caps each response at 1000 rows, so we paginate — otherwise the
+    cycle math would only see the oldest 1000 bars (decades-old, split-adjusted
+    prices) and produce nonsense. We count the rows once, then fetch every page
+    concurrently so a long-history ticker (AAPL ~11.5k bars) arrives in roughly
+    two round-trips instead of a dozen sequential ones. Mirrors the parallel
+    paging in web/lib/stocks.ts.
     """
     PAGE = 1000
-    rows: list[Any] = []
-    start = 0
-    while True:
+
+    def _fetch_page(i: int) -> list[Any]:
+        start = i * PAGE
         resp = (
             sb.table("price_bars")
             .select("date,open,high,low,close,volume")
@@ -81,13 +85,31 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
             .range(start, start + PAGE - 1)
             .execute()
         )
-        page: list[Any] = resp.data or []
-        if not page:
-            break
-        rows.extend(page)
-        if len(page) < PAGE:
-            break
-        start += PAGE
+        return cast("list[Any]", resp.data or [])
+
+    # Fetch the first page WITH an exact count so we learn the row total in the
+    # same round-trip, then pull any remaining pages concurrently.
+    first = (
+        sb.table("price_bars")
+        .select("date,open,high,low,close,volume", count=CountMethod.exact)
+        .eq("ticker", ticker)
+        .order("date")
+        .range(0, PAGE - 1)
+        .execute()
+    )
+    first_page: list[Any] = first.data or []
+    if not first_page:
+        return None
+    total = first.count or len(first_page)
+    n_pages = (total + PAGE - 1) // PAGE
+
+    rows: list[Any] = list(first_page)
+    if n_pages > 1:
+        # ThreadPoolExecutor.map preserves input order, and each page is
+        # date-ordered, so the concatenation stays globally ordered by date.
+        with ThreadPoolExecutor(max_workers=min(n_pages - 1, 8)) as ex:
+            for page in ex.map(_fetch_page, range(1, n_pages)):
+                rows.extend(page)
     if not rows:
         return None
     df = pd.DataFrame(rows)

@@ -1,8 +1,9 @@
+import type { ReactNode } from 'react';
+
 import { WeekRangeGauge } from '@/components/stocks/WeekRangeGauge';
 import type { StockDetail } from '@/lib/stocks';
 import type {
   AnalystRecommendation,
-  CycleAnalysis,
   Currency,
   OverallLabel,
   ValuationZone,
@@ -10,7 +11,9 @@ import type {
 
 interface Props {
   stock: StockDetail;
-  cycle?: CycleAnalysis | null;
+  /** Streamed-in rating badges (cycle-dependent). Rendered under the meta line
+   *  so the header itself paints immediately without waiting on cycle data. */
+  badgeSlot?: ReactNode;
 }
 
 function formatPrice(amount: number, currency: Currency): string {
@@ -60,7 +63,7 @@ function dailyChange(latest: number, previous: number): DailyChange {
  * (overall rating, valuation zone, analyst consensus) — all three need cycle
  * data that the Verdict card PR will introduce.
  */
-export function StockHeader({ stock, cycle }: Props) {
+export function StockHeader({ stock, badgeSlot }: Props) {
   const { fundamentals, priceBars } = stock;
   const currency = fundamentals.currency;
 
@@ -111,14 +114,7 @@ export function StockHeader({ stock, cycle }: Props) {
           />
           <span>Updated {formatUpdatedAt(stock.updatedAt)}</span>
         </div>
-        {cycle && (
-          <BadgeRow
-            overallLabel={cycle.overallLabel}
-            valuationZone={cycle.valuationZone}
-            analystRecommendation={stock.fundamentals.analystRecommendation}
-            numAnalysts={stock.fundamentals.numAnalystOpinions}
-          />
-        )}
+        {badgeSlot}
       </div>
 
       {/* Right column: price + delta + upside + 52W gauge */}
@@ -174,7 +170,7 @@ const ZONE_DISPLAY: Record<ValuationZone, string> = {
   'DEEP VALUE': 'Deep Value', VALUE: 'Value', FAIR: 'Fair', STRETCHED: 'Stretched',
 };
 
-function BadgeRow({
+export function BadgeRow({
   overallLabel,
   valuationZone,
   analystRecommendation,
