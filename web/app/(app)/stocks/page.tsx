@@ -9,6 +9,12 @@ export const metadata: Metadata = {
     'Search and browse the MajorCycle universe of US, Australian, and Canadian equities.',
 };
 
+// The universe index is read from Supabase at request time (behind a daily
+// cache), so this page must render on demand — never static-prerendered at
+// build, where Supabase env vars are absent. (The [market]/[ticker] detail
+// route is dynamic-by-default via its params; this static route is not.)
+export const dynamic = 'force-dynamic';
+
 export default async function StocksBrowsePage() {
   const stocks = await fetchUniverseIndex();
 
