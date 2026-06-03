@@ -304,6 +304,7 @@ Order of priority TBD based on user feedback. Candidate features:
 | **Alerts** | Email when stock enters a tier or crosses a threshold. Daily cron checks + Resend send. |
 | **Sector heatmap** | Aggregate view by sector, treemap or grid visualisation. |
 | **FMP migration** | Swap yfinance for FMP. Single-file change to `analytics/config.py` once `fmp_provider.py` is implemented. Already stubbed and ready. |
+| **Sector-relative Financial Health** | Score each FH pillar against its sector's peer median (reusing the median plumbing from `web/lib/medians.server.ts`) instead of global thresholds, so banks/REITs aren't penalised by inapplicable cut-offs. Deferred from S3 (where "Option C" — withholding inapplicable pillars — shipped instead). Needs sector medians available to the Python engine + a peer-count floor → fallback for the thin CA universe. See `docs/methodology-audit.md` P2c. |
 | **News feed upgrade** | Replace yfinance news with NewsAPI or Polygon for better quality. |
 | **Improved earnings data** | Enhanced beat/miss history. **Earnings history already collected** (`earnings_history` JSONB column). Phase 2 is about richer display and data sourcing. |
 | **Portfolios** | User-defined portfolios with weighted aggregate scores. |
