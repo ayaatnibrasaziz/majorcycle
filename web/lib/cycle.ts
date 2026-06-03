@@ -7,6 +7,14 @@ type Preset = 'short' | 'medium' | 'long';
 
 function baseUrl(): string {
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  // Prefer the project's production custom domain (e.g. majorcycle.com). A custom
+  // domain is exempt from Vercel Deployment Protection, whereas the per-deployment
+  // *.vercel.app URL (VERCEL_URL) is walled with a 401 "Authentication Required"
+  // — even in production. Since the Stock Detail page fetches its own /api/cycle
+  // server-side, using VERCEL_URL meant that internal call hit the 401 wall and
+  // the page got no cycle data (blank rating/KPI/radar/verdict).
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL)
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return 'http://localhost:3000';
 }
