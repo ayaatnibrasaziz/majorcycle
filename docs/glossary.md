@@ -46,6 +46,8 @@
 
 **Cycle Endpoint** — `/api/cycle?ticker=X&preset=medium` — the Vercel Python serverless function at `web/api/cycle.py` that computes one ticker's Major Cycle on demand. Reads from Supabase (never yfinance), runs the cycle math via the vendored `web/_engine/` package, returns `CycleAnalysis` JSON. Called by every Stock Detail page render.
 
+**Cycle Horizon** — The user-facing name for the **Preset** as chosen on the Browse page (`/stocks`): **Short** (≈3 months), **Medium** (≈1 year, the default), **Long** (≈3 years). Picked *before* opening a stock; carried into the Stock Detail page via a `?preset=` query param, which sets the lookback window the Major Cycle (and the Drawdown/Profit curve) is computed over. There is no horizon control on the Stock Detail page itself — only a read-only indicator when a non-default horizon is active. `Custom` is deferred to Layer D.
+
 **Cycle Params** — The three values that govern a Major Cycle run: pullback threshold, profit threshold, lookback bars. Set by user via presets or custom input.
 
 **Cycle Payoff Score** — A 0-100 sub-score for the Overall Rating (25% weight): 50% from the count of historical pivot events (calibration confidence) and 50% from the reward/risk ratio (typical profit ÷ |typical drawdown|). **Formerly called "Momentum Score"** — renamed in S3 because it contains no price-trend/momentum signal. Computed in `analytics/scoring/overall.py` (field `cycle_payoff_score`).
