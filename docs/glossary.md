@@ -48,6 +48,8 @@
 
 **Cycle Params** — The three values that govern a Major Cycle run: pullback threshold, profit threshold, lookback bars. Set by user via presets or custom input.
 
+**Cycle Payoff Score** — A 0-100 sub-score for the Overall Rating (25% weight): 50% from the count of historical pivot events (calibration confidence) and 50% from the reward/risk ratio (typical profit ÷ |typical drawdown|). **Formerly called "Momentum Score"** — renamed in S3 because it contains no price-trend/momentum signal. Computed in `analytics/scoring/overall.py` (field `cycle_payoff_score`).
+
 ---
 
 ## D
@@ -86,7 +88,7 @@
 
 **FCF Yield** — Free Cash Flow ÷ Market Cap × 100. A measure of how much cash a company generates relative to its market price. Higher = better.
 
-**Financial Health Score (FH)** — Composite 0-100 score derived from five sub-pillars: profitability, balance sheet, growth, cashflow, shareholder returns. Computed by `analytics/scoring/financial_health.py`. Weighted at 40% in the Overall Rating.
+**Financial Health Score (FH)** — Composite 0-100 score derived from five sub-pillars: profitability, balance sheet, growth, cashflow, shareholder returns. Computed by `analytics/scoring/financial_health.py`. Weighted at 40% in the Overall Rating. **(S3)** A pillar with no usable inputs is omitted (not fabricated as 50) and the remaining pillar weights are renormalised; if fewer than 3 pillars have data the score is **withheld** (`null`, shown as insufficient data) — common for banks/REITs whose balance-sheet and cash-flow fields are absent.
 
 **FMP (Financial Modeling Prep)** — Paid data provider planned for Phase 2 migration. Drop-in replacement for yfinance via the DataProvider interface.
 
@@ -114,6 +116,8 @@
 
 **Insider Ownership %** — Percentage of shares held by company insiders (executives, directors). Sourced from yfinance.
 
+**Insufficient Data** — The explicit state used (S3) when a score can't be honestly computed: a Financial Health pillar with no inputs is omitted; FH is withheld (`null`) when fewer than 3 of 5 pillars have data; no fundamentals at all → cycle-only Overall Rating. Replaces the old behaviour of fabricating a "neutral 50". Surfaced in the UI (e.g. the Scorecard radar shows a "not scored" caption and "—" pillars instead of a misleading zero).
+
 **Institutional Ownership %** — Percentage of shares held by institutional investors (mutual funds, pension funds, ETFs). Sourced from yfinance.
 
 **Interest Coverage** — EBIT ÷ Interest Expense. Measures how easily a company can pay interest on its debt. Higher = safer.
@@ -136,7 +140,7 @@
 
 **Market Cap** — Market Capitalization. Share price × shares outstanding.
 
-**Momentum Score** — A 0-100 sub-score for the Overall Rating, derived from (a) number of historical events (calibration confidence) and (b) reward/risk ratio. Weighted at 25% in the Overall Rating.
+**Momentum Score** — Former name for the **Cycle Payoff Score** (see C). Renamed in S3 — the component never measured price momentum (no trend/rate-of-change input). Do not reintroduce the term in user-facing copy.
 
 ---
 
@@ -162,7 +166,7 @@
 
 **Overall Label** — One of: High Conviction, Constructive, Neutral, Cautious, Bearish. Derived from Overall Rating.
 
-**Overall Rating** — Composite 0-100 score combining Financial Health (40%), Valuation Zone score (35%), and Momentum (25%).
+**Overall Rating** — Composite 0-100 score combining Financial Health (40%), Valuation Zone score (35%), and Cycle Payoff (25%). When Financial Health is withheld (insufficient data), the rating is computed on the price cycle alone (valuation + cycle payoff, renormalised) rather than assuming a fabricated 50.
 
 ---
 
@@ -188,6 +192,8 @@
 
 ## Q
 
+**Quality Factor** — The 0.30–1.0 multiplier applied to the raw Valuation Score, derived from Financial Health: `FLOOR + (1−FLOOR)·(FH/100)^GAMMA` (FLOOR 0.30, GAMMA 1.5). Tunable, no hard cliffs. A healthy stock keeps ~full valuation credit; a weak one is heavily discounted (the value-trap guard). Stored as `quality_factor` on `CycleAnalysis`. See `analytics/scoring/valuation.py`.
+
 **Quick Ratio** — (Current Assets - Inventory) ÷ Current Liabilities. Stricter than current ratio — measures ability to cover short-term obligations without selling inventory.
 
 ---
@@ -196,7 +202,7 @@
 
 **Rating Tier** — One of the five composite tiers: High Conviction, Constructive, Neutral, Cautious, Bearish. See `design-system.md` §4.
 
-**Reward / Risk Ratio** — Typical Profit ÷ |Typical Drawdown|. Used in Momentum scoring. >1.5 = decent; 3.0 = max score.
+**Reward / Risk Ratio** — Typical Profit ÷ |Typical Drawdown|. Used in Cycle Payoff scoring. >1.5 = decent; 3.0 = max score.
 
 **ROE (Return on Equity)** — Net Income ÷ Shareholder Equity × 100. How efficiently a company generates profit from its equity base.
 
@@ -258,7 +264,7 @@
 
 **VALUE** — Valuation Zone label when current drawdown is between 0.5×typical and typical (in the "discount zone" but not at the worst). Replaces "BUY".
 
-**Valuation Score** — A 0-100 score derived from how today's drawdown compares to typical and lower bound. Weighted at 35% in the Overall Rating.
+**Valuation Score** — A 0-100 score derived from how today's drawdown compares to typical and lower bound, then **quality-gated** by Financial Health (S3): `score = raw × (FLOOR + (1−FLOOR)·(FH/100)^GAMMA)`, FLOOR 0.30 / GAMMA 1.5, so a cheap-but-financially-weak "value trap" can't score as a bargain. The raw (un-gated) score and the Valuation Zone label still reflect the pure cycle position. Weighted at 35% in the Overall Rating. See `quality_factor` / `valuation_score_raw` in `data-contracts.md`.
 
 **Valuation Zone** — Categorical label: DEEP VALUE, VALUE, FAIR, or STRETCHED. Derived from Valuation Score.
 

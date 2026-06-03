@@ -83,6 +83,10 @@ flowchart TB
 
 1. Reads stored data from Supabase (`fetchStockDetail`): the stock row + the **full** `price_bars` history. PostgREST caps each response at 1000 rows, so a long-history ticker pages (AAPL ≈ 11.5k bars ≈ 12 pages). **These pages are fetched in parallel** — count the rows once, then issue every `range()` page concurrently via `Promise.all` — so the whole history arrives in ~2 round-trips, not ~12 sequential ones (AAPL bar fetch ~7s → ~1.7s). Pages are date-ordered slices concatenated in order, so the result is identical to a sequential fetch. The benchmark loader (`benchmarks.server.ts`) uses the same parallel-paging pattern.
 2. Calls `/api/cycle?ticker=AAPL&preset=medium` — a Vercel Python serverless function (`web/api/cycle.py`) that reads the same Supabase data and computes the Major Cycle math via the vendored `_engine` package. Default preset is **Medium** (-5%/+5%/252 bars). The function never calls yfinance — that's the cron's job. Result is cached via Next's data cache (`revalidate: 3600`), so the ~7s cold compute only bites the first viewer of a ticker per hour. *(`cycle.py`'s own price-bar fetch is still sequential — an optional future parallelization.)*
+
+   **This is a server-to-server self-fetch over HTTP, with no viewer cookies, so two things must hold or every cycle section renders blank:**
+   - **`/api/cycle` must be public.** It's listed in `PUBLIC_PATHS` in `web/proxy.ts`; otherwise the auth middleware 307-redirects the cookieless internal call to `/login`, the fetch gets HTML instead of JSON, and `fetchCycleAnalysis` returns `null`. It exposes only ticker→analysis math (no user data); the pages that surface it stay auth-gated.
+   - **The URL must use the production custom domain, not the `*.vercel.app` deployment URL.** `web/lib/cycle.ts` `baseUrl()` prefers `VERCEL_PROJECT_PRODUCTION_URL` (e.g. `majorcycle.com`) over `VERCEL_URL`, because **Vercel Deployment Protection walls every `*.vercel.app` URL with a 401 — even in production** (only assigned custom domains are exempt). Using `VERCEL_URL` made the self-fetch hit that 401. (This class of bug is invisible in `next dev`, which computes the cycle via a local Python CLI and skips the HTTP path entirely, and on preview deploys, which are also walled — it only reproduces on the production custom domain once the Next Data Cache is cleared by a fresh deploy.)
 3. Renders HTML with full data baked in (good for SEO)
 4. Vercel Edge caches the HTML for 24 hours (stale-while-revalidate); `/api/cycle` itself returns `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
 
@@ -338,7 +342,7 @@ Two runtimes, two locations under `web/`:
 
 | Route | Method | Runtime | Path on disk | Auth | Purpose |
 |---|---|---|---|---|---|
-| `/api/cycle` | GET | Python | `web/api/cycle.py` | Required (page) | Compute Major Cycle for one ticker + preset. Called by Stock Detail Server Component. |
+| `/api/cycle` | GET | Python | `web/api/cycle.py` | **Public** (in `PUBLIC_PATHS`) | Compute Major Cycle for one ticker + preset. Called by the Stock Detail Server Component as a cookieless self-fetch — must be public **and** reached via the production custom domain (see §2). |
 | `/api/analyze` | POST | Python | `web/api/analyze.py` *(Layer D)* | Required | Run cycle analysis on a batch of tickers with given params |
 | `/api/fetch-ticker` | POST | Python | `web/api/fetch_ticker.py` *(Layer D)* | Required | Add a new ticker to the universe + return its data |
 | `/api/ticker/[symbol]` | GET | TS | `web/app/api/ticker/[symbol]/route.ts` | Public | Read stored stock + price bars for SSR |
