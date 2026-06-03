@@ -391,14 +391,14 @@ export function CycleStatsCard({ analysis }: { analysis: CycleAnalysis }) { ... 
 Docstrings on every public function. Google-style.
 
 ```python
-def compute_overall_rating(fh: float, val: float, momentum: float) -> tuple[int, str]:
+def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[int, str]:
     """
     Compute the composite 0-100 rating and its label.
 
     Args:
         fh: Financial Health score (0-100)
         val: Valuation score (0-100)
-        momentum: Momentum score (0-100)
+        cycle_payoff: Cycle Payoff score (0-100)
 
     Returns:
         Tuple of (rating: int, label: str). Label is one of:
