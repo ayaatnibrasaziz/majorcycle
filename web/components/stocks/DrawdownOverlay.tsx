@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { InfoTip } from '@/components/ui/InfoTip';
 import {
   ColorType,
   CrosshairMode,
@@ -299,6 +300,11 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       <div className="card-header">
         <div className="card-title">
           {isDD ? 'Drawdown Analysis' : 'Profit Recovery'}
+          <InfoTip title={isDD ? 'Drawdown Analysis' : 'Profit Recovery'}>
+            {isDD
+              ? 'The heart of the Major Cycle. The shaded curve shows how far the price has dropped from its recent high over time. The reference lines mark this stock’s typical dip and its deepest dips — when today’s drawdown approaches the typical level, it has historically been an attractive zone.'
+              : 'The flip side of the drawdown. The shaded curve shows how far the price has risen from its recent low. The reference lines mark this stock’s typical recovery and its strongest historical bounces.'}
+          </InfoTip>
         </div>
         <div className="overlay-toggle">
           <button

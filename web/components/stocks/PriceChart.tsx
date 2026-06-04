@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { InfoTip } from '@/components/ui/InfoTip';
 import {
   ColorType,
   CrosshairMode,
@@ -249,7 +250,14 @@ export function PriceChart({ priceBars, ticker }: Props) {
   return (
     <section className="card card--stack-snug">
       <div className="card-header">
-        <div className="card-title">Price Chart — {ticker}</div>
+        <div className="card-title">
+          Price Chart — {ticker}
+          <InfoTip title="Price Chart">
+            Daily price drawn as candlesticks: each candle shows the open, high,
+            low and close for a day. Green = the price rose that day, red = it fell.
+            Toggle the 50- and 200-day average lines to see the trend.
+          </InfoTip>
+        </div>
         <div className="chart-controls">
           <button
             className={`ma-pill ma-pill--50${show50 ? ' active' : ''}`}

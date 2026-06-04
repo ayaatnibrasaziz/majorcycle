@@ -1,4 +1,5 @@
 import type { Currency, PriceBar } from '@/lib/types';
+import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
   priceBars: PriceBar[];
@@ -49,7 +50,16 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
   return (
     <section id="sec-cycle" className="scroll-mt-[120px] card card--stack-snug">
       <div className="card-header">
-        <div className="card-title">Technical Levels</div>
+        <div className="card-title">
+          Technical Levels
+          <InfoTip title="Technical Levels">
+            Reference prices traders watch. A &quot;moving average&quot; (DMA) is the
+            average closing price over the last 50 or 200 days — price above it
+            suggests an uptrend, below it a downtrend. A &quot;Golden Cross&quot; (50-day
+            rising above the 200-day) is read as bullish; a &quot;Death Cross&quot; as
+            bearish. Hover any tile for detail.
+          </InfoTip>
+        </div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           Moving averages · Trend signal
         </div>

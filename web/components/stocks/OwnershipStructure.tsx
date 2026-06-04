@@ -3,6 +3,7 @@
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 
 import type { FundamentalsSnapshot, TopHolder } from '@/lib/types';
+import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
   topHolders?: TopHolder[];
@@ -61,7 +62,14 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">Ownership Structure</div>
+        <div className="card-title">
+          Ownership Structure
+          <InfoTip title="Ownership Structure">
+            Who owns the company&apos;s shares: large institutions (funds, pensions),
+            company insiders, and the public &quot;float&quot; held by everyone else. Heavy
+            institutional ownership can mean steadier, better-researched demand.
+          </InfoTip>
+        </div>
       </div>
       <div className="card-body">
         <div className="ownership-grid">

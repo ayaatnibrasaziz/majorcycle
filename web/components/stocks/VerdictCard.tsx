@@ -1,4 +1,5 @@
 import type { CycleAnalysis, FundamentalsSnapshot, OverallLabel, ValuationZone } from '@/lib/types';
+import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
   cycle: CycleAnalysis;
@@ -261,7 +262,14 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
 
       <div className="verdict-top">
         <div className="verdict-headline">
-          <div className="verdict-eyebrow">MajorCycle Verdict · {ticker}</div>
+          <div className="verdict-eyebrow">
+            MajorCycle Verdict · {ticker}
+            <InfoTip title="MajorCycle Verdict">
+              A plain-language read on where this stock sits in its historical
+              dip-and-recover cycle, plus its financial health and main risk. The
+              score and label are an algorithmic summary — information only, not advice.
+            </InfoTip>
+          </div>
           <div className="verdict-label">{overallLabel}</div>
           <div
             className="verdict-confidence"

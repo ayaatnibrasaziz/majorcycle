@@ -1,5 +1,6 @@
 'use client';
 
+import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Bar,
   BarChart,
@@ -85,7 +86,14 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">Dividend History</div>
+        <div className="card-title">
+          Dividend History
+          <InfoTip title="Dividend History">
+            A dividend is cash a company pays its shareholders, usually each year.
+            This shows the dividend per share over time — green bars are increases,
+            red are cuts. Many companies pay no dividend and reinvest instead.
+          </InfoTip>
+        </div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           Annual dividend per share · Green = increase · Red = cut
         </div>

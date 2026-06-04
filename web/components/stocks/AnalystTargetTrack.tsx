@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 
 import type { Currency, FundamentalsSnapshot } from '@/lib/types';
+import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
   fundamentals: FundamentalsSnapshot;
@@ -78,7 +79,14 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
   return (
     <div className="card card--stack-snug">
       <div className="card-header">
-        <div className="card-title">Analyst Price Target Range</div>
+        <div className="card-title">
+          Analyst Price Target Range
+          <InfoTip title="Analyst Price Target Range">
+            Where professional Wall Street analysts think the price could trade over
+            the next 12 months — their lowest, average and highest targets. This is
+            third-party data from Yahoo Finance, shown as-is — not MajorCycle&apos;s view.
+          </InfoTip>
+        </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
           {numAnalystOpinions} analysts covering
         </div>

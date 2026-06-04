@@ -1,6 +1,7 @@
 'use client';
 
 import type { FundamentalsSnapshot } from '@/lib/types';
+import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
   fundamentals: FundamentalsSnapshot;
@@ -91,7 +92,15 @@ export function ShortInterest({ fundamentals }: Props) {
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">Market Sentiment — Short Interest</div>
+        <div className="card-title">
+          Market Sentiment — Short Interest
+          <InfoTip title="Short Interest">
+            Short sellers borrow shares and sell them, betting the price will fall.
+            &quot;Short interest&quot; is the share of the float sold short — a high number
+            signals bearish sentiment. &quot;Days to cover&quot; estimates how many trading
+            days it would take shorts to buy back, based on normal volume.
+          </InfoTip>
+        </div>
       </div>
       <div className="card-body">
         <div className="si-grid">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Bar,
   BarChart,
@@ -88,7 +89,15 @@ export function EarningsHistory({ earningsHistory }: Props) {
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">Earnings Performance</div>
+        <div className="card-title">
+          Earnings Performance
+          <InfoTip title="Earnings Performance">
+            Each quarter, companies report earnings per share (EPS) — profit divided
+            by the number of shares. This compares the actual figure with what
+            analysts expected: a green bar means the company beat expectations, red
+            means it fell short.
+          </InfoTip>
+        </div>
         <div className="fin-tabs">
           <button className="fin-tab active" type="button">
             EPS

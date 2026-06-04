@@ -1,4 +1,5 @@
 import type { CycleAnalysis, FundamentalsSnapshot } from '@/lib/types';
+import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
   cycle: CycleAnalysis;
@@ -155,7 +156,14 @@ export function ThesisInsights({ cycle, fundamentals, currency }: Props) {
     <div className="insight-grid fade-in">
       <div className="card">
         <div className="card-header card-header--accent-buy">
-          <div className="card-title">Why Attractive</div>
+          <div className="card-title">
+            Why Attractive
+            <InfoTip title="Why Attractive">
+              Plain-language reasons the current setup looks favourable, generated
+              from the cycle position and the financial-health pillars. Observations,
+              not a recommendation to buy.
+            </InfoTip>
+          </div>
         </div>
         <div className="card-body">
           {attractive.map((b, i) => (
@@ -172,7 +180,13 @@ export function ThesisInsights({ cycle, fundamentals, currency }: Props) {
 
       <div className="card">
         <div className="card-header card-header--accent-hold">
-          <div className="card-title">Key Risks</div>
+          <div className="card-title">
+            Key Risks
+            <InfoTip title="Key Risks">
+              Things that could undermine the thesis — weak spots in the financials
+              or a cycle read that may not repeat. Worth weighing before acting.
+            </InfoTip>
+          </div>
         </div>
         <div className="card-body">
           {risks.map((b, i) => (

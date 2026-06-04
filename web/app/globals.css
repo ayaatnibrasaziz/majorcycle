@@ -201,6 +201,7 @@
 }
 .kpi-card--accent::before { background: var(--kpi-accent, var(--brand-mid)); }
 .kpi-label {
+  display: flex; align-items: center;
   font-family: 'Sora', sans-serif;
   font-size: 9px; font-weight: 600; letter-spacing: 0.8px;
   text-transform: uppercase; color: var(--text-muted);
@@ -788,6 +789,50 @@ td.num             { font-weight: 600; }
   .smart-event                              { grid-template-columns: 1fr; row-gap: 3px; }
   .smart-event-date                         { text-align: left; }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   InfoTip — beginner-help explainer tooltips (S5).
+   A visible ⓘ affordance + a portalled bubble (rendered to <body>, position
+   fixed) so it works on tap as well as hover and is never clipped by an
+   ancestor's overflow. Tooltip type spec: design-system.md §3 (Sora, 11px).
+   ───────────────────────────────────────────────────────────────────────── */
+.info-tip-trigger {
+  display: inline-flex; align-items: center; justify-content: center;
+  vertical-align: middle;
+  width: 16px; height: 16px; padding: 0; margin-left: 4px;
+  border: none; background: transparent;
+  color: var(--text-muted);
+  border-radius: 999px; cursor: pointer;
+  transition: color .15s ease-out, background .15s ease-out;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.info-tip-trigger:hover,
+.info-tip-trigger[aria-expanded="true"] {
+  color: var(--brand-bright); background: var(--tint-brand);
+}
+.info-tip-trigger:focus-visible {
+  outline: 2px solid var(--brand-bright); outline-offset: 1px; color: var(--brand-bright);
+}
+
+.info-tip-pop {
+  position: fixed; z-index: 9999;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  padding: 9px 11px;
+  font-family: 'Sora', sans-serif;
+  animation: info-tip-in .12s ease-out;
+}
+.info-tip-pop-title {
+  font-size: 11px; font-weight: 600; color: var(--text-primary);
+  margin-bottom: 3px; letter-spacing: .1px;
+}
+.info-tip-pop-body {
+  font-size: 11px; font-weight: 400; line-height: 1.5; color: var(--text-secondary);
+}
+@keyframes info-tip-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
