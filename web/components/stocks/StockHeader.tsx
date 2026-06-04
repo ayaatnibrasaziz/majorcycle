@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { WeekRangeGauge } from '@/components/stocks/WeekRangeGauge';
+import { InfoTip } from '@/components/ui/InfoTip';
 import type { StockDetail } from '@/lib/stocks';
 import type {
   AnalystRecommendation,
@@ -203,6 +204,13 @@ export function BadgeRow({
           {analystRecommendation}
         </span>
       )}
+      <InfoTip title="Rating badges">
+        Three quick reads at a glance. The first is MajorCycle&apos;s overall label
+        (High Conviction → Bearish). The second is the Valuation Zone — how the
+        current dip compares with this stock&apos;s typical pullback (Deep Value →
+        Stretched). The third, if shown, is the Wall Street analyst consensus from
+        Yahoo Finance — third-party data, not our rating.
+      </InfoTip>
     </div>
   );
 }

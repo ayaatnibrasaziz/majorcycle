@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Area,
   CartesianGrid,
@@ -419,7 +420,15 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">Smart Money Activity</div>
+        <div className="card-title">
+          Smart Money Activity
+          <InfoTip title="Smart Money Activity">
+            Recent buying and selling by company insiders (executives and directors)
+            and rating changes by Wall Street analysts, plotted against the price.
+            Insider buying can signal confidence; selling has many causes. Information,
+            not advice.
+          </InfoTip>
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <div className="smart-legend">
             <span className="smart-legend-chip" style={{ '--lg': '#006400' } as React.CSSProperties}>

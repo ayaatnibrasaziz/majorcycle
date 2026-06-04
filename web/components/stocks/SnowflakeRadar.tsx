@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 
 import type { CycleAnalysis } from '@/lib/types';
+import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
   cycle: CycleAnalysis;
@@ -99,7 +100,15 @@ export function SnowflakeRadar({ cycle }: Props) {
   return (
     <section id="sec-scorecard" className="scroll-mt-[120px] card card--stack-base">
       <div className="card-header">
-        <div className="card-title">Stock Scorecard</div>
+        <div className="card-title">
+          Stock Scorecard
+          <InfoTip title="Stock Scorecard">
+            The company&apos;s financial health broken into five pillars, each scored
+            0–100. The further the shape stretches toward a corner, the stronger
+            that pillar. Pillars without enough data are left out rather than guessed
+            (common for banks &amp; REITs).
+          </InfoTip>
+        </div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           {financialHealthScore !== null
             ? `Health Score ${Math.round(financialHealthScore)}/100 · Each axis scored 0–100`

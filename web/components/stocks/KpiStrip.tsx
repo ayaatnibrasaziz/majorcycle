@@ -1,4 +1,5 @@
 import type { CycleAnalysis } from '@/lib/types';
+import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
   cycle: CycleAnalysis;
@@ -27,17 +28,19 @@ interface KpiCardProps {
   label: string;
   value: string;
   accentColor: string;
-  tooltip: string;
+  tipBody: string;
 }
 
-function KpiCard({ label, value, accentColor, tooltip }: KpiCardProps) {
+function KpiCard({ label, value, accentColor, tipBody }: KpiCardProps) {
   return (
     <div
       className="kpi-card kpi-card--accent"
       style={{ '--kpi-accent': accentColor, '--kpi-value-color': accentColor } as React.CSSProperties}
-      title={tooltip}
     >
-      <div className="kpi-label">{label}</div>
+      <div className="kpi-label">
+        {label}
+        <InfoTip title={label}>{tipBody}</InfoTip>
+      </div>
       <div className="kpi-value">{value}</div>
     </div>
   );
@@ -50,6 +53,7 @@ function KpiCard({ label, value, accentColor, tooltip }: KpiCardProps) {
  */
 export function KpiStrip({ cycle }: Props) {
   const { overallRating, financialHealthScore, currentDrawdownPct, typicalDrawdown } = cycle;
+  const lookback = cycle.params.lookbackBars;
 
   return (
     <div className="detail-kpi-grid">
@@ -57,25 +61,25 @@ export function KpiStrip({ cycle }: Props) {
         label="Overall Rating"
         value={`${overallRating}/100`}
         accentColor={ratingColor(overallRating)}
-        tooltip={`Overall Rating (0–100) — Composite score: Financial Health (40%) + Valuation Zone (35%) + Cycle Payoff (25%). 80–100 = High Conviction · 65–79 = Constructive · 50–64 = Neutral · 35–49 = Cautious · 0–34 = Bearish. Higher is better.`}
+        tipBody="Our single 0–100 summary of the stock, combining Financial Health (40%), Valuation Zone (35%) and Cycle Payoff (25%). 80–100 = High Conviction · 65–79 = Constructive · 50–64 = Neutral · 35–49 = Cautious · 0–34 = Bearish. Higher is more favourable. Information only — not advice."
       />
       <KpiCard
         label="Health Score"
         value={financialHealthScore != null ? `${fmt(financialHealthScore, 0)}/100` : '—'}
         accentColor={financialHealthScore != null ? ratingColor(financialHealthScore) : '#8A97A8'}
-        tooltip="Health Score (0–100) — Measures financial strength across profitability, balance sheet safety, and cash generation. 80+ = Very Healthy · 60–79 = Adequate · Below 60 = Elevated Risk."
+        tipBody="How financially strong the business is (0–100), based on profitability, a safe balance sheet, and steady cash generation. 80+ = very healthy · 60–79 = adequate · below 60 = elevated risk."
       />
       <KpiCard
         label="Current Drawdown"
         value={`${fmt(currentDrawdownPct, 1)}%`}
         accentColor={drawdownColor(currentDrawdownPct)}
-        tooltip="Current Drawdown — How far the stock has fallen from its recent 252-day peak. A deeper negative number means a bigger pullback. Larger dips (near Typical Drawdown) often represent better entry opportunities."
+        tipBody={`How far the price has fallen from its highest point over the last ${lookback} trading days. A bigger negative number means a deeper dip. Dips approaching the Typical Drawdown have historically been better entry zones for this stock.`}
       />
       <KpiCard
         label="Typical Drawdown"
         value={typicalDrawdown != null ? `${fmt(typicalDrawdown, 1)}%` : '—'}
         accentColor="#4A5568"
-        tooltip="Typical Drawdown (Historical Average) — The average peak-to-trough decline this stock has experienced over its history. When Current Drawdown approaches this level, the stock is entering a historically attractive zone."
+        tipBody="The average dip this stock has fallen through in its past cycles. It's the yardstick for the Current Drawdown: when today's dip nears this figure, the stock is in a historically attractive zone."
       />
     </div>
   );

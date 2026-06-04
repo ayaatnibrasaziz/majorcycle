@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 
 import type { FundamentalsSnapshot } from '@/lib/types';
 import type { MedianTables, MetricKey, MetricMedians } from '@/lib/medians.server';
+import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
   fundamentals: FundamentalsSnapshot;
@@ -203,8 +204,16 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">Key Metrics</div>
-        <div className="km-subtitle">vs sector &amp; market median · click a column to sort</div>
+        <div className="card-title">
+          Key Metrics
+          <InfoTip title="Key Metrics">
+            The headline numbers investors use, each compared with the typical
+            company in the same sector and market (the &quot;median&quot; peer). Green means
+            this stock is stronger than that peer, red means weaker, grey means
+            about the same. Tap any metric name for a plain-English definition.
+          </InfoTip>
+        </div>
+        <div className="km-subtitle">How it compares with its peers · tap a column to sort</div>
       </div>
       <div className="card-body card-body--bleed">
         <div className="km-scroll">
@@ -225,7 +234,10 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
               {sorted.map((r) => (
                 <tr key={r.def.key}>
                   <td className="km-metric-cell">
-                    <span className="km-metric-label" title={r.def.tip}>{r.def.label}</span>
+                    <span className="km-metric-label">
+                      {r.def.label}
+                      <InfoTip title={r.def.label}>{r.def.tip}</InfoTip>
+                    </span>
                     <span className={`mt-cat-pill ${CAT_PILL[r.def.cat]}`}>{r.def.cat}</span>
                   </td>
                   <td className="km-num km-value">{r.disp}</td>

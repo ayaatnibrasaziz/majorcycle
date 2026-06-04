@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Bar,
   BarChart,
@@ -121,6 +122,12 @@ export function QuarterlyFinancials({
       <div className="card-header">
         <div className="card-title">
           {isAnnual ? 'Annual' : 'Quarterly'} Financial Trends
+          <InfoTip title="Financial Trends">
+            The top-line story of the business over time: Revenue (total sales),
+            Gross Profit (after the cost of goods), Operating Income (after running
+            costs) and Free Cash Flow (cash left after investment). Rising bars =
+            a growing business. Switch between quarterly and annual views.
+          </InfoTip>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {hasQuarterly && hasAnnual && (

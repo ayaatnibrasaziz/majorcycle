@@ -1,5 +1,6 @@
 'use client';
 
+import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Area,
   ComposedChart,
@@ -58,7 +59,15 @@ export function ValuationHistory({ peHistory, currentPe }: Props) {
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">Valuation History — P/E Ratio</div>
+        <div className="card-title">
+          Valuation History — P/E Ratio
+          <InfoTip title="P/E Ratio history">
+            P/E (price-to-earnings) is the share price divided by earnings per share —
+            how many dollars investors pay for each dollar of profit. Higher = more
+            expensive. Plotting it over time shows whether the stock looks cheap or
+            pricey versus its own past.
+          </InfoTip>
+        </div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           Is the stock cheap or expensive vs its own history?
         </div>

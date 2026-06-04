@@ -1,4 +1,5 @@
 import type { NewsItem } from '@/lib/types';
+import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
   news: NewsItem[];
@@ -34,7 +35,14 @@ export function NewsFeed({ news }: Props) {
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">Latest News</div>
+        <div className="card-title">
+          Latest News
+          <InfoTip title="Latest News">
+            Recent headlines about the company, gathered from Yahoo Finance. Tap a
+            card to read the full article at the source. Headlines are informational —
+            not a signal to act.
+          </InfoTip>
+        </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{news.length} articles</div>
       </div>
       <div className="card-body" style={{ padding: 0 }}>

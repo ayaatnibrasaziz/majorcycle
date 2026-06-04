@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Area,
   CartesianGrid,
@@ -157,7 +158,15 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
   return (
     <div className="card card--stack-base fade-in">
       <div className="card-header">
-        <div className="card-title">Relative Performance vs Benchmarks</div>
+        <div className="card-title">
+          Relative Performance vs Benchmarks
+          <InfoTip title="Relative Performance">
+            How this stock&apos;s total return compares with major market indexes over
+            the period. Every line starts at 100, so you can read out-/under-performance
+            at a glance. &quot;Alpha&quot; is how many percentage points the stock beat (or
+            lagged) its home-market index.
+          </InfoTip>
+        </div>
         <div className="chart-controls">
           {(['1y', '3y', 'max'] as Range[]).map((r) => (
             <button
