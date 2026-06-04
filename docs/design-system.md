@@ -277,9 +277,22 @@ The headline rating badge. Coloured by tier.
 
 ### Tooltip
 
-Standard pattern: `data-tip="TITLE|body"`. The first segment is bold title, second is body.
+**Canonical primitive: `InfoTip` (`web/components/ui/InfoTip.tsx`).** A visible **ⓘ** affordance (Lucide `Info`) that reveals a plain-English explanation. Use it for any jargon, score, or section a beginner might not recognise.
 
-Reference: search `has-tip` in the reference HTML.
+- Opens on **hover (desktop), tap (mobile/touch), and keyboard focus** — native `title=` never fires on touch, so it is not acceptable for beginner-facing jargon (design-system §10 requires tap-to-reveal on mobile).
+- The bubble is **portalled to `<body>` with `position: fixed`**, so it is never clipped by a card / `chart-canvas-wrap` / scrollable table `overflow`, and it **clamps to the viewport** (flips above the trigger when low on space).
+- Accessible: `role="tooltip"`, `aria-label` / `aria-expanded`, `:focus-visible` ring. Closes on Escape / outside-pointerdown / scroll / resize.
+- Type spec per §3: title 600 / body 400, 11px Sora, `shadow-lg`. Styles live in the `.info-tip-*` block in `globals.css`.
+
+```tsx
+<InfoTip title="Typical Drawdown">
+  The average dip this stock has fallen through in its past cycles…
+</InfoTip>
+```
+
+Pass a short bold `title` plus the explanation as `children`. Safe to render inside Server Components (children are plain strings — no event-handler props cross the RSC boundary).
+
+> The reference HTML's vanilla-JS `data-tip="TITLE|body"` / `has-tip` pattern does **nothing** in React — it is superseded by `InfoTip`. Plain native `title=` is still fine for low-stakes, desktop-only affordances (e.g. chart toggle buttons).
 
 ### Range Buttons
 
