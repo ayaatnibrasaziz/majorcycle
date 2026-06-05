@@ -777,6 +777,14 @@ td.num             { font-weight: 600; }
 .smart-event-meta-mono                      { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-primary); }
 .smart-event-title                          { font-size: 10px; color: var(--text-muted); font-weight: 500; }
 
+/* Smart Money chart — floating combined tooltip (Lightweight Charts crosshair) */
+.smart-chart-tip                            { position: absolute; z-index: 20; pointer-events: none; max-width: 260px; background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: 0 6px 20px rgba(15,25,35,.14); padding: 8px 10px; font-family: 'Sora', sans-serif; font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
+.smart-chart-tip .smart-tip-date            { font-size: 10px; color: var(--text-muted); letter-spacing: .2px; }
+.smart-chart-tip .smart-tip-price           { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; color: var(--text-primary); margin-bottom: 2px; }
+.smart-chart-tip .smart-tip-row             { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; margin-top: 4px; padding-top: 4px; border-top: 1px dotted var(--border); }
+.smart-chart-tip .smart-tip-row b           { color: var(--text-primary); font-weight: 700; }
+.smart-chart-tip .smart-tip-meta            { width: 100%; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-muted); }
+
 /* Short interest */
 .si-grid                                    { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: start; }
 .si-arc-wrap                                { text-align: center; padding: 8px 0; }
@@ -784,6 +792,9 @@ td.num             { font-weight: 600; }
 /* Responsive — stack single column on narrow screens */
 @media (max-width: 600px) {
   .ownership-grid                           { grid-template-columns: 1fr; }
+  /* Stacked: let the column shrink so the holders table scrolls within its wrapper instead of pushing the page */
+  .ownership-grid > *                       { min-width: 0; }
+  .table-wrapper                            { overflow-x: auto; }
   .si-grid                                  { grid-template-columns: 1fr; }
   .smart-money-grid                         { grid-template-columns: 1fr; }
   .smart-event                              { grid-template-columns: 1fr; row-gap: 3px; }

@@ -41,21 +41,24 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
     { name: 'Public Float', value: float   ?? 0 },
   ];
 
-  const statRows: { label: string; value: string; tip: string }[] = [
+  const statRows: { label: string; value: string; tipTitle: string; tipBody: string }[] = [
     {
       label: 'Institutions',
       value: inst != null ? `${fmt(inst)}%` : '—',
-      tip: 'Institutional Ownership %\nThe percentage of shares held by large professional investors: mutual funds, pension funds, ETFs, hedge funds, and insurance companies. High institutional ownership (60%+) signals that professional money trusts this company. Very low institutional ownership may indicate higher risk or limited analyst coverage.',
+      tipTitle: 'Institutional Ownership %',
+      tipBody: 'The percentage of shares held by large professional investors: mutual funds, pension funds, ETFs, hedge funds and insurance companies. High institutional ownership (60%+) signals that professional money trusts this company. Very low institutional ownership may indicate higher risk or limited analyst coverage.',
     },
     {
       label: 'Insiders',
       value: insider != null ? `${fmt(insider)}%` : '—',
-      tip: "Insider Ownership %\nThe percentage of shares held by company executives, directors, and major shareholders. High insider ownership (10%+) can be bullish — it means management has significant 'skin in the game' and is aligned with shareholders. Very high insider ownership may also limit liquidity.",
+      tipTitle: 'Insider Ownership %',
+      tipBody: "The percentage of shares held by company executives, directors and major shareholders. High insider ownership (10%+) can be bullish — management has significant 'skin in the game' and is aligned with shareholders. Very high insider ownership may also limit liquidity.",
     },
     {
       label: 'Public Float',
       value: float != null ? `${fmt(float)}%` : '—',
-      tip: 'Public Float %\nThe percentage of shares available for ordinary investors to buy and sell on the open market (total shares minus institutional and insider holdings). A larger float means more liquidity and easier to trade without moving the price. A very small float can lead to higher volatility.',
+      tipTitle: 'Public Float %',
+      tipBody: 'The percentage of shares available for ordinary investors to buy and sell on the open market (total shares minus institutional and insider holdings). A larger float means more liquidity and is easier to trade without moving the price. A very small float can lead to higher volatility.',
     },
   ];
 
@@ -76,7 +79,11 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
           {/* Left — donut + stat rows */}
           {hasDonut && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <div
+                style={{ display: 'flex', justifyContent: 'center' }}
+                role="img"
+                aria-label={`Ownership breakdown: Institutions ${fmt(inst)}%, Insiders ${fmt(insider)}%, Public Float ${fmt(float)}%`}
+              >
                 <PieChart width={160} height={160}>
                   <Pie
                     data={donutData}
@@ -116,8 +123,11 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
               </div>
               <div className="ownership-stats">
                 {statRows.map((row) => (
-                  <div key={row.label} className="ownership-stat-row" title={row.tip}>
-                    <span style={{ color: 'var(--text-muted)' }}>{row.label}</span>
+                  <div key={row.label} className="ownership-stat-row">
+                    <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      {row.label}
+                      <InfoTip title={row.tipTitle}>{row.tipBody}</InfoTip>
+                    </span>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{row.value}</span>
                   </div>
                 ))}
