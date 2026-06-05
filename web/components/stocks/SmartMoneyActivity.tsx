@@ -411,7 +411,7 @@ function ChartLegend({ visible, toggle }: { visible: Visibility; toggle: (k: key
 /* ── Main component ──────────────────────────────────────────── */
 
 export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngrades, priceBars }: Props) {
-  const [range, setRange] = useState<Range>('all');
+  const [range, setRange] = useState<Range>('1y');
   const [visible, setVisible] = useState<Visibility>({ buy: true, sell: true, other: true, analyst: true });
   const toggleSeries = (k: keyof Visibility) => setVisible(v => ({ ...v, [k]: !v[k] }));
 
