@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
   ColorType,
@@ -201,6 +202,36 @@ function visibleMarkers(all: KindMarker[], v: Visibility): SeriesMarker<Time>[] 
   );
 }
 
+// Max events shown in the hover preview before a "+N more — click to see all" line.
+const HOVER_PREVIEW_CAP = 4;
+
+// Pinned day panel: a click/tap opens a scrollable list of every event that day.
+interface DayPanelState {
+  date: string;
+  price: number;
+  insiders: InsiderTransaction[];
+  analysts: AnalystUpgrade[];
+  x: number; // viewport anchor (the click point)
+  y: number;
+}
+
+function fmtDateLong(iso: string): string {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// Clamp a fixed-position popover so it stays fully inside the viewport.
+function clampPanelPos(x: number, y: number): { left: number; top: number } {
+  if (typeof window === 'undefined') return { left: x, top: y };
+  const PW = 300;
+  const PH = Math.min(window.innerHeight * 0.5, 380);
+  let left = x + 14;
+  if (left + PW > window.innerWidth - 8) left = x - PW - 14;
+  if (left < 8) left = 8;
+  let top = y + 14;
+  if (top + PH > window.innerHeight - 8) top = Math.max(8, window.innerHeight - PH - 8);
+  return { left, top };
+}
+
 function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
   priceBars: PriceBar[]; txs: InsiderTransaction[]; upgrades: AnalystUpgrade[]; range: Range; visible: Visibility;
 }) {
@@ -208,6 +239,10 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
   const tipRef       = useRef<HTMLDivElement>(null);
   const chartRef     = useRef<IChartApi | null>(null);
   const areaRef      = useRef<ISeriesApi<'Area'> | null>(null);
+  const panelRef     = useRef<HTMLDivElement>(null);
+
+  // Pinned, scrollable "everything on this day" panel — opened by a click/tap.
+  const [dayPanel, setDayPanel] = useState<DayPanelState | null>(null);
 
   const model = useMemo(() => buildModel(priceBars, txs, upgrades), [priceBars, txs, upgrades]);
 
@@ -266,7 +301,19 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
 
     // Initial visible range is applied by the dedicated range effect below.
 
-    // ── Combined tooltip: every event on the hovered day, plus the price ──
+    // Collect the visible insider + analyst events on a given day key.
+    const eventsOn = (key: string) => {
+      const v = visibleRef.current;
+      const ev = model.eventsByTime.get(key);
+      const insiders = ev ? ev.insiders.filter((t) =>
+        t.type === 'Purchase' ? v.buy : t.type === 'Sale' ? v.sell : v.other) : [];
+      const analysts = ev && v.analyst ? ev.analysts : [];
+      return { insiders, analysts };
+    };
+
+    // ── Hover preview: up to HOVER_PREVIEW_CAP events on the hovered day + price.
+    // Portalled to <body> (position:fixed) so it is never clipped by the chart edge;
+    // a "+N more — click to see all" line points to the full pinned panel.
     chart.subscribeCrosshairMove((param) => {
       const tip = tipRef.current;
       if (!tip) return;
@@ -279,22 +326,14 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
       const price = model.priceByTime.get(key);
       if (price == null) { tip.style.display = 'none'; return; }
 
-      const v = visibleRef.current;
-      const ev = model.eventsByTime.get(key);
-      const insiders = ev ? ev.insiders.filter((t) =>
-        t.type === 'Purchase' ? v.buy : t.type === 'Sale' ? v.sell : v.other) : [];
-      const analysts = ev && v.analyst ? ev.analysts : [];
-
-      let html = `<div class="smart-tip-date">${fmtDate(key)}</div>`
-        + `<div class="smart-tip-price">$${price.toFixed(2)}</div>`;
-
+      const { insiders, analysts } = eventsOn(key);
+      const rows: string[] = [];
       for (const t of insiders) {
         const s = INSIDER_STYLE[t.type];
         const glyph = t.type === 'Purchase' ? '▲' : t.type === 'Sale' ? '▼' : '●';
-        const shares = (t.shares ?? 0).toLocaleString();
-        html += `<div class="smart-tip-row"><span style="color:${s.dot}">${glyph}</span> `
+        rows.push(`<div class="smart-tip-row"><span style="color:${s.dot}">${glyph}</span> `
           + `<b>${s.label}</b> · ${escapeHtml(t.insider)}`
-          + `<span class="smart-tip-meta">${shares} sh${fmtValue(t.value)}</span></div>`;
+          + `<span class="smart-tip-meta">${(t.shares ?? 0).toLocaleString()} sh${fmtValue(t.value)}</span></div>`);
       }
       for (const a of analysts) {
         const cls = classifyAction(a.action);
@@ -302,22 +341,43 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
         const change = a.from_grade && a.from_grade !== a.to_grade
           ? `${escapeHtml(a.from_grade)} → <span style="color:${gc}">${escapeHtml(a.to_grade)}</span>`
           : `<span style="color:${gc}">${escapeHtml(a.to_grade)}</span>`;
-        html += `<div class="smart-tip-row"><span style="color:${gc}">■</span> `
+        rows.push(`<div class="smart-tip-row"><span style="color:${gc}">■</span> `
           + `<b>${cls.label}</b> · ${escapeHtml(a.firm)}`
-          + `<span class="smart-tip-meta">${change}</span></div>`;
+          + `<span class="smart-tip-meta">${change}</span></div>`);
+      }
+
+      let html = `<div class="smart-tip-date">${fmtDate(key)}</div>`
+        + `<div class="smart-tip-price">$${price.toFixed(2)}</div>`
+        + rows.slice(0, HOVER_PREVIEW_CAP).join('');
+      if (rows.length > HOVER_PREVIEW_CAP) {
+        html += `<div class="smart-tip-more">+${rows.length - HOVER_PREVIEW_CAP} more — click to see all</div>`;
       }
 
       tip.innerHTML = html;
       tip.style.display = 'block';
-      // Position near the cursor, flipping/clamping to stay inside the pane.
+      // Position near the cursor in VIEWPORT coords (the tip is position:fixed on <body>),
+      // flipping/clamping to stay on-screen.
+      const rect = el.getBoundingClientRect();
+      const vx = rect.left + param.point.x, vy = rect.top + param.point.y;
       const tw = tip.offsetWidth, th = tip.offsetHeight;
-      let left = param.point.x + 14;
-      if (left + tw > w) left = param.point.x - tw - 14;
-      if (left < 0) left = 4;
-      let top = param.point.y + 14;
-      if (top + th > h) top = Math.max(4, h - th - 4);
+      let left = vx + 14;
+      if (left + tw > window.innerWidth - 8) left = vx - tw - 14;
+      if (left < 8) left = 8;
+      let top = vy + 14;
+      if (top + th > window.innerHeight - 8) top = Math.max(8, window.innerHeight - th - 8);
       tip.style.left = `${left}px`;
       tip.style.top = `${top}px`;
+    });
+
+    // ── Click/tap a day → open the pinned, scrollable day panel (all events).
+    chart.subscribeClick((param) => {
+      if (!param.time || !param.point) { setDayPanel(null); return; }
+      const key = String(param.time);
+      const price = model.priceByTime.get(key);
+      const { insiders, analysts } = eventsOn(key);
+      if (price == null || (insiders.length === 0 && analysts.length === 0)) { setDayPanel(null); return; }
+      const rect = el.getBoundingClientRect();
+      setDayPanel({ date: key, price, insiders, analysts, x: rect.left + param.point.x, y: rect.top + param.point.y });
     });
 
     const ro = new ResizeObserver(() => {
@@ -343,6 +403,30 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
     areaRef.current?.setMarkers(visibleMarkers(model.markersAll, visible));
   }, [visible, model]);
 
+  // ── Close the pinned day panel on Escape / outside-click / page scroll / resize.
+  // (Clicks on the chart are handled by subscribeClick, so they switch the day
+  // rather than close; the panel's own internal scroll does not bubble to window.)
+  useEffect(() => {
+    if (!dayPanel) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDayPanel(null); };
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (panelRef.current?.contains(t) || containerRef.current?.contains(t)) return;
+      setDayPanel(null);
+    };
+    const onScrollResize = () => setDayPanel(null);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('scroll', onScrollResize);
+    window.addEventListener('resize', onScrollResize);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onDown, true);
+      window.removeEventListener('scroll', onScrollResize);
+      window.removeEventListener('resize', onScrollResize);
+    };
+  }, [dayPanel]);
+
   if (model.priceData.length === 0) {
     return (
       <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
@@ -351,10 +435,73 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
     );
   }
 
+  const panelPos = dayPanel ? clampPanelPos(dayPanel.x, dayPanel.y) : null;
+  const panelTotal = dayPanel ? dayPanel.insiders.length + dayPanel.analysts.length : 0;
+  const isClient = typeof document !== 'undefined';
+
   return (
     <>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-      <div ref={tipRef} className="smart-chart-tip" style={{ display: 'none' }} />
+
+      {/* Hover preview — portalled to <body> so the chart edge never clips it. */}
+      {isClient && createPortal(
+        <div ref={tipRef} className="smart-chart-tip" style={{ display: 'none' }} />,
+        document.body,
+      )}
+
+      {/* Pinned, scrollable "everything on this day" panel. */}
+      {isClient && dayPanel && panelPos && createPortal(
+        <div
+          ref={panelRef}
+          className="smart-day-panel"
+          role="dialog"
+          aria-label={`Events on ${fmtDateLong(dayPanel.date)}`}
+          style={{ left: panelPos.left, top: panelPos.top }}
+        >
+          <div className="smart-day-panel-head">
+            <div>
+              <div className="smart-day-panel-date">{fmtDateLong(dayPanel.date)}</div>
+              <div className="smart-day-panel-price">${dayPanel.price.toFixed(2)}</div>
+              <div className="smart-day-panel-count">{panelTotal} event{panelTotal === 1 ? '' : 's'} this day</div>
+            </div>
+            <button type="button" className="smart-day-panel-close" aria-label="Close" onClick={() => setDayPanel(null)}>×</button>
+          </div>
+          <div className="smart-day-panel-body">
+            {dayPanel.insiders.map((t, i) => {
+              const s = INSIDER_STYLE[t.type];
+              const glyph = t.type === 'Purchase' ? '▲' : t.type === 'Sale' ? '▼' : '●';
+              return (
+                <div className="smart-day-panel-row" key={`i${i}`}>
+                  <span className="smart-day-panel-glyph" style={{ color: s.dot }}>{glyph}</span>
+                  <div>
+                    <div><span className="smart-day-panel-label">{s.label}</span> · <span className="smart-day-panel-name">{t.insider}</span></div>
+                    <div className="smart-day-panel-meta">{t.position} · {(t.shares ?? 0).toLocaleString()} sh{fmtValue(t.value)}</div>
+                  </div>
+                </div>
+              );
+            })}
+            {dayPanel.analysts.map((a, i) => {
+              const cls = classifyAction(a.action);
+              const gc = gradeColor(a.to_grade);
+              const changed = a.from_grade && a.from_grade !== a.to_grade;
+              return (
+                <div className="smart-day-panel-row" key={`a${i}`}>
+                  <span className="smart-day-panel-glyph" style={{ color: gc }}>■</span>
+                  <div>
+                    <div><span className="smart-day-panel-label">{cls.label}</span> · <span className="smart-day-panel-name">{a.firm}</span></div>
+                    <div className="smart-day-panel-meta">
+                      {changed
+                        ? <>{a.from_grade} → <span style={{ color: gc }}>{a.to_grade}</span></>
+                        : <span style={{ color: gc }}>{a.to_grade}</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>,
+        document.body,
+      )}
     </>
   );
 }
