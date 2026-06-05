@@ -17,6 +17,7 @@ function fmtDate(iso: string): string {
 }
 
 export function NewsFeed({ news }: Props) {
+  const shown = news ? news.slice(0, 10) : [];
   if (!news || news.length === 0) {
     return (
       <div className="card card--stack-base">
@@ -43,10 +44,12 @@ export function NewsFeed({ news }: Props) {
             not a signal to act.
           </InfoTip>
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{news.length} articles</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+          {shown.length} {shown.length === 1 ? 'article' : 'articles'}
+        </div>
       </div>
       <div className="card-body" style={{ padding: 0 }}>
-        {news.slice(0, 10).map((item, i) => (
+        {shown.map((item, i) => (
           <a
             key={i}
             href={item.url}
@@ -56,7 +59,7 @@ export function NewsFeed({ news }: Props) {
             style={{
               display: 'block',
               padding: '12px 18px',
-              borderBottom: i < news.length - 1 ? '1px solid var(--border)' : undefined,
+              borderBottom: i < shown.length - 1 ? '1px solid var(--border)' : undefined,
               textDecoration: 'none',
               transition: 'background 0.15s',
             }}

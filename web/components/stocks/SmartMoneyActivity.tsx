@@ -1,17 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
-  Area,
-  CartesianGrid,
-  ComposedChart,
-  ResponsiveContainer,
-  Scatter,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+  ColorType,
+  CrosshairMode,
+  createChart,
+  type IChartApi,
+  type ISeriesApi,
+  type SeriesMarker,
+  type Time,
+} from 'lightweight-charts';
 
 import type { AnalystUpgrade, InsiderTransaction, PriceBar } from '@/lib/types';
 
@@ -104,259 +103,270 @@ function fmtValue(v: number | null): string {
   return ` · $${v.toFixed(0)}`;
 }
 
-function toTs(d: string): number {
-  return new Date(d.includes('T') ? d : d + 'T00:00:00').getTime();
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] ?? c));
 }
 
-function fmtTickShort(ts: number): string {
-  return new Date(ts).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+/* ── Chart data builder (memoised) ───────────────────────────── */
+
+type Kind = 'buy' | 'sell' | 'other' | 'analyst';
+type KindMarker = SeriesMarker<Time> & { kind: Kind };
+
+interface DayEvents { insiders: InsiderTransaction[]; analysts: AnalystUpgrade[] }
+
+interface ChartModel {
+  priceData: { time: Time; value: number }[];
+  priceByTime: Map<string, number>;
+  eventsByTime: Map<string, DayEvents>;
+  markersAll: KindMarker[];
+  lastTime: string | null;
 }
 
-function fmtTickYearOnly(ts: number): string {
-  return String(new Date(ts).getUTCFullYear());
-}
+function buildModel(priceBars: PriceBar[], txs: InsiderTransaction[], upgrades: AnalystUpgrade[]): ChartModel {
+  const empty: ChartModel = { priceData: [], priceByTime: new Map(), eventsByTime: new Map(), markersAll: [], lastTime: null };
+  if (!priceBars.length) return empty;
 
-function makeAxisTicks(firstX: number, lastX: number, n: number): number[] {
-  if (n < 2 || lastX <= firstX) return [firstX];
-  const out: number[] = [];
-  for (let i = 0; i < n; i++) {
-    out.push(Math.round(firstX + ((lastX - firstX) * i) / (n - 1)));
+  // Deduplicate + sort price bars by date (ascending) — LWC requires this.
+  const byDate = new Map<string, number>();
+  for (const b of priceBars) {
+    const d = b.date;
+    const c = Number(b.close);
+    if (d && !isNaN(c)) byDate.set(d, c);
   }
-  return out;
-}
+  const dates = [...byDate.keys()].sort();
+  if (!dates.length) return empty;
 
-/* ── Chart data builder ──────────────────────────────────────── */
+  const priceData = dates.map((d) => ({ time: d as Time, value: byDate.get(d)! }));
+  const priceByTime = new Map(dates.map((d) => [d, byDate.get(d)!]));
+  const lastTime = dates[dates.length - 1]!;
 
-interface PricePt { x: number; y: number; }
-interface EventPt { x: number; y: number; color: string; tx?: InsiderTransaction; ac?: AnalystUpgrade; }
+  // Snap an event date to the nearest trading day in `dates` so its marker sits
+  // on the price line (events can fall on weekends/holidays).
+  const dateMs = dates.map((d) => new Date(d + 'T00:00:00').getTime());
+  function snap(dateStr: string): string | null {
+    const t = new Date((dateStr.includes('T') ? dateStr.slice(0, 10) : dateStr) + 'T00:00:00').getTime();
+    if (isNaN(t)) return null;
+    if (t <= dateMs[0]!) return dates[0]!;
+    if (t >= dateMs[dateMs.length - 1]!) return lastTime;
+    // binary search nearest
+    let lo = 0, hi = dateMs.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (dateMs[mid]! < t) lo = mid; else hi = mid;
+    }
+    return (t - dateMs[lo]!) <= (dateMs[hi]! - t) ? dates[lo]! : dates[hi]!;
+  }
 
-function useChartData(
-  priceBars: PriceBar[],
-  txs: InsiderTransaction[],
-  upgrades: AnalystUpgrade[],
-  range: Range,
-) {
-  return useMemo(() => {
-    const empty = { priceData: [], buyPts: [], sellPts: [], otherInsiderPts: [], analystPts: [], domain: [0, 1] as [number, number], ticks: [0, 1], spanYears: 0 };
-    if (!priceBars.length) return empty;
+  const eventsByTime = new Map<string, DayEvents>();
+  const bucket = (key: string): DayEvents => {
+    let e = eventsByTime.get(key);
+    if (!e) { e = { insiders: [], analysts: [] }; eventsByTime.set(key, e); }
+    return e;
+  };
 
-    const refTs = toTs(priceBars[priceBars.length - 1]!.date);
-    let cutoff: number;
-    if (range === '1y') {
-      cutoff = refTs - 365 * 86400000;
-    } else if (range === '3y') {
-      cutoff = refTs - 3 * 365 * 86400000;
+  const markersAll: KindMarker[] = [];
+
+  for (const t of txs) {
+    const key = snap(t.date);
+    if (!key) continue;
+    bucket(key).insiders.push(t);
+    if (t.type === 'Purchase') {
+      markersAll.push({ kind: 'buy', time: key as Time, position: 'belowBar', color: '#006400', shape: 'arrowUp', size: 1 });
+    } else if (t.type === 'Sale') {
+      markersAll.push({ kind: 'sell', time: key as Time, position: 'aboveBar', color: '#B22222', shape: 'arrowDown', size: 1 });
     } else {
-      const allTs = [...txs.map(t => t.date), ...upgrades.map(a => a.date)]
-        .map(toTs).filter(t => !isNaN(t) && t > 0);
-      cutoff = allTs.length ? allTs.reduce((m, t) => (t < m ? t : m), Infinity) : refTs - 3 * 365 * 86400000;
+      markersAll.push({ kind: 'other', time: key as Time, position: 'inBar', color: INSIDER_STYLE[t.type].dot, shape: 'circle', size: 1 });
     }
-
-    const seenX = new Set<number>();
-    const priceData: PricePt[] = priceBars
-      .map(b => ({ x: toTs(b.date), y: Number(b.close) }))
-      .filter(p => !isNaN(p.x) && !isNaN(p.y) && p.x >= cutoff)
-      .sort((a, b) => a.x - b.x)
-      .filter(p => { if (seenX.has(p.x)) return false; seenX.add(p.x); return true; });
-
-    if (!priceData.length) return empty;
-
-    const first = priceData[0]!;
-    const last  = priceData[priceData.length - 1]!;
-    const firstX = first.x;
-    const lastX  = last.x;
-
-    function snap(dateStr: string): PricePt | null {
-      const ts = toTs(dateStr);
-      if (isNaN(ts)) return null;
-      if (ts <= firstX) return first;
-      if (ts >= lastX)  return last;
-      let best: PricePt = first;
-      let bestD = Math.abs(first.x - ts);
-      for (const p of priceData) {
-        const d = Math.abs(p.x - ts);
-        if (d < bestD) { bestD = d; best = p; }
-      }
-      return best;
-    }
-
-    const inRange = (d: string) => { const t = toTs(d); return !isNaN(t) && (range === 'all' || t >= cutoff); };
-
-    const buyPts: EventPt[] = txs
-      .filter(t => t.type === 'Purchase' && inRange(t.date))
-      .flatMap((t, i) => { const s = snap(t.date); return s ? [{ x: s.x + 60000 + i, y: s.y, color: '#006400', tx: t }] : []; });
-
-    const sellPts: EventPt[] = txs
-      .filter(t => t.type === 'Sale' && inRange(t.date))
-      .flatMap((t, i) => { const s = snap(t.date); return s ? [{ x: s.x + 120000 + i, y: s.y, color: '#B22222', tx: t }] : []; });
-
-    // Award / Gift / Other — plotted as circles using their timeline dot colour
-    const otherInsiderPts: EventPt[] = txs
-      .filter(t => (t.type === 'Award' || t.type === 'Gift' || t.type === 'Other') && inRange(t.date))
-      .flatMap((t, i) => { const s = snap(t.date); return s ? [{ x: s.x + 180000 + i, y: s.y, color: INSIDER_STYLE[t.type].dot, tx: t }] : []; });
-
-    const analystPts: EventPt[] = upgrades
-      .filter(a => inRange(a.date))
-      .flatMap((a, i) => { const s = snap(a.date); return s ? [{ x: s.x + 240000 + i, y: s.y, color: gradeColor(a.to_grade), ac: a }] : []; });
-
-    const domain: [number, number] = [firstX, lastX];
-    const spanYears = (lastX - firstX) / (365.25 * 86400000);
-    const tickN = spanYears <= 1.2 ? 7 : spanYears <= 4 ? 7 : 8;
-    const ticks = makeAxisTicks(firstX, lastX, tickN);
-    return { priceData, buyPts, sellPts, otherInsiderPts, analystPts, domain, ticks, spanYears };
-  }, [priceBars, txs, upgrades, range]);
-}
-
-/* ── Custom scatter shapes ───────────────────────────────────── */
-
-function BuyShape({ cx = 0, cy = 0 }: { cx?: number; cy?: number }) {
-  return <polygon points={`${cx},${cy - 8} ${cx - 7},${cy + 4} ${cx + 7},${cy + 4}`} fill="rgba(0,100,0,.85)" stroke="white" strokeWidth={1.5} />;
-}
-
-function SellShape({ cx = 0, cy = 0 }: { cx?: number; cy?: number }) {
-  return <polygon points={`${cx},${cy + 8} ${cx - 7},${cy - 4} ${cx + 7},${cy - 4}`} fill="rgba(178,34,34,.85)" stroke="white" strokeWidth={1.5} />;
-}
-
-function OtherInsiderShape({ cx = 0, cy = 0, payload }: { cx?: number; cy?: number; payload?: EventPt }) {
-  const color = payload?.color ?? '#1E5CB3';
-  return <circle cx={cx} cy={cy} r={5} fill={color} fillOpacity={0.8} stroke="white" strokeWidth={1.5} />;
-}
-
-function AnalystDot({ cx = 0, cy = 0, payload }: { cx?: number; cy?: number; payload?: EventPt }) {
-  const color = payload?.color ?? '#1E5CB3';
-  return <rect x={cx - 7} y={cy - 7} width={14} height={14} rx={3} fill={color} stroke="white" strokeWidth={1.5} />;
-}
-
-/* ── Chart tooltip ───────────────────────────────────────────── */
-
-function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: PricePt & Partial<EventPt> }[] }) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0]!.payload;
-
-  let rows: React.ReactNode;
-  if (d.tx) {
-    const s = INSIDER_STYLE[d.tx.type];
-    rows = (
-      <>
-        <div style={{ fontWeight: 700, color: s.dot }}>{s.label.toUpperCase()}: {d.tx.insider}</div>
-        <div style={{ color: '#8A97A8' }}>{d.tx.position}</div>
-        <div>{(d.tx.shares ?? 0).toLocaleString()} shares{fmtValue(d.tx.value)}</div>
-        <div style={{ color: '#8A97A8', marginTop: 2 }}>{fmtDate(d.tx.date)}</div>
-      </>
-    );
-  } else if (d.ac) {
-    const cls = classifyAction(d.ac.action);
-    const gc  = gradeColor(d.ac.to_grade);
-    const hasChange = d.ac.from_grade && d.ac.from_grade !== d.ac.to_grade;
-    rows = (
-      <>
-        <div style={{ fontWeight: 700, color: gc }}>{cls.label}: {d.ac.firm}</div>
-        <div>
-          {hasChange
-            ? <>{d.ac.from_grade} → <span style={{ color: gc }}>{d.ac.to_grade}</span></>
-            : <span style={{ color: gc }}>{d.ac.to_grade}</span>}
-        </div>
-        <div style={{ color: '#8A97A8', marginTop: 2 }}>{fmtDate(d.ac.date)}</div>
-      </>
-    );
-  } else {
-    rows = (
-      <>
-        <div style={{ color: '#8A97A8' }}>{fmtTickShort(d.x)}</div>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace" }}>${d.y.toFixed(2)}</div>
-      </>
-    );
+  }
+  for (const a of upgrades) {
+    const key = snap(a.date);
+    if (!key) continue;
+    bucket(key).analysts.push(a);
+    markersAll.push({ kind: 'analyst', time: key as Time, position: 'aboveBar', color: gradeColor(a.to_grade), shape: 'square', size: 1 });
   }
 
-  return (
-    <div style={{ background: '#1A1A1B', border: '1px solid #2E3347', borderRadius: 6, padding: '8px 12px', fontFamily: 'Sora, sans-serif', fontSize: 11, color: '#E8EAF0' }}>
-      {rows}
-    </div>
+  // LWC requires markers sorted by time ascending (date strings sort chronologically).
+  markersAll.sort((m1, m2) => String(m1.time).localeCompare(String(m2.time)));
+
+  return { priceData, priceByTime, eventsByTime, markersAll, lastTime };
+}
+
+/* ── Lightweight-Charts chart (native pan/zoom + combined tooltip) ── */
+
+interface Visibility { buy: boolean; sell: boolean; other: boolean; analyst: boolean }
+
+function visibleMarkers(all: KindMarker[], v: Visibility): SeriesMarker<Time>[] {
+  return all.filter((m) =>
+    m.kind === 'buy' ? v.buy : m.kind === 'sell' ? v.sell : m.kind === 'other' ? v.other : v.analyst,
   );
 }
 
-/* ── Inner chart component ───────────────────────────────────── */
+function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
+  priceBars: PriceBar[]; txs: InsiderTransaction[]; upgrades: AnalystUpgrade[]; range: Range; visible: Visibility;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const tipRef       = useRef<HTMLDivElement>(null);
+  const chartRef     = useRef<IChartApi | null>(null);
+  const areaRef      = useRef<ISeriesApi<'Area'> | null>(null);
 
-interface Visibility { price: boolean; buy: boolean; sell: boolean; other: boolean; analyst: boolean }
+  const model = useMemo(() => buildModel(priceBars, txs, upgrades), [priceBars, txs, upgrades]);
 
-function SmartChart({ priceBars, txs, upgrades, range, visible }: { priceBars: PriceBar[]; txs: InsiderTransaction[]; upgrades: AnalystUpgrade[]; range: Range; visible: Visibility }) {
-  const { priceData, buyPts, sellPts, otherInsiderPts, analystPts, domain, ticks, spanYears } = useChartData(priceBars, txs, upgrades, range);
-  const xTickFormatter = spanYears > 5 ? fmtTickYearOnly : fmtTickShort;
+  // Keep latest visibility readable inside the once-built crosshair handler.
+  const visibleRef = useRef(visible);
+  useEffect(() => { visibleRef.current = visible; }, [visible]);
 
-  if (!priceData.length) {
+  // ── Apply a preset range to the visible window (no rebuild) ──
+  const applyRange = useCallback((r: Range) => {
+    const chart = chartRef.current;
+    if (!chart || !model.lastTime) return;
+    if (r === 'all') { chart.timeScale().fitContent(); return; }
+    const last = new Date(model.lastTime + 'T00:00:00');
+    const from = new Date(last);
+    from.setFullYear(from.getFullYear() - (r === '1y' ? 1 : 3));
+    try {
+      chart.timeScale().setVisibleRange({ from: from.toISOString().slice(0, 10) as Time, to: model.lastTime as Time });
+    } catch { chart.timeScale().fitContent(); }
+  }, [model]);
+
+  // ── Build the chart once per data model ──
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || model.priceData.length === 0) return;
+
+    const chart = createChart(el, {
+      width: el.clientWidth,
+      height: el.clientHeight || 220,
+      layout: {
+        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor: '#8A97A8',
+        fontFamily: "'JetBrains Mono', monospace",
+      },
+      grid: { vertLines: { color: '#F0F4F8' }, horzLines: { color: '#F0F4F8' } },
+      crosshair: {
+        mode: CrosshairMode.Magnet,
+        vertLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
+        horzLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
+      },
+      rightPriceScale: { borderColor: '#E2E8F0', textColor: '#8A97A8' },
+      timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+      handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
+    });
+    chartRef.current = chart;
+
+    const area = chart.addAreaSeries({
+      lineColor: '#1E5CB3', lineWidth: 2,
+      topColor: 'rgba(30,92,179,0.10)', bottomColor: 'rgba(30,92,179,0.0)',
+      priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: true,
+      priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+    });
+    area.setData(model.priceData);
+    area.setMarkers(visibleMarkers(model.markersAll, visibleRef.current));
+    areaRef.current = area;
+
+    // Initial visible range is applied by the dedicated range effect below.
+
+    // ── Combined tooltip: every event on the hovered day, plus the price ──
+    chart.subscribeCrosshairMove((param) => {
+      const tip = tipRef.current;
+      if (!tip) return;
+      const w = el.clientWidth, h = el.clientHeight;
+      if (!param.time || !param.point || param.point.x < 0 || param.point.y < 0 || param.point.x > w || param.point.y > h) {
+        tip.style.display = 'none';
+        return;
+      }
+      const key = String(param.time);
+      const price = model.priceByTime.get(key);
+      if (price == null) { tip.style.display = 'none'; return; }
+
+      const v = visibleRef.current;
+      const ev = model.eventsByTime.get(key);
+      const insiders = ev ? ev.insiders.filter((t) =>
+        t.type === 'Purchase' ? v.buy : t.type === 'Sale' ? v.sell : v.other) : [];
+      const analysts = ev && v.analyst ? ev.analysts : [];
+
+      let html = `<div class="smart-tip-date">${fmtDate(key)}</div>`
+        + `<div class="smart-tip-price">$${price.toFixed(2)}</div>`;
+
+      for (const t of insiders) {
+        const s = INSIDER_STYLE[t.type];
+        const glyph = t.type === 'Purchase' ? '▲' : t.type === 'Sale' ? '▼' : '●';
+        const shares = (t.shares ?? 0).toLocaleString();
+        html += `<div class="smart-tip-row"><span style="color:${s.dot}">${glyph}</span> `
+          + `<b>${s.label}</b> · ${escapeHtml(t.insider)}`
+          + `<span class="smart-tip-meta">${shares} sh${fmtValue(t.value)}</span></div>`;
+      }
+      for (const a of analysts) {
+        const cls = classifyAction(a.action);
+        const gc = gradeColor(a.to_grade);
+        const change = a.from_grade && a.from_grade !== a.to_grade
+          ? `${escapeHtml(a.from_grade)} → <span style="color:${gc}">${escapeHtml(a.to_grade)}</span>`
+          : `<span style="color:${gc}">${escapeHtml(a.to_grade)}</span>`;
+        html += `<div class="smart-tip-row"><span style="color:${gc}">■</span> `
+          + `<b>${cls.label}</b> · ${escapeHtml(a.firm)}`
+          + `<span class="smart-tip-meta">${change}</span></div>`;
+      }
+
+      tip.innerHTML = html;
+      tip.style.display = 'block';
+      // Position near the cursor, flipping/clamping to stay inside the pane.
+      const tw = tip.offsetWidth, th = tip.offsetHeight;
+      let left = param.point.x + 14;
+      if (left + tw > w) left = param.point.x - tw - 14;
+      if (left < 0) left = 4;
+      let top = param.point.y + 14;
+      if (top + th > h) top = Math.max(4, h - th - 4);
+      tip.style.left = `${left}px`;
+      tip.style.top = `${top}px`;
+    });
+
+    const ro = new ResizeObserver(() => {
+      if (chartRef.current) chartRef.current.applyOptions({ width: el.clientWidth, height: el.clientHeight || 220 });
+    });
+    ro.observe(el);
+
+    return () => {
+      ro.disconnect();
+      areaRef.current = null;
+      if (chartRef.current) {
+        try { chartRef.current.remove(); } catch { /* ignore */ }
+        chartRef.current = null;
+      }
+    };
+  }, [model]);
+
+  // ── React to preset-range changes without rebuilding ──
+  useEffect(() => { applyRange(range); }, [range, applyRange]);
+
+  // ── React to series-visibility toggles without rebuilding ──
+  useEffect(() => {
+    areaRef.current?.setMarkers(visibleMarkers(model.markersAll, visible));
+  }, [visible, model]);
+
+  if (model.priceData.length === 0) {
     return (
       <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-        No price data for this range.
+        No price data available.
       </div>
     );
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 220 }}>
-      <ComposedChart margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-        <XAxis
-          dataKey="x"
-          type="number"
-          scale="time"
-          domain={domain}
-          ticks={ticks}
-          tickFormatter={xTickFormatter}
-          tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
-          axisLine={false}
-          tickLine={false}
-          allowDataOverflow={false}
-        />
-        <YAxis
-          orientation="right"
-          axisLine={false}
-          tickLine={false}
-          width={48}
-          tickMargin={6}
-          tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
-          tickFormatter={(v: number) => `$${v.toFixed(0)}`}
-        />
-        <CartesianGrid stroke="#F0F4F8" vertical={true} horizontal={true} />
-        <Tooltip content={<ChartTooltip />} />
-
-        {visible.price && (
-          <Area
-            data={priceData}
-            dataKey="y"
-            type="monotone"
-            stroke="#1E5CB3"
-            strokeWidth={1.5}
-            fill="rgba(30,92,179,0.06)"
-            fillOpacity={1}
-            dot={false}
-            activeDot={{ r: 3, fill: '#1E5CB3' }}
-            isAnimationActive={false}
-          />
-        )}
-
-        {visible.buy && buyPts.length > 0 && (
-          <Scatter data={buyPts} isAnimationActive={false} shape={<BuyShape />} name="Insider Buy" />
-        )}
-        {visible.sell && sellPts.length > 0 && (
-          <Scatter data={sellPts} isAnimationActive={false} shape={<SellShape />} name="Insider Sell" />
-        )}
-        {visible.other && otherInsiderPts.length > 0 && (
-          <Scatter data={otherInsiderPts} isAnimationActive={false} shape={<OtherInsiderShape />} name="Insider Award/Other" />
-        )}
-        {visible.analyst && analystPts.length > 0 && (
-          <Scatter data={analystPts} isAnimationActive={false} shape={<AnalystDot />} name="Analyst Event" />
-        )}
-      </ComposedChart>
-    </ResponsiveContainer>
+    <>
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <div ref={tipRef} className="smart-chart-tip" style={{ display: 'none' }} />
+    </>
   );
 }
 
-/* ── Bottom legend (clickable, toggles series) ──────────────── */
+/* ── Bottom legend (clickable, toggles event series) ─────────── */
 
 function LegendChip({ active, onClick, children, icon }: { active: boolean; onClick: () => void; children: React.ReactNode; icon: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 6,
         border: 'none', background: 'transparent', cursor: 'pointer',
@@ -374,29 +384,26 @@ function LegendChip({ active, onClick, children, icon }: { active: boolean; onCl
 
 function ChartLegend({ visible, toggle }: { visible: Visibility; toggle: (k: keyof Visibility) => void }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', gap: 10, padding: '6px 0 2px' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', gap: 10, padding: '6px 0 2px', flexWrap: 'wrap' }}>
       <LegendChip active={visible.buy} onClick={() => toggle('buy')} icon={
-        <span style={{ width: 10, height: 10, borderRadius: 2, background: 'rgba(0,100,0,.85)' }} />
+        <span style={{ color: '#006400', fontSize: 11 }}>▲</span>
       }>Insider Buy</LegendChip>
       <LegendChip active={visible.sell} onClick={() => toggle('sell')} icon={
-        <span style={{ width: 10, height: 10, borderRadius: 2, background: 'rgba(178,34,34,.85)' }} />
+        <span style={{ color: '#B22222', fontSize: 11 }}>▼</span>
       }>Insider Sell</LegendChip>
       <LegendChip active={visible.other} onClick={() => toggle('other')} icon={
         <span style={{ display: 'inline-flex', gap: 2 }}>
-          <span style={{ width: 7, height: 10, borderRadius: 5, background: '#2E7DE8' }} />
-          <span style={{ width: 7, height: 10, borderRadius: 5, background: '#8A97A8' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2E7DE8' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#8A97A8' }} />
         </span>
       }>Award / Other</LegendChip>
       <LegendChip active={visible.analyst} onClick={() => toggle('analyst')} icon={
         <span style={{ display: 'inline-flex', gap: 2 }}>
-          <span style={{ width: 6, height: 10, borderRadius: 1, background: '#228B22' }} />
-          <span style={{ width: 6, height: 10, borderRadius: 1, background: '#D4A017' }} />
-          <span style={{ width: 6, height: 10, borderRadius: 1, background: '#B22222' }} />
+          <span style={{ width: 7, height: 7, background: '#228B22' }} />
+          <span style={{ width: 7, height: 7, background: '#D4A017' }} />
+          <span style={{ width: 7, height: 7, background: '#B22222' }} />
         </span>
       }>Analyst Event</LegendChip>
-      <LegendChip active={visible.price} onClick={() => toggle('price')} icon={
-        <span style={{ width: 10, height: 10, borderRadius: 2, border: '1.5px solid #1E5CB3', background: 'transparent' }} />
-      }>Price</LegendChip>
     </div>
   );
 }
@@ -405,7 +412,7 @@ function ChartLegend({ visible, toggle }: { visible: Visibility; toggle: (k: key
 
 export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngrades, priceBars }: Props) {
   const [range, setRange] = useState<Range>('all');
-  const [visible, setVisible] = useState<Visibility>({ price: true, buy: true, sell: true, other: true, analyst: true });
+  const [visible, setVisible] = useState<Visibility>({ buy: true, sell: true, other: true, analyst: true });
   const toggleSeries = (k: keyof Visibility) => setVisible(v => ({ ...v, [k]: !v[k] }));
 
   const txs      = insiderTransactions       ?? [];
@@ -425,8 +432,9 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
           <InfoTip title="Smart Money Activity">
             Recent buying and selling by company insiders (executives and directors)
             and rating changes by Wall Street analysts, plotted against the price.
-            Insider buying can signal confidence; selling has many causes. Information,
-            not advice.
+            Hover any point on the chart to see what happened that day. Drag to pan,
+            scroll to zoom. Insider buying can signal confidence; selling has many
+            causes. Information, not advice.
           </InfoTip>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -462,7 +470,7 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
         {bars.length > 0 && (
           <div style={{ marginBottom: 16 }}>
             <div className="chart-canvas-wrap chart-h-md">
-              <SmartChart priceBars={bars} txs={txs} upgrades={upgrades} range={range} visible={visible} />
+              <SmartMoneyChart priceBars={bars} txs={txs} upgrades={upgrades} range={range} visible={visible} />
             </div>
             <ChartLegend visible={visible} toggle={toggleSeries} />
           </div>

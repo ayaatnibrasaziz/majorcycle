@@ -9,16 +9,18 @@ interface Props {
 
 const GAUGE_MAX = 20;
 
+// Colour ramp reuses the app's existing tier tokens: green → amber → orange-red,
+// matching the reference short-interest bands (low / moderate / elevated).
 function gaugeColor(pct: number): string {
   if (pct < 5)  return 'var(--c-tier-2)';
-  if (pct < 15) return 'var(--c-tier-4)';
-  return 'var(--c-tier-5)';
+  if (pct < 15) return 'var(--c-tier-3)';
+  return 'var(--c-tier-4)';
 }
 
 function signalInfo(pct: number): { label: string; color: string } {
   if (pct < 5)  return { label: 'Bullish', color: 'var(--c-tier-2)' };
-  if (pct < 15) return { label: 'Neutral', color: 'var(--c-tier-4)' };
-  return           { label: 'Bearish', color: 'var(--c-tier-5)' };
+  if (pct < 15) return { label: 'Neutral', color: 'var(--c-tier-3)' };
+  return           { label: 'Bearish', color: 'var(--c-tier-4)' };
 }
 
 function ArcGauge({ pct }: { pct: number }) {
@@ -78,13 +80,15 @@ export function ShortInterest({ fundamentals }: Props) {
     {
       label: 'Days to Cover',
       value: shortRatio != null ? shortRatio.toFixed(1) : '—',
-      tip: 'Days to Cover (Short Ratio)\nShort Interest ÷ Average Daily Volume. This tells you how many trading days it would take all short sellers to buy back their shares. Below 3 days = Low risk · 3–7 days = Moderate · Above 7 days = High — a sudden price rise could trigger a \'short squeeze\' as shorts are forced to cover.',
+      tipTitle: 'Days to Cover (Short Ratio)',
+      tipBody: 'Short Interest ÷ Average Daily Volume — how many trading days it would take all short sellers to buy back their shares. Below 3 days = low risk · 3–7 days = moderate · above 7 days = high. A sudden price rise can trigger a "short squeeze" as shorts are forced to cover.',
       color: undefined as string | undefined,
     },
     {
       label: 'Signal',
       value: sig.label,
-      tip: 'Short Interest Signal\nDerived from Short % of Float and Days to Cover. Bullish = below 5% float shorted, low bearish pressure. Neutral = 5–15%, some caution warranted. Bearish = above 15%, significant short conviction — but elevated short interest can also fuel a short squeeze rally if positive news arrives.',
+      tipTitle: 'Short Interest Signal',
+      tipBody: 'Derived from Short % of Float. Bullish = below 5% of the float shorted (low bearish pressure). Neutral = 5–15% (some caution warranted). Bearish = above 15% (significant short conviction) — though elevated short interest can also fuel a short-squeeze rally if positive news arrives.',
       color: sig.color,
     },
   ];
@@ -110,8 +114,11 @@ export function ShortInterest({ fundamentals }: Props) {
             </div>
             <div className="ownership-stats">
               {statRows.map((row) => (
-                <div key={row.label} className="ownership-stat-row" title={row.tip}>
-                  <span style={{ color: 'var(--text-muted)' }}>{row.label}</span>
+                <div key={row.label} className="ownership-stat-row">
+                  <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    {row.label}
+                    <InfoTip title={row.tipTitle}>{row.tipBody}</InfoTip>
+                  </span>
                   <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600, color: row.color ?? 'var(--text-primary)' }}>
                     {row.value}
                   </span>
