@@ -496,17 +496,6 @@
   background: var(--border); flex-shrink: 0; margin: 0 2px;
 }
 
-/* Circular info button */
-.chart-info-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; border-radius: 50%;
-  border: 1px solid var(--border); background: transparent;
-  font-size: 10px; font-weight: 700; font-family: 'Sora', sans-serif;
-  color: var(--text-muted); cursor: help; flex-shrink: 0;
-  transition: border-color .15s, color .15s; margin-left: auto;
-}
-.chart-info-btn:hover { border-color: var(--brand-mid); color: var(--brand-mid); }
-
 /* ─────────────────────────────────────────────────────────────────────────
    Drawdown / profit overlay — segmented mode toggle + stats strip.
    Visual parity with `.overlay-toggle`, `.ovl-btn`, `.stats-row`, `.stat-pill`
@@ -595,7 +584,7 @@
 }
 .target-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; }
 .target-stat-caption {
-  font-family: 'Sora', sans-serif; font-size: 10px; font-style: italic;
+  font-family: 'Sora', sans-serif; font-size: 10px; font-style: normal;
   color: var(--text-muted); margin-top: 4px; letter-spacing: .1px;
 }
 @media (max-width: 480px) {

@@ -288,13 +288,6 @@ export function PriceChart({ priceBars, ticker }: Props) {
           <button className={`range-btn${range === '1y' ? ' active' : ''}`} onClick={() => setRange('1y')}>1Y</button>
           <button className={`range-btn${range === '3y' ? ' active' : ''}`} onClick={() => setRange('3y')}>3Y</button>
           <button className={`range-btn${range === 'max' ? ' active' : ''}`} onClick={() => setRange('max')}>Max</button>
-          <button
-            className="chart-info-btn"
-            title="Daily chart · Scroll to zoom · Drag to pan"
-            aria-label="Chart navigation help"
-          >
-            i
-          </button>
         </div>
       </div>
       <div className="card-body card-body--chart">
