@@ -299,6 +299,15 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
     area.setMarkers(visibleMarkers(model.markersAll, visibleRef.current));
     areaRef.current = area;
 
+    // Hover-preview node: created imperatively and appended to <body> so it is
+    // never clipped by the chart's overflow AND never part of the SSR/React tree
+    // (rendering it via a `typeof document` portal caused a hydration mismatch).
+    const tipEl = document.createElement('div');
+    tipEl.className = 'smart-chart-tip';
+    tipEl.style.display = 'none';
+    document.body.appendChild(tipEl);
+    tipRef.current = tipEl;
+
     // Initial visible range is applied by the dedicated range effect below.
 
     // Collect the visible insider + analyst events on a given day key.
@@ -387,6 +396,8 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
 
     return () => {
       ro.disconnect();
+      try { tipEl.remove(); } catch { /* ignore */ }
+      tipRef.current = null;
       areaRef.current = null;
       if (chartRef.current) {
         try { chartRef.current.remove(); } catch { /* ignore */ }
@@ -443,11 +454,7 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
     <>
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
-      {/* Hover preview — portalled to <body> so the chart edge never clips it. */}
-      {isClient && createPortal(
-        <div ref={tipRef} className="smart-chart-tip" style={{ display: 'none' }} />,
-        document.body,
-      )}
+      {/* Hover preview is created imperatively on <body> in the chart effect (no SSR tree → no hydration mismatch). */}
 
       {/* Pinned, scrollable "everything on this day" panel. */}
       {isClient && dayPanel && panelPos && createPortal(
