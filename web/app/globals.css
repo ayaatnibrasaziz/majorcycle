@@ -539,13 +539,6 @@
 .stat-pill-val.green { color: #228B22; }
 .stat-pill-val.amber { color: #D4A017; }
 .stat-pill-val.red   { color: #B22222; }
-/* The MA Signal pill holds a word ("Bullish" / "Golden Cross"), not a number.
-   Render it as a balanced label — the proportional UI font (Sora), bold, sized
-   to sit beside the 15px mono numbers — instead of a shrunken monospace value. */
-.stat-pill-val--signal {
-  font-family: 'Sora', sans-serif;
-  font-size: 14px; font-weight: 700; line-height: 1.15; letter-spacing: .1px;
-}
 
 @media (max-width: 640px) {
   .stats-row { grid-template-columns: repeat(2, 1fr); }

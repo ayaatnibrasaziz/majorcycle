@@ -172,7 +172,7 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
             title="Moving Average Signal — Compares the 50 DMA with the 200 DMA. If the 50 has crossed the 200 within the last ~3 months we show a 'Golden Cross' (50 above 200 — bullish, often precedes sustained rallies) or 'Death Cross' (50 below 200 — bearish). After that window it reads 'Bullish' or 'Bearish' — the standing trend, without implying a fresh crossing event."
           >
             <div className="stat-pill-label">MA Signal</div>
-            <div className="stat-pill-val stat-pill-val--signal" style={{ color: crossColor }}>
+            <div className="stat-pill-val" style={{ color: crossColor }}>
               {crossBadge}
             </div>
           </div>
