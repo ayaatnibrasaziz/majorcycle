@@ -483,10 +483,12 @@
   color: var(--text-muted); cursor: pointer; transition: all .15s; line-height: 1;
 }
 .ma-pill:hover { border-color: var(--text-secondary); color: var(--text-secondary); }
-.ma-pill--50.active  { color: #1E5CB3; border-color: #1E5CB3; background: rgba(30,92,179,.08); }
-.ma-pill--200.active { color: #C08000; border-color: #C08000; background: rgba(212,160,23,.10); }
-.ma-pill--50.active:hover  { background: rgba(30,92,179,.14); }
-.ma-pill--200.active:hover { background: rgba(212,160,23,.16); }
+/* Legend chips match the on-chart DMA line colours (design-system §5):
+   50 DMA = brand-bright #2E7DE8, 200 DMA = brand-deep #1A3A6E. */
+.ma-pill--50.active  { color: #2E7DE8; border-color: #2E7DE8; background: rgba(46,125,232,.08); }
+.ma-pill--200.active { color: #1A3A6E; border-color: #1A3A6E; background: rgba(26,58,110,.10); }
+.ma-pill--50.active:hover  { background: rgba(46,125,232,.14); }
+.ma-pill--200.active:hover { background: rgba(26,58,110,.16); }
 
 /* Thin vertical separator in .chart-controls */
 .chart-divider {
