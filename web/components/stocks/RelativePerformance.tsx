@@ -162,8 +162,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
           Relative Performance vs Benchmarks
           <InfoTip title="Relative Performance">
             How this stock&apos;s total return compares with major market indexes over
-            the period. Every line starts at 100, so you can read out-/under-performance
-            at a glance. &quot;Alpha&quot; is how many percentage points the stock beat (or
+            the period. &quot;Alpha&quot; is how many percentage points the stock beat (or
             lagged) its home-market index.
           </InfoTip>
         </div>
@@ -178,9 +177,6 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
               {RANGE_LABELS[r]}
             </button>
           ))}
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>
-            Indexed to 100 at start of period
-          </span>
         </div>
       </div>
       <div className="card-body">
@@ -270,7 +266,6 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                     type="monotone"
                     stroke={BENCH_COLOR[t] ?? '#8A97A8'}
                     strokeWidth={1.75}
-                    strokeDasharray={t === '^GSPC' ? '5 4' : undefined}
                     dot={false}
                     isAnimationActive={false}
                     connectNulls

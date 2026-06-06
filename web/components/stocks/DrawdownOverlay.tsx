@@ -204,9 +204,14 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       }).setData(series.map(p => ({ time: p.time, value: boundLine })));
     }
 
+    // Mark only the pivots the engine counts as cycle "events" — i.e. those that
+    // cross the active preset's threshold (Short −3 / Medium −5 / Long −8, and the
+    // mirror on the profit side). Marking every pivot would draw more arrows than
+    // the "Events" stat reports and sit on a different basis than the Typical/Bound
+    // lines (which are the mean / extreme of these same threshold-crossing events).
     const pivots = isDD
-      ? findPivotLows(series, pivotBars, pivotBars)
-      : findPivotHighs(series, pivotBars, pivotBars);
+      ? findPivotLows(series, pivotBars, pivotBars).filter((p) => p.value < cycle.params.pullbackThreshold)
+      : findPivotHighs(series, pivotBars, pivotBars).filter((p) => p.value > cycle.params.profitThreshold);
     if (pivots.length > 0) {
       mainSeries.setMarkers(pivots.map(p => ({
         time: p.time,

@@ -6,6 +6,7 @@ import {
   ColorType,
   CrosshairMode,
   createChart,
+  LineStyle,
   type IChartApi,
   type ISeriesApi,
   type Time,
@@ -23,8 +24,10 @@ import type { PriceBar } from '@/lib/types';
 
 type Range = '1y' | '3y' | 'max';
 
-const SMA_50_COLOR  = '#1E5CB3';
-const SMA_200_COLOR = '#D4A017';
+// Per design-system §5: 50 DMA = brand-bright solid, 200 DMA = brand-deep dashed.
+// (LWC line widths are integers, so the §5 "1.5px" renders as 2 — its closest value.)
+const SMA_50_COLOR  = '#2E7DE8';
+const SMA_200_COLOR = '#1A3A6E';
 
 function computeSMA(bars: PriceBar[], period: number): { time: Time; value: number }[] {
   const result: { time: Time; value: number }[] = [];
@@ -136,7 +139,7 @@ export function PriceChart({ priceBars, ticker }: Props) {
     const sma200Data = computeSMA(priceBars, 200);
     if (sma200Data.length > 0) {
       sma200Ref.current = chart.addLineSeries({
-        color: SMA_200_COLOR, lineWidth: 2,
+        color: SMA_200_COLOR, lineWidth: 2, lineStyle: LineStyle.Dashed,
         priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
       });
       sma200Ref.current.setData(sma200Data);
@@ -285,13 +288,6 @@ export function PriceChart({ priceBars, ticker }: Props) {
           <button className={`range-btn${range === '1y' ? ' active' : ''}`} onClick={() => setRange('1y')}>1Y</button>
           <button className={`range-btn${range === '3y' ? ' active' : ''}`} onClick={() => setRange('3y')}>3Y</button>
           <button className={`range-btn${range === 'max' ? ' active' : ''}`} onClick={() => setRange('max')}>Max</button>
-          <button
-            className="chart-info-btn"
-            title="Daily chart · Scroll to zoom · Drag to pan"
-            aria-label="Chart navigation help"
-          >
-            i
-          </button>
         </div>
       </div>
       <div className="card-body card-body--chart">
