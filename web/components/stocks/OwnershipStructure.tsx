@@ -150,7 +150,7 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
                   </thead>
                   <tbody>
                     {holders.slice(0, 10).map((h, i) => (
-                      <tr key={i} className={i % 2 === 1 ? 'stripe' : ''}>
+                      <tr key={i}>
                         <td className="text-cell">{h.holder}</td>
                         <td className="num">
                           {h.pct_out != null ? `${(h.pct_out * 100).toFixed(2)}%` : '—'}

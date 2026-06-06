@@ -746,6 +746,9 @@ td.num             { font-weight: 600; }
 .ownership-table thead th                   { cursor: default; }
 .ownership-table thead th:hover             { color: var(--text-muted); }
 .ownership-table tbody tr                   { cursor: default; }
+/* Zebra striping — same CSS-automatic mechanism as the Key Metrics table (.km-table) for site-wide consistency */
+.ownership-table tbody tr:nth-child(even)       { background: var(--bg-stripe); }
+.ownership-table tbody tr:nth-child(even):hover { background: var(--bg-hover); }
 .table-section-label                        { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
 
 /* Smart Money card — 2-col grid + section headers */
@@ -777,13 +780,30 @@ td.num             { font-weight: 600; }
 .smart-event-meta-mono                      { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-primary); }
 .smart-event-title                          { font-size: 10px; color: var(--text-muted); font-weight: 500; }
 
-/* Smart Money chart — floating combined tooltip (Lightweight Charts crosshair) */
-.smart-chart-tip                            { position: absolute; z-index: 20; pointer-events: none; max-width: 260px; background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: 0 6px 20px rgba(15,25,35,.14); padding: 8px 10px; font-family: 'Sora', sans-serif; font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
+/* Smart Money chart — hover preview tooltip (portalled to <body>, position:fixed so the chart edge never clips it) */
+.smart-chart-tip                            { position: fixed; z-index: 9999; pointer-events: none; max-width: 260px; background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: 0 6px 20px rgba(15,25,35,.14); padding: 8px 10px; font-family: 'Sora', sans-serif; font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
 .smart-chart-tip .smart-tip-date            { font-size: 10px; color: var(--text-muted); letter-spacing: .2px; }
 .smart-chart-tip .smart-tip-price           { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; color: var(--text-primary); margin-bottom: 2px; }
 .smart-chart-tip .smart-tip-row             { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; margin-top: 4px; padding-top: 4px; border-top: 1px dotted var(--border); }
 .smart-chart-tip .smart-tip-row b           { color: var(--text-primary); font-weight: 700; }
 .smart-chart-tip .smart-tip-meta            { width: 100%; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-muted); }
+.smart-chart-tip .smart-tip-more            { margin-top: 5px; padding-top: 4px; border-top: 1px dotted var(--border); font-size: 10px; font-weight: 700; color: var(--brand-mid); }
+
+/* Smart Money chart — pinned, scrollable "everything on this day" panel (click/tap a day) */
+.smart-day-panel                            { position: fixed; z-index: 9999; width: 300px; max-width: calc(100vw - 16px); max-height: 50vh; overflow-y: auto; background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: 0 10px 30px rgba(15,25,35,.18); font-family: 'Sora', sans-serif; }
+.smart-day-panel-head                       { position: sticky; top: 0; z-index: 1; background: var(--bg-surface); border-bottom: 1px solid var(--border); padding: 10px 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.smart-day-panel-date                       { font-size: 10px; color: var(--text-muted); letter-spacing: .2px; }
+.smart-day-panel-price                      { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 15px; color: var(--text-primary); }
+.smart-day-panel-count                      { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.smart-day-panel-close                      { flex-shrink: 0; border: none; background: transparent; cursor: pointer; color: var(--text-muted); font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+.smart-day-panel-close:hover                { background: var(--bg-hover); color: var(--text-primary); }
+.smart-day-panel-body                       { padding: 2px 0 4px; }
+.smart-day-panel-row                        { display: flex; gap: 8px; padding: 8px 12px; font-size: 11.5px; color: var(--text-secondary); line-height: 1.45; }
+.smart-day-panel-row + .smart-day-panel-row { border-top: 1px dotted var(--border); }
+.smart-day-panel-glyph                      { flex-shrink: 0; font-size: 11px; line-height: 1.4; }
+.smart-day-panel-label                      { font-weight: 700; color: var(--text-primary); }
+.smart-day-panel-name                       { color: var(--text-secondary); }
+.smart-day-panel-meta                       { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
 
 /* Short interest */
 .si-grid                                    { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: start; }

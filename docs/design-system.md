@@ -294,6 +294,21 @@ Pass a short bold `title` plus the explanation as `children`. Safe to render ins
 
 > The reference HTML's vanilla-JS `data-tip="TITLE|body"` / `has-tip` pattern does **nothing** in React — it is superseded by `InfoTip`. Plain native `title=` is still fine for low-stakes, desktop-only affordances (e.g. chart toggle buttons).
 
+### Table (zebra striping)
+
+**Canonical mechanism: CSS-automatic `tbody tr:nth-child(even) { background: var(--bg-stripe); }`** (+ a `:nth-child(even):hover { background: var(--bg-hover); }` variant), scoped per table class. This is what `.km-table` (Key Metrics) and `.ownership-table` (Top Institutional Holders) use, so all data tables stripe identically with the same `--bg-stripe` (#F8FAFC) shade.
+
+> **Deprecated:** the reference HTML's `.stripe` class (manually tagging odd rows + a global `tbody tr.stripe` rule) was **not** ported to the Next app. Do **not** add a `stripe` className in components — it has no CSS rule and renders unshaded. Use `:nth-child(even)` on the table's own class instead.
+
+### Smart Money chart (event-marker chart)
+
+The Smart Money Activity chart is the one **non-candlestick chart built on Lightweight Charts** instead of Recharts — a deliberate exception to decision #2, chosen for native pan/zoom + a reliable crosshair tooltip. Don't migrate it back to Recharts.
+
+- Price = an LWC **area series**; insider/analyst events = LWC **markers** (`series.setMarkers`): ▲ buy (belowBar, `#006400`), ▼ sell (aboveBar, `#B22222`), ● award/gift/other (inBar, dot colour), ▮ analyst (square, grade colour). Default range **1Y**; 1Y/3Y/All presets via `.range-btn`.
+- **Two-tier event view** (a tooltip can't be scrolled, and dense days overflow):
+  - **Hover = quick preview** (`.smart-chart-tip`) — created imperatively on `<body>` (`position: fixed`) so the chart edge never clips it; capped at 4 events + a "+N more — click to see all" line. *(It is created with `document.createElement`, NOT a `typeof document` portal — that branch differs server vs client and throws a hydration mismatch.)*
+  - **Click / tap a day = pinned panel** (`.smart-day-panel`) — portalled, viewport-clamped, `max-height: 50vh; overflow-y: auto`, lists *every* event that day with a close button. Gated on a `dayPanel` state (null until a click), so it renders nothing at hydration. Closes on Esc / outside-click / page-scroll / resize.
+
 ### Range Buttons
 
 For chart timeframe selectors (1Y / 3Y / Max).

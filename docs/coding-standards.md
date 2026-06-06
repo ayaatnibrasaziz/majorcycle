@@ -128,6 +128,8 @@ export function StockPage({ ticker }: { ticker: string }) {
 - Destructure props in the signature.
 - Default exports for routes/pages; named exports for everything else.
 - No `React.FC` typing — use direct prop types.
+- **Never gate a portal / JSX branch on `typeof document` or `typeof window` for content that renders at hydration time.** The branch is `false` on the server and `true` on the client → the first client render differs from the SSR HTML → **hydration mismatch**. Instead: render imperative DOM with `document.createElement` + `appendChild` inside an effect (for imperatively-updated nodes like a chart tooltip), or gate the portal on a state that is `false` on the first render (e.g. `InfoTip`'s `open`, a chart's `dayPanel` — both null/false until interaction, so they render nothing at hydration). A `mounted` flag set in `useEffect` works too but trips the `react-hooks/set-state-in-effect` lint rule.
+- The `react-hooks/refs` lint rule forbids mutating a ref during render (`ref.current = x` in the component body). Sync derived-from-prop refs inside a `useEffect` instead.
 
 ---
 
@@ -431,6 +433,7 @@ def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[
 | Adding dependencies casually | Bundle bloat, supply chain risk | Justify every new dep in PR |
 | Rewriting whole files | High blast radius | Targeted edits |
 | Mock data left in production code | Will ship if forgotten | Use feature flags or test-only paths |
+| Running `pnpm build` while the dev/preview server is up | Poisons the shared `web/.next` cache → the dev server serves **stale `globals.css`** (new JS but old CSS), even across a restart | After a prod build, `rm -rf web/.next` and restart the dev/preview server before verifying CSS |
 
 ---
 
