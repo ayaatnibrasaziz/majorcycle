@@ -746,6 +746,9 @@ td.num             { font-weight: 600; }
 .ownership-table thead th                   { cursor: default; }
 .ownership-table thead th:hover             { color: var(--text-muted); }
 .ownership-table tbody tr                   { cursor: default; }
+/* Zebra striping — same CSS-automatic mechanism as the Key Metrics table (.km-table) for site-wide consistency */
+.ownership-table tbody tr:nth-child(even)       { background: var(--bg-stripe); }
+.ownership-table tbody tr:nth-child(even):hover { background: var(--bg-hover); }
 .table-section-label                        { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
 
 /* Smart Money card — 2-col grid + section headers */
