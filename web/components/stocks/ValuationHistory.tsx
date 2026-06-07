@@ -31,7 +31,14 @@ export function ValuationHistory({ peHistory, currentPe }: Props) {
   const allPe   = peHistory.map((p) => p.pe);
   const curr    = currentPe ?? allPe[allPe.length - 1] ?? null;
 
-  const chartData = peHistory.map((p) => ({ label: toMonthLabel(p.date), pe: p.pe }));
+  // Append today's trailing P/E as a final "Now" point so the Current marker
+  // line sits exactly on the end of the curve. Today's price ÷ trailing EPS is
+  // the genuinely-current reading (more up to date than the last month-end) and
+  // keeps the headline consistent with the Key Metrics trailing P/E.
+  const baseData  = peHistory.map((p) => ({ label: toMonthLabel(p.date), pe: p.pe }));
+  const chartData = currentPe !== null
+    ? [...baseData, { label: 'Now', pe: currentPe }]
+    : baseData;
 
   const avg   = hasEnoughHistory
     ? +(allPe.reduce((s, v) => s + v, 0) / allPe.length).toFixed(1)
@@ -153,10 +160,10 @@ export function ValuationHistory({ peHistory, currentPe }: Props) {
                   {curr !== null && (
                     <ReferenceLine
                       y={curr}
-                      stroke="#B22222"
+                      stroke="#2E7DE8"
                       strokeWidth={2}
                       strokeDasharray="3 3"
-                      label={{ value: `Current ${curr.toFixed(1)}x`, position: 'insideTopRight', fill: '#B22222', fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
+                      label={{ value: `Current ${curr.toFixed(1)}x`, position: 'insideTopRight', fill: '#2E7DE8', fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
                     />
                   )}
                   <Area

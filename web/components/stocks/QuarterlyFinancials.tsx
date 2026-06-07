@@ -57,14 +57,19 @@ function stmtVals(stmt: FinancialStatement | undefined, key: string): (number | 
   return (raw as unknown[]).map((v) => (typeof v === 'number' ? v : null));
 }
 
+// Align Free Cash Flow to the income-statement periods BY DATE, not by position.
+// The cashflow statement can carry a different number of periods than the income
+// statement (e.g. AAPL: 7 cashflow quarters vs 5 income quarters), so a purely
+// positional match could silently label FCF against the wrong quarter.
 function buildFcf(
   cashflow: FinancialStatement | undefined,
-  targetLen: number,
+  targetLabels: string[],
 ): (number | null)[] {
-  if (!cashflow?.labels?.length) return [];
-  const raw = [...stmtVals(cashflow, 'free_cash_flow')].reverse();
-  while (raw.length < targetLen) raw.unshift(null);
-  return raw.slice(raw.length - targetLen);
+  if (!cashflow?.labels?.length) return targetLabels.map(() => null);
+  const vals = stmtVals(cashflow, 'free_cash_flow'); // index-aligned to cashflow.labels
+  const byDate = new Map<string, number | null>();
+  cashflow.labels.forEach((lbl, i) => byDate.set(lbl, vals[i] ?? null));
+  return targetLabels.map((lbl) => byDate.get(lbl) ?? null);
 }
 
 export function QuarterlyFinancials({
@@ -89,14 +94,14 @@ export function QuarterlyFinancials({
   const qRev    = hasQuarterly ? [...stmtVals(incomeStatementQuarterly, 'total_revenue')].reverse()    : [];
   const qGp     = hasQuarterly ? [...stmtVals(incomeStatementQuarterly, 'gross_profit')].reverse()     : [];
   const qOp     = hasQuarterly ? [...stmtVals(incomeStatementQuarterly, 'operating_income')].reverse() : [];
-  const qFcf    = buildFcf(cashflowQuarterly, qLabels.length);
+  const qFcf    = buildFcf(cashflowQuarterly, qLabels);
 
   // --- Annual arrays (oldest → newest) ---
   const aLabels = hasAnnual ? [...incomeStatementAnnual!.labels].reverse() : [];
   const aRev    = hasAnnual ? [...stmtVals(incomeStatementAnnual, 'total_revenue')].reverse()    : [];
   const aGp     = hasAnnual ? [...stmtVals(incomeStatementAnnual, 'gross_profit')].reverse()     : [];
   const aOp     = hasAnnual ? [...stmtVals(incomeStatementAnnual, 'operating_income')].reverse() : [];
-  const aFcf    = buildFcf(cashflowAnnual, aLabels.length);
+  const aFcf    = buildFcf(cashflowAnnual, aLabels);
 
   const isAnnual  = activePeriod === 'annual';
   const allLabels = isAnnual ? aLabels : qLabels;
@@ -104,17 +109,22 @@ export function QuarterlyFinancials({
     ? { rev: aRev, gp: aGp, op: aOp, fcf: aFcf }
     : { rev: qRev, gp: qGp, op: qOp, fcf: qFcf };
 
-  // Quarterly: last 8 bars; Annual: show all years
-  const n      = isAnnual ? allLabels.length : Math.min(8, allLabels.length);
-  const labels = allLabels.slice(-n);
-  const vals   = modeData[mode].slice(-n);
+  // Pair each period with its value for the selected metric and drop periods
+  // with no data (e.g. an oldest fiscal year yfinance reports as null) — those
+  // would otherwise render as empty/zero bars.
+  const paired = allLabels
+    .map((label, i) => ({ label, val: modeData[mode][i] ?? null }))
+    .filter((p): p is { label: string; val: number } => p.val !== null);
 
-  const chartData = labels.map((label, i) => ({
-    label:   isAnnual ? toYearLabel(label) : toQtrLabel(label),
-    val:     vals[i],
+  // Quarterly: last 8 bars; Annual: show all years
+  const n     = isAnnual ? paired.length : Math.min(8, paired.length);
+  const shown = paired.slice(-n);
+
+  const chartData = shown.map((p, i) => ({
+    label:   isAnnual ? toYearLabel(p.label) : toQtrLabel(p.label),
+    val:     p.val,
     isFirst: i === 0,
-    isUp:    i > 0 && vals[i] !== null && vals[i - 1] !== null
-             && (vals[i] as number) >= (vals[i - 1] as number),
+    isUp:    i > 0 && p.val >= shown[i - 1]!.val,
   }));
 
   return (
