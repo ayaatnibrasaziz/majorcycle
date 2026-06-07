@@ -169,8 +169,8 @@ export function QuarterlyFinancials({
         </div>
       </div>
       <div className="card-body">
-        <div className="chart-canvas-wrap chart-h-md">
-          <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 220 }}>
+        <div className="chart-canvas-wrap chart-h-sm">
+          <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 200 }}>
             <BarChart
               data={chartData}
               margin={{ top: 6, right: 12, left: 0, bottom: 0 }}

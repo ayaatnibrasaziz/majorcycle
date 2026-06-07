@@ -114,8 +114,8 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
       </div>
       <div className="card-body">
         {hasChart && chartData.length > 0 && (
-          <div className="chart-canvas-wrap chart-h-lg">
-            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 300 }}>
+          <div className="chart-canvas-wrap chart-h-sm">
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 200 }}>
               <ComposedChart
                 data={chartData}
                 margin={{ top: 6, right: 12, left: 0, bottom: 0 }}
