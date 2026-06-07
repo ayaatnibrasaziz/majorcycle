@@ -21,6 +21,7 @@ export type MetricKey =
   | 'roe'
   | 'roa'
   | 'revenueGrowthYoy'
+  | 'earningsGrowthYoy'
   | 'debtToEquity'
   | 'currentRatio'
   | 'peg';
@@ -37,6 +38,7 @@ const DB_FIELD: Record<MetricKey, string> = {
   roe: 'roe',
   roa: 'roa',
   revenueGrowthYoy: 'revenue_growth_yoy',
+  earningsGrowthYoy: 'earnings_growth_yoy',
   debtToEquity: 'debt_to_equity',
   currentRatio: 'current_ratio',
   peg: 'peg',
@@ -117,6 +119,6 @@ async function _fetchMetricMedians(): Promise<MedianTables> {
  */
 export const fetchMetricMedians = unstable_cache(
   _fetchMetricMedians,
-  ['metric-medians-v1'],
+  ['metric-medians-v2'],
   { revalidate: 86400 },
 );

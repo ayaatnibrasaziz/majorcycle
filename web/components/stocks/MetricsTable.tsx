@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import type { FundamentalsSnapshot } from '@/lib/types';
 import type { MedianTables, MetricKey, MetricMedians } from '@/lib/medians.server';
@@ -50,6 +50,8 @@ const METRICS: MetricDef[] = [
     tip: 'Net income ÷ total assets. How efficiently assets generate profit.' },
   { key: 'revenueGrowthYoy', label: 'Revenue Growth', cat: 'Growth', unit: 'pct', higherBetter: true,
     tip: 'Year-over-year revenue growth.' },
+  { key: 'earningsGrowthYoy', label: 'Earnings Growth', cat: 'Growth', unit: 'pct', higherBetter: true,
+    tip: 'Year-over-year growth in earnings (net profit). Faster = the bottom line is expanding.' },
   { key: 'debtToEquity', label: 'Debt / Equity', cat: 'Balance Sheet', unit: 'ratio', higherBetter: false,
     tip: 'Total debt ÷ equity. Lower = less leverage.' },
   { key: 'currentRatio', label: 'Current Ratio', cat: 'Balance Sheet', unit: 'ratio', higherBetter: true,
@@ -124,8 +126,6 @@ interface BuiltRow {
   marketCmp: Comparison;
 }
 
-type SortKey = 'default' | 'metric' | 'value' | 'sector' | 'market';
-
 const VERDICT_CLASS: Record<Verdict, string> = {
   better: 'km-cmp--better',
   worse: 'km-cmp--worse',
@@ -134,9 +134,6 @@ const VERDICT_CLASS: Record<Verdict, string> = {
 };
 
 export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
-  const [sortKey, setSortKey] = useState<SortKey>('default');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-
   const sectorGroup = sector ? medians.sector[sector] : undefined;
   const marketGroup = medians.market[market];
   const sectorLabel = sector ?? 'Sector';
@@ -156,39 +153,6 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
       }];
     });
   }, [fundamentals, sectorGroup, marketGroup, sectorLabel, marketLabel]);
-
-  const sorted = useMemo(() => {
-    if (sortKey === 'default') return rows;
-    const dir = sortDir === 'asc' ? 1 : -1;
-    const keyed = rows.map((r) => {
-      let v: number | string;
-      if (sortKey === 'metric') v = r.def.label;
-      else if (sortKey === 'value') v = r.value;
-      else if (sortKey === 'sector') v = r.sectorCmp.score;
-      else v = r.marketCmp.score;
-      return { r, v };
-    });
-    keyed.sort((a, b) =>
-      typeof a.v === 'string'
-        ? a.v.localeCompare(b.v as string) * dir
-        : ((a.v as number) - (b.v as number)) * dir,
-    );
-    return keyed.map((k) => k.r);
-  }, [rows, sortKey, sortDir]);
-
-  function onSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortDir(key === 'metric' ? 'asc' : 'desc');
-    }
-  }
-
-  function arrow(key: SortKey) {
-    if (key !== sortKey) return '';
-    return sortDir === 'asc' ? ' ▲' : ' ▼';
-  }
 
   if (rows.length === 0) {
     return (
@@ -213,31 +177,30 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
             about the same. Tap any metric name for a plain-English definition.
           </InfoTip>
         </div>
-        <div className="km-subtitle">How it compares with its peers · tap a column to sort</div>
+        <div className="km-subtitle">How it compares with its peers</div>
       </div>
       <div className="card-body card-body--bleed">
         <div className="km-scroll">
           <table className="km-table">
             <thead>
               <tr>
-                <th className="km-th-metric" onClick={() => onSort('metric')}>Metric{arrow('metric')}</th>
-                <th className="km-num" onClick={() => onSort('value')}>Value{arrow('value')}</th>
-                <th className="km-num" onClick={() => onSort('sector')}>
-                  vs {sectorLabel}{arrow('sector')}
-                </th>
-                <th className="km-num" onClick={() => onSort('market')}>
-                  vs {marketLabel}{arrow('market')}
-                </th>
+                <th className="km-th-metric">Metric</th>
+                <th className="km-th-cat">Category</th>
+                <th className="km-num">Value</th>
+                <th className="km-num">vs {sectorLabel}</th>
+                <th className="km-num">vs {marketLabel}</th>
               </tr>
             </thead>
             <tbody>
-              {sorted.map((r) => (
+              {rows.map((r) => (
                 <tr key={r.def.key}>
                   <td className="km-metric-cell">
                     <span className="km-metric-label">
                       {r.def.label}
                       <InfoTip title={r.def.label}>{r.def.tip}</InfoTip>
                     </span>
+                  </td>
+                  <td className="km-cat-cell">
                     <span className={`mt-cat-pill ${CAT_PILL[r.def.cat]}`}>{r.def.cat}</span>
                   </td>
                   <td className="km-num km-value">{r.disp}</td>
@@ -251,10 +214,6 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
               ))}
             </tbody>
           </table>
-        </div>
-        <div className="km-footnote">
-          Compared against the median of {sectorLabel} peers and the broader {marketLabel}.
-          Green = stronger than the typical peer, red = weaker. Information only — not financial advice.
         </div>
       </div>
     </div>
