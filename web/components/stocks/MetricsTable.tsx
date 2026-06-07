@@ -166,7 +166,7 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
   }
 
   return (
-    <div className="card card--stack-base">
+    <div className="card card--stack-base km-card">
       <div className="card-header">
         <div className="card-title">
           Key Metrics

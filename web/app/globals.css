@@ -685,6 +685,10 @@ td.num             { font-weight: 600; }
 
 /* Key Metrics comparison table (vs sector & market median) */
 .km-subtitle { font-size: 10px; color: var(--text-muted); }
+/* The table is full-bleed (card-body--bleed) to the card edges, so clip it to
+   the card's rounded corners — otherwise the table's square bottom corners poke
+   past the curve. Same pattern as .card--verdict / the KPI card. */
+.km-card { overflow: hidden; }
 .km-scroll { overflow-x: auto; }
 .km-table { width: 100%; border-collapse: collapse; min-width: 460px; }
 .km-table thead th {
