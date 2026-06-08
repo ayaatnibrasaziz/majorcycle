@@ -53,31 +53,31 @@ const AXES = [
     key:   'profitability' as const,
     label: 'Profitability',
     color: '#D4A017',
-    tip:   'Profitability Score (0–100) — Measures how efficiently the company converts revenue into profit. Factors in Return on Equity, Gross Margin, Net Margin, and operating leverage. Higher = more profitable business model.',
+    desc:  'How efficiently the company turns revenue into profit. Factors in Return on Equity, Gross Margin, Net Margin and operating leverage. Higher = a more profitable business model.',
   },
   {
     key:   'balanceSheet' as const,
     label: 'Balance Sheet',
     color: '#006400',
-    tip:   'Balance Sheet Score (0–100) — Measures financial resilience and stability. Factors in Debt/Equity, Current Ratio, and Interest Coverage. Higher = stronger balance sheet with lower financial risk.',
+    desc:  'Financial resilience and stability. Factors in Debt/Equity, Current Ratio and Interest Coverage. Higher = a stronger balance sheet with lower financial risk.',
   },
   {
     key:   'growth' as const,
     label: 'Growth',
     color: '#228B22',
-    tip:   'Growth Score (0–100) — Measures how fast the company is expanding its revenues and earnings. Higher = faster-growing business. A score of 80+ indicates a high-growth company.',
+    desc:  'How fast the company is expanding its revenues and earnings. Higher = faster-growing; 80+ indicates a high-growth company.',
   },
   {
     key:   'cashflow' as const,
     label: 'Cash Flow',
     color: '#1E5CB3',
-    tip:   'Cash Flow Score (0–100) — Measures the quality and consistency of cash generation. Factors in Free Cash Flow yield, FCF margin, and operating cash conversion. Higher = more cash-generative business.',
+    desc:  'The quality and consistency of cash generation. Factors in Free Cash Flow yield, FCF margin and operating cash conversion. Higher = a more cash-generative business.',
   },
   {
     key:   'shareholder' as const,
     label: 'Shareholder',
     color: '#B22222',
-    tip:   'Shareholder Score (0–100) — Measures how well the company returns value to shareholders. Factors in dividend yield, payout consistency, buyback activity, and share count changes. Higher = more shareholder-friendly.',
+    desc:  'How well the company returns value to shareholders. Factors in dividend yield, payout consistency, buybacks and share-count changes. Higher = more shareholder-friendly.',
   },
 ] as const;
 
@@ -96,6 +96,13 @@ export function SnowflakeRadar({ cycle }: Props) {
   const missingLabels = AXES
     .filter((ax) => fhSubscores[ax.key] === undefined)
     .map((ax) => ax.label);
+
+  // Accessible summary of the chart (check #9 — every chart carries an aria-label).
+  const radarAriaLabel = hasScore
+    ? `Financial health scorecard radar. ${data
+        .map((d) => `${d.subject} ${d.value} out of 100`)
+        .join(', ')}.`
+    : 'Financial health scorecard — not enough fundamental data to plot.';
 
   return (
     <section id="sec-scorecard" className="scroll-mt-[120px] card card--stack-base">
@@ -118,7 +125,7 @@ export function SnowflakeRadar({ cycle }: Props) {
       <div className="card-body">
         <div className="radar-grid">
           {/* Left: radar chart */}
-          <div className="chart-canvas-wrap chart-h-radar">
+          <div className="chart-canvas-wrap chart-h-radar" role="img" aria-label={radarAriaLabel}>
             {!hasScore ? (
               <div
                 style={{
@@ -182,8 +189,13 @@ export function SnowflakeRadar({ cycle }: Props) {
               const score = fhSubscores[ax.key];
               const pct   = score !== undefined ? Math.round(score) : null;
               return (
-                <div key={ax.key} className="radar-axis-row" title={ax.tip}>
-                  <div className="radar-axis-label">{ax.label}</div>
+                <div key={ax.key} className="radar-axis-row">
+                  <div className="radar-axis-label">
+                    {ax.label}
+                    <InfoTip title={`${ax.label} (0–100)`} size={12}>
+                      {ax.desc}
+                    </InfoTip>
+                  </div>
                   <div className="radar-axis-bar-track">
                     <div
                       className="radar-axis-bar-fill"

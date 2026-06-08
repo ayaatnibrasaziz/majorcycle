@@ -84,7 +84,7 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
           <InfoTip title="Analyst Price Target Range">
             Where professional Wall Street analysts think the price could trade over
             the next 12 months — their lowest, average and highest targets. This is
-            third-party data from Yahoo Finance, shown as-is — not MajorCycle&apos;s view.
+            third-party analyst data, shown as-is — not MajorCycle&apos;s view.
           </InfoTip>
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>

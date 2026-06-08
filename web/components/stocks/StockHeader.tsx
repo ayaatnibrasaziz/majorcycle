@@ -210,7 +210,7 @@ export function BadgeRow({
       {analystRecommendation && (
         <span
           className="tier-badge tier-badge--analyst"
-          title={`Analyst consensus: ${analystRecommendation}${numAnalysts ? ` (${numAnalysts} analysts)` : ''}. Third-party data from Yahoo Finance — not our rating.`}
+          title={`Analyst consensus: ${analystRecommendation}${numAnalysts ? ` (${numAnalysts} analysts)` : ''}. Third-party analyst data — not our rating.`}
         >
           {analystRecommendation}
         </span>
@@ -219,8 +219,8 @@ export function BadgeRow({
         Three quick reads at a glance. The first is MajorCycle&apos;s overall label
         (High Conviction → Bearish). The second is the Valuation Zone — how the
         current dip compares with this stock&apos;s typical pullback (Deep Value →
-        Stretched). The third, if shown, is the Wall Street analyst consensus from
-        Yahoo Finance — third-party data, not our rating.
+        Stretched). The third, if shown, is the Wall Street analyst consensus —
+        third-party data, not our rating.
       </InfoTip>
     </div>
   );

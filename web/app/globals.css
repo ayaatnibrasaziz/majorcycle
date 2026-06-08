@@ -608,6 +608,7 @@
 .radar-axis-label {
   font-size: 11px; color: var(--text-secondary);
   width: 120px; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 4px;
 }
 .radar-axis-bar-track {
   flex: 1; background: var(--bg-stripe); border-radius: 20px;
