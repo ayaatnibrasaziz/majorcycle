@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import type { FundamentalsSnapshot } from '@/lib/types';
 import type { MedianTables, MetricKey, MetricMedians } from '@/lib/medians.server';
@@ -23,6 +23,11 @@ interface MetricDef {
   unit: Unit;
   higherBetter: boolean;
   tip: string;
+  /** Display cap: |value| beyond this shows ">+cap" instead of an absurd figure
+   *  (e.g. earnings growth from a near-zero base reads as +30,000%). The true
+   *  value stays in the cell tooltip. Outliers are also excluded from the peer
+   *  median (see medians.server.ts). */
+  cap?: number;
 }
 
 // Trimmed to the metrics where a sector/market median comparison is genuinely
@@ -48,8 +53,10 @@ const METRICS: MetricDef[] = [
     tip: 'Net income ÷ shareholders equity. How efficiently equity generates profit.' },
   { key: 'roa', label: 'Return on Assets', cat: 'Profitability', unit: 'pct', higherBetter: true,
     tip: 'Net income ÷ total assets. How efficiently assets generate profit.' },
-  { key: 'revenueGrowthYoy', label: 'Revenue Growth', cat: 'Growth', unit: 'pct', higherBetter: true,
+  { key: 'revenueGrowthYoy', label: 'Revenue Growth', cat: 'Growth', unit: 'pct', higherBetter: true, cap: 300,
     tip: 'Year-over-year revenue growth.' },
+  { key: 'earningsGrowthYoy', label: 'Earnings Growth', cat: 'Growth', unit: 'pct', higherBetter: true, cap: 300,
+    tip: 'Year-over-year growth in earnings (net profit). Faster = the bottom line is expanding. Very large readings usually mean last year’s earnings were near zero.' },
   { key: 'debtToEquity', label: 'Debt / Equity', cat: 'Balance Sheet', unit: 'ratio', higherBetter: false,
     tip: 'Total debt ÷ equity. Lower = less leverage.' },
   { key: 'currentRatio', label: 'Current Ratio', cat: 'Balance Sheet', unit: 'ratio', higherBetter: true,
@@ -65,14 +72,23 @@ const CAT_PILL: Record<Category, string> = {
 
 const MARKET_LABEL: Record<string, string> = { us: 'US market', au: 'ASX', ca: 'TSX' };
 
-function fmtVal(v: number, unit: Unit): string {
+const UNIT_SUFFIX: Record<Unit, string> = { pct: '%', mult: 'x', ratio: '' };
+
+function fmtVal(v: number, unit: Unit, cap?: number): string {
+  if (cap !== undefined && Math.abs(v) > cap) {
+    return `${v > 0 ? '>+' : '<−'}${cap}${UNIT_SUFFIX[unit]}`;
+  }
   if (unit === 'pct') return `${v.toFixed(1)}%`;
   if (unit === 'mult') return `${v.toFixed(1)}x`;
   return v.toFixed(2);
 }
 
-function fmtDelta(delta: number, unit: Unit): string {
+function fmtDelta(delta: number, unit: Unit, cap?: number): string {
   const sign = delta >= 0 ? '+' : '−';
+  if (cap !== undefined && Math.abs(delta) > cap) {
+    const suffix = unit === 'pct' ? 'pp' : UNIT_SUFFIX[unit];
+    return `${delta >= 0 ? '>+' : '<−'}${cap}${suffix}`;
+  }
   const a = Math.abs(delta);
   if (unit === 'pct') return `${sign}${a.toFixed(1)}pp`;
   if (unit === 'mult') return `${sign}${a.toFixed(1)}x`;
@@ -110,21 +126,21 @@ function compare(
   const dir = delta >= 0 ? 'above' : 'below';
   const quality =
     verdict === 'inline' ? 'in line with' : verdict === 'better' ? 'stronger than' : 'weaker than';
+  // Tip reveals the true (uncapped) gap; the cell text is capped for absurd values.
   const tip = `${groupLabel} median: ${fmtVal(stat.median, def.unit)} across ${stat.n} peers. ` +
     `This stock is ${fmtDelta(delta, def.unit).replace(/^[+−]/, '')} ${dir} — ${quality} the typical peer.`;
 
-  return { verdict, score: favScore, text: fmtDelta(delta, def.unit), tip };
+  return { verdict, score: favScore, text: fmtDelta(delta, def.unit, def.cap), tip };
 }
 
 interface BuiltRow {
   def: MetricDef;
   value: number;
   disp: string;
+  valueTitle?: string;
   sectorCmp: Comparison;
   marketCmp: Comparison;
 }
-
-type SortKey = 'default' | 'metric' | 'value' | 'sector' | 'market';
 
 const VERDICT_CLASS: Record<Verdict, string> = {
   better: 'km-cmp--better',
@@ -134,9 +150,6 @@ const VERDICT_CLASS: Record<Verdict, string> = {
 };
 
 export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
-  const [sortKey, setSortKey] = useState<SortKey>('default');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-
   const sectorGroup = sector ? medians.sector[sector] : undefined;
   const marketGroup = medians.market[market];
   const sectorLabel = sector ?? 'Sector';
@@ -147,48 +160,17 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
     return METRICS.flatMap((def) => {
       const value = f[def.key];
       if (value === null || value === undefined || !Number.isFinite(value)) return [];
+      const capped = def.cap !== undefined && Math.abs(value) > def.cap;
       return [{
         def,
         value,
-        disp: fmtVal(value, def.unit),
+        disp: fmtVal(value, def.unit, def.cap),
+        valueTitle: capped ? `Actual ${fmtVal(value, def.unit)} — capped for display` : undefined,
         sectorCmp: compare(def, value, sectorGroup, sectorLabel),
         marketCmp: compare(def, value, marketGroup, marketLabel),
       }];
     });
   }, [fundamentals, sectorGroup, marketGroup, sectorLabel, marketLabel]);
-
-  const sorted = useMemo(() => {
-    if (sortKey === 'default') return rows;
-    const dir = sortDir === 'asc' ? 1 : -1;
-    const keyed = rows.map((r) => {
-      let v: number | string;
-      if (sortKey === 'metric') v = r.def.label;
-      else if (sortKey === 'value') v = r.value;
-      else if (sortKey === 'sector') v = r.sectorCmp.score;
-      else v = r.marketCmp.score;
-      return { r, v };
-    });
-    keyed.sort((a, b) =>
-      typeof a.v === 'string'
-        ? a.v.localeCompare(b.v as string) * dir
-        : ((a.v as number) - (b.v as number)) * dir,
-    );
-    return keyed.map((k) => k.r);
-  }, [rows, sortKey, sortDir]);
-
-  function onSort(key: SortKey) {
-    if (key === sortKey) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortKey(key);
-      setSortDir(key === 'metric' ? 'asc' : 'desc');
-    }
-  }
-
-  function arrow(key: SortKey) {
-    if (key !== sortKey) return '';
-    return sortDir === 'asc' ? ' ▲' : ' ▼';
-  }
 
   if (rows.length === 0) {
     return (
@@ -202,7 +184,7 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
   }
 
   return (
-    <div className="card card--stack-base">
+    <div className="card card--stack-base km-card">
       <div className="card-header">
         <div className="card-title">
           Key Metrics
@@ -213,34 +195,33 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
             about the same. Tap any metric name for a plain-English definition.
           </InfoTip>
         </div>
-        <div className="km-subtitle">How it compares with its peers · tap a column to sort</div>
+        <div className="km-subtitle">How it compares with its peers</div>
       </div>
       <div className="card-body card-body--bleed">
         <div className="km-scroll">
           <table className="km-table">
             <thead>
               <tr>
-                <th className="km-th-metric" onClick={() => onSort('metric')}>Metric{arrow('metric')}</th>
-                <th className="km-num" onClick={() => onSort('value')}>Value{arrow('value')}</th>
-                <th className="km-num" onClick={() => onSort('sector')}>
-                  vs {sectorLabel}{arrow('sector')}
-                </th>
-                <th className="km-num" onClick={() => onSort('market')}>
-                  vs {marketLabel}{arrow('market')}
-                </th>
+                <th className="km-th-metric">Metric</th>
+                <th className="km-th-cat">Category</th>
+                <th className="km-num">Value</th>
+                <th className="km-num">vs {sectorLabel}</th>
+                <th className="km-num">vs {marketLabel}</th>
               </tr>
             </thead>
             <tbody>
-              {sorted.map((r) => (
+              {rows.map((r) => (
                 <tr key={r.def.key}>
                   <td className="km-metric-cell">
                     <span className="km-metric-label">
                       {r.def.label}
                       <InfoTip title={r.def.label}>{r.def.tip}</InfoTip>
                     </span>
+                  </td>
+                  <td className="km-cat-cell">
                     <span className={`mt-cat-pill ${CAT_PILL[r.def.cat]}`}>{r.def.cat}</span>
                   </td>
-                  <td className="km-num km-value">{r.disp}</td>
+                  <td className="km-num km-value" title={r.valueTitle}>{r.disp}</td>
                   <td className={`km-num km-cmp ${VERDICT_CLASS[r.sectorCmp.verdict]}`} title={r.sectorCmp.tip}>
                     {r.sectorCmp.text}
                   </td>
@@ -251,10 +232,6 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
               ))}
             </tbody>
           </table>
-        </div>
-        <div className="km-footnote">
-          Compared against the median of {sectorLabel} peers and the broader {marketLabel}.
-          Green = stronger than the typical peer, red = weaker. Information only — not financial advice.
         </div>
       </div>
     </div>

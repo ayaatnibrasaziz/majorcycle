@@ -65,23 +65,28 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
 
   if (hasChart) {
     const stmt   = balanceSheetAnnual!;
-    const labels = [...stmt.labels].reverse();
+    const labels = [...stmt.labels].reverse(); // oldest → newest
     const assets = [...stmtVals(stmt, 'total_assets')].reverse();
     const cashA  = [...stmtVals(stmt, 'cash_and_cash_equivalents')].reverse();
     const cashB  = [...stmtVals(stmt, 'cash_cash_equivalents_and_short_term_investments')].reverse();
     const debt   = [...stmtVals(stmt, 'total_debt')].reverse();
     const cashVals = cashA.map((v, i) => v ?? cashB[i] ?? null);
 
-    chartData = labels.slice(0, 5).map((lbl, i) => {
-      const totalAssets = assets[i] ?? 0;
-      const cashVal     = cashVals[i] ?? 0;
-      return {
-        label: toYearLabel(lbl),
-        cash:  cashVal / 1e9,
-        other: Math.max(0, totalAssets - cashVal) / 1e9,
-        debt:  debt[i] !== null ? (debt[i]! / 1e9) : null,
-      };
-    });
+    // Drop years with no balance-sheet data (null assets → empty bar), then keep
+    // the most recent five years.
+    chartData = labels
+      .map((lbl, i) => ({ label: lbl, assets: assets[i] ?? null, cashVal: cashVals[i] ?? null, debt: debt[i] }))
+      .filter((r): r is { label: string; assets: number; cashVal: number | null; debt: number | null } => r.assets !== null)
+      .slice(-5)
+      .map((r) => {
+        const cashVal = r.cashVal ?? 0;
+        return {
+          label: toYearLabel(r.label),
+          cash:  cashVal / 1e9,
+          other: Math.max(0, r.assets - cashVal) / 1e9,
+          debt:  r.debt !== null ? r.debt / 1e9 : null,
+        };
+      });
   }
 
   const totalCash = fundamentals.totalCash;
@@ -109,8 +114,8 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
       </div>
       <div className="card-body">
         {hasChart && chartData.length > 0 && (
-          <div className="chart-canvas-wrap chart-h-lg">
-            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 300 }}>
+          <div className="chart-canvas-wrap chart-h-sm">
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 200 }}>
               <ComposedChart
                 data={chartData}
                 margin={{ top: 6, right: 12, left: 0, bottom: 0 }}

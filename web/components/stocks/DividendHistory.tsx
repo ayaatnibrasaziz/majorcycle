@@ -20,6 +20,13 @@ interface Props {
 }
 
 export function DividendHistory({ dividendHistory, fundamentals, currentClose }: Props) {
+  // The current calendar-year bucket only holds dividends paid SO FAR this year
+  // (yfinance sums by calendar year), so it understates the year — it would
+  // render as a fake "cut", reset the growth streak, and halve Annual DPS +
+  // Current Yield. Drop it so every bar/stat reflects a COMPLETE year.
+  const currentYear = new Date().getFullYear();
+  const completeHistory = dividendHistory.filter((d) => d.year < currentYear);
+
   const noDividend = dividendHistory.length === 0;
 
   if (noDividend) {
@@ -58,15 +65,46 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
     );
   }
 
-  // sorted ascending by year (from yfinance groupby)
-  const chartData = dividendHistory.map((d, i) => ({
+  // A payer with dividends only in the current (incomplete) year — no complete
+  // year to show yet. Treat as "history building" rather than misreport.
+  if (completeHistory.length === 0) {
+    return (
+      <div className="card card--stack-base">
+        <div className="card-header">
+          <div className="card-title">Dividend History</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+            Annual dividend per share
+          </div>
+        </div>
+        <div className="card-body">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '32px 0',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 380, lineHeight: 1.55 }}>
+              Dividend history is building — a full year of payments has not yet
+              completed.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // sorted ascending by year (from yfinance groupby), current incomplete year dropped
+  const chartData = completeHistory.map((d, i) => ({
     label: String(d.year),
     val:   d.amount,
     isFirst: i === 0,
-    isUp:    i > 0 && d.amount >= dividendHistory[i - 1]!.amount,
+    isUp:    i > 0 && d.amount >= completeHistory[i - 1]!.amount,
   }));
 
-  const last     = dividendHistory[dividendHistory.length - 1]!;
+  const last     = completeHistory[completeHistory.length - 1]!;
   const currYield =
     currentClose && currentClose > 0
       ? ((last.amount / currentClose) * 100).toFixed(2) + '%'
@@ -76,8 +114,8 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
 
   // Consecutive years of growth streak
   let streak = 0;
-  for (let i = dividendHistory.length - 1; i > 0; i--) {
-    if (dividendHistory[i]!.amount > dividendHistory[i - 1]!.amount) streak++;
+  for (let i = completeHistory.length - 1; i > 0; i--) {
+    if (completeHistory[i]!.amount > completeHistory[i - 1]!.amount) streak++;
     else break;
   }
 

@@ -700,7 +700,10 @@ class YFinanceProvider(DataProvider):
             fcf_yield_pct=fcf_yield_pct,
             fcf_margin_pct=fcf_margin_pct,
             ebitda=ebitda,
-            dividend_yield_pct=_pct(g("dividendYield")),
+            # yfinance now returns dividendYield already in percent units (e.g.
+            # 0.35 = 0.35%, 3.20 = 3.20%) -- NOT a fraction. Use _safe (no x100);
+            # _pct would over-scale it 100x (AAPL 0.35->35%, BHP 3.20->320%).
+            dividend_yield_pct=_safe(g("dividendYield")),
             payout_ratio_pct=_pct(g("payoutRatio")),
             shares_change_yoy_pct=shares_change_yoy_pct,
             short_pct_of_float=_pct(g("shortPercentOfFloat")),

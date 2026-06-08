@@ -21,6 +21,7 @@ export type MetricKey =
   | 'roe'
   | 'roa'
   | 'revenueGrowthYoy'
+  | 'earningsGrowthYoy'
   | 'debtToEquity'
   | 'currentRatio'
   | 'peg';
@@ -37,9 +38,19 @@ const DB_FIELD: Record<MetricKey, string> = {
   roe: 'roe',
   roa: 'roa',
   revenueGrowthYoy: 'revenue_growth_yoy',
+  earningsGrowthYoy: 'earnings_growth_yoy',
   debtToEquity: 'debt_to_equity',
   currentRatio: 'current_ratio',
   peg: 'peg',
+};
+
+// Some metrics (especially growth) explode when the prior-year base is near
+// zero — e.g. earnings going from $0.01 to $3 reads as +30,000%. Such values are
+// technically real but would skew the peer median, so we exclude anything beyond
+// a sane bound from the median pool (the display also caps them — see MetricsTable).
+const OUTLIER_BOUND: Partial<Record<MetricKey, number>> = {
+  revenueGrowthYoy: 300,
+  earningsGrowthYoy: 300,
 };
 
 export interface MedianStat {
@@ -69,10 +80,13 @@ function computeGroup(rows: Row[]): MetricMedians {
   const out: MetricMedians = {};
   for (const key of Object.keys(DB_FIELD) as MetricKey[]) {
     const field = DB_FIELD[key];
+    const bound = OUTLIER_BOUND[key];
     const vals: number[] = [];
     for (const r of rows) {
       const v = r.fundamentals[field];
-      if (typeof v === 'number' && Number.isFinite(v)) vals.push(v);
+      if (typeof v !== 'number' || !Number.isFinite(v)) continue;
+      if (bound !== undefined && Math.abs(v) > bound) continue; // skip explosive outliers
+      vals.push(v);
     }
     // Need a few data points for a median to mean anything.
     if (vals.length >= 3) out[key] = { median: median(vals), n: vals.length };
@@ -117,6 +131,6 @@ async function _fetchMetricMedians(): Promise<MedianTables> {
  */
 export const fetchMetricMedians = unstable_cache(
   _fetchMetricMedians,
-  ['metric-medians-v1'],
+  ['metric-medians-v3'],
   { revalidate: 86400 },
 );
