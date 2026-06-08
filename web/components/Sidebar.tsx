@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, TrendingUp, Play } from 'lucide-react';
+import { BarChart3, Compass, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -20,7 +20,7 @@ const NAV_ANALYSIS: NavItem[] = [
   {
     label: 'Browse',
     href: '/stocks',
-    icon: <TrendingUp className="w-[15px] h-[15px]" strokeWidth={1.8} />,
+    icon: <Compass className="w-[15px] h-[15px]" strokeWidth={1.8} />,
   },
 ];
 

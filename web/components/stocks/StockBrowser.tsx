@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useMemo, useState, useSyncExternalStore } from 'react';
-import { Info, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 
+import { InfoTip } from '@/components/ui/InfoTip';
 import type { UniverseStock } from '@/lib/universe.server';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { Currency, Market } from '@/lib/types';
@@ -134,20 +135,14 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
       {/* Cycle horizon — chosen before opening a stock; carried into the
           detail page via ?preset=. Distinct from the list filters below. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap mb-3 px-3 py-2.5 bg-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius-sm)]">
-        <div
-          className="flex items-center gap-1.5 cursor-help"
-          title={
-            'Cycle horizon\nSets the Major Cycle window used when you open a stock. Short ≈ 3 months, Medium ≈ 1 year, Long ≈ 3 years.'
-          }
-        >
+        <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[var(--brand-mid)]">
             Cycle horizon
           </span>
-          <Info
-            className="w-[13px] h-[13px] text-[var(--brand-mid)] flex-shrink-0"
-            strokeWidth={2}
-            aria-hidden="true"
-          />
+          <InfoTip title="Cycle horizon">
+            Sets the Major Cycle window used when you open a stock. Short ≈ 3
+            months, Medium ≈ 1 year, Long ≈ 3 years.
+          </InfoTip>
         </div>
         <div
           className="flex items-center gap-1.5"
