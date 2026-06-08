@@ -3,12 +3,18 @@ import type { ReactNode } from 'react';
 import { WeekRangeGauge } from '@/components/stocks/WeekRangeGauge';
 import { InfoTip } from '@/components/ui/InfoTip';
 import type { StockDetail } from '@/lib/stocks';
+import { tickerToUrlParts } from '@/lib/ticker';
 import type {
   AnalystRecommendation,
   Currency,
+  Market,
   OverallLabel,
   ValuationZone,
 } from '@/lib/types';
+
+// Match the Browse page: show the clean symbol + a market badge rather than the
+// raw exchange-suffixed storage ticker (BHP.AX / SHOP.TO).
+const MARKET_BADGE: Record<Market, string> = { us: 'US', au: 'ASX', ca: 'TSX' };
 
 interface Props {
   stock: StockDetail;
@@ -97,8 +103,13 @@ export function StockHeader({ stock, badgeSlot }: Props) {
     <div className="flex items-stretch gap-5 mb-5 fade-in">
       {/* Left column: identity */}
       <div className="flex flex-col min-w-0 flex-1">
-        <div className="font-[var(--font-mono)] text-[var(--font-hero)] font-bold text-[var(--text-primary)] tracking-[-1px]">
-          {stock.ticker}
+        <div className="flex items-center gap-2.5">
+          <span className="font-[var(--font-mono)] text-[var(--font-hero)] font-bold text-[var(--text-primary)] tracking-[-1px]">
+            {tickerToUrlParts(stock.ticker).symbol}
+          </span>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[4px] px-[7px] py-[2px] flex-shrink-0">
+            {MARKET_BADGE[stock.market]}
+          </span>
         </div>
         <div className="text-[14px] text-[var(--text-secondary)] mt-[2px]">
           {stock.name ?? stock.ticker}
