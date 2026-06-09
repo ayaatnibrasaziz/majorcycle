@@ -44,13 +44,25 @@ const DB_FIELD: Record<MetricKey, string> = {
   peg: 'peg',
 };
 
-// Some metrics (especially growth) explode when the prior-year base is near
-// zero — e.g. earnings going from $0.01 to $3 reads as +30,000%. Such values are
-// technically real but would skew the peer median, so we exclude anything beyond
-// a sane bound from the median pool (the display also caps them — see MetricsTable).
+// Some metrics explode when their denominator is near zero — e.g. earnings going
+// from $0.01 to $3 reads as +30,000%, or P/E on near-zero EPS reads as 3,500x.
+// Such values are technically real but would skew the peer median, so we exclude
+// anything beyond a sane bound from the median pool. These bounds mirror the
+// per-metric display caps in MetricsTable (`MetricDef.cap`) so the cell text and
+// the comparison median stay consistent.
 const OUTLIER_BOUND: Partial<Record<MetricKey, number>> = {
+  pe: 150,
+  evToEbitda: 150,
+  peg: 25,
+  fcfYieldPct: 100,
+  operatingMargin: 300,
+  netMargin: 300,
+  roe: 300,
+  roa: 300,
   revenueGrowthYoy: 300,
   earningsGrowthYoy: 300,
+  debtToEquity: 25,
+  currentRatio: 25,
 };
 
 export interface MedianStat {
@@ -131,6 +143,6 @@ async function _fetchMetricMedians(): Promise<MedianTables> {
  */
 export const fetchMetricMedians = unstable_cache(
   _fetchMetricMedians,
-  ['metric-medians-v3'],
+  ['metric-medians-v4'],
   { revalidate: 86400 },
 );

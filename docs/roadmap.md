@@ -164,6 +164,14 @@ Build order (each item = one PR):
 - Tooltips work and contain correct copy
 - Responsive on mobile (375px width)
 
+#### Production-readiness audit (multi-session — tracker: `docs/layer-c-audit.md`)
+
+After the components were built, Layer C was reframed into a per-section production-readiness audit (9-check definition, verified on AAPL/BHP.AX/SHOP.TO; **every displayed value's calc is explained to + signed off by the owner before building**). Status:
+
+- ✅ **S1** Foundation/re-verify · ✅ **S2–S3** Methodology engine (quality-gate valuation, "Cycle Payoff" rename, insufficient-data/withheld pillars — see `methodology-audit.md`) · ✅ **S4** Browse/Search landing + perf · ✅ **S5** Beginner InfoTips · ✅ **S6** Sentiment · ✅ **S7** Cycle charts · ✅ **S8** Fundamentals charts.
+- ✅ **S9** Scorecard radar (a11y + per-pillar tips + score-based tier colours + labels-outside-grid + weighting explainer) · site-wide **sanity-bounds** (display caps + distress-yield flag) · **source-name removal** (no "Yahoo Finance" in user copy). *(PR #31.)*
+- ⬜ **Next: Thesis-section re-audit** (Header / KPI / Verdict / Why-Attractive & Key-Risks / Company Overview) — built earliest (S0) against the *pre-S3* engine; re-audit so they reflect the current engine semantics + get the same rigor. **Then S10 Methodology page.**
+
 ### Layer D: Run Analysis Tab (target: 1 week)
 
 Goal: Users can upload tickers (or pick from universe), run analysis with presets/custom, get scored results.

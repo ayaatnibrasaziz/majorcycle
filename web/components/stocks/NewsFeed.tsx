@@ -39,9 +39,8 @@ export function NewsFeed({ news }: Props) {
         <div className="card-title">
           Latest News
           <InfoTip title="Latest News">
-            Recent headlines about the company, gathered from Yahoo Finance. Tap a
-            card to read the full article at the source. Headlines are informational —
-            not a signal to act.
+            Recent headlines about the company. Tap a card to read the full article
+            at the source. Headlines are informational — not a signal to act.
           </InfoTip>
         </div>
         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>

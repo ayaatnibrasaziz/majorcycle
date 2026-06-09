@@ -105,12 +105,18 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
   }));
 
   const last     = completeHistory[completeHistory.length - 1]!;
-  const currYield =
+  // Prefer the trailing yield off the last complete year's DPS and current price;
+  // fall back to the stored snapshot yield only when we have no price.
+  const yieldPct =
     currentClose && currentClose > 0
-      ? ((last.amount / currentClose) * 100).toFixed(2) + '%'
-      : fundamentals.dividendYieldPct !== null
-        ? fundamentals.dividendYieldPct.toFixed(2) + '%'
-        : null;
+      ? (last.amount / currentClose) * 100
+      : fundamentals.dividendYieldPct;
+  const currYield = yieldPct !== null ? yieldPct.toFixed(2) + '%' : null;
+  // A trailing yield this high almost always reflects a collapsed share price (a
+  // dividend cut is usually coming) rather than income you can rely on. Show the
+  // real number, but flag it and drop the reassuring green (S9 sanity-bounds).
+  const DISTRESS_YIELD = 20;
+  const yieldDistressed = yieldPct !== null && yieldPct > DISTRESS_YIELD;
 
   // Consecutive years of growth streak
   let streak = 0;
@@ -216,11 +222,18 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
           {currYield && (
             <div
               className="summary-strip-item"
-              title="Dividend Yield % — Annual Dividend ÷ Current Stock Price × 100. Shows the income return as a percentage of price."
+              title={
+                yieldDistressed
+                  ? 'Dividend Yield % — Annual Dividend ÷ Current Stock Price × 100. Unusually high: this typically means the share price has fallen sharply and a dividend cut may be coming — not income you can rely on.'
+                  : 'Dividend Yield % — Annual Dividend ÷ Current Stock Price × 100. Shows the income return as a percentage of price.'
+              }
             >
               <div className="summary-strip-label">Current Yield</div>
-              <div className="summary-strip-val" style={{ color: '#228B22' }}>
-                {currYield}
+              <div
+                className="summary-strip-val"
+                style={{ color: yieldDistressed ? '#D4A017' : '#228B22' }}
+              >
+                {currYield}{yieldDistressed ? ' ⚠' : ''}
               </div>
             </div>
           )}
@@ -249,7 +262,11 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
           {payoutRatioPct !== null && (
             <div
               className="summary-strip-item"
-              title="Payout Ratio % — Dividends ÷ Net Income × 100. Below 60% = sustainable and room to grow · 60–80% = moderately high · Above 80% = potentially unsustainable."
+              title={
+                Math.abs(payoutRatioPct) > 300
+                  ? `Payout Ratio % — Dividends ÷ Net Income × 100. Actual ${payoutRatioPct.toFixed(1)}% (capped for display). A reading this far above 100% means the company is paying out far more than it earns — usually unsustainable.`
+                  : 'Payout Ratio % — Dividends ÷ Net Income × 100. Below 60% = sustainable and room to grow · 60–80% = moderately high · Above 80% = potentially unsustainable.'
+              }
             >
               <div className="summary-strip-label">Payout Ratio</div>
               <div
@@ -263,7 +280,9 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
                         : '#B22222',
                 }}
               >
-                {payoutRatioPct.toFixed(1)}%
+                {Math.abs(payoutRatioPct) > 300
+                  ? `${payoutRatioPct > 0 ? '>+' : '<−'}300%`
+                  : `${payoutRatioPct.toFixed(1)}%`}
               </div>
             </div>
           )}

@@ -90,7 +90,7 @@
 
 **FCF Yield** — Free Cash Flow ÷ Market Cap × 100. A measure of how much cash a company generates relative to its market price. Higher = better.
 
-**Financial Health Score (FH)** — Composite 0-100 score derived from five sub-pillars: profitability, balance sheet, growth, cashflow, shareholder returns. Computed by `analytics/scoring/financial_health.py`. Weighted at 40% in the Overall Rating. **(S3)** A pillar with no usable inputs is omitted (not fabricated as 50) and the remaining pillar weights are renormalised; if fewer than 3 pillars have data the score is **withheld** (`null`, shown as insufficient data) — common for banks/REITs whose balance-sheet and cash-flow fields are absent.
+**Financial Health Score (FH)** — Composite 0-100 score = the **weighted average** of five sub-pillars: **Profitability 30% · Balance Sheet 25% · Growth 20% · Cash Flow 15% · Shareholder 10%**. Each pillar is itself the plain mean of its metric sub-scores (each a banded step function — see `analytics/scoring/financial_health.py`). Weighted at 40% in the Overall Rating. **(S3)** A pillar with no usable inputs is omitted (not fabricated as 50) and the remaining pillar weights are renormalised; if fewer than 3 pillars have data the score is **withheld** (`null`, shown as insufficient data) — common for banks/REITs whose balance-sheet and cash-flow fields are absent. **(S9)** The Scorecard surfaces the weighting (card tooltip) and colours each pillar by its score tier; the weights are *not* a plain average, so the headline can differ from eyeballing the five bars equally.
 
 **FMP (Financial Modeling Prep)** — Paid data provider planned for Phase 2 migration. Drop-in replacement for yfinance via the DataProvider interface.
 
@@ -215,6 +215,8 @@
 ---
 
 ## S
+
+**Sanity Cap** — A **display-only** bound on absurd metric values (S8/S9). yfinance values with a near-zero denominator can be nonsensical (P/E 3,500×, ROE 8,457%, payout 18,210%). Beyond the cap the cell shows `>+cap` / `<−cap` with the true value in the tooltip; the same bound is mirrored in `medians.server.ts` `OUTLIER_BOUND` so it doesn't skew the peer median. Caps never touch the cycle math or FH pillars (those clamp their own inputs). Where a high value is *bad* (distress dividend yield > 20%) the real value is shown but flagged amber + ⚠ rather than capped. See `design-system.md` §9.
 
 **Serverless Function** — A Python file in `web/api/` that becomes one Vercel Function on deploy. Uses `BaseHTTPRequestHandler`, imports cycle math from the vendored `_engine` package (see Vendored Engine), reads from Supabase, never calls yfinance. See `coding-standards.md` §4 and `architecture.md` §7. Phase 1's only serverless function is `web/api/cycle.py` (`/api/cycle` endpoint); Layer D adds `/api/analyze` and `/api/fetch-ticker`.
 

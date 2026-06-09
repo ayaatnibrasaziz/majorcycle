@@ -111,7 +111,7 @@ export function OnboardingModal({ userId }: OnboardingModalProps) {
             <p className="mt-2">
               The ratings shown (High Conviction, Constructive, Neutral, Cautious, Bearish) are
               <strong> algorithmic summaries, not recommendations</strong>. Analyst consensus data
-              is sourced from Yahoo Finance and displayed verbatim as third-party information.
+              is displayed verbatim as third-party information.
             </p>
           </div>
         </div>
