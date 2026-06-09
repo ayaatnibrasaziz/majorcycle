@@ -37,7 +37,7 @@ function AngleAxisTick(props: {
   const dx = x - cx;
   const dy = y - cy;
   const len = Math.hypot(dx, dy) || 1;
-  const off = 10; // push the label out along its spoke, off the plot
+  const off = 18; // push the label out along its spoke, off the plot
   const lx = x + (dx / len) * off;
   const ly = y + (dy / len) * off;
   const anchor = lx > cx + 6 ? 'end' : lx < cx - 6 ? 'start' : 'middle';
@@ -152,13 +152,10 @@ export function SnowflakeRadar({ cycle }: Props) {
           Stock Scorecard
           <InfoTip title="Stock Scorecard">
             The company&apos;s financial health broken into five pillars, each scored
-            0–100. The Health Score is their <strong>weighted</strong> average —
-            Profitability 30%, Balance Sheet 25%, Growth 20%, Cash Flow 15%,
-            Shareholder 10% — so the heavier pillars move it more (the % beside each
-            bar is its weight). The further the shape stretches toward a corner, the
-            stronger that pillar; bar colour reflects the score (green = strong →
-            red = weak). Pillars without enough data are left out rather than
-            guessed (common for banks &amp; REITs) and the rest are reweighted.
+            0–100. The Health Score is their weighted average — Profitability 30%,
+            Balance Sheet 25%, Growth 20%, Cash Flow 15%, Shareholder 10%. Pillars
+            without enough data are left out rather than guessed (common for banks
+            &amp; REITs) and the rest are reweighted.
           </InfoTip>
         </div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
@@ -191,12 +188,13 @@ export function SnowflakeRadar({ cycle }: Props) {
               <RadarChart data={data} outerRadius="68%" margin={{ top: 18, right: 24, bottom: 18, left: 24 }}>
                 <PolarGrid gridType="polygon" stroke="#E2E8F0" />
                 <PolarAngleAxis dataKey="subject" tick={<AngleAxisTick />} />
-                {/* Domain headroom (0–120, not 0–100) keeps even a maxed pillar's
-                    vertex inside the grid so the corner labels sit clear of the
-                    plotted shape (owner: labels away from the plot). */}
+                {/* Domain headroom (0–140, not 0–100) keeps even a maxed pillar's
+                    vertex well inside the grid so the shaded shape + vertex dots
+                    retreat from the corner labels (owner: push labels out onto the
+                    transparent background, off the blue region). */}
                 <PolarRadiusAxis
                   angle={90}
-                  domain={[0, 120]}
+                  domain={[0, 140]}
                   tick={false}
                   axisLine={false}
                   tickCount={6}
@@ -250,12 +248,6 @@ export function SnowflakeRadar({ cycle }: Props) {
                       className="radar-axis-bar-fill"
                       style={{ width: `${pct ?? 0}%`, background: barColor }}
                     />
-                  </div>
-                  <div
-                    className="radar-axis-weight"
-                    title={`${ax.label} carries ${ax.weight}% of the Health Score`}
-                  >
-                    {ax.weight}%
                   </div>
                   <div className="radar-axis-score" style={{ color: barColor }}>
                     {pct !== null ? pct : '—'}
