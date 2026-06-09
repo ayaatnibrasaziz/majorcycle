@@ -309,6 +309,25 @@ The Smart Money Activity chart is the one **non-candlestick chart built on Light
   - **Hover = quick preview** (`.smart-chart-tip`) — created imperatively on `<body>` (`position: fixed`) so the chart edge never clips it; capped at 4 events + a "+N more — click to see all" line. *(It is created with `document.createElement`, NOT a `typeof document` portal — that branch differs server vs client and throws a hydration mismatch.)*
   - **Click / tap a day = pinned panel** (`.smart-day-panel`) — portalled, viewport-clamped, `max-height: 50vh; overflow-y: auto`, lists *every* event that day with a close button. Gated on a `dayPanel` state (null until a click), so it renders nothing at hydration. Closes on Esc / outside-click / page-scroll / resize.
 
+### Scorecard radar (`SnowflakeRadar`)
+
+The Stock Scorecard plots the five Financial-Health pillars (Recharts `RadarChart`) plus a right-hand bar list. Conventions (S9):
+
+- **Pillar colours are score-based, by the rating tiers** — this **deliberately deviates from the reference**, which used fixed per-axis identity colours (so "Shareholder" rendered red even at 100, falsely reading as "bad"). Each bar fill, score number, and radar vertex dot is coloured by `tierColor(score)`: ≥80 `#006400` · ≥65 `#228B22` · ≥50 `#D4A017` · ≥35 `#FF4500` · <35 `#B22222`. Colour now *means* "strong → weak". The connecting polygon stroke/fill stays brand blue (`#1E5CB3` / `rgba(30,92,179,.15)`) as the neutral "shape".
+- **Full 0–100 radius scale** (a maxed pillar reaches the outer grid ring). The **angle-axis labels sit in the margin *outside* the grid ring** — the custom `AngleAxisTick` anchors each label *outward* (right→`start`, left→`end`, top/bottom→`middle`) with a small radial nudge. `outerRadius` is ~52% and the radar column is widened (`.radar-grid` `340px 1fr`) so the long names ("Balance Sheet", "Shareholder") clear without clipping.
+- **A11y:** the chart wrapper carries `role="img"` + a dynamic `aria-label` summarising the plotted pillars (reflects only the real pillars, so a withheld-pillar stock reads fewer).
+- **Weighting is explained, not shown per-bar:** the Health Score is the *weighted* mean (Profitability 30 / Balance Sheet 25 / Growth 20 / Cash Flow 15 / Shareholder 10); the weights live in the card-title `InfoTip` only (a per-bar weight column was tried and removed as too busy). Subtitle is just `Health Score N/100`.
+- **Insufficient-data state:** pillars with no data are omitted (not a 0-spike); `< 3` pillars → the radar shows "Not enough fundamental data" and FH is withheld (see methodology-audit P3).
+
+### Numeric display — sanity caps & distress flags
+
+Real yfinance values can be absurd (a near-zero denominator gives P/E 3,500×, ROE 8,457%, operating margin −546,607%, payout 18,210%). **Never render the raw figure as a confident headline.** The pattern (S8/S9):
+
+- **`MetricDef.cap`** (Key Metrics, `MetricsTable.tsx`): a per-metric cap. Beyond `±cap` the cell shows `>+cap` / `<−cap`, and the **true value goes in the hover tooltip** ("Actual … — capped for display"). Current caps: P/E 150x · EV/EBITDA 150x · PEG 25 · FCF Yield 100% · Op/Net Margin 300% · ROE 300% · ROA 300% · D/E 25 · Current Ratio 25 · Revenue/Earnings Growth 300%.
+- **Median hygiene:** the same bounds are mirrored in `medians.server.ts` `OUTLIER_BOUND` so capped outliers don't skew the peer median (bump the cache key when you change them).
+- **Distress flag (not a cap):** where a high number is *bad* (a trailing dividend yield > 20% almost always means a collapsed price / imminent cut), show the **real** value but recolour it amber (`#D4A017`, not reassuring green) + a ⚠ + a caution tooltip — capping it would read as "good".
+- These are **display-only**: the cycle math and FH pillars already clamp their inputs, so ratings are untouched.
+
 ### Range Buttons
 
 For chart timeframe selectors (1Y / 3Y / Max).
@@ -328,7 +347,9 @@ For chart timeframe selectors (1Y / 3Y / Max).
 
 ### Provenance Bar
 
-The "Data via yfinance · Major Cycle engine" status strip at the top of Results.
+The "Major Cycle engine" status strip at the top of Results.
+
+> **Do not name the third-party data provider in user-facing copy (S9, owner decision).** We don't advertise where the raw data comes from. Earlier copy said "via Yahoo Finance"; that name was removed everywhere it was visible (header analyst badge, Analyst Targets, News, Onboarding) while keeping the compliance-relevant "third-party data — not our rating" framing for analyst figures (decision #17). Internal code/comments and the Python provider name may stay; only user-visible copy must be generic. *(The Latest-News article links still resolve to the source's URLs — those are the real article destinations, not a label.)*
 
 ### Briefing Card
 

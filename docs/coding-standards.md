@@ -434,6 +434,8 @@ def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[
 | Rewriting whole files | High blast radius | Targeted edits |
 | Mock data left in production code | Will ship if forgotten | Use feature flags or test-only paths |
 | Running `pnpm build` while the dev/preview server is up | Poisons the shared `web/.next` cache → the dev server serves **stale `globals.css`** (new JS but old CSS), even across a restart | After a prod build, `rm -rf web/.next` and restart the dev/preview server before verifying CSS |
+| Rendering a raw yfinance metric as a headline | Near-zero denominators give absurd values (P/E 3,500×, ROE 8,457%, payout 18,210%) that look broken | Cap the display via `MetricDef.cap` (show `>+cap`, true value in tooltip) + mirror in `medians.server.ts` `OUTLIER_BOUND`. Where a high value is *bad* (distress dividend yield), show it but recolour amber + ⚠, don't cap. See design-system §9 "Numeric display". |
+| Naming the data provider ("Yahoo Finance") in user-facing copy | Owner decision (S9) — don't advertise the free source | Keep user-visible copy generic ("third-party data — not our rating"); the provider name may stay only in internal code/comments. |
 
 ---
 
