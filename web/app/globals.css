@@ -597,7 +597,7 @@
    in /reference/original-design.html (CSS lines 693-699).
    ───────────────────────────────────────────────────────────────────────── */
 .radar-grid {
-  display: grid; grid-template-columns: 280px 1fr;
+  display: grid; grid-template-columns: 340px 1fr;
   gap: 24px; align-items: center;
 }
 .radar-axis-row {

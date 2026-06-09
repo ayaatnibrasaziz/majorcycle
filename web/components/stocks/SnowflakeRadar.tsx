@@ -20,11 +20,11 @@ interface Props {
 /**
  * Custom angle-axis tick. Recharts (unlike Chart.js) doesn't reserve space for
  * radar labels, so long side labels ("Balance Sheet", "Shareholder") overflow
- * the narrow 280px column. We anchor each label by its side — right labels grow
- * inward (end), left labels grow inward (start), top/bottom stay centred — so
- * they always fit within the container. We also push each label a few px
- * radially outward (away from the centre) so it clears the plotted shape; the
- * inward anchor keeps the wide side labels from clipping the container edge.
+ * the narrow column. Each label is pushed radially outward (away from the
+ * centre) and anchored *outward* — right labels grow rightward, left labels
+ * leftward, top/bottom centred — so it sits in the margin beyond the grid ring
+ * (like a standard radar), clear of the plotted shape even when a pillar maxes
+ * at 100. The radar column is widened to give the long side names room.
  */
 function AngleAxisTick(props: {
   x?: number;
@@ -37,10 +37,10 @@ function AngleAxisTick(props: {
   const dx = x - cx;
   const dy = y - cy;
   const len = Math.hypot(dx, dy) || 1;
-  const off = 18; // push the label out along its spoke, off the plot
+  const off = 10; // push the label out along its spoke, into the margin
   const lx = x + (dx / len) * off;
   const ly = y + (dy / len) * off;
-  const anchor = lx > cx + 6 ? 'end' : lx < cx - 6 ? 'start' : 'middle';
+  const anchor = lx > cx + 6 ? 'start' : lx < cx - 6 ? 'end' : 'middle';
   return (
     <text
       x={lx}
@@ -160,7 +160,7 @@ export function SnowflakeRadar({ cycle }: Props) {
         </div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           {financialHealthScore !== null
-            ? `Health Score ${Math.round(financialHealthScore)}/100 · Weighted average of the five pillars`
+            ? `Health Score ${Math.round(financialHealthScore)}/100`
             : 'Not enough data to score financial health'}
         </div>
       </div>
@@ -185,16 +185,15 @@ export function SnowflakeRadar({ cycle }: Props) {
               </div>
             ) : (
             <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 260 }}>
-              <RadarChart data={data} outerRadius="68%" margin={{ top: 18, right: 24, bottom: 18, left: 24 }}>
+              <RadarChart data={data} outerRadius="52%" margin={{ top: 18, right: 18, bottom: 18, left: 18 }}>
                 <PolarGrid gridType="polygon" stroke="#E2E8F0" />
                 <PolarAngleAxis dataKey="subject" tick={<AngleAxisTick />} />
-                {/* Domain headroom (0–140, not 0–100) keeps even a maxed pillar's
-                    vertex well inside the grid so the shaded shape + vertex dots
-                    retreat from the corner labels (owner: push labels out onto the
-                    transparent background, off the blue region). */}
+                {/* Full 0–100 scale (a maxed pillar reaches the outer grid ring);
+                    the labels are placed in the margin beyond the ring via the
+                    outward-anchored custom tick. */}
                 <PolarRadiusAxis
                   angle={90}
-                  domain={[0, 140]}
+                  domain={[0, 100]}
                   tick={false}
                   axisLine={false}
                   tickCount={6}
