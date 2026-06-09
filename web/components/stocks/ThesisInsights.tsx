@@ -1,5 +1,6 @@
 import type { CycleAnalysis, FundamentalsSnapshot } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
+import { fmtCapped } from '@/lib/format';
 
 interface Props {
   cycle: CycleAnalysis;
@@ -37,14 +38,21 @@ function buildAttractive(c: CycleAnalysis, f: FundamentalsSnapshot, currency: st
   const dd = c.currentDrawdownPct;
   const tdd = c.typicalDrawdown;
 
-  if (tdd != null && dd <= tdd)
+  // Quality-gate the cheapness bullet (S3 spirit): a deep dip is only a genuine
+  // attraction when the business is sound. When Financial Health is weak or
+  // withheld, this is value-trap territory — the discount likely reflects
+  // deteriorating fundamentals — so we drop the "historically attractive entry
+  // zone" claim (and its Strong tag) rather than cheerlead it. FH < 50 is the
+  // same "stressed" line the Verdict card uses for its financial-health sentence.
+  const fhWeak = c.financialHealthScore == null || c.financialHealthScore < 50;
+  if (tdd != null && dd <= tdd && !fhWeak)
     out.push(`Trading at or below its historical average dip (${fmt(tdd)}%) — historically attractive entry zone`);
   if (f.roe != null && f.roe >= 20)
-    out.push(`Exceptional ROE of ${fmt(f.roe)}% — management creates strong shareholder value`);
+    out.push(`Exceptional ROE of ${fmtCapped(f.roe, 300)}% — management creates strong shareholder value`);
   if (f.fcfYieldPct != null && f.fcfYieldPct >= 4)
-    out.push(`Strong FCF yield of ${fmt(f.fcfYieldPct)}% — the business generates real cash`);
+    out.push(`Strong FCF yield of ${fmtCapped(f.fcfYieldPct, 100)}% — the business generates real cash`);
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 15)
-    out.push(`Accelerating revenue growth of ${fmt(f.revenueGrowthYoy)}% YoY`);
+    out.push(`Accelerating revenue growth of ${fmtCapped(f.revenueGrowthYoy, 300)}% YoY`);
   if (f.debtToEquity != null && f.debtToEquity < 0.5)
     out.push(`Low D/E of ${fmt(f.debtToEquity, 2)} — fortress balance sheet`);
   if (f.peg != null && f.peg > 0 && f.peg < 1.5)
@@ -88,23 +96,23 @@ function buildRisks(c: CycleAnalysis, f: FundamentalsSnapshot): Bullet[] {
   const dd = c.currentDrawdownPct;
 
   if (dd > -5)
-    out.push(`Near 252-day highs (drawdown ${fmt(dd)}%) — limited margin of safety`);
+    out.push(`Near ${c.params.lookbackBars}-day highs (drawdown ${fmt(dd)}%) — limited margin of safety`);
   if (f.debtToEquity != null && f.debtToEquity >= 1.5)
-    out.push(`Elevated D/E of ${fmt(f.debtToEquity, 2)} — pressure if rates rise`);
+    out.push(`Elevated D/E of ${fmtCapped(f.debtToEquity, 25, 2)} — pressure if rates rise`);
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy < 0)
-    out.push(`Revenue declining ${fmt(Math.abs(f.revenueGrowthYoy))}% YoY — needs monitoring`);
+    out.push(`Revenue declining ${fmtCapped(Math.abs(f.revenueGrowthYoy), 300)}% YoY — needs monitoring`);
   if (f.currentRatio != null && f.currentRatio < 1)
     out.push(`Current ratio ${fmt(f.currentRatio, 2)} below 1.0 — liquidity concern`);
   if (f.peg != null && f.peg > 3)
-    out.push(`PEG of ${fmt(f.peg, 2)} — valuation stretched vs growth`);
+    out.push(`PEG of ${fmtCapped(f.peg, 25, 2)} — valuation stretched vs growth`);
   if (c.totalPullbackEvents < 8)
     out.push(`Only ${c.totalPullbackEvents} pullback events — limited signal history`);
   if (f.netMargin != null && f.netMargin < 5)
-    out.push(`Thin net margin of ${fmt(f.netMargin)}%`);
+    out.push(`Thin net margin of ${fmtCapped(f.netMargin, 300)}%`);
   if (out.length < 3)
     out.push(
       f.revenueGrowthYoy != null
-        ? `Revenue growth of ${fmt(f.revenueGrowthYoy)}% is modest — valuation multiple at risk`
+        ? `Revenue growth of ${fmtCapped(f.revenueGrowthYoy, 300)}% is modest — valuation multiple at risk`
         : `Limited growth visibility — valuation multiple at risk`,
     );
 

@@ -1,5 +1,6 @@
 import type { CycleAnalysis, FundamentalsSnapshot, OverallLabel, ValuationZone } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
+import { fmtCapped } from '@/lib/format';
 
 interface Props {
   cycle: CycleAnalysis;
@@ -42,12 +43,13 @@ function sentence1(
   drawdownPct: number,
   typicalDrawdown: number | null,
   pullbackEvents: number,
+  lookbackBars: number,
 ): string {
   const ddAbs  = fmt(Math.abs(drawdownPct), 1);
   const tddAbs = typicalDrawdown != null ? fmt(Math.abs(typicalDrawdown), 1) : '—';
   const ev     = pullbackEvents;
   if (zone === 'DEEP VALUE')
-    return `Trading ${ddAbs}% below its 252-day peak — beyond the ${tddAbs}% typical pullback seen across ${ev} prior cycles, a historically rich entry zone.`;
+    return `Trading ${ddAbs}% below its ${lookbackBars}-day peak — beyond the ${tddAbs}% typical pullback seen across ${ev} prior cycles, a historically rich entry zone.`;
   if (zone === 'VALUE')
     return `Down ${ddAbs}% from the recent peak, approaching the ${tddAbs}% level where past cycles have found support across ${ev} pullback events.`;
   if (zone === 'FAIR')
@@ -58,19 +60,19 @@ function sentence1(
 // Mirror of reference bestStrength — picks the single strongest evidence point.
 function bestStrength(f: FundamentalsSnapshot): string {
   if (f.roe != null && f.roe >= 25)
-    return `an exceptional ${fmt(f.roe, 0)}% return on equity`;
+    return `an exceptional ${fmtCapped(f.roe, 300, 0)}% return on equity`;
   if (f.fcfYieldPct != null && f.fcfYieldPct >= 5)
-    return `a strong ${fmt(f.fcfYieldPct, 1)}% free-cash-flow yield`;
+    return `a strong ${fmtCapped(f.fcfYieldPct, 100, 1)}% free-cash-flow yield`;
   if (f.debtToEquity != null && f.debtToEquity < 0.4)
     return `a fortress balance sheet (D/E ${fmt(f.debtToEquity, 2)})`;
   if (f.grossMargin != null && f.grossMargin >= 60)
-    return `gross margins of ${fmt(f.grossMargin, 0)}%`;
+    return `gross margins of ${fmtCapped(f.grossMargin, 300, 0)}%`;
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 20)
-    return `accelerating revenue growth of ${fmt(f.revenueGrowthYoy, 0)}% YoY`;
+    return `accelerating revenue growth of ${fmtCapped(f.revenueGrowthYoy, 300, 0)}% YoY`;
   if (f.operatingMargin != null && f.operatingMargin >= 20)
-    return `operating margins of ${fmt(f.operatingMargin, 0)}%`;
+    return `operating margins of ${fmtCapped(f.operatingMargin, 300, 0)}%`;
   if (f.netMargin != null)
-    return `net margins of ${fmt(f.netMargin, 0)}%`;
+    return `net margins of ${fmtCapped(f.netMargin, 300, 0)}%`;
   return 'a sound balance sheet';
 }
 
@@ -79,19 +81,19 @@ function topRisk(f: FundamentalsSnapshot, drawdownPct: number, pullbackEvents: n
   if (drawdownPct > -5)
     return 'near 52-week highs with limited cycle-based margin of safety';
   if (f.debtToEquity != null && f.debtToEquity >= 1.5)
-    return `elevated debt at ${fmt(f.debtToEquity, 1)}× equity — sensitive to higher rates`;
+    return `elevated debt at ${fmtCapped(f.debtToEquity, 25, 1)}× equity — sensitive to higher rates`;
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy < 0)
-    return `revenue declining ${fmt(Math.abs(f.revenueGrowthYoy), 1)}% YoY — execution risk`;
+    return `revenue declining ${fmtCapped(Math.abs(f.revenueGrowthYoy), 300, 1)}% YoY — execution risk`;
   if (f.currentRatio != null && f.currentRatio < 1)
     return 'current ratio below 1 — short-term liquidity pressure';
   if (f.peg != null && f.peg > 3)
-    return `PEG of ${fmt(f.peg, 1)} — valuation stretched vs growth`;
+    return `PEG of ${fmtCapped(f.peg, 25, 1)} — valuation stretched vs growth`;
   if (pullbackEvents < 8)
     return `only ${pullbackEvents} historical cycles — limited statistical confidence`;
   if (f.netMargin != null && f.netMargin < 5)
-    return `thin net margin of ${fmt(f.netMargin, 1)}% leaves little buffer`;
+    return `thin net margin of ${fmtCapped(f.netMargin, 300, 1)}% leaves little buffer`;
   if (f.revenueGrowthYoy != null)
-    return `revenue growth of ${fmt(f.revenueGrowthYoy, 1)}% is modest — multiple compression risk`;
+    return `revenue growth of ${fmtCapped(f.revenueGrowthYoy, 300, 1)}% is modest — multiple compression risk`;
   return 'limited data available for a full risk assessment';
 }
 
@@ -156,7 +158,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
   const belowEntry  = currentClose < bandLower;
 
   // ── Thesis sentences ─────────────────────────────────────────────────────
-  const s1 = sentence1(valuationZone, currentDrawdownPct, typicalDrawdown, totalPullbackEvents);
+  const s1 = sentence1(valuationZone, currentDrawdownPct, typicalDrawdown, totalPullbackEvents, cycle.params.lookbackBars);
 
   let s2: string;
   const hs = financialHealthScore;
