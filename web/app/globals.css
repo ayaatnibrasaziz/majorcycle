@@ -749,8 +749,13 @@ td.num             { font-weight: 600; }
 .table-section-label                        { font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
 
 /* Smart Money card — 2-col grid + section headers */
-.smart-money-grid                           { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; }
-.smart-section-head                         { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.smart-money-grid                           { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; align-items: stretch; }
+/* Each column is a flex column so its head stays on top and the body (timeline
+   or empty state) fills the rest — grid stretch makes both columns equal height,
+   so a column with no data centres its message against the data column. */
+.smart-col                                  { display: flex; flex-direction: column; min-width: 0; }
+.smart-empty                                { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; min-height: 52px; padding: 16px 12px; font-size: 12px; color: var(--text-muted); }
+.smart-section-head                         { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); min-height: 30px; }
 .smart-section-title                        { font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-muted); }
 .smart-section-tag                          { font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; padding: 2px 8px; border-radius: 4px; background: rgba(26,58,110,.06); }
 .smart-legend                               { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }

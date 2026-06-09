@@ -573,7 +573,11 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
   const upgrades = analystUpgradesDowngrades ?? [];
   const bars     = priceBars                 ?? [];
 
-  if (txs.length === 0 && upgrades.length === 0) return null;
+  // The chart's value is its event markers; with no insider/analyst events at all
+  // it would just duplicate the Cycle price chart. So when both are empty we still
+  // render the section (two graceful empty-state columns) but skip the chart.
+  const hasEvents = txs.length > 0 || upgrades.length > 0;
+  const hasChart  = hasEvents && bars.length > 0;
 
   const sentiment  = txs.length      > 0 ? insiderSentiment(txs)       : null;
   const consensus  = upgrades.length  > 0 ? analystConsensus(upgrades)  : null;
@@ -591,19 +595,19 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
             causes. Information, not advice.
           </InfoTip>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-          <div className="smart-legend">
-            <span className="smart-legend-chip" style={{ '--lg': '#006400' } as React.CSSProperties}>
-              <span className="smart-legend-chip-dot" />Buy / Upgrade
-            </span>
-            <span className="smart-legend-chip" style={{ '--lg': '#B22222' } as React.CSSProperties}>
-              <span className="smart-legend-chip-dot" />Sell / Downgrade
-            </span>
-            <span className="smart-legend-chip" style={{ '--lg': '#1E5CB3' } as React.CSSProperties}>
-              <span className="smart-legend-chip-dot" />Reiterate
-            </span>
-          </div>
-          {bars.length > 0 && (
+        {hasChart && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div className="smart-legend">
+              <span className="smart-legend-chip" style={{ '--lg': '#006400' } as React.CSSProperties}>
+                <span className="smart-legend-chip-dot" />Buy / Upgrade
+              </span>
+              <span className="smart-legend-chip" style={{ '--lg': '#B22222' } as React.CSSProperties}>
+                <span className="smart-legend-chip-dot" />Sell / Downgrade
+              </span>
+              <span className="smart-legend-chip" style={{ '--lg': '#1E5CB3' } as React.CSSProperties}>
+                <span className="smart-legend-chip-dot" />Reiterate
+              </span>
+            </div>
             <div style={{ display: 'flex', gap: 4 }}>
               {(['1y', '3y', 'all'] as Range[]).map(r => (
                 <button
@@ -616,12 +620,12 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
                 </button>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="card-body">
-        {bars.length > 0 && (
+        {hasChart && (
           <div style={{ marginBottom: 16 }}>
             <div className="chart-canvas-wrap chart-h-md">
               <SmartMoneyChart priceBars={bars} txs={txs} upgrades={upgrades} range={range} visible={visible} />
@@ -632,7 +636,7 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
 
         <div className="smart-money-grid">
           {/* Left — Insider Transactions */}
-          <div>
+          <div className="smart-col">
             <div className="smart-section-head">
               <div className="smart-section-title">Insider Transactions</div>
               {sentiment && (
@@ -642,7 +646,7 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
               )}
             </div>
             {txs.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>No transactions available.</div>
+              <div className="smart-empty">No transactions available.</div>
             ) : (
               <div className="smart-timeline">
                 {txs.slice(0, 10).map((tx, i) => {
@@ -672,7 +676,7 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
           </div>
 
           {/* Right — Analyst Rating Changes */}
-          <div>
+          <div className="smart-col">
             <div className="smart-section-head">
               <div className="smart-section-title">Analyst Rating Changes</div>
               {consensus && (
@@ -682,7 +686,7 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
               )}
             </div>
             {upgrades.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>No rating changes available.</div>
+              <div className="smart-empty">No rating changes available.</div>
             ) : (
               <div className="smart-timeline">
                 {upgrades.slice(0, 10).map((ac, i) => {
