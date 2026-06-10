@@ -3,10 +3,10 @@ import type { ReactNode } from 'react';
 import { WeekRangeGauge } from '@/components/stocks/WeekRangeGauge';
 import { InfoTip } from '@/components/ui/InfoTip';
 import type { StockDetail } from '@/lib/stocks';
+import { fmtPrice } from '@/lib/format';
 import { tickerToUrlParts } from '@/lib/ticker';
 import type {
   AnalystRecommendation,
-  Currency,
   Market,
   OverallLabel,
   ValuationZone,
@@ -21,26 +21,6 @@ interface Props {
   /** Streamed-in rating badges (cycle-dependent). Rendered under the meta line
    *  so the header itself paints immediately without waiting on cycle data. */
   badgeSlot?: ReactNode;
-}
-
-function formatPrice(amount: number, currency: Currency): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
-/** Like formatPrice, but strips auto-sign so we control it ourselves. */
-function formatAbsPrice(amount: number, currency: Currency): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-    signDisplay: 'never',
-  }).format(amount);
 }
 
 function formatUpdatedAt(iso: string): string {
@@ -132,7 +112,7 @@ export function StockHeader({ stock, badgeSlot }: Props) {
       {/* Right column: price + delta + upside + 52W gauge */}
       <div className="ml-auto text-right min-w-[240px] flex flex-col items-stretch justify-start">
         <div className="font-[var(--font-mono)] text-[var(--font-hero)] font-semibold text-[var(--text-primary)] leading-[1.1]">
-          {formatPrice(currentClose, currency)}
+          {fmtPrice(currentClose, currency, { minDecimals: 2 })}
         </div>
         {change && (
           <div
@@ -141,7 +121,7 @@ export function StockHeader({ stock, badgeSlot }: Props) {
           >
             <PriceArrow direction={change.pct >= 0 ? 'up' : 'down'} />
             {change.pct >= 0 ? '+' : '−'}
-            {formatAbsPrice(change.abs, currency)}
+            {fmtPrice(Math.abs(change.abs), currency, { minDecimals: 2 })}
             {' ('}
             {change.pct >= 0 ? '+' : '−'}
             {Math.abs(change.pct).toFixed(2)}%{')'}

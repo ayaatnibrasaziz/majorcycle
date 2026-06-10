@@ -333,6 +333,31 @@ Real yfinance values can be absurd (a near-zero denominator gives P/E 3,500×, R
 
 The "Why Attractive" card (`ThesisInsights.buildAttractive`) must **not** list a deep dip as an attraction when the business is weak. Its *"trading at or below its historical average dip — historically attractive entry zone"* bullet is gated: **dropped when Financial Health is weak (`< 50`) or withheld (`null`)**. This mirrors the S3 valuation quality-gate (a value trap is cheap because the business is deteriorating, not because the market is wrong — see methodology-audit P1) and keeps the narrative consistent with the Verdict, which already calls such names "financial health is stressed". The raw cycle-position label (`DEEP VALUE`/Verdict sentence 1) is left as-is — it honestly states *where the price is*; the Verdict's financial-health + primary-risk sentences supply the counterweight.
 
+### Statement engine — no contradictions (Thesis cards + Verdict)
+
+"Why Attractive" / "Key Risks" (`ThesisInsights`) and the Verdict's three sentences (`VerdictCard` `sentence1`/`bestStrength`/`topRisk`) generate copy from threshold rules over the same cycle + fundamentals. **The two surfaces must never assert opposite things about one metric for one ticker.** Two rules guarantee this:
+
+1. **Disjoint thresholds per metric.** The Attractive trigger and the Risk trigger for a metric must not overlap, and no fallback may bridge them. Current bands: revenue growth — *accelerating* `≥ 15` (Attractive) · *modest* `[0, 15)` (Risk) · *declining* `< 0` (Risk); D/E — fortress `< 0.5` vs elevated `≥ 1.5`; PEG — cheap `(0, 1.5)` vs stretched `> 3`; net margin — *strength* `≥ 10` (`bestStrength`) vs *thin* `< 5` (Risk); pullback events — `≥ 10` vs `< 8`. Cycle position: the "attractive entry zone" bullet requires `typicalDrawdown ≤ −5 && dd ≤ typicalDrawdown` (⇒ `dd ≤ −5`), so it is disjoint from the "near highs" risk (`dd > −5`).
+2. **Fallbacks never assert a metric claim.** A fallback must be either *gated* to the range that makes it true, or a *tautological cycle caveat* that can't be wrong. The "Why Attractive" empty-state shows a factual cycle line ("Down X% from its N-day peak…"); the "Key Risks" empty-state shows the single caveat *"Cycle patterns are historical and may not repeat…"*; `topRisk`'s final fallback is *"the chief risk is the historical cycle pattern not repeating…"*. None is tagged Strong/Severe.
+
+When you add or retune a rule, re-check the disjointness table and run the universe sweep (see `layer-c-audit.md` verification). FCF-yield-strong + thin-net-margin is an allowed *tension* (different quantities), not a contradiction.
+
+### Verdict entry-zone band
+
+The Verdict's three band tiles derive from the cycle stats + a back-solved peak (`peak = currentClose / (1 + currentDrawdown/100)`; `priceAt(dd) = peak·(1 + dd/100)`):
+
+- **Entry Zone** = `priceAt(typicalDrawdown)` (top) → `priceAt(typicalDrawdown + 0.85·(lowerBound − typicalDrawdown))` (bottom) — i.e. from the typical-dip price down **85% of the distance** toward the worst-case low (not the full range).
+- **Reload Level** = `priceAt(lowerBound)` (the worst historical drawdown — sits distinctly below the band).
+- **Invalidation** = `reload × 0.95` (5% below reload).
+
+### Price formatting (per-share $)
+
+Use the shared helpers in `web/lib/format.ts` — **never** hand-roll `Intl`/`currencySymbol` in a component (that drifted into `C$` vs `CA$` and hardcoded `$`):
+
+- **`fmtPrice(n, currency, { minDecimals })`** — magnitude-aware: `≥ $100 → 0 dp · $1–$100 → 2 dp · < $1 → 2–6 dp` (so a sub-$1 stock never renders "$0"). For **derived levels** (band tiles, analyst targets, 52W low/high, DMAs) call it plain. For the **live current price** (header quote, "Now" sub-captions, the analyst current-price marker) pass `{ minDecimals: 2 }` so a ≥ $100 quote keeps its cents (`$306.31`) while levels stay whole (`$306`).
+- **`fmtPerShare(n, currency)`** — always 2 dp, currency-aware. For **EPS / DPS** (conventionally 2 dp regardless of size).
+- **Dollar aggregates** (market cap, balance-sheet/revenue totals, insider-transaction values) keep their **compact** `$T/$B/$M` formatter — not `fmtPrice`.
+
 ### Range Buttons
 
 For chart timeframe selectors (1Y / 3Y / Max).

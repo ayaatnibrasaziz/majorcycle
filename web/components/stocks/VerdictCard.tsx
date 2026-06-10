@@ -1,11 +1,12 @@
-import type { CycleAnalysis, FundamentalsSnapshot, OverallLabel, ValuationZone } from '@/lib/types';
+import type { CycleAnalysis, Currency, FundamentalsSnapshot, OverallLabel, ValuationZone } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
-import { fmtCapped } from '@/lib/format';
+import { fmtCapped, fmtPrice } from '@/lib/format';
+import { tickerToUrlParts } from '@/lib/ticker';
 
 interface Props {
   cycle: CycleAnalysis;
   fundamentals: FundamentalsSnapshot;
-  currency: string;
+  currency: Currency;
 }
 
 // ── Colour theme ────────────────────────────────────────────────────────────
@@ -20,13 +21,6 @@ const COLOR_MAP: Record<OverallLabel, [string, string]> = {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function fmt(n: number, decimals = 1): string {
   return n.toFixed(decimals);
-}
-
-function fmtPrice(n: number, curr: string): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency', currency: curr,
-    minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(n);
 }
 
 function confidenceTier(ev: number): string {
@@ -54,7 +48,7 @@ function sentence1(
     return `Down ${ddAbs}% from the recent peak, approaching the ${tddAbs}% level where past cycles have found support across ${ev} pullback events.`;
   if (zone === 'FAIR')
     return `Off ${ddAbs}% from highs but still above the ${tddAbs}% typical dip — early in the cycle, with more downside historically available.`;
-  return `Trading near 52-week highs (${ddAbs}% off peak) — limited cycle-based margin of safety against the ${tddAbs}% typical pullback.`;
+  return `Trading near its ${lookbackBars}-day highs (${ddAbs}% off peak) — limited cycle-based margin of safety against the ${tddAbs}% typical pullback.`;
 }
 
 // Mirror of reference bestStrength — picks the single strongest evidence point.
@@ -71,15 +65,15 @@ function bestStrength(f: FundamentalsSnapshot): string {
     return `accelerating revenue growth of ${fmtCapped(f.revenueGrowthYoy, 300, 0)}% YoY`;
   if (f.operatingMargin != null && f.operatingMargin >= 20)
     return `operating margins of ${fmtCapped(f.operatingMargin, 300, 0)}%`;
-  if (f.netMargin != null)
-    return `net margins of ${fmtCapped(f.netMargin, 300, 0)}%`;
-  return 'a sound balance sheet';
+  if (f.netMargin != null && f.netMargin >= 10)
+    return `healthy net margins of ${fmtCapped(f.netMargin, 300, 0)}%`;
+  return 'a solid overall financial-health profile';
 }
 
 // Mirror of reference topRisk — first match wins.
-function topRisk(f: FundamentalsSnapshot, drawdownPct: number, pullbackEvents: number): string {
+function topRisk(f: FundamentalsSnapshot, drawdownPct: number, pullbackEvents: number, lookbackBars: number): string {
   if (drawdownPct > -5)
-    return 'near 52-week highs with limited cycle-based margin of safety';
+    return `near its ${lookbackBars}-day highs with limited cycle-based margin of safety`;
   if (f.debtToEquity != null && f.debtToEquity >= 1.5)
     return `elevated debt at ${fmtCapped(f.debtToEquity, 25, 1)}× equity — sensitive to higher rates`;
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy < 0)
@@ -92,9 +86,9 @@ function topRisk(f: FundamentalsSnapshot, drawdownPct: number, pullbackEvents: n
     return `only ${pullbackEvents} historical cycles — limited statistical confidence`;
   if (f.netMargin != null && f.netMargin < 5)
     return `thin net margin of ${fmtCapped(f.netMargin, 300, 1)}% leaves little buffer`;
-  if (f.revenueGrowthYoy != null)
-    return `revenue growth of ${fmtCapped(f.revenueGrowthYoy, 300, 1)}% is modest — multiple compression risk`;
-  return 'limited data available for a full risk assessment';
+  if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 0 && f.revenueGrowthYoy < 15)
+    return `modest revenue growth of ${fmt(f.revenueGrowthYoy, 1)}% — multiple-compression risk`;
+  return 'the chief risk is the historical cycle pattern not repeating as it has before';
 }
 
 // ── Band tile helpers ───────────────────────────────────────────────────────
@@ -147,9 +141,12 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
 
   const typDD       = typicalDrawdown ?? 0;
   const lb          = lowerBound ?? 0;
-  const halfSpread  = Math.abs(lb - typDD) * 0.5;
-  const bandUpper   = priceAt(typDD + halfSpread);
-  const bandLower   = priceAt(typDD - halfSpread);
+  // Entry-zone band: from the typical-dip price (top) down to 85% of the DISTANCE
+  // toward the worst-case lower bound (owner spec — not the full range). lb < typDD
+  // (lower bound is the deeper level), so the bottom is always deeper than the top;
+  // the Reload Level (lowerBound) stays distinctly below the band.
+  const bandUpper   = priceAt(typDD);
+  const bandLower   = priceAt(typDD + 0.85 * (lb - typDD));
   const typicalPrice     = priceAt(typDD);
   const lowerBoundPrice  = priceAt(lb);
   const invalidationPrice = lowerBoundPrice * 0.95;
@@ -173,7 +170,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
   else
     s2 = `Financial health is stressed at ${fmt(hs, 0)}/100 — elevated balance-sheet and profitability risks warrant caution.`;
 
-  const s3 = `Primary risk: ${topRisk(fundamentals, currentDrawdownPct, totalPullbackEvents)}.`;
+  const s3 = `Primary risk: ${topRisk(fundamentals, currentDrawdownPct, totalPullbackEvents, cycle.params.lookbackBars)}.`;
 
   // ── Band tiles ───────────────────────────────────────────────────────────
   let bandTiles: React.ReactNode;
@@ -184,7 +181,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
           active
           label="Entry Zone · Active"
           value={`${fmtPrice(bandLower, currency)} – ${fmtPrice(bandUpper, currency)}`}
-          sub={`Currently in zone · centre ${fmtPrice(typicalPrice, currency)}`}
+          sub={`Currently in zone · top ${fmtPrice(typicalPrice, currency)}`}
           tooltip="Entry Zone (Active) — Historically attractive buy band, derived from the typical drawdown ±half the distance to the deepest historical drawdown. Current price is inside this band."
         />
         <BandTile
@@ -208,7 +205,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
           active
           label="Past Entry Zone"
           value={`${fmtPrice(bandLower, currency)} – ${fmtPrice(bandUpper, currency)}`}
-          sub={`Now ${fmtPrice(currentClose, currency)} · below band`}
+          sub={`Now ${fmtPrice(currentClose, currency, { minDecimals: 2 })} · below band`}
           tooltip="Below Entry Zone — Current price is below the historically attractive entry band — already deeper than typical pullbacks."
         />
         <BandTile
@@ -233,7 +230,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
         <BandTile
           label="Wait for Entry Zone"
           value={`${fmtPrice(bandLower, currency)} – ${fmtPrice(bandUpper, currency)}`}
-          sub={`Centre ${fmtPrice(typicalPrice, currency)} · ${premiumPct}% below current`}
+          sub={`Top ${fmtPrice(typicalPrice, currency)} · ${premiumPct}% below current`}
           tooltip="Target Entry Zone — The historically attractive buy band. Current price is above this zone — a pullback to here would historically offer better risk/reward."
         />
         <BandTile
@@ -265,7 +262,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
       <div className="verdict-top">
         <div className="verdict-headline">
           <div className="verdict-eyebrow">
-            MajorCycle Verdict · {ticker}
+            MajorCycle Verdict · {tickerToUrlParts(ticker).symbol}
             <InfoTip title="MajorCycle Verdict">
               A plain-language read on where this stock sits in its historical
               dip-and-recover cycle, plus its financial health and main risk. The

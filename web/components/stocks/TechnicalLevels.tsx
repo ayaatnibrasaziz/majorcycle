@@ -1,15 +1,10 @@
+import { fmtPrice } from '@/lib/format';
 import type { Currency, PriceBar } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
   priceBars: PriceBar[];
   currency: Currency;
-}
-
-function currencySymbol(currency: Currency): string {
-  if (currency === 'AUD') return 'A$';
-  if (currency === 'CAD') return 'CA$';
-  return '$';
 }
 
 function signedPct(n: number, d = 1): string {
@@ -84,7 +79,6 @@ function computeMaSignal(bars: PriceBar[]): MaSignal {
 export function TechnicalLevels({ priceBars, currency }: Props) {
   if (priceBars.length === 0) return null;
 
-  const sym          = currencySymbol(currency);
   const currentClose = priceBars[priceBars.length - 1]!.close;
   const dma50        = computeDMA(priceBars, 50);
   const dma200       = computeDMA(priceBars, 200);
@@ -126,7 +120,7 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
               className="stat-pill-val"
               style={{ color: abv50 !== null ? (abv50 >= 0 ? '#228B22' : '#B22222') : 'var(--text-primary)' }}
             >
-              {dma50 !== null ? `${sym}${dma50.toFixed(2)}` : '—'}
+              {dma50 !== null ? fmtPrice(dma50, currency) : '—'}
             </div>
           </div>
 
@@ -151,7 +145,7 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
               className="stat-pill-val"
               style={{ color: abv200 !== null ? (abv200 >= 0 ? '#228B22' : '#B22222') : 'var(--text-primary)' }}
             >
-              {dma200 !== null ? `${sym}${dma200.toFixed(2)}` : '—'}
+              {dma200 !== null ? fmtPrice(dma200, currency) : '—'}
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 
+import { fmtPrice } from '@/lib/format';
 import type { Currency, FundamentalsSnapshot } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
 
@@ -7,12 +8,6 @@ interface Props {
   fundamentals: FundamentalsSnapshot;
   currentClose: number;
   currency: Currency;
-}
-
-function currencySymbol(currency: Currency): string {
-  if (currency === 'AUD') return 'A$';
-  if (currency === 'CAD') return 'CA$';
-  return '$';
 }
 
 function signedPct(n: number, d = 1): string {
@@ -43,7 +38,6 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
     return null;
   }
 
-  const sym      = currencySymbol(currency);
   const rawRange = analystHighPrice - analystLowPrice;
   const padding  = rawRange * 0.18;
   const domLow   = analystLowPrice  - padding;
@@ -113,7 +107,7 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
               title="Consensus Target — mean 12-month analyst estimate"
             >
               <div className="target-label" style={{ ...labelStyle(meanPos), color: '#9A7010' }}>
-                {sym}{analystTargetPrice.toFixed(0)}<br />
+                {fmtPrice(analystTargetPrice, currency)}<br />
                 <span style={{ fontSize: 9 }}>Consensus</span>
               </div>
             </div>
@@ -125,7 +119,7 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
               title="Current price"
             >
               <div className="target-label-top" style={{ ...labelStyle(pricePos), color: 'var(--brand-mid)' }}>
-                {sym}{currentClose.toFixed(2)}<br />
+                {fmtPrice(currentClose, currency, { minDecimals: 2 })}<br />
                 <span style={{ fontSize: 9 }}>Current</span>
               </div>
             </div>
@@ -137,13 +131,13 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
               position: 'absolute', left: `${bearPosLeft}%`, transform: 'translateX(-50%)',
               fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)',
             }}>
-              {sym}{analystLowPrice.toFixed(0)}
+              {fmtPrice(analystLowPrice, currency)}
             </span>
             <span style={{
               position: 'absolute', left: `${bullPosLeft}%`, transform: 'translateX(-50%)',
               fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)',
             }}>
-              {sym}{analystHighPrice.toFixed(0)}
+              {fmtPrice(analystHighPrice, currency)}
             </span>
           </div>
         </div>
@@ -168,7 +162,7 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
           >
             <div className="target-stat-label">Bear Case Target</div>
             <div className="target-stat-val" style={{ color: '#B22222' }}>
-              {sym}{analystLowPrice.toFixed(0)}
+              {fmtPrice(analystLowPrice, currency)}
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
               {bearVsCurrent}% vs current
@@ -182,7 +176,7 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
           >
             <div className="target-stat-label">Consensus Target</div>
             <div className="target-stat-val" style={{ color: '#D4A017' }}>
-              {sym}{analystTargetPrice.toFixed(0)}
+              {fmtPrice(analystTargetPrice, currency)}
             </div>
             <div style={{ fontSize: 10, color: upsideColor, marginTop: 2 }}>
               {upsideStr}% vs current
@@ -196,7 +190,7 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
           >
             <div className="target-stat-label">Bull Case Target</div>
             <div className="target-stat-val" style={{ color: '#228B22' }}>
-              {sym}{analystHighPrice.toFixed(0)}
+              {fmtPrice(analystHighPrice, currency)}
             </div>
             <div style={{ fontSize: 10, color: '#228B22', marginTop: 2 }}>
               {bullVsCurrent}% vs current

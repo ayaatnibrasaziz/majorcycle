@@ -307,7 +307,10 @@ export default async function StockDetailPage({
           </Suspense>
         )}
         <section id="sec-fundamentals" className="scroll-mt-[120px] space-y-[18px]">
-          <EarningsHistory earningsHistory={stock.earningsHistory ?? []} />
+          <EarningsHistory
+            earningsHistory={stock.earningsHistory ?? []}
+            currency={stock.fundamentals.currency}
+          />
           <QuarterlyFinancials
             incomeStatementQuarterly={stock.incomeStatementQuarterly}
             cashflowQuarterly={stock.cashflowQuarterly}

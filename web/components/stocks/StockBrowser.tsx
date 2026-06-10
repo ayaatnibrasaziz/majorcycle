@@ -78,7 +78,7 @@ const MARKET_BADGE: Record<Market, string> = { us: 'US', au: 'ASX', ca: 'TSX' };
 const CURRENCY_SYMBOL: Record<Currency, string> = {
   USD: '$',
   AUD: 'A$',
-  CAD: 'C$',
+  CAD: 'CA$',
 };
 
 function formatMarketCap(value: number | null, currency: Currency): string {

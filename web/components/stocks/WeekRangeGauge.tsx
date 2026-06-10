@@ -1,3 +1,4 @@
+import { fmtPrice } from '@/lib/format';
 import type { Currency } from '@/lib/types';
 
 interface Props {
@@ -5,15 +6,6 @@ interface Props {
   high: number;
   current: number;
   currency: Currency;
-}
-
-function formatPrice(amount: number, currency: Currency): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
 }
 
 function qualitativeZone(pct: number): string {
@@ -55,7 +47,7 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
           52W
         </span>
         <span className="font-[var(--font-mono)] text-[10px] font-semibold text-[var(--text-secondary)] whitespace-nowrap flex-shrink-0 leading-none">
-          {formatPrice(low, currency)}
+          {fmtPrice(low, currency)}
         </span>
         <div className="relative flex-1 min-w-0 h-[14px] flex items-center">
           <div
@@ -78,7 +70,7 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
           />
         </div>
         <span className="font-[var(--font-mono)] text-[10px] font-semibold text-[var(--text-secondary)] whitespace-nowrap flex-shrink-0 leading-none">
-          {formatPrice(high, currency)}
+          {fmtPrice(high, currency)}
         </span>
       </div>
       <div className="block text-[9.5px] font-semibold text-[var(--text-muted)] tracking-[0.2px] leading-[1.2] text-right">
