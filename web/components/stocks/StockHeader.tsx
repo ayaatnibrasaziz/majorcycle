@@ -112,7 +112,7 @@ export function StockHeader({ stock, badgeSlot }: Props) {
       {/* Right column: price + delta + upside + 52W gauge */}
       <div className="ml-auto text-right min-w-[240px] flex flex-col items-stretch justify-start">
         <div className="font-[var(--font-mono)] text-[var(--font-hero)] font-semibold text-[var(--text-primary)] leading-[1.1]">
-          {fmtPrice(currentClose, currency, { minDecimals: 2 })}
+          {fmtPrice(currentClose, currency)}
         </div>
         {change && (
           <div
@@ -121,7 +121,7 @@ export function StockHeader({ stock, badgeSlot }: Props) {
           >
             <PriceArrow direction={change.pct >= 0 ? 'up' : 'down'} />
             {change.pct >= 0 ? '+' : '−'}
-            {fmtPrice(Math.abs(change.abs), currency, { minDecimals: 2 })}
+            {fmtPrice(Math.abs(change.abs), currency)}
             {' ('}
             {change.pct >= 0 ? '+' : '−'}
             {Math.abs(change.pct).toFixed(2)}%{')'}

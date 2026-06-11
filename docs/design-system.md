@@ -354,9 +354,10 @@ The Verdict's three band tiles derive from the cycle stats + a back-solved peak 
 
 Use the shared helpers in `web/lib/format.ts` — **never** hand-roll `Intl`/`currencySymbol` in a component (that drifted into `C$` vs `CA$` and hardcoded `$`):
 
-- **`fmtPrice(n, currency, { minDecimals })`** — magnitude-aware: `≥ $100 → 0 dp · $1–$100 → 2 dp · < $1 → 2–6 dp` (so a sub-$1 stock never renders "$0"). For **derived levels** (band tiles, analyst targets, 52W low/high, DMAs) call it plain. For the **live current price** (header quote, "Now" sub-captions, the analyst current-price marker) pass `{ minDecimals: 2 }` so a ≥ $100 quote keeps its cents (`$306.31`) while levels stay whole (`$306`).
+- **`fmtPrice(n, currency)`** — **uniform 2 dp for every price ≥ $1** (`$306.31`, `$120.00`, `$45.30`, `$1.50`); below $1 it adds decimals so a small price is never "$0" (`$0.135` · `$0.0135`). Used for **all per-share prices** — current quote, analyst targets, Verdict band levels, DMAs, 52W low/high. **One signature, no options.** *(This deliberately replaced an earlier magnitude-aware rule that used 0 dp ≥ $100 — it mixed precision within a group, e.g. a `$95.20` target next to a `$120` target. Uniform 2 dp is the finance-standard and never mixes. "Whole-dollar ≥ $1" was also rejected: it rounds low-priced stocks coarsely, e.g. a $4.30 DMA → "$4".)*
 - **`fmtPerShare(n, currency)`** — always 2 dp, currency-aware. For **EPS / DPS** (conventionally 2 dp regardless of size).
 - **Dollar aggregates** (market cap, balance-sheet/revenue totals, insider-transaction values) keep their **compact** `$T/$B/$M` formatter — not `fmtPrice`.
+- **Never** hand-roll `Intl`/`currencySymbol`/hardcoded `$` in a component (that drifted into `C$` vs `CA$` and `$1.71` for AUD) — always use these helpers.
 
 ### Range Buttons
 

@@ -1,45 +1,25 @@
 import type { AnalystRecommendation, Currency } from '@/lib/types';
 
 /**
- * Magnitude-aware, currency-aware price formatter (via `Intl.NumberFormat`, so the
- * symbol is always correct: `$` / `A$` / `CA$`). Decimal places scale with the
- * price band so whole-number rounding never collapses a sub-$1 stock to "$0":
- *   ≥ $100 → 0 dp · $1–$100 → 2 dp · $0.10–$1 → ≤ 3 dp · $0.01–$0.10 → ≤ 4 dp · < $0.01 → ≤ 6 dp.
- * Below $1 a 2 dp floor is enforced (so $0.50 → "$0.50", not "$0.5").
- *
- * `minDecimals` raises the floor for the LIVE quote: pass `2` so a ≥ $100 live
- * price keeps its cents ("$306.31") while derived levels stay whole ("$306").
- * (For $1–$100 both are 2 dp; below $1 both already floor at 2 dp.)
+ * Currency-aware share-price formatter (via `Intl.NumberFormat`, so the symbol is
+ * always correct: `$` / `A$` / `CA$`). **Uniform 2 decimals for every price ≥ $1**
+ * (the finance-standard — brokers/TradingView) so a group of related prices never
+ * mixes precision (e.g. analyst targets read "$95.20 / $120.00 / $145.00", not
+ * "$95.20 / $120"). Below $1 it adds decimals so a small price is never rounded to
+ * "$0":  ≥ $1 → 2 dp · $0.10–$1 → ≤ 3 dp · $0.01–$0.10 → ≤ 4 dp · < $0.01 → ≤ 6 dp
+ * (2 dp floor throughout; trailing zeros trimmed only below $1).
  */
-export function fmtPrice(
-  n: number,
-  currency: Currency,
-  opts: { minDecimals?: number } = {},
-): string {
+export function fmtPrice(n: number, currency: Currency): string {
   const a = Math.abs(n);
-  const liveFloor = opts.minDecimals ?? 0;
-  let minFrac: number;
   let maxFrac: number;
-  if (a >= 100) {
-    minFrac = liveFloor;
-    maxFrac = Math.max(0, liveFloor);
-  } else if (a >= 1) {
-    minFrac = 2;
-    maxFrac = 2;
-  } else if (a >= 0.1) {
-    minFrac = 2;
-    maxFrac = 3;
-  } else if (a >= 0.01) {
-    minFrac = 2;
-    maxFrac = 4;
-  } else {
-    minFrac = 2;
-    maxFrac = 6;
-  }
+  if (a >= 1) maxFrac = 2;
+  else if (a >= 0.1) maxFrac = 3;
+  else if (a >= 0.01) maxFrac = 4;
+  else maxFrac = 6;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
-    minimumFractionDigits: minFrac,
+    minimumFractionDigits: 2,
     maximumFractionDigits: maxFrac,
   }).format(n);
 }

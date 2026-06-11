@@ -205,7 +205,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
           active
           label="Past Entry Zone"
           value={`${fmtPrice(bandLower, currency)} – ${fmtPrice(bandUpper, currency)}`}
-          sub={`Now ${fmtPrice(currentClose, currency, { minDecimals: 2 })} · below band`}
+          sub={`Now ${fmtPrice(currentClose, currency)} · below band`}
           tooltip="Below Entry Zone — Current price is below the historically attractive entry band — already deeper than typical pullbacks."
         />
         <BandTile

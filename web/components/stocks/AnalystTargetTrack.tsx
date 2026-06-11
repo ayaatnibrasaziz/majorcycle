@@ -119,7 +119,7 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
               title="Current price"
             >
               <div className="target-label-top" style={{ ...labelStyle(pricePos), color: 'var(--brand-mid)' }}>
-                {fmtPrice(currentClose, currency, { minDecimals: 2 })}<br />
+                {fmtPrice(currentClose, currency)}<br />
                 <span style={{ fontSize: 9 }}>Current</span>
               </div>
             </div>
