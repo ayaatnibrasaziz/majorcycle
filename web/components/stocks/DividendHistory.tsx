@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 
+import { fmtPerShare } from '@/lib/format';
 import type { FundamentalsSnapshot } from '@/lib/types';
 
 interface Props {
@@ -162,7 +163,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
                   fontSize: 10,
                   fontFamily: "'JetBrains Mono', monospace",
                 }}
-                tickFormatter={(v: number) => `$${v.toFixed(2)}`}
+                tickFormatter={(v: number) => fmtPerShare(v, fundamentals.currency)}
                 axisLine={false}
                 tickLine={false}
                 width={48}
@@ -198,7 +199,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
                           fontSize: 11,
                         }}
                       >
-                        Dividend: ${Number(payload[0]?.value ?? 0).toFixed(2)} per share
+                        Dividend: {fmtPerShare(Number(payload[0]?.value ?? 0), fundamentals.currency)} per share
                       </div>
                     </div>
                   );
@@ -243,7 +244,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
             title="Annual Dividend per Share (DPS) — total dividend paid per share over the last 12 months."
           >
             <div className="summary-strip-label">Annual DPS</div>
-            <div className="summary-strip-val">${last.amount.toFixed(2)}</div>
+            <div className="summary-strip-val">{fmtPerShare(last.amount, fundamentals.currency)}</div>
           </div>
 
           <div

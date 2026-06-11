@@ -13,10 +13,12 @@ import {
   YAxis,
 } from 'recharts';
 
-import type { EarningsHistoryItem } from '@/lib/types';
+import { fmtPerShare } from '@/lib/format';
+import type { Currency, EarningsHistoryItem } from '@/lib/types';
 
 interface Props {
   earningsHistory: EarningsHistoryItem[];
+  currency: Currency;
 }
 
 function toQtrLabel(dateStr: string): string {
@@ -40,7 +42,7 @@ const TOOLTIP_DARK = {
   padding: '8px 12px',
 };
 
-export function EarningsHistory({ earningsHistory }: Props) {
+export function EarningsHistory({ earningsHistory, currency }: Props) {
   const items = earningsHistory.slice(-8);
 
   // Clickable legend — toggles each series (est / act) on and off.
@@ -125,7 +127,7 @@ export function EarningsHistory({ earningsHistory }: Props) {
                   fontSize: 10,
                   fontFamily: "'JetBrains Mono', monospace",
                 }}
-                tickFormatter={(v: number) => `$${v.toFixed(1)}`}
+                tickFormatter={(v: number) => fmtPerShare(v, currency)}
                 axisLine={false}
                 tickLine={false}
                 width={48}
@@ -157,7 +159,7 @@ export function EarningsHistory({ earningsHistory }: Props) {
                           }}
                         >
                           {p.name}:{' '}
-                          {p.value != null ? `$${Number(p.value).toFixed(2)}` : '—'}
+                          {p.value != null ? fmtPerShare(Number(p.value), currency) : '—'}
                         </div>
                       ))}
                       {row?.surp != null && (
@@ -276,7 +278,7 @@ export function EarningsHistory({ earningsHistory }: Props) {
               title="Last EPS — profit the company earned per share in the most recently reported quarter."
             >
               <div className="summary-strip-label">Last EPS</div>
-              <div className="summary-strip-val">${lastEps.toFixed(2)}</div>
+              <div className="summary-strip-val">{fmtPerShare(lastEps, currency)}</div>
             </div>
           )}
         </div>

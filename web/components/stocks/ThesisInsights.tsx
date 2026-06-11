@@ -1,23 +1,15 @@
-import type { CycleAnalysis, FundamentalsSnapshot } from '@/lib/types';
+import type { CycleAnalysis, Currency, FundamentalsSnapshot } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
+import { fmtCapped, fmtPrice } from '@/lib/format';
 
 interface Props {
   cycle: CycleAnalysis;
   fundamentals: FundamentalsSnapshot;
-  currency: string;
+  currency: Currency;
 }
 
 function fmt(n: number, d = 1): string {
   return n.toFixed(d);
-}
-
-function fmtPrice(n: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(n);
 }
 
 interface Bullet {
@@ -32,19 +24,28 @@ interface Bullet {
  * `buildRisks`, and `riskInvalidation` in /reference/original-design.html
  * (lines 2126–2178). Educational signals only — no Buy/Sell verbs in our copy.
  */
-function buildAttractive(c: CycleAnalysis, f: FundamentalsSnapshot, currency: string): Bullet[] {
+function buildAttractive(c: CycleAnalysis, f: FundamentalsSnapshot, currency: Currency): Bullet[] {
   const out: string[] = [];
   const dd = c.currentDrawdownPct;
   const tdd = c.typicalDrawdown;
 
-  if (tdd != null && dd <= tdd)
+  // Quality-gate the cheapness bullet (S3 spirit): a deep dip is only a genuine
+  // attraction when the business is sound. When Financial Health is weak or
+  // withheld, this is value-trap territory — the discount likely reflects
+  // deteriorating fundamentals — so we drop the "historically attractive entry
+  // zone" claim (and its Strong tag) rather than cheerlead it. FH < 50 is the
+  // same "stressed" line the Verdict card uses for its financial-health sentence.
+  const fhWeak = c.financialHealthScore == null || c.financialHealthScore < 50;
+  // `tdd <= -5` keeps this disjoint from the "near highs" risk (which needs dd > -5):
+  // a stock whose typical dip is itself < 5% never earns an "attractive entry zone" claim.
+  if (tdd != null && tdd <= -5 && dd <= tdd && !fhWeak)
     out.push(`Trading at or below its historical average dip (${fmt(tdd)}%) — historically attractive entry zone`);
   if (f.roe != null && f.roe >= 20)
-    out.push(`Exceptional ROE of ${fmt(f.roe)}% — management creates strong shareholder value`);
+    out.push(`Exceptional ROE of ${fmtCapped(f.roe, 300)}% — management creates strong shareholder value`);
   if (f.fcfYieldPct != null && f.fcfYieldPct >= 4)
-    out.push(`Strong FCF yield of ${fmt(f.fcfYieldPct)}% — the business generates real cash`);
+    out.push(`Strong FCF yield of ${fmtCapped(f.fcfYieldPct, 100)}% — the business generates real cash`);
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 15)
-    out.push(`Accelerating revenue growth of ${fmt(f.revenueGrowthYoy)}% YoY`);
+    out.push(`Accelerating revenue growth of ${fmtCapped(f.revenueGrowthYoy, 300)}% YoY`);
   if (f.debtToEquity != null && f.debtToEquity < 0.5)
     out.push(`Low D/E of ${fmt(f.debtToEquity, 2)} — fortress balance sheet`);
   if (f.peg != null && f.peg > 0 && f.peg < 1.5)
@@ -54,14 +55,17 @@ function buildAttractive(c: CycleAnalysis, f: FundamentalsSnapshot, currency: st
   if (f.analystRecommendation === 'Strong Buy' && f.analystTargetPrice != null)
     out.push(`Analyst consensus is Strong Buy, mean target ${fmtPrice(f.analystTargetPrice, currency)}`);
 
-  if (out.length === 0)
+  // Fallback when no genuine strength fired: a factual, non-asserting line (it never
+  // claims a metric is good, so it can't contradict a Key Risk) — and never tagged Strong.
+  const usedFallback = out.length === 0;
+  if (usedFallback)
     out.push(
-      f.fcfYieldPct != null
-        ? `FCF yield of ${fmt(f.fcfYieldPct)}% provides a solid return floor`
-        : `Cash generation and balance-sheet position provide a reasonable floor`,
+      tdd != null
+        ? `Down ${fmt(Math.abs(dd))}% from its ${c.params.lookbackBars}-day peak; historically the ${fmt(Math.abs(tdd))}% area has been this stock's attractive zone`
+        : `Limited cycle history so far — the case rests on fundamentals rather than the dip pattern`,
     );
 
-  return out.slice(0, 6).map((text, i) => ({ text, strong: i < 2 }));
+  return out.slice(0, 6).map((text, i) => ({ text, strong: !usedFallback && i < 2 }));
 }
 
 function riskInvalidation(c: CycleAnalysis, f: FundamentalsSnapshot): string | undefined {
@@ -80,7 +84,9 @@ function riskInvalidation(c: CycleAnalysis, f: FundamentalsSnapshot): string | u
     return `As more cycles accumulate (target: 10+ events), the band statistics tighten and confidence improves.`;
   if (f.netMargin != null && f.netMargin < 5)
     return `Net margin expanding back to ≥8% would signal pricing power has returned.`;
-  return `A demonstrated acceleration in top-line growth would offset multiple-compression risk.`;
+  if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 0 && f.revenueGrowthYoy < 15)
+    return `An acceleration in revenue growth above ~15% would ease the multiple-compression concern.`;
+  return `Should the cycle low hold and the historical pattern reassert, the setup would re-rate.`;
 }
 
 function buildRisks(c: CycleAnalysis, f: FundamentalsSnapshot): Bullet[] {
@@ -88,30 +94,35 @@ function buildRisks(c: CycleAnalysis, f: FundamentalsSnapshot): Bullet[] {
   const dd = c.currentDrawdownPct;
 
   if (dd > -5)
-    out.push(`Near 252-day highs (drawdown ${fmt(dd)}%) — limited margin of safety`);
+    out.push(`Near ${c.params.lookbackBars}-day highs (drawdown ${fmt(dd)}%) — limited margin of safety`);
   if (f.debtToEquity != null && f.debtToEquity >= 1.5)
-    out.push(`Elevated D/E of ${fmt(f.debtToEquity, 2)} — pressure if rates rise`);
+    out.push(`Elevated D/E of ${fmtCapped(f.debtToEquity, 25, 2)} — pressure if rates rise`);
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy < 0)
-    out.push(`Revenue declining ${fmt(Math.abs(f.revenueGrowthYoy))}% YoY — needs monitoring`);
+    out.push(`Revenue declining ${fmtCapped(Math.abs(f.revenueGrowthYoy), 300)}% YoY — needs monitoring`);
   if (f.currentRatio != null && f.currentRatio < 1)
     out.push(`Current ratio ${fmt(f.currentRatio, 2)} below 1.0 — liquidity concern`);
   if (f.peg != null && f.peg > 3)
-    out.push(`PEG of ${fmt(f.peg, 2)} — valuation stretched vs growth`);
+    out.push(`PEG of ${fmtCapped(f.peg, 25, 2)} — valuation stretched vs growth`);
   if (c.totalPullbackEvents < 8)
     out.push(`Only ${c.totalPullbackEvents} pullback events — limited signal history`);
   if (f.netMargin != null && f.netMargin < 5)
-    out.push(`Thin net margin of ${fmt(f.netMargin)}%`);
-  if (out.length < 3)
-    out.push(
-      f.revenueGrowthYoy != null
-        ? `Revenue growth of ${fmt(f.revenueGrowthYoy)}% is modest — valuation multiple at risk`
-        : `Limited growth visibility — valuation multiple at risk`,
-    );
+    out.push(`Thin net margin of ${fmtCapped(f.netMargin, 300)}%`);
+  // Gated modest-growth risk: ONLY for genuinely modest growth [0,15) — disjoint from
+  // the "accelerating ≥15%" attractive bullet and the "<0 declining" risk, so it can
+  // never contradict the Why-Attractive growth line.
+  if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 0 && f.revenueGrowthYoy < 15)
+    out.push(`Revenue growth of ${fmt(f.revenueGrowthYoy)}% is modest — multiple-compression risk`);
 
-  const inv = riskInvalidation(c, f);
+  // Genuine risks only. If none fired, show one tautological cycle caveat (never a
+  // metric claim → can't contradict Why Attractive); no Severe tag / no invalidation on it.
+  const hadGenuineRisk = out.length > 0;
+  if (!hadGenuineRisk)
+    out.push(`Cycle patterns are historical and may not repeat — treat the signal as a guide, not a guarantee`);
+
+  const inv = hadGenuineRisk ? riskInvalidation(c, f) : undefined;
   return out.slice(0, 6).map((text, i) => ({
     text,
-    strong: i < 2,
+    strong: hadGenuineRisk && i < 2,
     invalidation: i === 0 ? inv : undefined,
   }));
 }

@@ -326,7 +326,38 @@ Real yfinance values can be absurd (a near-zero denominator gives P/E 3,500×, R
 - **`MetricDef.cap`** (Key Metrics, `MetricsTable.tsx`): a per-metric cap. Beyond `±cap` the cell shows `>+cap` / `<−cap`, and the **true value goes in the hover tooltip** ("Actual … — capped for display"). Current caps: P/E 150x · EV/EBITDA 150x · PEG 25 · FCF Yield 100% · Op/Net Margin 300% · ROE 300% · ROA 300% · D/E 25 · Current Ratio 25 · Revenue/Earnings Growth 300%.
 - **Median hygiene:** the same bounds are mirrored in `medians.server.ts` `OUTLIER_BOUND` so capped outliers don't skew the peer median (bump the cache key when you change them).
 - **Distress flag (not a cap):** where a high number is *bad* (a trailing dividend yield > 20% almost always means a collapsed price / imminent cut), show the **real** value but recolour it amber (`#D4A017`, not reassuring green) + a ⚠ + a caution tooltip — capping it would read as "good".
+- **`fmtCapped(value, cap, decimals)`** (`web/lib/format.ts`) is the shared helper for **prose** numbers — the same cap pattern for values interpolated into sentences rather than table cells. Used by the Thesis narrative (`VerdictCard` `bestStrength`/`topRisk`, `ThesisInsights` `buildAttractive`/`buildRisks`): ROE/margins/growth 300, FCF Yield 100, D/E & PEG 25. Beyond the cap it renders ">cap" inline (e.g. "an exceptional >300% return on equity").
 - These are **display-only**: the cycle math and FH pillars already clamp their inputs, so ratings are untouched.
+
+### Thesis narrative — quality-gated cheapness
+
+The "Why Attractive" card (`ThesisInsights.buildAttractive`) must **not** list a deep dip as an attraction when the business is weak. Its *"trading at or below its historical average dip — historically attractive entry zone"* bullet is gated: **dropped when Financial Health is weak (`< 50`) or withheld (`null`)**. This mirrors the S3 valuation quality-gate (a value trap is cheap because the business is deteriorating, not because the market is wrong — see methodology-audit P1) and keeps the narrative consistent with the Verdict, which already calls such names "financial health is stressed". The raw cycle-position label (`DEEP VALUE`/Verdict sentence 1) is left as-is — it honestly states *where the price is*; the Verdict's financial-health + primary-risk sentences supply the counterweight.
+
+### Statement engine — no contradictions (Thesis cards + Verdict)
+
+"Why Attractive" / "Key Risks" (`ThesisInsights`) and the Verdict's three sentences (`VerdictCard` `sentence1`/`bestStrength`/`topRisk`) generate copy from threshold rules over the same cycle + fundamentals. **The two surfaces must never assert opposite things about one metric for one ticker.** Two rules guarantee this:
+
+1. **Disjoint thresholds per metric.** The Attractive trigger and the Risk trigger for a metric must not overlap, and no fallback may bridge them. Current bands: revenue growth — *accelerating* `≥ 15` (Attractive) · *modest* `[0, 15)` (Risk) · *declining* `< 0` (Risk); D/E — fortress `< 0.5` vs elevated `≥ 1.5`; PEG — cheap `(0, 1.5)` vs stretched `> 3`; net margin — *strength* `≥ 10` (`bestStrength`) vs *thin* `< 5` (Risk); pullback events — `≥ 10` vs `< 8`. Cycle position: the "attractive entry zone" bullet requires `typicalDrawdown ≤ −5 && dd ≤ typicalDrawdown` (⇒ `dd ≤ −5`), so it is disjoint from the "near highs" risk (`dd > −5`).
+2. **Fallbacks never assert a metric claim.** A fallback must be either *gated* to the range that makes it true, or a *tautological cycle caveat* that can't be wrong. The "Why Attractive" empty-state shows a factual cycle line ("Down X% from its N-day peak…"); the "Key Risks" empty-state shows the single caveat *"Cycle patterns are historical and may not repeat…"*; `topRisk`'s final fallback is *"the chief risk is the historical cycle pattern not repeating…"*. None is tagged Strong/Severe.
+
+When you add or retune a rule, re-check the disjointness table and run the universe sweep (see `layer-c-audit.md` verification). FCF-yield-strong + thin-net-margin is an allowed *tension* (different quantities), not a contradiction.
+
+### Verdict entry-zone band
+
+The Verdict's three band tiles derive from the cycle stats + a back-solved peak (`peak = currentClose / (1 + currentDrawdown/100)`; `priceAt(dd) = peak·(1 + dd/100)`):
+
+- **Entry Zone** = `priceAt(typicalDrawdown)` (top) → `priceAt(typicalDrawdown + 0.85·(lowerBound − typicalDrawdown))` (bottom) — i.e. from the typical-dip price down **85% of the distance** toward the worst-case low (not the full range).
+- **Reload Level** = `priceAt(lowerBound)` (the worst historical drawdown — sits distinctly below the band).
+- **Invalidation** = `reload × 0.95` (5% below reload).
+
+### Price formatting (per-share $)
+
+Use the shared helpers in `web/lib/format.ts` — **never** hand-roll `Intl`/`currencySymbol` in a component (that drifted into `C$` vs `CA$` and hardcoded `$`):
+
+- **`fmtPrice(n, currency)`** — **uniform 2 dp for every price ≥ $1** (`$306.31`, `$120.00`, `$45.30`, `$1.50`); below $1 it adds decimals so a small price is never "$0" (`$0.135` · `$0.0135`). Used for **all per-share prices** — current quote, analyst targets, Verdict band levels, DMAs, 52W low/high. **One signature, no options.** *(This deliberately replaced an earlier magnitude-aware rule that used 0 dp ≥ $100 — it mixed precision within a group, e.g. a `$95.20` target next to a `$120` target. Uniform 2 dp is the finance-standard and never mixes. "Whole-dollar ≥ $1" was also rejected: it rounds low-priced stocks coarsely, e.g. a $4.30 DMA → "$4".)*
+- **`fmtPerShare(n, currency)`** — always 2 dp, currency-aware. For **EPS / DPS** (conventionally 2 dp regardless of size).
+- **Dollar aggregates** (market cap, balance-sheet/revenue totals, insider-transaction values) keep their **compact** `$T/$B/$M` formatter — not `fmtPrice`.
+- **Never** hand-roll `Intl`/`currencySymbol`/hardcoded `$` in a component (that drifted into `C$` vs `CA$` and `$1.71` for AUD) — always use these helpers.
 
 ### Range Buttons
 
