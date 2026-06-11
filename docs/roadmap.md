@@ -171,7 +171,9 @@ After the components were built, Layer C was reframed into a per-section product
 - ✅ **S1** Foundation/re-verify · ✅ **S2–S3** Methodology engine (quality-gate valuation, "Cycle Payoff" rename, insufficient-data/withheld pillars — see `methodology-audit.md`) · ✅ **S4** Browse/Search landing + perf · ✅ **S5** Beginner InfoTips · ✅ **S6** Sentiment · ✅ **S7** Cycle charts · ✅ **S8** Fundamentals charts.
 - ✅ **S9** Scorecard radar (a11y + per-pillar tips + score-based tier colours + labels-outside-grid + weighting explainer) · site-wide **sanity-bounds** (display caps + distress-yield flag) · **source-name removal** (no "Yahoo Finance" in user copy). *(PR #31.)*
 - ✅ **Thesis re-audit** (Header / KPI / Verdict / Why-Attractive & Key-Risks / Company Overview) — re-aligned to the post-S3 engine: preset-aware lookback copy, value-trap-gated "Why Attractive" bullet, S9 sanity caps on the narrative numbers. Plus owner follow-ups: a **contradiction-free statement engine** (disjoint thresholds per metric + non-asserting fallbacks — swept all 720 tickers, 0 contradictions; full catalogue in the approved plan), the Verdict **entry-zone band** (typical dip → 85% of the distance to the lower bound), **drop the `.AX`/`.TO` suffix** in the Verdict eyebrow, and **page-wide uniform-2-decimal price formatting** (`fmtPrice`/`fmtPerShare`). *(PR #32.)*
-- ⬜ **Next: S10 Methodology page** (heuristic framing, ASIC-honest).
+- ✅ **S10 Methodology page** (`/methodology`) — public, SSR/SEO-prerendered (`○ Static`) long-form page explaining the post-S3 engine in plain language: Overall = 40/35/25, the five tiers, Financial Health pillars (omit-and-renormalise, withhold <3), the value-trap-gated Valuation (zone label stays raw; score × quality factor), Cycle Payoff (signal reliability + reward/risk, *not* momentum) pointing readers to the **Drawdown Analysis / Profit Recovery** charts as the primary signal, the preset table (63/252/756, −3/−5/−8%), and an honest-limitations section (heuristic not an edge, survivorship bias, sector-blind thresholds, third-party data — provider unnamed). New `(content)` route-group shell (wide reading column, distinct from the 440px auth shell). Wired the previously-disabled Methodology button in `StockSubnav` to it (new tab) and corrected the stale Valuation line in `OnboardingModal`. **Layer C cross-cutting items now complete.** *(PR pending.)*
+
+**→ Layer C complete.** Next: Layer D (Run Analysis tab).
 
 ### Layer D: Run Analysis Tab (target: 1 week)
 
@@ -218,7 +220,7 @@ Goal: The ranked Results view from reference HTML, fully functional.
 
 Goal: All non-app pages live, payment flow works end-to-end.
 
-- [ ] `/methodology` — long-form content explaining Major Cycle (auto-generated draft, owner edits)
+- [x] `/methodology` — long-form content explaining Major Cycle (built in S10, owner-approved; public `(content)` shell — the other Layer F static pages can reuse it)
 - [ ] `/disclaimer` — full disclaimer page (ASIC-compliant template)
 - [ ] `/terms` — terms of service
 - [ ] `/privacy` — privacy policy
@@ -291,7 +293,7 @@ The product is "ready to launch" when ALL of these are true:
 - [ ] Mobile responsive at 375px width
 
 ### Content
-- [ ] Methodology page complete and owner-approved
+- [x] Methodology page complete and owner-approved
 - [ ] Disclaimers visible on every rating-displaying page
 - [ ] Terms, Privacy, Disclaimer pages live and reviewed
 - [ ] All neutral labels used consistently — zero "BUY"/"SELL"/"AVOID" in our scoring outputs

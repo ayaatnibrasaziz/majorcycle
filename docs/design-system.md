@@ -487,9 +487,11 @@ Disclaimers are mandatory on any page showing a rating. Visual style:
 - **Inline (under rating):** 11px italic muted text, brief: *"Information only — not financial advice."*
 - **Footer (every page):** Full disclaimer block, 12px muted text, with link to `/disclaimer`.
 - **First-login modal:** Modal with full methodology + disclaimer summary, "I understand and acknowledge" checkbox required to proceed.
-- **Methodology page (`/methodology`):** Top banner restating compliance posture + ASIC/SEC-relevant disclaimers.
+- **Methodology page (`/methodology`):** Top banner restating compliance posture + ASIC/SEC-relevant disclaimers. *(Built in S10.)*
 
 Wording must include: "Information only", "Not financial advice", "Past performance does not indicate future results", "Conduct your own research".
+
+> **Static content shell (`web/app/(content)/`).** S10 added a third route-group layout for public, long-form pages, separate from the `(public)` auth shell (which centres a 440px card) and the auth-gated `(app)` shell. It's a top-aligned ~`max-w-3xl` reading column with the brand logo header and the full-disclaimer footer, and it stays reachable without login (SSR/SEO — `/methodology` prerenders as `○ Static`). The remaining Layer F static pages (`/disclaimer`, `/terms`, `/privacy`) should reuse this shell. The in-app entry point is the `StockSubnav` "Methodology" button, which opens `/methodology` in a new tab so subscribers keep their place.
 
 ---
 

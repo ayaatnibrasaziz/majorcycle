@@ -96,16 +96,16 @@ export function StockSubnav() {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button
-            type="button"
+          <a
+            href="/methodology"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 bg-white border border-[var(--border-strong)] text-[var(--text-secondary)] text-[11px] font-semibold px-3 py-1.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)] transition-all"
-            disabled
-            aria-disabled="true"
-            title="Coming soon"
+            title="How the Major Cycle analysis works (opens in a new tab)"
           >
             <BookOpen className="w-[13px] h-[13px]" strokeWidth={1.8} />
             Methodology
-          </button>
+          </a>
           <button
             type="button"
             className="inline-flex items-center gap-1.5 bg-white border border-[var(--border-strong)] text-[var(--text-secondary)] text-[11px] font-semibold px-3 py-1.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)] transition-all"
