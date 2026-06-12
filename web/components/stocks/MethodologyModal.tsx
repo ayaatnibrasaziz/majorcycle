@@ -58,7 +58,7 @@ const TIERS = [
 export function MethodologyModal({ open, onOpenChange }: MethodologyModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[680px] p-0 gap-0 max-h-[85vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-[calc(100%-2rem)] max-w-[680px] p-0 gap-0 max-h-[85vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex flex-col gap-0.5 px-6 py-[18px] border-b border-[var(--border)] bg-gradient-to-br from-[#FAFBFC] to-[#F4F7FB]">
           <DialogTitle className="flex items-center gap-2.5 text-[16px]">
@@ -128,15 +128,17 @@ export function MethodologyModal({ open, onOpenChange }: MethodologyModalProps) 
             remaining pillars are re-weighted</strong> — we never fill the gap
             with a fabricated middle score. If fewer than three of the five
             pillars have data, Financial Health is withheld and shown as{' '}
-            <em>&ldquo;Not enough data&rdquo;</em> (this is why some banks and
-            REITs, whose accounts don&apos;t fit the standard template, show that).
+            <em>&ldquo;Not enough data&rdquo;</em>{' '}
+            (this is why some banks and REITs, whose accounts don&apos;t fit the
+            standard template, show that).
           </p>
 
           <SectionHeading>Valuation (35% pillar)</SectionHeading>
           <p className="mb-2.5">
-            Starts as <strong className="text-[var(--text-primary)]">cycle
-            position</strong> — how deep today&apos;s drawdown is versus the
-            stock&apos;s <em>typical</em> drawdown — shown as a zone:{' '}
+            Starts as{' '}
+            <strong className="text-[var(--text-primary)]">cycle position</strong>{' '}
+            — how deep today&apos;s drawdown is versus the stock&apos;s{' '}
+            <em>typical</em> drawdown — shown as a zone:{' '}
             <strong>Deep Value · Value · Fair · Stretched</strong>. The score that
             feeds the Overall Rating is then scaled by company quality, so a
             cheap-but-weak business can&apos;t score as a bargain:
@@ -151,7 +153,8 @@ Valuation score = raw cycle score × quality_factor`}</Formula>
           <SectionHeading>Cycle Payoff (0–100)</SectionHeading>
           <p className="mb-2.5">
             <strong className="text-[var(--text-primary)]">Not a measure of
-            current price trend.</strong> It blends two things equally: how many
+            current price trend.</strong>{' '}
+            It blends two things equally: how many
             historical dip-then-recover cycles we&apos;ve observed (more cycles =
             a more trustworthy pattern; around 10+ is reliable) and the
             reward-vs-risk of those cycles:

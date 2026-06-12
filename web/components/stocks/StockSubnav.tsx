@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Download } from 'lucide-react';
+import { ShieldCheck, Download } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { MethodologyModal } from '@/components/stocks/MethodologyModal';
@@ -105,7 +105,7 @@ export function StockSubnav() {
             className="inline-flex items-center gap-1.5 bg-white border border-[var(--border-strong)] text-[var(--text-secondary)] text-[11px] font-semibold px-3 py-1.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)] transition-all"
             title="How this stock is scored"
           >
-            <BookOpen className="w-[13px] h-[13px]" strokeWidth={1.8} />
+            <ShieldCheck className="w-[13px] h-[13px]" strokeWidth={1.8} />
             Methodology
           </button>
           <button
