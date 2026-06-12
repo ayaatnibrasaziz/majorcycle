@@ -21,6 +21,7 @@ import {
   timeToMs,
 } from '@/lib/chartSync';
 import type { PriceBar } from '@/lib/types';
+import { tickerDisplay } from '@/lib/ticker';
 
 type Range = '1y' | '3y' | 'max';
 
@@ -254,7 +255,7 @@ export function PriceChart({ priceBars, ticker }: Props) {
     <section className="card card--stack-snug">
       <div className="card-header">
         <div className="card-title">
-          Price Chart — {ticker}
+          Price Chart — {tickerDisplay(ticker)}
           <InfoTip title="Price Chart">
             Daily price drawn as candlesticks: each candle shows the open, high,
             low and close for a day. Green = the price rose that day, red = it fell.

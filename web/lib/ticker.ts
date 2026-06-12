@@ -17,6 +17,24 @@ export function tickerToUrlParts(stored: string): {
   return { market: 'us', symbol: stored };
 }
 
+/** Human exchange label for a market — US / ASX / TSX. */
+const MARKET_EXCHANGE: Record<Market, string> = { us: 'US', au: 'ASX', ca: 'TSX' };
+
+export function marketLabel(market: Market): string {
+  return MARKET_EXCHANGE[market];
+}
+
+/**
+ * Display a stored ticker as "SYMBOL · EXCHANGE" with NO `.AX`/`.TO` suffix —
+ * e.g. `BHP.AX` → "BHP · ASX", `SHOP.TO` → "SHOP · TSX", `AAPL` → "AAPL · US".
+ * Use this anywhere a ticker is shown to the user (titles, chart labels, legends)
+ * so the exchange is named consistently instead of the raw storage suffix.
+ */
+export function tickerDisplay(stored: string): string {
+  const { market, symbol } = tickerToUrlParts(stored);
+  return `${symbol} · ${MARKET_EXCHANGE[market]}`;
+}
+
 /** Convert URL path parts to a storage-format ticker. */
 export function urlPartsToTicker(market: Market, symbol: string): string {
   const upper = symbol.toUpperCase();

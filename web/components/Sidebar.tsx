@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarChart3, Compass, Play } from 'lucide-react';
@@ -68,24 +69,14 @@ export function Sidebar({ subscriptionStatus }: SidebarProps) {
     >
       {/* Logo */}
       <div className="flex items-center gap-[10px] px-[18px] h-[var(--header-h)] border-b border-[var(--border)] flex-shrink-0">
-        <div className="w-[34px] h-[34px] rounded-[8px] bg-gradient-to-br from-[var(--brand-mid)] to-[var(--brand-deep)] flex items-center justify-center flex-shrink-0 shadow-[0_2px_8px_rgba(30,92,179,.3)]">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M3 17l5-5 4 3 6-7"
-              stroke="white"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M16 8h4v4"
-              stroke="white"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
+        <Image
+          src="/logo.png"
+          alt="MajorCycle logo"
+          width={34}
+          height={34}
+          priority
+          className="w-[34px] h-[34px] rounded-[8px] flex-shrink-0 shadow-[0_2px_8px_rgba(30,92,179,.3)]"
+        />
         <div>
           <div className="text-[13px] font-bold text-[var(--brand-deep)] tracking-[-0.3px] leading-none">
             MajorCycle

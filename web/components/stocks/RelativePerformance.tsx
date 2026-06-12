@@ -16,6 +16,7 @@ import {
 
 import { BENCHMARKS, type BenchmarkSeries } from '@/lib/benchmarks';
 import type { Market, PriceBar } from '@/lib/types';
+import { tickerDisplay } from '@/lib/ticker';
 
 interface Props {
   ticker: string;
@@ -145,7 +146,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
   // Home-market index drives the summary strip (return / alpha).
   const homeMeta = BENCHMARKS.find((b) => b.market === market) ?? BENCHMARKS[0]!;
   const nameFor = (key: string) =>
-    key === 'stock' ? ticker : (BENCHMARKS.find((b) => b.ticker === key)?.label ?? key);
+    key === 'stock' ? tickerDisplay(ticker) : (BENCHMARKS.find((b) => b.ticker === key)?.label ?? key);
 
   if (priceBars.length < 2) return null;
 
@@ -249,7 +250,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                 />
                 <Area
                   dataKey="stock"
-                  name={ticker}
+                  name={tickerDisplay(ticker)}
                   type="monotone"
                   stroke={STOCK_COLOR}
                   strokeWidth={2}
