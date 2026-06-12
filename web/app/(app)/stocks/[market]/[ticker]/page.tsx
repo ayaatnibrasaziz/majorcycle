@@ -275,6 +275,7 @@ export default async function StockDetailPage({
         >
           <CycleScorecard ticker={stored} preset={preset} />
         </Suspense>
+        <section id="sec-cycle" className="scroll-mt-[120px] space-y-[18px]">
         {stock.priceBars.length > 0 && (
           <TechnicalLevels
             priceBars={stock.priceBars}
@@ -306,6 +307,7 @@ export default async function StockDetailPage({
             />
           </Suspense>
         )}
+        </section>
         <section id="sec-fundamentals" className="scroll-mt-[120px] space-y-[18px]">
           <EarningsHistory
             earningsHistory={stock.earningsHistory ?? []}

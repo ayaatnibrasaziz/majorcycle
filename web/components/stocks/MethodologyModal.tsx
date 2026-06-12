@@ -133,7 +133,7 @@ export function MethodologyModal({ open, onOpenChange }: MethodologyModalProps) 
             standard template, show that).
           </p>
 
-          <SectionHeading>Valuation (35% pillar)</SectionHeading>
+          <SectionHeading>Valuation (0–100)</SectionHeading>
           <p className="mb-2.5">
             Starts as{' '}
             <strong className="text-[var(--text-primary)]">cycle position</strong>{' '}
@@ -184,8 +184,8 @@ lower bound   = peak × (1 + worst_drawdown / 100)`}</Formula>
 
         {/* Footer */}
         <div className="border-t border-[var(--border)] bg-[var(--bg-stripe)] px-6 py-3 text-center text-[11px] tracking-[0.1px] text-[var(--text-muted)]">
-          Information only — not financial advice. Every weight and threshold is
-          shown above; nothing is computed off-screen.
+          Information only — not financial advice. Past performance does not
+          indicate future results; always do your own research.
         </div>
       </DialogContent>
     </Dialog>

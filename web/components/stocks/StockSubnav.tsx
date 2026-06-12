@@ -54,7 +54,10 @@ export function StockSubnav() {
     e.preventDefault();
     const el = document.getElementById(id);
     if (!el) return;
-    const headerOffset = 58 + 12;
+    // Clear the full sticky chrome: header (58) + this sticky subnav (~47) plus
+    // a little breathing room. Matches the sections' own scroll-mt-[120px], so
+    // the section heading lands just below the subnav instead of behind it.
+    const headerOffset = 120;
     const top = el.getBoundingClientRect().top + window.scrollY - headerOffset;
     window.scrollTo({ top, behavior: 'smooth' });
     setActive(id);
