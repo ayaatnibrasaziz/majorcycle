@@ -73,8 +73,9 @@ export function OnboardingModal({ userId }: OnboardingModalProps) {
                 profitability, balance sheet, growth, cashflow, and shareholder returns
               </li>
               <li>
-                <strong>Valuation Score</strong> — how stretched or compressed key
-                valuation multiples are relative to history
+                <strong>Valuation Score</strong> — how far today&apos;s price has
+                pulled back versus the stock&apos;s typical cycle, adjusted for the
+                company&apos;s financial strength
               </li>
               <li>
                 <strong>Overall Rating</strong> — a 0–100 composite of all three signals,

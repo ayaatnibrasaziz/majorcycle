@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { BookOpen, Download } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { MethodologyModal } from '@/components/stocks/MethodologyModal';
 
 const SECTIONS = [
   { id: 'sec-thesis', label: 'Thesis' },
@@ -22,6 +23,7 @@ type SectionId = (typeof SECTIONS)[number]['id'];
  */
 export function StockSubnav() {
   const [active, setActive] = useState<SectionId>(SECTIONS[0].id);
+  const [methodologyOpen, setMethodologyOpen] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -60,6 +62,7 @@ export function StockSubnav() {
   }
 
   return (
+    <>
     <div
       className="sticky top-[var(--header-h)] z-[50] -mx-6 px-6 border-b border-[var(--border)] bg-white/92 backdrop-blur-md"
       role="navigation"
@@ -98,10 +101,9 @@ export function StockSubnav() {
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             type="button"
+            onClick={() => setMethodologyOpen(true)}
             className="inline-flex items-center gap-1.5 bg-white border border-[var(--border-strong)] text-[var(--text-secondary)] text-[11px] font-semibold px-3 py-1.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)] transition-all"
-            disabled
-            aria-disabled="true"
-            title="Coming soon"
+            title="How this stock is scored"
           >
             <BookOpen className="w-[13px] h-[13px]" strokeWidth={1.8} />
             Methodology
@@ -119,5 +121,8 @@ export function StockSubnav() {
         </div>
       </div>
     </div>
+
+    <MethodologyModal open={methodologyOpen} onOpenChange={setMethodologyOpen} />
+    </>
   );
 }

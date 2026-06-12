@@ -487,7 +487,8 @@ Disclaimers are mandatory on any page showing a rating. Visual style:
 - **Inline (under rating):** 11px italic muted text, brief: *"Information only — not financial advice."*
 - **Footer (every page):** Full disclaimer block, 12px muted text, with link to `/disclaimer`.
 - **First-login modal:** Modal with full methodology + disclaimer summary, "I understand and acknowledge" checkbox required to proceed.
-- **Methodology page (`/methodology`):** Top banner restating compliance posture + ASIC/SEC-relevant disclaimers.
+- **Methodology modal (in-app):** The primary scoring explainer is a modal opened from the "Methodology" button in the Stock Detail subnav — visual parity with the reference methodology modal (`reference/original-design.html:794`), content corrected to the current engine, formula blocks included (it's behind sign-up). It carries its own footer disclaimer. See `web/components/stocks/MethodologyModal.tsx`.
+- **Methodology page (public, deferred):** A separate **high-level, no-formula** public page for first-time visitors (before sign-up) is a later Layer F item — distinct from the in-app modal; do not expose the full formula detail publicly.
 
 Wording must include: "Information only", "Not financial advice", "Past performance does not indicate future results", "Conduct your own research".
 
