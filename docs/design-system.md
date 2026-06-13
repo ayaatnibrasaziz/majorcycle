@@ -356,8 +356,21 @@ Use the shared helpers in `web/lib/format.ts` — **never** hand-roll `Intl`/`cu
 
 - **`fmtPrice(n, currency)`** — **uniform 2 dp for every price ≥ $1** (`$306.31`, `$120.00`, `$45.30`, `$1.50`); below $1 it adds decimals so a small price is never "$0" (`$0.135` · `$0.0135`). Used for **all per-share prices** — current quote, analyst targets, Verdict band levels, DMAs, 52W low/high. **One signature, no options.** *(This deliberately replaced an earlier magnitude-aware rule that used 0 dp ≥ $100 — it mixed precision within a group, e.g. a `$95.20` target next to a `$120` target. Uniform 2 dp is the finance-standard and never mixes. "Whole-dollar ≥ $1" was also rejected: it rounds low-priced stocks coarsely, e.g. a $4.30 DMA → "$4".)*
 - **`fmtPerShare(n, currency)`** — always 2 dp, currency-aware. For **EPS / DPS** (conventionally 2 dp regardless of size).
-- **Dollar aggregates** (market cap, balance-sheet/revenue totals, insider-transaction values) keep their **compact** `$T/$B/$M` formatter — not `fmtPrice`.
+- **`fmtCompact(value, currency?)`** — adaptive **K/M/B/T** for large **quantities** (market cap, balance-sheet/revenue totals, share counts). The mantissa is always ≥ 1, so a real small value **never collapses to "0.0M"/"0B"** (the bug: a small-cap's cash forced into billions → "$0B"). Pass `currency` for money; **omit it for counts** like shares. **Never** force a fixed unit (`/1e9 …'B'`) or pre-divide chart data by `1e9` — plot raw values and let the formatter drive the axis so the scale adapts to the company (M for small caps, B for large). Use this for **off-axis** spots (stat strips, tables, tooltips, Browse).
+- **`makeCompactAxisFormatter(axisMax, currency?)`** — the **chart-axis** variant: same unit + same decimals on EVERY tick (per-value `fmtCompact` would mix "70.0M" beside "140M" on one axis, which looks wrong). 0 dp when the axis ticks are whole, a uniform 1 dp only when fractional. `axisMax` = the largest |value| *currently plotted* (react to legend toggles; account for stacked series). dp is decided from a **nice-rounded** step (recharts nices the top tick, so a raw `dataMax/4` is unreliable).
 - **Never** hand-roll `Intl`/`currencySymbol`/hardcoded `$` in a component (that drifted into `C$` vs `CA$` and `$1.71` for AUD) — always use these helpers.
+
+### Ticker display (no raw storage suffix)
+
+Never show the raw `.AX`/`.TO` storage suffix to users. Helpers in `web/lib/ticker.ts`:
+- **`tickerDisplay(stored)`** → `"SYMBOL · EXCHANGE"` (`BHP.AX` → "BHP · ASX", `SHOP.TO` → "SHOP · TSX", `AAPL` → "AAPL · US"). Used for the **page `<title>`/metadata**.
+- **`tickerToUrlParts(stored).symbol`** → the **bare symbol** ("BHP"). Used for **chart labels** (Price Chart heading, Relative-Performance legend) — cleaner there, and the exchange is already shown in the header.
+- The **StockHeader** shows the bare symbol + a market **badge** (US / ASX / TSX) via `marketLabel(market)`.
+- Exchange map is locked: `{ us: 'US', au: 'ASX', ca: 'TSX' }`.
+
+### Brand logo
+
+The logo is `reference/logo.png` (navy rounded-square "M" mark) — see CLAUDE.md decision #27. Render in-app with **`next/image`** from `/logo.png` (never `<img>` — `@next/next/no-img-element` breaks the zero-warning gate). It appears in the Sidebar, the public/auth layout, and the OnboardingModal. The served copies are cropped tight to the icon so it fills its container (no transparent margin); the favicon is `web/app/icon.png` + `favicon.ico`.
 
 ### Range Buttons
 
@@ -487,7 +500,8 @@ Disclaimers are mandatory on any page showing a rating. Visual style:
 - **Inline (under rating):** 11px italic muted text, brief: *"Information only — not financial advice."*
 - **Footer (every page):** Full disclaimer block, 12px muted text, with link to `/disclaimer`.
 - **First-login modal:** Modal with full methodology + disclaimer summary, "I understand and acknowledge" checkbox required to proceed.
-- **Methodology page (`/methodology`):** Top banner restating compliance posture + ASIC/SEC-relevant disclaimers.
+- **Methodology modal (in-app):** The primary scoring explainer is a modal opened from the "Methodology" button in the Stock Detail subnav — visual parity with the reference methodology modal (`reference/original-design.html:794`), content corrected to the current engine, formula blocks included (it's behind sign-up). It carries its own footer disclaimer. See `web/components/stocks/MethodologyModal.tsx`.
+- **Methodology page (public, deferred):** A separate **high-level, no-formula** public page for first-time visitors (before sign-up) is a later Layer F item — distinct from the in-app modal; do not expose the full formula detail publicly.
 
 Wording must include: "Information only", "Not financial advice", "Past performance does not indicate future results", "Conduct your own research".
 

@@ -4,6 +4,7 @@ import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 
 import type { FundamentalsSnapshot, TopHolder } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
+import { fmtCompact } from '@/lib/format';
 
 interface Props {
   topHolders?: TopHolder[];
@@ -13,12 +14,6 @@ interface Props {
 function fmt(v: number | null | undefined, dec = 2): string {
   if (v == null) return '—';
   return v.toFixed(dec);
-}
-
-function fmtShares(v: number | null | undefined): string {
-  if (v == null) return '—';
-  const m = v / 1e6;
-  return `${m.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}M`;
 }
 
 const DONUT_COLORS = ['#1E5CB3', '#228B22', '#CBD5E1'];
@@ -145,7 +140,7 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
                     <tr>
                       <th>Holder</th>
                       <th className="num">% Out</th>
-                      <th className="num">Shares (M)</th>
+                      <th className="num">Shares</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -155,7 +150,7 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
                         <td className="num">
                           {h.pct_out != null ? `${(h.pct_out * 100).toFixed(2)}%` : '—'}
                         </td>
-                        <td className="num">{fmtShares(h.shares)}</td>
+                        <td className="num">{h.shares != null ? fmtCompact(h.shares) : '—'}</td>
                       </tr>
                     ))}
                   </tbody>

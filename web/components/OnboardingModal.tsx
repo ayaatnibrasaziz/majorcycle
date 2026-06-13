@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   Dialog,
@@ -40,12 +41,13 @@ export function OnboardingModal({ userId }: OnboardingModalProps) {
       <DialogContent hideClose className="max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-[8px] bg-gradient-to-br from-[var(--brand-mid)] to-[var(--brand-deep)] flex items-center justify-center flex-shrink-0 shadow-[0_2px_8px_rgba(30,92,179,.3)]">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M3 17l5-5 4 3 6-7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M16 8h4v4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
+            <Image
+              src="/logo.png"
+              alt="MajorCycle logo"
+              width={36}
+              height={36}
+              className="w-9 h-9 rounded-[8px] flex-shrink-0 shadow-[0_2px_8px_rgba(30,92,179,.3)]"
+            />
             <DialogTitle>Welcome to MajorCycle</DialogTitle>
           </div>
           <DialogDescription>
@@ -73,8 +75,9 @@ export function OnboardingModal({ userId }: OnboardingModalProps) {
                 profitability, balance sheet, growth, cashflow, and shareholder returns
               </li>
               <li>
-                <strong>Valuation Score</strong> — how stretched or compressed key
-                valuation multiples are relative to history
+                <strong>Valuation Score</strong> — how far today&apos;s price has
+                pulled back versus the stock&apos;s typical cycle, adjusted for the
+                company&apos;s financial strength
               </li>
               <li>
                 <strong>Overall Rating</strong> — a 0–100 composite of all three signals,

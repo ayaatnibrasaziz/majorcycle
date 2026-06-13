@@ -12,13 +12,15 @@ import {
   YAxis,
 } from 'recharts';
 
-import type { FinancialStatement } from '@/lib/types';
+import type { Currency, FinancialStatement } from '@/lib/types';
+import { fmtCompact, makeCompactAxisFormatter } from '@/lib/format';
 
 interface Props {
   incomeStatementQuarterly?: FinancialStatement;
   cashflowQuarterly?: FinancialStatement;
   incomeStatementAnnual?: FinancialStatement;
   cashflowAnnual?: FinancialStatement;
+  currency: Currency;
 }
 
 type Period = 'quarterly' | 'annual';
@@ -30,15 +32,6 @@ const MODE_LABELS: Record<Mode, string> = {
   op:  'Operating Income',
   fcf: 'Free Cash Flow',
 };
-
-function fmtB(v: number): string {
-  const abs = Math.abs(v);
-  const sign = v < 0 ? '-' : '';
-  if (abs >= 1e12) return `${sign}$${(abs / 1e12).toFixed(1)}T`;
-  if (abs >= 1e9)  return `${sign}$${(abs / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6)  return `${sign}$${(abs / 1e6).toFixed(1)}M`;
-  return `${sign}$${abs.toFixed(0)}`;
-}
 
 function toQtrLabel(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
@@ -77,6 +70,7 @@ export function QuarterlyFinancials({
   cashflowQuarterly,
   incomeStatementAnnual,
   cashflowAnnual,
+  currency,
 }: Props) {
   const [mode, setMode]     = useState<Mode>('rev');
   const [period, setPeriod] = useState<Period>('quarterly');
@@ -126,6 +120,9 @@ export function QuarterlyFinancials({
     isFirst: i === 0,
     isUp:    i > 0 && p.val >= shown[i - 1]!.val,
   }));
+
+  // Largest plotted magnitude → drives a uniform-decimal Y-axis (single series).
+  const axisMax = chartData.reduce((mx, d) => Math.max(mx, Math.abs(d.val)), 0);
 
   return (
     <div className="card card--stack-base">
@@ -188,7 +185,7 @@ export function QuarterlyFinancials({
                   fontSize: 10,
                   fontFamily: "'JetBrains Mono', monospace",
                 }}
-                tickFormatter={(v: number) => fmtB(v)}
+                tickFormatter={makeCompactAxisFormatter(axisMax, currency)}
                 axisLine={false}
                 tickLine={false}
                 width={56}
@@ -238,7 +235,7 @@ export function QuarterlyFinancials({
                         }}
                       >
                         {MODE_LABELS[mode]}:{' '}
-                        {row?.val != null ? fmtB(row.val) : '—'}
+                        {row?.val != null ? fmtCompact(row.val, currency) : '—'}
                       </div>
                       {pct !== null && (
                         <div

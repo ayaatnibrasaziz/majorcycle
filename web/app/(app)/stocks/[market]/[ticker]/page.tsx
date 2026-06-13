@@ -28,7 +28,7 @@ import { fetchBenchmarks } from '@/lib/benchmarks.server';
 import { fetchCycleAnalysis } from '@/lib/cycle';
 import { fetchMetricMedians } from '@/lib/medians.server';
 import { fetchStockDetail } from '@/lib/stocks';
-import { urlPartsToTicker } from '@/lib/ticker';
+import { urlPartsToTicker, tickerDisplay } from '@/lib/ticker';
 import type { FundamentalsSnapshot, Market, PriceBar } from '@/lib/types';
 
 type RouteParams = { market: string; ticker: string };
@@ -173,16 +173,19 @@ export async function generateMetadata({
   params: Promise<RouteParams>;
 }): Promise<Metadata> {
   const { market, ticker } = await params;
-  if (!isValidMarket(market)) return { title: 'Stock not found · MajorCycle' };
+  // Title is wrapped by the root template ("%s | MajorCycle"), so child titles
+  // must NOT repeat the brand.
+  if (!isValidMarket(market)) return { title: 'Stock not found' };
 
   const stored = urlPartsToTicker(market, ticker);
   const stock = await fetchStockDetail(stored);
-  if (!stock) return { title: 'Stock not found · MajorCycle' };
+  if (!stock) return { title: 'Stock not found' };
 
   const name = stock.name ?? stored;
+  const display = tickerDisplay(stored);
   return {
-    title: `${stored} — ${name} · MajorCycle`,
-    description: `Major Cycle analysis, financial health, and valuation positioning for ${name} (${stored}).`,
+    title: `${display} — ${name}`,
+    description: `Major Cycle analysis, financial health, and valuation positioning for ${name} (${display}).`,
   };
 }
 
@@ -275,6 +278,7 @@ export default async function StockDetailPage({
         >
           <CycleScorecard ticker={stored} preset={preset} />
         </Suspense>
+        <section id="sec-cycle" className="scroll-mt-[120px] space-y-[18px]">
         {stock.priceBars.length > 0 && (
           <TechnicalLevels
             priceBars={stock.priceBars}
@@ -306,6 +310,7 @@ export default async function StockDetailPage({
             />
           </Suspense>
         )}
+        </section>
         <section id="sec-fundamentals" className="scroll-mt-[120px] space-y-[18px]">
           <EarningsHistory
             earningsHistory={stock.earningsHistory ?? []}
@@ -316,6 +321,7 @@ export default async function StockDetailPage({
             cashflowQuarterly={stock.cashflowQuarterly}
             incomeStatementAnnual={stock.incomeStatementAnnual}
             cashflowAnnual={stock.cashflowAnnual}
+            currency={stock.fundamentals.currency}
           />
           <ValuationHistory
             peHistory={stock.peHistory ?? []}

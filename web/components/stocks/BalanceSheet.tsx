@@ -14,19 +14,11 @@ import {
 } from 'recharts';
 
 import type { FinancialStatement, FundamentalsSnapshot } from '@/lib/types';
+import { fmtCompact, makeCompactAxisFormatter } from '@/lib/format';
 
 interface Props {
   balanceSheetAnnual?: FinancialStatement;
   fundamentals: FundamentalsSnapshot;
-}
-
-function fmtB(v: number): string {
-  const abs = Math.abs(v);
-  const sign = v < 0 ? '-' : '';
-  if (abs >= 1e12) return `${sign}$${(abs / 1e12).toFixed(1)}T`;
-  if (abs >= 1e9)  return `${sign}$${(abs / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6)  return `${sign}$${(abs / 1e6).toFixed(1)}M`;
-  return `${sign}$${abs.toFixed(0)}`;
 }
 
 function stmtVals(stmt: FinancialStatement | undefined, key: string): (number | null)[] {
@@ -80,11 +72,13 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
       .slice(-5)
       .map((r) => {
         const cashVal = r.cashVal ?? 0;
+        // Plot raw currency values — the Y-axis adapts its unit to the company's
+        // scale (M for small caps, B for large) so a small-cap's axis isn't all "$0B".
         return {
           label: toYearLabel(r.label),
-          cash:  cashVal / 1e9,
-          other: Math.max(0, r.assets - cashVal) / 1e9,
-          debt:  r.debt !== null ? r.debt / 1e9 : null,
+          cash:  cashVal,
+          other: Math.max(0, r.assets - cashVal),
+          debt:  r.debt,
         };
       });
   }
@@ -94,6 +88,16 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
   const netCash   = totalCash !== null && totalDebt !== null ? totalCash - totalDebt : null;
   const isNetCash = netCash !== null ? netCash >= 0 : null;
   const { currentRatio, debtToEquity, interestCoverage } = fundamentals;
+  const currency = fundamentals.currency;
+
+  // Largest value currently drawn — cash + other STACK, debt is a separate line.
+  // Reacts to the legend toggles so the axis unit follows what's actually plotted
+  // (e.g. Cash-only rescales to millions instead of staying on the billions scale).
+  const axisMax = chartData.reduce((mx, r) => {
+    const stacked = (hidden.has('cash') ? 0 : r.cash) + (hidden.has('other') ? 0 : r.other);
+    const line = hidden.has('debt') || r.debt == null ? 0 : r.debt;
+    return Math.max(mx, stacked, line);
+  }, 0);
 
   return (
     <div className="card card--stack-base">
@@ -133,7 +137,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                     fontSize: 10,
                     fontFamily: "'JetBrains Mono', monospace",
                   }}
-                  tickFormatter={(v: number) => `$${v.toFixed(0)}B`}
+                  tickFormatter={makeCompactAxisFormatter(axisMax, currency)}
                   axisLine={false}
                   tickLine={false}
                   width={52}
@@ -170,7 +174,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                               fontSize: 11,
                             }}
                           >
-                            {p.name}: ${Number(p.value ?? 0).toFixed(1)}B
+                            {p.name}: {fmtCompact(Number(p.value ?? 0), currency)}
                           </div>
                         ))}
                       </div>
@@ -252,7 +256,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                       : '#D4A017',
               }}
             >
-              {netCash !== null ? fmtB(Math.abs(netCash)) : '—'}
+              {netCash !== null ? fmtCompact(Math.abs(netCash), currency) : '—'}
             </div>
           </div>
 
