@@ -356,7 +356,7 @@ Use the shared helpers in `web/lib/format.ts` — **never** hand-roll `Intl`/`cu
 
 - **`fmtPrice(n, currency)`** — **uniform 2 dp for every price ≥ $1** (`$306.31`, `$120.00`, `$45.30`, `$1.50`); below $1 it adds decimals so a small price is never "$0" (`$0.135` · `$0.0135`). Used for **all per-share prices** — current quote, analyst targets, Verdict band levels, DMAs, 52W low/high. **One signature, no options.** *(This deliberately replaced an earlier magnitude-aware rule that used 0 dp ≥ $100 — it mixed precision within a group, e.g. a `$95.20` target next to a `$120` target. Uniform 2 dp is the finance-standard and never mixes. "Whole-dollar ≥ $1" was also rejected: it rounds low-priced stocks coarsely, e.g. a $4.30 DMA → "$4".)*
 - **`fmtPerShare(n, currency)`** — always 2 dp, currency-aware. For **EPS / DPS** (conventionally 2 dp regardless of size).
-- **Dollar aggregates** (market cap, balance-sheet/revenue totals, insider-transaction values) keep their **compact** `$T/$B/$M` formatter — not `fmtPrice`.
+- **`fmtCompact(value, currency?)`** — adaptive **K/M/B/T** for large **quantities** (market cap, balance-sheet/revenue totals, share counts). The mantissa is always ≥ 1, so a real small value **never collapses to "0.0M"/"0B"** (the bug: a small-cap's cash forced into billions → "$0B"). Pass `currency` for money; **omit it for counts** like shares. **Never** force a fixed unit (`/1e9 …'B'`) or pre-divide chart data by `1e9` — plot raw values and let `fmtCompact` drive the axis/tooltip so the scale adapts to the company (M for small caps, B for large).
 - **Never** hand-roll `Intl`/`currencySymbol`/hardcoded `$` in a component (that drifted into `C$` vs `CA$` and `$1.71` for AUD) — always use these helpers.
 
 ### Range Buttons

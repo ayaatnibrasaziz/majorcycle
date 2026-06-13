@@ -321,6 +321,7 @@ export default async function StockDetailPage({
             cashflowQuarterly={stock.cashflowQuarterly}
             incomeStatementAnnual={stock.incomeStatementAnnual}
             cashflowAnnual={stock.cashflowAnnual}
+            currency={stock.fundamentals.currency}
           />
           <ValuationHistory
             peHistory={stock.peHistory ?? []}

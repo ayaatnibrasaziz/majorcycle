@@ -8,6 +8,7 @@ import { InfoTip } from '@/components/ui/InfoTip';
 import type { UniverseStock } from '@/lib/universe.server';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { Currency, Market } from '@/lib/types';
+import { fmtCompact } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 // Cap how many rows we paint at once. The list is market-cap-descending, so the
@@ -75,19 +76,9 @@ function persistHorizon(value: Horizon): void {
 }
 
 const MARKET_BADGE: Record<Market, string> = { us: 'US', au: 'ASX', ca: 'TSX' };
-const CURRENCY_SYMBOL: Record<Currency, string> = {
-  USD: '$',
-  AUD: 'A$',
-  CAD: 'CA$',
-};
-
 function formatMarketCap(value: number | null, currency: Currency): string {
   if (value == null || !Number.isFinite(value)) return '—';
-  const sym = CURRENCY_SYMBOL[currency] ?? '$';
-  if (value >= 1e12) return `${sym}${(value / 1e12).toFixed(2)}T`;
-  if (value >= 1e9) return `${sym}${(value / 1e9).toFixed(1)}B`;
-  if (value >= 1e6) return `${sym}${(value / 1e6).toFixed(0)}M`;
-  return `${sym}${value.toFixed(0)}`;
+  return fmtCompact(value, currency);
 }
 
 export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {

@@ -38,6 +38,31 @@ export function fmtPerShare(n: number, currency: Currency): string {
   }).format(n);
 }
 
+const CURRENCY_SYMBOL: Record<Currency, string> = { USD: '$', AUD: 'A$', CAD: 'CA$' };
+
+/**
+ * Adaptive compact number — picks K/M/B/T by magnitude so a real, non-zero value
+ * NEVER collapses to a meaningless "0.0M"/"0B" (which is what happens when a small
+ * company's figures are forced into a fixed billions/millions unit). Keeps ~3
+ * significant figures; the mantissa is always ≥ 1 for the chosen unit. Pass a
+ * `currency` for money (prefixes $/A$/CA$); omit it for plain counts like shares.
+ *
+ * e.g. 30_000_000 → "30.0M" · 800_000 → "800K" · 12_500 → "12.5K" · 250 → "250"
+ *      1.23e9 → "1.2B" · 2.5e12 → "2.5T"
+ */
+export function fmtCompact(value: number, currency?: Currency): string {
+  if (!Number.isFinite(value)) return '—';
+  const prefix = currency ? (CURRENCY_SYMBOL[currency] ?? '$') : '';
+  const sign = value < 0 ? '−' : '';
+  const abs = Math.abs(value);
+  const m = (n: number) => (n >= 100 ? n.toFixed(0) : n.toFixed(1)); // mantissa ∈ [1,1000)
+  if (abs >= 1e12) return `${sign}${prefix}${m(abs / 1e12)}T`;
+  if (abs >= 1e9) return `${sign}${prefix}${m(abs / 1e9)}B`;
+  if (abs >= 1e6) return `${sign}${prefix}${m(abs / 1e6)}M`;
+  if (abs >= 1e3) return `${sign}${prefix}${m(abs / 1e3)}K`;
+  return `${sign}${prefix}${abs.toFixed(0)}`;
+}
+
 /**
  * Format a number for display with a sanity cap (the S8/S9 display-only pattern).
  * Real yfinance values can be absurd from a near-zero denominator (ROE 8,457%,
