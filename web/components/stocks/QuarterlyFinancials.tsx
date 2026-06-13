@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 
 import type { Currency, FinancialStatement } from '@/lib/types';
-import { fmtCompact } from '@/lib/format';
+import { fmtCompact, makeCompactAxisFormatter } from '@/lib/format';
 
 interface Props {
   incomeStatementQuarterly?: FinancialStatement;
@@ -121,6 +121,9 @@ export function QuarterlyFinancials({
     isUp:    i > 0 && p.val >= shown[i - 1]!.val,
   }));
 
+  // Largest plotted magnitude → drives a uniform-decimal Y-axis (single series).
+  const axisMax = chartData.reduce((mx, d) => Math.max(mx, Math.abs(d.val)), 0);
+
   return (
     <div className="card card--stack-base">
       <div className="card-header">
@@ -182,7 +185,7 @@ export function QuarterlyFinancials({
                   fontSize: 10,
                   fontFamily: "'JetBrains Mono', monospace",
                 }}
-                tickFormatter={(v: number) => fmtCompact(v, currency)}
+                tickFormatter={makeCompactAxisFormatter(axisMax, currency)}
                 axisLine={false}
                 tickLine={false}
                 width={56}

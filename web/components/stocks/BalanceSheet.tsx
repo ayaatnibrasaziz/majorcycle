@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 
 import type { FinancialStatement, FundamentalsSnapshot } from '@/lib/types';
-import { fmtCompact } from '@/lib/format';
+import { fmtCompact, makeCompactAxisFormatter } from '@/lib/format';
 
 interface Props {
   balanceSheetAnnual?: FinancialStatement;
@@ -90,6 +90,15 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
   const { currentRatio, debtToEquity, interestCoverage } = fundamentals;
   const currency = fundamentals.currency;
 
+  // Largest value currently drawn — cash + other STACK, debt is a separate line.
+  // Reacts to the legend toggles so the axis unit follows what's actually plotted
+  // (e.g. Cash-only rescales to millions instead of staying on the billions scale).
+  const axisMax = chartData.reduce((mx, r) => {
+    const stacked = (hidden.has('cash') ? 0 : r.cash) + (hidden.has('other') ? 0 : r.other);
+    const line = hidden.has('debt') || r.debt == null ? 0 : r.debt;
+    return Math.max(mx, stacked, line);
+  }, 0);
+
   return (
     <div className="card card--stack-base">
       <div className="card-header">
@@ -128,7 +137,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                     fontSize: 10,
                     fontFamily: "'JetBrains Mono', monospace",
                   }}
-                  tickFormatter={(v: number) => fmtCompact(v, currency)}
+                  tickFormatter={makeCompactAxisFormatter(axisMax, currency)}
                   axisLine={false}
                   tickLine={false}
                   width={52}

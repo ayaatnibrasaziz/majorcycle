@@ -64,6 +64,49 @@ export function fmtCompact(value: number, currency?: Currency): string {
 }
 
 /**
+ * Build a recharts `tickFormatter` that shows T/B/M/K with the SAME unit and the
+ * SAME decimals on EVERY tick of an axis (so it never mixes "70.0M" with "140M").
+ * `axisMax` = the largest |value| currently plotted on the axis. Decimals are 0
+ * when the axis ticks are whole in the chosen unit, else a uniform 1 dp. Pass
+ * `currency` for money ($/A$/CA$); omit for counts. (Per-value `fmtCompact` stays
+ * the right choice OFF-axis — stat strips, tables, tooltips, Browse.)
+ */
+export function makeCompactAxisFormatter(
+  axisMax: number,
+  currency?: Currency,
+): (v: number) => string {
+  const prefix = currency ? (CURRENCY_SYMBOL[currency] ?? '$') : '';
+  const m = Math.abs(axisMax);
+  const [div, suffix] =
+    m >= 1e12 ? [1e12, 'T'] :
+    m >= 1e9  ? [1e9, 'B'] :
+    m >= 1e6  ? [1e6, 'M'] :
+    m >= 1e3  ? [1e3, 'K'] : [1, ''];
+  // recharts draws ~4 intervals across [0, max] and ROUNDS the step to a nice value
+  // (e.g. dataMax 271M → ticks every 70M). Decide a single dp for the whole axis from
+  // that nice step: 1 dp only when the step isn't whole in the chosen unit (e.g. 1.5B).
+  const niceStep = ceilNiceStep(m / 4);
+  const dp = niceStep > 0 && !Number.isInteger(niceStep / div) ? 1 : 0;
+  return (v: number) => {
+    if (!Number.isFinite(v)) return '—';
+    if (v === 0) return `${prefix}0`;
+    return `${v < 0 ? '−' : ''}${prefix}${(Math.abs(v) / div).toFixed(dp)}${suffix}`;
+  };
+}
+
+/** Round a rough axis step UP to a "nice" value (1, 1.5, 2, 2.5, 3, 4…×10ⁿ),
+ *  mirroring how recharts rounds its tick spacing. */
+function ceilNiceStep(x: number): number {
+  if (!(x > 0)) return 0;
+  const mag = Math.pow(10, Math.floor(Math.log10(x)));
+  const n = x / mag; // [1, 10)
+  const niceN =
+    n <= 1 ? 1 : n <= 1.5 ? 1.5 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 3 ? 3 :
+    n <= 4 ? 4 : n <= 5 ? 5 : n <= 6 ? 6 : n <= 7 ? 7 : n <= 8 ? 8 : n <= 9 ? 9 : 10;
+  return niceN * mag;
+}
+
+/**
  * Format a number for display with a sanity cap (the S8/S9 display-only pattern).
  * Real yfinance values can be absurd from a near-zero denominator (ROE 8,457%,
  * operating margin −546,607%). Beyond ±cap we render ">cap" / "<−cap" so a
