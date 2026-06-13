@@ -214,7 +214,7 @@ These were agreed during planning. Do not relitigate.
 | 24 | Compliance posture | Educational/informational only; disclaimers appropriate but not heavy |
 | 25 | Brand colours | Deep #1A3A6E / Mid #1E5CB3 / Bright #2E7DE8 |
 | 26 | Fonts | Sora (UI), JetBrains Mono (numbers/code) |
-| 27 | App name & logo | **MajorCycle** · domain `majorcycle.com` · logo TBD |
+| 27 | App name & logo | **MajorCycle** · domain `majorcycle.com` · logo = `reference/logo.png` (navy rounded-square "M" mark). Served as `web/public/logo.png` (in-app, via `next/image`) + favicon `web/app/icon.png` / `favicon.ico`. The asset copies are cropped tight to the icon; `reference/logo.png` is the pristine source — don't overwrite it. |
 | 28 | Mobile | Mobile-first responsive |
 | 29 | Phase 1 launch scope | All 14 Stock Detail sections from current HTML + 3 existing tabs + Methodology/Contact/Disclaimer/Terms + Auth |
 | 30 | Phase 2 | Smart Money Activity, watchlists, alerts, sector heatmaps, FMP migration |

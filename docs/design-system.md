@@ -360,6 +360,18 @@ Use the shared helpers in `web/lib/format.ts` — **never** hand-roll `Intl`/`cu
 - **`makeCompactAxisFormatter(axisMax, currency?)`** — the **chart-axis** variant: same unit + same decimals on EVERY tick (per-value `fmtCompact` would mix "70.0M" beside "140M" on one axis, which looks wrong). 0 dp when the axis ticks are whole, a uniform 1 dp only when fractional. `axisMax` = the largest |value| *currently plotted* (react to legend toggles; account for stacked series). dp is decided from a **nice-rounded** step (recharts nices the top tick, so a raw `dataMax/4` is unreliable).
 - **Never** hand-roll `Intl`/`currencySymbol`/hardcoded `$` in a component (that drifted into `C$` vs `CA$` and `$1.71` for AUD) — always use these helpers.
 
+### Ticker display (no raw storage suffix)
+
+Never show the raw `.AX`/`.TO` storage suffix to users. Helpers in `web/lib/ticker.ts`:
+- **`tickerDisplay(stored)`** → `"SYMBOL · EXCHANGE"` (`BHP.AX` → "BHP · ASX", `SHOP.TO` → "SHOP · TSX", `AAPL` → "AAPL · US"). Used for the **page `<title>`/metadata**.
+- **`tickerToUrlParts(stored).symbol`** → the **bare symbol** ("BHP"). Used for **chart labels** (Price Chart heading, Relative-Performance legend) — cleaner there, and the exchange is already shown in the header.
+- The **StockHeader** shows the bare symbol + a market **badge** (US / ASX / TSX) via `marketLabel(market)`.
+- Exchange map is locked: `{ us: 'US', au: 'ASX', ca: 'TSX' }`.
+
+### Brand logo
+
+The logo is `reference/logo.png` (navy rounded-square "M" mark) — see CLAUDE.md decision #27. Render in-app with **`next/image`** from `/logo.png` (never `<img>` — `@next/next/no-img-element` breaks the zero-warning gate). It appears in the Sidebar, the public/auth layout, and the OnboardingModal. The served copies are cropped tight to the icon so it fills its container (no transparent margin); the favicon is `web/app/icon.png` + `favicon.ico`.
+
 ### Range Buttons
 
 For chart timeframe selectors (1Y / 3Y / Max).
