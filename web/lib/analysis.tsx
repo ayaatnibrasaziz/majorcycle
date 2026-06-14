@@ -33,7 +33,11 @@ import type {
 
 // Each POST stays well under the function's per-request cap (60). Concurrency
 // keeps large baskets responsive without hammering the DB.
-export const CHUNK_SIZE = 40;
+// Smaller chunks → the progress bar (Processed / Scored / ETA) updates several
+// times during a multi-ticker run instead of jumping 0→100. Each chunk is a
+// fast warm function call on Vercel; per-ticker bar fetches are parallel and
+// results are cached server-side, so the extra requests are cheap.
+export const CHUNK_SIZE = 10;
 const POOL_SIZE = 3;
 const SNAPSHOT_KEY = 'mc:analysis-snapshot-v1';
 

@@ -36,6 +36,7 @@ import json
 import logging
 import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
@@ -50,6 +51,7 @@ if str(_WEB_ROOT) not in sys.path:
     sys.path.insert(0, str(_WEB_ROOT))
 
 import pandas as pd  # noqa: E402
+from postgrest.types import CountMethod  # noqa: E402
 from supabase import Client, create_client  # noqa: E402
 
 from _engine.major_cycle import CycleParams, analyze_ticker  # noqa: E402
@@ -62,6 +64,15 @@ logging.basicConfig(level=logging.INFO)
 # The client chunks the user's selection; this is a defensive per-request cap so
 # a single function invocation stays well within its time/memory budget.
 MAX_TICKERS_PER_REQUEST = 60
+
+# Warm-instance result cache. Price bars only change once a day (the cron), so a
+# computed per-ticker result is safe to reuse for a while. On Vercel Fluid Compute
+# the module stays loaded across invocations, so this makes re-runs ("Re-run",
+# overlapping baskets like Top 50 ⊂ Top 100) near-instant. Keyed by ticker + the
+# exact params. Bounded so it can't grow without limit.
+_RESULT_CACHE: dict[tuple[str, float, float, int], tuple[float, dict[str, Any]]] = {}
+_RESULT_TTL = 1800.0  # 30 minutes
+_RESULT_CACHE_MAX = 2000
 
 # Custom-param validation bounds — the canonical contract (data-contracts.md §7).
 _CUSTOM_BOUNDS = {
@@ -86,12 +97,24 @@ def _supabase() -> Client:
     return create_client(url, key)
 
 
-def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
-    """Read all price_bars for one ticker (paginated; PostgREST caps at 1000)."""
+def _load_price_bars(sb: Client, ticker: str, page_workers: int = 1) -> pd.DataFrame | None:
+    """Read all price_bars for one ticker (PostgREST caps each response at 1000).
+
+    ``page_workers > 1`` pulls the pages CONCURRENTLY — a long-history ticker
+    (AAPL ~11.5k bars) then arrives in ~2 round-trips instead of a dozen
+    sequential ones, the single biggest speedup for a one-ticker run.
+
+    IMPORTANT: page-level concurrency is only used when the *caller* is NOT also
+    running tickers in parallel. Nesting both (outer ticker pool × inner page
+    pool) floods the one shared httpx client with too many simultaneous requests
+    and triggers read errors. So run_analysis uses parallel pages for a single
+    ticker, and parallel-across-tickers with sequential pages otherwise — total
+    concurrency stays at the level web/api/cycle.py has proven safe (~8).
+    """
     PAGE = 1000
-    rows: list[Any] = []
-    start = 0
-    while True:
+
+    def _fetch_page(i: int) -> list[Any]:
+        start = i * PAGE
         resp = (
             sb.table("price_bars")
             .select("date,open,high,low,close,volume")
@@ -100,13 +123,49 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
             .range(start, start + PAGE - 1)
             .execute()
         )
-        page = cast("list[Any]", resp.data or [])
-        rows.extend(page)
-        if len(page) < PAGE:
-            break
-        start += PAGE
+        return cast("list[Any]", resp.data or [])
+
+    if page_workers <= 1:
+        # Sequential — used inside the across-ticker pool.
+        rows_seq: list[Any] = []
+        start = 0
+        while True:
+            page = _fetch_page(start // PAGE)
+            rows_seq.extend(page)
+            if len(page) < PAGE:
+                break
+            start += PAGE
+        if not rows_seq:
+            return None
+        return _bars_to_df(rows_seq)
+
+    first = (
+        sb.table("price_bars")
+        .select("date,open,high,low,close,volume", count=CountMethod.exact)
+        .eq("ticker", ticker)
+        .order("date")
+        .range(0, PAGE - 1)
+        .execute()
+    )
+    first_page: list[Any] = first.data or []
+    if not first_page:
+        return None
+    total = first.count or len(first_page)
+    n_pages = (total + PAGE - 1) // PAGE
+
+    rows: list[Any] = list(first_page)
+    if n_pages > 1:
+        # ThreadPoolExecutor.map preserves input order; each page is date-ordered,
+        # so the concatenation stays globally ordered by date.
+        with ThreadPoolExecutor(max_workers=min(n_pages - 1, page_workers)) as ex:
+            for page in ex.map(_fetch_page, range(1, n_pages)):
+                rows.extend(page)
     if not rows:
         return None
+    return _bars_to_df(rows)
+
+
+def _bars_to_df(rows: list[Any]) -> pd.DataFrame:
     df = pd.DataFrame(rows)
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date")
@@ -235,33 +294,66 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         return 400, {"error": err or "invalid parameters"}
 
     sb = _supabase()
+    cache_key = (params.pullback_threshold, params.profit_threshold, params.lookback_bars)
+    now = time.time()
+    # Parallelise pages only when there's a single ticker (no across-ticker pool
+    # to nest under) — otherwise page sequentially and rely on across-ticker
+    # concurrency, keeping total in-flight requests at cycle.py's safe level.
+    page_workers = 8 if len(tickers) == 1 else 1
 
     def _one(ticker: str) -> tuple[str, dict[str, Any] | None]:
-        """Analyse one ticker; return (ticker, result_dict | None)."""
-        try:
-            row, fundamentals = _load_fundamentals(sb, ticker)
-            if row is None:
-                return ticker, None  # not in universe
-            df = _load_price_bars(sb, ticker)
-            if df is None or df.empty:
-                return ticker, None
-            analysis = analyze_ticker(ticker, df, fundamentals, params)
-            if analysis is None:
-                return ticker, None  # insufficient history
-            return ticker, dataclasses.asdict(analysis)
-        except Exception:  # noqa: BLE001 — one bad ticker must not sink the batch
-            logger.exception("analyze failed for %s", ticker)
-            return ticker, None
+        """Analyse one ticker; return (ticker, result_dict | None).
+
+        Retries the Supabase reads a couple of times with backoff so a transient
+        cross-region timeout self-heals instead of silently dropping the ticker
+        into `unavailable`. A genuine "not in universe / insufficient history"
+        is a clean None and returns immediately (no wasted retries).
+        """
+        key = (ticker, *cache_key)
+        hit = _RESULT_CACHE.get(key)
+        if hit is not None and now - hit[0] < _RESULT_TTL:
+            return ticker, hit[1]
+        for attempt in range(3):
+            try:
+                row, fundamentals = _load_fundamentals(sb, ticker)
+                if row is None:
+                    return ticker, None  # not in universe
+                df = _load_price_bars(sb, ticker, page_workers)
+                if df is None or df.empty:
+                    return ticker, None
+                analysis = analyze_ticker(ticker, df, fundamentals, params)
+                if analysis is None:
+                    return ticker, None  # insufficient history
+                result = dataclasses.asdict(analysis)
+                _RESULT_CACHE[key] = (now, result)
+                return ticker, result
+            except Exception:  # noqa: BLE001 — one bad ticker must not sink the batch
+                if attempt == 2:
+                    logger.exception("analyze failed for %s after retries", ticker)
+                    return ticker, None
+                time.sleep(0.4 * (attempt + 1))
+        return ticker, None
 
     results: list[dict[str, Any]] = []
     unavailable: list[str] = []
-    max_workers = min(len(tickers), 8)
+    # Across-ticker concurrency. Kept deliberately modest: the client may also
+    # have a few chunk requests in flight at once, so total concurrent Supabase
+    # reads ≈ client_pool × max_workers. Too many cross-region requests overwhelm
+    # the connection and cause read timeouts (tickers then fall to `unavailable`).
+    # 4 here × the client's pool of 3 ≈ 12 in flight — safe on the free tier.
+    max_workers = min(len(tickers), 4)
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         for ticker, result in ex.map(_one, tickers):
             if result is None:
                 unavailable.append(ticker)
             else:
                 results.append(result)
+
+    # Bound the cache so it can't grow without limit on a long-lived instance.
+    if len(_RESULT_CACHE) > _RESULT_CACHE_MAX:
+        cutoff = now - _RESULT_TTL
+        for k in [k for k, (ts, _) in _RESULT_CACHE.items() if ts < cutoff]:
+            _RESULT_CACHE.pop(k, None)
 
     return 200, {
         "results": results,

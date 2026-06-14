@@ -106,6 +106,8 @@ flowchart TB
 
 **Why this works:** Heavy work happens only when a user actively requests it; chunking keeps each request small; ratings are always derived, never stored.
 
+**Performance.** Per-ticker cost is dominated by reading full daily history from Supabase (cross-region round-trips; the 1000-row PostgREST cap forces pagination). Mitigations in `analyze.py`: (a) a **single-ticker** request fetches its pages **concurrently** (≈2 round-trips instead of a dozen); (b) **multi-ticker** requests parallelise *across* tickers (pool 4) with sequential paging each — total in-flight reads stay ≈ client_pool(3) × 4, the level `cycle.py` has proven safe (nesting both page- and ticker-level pools floods the shared client and causes read timeouts); (c) a **warm-instance result cache** (keyed by ticker+params, 30-min TTL) makes re-runs and overlapping baskets near-instant; (d) **retries with backoff** on the Supabase reads so a transient timeout self-heals instead of dropping the ticker into `unavailable`. Cold heavy baskets are still inherently slow (one full-history download per stock) — a one-shot `json_agg` RPC to collapse each ticker's pagination into a single round-trip is the next lever (needs a migration; deferred).
+
 ---
 
 ## 3. Caching Layers (Critical — This Is How $0 Works)
