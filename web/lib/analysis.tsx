@@ -37,6 +37,14 @@ export const CHUNK_SIZE = 40;
 const POOL_SIZE = 3;
 const SNAPSHOT_KEY = 'mc:analysis-snapshot-v1';
 
+// Production: the Vercel Python serverless function at /api/analyze. Local dev:
+// `next dev` doesn't serve Vercel Python functions, so we POST to a dev-only
+// route handler that spawns the same analyze.py CLI (mirrors web/lib/cycle.ts).
+// NODE_ENV is inlined into the client bundle by Next; Vercel builds (incl.
+// preview) are NODE_ENV=production, so only local `next dev` uses the shim.
+const ANALYZE_ENDPOINT =
+  process.env.NODE_ENV === 'production' ? '/api/analyze' : '/api/analyze-dev';
+
 export interface RunProgress {
   done: number; // chunks completed
   total: number; // chunks total
@@ -90,7 +98,7 @@ async function postChunk(
         }
       : {}),
   };
-  const res = await fetch('/api/analyze', {
+  const res = await fetch(ANALYZE_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

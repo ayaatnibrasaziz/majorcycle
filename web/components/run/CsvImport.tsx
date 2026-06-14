@@ -3,6 +3,8 @@
 import { useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
 
+import { cn } from '@/lib/utils';
+
 // CSV import — demoted to a small secondary action (most beginners use baskets
 // or search). Validation logic is ported from the reference design's validateCSV:
 // detect a 'ticker' column (or treat as a single-column list), dedupe, and split
@@ -13,6 +15,12 @@ interface Preview {
   kind: 'ok' | 'warn' | 'error';
   lines: string[];
 }
+
+const PREVIEW_COLOR: Record<Preview['kind'], string> = {
+  ok: 'var(--c-tier-2)',
+  warn: 'var(--c-tier-3)',
+  error: 'var(--c-tier-5)',
+};
 
 export function CsvImport({
   knownTickers,
@@ -93,13 +101,6 @@ export function CsvImport({
     reader.readAsText(file);
   };
 
-  const previewColor =
-    preview?.kind === 'ok'
-      ? 'var(--c-tier-2)'
-      : preview?.kind === 'warn'
-        ? '#D4A017'
-        : 'var(--c-tier-5)';
-
   return (
     <div>
       <div
@@ -114,16 +115,18 @@ export function CsvImport({
           setDragging(false);
           handleFile(e.dataTransfer.files[0]);
         }}
-        className={`flex cursor-pointer items-center gap-2.5 rounded-[var(--radius-sm)] border border-dashed px-3 py-2.5 text-[12px] transition-colors ${
-          dragging
-            ? 'border-[var(--brand-bright)] bg-[var(--brand-light)]'
-            : 'border-[var(--border-strong)] bg-[var(--bg-stripe)] hover:border-[var(--brand-bright)]'
-        }`}
+        className={cn(
+          'upload-zone',
+          dragging && 'drag-over',
+          preview?.kind === 'ok' && 'upload-valid',
+          preview?.kind === 'warn' && 'upload-warn',
+          preview?.kind === 'error' && 'upload-error',
+        )}
       >
-        <Upload className="h-4 w-4 text-[var(--text-muted)]" />
-        <span className="text-[var(--text-secondary)]">
-          Import a CSV with a <span className="font-mono">ticker</span> column — drop here or
-          click to browse
+        <Upload className="h-4 w-4" />
+        <span>
+          Import a CSV with a <span className="font-[var(--font-mono)]">ticker</span> column —
+          drop here or click to browse
         </span>
       </div>
       <input
@@ -131,13 +134,16 @@ export function CsvImport({
         type="file"
         accept=".csv"
         className="hidden"
-        onChange={(e) => handleFile(e.target.files?.[0])}
+        // Reset the value AFTER capturing the file so picking the SAME file again
+        // (or re-opening the dialog) still fires onChange.
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          handleFile(file);
+        }}
       />
       {preview && (
-        <div
-          className="mt-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-stripe)] px-3 py-2 font-mono text-[11px] leading-relaxed"
-          style={{ color: previewColor }}
-        >
+        <div className="upload-preview" style={{ color: PREVIEW_COLOR[preview.kind] }}>
           {preview.lines.map((l, i) => (
             <div key={i}>{l}</div>
           ))}

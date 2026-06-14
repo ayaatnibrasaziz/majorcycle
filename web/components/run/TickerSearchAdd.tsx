@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 
 import type { Market } from '@/lib/types';
+import { tickerToUrlParts } from '@/lib/ticker';
 
 // "Search & add" — type a ticker or company name, pick from autocomplete to add
 // it to the selection. Backed by /api/search over the light universe index.
@@ -71,8 +72,8 @@ export function TickerSearchAdd({
 
   return (
     <div ref={boxRef} className="relative">
-      <div className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 focus-within:border-[var(--brand-bright)]">
-        <Search className="h-4 w-4 text-[var(--text-muted)]" />
+      <div className="run-search-wrap">
+        <Search className="h-[14px] w-[14px] flex-shrink-0 text-[var(--text-muted)]" strokeWidth={2} />
         <input
           type="text"
           value={query}
@@ -85,13 +86,14 @@ export function TickerSearchAdd({
             }
           }}
           onFocus={() => hits.length > 0 && setOpen(true)}
-          placeholder="Search by ticker or company name…"
-          className="w-full bg-transparent text-[13px] text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+          placeholder="Search ticker or company…"
+          aria-label="Search by ticker or company name"
+          className="run-search-input"
         />
       </div>
 
       {open && hits.length > 0 && (
-        <ul className="absolute z-20 mt-1 max-h-[260px] w-full overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]">
+        <ul className="run-search-menu">
           {hits.map((h) => {
             const already = selected.has(h.ticker);
             return (
@@ -100,11 +102,11 @@ export function TickerSearchAdd({
                   type="button"
                   disabled={already}
                   onClick={() => add(h.ticker)}
-                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left hover:bg-[var(--bg-stripe)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="run-search-opt"
                 >
-                  <span className="flex items-center gap-2">
-                    <span className="font-mono text-[12px] font-semibold text-[var(--text-primary)]">
-                      {h.ticker}
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="font-[var(--font-mono)] text-[12px] font-semibold text-[var(--text-primary)]">
+                      {tickerToUrlParts(h.ticker).symbol}
                     </span>
                     <span className="truncate text-[12px] text-[var(--text-secondary)]">
                       {h.name ?? '—'}

@@ -28,15 +28,17 @@ export function RunComplete({
 
   if (results.length === 0) {
     return (
-      <div className="card card-body mt-4 p-5 text-center">
-        <div className="text-[14px] font-bold text-[var(--text-primary)]">
-          No stocks could be analysed
+      <div className="card">
+        <div className="card-body text-center">
+          <div className="text-[14px] font-bold text-[var(--text-primary)]">
+            No stocks could be analysed
+          </div>
+          <p className="mt-1 text-[12px] text-[var(--text-secondary)]">
+            {unavailableCount > 0
+              ? `All ${unavailableCount} selected ticker${unavailableCount === 1 ? '' : 's'} were unavailable or outside our coverage.`
+              : 'Try selecting some stocks and running again.'}
+          </p>
         </div>
-        <p className="mt-1 text-[12px] text-[var(--text-secondary)]">
-          {unavailableCount > 0
-            ? `All ${unavailableCount} selected ticker${unavailableCount === 1 ? '' : 's'} were unavailable or outside our coverage.`
-            : 'Try selecting some stocks and running again.'}
-        </p>
       </div>
     );
   }
@@ -47,33 +49,29 @@ export function RunComplete({
   ).length;
 
   return (
-    <div className="card mt-4 overflow-hidden">
-      <div className="border-b border-[var(--border)] bg-[var(--bg-stripe)] px-5 py-2.5">
-        <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-[var(--c-tier-2)]">
-          <CheckCircle2 className="h-4 w-4" /> Analysis Complete
-        </span>
-      </div>
-      <div className="p-5">
-        <p className="text-[14px] text-[var(--text-primary)]">
-          Top pick:{' '}
-          <span className="font-mono font-bold">{tickerToUrlParts(topPick.ticker).symbol}</span>{' '}
-          with a rating of <span className="font-mono font-bold">{topPick.overallRating}/100</span>{' '}
+    <div className="card">
+      <div className="card-body">
+        <div className="mb-3">
+          <span className="rc-badge">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Analysis Complete
+          </span>
+        </div>
+
+        <p className="rc-headline mb-4">
+          Top pick: <span className="rc-mono">{tickerToUrlParts(topPick.ticker).symbol}</span> with a
+          rating of <span className="rc-mono">{topPick.overallRating}/100</span>{' '}
           <span className="text-[12px] font-semibold text-[var(--text-muted)]">
             ({topPick.overallLabel})
           </span>
         </p>
 
-        <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="rc-stat-row mb-4">
           <Stat label="Stocks Scored" value={String(results.length)} />
           <Stat label="Constructive or Better" value={`${positive} / ${results.length}`} />
           <Stat label="Runtime" value={fmtSecs(runtimeMs)} />
         </div>
 
-        <button
-          type="button"
-          onClick={() => router.push('/results')}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] bg-[var(--brand-mid)] px-4 py-2 text-[13px] font-semibold text-white hover:bg-[var(--brand-bright)]"
-        >
+        <button type="button" onClick={() => router.push('/results')} className="btn-run">
           View Full Results <ArrowRight className="h-4 w-4" />
         </button>
       </div>
@@ -83,13 +81,9 @@ export function RunComplete({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5">
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-        {label}
-      </div>
-      <div className="mt-0.5 font-mono text-[16px] font-bold text-[var(--text-primary)]">
-        {value}
-      </div>
+    <div className="rc-stat">
+      <div className="rc-stat-label">{label}</div>
+      <div className="rc-stat-val">{value}</div>
     </div>
   );
 }

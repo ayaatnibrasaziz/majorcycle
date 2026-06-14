@@ -8,7 +8,6 @@ import { useAnalysis } from '@/lib/analysis';
 import { PRESETS } from '@/lib/presets';
 import type { AnalyzeRequest } from '@/lib/types';
 import type { UniverseStock } from '@/lib/universe.server';
-import { cn } from '@/lib/utils';
 
 import { BasketPicker } from './BasketPicker';
 import { CsvImport } from './CsvImport';
@@ -128,14 +127,11 @@ export function RunAnalysis({ universe }: { universe: UniverseStock[] }) {
       : 0;
 
   return (
-    <div className="max-w-[920px]">
-      <div className="mb-4">
-        <h1 className="text-[18px] font-bold text-[var(--text-primary)]">Run Analysis</h1>
-        <p className="mt-0.5 text-[13px] text-[var(--text-secondary)]">
-          Screen a list of stocks through the Major Cycle and health scoring, then rank
-          them. Pick a ready-made basket or build your own list.
-        </p>
-      </div>
+    <div className="max-w-[860px]">
+      <p className="mb-4 max-w-2xl text-[12px] leading-relaxed text-[var(--text-muted)]">
+        Screen a basket or your own list through the Major Cycle + health scoring, then
+        rank them. Pick a ready-made basket, search and add, or import a CSV.
+      </p>
 
       {showLastRun && lastRun && (
         <LastAnalysisCard
@@ -146,28 +142,22 @@ export function RunAnalysis({ universe }: { universe: UniverseStock[] }) {
         />
       )}
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3.5">
         <Section title="Choose what to analyse">
           <div className="space-y-4">
             <div>
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                Quick baskets
-              </div>
+              <div className="run-sublabel">Quick baskets</div>
               <BasketPicker universe={universe} onAdd={addTickers} />
             </div>
             <div>
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                Search &amp; add
-              </div>
+              <div className="run-sublabel">Search &amp; add</div>
               <TickerSearchAdd selected={selectedSet} onAdd={(t) => addTickers([t])} />
             </div>
             <div>
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-                Import CSV
-              </div>
+              <div className="run-sublabel">Import CSV</div>
               <CsvImport knownTickers={knownTickers} onAdd={addTickers} />
             </div>
-            <div className="border-t border-[var(--border)] pt-4">
+            <div className="border-t border-[var(--border)] pt-3.5">
               <SelectedTickers
                 tickers={selected}
                 onRemove={removeTicker}
@@ -191,12 +181,7 @@ export function RunAnalysis({ universe }: { universe: UniverseStock[] }) {
             type="button"
             disabled={!canRun}
             onClick={() => startRun(buildRequest())}
-            className={cn(
-              'flex w-full items-center justify-center gap-2 rounded-[var(--radius)] px-4 py-3 text-[14px] font-semibold text-white transition-colors',
-              canRun
-                ? 'bg-[var(--brand-mid)] hover:bg-[var(--brand-bright)]'
-                : 'cursor-not-allowed bg-[var(--border-strong)]',
-            )}
+            className="btn-run"
           >
             <Play className="h-4 w-4" />
             {selected.length > 0 ? `Run Analysis · ${selected.length}` : 'Run Analysis'}

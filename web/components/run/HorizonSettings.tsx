@@ -21,9 +21,9 @@ export interface HorizonValue {
 }
 
 const PRESET_CARDS: { value: PresetChoice; name: string; horizon: string }[] = [
-  { value: 'short', name: 'Short-Term', horizon: '≈ 3 months' },
-  { value: 'medium', name: 'Medium-Term', horizon: '≈ 1 year' },
-  { value: 'long', name: 'Long-Term', horizon: '≈ 3 years' },
+  { value: 'short', name: 'Short-Term', horizon: '~3 Months' },
+  { value: 'medium', name: 'Medium-Term', horizon: '~1 Year' },
+  { value: 'long', name: 'Long-Term', horizon: '~3 Years' },
   { value: 'custom', name: 'Custom', horizon: 'Manual' },
 ];
 
@@ -82,41 +82,32 @@ export function HorizonSettings({
 
   return (
     <div>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="flex gap-2">
         {PRESET_CARDS.map((c) => (
           <button
             key={c.value}
             type="button"
             onClick={() => selectPreset(c.value)}
             aria-pressed={value.preset === c.value}
-            className={cn(
-              'rounded-[var(--radius-sm)] border px-3 py-2.5 text-left transition-colors',
-              value.preset === c.value
-                ? 'border-[var(--brand-bright)] bg-[var(--brand-light)]'
-                : 'border-[var(--border)] bg-[var(--bg-surface)] hover:border-[var(--brand-bright)]',
-            )}
+            className="preset-btn"
           >
-            <div className="text-[12px] font-bold text-[var(--text-primary)]">{c.name}</div>
-            <div className="font-mono text-[10px] text-[var(--text-muted)]">{c.horizon}</div>
+            <div className="preset-btn-name">{c.name}</div>
+            <div className="preset-btn-horizon">{c.horizon}</div>
           </button>
         ))}
       </div>
 
-      <p className="mt-2 text-[12px] leading-relaxed text-[var(--text-secondary)]">
+      <p className="mt-2.5 text-[12px] leading-relaxed text-[var(--text-secondary)]">
         {PRESET_DESC[value.preset]}
       </p>
 
-      <button
-        type="button"
-        onClick={() => setAdvOpen((o) => !o)}
-        className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--brand-mid)]"
-      >
-        <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', advOpen && 'rotate-90')} />
+      <button type="button" onClick={() => setAdvOpen((o) => !o)} className="adv-toggle mt-1">
+        <ChevronRight className={cn('adv-caret h-3.5 w-3.5', advOpen && 'open')} />
         Advanced parameters
       </button>
 
       {advOpen && (
-        <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="mt-1 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field
             label="Pullback Threshold %"
             tip="How deep a dip must be to count as a real pullback event in the cycle. More negative = only larger dips count."
@@ -161,10 +152,8 @@ function Field({
 }) {
   return (
     <div>
-      <div className="mb-1 flex items-center gap-1">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-          {label}
-        </span>
+      <div className="set-field-label">
+        {label}
         <InfoTip title={label}>{tip}</InfoTip>
       </div>
       <input
@@ -175,7 +164,7 @@ function Field({
           const n = Number(e.target.value);
           if (!Number.isNaN(n)) onChange(n);
         }}
-        className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-1.5 font-mono text-[13px] text-[var(--text-primary)] outline-none focus:border-[var(--brand-bright)]"
+        className="set-field-input"
       />
     </div>
   );

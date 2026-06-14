@@ -536,8 +536,13 @@ tab only**, keeping all brand tokens/typography, and reframes it as a single
 - **Run complete / Last Analysis** — `RunComplete` (top pick + "Constructive or
   better" count, computed client-side) and `LastAnalysisCard` (Re-run).
 
-Styling uses Tailwind + CSS-var tokens and the existing `.card*` chrome (same
-approach as `StockBrowser.tsx`) — no new global classes.
+Styling **ports the reference run-tab classes into `globals.css`** (mapped to the
+live tier/brand tokens: `.preset-btn`, `.set-field-*`, `.adv-toggle`, `.btn-run`,
+`.lastrun-*`, `.rc-*`, `.progress-bar-*`, `.upload-zone`, `.basket-chip`,
+`.tk-chip`, `.run-search-*`) so the page matches the reference's compact look and
+blends with Browse + Stock Detail (JetBrains-mono numerals, brand-gradient
+accents). The in-page `<h1>` is omitted — the app `Header` already renders the
+page title.
 
 ---
 

@@ -30,35 +30,24 @@ export function LastAnalysisCard({
   onRerun: () => void;
 }) {
   return (
-    <div className="card mb-4 flex items-center gap-4 p-4">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--brand-light)] text-[var(--brand-mid)]">
-        <RotateCcw className="h-4 w-4" />
-      </div>
+    <div className="lastrun-card mb-4">
+      <span className="lastrun-icon">
+        <RotateCcw className="h-5 w-5" />
+      </span>
       <div className="min-w-0 flex-1">
-        <div className="text-[12px] font-bold uppercase tracking-wide text-[var(--text-muted)]">
-          Last Analysis
-        </div>
-        <div className="text-[13px] text-[var(--text-secondary)]">
-          <b className="text-[var(--text-primary)]">{lastRun.tickerCount}</b> ticker
-          {lastRun.tickerCount === 1 ? '' : 's'} · {lastRun.preset} horizon ·{' '}
-          <b className="text-[var(--text-primary)]">{relTime(lastRun.startedAt)}</b>
+        <div className="lastrun-title">Last Analysis</div>
+        <div className="lastrun-stats">
+          <b>{lastRun.tickerCount}</b> ticker{lastRun.tickerCount === 1 ? '' : 's'} ·{' '}
+          {lastRun.preset} horizon · <b>{relTime(lastRun.startedAt)}</b>
         </div>
       </div>
-      <div className="flex shrink-0 gap-2">
+      <div className="flex shrink-0 gap-1.5">
         {canView && (
-          <button
-            type="button"
-            onClick={onView}
-            className="rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--bg-surface)] px-3 py-1.5 text-[12px] font-semibold text-[var(--text-secondary)] hover:border-[var(--brand-bright)]"
-          >
+          <button type="button" onClick={onView} className="lastrun-btn">
             View
           </button>
         )}
-        <button
-          type="button"
-          onClick={onRerun}
-          className="rounded-[var(--radius-sm)] bg-[var(--brand-mid)] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[var(--brand-bright)]"
-        >
+        <button type="button" onClick={onRerun} className="lastrun-btn primary">
           Re-run
         </button>
       </div>
