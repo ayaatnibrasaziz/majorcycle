@@ -74,6 +74,14 @@ _RESULT_CACHE: dict[tuple[str, float, float, int], tuple[float, dict[str, Any]]]
 _RESULT_TTL = 1800.0  # 30 minutes
 _RESULT_CACHE_MAX = 2000
 
+# Whether the get_price_bars_json RPC (one-shot history fetch) exists in this DB.
+# None = not yet probed; False = confirmed missing (use pagination, don't keep
+# retrying); True = present. Lets the code run BEFORE the migration is applied
+# (it falls back to paginated reads) and switch to the fast path automatically
+# once the migration lands and the instance is recycled.
+_RPC_AVAILABLE: bool | None = None
+_RPC_NAME = "get_price_bars_json"
+
 # Custom-param validation bounds — the canonical contract (data-contracts.md §7).
 _CUSTOM_BOUNDS = {
     "pullback_threshold": (-30.0, -1.0),
@@ -111,6 +119,25 @@ def _load_price_bars(sb: Client, ticker: str, page_workers: int = 1) -> pd.DataF
     ticker, and parallel-across-tickers with sequential pages otherwise — total
     concurrency stays at the level web/api/cycle.py has proven safe (~8).
     """
+    # Fast path: one round-trip via the get_price_bars_json RPC (no 1000-row cap).
+    # Falls through to paginated reads if the function isn't deployed yet (so this
+    # code is safe to ship before the migration is applied) or on a transient error.
+    global _RPC_AVAILABLE
+    if _RPC_AVAILABLE is not False:
+        try:
+            resp = sb.rpc(_RPC_NAME, {"p_ticker": ticker}).execute()
+            _RPC_AVAILABLE = True
+            data = cast("list[Any] | None", resp.data)
+            return _bars_to_df(data) if data else None
+        except Exception as e:  # noqa: BLE001
+            msg = str(e).lower()
+            if _RPC_AVAILABLE is None and any(
+                s in msg for s in ("pgrst202", "could not find", "does not exist", "not found", "404")
+            ):
+                _RPC_AVAILABLE = False
+                logger.warning("%s RPC not deployed — using paginated reads", _RPC_NAME)
+            # else: treat as transient, fall through to pagination for this call only
+
     PAGE = 1000
 
     def _fetch_page(i: int) -> list[Any]:
@@ -178,6 +205,11 @@ def _bars_to_df(rows: list[Any]) -> pd.DataFrame:
             "volume": "Volume",
         }
     )
+    # Coerce OHLCV to numeric so the RPC path (jsonb numbers) and the paginated
+    # path (PostgREST) yield an identical DataFrame regardless of any string/number
+    # serialisation differences — the cycle math must get floats.
+    for col in ("Open", "High", "Low", "Close", "Volume"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
 
