@@ -1,0 +1,89 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
+
+import type { CycleAnalysis } from '@/lib/types';
+import { tickerToUrlParts } from '@/lib/ticker';
+
+// Post-run summary. Top pick + "Constructive or better" count are computed here
+// from the live results (client-side) — they are rating outputs and are never
+// read from the DB (CLAUDE.md #15). "View Full Results" hands off to /results,
+// where Layer E renders the ranked table from the same in-memory results.
+
+function fmtSecs(ms: number): string {
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
+export function RunComplete({
+  results,
+  unavailableCount,
+  runtimeMs,
+}: {
+  results: CycleAnalysis[];
+  unavailableCount: number;
+  runtimeMs: number;
+}) {
+  const router = useRouter();
+
+  if (results.length === 0) {
+    return (
+      <div className="card">
+        <div className="card-body text-center">
+          <div className="text-[14px] font-bold text-[var(--text-primary)]">
+            No stocks could be analysed
+          </div>
+          <p className="mt-1 text-[12px] text-[var(--text-secondary)]">
+            {unavailableCount > 0
+              ? `All ${unavailableCount} selected ticker${unavailableCount === 1 ? '' : 's'} were unavailable or outside our coverage.`
+              : 'Try selecting some stocks and running again.'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const topPick = results.reduce((best, r) => (r.overallRating > best.overallRating ? r : best));
+  const positive = results.filter(
+    (r) => r.overallLabel === 'High Conviction' || r.overallLabel === 'Constructive',
+  ).length;
+
+  return (
+    <div className="card">
+      <div className="card-body">
+        <div className="mb-3">
+          <span className="rc-badge">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Analysis Complete
+          </span>
+        </div>
+
+        <p className="rc-headline mb-4">
+          Top pick: <span className="rc-mono">{tickerToUrlParts(topPick.ticker).symbol}</span> with a
+          rating of <span className="rc-mono">{topPick.overallRating}/100</span>{' '}
+          <span className="text-[12px] font-semibold text-[var(--text-muted)]">
+            ({topPick.overallLabel})
+          </span>
+        </p>
+
+        <div className="rc-stat-row mb-4">
+          <Stat label="Stocks Scored" value={String(results.length)} />
+          <Stat label="Constructive or Better" value={`${positive} / ${results.length}`} />
+          <Stat label="Runtime" value={fmtSecs(runtimeMs)} />
+        </div>
+
+        <button type="button" onClick={() => router.push('/results')} className="btn-run">
+          View Full Results <ArrowRight className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rc-stat">
+      <div className="rc-stat-label">{label}</div>
+      <div className="rc-stat-val">{value}</div>
+    </div>
+  );
+}

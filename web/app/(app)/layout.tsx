@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { OnboardingModal } from '@/components/OnboardingModal';
+import { AnalysisProvider } from '@/lib/analysis';
 
 export default async function AppLayout({
   children,
@@ -24,7 +25,7 @@ export default async function AppLayout({
             ⚠ For educational and research purposes only. Not financial advice.
             Always conduct independent due diligence.
           </div>
-          {children}
+          <AnalysisProvider>{children}</AnalysisProvider>
         </main>
       </div>
     );
@@ -60,7 +61,7 @@ export default async function AppLayout({
           ⚠ For educational and research purposes only. Not financial advice.
           Always conduct independent due diligence.
         </div>
-        {children}
+        <AnalysisProvider>{children}</AnalysisProvider>
       </main>
       {needsOnboarding && <OnboardingModal userId={user.id} />}
     </div>

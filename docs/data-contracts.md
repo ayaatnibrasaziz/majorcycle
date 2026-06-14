@@ -549,35 +549,67 @@ interface CycleQuery {
 
 ### `POST /api/analyze`
 
+**Stateless by design (Layer D).** The Run tab chunks the user's selection
+client-side (≤ 60 tickers/request) and POSTs each chunk; the function never
+writes to the DB and returns **no `runId`**. The client accumulates the chunks,
+holds live results in client state (+ `sessionStorage` for the Layer E Results
+handoff), and writes **one** `analysis_runs` history row itself — **inputs only**,
+never the computed results (CLAUDE.md #15 / §11). Reads price bars + fundamentals
+from Supabase and runs the math via the vendored `_engine`; never calls yfinance.
+Auth is enforced by `proxy.ts` (this path is not in `PUBLIC_PATHS`).
+
 **Request:**
 ```typescript
 interface AnalyzeRequest {
   tickers: string[];                       // ['AAPL', 'MSFT', ...] in yfinance format
   preset: 'short' | 'medium' | 'long' | 'custom';
-  pullbackThreshold?: number;              // required if preset === 'custom'
+  pullbackThreshold?: number;              // required if preset === 'custom' (bounds: §7)
   profitThreshold?: number;                // required if preset === 'custom'
   lookbackBars?: number;                   // required if preset === 'custom'
 }
 ```
 
-**Response (200):**
+**Response (200):** `results` arrive snake_case (the Python dataclass field
+names); the client converts via `web/lib/case.ts`.
 ```typescript
 interface AnalyzeResponse {
-  results: CycleAnalysis[];
-  unavailable: string[];                   // tickers that couldn't be analysed
-  runId: string;                           // UUID of stored analysis_run
+  results: CycleAnalysis[];                // one per analysable ticker
+  unavailable: string[];                   // not in universe / insufficient history / failed
   startedAt: string;
   finishedAt: string;
 }
 ```
 
+**The `analysis_runs` history row (client-written, inputs only):**
+```typescript
+interface AnalysisRunRecord {
+  id: string;
+  preset: 'short' | 'medium' | 'long' | 'custom';
+  pullbackThreshold: number;
+  profitThreshold: number;
+  lookbackBars: number;
+  tickers: string[];
+  tickerCount: number;
+  startedAt: string;
+  finishedAt: string | null;
+  status: 'running' | 'complete' | 'partial' | 'error';
+  // NOTE: the table's `results jsonb` column is written NULL — ratings are never
+  // stored (migration `analysis_runs_results_nullable` relaxes its NOT NULL).
+}
+```
+
 **Errors:**
-- `400` — invalid params (missing custom values, etc.)
-- `401` — not logged in
-- `402` — subscription expired
+- `400` — invalid params (empty tickers, bad preset, custom out of §7 bounds, > 60/request)
+- `401` — not logged in (enforced by `proxy.ts`)
+- `402` — subscription expired *(Layer F)*
 - `500` — internal — return `{ error: string }`
 
-### `POST /api/fetch-ticker`
+### `POST /api/fetch-ticker` *(deferred — Layer D fast-follow)*
+
+Live universe expansion for unknown tickers. **Not built in the initial Layer D
+PR** (owner-approved): until it ships, unknown tickers returned by `/api/analyze`
+land in `unavailable[]`. Building it adds yfinance to the web function bundle +
+vendors `yfinance_provider` — done as a separate, carefully-verified PR.
 
 **Request:** `{ ticker: string }`
 
@@ -721,7 +753,7 @@ Webhook events handled:
 
 ## 11. Disallowed Patterns
 
-- ❌ Storing computed scores (`overall_rating`, `valuation_zone`) in the DB — they're always derived
+- ❌ Storing computed scores (`overall_rating`, `valuation_zone`) in the DB — they're always derived. This includes `analysis_runs`: it persists run **inputs only** (preset, params, tickers, counts, timestamps, status); its `results` column is written `NULL`. The Run Analysis results live in client state and are re-derived on "Re-run".
 - ❌ Bypassing the `DataProvider` interface — never call `yfinance` directly anywhere except inside `yfinance_provider.py`
 - ❌ Adding fields to `FundamentalsSnapshot` or `EnrichedData` without updating BOTH the Python dataclass AND the TS type in the same commit
 - ❌ Storing camelCase keys in Supabase — always snake_case at the DB boundary

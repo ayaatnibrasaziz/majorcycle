@@ -177,24 +177,31 @@ After the components were built, Layer C was reframed into a per-section product
 
 ### Layer D: Run Analysis Tab (target: 1 week)
 
-Goal: Users can upload tickers (or pick from universe), run analysis with presets/custom, get scored results.
+Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis with presets/custom, get scored results.
 
-- [ ] **Preset selector** — Short / Medium / Long / Custom segmented control
-  - [x] **Horizon selector on the Browse page (`/stocks`), NOT the detail page** — the user picks a Major Cycle horizon **before** opening a stock; the choice is carried into the opened stock via a `?preset=` query param, and the Stock Detail page honours it (default **Medium**). **No selector/option on the Stock Detail page itself** (explicit owner decision — they did not want it there). Short / Medium / Long shipped in S4-follow-up (cycle path already supports those three); **Custom deferred to Layer D** (needs the custom-params panel + `/api/cycle` accepting explicit pullback/profit/lookback). Beginner-framed label + tooltip. The cycle cache is already keyed per ticker **and** preset, so each horizon caches independently. *(Decision + initial Short/Medium/Long build with owner, 2026-06-04.)*
-- [ ] **Custom params panel** — three inputs with validation
-- [ ] **Ticker upload zone** — drag-drop + click-to-upload CSV
-- [ ] **Manual ticker entry** — paste/type tickers, autocomplete via `/api/search`
-- [ ] **Run button** — calls `/api/analyze`, shows progress
-- [ ] **Loading state** — skeleton results table during processing
-- [ ] **Universe expansion handler** — new tickers get fetched via `/api/fetch-ticker`
-- [ ] **Last Analysis card** — shows previous run, "Re-run" button
-- [ ] **Error handling** — partial failures listed in `unavailable` array
+> **Beginner-first reframe (owner-approved).** The reference Run tab (two big cards: CSV upload + raw-threshold settings) optimises for power users and fails our mass-retail beginner audience (the blank-canvas problem). Layer D **deliberately deviates from strict visual parity** (#1) for a "Build your analysis" flow: ready-made **baskets** lead, **search-and-add** builds custom lists, **CSV** is demoted to a small import, all feeding a **visible selected-tickers chip list**; horizon presets up front with **Custom/Advanced** behind a disclosure. Runs execute via **client-side batching** (chunk → POST `/api/analyze` → accumulate) giving an honest progress bar + Cancel. See `design-system.md` §Run-Analysis.
 
-**Verification:**
-- Run with 50 tickers using each preset — results match Python script output
-- Custom params validate correctly (negative pullback, positive profit, integer lookback)
-- Universe expansion works: unknown ticker added on the fly
-- All edge cases (empty list, duplicate tickers, invalid tickers) handled gracefully
+- [x] **Preset selector** — Short / Medium / Long / Custom (`HorizonSettings.tsx`; Custom + raw pullback/profit/lookback behind an "Advanced" disclosure, validated to data-contracts §7 bounds).
+  - [x] **Horizon selector on the Browse page (`/stocks`), NOT the detail page** — the user picks a Major Cycle horizon **before** opening a stock; the choice is carried into the opened stock via a `?preset=` query param, and the Stock Detail page honours it (default **Medium**). **No selector/option on the Stock Detail page itself** (explicit owner decision — they did not want it there). Short / Medium / Long shipped in S4-follow-up (cycle path already supports those three); **Custom shipped in Layer D** — `/api/analyze` accepts explicit pullback/profit/lookback (the cached public `/api/cycle` stays preset-only, untouched). Beginner-framed label + tooltip. The cycle cache is already keyed per ticker **and** preset, so each horizon caches independently. *(Decision + initial Short/Medium/Long build with owner, 2026-06-04.)*
+- [x] **Custom params panel** — three inputs with validation (`HorizonSettings.tsx`).
+- [x] **Ready-made baskets** *(new — solves the blank canvas)* — Index (S&P 500 / ASX 200 / TSX 60) + Top-by-market-cap + compact "By sector ▾" + "Magnificent Seven", from the light universe index (`baskets.ts`, registry — future "My Watchlist" drops in here).
+- [x] **Ticker upload zone** — CSV drag-drop + click (`CsvImport.tsx`; reference's validate/preview UX, demoted to a secondary import).
+- [x] **Manual ticker entry** — search + autocomplete via `/api/search` (`TickerSearchAdd.tsx`).
+- [x] **Selected-tickers chip list** *(new)* — live count + per-chip remove + clear; the single source all inputs feed (`SelectedTickers.tsx`).
+- [x] **Run button** — calls `/api/analyze` in chunks; honest progress + Cancel (`RunProgress.tsx`, batching in `analysis.tsx`).
+- [x] **Loading state** — real batched progress (chunks done / total, elapsed, ETA, scored/skipped counts).
+- [~] **Universe expansion handler** — **deferred** (owner-approved): unknown tickers go to `unavailable[]`. Live `/api/fetch-ticker` (yfinance) is a separate fast-follow PR.
+- [x] **Last Analysis card** — from `analysis_runs` (INPUTS ONLY — #15), "Re-run" re-derives (`LastAnalysisCard.tsx`).
+- [x] **Error handling** — partial failures listed in `unavailable`; a failed chunk degrades gracefully (its tickers → `unavailable`).
+
+**Verification:** ✅ (engine untouched; `analyze.py` output byte-matches `cycle.py` for the same params)
+- `analyze.py` SHOP.TO/medium == `cycle.py` SHOP.TO/medium (overall 81, 40/35/25 formula holds); RY.TO short scored, `ZZZZ.TO` → unavailable, `ry.to` deduped
+- Custom params validate (out-of-bounds pullback → 400; empty list → 400); presets resolve correctly
+- Edge cases (empty list, duplicate tickers, unknown tickers) handled gracefully
+- UI verified in browser: baskets/search/CSV populate the chip list, Custom/Advanced opens, no console errors
+- Universe expansion (unknown ticker added on the fly) — deferred to the `/api/fetch-ticker` fast-follow
+- **Pending owner deploy step:** apply migration `analysis_runs_results_nullable` (relaxes `results` NOT NULL); the run-history write fails gracefully until then
+- **Known (pre-existing, deferred to Layer H):** 375px horizontal overflow from the non-responsive sidebar/header shell — identical on the already-live `/stocks`, not a Layer D regression
 
 ### Layer E: Results Tab (target: 4-5 days)
 

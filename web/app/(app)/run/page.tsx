@@ -1,13 +1,20 @@
 import type { Metadata } from 'next';
 
+import { RunAnalysis } from '@/components/run/RunAnalysis';
+import { fetchUniverseIndex } from '@/lib/universe.server';
+
 export const metadata: Metadata = {
   title: 'Run Analysis',
+  description:
+    'Screen a basket or your own list of US, Australian, and Canadian equities through the Major Cycle.',
 };
 
-export default function RunPage() {
-  return (
-    <div className="text-[var(--text-secondary)] text-sm">
-      Run Analysis tab — coming in Layer D.
-    </div>
-  );
+// Loads the light universe index (for baskets + autocomplete + CSV validation)
+// from Supabase at request time, behind a daily cache — so the page must render
+// on demand, never static-prerendered at build (where Supabase env vars absent).
+export const dynamic = 'force-dynamic';
+
+export default async function RunPage() {
+  const universe = await fetchUniverseIndex();
+  return <RunAnalysis universe={universe} />;
 }

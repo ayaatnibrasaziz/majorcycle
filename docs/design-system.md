@@ -513,6 +513,37 @@ The reference HTML uses old labels (STRONG BUY etc.). The new build uses the lab
 
 If you find another conflict during build, surface it. Don't silently choose.
 
+### Run Analysis tab — intentional layout deviation (Layer D, owner-approved)
+
+The reference Run tab (two co-equal cards: a large **CSV upload** drop-zone + a
+raw **Analysis Settings** card, plus a cosmetic clock-based progress bar) is a
+power-user layout. It fails our **mass-retail beginner** audience: the blank-canvas
+problem ("I have no tickers.csv and can't name 50 tickers"), over-promoted CSV,
+and intimidating raw thresholds. Layer D **deviates from #1 visual parity for this
+tab only**, keeping all brand tokens/typography, and reframes it as a single
+**"Build your analysis"** flow (`web/components/run/`):
+
+- **Choose what to analyse** — ready-made **baskets** lead (`BasketPicker`: index /
+  top-by-cap / "By sector ▾" / Magnificent Seven), **search-and-add** autocomplete
+  (`TickerSearchAdd`), and **CSV demoted** to a small import (`CsvImport`), all
+  feeding a visible **selected-tickers chip list** with a live count (`SelectedTickers`).
+- **Investing horizon** — Short/Medium/Long preset cards up front; **Custom + raw
+  pullback/profit/lookback behind an "Advanced" disclosure** (`HorizonSettings`),
+  with `InfoTip` explainers and §7 bounds validation.
+- **Honest progress** — `RunProgress` shows *real* batches completed (not a fake
+  clock), elapsed, ETA, scored/skipped counts, and a **Cancel** button. The
+  fabricated per-stage pipeline log from the reference is intentionally dropped.
+- **Run complete / Last Analysis** — `RunComplete` (top pick + "Constructive or
+  better" count, computed client-side) and `LastAnalysisCard` (Re-run).
+
+Styling **ports the reference run-tab classes into `globals.css`** (mapped to the
+live tier/brand tokens: `.preset-btn`, `.set-field-*`, `.adv-toggle`, `.btn-run`,
+`.lastrun-*`, `.rc-*`, `.progress-bar-*`, `.upload-zone`, `.basket-chip`,
+`.tk-chip`, `.run-search-*`) so the page matches the reference's compact look and
+blends with Browse + Stock Detail (JetBrains-mono numerals, brand-gradient
+accents). The in-page `<h1>` is omitted — the app `Header` already renders the
+page title.
+
 ---
 
 **End of design-system.md.**
