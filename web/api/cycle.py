@@ -52,6 +52,12 @@ from _engine.providers.base import FundamentalsSnapshot  # noqa: E402
 logger = logging.getLogger("api.cycle")
 logging.basicConfig(level=logging.INFO)
 
+# Whether the get_price_bars_json RPC (one-shot history fetch) exists in this DB.
+# None = not yet probed; False = confirmed missing (use pagination); True = present.
+# Lets this run before the migration is applied (falls back to paginated reads).
+_RPC_AVAILABLE: bool | None = None
+_RPC_NAME = "get_price_bars_json"
+
 
 def _supabase() -> Client:
     # SUPABASE_URL is set in the Vercel runtime; locally (dev CLI) the web app's
@@ -66,13 +72,29 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
     """Read all price_bars for one ticker. Returns DataFrame with yfinance-style
     OHLCV column names (Open, High, Low, Close, Volume) and a DatetimeIndex.
 
-    PostgREST caps each response at 1000 rows, so we paginate — otherwise the
-    cycle math would only see the oldest 1000 bars (decades-old, split-adjusted
-    prices) and produce nonsense. We count the rows once, then fetch every page
-    concurrently so a long-history ticker (AAPL ~11.5k bars) arrives in roughly
-    two round-trips instead of a dozen sequential ones. Mirrors the parallel
-    paging in web/lib/stocks.ts.
+    Fast path: ONE request via the get_price_bars_json RPC (whole history as a
+    single jsonb — bypasses the 1000-row cap). Falls back to parallel paginated
+    reads if the RPC isn't deployed yet or errors, so this is safe before/after
+    the migration. (Without the RPC, PostgREST caps each response at 1000 rows,
+    so we must page; otherwise the cycle math would see only the oldest 1000
+    bars — decades-old split-adjusted prices — and produce nonsense.)
     """
+    global _RPC_AVAILABLE
+    if _RPC_AVAILABLE is not False:
+        try:
+            resp = sb.rpc(_RPC_NAME, {"p_ticker": ticker}).execute()
+            _RPC_AVAILABLE = True
+            data = cast("list[Any] | None", resp.data)
+            return _bars_to_df(data) if data else None
+        except Exception as e:  # noqa: BLE001
+            msg = str(e).lower()
+            if _RPC_AVAILABLE is None and any(
+                s in msg for s in ("pgrst202", "could not find", "does not exist", "not found", "404")
+            ):
+                _RPC_AVAILABLE = False
+                logger.warning("%s RPC not deployed — using paginated reads", _RPC_NAME)
+            # else: transient — fall through to pagination for this call only
+
     PAGE = 1000
 
     def _fetch_page(i: int) -> list[Any]:
@@ -112,6 +134,16 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
                 rows.extend(page)
     if not rows:
         return None
+    return _bars_to_df(rows)
+
+
+def _bars_to_df(rows: list[Any]) -> pd.DataFrame:
+    """Build the yfinance-style OHLCV DataFrame (DatetimeIndex) from raw bar rows.
+
+    Coerces OHLCV to numeric so the RPC path (jsonb numbers) and the paginated
+    path build an identical frame regardless of serialisation — the cycle math
+    needs floats.
+    """
     df = pd.DataFrame(rows)
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date")
@@ -124,6 +156,8 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
             "volume": "Volume",
         }
     )
+    for col in ("Open", "High", "Low", "Close", "Volume"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
 
