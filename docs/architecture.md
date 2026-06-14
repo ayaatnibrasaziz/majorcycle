@@ -96,15 +96,15 @@ flowchart TB
 
 ### Tier 3 — On-Demand (user-driven)
 
-**What:** When a user runs Run Analysis with custom params or uploads tickers:
+**What:** When a user runs Run Analysis (a basket, a searched/CSV list, presets or custom):
 
-1. Frontend sends `{tickers: [...], pullback_threshold, profit_threshold, lookback_bars}` to `/api/analyze`
-2. Python function fetches each ticker's price history from Supabase
-3. If a ticker is missing, calls `DataProvider.fetch_price_history()` live and stores it (universe expansion)
-4. Runs cycle math on each, returns scored results
-5. Frontend renders the Results table
+1. The Run tab (`RunAnalysis.tsx`) **chunks** the selection client-side (~40/chunk) and POSTs each chunk to `/api/analyze` with up to ~3 in flight (`web/lib/analysis.tsx`). This drives an **honest** progress bar (real chunks completed) + a Cancel button (`AbortController`), and scales to a full index without a single long request.
+2. `/api/analyze` (`web/api/analyze.py`) is **stateless**: it fetches each ticker's price bars + fundamentals from Supabase (parallel across tickers via `ThreadPoolExecutor`), runs the cycle math via the vendored `_engine`, and returns `{ results, unavailable }`. Custom params are validated to data-contracts §7 bounds. It never writes to the DB and never calls yfinance.
+3. Unknown tickers (not in our universe) come back in `unavailable[]`. **Live universe expansion (`/api/fetch-ticker`) is deferred** to a fast-follow — see the route table below.
+4. The client accumulates results into client state (+ `sessionStorage`), then writes **one** `analysis_runs` history row — **inputs only**, never the computed ratings (CLAUDE.md #15) — via the browser Supabase client under RLS. This powers the "Last Analysis" / Re-run card.
+5. The Results table (Layer E) reads the same in-memory results — no recompute.
 
-**Why this works:** Heavy work happens only when a user actively requests it. The universe grows organically.
+**Why this works:** Heavy work happens only when a user actively requests it; chunking keeps each request small; ratings are always derived, never stored.
 
 ---
 
@@ -345,8 +345,8 @@ Two runtimes, two locations under `web/`:
 | Route | Method | Runtime | Path on disk | Auth | Purpose |
 |---|---|---|---|---|---|
 | `/api/cycle` | GET | Python | `web/api/cycle.py` | **Public** (in `PUBLIC_PATHS`) | Compute Major Cycle for one ticker + preset. Called by the Stock Detail Server Component as a cookieless self-fetch — must be public **and** reached via the production custom domain (see §2). |
-| `/api/analyze` | POST | Python | `web/api/analyze.py` *(Layer D)* | Required | Run cycle analysis on a batch of tickers with given params |
-| `/api/fetch-ticker` | POST | Python | `web/api/fetch_ticker.py` *(Layer D)* | Required | Add a new ticker to the universe + return its data |
+| `/api/analyze` | POST | Python | `web/api/analyze.py` | Required | Run cycle analysis on a **chunk** of tickers (≤60) with given params. **Stateless** — no DB write, no `runId`; the client batches chunks + writes the inputs-only `analysis_runs` row itself. |
+| `/api/fetch-ticker` | POST | Python | `web/api/fetch_ticker.py` *(deferred — Layer D fast-follow)* | Required | Add a new ticker to the universe + return its data |
 | `/api/ticker/[symbol]` | GET | TS | `web/app/api/ticker/[symbol]/route.ts` | Public | Read stored stock + price bars for SSR |
 | `/api/search` | GET | TS | `web/app/api/search/route.ts` | Public | Autocomplete ticker search |
 | `/api/checkout` | POST | TS | `web/app/api/checkout/route.ts` | Required | Create Stripe Checkout session |

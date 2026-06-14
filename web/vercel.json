@@ -5,6 +5,11 @@
       "maxDuration": 30,
       "memory": 1024,
       "includeFiles": "_engine/**"
+    },
+    "api/analyze.py": {
+      "maxDuration": 60,
+      "memory": 1024,
+      "includeFiles": "_engine/**"
     }
   }
 }

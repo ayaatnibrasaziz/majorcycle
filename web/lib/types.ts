@@ -234,12 +234,31 @@ export interface AnalyzeRequest {
   lookbackBars?: number;
 }
 
+// One chunk's worth of results from POST /api/analyze. The Run tab chunks the
+// user's selection client-side and POSTs each chunk; the function is stateless
+// (no DB write, no runId). The client accumulates these and writes a single
+// analysis_runs history row itself — see AnalysisRunRecord.
 export interface AnalyzeResponse {
   results: CycleAnalysis[];
   unavailable: string[];
-  runId: string;
   startedAt: string;
   finishedAt: string;
+}
+
+// A Run Analysis history entry. Persisted in analysis_runs as INPUTS ONLY —
+// never the computed CycleAnalysis results (CLAUDE.md #15: scores are always
+// derived). Powers the "Last Analysis" / Re-run card.
+export interface AnalysisRunRecord {
+  id: string;
+  preset: 'short' | 'medium' | 'long' | 'custom';
+  pullbackThreshold: number;
+  profitThreshold: number;
+  lookbackBars: number;
+  tickers: string[];
+  tickerCount: number;
+  startedAt: string;
+  finishedAt: string | null;
+  status: 'running' | 'complete' | 'partial' | 'error';
 }
 
 export interface UserProfile {
