@@ -770,4 +770,12 @@ Webhook events handled:
 
 ---
 
+## 12. Database access & Row-Level Security
+
+- **`profiles` is created automatically** by the `handle_new_user` trigger on `auth.users` (every sign-in method). Do not insert profiles from the client; only **update own row** (RLS policy `users update own profile`).
+- **RLS is on for every table.** `profiles` + `analysis_runs` have per-user policies (own-row). `stocks` / `price_bars` / `universe_log` have RLS enabled with **no policies** — read them **only server-side with the service-role key** (`createAdminClient` / the Python service client), never with the browser anon client.
+- The `get_price_bars_json(p_ticker)` RPC is the one-request way to read a ticker's full history (bypasses the 1000-row cap); it's service-role only. Schema lives in `supabase/migrations/` (mirrors the Supabase migration log).
+
+---
+
 **End of data-contracts.md.**

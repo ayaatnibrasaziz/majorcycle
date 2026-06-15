@@ -135,11 +135,11 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 
 | Component | Hosted On | Free Tier Limit | Notes |
 |---|---|---|---|
-| Next.js frontend | Vercel | 100GB bandwidth/mo | Hobby plan |
-| Python API routes | Vercel Serverless | 100GB-hr/mo, 10s timeout | Use `@vercel/python` runtime |
+| Next.js frontend | Vercel | 100GB bandwidth/mo | Hobby plan. Functions/SSR pinned to **`iad1` (US-East)** via `web/vercel.json` `regions`. |
+| Python API routes | Vercel Serverless | 100GB-hr/mo, 300s timeout | `@vercel/python` runtime; co-located in `iad1` with the DB. |
 | Static assets | Vercel CDN | Unlimited | Global edge |
-| Postgres database | Supabase | 500MB DB, 5GB egress | Free tier |
-| Auth service | Supabase Auth | 50,000 MAU | Free tier |
+| Postgres database | Supabase | 500MB DB, 5GB egress | Free tier, region **`us-east-1`** (project `Stock Project US-East`; co-located with the Vercel functions so DB round-trips are ~10-20ms). Migrated from the original Seoul region pre-launch — see §2 Tier 3 performance note. |
+| Auth service | Supabase Auth | 50,000 MAU | Free tier. A `handle_new_user` trigger auto-creates a `profiles` row on every sign-up (any provider). |
 | File storage | Supabase Storage | 1GB | For OG images, exports |
 | Cron jobs | GitHub Actions | 2,000 minutes/mo | Free for public + private repos |
 | Email | Resend | 3,000/mo | Free tier |
@@ -361,7 +361,9 @@ Two runtimes, two locations under `web/`:
 | `/api/webhooks/stripe` | POST | TS | `web/app/api/webhooks/stripe/route.ts` | Stripe signature | Receive subscription events |
 | `/api/health` | GET | TS | `web/app/api/health/route.ts` | Public | System health (DB + provider) |
 
-**Auth pattern:** Every authenticated route uses the Supabase server client and checks `subscription_status IN ('trialing', 'active')` plus trial-end-date logic.
+**Auth pattern:** Every authenticated route uses the Supabase server client and checks `subscription_status IN ('trialing', 'active')` plus trial-end-date logic. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
+
+**Row-Level Security:** `profiles` + `analysis_runs` have per-user RLS policies (own-row read/write). `stocks` / `price_bars` / `universe_log` have RLS **enabled with no policies** — they're only ever read server-side with the service-role key (which bypasses RLS), so the public anon/authenticated roles get no access (migration `20260614020000_enable_rls_lockdown.sql`). The `get_price_bars_json` RPC and `handle_new_user` have `search_path` pinned and `EXECUTE` revoked from the public REST surface (`20260614040000_harden_functions.sql`).
 
 **Python function env vars:** `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` must be set in Vercel project env (the same values as `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`, but the Python side reads the prefix-less names, matching the cron).
 
