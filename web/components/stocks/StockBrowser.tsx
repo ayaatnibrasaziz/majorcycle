@@ -9,6 +9,7 @@ import type { UniverseStock } from '@/lib/universe.server';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { Currency, Market } from '@/lib/types';
 import { fmtCompact } from '@/lib/format';
+import { CUSTOM_PARAM_BOUNDS } from '@/lib/presets';
 import { cn } from '@/lib/utils';
 
 // Cap how many rows we paint at once. The list is market-cap-descending, so the
@@ -27,20 +28,74 @@ const MARKET_FILTERS: { value: MarketFilter; label: string }[] = [
 ];
 
 // Major Cycle horizon chosen on the Browse page and carried into the opened
-// stock via a ?preset= query param. Only the three named presets the cycle
-// engine supports today (Custom needs explicit params — deferred to Layer D).
-type Horizon = 'short' | 'medium' | 'long';
+// stock via the query. Named presets go via ?preset=; Custom carries explicit
+// pullback/profit/lookback (?preset=custom&pullback=…&profit=…&lookback=…),
+// which the detail page + /api/cycle now compute directly.
+type Horizon = 'short' | 'medium' | 'long' | 'custom';
 
 const HORIZONS: { value: Horizon; label: string; hint: string }[] = [
   { value: 'short', label: 'Short', hint: '≈ 3 months' },
   { value: 'medium', label: 'Medium', hint: '≈ 1 year' },
   { value: 'long', label: 'Long', hint: '≈ 3 years' },
+  { value: 'custom', label: 'Custom', hint: 'your own window' },
 ];
 
 const HORIZON_STORAGE_KEY = 'mc:browse-horizon';
+const CUSTOM_STORAGE_KEY = 'mc:browse-custom';
+
+interface CustomParams {
+  pullback: number;
+  profit: number;
+  lookback: number;
+}
+const CUSTOM_DEFAULT: CustomParams = { pullback: -5, profit: 5, lookback: 252 };
 
 function isHorizon(value: string | null): value is Horizon {
-  return value === 'short' || value === 'medium' || value === 'long';
+  return (
+    value === 'short' || value === 'medium' || value === 'long' || value === 'custom'
+  );
+}
+
+/** Validate custom params against the documented bounds (data-contracts §7). */
+function customValid(c: CustomParams): boolean {
+  const b = CUSTOM_PARAM_BOUNDS;
+  return (
+    Number.isFinite(c.pullback) &&
+    c.pullback >= b.pullbackThreshold.min &&
+    c.pullback <= b.pullbackThreshold.max &&
+    Number.isFinite(c.profit) &&
+    c.profit >= b.profitThreshold.min &&
+    c.profit <= b.profitThreshold.max &&
+    Number.isInteger(c.lookback) &&
+    c.lookback >= b.lookbackBars.min &&
+    c.lookback <= b.lookbackBars.max
+  );
+}
+
+function readCustom(): CustomParams {
+  if (typeof window === 'undefined') return CUSTOM_DEFAULT;
+  try {
+    const raw = localStorage.getItem(CUSTOM_STORAGE_KEY);
+    if (raw) {
+      const p = JSON.parse(raw) as Partial<CustomParams>;
+      return {
+        pullback: Number(p.pullback ?? CUSTOM_DEFAULT.pullback),
+        profit: Number(p.profit ?? CUSTOM_DEFAULT.profit),
+        lookback: Number(p.lookback ?? CUSTOM_DEFAULT.lookback),
+      };
+    }
+  } catch {
+    // ignore corrupt/unavailable storage
+  }
+  return CUSTOM_DEFAULT;
+}
+
+function persistCustom(c: CustomParams): void {
+  try {
+    localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(c));
+  } catch {
+    // non-fatal
+  }
 }
 
 // Persist the horizon in localStorage and read it via useSyncExternalStore so
@@ -90,11 +145,33 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
     getHorizonSnapshot,
     getHorizonServerSnapshot,
   );
+  // Custom params are only rendered/used when horizon === 'custom', which itself
+  // resolves post-hydration via useSyncExternalStore — so a lazy initializer
+  // reading localStorage here can't cause an SSR mismatch.
+  const [custom, setCustom] = useState<CustomParams>(() => readCustom());
+  const customOk = customValid(custom);
+  const updateCustom = (patch: Partial<CustomParams>) =>
+    setCustom((prev) => {
+      const next = { ...prev, ...patch };
+      persistCustom(next);
+      return next;
+    });
 
   // Medium is the default headline, so its links stay clean (no query param).
   function hrefFor(ticker: string): string {
     const path = tickerToPath(ticker);
-    return horizon === 'medium' ? path : `${path}?preset=${horizon}`;
+    if (horizon === 'medium') return path;
+    if (horizon === 'custom') {
+      if (!customOk) return path; // invalid custom → fall back to the Medium default
+      const qs = new URLSearchParams({
+        preset: 'custom',
+        pullback: String(custom.pullback),
+        profit: String(custom.profit),
+        lookback: String(custom.lookback),
+      });
+      return `${path}?${qs.toString()}`;
+    }
+    return `${path}?preset=${horizon}`;
   }
 
   // Distinct sectors, alphabetical — derived once from the index.
@@ -132,7 +209,8 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
           </span>
           <InfoTip title="Cycle horizon">
             Sets the Major Cycle window used when you open a stock. Short ≈ 3
-            months, Medium ≈ 1 year, Long ≈ 3 years.
+            months, Medium ≈ 1 year, Long ≈ 3 years, or Custom to set your own
+            pullback / profit / lookback.
           </InfoTip>
         </div>
         <div
@@ -161,6 +239,34 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
         <span className="text-[11px] text-[var(--text-muted)] sm:ml-1">
           Opens each stock with this Major Cycle window.
         </span>
+
+        {horizon === 'custom' && (
+          <div className="mt-1 flex w-full flex-wrap items-end gap-3">
+            <CustomField
+              label="Pullback %"
+              value={custom.pullback}
+              step={0.5}
+              onChange={(n) => updateCustom({ pullback: n })}
+            />
+            <CustomField
+              label="Profit %"
+              value={custom.profit}
+              step={0.5}
+              onChange={(n) => updateCustom({ profit: n })}
+            />
+            <CustomField
+              label="Lookback (bars)"
+              value={custom.lookback}
+              step={1}
+              onChange={(n) => updateCustom({ lookback: Math.round(n) })}
+            />
+            {!customOk && (
+              <span className="self-center text-[10px] font-semibold text-[var(--c-tier-5)]">
+                Pullback −30…−1, Profit 1…30, Lookback 21…5040
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Toolbar: search + market pills + sector */}
@@ -312,5 +418,36 @@ function EmptyState({ query }: { query: string }) {
         </Link>
       </div>
     </div>
+  );
+}
+
+/** Compact numeric input for a Custom-horizon parameter. */
+function CustomField({
+  label,
+  value,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  step: number;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-0.5">
+      <span className="text-[9.5px] font-semibold uppercase tracking-[0.5px] text-[var(--brand-mid)]">
+        {label}
+      </span>
+      <input
+        type="number"
+        value={Number.isFinite(value) ? value : ''}
+        step={step}
+        onChange={(e) => {
+          const n = Number(e.target.value);
+          if (!Number.isNaN(n)) onChange(n);
+        }}
+        className="w-[92px] rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-[5px] font-[var(--font-mono)] text-[12px] text-[var(--text-primary)] outline-none focus:border-[var(--brand-bright)]"
+      />
+    </label>
   );
 }

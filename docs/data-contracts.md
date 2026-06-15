@@ -507,10 +507,17 @@ Single-ticker Major Cycle analysis. Called by the Stock Detail Server Component 
 **Query params:**
 ```typescript
 interface CycleQuery {
-  ticker: string;                              // storage format: 'AAPL', 'BHP.AX', 'SHOP.TO'
-  preset?: 'short' | 'medium' | 'long';        // default: 'medium'
+  ticker: string;                                          // storage format: 'AAPL', 'BHP.AX', 'SHOP.TO'
+  preset?: 'short' | 'medium' | 'long' | 'custom';         // default: 'medium'
+  pullback?: number;                                       // required if preset === 'custom' (bounds §7)
+  profit?: number;                                         // required if preset === 'custom'
+  lookback?: number;                                       // required if preset === 'custom'
 }
 ```
+The Browse page sets the window: named presets via `?preset=`, or a fully custom
+window (`?preset=custom&pullback=-7&profit=7&lookback=300`) that the detail page
+passes straight through. Custom values are validated to the §7 bounds (else 400);
+the result is edge-cached per full query string.
 
 **Response (200):** the full `CycleAnalysis` shape from section 3, serialised with snake_case keys (the Python dataclass field names). The frontend converts to camelCase via `web/lib/case.ts` if typed consumption is needed. Sample:
 

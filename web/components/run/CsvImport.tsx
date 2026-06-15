@@ -1,9 +1,24 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Upload } from 'lucide-react';
+import { Upload, Download } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+
+// A tiny example file so users see the expected format: a single `ticker` column,
+// one symbol per row. Non-US tickers use their storage suffix (.AX / .TO) — that's
+// how they must be written to match our universe.
+const SAMPLE_CSV = 'ticker\nAAPL\nMSFT\nNVDA\nBHP.AX\nSHOP.TO\n';
+
+function downloadSampleCsv() {
+  const blob = new Blob([SAMPLE_CSV], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'tickers_sample.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 // CSV import — demoted to a small secondary action (most beginners use baskets
 // or search). Validation logic is ported from the reference design's validateCSV:
@@ -142,6 +157,13 @@ export function CsvImport({
           handleFile(file);
         }}
       />
+      <button
+        type="button"
+        onClick={downloadSampleCsv}
+        className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-bright)] hover:underline"
+      >
+        <Download className="h-3 w-3" /> Download sample CSV
+      </button>
       {preview && (
         <div className="upload-preview" style={{ color: PREVIEW_COLOR[preview.kind] }}>
           {preview.lines.map((l, i) => (

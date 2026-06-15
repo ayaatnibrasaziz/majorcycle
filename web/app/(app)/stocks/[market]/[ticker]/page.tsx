@@ -25,32 +25,60 @@ import { StockSubnav } from '@/components/stocks/StockSubnav';
 import { ValuationHistory } from '@/components/stocks/ValuationHistory';
 import { VerdictCard } from '@/components/stocks/VerdictCard';
 import { fetchBenchmarks } from '@/lib/benchmarks.server';
-import { fetchCycleAnalysis } from '@/lib/cycle';
+import { fetchCycleAnalysis, type CycleSpec } from '@/lib/cycle';
+import { CUSTOM_PARAM_BOUNDS } from '@/lib/presets';
 import { fetchMetricMedians } from '@/lib/medians.server';
 import { fetchStockDetail } from '@/lib/stocks';
 import { urlPartsToTicker, tickerDisplay } from '@/lib/ticker';
 import type { FundamentalsSnapshot, Market, PriceBar } from '@/lib/types';
 
 type RouteParams = { market: string; ticker: string };
-type RouteSearch = { preset?: string };
-
-type CyclePreset = 'short' | 'medium' | 'long';
+type RouteSearch = {
+  preset?: string;
+  pullback?: string;
+  profit?: string;
+  lookback?: string;
+};
 
 function isValidMarket(value: string): value is Market {
   return value === 'us' || value === 'au' || value === 'ca';
 }
 
-// The Browse page picks the Major Cycle horizon and passes it via ?preset=.
-// Anything unknown (incl. a future "custom") falls back to the Medium headline.
-function parsePreset(value: string | undefined): CyclePreset {
-  return value === 'short' || value === 'long' ? value : 'medium';
-}
-
-const PRESET_LABEL: Record<CyclePreset, string> = {
+const PRESET_LABEL = {
   short: 'Short-term (≈ 3 months)',
   medium: 'Medium-term (≈ 1 year)',
   long: 'Long-term (≈ 3 years)',
-};
+} as const;
+
+function inBounds(n: number, b: { min: number; max: number }): boolean {
+  return n >= b.min && n <= b.max;
+}
+
+// The Browse page picks the Major Cycle window and passes it via the query:
+// a named preset (?preset=short|medium|long) or a fully custom window
+// (?preset=custom&pullback=-7&profit=7&lookback=300). Invalid/unknown input
+// falls back to the Medium headline. Returns the spec + a human label.
+function parseSpec(sp: RouteSearch): { spec: CycleSpec; label: string } {
+  if (sp.preset === 'custom') {
+    const pullback = Number(sp.pullback);
+    const profit = Number(sp.profit);
+    const lookback = Number(sp.lookback);
+    const b = CUSTOM_PARAM_BOUNDS;
+    if (
+      Number.isFinite(pullback) && inBounds(pullback, b.pullbackThreshold) &&
+      Number.isFinite(profit) && inBounds(profit, b.profitThreshold) &&
+      Number.isInteger(lookback) && inBounds(lookback, b.lookbackBars)
+    ) {
+      return {
+        spec: { preset: 'custom', pullback, profit, lookback },
+        label: `Custom (${pullback}% / +${profit}% / ${lookback} bars)`,
+      };
+    }
+    return { spec: { preset: 'medium' }, label: PRESET_LABEL.medium };
+  }
+  const preset = sp.preset === 'short' || sp.preset === 'long' ? sp.preset : 'medium';
+  return { spec: { preset }, label: PRESET_LABEL[preset] };
+}
 
 // ── Streamed cycle sections ──────────────────────────────────────────────────
 // The cycle analysis is the slow part of the page (a cold compute can take a few
@@ -60,7 +88,7 @@ const PRESET_LABEL: Record<CyclePreset, string> = {
 // React-cached fetchCycleAnalysis(ticker, preset), so there is still exactly one
 // underlying compute shared across them.
 
-type CycleProps = { ticker: string; preset: CyclePreset };
+type CycleProps = { ticker: string; spec: CycleSpec };
 
 /** A muted placeholder matching a section's height, to limit layout shift. */
 function SectionSkeleton({ className }: { className?: string }) {
@@ -73,10 +101,10 @@ function SectionSkeleton({ className }: { className?: string }) {
 
 async function CycleBadges({
   ticker,
-  preset,
+  spec,
   fundamentals,
 }: CycleProps & { fundamentals: FundamentalsSnapshot }) {
-  const cycle = await fetchCycleAnalysis(ticker, preset);
+  const cycle = await fetchCycleAnalysis(ticker, spec);
   if (!cycle) return null;
   return (
     <BadgeRow
@@ -88,17 +116,17 @@ async function CycleBadges({
   );
 }
 
-async function CycleKpi({ ticker, preset }: CycleProps) {
-  const cycle = await fetchCycleAnalysis(ticker, preset);
+async function CycleKpi({ ticker, spec }: CycleProps) {
+  const cycle = await fetchCycleAnalysis(ticker, spec);
   return cycle ? <KpiStrip cycle={cycle} /> : null;
 }
 
 async function CycleVerdict({
   ticker,
-  preset,
+  spec,
   fundamentals,
 }: CycleProps & { fundamentals: FundamentalsSnapshot }) {
-  const cycle = await fetchCycleAnalysis(ticker, preset);
+  const cycle = await fetchCycleAnalysis(ticker, spec);
   return cycle ? (
     <VerdictCard
       cycle={cycle}
@@ -110,10 +138,10 @@ async function CycleVerdict({
 
 async function CycleThesis({
   ticker,
-  preset,
+  spec,
   fundamentals,
 }: CycleProps & { fundamentals: FundamentalsSnapshot }) {
-  const cycle = await fetchCycleAnalysis(ticker, preset);
+  const cycle = await fetchCycleAnalysis(ticker, spec);
   return cycle ? (
     <ThesisInsights
       cycle={cycle}
@@ -123,8 +151,8 @@ async function CycleThesis({
   ) : null;
 }
 
-async function CycleScorecard({ ticker, preset }: CycleProps) {
-  const cycle = await fetchCycleAnalysis(ticker, preset);
+async function CycleScorecard({ ticker, spec }: CycleProps) {
+  const cycle = await fetchCycleAnalysis(ticker, spec);
   return cycle ? (
     <SnowflakeRadar cycle={cycle} />
   ) : (
@@ -138,10 +166,10 @@ async function CycleScorecard({ ticker, preset }: CycleProps) {
 
 async function CycleDrawdown({
   ticker,
-  preset,
+  spec,
   priceBars,
 }: CycleProps & { priceBars: PriceBar[] }) {
-  const cycle = await fetchCycleAnalysis(ticker, preset);
+  const cycle = await fetchCycleAnalysis(ticker, spec);
   return cycle ? <DrawdownOverlay priceBars={priceBars} cycle={cycle} /> : null;
 }
 
@@ -199,8 +227,9 @@ export default async function StockDetailPage({
   const { market, ticker } = await params;
   if (!isValidMarket(market)) notFound();
 
-  const { preset: presetParam } = await searchParams;
-  const preset = parsePreset(presetParam);
+  // Built ONCE here and passed by reference to every cycle section so React's
+  // cache() (and the underlying fetch/dev-spawn dedup) computes the cycle once.
+  const { spec, label: horizonLabel } = parseSpec(await searchParams);
 
   const stored = urlPartsToTicker(market, ticker);
   // Only the stock row + sector medians block the initial render — both are
@@ -228,7 +257,7 @@ export default async function StockDetailPage({
       <div className="pt-5 space-y-[18px]">
         {/* Read-only note when a non-default horizon was chosen on Browse.
             (No horizon selector lives on the detail page by design.) */}
-        {preset !== 'medium' && (
+        {spec.preset !== 'medium' && (
           <div
             className="flex items-center gap-1.5 text-[11px] text-[var(--brand-mid)] bg-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius-sm)] px-3 py-2"
             role="note"
@@ -236,9 +265,7 @@ export default async function StockDetailPage({
             <span className="font-semibold uppercase tracking-[0.5px] text-[10px]">
               Major Cycle horizon
             </span>
-            <span className="text-[var(--text-secondary)]">
-              {PRESET_LABEL[preset]}
-            </span>
+            <span className="text-[var(--text-secondary)]">{horizonLabel}</span>
           </div>
         )}
         <section id="sec-thesis" className="scroll-mt-[120px]">
@@ -248,19 +275,19 @@ export default async function StockDetailPage({
               <Suspense fallback={null}>
                 <CycleBadges
                   ticker={stored}
-                  preset={preset}
+                  spec={spec}
                   fundamentals={stock.fundamentals}
                 />
               </Suspense>
             }
           />
           <Suspense fallback={<SectionSkeleton className="h-[96px]" />}>
-            <CycleKpi ticker={stored} preset={preset} />
+            <CycleKpi ticker={stored} spec={spec} />
           </Suspense>
           <Suspense fallback={<SectionSkeleton className="h-[200px]" />}>
             <CycleVerdict
               ticker={stored}
-              preset={preset}
+              spec={spec}
               fundamentals={stock.fundamentals}
             />
           </Suspense>
@@ -268,7 +295,7 @@ export default async function StockDetailPage({
           <Suspense fallback={<SectionSkeleton className="h-[160px]" />}>
             <CycleThesis
               ticker={stored}
-              preset={preset}
+              spec={spec}
               fundamentals={stock.fundamentals}
             />
           </Suspense>
@@ -276,7 +303,7 @@ export default async function StockDetailPage({
         <Suspense
           fallback={<SectionSkeleton className="h-[320px] scroll-mt-[120px]" />}
         >
-          <CycleScorecard ticker={stored} preset={preset} />
+          <CycleScorecard ticker={stored} spec={spec} />
         </Suspense>
         <section id="sec-cycle" className="scroll-mt-[120px] space-y-[18px]">
         {stock.priceBars.length > 0 && (
@@ -289,7 +316,7 @@ export default async function StockDetailPage({
         <Suspense fallback={<SectionSkeleton className="h-[260px]" />}>
           <CycleDrawdown
             ticker={stored}
-            preset={preset}
+            spec={spec}
             priceBars={stock.priceBars}
           />
         </Suspense>
