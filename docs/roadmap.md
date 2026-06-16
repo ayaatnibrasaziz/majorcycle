@@ -31,7 +31,7 @@
 
 - [x] GitHub MCP (via gh CLI — ayaatnibrasaziz)
 - [x] Vercel MCP (team: Ayaat Nibras Aziz's projects)
-- [x] Supabase MCP (project: Stock Project)
+- [x] Supabase MCP (project: MajorCycle — us-east-1; was "Stock Project" in Seoul, migrated + renamed pre-launch)
 - [x] Cloudflare MCP (account: Ayaatnibrasaziz@gmail.com)
 
 ### Repository scaffolding
@@ -175,9 +175,11 @@ After the components were built, Layer C was reframed into a per-section product
 
 **→ Layer C complete.** Next: Layer D (Run Analysis tab).
 
-### Layer D: Run Analysis Tab (target: 1 week)
+### Layer D: Run Analysis Tab ✅ MERGED + LIVE
 
 Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis with presets/custom, get scored results.
+
+> **Status:** PR #35 (Layer D + industry support + AU/CA labels + cancel UX + nav fix) and PR #36 (run reliability — retry + warm pass + pre-warm) merged to `main` and **live on www.majorcycle.com** (2026-06-16). Run skips reduced to genuine unknown/insufficient-history tickers; partial success per ticker confirmed. Remaining "first batch slow" is the inherent free-tier cold start.
 
 > **Beginner-first reframe (owner-approved).** The reference Run tab (two big cards: CSV upload + raw-threshold settings) optimises for power users and fails our mass-retail beginner audience (the blank-canvas problem). Layer D **deliberately deviates from strict visual parity** (#1) for a "Build your analysis" flow: ready-made **baskets** lead, **search-and-add** builds custom lists, **CSV** is demoted to a small import, all feeding a **visible selected-tickers chip list**; horizon presets up front with **Custom/Advanced** behind a disclosure. Runs execute via **client-side batching** (chunk → POST `/api/analyze` → accumulate) giving an honest progress bar + Cancel. See `design-system.md` §Run-Analysis.
 
@@ -210,8 +212,7 @@ Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis w
 > - **Auth fix** — `handle_new_user` trigger auto-creates a `profiles` row on every sign-in method (was empty on Google/email sign-in). `20260614030000`.
 > - **Dev** — `/api/analyze-dev` shim spawns `analyze.py` under `next dev` (mirrors `cycle.ts`) so Run Analysis is verifiable in local preview.
 > - **Polish** — Run tab restyled to the reference's compact look via ported `globals.css` classes; search shows bare symbols (no `.AX`/`.TO`); CSV re-upload fixed; **Download sample CSV** button.
-> - **Pending owner steps:** delete the old Seoul project after a few stable days.
-> - **Verified (2026-06-16):** Email + Google auth providers are **live** on the new us-east project — two real sign-ins (one Google, one email) both auto-created a linked `profiles` row via `handle_new_user`. Local `.env.local` confirmed pointing at the new project (URL + anon + service-role).
+> - **Done (2026-06-16):** owner deleted the old Seoul project and **renamed the new us-east project to `MajorCycle`** (display name only — the ref/URL/keys are unchanged, so nothing broke). Email + Google auth verified live (two real sign-ins, one Google + one email, both auto-created a linked `profiles` row via `handle_new_user`). Local `.env.local` confirmed on the new project. Daily refresh cron confirmed writing to the new project (latest bar current).
 
 ### Layer E: Results Tab (target: 4-5 days)
 
