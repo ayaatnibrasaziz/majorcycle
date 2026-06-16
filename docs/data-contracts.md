@@ -592,6 +592,10 @@ interface AnalyzeResponse {
 interface AnalysisRunRecord {
   id: string;
   preset: 'short' | 'medium' | 'long' | 'custom';
+  // ALWAYS populated (the table's threshold columns are NOT NULL). For a NAMED
+  // preset the request omits the raw thresholds, so `writeRun` resolves them from
+  // PRESETS before inserting — still inputs, just the resolved form of the preset.
+  // (Persisting NULL here silently dropped every named-preset Last-Analysis row.)
   pullbackThreshold: number;
   profitThreshold: number;
   lookbackBars: number;

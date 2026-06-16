@@ -373,6 +373,20 @@ Helpers in `web/lib/ticker.ts`:
 - Country map is locked: `{ us: 'US', au: 'AU', ca: 'CA' }`.
 - **Index proper-nouns stay** — the Run baskets ("ASX 200", "S&P/TSX 60") and the Relative-Performance benchmark legend ("ASX 200", "S&P/TSX") name a *specific index*, not a country, so they keep their familiar names.
 
+### Stock Detail sub-nav (sticky scroll-spy)
+
+`StockSubnav.tsx` is the sticky pill strip (Thesis / Scorecard / Cycle /
+Fundamentals / Sentiment). An `IntersectionObserver` highlights the section
+currently in the band just below the sticky chrome (`rootMargin: -120px 0 -60% 0`).
+- **Click → smooth-scroll, no "walking" highlight.** Clicking a pill sets it
+  active immediately and smooth-scrolls to the section. During that programmatic
+  scroll the observer is **suppressed** (`scrollLockRef`) so it doesn't light up
+  every pill the viewport passes through; the lock releases ~140ms after scrolling
+  settles (with a 1.5s safety for the already-at-target case). Genuine *manual*
+  scrolling still drives the highlight normally.
+- Offsets match the sections' own `scroll-mt-[120px]` so a heading lands just
+  below the strip, not behind it.
+
 ### Brand logo
 
 The logo is `reference/logo.png` (navy rounded-square "M" mark) — see CLAUDE.md decision #27. Render in-app with **`next/image`** from `/logo.png` (never `<img>` — `@next/next/no-img-element` breaks the zero-warning gate). It appears in the Sidebar, the public/auth layout, and the OnboardingModal. The served copies are cropped tight to the icon so it fills its container (no transparent margin); the favicon is `web/app/icon.png` + `favicon.ico`.

@@ -23,6 +23,7 @@ import {
 } from 'react';
 
 import { toCamel } from '@/lib/case';
+import { PRESETS } from '@/lib/presets';
 import { createBrowserClient } from '@/lib/supabase/client';
 import type {
   AnalysisRunRecord,
@@ -129,20 +130,33 @@ async function postChunk(
 
 async function writeRun(req: AnalyzeRequest, meta: RunMeta, partial: boolean): Promise<void> {
   // INPUTS ONLY — never the computed results. Fails silently: a rejected write
-  // (e.g. the results-nullable migration not yet applied, or RLS) must not break
-  // the user's run or the results handoff.
+  // (e.g. RLS) must not break the user's run or the results handoff.
   try {
     const supabase = createBrowserClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
+    // The threshold columns are NOT NULL, and a named preset's request omits the
+    // raw thresholds — so resolve them from PRESETS before inserting. (These are
+    // still inputs, just the resolved form of the chosen preset.) Without this a
+    // Short/Medium/Long run would silently fail to persist its Last-Analysis row.
+    const t =
+      req.preset === 'custom'
+        ? {
+            pullback_threshold: req.pullbackThreshold ?? null,
+            profit_threshold: req.profitThreshold ?? null,
+            lookback_bars: req.lookbackBars ?? null,
+          }
+        : {
+            pullback_threshold: PRESETS[req.preset].pullbackThreshold,
+            profit_threshold: PRESETS[req.preset].profitThreshold,
+            lookback_bars: PRESETS[req.preset].lookbackBars,
+          };
     await supabase.from('analysis_runs').insert({
       user_id: user.id,
       preset: req.preset,
-      pullback_threshold: req.pullbackThreshold ?? null,
-      profit_threshold: req.profitThreshold ?? null,
-      lookback_bars: req.lookbackBars ?? null,
+      ...t,
       tickers: req.tickers,
       ticker_count: req.tickers.length,
       results: null,

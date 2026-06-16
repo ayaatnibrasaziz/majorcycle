@@ -193,7 +193,7 @@ Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis w
 - [x] **Run button** — calls `/api/analyze` in chunks; honest progress + Cancel (`RunProgress.tsx`, batching in `analysis.tsx`).
 - [x] **Loading state** — real batched progress (chunks done / total, elapsed, ETA, scored/skipped counts).
 - [~] **Universe expansion handler** — **deferred** (owner-approved): unknown tickers go to `unavailable[]`. Live `/api/fetch-ticker` (yfinance) is a separate fast-follow PR.
-- [x] **Last Analysis card** — from `analysis_runs` (INPUTS ONLY — #15), "Re-run" re-derives (`LastAnalysisCard.tsx`).
+- [x] **Last Analysis card** — from `analysis_runs` (INPUTS ONLY — #15), "Re-run" re-derives (`LastAnalysisCard.tsx`). *(2026-06-16 fix: `writeRun` now resolves a named preset's thresholds from PRESETS before insert — the threshold columns are NOT NULL, so persisting NULL had been silently dropping every Short/Medium/Long run's history row.)*
 - [x] **Error handling** — partial failures listed in `unavailable`; a failed chunk degrades gracefully (its tickers → `unavailable`).
 
 **Verification:** ✅ (engine untouched; `analyze.py` output byte-matches `cycle.py` for the same params)
