@@ -52,6 +52,12 @@ from _engine.providers.base import FundamentalsSnapshot  # noqa: E402
 logger = logging.getLogger("api.cycle")
 logging.basicConfig(level=logging.INFO)
 
+# Whether the get_price_bars_json RPC (one-shot history fetch) exists in this DB.
+# None = not yet probed; False = confirmed missing (use pagination); True = present.
+# Lets this run before the migration is applied (falls back to paginated reads).
+_RPC_AVAILABLE: bool | None = None
+_RPC_NAME = "get_price_bars_json"
+
 
 def _supabase() -> Client:
     # SUPABASE_URL is set in the Vercel runtime; locally (dev CLI) the web app's
@@ -66,13 +72,29 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
     """Read all price_bars for one ticker. Returns DataFrame with yfinance-style
     OHLCV column names (Open, High, Low, Close, Volume) and a DatetimeIndex.
 
-    PostgREST caps each response at 1000 rows, so we paginate — otherwise the
-    cycle math would only see the oldest 1000 bars (decades-old, split-adjusted
-    prices) and produce nonsense. We count the rows once, then fetch every page
-    concurrently so a long-history ticker (AAPL ~11.5k bars) arrives in roughly
-    two round-trips instead of a dozen sequential ones. Mirrors the parallel
-    paging in web/lib/stocks.ts.
+    Fast path: ONE request via the get_price_bars_json RPC (whole history as a
+    single jsonb — bypasses the 1000-row cap). Falls back to parallel paginated
+    reads if the RPC isn't deployed yet or errors, so this is safe before/after
+    the migration. (Without the RPC, PostgREST caps each response at 1000 rows,
+    so we must page; otherwise the cycle math would see only the oldest 1000
+    bars — decades-old split-adjusted prices — and produce nonsense.)
     """
+    global _RPC_AVAILABLE
+    if _RPC_AVAILABLE is not False:
+        try:
+            resp = sb.rpc(_RPC_NAME, {"p_ticker": ticker}).execute()
+            _RPC_AVAILABLE = True
+            data = cast("list[Any] | None", resp.data)
+            return _bars_to_df(data) if data else None
+        except Exception as e:  # noqa: BLE001
+            msg = str(e).lower()
+            if _RPC_AVAILABLE is None and any(
+                s in msg for s in ("pgrst202", "could not find", "does not exist", "not found", "404")
+            ):
+                _RPC_AVAILABLE = False
+                logger.warning("%s RPC not deployed — using paginated reads", _RPC_NAME)
+            # else: transient — fall through to pagination for this call only
+
     PAGE = 1000
 
     def _fetch_page(i: int) -> list[Any]:
@@ -112,6 +134,16 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
                 rows.extend(page)
     if not rows:
         return None
+    return _bars_to_df(rows)
+
+
+def _bars_to_df(rows: list[Any]) -> pd.DataFrame:
+    """Build the yfinance-style OHLCV DataFrame (DatetimeIndex) from raw bar rows.
+
+    Coerces OHLCV to numeric so the RPC path (jsonb numbers) and the paginated
+    path build an identical frame regardless of serialisation — the cycle math
+    needs floats.
+    """
     df = pd.DataFrame(rows)
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date")
@@ -124,6 +156,8 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
             "volume": "Volume",
         }
     )
+    for col in ("Open", "High", "Low", "Close", "Volume"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
 
@@ -165,19 +199,76 @@ def _serialise_analysis(analysis: Any) -> dict[str, Any]:
     return dataclasses.asdict(analysis)
 
 
-def compute_cycle(ticker: str, preset: str) -> tuple[int, dict[str, Any]]:
+# Custom-param validation bounds — the canonical contract (data-contracts.md §7),
+# same as web/api/analyze.py.
+_CUSTOM_BOUNDS = {
+    "pullback_threshold": (-30.0, -1.0),
+    "profit_threshold": (1.0, 30.0),
+    "lookback_bars": (21, 5040),
+}
+
+
+def _resolve_params(
+    preset: str,
+    pullback: float | None,
+    profit: float | None,
+    lookback: int | None,
+) -> tuple[CycleParams | None, str | None]:
+    """Build CycleParams from a named preset or explicit custom values."""
+    if preset == "custom":
+        if pullback is None or profit is None or lookback is None:
+            return None, "custom preset requires pullback, profit and lookback"
+        for name, value in (
+            ("pullback_threshold", pullback),
+            ("profit_threshold", profit),
+            ("lookback_bars", lookback),
+        ):
+            lo, hi = _CUSTOM_BOUNDS[name]
+            if not (lo <= value <= hi):
+                return None, f"{name} {value} out of range [{lo}, {hi}]"
+        return (
+            CycleParams(
+                pullback_threshold=float(pullback),
+                profit_threshold=float(profit),
+                lookback_bars=int(lookback),
+            ),
+            None,
+        )
+    if preset not in PRESETS:
+        return None, f"unknown preset '{preset}' (must be one of: {sorted(PRESETS)} or 'custom')"
+    cfg = PRESETS[preset]
+    return (
+        CycleParams(
+            pullback_threshold=float(cfg["pullback_threshold"]),
+            profit_threshold=float(cfg["profit_threshold"]),
+            lookback_bars=int(cfg["lookback_bars"]),
+        ),
+        None,
+    )
+
+
+def compute_cycle(
+    ticker: str,
+    preset: str,
+    pullback: float | None = None,
+    profit: float | None = None,
+    lookback: int | None = None,
+) -> tuple[int, dict[str, Any]]:
     """Core cycle computation, shared by the HTTP handler and the CLI entry point.
 
     Returns ``(status_code, body)``. Reads price bars + fundamentals from Supabase
-    and runs the cycle math; never touches yfinance.
+    and runs the cycle math; never touches yfinance. ``preset`` is one of the named
+    presets OR 'custom' (with explicit pullback/profit/lookback).
     """
     ticker = (ticker or "").strip().upper()
     preset = (preset or "medium").lower()
 
     if not ticker:
         return 400, {"error": "missing required query param: ticker"}
-    if preset not in PRESETS:
-        return 400, {"error": f"unknown preset '{preset}' (must be one of: {sorted(PRESETS)})"}
+
+    params, err = _resolve_params(preset, pullback, profit, lookback)
+    if err or params is None:
+        return 400, {"error": err or "invalid parameters"}
 
     sb = _supabase()
     row, fundamentals = _load_fundamentals(sb, ticker)
@@ -188,12 +279,6 @@ def compute_cycle(ticker: str, preset: str) -> tuple[int, dict[str, Any]]:
     if df is None or df.empty:
         return 404, {"error": f"no price history for ticker '{ticker}'"}
 
-    preset_cfg = PRESETS[preset]
-    params = CycleParams(
-        pullback_threshold=float(preset_cfg["pullback_threshold"]),
-        profit_threshold=float(preset_cfg["profit_threshold"]),
-        lookback_bars=int(preset_cfg["lookback_bars"]),
-    )
     analysis = analyze_ticker(ticker, df, fundamentals, params)
     if analysis is None:
         return 500, {"error": f"analysis failed for '{ticker}' — insufficient price history"}
@@ -207,7 +292,21 @@ class handler(BaseHTTPRequestHandler):
             query = parse_qs(urlparse(self.path).query)
             ticker = query.get("ticker", [""])[0] or ""
             preset = query.get("preset", ["medium"])[0] or "medium"
-            status, body = compute_cycle(ticker, preset)
+
+            def _num(key: str) -> float | None:
+                raw = query.get(key, [""])[0]
+                if raw in (None, ""):
+                    return None
+                try:
+                    return float(raw)
+                except ValueError:
+                    return None
+
+            pullback = _num("pullback")
+            profit = _num("profit")
+            _lb = _num("lookback")
+            lookback = int(_lb) if _lb is not None else None
+            status, body = compute_cycle(ticker, preset, pullback, profit, lookback)
             self._json(status, body, cache_for_seconds=3600 if status == 200 else 0)
         except KeyError as e:
             logger.exception("Missing env var")
@@ -241,8 +340,13 @@ if __name__ == "__main__":
     _p = argparse.ArgumentParser(description="Compute CycleAnalysis JSON for one ticker")
     _p.add_argument("--ticker", required=True)
     _p.add_argument("--preset", default="medium")
+    _p.add_argument("--pullback", type=float, default=None)
+    _p.add_argument("--profit", type=float, default=None)
+    _p.add_argument("--lookback", type=int, default=None)
     _args = _p.parse_args()
 
-    _status, _body = compute_cycle(_args.ticker, _args.preset)
+    _status, _body = compute_cycle(
+        _args.ticker, _args.preset, _args.pullback, _args.profit, _args.lookback
+    )
     print(json.dumps(_body, default=str))
     sys.exit(0 if _status == 200 else 1)

@@ -4,17 +4,16 @@ import { WeekRangeGauge } from '@/components/stocks/WeekRangeGauge';
 import { InfoTip } from '@/components/ui/InfoTip';
 import type { StockDetail } from '@/lib/stocks';
 import { fmtPrice } from '@/lib/format';
-import { tickerToUrlParts } from '@/lib/ticker';
+import { marketLabel, tickerToUrlParts } from '@/lib/ticker';
 import type {
   AnalystRecommendation,
-  Market,
   OverallLabel,
   ValuationZone,
 } from '@/lib/types';
 
-// Match the Browse page: show the clean symbol + a market badge rather than the
-// raw exchange-suffixed storage ticker (BHP.AX / SHOP.TO).
-const MARKET_BADGE: Record<Market, string> = { us: 'US', au: 'ASX', ca: 'TSX' };
+// Match the Browse page: show the clean symbol + a country badge rather than the
+// raw exchange-suffixed storage ticker (BHP.AX / SHOP.TO). Country code via the
+// shared `marketLabel` so it stays consistent with Browse / Run / tab title.
 
 interface Props {
   stock: StockDetail;
@@ -88,7 +87,7 @@ export function StockHeader({ stock, badgeSlot }: Props) {
             {tickerToUrlParts(stock.ticker).symbol}
           </span>
           <span className="text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[4px] px-[7px] py-[2px] flex-shrink-0">
-            {MARKET_BADGE[stock.market]}
+            {marketLabel(stock.market)}
           </span>
         </div>
         <div className="text-[14px] text-[var(--text-secondary)] mt-[2px]">

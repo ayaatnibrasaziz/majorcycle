@@ -177,24 +177,41 @@ After the components were built, Layer C was reframed into a per-section product
 
 ### Layer D: Run Analysis Tab (target: 1 week)
 
-Goal: Users can upload tickers (or pick from universe), run analysis with presets/custom, get scored results.
+Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis with presets/custom, get scored results.
 
-- [ ] **Preset selector** — Short / Medium / Long / Custom segmented control
-  - [x] **Horizon selector on the Browse page (`/stocks`), NOT the detail page** — the user picks a Major Cycle horizon **before** opening a stock; the choice is carried into the opened stock via a `?preset=` query param, and the Stock Detail page honours it (default **Medium**). **No selector/option on the Stock Detail page itself** (explicit owner decision — they did not want it there). Short / Medium / Long shipped in S4-follow-up (cycle path already supports those three); **Custom deferred to Layer D** (needs the custom-params panel + `/api/cycle` accepting explicit pullback/profit/lookback). Beginner-framed label + tooltip. The cycle cache is already keyed per ticker **and** preset, so each horizon caches independently. *(Decision + initial Short/Medium/Long build with owner, 2026-06-04.)*
-- [ ] **Custom params panel** — three inputs with validation
-- [ ] **Ticker upload zone** — drag-drop + click-to-upload CSV
-- [ ] **Manual ticker entry** — paste/type tickers, autocomplete via `/api/search`
-- [ ] **Run button** — calls `/api/analyze`, shows progress
-- [ ] **Loading state** — skeleton results table during processing
-- [ ] **Universe expansion handler** — new tickers get fetched via `/api/fetch-ticker`
-- [ ] **Last Analysis card** — shows previous run, "Re-run" button
-- [ ] **Error handling** — partial failures listed in `unavailable` array
+> **Beginner-first reframe (owner-approved).** The reference Run tab (two big cards: CSV upload + raw-threshold settings) optimises for power users and fails our mass-retail beginner audience (the blank-canvas problem). Layer D **deliberately deviates from strict visual parity** (#1) for a "Build your analysis" flow: ready-made **baskets** lead, **search-and-add** builds custom lists, **CSV** is demoted to a small import, all feeding a **visible selected-tickers chip list**; horizon presets up front with **Custom/Advanced** behind a disclosure. Runs execute via **client-side batching** (chunk → POST `/api/analyze` → accumulate) giving an honest progress bar + Cancel. See `design-system.md` §Run-Analysis.
 
-**Verification:**
-- Run with 50 tickers using each preset — results match Python script output
-- Custom params validate correctly (negative pullback, positive profit, integer lookback)
-- Universe expansion works: unknown ticker added on the fly
-- All edge cases (empty list, duplicate tickers, invalid tickers) handled gracefully
+- [x] **Preset selector** — Short / Medium / Long / Custom (`HorizonSettings.tsx`; Custom + raw pullback/profit/lookback behind an "Advanced" disclosure, validated to data-contracts §7 bounds).
+  - [x] **Horizon selector on the Browse page (`/stocks`), NOT the detail page** — the user picks a Major Cycle horizon **before** opening a stock; the choice is carried into the opened stock via the query, and the Stock Detail page honours it (default **Medium**). **No selector/option on the Stock Detail page itself** (explicit owner decision). Short / Medium / Long shipped in S4-follow-up. **Custom shipped (2026-06-14):** Browse has a Custom option with pullback/profit/lookback inputs (persisted, §7-validated); links carry `?preset=custom&pullback=&profit=&lookback=`, and **`/api/cycle` + `cycle.ts` + the detail page now compute custom** (additive — named presets untouched; `cycle.ts` threads a `CycleSpec`). `/api/analyze` also accepts custom for Run Analysis. Cache keyed per ticker **and** the full window. *(Decision + initial S/M/L build 2026-06-04; Custom 2026-06-14.)*
+- [x] **Custom params panel** — three inputs with validation (`HorizonSettings.tsx`).
+- [x] **Ready-made baskets** *(new — solves the blank canvas)* — Index (S&P 500 / ASX 200 / TSX 60) + Top-by-market-cap + compact "By sector ▾" + **"By industry ▾"** (industries grouped under their sector via `<optgroup>`) + "Magnificent Seven", from the light universe index (`baskets.ts`, registry — future "My Watchlist" drops in here).
+- [x] **Industry support across the app** *(2026-06-16)* — Browse (`/stocks`) gains an **Industry filter** dependent on the Sector filter (industries narrow to the chosen sector; changing sector resets it); Run Analysis gains the grouped "By industry ▾" basket; and the Stock Detail **Key Metrics** table gains a **"vs Industry"** comparison column (industry-first, before vs Sector / vs Market) backed by `medians.server.ts` industry medians with a ≥5-peer floor → graceful "—" fallback for small industries. Shared `industry` plumbing (`universe.server.ts` already carries it; `baskets.ts` helpers).
+- [x] **Live per-field horizon validation** *(2026-06-16)* — the Custom pullback/profit/lookback inputs on **both** Run (`HorizonSettings`) and Browse (`StockBrowser` `CustomField`, which also gained `InfoTip` explainers) now show instant per-field feedback (red border + inline note on *only* the offending field, clearing the moment it's valid) via a shared `boundError` helper. Sample CSV expanded to 15 real tickers (5 US / 5 AU / 5 CA).
+- [x] **Ticker upload zone** — CSV drag-drop + click (`CsvImport.tsx`; reference's validate/preview UX, demoted to a secondary import).
+- [x] **Manual ticker entry** — search + autocomplete via `/api/search` (`TickerSearchAdd.tsx`).
+- [x] **Selected-tickers chip list** *(new)* — live count + per-chip remove + clear; the single source all inputs feed (`SelectedTickers.tsx`).
+- [x] **Run button** — calls `/api/analyze` in chunks; honest progress + Cancel (`RunProgress.tsx`, batching in `analysis.tsx`).
+- [x] **Loading state** — real batched progress (chunks done / total, elapsed, ETA, scored/skipped counts).
+- [~] **Universe expansion handler** — **deferred** (owner-approved): unknown tickers go to `unavailable[]`. Live `/api/fetch-ticker` (yfinance) is a separate fast-follow PR.
+- [x] **Last Analysis card** — from `analysis_runs` (INPUTS ONLY — #15), "Re-run" re-derives (`LastAnalysisCard.tsx`). *(2026-06-16 fix: `writeRun` now resolves a named preset's thresholds from PRESETS before insert — the threshold columns are NOT NULL, so persisting NULL had been silently dropping every Short/Medium/Long run's history row.)*
+- [x] **Error handling** — partial failures listed in `unavailable`; a failed chunk degrades gracefully (its tickers → `unavailable`).
+
+**Verification:** ✅ (engine untouched; `analyze.py` output byte-matches `cycle.py` for the same params)
+- `analyze.py` SHOP.TO/medium == `cycle.py` SHOP.TO/medium (overall 81, 40/35/25 formula holds); RY.TO short scored, `ZZZZ.TO` → unavailable, `ry.to` deduped
+- Custom params validate (out-of-bounds pullback → 400; empty list → 400); presets resolve correctly
+- Edge cases (empty list, duplicate tickers, unknown tickers) handled gracefully
+- UI verified in browser: baskets/search/CSV populate the chip list, Custom/Advanced opens, no console errors
+- Universe expansion (unknown ticker added on the fly) — deferred to the `/api/fetch-ticker` fast-follow
+- **Known (pre-existing, deferred to Layer H):** 375px horizontal overflow from the non-responsive sidebar/header shell — identical on the already-live `/stocks`, not a Layer D regression
+
+> **Session infra + security + perf (2026-06-14), shipped on the same PR:**
+> - **Performance** — the DB was randomly created in Seoul (cross-Pacific from US/AU/CA). Migrated to a **new `us-east-1` Supabase project** (re-seeded from the pipeline) + pinned Vercel functions to **`iad1`**, and added a one-request `get_price_bars_json` RPC (collapses the 1000-row pagination). A heavy stock's data load went from ~5.6s to a few hundred ms; `analyze.py` also got parallel paging, a warm-instance result cache, and retries. Both Run Analysis **and** the Stock Detail page use the RPC.
+> - **Security (Supabase advisor: all WARN/CRITICAL cleared)** — RLS enabled on all tables (`stocks`/`price_bars`/`universe_log` locked to the service role; `profiles`/`analysis_runs` per-user); functions hardened. Migrations `20260614020000`–`20260614040000`.
+> - **Auth fix** — `handle_new_user` trigger auto-creates a `profiles` row on every sign-in method (was empty on Google/email sign-in). `20260614030000`.
+> - **Dev** — `/api/analyze-dev` shim spawns `analyze.py` under `next dev` (mirrors `cycle.ts`) so Run Analysis is verifiable in local preview.
+> - **Polish** — Run tab restyled to the reference's compact look via ported `globals.css` classes; search shows bare symbols (no `.AX`/`.TO`); CSV re-upload fixed; **Download sample CSV** button.
+> - **Pending owner steps:** delete the old Seoul project after a few stable days.
+> - **Verified (2026-06-16):** Email + Google auth providers are **live** on the new us-east project — two real sign-ins (one Google, one email) both auto-created a linked `profiles` row via `handle_new_user`. Local `.env.local` confirmed pointing at the new project (URL + anon + service-role).
 
 ### Layer E: Results Tab (target: 4-5 days)
 

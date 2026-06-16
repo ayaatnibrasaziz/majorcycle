@@ -35,6 +35,60 @@ function shallowCamel(row: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
+type AdminClient = ReturnType<typeof createAdminClient>;
+
+/**
+ * Load a ticker's full daily history.
+ *
+ * Fast path: ONE request via the `get_price_bars_json` RPC, which returns the
+ * whole history as a single jsonb value (bypassing PostgREST's 1000-row cap —
+ * so a long-history ticker no longer needs ~12 cross-region round-trips).
+ *
+ * Falls back to parallel paginated reads if the RPC isn't deployed yet or errors,
+ * so this is safe to ship before/after the migration. Returns `null` only on a
+ * hard read failure (lets the caller 404 / degrade).
+ */
+async function loadPriceBars(
+  supabase: AdminClient,
+  ticker: string,
+): Promise<PriceBar[] | null> {
+  const { data: rpcData, error: rpcErr } = await supabase.rpc('get_price_bars_json', {
+    p_ticker: ticker,
+  });
+  if (!rpcErr && Array.isArray(rpcData)) {
+    return rpcData as unknown as PriceBar[];
+  }
+
+  // Fallback: get the count once, then pull every 1000-row page in parallel so
+  // the whole history still arrives in ~2 round-trips instead of a dozen.
+  const PAGE = 1000;
+  const { count, error: countErr } = await supabase
+    .from('price_bars')
+    .select('date', { count: 'exact', head: true })
+    .eq('ticker', ticker);
+  if (countErr) return null;
+
+  const pageCount = Math.ceil((count ?? 0) / PAGE);
+  const pages = await Promise.all(
+    Array.from({ length: pageCount }, (_, i) =>
+      supabase
+        .from('price_bars')
+        .select('date,open,high,low,close,volume')
+        .eq('ticker', ticker)
+        .order('date', { ascending: true })
+        .range(i * PAGE, i * PAGE + PAGE - 1),
+    ),
+  );
+
+  // Pages are date-ordered slices concatenated in order → globally date-ordered.
+  const priceBars: PriceBar[] = [];
+  for (const { data: page, error: barsErr } of pages) {
+    if (barsErr) return null;
+    if (page) priceBars.push(...(page as PriceBar[]));
+  }
+  return priceBars;
+}
+
 /**
  * Fetch a stock's full detail payload by storage-format ticker (e.g. `AAPL`,
  * `BHP.AX`, `SHOP.TO`). Returns `null` if the ticker isn't in our universe.
@@ -55,37 +109,8 @@ export const fetchStockDetail = cache(
       return null;
     }
 
-    // PostgREST caps each response at 1000 rows, so we still page — but a
-    // long-history ticker (AAPL ~11.5k bars) is ~12 pages, and fetching them
-    // sequentially costs ~7s of round-trip latency. Get the count once, then
-    // pull every page in parallel so the whole lifetime history arrives in
-    // roughly two round-trips instead of twelve.
-    const PAGE = 1000;
-    const { count, error: countErr } = await supabase
-      .from('price_bars')
-      .select('date', { count: 'exact', head: true })
-      .eq('ticker', ticker);
-    if (countErr) return null;
-
-    const pageCount = Math.ceil((count ?? 0) / PAGE);
-    const pages = await Promise.all(
-      Array.from({ length: pageCount }, (_, i) =>
-        supabase
-          .from('price_bars')
-          .select('date,open,high,low,close,volume')
-          .eq('ticker', ticker)
-          .order('date', { ascending: true })
-          .range(i * PAGE, i * PAGE + PAGE - 1),
-      ),
-    );
-
-    // Pages are date-ordered slices concatenated in order, so the result stays
-    // globally ordered by date.
-    const priceBars: PriceBar[] = [];
-    for (const { data: page, error: barsErr } of pages) {
-      if (barsErr) return null;
-      if (page) priceBars.push(...(page as PriceBar[]));
-    }
+    const priceBars = await loadPriceBars(supabase, ticker);
+    if (priceBars === null) return null;
 
     const camelRow = shallowCamel(stockRow as Record<string, unknown>);
 

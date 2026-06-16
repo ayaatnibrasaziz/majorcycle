@@ -507,10 +507,17 @@ Single-ticker Major Cycle analysis. Called by the Stock Detail Server Component 
 **Query params:**
 ```typescript
 interface CycleQuery {
-  ticker: string;                              // storage format: 'AAPL', 'BHP.AX', 'SHOP.TO'
-  preset?: 'short' | 'medium' | 'long';        // default: 'medium'
+  ticker: string;                                          // storage format: 'AAPL', 'BHP.AX', 'SHOP.TO'
+  preset?: 'short' | 'medium' | 'long' | 'custom';         // default: 'medium'
+  pullback?: number;                                       // required if preset === 'custom' (bounds §7)
+  profit?: number;                                         // required if preset === 'custom'
+  lookback?: number;                                       // required if preset === 'custom'
 }
 ```
+The Browse page sets the window: named presets via `?preset=`, or a fully custom
+window (`?preset=custom&pullback=-7&profit=7&lookback=300`) that the detail page
+passes straight through. Custom values are validated to the §7 bounds (else 400);
+the result is edge-cached per full query string.
 
 **Response (200):** the full `CycleAnalysis` shape from section 3, serialised with snake_case keys (the Python dataclass field names). The frontend converts to camelCase via `web/lib/case.ts` if typed consumption is needed. Sample:
 
@@ -549,35 +556,71 @@ interface CycleQuery {
 
 ### `POST /api/analyze`
 
+**Stateless by design (Layer D).** The Run tab chunks the user's selection
+client-side (≤ 60 tickers/request) and POSTs each chunk; the function never
+writes to the DB and returns **no `runId`**. The client accumulates the chunks,
+holds live results in client state (+ `sessionStorage` for the Layer E Results
+handoff), and writes **one** `analysis_runs` history row itself — **inputs only**,
+never the computed results (CLAUDE.md #15 / §11). Reads price bars + fundamentals
+from Supabase and runs the math via the vendored `_engine`; never calls yfinance.
+Auth is enforced by `proxy.ts` (this path is not in `PUBLIC_PATHS`).
+
 **Request:**
 ```typescript
 interface AnalyzeRequest {
   tickers: string[];                       // ['AAPL', 'MSFT', ...] in yfinance format
   preset: 'short' | 'medium' | 'long' | 'custom';
-  pullbackThreshold?: number;              // required if preset === 'custom'
+  pullbackThreshold?: number;              // required if preset === 'custom' (bounds: §7)
   profitThreshold?: number;                // required if preset === 'custom'
   lookbackBars?: number;                   // required if preset === 'custom'
 }
 ```
 
-**Response (200):**
+**Response (200):** `results` arrive snake_case (the Python dataclass field
+names); the client converts via `web/lib/case.ts`.
 ```typescript
 interface AnalyzeResponse {
-  results: CycleAnalysis[];
-  unavailable: string[];                   // tickers that couldn't be analysed
-  runId: string;                           // UUID of stored analysis_run
+  results: CycleAnalysis[];                // one per analysable ticker
+  unavailable: string[];                   // not in universe / insufficient history / failed
   startedAt: string;
   finishedAt: string;
 }
 ```
 
+**The `analysis_runs` history row (client-written, inputs only):**
+```typescript
+interface AnalysisRunRecord {
+  id: string;
+  preset: 'short' | 'medium' | 'long' | 'custom';
+  // ALWAYS populated (the table's threshold columns are NOT NULL). For a NAMED
+  // preset the request omits the raw thresholds, so `writeRun` resolves them from
+  // PRESETS before inserting — still inputs, just the resolved form of the preset.
+  // (Persisting NULL here silently dropped every named-preset Last-Analysis row.)
+  pullbackThreshold: number;
+  profitThreshold: number;
+  lookbackBars: number;
+  tickers: string[];
+  tickerCount: number;
+  startedAt: string;
+  finishedAt: string | null;
+  status: 'running' | 'complete' | 'partial' | 'error';
+  // NOTE: the table's `results jsonb` column is written NULL — ratings are never
+  // stored (migration `analysis_runs_results_nullable` relaxes its NOT NULL).
+}
+```
+
 **Errors:**
-- `400` — invalid params (missing custom values, etc.)
-- `401` — not logged in
-- `402` — subscription expired
+- `400` — invalid params (empty tickers, bad preset, custom out of §7 bounds, > 60/request)
+- `401` — not logged in (enforced by `proxy.ts`)
+- `402` — subscription expired *(Layer F)*
 - `500` — internal — return `{ error: string }`
 
-### `POST /api/fetch-ticker`
+### `POST /api/fetch-ticker` *(deferred — Layer D fast-follow)*
+
+Live universe expansion for unknown tickers. **Not built in the initial Layer D
+PR** (owner-approved): until it ships, unknown tickers returned by `/api/analyze`
+land in `unavailable[]`. Building it adds yfinance to the web function bundle +
+vendors `yfinance_provider` — done as a separate, carefully-verified PR.
 
 **Request:** `{ ticker: string }`
 
@@ -721,13 +764,21 @@ Webhook events handled:
 
 ## 11. Disallowed Patterns
 
-- ❌ Storing computed scores (`overall_rating`, `valuation_zone`) in the DB — they're always derived
+- ❌ Storing computed scores (`overall_rating`, `valuation_zone`) in the DB — they're always derived. This includes `analysis_runs`: it persists run **inputs only** (preset, params, tickers, counts, timestamps, status); its `results` column is written `NULL`. The Run Analysis results live in client state and are re-derived on "Re-run".
 - ❌ Bypassing the `DataProvider` interface — never call `yfinance` directly anywhere except inside `yfinance_provider.py`
 - ❌ Adding fields to `FundamentalsSnapshot` or `EnrichedData` without updating BOTH the Python dataclass AND the TS type in the same commit
 - ❌ Storing camelCase keys in Supabase — always snake_case at the DB boundary
 - ❌ Returning raw provider responses to the frontend — always go through the canonical shapes
 - ❌ Calling `fetch_enriched_data` on every cron run — the `_should_fetch_enriched` helper in `daily_refresh.py` is the single gatekeeper; bypass it only via `--mode full`
 - ❌ Storing `next_earnings_date` anywhere other than `stocks.next_earnings_date` — it is the source of truth for the staleness check and the future earnings calendar UI
+
+---
+
+## 12. Database access & Row-Level Security
+
+- **`profiles` is created automatically** by the `handle_new_user` trigger on `auth.users` (every sign-in method). Do not insert profiles from the client; only **update own row** (RLS policy `users update own profile`).
+- **RLS is on for every table.** `profiles` + `analysis_runs` have per-user policies (own-row). `stocks` / `price_bars` / `universe_log` have RLS enabled with **no policies** — read them **only server-side with the service-role key** (`createAdminClient` / the Python service client), never with the browser anon client.
+- The `get_price_bars_json(p_ticker)` RPC is the one-request way to read a ticker's full history (bypasses the 1000-row cap); it's service-role only. Schema lives in `supabase/migrations/` (mirrors the Supabase migration log).
 
 ---
 

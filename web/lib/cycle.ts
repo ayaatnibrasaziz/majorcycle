@@ -3,7 +3,22 @@ import { cache } from 'react';
 import { toCamel } from '@/lib/case';
 import type { CycleAnalysis } from '@/lib/types';
 
-type Preset = 'short' | 'medium' | 'long';
+export type CyclePreset = 'short' | 'medium' | 'long';
+
+/**
+ * Which Major Cycle window to compute: a named preset, or fully custom
+ * pullback/profit/lookback values (chosen on the Browse page).
+ */
+export type CycleSpec =
+  | { preset: CyclePreset }
+  | { preset: 'custom'; pullback: number; profit: number; lookback: number };
+
+/** Stable string key for caching/spawn-dedup. */
+function specKey(spec: CycleSpec): string {
+  return spec.preset === 'custom'
+    ? `custom:${spec.pullback}:${spec.profit}:${spec.lookback}`
+    : spec.preset;
+}
 
 function baseUrl(): string {
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
@@ -39,11 +54,23 @@ function useLocalCompute(): boolean {
 const _devCycleCache = new Map<string, { at: number; value: CycleAnalysis | null }>();
 const _DEV_CACHE_TTL = 5 * 60 * 1000;
 
+function specToCliArgs(spec: CycleSpec): string[] {
+  if (spec.preset === 'custom') {
+    return [
+      '--preset', 'custom',
+      '--pullback', String(spec.pullback),
+      '--profit', String(spec.profit),
+      '--lookback', String(spec.lookback),
+    ];
+  }
+  return ['--preset', spec.preset];
+}
+
 async function computeCycleLocally(
   ticker: string,
-  preset: Preset,
+  spec: CycleSpec,
 ): Promise<CycleAnalysis | null> {
-  const key = `${ticker}:${preset}`;
+  const key = `${ticker}:${specKey(spec)}`;
   const hit = _devCycleCache.get(key);
   if (hit && Date.now() - hit.at < _DEV_CACHE_TTL) return hit.value;
   const { execFile } = await import('node:child_process');
@@ -65,7 +92,7 @@ async function computeCycleLocally(
   try {
     const { stdout } = await run(
       python,
-      [script, '--ticker', ticker, '--preset', preset],
+      [script, '--ticker', ticker, ...specToCliArgs(spec)],
       { env: process.env, maxBuffer: 10 * 1024 * 1024 },
     );
     const raw: unknown = JSON.parse(stdout);
@@ -80,25 +107,34 @@ async function computeCycleLocally(
   return result;
 }
 
+function specToQuery(ticker: string, spec: CycleSpec): string {
+  const qs = new URLSearchParams({ ticker, preset: spec.preset });
+  if (spec.preset === 'custom') {
+    qs.set('pullback', String(spec.pullback));
+    qs.set('profit', String(spec.profit));
+    qs.set('lookback', String(spec.lookback));
+  }
+  return qs.toString();
+}
+
 /**
- * Fetch cycle analysis for one ticker. In production this calls the co-located
- * Python serverless function at /api/cycle; in local dev it computes via the
- * same Python file run as a CLI. Cached per render so multiple components on the
- * same page only pay the cost once.
+ * Fetch cycle analysis for one ticker + spec (named preset or custom). In
+ * production this calls the co-located Python serverless function at /api/cycle;
+ * in local dev it computes via the same Python file run as a CLI. Cached per
+ * render (and per Vercel data cache / dev map) so the page's many cycle sections
+ * share a single underlying compute. Pass the SAME `spec` object reference to
+ * every consumer in a render so React's cache() dedupes them.
  *
  * Returns null on any error (404, 500, network failure) so the UI can degrade
  * gracefully — cycle data is enriching, not blocking.
  */
 export const fetchCycleAnalysis = cache(
-  async (
-    ticker: string,
-    preset: Preset = 'medium',
-  ): Promise<CycleAnalysis | null> => {
+  async (ticker: string, spec: CycleSpec): Promise<CycleAnalysis | null> => {
     if (useLocalCompute()) {
-      return computeCycleLocally(ticker, preset);
+      return computeCycleLocally(ticker, spec);
     }
     try {
-      const url = `${baseUrl()}/api/cycle?ticker=${encodeURIComponent(ticker)}&preset=${preset}`;
+      const url = `${baseUrl()}/api/cycle?${specToQuery(ticker, spec)}`;
       const res = await fetch(url, { next: { revalidate: 3600 } });
       if (!res.ok) return null;
       const raw: unknown = await res.json();

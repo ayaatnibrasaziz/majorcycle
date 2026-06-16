@@ -8,6 +8,7 @@ import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
   fundamentals: FundamentalsSnapshot;
+  industry: string | null;
   sector: string | null;
   market: string;
   medians: MedianTables;
@@ -70,7 +71,9 @@ const CAT_PILL: Record<Category, string> = {
   'Balance Sheet': 'mt-cat-balance',
 };
 
-const MARKET_LABEL: Record<string, string> = { us: 'US market', au: 'ASX', ca: 'TSX' };
+// Country codes (US / AU / CA) for the "vs Market" column — consistent with the
+// Browse filter + per-stock badges (`marketLabel`).
+const MARKET_LABEL: Record<string, string> = { us: 'US', au: 'AU', ca: 'CA' };
 
 const UNIT_SUFFIX: Record<Unit, string> = { pct: '%', mult: 'x', ratio: '' };
 
@@ -138,6 +141,7 @@ interface BuiltRow {
   value: number;
   disp: string;
   valueTitle?: string;
+  industryCmp: Comparison;
   sectorCmp: Comparison;
   marketCmp: Comparison;
 }
@@ -149,9 +153,13 @@ const VERDICT_CLASS: Record<Verdict, string> = {
   na: 'km-cmp--na',
 };
 
-export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
+export function MetricsTable({ fundamentals, industry, sector, market, medians }: Props) {
+  // Industries below the peer floor are absent from medians.industry, so this is
+  // undefined for them and the "vs Industry" cells render the graceful "—" state.
+  const industryGroup = industry ? medians.industry[industry] : undefined;
   const sectorGroup = sector ? medians.sector[sector] : undefined;
   const marketGroup = medians.market[market];
+  const industryLabel = industry ?? 'Industry';
   const sectorLabel = sector ?? 'Sector';
   const marketLabel = MARKET_LABEL[market] ?? 'Market';
 
@@ -166,11 +174,12 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
         value,
         disp: fmtVal(value, def.unit, def.cap),
         valueTitle: capped ? `Actual ${fmtVal(value, def.unit)} — capped for display` : undefined,
+        industryCmp: compare(def, value, industryGroup, industryLabel),
         sectorCmp: compare(def, value, sectorGroup, sectorLabel),
         marketCmp: compare(def, value, marketGroup, marketLabel),
       }];
     });
-  }, [fundamentals, sectorGroup, marketGroup, sectorLabel, marketLabel]);
+  }, [fundamentals, industryGroup, sectorGroup, marketGroup, industryLabel, sectorLabel, marketLabel]);
 
   if (rows.length === 0) {
     return (
@@ -190,9 +199,11 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
           Key Metrics
           <InfoTip title="Key Metrics">
             The headline numbers investors use, each compared with the typical
-            company in the same sector and market (the &quot;median&quot; peer). Green means
-            this stock is stronger than that peer, red means weaker, grey means
-            about the same. Tap any metric name for a plain-English definition.
+            company in the same industry, sector, and market (the &quot;median&quot; peer).
+            Green means this stock is stronger than that peer, red means weaker,
+            grey means about the same. A &quot;—&quot; under Industry means there aren&apos;t
+            enough close peers for a reliable comparison. Tap any metric name for a
+            plain-English definition.
           </InfoTip>
         </div>
         <div className="km-subtitle">How it compares with its peers</div>
@@ -205,6 +216,7 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
                 <th className="km-th-metric">Metric</th>
                 <th className="km-th-cat">Category</th>
                 <th className="km-num">Value</th>
+                <th className="km-num">vs {industryLabel}</th>
                 <th className="km-num">vs {sectorLabel}</th>
                 <th className="km-num">vs {marketLabel}</th>
               </tr>
@@ -222,6 +234,9 @@ export function MetricsTable({ fundamentals, sector, market, medians }: Props) {
                     <span className={`mt-cat-pill ${CAT_PILL[r.def.cat]}`}>{r.def.cat}</span>
                   </td>
                   <td className="km-num km-value" title={r.valueTitle}>{r.disp}</td>
+                  <td className={`km-num km-cmp ${VERDICT_CLASS[r.industryCmp.verdict]}`} title={r.industryCmp.tip}>
+                    {r.industryCmp.text}
+                  </td>
                   <td className={`km-num km-cmp ${VERDICT_CLASS[r.sectorCmp.verdict]}`} title={r.sectorCmp.tip}>
                     {r.sectorCmp.text}
                   </td>

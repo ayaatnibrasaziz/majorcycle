@@ -1,10 +1,17 @@
-// Sector- and market-median fundamentals, computed across the whole universe.
+// Industry-, sector- and market-median fundamentals, computed across the whole
+// universe.
 //
 // The Key Metrics table compares a stock's metrics against the median of its
-// sector and its home market (US / AU / CA). We already store every stock's
-// fundamentals, so the medians are derived live — no extra tables (the DB is
-// already over the free-tier storage limit) — and cached for a day so the
-// 716-row scan runs at most once per day across all page requests.
+// industry, its sector, and its home market (US / AU / CA). We already store
+// every stock's fundamentals, so the medians are derived live — no extra tables
+// (the DB is already over the free-tier storage limit) — and cached for a day so
+// the 719-row scan runs at most once per day across all page requests.
+//
+// Industries are small (~126 across the universe, so a few stocks each), and a
+// "median" over 1–2 peers is noise. We therefore require a minimum group size
+// (INDUSTRY_PEER_FLOOR) before computing industry medians at all — below it the
+// industry group is omitted and the table's "vs Industry" cells render the
+// graceful "—" (na) state rather than a misleading figure.
 
 import { unstable_cache } from 'next/cache';
 
@@ -74,11 +81,18 @@ export interface MedianStat {
 export type MetricMedians = Partial<Record<MetricKey, MedianStat>>;
 
 export interface MedianTables {
+  /** Keyed by industry name. Only industries with ≥ INDUSTRY_PEER_FLOOR stocks are present. */
+  industry: Record<string, MetricMedians>;
   /** Keyed by sector name. */
   sector: Record<string, MetricMedians>;
   /** Keyed by market code (`us` / `au` / `ca`). */
   market: Record<string, MetricMedians>;
 }
+
+// Minimum number of stocks in an industry before we trust its median. Industries
+// are the smallest peer group; below this, "vs Industry" shows "—" instead of a
+// noisy one- or two-peer median.
+const INDUSTRY_PEER_FLOOR = 5;
 
 function median(values: number[]): number {
   const s = [...values].sort((a, b) => a - b);
@@ -108,41 +122,52 @@ function computeGroup(rows: Row[]): MetricMedians {
 
 async function _fetchMetricMedians(): Promise<MedianTables> {
   const supabase = createAdminClient();
-  // 716 non-index rows < PostgREST's 1000-row cap, so one select is enough.
+  // 719 non-index rows < PostgREST's 1000-row cap, so one select is enough.
   const { data, error } = await supabase
     .from('stocks')
-    .select('market,sector,fundamentals')
+    .select('market,sector,industry,fundamentals')
     .neq('market', 'index');
 
-  if (error || !data) return { sector: {}, market: {} };
+  if (error || !data) return { industry: {}, sector: {}, market: {} };
 
+  const byIndustry: Record<string, Row[]> = {};
   const bySector: Record<string, Row[]> = {};
   const byMarket: Record<string, Row[]> = {};
   for (const row of data as {
     market: string;
     sector: string | null;
+    industry: string | null;
     fundamentals: Record<string, unknown> | null;
   }[]) {
     if (!row.fundamentals) continue;
     const entry: Row = { fundamentals: row.fundamentals };
+    if (row.industry) (byIndustry[row.industry] ??= []).push(entry);
     if (row.sector) (bySector[row.sector] ??= []).push(entry);
     (byMarket[row.market] ??= []).push(entry);
   }
 
+  // Industries below the peer floor are dropped entirely — too few peers for a
+  // meaningful median (the table falls back to "—" for them).
+  const industry: Record<string, MetricMedians> = {};
+  for (const [k, rows] of Object.entries(byIndustry)) {
+    if (rows.length < INDUSTRY_PEER_FLOOR) continue;
+    industry[k] = computeGroup(rows);
+  }
   const sector: Record<string, MetricMedians> = {};
   for (const [k, rows] of Object.entries(bySector)) sector[k] = computeGroup(rows);
   const market: Record<string, MetricMedians> = {};
   for (const [k, rows] of Object.entries(byMarket)) market[k] = computeGroup(rows);
 
-  return { sector, market };
+  return { industry, sector, market };
 }
 
 /**
- * Cached daily. Returns sector- and market-grouped medians for the comparison
- * metrics. Safe to call from any Server Component on the Stock Detail page.
+ * Cached daily. Returns industry-, sector- and market-grouped medians for the
+ * comparison metrics. Safe to call from any Server Component on the Stock Detail
+ * page.
  */
 export const fetchMetricMedians = unstable_cache(
   _fetchMetricMedians,
-  ['metric-medians-v4'],
+  ['metric-medians-v5'],
   { revalidate: 86400 },
 );

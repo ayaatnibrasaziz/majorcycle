@@ -96,15 +96,22 @@ flowchart TB
 
 ### Tier 3 — On-Demand (user-driven)
 
-**What:** When a user runs Run Analysis with custom params or uploads tickers:
+**What:** When a user runs Run Analysis (a basket, a searched/CSV list, presets or custom):
 
-1. Frontend sends `{tickers: [...], pullback_threshold, profit_threshold, lookback_bars}` to `/api/analyze`
-2. Python function fetches each ticker's price history from Supabase
-3. If a ticker is missing, calls `DataProvider.fetch_price_history()` live and stores it (universe expansion)
-4. Runs cycle math on each, returns scored results
-5. Frontend renders the Results table
+1. The Run tab (`RunAnalysis.tsx`) **chunks** the selection client-side (~40/chunk) and POSTs each chunk to `/api/analyze` with up to ~3 in flight (`web/lib/analysis.tsx`). This drives an **honest** progress bar (real chunks completed) + a Cancel button (`AbortController`), and scales to a full index without a single long request.
+2. `/api/analyze` (`web/api/analyze.py`) is **stateless**: it fetches each ticker's price bars + fundamentals from Supabase (parallel across tickers via `ThreadPoolExecutor`), runs the cycle math via the vendored `_engine`, and returns `{ results, unavailable }`. Custom params are validated to data-contracts §7 bounds. It never writes to the DB and never calls yfinance.
+3. Unknown tickers (not in our universe) come back in `unavailable[]`. **Live universe expansion (`/api/fetch-ticker`) is deferred** to a fast-follow — see the route table below.
+4. The client accumulates results into client state (+ `sessionStorage`), then writes **one** `analysis_runs` history row — **inputs only**, never the computed ratings (CLAUDE.md #15) — via the browser Supabase client under RLS. This powers the "Last Analysis" / Re-run card.
+5. The Results table (Layer E) reads the same in-memory results — no recompute.
 
-**Why this works:** Heavy work happens only when a user actively requests it. The universe grows organically.
+**Why this works:** Heavy work happens only when a user actively requests it; chunking keeps each request small; ratings are always derived, never stored.
+
+**Performance.** Per-ticker cost is dominated by moving full daily history out of Supabase. A trivial query is ~240ms US-East↔Seoul, and the 1000-row PostgREST cap turns a heavy stock (AAPL ≈ 11.5k bars) into ~12 such round-trips (~5.6s). Two structural fixes plus three local mitigations:
+- **Co-location** — `web/vercel.json` pins the functions/SSR region to **`iad1` (US-East)**, same region as the Supabase DB (`us-east-1`, N. Virginia), so every DB round-trip is ~10-20ms (helps the whole site). The DB + functions are co-located in US-East to best serve the US + Canada majority of the audience; Australia pays one ~200ms hop per page (free-tier floor — true multi-region needs paid read replicas). *(The DB was migrated from its original Seoul region to US-East pre-launch.)*
+- **One-shot fetch** — the `get_price_bars_json(p_ticker)` Postgres RPC returns a stock's entire history as a single `jsonb` value (bypasses the 1000-row cap → 12 trips become 1; server-side aggregate ≈230ms). `analyze.py` calls it via `supabase.rpc` and **falls back to paginated reads** if the function isn't deployed yet (instance-level `_RPC_AVAILABLE` probe) so the code is safe to ship before/after the migration.
+- Plus: a **warm-instance result cache** (ticker+params, 30-min TTL) for instant re-runs/overlapping baskets; **across-ticker parallelism** (pool 4) — with the RPC each ticker is now a single request, so the old nested-pool read-timeout risk is gone; and **retries with backoff** so a transient timeout self-heals instead of dropping a ticker into `unavailable`.
+
+Net: with the RPC + co-location a heavy stock goes from ~5.6s to a few hundred ms. The **detail page uses the same RPC** — `web/api/cycle.py` (`_load_price_bars`) and `web/lib/stocks.ts` (`loadPriceBars`) both call `get_price_bars_json` with the same paginated fallback — so the Stock Detail page benefits too.
 
 ---
 
@@ -128,11 +135,11 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 
 | Component | Hosted On | Free Tier Limit | Notes |
 |---|---|---|---|
-| Next.js frontend | Vercel | 100GB bandwidth/mo | Hobby plan |
-| Python API routes | Vercel Serverless | 100GB-hr/mo, 10s timeout | Use `@vercel/python` runtime |
+| Next.js frontend | Vercel | 100GB bandwidth/mo | Hobby plan. Functions/SSR pinned to **`iad1` (US-East)** via `web/vercel.json` `regions`. |
+| Python API routes | Vercel Serverless | 100GB-hr/mo, 300s timeout | `@vercel/python` runtime; co-located in `iad1` with the DB. |
 | Static assets | Vercel CDN | Unlimited | Global edge |
-| Postgres database | Supabase | 500MB DB, 5GB egress | Free tier |
-| Auth service | Supabase Auth | 50,000 MAU | Free tier |
+| Postgres database | Supabase | 500MB DB, 5GB egress | Free tier, region **`us-east-1`** (project `Stock Project US-East`; co-located with the Vercel functions so DB round-trips are ~10-20ms). Migrated from the original Seoul region pre-launch — see §2 Tier 3 performance note. |
+| Auth service | Supabase Auth | 50,000 MAU | Free tier. A `handle_new_user` trigger auto-creates a `profiles` row on every sign-up (any provider). |
 | File storage | Supabase Storage | 1GB | For OG images, exports |
 | Cron jobs | GitHub Actions | 2,000 minutes/mo | Free for public + private repos |
 | Email | Resend | 3,000/mo | Free tier |
@@ -345,15 +352,18 @@ Two runtimes, two locations under `web/`:
 | Route | Method | Runtime | Path on disk | Auth | Purpose |
 |---|---|---|---|---|---|
 | `/api/cycle` | GET | Python | `web/api/cycle.py` | **Public** (in `PUBLIC_PATHS`) | Compute Major Cycle for one ticker + preset. Called by the Stock Detail Server Component as a cookieless self-fetch — must be public **and** reached via the production custom domain (see §2). |
-| `/api/analyze` | POST | Python | `web/api/analyze.py` *(Layer D)* | Required | Run cycle analysis on a batch of tickers with given params |
-| `/api/fetch-ticker` | POST | Python | `web/api/fetch_ticker.py` *(Layer D)* | Required | Add a new ticker to the universe + return its data |
+| `/api/analyze` | POST | Python | `web/api/analyze.py` | Required | Run cycle analysis on a **chunk** of tickers (≤60) with given params. **Stateless** — no DB write, no `runId`; the client batches chunks + writes the inputs-only `analysis_runs` row itself. |
+| `/api/fetch-ticker` | POST | Python | `web/api/fetch_ticker.py` *(deferred — Layer D fast-follow)* | Required | Add a new ticker to the universe + return its data |
+| `/api/analyze-dev` | POST | TS | `web/app/api/analyze-dev/route.ts` | Required | **Dev-only** shim: spawns `analyze.py` as a CLI so the Run tab works under `next dev` (mirrors `cycle.ts`). Returns 404 in production; the client targets `/api/analyze` there. |
 | `/api/ticker/[symbol]` | GET | TS | `web/app/api/ticker/[symbol]/route.ts` | Public | Read stored stock + price bars for SSR |
 | `/api/search` | GET | TS | `web/app/api/search/route.ts` | Public | Autocomplete ticker search |
 | `/api/checkout` | POST | TS | `web/app/api/checkout/route.ts` | Required | Create Stripe Checkout session |
 | `/api/webhooks/stripe` | POST | TS | `web/app/api/webhooks/stripe/route.ts` | Stripe signature | Receive subscription events |
 | `/api/health` | GET | TS | `web/app/api/health/route.ts` | Public | System health (DB + provider) |
 
-**Auth pattern:** Every authenticated route uses the Supabase server client and checks `subscription_status IN ('trialing', 'active')` plus trial-end-date logic.
+**Auth pattern:** Every authenticated route uses the Supabase server client and checks `subscription_status IN ('trialing', 'active')` plus trial-end-date logic. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
+
+**Row-Level Security:** `profiles` + `analysis_runs` have per-user RLS policies (own-row read/write). `stocks` / `price_bars` / `universe_log` have RLS **enabled with no policies** — they're only ever read server-side with the service-role key (which bypasses RLS), so the public anon/authenticated roles get no access (migration `20260614020000_enable_rls_lockdown.sql`). The `get_price_bars_json` RPC and `handle_new_user` have `search_path` pinned and `EXECUTE` revoked from the public REST surface (`20260614040000_harden_functions.sql`).
 
 **Python function env vars:** `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` must be set in Vercel project env (the same values as `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`, but the Python side reads the prefix-less names, matching the cron).
 

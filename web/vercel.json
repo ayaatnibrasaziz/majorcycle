@@ -1,8 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["iad1"],
   "functions": {
     "api/cycle.py": {
       "maxDuration": 30,
+      "memory": 1024,
+      "includeFiles": "_engine/**"
+    },
+    "api/analyze.py": {
+      "maxDuration": 60,
       "memory": 1024,
       "includeFiles": "_engine/**"
     }

@@ -325,6 +325,7 @@ Real yfinance values can be absurd (a near-zero denominator gives P/E 3,500×, R
 
 - **`MetricDef.cap`** (Key Metrics, `MetricsTable.tsx`): a per-metric cap. Beyond `±cap` the cell shows `>+cap` / `<−cap`, and the **true value goes in the hover tooltip** ("Actual … — capped for display"). Current caps: P/E 150x · EV/EBITDA 150x · PEG 25 · FCF Yield 100% · Op/Net Margin 300% · ROE 300% · ROA 300% · D/E 25 · Current Ratio 25 · Revenue/Earnings Growth 300%.
 - **Median hygiene:** the same bounds are mirrored in `medians.server.ts` `OUTLIER_BOUND` so capped outliers don't skew the peer median (bump the cache key when you change them).
+- **Peer comparison columns:** Key Metrics shows three relative columns — **vs Industry**, **vs Sector**, **vs Market** — ordered most-specific → broadest (industry ⊂ sector ⊂ market). Each cell is coloured green/red/grey by whether the stock beats / trails / matches that peer group's median. `medians.server.ts` (`fetchMetricMedians`, cache key `metric-medians-v5`) groups the whole universe by industry, sector, and market in one daily-cached scan. **Industry peer floor:** industries are small (~126 across 719 stocks), so a group needs **≥ 5 stocks** (`INDUSTRY_PEER_FLOOR`) before its median is trusted; below that the industry is omitted and the cell falls back to "—" rather than showing a one- or two-peer median.
 - **Distress flag (not a cap):** where a high number is *bad* (a trailing dividend yield > 20% almost always means a collapsed price / imminent cut), show the **real** value but recolour it amber (`#D4A017`, not reassuring green) + a ⚠ + a caution tooltip — capping it would read as "good".
 - **`fmtCapped(value, cap, decimals)`** (`web/lib/format.ts`) is the shared helper for **prose** numbers — the same cap pattern for values interpolated into sentences rather than table cells. Used by the Thesis narrative (`VerdictCard` `bestStrength`/`topRisk`, `ThesisInsights` `buildAttractive`/`buildRisks`): ROE/margins/growth 300, FCF Yield 100, D/E & PEG 25. Beyond the cap it renders ">cap" inline (e.g. "an exceptional >300% return on equity").
 - These are **display-only**: the cycle math and FH pillars already clamp their inputs, so ratings are untouched.
@@ -362,11 +363,29 @@ Use the shared helpers in `web/lib/format.ts` — **never** hand-roll `Intl`/`cu
 
 ### Ticker display (no raw storage suffix)
 
-Never show the raw `.AX`/`.TO` storage suffix to users. Helpers in `web/lib/ticker.ts`:
-- **`tickerDisplay(stored)`** → `"SYMBOL · EXCHANGE"` (`BHP.AX` → "BHP · ASX", `SHOP.TO` → "SHOP · TSX", `AAPL` → "AAPL · US"). Used for the **page `<title>`/metadata**.
-- **`tickerToUrlParts(stored).symbol`** → the **bare symbol** ("BHP"). Used for **chart labels** (Price Chart heading, Relative-Performance legend) — cleaner there, and the exchange is already shown in the header.
-- The **StockHeader** shows the bare symbol + a market **badge** (US / ASX / TSX) via `marketLabel(market)`.
-- Exchange map is locked: `{ us: 'US', au: 'ASX', ca: 'TSX' }`.
+Never show the raw `.AX`/`.TO` storage suffix to users. We label by **country**
+(US / AU / CA), not exchange (ASX/TSX) — the Browse market filter, per-stock
+badges, the detail tab title, and the Key Metrics "vs" column all read the same.
+Helpers in `web/lib/ticker.ts`:
+- **`tickerDisplay(stored)`** → `"SYMBOL · COUNTRY"` (`BHP.AX` → "BHP · AU", `SHOP.TO` → "SHOP · CA", `AAPL` → "AAPL · US"). Used for the **page `<title>`/metadata**.
+- **`tickerToUrlParts(stored).symbol`** → the **bare symbol** ("BHP"). Used for **chart labels** (Price Chart heading, Relative-Performance legend) — cleaner there, and the country is already shown in the header.
+- **`marketLabel(market)`** is the **single source of truth** for the country code — the StockHeader, Browse list, Run search, and MetricsTable "vs Market" column all call it (no per-component badge maps), so AU/CA can't drift.
+- Country map is locked: `{ us: 'US', au: 'AU', ca: 'CA' }`.
+- **Index proper-nouns stay** — the Run baskets ("ASX 200", "S&P/TSX 60") and the Relative-Performance benchmark legend ("ASX 200", "S&P/TSX") name a *specific index*, not a country, so they keep their familiar names.
+
+### Stock Detail sub-nav (sticky scroll-spy)
+
+`StockSubnav.tsx` is the sticky pill strip (Thesis / Scorecard / Cycle /
+Fundamentals / Sentiment). An `IntersectionObserver` highlights the section
+currently in the band just below the sticky chrome (`rootMargin: -120px 0 -60% 0`).
+- **Click → smooth-scroll, no "walking" highlight.** Clicking a pill sets it
+  active immediately and smooth-scrolls to the section. During that programmatic
+  scroll the observer is **suppressed** (`scrollLockRef`) so it doesn't light up
+  every pill the viewport passes through; the lock releases ~140ms after scrolling
+  settles (with a 1.5s safety for the already-at-target case). Genuine *manual*
+  scrolling still drives the highlight normally.
+- Offsets match the sections' own `scroll-mt-[120px]` so a heading lands just
+  below the strip, not behind it.
 
 ### Brand logo
 
@@ -512,6 +531,44 @@ Wording must include: "Information only", "Not financial advice", "Past performa
 The reference HTML uses old labels (STRONG BUY etc.). The new build uses the labels defined in section 4. **Everything else** in the reference is canonical: layouts, sizes, colours, spacing, tooltips, hover behaviour.
 
 If you find another conflict during build, surface it. Don't silently choose.
+
+### Run Analysis tab — intentional layout deviation (Layer D, owner-approved)
+
+The reference Run tab (two co-equal cards: a large **CSV upload** drop-zone + a
+raw **Analysis Settings** card, plus a cosmetic clock-based progress bar) is a
+power-user layout. It fails our **mass-retail beginner** audience: the blank-canvas
+problem ("I have no tickers.csv and can't name 50 tickers"), over-promoted CSV,
+and intimidating raw thresholds. Layer D **deviates from #1 visual parity for this
+tab only**, keeping all brand tokens/typography, and reframes it as a single
+**"Build your analysis"** flow (`web/components/run/`):
+
+- **Choose what to analyse** — ready-made **baskets** lead (`BasketPicker`: index /
+  top-by-cap / "By sector ▾" / **"By industry ▾"** (industries grouped under their
+  sector via native `<optgroup>`, ~126 across 11 sectors) / Magnificent Seven),
+  **search-and-add** autocomplete (`TickerSearchAdd`), and **CSV demoted** to a small
+  import (`CsvImport`, with a 15-ticker sample download — 5 US / 5 AU / 5 CA real
+  symbols), all feeding a visible **selected-tickers chip list** with a live count
+  (`SelectedTickers`).
+- **Investing horizon** — Short/Medium/Long preset cards up front; **Custom + raw
+  pullback/profit/lookback behind an "Advanced" disclosure** (`HorizonSettings`),
+  with `InfoTip` explainers and §7 bounds validation. Validation is **live and
+  per-field**: each input shows a red border + inline note *only* on the offending
+  field, clearing the instant the value is valid (shared `boundError` helper in
+  `presets.ts`, also used by Browse's Custom horizon inputs). When Advanced is
+  collapsed, a single prompt surfaces if a hand-edited value is out of range.
+- **Honest progress** — `RunProgress` shows *real* batches completed (not a fake
+  clock), elapsed, ETA, scored/skipped counts, and a **Cancel** button. The
+  fabricated per-stage pipeline log from the reference is intentionally dropped.
+- **Run complete / Last Analysis** — `RunComplete` (top pick + "Constructive or
+  better" count, computed client-side) and `LastAnalysisCard` (Re-run).
+
+Styling **ports the reference run-tab classes into `globals.css`** (mapped to the
+live tier/brand tokens: `.preset-btn`, `.set-field-*`, `.adv-toggle`, `.btn-run`,
+`.lastrun-*`, `.rc-*`, `.progress-bar-*`, `.upload-zone`, `.basket-chip`,
+`.tk-chip`, `.run-search-*`) so the page matches the reference's compact look and
+blends with Browse + Stock Detail (JetBrains-mono numerals, brand-gradient
+accents). The in-page `<h1>` is omitted — the app `Header` already renders the
+page title.
 
 ---
 
