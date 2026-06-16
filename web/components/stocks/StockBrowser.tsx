@@ -9,7 +9,7 @@ import type { UniverseStock } from '@/lib/universe.server';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { Currency, Market } from '@/lib/types';
 import { fmtCompact } from '@/lib/format';
-import { CUSTOM_PARAM_BOUNDS } from '@/lib/presets';
+import { boundError, CUSTOM_PARAM_BOUNDS } from '@/lib/presets';
 import { cn } from '@/lib/utils';
 
 // Cap how many rows we paint at once. The list is market-cap-descending, so the
@@ -140,6 +140,15 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
   const [query, setQuery] = useState('');
   const [market, setMarket] = useState<MarketFilter>('all');
   const [sector, setSector] = useState<string>('all');
+  const [industry, setIndustry] = useState<string>('all');
+
+  // Industry depends on the chosen sector: picking a sector narrows the industry
+  // list to that sector's industries. Changing the sector resets a now-orphaned
+  // industry back to "All".
+  const selectSector = (value: string) => {
+    setSector(value);
+    setIndustry('all');
+  };
   const horizon = useSyncExternalStore(
     subscribeHorizon,
     getHorizonSnapshot,
@@ -150,6 +159,11 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
   // reading localStorage here can't cause an SSR mismatch.
   const [custom, setCustom] = useState<CustomParams>(() => readCustom());
   const customOk = customValid(custom);
+  // Per-field validity for instant, field-local feedback (red border + note only
+  // on the offending field; clears the moment the value is valid).
+  const pullbackErr = boundError(custom.pullback, CUSTOM_PARAM_BOUNDS.pullbackThreshold);
+  const profitErr = boundError(custom.profit, CUSTOM_PARAM_BOUNDS.profitThreshold);
+  const lookbackErr = boundError(custom.lookback, CUSTOM_PARAM_BOUNDS.lookbackBars, true);
   const updateCustom = (patch: Partial<CustomParams>) =>
     setCustom((prev) => {
       const next = { ...prev, ...patch };
@@ -181,11 +195,23 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [stocks]);
 
+  // Industries available for the dropdown — narrowed to the chosen sector when
+  // one is selected, otherwise the full list. Alphabetical.
+  const industries = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of stocks) {
+      if (sector !== 'all' && s.sector !== sector) continue;
+      if (s.industry) set.add(s.industry);
+    }
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [stocks, sector]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return stocks.filter((s) => {
       if (market !== 'all' && s.market !== market) return false;
       if (sector !== 'all' && s.sector !== sector) return false;
+      if (industry !== 'all' && s.industry !== industry) return false;
       if (q) {
         const inTicker = s.ticker.toLowerCase().includes(q);
         const inName = (s.name ?? '').toLowerCase().includes(q);
@@ -193,7 +219,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
       }
       return true;
     });
-  }, [stocks, query, market, sector]);
+  }, [stocks, query, market, sector, industry]);
 
   const shown = filtered.slice(0, RENDER_LIMIT);
   const hiddenCount = filtered.length - shown.length;
@@ -241,30 +267,31 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
         </span>
 
         {horizon === 'custom' && (
-          <div className="mt-1 flex w-full flex-wrap items-end gap-3">
+          <div className="mt-1 flex w-full flex-wrap items-start gap-3">
             <CustomField
               label="Pullback %"
+              tip="How deep a dip must be to count as a real pullback event in the cycle. More negative = only larger dips count."
               value={custom.pullback}
               step={0.5}
+              error={pullbackErr}
               onChange={(n) => updateCustom({ pullback: n })}
             />
             <CustomField
               label="Profit %"
+              tip="How large a rally must be to count as a real recovery event. Higher = only bigger rallies count."
               value={custom.profit}
               step={0.5}
+              error={profitErr}
               onChange={(n) => updateCustom({ profit: n })}
             />
             <CustomField
               label="Lookback (bars)"
+              tip="How far back the cycle engine scans for highs and lows. 1 bar = 1 trading day (~252 = 1 year)."
               value={custom.lookback}
               step={1}
+              error={lookbackErr}
               onChange={(n) => updateCustom({ lookback: Math.round(n) })}
             />
-            {!customOk && (
-              <span className="self-center text-[10px] font-semibold text-[var(--c-tier-5)]">
-                Pullback −30…−1, Profit 1…30, Lookback 21…5040
-              </span>
-            )}
           </div>
         )}
       </div>
@@ -320,13 +347,35 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
           <select
             id="sector-filter"
             value={sector}
-            onChange={(e) => setSector(e.target.value)}
+            onChange={(e) => selectSector(e.target.value)}
             className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-sm)] px-2.5 py-[6px] text-[12px] text-[var(--text-secondary)] outline-none focus:border-[var(--brand-bright)] transition-colors cursor-pointer"
           >
             <option value="all">All sectors</option>
             {sectors.map((s) => (
               <option key={s} value={s}>
                 {s}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="industry-filter"
+            className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[var(--text-muted)]"
+          >
+            Industry
+          </label>
+          <select
+            id="industry-filter"
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-sm)] px-2.5 py-[6px] text-[12px] text-[var(--text-secondary)] outline-none focus:border-[var(--brand-bright)] transition-colors cursor-pointer max-w-[180px]"
+          >
+            <option value="all">All industries</option>
+            {industries.map((i) => (
+              <option key={i} value={i}>
+                {i}
               </option>
             ))}
           </select>
@@ -421,33 +470,48 @@ function EmptyState({ query }: { query: string }) {
   );
 }
 
-/** Compact numeric input for a Custom-horizon parameter. */
+/** Compact numeric input for a Custom-horizon parameter. Shows a field-local
+ *  error (red border + inline note) that clears the moment the value is valid. */
 function CustomField({
   label,
+  tip,
   value,
   step,
+  error,
   onChange,
 }: {
   label: string;
+  tip: string;
   value: number;
   step: number;
+  error: string | null;
   onChange: (n: number) => void;
 }) {
   return (
     <label className="flex flex-col gap-0.5">
-      <span className="text-[9.5px] font-semibold uppercase tracking-[0.5px] text-[var(--brand-mid)]">
+      <span className="flex items-center gap-0.5 text-[9.5px] font-semibold uppercase tracking-[0.5px] text-[var(--brand-mid)]">
         {label}
+        <InfoTip title={label} size={11}>{tip}</InfoTip>
       </span>
       <input
         type="number"
         value={Number.isFinite(value) ? value : ''}
         step={step}
+        aria-invalid={error !== null}
         onChange={(e) => {
           const n = Number(e.target.value);
           if (!Number.isNaN(n)) onChange(n);
         }}
-        className="w-[92px] rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-2 py-[5px] font-[var(--font-mono)] text-[12px] text-[var(--text-primary)] outline-none focus:border-[var(--brand-bright)]"
+        className={cn(
+          'w-[92px] rounded-[var(--radius-sm)] border bg-[var(--bg-surface)] px-2 py-[5px] font-[var(--font-mono)] text-[12px] text-[var(--text-primary)] outline-none',
+          error
+            ? 'border-[var(--c-tier-5)] focus:border-[var(--c-tier-5)]'
+            : 'border-[var(--border)] focus:border-[var(--brand-bright)]'
+        )}
       />
+      {error && (
+        <span className="text-[9.5px] font-semibold text-[var(--c-tier-5)]">{error}</span>
+      )}
     </label>
   );
 }

@@ -5,10 +5,15 @@ import { Upload, Download } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-// A tiny example file so users see the expected format: a single `ticker` column,
-// one symbol per row. Non-US tickers use their storage suffix (.AX / .TO) — that's
-// how they must be written to match our universe.
-const SAMPLE_CSV = 'ticker\nAAPL\nMSFT\nNVDA\nBHP.AX\nSHOP.TO\n';
+// A small example file so users see the expected format: a single `ticker`
+// column, one symbol per row. Non-US tickers use their storage suffix (.AX / .TO)
+// — that's how they must be written to match our universe. 15 real large-caps
+// across all three markets (5 US, 5 AU, 5 CA), so every row validates on import.
+const SAMPLE_CSV =
+  'ticker\n' +
+  'AAPL\nMSFT\nNVDA\nGOOGL\nAMZN\n' +
+  'BHP.AX\nRIO.AX\nCBA.AX\nWBC.AX\nNAB.AX\n' +
+  'RY.TO\nTD.TO\nSHOP.TO\nENB.TO\nBNS.TO\n';
 
 function downloadSampleCsv() {
   const blob = new Blob([SAMPLE_CSV], { type: 'text/csv;charset=utf-8' });

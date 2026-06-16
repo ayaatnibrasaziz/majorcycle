@@ -369,6 +369,7 @@ export default async function StockDetailPage({
           />
           <MetricsTable
             fundamentals={stock.fundamentals}
+            industry={stock.industry}
             sector={stock.sector}
             market={market}
             medians={medians}

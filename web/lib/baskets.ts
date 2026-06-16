@@ -95,3 +95,35 @@ export function sectorsFromUniverse(universe: UniverseStock[]): string[] {
 export function tickersInSector(universe: UniverseStock[], sector: string): string[] {
   return universe.filter((s) => s.sector === sector).map((s) => s.ticker);
 }
+
+/** Tickers in a given industry (all markets). */
+export function tickersInIndustry(universe: UniverseStock[], industry: string): string[] {
+  return universe.filter((s) => s.industry === industry).map((s) => s.ticker);
+}
+
+/**
+ * Industries grouped under their sector, for the Run "By industry ▾" dropdown's
+ * native <optgroup>s. There are ~126 industries across 11 sectors, so a flat
+ * list is unwieldy — grouping keeps it navigable in one control. A stock with an
+ * industry but no sector is filed under "Other". Sectors and the industries
+ * within each are alphabetical.
+ */
+export interface IndustryGroup {
+  sector: string;
+  industries: string[];
+}
+
+export function industriesBySector(universe: UniverseStock[]): IndustryGroup[] {
+  const map = new Map<string, Set<string>>();
+  for (const s of universe) {
+    if (!s.industry) continue;
+    const sector = s.sector ?? 'Other';
+    (map.get(sector) ?? map.set(sector, new Set()).get(sector)!).add(s.industry);
+  }
+  return [...map.entries()]
+    .map(([sector, set]) => ({
+      sector,
+      industries: [...set].sort((a, b) => a.localeCompare(b)),
+    }))
+    .sort((a, b) => a.sector.localeCompare(b.sector));
+}

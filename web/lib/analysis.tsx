@@ -59,6 +59,8 @@ export interface RunMeta {
   startedAt: string;
   finishedAt: string | null;
   tickerCount: number;
+  /** True when the run was stopped early via Cancel (vs. finished naturally). */
+  cancelled?: boolean;
 }
 
 interface AnalysisSnapshot {
@@ -288,8 +290,8 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       );
 
       const finishedAt = new Date().toISOString();
-      const finalMeta: RunMeta = { ...meta, finishedAt };
       const aborted = signal.aborted;
+      const finalMeta: RunMeta = { ...meta, finishedAt, cancelled: aborted };
       setRunMeta(finalMeta);
       setProgress((p) => ({ ...p, running: false }));
       persist({ results: allResults, unavailable: allUnavailable, params: req, runMeta: finalMeta });

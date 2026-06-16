@@ -325,6 +325,7 @@ Real yfinance values can be absurd (a near-zero denominator gives P/E 3,500×, R
 
 - **`MetricDef.cap`** (Key Metrics, `MetricsTable.tsx`): a per-metric cap. Beyond `±cap` the cell shows `>+cap` / `<−cap`, and the **true value goes in the hover tooltip** ("Actual … — capped for display"). Current caps: P/E 150x · EV/EBITDA 150x · PEG 25 · FCF Yield 100% · Op/Net Margin 300% · ROE 300% · ROA 300% · D/E 25 · Current Ratio 25 · Revenue/Earnings Growth 300%.
 - **Median hygiene:** the same bounds are mirrored in `medians.server.ts` `OUTLIER_BOUND` so capped outliers don't skew the peer median (bump the cache key when you change them).
+- **Peer comparison columns:** Key Metrics shows three relative columns — **vs Industry**, **vs Sector**, **vs Market** — ordered most-specific → broadest (industry ⊂ sector ⊂ market). Each cell is coloured green/red/grey by whether the stock beats / trails / matches that peer group's median. `medians.server.ts` (`fetchMetricMedians`, cache key `metric-medians-v5`) groups the whole universe by industry, sector, and market in one daily-cached scan. **Industry peer floor:** industries are small (~126 across 719 stocks), so a group needs **≥ 5 stocks** (`INDUSTRY_PEER_FLOOR`) before its median is trusted; below that the industry is omitted and the cell falls back to "—" rather than showing a one- or two-peer median.
 - **Distress flag (not a cap):** where a high number is *bad* (a trailing dividend yield > 20% almost always means a collapsed price / imminent cut), show the **real** value but recolour it amber (`#D4A017`, not reassuring green) + a ⚠ + a caution tooltip — capping it would read as "good".
 - **`fmtCapped(value, cap, decimals)`** (`web/lib/format.ts`) is the shared helper for **prose** numbers — the same cap pattern for values interpolated into sentences rather than table cells. Used by the Thesis narrative (`VerdictCard` `bestStrength`/`topRisk`, `ThesisInsights` `buildAttractive`/`buildRisks`): ROE/margins/growth 300, FCF Yield 100, D/E & PEG 25. Beyond the cap it renders ">cap" inline (e.g. "an exceptional >300% return on equity").
 - These are **display-only**: the cycle math and FH pillars already clamp their inputs, so ratings are untouched.
@@ -524,12 +525,19 @@ tab only**, keeping all brand tokens/typography, and reframes it as a single
 **"Build your analysis"** flow (`web/components/run/`):
 
 - **Choose what to analyse** — ready-made **baskets** lead (`BasketPicker`: index /
-  top-by-cap / "By sector ▾" / Magnificent Seven), **search-and-add** autocomplete
-  (`TickerSearchAdd`), and **CSV demoted** to a small import (`CsvImport`), all
-  feeding a visible **selected-tickers chip list** with a live count (`SelectedTickers`).
+  top-by-cap / "By sector ▾" / **"By industry ▾"** (industries grouped under their
+  sector via native `<optgroup>`, ~126 across 11 sectors) / Magnificent Seven),
+  **search-and-add** autocomplete (`TickerSearchAdd`), and **CSV demoted** to a small
+  import (`CsvImport`, with a 15-ticker sample download — 5 US / 5 AU / 5 CA real
+  symbols), all feeding a visible **selected-tickers chip list** with a live count
+  (`SelectedTickers`).
 - **Investing horizon** — Short/Medium/Long preset cards up front; **Custom + raw
   pullback/profit/lookback behind an "Advanced" disclosure** (`HorizonSettings`),
-  with `InfoTip` explainers and §7 bounds validation.
+  with `InfoTip` explainers and §7 bounds validation. Validation is **live and
+  per-field**: each input shows a red border + inline note *only* on the offending
+  field, clearing the instant the value is valid (shared `boundError` helper in
+  `presets.ts`, also used by Browse's Custom horizon inputs). When Advanced is
+  collapsed, a single prompt surfaces if a hand-edited value is out of range.
 - **Honest progress** — `RunProgress` shows *real* batches completed (not a fake
   clock), elapsed, ETA, scored/skipped counts, and a **Cancel** button. The
   fabricated per-stage pipeline log from the reference is intentionally dropped.

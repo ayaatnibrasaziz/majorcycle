@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
-import { CUSTOM_PARAM_BOUNDS, PRESETS } from '@/lib/presets';
+import { boundError, CUSTOM_PARAM_BOUNDS, PRESETS } from '@/lib/presets';
 import { cn } from '@/lib/utils';
 
 // Horizon presets lead; raw thresholds + lookback are tucked behind an "Advanced"
@@ -78,7 +78,11 @@ export function HorizonSettings({
   const editField = (patch: Partial<HorizonValue>) =>
     onChange({ ...value, ...patch, preset: 'custom' });
 
-  const error = validateHorizon(value);
+  // Per-field validity for instant, field-local feedback. Presets are always in
+  // bounds, so these only ever fire for a hand-edited (Custom) value.
+  const pullbackErr = boundError(value.pullbackThreshold, CUSTOM_PARAM_BOUNDS.pullbackThreshold);
+  const profitErr = boundError(value.profitThreshold, CUSTOM_PARAM_BOUNDS.profitThreshold);
+  const lookbackErr = boundError(value.lookbackBars, CUSTOM_PARAM_BOUNDS.lookbackBars, true);
 
   return (
     <div>
@@ -113,6 +117,7 @@ export function HorizonSettings({
             tip="How deep a dip must be to count as a real pullback event in the cycle. More negative = only larger dips count."
             value={value.pullbackThreshold}
             step={0.5}
+            error={pullbackErr}
             onChange={(n) => editField({ pullbackThreshold: n })}
           />
           <Field
@@ -120,6 +125,7 @@ export function HorizonSettings({
             tip="How large a rally must be to count as a real recovery event. Higher = only bigger rallies count."
             value={value.profitThreshold}
             step={0.5}
+            error={profitErr}
             onChange={(n) => editField({ profitThreshold: n })}
           />
           <Field
@@ -127,12 +133,23 @@ export function HorizonSettings({
             tip="How far back the cycle engine scans for highs and lows. 1 bar = 1 trading day (~252 = 1 year)."
             value={value.lookbackBars}
             step={1}
+            error={lookbackErr}
             onChange={(n) => editField({ lookbackBars: Math.round(n) })}
           />
         </div>
       )}
 
-      {error && <p className="mt-2 text-[11px] font-semibold text-[var(--c-tier-5)]">{error}</p>}
+      {/* When Advanced is collapsed the per-field notes are hidden, so surface a
+          single prompt if a hand-edited value is out of bounds. */}
+      {!advOpen && validateHorizon(value) && (
+        <button
+          type="button"
+          onClick={() => setAdvOpen(true)}
+          className="mt-2 text-[11px] font-semibold text-[var(--c-tier-5)] underline"
+        >
+          A custom value is out of range — open Advanced to fix it.
+        </button>
+      )}
     </div>
   );
 }
@@ -142,12 +159,14 @@ function Field({
   tip,
   value,
   step,
+  error,
   onChange,
 }: {
   label: string;
   tip: string;
   value: number;
   step: number;
+  error: string | null;
   onChange: (n: number) => void;
 }) {
   return (
@@ -160,12 +179,16 @@ function Field({
         type="number"
         value={Number.isFinite(value) ? value : ''}
         step={step}
+        aria-invalid={error !== null}
         onChange={(e) => {
           const n = Number(e.target.value);
           if (!Number.isNaN(n)) onChange(n);
         }}
-        className="set-field-input"
+        className={cn('set-field-input', error && 'set-field-input--error')}
       />
+      {error && (
+        <p className="mt-1 text-[10.5px] font-semibold text-[var(--c-tier-5)]">{error}</p>
+      )}
     </div>
   );
 }

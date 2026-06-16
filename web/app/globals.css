@@ -982,6 +982,8 @@ td.num             { font-weight: 600; }
   color: var(--text-primary); background: var(--bg-surface); outline: none;
 }
 .set-field-input:focus { border-color: var(--brand-bright); }
+.set-field-input--error,
+.set-field-input--error:focus { border-color: var(--c-tier-5); }
 .set-field-hint { font-size: 10px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
 
 /* Advanced toggle */
@@ -1051,6 +1053,8 @@ td.num             { font-weight: 600; }
   font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 30px;
   text-transform: uppercase; letter-spacing: .4px;
 }
+/* A cancelled run is neutral, not a celebratory green "complete". */
+.rc-badge--cancelled { background: var(--text-muted); }
 .rc-headline { font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1.35; }
 .rc-headline .rc-mono { font-family: var(--font-mono); color: var(--brand-mid); }
 .rc-stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }

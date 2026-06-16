@@ -203,6 +203,7 @@ export function RunAnalysis({ universe }: { universe: UniverseStock[] }) {
             results={results}
             unavailableCount={unavailable.length}
             runtimeMs={runtimeMs}
+            cancelled={runMeta?.cancelled ?? false}
           />
         )}
       </div>
