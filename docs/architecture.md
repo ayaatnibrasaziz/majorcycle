@@ -138,7 +138,7 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 | Next.js frontend | Vercel | 100GB bandwidth/mo | Hobby plan. Functions/SSR pinned to **`iad1` (US-East)** via `web/vercel.json` `regions`. |
 | Python API routes | Vercel Serverless | 100GB-hr/mo, 300s timeout | `@vercel/python` runtime; co-located in `iad1` with the DB. |
 | Static assets | Vercel CDN | Unlimited | Global edge |
-| Postgres database | Supabase | 500MB DB, 5GB egress | Free tier, region **`us-east-1`** (project `Stock Project US-East`; co-located with the Vercel functions so DB round-trips are ~10-20ms). Migrated from the original Seoul region pre-launch — see §2 Tier 3 performance note. |
+| Postgres database | Supabase | 500MB DB, 5GB egress | Free tier, region **`us-east-1`** (project `MajorCycle`; co-located with the Vercel functions so DB round-trips are ~10-20ms). Migrated from the original Seoul region pre-launch — see §2 Tier 3 performance note. |
 | Auth service | Supabase Auth | 50,000 MAU | Free tier. A `handle_new_user` trigger auto-creates a `profiles` row on every sign-up (any provider). |
 | File storage | Supabase Storage | 1GB | For OG images, exports |
 | Cron jobs | GitHub Actions | 2,000 minutes/mo | Free for public + private repos |
