@@ -40,7 +40,27 @@ import type {
 // results are cached server-side, so the extra requests are cheap.
 export const CHUNK_SIZE = 10;
 const POOL_SIZE = 3;
+// A chunk whose POST fails (cold-start timeout, transient network blip) is retried
+// inline this many extra times before its tickers are set aside — so one bad
+// request doesn't silently drop 10 valid tickers.
+const CHUNK_RETRIES = 1;
+const RETRY_BACKOFF_MS = 600;
 const SNAPSHOT_KEY = 'mc:analysis-snapshot-v1';
+
+/** A cancellable sleep — rejects (AbortError) if the run is cancelled mid-wait. */
+function delay(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(resolve, ms);
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(t);
+        reject(new DOMException('Aborted', 'AbortError'));
+      },
+      { once: true },
+    );
+  });
+}
 
 // Production: the Vercel Python serverless function at /api/analyze. Local dev:
 // `next dev` doesn't serve Vercel Python functions, so we POST to a dev-only
@@ -271,49 +291,117 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       setProgress({ done: 0, total: chunks.length, running: true });
 
       const allResults: CycleAnalysis[] = [];
-      const allUnavailable: string[] = [];
+      // Genuine "not in our universe / insufficient history" — the server returns
+      // these in a 200; they never succeed on retry, so they're final.
+      const serverUnavailable: string[] = [];
+      // Tickers whose whole chunk request FAILED (cold-start timeout, transient
+      // network). Worth one warm retry pass — that's where the real skips came from.
+      const chunkFailed: string[] = [];
       let done = 0;
-      let next = 0;
 
+      const bump = () => {
+        done += 1;
+        setProgress({ done, total: chunks.length, running: true });
+        setResults([...allResults]);
+        // Failed-chunk tickers are shown only if the retry pass can't recover them.
+        setUnavailable([...serverUnavailable]);
+      };
+
+      // POST one chunk, retrying a transient failure inline before giving up.
+      const postWithRetry = async (tickers: string[]): Promise<AnalyzeResponse> => {
+        for (let attempt = 0; ; attempt++) {
+          try {
+            return await postChunk(tickers, req, signal);
+          } catch (e) {
+            if (signal.aborted || attempt >= CHUNK_RETRIES) throw e;
+            await delay(RETRY_BACKOFF_MS * (attempt + 1), signal);
+          }
+        }
+      };
+
+      // Run one chunk; accumulate its results / split its failures.
+      const processChunk = async (tickers: string[]): Promise<void> => {
+        try {
+          const r = await postWithRetry(tickers);
+          allResults.push(...r.results);
+          serverUnavailable.push(...r.unavailable);
+        } catch {
+          if (!signal.aborted) chunkFailed.push(...tickers);
+        } finally {
+          if (!signal.aborted) bump();
+        }
+      };
+
+      // Pre-warm: run the FIRST chunk solo and await it. That boots one instance
+      // (Python + DB connection) with real work, so the remaining chunks fire
+      // against a warm instance instead of three cold requests racing at once
+      // (the cold-start storm behind most skips). No throwaway request needed.
+      if (chunks[0]) await processChunk(chunks[0]);
+
+      // Remaining chunks through the worker pool (peak concurrency unchanged).
+      let next = 1;
       const worker = async (): Promise<void> => {
         while (!signal.aborted) {
           const i = next++;
           if (i >= chunks.length) return;
           const tickers = chunks[i];
           if (!tickers) return;
-          try {
-            const r = await postChunk(tickers, req, signal);
-            allResults.push(...r.results);
-            allUnavailable.push(...r.unavailable);
-          } catch {
-            if (signal.aborted) return;
-            allUnavailable.push(...tickers); // graceful: whole chunk unavailable
-          } finally {
-            if (!signal.aborted) {
-              done += 1;
-              setProgress({ done, total: chunks.length, running: true });
-              setResults([...allResults]);
-              setUnavailable([...allUnavailable]);
-            }
-          }
+          await processChunk(tickers);
         }
       };
-
       await Promise.all(
-        Array.from({ length: Math.min(POOL_SIZE, chunks.length) }, () => worker()),
+        Array.from({ length: Math.min(POOL_SIZE, Math.max(0, chunks.length - 1)) }, () =>
+          worker(),
+        ),
       );
 
+      // Warm retry pass: re-run only the tickers whose chunk FAILED (never the
+      // genuine server-unavailable). The instance is warm now, so this is fast and
+      // recovers transient skips; anything that still fails is truly unavailable.
+      let stillFailed: string[] = chunkFailed;
+      if (!signal.aborted && chunkFailed.length > 0) {
+        stillFailed = [];
+        const retryChunks = chunk(chunkFailed, CHUNK_SIZE);
+        let rn = 0;
+        const retryWorker = async (): Promise<void> => {
+          while (!signal.aborted) {
+            const i = rn++;
+            if (i >= retryChunks.length) return;
+            const tickers = retryChunks[i];
+            if (!tickers) return;
+            try {
+              const r = await postWithRetry(tickers);
+              allResults.push(...r.results);
+              serverUnavailable.push(...r.unavailable);
+            } catch {
+              if (!signal.aborted) stillFailed.push(...tickers);
+            } finally {
+              if (!signal.aborted) {
+                setResults([...allResults]);
+                setUnavailable([...serverUnavailable, ...stillFailed]);
+              }
+            }
+          }
+        };
+        await Promise.all(
+          Array.from({ length: Math.min(POOL_SIZE, retryChunks.length) }, () => retryWorker()),
+        );
+      }
+
+      const finalUnavailable = [...serverUnavailable, ...stillFailed];
       const finishedAt = new Date().toISOString();
       const aborted = signal.aborted;
       const finalMeta: RunMeta = { ...meta, finishedAt, cancelled: aborted };
       setRunMeta(finalMeta);
       setProgress((p) => ({ ...p, running: false }));
-      persist({ results: allResults, unavailable: allUnavailable, params: req, runMeta: finalMeta });
+      setResults([...allResults]);
+      setUnavailable(finalUnavailable);
+      persist({ results: allResults, unavailable: finalUnavailable, params: req, runMeta: finalMeta });
 
       if (!aborted) {
         // A run that yielded nothing usable still records inputs; "partial" when
         // some tickers couldn't be analysed.
-        await writeRun(req, finalMeta, allUnavailable.length > 0);
+        await writeRun(req, finalMeta, finalUnavailable.length > 0);
         await refreshLastRun();
       }
       abortRef.current = null;
