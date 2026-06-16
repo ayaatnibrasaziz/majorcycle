@@ -416,7 +416,11 @@ The "Major Cycle engine" status strip at the top of Results.
 
 ### Briefing Card
 
-The "Analyst Briefing" callout at the top of Results. Has the icon-left, content-right layout.
+The "Analyst Briefing" callout at the top of Results. Has the icon-left, content-right layout. Copy is built from the live in-memory run in **compliant language only** — framed around our five tiers (Constructive or better / Cautious or Bearish), never the reference's "Buy Zone / STRONG BUY / AVOID". Carries the "Information only — not financial advice" line in-card so the disclaimer is visible without scrolling (#4/#12).
+
+### Results table — cycle-only column scope (Layer E, owner-approved)
+
+The Run engine's `/api/analyze` returns pure `CycleAnalysis` (ticker + cycle stats + the four scores), **no fundamentals**. So the Results screener ports only the bands it can fill from that payload — **Identity** (Ticker / Company / Sector, with Company & Sector enriched from the cached light universe index), **Price** (Close), **MajorCycle Verdict** (Overall + tier badge + composition micro-bar, Valuation + zone, Health, Cycle Payoff, Cycle Position), and **Major Cycle** (dip/recovery stats). The reference's Price & Analyst Targets / Valuation Ratios / Profitability / Growth bands are intentionally omitted — those metrics live on each stock's detail page (one click from any row). The reference's "view modes" become **toggleable column groups** (you can never hide every group). The Overall tier badge is clickable and filters the table by that tier. The advanced multi-rule AND builder is ported in full. All styling reuses the live tier tokens (`--c-tier-*`, `.tier-badge--N`) and the reference's screener CSS, ported into `globals.css`.
 
 ### Empty State
 
