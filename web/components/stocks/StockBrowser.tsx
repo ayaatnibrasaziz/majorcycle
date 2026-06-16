@@ -6,7 +6,7 @@ import { Search } from 'lucide-react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
 import type { UniverseStock } from '@/lib/universe.server';
-import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
+import { marketLabel, tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { Currency, Market } from '@/lib/types';
 import { fmtCompact } from '@/lib/format';
 import { boundError, CUSTOM_PARAM_BOUNDS } from '@/lib/presets';
@@ -23,8 +23,8 @@ type MarketFilter = 'all' | Market;
 const MARKET_FILTERS: { value: MarketFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'us', label: 'US' },
-  { value: 'au', label: 'ASX' },
-  { value: 'ca', label: 'TSX' },
+  { value: 'au', label: 'AU' },
+  { value: 'ca', label: 'CA' },
 ];
 
 // Major Cycle horizon chosen on the Browse page and carried into the opened
@@ -130,7 +130,6 @@ function persistHorizon(value: Horizon): void {
   }
 }
 
-const MARKET_BADGE: Record<Market, string> = { us: 'US', au: 'ASX', ca: 'TSX' };
 function formatMarketCap(value: number | null, currency: Currency): string {
   if (value == null || !Number.isFinite(value)) return '—';
   return fmtCompact(value, currency);
@@ -408,7 +407,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
                         {symbol}
                       </span>
                       <span className="text-[9px] font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[4px] px-1.5 py-px flex-shrink-0">
-                        {MARKET_BADGE[s.market]}
+                        {marketLabel(s.market)}
                       </span>
                     </div>
                     <div className="text-[12px] text-[var(--text-secondary)] truncate mt-0.5">

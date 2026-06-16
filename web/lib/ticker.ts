@@ -17,22 +17,33 @@ export function tickerToUrlParts(stored: string): {
   return { market: 'us', symbol: stored };
 }
 
-/** Human exchange label for a market — US / ASX / TSX. */
-const MARKET_EXCHANGE: Record<Market, string> = { us: 'US', au: 'ASX', ca: 'TSX' };
+/**
+ * Human country label for a market — US / AU / CA. We label by *country* rather
+ * than exchange (ASX/TSX) so the whole app reads consistently: the Browse market
+ * filter, per-stock badges, the detail-page tab title, and the Key Metrics "vs"
+ * column all use this. (Index proper-nouns like "ASX 200" / "S&P/TSX 60" on the
+ * Run baskets and the benchmark chart are deliberately kept — those name a
+ * specific index, not a country.)
+ *
+ * THE single source of truth for the country code — badge components import
+ * `marketLabel` from here rather than re-declaring their own map, so AU/CA can't
+ * drift between pages.
+ */
+const MARKET_COUNTRY: Record<Market, string> = { us: 'US', au: 'AU', ca: 'CA' };
 
 export function marketLabel(market: Market): string {
-  return MARKET_EXCHANGE[market];
+  return MARKET_COUNTRY[market];
 }
 
 /**
- * Display a stored ticker as "SYMBOL · EXCHANGE" with NO `.AX`/`.TO` suffix —
- * e.g. `BHP.AX` → "BHP · ASX", `SHOP.TO` → "SHOP · TSX", `AAPL` → "AAPL · US".
+ * Display a stored ticker as "SYMBOL · COUNTRY" with NO `.AX`/`.TO` suffix —
+ * e.g. `BHP.AX` → "BHP · AU", `SHOP.TO` → "SHOP · CA", `AAPL` → "AAPL · US".
  * Use this anywhere a ticker is shown to the user (titles, chart labels, legends)
- * so the exchange is named consistently instead of the raw storage suffix.
+ * so the country is named consistently instead of the raw storage suffix.
  */
 export function tickerDisplay(stored: string): string {
   const { market, symbol } = tickerToUrlParts(stored);
-  return `${symbol} · ${MARKET_EXCHANGE[market]}`;
+  return `${symbol} · ${MARKET_COUNTRY[market]}`;
 }
 
 /** Convert URL path parts to a storage-format ticker. */

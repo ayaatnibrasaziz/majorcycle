@@ -71,7 +71,9 @@ const CAT_PILL: Record<Category, string> = {
   'Balance Sheet': 'mt-cat-balance',
 };
 
-const MARKET_LABEL: Record<string, string> = { us: 'US market', au: 'ASX', ca: 'TSX' };
+// Country codes (US / AU / CA) for the "vs Market" column — consistent with the
+// Browse filter + per-stock badges (`marketLabel`).
+const MARKET_LABEL: Record<string, string> = { us: 'US', au: 'AU', ca: 'CA' };
 
 const UNIT_SUFFIX: Record<Unit, string> = { pct: '%', mult: 'x', ratio: '' };
 

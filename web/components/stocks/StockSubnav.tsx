@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ShieldCheck, Download } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -25,9 +25,17 @@ export function StockSubnav() {
   const [active, setActive] = useState<SectionId>(SECTIONS[0].id);
   const [methodologyOpen, setMethodologyOpen] = useState(false);
 
+  // While a CLICK-triggered smooth scroll is in flight, the scroll-spy below
+  // would otherwise light up every pill the viewport passes through (the
+  // "walking highlight" bug). We lock it on click and release shortly after the
+  // scroll settles on the target — so the clicked pill highlights once and stays.
+  const scrollLockRef = useRef(false);
+  const releaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
+        if (scrollLockRef.current) return; // suppressed during click-scroll
         const visible = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
@@ -50,6 +58,24 @@ export function StockSubnav() {
     return () => observer.disconnect();
   }, []);
 
+  // Release the scroll-lock ~140ms after scrolling stops (so the scroll-spy
+  // resumes only once the click-scroll has settled on the target). A safety
+  // timeout in handleClick covers the already-at-target case (no scroll events).
+  useEffect(() => {
+    const onScroll = () => {
+      if (!scrollLockRef.current) return;
+      if (releaseTimerRef.current) clearTimeout(releaseTimerRef.current);
+      releaseTimerRef.current = setTimeout(() => {
+        scrollLockRef.current = false;
+      }, 140);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (releaseTimerRef.current) clearTimeout(releaseTimerRef.current);
+    };
+  }, []);
+
   function handleClick(e: React.MouseEvent<HTMLAnchorElement>, id: SectionId) {
     e.preventDefault();
     const el = document.getElementById(id);
@@ -59,9 +85,20 @@ export function StockSubnav() {
     // the section heading lands just below the subnav instead of behind it.
     const headerOffset = 120;
     const top = el.getBoundingClientRect().top + window.scrollY - headerOffset;
-    window.scrollTo({ top, behavior: 'smooth' });
     setActive(id);
     history.replaceState(null, '', `#${id}`);
+    // Only lock when we'll actually scroll; otherwise no scroll events fire and
+    // the lock would never release via onScroll.
+    if (Math.abs(window.scrollY - top) > 2) {
+      scrollLockRef.current = true;
+      if (releaseTimerRef.current) clearTimeout(releaseTimerRef.current);
+      // Absolute safety: release even if the scroll is clamped (e.g. the target
+      // is near the page bottom and barely moves).
+      releaseTimerRef.current = setTimeout(() => {
+        scrollLockRef.current = false;
+      }, 1500);
+    }
+    window.scrollTo({ top, behavior: 'smooth' });
   }
 
   return (

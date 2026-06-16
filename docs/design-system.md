@@ -363,11 +363,15 @@ Use the shared helpers in `web/lib/format.ts` — **never** hand-roll `Intl`/`cu
 
 ### Ticker display (no raw storage suffix)
 
-Never show the raw `.AX`/`.TO` storage suffix to users. Helpers in `web/lib/ticker.ts`:
-- **`tickerDisplay(stored)`** → `"SYMBOL · EXCHANGE"` (`BHP.AX` → "BHP · ASX", `SHOP.TO` → "SHOP · TSX", `AAPL` → "AAPL · US"). Used for the **page `<title>`/metadata**.
-- **`tickerToUrlParts(stored).symbol`** → the **bare symbol** ("BHP"). Used for **chart labels** (Price Chart heading, Relative-Performance legend) — cleaner there, and the exchange is already shown in the header.
-- The **StockHeader** shows the bare symbol + a market **badge** (US / ASX / TSX) via `marketLabel(market)`.
-- Exchange map is locked: `{ us: 'US', au: 'ASX', ca: 'TSX' }`.
+Never show the raw `.AX`/`.TO` storage suffix to users. We label by **country**
+(US / AU / CA), not exchange (ASX/TSX) — the Browse market filter, per-stock
+badges, the detail tab title, and the Key Metrics "vs" column all read the same.
+Helpers in `web/lib/ticker.ts`:
+- **`tickerDisplay(stored)`** → `"SYMBOL · COUNTRY"` (`BHP.AX` → "BHP · AU", `SHOP.TO` → "SHOP · CA", `AAPL` → "AAPL · US"). Used for the **page `<title>`/metadata**.
+- **`tickerToUrlParts(stored).symbol`** → the **bare symbol** ("BHP"). Used for **chart labels** (Price Chart heading, Relative-Performance legend) — cleaner there, and the country is already shown in the header.
+- **`marketLabel(market)`** is the **single source of truth** for the country code — the StockHeader, Browse list, Run search, and MetricsTable "vs Market" column all call it (no per-component badge maps), so AU/CA can't drift.
+- Country map is locked: `{ us: 'US', au: 'AU', ca: 'CA' }`.
+- **Index proper-nouns stay** — the Run baskets ("ASX 200", "S&P/TSX 60") and the Relative-Performance benchmark legend ("ASX 200", "S&P/TSX") name a *specific index*, not a country, so they keep their familiar names.
 
 ### Brand logo
 

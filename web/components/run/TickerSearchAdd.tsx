@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 
 import type { Market } from '@/lib/types';
-import { tickerToUrlParts } from '@/lib/ticker';
+import { marketLabel, tickerToUrlParts } from '@/lib/ticker';
 
 // "Search & add" — type a ticker or company name, pick from autocomplete to add
 // it to the selection. Backed by /api/search over the light universe index.
@@ -14,8 +14,6 @@ interface SearchHit {
   name: string | null;
   market: Market;
 }
-
-const MARKET_BADGE: Record<Market, string> = { us: 'US', au: 'ASX', ca: 'TSX' };
 
 export function TickerSearchAdd({
   selected,
@@ -113,7 +111,7 @@ export function TickerSearchAdd({
                     </span>
                   </span>
                   <span className="shrink-0 text-[10px] font-semibold uppercase text-[var(--text-muted)]">
-                    {already ? 'Added' : MARKET_BADGE[h.market]}
+                    {already ? 'Added' : marketLabel(h.market)}
                   </span>
                 </button>
               </li>
