@@ -1143,6 +1143,10 @@ td.num             { font-weight: 600; }
 /* Opportunity Map (height via the .chart-h-lg utility on the element) */
 .opp-map-wrap { width: 100%; }
 .opp-map-wrap .recharts-scatter { cursor: pointer; }
+/* No focus/active outline rectangle when a bubble is clicked. */
+.opp-map-wrap svg :focus,
+.opp-map-wrap svg :focus-visible,
+.opp-map-wrap .recharts-symbols { outline: none; }
 
 /* Toolbar */
 .results-toolbar {
@@ -1263,7 +1267,9 @@ td.num             { font-weight: 600; }
 .results-table .band-growth { background: #EDEAF6; color: #3C3489; }
 .results-table .band-ratios { background: #FBF1DD; color: #7A5500; }
 .results-table .band-health { background: #FBEDE6; color: #7A2E12; }
-.results-table .analyst-cell { font-family: 'Sora', sans-serif; font-weight: 600; color: var(--text-secondary); }
+.results-table .analyst-cell { font-family: 'Sora', sans-serif; font-weight: 400; color: var(--text-secondary); }
+/* Header InfoTip trigger sits inline with the column label (doesn't trigger sort). */
+.results-table thead .th-info { display: inline-flex; vertical-align: middle; margin-left: 3px; cursor: default; }
 
 /* Score cells */
 .score-cell { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
@@ -1286,10 +1292,16 @@ td.num             { font-weight: 600; }
 
 /* Cycle-position gauge */
 .cyc-wrap { display: flex; align-items: center; gap: 7px; }
-.cyc-track { position: relative; width: 56px; height: 5px; border-radius: 3px; background: var(--bg-stripe); }
+/* Visible red→amber→green scale so the marker's position reads as "where in the
+   drawdown band" (the old near-white track was invisible against the row). */
+.cyc-track {
+  position: relative; width: 60px; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, rgba(178,34,34,.35), rgba(212,160,23,.35), rgba(0,100,0,.35));
+  border: 1px solid var(--border);
+}
 .cyc-marker {
-  position: absolute; top: 50%; width: 8px; height: 8px; border-radius: 50%;
-  transform: translate(-50%, -50%); box-shadow: 0 0 0 2px var(--bg-surface);
+  position: absolute; top: 50%; width: 9px; height: 9px; border-radius: 50%;
+  transform: translate(-50%, -50%); box-shadow: 0 0 0 1.5px var(--bg-surface);
 }
 .cyc-pct { font-family: var(--font-mono); font-size: 11px; font-weight: 700; }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { LineChart } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
@@ -31,7 +31,7 @@ export function BriefingCard({
   return (
     <div className="briefing">
       <div className="briefing-icon">
-        <LineChart className="h-[21px] w-[21px] text-white" strokeWidth={2} />
+        <TrendingUp className="h-[20px] w-[20px] text-white" strokeWidth={2.25} />
       </div>
       <div className="briefing-body">
         <div className="briefing-head">

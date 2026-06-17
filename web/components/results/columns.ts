@@ -58,10 +58,10 @@ export type TintKind = 'drawdown' | 'roe' | 'fcf' | 'de' | 'peg' | 'upside' | 'p
 export type Fmt =
   | 'money2'
   | 'money0'
-  | 'pct2'
+  | 'pct1'
   | 'pctSigned1'
-  | 'num2'
-  | 'numX2'
+  | 'mult1'
+  | 'ratio2'
   | 'int'
   | 'num1'
   | 'score'
@@ -79,6 +79,8 @@ export interface Field {
   align: 'left' | 'right';
   /** Optional colour-tint ladder for the cell value. */
   tint?: TintKind;
+  /** Display cap (matches the detail page): |value| beyond this shows ">+cap". */
+  cap?: number;
   /** Sort / filter / CSV accessor. */
   get: (r: ResultRow) => number | string | null;
   /** Appears in the advanced-filter field picker. */
@@ -144,31 +146,31 @@ export const FIELDS: Field[] = [
   { key: 'analyst', label: 'Analyst', tip: 'Analyst Consensus|The consensus recommendation from Wall-Street analysts (third-party data, shown verbatim — not our rating).', type: 'text', band: 'price', cell: 'analyst', fmt: 'text', align: 'left', get: (r) => f(r)?.analystRecommendation ?? null, filterable: false },
 
   // Major Cycle
-  { key: 'currentDD', label: 'Current DD%', tip: 'Current Drawdown %|How far the stock is below its recent peak right now.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct2', align: 'right', tint: 'drawdown', get: (r) => r.currentDrawdownPct, filterable: true },
-  { key: 'typicalDD', label: 'Typical DD%', tip: 'Typical Drawdown %|The average dip depth across the stock’s confirmed historical pullbacks.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct2', align: 'right', get: (r) => r.typicalDrawdown, filterable: true },
-  { key: 'lowerBound', label: 'Lower Bound%', tip: 'Lower Bound %|The deeper end of the typical drawdown band — a historically severe (but not unprecedented) dip.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct2', align: 'right', get: (r) => r.lowerBound, filterable: true },
+  { key: 'currentDD', label: 'Current DD%', tip: 'Current Drawdown %|How far the stock is below its recent peak right now.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', tint: 'drawdown', get: (r) => r.currentDrawdownPct, filterable: true },
+  { key: 'typicalDD', label: 'Typical DD%', tip: 'Typical Drawdown %|The average dip depth across the stock’s confirmed historical pullbacks.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.typicalDrawdown, filterable: true },
+  { key: 'lowerBound', label: 'Lower Bound%', tip: 'Lower Bound %|The deeper end of the typical drawdown band — a historically severe (but not unprecedented) dip.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.lowerBound, filterable: true },
   { key: 'pullbacks', label: 'Pullbacks', tip: 'Pullbacks|Number of confirmed pullback events found in the price history — more events = a more reliable typical-dip estimate.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'int', align: 'right', get: (r) => r.totalPullbackEvents, filterable: true },
-  { key: 'currentProfit', label: 'Current Profit%', tip: 'Current Profit %|How far the stock is above its recent trough right now.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct2', align: 'right', tint: 'positive', get: (r) => r.currentProfitPct, filterable: true },
-  { key: 'typicalProfit', label: 'Typical Profit%', tip: 'Typical Profit %|The average recovery size across the stock’s confirmed historical rallies.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct2', align: 'right', get: (r) => r.typicalProfit, filterable: true },
-  { key: 'upperBound', label: 'Upper Bound%', tip: 'Upper Bound %|The stronger end of the typical recovery band — a historically large (but not unprecedented) rally.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct2', align: 'right', tint: 'positive', get: (r) => r.upperBound, filterable: true },
+  { key: 'currentProfit', label: 'Current Profit%', tip: 'Current Profit %|How far the stock is above its recent trough right now.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', tint: 'positive', get: (r) => r.currentProfitPct, filterable: true },
+  { key: 'typicalProfit', label: 'Typical Profit%', tip: 'Typical Profit %|The average recovery size across the stock’s confirmed historical rallies.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.typicalProfit, filterable: true },
+  { key: 'upperBound', label: 'Upper Bound%', tip: 'Upper Bound %|The stronger end of the typical recovery band — a historically large (but not unprecedented) rally.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', tint: 'positive', get: (r) => r.upperBound, filterable: true },
   { key: 'rallies', label: 'Rallies', tip: 'Rallies|Number of confirmed recovery events found in the price history.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'int', align: 'right', get: (r) => r.totalProfitEvents, filterable: true },
 
   // Valuation Ratios
-  { key: 'pe', label: 'P/E', tip: 'Price / Earnings|Share price ÷ earnings per share (trailing). Lower = cheaper relative to earnings.', type: 'numeric', band: 'ratios', cell: 'default', fmt: 'num2', align: 'right', get: (r) => f(r)?.pe ?? null, filterable: true },
-  { key: 'peg', label: 'PEG', tip: 'PEG Ratio|P/E ÷ earnings growth. Below 1 = potentially undervalued for its growth; above ~2.5 getting expensive.', type: 'numeric', band: 'ratios', cell: 'default', fmt: 'num2', align: 'right', tint: 'peg', get: (r) => f(r)?.peg ?? null, filterable: true },
+  { key: 'pe', label: 'P/E', tip: 'Price / Earnings|Share price ÷ earnings per share (trailing). Lower = cheaper relative to earnings.', type: 'numeric', band: 'ratios', cell: 'default', fmt: 'mult1', cap: 150, align: 'right', get: (r) => f(r)?.pe ?? null, filterable: true },
+  { key: 'peg', label: 'PEG', tip: 'PEG Ratio|P/E ÷ earnings growth. Below 1 = potentially undervalued for its growth; above ~2.5 getting expensive.', type: 'numeric', band: 'ratios', cell: 'default', fmt: 'ratio2', cap: 25, align: 'right', tint: 'peg', get: (r) => f(r)?.peg ?? null, filterable: true },
 
   // Profitability & Health
-  { key: 'roe', label: 'ROE%', tip: 'Return on Equity %|Net income ÷ shareholder equity. Above ~15% is generally strong.', type: 'numeric', band: 'health', cell: 'default', fmt: 'pct2', align: 'right', tint: 'roe', get: (r) => f(r)?.roe ?? null, filterable: true },
-  { key: 'grossMargin', label: 'Gross M%', tip: 'Gross Margin %|(Revenue − COGS) ÷ revenue. Higher = more pricing power.', type: 'numeric', band: 'health', cell: 'default', fmt: 'pct2', align: 'right', get: (r) => f(r)?.grossMargin ?? null, filterable: true },
-  { key: 'netMargin', label: 'Net M%', tip: 'Net Margin %|Net income ÷ revenue — cents of profit kept per dollar of sales.', type: 'numeric', band: 'health', cell: 'default', fmt: 'pct2', align: 'right', get: (r) => f(r)?.netMargin ?? null, filterable: true },
-  { key: 'fcfYield', label: 'FCF Yld%', tip: 'Free Cash Flow Yield %|Free cash flow ÷ market cap. Above ~4% is generally attractive.', type: 'numeric', band: 'health', cell: 'default', fmt: 'pct2', align: 'right', tint: 'fcf', get: (r) => f(r)?.fcfYieldPct ?? null, filterable: true },
-  { key: 'de', label: 'D/E', tip: 'Debt / Equity|Total debt ÷ shareholder equity. Below 0.5 conservative · 0.5–1.5 moderate · above 1.5 highly leveraged.', type: 'numeric', band: 'health', cell: 'default', fmt: 'num2', align: 'right', tint: 'de', get: (r) => f(r)?.debtToEquity ?? null, filterable: true },
-  { key: 'currentRatio', label: 'Cur Ratio', tip: 'Current Ratio|Current assets ÷ current liabilities. Above 2 very safe · 1–2 adequate · below 1 a liquidity concern.', type: 'numeric', band: 'health', cell: 'default', fmt: 'num2', align: 'right', get: (r) => f(r)?.currentRatio ?? null, filterable: true },
-  { key: 'interestCov', label: 'Int Cov', tip: 'Interest Coverage|EBIT ÷ interest expense. Above 5× very safe · below 2× financial-stress risk.', type: 'numeric', band: 'health', cell: 'default', fmt: 'numX2', align: 'right', get: (r) => f(r)?.interestCoverage ?? null, filterable: true },
+  { key: 'roe', label: 'ROE%', tip: 'Return on Equity %|Net income ÷ shareholder equity. Above ~15% is generally strong.', type: 'numeric', band: 'health', cell: 'default', fmt: 'pct1', cap: 300, align: 'right', tint: 'roe', get: (r) => f(r)?.roe ?? null, filterable: true },
+  { key: 'grossMargin', label: 'Gross M%', tip: 'Gross Margin %|(Revenue − COGS) ÷ revenue. Higher = more pricing power.', type: 'numeric', band: 'health', cell: 'default', fmt: 'pct1', cap: 300, align: 'right', get: (r) => f(r)?.grossMargin ?? null, filterable: true },
+  { key: 'netMargin', label: 'Net M%', tip: 'Net Margin %|Net income ÷ revenue — cents of profit kept per dollar of sales.', type: 'numeric', band: 'health', cell: 'default', fmt: 'pct1', cap: 300, align: 'right', get: (r) => f(r)?.netMargin ?? null, filterable: true },
+  { key: 'fcfYield', label: 'FCF Yld%', tip: 'Free Cash Flow Yield %|Free cash flow ÷ market cap. Above ~4% is generally attractive.', type: 'numeric', band: 'health', cell: 'default', fmt: 'pct1', cap: 100, align: 'right', tint: 'fcf', get: (r) => f(r)?.fcfYieldPct ?? null, filterable: true },
+  { key: 'de', label: 'D/E', tip: 'Debt / Equity|Total debt ÷ shareholder equity. Below 0.5 conservative · 0.5–1.5 moderate · above 1.5 highly leveraged.', type: 'numeric', band: 'health', cell: 'default', fmt: 'ratio2', cap: 25, align: 'right', tint: 'de', get: (r) => f(r)?.debtToEquity ?? null, filterable: true },
+  { key: 'currentRatio', label: 'Cur Ratio', tip: 'Current Ratio|Current assets ÷ current liabilities. Above 2 very safe · 1–2 adequate · below 1 a liquidity concern.', type: 'numeric', band: 'health', cell: 'default', fmt: 'ratio2', cap: 25, align: 'right', get: (r) => f(r)?.currentRatio ?? null, filterable: true },
+  { key: 'interestCov', label: 'Int Cov', tip: 'Interest Coverage|EBIT ÷ interest expense. Above 5× very safe · below 2× financial-stress risk.', type: 'numeric', band: 'health', cell: 'default', fmt: 'mult1', cap: 100, align: 'right', get: (r) => f(r)?.interestCoverage ?? null, filterable: true },
 
   // Growth & Sentiment
-  { key: 'revGrowth', label: 'Rev Grw%', tip: 'Revenue Growth %|Year-over-year sales growth. Quality companies typically grow 10–20%+ per year.', type: 'numeric', band: 'growth', cell: 'default', fmt: 'pct2', align: 'right', get: (r) => f(r)?.revenueGrowthYoy ?? null, filterable: true },
-  { key: 'shortPct', label: 'Short%', tip: 'Short % of Float|Percentage of available shares sold short. Below 5% low · 5–15% some caution · above 15% heavy short conviction.', type: 'numeric', band: 'growth', cell: 'default', fmt: 'pct2', align: 'right', get: (r) => f(r)?.shortPctOfFloat ?? null, filterable: true },
+  { key: 'revGrowth', label: 'Rev Grw%', tip: 'Revenue Growth %|Year-over-year sales growth. Quality companies typically grow 10–20%+ per year.', type: 'numeric', band: 'growth', cell: 'default', fmt: 'pct1', cap: 300, align: 'right', get: (r) => f(r)?.revenueGrowthYoy ?? null, filterable: true },
+  { key: 'shortPct', label: 'Short%', tip: 'Short % of Float|Percentage of available shares sold short. Below 5% low · 5–15% some caution · above 15% heavy short conviction.', type: 'numeric', band: 'growth', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => f(r)?.shortPctOfFloat ?? null, filterable: true },
   { key: 'daysToCover', label: 'Days Cvr', tip: 'Days to Cover|Short interest ÷ average daily volume. Above ~7 days can fuel a short squeeze.', type: 'numeric', band: 'growth', cell: 'default', fmt: 'num1', align: 'right', get: (r) => f(r)?.shortRatio ?? null, filterable: true },
 
   // Filter-only categorical fields (rendered inside the Overall / Valuation cells).
@@ -240,23 +242,32 @@ export const CSV_COLUMNS: ReadonlyArray<{ header: string; get: (r: ResultRow) =>
   { header: 'Days to Cover', get: (r) => r.fundamentals?.shortRatio ?? null },
 ];
 
-/** Format a value for table/CSV display per a field's `fmt`. */
-export function formatValue(value: number | string | null, fmt: Fmt): string {
+/**
+ * Format a value for table display per a field's `fmt`, applying the same display
+ * caps as the Stock Detail page (MetricsTable) so the table matches it: a value
+ * beyond `cap` shows ">+cap" / "<−cap" instead of an absurd raw figure. Caps are
+ * DISPLAY-ONLY — sort/filter/CSV use the true raw value via `Field.get`.
+ */
+export function formatValue(value: number | string | null, fmt: Fmt, cap?: number): string {
   if (value == null || value === '') return '—';
   if (typeof value === 'string') return value;
+  const suffix = fmt === 'mult1' ? 'x' : fmt === 'pct1' ? '%' : '';
+  if (cap !== undefined && Math.abs(value) > cap) {
+    return `${value > 0 ? '>+' : '<−'}${cap}${suffix}`;
+  }
   switch (fmt) {
     case 'money2':
       return `$${value.toFixed(2)}`;
     case 'money0':
       return `$${value.toFixed(0)}`;
-    case 'pct2':
-      return `${value.toFixed(2)}%`;
+    case 'pct1':
+      return `${value.toFixed(1)}%`;
     case 'pctSigned1':
       return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
-    case 'num2':
+    case 'mult1':
+      return `${value.toFixed(1)}x`;
+    case 'ratio2':
       return value.toFixed(2);
-    case 'numX2':
-      return `${value.toFixed(2)}x`;
     case 'num1':
       return value.toFixed(1);
     case 'int':

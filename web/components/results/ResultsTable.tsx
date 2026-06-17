@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 
+import { InfoTip } from '@/components/ui/InfoTip';
 import {
   ZONE_DISPLAY,
   compositionRamp,
@@ -41,6 +42,12 @@ function healthDescriptor(score: number): string {
 
 function tipTitle(tip?: string): string | undefined {
   return tip ? tip.replace('|', ' — ') : undefined;
+}
+
+/** Split a "Title|body" tip string into its parts for an InfoTip. */
+function tipParts(tip: string): { title: string; body: string } {
+  const i = tip.indexOf('|');
+  return i === -1 ? { title: tip, body: tip } : { title: tip.slice(0, i), body: tip.slice(i + 1) };
 }
 
 export function ResultsTable({
@@ -89,14 +96,24 @@ export function ResultsTable({
               {columns.map((col) => {
                 const active = col.key === sortKey;
                 const arrow = active ? (sortAsc ? '↑' : '↓') : '↕';
+                const parts = col.tip ? tipParts(col.tip) : null;
                 return (
                   <th
                     key={col.key}
                     className={`${active ? 'sorted' : ''} ${col.align === 'right' ? 'text-right' : ''}`}
-                    title={tipTitle(col.tip)}
                     onClick={() => onSort(col.key)}
                   >
-                    {col.label} <span className="sort-arrow">{arrow}</span>
+                    {col.label}
+                    {parts && (
+                      <span
+                        className="th-info"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <InfoTip title={parts.title}>{parts.body}</InfoTip>
+                      </span>
+                    )}{' '}
+                    <span className="sort-arrow">{arrow}</span>
                   </th>
                 );
               })}
@@ -139,10 +156,13 @@ function renderCell(col: Field, r: ResultRow, onTierFilter: (label: OverallLabel
     case 'overall':
       return <OverallCell row={r} onTierFilter={onTierFilter} />;
     case 'valuation':
+      // The zone tag is coloured by the SAME score colour as the number (not the
+      // zone tier), so the number and its label always match — consistent with the
+      // Overall and Health cells, and with the reference's valuation cell.
       return (
         <span className="score-cell">
           <ScoreNum value={r.valuationScore} />
-          <span className="score-tag" style={{ color: zoneColor(r.valuationZone) }}>
+          <span className="score-tag" style={{ color: scoreColor(r.valuationScore) }}>
             {ZONE_DISPLAY[r.valuationZone]}
           </span>
         </span>
@@ -164,7 +184,7 @@ function renderCell(col: Field, r: ResultRow, onTierFilter: (label: OverallLabel
       return <span className="analyst-cell">{fmtAnalyst((col.get(r) as string | null) ?? null)}</span>;
     default: {
       const raw = col.get(r);
-      const text = formatValue(raw, col.fmt);
+      const text = formatValue(raw, col.fmt, col.cap);
       const color =
         col.tint && typeof raw === 'number' ? metricTintColor(col.tint, raw) : null;
       if (color) return <span style={{ color, fontWeight: 600 }}>{text}</span>;

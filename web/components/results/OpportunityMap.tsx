@@ -139,10 +139,13 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
                   width={34}
                   label={{ value: 'Valuation →', angle: -90, position: 'insideLeft', fill: '#8A97A8', fontSize: 10 }}
                 />
-                <ZAxis type="number" dataKey="overall" range={[60, 420]} domain={[0, 100]} />
+                {/* Smaller bubble range so a 100–200 stock run doesn't crowd: with
+                    lower opacity, overlapping points at the same grid cell read as a
+                    denser/darker cluster rather than one giant blob. */}
+                <ZAxis type="number" dataKey="overall" range={[18, 200]} domain={[0, 100]} />
 
                 <Tooltip
-                  cursor={{ strokeDasharray: '3 3' }}
+                  cursor={false}
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
                     const p = payload[0]?.payload as Point | undefined;
@@ -164,7 +167,9 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
                 />
 
                 <Legend
-                  wrapperStyle={{ fontSize: 10, fontFamily: 'Sora', paddingTop: 6, cursor: 'pointer' }}
+                  verticalAlign="top"
+                  align="center"
+                  wrapperStyle={{ fontSize: 10, fontFamily: 'Sora', paddingBottom: 8, cursor: 'pointer' }}
                   iconSize={9}
                   onClick={(data) => {
                     const v = (data as { value?: unknown }).value;
@@ -186,12 +191,14 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
                     name={s.label}
                     data={s.points}
                     fill={scoreColor(tierMidScore(s.label))}
-                    fillOpacity={0.62}
+                    fillOpacity={0.55}
                     hide={hidden.has(s.label)}
                     onClick={openPoint}
+                    activeShape={false}
+                    isAnimationActive={false}
                   >
                     {s.points.map((p) => (
-                      <Cell key={p.ticker} fill={scoreColor(p.overall)} fillOpacity={0.62} stroke={scoreColor(p.overall)} strokeWidth={1} />
+                      <Cell key={p.ticker} fill={scoreColor(p.overall)} fillOpacity={0.55} stroke={scoreColor(p.overall)} strokeWidth={1} />
                     ))}
                   </Scatter>
                 ))}
