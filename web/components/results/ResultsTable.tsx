@@ -5,7 +5,10 @@ import type { ReactNode } from 'react';
 
 import {
   ZONE_DISPLAY,
+  compositionRamp,
   cyclePositionColor,
+  fmtAnalyst,
+  metricTintColor,
   ratingComposition,
   scoreColor,
   tierFromLabel,
@@ -15,18 +18,20 @@ import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { OverallLabel } from '@/lib/types';
 import {
   BAND_META,
-  BAND_ORDER,
+  VIEW_MODES,
   columnsForBand,
   formatValue,
-  type BandKey,
   type Field,
   type ResultRow,
+  type ViewMode,
 } from './columns';
 
-// The ranked results table. Desktop renders a banded, sortable table; below `md`
-// it collapses to stacked cards (no horizontal scroll at 375px). A row click opens
-// that stock's detail page; the Overall tier badge is clickable and filters the
-// table by that tier instead of navigating.
+// The ranked results table. Desktop renders a banded, sortable table driven by the
+// active view mode (Simple / Analyst / Full); below `md` it collapses to stacked
+// cards (no horizontal scroll at 375px). A row click opens that stock's detail
+// page; the Overall tier badge is clickable and filters by that tier instead of
+// navigating. Labels are our compliant tiers/zones — only the Analyst column shows
+// the Wall-Street consensus verbatim (third-party, CLAUDE.md #17).
 
 function healthDescriptor(score: number): string {
   if (score >= 80) return 'Healthy';
@@ -40,21 +45,21 @@ function tipTitle(tip?: string): string | undefined {
 
 export function ResultsTable({
   rows,
-  visibleBands,
+  viewMode,
   sortKey,
   sortAsc,
   onSort,
   onTierFilter,
 }: {
   rows: ResultRow[];
-  visibleBands: Set<BandKey>;
+  viewMode: ViewMode;
   sortKey: string;
   sortAsc: boolean;
   onSort: (key: string) => void;
   onTierFilter: (label: OverallLabel) => void;
 }) {
   const router = useRouter();
-  const bands = BAND_ORDER.filter((b) => visibleBands.has(b));
+  const bands = VIEW_MODES[viewMode];
   const columns: Field[] = bands.flatMap((b) => columnsForBand(b));
 
   const open = (ticker: string) => router.push(tickerToPath(ticker));
@@ -155,16 +160,14 @@ function renderCell(col: Field, r: ResultRow, onTierFilter: (label: OverallLabel
       );
     case 'cyclePos':
       return <CyclePosCell pos={r.cyclePos} />;
+    case 'analyst':
+      return <span className="analyst-cell">{fmtAnalyst((col.get(r) as string | null) ?? null)}</span>;
     default: {
       const raw = col.get(r);
       const text = formatValue(raw, col.fmt);
-      if (col.fmt === 'score' && typeof raw === 'number') {
-        return (
-          <span className="score-num score-num--ghost" style={{ color: scoreColor(raw) }}>
-            {text}
-          </span>
-        );
-      }
+      const color =
+        col.tint && typeof raw === 'number' ? metricTintColor(col.tint, raw) : null;
+      if (color) return <span style={{ color, fontWeight: 600 }}>{text}</span>;
       return text;
     }
   }
@@ -185,6 +188,7 @@ function OverallCell({ row, onTierFilter }: { row: ResultRow; onTierFilter: (lab
   const wV = (comp.valuation / total) * 100;
   const wP = (comp.payoff / total) * 100;
   const tier = tierFromLabel(row.overallLabel);
+  const ramp = compositionRamp(row.overallRating);
   return (
     <div className="score-stack">
       <div className="score-row">
@@ -205,9 +209,9 @@ function OverallCell({ row, onTierFilter }: { row: ResultRow; onTierFilter: (lab
         className="micro-bar"
         title={`Composition: Health ${Math.round(comp.health)} (40%) + Valuation ${Math.round(comp.valuation)} (35%) + Cycle Payoff ${Math.round(comp.payoff)} (25%)`}
       >
-        <div className="micro-seg" style={{ width: `${wH}%`, background: 'var(--brand-deep)' }} />
-        <div className="micro-seg" style={{ width: `${wV}%`, background: 'var(--brand-mid)' }} />
-        <div className="micro-seg" style={{ width: `${wP}%`, background: 'var(--brand-bright)' }} />
+        <div className="micro-seg" style={{ width: `${wH}%`, background: ramp[0] }} />
+        <div className="micro-seg" style={{ width: `${wV}%`, background: ramp[1] }} />
+        <div className="micro-seg" style={{ width: `${wP}%`, background: ramp[2] }} />
       </div>
     </div>
   );
@@ -282,7 +286,7 @@ function ResultCard({
           value={row.cyclePos == null ? '—' : String(Math.round(row.cyclePos))}
           color={cyclePositionColor(row.cyclePos)}
         />
-        <CardStat label="Close" value={formatValue(row.currentClose, 'money')} />
+        <CardStat label="Close" value={formatValue(row.currentClose, 'money2')} />
       </div>
     </button>
   );

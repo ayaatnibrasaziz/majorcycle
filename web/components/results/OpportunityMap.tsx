@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Cell,
+  Legend,
   ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
@@ -15,15 +17,17 @@ import {
 } from 'recharts';
 
 import { InfoTip } from '@/components/ui/InfoTip';
-import { scoreColor } from '@/lib/ratings';
+import { OVERALL_LABELS, scoreColor, tierFromLabel } from '@/lib/ratings';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
+import type { OverallLabel } from '@/lib/types';
 import type { ResultRow } from './columns';
 
 // Opportunity Map — Financial Health (x) vs Valuation (y), bubble size = Overall
-// Rating. The top-right quadrant (strong health + discounted valuation) is the
-// "Opportunity Zone". Click a bubble to open that stock's detail page. Built on
-// Recharts (locked stack) rather than the reference's Chart.js canvas. Only rows
-// with a Financial Health score can be plotted; the rest still appear in the table.
+// Rating, faithfully reproducing the reference's quadrant scatter (built on
+// Recharts, our locked chart stack). Bubbles are grouped by OUR tier so the legend
+// lists the tiers and is click-to-toggle (same pattern as RelativePerformance).
+// The four quadrants are tinted + labelled; the top-right (strong health +
+// discounted) is the Opportunity Zone. Click a bubble → that stock's detail page.
 
 interface Point {
   ticker: string;
@@ -38,17 +42,39 @@ const SPLIT = 65; // tier-2 (Constructive) threshold — the quadrant divider.
 
 export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
   const router = useRouter();
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
 
-  const points: Point[] = rows
-    .filter((r) => r.financialHealthScore != null)
-    .map((r) => ({
-      ticker: r.ticker,
-      symbol: tickerToUrlParts(r.ticker).symbol,
-      name: r.name,
-      health: r.financialHealthScore as number,
-      valuation: r.valuationScore,
-      overall: r.overallRating,
-    }));
+  const toggle = (label: string) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+
+  // Only rows with a Financial Health score can be plotted.
+  const plottable = rows.filter((r) => r.financialHealthScore != null);
+
+  // Group into one series per tier so each gets a toggleable legend entry.
+  const series = OVERALL_LABELS.map((label) => ({
+    label,
+    tier: tierFromLabel(label),
+    points: plottable
+      .filter((r) => r.overallLabel === label)
+      .map<Point>((r) => ({
+        ticker: r.ticker,
+        symbol: tickerToUrlParts(r.ticker).symbol,
+        name: r.name,
+        health: r.financialHealthScore as number,
+        valuation: r.valuationScore,
+        overall: r.overallRating,
+      })),
+  })).filter((s) => s.points.length > 0);
+
+  const openPoint = (d: unknown) => {
+    const p = (d as { payload?: Point }).payload;
+    if (p) router.push(tickerToPath(p.ticker));
+  };
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
@@ -58,43 +84,38 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
           <InfoTip title="Opportunity Map">
             Each bubble is one analysed stock. The horizontal axis is Financial Health (further
             right = a stronger company); the vertical axis is the Valuation score (higher up = more
-            discounted versus its own history). Bubble size reflects the Overall Rating. The
-            top-right Opportunity Zone — healthy companies trading at a discount — is where the most
-            cyclically attractive names cluster. Click any bubble to open its full detail.
-            Information only — not financial advice.
+            discounted versus its own history). Bubble size reflects the Overall Rating, and colour
+            is the rating tier. The top-right Opportunity Zone — healthy companies trading at a
+            discount — is where the most cyclically attractive names cluster. Click a legend tier to
+            show/hide it, or any bubble to open its full detail. Information only — not financial
+            advice.
           </InfoTip>
         </div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-          Bubble size = Overall Rating · click any bubble to open it
+          Bubble size = Overall Rating · click a tier to toggle · click a bubble to open it
         </div>
       </div>
       <div className="card-body">
-        {points.length === 0 ? (
+        {plottable.length === 0 ? (
           <div className="py-10 text-center text-[12px] text-[var(--text-muted)]">
             No stocks with a Financial Health score to plot.
           </div>
         ) : (
-          <div className="opp-map-wrap">
-            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 340 }}>
-              <ScatterChart margin={{ top: 12, right: 16, bottom: 28, left: 8 }}>
-                <ReferenceArea
-                  x1={SPLIT}
-                  x2={100}
-                  y1={SPLIT}
-                  y2={100}
-                  fill="var(--c-tier-2)"
-                  fillOpacity={0.07}
-                  stroke="none"
-                  label={{
-                    value: 'Opportunity Zone',
-                    position: 'insideTopRight',
-                    fill: 'var(--c-tier-2)',
-                    fontSize: 10,
-                    fontWeight: 700,
-                  }}
-                />
-                <ReferenceLine x={SPLIT} stroke="var(--border-strong)" strokeDasharray="4 4" />
-                <ReferenceLine y={SPLIT} stroke="var(--border-strong)" strokeDasharray="4 4" />
+          <div className="opp-map-wrap chart-h-lg">
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 300 }}>
+              <ScatterChart margin={{ top: 14, right: 18, bottom: 26, left: 6 }}>
+                {/* Quadrant tints */}
+                <ReferenceArea x1={SPLIT} x2={100} y1={SPLIT} y2={100} fill="#006400" fillOpacity={0.07} stroke="none"
+                  label={{ value: 'Opportunity Zone', position: 'insideTopRight', fill: '#006400', fontSize: 10, fontWeight: 700 }} />
+                <ReferenceArea x1={SPLIT} x2={100} y1={0} y2={SPLIT} fill="#D4A017" fillOpacity={0.06} stroke="none"
+                  label={{ value: 'Healthy, fully priced', position: 'insideBottomRight', fill: 'rgba(154,112,16,.8)', fontSize: 9.5, fontWeight: 600 }} />
+                <ReferenceArea x1={0} x2={SPLIT} y1={SPLIT} y2={100} fill="#1E5CB3" fillOpacity={0.05} stroke="none"
+                  label={{ value: 'Weak but cheap', position: 'insideTopLeft', fill: 'rgba(30,92,179,.7)', fontSize: 9.5, fontWeight: 600 }} />
+                <ReferenceArea x1={0} x2={SPLIT} y1={0} y2={SPLIT} fill="#B22222" fillOpacity={0.06} stroke="none"
+                  label={{ value: 'Weak & expensive', position: 'insideBottomLeft', fill: 'rgba(178,34,34,.7)', fontSize: 9.5, fontWeight: 600 }} />
+                <ReferenceLine x={SPLIT} stroke="rgba(138,151,168,.45)" strokeDasharray="4 4" />
+                <ReferenceLine y={SPLIT} stroke="rgba(138,151,168,.45)" strokeDasharray="4 4" />
+
                 <XAxis
                   type="number"
                   dataKey="health"
@@ -104,7 +125,7 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
                   tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={false}
                   tickLine={false}
-                  label={{ value: 'Financial Health →', position: 'insideBottom', offset: -16, fill: '#8A97A8', fontSize: 10 }}
+                  label={{ value: 'Financial Health →', position: 'insideBottom', offset: -14, fill: '#8A97A8', fontSize: 10 }}
                 />
                 <YAxis
                   type="number"
@@ -119,6 +140,7 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
                   label={{ value: 'Valuation →', angle: -90, position: 'insideLeft', fill: '#8A97A8', fontSize: 10 }}
                 />
                 <ZAxis type="number" dataKey="overall" range={[60, 420]} domain={[0, 100]} />
+
                 <Tooltip
                   cursor={{ strokeDasharray: '3 3' }}
                   content={({ active, payload }) => {
@@ -134,29 +156,45 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
                         <div style={{ color: '#94A3B8', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, lineHeight: 1.5 }}>
                           Health {Math.round(p.health)} · Valuation {Math.round(p.valuation)}
                           <br />
-                          Overall {Math.round(p.overall)}
+                          Overall {Math.round(p.overall)} · click to open
                         </div>
                       </div>
                     );
                   }}
                 />
-                <Scatter
-                  data={points}
-                  onClick={(d: unknown) => {
-                    const p = (d as { payload?: Point }).payload;
-                    if (p) router.push(tickerToPath(p.ticker));
+
+                <Legend
+                  wrapperStyle={{ fontSize: 10, fontFamily: 'Sora', paddingTop: 6, cursor: 'pointer' }}
+                  iconSize={9}
+                  onClick={(data) => {
+                    const v = (data as { value?: unknown }).value;
+                    if (typeof v === 'string') toggle(v);
                   }}
-                >
-                  {points.map((p) => (
-                    <Cell
-                      key={p.ticker}
-                      fill={scoreColor(p.overall)}
-                      fillOpacity={0.62}
-                      stroke={scoreColor(p.overall)}
-                      strokeWidth={1}
-                    />
-                  ))}
-                </Scatter>
+                  formatter={(value) => {
+                    const off = typeof value === 'string' && hidden.has(value);
+                    return off ? (
+                      <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>{value}</span>
+                    ) : (
+                      <span style={{ color: 'var(--text-secondary)' }}>{value}</span>
+                    );
+                  }}
+                />
+
+                {series.map((s) => (
+                  <Scatter
+                    key={s.label}
+                    name={s.label}
+                    data={s.points}
+                    fill={scoreColor(tierMidScore(s.label))}
+                    fillOpacity={0.62}
+                    hide={hidden.has(s.label)}
+                    onClick={openPoint}
+                  >
+                    {s.points.map((p) => (
+                      <Cell key={p.ticker} fill={scoreColor(p.overall)} fillOpacity={0.62} stroke={scoreColor(p.overall)} strokeWidth={1} />
+                    ))}
+                  </Scatter>
+                ))}
               </ScatterChart>
             </ResponsiveContainer>
           </div>
@@ -164,4 +202,16 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
       </div>
     </div>
   );
+}
+
+// A representative score for a tier, so the legend swatch colour matches the tier.
+function tierMidScore(label: OverallLabel): number {
+  const mid: Record<OverallLabel, number> = {
+    'High Conviction': 90,
+    Constructive: 72,
+    Neutral: 57,
+    Cautious: 42,
+    Bearish: 20,
+  };
+  return mid[label];
 }

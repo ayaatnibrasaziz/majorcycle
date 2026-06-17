@@ -580,12 +580,36 @@ interface AnalyzeRequest {
 names); the client converts via `web/lib/case.ts`.
 ```typescript
 interface AnalyzeResponse {
-  results: CycleAnalysis[];                // one per analysable ticker
-  unavailable: string[];                   // not in universe / insufficient history / failed
+  results: RunResult[];                     // one per analysable ticker
+  unavailable: string[];                    // not in universe / insufficient history / failed
   startedAt: string;
   finishedAt: string;
 }
+
+// A scored stock = the CycleAnalysis plus a slim, display-only fundamentals
+// subset for the Results screener's Analyst / Full views (web/api/analyze.py
+// `_screener_fundamentals`). `fundamentals` is OPTIONAL so older sessionStorage
+// snapshots still hydrate (those rows show "—" in the fundamentals columns).
+// NOT used by the cycle math. `analystRecommendation` is third-party Wall-Street
+// data shown verbatim (#17). Keys arrive snake_case → camelCase via case.ts.
+type RunResult = CycleAnalysis & { fundamentals?: ScreenerFundamentals };
+
+interface ScreenerFundamentals {
+  pe: number | null; peg: number | null; roe: number | null;
+  grossMargin: number | null; netMargin: number | null; fcfYieldPct: number | null;
+  debtToEquity: number | null; currentRatio: number | null; interestCoverage: number | null;
+  revenueGrowthYoy: number | null; shortPctOfFloat: number | null; shortRatio: number | null;
+  analystTargetPrice: number | null; analystRecommendation: string | null;
+  numAnalystOpinions: number | null;
+}
 ```
+
+> **Run reliability (2026-06-17):** `/api/analyze` runs ≤2 tickers concurrently
+> (was 4) and retries the `get_price_bars_json` RPC before falling back to slow
+> pagination, and the client (`analysis.tsx`) runs a final **single-ticker
+> reconciliation pass** over any in-universe straggler — re-running it the way the
+> detail page does (solo request, no cross-ticker contention) so transient
+> read-timeouts no longer surface as false `unavailable` skips.
 
 **The `analysis_runs` history row (client-written, inputs only):**
 ```typescript

@@ -418,9 +418,24 @@ The "Major Cycle engine" status strip at the top of Results.
 
 The "Analyst Briefing" callout at the top of Results. Has the icon-left, content-right layout. Copy is built from the live in-memory run in **compliant language only** — framed around our five tiers (Constructive or better / Cautious or Bearish), never the reference's "Buy Zone / STRONG BUY / AVOID". Carries the "Information only — not financial advice" line in-card so the disclaimer is visible without scrolling (#4/#12).
 
-### Results table — cycle-only column scope (Layer E, owner-approved)
+### Results table — view modes + columns (Layer E)
 
-The Run engine's `/api/analyze` returns pure `CycleAnalysis` (ticker + cycle stats + the four scores), **no fundamentals**. So the Results screener ports only the bands it can fill from that payload — **Identity** (Ticker / Company / Sector, with Company & Sector enriched from the cached light universe index), **Price** (Close), **MajorCycle Verdict** (Overall + tier badge + composition micro-bar, Valuation + zone, Health, Cycle Payoff, Cycle Position), and **Major Cycle** (dip/recovery stats). The reference's Price & Analyst Targets / Valuation Ratios / Profitability / Growth bands are intentionally omitted — those metrics live on each stock's detail page (one click from any row). The reference's "view modes" become **toggleable column groups** (you can never hide every group). The Overall tier badge is clickable and filters the table by that tier. The advanced multi-rule AND builder is ported in full. All styling reuses the live tier tokens (`--c-tier-*`, `.tier-badge--N`) and the reference's screener CSS, ported into `globals.css`.
+The Results screener reproduces the reference's **three view modes** (`Simple` / `Analyst` / `Full`, default Analyst) via the `VIEW_MODES` map in `web/components/results/columns.ts`:
+- **Simple** — Identity + MajorCycle Verdict.
+- **Analyst** — + Price & Analyst Targets + Major Cycle.
+- **Full** — + Valuation Ratios + Profitability & Health + Growth & Sentiment (31 columns).
+
+The cycle columns come from the run's `CycleAnalysis`; the Price & Analyst / Ratios / Profitability / Growth columns read the slim **`fundamentals`** subset now returned with each result (`/api/analyze` → `_screener_fundamentals`). Company & Sector are enriched from the cached light universe index (the `/results` server page builds a `ticker → {name, sector, market}` map).
+
+**Compliance:** all of OUR scores use the five tiers (High Conviction…Bearish) + four zones (Deep Value…Stretched). The **Analyst** column is the only place Buy/Hold/Sell wording appears — that's the third-party Wall-Street consensus shown verbatim (#17), via `fmtAnalyst`. Metric cells (drawdown / ROE / FCF / D/E / PEG / upside) are colour-tinted on a green→red ladder (`metricTintColor`, mapped to `--c-tier-*`). The Overall cell shows the score + clickable tier badge (filters by tier) + a Health/Valuation/Cycle-Payoff composition micro-bar (`compositionRamp`). The advanced multi-rule AND builder and CSV export both extend automatically to the fundamentals columns. The table scrolls horizontally on desktop and collapses to cards below `md`.
+
+### Opportunity Map (Recharts)
+
+Reproduces the reference quadrant bubble chart: X = Financial Health, Y = Valuation, bubble size = Overall Rating. Split at **65** on both axes with four tinted quadrants + labels — **Opportunity Zone** (top-right, green), **Healthy, fully priced** (bottom-right, gold), **Weak but cheap** (top-left, blue), **Weak & expensive** (bottom-left, red). Bubbles are grouped into one `<Scatter>` series per tier so the **legend lists the tiers and is click-to-toggle** (same `hidden`-Set pattern as `RelativePerformance.tsx`). Clicking a bubble opens that stock's detail page. Height via the `--chart-h-lg` token; dark tooltip + `#8A97A8` axis ticks match the other charts.
+
+### Skipped tickers — compact strip
+
+A single collapsible line (`⚠ N tickers couldn't be scored · show`), expanding to a compact split of "No data yet" (in coverage) vs "Outside coverage" (unknown). Stays one line even for many skips. With the run reconciliation pass it's usually absent.
 
 ### Empty State
 

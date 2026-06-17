@@ -226,20 +226,24 @@ Goal: The ranked Results view from reference HTML, fully functional.
 > skipped split, Opportunity Map, banded table, all filters/sort, click-to-detail,
 > mobile cards, no component overflow). Engine untouched.
 
-> **Cycle-only column scope (owner-approved fork).** `/api/analyze` returns pure
-> `CycleAnalysis` (ticker + cycle stats + the four scores) — **no fundamentals**
-> (P/E, ROE, margins, analyst targets, short interest). So the reference's Price &
-> Analyst Targets / Valuation Ratios / Profitability / Growth bands intentionally
-> don't exist here; those rich metrics live one click away on each stock's detail
-> page. Identity (Company/Sector) is enriched from the cached light universe index
-> (server page → client). All labels are our compliant tiers (#2) — the reference's
-> "Buy Zone / STRONG BUY / AVOID" framing was rewritten throughout.
+> **Reference-parity rework (owner-approved, 2026-06-17).** The first cut was
+> cycle-only with band-toggle chips; the owner wanted a closer match to the
+> reference. Now: the three **Simple / Analyst / Full** view modes; the **full
+> reference column set** (Price & Analyst Targets / Valuation Ratios / Profitability
+> & Health / Growth & Sentiment) powered by a slim **`fundamentals`** subset now
+> returned with each run result (analyze.py already loads it — no extra fetch); the
+> **Opportunity Map** rebuilt with 4 quadrant fills + labels and a tier-grouped
+> **click-to-toggle legend**; a **compact collapsible** skipped strip; and a
+> reference-style **export dropdown**. All OUR scores keep the compliant tiers/zones
+> (#2); the **Analyst** column shows the third-party Wall-Street consensus verbatim
+> (#17). Plus a **Run-reliability fix** to stop false skips (see below).
 
 - [x] **Analyst Briefing card** — summary callout at top (compliant copy, clickable top-pick + filter pills, "information only" disclaimer in-card → visible without scroll, #4/#12)
 - [x] **Provenance bar** — run timestamp + ticker count + Major Cycle horizon + engine name (no third-party provider name, S9)
 - [x] **Opportunity Map** — Health vs Valuation bubble chart (Recharts ScatterChart; bubble size = Overall; quadrant split + Opportunity Zone area; click bubble → detail)
-- [x] **Sortable / filterable / searchable results table** — column groups Identity / Price / MajorCycle Verdict / Major Cycle (the "view modes" are toggleable groups, per the cycle-only scope)
-- [x] **Column groups** — toggleable group headers (never hide every group)
+- [x] **Sortable / filterable / searchable results table** — the reference's **Simple / Analyst / Full** view modes (default Analyst; 7 → 31 columns) across the seven bands; metric-tinted cells; verbatim Analyst consensus column
+- [x] **Fundamentals returned with results** — `/api/analyze` attaches a slim `fundamentals` subset per ticker (P/E, ROE, margins, FCF, D/E, analyst target/consensus, short interest, …) so the Analyst/Full views populate without a second fetch
+- [x] **Run reliability — stop false skips** — `analyze.py` lower concurrency (4→2) + RPC retry-before-fallback + stronger per-ticker retries; client **single-ticker reconciliation pass** re-runs any in-universe straggler the way the detail page does (which never fails for these)
 - [x] **Tier badge column** — Overall cell badge clickable → filters by that tier (syncs the tier dropdown)
 - [x] **Click-to-detail** — clicking a row (or mobile card) opens that stock's detail page
 - [x] **Skipped tickers transparency** *(this session's follow-up)* — `unavailable` listed and split into "insufficient price history" (in coverage) vs "outside our coverage" (unknown), inferred via the universe index

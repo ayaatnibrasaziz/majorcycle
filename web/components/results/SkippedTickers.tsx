@@ -1,17 +1,17 @@
 'use client';
 
-import { Link2Off } from 'lucide-react';
+import { useState } from 'react';
+import { AlertTriangle, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
 
 import type { Market } from '@/lib/types';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
-import Link from 'next/link';
 
-// Transparency for tickers the user selected that couldn't be scored. The analyze
-// function returns these in `unavailable` for two reasons: the ticker isn't in our
-// coverage, or it lacks enough price history for the cycle math. We infer which by
-// checking the cached universe index (a ticker we know but couldn't score = history
-// gap; a ticker we don't know = outside coverage) and show both groups explicitly —
-// the user asked to see exactly which were skipped, not just a count.
+// Compact, collapsible transparency for tickers the run couldn't score. Designed
+// to stay a single line even when many are skipped (no stacked cards). Collapsed
+// by default; expanding splits them into "no data yet" (in our coverage, history
+// gap) vs "outside coverage" (unknown ticker), inferred from the universe index.
+// With the run reconciliation pass, this is usually absent entirely.
 
 export function SkippedTickers({
   unavailable,
@@ -20,6 +20,7 @@ export function SkippedTickers({
   unavailable: string[];
   lookup: Record<string, { name: string | null; sector: string | null; market: Market }>;
 }) {
+  const [open, setOpen] = useState(false);
   if (unavailable.length === 0) return null;
 
   const known: string[] = [];
@@ -30,65 +31,71 @@ export function SkippedTickers({
   }
 
   return (
-    <div className="card skipped-card">
-      <div className="card-header">
-        <div className="card-title">
-          <Link2Off className="mr-1.5 inline h-4 w-4 align-[-3px] text-[var(--text-muted)]" />
-          {unavailable.length} ticker{unavailable.length === 1 ? '' : 's'} skipped
+    <div className={`skipped-strip${open ? ' is-open' : ''}`}>
+      <button type="button" className="skipped-summary" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[var(--c-tier-3)]" />
+        <span>
+          {unavailable.length} ticker{unavailable.length === 1 ? '' : 's'} couldn’t be scored
+        </span>
+        <span className="skipped-toggle">
+          {open ? 'hide' : 'show'} <ChevronDown className={`inline h-3 w-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </span>
+      </button>
+      {open && (
+        <div className="skipped-detail">
+          {known.length > 0 && (
+            <SkippedGroup
+              label="No data yet"
+              note="in our coverage, history still building"
+              tickers={known}
+              linkable
+            />
+          )}
+          {unknown.length > 0 && (
+            <SkippedGroup
+              label="Outside coverage"
+              note="not yet in the MajorCycle universe"
+              tickers={unknown}
+              linkable={false}
+            />
+          )}
         </div>
-        <div className="text-[10px] text-[var(--text-muted)]">Not included in the ranking below</div>
-      </div>
-      <div className="card-body space-y-3">
-        {known.length > 0 && (
-          <SkippedGroup
-            heading="Insufficient price history"
-            note="In our coverage, but without enough confirmed cycles for a reliable Major Cycle reading."
-            tickers={known}
-            linkable
-          />
-        )}
-        {unknown.length > 0 && (
-          <SkippedGroup
-            heading="Outside our coverage"
-            note="Not currently in the MajorCycle universe. Live fetching of new tickers is coming soon."
-            tickers={unknown}
-            linkable={false}
-          />
-        )}
-      </div>
+      )}
     </div>
   );
 }
 
 function SkippedGroup({
-  heading,
+  label,
   note,
   tickers,
   linkable,
 }: {
-  heading: string;
+  label: string;
   note: string;
   tickers: string[];
   linkable: boolean;
 }) {
   return (
-    <div>
-      <div className="text-[11px] font-bold text-[var(--text-secondary)]">{heading}</div>
-      <div className="mb-2 text-[10.5px] text-[var(--text-muted)]">{note}</div>
-      <div className="flex flex-wrap gap-1.5">
-        {tickers.map((t) => {
-          const { symbol } = tickerToUrlParts(t);
-          return linkable ? (
-            <Link key={t} href={tickerToPath(t)} className="skipped-chip skipped-chip--link">
-              {symbol}
-            </Link>
-          ) : (
-            <span key={t} className="skipped-chip">
-              {symbol}
-            </span>
-          );
-        })}
-      </div>
+    <div className="skipped-group">
+      <span className="skipped-group-label">
+        {label} <span className="skipped-group-note">({note})</span>:
+      </span>{' '}
+      {tickers.map((t, i) => {
+        const { symbol } = tickerToUrlParts(t);
+        return (
+          <span key={t}>
+            {linkable ? (
+              <Link href={tickerToPath(t)} className="skipped-tk skipped-tk--link">
+                {symbol}
+              </Link>
+            ) : (
+              <span className="skipped-tk">{symbol}</span>
+            )}
+            {i < tickers.length - 1 ? ', ' : ''}
+          </span>
+        );
+      })}
     </div>
   );
 }

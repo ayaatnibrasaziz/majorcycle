@@ -204,3 +204,104 @@ export function ratingComposition(r: CycleAnalysis): { health: number; valuation
     payoff: r.cyclePayoffScore * 0.25,
   };
 }
+
+/**
+ * Three shades of a score's tier colour — for the Overall composition micro-bar
+ * (Health / Valuation / Cycle Payoff segments), mirroring the reference's
+ * `zoneRamp`. Darkest → lightest.
+ */
+export function compositionRamp(score: number): [string, string, string] {
+  const t = tierFromScore(score);
+  const rgb: Record<1 | 2 | 3 | 4 | 5, string> = {
+    1: '0,100,0',
+    2: '34,139,34',
+    3: '212,160,23',
+    4: '255,69,0',
+    5: '178,34,34',
+  };
+  const c = rgb[t];
+  return [`rgba(${c},0.85)`, `rgba(${c},0.55)`, `rgba(${c},0.30)`];
+}
+
+/**
+ * Wall-Street analyst consensus, shown VERBATIM (third-party data — CLAUDE.md
+ * #17, the one place Buy/Sell wording is allowed because it isn't our rating).
+ * Normalises yfinance's raw recommendation key to a display string.
+ */
+export function fmtAnalyst(raw: string | null): string {
+  if (!raw) return '—';
+  const map: Record<string, string> = {
+    strong_buy: 'Strong Buy',
+    buy: 'Buy',
+    outperform: 'Buy',
+    overweight: 'Buy',
+    hold: 'Hold',
+    neutral: 'Hold',
+    market_perform: 'Hold',
+    underperform: 'Sell',
+    underweight: 'Sell',
+    sell: 'Sell',
+    strong_sell: 'Strong Sell',
+  };
+  const key = String(raw).toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_');
+  return map[key] ?? String(raw).replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+/** Upside % from current price to the analyst target. Null when either is missing. */
+export function upsidePct(close: number | null, target: number | null): number | null {
+  if (close == null || target == null || close === 0) return null;
+  return ((target - close) / close) * 100;
+}
+
+/**
+ * Colour for a tinted metric cell, ported from the reference's `cellClass`
+ * thresholds and mapped to our `--c-tier-*` palette (green = favourable …
+ * red = unfavourable). Returns null for "no tint". `kind` selects the metric's
+ * threshold ladder.
+ */
+export function metricTintColor(
+  kind: 'drawdown' | 'roe' | 'fcf' | 'de' | 'peg' | 'upside' | 'positive',
+  val: number | null,
+): string | null {
+  if (val == null || Number.isNaN(val)) return null;
+  const tier = (n: 1 | 2 | 3 | 4 | 5) => tierColorVar(n);
+  switch (kind) {
+    case 'drawdown': // deeper dip = more cyclically favourable (greener)
+      if (val <= -20) return tier(1);
+      if (val <= -10) return tier(2);
+      if (val <= -5) return tier(3);
+      if (val <= -2) return tier(4);
+      return tier(5);
+    case 'roe':
+      if (val >= 20) return tier(1);
+      if (val >= 15) return tier(2);
+      if (val >= 10) return tier(3);
+      if (val >= 5) return tier(4);
+      return tier(5);
+    case 'fcf':
+      if (val >= 6) return tier(1);
+      if (val >= 4) return tier(2);
+      if (val >= 2) return tier(3);
+      if (val >= 0) return tier(4);
+      return tier(5);
+    case 'de':
+      if (val < 0.3) return tier(1);
+      if (val < 0.5) return tier(2);
+      if (val < 1.0) return tier(3);
+      if (val < 2.0) return tier(4);
+      return tier(5);
+    case 'peg':
+      if (val <= 0) return null;
+      if (val < 1.0) return tier(1);
+      if (val < 1.5) return tier(2);
+      if (val < 2.5) return tier(3);
+      if (val < 4.0) return tier(4);
+      return tier(5);
+    case 'upside':
+      return val >= 0 ? tier(2) : tier(5);
+    case 'positive':
+      return tier(2);
+    default:
+      return null;
+  }
+}

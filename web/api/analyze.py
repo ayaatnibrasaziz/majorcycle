@@ -23,7 +23,8 @@ Tickers not in our universe (or with insufficient history) are returned in
 `unavailable` rather than failing the whole batch.
 
 Responses:
-    200  — { results: CycleAnalysis[] (snake_case), unavailable: string[],
+    200  — { results: RunResult[] (snake_case — each a CycleAnalysis plus a slim
+            `fundamentals` subset for the Results screener), unavailable: string[],
             started_at, finished_at }
     400  — bad body (missing tickers, bad preset, invalid custom params, too many)
     500  — analysis failed (env missing, etc.)
@@ -35,6 +36,7 @@ import dataclasses
 import json
 import logging
 import os
+import random
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -124,19 +126,32 @@ def _load_price_bars(sb: Client, ticker: str, page_workers: int = 1) -> pd.DataF
     # code is safe to ship before the migration is applied) or on a transient error.
     global _RPC_AVAILABLE
     if _RPC_AVAILABLE is not False:
-        try:
-            resp = sb.rpc(_RPC_NAME, {"p_ticker": ticker}).execute()
-            _RPC_AVAILABLE = True
-            data = cast("list[Any] | None", resp.data)
-            return _bars_to_df(data) if data else None
-        except Exception as e:  # noqa: BLE001
-            msg = str(e).lower()
-            if _RPC_AVAILABLE is None and any(
-                s in msg for s in ("pgrst202", "could not find", "does not exist", "not found", "404")
-            ):
-                _RPC_AVAILABLE = False
-                logger.warning("%s RPC not deployed — using paginated reads", _RPC_NAME)
-            # else: treat as transient, fall through to pagination for this call only
+        # The RPC is the fast, single-round-trip path the detail page uses. A
+        # transient cross-region error here used to fall straight through to slow
+        # paginated reads (which then time out under batch concurrency → false
+        # skips). Retry the fast path a couple of times first; only fall through
+        # if the function is genuinely missing or the RPC keeps failing.
+        for rpc_attempt in range(3):
+            try:
+                resp = sb.rpc(_RPC_NAME, {"p_ticker": ticker}).execute()
+                _RPC_AVAILABLE = True
+                data = cast("list[Any] | None", resp.data)
+                return _bars_to_df(data) if data else None
+            except Exception as e:  # noqa: BLE001
+                msg = str(e).lower()
+                if any(
+                    s in msg
+                    for s in ("pgrst202", "could not find", "does not exist", "not found", "404")
+                ):
+                    _RPC_AVAILABLE = False
+                    logger.warning("%s RPC not deployed — using paginated reads", _RPC_NAME)
+                    break
+                # Transient (timeout / connection reset): retry the fast path
+                # before giving up on it for this call.
+                if rpc_attempt < 2:
+                    time.sleep(0.3 * (rpc_attempt + 1))
+                    continue
+                break  # fall through to pagination for this call only
 
     PAGE = 1000
 
@@ -239,6 +254,38 @@ def _load_fundamentals(
         logger.warning("FundamentalsSnapshot reconstruction failed for %s: %s", ticker, e)
         snapshot = None
     return row, snapshot
+
+
+# The slim, display-only fundamentals subset returned alongside each scored
+# result so the Results screener can render the Analyst / Full views (analyst
+# targets, valuation ratios, profitability, growth, short interest) WITHOUT a
+# second fetch. Never used by the cycle math. `analyst_recommendation` is
+# third-party Wall-Street data shown verbatim (CLAUDE.md #17). Keys stay
+# snake_case — the client converts to camelCase via toCamel().
+_SCREENER_FIELDS = (
+    "pe",
+    "peg",
+    "roe",
+    "gross_margin",
+    "net_margin",
+    "fcf_yield_pct",
+    "debt_to_equity",
+    "current_ratio",
+    "interest_coverage",
+    "revenue_growth_yoy",
+    "short_pct_of_float",
+    "short_ratio",
+    "analyst_target_price",
+    "analyst_recommendation",
+    "num_analyst_opinions",
+)
+
+
+def _screener_fundamentals(snapshot: FundamentalsSnapshot | None) -> dict[str, Any]:
+    """Pull the display-only screener subset out of a FundamentalsSnapshot."""
+    if snapshot is None:
+        return {}
+    return {f: getattr(snapshot, f, None) for f in _SCREENER_FIELDS}
 
 
 # ── Request parsing / validation ─────────────────────────────────────────────
@@ -345,7 +392,7 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         hit = _RESULT_CACHE.get(key)
         if hit is not None and now - hit[0] < _RESULT_TTL:
             return ticker, hit[1]
-        for attempt in range(3):
+        for attempt in range(4):
             try:
                 row, fundamentals = _load_fundamentals(sb, ticker)
                 if row is None:
@@ -357,13 +404,17 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
                 if analysis is None:
                     return ticker, None  # insufficient history
                 result = dataclasses.asdict(analysis)
+                # Display-only fundamentals for the Results screener (see above).
+                result["fundamentals"] = _screener_fundamentals(fundamentals)
                 _RESULT_CACHE[key] = (now, result)
                 return ticker, result
             except Exception:  # noqa: BLE001 — one bad ticker must not sink the batch
-                if attempt == 2:
+                if attempt == 3:
                     logger.exception("analyze failed for %s after retries", ticker)
                     return ticker, None
-                time.sleep(0.4 * (attempt + 1))
+                # Jittered backoff so concurrent retries don't resynchronise into
+                # another simultaneous burst against the DB.
+                time.sleep(0.4 * (attempt + 1) + random.uniform(0, 0.25))
         return ticker, None
 
     results: list[dict[str, Any]] = []
@@ -372,8 +423,11 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     # have a few chunk requests in flight at once, so total concurrent Supabase
     # reads ≈ client_pool × max_workers. Too many cross-region requests overwhelm
     # the connection and cause read timeouts (tickers then fall to `unavailable`).
-    # 4 here × the client's pool of 3 ≈ 12 in flight — safe on the free tier.
-    max_workers = min(len(tickers), 4)
+    # 2 here × the client's pool of 3 ≈ 6 in flight — deliberately conservative
+    # to avoid the cross-region read-timeout storm that caused false skips. The
+    # client also runs a single-ticker reconciliation pass for any stragglers,
+    # so lower batch concurrency costs a little latency but not coverage.
+    max_workers = min(len(tickers), 2)
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         for ticker, result in ex.map(_one, tickers):
             if result is None:

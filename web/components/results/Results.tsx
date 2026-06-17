@@ -15,7 +15,7 @@ import { ResultsToolbar } from './ResultsToolbar';
 import { AdvancedFilters } from './AdvancedFilters';
 import { ResultsTable } from './ResultsTable';
 import { SkippedTickers } from './SkippedTickers';
-import { CSV_COLUMNS, FIELD_BY_KEY, buildRows, type BandKey } from './columns';
+import { CSV_COLUMNS, FIELD_BY_KEY, buildRows, type ViewMode } from './columns';
 import {
   INITIAL_FILTER,
   applyFilters,
@@ -34,8 +34,6 @@ export type ResultsLookup = Record<string, { name: string | null; sector: string
 // written to the DB (CLAUDE.md #15). `lookup` (company name / sector / market)
 // comes from the cached light universe index, passed by the server page.
 
-const DEFAULT_BANDS: BandKey[] = ['identity', 'price', 'verdict'];
-
 export function Results({ lookup }: { lookup: ResultsLookup }) {
   const { results, unavailable, params, runMeta } = useAnalysis();
 
@@ -43,7 +41,7 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
 
   const [filter, setFilter] = useState<FilterState>(INITIAL_FILTER);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [visibleBands, setVisibleBands] = useState<Set<BandKey>>(new Set(DEFAULT_BANDS));
+  const [viewMode, setViewMode] = useState<ViewMode>('analyst');
   const [sortKey, setSortKey] = useState('overall');
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -62,17 +60,6 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
       setSortAsc(FIELD_BY_KEY[key]?.type === 'text');
     }
   };
-
-  const onToggleBand = (band: BandKey) =>
-    setVisibleBands((prev) => {
-      const next = new Set(prev);
-      if (next.has(band)) {
-        if (next.size > 1) next.delete(band); // never hide every column group
-      } else {
-        next.add(band);
-      }
-      return next;
-    });
 
   const onTierFilter = (label: OverallLabel) =>
     setFilter((f) => ({ ...f, tier: f.tier === label ? '' : label, quick: 'all' }));
@@ -125,6 +112,7 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
   // ── Populated ──────────────────────────────────────────────────────────────
   return (
     <div className="results-layout">
+      <h1 className="sr-only">Analysis Results</h1>
       <BriefingCard rows={rows} onQuickFilter={onQuickFilter} />
       <ProvenanceBar params={params} runMeta={runMeta} tickerCount={rows.length} />
       {unavailable.length > 0 && <SkippedTickers unavailable={unavailable} lookup={lookup} />}
@@ -133,8 +121,8 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
       <ResultsToolbar
         filter={filter}
         patch={patch}
-        visibleBands={visibleBands}
-        onToggleBand={onToggleBand}
+        viewMode={viewMode}
+        onViewMode={setViewMode}
         advancedOpen={advancedOpen}
         onToggleAdvanced={() => setAdvancedOpen((o) => !o)}
         resultCount={sorted.length}
@@ -148,7 +136,7 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
       {sorted.length > 0 ? (
         <ResultsTable
           rows={sorted}
-          visibleBands={visibleBands}
+          viewMode={viewMode}
           sortKey={sortKey}
           sortAsc={sortAsc}
           onSort={onSort}

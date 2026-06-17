@@ -29,7 +29,7 @@ import type {
   AnalysisRunRecord,
   AnalyzeRequest,
   AnalyzeResponse,
-  CycleAnalysis,
+  RunResult,
 } from '@/lib/types';
 
 // Each POST stays well under the function's per-request cap (60). Concurrency
@@ -45,6 +45,13 @@ const POOL_SIZE = 3;
 // request doesn't silently drop 10 valid tickers.
 const CHUNK_RETRIES = 1;
 const RETRY_BACKOFF_MS = 600;
+// Final reconciliation pass: any ticker still unavailable after the batch + warm
+// retry is re-run ONE AT A TIME (single-ticker request = analyze.py's fast
+// parallel-page path, zero cross-ticker contention — the same conditions as the
+// detail page, which never fails for tickers that actually have data). This turns
+// transient batch read-timeouts (the "false skips") into successes. Genuinely
+// unknown / short-history tickers simply come back unavailable again.
+const RECONCILE_POOL = 2;
 const SNAPSHOT_KEY = 'mc:analysis-snapshot-v1';
 
 /** A cancellable sleep — rejects (AbortError) if the run is cancelled mid-wait. */
@@ -85,7 +92,7 @@ export interface RunMeta {
 }
 
 interface AnalysisSnapshot {
-  results: CycleAnalysis[];
+  results: RunResult[];
   unavailable: string[];
   params: AnalyzeRequest | null;
   runMeta: RunMeta | null;
@@ -141,7 +148,7 @@ async function postChunk(
     finished_at?: string;
   };
   return {
-    results: toCamel<CycleAnalysis[]>((json.results ?? []) as never),
+    results: toCamel<RunResult[]>((json.results ?? []) as never),
     unavailable: json.unavailable ?? [],
     startedAt: json.started_at ?? '',
     finishedAt: json.finished_at ?? '',
@@ -190,7 +197,7 @@ async function writeRun(req: AnalyzeRequest, meta: RunMeta, partial: boolean): P
 }
 
 export function AnalysisProvider({ children }: { children: React.ReactNode }) {
-  const [results, setResults] = useState<CycleAnalysis[]>([]);
+  const [results, setResults] = useState<RunResult[]>([]);
   const [unavailable, setUnavailable] = useState<string[]>([]);
   const [params, setParams] = useState<AnalyzeRequest | null>(null);
   const [runMeta, setRunMeta] = useState<RunMeta | null>(null);
@@ -290,7 +297,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       setRunMeta(meta);
       setProgress({ done: 0, total: chunks.length, running: true });
 
-      const allResults: CycleAnalysis[] = [];
+      const allResults: RunResult[] = [];
       // Genuine "not in our universe / insufficient history" — the server returns
       // these in a 200; they never succeed on retry, so they're final.
       const serverUnavailable: string[] = [];
@@ -388,7 +395,49 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
         );
       }
 
-      const finalUnavailable = [...serverUnavailable, ...stillFailed];
+      // Reconciliation pass: retry every still-unavailable ticker ONE AT A TIME.
+      // This is the decisive fix for false skips — a transient cross-region
+      // read-timeout during the concurrent batch lands a ticker in `unavailable`
+      // even though it has data (it loads fine on its own detail page). Re-running
+      // it as a solo request removes the cross-ticker contention, so it succeeds
+      // here just like the detail page does. Truly unknown / short-history tickers
+      // return unavailable again (cheaply), so this is safe to run over all of them.
+      let reconcileFailed: string[] = [...new Set([...serverUnavailable, ...stillFailed])];
+      if (!signal.aborted && reconcileFailed.length > 0) {
+        const stillOut: string[] = [];
+        let ri = 0;
+        const reconcileWorker = async (): Promise<void> => {
+          while (!signal.aborted) {
+            const i = ri++;
+            if (i >= reconcileFailed.length) return;
+            const t = reconcileFailed[i];
+            if (!t) continue;
+            try {
+              const r = await postWithRetry([t]);
+              if (r.results.length > 0) {
+                allResults.push(...r.results);
+              } else {
+                stillOut.push(t);
+              }
+            } catch {
+              if (!signal.aborted) stillOut.push(t);
+            } finally {
+              if (!signal.aborted) {
+                setResults([...allResults]);
+                setUnavailable([...stillOut]);
+              }
+            }
+          }
+        };
+        await Promise.all(
+          Array.from({ length: Math.min(RECONCILE_POOL, reconcileFailed.length) }, () =>
+            reconcileWorker(),
+          ),
+        );
+        reconcileFailed = stillOut;
+      }
+
+      const finalUnavailable = reconcileFailed;
       const finishedAt = new Date().toISOString();
       const aborted = signal.aborted;
       const finalMeta: RunMeta = { ...meta, finishedAt, cancelled: aborted };

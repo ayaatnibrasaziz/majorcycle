@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { LineChart } from 'lucide-react';
 
+import { InfoTip } from '@/components/ui/InfoTip';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import { buildBriefing, type BriefingRow } from '@/lib/ratings';
 import type { QuickFilter } from './filters';
@@ -35,6 +36,11 @@ export function BriefingCard({
       <div className="briefing-body">
         <div className="briefing-head">
           <span className="briefing-title">Analyst Briefing</span>
+          <InfoTip title="Analyst Briefing">
+            A plain-English summary of this run — how many stocks rate Constructive or better, the
+            standout name, and any rated Cautious or Bearish. Built from your results; the tier
+            words are our ratings, not buy/sell calls. Information only — not financial advice.
+          </InfoTip>
         </div>
 
         {briefing.topPick ? (

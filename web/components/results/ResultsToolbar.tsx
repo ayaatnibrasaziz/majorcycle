@@ -1,15 +1,17 @@
 'use client';
 
-import { Download, Search, SlidersHorizontal } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronDown, Download, FileSpreadsheet, FileText, Search, SlidersHorizontal } from 'lucide-react';
 
 import { OVERALL_LABELS } from '@/lib/ratings';
 import type { OverallLabel } from '@/lib/types';
-import { BAND_META, BAND_ORDER, type BandKey } from './columns';
+import { VIEW_MODE_LABELS, type ViewMode } from './columns';
 import type { FilterState } from './filters';
 
 // Toolbar above the results table: search, tier + min-rating filters, a
-// "Constructive or better" quick chip, the Advanced-filters toggle, column-group
-// toggles, an Export button and the live result count.
+// "Constructive or better" quick chip, the Advanced-filters toggle, the
+// Simple/Analyst/Full view switch (reference parity), an Export dropdown and the
+// live result count.
 
 const MIN_RATING_OPTIONS = [
   { value: 0, label: 'Min Rating: Any' },
@@ -18,11 +20,13 @@ const MIN_RATING_OPTIONS = [
   { value: 80, label: 'Min Rating: 80+' },
 ];
 
+const VIEW_ORDER: ViewMode[] = ['simple', 'analyst', 'full'];
+
 export function ResultsToolbar({
   filter,
   patch,
-  visibleBands,
-  onToggleBand,
+  viewMode,
+  onViewMode,
   advancedOpen,
   onToggleAdvanced,
   resultCount,
@@ -30,8 +34,8 @@ export function ResultsToolbar({
 }: {
   filter: FilterState;
   patch: (p: Partial<FilterState>) => void;
-  visibleBands: Set<BandKey>;
-  onToggleBand: (band: BandKey) => void;
+  viewMode: ViewMode;
+  onViewMode: (mode: ViewMode) => void;
   advancedOpen: boolean;
   onToggleAdvanced: () => void;
   resultCount: number;
@@ -96,27 +100,73 @@ export function ResultsToolbar({
         Advanced
       </button>
 
-      <div className="view-switch" role="group" aria-label="Toggle column groups">
-        {BAND_ORDER.map((band) => (
+      <div className="view-switch" role="group" aria-label="Detail level">
+        {VIEW_ORDER.map((mode) => (
           <button
-            key={band}
+            key={mode}
             type="button"
-            className={`vs-btn${visibleBands.has(band) ? ' active' : ''}`}
-            onClick={() => onToggleBand(band)}
-            aria-pressed={visibleBands.has(band)}
+            className={`vs-btn${viewMode === mode ? ' active' : ''}`}
+            onClick={() => onViewMode(mode)}
+            aria-pressed={viewMode === mode}
           >
-            {BAND_META[band].label}
+            {VIEW_MODE_LABELS[mode]}
           </button>
         ))}
       </div>
 
-      <button type="button" className="export-btn" onClick={onExport}>
-        <Download className="h-3.5 w-3.5" />
-        Export CSV
-      </button>
+      <ExportMenu onExport={onExport} />
 
       <div className="result-count">
         {resultCount} result{resultCount === 1 ? '' : 's'}
+      </div>
+    </div>
+  );
+}
+
+function ExportMenu({ onExport }: { onExport: () => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('click', onDoc);
+    return () => document.removeEventListener('click', onDoc);
+  }, [open]);
+
+  return (
+    <div className={`export-wrap${open ? ' open' : ''}`} ref={ref}>
+      <button type="button" className="export-btn export-trigger" onClick={() => setOpen((o) => !o)}>
+        <Download className="h-3.5 w-3.5" />
+        Export
+        <ChevronDown className="ex-caret h-3 w-3" />
+      </button>
+      <div className="export-menu">
+        <button
+          type="button"
+          className="export-opt"
+          onClick={() => {
+            onExport();
+            setOpen(false);
+          }}
+        >
+          <FileText />
+          <div>
+            <div className="eo-title">Download CSV</div>
+            <div className="eo-sub">Raw results — opens in any spreadsheet app</div>
+          </div>
+        </button>
+        <div className="export-opt soon" aria-disabled="true">
+          <FileSpreadsheet />
+          <div>
+            <div className="eo-title">
+              Download Excel<span className="eo-tag">SOON</span>
+            </div>
+            <div className="eo-sub">Colour-coded report with styled rating cells</div>
+          </div>
+        </div>
       </div>
     </div>
   );
