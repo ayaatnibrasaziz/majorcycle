@@ -218,13 +218,19 @@ Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis w
 
 Goal: The ranked Results view from reference HTML, fully functional.
 
-> **Status:** Built on `feat/layer-e-results` off `main`. Reads the SAME in-memory
+> **Status (2026-06-17):** Built on `feat/layer-e-results` off `main` (**PR #38, CI
+> green, awaiting owner merge**; latest commit `10b4ccf`). Reads the SAME in-memory
 > results as the Run tab via `useAnalysis()` (AnalysisContext + the
 > `mc:analysis-snapshot-v1` sessionStorage snapshot) — no recompute, ratings always
-> DERIVED, never read from / written to the DB (#15). typecheck / lint / build green;
-> verified in the local preview against a seeded snapshot (briefing, provenance,
-> skipped split, Opportunity Map, banded table, all filters/sort, click-to-detail,
-> mobile cards, no component overflow). Engine untouched.
+> DERIVED, never read from / written to the DB (#15). After the initial cut, a
+> reference-parity rework (below) + a 9-item review-polish round (Opportunity Map
+> legend/bubbles/click-rect, header InfoTips, visible Cycle-Position track, matching
+> valuation colours, detail-page sanity caps on fundamentals, non-bold analyst text,
+> new briefing icon). typecheck / lint / build + Python checks green; verified in the
+> local preview. Engine untouched. **Open follow-ups for next session** (clickable
+> Run top-pick, briefing scroll-to-table, pinned legend order, overlapping-bubble
+> cluster picker, valuation-tier sign-off, the live ticker fetcher, and the live
+> ~0-skip confirmation) are tracked in memory `project-layer-e-progress`.
 
 > **Reference-parity rework (owner-approved, 2026-06-17).** The first cut was
 > cycle-only with band-toggle chips; the owner wanted a closer match to the
