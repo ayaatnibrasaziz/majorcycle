@@ -194,7 +194,7 @@ Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis w
 - [x] **Selected-tickers chip list** *(new)* — live count + per-chip remove + clear; the single source all inputs feed (`SelectedTickers.tsx`).
 - [x] **Run button** — calls `/api/analyze` in chunks; honest progress + Cancel (`RunProgress.tsx`, batching in `analysis.tsx`).
 - [x] **Loading state** — real batched progress (chunks done / total, elapsed, ETA, scored/skipped counts).
-- [~] **Universe expansion handler** — **deferred** (owner-approved): unknown tickers go to `unavailable[]`. Live `/api/fetch-ticker` (yfinance) is a separate fast-follow PR.
+- [~] **Universe expansion handler** — **queue model** (owner-approved, Layer E fast-follow): unknown tickers go to `unavailable[]`; the user requests them from the **Request a Ticker** page (choose-only over the `listings` menu) → `ticker_requests` queue → the daily cron fetches them via the yfinance `DataProvider`. No synchronous `/api/fetch-ticker`. See `architecture.md` §8 Tier 4.
 - [x] **Last Analysis card** — from `analysis_runs` (INPUTS ONLY — #15), "Re-run" re-derives (`LastAnalysisCard.tsx`). *(2026-06-16 fix: `writeRun` now resolves a named preset's thresholds from PRESETS before insert — the threshold columns are NOT NULL, so persisting NULL had been silently dropping every Short/Medium/Long run's history row.)*
 - [x] **Error handling** — partial failures listed in `unavailable`; a failed chunk degrades gracefully (its tickers → `unavailable`). *(2026-06-16 reliability: a failed chunk POST now retries inline (`CHUNK_RETRIES`) before giving up, and the run ends with a **warm retry pass** over chunk-failed tickers — only genuine server-`unavailable` (unknown/insufficient-history) stay skipped. The first chunk runs **solo to pre-warm one instance**, so the rest fire against a warm instance instead of a cold-start storm — the cause of the random skips.)*
 
@@ -203,7 +203,7 @@ Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis w
 - Custom params validate (out-of-bounds pullback → 400; empty list → 400); presets resolve correctly
 - Edge cases (empty list, duplicate tickers, unknown tickers) handled gracefully
 - UI verified in browser: baskets/search/CSV populate the chip list, Custom/Advanced opens, no console errors
-- Universe expansion (unknown ticker added on the fly) — deferred to the `/api/fetch-ticker` fast-follow
+- Universe expansion — handled by the **Request a Ticker** queue (cron-drained), not an on-the-fly fetch
 - **Known (pre-existing, deferred to Layer H):** 375px horizontal overflow from the non-responsive sidebar/header shell — identical on the already-live `/stocks`, not a Layer D regression
 
 > **Session infra + security + perf (2026-06-14), shipped on the same PR:**
