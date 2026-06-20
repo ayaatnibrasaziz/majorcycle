@@ -33,6 +33,28 @@ jobs:
             "supabase>=2.4.0" \
             "python-dotenv>=1.0.0"
 
+      # Refresh the "Request a Ticker" menu from free public exchange symbol files
+      # (no API key). continue-on-error so a flaky source never blocks the price
+      # refresh below — the cached `listings` table stays usable.
+      - name: Refresh ticker listings
+        continue-on-error: true
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
+          OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
+        run: python -m analytics.cron.refresh_listings
+
+      # Drain the user-requested-ticker queue (fetch each into the universe).
+      - name: Drain ticker-request queue
+        continue-on-error: true
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
+          OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
+        run: python -m analytics.cron.drain_requests
+
       - name: Run daily refresh
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
