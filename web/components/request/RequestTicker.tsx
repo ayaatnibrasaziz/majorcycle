@@ -120,14 +120,12 @@ export function RequestTicker() {
 
   return (
     <div className="req-page">
-      <header className="req-head">
-        <h1 className="req-title">Request a Ticker</h1>
-        <p className="req-sub">
-          Search every listed US, Australian, and Canadian stock. If we don’t cover one
-          yet, request it — it’s fetched in our next daily update (within ~24&nbsp;hours),
-          then appears across MajorCycle.
-        </p>
-      </header>
+      <h1 className="sr-only">Request a Ticker</h1>
+      <p className="mb-4 max-w-2xl text-[12px] leading-relaxed text-[var(--text-muted)]">
+        Search every listed US, Australian, and Canadian stock. If we don’t cover one yet,
+        request it — it’s fetched in our next daily update (within ~24&nbsp;hours), then
+        appears across MajorCycle.
+      </p>
 
       <div className="req-search-card">
         <div className="run-search-wrap">

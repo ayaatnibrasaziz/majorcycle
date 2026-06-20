@@ -1421,12 +1421,6 @@ td.num             { font-weight: 600; }
    Request a Ticker
    ============================================================ */
 .req-page { max-width: 760px; }
-.req-head { margin-bottom: 18px; }
-.req-title {
-  font-size: 20px; font-weight: 700; letter-spacing: -0.3px;
-  color: var(--brand-deep); margin-bottom: 6px;
-}
-.req-sub { font-size: 13px; line-height: 1.5; color: var(--text-secondary); max-width: 60ch; }
 
 .req-search-card {
   background: var(--bg-surface); border: 1px solid var(--border);
@@ -1446,14 +1440,14 @@ td.num             { font-weight: 600; }
 
 .req-results { margin-top: 10px; display: flex; flex-direction: column; }
 .req-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 9px 4px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px 12px;
+  flex-wrap: wrap; padding: 9px 4px; border-bottom: 1px solid var(--border);
 }
 .req-row:last-child { border-bottom: none; }
-.req-id { display: flex; min-width: 0; align-items: baseline; gap: 8px; }
-.req-sym { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text-primary); }
-.req-name { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 32ch; }
-.req-meta { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.req-id { display: flex; min-width: 0; flex: 1; align-items: baseline; gap: 8px; }
+.req-sym { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text-primary); flex-shrink: 0; }
+.req-name { font-size: 12px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.req-meta { display: flex; align-items: center; gap: 10px; flex-shrink: 0; margin-left: auto; }
 .req-exch { font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: .4px; }
 
 .req-add {

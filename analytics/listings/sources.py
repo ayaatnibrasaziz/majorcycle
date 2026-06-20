@@ -182,7 +182,10 @@ def _fetch_tmx_exchange(exchange: str, *, venture: bool) -> list[ListingRow]:
 
 
 def fetch_ca() -> list[ListingRow]:
-    rows = _fetch_tmx_exchange("tsx", venture=False) + _fetch_tmx_exchange("tsxv", venture=True)
-    rows = dedupe(rows)
-    logger.info("CA listings: %d symbols (TSX + TSXV)", len(rows))
+    # TSX only for now. The app's ticker routing (web/lib/ticker.ts + URL decisions
+    # #13/#14) maps CA → `.TO`, so TSX Venture (`.V`) symbols would render an
+    # unreachable detail page. normalize_ca() already supports `.V` for when the URL
+    # scheme is extended to encode the exchange — then add `_fetch_tmx_exchange("tsxv", venture=True)`.
+    rows = dedupe(_fetch_tmx_exchange("tsx", venture=False))
+    logger.info("CA listings: %d symbols (TSX)", len(rows))
     return rows
