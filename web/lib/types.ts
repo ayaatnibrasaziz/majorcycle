@@ -304,3 +304,32 @@ export interface UserProfile {
   acknowledgedDisclaimerAt: string | null;
   createdAt: string;
 }
+
+// --- Request a Ticker (universe expansion via the cron-drained queue) -------
+// See docs/data-contracts.md §5 + docs/architecture.md §8 (Tier 4).
+
+export type RequestStatus = 'queued' | 'fetched' | 'unsupported' | 'failed';
+
+/**
+ * One hit on the Request-a-Ticker search. `covered` = already in `stocks`
+ * (analysable now → link to detail). `requestStatus` = its row in
+ * `ticker_requests`, if any — GLOBAL, so every user sees "already requested"
+ * and nobody double-queues the same symbol.
+ */
+export interface ListingHit {
+  symbol: string; // yfinance format
+  name: string | null;
+  exchange: string | null;
+  market: Market;
+  covered: boolean;
+  requestStatus: RequestStatus | null;
+}
+
+export interface TickerRequest {
+  symbol: string;
+  market: Market;
+  status: RequestStatus;
+  requestedAt: string; // ISO 8601
+  fetchedAt: string | null;
+  lastError: string | null;
+}
