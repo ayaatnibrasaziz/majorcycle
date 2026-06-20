@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Compass, Play } from 'lucide-react';
+import { BarChart3, Compass, ListPlus, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -30,6 +30,11 @@ const NAV_DATA: NavItem[] = [
     label: 'Run Analysis',
     href: '/run',
     icon: <Play className="w-[15px] h-[15px]" strokeWidth={1.8} />,
+  },
+  {
+    label: 'Request a Ticker',
+    href: '/request',
+    icon: <ListPlus className="w-[15px] h-[15px]" strokeWidth={1.8} />,
   },
 ];
 

@@ -19,20 +19,21 @@ flowchart TB
     subgraph Vercel["▲ Vercel Edge Network — FREE"]
         Edge["CDN + Edge Cache<br/>Stale-While-Revalidate"]
         SSR["Next.js Server Components<br/>Reads Supabase, renders HTML"]
-        PyFn["Python Serverless Functions<br/>/api/cycle (per-ticker analysis)<br/>/api/analyze (batch on-demand)<br/>/api/fetch-ticker (universe expansion)"]
+        PyFn["Python Serverless Functions<br/>/api/cycle (per-ticker analysis)<br/>/api/analyze (batch on-demand)"]
     end
 
     subgraph Supabase["🟢 Supabase — FREE TIER"]
-        DB[("Postgres<br/>stocks, price_bars,<br/>profiles, subscriptions")]
+        DB[("Postgres<br/>stocks, price_bars, listings,<br/>ticker_requests, profiles")]
         Auth["Auth<br/>Email/password + Google OAuth"]
     end
 
     subgraph GHA["🐙 GitHub Actions — FREE"]
-        Cron["Daily Cron 23:00 UTC<br/>Runs Python pipeline<br/>Writes to Supabase"]
+        Cron["Daily Cron 23:00 UTC<br/>Refreshes data + ticker listings<br/>Drains the ticker-request queue<br/>Writes to Supabase"]
     end
 
     subgraph External["External — FREE"]
         YF["yfinance<br/>(Yahoo Finance public data)"]
+        ExchFiles["Exchange symbol files<br/>NASDAQ / ASX / TMX (no key)"]
         Stripe["Stripe API<br/>(billing only)"]
         Resend["Resend API<br/>(transactional email)"]
     end
@@ -41,9 +42,10 @@ flowchart TB
     Edge --> SSR
     SSR --> DB
     UI -.->|user clicks Run Analysis| PyFn
+    UI -.->|requests a ticker| SSR
     PyFn -->|reads cached data| DB
-    PyFn -.->|fallback: new ticker| YF
     Cron --> YF
+    Cron -.->|symbol directories| ExchFiles
     Cron --> DB
     UI -.->|signup/login| Auth
     UI -.->|subscribe| Stripe
@@ -100,7 +102,7 @@ flowchart TB
 
 1. The Run tab (`RunAnalysis.tsx`) **chunks** the selection client-side (~40/chunk) and POSTs each chunk to `/api/analyze` with up to ~3 in flight (`web/lib/analysis.tsx`). This drives an **honest** progress bar (real chunks completed) + a Cancel button (`AbortController`), and scales to a full index without a single long request.
 2. `/api/analyze` (`web/api/analyze.py`) is **stateless**: it fetches each ticker's price bars + fundamentals from Supabase (parallel across tickers via `ThreadPoolExecutor`), runs the cycle math via the vendored `_engine`, and returns `{ results, unavailable }`. Custom params are validated to data-contracts §7 bounds. It never writes to the DB and never calls yfinance.
-3. Unknown tickers (not in our universe) come back in `unavailable[]`. **Live universe expansion (`/api/fetch-ticker`) is deferred** to a fast-follow — see the route table below.
+3. Unknown tickers (not in our universe) come back in `unavailable[]`. These surface in the Results "outside our coverage" strip, each with a one-click **Request** button that enqueues the ticker for the next daily cron (see Tier 4 below) — there is **no synchronous fetch**; the web tier never calls yfinance.
 4. The client accumulates results into client state (+ `sessionStorage`), then writes **one** `analysis_runs` history row — **inputs only**, never the computed ratings (CLAUDE.md #15) — via the browser Supabase client under RLS. This powers the "Last Analysis" / Re-run card.
 5. The Results table (Layer E) reads the same in-memory results — no recompute.
 
@@ -127,7 +129,7 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 | **4. Browser HTTP cache** | User's browser | Per asset (1yr static, max-age=0 dynamic) | Standard cache headers |
 | **+. Benchmark module cache** | In-memory module scope (`benchmarks.server.ts`), reused across requests on a warm Fluid Compute instance | 24 hours | The full benchmark index series (~3MB, e.g. `^GSPC` ≈ 24.7k bars) is identical for every stock, so it's fetched once per instance. **Deliberately not Vercel Data Cache** — the ~3MB value exceeds that cache's 2MB entry limit (which previously threw an `unhandledRejection` on every render). A single shared in-flight promise dedupes concurrent first requests; an empty result is not cached. |
 
-**Decision rule:** A user request never hits yfinance directly unless their ticker is brand new (universe expansion). All other requests resolve in tiers 2-4.
+**Decision rule:** A user request **never** hits yfinance directly. Brand-new tickers are *queued* (Tier 4) and fetched by the next daily cron; every read resolves in tiers 2-4.
 
 ---
 
@@ -334,11 +336,70 @@ CREATE POLICY "users insert own runs" ON analysis_runs FOR INSERT WITH CHECK (au
 CREATE TABLE universe_log (
   ticker          text NOT NULL,
   added_at        timestamptz NOT NULL DEFAULT now(),
-  added_by        text NOT NULL,              -- 'seed' | 'cron' | 'user_upload'
+  added_by        text NOT NULL,              -- 'seed' | 'cron' | 'user_upload' | 'user_request'
   added_by_user   uuid REFERENCES profiles(id),
   PRIMARY KEY (ticker, added_at)
 );
 ```
+
+### `listings` — the searchable "menu" of every US/AU/CA common stock
+
+The full directory of stocks a user can *request*, far larger than the analysed
+`stocks` universe. Sourced from free public exchange symbol files (NASDAQ Trader
+for US, ASX directory for AU, TMX/EODData for CA — **no API key, no rate limit**),
+normalised to yfinance format, and refreshed by the daily cron. This is what the
+"Request a Ticker" search reads — it is **not** the analysed universe (a row here
+only becomes analysable once the cron has fetched its data into `stocks`).
+
+```sql
+CREATE TABLE listings (
+  symbol      text PRIMARY KEY,            -- yfinance format: 'AAPL', 'BHP.AX', 'SHOP.TO'
+  name        text,
+  exchange    text,                        -- 'NASDAQ' | 'NYSE' | 'NYSE American' | 'ASX' | 'TSX' | 'TSXV'
+  market      text NOT NULL,               -- 'us' | 'au' | 'ca'
+  is_active   boolean NOT NULL DEFAULT true,-- flagged false when a symbol drops out of the source files
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT valid_listing_market CHECK (market IN ('us', 'au', 'ca'))
+);
+
+-- Fast case-insensitive autocomplete on symbol + name (trigram).
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX idx_listings_symbol_trgm ON listings USING gin (lower(symbol) gin_trgm_ops);
+CREATE INDEX idx_listings_name_trgm   ON listings USING gin (lower(name)   gin_trgm_ops);
+CREATE INDEX idx_listings_market      ON listings (market);
+```
+
+### `ticker_requests` — the global queue of user-requested tickers
+
+One row per symbol (**global** — a request is visible to every user so the same
+ticker is never queued twice). Drained by the daily cron, which fetches the data
+via the yfinance `DataProvider` (+ Stooq fallback) into `stocks` + `price_bars`,
+caches it forever (CLAUDE.md #16), and flips `status` to `fetched`. Genuinely
+dataless symbols end as `unsupported`.
+
+```sql
+CREATE TABLE ticker_requests (
+  symbol          text PRIMARY KEY,         -- yfinance format; must exist in `listings`
+  market          text NOT NULL,            -- 'us' | 'au' | 'ca'
+  status          text NOT NULL DEFAULT 'queued', -- 'queued' | 'fetched' | 'unsupported' | 'failed'
+  requested_by    uuid REFERENCES profiles(id) ON DELETE SET NULL, -- most recent requester (analytics only)
+  requested_at    timestamptz NOT NULL DEFAULT now(),
+  attempts        integer NOT NULL DEFAULT 0,
+  last_attempt_at timestamptz,
+  fetched_at      timestamptz,
+  last_error      text,
+  CONSTRAINT valid_request_market CHECK (market IN ('us', 'au', 'ca')),
+  CONSTRAINT valid_request_status CHECK (status IN ('queued', 'fetched', 'unsupported', 'failed'))
+);
+
+CREATE INDEX idx_ticker_requests_status       ON ticker_requests (status);
+CREATE INDEX idx_ticker_requests_requested_at ON ticker_requests (requested_at DESC);
+```
+
+Both tables have **RLS enabled with no policies** — read/written only server-side
+with the service-role key (the search + request API routes use the admin client;
+the cron uses the Python service client), exactly like `stocks` / `price_bars` /
+`universe_log`.
 
 ---
 
@@ -353,17 +414,18 @@ Two runtimes, two locations under `web/`:
 |---|---|---|---|---|---|
 | `/api/cycle` | GET | Python | `web/api/cycle.py` | **Public** (in `PUBLIC_PATHS`) | Compute Major Cycle for one ticker + preset. Called by the Stock Detail Server Component as a cookieless self-fetch — must be public **and** reached via the production custom domain (see §2). |
 | `/api/analyze` | POST | Python | `web/api/analyze.py` | Required | Run cycle analysis on a **chunk** of tickers (≤60) with given params. **Stateless** — no DB write, no `runId`; the client batches chunks + writes the inputs-only `analysis_runs` row itself. |
-| `/api/fetch-ticker` | POST | Python | `web/api/fetch_ticker.py` *(deferred — Layer D fast-follow)* | Required | Add a new ticker to the universe + return its data |
 | `/api/analyze-dev` | POST | TS | `web/app/api/analyze-dev/route.ts` | Required | **Dev-only** shim: spawns `analyze.py` as a CLI so the Run tab works under `next dev` (mirrors `cycle.ts`). Returns 404 in production; the client targets `/api/analyze` there. |
 | `/api/ticker/[symbol]` | GET | TS | `web/app/api/ticker/[symbol]/route.ts` | Public | Read stored stock + price bars for SSR |
-| `/api/search` | GET | TS | `web/app/api/search/route.ts` | Public | Autocomplete ticker search |
+| `/api/search` | GET | TS | `web/app/api/search/route.ts` | Public | Autocomplete over the analysed universe index (Run tab "search & add") |
+| `/api/listings/search` | GET | TS | `web/app/api/listings/search/route.ts` | Required | Choose-only search over `listings` via the `search_listings` RPC (one round-trip: trigram match + `covered`/`requestStatus` annotation + ranking, all server-side) so the UI shows the right badge |
+| `/api/request-ticker` | POST / GET | TS | `web/app/api/request-ticker/route.ts` | Required | **POST** enqueues a listed symbol into `ticker_requests` (validates it exists in `listings`, dedups globally, records `requested_by`). **GET** returns recent requests + their status for the Request-a-Ticker page |
 | `/api/checkout` | POST | TS | `web/app/api/checkout/route.ts` | Required | Create Stripe Checkout session |
 | `/api/webhooks/stripe` | POST | TS | `web/app/api/webhooks/stripe/route.ts` | Stripe signature | Receive subscription events |
 | `/api/health` | GET | TS | `web/app/api/health/route.ts` | Public | System health (DB + provider) |
 
 **Auth pattern:** Every authenticated route uses the Supabase server client and checks `subscription_status IN ('trialing', 'active')` plus trial-end-date logic. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
 
-**Row-Level Security:** `profiles` + `analysis_runs` have per-user RLS policies (own-row read/write). `stocks` / `price_bars` / `universe_log` have RLS **enabled with no policies** — they're only ever read server-side with the service-role key (which bypasses RLS), so the public anon/authenticated roles get no access (migration `20260614020000_enable_rls_lockdown.sql`). The `get_price_bars_json` RPC and `handle_new_user` have `search_path` pinned and `EXECUTE` revoked from the public REST surface (`20260614040000_harden_functions.sql`).
+**Row-Level Security:** `profiles` + `analysis_runs` have per-user RLS policies (own-row read/write). `stocks` / `price_bars` / `universe_log` / `listings` / `ticker_requests` have RLS **enabled with no policies** — they're only ever read/written server-side with the service-role key (which bypasses RLS), so the public anon/authenticated roles get no access (migrations `20260614020000_enable_rls_lockdown.sql` + the Request-a-Ticker migration). The `/api/listings/search` and `/api/request-ticker` routes authenticate the user with the Supabase **server** client, then read/write `listings` + `ticker_requests` with the **admin** client. The `get_price_bars_json` RPC and `handle_new_user` have `search_path` pinned and `EXECUTE` revoked from the public REST surface (`20260614040000_harden_functions.sql`).
 
 **Python function env vars:** `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` must be set in Vercel project env (the same values as `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`, but the Python side reads the prefix-less names, matching the cron).
 
@@ -383,16 +445,24 @@ Two runtimes, two locations under `web/`:
 1. Checkout repo
 2. Set up Python 3.12
 3. Install requirements (yfinance, pandas, supabase, etc.)
-4. Run `python -m analytics.cron.daily_refresh` (smart mode by default)
-5. On failure: email owner via Resend with a summary of failed tickers
+4. Run `python -m analytics.cron.refresh_listings` — refresh the `listings` "menu" from the free exchange symbol files (US/AU/CA), normalised to yfinance format. Fast (~seconds); failure is logged but does not abort the run (the cached `listings` table stays usable).
+5. Run `python -m analytics.cron.drain_requests` — fetch every `queued` row in `ticker_requests` via the yfinance `DataProvider` (+ Stooq fallback), upsert into `stocks` + `price_bars`, log to `universe_log` (`added_by='user_request'`), and flip `status` to `fetched` / `unsupported` / `failed`.
+6. Run `python -m analytics.cron.daily_refresh` (smart mode by default) — refresh the existing analysed universe.
+7. On failure: email owner via Resend with a summary of failed tickers
 
-**Required GitHub Secrets:**
+**Required GitHub Secrets:** unchanged — the exchange symbol files need **no API key**.
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY` (server-side write access)
 - `RESEND_API_KEY`
 - `OWNER_EMAIL`
 
-**Idempotency:** All writes use UPSERT (`ON CONFLICT DO UPDATE`) so re-runs are safe.
+**Idempotency:** All writes use UPSERT (`ON CONFLICT DO UPDATE`) so re-runs are safe. Listings refresh upserts on `symbol` and flips `is_active=false` for symbols absent from the latest pull (never deletes). The queue drain only re-touches `queued` rows.
+
+### Tier 4 — Universe expansion (user-requested tickers)
+
+**What:** A user searches the full US/AU/CA `listings` on the **Request a Ticker** page (choose-only — they can only pick a real listed symbol, never free-type). Picking one the system doesn't yet hold POSTs to `/api/request-ticker`, which inserts a `queued` row into `ticker_requests` (global, deduped). Nothing is fetched synchronously. The **next daily cron** (step 5 above) fetches it, after which it appears site-wide and the requester sees it as "Available now". This satisfies CLAUDE.md #16 (auto-expanding, cache-forever) without adding yfinance to the web bundle.
+
+**Why this works:** The heavy fetch stays in the trusted cron environment behind the sacred `DataProvider` interface (#9); the web tier only ever reads/writes two small Postgres tables. Free end-to-end — no third-party API key anywhere.
 
 ### Manual full refresh — `.github/workflows/manual-full-refresh.yml`
 

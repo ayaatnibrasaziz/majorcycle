@@ -13,6 +13,10 @@ const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
     title: 'Run Analysis',
     subtitle: 'Configure and run Major Cycle analysis',
   },
+  '/request': {
+    title: 'Request a Ticker',
+    subtitle: 'Add US, Australian, or Canadian stocks to our coverage',
+  },
   '/stocks': {
     title: 'Browse Stocks',
     subtitle: 'Search and explore the universe',

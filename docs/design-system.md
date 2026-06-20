@@ -136,6 +136,37 @@ The Major Cycle valuation_zone is also re-labelled:
 | WATCH | FAIR |
 | HOLD | STRETCHED |
 
+**Two distinct readings on the Results tab.** The `valuation_zone` (Deep Value →
+Stretched) is derived purely from cycle position (current drawdown vs the stock's
+typical pullback). The **Valuation** column does NOT use those words — it shows the
+health-gated 0–100 `valuation_score` with its own ladder of labels, coloured by the
+score tier (one colour per label, so a label never shows two colours):
+
+| Score | Valuation label | Tier colour |
+|---|---|---|
+| 80–100 | Compelling | `#006400` |
+| 65–79 | Attractive | `#228B22` |
+| 50–64 | Reasonable | `#D4A017` |
+| 35–49 | Elevated | `#FF4500` |
+| 0–34 | Expensive | `#B22222` |
+
+The **Cycle Position** column shows just the 0–100 reading (gauge + number, coloured
+by `cyclePositionColor`). The zone words are *not* rendered in that cell — they're
+described in its tooltip (75+ Deep Value · 50+ Value · 25+ Fair · below Stretched, as
+a rough guide) and remain available as a hidden filter / CSV field ("Cycle Position
+Zone"). A deeply-fallen but weak company therefore reads a low Valuation
+("Elevated"/"Expensive") despite a high Cycle Position — the value-trap signal,
+surfaced honestly. (The stock-detail page is unchanged: it still shows the zone badge
+via `ZONE_TIER`/`ZONE_DISPLAY` and is the only place the Deep Value…Stretched words
+appear with their zone-tier colour.)
+
+The **Health** column has only THREE labels (Healthy ≥80 · Adequate ≥60 · At Risk
+below 60), so it is coloured by `healthColor` — **one colour per tier**: green
+`#006400` / gold `#D4A017` / red `#B22222` — applied to BOTH the number badge and
+the label. It deliberately does NOT use the 5-tier `scoreColor` ladder (which would
+paint "Adequate" and "At Risk" rows several different shades for the same word).
+Valuation keeps the 5-tier ladder above because it genuinely has five labels.
+
 ---
 
 ## 5. Chart Colour Standards
@@ -416,7 +447,28 @@ The "Major Cycle engine" status strip at the top of Results.
 
 ### Briefing Card
 
-The "Analyst Briefing" callout at the top of Results. Has the icon-left, content-right layout.
+The "Analyst Briefing" callout at the top of Results. Has the icon-left, content-right layout. Copy is built from the live in-memory run in **compliant language only** — framed around our five tiers (Constructive or better / Cautious or Bearish), never the reference's "Buy Zone / STRONG BUY / AVOID". Carries the "Information only — not financial advice" line in-card so the disclaimer is visible without scrolling (#4/#12).
+
+### Results table — view modes + columns (Layer E)
+
+The Results screener reproduces the reference's **three view modes** (`Simple` / `Analyst` / `Full`, default Analyst) via the `VIEW_MODES` map in `web/components/results/columns.ts`:
+- **Simple** — Identity + MajorCycle Verdict.
+- **Analyst** — + Price & Analyst Targets + Major Cycle.
+- **Full** — + Valuation Ratios + Profitability & Health + Growth & Sentiment (31 columns).
+
+The cycle columns come from the run's `CycleAnalysis`; the Price & Analyst / Ratios / Profitability / Growth columns read the slim **`fundamentals`** subset now returned with each result (`/api/analyze` → `_screener_fundamentals`). Company & Sector are enriched from the cached light universe index (the `/results` server page builds a `ticker → {name, sector, market}` map).
+
+**Compliance:** all of OUR scores use the five tiers (High Conviction…Bearish) + four zones (Deep Value…Stretched). The **Analyst** column is the only place Buy/Hold/Sell wording appears — that's the third-party Wall-Street consensus shown verbatim (#17), via `fmtAnalyst` (not bold). Metric cells (drawdown / ROE / FCF / D/E / PEG / upside) are colour-tinted on a green→red ladder (`metricTintColor`, mapped to `--c-tier-*`). The Overall cell shows the score + clickable tier badge (filters by tier) + a Health/Valuation/Cycle-Payoff composition micro-bar (`compositionRamp`). The advanced multi-rule AND builder and CSV export both extend automatically to the fundamentals columns. The table scrolls horizontally on desktop and collapses to cards below `md`.
+
+**Sanity bounds — match the detail page.** The fundamentals columns apply the **same display caps + formatting as the Stock Detail `MetricsTable`** so the two never disagree: P/E ≤150 (shown as `x`), PEG ≤25, ROE/margins/growth ≤300%, FCF ≤100%, D/E & Current Ratio ≤25 — beyond shows `>+cap`/`<−cap`; percentages 1-decimal, ratios 2-decimal. Caps are **display-only** — sort/filter/CSV use the true raw value (`Field.get`). Implemented via `Field.cap` + `formatValue(value, fmt, cap)` in `columns.ts`. **Score/zone cells**: the Overall, Valuation and Health numbers AND their adjacent labels are all coloured by `scoreColor(score)` (the 80/65/50/35 ladder), so the number and its word always match (the Valuation word is still the zone — Deep Value…Stretched — just coloured by the score). The **Cycle Position** gauge track is a visible red→amber→green gradient. Column headers use the shared `InfoTip` explainer.
+
+### Opportunity Map (Recharts)
+
+Reproduces the reference quadrant bubble chart: X = Financial Health, Y = Valuation, bubble size = Overall Rating (`ZAxis range [18,200]` — small enough that a 100–200 stock run reads as density, not blobs; ~0.55 opacity so overlaps darken). Split at **65** on both axes with four tinted quadrants + labels — **Opportunity Zone** (top-right, green), **Healthy, fully priced** (bottom-right, gold), **Weak but cheap** (top-left, blue), **Weak & expensive** (bottom-left, red). Bubbles are grouped into one `<Scatter>` series per tier so the **legend lists the tiers and is click-to-toggle** (same `hidden`-Set pattern as `RelativePerformance.tsx`); the legend sits at the **top** (so it doesn't clash with the x-axis label). Clicking a bubble opens that stock's detail page (`Tooltip cursor={false}` + `Scatter activeShape={false}` so there's no stray highlight rectangle on click). Height via the `--chart-h-lg` token; dark tooltip + `#8A97A8` axis ticks match the other charts. *(Deferred: legend tier ordering pin, and a cluster-picker popover when multiple tickers share a grid point.)*
+
+### Skipped tickers — compact strip
+
+A single collapsible line (`⚠ N tickers couldn't be scored · show`), expanding to a compact split of "No data yet" (in coverage) vs "Outside coverage" (unknown). Stays one line even for many skips. With the run reconciliation pass it's usually absent.
 
 ### Empty State
 

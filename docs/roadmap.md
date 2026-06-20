@@ -194,7 +194,7 @@ Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis w
 - [x] **Selected-tickers chip list** *(new)* — live count + per-chip remove + clear; the single source all inputs feed (`SelectedTickers.tsx`).
 - [x] **Run button** — calls `/api/analyze` in chunks; honest progress + Cancel (`RunProgress.tsx`, batching in `analysis.tsx`).
 - [x] **Loading state** — real batched progress (chunks done / total, elapsed, ETA, scored/skipped counts).
-- [~] **Universe expansion handler** — **deferred** (owner-approved): unknown tickers go to `unavailable[]`. Live `/api/fetch-ticker` (yfinance) is a separate fast-follow PR.
+- [~] **Universe expansion handler** — **queue model** (owner-approved, Layer E fast-follow): unknown tickers go to `unavailable[]`; the user requests them from the **Request a Ticker** page (choose-only over the `listings` menu) → `ticker_requests` queue → the daily cron fetches them via the yfinance `DataProvider`. No synchronous `/api/fetch-ticker`. See `architecture.md` §8 Tier 4.
 - [x] **Last Analysis card** — from `analysis_runs` (INPUTS ONLY — #15), "Re-run" re-derives (`LastAnalysisCard.tsx`). *(2026-06-16 fix: `writeRun` now resolves a named preset's thresholds from PRESETS before insert — the threshold columns are NOT NULL, so persisting NULL had been silently dropping every Short/Medium/Long run's history row.)*
 - [x] **Error handling** — partial failures listed in `unavailable`; a failed chunk degrades gracefully (its tickers → `unavailable`). *(2026-06-16 reliability: a failed chunk POST now retries inline (`CHUNK_RETRIES`) before giving up, and the run ends with a **warm retry pass** over chunk-failed tickers — only genuine server-`unavailable` (unknown/insufficient-history) stay skipped. The first chunk runs **solo to pre-warm one instance**, so the rest fire against a warm instance instead of a cold-start storm — the cause of the random skips.)*
 
@@ -203,7 +203,7 @@ Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis w
 - Custom params validate (out-of-bounds pullback → 400; empty list → 400); presets resolve correctly
 - Edge cases (empty list, duplicate tickers, unknown tickers) handled gracefully
 - UI verified in browser: baskets/search/CSV populate the chip list, Custom/Advanced opens, no console errors
-- Universe expansion (unknown ticker added on the fly) — deferred to the `/api/fetch-ticker` fast-follow
+- Universe expansion — handled by the **Request a Ticker** queue (cron-drained), not an on-the-fly fetch
 - **Known (pre-existing, deferred to Layer H):** 375px horizontal overflow from the non-responsive sidebar/header shell — identical on the already-live `/stocks`, not a Layer D regression
 
 > **Session infra + security + perf (2026-06-14), shipped on the same PR:**
@@ -214,25 +214,54 @@ Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis w
 > - **Polish** — Run tab restyled to the reference's compact look via ported `globals.css` classes; search shows bare symbols (no `.AX`/`.TO`); CSV re-upload fixed; **Download sample CSV** button.
 > - **Done (2026-06-16):** owner deleted the old Seoul project and **renamed the new us-east project to `MajorCycle`** (display name only — the ref/URL/keys are unchanged, so nothing broke). Email + Google auth verified live (two real sign-ins, one Google + one email, both auto-created a linked `profiles` row via `handle_new_user`). Local `.env.local` confirmed on the new project. Daily refresh cron confirmed writing to the new project (latest bar current).
 
-### Layer E: Results Tab (target: 4-5 days)
+### Layer E: Results Tab ✅ BUILT (PR pending owner merge)
 
 Goal: The ranked Results view from reference HTML, fully functional.
 
-- [ ] **Analyst Briefing card** — summary callout at top
-- [ ] **Provenance bar** — data source + run timestamp
-- [ ] **Opportunity Map** — Health vs Valuation bubble chart
-- [ ] **Sortable / filterable / searchable results table** — all view modes (Verdict, Major Cycle, Identity, etc.)
-- [ ] **Column groups** — toggleable group headers
-- [ ] **Tier badge column** — clickable to filter by tier
-- [ ] **Click-to-detail** — clicking a row opens that stock's detail page
-- [ ] **Empty states** — "no analysis run yet" + "no results match filters"
-- [ ] **Export to CSV** — download current results
+> **Status (2026-06-17):** Built on `feat/layer-e-results` off `main` (**PR #38, CI
+> green, awaiting owner merge**; latest commit `10b4ccf`). Reads the SAME in-memory
+> results as the Run tab via `useAnalysis()` (AnalysisContext + the
+> `mc:analysis-snapshot-v1` sessionStorage snapshot) — no recompute, ratings always
+> DERIVED, never read from / written to the DB (#15). After the initial cut, a
+> reference-parity rework (below) + a 9-item review-polish round (Opportunity Map
+> legend/bubbles/click-rect, header InfoTips, visible Cycle-Position track, matching
+> valuation colours, detail-page sanity caps on fundamentals, non-bold analyst text,
+> new briefing icon). typecheck / lint / build + Python checks green; verified in the
+> local preview. Engine untouched. **Open follow-ups for next session** (clickable
+> Run top-pick, briefing scroll-to-table, pinned legend order, overlapping-bubble
+> cluster picker, valuation-tier sign-off, the live ticker fetcher, and the live
+> ~0-skip confirmation) are tracked in memory `project-layer-e-progress`.
 
-**Verification:**
-- All filters and sorts work correctly
-- Bubble chart click navigation works
-- Table is performant at 500 rows
-- Mobile: table collapses to cards
+> **Reference-parity rework (owner-approved, 2026-06-17).** The first cut was
+> cycle-only with band-toggle chips; the owner wanted a closer match to the
+> reference. Now: the three **Simple / Analyst / Full** view modes; the **full
+> reference column set** (Price & Analyst Targets / Valuation Ratios / Profitability
+> & Health / Growth & Sentiment) powered by a slim **`fundamentals`** subset now
+> returned with each run result (analyze.py already loads it — no extra fetch); the
+> **Opportunity Map** rebuilt with 4 quadrant fills + labels and a tier-grouped
+> **click-to-toggle legend**; a **compact collapsible** skipped strip; and a
+> reference-style **export dropdown**. All OUR scores keep the compliant tiers/zones
+> (#2); the **Analyst** column shows the third-party Wall-Street consensus verbatim
+> (#17). Plus a **Run-reliability fix** to stop false skips (see below).
+
+- [x] **Analyst Briefing card** — summary callout at top (compliant copy, clickable top-pick + filter pills, "information only" disclaimer in-card → visible without scroll, #4/#12)
+- [x] **Provenance bar** — run timestamp + ticker count + Major Cycle horizon + engine name (no third-party provider name, S9)
+- [x] **Opportunity Map** — Health vs Valuation bubble chart (Recharts ScatterChart; bubble size = Overall; quadrant split + Opportunity Zone area; click bubble → detail)
+- [x] **Sortable / filterable / searchable results table** — the reference's **Simple / Analyst / Full** view modes (default Analyst; 7 → 31 columns) across the seven bands; metric-tinted cells; verbatim Analyst consensus column
+- [x] **Fundamentals returned with results** — `/api/analyze` attaches a slim `fundamentals` subset per ticker (P/E, ROE, margins, FCF, D/E, analyst target/consensus, short interest, …) so the Analyst/Full views populate without a second fetch
+- [x] **Run reliability — stop false skips** — `analyze.py` lower concurrency (4→2) + RPC retry-before-fallback + stronger per-ticker retries; client **single-ticker reconciliation pass** re-runs any in-universe straggler the way the detail page does (which never fails for these)
+- [x] **Tier badge column** — Overall cell badge clickable → filters by that tier (syncs the tier dropdown)
+- [x] **Click-to-detail** — clicking a row (or mobile card) opens that stock's detail page
+- [x] **Skipped tickers transparency** *(this session's follow-up)* — `unavailable` listed and split into "insufficient price history" (in coverage) vs "outside our coverage" (unknown), inferred via the universe index
+- [x] **Advanced filters** *(owner chose to include now)* — multi-rule AND builder (numeric ≥/≤/between, categorical multi-select, text contains), ported from the reference
+- [x] **Empty states** — "no analysis run yet" (→ /run), "no stocks could be scored" (run ran, all skipped), "no stocks match your filters" (clear-filters)
+- [x] **Export to CSV** — downloads the current filtered+sorted rows (fixed comprehensive cycle column set; compliant headers)
+
+**Verification:** ✅
+- All filters (search, tier dropdown, clickable tier badge, min-rating, "Constructive or better" chip, advanced numeric/categorical rules) and column sort verified in the preview
+- Bubble-click + row-click navigation to `/stocks/[market]/[ticker]` confirmed
+- Mobile (375px): table collapses to cards; the Results component adds no horizontal overflow (the residual shell overflow is the pre-existing non-responsive sidebar — **deferred Layer H**, not a Layer E regression)
+- Files: `web/lib/ratings.ts`, `web/components/results/*` (Results orchestrator + BriefingCard / ProvenanceBar / OpportunityMap / ResultsToolbar / AdvancedFilters / ResultsTable / SkippedTickers + `columns.ts` / `filters.ts`), `web/app/(app)/results/page.tsx` (server page → universe lookup), Results CSS appended to `globals.css`
 
 ### Layer F: Static Pages + Subscription (target: 1 week)
 

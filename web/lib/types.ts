@@ -132,6 +132,34 @@ export interface CycleAnalysis {
   };
 }
 
+// A slim, display-only fundamentals subset returned alongside each scored result
+// (see web/api/analyze.py `_screener_fundamentals`). Powers the Results screener's
+// Analyst / Full views without a second fetch. NOT used by the cycle math.
+// `analystRecommendation` is third-party Wall-Street data, shown verbatim (#17).
+export interface ScreenerFundamentals {
+  pe: number | null;
+  peg: number | null;
+  roe: number | null;
+  grossMargin: number | null;
+  netMargin: number | null;
+  fcfYieldPct: number | null;
+  debtToEquity: number | null;
+  currentRatio: number | null;
+  interestCoverage: number | null;
+  revenueGrowthYoy: number | null;
+  shortPctOfFloat: number | null;
+  shortRatio: number | null;
+  analystTargetPrice: number | null;
+  analystRecommendation: string | null;
+  numAnalystOpinions: number | null;
+}
+
+// One scored stock from a run: the CycleAnalysis plus the slim fundamentals
+// subset. `fundamentals` is optional so older sessionStorage snapshots (written
+// before this field existed) still hydrate — those rows just show "—" in the
+// Analyst / Full columns.
+export type RunResult = CycleAnalysis & { fundamentals?: ScreenerFundamentals };
+
 export interface PriceBar {
   date: string;
   open: number;
@@ -239,7 +267,7 @@ export interface AnalyzeRequest {
 // (no DB write, no runId). The client accumulates these and writes a single
 // analysis_runs history row itself — see AnalysisRunRecord.
 export interface AnalyzeResponse {
-  results: CycleAnalysis[];
+  results: RunResult[];
   unavailable: string[];
   startedAt: string;
   finishedAt: string;
@@ -275,4 +303,33 @@ export interface UserProfile {
   trialEndsAt: string | null;
   acknowledgedDisclaimerAt: string | null;
   createdAt: string;
+}
+
+// --- Request a Ticker (universe expansion via the cron-drained queue) -------
+// See docs/data-contracts.md §5 + docs/architecture.md §8 (Tier 4).
+
+export type RequestStatus = 'queued' | 'fetched' | 'unsupported' | 'failed';
+
+/**
+ * One hit on the Request-a-Ticker search. `covered` = already in `stocks`
+ * (analysable now → link to detail). `requestStatus` = its row in
+ * `ticker_requests`, if any — GLOBAL, so every user sees "already requested"
+ * and nobody double-queues the same symbol.
+ */
+export interface ListingHit {
+  symbol: string; // yfinance format
+  name: string | null;
+  exchange: string | null;
+  market: Market;
+  covered: boolean;
+  requestStatus: RequestStatus | null;
+}
+
+export interface TickerRequest {
+  symbol: string;
+  market: Market;
+  status: RequestStatus;
+  requestedAt: string; // ISO 8601
+  fetchedAt: string | null;
+  lastError: string | null;
 }

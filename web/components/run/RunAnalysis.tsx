@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Play } from 'lucide-react';
 
@@ -56,6 +56,18 @@ export function RunAnalysis({ universe }: { universe: UniverseStock[] }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [horizon, setHorizon] = useState<HorizonValue>(DEFAULT_HORIZON);
   const [hasRun, setHasRun] = useState(false);
+
+  // When a run begins (from either the Run Analysis button or Re-run), smooth-scroll
+  // the live progress into view so the owner sees it working without manually
+  // scrolling — the progress block renders below the (often tall) selection panel.
+  const progressAnchorRef = useRef<HTMLDivElement>(null);
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    if (analysis.progress.running && !wasRunning.current) {
+      progressAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    wasRunning.current = analysis.progress.running;
+  }, [analysis.progress.running]);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const knownTickers = useMemo(() => new Set(universe.map((s) => s.ticker)), [universe]);
@@ -188,24 +200,27 @@ export function RunAnalysis({ universe }: { universe: UniverseStock[] }) {
           </button>
         </div>
 
-        {progress.running && runMeta && (
-          <RunProgress
-            progress={progress}
-            runMeta={runMeta}
-            resultCount={results.length}
-            unavailableCount={unavailable.length}
-            onCancel={cancel}
-          />
-        )}
+        {/* Scroll target: a run start brings the live progress (rendered here) into view. */}
+        <div ref={progressAnchorRef} style={{ scrollMarginTop: 72 }} className="flex flex-col gap-3.5 empty:hidden">
+          {progress.running && runMeta && (
+            <RunProgress
+              progress={progress}
+              runMeta={runMeta}
+              resultCount={results.length}
+              unavailableCount={unavailable.length}
+              onCancel={cancel}
+            />
+          )}
 
-        {showComplete && (
-          <RunComplete
-            results={results}
-            unavailableCount={unavailable.length}
-            runtimeMs={runtimeMs}
-            cancelled={runMeta?.cancelled ?? false}
-          />
-        )}
+          {showComplete && (
+            <RunComplete
+              results={results}
+              unavailableCount={unavailable.length}
+              runtimeMs={runtimeMs}
+              cancelled={runMeta?.cancelled ?? false}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

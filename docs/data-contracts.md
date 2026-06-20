@@ -580,12 +580,36 @@ interface AnalyzeRequest {
 names); the client converts via `web/lib/case.ts`.
 ```typescript
 interface AnalyzeResponse {
-  results: CycleAnalysis[];                // one per analysable ticker
-  unavailable: string[];                   // not in universe / insufficient history / failed
+  results: RunResult[];                     // one per analysable ticker
+  unavailable: string[];                    // not in universe / insufficient history / failed
   startedAt: string;
   finishedAt: string;
 }
+
+// A scored stock = the CycleAnalysis plus a slim, display-only fundamentals
+// subset for the Results screener's Analyst / Full views (web/api/analyze.py
+// `_screener_fundamentals`). `fundamentals` is OPTIONAL so older sessionStorage
+// snapshots still hydrate (those rows show "—" in the fundamentals columns).
+// NOT used by the cycle math. `analystRecommendation` is third-party Wall-Street
+// data shown verbatim (#17). Keys arrive snake_case → camelCase via case.ts.
+type RunResult = CycleAnalysis & { fundamentals?: ScreenerFundamentals };
+
+interface ScreenerFundamentals {
+  pe: number | null; peg: number | null; roe: number | null;
+  grossMargin: number | null; netMargin: number | null; fcfYieldPct: number | null;
+  debtToEquity: number | null; currentRatio: number | null; interestCoverage: number | null;
+  revenueGrowthYoy: number | null; shortPctOfFloat: number | null; shortRatio: number | null;
+  analystTargetPrice: number | null; analystRecommendation: string | null;
+  numAnalystOpinions: number | null;
+}
 ```
+
+> **Run reliability (2026-06-17):** `/api/analyze` runs ≤2 tickers concurrently
+> (was 4) and retries the `get_price_bars_json` RPC before falling back to slow
+> pagination, and the client (`analysis.tsx`) runs a final **single-ticker
+> reconciliation pass** over any in-universe straggler — re-running it the way the
+> detail page does (solo request, no cross-ticker contention) so transient
+> read-timeouts no longer surface as false `unavailable` skips.
 
 **The `analysis_runs` history row (client-written, inputs only):**
 ```typescript
@@ -615,20 +639,75 @@ interface AnalysisRunRecord {
 - `402` — subscription expired *(Layer F)*
 - `500` — internal — return `{ error: string }`
 
-### `POST /api/fetch-ticker` *(deferred — Layer D fast-follow)*
+### Universe expansion — "Request a Ticker" (queue model)
 
-Live universe expansion for unknown tickers. **Not built in the initial Layer D
-PR** (owner-approved): until it ships, unknown tickers returned by `/api/analyze`
-land in `unavailable[]`. Building it adds yfinance to the web function bundle +
-vendors `yfinance_provider` — done as a separate, carefully-verified PR.
+Unknown tickers are **not** fetched synchronously (no `/api/fetch-ticker`). The
+user picks a real listed symbol from the `listings` "menu" and queues it; the
+**daily cron** drains the queue (see `architecture.md` §8 Tier 4). Two TS routes
+back this — both auth-required, both authenticate with the Supabase server client
+then read/write the locked-down tables with the admin client.
 
-**Request:** `{ ticker: string }`
+```typescript
+// web/lib/types.ts — Request-a-Ticker shapes
 
-**Response (200):** `{ stock: StockRecord }`
+export type RequestStatus = 'queued' | 'fetched' | 'unsupported' | 'failed';
+
+// One search hit on the Request-a-Ticker page. `covered` = already in `stocks`
+// (analysable now → link to detail). `requestStatus` = its row in
+// `ticker_requests`, if any (so the UI shows "Requested — arriving next update"
+// instead of a Request button — visible to ALL users, global dedup).
+export interface ListingHit {
+  symbol: string;          // yfinance format
+  name: string | null;
+  exchange: string | null;
+  market: Market;
+  covered: boolean;
+  requestStatus: RequestStatus | null;
+}
+
+export interface TickerRequest {
+  symbol: string;
+  market: Market;
+  status: RequestStatus;
+  requestedAt: string;     // ISO 8601
+  fetchedAt: string | null;
+  lastError: string | null;
+}
+```
+
+#### `GET /api/listings/search?q={query}`
+
+Choose-only autocomplete over `listings`. A single `search_listings(p_q)` Postgres
+RPC (migration `20260620120000`) does the trigram match, the `covered` (join to
+`stocks`) + `requestStatus` (join to `ticker_requests`) annotation, and the ranking
+(symbol-prefix > symbol-contains > name-prefix, then shortest symbol) server-side in
+**one round-trip**. The RPC is `STABLE`, called with the service-role admin client,
+and `EXECUTE` is revoked from anon/authenticated (mirrors `get_price_bars_json`).
+
+**Response (200):** `{ results: ListingHit[] }` (≤ 20)
+
+#### `POST /api/request-ticker`
+
+Enqueue a listed symbol. Validates the symbol **exists in `listings`** (so only
+real US/AU/CA stocks can be queued — never free-typed input), dedups globally
+(one row per symbol; a prior `failed`/`unsupported` row is reset to `queued`),
+and records `requested_by` = the authed user.
+
+**Request:** `{ symbol: string }`  — yfinance format, must be in `listings`
+
+**Response (200):** `{ request: TickerRequest }` (the queued/updated row)
 
 **Errors:**
-- `404` — ticker not found on any provider
-- `429` — provider rate-limited, retry later
+- `400` — missing `symbol`
+- `404` — `{ error }` symbol not in `listings` (not a known US/AU/CA stock)
+- `409` — `{ request }` already `covered` (in `stocks`) — nothing to queue
+- `401` — not logged in (enforced by `proxy.ts`)
+
+#### `GET /api/request-ticker`
+
+Recent requests + live status for the page's "recent requests" panel.
+
+**Response (200):** `{ requests: TickerRequest[] }` (most recent first)
 
 ### `GET /api/ticker/[symbol]`
 
@@ -777,7 +856,7 @@ Webhook events handled:
 ## 12. Database access & Row-Level Security
 
 - **`profiles` is created automatically** by the `handle_new_user` trigger on `auth.users` (every sign-in method). Do not insert profiles from the client; only **update own row** (RLS policy `users update own profile`).
-- **RLS is on for every table.** `profiles` + `analysis_runs` have per-user policies (own-row). `stocks` / `price_bars` / `universe_log` have RLS enabled with **no policies** — read them **only server-side with the service-role key** (`createAdminClient` / the Python service client), never with the browser anon client.
+- **RLS is on for every table.** `profiles` + `analysis_runs` have per-user policies (own-row). `stocks` / `price_bars` / `universe_log` / `listings` / `ticker_requests` have RLS enabled with **no policies** — read/write them **only server-side with the service-role key** (`createAdminClient` / the Python service client), never with the browser anon client. The `/api/listings/search` + `/api/request-ticker` routes gate on the authed user (server client) then touch `listings` / `ticker_requests` via `createAdminClient`.
 - The `get_price_bars_json(p_ticker)` RPC is the one-request way to read a ticker's full history (bypasses the 1000-row cap); it's service-role only. Schema lives in `supabase/migrations/` (mirrors the Supabase migration log).
 
 ---

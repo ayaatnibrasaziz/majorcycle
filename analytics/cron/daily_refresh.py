@@ -147,7 +147,11 @@ def _send_failure_email(subject: str, body: str) -> None:
         logger.error("Failed to send failure email: %s", e)
 
 
-def run(mode: str = "smart", only: Optional[list[str]] = None) -> None:
+def run(
+    mode: str = "smart",
+    only: Optional[list[str]] = None,
+    notify_on_failure: bool = True,
+) -> None:
     started_at = datetime.now(timezone.utc)
     logger.info("Daily refresh started at %s (mode=%s)", started_at.isoformat(), mode)
 
@@ -332,15 +336,16 @@ def run(mode: str = "smart", only: Optional[list[str]] = None) -> None:
 
     if failed:
         logger.warning("Failed tickers (%d): %s", len(failed), ", ".join(failed))
-        _send_failure_email(
-            subject=f"MajorCycle cron: {len(failed)} tickers failed",
-            body=(
-                f"Daily refresh finished at {finished_at.isoformat()}\n"
-                f"Succeeded: {succeeded} ({enriched_count} enriched)\n"
-                f"Failed: {len(failed)}\n\n"
-                "Failed tickers:\n" + "\n".join(failed)
-            ),
-        )
+        if notify_on_failure:
+            _send_failure_email(
+                subject=f"MajorCycle cron: {len(failed)} tickers failed",
+                body=(
+                    f"Daily refresh finished at {finished_at.isoformat()}\n"
+                    f"Succeeded: {succeeded} ({enriched_count} enriched)\n"
+                    f"Failed: {len(failed)}\n\n"
+                    "Failed tickers:\n" + "\n".join(failed)
+                ),
+            )
 
 
 if __name__ == "__main__":
