@@ -35,8 +35,11 @@ function ArcGauge({ pct }: { pct: number }) {
   const angleRad = Math.PI * (1 - f);
   const x = cx + R * Math.cos(angleRad);
   const y = cy - R * Math.sin(angleRad);
-  const largeArc = f > 0.5 ? 1 : 0;
-  const valD = `M ${cx - R} ${cy} A ${R} ${R} 0 ${largeArc} 1 ${x} ${y}`;
+  // The value arc is always a portion of a 180° semicircle (span = 180·f degrees,
+  // ≤ 180°), so it is NEVER a "large arc". Forcing large-arc-flag=1 when f>0.5 made
+  // SVG draw the major arc the wrong way round — visibly broken for any stock whose
+  // short interest exceeds half the gauge (>10% of float, e.g. ZS at 11.5%).
+  const valD = `M ${cx - R} ${cy} A ${R} ${R} 0 0 1 ${x} ${y}`;
 
   return (
     <svg viewBox="0 0 200 100" width="180" height="100" aria-label={`Short interest gauge: ${pct.toFixed(1)}%`}>

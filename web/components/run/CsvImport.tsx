@@ -26,10 +26,11 @@ function downloadSampleCsv() {
 }
 
 // CSV import — demoted to a small secondary action (most beginners use baskets
-// or search). Validation logic is ported from the reference design's validateCSV:
-// detect a 'ticker' column (or treat as a single-column list), dedupe, and split
-// into known (added) vs unrecognised (skipped — live universe expansion is a
-// deferred fast-follow). Known tickers feed the shared selection.
+// or search). Detect a 'ticker' column (or treat as a single-column list), dedupe,
+// and split into known (in our universe) vs not-yet-covered. BOTH are added to the
+// selection: the unknowns flow through the run into the "outside our coverage"
+// strip, where they can be requested (Request-a-Ticker queue). This is the only
+// input path that can carry an uncovered ticker (baskets + search are universe-only).
 
 interface Preview {
   kind: 'ok' | 'warn' | 'error';
@@ -95,18 +96,19 @@ export function CsvImport({
     }
 
     const out: string[] = [`${filename} · ${total} ticker${total === 1 ? '' : 's'} detected`];
-    out.push(`✓ ${valid.length} ready to analyse`);
+    if (valid.length > 0) out.push(`✓ ${valid.length} in our coverage`);
+    // Unknowns are NO LONGER dropped: they're added too, so the run surfaces them in
+    // the "outside our coverage" strip where they can be requested (one-click) and
+    // fetched by the next daily cron. (Pre-Request-a-Ticker they were skipped.)
     if (unknown.length > 0) {
       const sample = unknown.slice(0, 6).join(', ') + (unknown.length > 6 ? '…' : '');
-      out.push(`⚠ ${unknown.length} unrecognised — ${sample} (skipped)`);
+      out.push(`+ ${unknown.length} not yet covered (${sample}) — request ${unknown.length === 1 ? 'it' : 'them'} from the results`);
     }
     if (dupes > 0) out.push(`⚠ ${dupes} duplicate${dupes === 1 ? '' : 's'} removed`);
 
-    if (valid.length === 0) setPreview({ kind: 'error', lines: out });
-    else if (unknown.length > 0 || dupes > 0) setPreview({ kind: 'warn', lines: out });
-    else setPreview({ kind: 'ok', lines: out });
+    setPreview({ kind: unknown.length > 0 || dupes > 0 ? 'warn' : 'ok', lines: out });
 
-    if (valid.length > 0) onAdd(valid);
+    onAdd([...valid, ...unknown]);
   };
 
   const handleFile = (file: File | undefined) => {
