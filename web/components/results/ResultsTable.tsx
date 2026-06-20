@@ -5,7 +5,6 @@ import type { ReactNode } from 'react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
-  ZONE_DISPLAY,
   compositionRamp,
   cyclePositionColor,
   fmtAnalyst,
@@ -13,7 +12,7 @@ import {
   ratingComposition,
   scoreColor,
   tierFromLabel,
-  zoneColor,
+  valuationAppealLabel,
 } from '@/lib/ratings';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { OverallLabel } from '@/lib/types';
@@ -156,14 +155,15 @@ function renderCell(col: Field, r: ResultRow, onTierFilter: (label: OverallLabel
     case 'overall':
       return <OverallCell row={r} onTierFilter={onTierFilter} />;
     case 'valuation':
-      // The zone tag is coloured by the SAME score colour as the number (not the
-      // zone tier), so the number and its label always match — consistent with the
-      // Overall and Health cells, and with the reference's valuation cell.
+      // The Valuation score is health-gated; its label (Compelling…Expensive) is
+      // derived from the SAME score tier that colours it, so the number and word
+      // always agree. The Deep Value…Stretched cycle-position zone lives on the
+      // Cycle Position column instead (it's a pure cycle-position reading).
       return (
         <span className="score-cell">
           <ScoreNum value={r.valuationScore} />
           <span className="score-tag" style={{ color: scoreColor(r.valuationScore) }}>
-            {ZONE_DISPLAY[r.valuationZone]}
+            {valuationAppealLabel(r.valuationScore)}
           </span>
         </span>
       );
@@ -295,7 +295,7 @@ function ResultCard({
         </div>
       </div>
       <div className="result-card-stats">
-        <CardStat label="Valuation" value={ZONE_DISPLAY[row.valuationZone]} color={zoneColor(row.valuationZone)} />
+        <CardStat label="Valuation" value={valuationAppealLabel(row.valuationScore)} color={scoreColor(row.valuationScore)} />
         <CardStat
           label="Health"
           value={row.financialHealthScore == null ? '—' : String(Math.round(row.financialHealthScore))}

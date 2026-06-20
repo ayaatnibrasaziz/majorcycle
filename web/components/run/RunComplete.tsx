@@ -1,10 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, ArrowRight, Ban } from 'lucide-react';
 
 import type { CycleAnalysis } from '@/lib/types';
-import { tickerToUrlParts } from '@/lib/ticker';
+import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 
 // Post-run summary. Top pick + "Constructive or better" count are computed here
 // from the live results (client-side) — they are rating outputs and are never
@@ -76,8 +77,11 @@ export function RunComplete({
               Stopped early —{' '}
             </span>
           )}
-          Top pick: <span className="rc-mono">{tickerToUrlParts(topPick.ticker).symbol}</span> with a
-          rating of <span className="rc-mono">{topPick.overallRating}/100</span>{' '}
+          Top pick:{' '}
+          <Link href={tickerToPath(topPick.ticker)} className="rc-mono rc-link">
+            {tickerToUrlParts(topPick.ticker).symbol}
+          </Link>{' '}
+          with a rating of <span className="rc-mono">{topPick.overallRating}/100</span>{' '}
           <span className="text-[12px] font-semibold text-[var(--text-muted)]">
             ({topPick.overallLabel})
           </span>

@@ -10,7 +10,7 @@
 // Analyst column shows the Wall-Street consensus verbatim (third-party data, #17).
 
 import type { Market, RunResult } from '@/lib/types';
-import { cyclePosition, upsidePct } from '@/lib/ratings';
+import { cyclePosition, upsidePct, valuationAppealLabel } from '@/lib/ratings';
 
 export interface ResultRow extends RunResult {
   name: string | null;
@@ -135,9 +135,9 @@ export const FIELDS: Field[] = [
 
   // MajorCycle Verdict
   { key: 'overall', label: 'Overall', tip: 'Overall Rating|Our 0–100 summary: Financial Health (40%) + Valuation (35%) + Cycle Payoff (25%). 80+ High Conviction · 65+ Constructive · 50+ Neutral · 35+ Cautious · below Bearish.', type: 'numeric', band: 'verdict', cell: 'overall', fmt: 'score', align: 'left', get: (r) => r.overallRating, filterable: true },
-  { key: 'valuation', label: 'Valuation', tip: 'Valuation Score|0–100 cycle-position score, quality-gated by Financial Health. Higher = more discounted versus the stock’s own history.', type: 'numeric', band: 'verdict', cell: 'valuation', fmt: 'score', align: 'left', get: (r) => r.valuationScore, filterable: true },
-  { key: 'health', label: 'Health', tip: 'Financial Health Score|0–100 across five pillars — profitability, balance sheet, growth, cash flow and shareholder returns. Higher = a stronger business.', type: 'numeric', band: 'verdict', cell: 'health', fmt: 'score', align: 'left', get: (r) => r.financialHealthScore, filterable: true },
-  { key: 'cyclePos', label: 'Cycle Position', tip: 'Cycle Position|0 = near a recent peak, 100 = at the stock’s typical worst-case dip. Higher = deeper into its historical drawdown band.', type: 'numeric', band: 'verdict', cell: 'cyclePos', fmt: 'int', align: 'left', get: (r) => r.cyclePos, filterable: true },
+  { key: 'valuation', label: 'Valuation', tip: 'Valuation Score|Our 0–100 score for how attractively a stock is valued, quality-gated by Financial Health (a cheap-but-weak name is marked down). 80+ Compelling · 65+ Attractive · 50+ Reasonable · 35+ Elevated · below Expensive.', type: 'numeric', band: 'verdict', cell: 'valuation', fmt: 'score', align: 'left', get: (r) => r.valuationScore, filterable: true },
+  { key: 'health', label: 'Health', tip: 'Financial Health Score|Our 0–100 score across five pillars — profitability, balance sheet, growth, cash flow and shareholder returns. 80+ Healthy · 60+ Adequate · below At Risk.', type: 'numeric', band: 'verdict', cell: 'health', fmt: 'score', align: 'left', get: (r) => r.financialHealthScore, filterable: true },
+  { key: 'cyclePos', label: 'Cycle Position', tip: 'Cycle Position|How deep today’s price sits in the stock’s own historical drawdown band: 0 = near a recent peak, 100 = at its typical worst-case dip. As a rough guide — 75+ Deep Value · 50+ Value · 25+ Fair · below Stretched. Deeper into the band = better value versus its own history.', type: 'numeric', band: 'verdict', cell: 'cyclePos', fmt: 'int', align: 'left', get: (r) => r.cyclePos, filterable: true },
 
   // Price & Analyst Targets
   { key: 'close', label: 'Close', tip: 'Close|Most recent daily closing price, in the stock’s home currency.', type: 'numeric', band: 'price', cell: 'default', fmt: 'money2', align: 'right', get: (r) => r.currentClose, filterable: true },
@@ -175,7 +175,7 @@ export const FIELDS: Field[] = [
 
   // Filter-only categorical fields (rendered inside the Overall / Valuation cells).
   { key: 'overallLabel', label: 'Rating Tier', type: 'categorical', cell: 'default', fmt: 'text', align: 'left', get: (r) => r.overallLabel, filterable: true },
-  { key: 'valuationZone', label: 'Valuation Zone', type: 'categorical', cell: 'default', fmt: 'text', align: 'left', get: (r) => r.valuationZone, filterable: true },
+  { key: 'valuationZone', label: 'Cycle Position Zone', type: 'categorical', cell: 'default', fmt: 'text', align: 'left', get: (r) => r.valuationZone, filterable: true },
 ];
 
 export const FIELD_BY_KEY: Record<string, Field> = Object.fromEntries(
@@ -212,10 +212,11 @@ export const CSV_COLUMNS: ReadonlyArray<{ header: string; get: (r: ResultRow) =>
   { header: 'Overall Rating', get: (r) => r.overallRating },
   { header: 'Rating Tier', get: (r) => r.overallLabel },
   { header: 'Valuation Score', get: (r) => r.valuationScore },
-  { header: 'Valuation Zone', get: (r) => r.valuationZone },
+  { header: 'Valuation Appeal', get: (r) => valuationAppealLabel(r.valuationScore) },
   { header: 'Health Score', get: (r) => r.financialHealthScore },
   { header: 'Cycle Payoff', get: (r) => r.cyclePayoffScore },
   { header: 'Cycle Position', get: (r) => (r.cyclePos == null ? null : Math.round(r.cyclePos)) },
+  { header: 'Cycle Position Zone', get: (r) => r.valuationZone },
   { header: 'Close', get: (r) => r.currentClose },
   { header: 'Analyst Target', get: (r) => r.fundamentals?.analystTargetPrice ?? null },
   { header: 'Upside %', get: (r) => upsidePct(r.currentClose, r.fundamentals?.analystTargetPrice ?? null) },

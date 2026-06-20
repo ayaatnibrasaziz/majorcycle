@@ -6,6 +6,7 @@
 // reason about and reuse. Every label here is one of our five COMPLIANT tiers
 // (CLAUDE.md #2) — no "Buy"/"Sell"/"Avoid" language anywhere.
 
+import { tickerToUrlParts } from '@/lib/ticker';
 import type { CycleAnalysis, OverallLabel, ValuationZone } from '@/lib/types';
 
 /** Tier index 1 (strongest) … 5 (weakest) for a 0–100 score. */
@@ -47,6 +48,25 @@ export function tierColorVar(tier: 1 | 2 | 3 | 4 | 5): string {
 export function scoreColor(score: number | null): string {
   if (score == null) return 'var(--text-muted)';
   return tierColorVar(tierFromScore(score));
+}
+
+// The Valuation column's own vocabulary. The displayed valuation score is the
+// health-gated 0–100 (how attractively valued a name is *for its quality*), so it
+// gets labels distinct from the cycle-position zones (Deep Value…Stretched, which
+// now live on the Cycle Position column). Label derives from the SAME score tier
+// that colours it, so a label can never carry two colours. Compliant (CLAUDE.md
+// #2) — no buy/sell language.
+const VALUATION_APPEAL: Record<1 | 2 | 3 | 4 | 5, string> = {
+  1: 'Compelling',
+  2: 'Attractive',
+  3: 'Reasonable',
+  4: 'Elevated',
+  5: 'Expensive',
+};
+
+/** Valuation-appeal label for a 0–100 (health-gated) valuation score. */
+export function valuationAppealLabel(score: number): string {
+  return VALUATION_APPEAL[tierFromScore(score)];
 }
 
 // Valuation zone → tier + display. DEEP VALUE/VALUE are favourable (green),
@@ -105,6 +125,7 @@ export interface BriefingRow {
   overallLabel: OverallLabel;
   financialHealthScore: number | null;
   valuationZone: ValuationZone;
+  valuationScore: number;
 }
 
 export interface Briefing {
@@ -142,7 +163,7 @@ export function buildBriefing<T extends BriefingRow>(rows: T[]): Briefing {
   if (constructivePlus > 0) {
     sentences.push(
       `The standout is {{TICKER}}${topName} — a ${healthWord} company${healthClause}, currently ` +
-        `rated ${top.overallLabel} with a ${ZONE_DISPLAY[top.valuationZone]} valuation.`,
+        `rated ${top.overallLabel} with a ${valuationAppealLabel(top.valuationScore)} valuation.`,
     );
   } else {
     sentences.push(
@@ -153,7 +174,7 @@ export function buildBriefing<T extends BriefingRow>(rows: T[]): Briefing {
   }
 
   if (weak.length > 0) {
-    const names = weak.slice(0, 2).map((d) => d.ticker).join(', ');
+    const names = weak.slice(0, 2).map((d) => tickerToUrlParts(d.ticker).symbol).join(', ');
     sentences.push(
       `${weak.length} ${weak.length === 1 ? 'stock is' : 'stocks are'} rated Cautious or Bearish ` +
         `(${names}${weak.length > 2 ? ', …' : ''}) — limited margin of safety at current levels.`,

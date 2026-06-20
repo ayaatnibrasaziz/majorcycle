@@ -136,6 +136,30 @@ The Major Cycle valuation_zone is also re-labelled:
 | WATCH | FAIR |
 | HOLD | STRETCHED |
 
+**Two distinct readings on the Results tab.** The `valuation_zone` (Deep Value →
+Stretched) is derived purely from cycle position (current drawdown vs the stock's
+typical pullback). The **Valuation** column does NOT use those words — it shows the
+health-gated 0–100 `valuation_score` with its own ladder of labels, coloured by the
+score tier (one colour per label, so a label never shows two colours):
+
+| Score | Valuation label | Tier colour |
+|---|---|---|
+| 80–100 | Compelling | `#006400` |
+| 65–79 | Attractive | `#228B22` |
+| 50–64 | Reasonable | `#D4A017` |
+| 35–49 | Elevated | `#FF4500` |
+| 0–34 | Expensive | `#B22222` |
+
+The **Cycle Position** column shows just the 0–100 reading (gauge + number, coloured
+by `cyclePositionColor`). The zone words are *not* rendered in that cell — they're
+described in its tooltip (75+ Deep Value · 50+ Value · 25+ Fair · below Stretched, as
+a rough guide) and remain available as a hidden filter / CSV field ("Cycle Position
+Zone"). A deeply-fallen but weak company therefore reads a low Valuation
+("Elevated"/"Expensive") despite a high Cycle Position — the value-trap signal,
+surfaced honestly. (The stock-detail page is unchanged: it still shows the zone badge
+via `ZONE_TIER`/`ZONE_DISPLAY` and is the only place the Deep Value…Stretched words
+appear with their zone-tier colour.)
+
 ---
 
 ## 5. Chart Colour Standards

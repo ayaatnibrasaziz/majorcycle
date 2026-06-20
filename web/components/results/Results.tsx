@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { FolderSearch, SearchX } from 'lucide-react';
 
@@ -41,6 +41,9 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
 
   const [filter, setFilter] = useState<FilterState>(INITIAL_FILTER);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // Scroll target for the briefing's count pills — applying a quick filter from up
+  // in the briefing should bring the (often below-the-fold) results table into view.
+  const tableRef = useRef<HTMLDivElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('analyst');
   const [sortKey, setSortKey] = useState('overall');
   const [sortAsc, setSortAsc] = useState(false);
@@ -64,8 +67,10 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
   const onTierFilter = (label: OverallLabel) =>
     setFilter((f) => ({ ...f, tier: f.tier === label ? '' : label, quick: 'all' }));
 
-  const onQuickFilter = (q: QuickFilter) =>
+  const onQuickFilter = (q: QuickFilter) => {
     setFilter((f) => ({ ...f, quick: f.quick === q ? 'all' : q, tier: '' }));
+    tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const onAdvancedRules = (advRules: AdvRule[]) => patch({ rules: advRules });
 
@@ -118,6 +123,7 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
       {unavailable.length > 0 && <SkippedTickers unavailable={unavailable} lookup={lookup} />}
       <OpportunityMap rows={rows} />
 
+      <div ref={tableRef} style={{ scrollMarginTop: 16 }}>
       <ResultsToolbar
         filter={filter}
         patch={patch}
@@ -156,6 +162,7 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

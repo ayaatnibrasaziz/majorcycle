@@ -808,6 +808,27 @@ td.num             { font-weight: 600; }
 .smart-day-panel-name                       { color: var(--text-secondary); }
 .smart-day-panel-meta                       { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-muted); margin-top: 2px; }
 
+/* Opportunity Map custom legend — pinned tier order, click to toggle */
+.opp-legend                                 { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; list-style: none; margin: 0; padding: 0; }
+.opp-legend-item                            { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 10px; font-family: 'Sora', sans-serif; }
+.opp-legend-dot                             { width: 9px; height: 9px; border-radius: 50%; }
+
+/* Opportunity Map cluster picker (overlapping bubbles) — mirrors the day panel */
+.opp-cluster                                { position: fixed; z-index: 9999; width: 260px; max-width: calc(100vw - 16px); max-height: 50vh; overflow-y: auto; background: var(--bg-surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); box-shadow: 0 10px 30px rgba(15,25,35,.18); font-family: 'Sora', sans-serif; }
+.opp-cluster-head                           { position: sticky; top: 0; z-index: 1; background: var(--bg-surface); border-bottom: 1px solid var(--border); padding: 10px 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.opp-cluster-title                          { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 13px; color: var(--text-primary); }
+.opp-cluster-sub                            { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.opp-cluster-close                          { flex-shrink: 0; border: none; background: transparent; cursor: pointer; color: var(--text-muted); font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+.opp-cluster-close:hover                    { background: var(--bg-hover); color: var(--text-primary); }
+.opp-cluster-body                           { padding: 2px 0 4px; }
+.opp-cluster-row                            { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: transparent; border: none; cursor: pointer; text-align: left; font-family: 'Sora', sans-serif; }
+.opp-cluster-row + .opp-cluster-row         { border-top: 1px dotted var(--border); }
+.opp-cluster-row:hover                      { background: var(--bg-hover); }
+.opp-cluster-dot                            { flex-shrink: 0; width: 9px; height: 9px; border-radius: 50%; }
+.opp-cluster-sym                            { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 12px; color: var(--text-primary); }
+.opp-cluster-name                           { flex: 1; min-width: 0; font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.opp-cluster-score                          { flex-shrink: 0; margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text-secondary); }
+
 /* Short interest */
 .si-grid                                    { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: start; }
 .si-arc-wrap                                { text-align: center; padding: 8px 0; }
@@ -1057,6 +1078,10 @@ td.num             { font-weight: 600; }
 .rc-badge--cancelled { background: var(--text-muted); }
 .rc-headline { font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1.35; }
 .rc-headline .rc-mono { font-family: var(--font-mono); color: var(--brand-mid); }
+.rc-headline .rc-link {
+  cursor: pointer; border-bottom: 1px solid transparent; transition: border-color .15s;
+}
+.rc-headline .rc-link:hover { border-bottom-color: var(--brand-mid); }
 .rc-stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .rc-stat { background: var(--bg-stripe); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
 .rc-stat-label {
