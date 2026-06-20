@@ -677,8 +677,12 @@ export interface TickerRequest {
 
 #### `GET /api/listings/search?q={query}`
 
-Choose-only autocomplete over `listings`. Trigram-ranked (prefix > contains on
-symbol, then name). Each hit is annotated with `covered` + `requestStatus`.
+Choose-only autocomplete over `listings`. A single `search_listings(p_q)` Postgres
+RPC (migration `20260620120000`) does the trigram match, the `covered` (join to
+`stocks`) + `requestStatus` (join to `ticker_requests`) annotation, and the ranking
+(symbol-prefix > symbol-contains > name-prefix, then shortest symbol) server-side in
+**one round-trip**. The RPC is `STABLE`, called with the service-role admin client,
+and `EXECUTE` is revoked from anon/authenticated (mirrors `get_price_bars_json`).
 
 **Response (200):** `{ results: ListingHit[] }` (≤ 20)
 

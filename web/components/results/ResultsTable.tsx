@@ -8,6 +8,7 @@ import {
   compositionRamp,
   cyclePositionColor,
   fmtAnalyst,
+  healthColor,
   metricTintColor,
   ratingComposition,
   scoreColor,
@@ -172,8 +173,8 @@ function renderCell(col: Field, r: ResultRow, onTierFilter: (label: OverallLabel
         <span className="text-[var(--text-muted)]">—</span>
       ) : (
         <span className="score-cell">
-          <ScoreNum value={r.financialHealthScore} />
-          <span className="score-tag" style={{ color: scoreColor(r.financialHealthScore) }}>
+          <ScoreNum value={r.financialHealthScore} color={healthColor(r.financialHealthScore)} />
+          <span className="score-tag" style={{ color: healthColor(r.financialHealthScore) }}>
             {healthDescriptor(r.financialHealthScore)}
           </span>
         </span>
@@ -193,9 +194,9 @@ function renderCell(col: Field, r: ResultRow, onTierFilter: (label: OverallLabel
   }
 }
 
-function ScoreNum({ value }: { value: number }) {
+function ScoreNum({ value, color }: { value: number; color?: string }) {
   return (
-    <span className="score-num" style={{ background: scoreColor(value) }}>
+    <span className="score-num" style={{ background: color ?? scoreColor(value) }}>
       {Math.round(value)}
     </span>
   );
@@ -299,7 +300,7 @@ function ResultCard({
         <CardStat
           label="Health"
           value={row.financialHealthScore == null ? '—' : String(Math.round(row.financialHealthScore))}
-          color={scoreColor(row.financialHealthScore)}
+          color={healthColor(row.financialHealthScore)}
         />
         <CardStat
           label="Cycle Pos"

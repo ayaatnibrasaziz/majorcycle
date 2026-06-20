@@ -50,6 +50,19 @@ export function scoreColor(score: number | null): string {
   return tierColorVar(tierFromScore(score));
 }
 
+/**
+ * Financial-Health colour — ONE colour per FH tier so the cell colour matches its
+ * label exactly. Financial Health has only THREE tiers (Healthy / Adequate / At
+ * Risk at 80 / 60), unlike the 5-tier score ladder, so it must NOT use scoreColor
+ * (which would paint "Adequate"/"At Risk" rows several different shades).
+ */
+export function healthColor(score: number | null): string {
+  if (score == null) return 'var(--text-muted)';
+  if (score >= 80) return 'var(--c-tier-1)'; // Healthy  → green
+  if (score >= 60) return 'var(--c-tier-3)'; // Adequate → gold
+  return 'var(--c-tier-5)'; //                  At Risk  → red
+}
+
 // The Valuation column's own vocabulary. The displayed valuation score is the
 // health-gated 0–100 (how attractively valued a name is *for its quality*), so it
 // gets labels distinct from the cycle-position zones (Deep Value…Stretched, which

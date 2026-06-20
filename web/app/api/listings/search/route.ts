@@ -1,72 +1,47 @@
 import { NextResponse } from 'next/server';
 
 import { createAdminClient } from '@/lib/supabase/server';
-import { tickerToUrlParts } from '@/lib/ticker';
-import type { ListingHit, RequestStatus } from '@/lib/types';
+import type { ListingHit, Market, RequestStatus } from '@/lib/types';
 
 // Choose-only search over the `listings` "menu" (every US/AU/CA common stock, in
-// yfinance format) for the Request-a-Ticker page. Trigram-backed ilike, ranked
-// prefix > contains. Each hit is annotated with `covered` (already analysable, in
-// `stocks`) and `requestStatus` (its row in the GLOBAL `ticker_requests` queue, if
-// any) so the UI shows the right badge. Auth is enforced by proxy.ts; the locked-
-// down tables are read with the service-role admin client. See data-contracts §5.
+// yfinance format) for the Request-a-Ticker page. A single `search_listings` RPC
+// does the trigram match, the `covered` (in `stocks`) + `requestStatus` (GLOBAL
+// `ticker_requests`) annotation, and the prefix > contains ranking server-side in
+// ONE round-trip. Auth is enforced by proxy.ts; the RPC is called with the
+// service-role admin client (it's revoked from anon/authenticated). See
+// data-contracts §5 + migration 20260620120000_search_listings_rpc.
 
 export const dynamic = 'force-dynamic';
 
-const FETCH_LIMIT = 40;
-const RESULT_LIMIT = 20;
+interface RawHit {
+  symbol: string;
+  name: string | null;
+  exchange: string | null;
+  market: Market;
+  covered: boolean;
+  request_status: RequestStatus | null;
+}
 
 export async function GET(request: Request) {
   const raw = (new URL(request.url).searchParams.get('q') ?? '').trim();
-  // Strip characters that are meaningful to PostgREST `or`/ilike patterns.
+  // Strip characters meaningful to LIKE patterns before handing to the RPC.
   const q = raw.replace(/[%_*,()]/g, '').toLowerCase();
   if (q.length < 1) {
     return NextResponse.json({ results: [] satisfies ListingHit[] });
   }
 
-  const admin = createAdminClient();
-
-  const { data, error } = await admin
-    .from('listings')
-    .select('symbol,name,exchange,market')
-    .eq('is_active', true)
-    .or(`symbol.ilike.${q}*,name.ilike.*${q}*`)
-    .limit(FETCH_LIMIT);
-
+  const { data, error } = await createAdminClient().rpc('search_listings', { p_q: q });
   if (error || !data) {
     return NextResponse.json({ results: [] satisfies ListingHit[] });
   }
 
-  // Rank: symbol-prefix > symbol-contains > name-contains.
-  const prefix: typeof data = [];
-  const symContains: typeof data = [];
-  const nameContains: typeof data = [];
-  for (const row of data) {
-    const sym = row.symbol.toLowerCase();
-    if (sym.startsWith(q)) prefix.push(row);
-    else if (sym.includes(q)) symContains.push(row);
-    else nameContains.push(row);
-  }
-  const ranked = [...prefix, ...symContains, ...nameContains].slice(0, RESULT_LIMIT);
-  const symbols = ranked.map((r) => r.symbol);
-
-  // Annotate with coverage + queue status (one round-trip each).
-  const [coveredRes, reqRes] = await Promise.all([
-    admin.from('stocks').select('ticker').in('ticker', symbols),
-    admin.from('ticker_requests').select('symbol,status').in('symbol', symbols),
-  ]);
-  const covered = new Set((coveredRes.data ?? []).map((r) => r.ticker as string));
-  const reqStatus = new Map(
-    (reqRes.data ?? []).map((r) => [r.symbol as string, r.status as RequestStatus]),
-  );
-
-  const results: ListingHit[] = ranked.map((r) => ({
+  const results: ListingHit[] = (data as RawHit[]).map((r) => ({
     symbol: r.symbol,
     name: r.name,
     exchange: r.exchange,
-    market: tickerToUrlParts(r.symbol).market,
-    covered: covered.has(r.symbol),
-    requestStatus: reqStatus.get(r.symbol) ?? null,
+    market: r.market,
+    covered: r.covered,
+    requestStatus: r.request_status,
   }));
 
   return NextResponse.json({ results });

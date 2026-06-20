@@ -160,6 +160,13 @@ surfaced honestly. (The stock-detail page is unchanged: it still shows the zone 
 via `ZONE_TIER`/`ZONE_DISPLAY` and is the only place the Deep Value…Stretched words
 appear with their zone-tier colour.)
 
+The **Health** column has only THREE labels (Healthy ≥80 · Adequate ≥60 · At Risk
+below 60), so it is coloured by `healthColor` — **one colour per tier**: green
+`#006400` / gold `#D4A017` / red `#B22222` — applied to BOTH the number badge and
+the label. It deliberately does NOT use the 5-tier `scoreColor` ladder (which would
+paint "Adequate" and "At Risk" rows several different shades for the same word).
+Valuation keeps the 5-tier ladder above because it genuinely has five labels.
+
 ---
 
 ## 5. Chart Colour Standards
