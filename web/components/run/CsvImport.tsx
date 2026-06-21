@@ -97,12 +97,13 @@ export function CsvImport({
 
     const out: string[] = [`${filename} · ${total} ticker${total === 1 ? '' : 's'} detected`];
     if (valid.length > 0) out.push(`✓ ${valid.length} in our coverage`);
-    // Unknowns are NO LONGER dropped: they're added too, so the run surfaces them in
-    // the "outside our coverage" strip where they can be requested (one-click) and
-    // fetched by the next daily cron. (Pre-Request-a-Ticker they were skipped.)
+    // Unknowns are NO LONGER dropped: they're added too, so once the run completes
+    // they surface in the Results "couldn't be scored" strip, where the listed ones
+    // can be requested (one-click) and fetched by the next daily cron. The copy
+    // points at the run because nothing shows in Results until the analysis runs.
     if (unknown.length > 0) {
       const sample = unknown.slice(0, 6).join(', ') + (unknown.length > 6 ? '…' : '');
-      out.push(`+ ${unknown.length} not yet covered (${sample}) — request ${unknown.length === 1 ? 'it' : 'them'} from the results`);
+      out.push(`+ ${unknown.length} not in our coverage (${sample}) — run the analysis, then request ${unknown.length === 1 ? 'it' : 'them'} in the Results tab`);
     }
     if (dupes > 0) out.push(`⚠ ${dupes} duplicate${dupes === 1 ? '' : 's'} removed`);
 

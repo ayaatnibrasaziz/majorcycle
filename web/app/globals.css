@@ -1498,8 +1498,18 @@ td.num             { font-weight: 600; }
   font-size: 10px; font-weight: 600; transition: all .15s;
 }
 .skipped-req:hover:not(:disabled) { background: var(--brand-mid); color: #fff; }
-.skipped-req:disabled { cursor: default; }
-.skipped-req.is-done { background: color-mix(in srgb, var(--c-tier-1) 14%, transparent); color: var(--c-tier-1); border-color: transparent; }
+.skipped-req:disabled { cursor: default; opacity: .7; }
+
+/* Non-actionable state chips for the "couldn't be scored" strip. */
+.skipped-pill {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 2px 7px; border-radius: 999px;
+  font-size: 10px; font-weight: 600; text-decoration: none; border: 1px solid transparent;
+}
+.skipped-pill--ok  { background: color-mix(in srgb, var(--c-tier-1) 14%, transparent); color: var(--c-tier-1); }
+.skipped-pill--req { background: var(--bg-stripe); color: var(--text-secondary); border-color: var(--border); }
+.skipped-pill--bad { background: color-mix(in srgb, var(--c-tier-5) 12%, transparent); color: var(--c-tier-5); }
+.skipped-pill--muted { background: var(--bg-stripe); color: var(--text-muted); }
 
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {

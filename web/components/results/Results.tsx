@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { FolderSearch, SearchX } from 'lucide-react';
 
 import { useAnalysis } from '@/lib/analysis';
 import { downloadCsv, toCsv } from '@/lib/ratings';
-import type { Market, OverallLabel } from '@/lib/types';
+import type { Market, OverallLabel, SkippedStatus } from '@/lib/types';
 
 import { BriefingCard } from './BriefingCard';
 import { ProvenanceBar } from './ProvenanceBar';
@@ -38,6 +38,33 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
   const { results, unavailable, params, runMeta } = useAnalysis();
 
   const rows = useMemo(() => buildRows(results, lookup), [results, lookup]);
+
+  // Live status for the "couldn't be scored" tickers (in listings? covered?
+  // already requested?) so the strip shows the right state up front. One batch
+  // call when the unavailable set changes; setState only runs after the await.
+  const [skippedStatus, setSkippedStatus] = useState<Record<string, SkippedStatus>>({});
+  const unavailableKey = unavailable.join(',');
+  useEffect(() => {
+    if (unavailable.length === 0) return;
+    const ctrl = new AbortController();
+    void (async () => {
+      try {
+        const res = await fetch('/api/listings/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ symbols: unavailable }),
+          signal: ctrl.signal,
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as { statuses?: Record<string, SkippedStatus> };
+        setSkippedStatus(json.statuses ?? {});
+      } catch {
+        // aborted or non-fatal — strip falls back to a neutral state
+      }
+    })();
+    return () => ctrl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unavailableKey]);
 
   const [filter, setFilter] = useState<FilterState>(INITIAL_FILTER);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -81,7 +108,9 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
     const ran = runMeta != null || results.length > 0;
     return (
       <div>
-        {unavailable.length > 0 && <SkippedTickers unavailable={unavailable} lookup={lookup} />}
+        {unavailable.length > 0 && (
+          <SkippedTickers unavailable={unavailable} lookup={lookup} statusMap={skippedStatus} />
+        )}
         <div className="results-empty">
           {ran ? (
             <>
@@ -120,7 +149,9 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
       <h1 className="sr-only">Analysis Results</h1>
       <BriefingCard rows={rows} onQuickFilter={onQuickFilter} />
       <ProvenanceBar params={params} runMeta={runMeta} tickerCount={rows.length} />
-      {unavailable.length > 0 && <SkippedTickers unavailable={unavailable} lookup={lookup} />}
+      {unavailable.length > 0 && (
+        <SkippedTickers unavailable={unavailable} lookup={lookup} statusMap={skippedStatus} />
+      )}
       <OpportunityMap rows={rows} />
 
       <div ref={tableRef} style={{ scrollMarginTop: 16 }}>

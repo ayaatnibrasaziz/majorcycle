@@ -1,50 +1,80 @@
 'use client';
 
-import { useState } from 'react';
-import { AlertTriangle, ChevronDown, Check, Plus, Loader2 } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { AlertTriangle, Ban, Check, ChevronDown, Clock, Loader2, Plus } from 'lucide-react';
 import Link from 'next/link';
 
-import type { Market } from '@/lib/types';
+import type { Market, RequestStatus, SkippedStatus } from '@/lib/types';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 
-// Compact, collapsible transparency for tickers the run couldn't score. Collapsed
-// by default; expanding splits them into "no data yet" (in our coverage, history
-// gap) vs "outside coverage" (unknown ticker). The "outside coverage" group gets a
-// one-click Request button that queues the ticker for the next daily cron (the
-// Request-a-Ticker queue — see docs/architecture.md §8 Tier 4).
+// Compact, collapsible transparency for tickers the run couldn't score. Each
+// ticker shows a SMART state derived from the live status map (covered? in our
+// listings? already requested?), so the user sees the right action up front
+// instead of finding out on click:
+//   covered (in our universe, history short)   → "No data yet", links to detail
+//   not covered, already requested/queued       → "Requested" (no re-request)
+//   not covered, requested but unfetchable       → "Not supported"
+//   not covered, a recognised listed stock       → one-click "Request"
+//   not covered, not a recognised stock          → "Not covered" (nothing to request)
+// See docs/architecture.md §8 Tier 4 + /api/listings/status.
 
-type ReqState = 'idle' | 'pending' | 'done' | 'error';
+interface ResolvedRow {
+  ticker: string;
+  covered: boolean;
+  inListings: boolean;
+  reqStatus: RequestStatus | null;
+  known: boolean; // live status has loaded for this ticker
+}
 
 export function SkippedTickers({
   unavailable,
   lookup,
+  statusMap,
 }: {
   unavailable: string[];
   lookup: Record<string, { name: string | null; sector: string | null; market: Market }>;
+  statusMap: Record<string, SkippedStatus>;
 }) {
   const [open, setOpen] = useState(false);
-  const [reqState, setReqState] = useState<Record<string, ReqState>>({});
+  const [pending, setPending] = useState<Set<string>>(new Set());
+  const [localStatus, setLocalStatus] = useState<Record<string, RequestStatus>>({});
 
   if (unavailable.length === 0) return null;
 
-  const known: string[] = [];
-  const unknown: string[] = [];
-  for (const t of unavailable) {
-    if (lookup[t]) known.push(t);
-    else unknown.push(t);
-  }
+  const resolved: ResolvedRow[] = unavailable.map((t) => {
+    const st = statusMap[t];
+    return {
+      ticker: t,
+      // Fall back to the universe lookup while the live status is still loading.
+      covered: st ? st.covered : Boolean(lookup[t]),
+      inListings: st?.inListings ?? false,
+      reqStatus: localStatus[t] ?? st?.requestStatus ?? null,
+      known: st != null,
+    };
+  });
+
+  const coveredRows = resolved.filter((r) => r.covered);
+  const otherRows = resolved.filter((r) => !r.covered);
 
   const requestTicker = async (t: string) => {
-    setReqState((s) => ({ ...s, [t]: 'pending' }));
+    setPending((p) => new Set(p).add(t));
     try {
       const res = await fetch('/api/request-ticker', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbol: t }),
       });
-      setReqState((s) => ({ ...s, [t]: res.ok ? 'done' : 'error' }));
+      if (res.ok) setLocalStatus((s) => ({ ...s, [t]: 'queued' }));
+      // A non-OK response (e.g. not a listed stock) leaves the ticker as-is — its
+      // smart chip ("Not covered") already conveys that it can't be requested.
     } catch {
-      setReqState((s) => ({ ...s, [t]: 'error' }));
+      // non-fatal
+    } finally {
+      setPending((p) => {
+        const n = new Set(p);
+        n.delete(t);
+        return n;
+      });
     }
   };
 
@@ -61,56 +91,95 @@ export function SkippedTickers({
       </button>
       {open && (
         <div className="skipped-detail">
-          {known.length > 0 && (
+          {coveredRows.length > 0 && (
             <div className="skipped-group">
               <span className="skipped-group-label">
                 No data yet <span className="skipped-group-note">(in our coverage, history still building)</span>:
               </span>{' '}
-              {known.map((t, i) => (
-                <span key={t}>
-                  <Link href={tickerToPath(t)} className="skipped-tk skipped-tk--link">
-                    {tickerToUrlParts(t).symbol}
+              {coveredRows.map((r, i) => (
+                <span key={r.ticker}>
+                  <Link href={tickerToPath(r.ticker)} className="skipped-tk skipped-tk--link">
+                    {tickerToUrlParts(r.ticker).symbol}
                   </Link>
-                  {i < known.length - 1 ? ', ' : ''}
+                  {i < coveredRows.length - 1 ? ', ' : ''}
                 </span>
               ))}
             </div>
           )}
-          {unknown.length > 0 && (
+          {otherRows.length > 0 && (
             <div className="skipped-group">
               <span className="skipped-group-label">
-                Outside coverage <span className="skipped-group-note">(not yet in the MajorCycle universe — request to add)</span>:
+                Not in our coverage <span className="skipped-group-note">(request a listed stock to add it — fetched in the next daily update)</span>:
               </span>{' '}
               <span className="skipped-req-list">
-                {unknown.map((t) => {
-                  const state = reqState[t] ?? 'idle';
-                  return (
-                    <span key={t} className="skipped-req-item">
-                      <span className="skipped-tk">{tickerToUrlParts(t).symbol}</span>
-                      <button
-                        type="button"
-                        className={`skipped-req${state === 'done' ? ' is-done' : ''}`}
-                        onClick={() => requestTicker(t)}
-                        disabled={state === 'pending' || state === 'done'}
-                      >
-                        {state === 'done' ? (
-                          <><Check className="inline h-3 w-3" /> requested</>
-                        ) : state === 'pending' ? (
-                          <Loader2 className="inline h-3 w-3 animate-spin" />
-                        ) : state === 'error' ? (
-                          'not found'
-                        ) : (
-                          <><Plus className="inline h-3 w-3" /> request</>
-                        )}
-                      </button>
-                    </span>
-                  );
-                })}
+                {otherRows.map((r) => (
+                  <SkippedItem
+                    key={r.ticker}
+                    row={r}
+                    pending={pending.has(r.ticker)}
+                    onRequest={() => requestTicker(r.ticker)}
+                  />
+                ))}
               </span>
             </div>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+function SkippedItem({
+  row,
+  pending,
+  onRequest,
+}: {
+  row: ResolvedRow;
+  pending: boolean;
+  onRequest: () => void;
+}) {
+  const sym = tickerToUrlParts(row.ticker).symbol;
+
+  let action: ReactNode;
+  if (row.reqStatus === 'fetched') {
+    action = (
+      <Link href={tickerToPath(row.ticker)} className="skipped-pill skipped-pill--ok">
+        <Check className="inline h-3 w-3" /> available
+      </Link>
+    );
+  } else if (row.reqStatus === 'queued' || row.reqStatus === 'failed') {
+    action = (
+      <span className="skipped-pill skipped-pill--req">
+        <Clock className="inline h-3 w-3" /> requested
+      </span>
+    );
+  } else if (row.reqStatus === 'unsupported') {
+    action = (
+      <span className="skipped-pill skipped-pill--bad" title="We tried to fetch this, but no price data was available.">
+        not supported
+      </span>
+    );
+  } else if (!row.known) {
+    // Live status still loading — neutral placeholder (resolves on next render).
+    action = <span className="skipped-pill skipped-pill--muted">…</span>;
+  } else if (row.inListings) {
+    action = (
+      <button type="button" className="skipped-req" disabled={pending} onClick={onRequest}>
+        {pending ? <Loader2 className="inline h-3 w-3 animate-spin" /> : <Plus className="inline h-3 w-3" />} request
+      </button>
+    );
+  } else {
+    action = (
+      <span className="skipped-pill skipped-pill--muted" title="Not a recognised US, Australian, or Canadian listed stock.">
+        <Ban className="inline h-3 w-3" /> not covered
+      </span>
+    );
+  }
+
+  return (
+    <span className="skipped-req-item">
+      <span className="skipped-tk">{sym}</span>
+      {action}
+    </span>
   );
 }

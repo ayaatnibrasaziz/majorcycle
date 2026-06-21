@@ -673,6 +673,17 @@ export interface TickerRequest {
   fetchedAt: string | null;
   lastError: string | null;
 }
+
+// Live status for a symbol the Run couldn't score (the Results "couldn't be
+// scored" strip). Lets the UI show the right state up front: covered = in our
+// analysed universe (link to detail); inListings = a recognised US/AU/CA stock
+// that can be requested; requestStatus = its queue row, if any. Not covered + not
+// in listings = an unrecognised symbol ("Not covered" — nothing to request).
+export interface SkippedStatus {
+  inListings: boolean;
+  covered: boolean;
+  requestStatus: RequestStatus | null;
+}
 ```
 
 #### `GET /api/listings/search?q={query}`
@@ -708,6 +719,23 @@ and records `requested_by` = the authed user.
 Recent requests + live status for the page's "recent requests" panel.
 
 **Response (200):** `{ requests: TickerRequest[] }` (most recent first)
+
+#### `POST /api/listings/status`
+
+Batch status for the Results "couldn't be scored" strip — drives the smart
+per-ticker state (Request / Requested / Not supported / Not covered / No data yet)
+so the UI never shows a request control that would just fail on click. Three
+parallel admin-client reads (`listings`, `stocks`, `ticker_requests`), one entry
+per input symbol. Symbols are upper-cased + deduped; capped at 200.
+
+**Request:** `{ symbols: string[] }` (the run's `unavailable[]`)
+
+**Response (200):** `{ statuses: Record<string, SkippedStatus> }`
+
+**Note — CSV import (`CsvImport.tsx`):** unknown tickers in an uploaded CSV are
+**added to the run** (not silently dropped), so they surface here as `unavailable`
+and can be requested from the strip. Baskets + the search-add are universe-only, so
+CSV is the only Run input that can carry an uncovered ticker.
 
 ### `GET /api/ticker/[symbol]`
 
