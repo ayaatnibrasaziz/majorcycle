@@ -333,3 +333,17 @@ export interface TickerRequest {
   fetchedAt: string | null;
   lastError: string | null;
 }
+
+/**
+ * Live status for a symbol the Run couldn't score (the Results "couldn't be
+ * scored" strip). Lets the UI show the right state up front instead of only
+ * finding out on click: `covered` = in our analysed universe (history still
+ * building); `inListings` = a recognised US/AU/CA stock that can be requested;
+ * `requestStatus` = its row in the GLOBAL queue, if any. Not in listings + not
+ * covered = an unrecognised symbol ("Not covered" — nothing to request).
+ */
+export interface SkippedStatus {
+  inListings: boolean;
+  covered: boolean;
+  requestStatus: RequestStatus | null;
+}
