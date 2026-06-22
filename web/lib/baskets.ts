@@ -9,7 +9,7 @@
 // exist) drops in as one more entry, resolved against the user's saved tickers
 // instead of the universe.
 
-import type { Market } from '@/lib/types';
+import { INDEX_MEMBERS, type IndexId } from '@/lib/index-membership';
 import type { UniverseStock } from '@/lib/universe.server';
 
 // "Magnificent Seven" — the one lightly-curated themed basket. Stored in
@@ -25,30 +25,34 @@ export interface Basket {
   resolve: (universe: UniverseStock[]) => string[];
 }
 
-function byMarket(market: Market): (u: UniverseStock[]) => string[] {
-  return (universe) => universe.filter((s) => s.market === market).map((s) => s.ticker);
+// Index baskets resolve to the ACTUAL index constituents we cover — the
+// intersection of the membership list (committed `index-membership.ts`, generated
+// from analytics/universe/*.csv) with the universe. This is deliberately NOT
+// "every <market> equity we cover": that would silently absorb Request-a-Ticker
+// additions into "S&P 500" etc. A constituent we don't cover just doesn't appear.
+function byIndex(indexId: IndexId): (u: UniverseStock[]) => string[] {
+  const members = INDEX_MEMBERS[indexId];
+  return (universe) => universe.filter((s) => members.has(s.ticker)).map((s) => s.ticker);
 }
 
-// The index baskets — our three core universes. Labels use the familiar index
-// name even though the underlying set is "every <market> equity we cover".
 export const INDEX_BASKETS: Basket[] = [
   {
     id: 'sp500',
     label: 'S&P 500',
-    description: 'US large-cap equities we cover',
-    resolve: byMarket('us'),
+    description: 'S&P 500 constituents we cover',
+    resolve: byIndex('sp500'),
   },
   {
     id: 'asx200',
     label: 'ASX 200',
-    description: 'Australian equities we cover',
-    resolve: byMarket('au'),
+    description: 'ASX 200 constituents we cover',
+    resolve: byIndex('asx200'),
   },
   {
     id: 'tsx60',
     label: 'S&P/TSX 60',
-    description: 'Canadian equities we cover',
-    resolve: byMarket('ca'),
+    description: 'S&P/TSX 60 constituents we cover',
+    resolve: byIndex('tsx60'),
   },
 ];
 
