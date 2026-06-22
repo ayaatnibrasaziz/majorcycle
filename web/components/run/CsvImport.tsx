@@ -127,7 +127,18 @@ export function CsvImport({
   return (
     <div>
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Import a CSV with a ticker column — activate to browse for a file"
         onClick={() => inputRef.current?.click()}
+        onKeyDown={(e) => {
+          // Keyboard users can't reach the display:none file input, so the zone
+          // itself opens the picker on Enter/Space (matches its click behaviour).
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            inputRef.current?.click();
+          }
+        }}
         onDragOver={(e) => {
           e.preventDefault();
           setDragging(true);
@@ -140,6 +151,7 @@ export function CsvImport({
         }}
         className={cn(
           'upload-zone',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-bright)]',
           dragging && 'drag-over',
           preview?.kind === 'ok' && 'upload-valid',
           preview?.kind === 'warn' && 'upload-warn',

@@ -45,13 +45,25 @@ export function RunProgress({
     <div className="card">
       <div className="card-body card-body--compact">
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-[12px] font-semibold text-[var(--text-primary)]">
-            {progress.running ? 'Analysing your selection…' : 'Finishing up…'}
+          <span
+            className="text-[12px] font-semibold text-[var(--text-primary)]"
+            aria-live="polite"
+          >
+            {progress.phase === 'reconciling'
+              ? 'Double-checking skipped tickers…'
+              : 'Analysing your selection…'}
           </span>
           <span className="font-[var(--font-mono)] text-[12px] text-[var(--text-muted)]">{pct}%</span>
         </div>
 
-        <div className="progress-bar-wrap">
+        <div
+          className="progress-bar-wrap"
+          role="progressbar"
+          aria-label="Analysis progress"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
           <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
         </div>
 
