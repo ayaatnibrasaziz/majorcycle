@@ -30,6 +30,7 @@ jobs:
             "numpy>=1.26.0" \
             "requests>=2.31.0" \
             "requests-cache>=1.2.0" \
+            "openpyxl>=3.1.0" \
             "supabase>=2.4.0" \
             "python-dotenv>=1.0.0"
 
@@ -44,6 +45,20 @@ jobs:
           RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
           OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
         run: python -m analytics.cron.refresh_listings
+
+      # Refresh index membership (S&P 500 / ASX 200 / S&P/TSX 60) from official ETF
+      # holdings files → `index_membership` table (read by the Run baskets, no
+      # redeploy). Runs BEFORE the drain so any new constituent we don't yet cover is
+      # enqueued here and fetched into the universe by the same drain step below.
+      # continue-on-error so a flaky source never blocks the price refresh.
+      - name: Refresh index membership
+        continue-on-error: true
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
+          OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
+        run: python -m analytics.cron.refresh_index_membership
 
       # Drain the user-requested-ticker queue (fetch each into the universe).
       - name: Drain ticker-request queue

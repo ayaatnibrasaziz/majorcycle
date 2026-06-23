@@ -5,7 +5,6 @@ Usage:
     python -m analytics.cron.daily_refresh --mode full   # full mode — forces enriched refresh for every ticker (~4-5 hrs)
 """
 
-import csv
 import dataclasses
 import json
 import logging
@@ -13,7 +12,6 @@ import os
 import re
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Optional, cast
 
 import pandas as pd
@@ -33,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 _ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-_UNIVERSE_DIR = Path(__file__).parent.parent / "universe"
 _BATCH_SIZE = 10
 _SLEEP_BETWEEN_BATCHES = 2.0
 _DB_CHUNK = 500
@@ -49,15 +46,35 @@ def _get_supabase() -> Client:
     return create_client(url, key)
 
 
-def _load_universe() -> list[dict[str, str]]:
-    rows: list[dict[str, str]] = []
-    for csv_file in sorted(_UNIVERSE_DIR.glob("*.csv")):
-        with csv_file.open(newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                if row.get("ticker"):
-                    rows.append(row)
-    logger.info("Universe loaded: %d tickers from %s", len(rows), _UNIVERSE_DIR)
+def _load_universe(supabase: Client) -> list[dict[str, str]]:
+    """The tickers to refresh = the live universe in `stocks` (auto-expanding via
+    drain_requests + the nightly index-membership refresh) PLUS the benchmark
+    indices (always included, even if a benchmark row is somehow missing).
+
+    This replaces the former static analytics/universe/*.csv seed: the DB is now the
+    single source of truth, so there are no hand-maintained ticker CSVs. Paginated
+    so it never silently truncates if the universe grows past PostgREST's 1000-row
+    page cap.
+    """
+    tickers: set[str] = set(_INDEX_CURRENCY)  # benchmark indices, guaranteed
+    page = 1000
+    start = 0
+    while True:
+        res = (
+            supabase.table("stocks")
+            .select("ticker")
+            .range(start, start + page - 1)
+            .execute()
+        )
+        batch = cast(list[dict[str, Any]], res.data or [])
+        for r in batch:
+            if r.get("ticker"):
+                tickers.add(str(r["ticker"]))
+        if len(batch) < page:
+            break
+        start += page
+    rows = [{"ticker": t} for t in sorted(tickers)]
+    logger.info("Universe loaded: %d tickers from stocks table (+benchmarks)", len(rows))
     return rows
 
 
@@ -156,10 +173,10 @@ def run(
     logger.info("Daily refresh started at %s (mode=%s)", started_at.isoformat(), mode)
 
     supabase = _get_supabase()
-    universe = _load_universe()
+    universe = _load_universe(supabase)
 
     # One-off runs: restrict to an explicit ticker list. Any requested ticker not
-    # present in the universe CSVs is injected as an ad-hoc row (market inferred
+    # present in the universe is injected as an ad-hoc row (market inferred
     # from its suffix) so single-ticker / index seeding works without CSV edits.
     if only:
         wanted = [t.strip() for t in only if t.strip()]

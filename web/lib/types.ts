@@ -3,6 +3,12 @@
 
 export type Market = 'us' | 'au' | 'ca';
 export type Currency = 'USD' | 'AUD' | 'CAD';
+
+// The three indices whose constituents back the Run Analysis index baskets.
+// Membership is sourced nightly into the `index_membership` table (see
+// analytics/cron/refresh_index_membership.py) and read by index-membership.server.ts.
+export type IndexId = 'sp500' | 'asx200' | 'tsx60';
+export type IndexMembership = Record<IndexId, string[]>;
 export type ValuationZone = 'DEEP VALUE' | 'VALUE' | 'FAIR' | 'STRETCHED';
 export type OverallLabel =
   | 'High Conviction'

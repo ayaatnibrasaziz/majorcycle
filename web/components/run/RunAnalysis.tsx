@@ -6,7 +6,7 @@ import { Play } from 'lucide-react';
 
 import { useAnalysis } from '@/lib/analysis';
 import { PRESETS } from '@/lib/presets';
-import type { AnalyzeRequest } from '@/lib/types';
+import type { AnalyzeRequest, IndexMembership } from '@/lib/types';
 import type { UniverseStock } from '@/lib/universe.server';
 
 import { BasketPicker } from './BasketPicker';
@@ -48,7 +48,13 @@ function Section({
   );
 }
 
-export function RunAnalysis({ universe }: { universe: UniverseStock[] }) {
+export function RunAnalysis({
+  universe,
+  membership,
+}: {
+  universe: UniverseStock[];
+  membership: IndexMembership;
+}) {
   const router = useRouter();
   const analysis = useAnalysis();
   const { progress, results, unavailable, runMeta, lastRun, run, cancel } = analysis;
@@ -159,7 +165,7 @@ export function RunAnalysis({ universe }: { universe: UniverseStock[] }) {
           <div className="space-y-4">
             <div>
               <div className="run-sublabel">Quick baskets</div>
-              <BasketPicker universe={universe} onAdd={addTickers} />
+              <BasketPicker universe={universe} membership={membership} onAdd={addTickers} />
             </div>
             <div>
               <div className="run-sublabel">Search &amp; add</div>

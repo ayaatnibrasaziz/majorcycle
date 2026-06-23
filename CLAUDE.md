@@ -86,7 +86,8 @@ When in doubt about any decision: **ask, don't guess.**
 │   │   └── fmp_provider.py         ← Phase 2 stub
 │   ├── scoring/                    ← health / valuation / overall rating
 │   ├── cron/                       ← GitHub Actions runner scripts
-│   ├── universe/                   ← ticker list CSVs (sp500, asx200, tsx60, indices)
+│   ├── listings/                   ← free exchange symbol-directory fetchers (Request-a-Ticker menu)
+│   ├── index_membership/           ← ETF-holdings fetchers (SPY/IOZ/XIU → index_membership table)
 │   └── tests/
 ├── supabase/
 │   └── migrations/                 ← versioned DB schema history (mirrors Supabase migration log)

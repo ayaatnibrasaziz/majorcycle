@@ -4,13 +4,14 @@ import { useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 
 import {
-  QUICK_BASKETS,
+  buildQuickBaskets,
   industriesBySector,
   sectorsFromUniverse,
   tickersInIndustry,
   tickersInSector,
   type Basket,
 } from '@/lib/baskets';
+import type { IndexMembership } from '@/lib/types';
 import type { UniverseStock } from '@/lib/universe.server';
 
 // Quick baskets solve the blank-canvas problem: one click fills the selection.
@@ -19,15 +20,18 @@ import type { UniverseStock } from '@/lib/universe.server';
 
 export function BasketPicker({
   universe,
+  membership,
   onAdd,
 }: {
   universe: UniverseStock[];
+  membership: IndexMembership;
   onAdd: (tickers: string[]) => void;
 }) {
   const [sector, setSector] = useState('');
   const [industry, setIndustry] = useState('');
   const sectors = useMemo(() => sectorsFromUniverse(universe), [universe]);
   const industryGroups = useMemo(() => industriesBySector(universe), [universe]);
+  const quickBaskets = useMemo(() => buildQuickBaskets(membership), [membership]);
 
   const addBasket = (basket: Basket) => onAdd(basket.resolve(universe));
 
@@ -47,7 +51,7 @@ export function BasketPicker({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {QUICK_BASKETS.map((b) => (
+      {quickBaskets.map((b) => (
         <button
           key={b.id}
           type="button"
