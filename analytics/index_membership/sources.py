@@ -87,10 +87,10 @@ def parse_spy_xlsx(raw: pd.DataFrame) -> list[str]:
     valid US symbol. Class shares use a dot in the file (``BRK.B``) → dashed.
     """
     header_idx: Optional[int] = None
-    for i, row in raw.iterrows():
-        vals = [str(v).strip() for v in row.tolist()]
+    for i in range(len(raw)):
+        vals = [str(v).strip() for v in raw.iloc[i].tolist()]
         if "Ticker" in vals and "Name" in vals:
-            header_idx = int(i)  # type: ignore[arg-type]
+            header_idx = i
             break
     if header_idx is None:
         logger.warning("SPY holdings: no 'Ticker'/'Name' header row found")
@@ -103,8 +103,8 @@ def parse_spy_xlsx(raw: pd.DataFrame) -> list[str]:
         return []
 
     out: list[str] = []
-    for _, row in raw.iloc[header_idx + 1:].iterrows():
-        raw_t = row.iloc[tkr_col]
+    for i in range(header_idx + 1, len(raw)):
+        raw_t = raw.iloc[i, tkr_col]
         if not isinstance(raw_t, str):
             continue
         t = raw_t.strip().upper().replace(".", "-").replace("/", "-")
