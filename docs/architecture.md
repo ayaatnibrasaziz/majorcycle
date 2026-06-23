@@ -61,7 +61,7 @@ flowchart TB
 
 **What:** A GitHub Actions workflow runs once per day at 23:00 UTC. It executes the Python pipeline in `analytics/cron/daily_refresh.py` in **smart mode** (the default), which:
 
-1. Reads the universe CSV (`analytics/universe/sp500.csv`, `asx200.csv`, `tsx60.csv`, `indices.csv`). `indices.csv` holds benchmark indices (`^GSPC`, `^IXIC`, `^AXJO`, `^GSPTSE`) stored as `market='index'` **price-only** rows — used by the Relative Performance chart, excluded from stock listings. A one-off run can be scoped with `--only TICKER[,TICKER…]`.
+1. Loads the universe from the **DB** (`_load_universe()` reads every ticker in `stocks`, the live auto-expanding universe) plus the benchmark indices (`^GSPC`, `^IXIC`, `^AXJO`, `^GSPTSE`, always included) — there are **no static universe CSVs**. Benchmark indices are stored as `market='index'` **price-only** rows, used by the Relative Performance chart and excluded from stock listings. A one-off run can be scoped with `--only TICKER[,TICKER…]`.
 2. Pre-fetches the current DB state for all tickers — specifically `enriched_updated_at` and `next_earnings_date` — in a single query
 3. For each ticker, runs a staleness check (`_should_fetch_enriched`) to decide whether enriched data needs refreshing:
    - **New ticker** (not in DB) → full fetch including price history (`period="max"`) + fundamentals + all enriched data
@@ -447,9 +447,10 @@ Two runtimes, two locations under `web/`:
 2. Set up Python 3.12
 3. Install requirements (yfinance, pandas, supabase, etc.)
 4. Run `python -m analytics.cron.refresh_listings` — refresh the `listings` "menu" from the free exchange symbol files (US/AU/CA), normalised to yfinance format. Fast (~seconds); failure is logged but does not abort the run (the cached `listings` table stays usable).
-5. Run `python -m analytics.cron.drain_requests` — fetch every `queued` row in `ticker_requests` via the yfinance `DataProvider` (+ Stooq fallback), upsert into `stocks` + `price_bars`, log to `universe_log` (`added_by='user_request'`), and flip `status` to `fetched` / `unsupported` / `failed`.
-6. Run `python -m analytics.cron.daily_refresh` (smart mode by default) — refresh the existing analysed universe.
-7. On failure: email owner via Resend with a summary of failed tickers
+5. Run `python -m analytics.cron.refresh_index_membership` — refresh the `index_membership` table (S&P 500 / ASX 200 / S&P/TSX 60) from official ETF holdings files (SPY/IOZ/XIU). Per-index sane-count + max-churn guards; failure logged, not fatal. **Enqueues any constituent not yet in `stocks` into `ticker_requests`** so the drain below fetches it the same night. The Run index baskets read this table at request time (no redeploy).
+6. Run `python -m analytics.cron.drain_requests` — fetch every `queued` row in `ticker_requests` (user requests **and** newly-enqueued index constituents) via the yfinance `DataProvider` (+ Stooq fallback), upsert into `stocks` + `price_bars`, log to `universe_log`, and flip `status` to `fetched` / `unsupported` / `failed`.
+7. Run `python -m analytics.cron.daily_refresh` (smart mode by default) — refresh the analysed universe (loaded from the `stocks` table + benchmark indices).
+8. On failure: email owner via Resend with a summary of failed tickers
 
 **Required GitHub Secrets:** unchanged — the exchange symbol files need **no API key**.
 - `SUPABASE_URL`

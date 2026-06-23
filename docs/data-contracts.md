@@ -819,35 +819,38 @@ PRESETS = {
 
 ---
 
-## 9. Universe CSV Format
+## 9. Universe Source & Index Membership
 
-Lives in `analytics/universe/`. One file per market.
+**Universe (what the nightly refresh fetches):** sourced from the **DB**, not static
+CSVs. `daily_refresh._load_universe()` reads every ticker in `stocks` (the live,
+auto-expanding universe) plus the benchmark indices (`^GSPC`, `^IXIC`, `^AXJO`,
+`^GSPTSE`, always included). New names enter the universe via the Request-a-Ticker
+drain and the index-membership refresh (below); delisted names simply fail to fetch
+(logged). There are **no hand-maintained ticker CSVs**.
 
-**`sp500.csv`:**
-```
-ticker,name,sector
-AAPL,Apple Inc.,Technology
-MSFT,Microsoft Corporation,Technology
-...
-```
+**`index_membership` table** — the real constituents of each index, backing the Run
+Analysis index baskets:
 
-**`asx200.csv`:**
-```
-ticker,name,sector
-BHP.AX,BHP Group Limited,Materials
-CBA.AX,Commonwealth Bank,Financials
-...
-```
-
-**`tsx60.csv`:**
-```
-ticker,name,sector
-SHOP.TO,Shopify Inc.,Technology
-RY.TO,Royal Bank of Canada,Financials
-...
+```sql
+index_membership (
+  index_id   text,          -- 'sp500' | 'asx200' | 'tsx60'
+  ticker     text,          -- yfinance format ('AAPL', 'BHP.AX', 'SHOP.TO')
+  is_active  boolean,       -- false when a name drops out of the index (never deleted)
+  updated_at timestamptz,
+  primary key (index_id, ticker)
+)
 ```
 
-The cron script reads all three, processes each ticker, writes to `stocks` + `price_bars`.
+Server-only (RLS enabled, no policies — service-role access, like `stocks` /
+`listings`). Refreshed **nightly** by `analytics/cron/refresh_index_membership.py`
+from official ETF holdings files — **SPY** (US, State Street `.xlsx`), **IOZ** (AU,
+iShares `.csv`), **XIU** (CA, iShares `.csv`); the ETF replicates the index, so its
+holdings are the constituents. Each source URL is env-overridable; per-index
+sane-count + max-churn guards prevent a bad pull from wiping a basket. The Run page
+reads active members via `web/lib/index-membership.server.ts` (cached daily) →
+intersected with the universe in `baskets.ts`, so an update is live with **no
+redeploy**. Any constituent missing from `stocks` is enqueued into `ticker_requests`
+and fetched by the same night's drain.
 
 ---
 

@@ -9,7 +9,7 @@
 // exist) drops in as one more entry, resolved against the user's saved tickers
 // instead of the universe.
 
-import { INDEX_MEMBERS, type IndexId } from '@/lib/index-membership';
+import type { IndexMembership } from '@/lib/types';
 import type { UniverseStock } from '@/lib/universe.server';
 
 // "Magnificent Seven" — the one lightly-curated themed basket. Stored in
@@ -26,35 +26,39 @@ export interface Basket {
 }
 
 // Index baskets resolve to the ACTUAL index constituents we cover — the
-// intersection of the membership list (committed `index-membership.ts`, generated
-// from analytics/universe/*.csv) with the universe. This is deliberately NOT
-// "every <market> equity we cover": that would silently absorb Request-a-Ticker
-// additions into "S&P 500" etc. A constituent we don't cover just doesn't appear.
-function byIndex(indexId: IndexId): (u: UniverseStock[]) => string[] {
-  const members = INDEX_MEMBERS[indexId];
-  return (universe) => universe.filter((s) => members.has(s.ticker)).map((s) => s.ticker);
+// intersection of the membership list (from the `index_membership` table, refreshed
+// nightly from official ETF holdings; see index-membership.server.ts) with the
+// universe. This is deliberately NOT "every <market> equity we cover": that would
+// silently absorb Request-a-Ticker additions into "S&P 500" etc. A constituent we
+// don't cover just doesn't appear.
+function byIndex(members: string[]): (u: UniverseStock[]) => string[] {
+  const set = new Set(members);
+  return (universe) => universe.filter((s) => set.has(s.ticker)).map((s) => s.ticker);
 }
 
-export const INDEX_BASKETS: Basket[] = [
-  {
-    id: 'sp500',
-    label: 'S&P 500',
-    description: 'S&P 500 constituents we cover',
-    resolve: byIndex('sp500'),
-  },
-  {
-    id: 'asx200',
-    label: 'ASX 200',
-    description: 'ASX 200 constituents we cover',
-    resolve: byIndex('asx200'),
-  },
-  {
-    id: 'tsx60',
-    label: 'S&P/TSX 60',
-    description: 'S&P/TSX 60 constituents we cover',
-    resolve: byIndex('tsx60'),
-  },
-];
+/** The three index baskets, built from membership loaded at request time. */
+export function buildIndexBaskets(membership: IndexMembership): Basket[] {
+  return [
+    {
+      id: 'sp500',
+      label: 'S&P 500',
+      description: 'S&P 500 constituents we cover',
+      resolve: byIndex(membership.sp500),
+    },
+    {
+      id: 'asx200',
+      label: 'ASX 200',
+      description: 'ASX 200 constituents we cover',
+      resolve: byIndex(membership.asx200),
+    },
+    {
+      id: 'tsx60',
+      label: 'S&P/TSX 60',
+      description: 'S&P/TSX 60 constituents we cover',
+      resolve: byIndex(membership.tsx60),
+    },
+  ];
+}
 
 // Top-by-market-cap — a friendly, low-risk default. The universe index is
 // already market-cap-descending, so this is just a slice.
@@ -85,8 +89,13 @@ export const THEME_BASKETS: Basket[] = [
   },
 ];
 
-/** All non-sector quick baskets, in display order. */
-export const QUICK_BASKETS: Basket[] = [...INDEX_BASKETS, ...TOP_BASKETS, ...THEME_BASKETS];
+/**
+ * All non-sector quick baskets, in display order. A factory (not a constant)
+ * because the index baskets depend on membership loaded at request time.
+ */
+export function buildQuickBaskets(membership: IndexMembership): Basket[] {
+  return [...buildIndexBaskets(membership), ...TOP_BASKETS, ...THEME_BASKETS];
+}
 
 /** Distinct sectors present in the universe, alphabetical. Powers "By sector ▾". */
 export function sectorsFromUniverse(universe: UniverseStock[]): string[] {

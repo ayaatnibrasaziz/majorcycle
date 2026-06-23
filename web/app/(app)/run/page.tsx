@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { RunAnalysis } from '@/components/run/RunAnalysis';
+import { fetchIndexMembership } from '@/lib/index-membership.server';
 import { fetchUniverseIndex } from '@/lib/universe.server';
 
 export const metadata: Metadata = {
@@ -15,6 +16,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function RunPage() {
-  const universe = await fetchUniverseIndex();
-  return <RunAnalysis universe={universe} />;
+  const [universe, membership] = await Promise.all([
+    fetchUniverseIndex(),
+    fetchIndexMembership(),
+  ]);
+  return <RunAnalysis universe={universe} membership={membership} />;
 }
