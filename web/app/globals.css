@@ -952,7 +952,8 @@ td.num             { font-weight: 600; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   width: 100%; padding: 7px 12px; text-align: left; cursor: pointer; background: none; border: none;
 }
-.run-search-opt:hover:not(:disabled) { background: var(--bg-stripe); }
+.run-search-opt:hover:not(:disabled),
+.run-search-opt--active:not(:disabled) { background: var(--bg-stripe); }
 .run-search-opt:disabled { cursor: not-allowed; opacity: .5; }
 
 /* Compact CSV import (secondary action) */

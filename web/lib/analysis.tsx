@@ -81,6 +81,12 @@ export interface RunProgress {
   done: number; // chunks completed
   total: number; // chunks total
   running: boolean;
+  // Which work the run is doing right now, so the UI can label it honestly. The
+  // bar is driven by main-pass chunks (`done`/`total`); the warm-retry +
+  // single-ticker reconciliation passes that follow don't advance it, so the bar
+  // reaches 100% while they run — `phase: 'reconciling'` lets RunProgress say
+  // "Double-checking skipped tickers…" instead of leaving "Analysing…" at 100%.
+  phase?: 'analysing' | 'reconciling';
 }
 
 export interface RunMeta {
@@ -295,7 +301,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       setResults([]);
       setUnavailable([]);
       setRunMeta(meta);
-      setProgress({ done: 0, total: chunks.length, running: true });
+      setProgress({ done: 0, total: chunks.length, running: true, phase: 'analysing' });
 
       const allResults: RunResult[] = [];
       // Genuine "not in our universe / insufficient history" — the server returns
@@ -308,7 +314,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
 
       const bump = () => {
         done += 1;
-        setProgress({ done, total: chunks.length, running: true });
+        setProgress({ done, total: chunks.length, running: true, phase: 'analysing' });
         setResults([...allResults]);
         // Failed-chunk tickers are shown only if the retry pass can't recover them.
         setUnavailable([...serverUnavailable]);
@@ -367,6 +373,8 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       // recovers transient skips; anything that still fails is truly unavailable.
       let stillFailed: string[] = chunkFailed;
       if (!signal.aborted && chunkFailed.length > 0) {
+        // The main pass is done (bar at 100%); switch the label to the recheck phase.
+        setProgress((p) => ({ ...p, phase: 'reconciling' }));
         stillFailed = [];
         const retryChunks = chunk(chunkFailed, CHUNK_SIZE);
         let rn = 0;
@@ -404,18 +412,26 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       // return unavailable again (cheaply), so this is safe to run over all of them.
       let reconcileFailed: string[] = [...new Set([...serverUnavailable, ...stillFailed])];
       if (!signal.aborted && reconcileFailed.length > 0) {
+        setProgress((p) => ({ ...p, phase: 'reconciling' }));
+        // Snapshot the set being rechecked. The displayed "Skipped" count is this
+        // set MINUS the tickers recovered so far, so it starts at the full count
+        // and only ever shrinks (monotonic) — instead of resetting to 0 and
+        // climbing back as each failure lands.
+        const reconcileInput = reconcileFailed;
+        const recovered = new Set<string>();
         const stillOut: string[] = [];
         let ri = 0;
         const reconcileWorker = async (): Promise<void> => {
           while (!signal.aborted) {
             const i = ri++;
-            if (i >= reconcileFailed.length) return;
-            const t = reconcileFailed[i];
+            if (i >= reconcileInput.length) return;
+            const t = reconcileInput[i];
             if (!t) continue;
             try {
               const r = await postWithRetry([t]);
               if (r.results.length > 0) {
                 allResults.push(...r.results);
+                recovered.add(t);
               } else {
                 stillOut.push(t);
               }
@@ -424,7 +440,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
             } finally {
               if (!signal.aborted) {
                 setResults([...allResults]);
-                setUnavailable([...stillOut]);
+                setUnavailable(reconcileInput.filter((x) => !recovered.has(x)));
               }
             }
           }

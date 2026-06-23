@@ -179,6 +179,7 @@ function Field({
         type="number"
         value={Number.isFinite(value) ? value : ''}
         step={step}
+        aria-label={label}
         aria-invalid={error !== null}
         onChange={(e) => {
           const n = Number(e.target.value);

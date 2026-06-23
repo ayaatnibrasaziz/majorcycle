@@ -31,14 +31,18 @@ export function BasketPicker({
 
   const addBasket = (basket: Basket) => onAdd(basket.resolve(universe));
 
+  // One-shot "add" menus: after adding, reset back to the placeholder so the
+  // control reads as an action (not a sticky filter) and the same sector/industry
+  // can be picked again. The `sector`/`industry` state exists only to keep the
+  // <select> controlled at the placeholder.
   const addSector = (value: string) => {
-    setSector(value);
     if (value) onAdd(tickersInSector(universe, value));
+    setSector('');
   };
 
   const addIndustry = (value: string) => {
-    setIndustry(value);
     if (value) onAdd(tickersInIndustry(universe, value));
+    setIndustry('');
   };
 
   return (
@@ -48,6 +52,7 @@ export function BasketPicker({
           key={b.id}
           type="button"
           title={b.description}
+          aria-label={`${b.label} — ${b.description}`}
           onClick={() => addBasket(b)}
           className="basket-chip"
         >
