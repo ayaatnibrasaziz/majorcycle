@@ -313,10 +313,10 @@ verbatim (#17), disclaimer (#4/#12), visual/colour, perf (#6 clean), empty/edge,
 | E7 | Unknown-ticker detail page | `/stocks/[market]/[ticker]` for a ticker NOT in our universe (e.g. `/stocks/us/ZZZZ`) still references the old live-fetch-from-Run-Analysis flow (outdated). Fix it, then run the same 9/10-check audit on the **Stock Detail page's unknown-ticker / not-covered path** (this is part of Layer E). | ⬜ |
 | E8 | Site-wide stale-info sweep | Enumerate any other outdated/stale on-site copy or flows like E7 (e.g. references to deprecated live-fetch, old provider names, dead routes) and list them for the owner to triage. | ⬜ |
 | E9 | Request-a-Ticker audit | Run the same Layer-E production-readiness audit (10 checks) on the **Request a Ticker** tab (`web/app/(app)/request/*`, `/api/listings/search`, `/api/request-ticker`, `SkippedTickers` tie-in). | ⬜ |
-| E10 | Deploy-gated tail | From E1–E4: confirm on www.majorcycle.com (Claude-in-Chrome, owner logged in) a genuine 700+ row run's perf + the live Request/Requested/Not-supported skipped states (need a listed-but-uncovered ticker in the real queue). Do AFTER the audit branch merges. | ⬜ |
-| E11 | Download Excel export | The Export dropdown's **Download Excel** option (`ResultsToolbar.tsx` `ExportMenu`, `.export-opt.soon` + `aria-disabled` + "SOON" tag) is a disabled placeholder. Implement it: a colour-coded `.xlsx` of the current filtered+sorted rows with styled rating cells (reuse the `CSV_COLUMNS` set + tier colours; client-side download like the `downloadCsv` pattern in `ratings.ts`). Decide the library with owner (e.g. exceljs / SheetJS) — weigh bundle size. Remove the SOON tag + `aria-disabled` once live. | ⬜ |
+| E10 | Download Excel export | The Export dropdown's **Download Excel** option (`ResultsToolbar.tsx` `ExportMenu`, `.export-opt.soon` + `aria-disabled` + "SOON" tag) is a disabled placeholder. Implement it: a colour-coded `.xlsx` of the current filtered+sorted rows with styled rating cells (reuse the `CSV_COLUMNS` set + tier colours; client-side download like the `downloadCsv` pattern in `ratings.ts`). Decide the library with owner (e.g. exceljs / SheetJS) — weigh bundle size. Remove the SOON tag + `aria-disabled` once live. | ⬜ |
+| E11 | Deploy-gated tail | **LAST — after everything else is fixed + PR #44 merges.** Confirm on www.majorcycle.com (Claude-in-Chrome, owner logged in) a genuine 700+ row run's perf + the live Request/Requested/Not-supported skipped states (need a listed-but-uncovered ticker in the real queue). | ⬜ |
 
 **Next session = E5–E11.** A self-contained kickoff prompt for it lives in the
-session handoff (and memory `project-layer-e-progress`). Everything (E1–E11) merges
-together via DRAFT PR #44 on `audit/layer-e-results` — E5–E11 build on that same
-branch; E10 runs live after PR #44 merges.
+session handoff (and memory `project-layer-e-progress`). Everything (E1–E10) is fixed
+first on DRAFT PR #44 (`audit/layer-e-results`); the deploy-gated **E11** runs live
+ONLY after PR #44 merges (owner wants everything fixed before the one live check).
