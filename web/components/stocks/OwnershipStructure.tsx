@@ -28,7 +28,9 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
   const hasDonut = inst != null || insider != null;
   const holders  = topHolders ?? [];
 
-  if (!hasDonut && holders.length === 0) return null;
+  // Always render the card (with graceful empty-states), like Smart Money Activity —
+  // a stock with thin coverage shows "no data" messages rather than the whole
+  // section silently vanishing.
 
   const donutData = [
     { name: 'Institutions', value: inst    ?? 0 },
@@ -71,8 +73,10 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
       </div>
       <div className="card-body">
         <div className="ownership-grid">
-          {/* Left — donut + stat rows */}
-          {hasDonut && (
+          {/* Left — donut + stat rows, or a graceful empty-state */}
+          {!hasDonut ? (
+            <div className="smart-empty">No ownership breakdown available.</div>
+          ) : (
             <div>
               <div
                 style={{ display: 'flex', justifyContent: 'center' }}
