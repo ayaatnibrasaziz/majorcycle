@@ -216,11 +216,24 @@ Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis w
 > - **Polish** — Run tab restyled to the reference's compact look via ported `globals.css` classes; search shows bare symbols (no `.AX`/`.TO`); CSV re-upload fixed; **Download sample CSV** button.
 > - **Done (2026-06-16):** owner deleted the old Seoul project and **renamed the new us-east project to `MajorCycle`** (display name only — the ref/URL/keys are unchanged, so nothing broke). Email + Google auth verified live (two real sign-ins, one Google + one email, both auto-created a linked `profiles` row via `handle_new_user`). Local `.env.local` confirmed on the new project. Daily refresh cron confirmed writing to the new project (latest bar current).
 
-### Layer E: Results Tab ✅ BUILT (PR pending owner merge)
+### Layer E: Results Tab ✅ BUILT + MERGED + LIVE · 🔍 AUDIT IN PROGRESS (reopened)
 
 Goal: The ranked Results view from reference HTML, fully functional.
 
-> **Status (2026-06-17):** Built on `feat/layer-e-results` off `main` (**PR #38, CI
+> **Audit status (2026-06-25):** The `/results` ranked-table audit (E1–E4) is done —
+> all 10 production-readiness checks pass; fixes applied on `audit/layer-e-results`
+> (9 findings: a11y cluster E-a1…E-a7 + E-f1 filter + E-c1 copy; 6 files, CI-green,
+> engine untouched, PAUSE-BEFORE-MERGE). Tracker: `docs/layer-e-audit.md`. **Owner
+> REOPENED Layer E** for follow-ups (sessions E5–E10): the Briefing custom asset; the
+> **missing-component Overall-score** issue (FH-withheld stocks still get an Overall
+> and can out-rank fully-scored names — affects `/results` AND Stock Detail; any
+> compose change = methodology proposal first); the **unknown-ticker Stock Detail
+> page** (`/stocks/us/ZZZZ` still cites the old live-fetch flow) + its audit; a
+> site-wide stale-info sweep; the **Request-a-Ticker** tab audit; and the
+> deploy-gated tail (700+ row perf + live skipped states). Layer E stays OPEN until
+> E5–E10 land. The PRs #38/#39 (+ index-membership #41/#42/#43) are MERGED + LIVE.
+>
+> **Build status (2026-06-17):** Built on `feat/layer-e-results` off `main` (**PR #38, CI
 > green, awaiting owner merge**; latest commit `10b4ccf`). Reads the SAME in-memory
 > results as the Run tab via `useAnalysis()` (AnalysisContext + the
 > `mc:analysis-snapshot-v1` sessionStorage snapshot) — no recompute, ratings always

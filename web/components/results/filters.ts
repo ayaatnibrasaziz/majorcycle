@@ -48,12 +48,14 @@ function rulePasses(r: ResultRow, rule: AdvRule): boolean {
   if (rule.type === 'numeric') {
     if (v == null || typeof v !== 'number' || Number.isNaN(v)) return false;
     if (rule.op === 'gte') {
+      if (rule.value === '') return true; // no value yet = no constraint (matches between/categorical/text)
       const n = Number(rule.value);
-      return rule.value !== '' && !Number.isNaN(n) && v >= n;
+      return !Number.isNaN(n) && v >= n;
     }
     if (rule.op === 'lte') {
+      if (rule.value === '') return true; // no value yet = no constraint
       const n = Number(rule.value);
-      return rule.value !== '' && !Number.isNaN(n) && v <= n;
+      return !Number.isNaN(n) && v <= n;
     }
     if (rule.op === 'between') {
       const [a, b] = Array.isArray(rule.value) ? rule.value : ['', ''];

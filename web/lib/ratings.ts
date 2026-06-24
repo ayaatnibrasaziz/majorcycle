@@ -82,6 +82,11 @@ export function valuationAppealLabel(score: number): string {
   return VALUATION_APPEAL[tierFromScore(score)];
 }
 
+/** "a"/"an" for the following word (vowel-initial → "an"). */
+function article(word: string): string {
+  return /^[aeiou]/i.test(word) ? 'an' : 'a';
+}
+
 // Valuation zone → tier + display. DEEP VALUE/VALUE are favourable (green),
 // FAIR is neutral (gold), STRETCHED is unfavourable (orange).
 const ZONE_TIER: Record<ValuationZone, 1 | 2 | 3 | 4 | 5> = {
@@ -176,7 +181,7 @@ export function buildBriefing<T extends BriefingRow>(rows: T[]): Briefing {
   if (constructivePlus > 0) {
     sentences.push(
       `The standout is {{TICKER}}${topName} — a ${healthWord} company${healthClause}, currently ` +
-        `rated ${top.overallLabel} with a ${valuationAppealLabel(top.valuationScore)} valuation.`,
+        `rated ${top.overallLabel} with ${article(valuationAppealLabel(top.valuationScore))} ${valuationAppealLabel(top.valuationScore)} valuation.`,
     );
   } else {
     sentences.push(

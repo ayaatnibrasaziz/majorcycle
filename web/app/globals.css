@@ -810,7 +810,8 @@ td.num             { font-weight: 600; }
 
 /* Opportunity Map custom legend — pinned tier order, click to toggle */
 .opp-legend                                 { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; list-style: none; margin: 0; padding: 0; }
-.opp-legend-item                            { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 10px; font-family: 'Sora', sans-serif; }
+.opp-legend-item                            { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 10px; font-family: 'Sora', sans-serif; background: none; border: 0; padding: 0; }
+.opp-legend-item:focus-visible              { outline: 2px solid var(--brand-mid); outline-offset: 2px; border-radius: 3px; }
 .opp-legend-dot                             { width: 9px; height: 9px; border-radius: 50%; }
 
 /* Opportunity Map cluster picker (overlapping bubbles) — mirrors the day panel */
@@ -1280,6 +1281,7 @@ td.num             { font-weight: 600; }
 }
 .results-table thead tr:nth-child(2) th.text-right { text-align: right; }
 .results-table thead tr:nth-child(2) th:hover { color: var(--brand-mid); }
+.results-table thead tr:nth-child(2) th:focus-visible { outline: 2px solid var(--brand-mid); outline-offset: -2px; color: var(--brand-mid); }
 .results-table thead tr:nth-child(2) th.sorted { color: var(--brand-mid); }
 .results-table .sort-arrow { color: var(--text-muted); font-size: 9px; }
 .results-table thead tr:nth-child(2) th.sorted .sort-arrow { color: var(--brand-mid); }
@@ -1291,7 +1293,9 @@ td.num             { font-weight: 600; }
 .results-table tbody tr { cursor: pointer; transition: background .12s; }
 .results-table tbody tr.stripe { background: var(--bg-stripe); }
 .results-table tbody tr:hover { background: var(--bg-hover); }
-.results-table .ticker-cell { font-weight: 700; color: var(--brand-deep); }
+.results-table .ticker-cell { font-weight: 700; color: var(--brand-deep); text-decoration: none; }
+a.ticker-cell:hover { text-decoration: underline; }
+a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offset: 2px; border-radius: 3px; }
 
 /* Band header tints (reuse the reference palette) */
 .results-table .band-identity { background: var(--bg-stripe); color: var(--text-muted); }

@@ -84,6 +84,7 @@ export function ResultsToolbar({
       <button
         type="button"
         className={`quick-chip${filter.quick === 'constructivePlus' ? ' active' : ''}`}
+        aria-pressed={filter.quick === 'constructivePlus'}
         onClick={() =>
           patch({ quick: filter.quick === 'constructivePlus' ? 'all' : 'constructivePlus' })
         }
@@ -94,6 +95,8 @@ export function ResultsToolbar({
       <button
         type="button"
         className={`quick-chip quick-chip--adv${advancedOpen ? ' active' : ''}`}
+        aria-pressed={advancedOpen}
+        aria-expanded={advancedOpen}
         onClick={onToggleAdvanced}
       >
         <SlidersHorizontal className="mr-1 inline h-3 w-3 align-[-1px]" />
@@ -116,7 +119,7 @@ export function ResultsToolbar({
 
       <ExportMenu onExport={onExport} />
 
-      <div className="result-count">
+      <div className="result-count" role="status" aria-live="polite">
         {resultCount} result{resultCount === 1 ? '' : 's'}
       </div>
     </div>
@@ -132,21 +135,35 @@ function ExportMenu({ onExport }: { onExport: () => void }) {
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
     document.addEventListener('click', onDoc);
-    return () => document.removeEventListener('click', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('click', onDoc);
+      document.removeEventListener('keydown', onKey);
+    };
   }, [open]);
 
   return (
     <div className={`export-wrap${open ? ' open' : ''}`} ref={ref}>
-      <button type="button" className="export-btn export-trigger" onClick={() => setOpen((o) => !o)}>
+      <button
+        type="button"
+        className="export-btn export-trigger"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
         <Download className="h-3.5 w-3.5" />
         Export
         <ChevronDown className="ex-caret h-3 w-3" />
       </button>
-      <div className="export-menu">
+      <div className="export-menu" role="menu">
         <button
           type="button"
           className="export-opt"
+          role="menuitem"
           onClick={() => {
             onExport();
             setOpen(false);
