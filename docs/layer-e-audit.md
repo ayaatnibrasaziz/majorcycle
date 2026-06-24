@@ -302,9 +302,9 @@ verbatim (#17), disclaimer (#4/#12), visual/colour, perf (#6 clean), empty/edge,
 
 > **Owner REOPENED Layer E (2026-06-25)** — the audit isn't closed: the `/results`
 > table is one surface of Layer E, and several Layer-E-scoped items remain. Tracked
-> as sessions **E5–E10** below; the audit stays OPEN until they're done + verified.
+> as sessions **E5–E11** below; the audit stays OPEN until they're done + verified.
 
-## Reopened scope — E5–E10 (the next session's work)
+## Reopened scope — E5–E11 (the next session's work)
 
 | # | Session | Scope | Status |
 |---|---|---|---|
@@ -314,7 +314,9 @@ verbatim (#17), disclaimer (#4/#12), visual/colour, perf (#6 clean), empty/edge,
 | E8 | Site-wide stale-info sweep | Enumerate any other outdated/stale on-site copy or flows like E7 (e.g. references to deprecated live-fetch, old provider names, dead routes) and list them for the owner to triage. | ⬜ |
 | E9 | Request-a-Ticker audit | Run the same Layer-E production-readiness audit (10 checks) on the **Request a Ticker** tab (`web/app/(app)/request/*`, `/api/listings/search`, `/api/request-ticker`, `SkippedTickers` tie-in). | ⬜ |
 | E10 | Deploy-gated tail | From E1–E4: confirm on www.majorcycle.com (Claude-in-Chrome, owner logged in) a genuine 700+ row run's perf + the live Request/Requested/Not-supported skipped states (need a listed-but-uncovered ticker in the real queue). Do AFTER the audit branch merges. | ⬜ |
+| E11 | Download Excel export | The Export dropdown's **Download Excel** option (`ResultsToolbar.tsx` `ExportMenu`, `.export-opt.soon` + `aria-disabled` + "SOON" tag) is a disabled placeholder. Implement it: a colour-coded `.xlsx` of the current filtered+sorted rows with styled rating cells (reuse the `CSV_COLUMNS` set + tier colours; client-side download like the `downloadCsv` pattern in `ratings.ts`). Decide the library with owner (e.g. exceljs / SheetJS) — weigh bundle size. Remove the SOON tag + `aria-disabled` once live. | ⬜ |
 
-**Next session = E5–E10.** A self-contained kickoff prompt for it lives in the
-session handoff (and memory `project-layer-e-progress`). The E1–E4 `/results` fixes
-above merge first (owner-gated), then E5–E9 build on a fresh branch, then E10 runs live.
+**Next session = E5–E11.** A self-contained kickoff prompt for it lives in the
+session handoff (and memory `project-layer-e-progress`). Everything (E1–E11) merges
+together via DRAFT PR #44 on `audit/layer-e-results` — E5–E11 build on that same
+branch; E10 runs live after PR #44 merges.

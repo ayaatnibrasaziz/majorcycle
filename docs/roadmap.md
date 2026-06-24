@@ -224,14 +224,16 @@ Goal: The ranked Results view from reference HTML, fully functional.
 > all 10 production-readiness checks pass; fixes applied on `audit/layer-e-results`
 > (9 findings: a11y cluster E-a1…E-a7 + E-f1 filter + E-c1 copy; 6 files, CI-green,
 > engine untouched, PAUSE-BEFORE-MERGE). Tracker: `docs/layer-e-audit.md`. **Owner
-> REOPENED Layer E** for follow-ups (sessions E5–E10): the Briefing custom asset; the
+> REOPENED Layer E** for follow-ups (sessions E5–E11): the Briefing custom asset; the
 > **missing-component Overall-score** issue (FH-withheld stocks still get an Overall
 > and can out-rank fully-scored names — affects `/results` AND Stock Detail; any
 > compose change = methodology proposal first); the **unknown-ticker Stock Detail
 > page** (`/stocks/us/ZZZZ` still cites the old live-fetch flow) + its audit; a
-> site-wide stale-info sweep; the **Request-a-Ticker** tab audit; and the
-> deploy-gated tail (700+ row perf + live skipped states). Layer E stays OPEN until
-> E5–E10 land. The PRs #38/#39 (+ index-membership #41/#42/#43) are MERGED + LIVE.
+> site-wide stale-info sweep; the **Request-a-Ticker** tab audit; the **Download
+> Excel** export (the dropdown's disabled "SOON" placeholder → a real colour-coded
+> `.xlsx`); and the deploy-gated tail (700+ row perf + live skipped states). All land
+> together via DRAFT PR #44 (`audit/layer-e-results`). Layer E stays OPEN until E5–E11
+> land. The PRs #38/#39 (+ index-membership #41/#42/#43) are MERGED + LIVE.
 >
 > **Build status (2026-06-17):** Built on `feat/layer-e-results` off `main` (**PR #38, CI
 > green, awaiting owner merge**; latest commit `10b4ccf`). Reads the SAME in-memory
