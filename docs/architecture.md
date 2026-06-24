@@ -336,7 +336,7 @@ CREATE POLICY "users insert own runs" ON analysis_runs FOR INSERT WITH CHECK (au
 CREATE TABLE universe_log (
   ticker          text NOT NULL,
   added_at        timestamptz NOT NULL DEFAULT now(),
-  added_by        text NOT NULL,              -- 'seed' | 'cron' | 'user_upload' | 'user_request'
+  added_by        text NOT NULL,              -- 'seed' | 'cron' | 'user_upload' | 'user_request' | 'index_membership'
   added_by_user   uuid REFERENCES profiles(id),
   PRIMARY KEY (ticker, added_at)
 );

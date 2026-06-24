@@ -645,7 +645,11 @@ Unknown tickers are **not** fetched synchronously (no `/api/fetch-ticker`). The
 user picks a real listed symbol from the `listings` "menu" and queues it; the
 **daily cron** drains the queue (see `architecture.md` §8 Tier 4). Two TS routes
 back this — both auth-required, both authenticate with the Supabase server client
-then read/write the locked-down tables with the admin client.
+then read/write the locked-down tables with the admin client. The queue is
+**user-only**: rows always carry a `requested_by`, and the GET filters
+`requested_by IS NOT NULL`, so cron-driven universe additions (e.g. index
+constituents, which are fetched directly and never enqueued) never surface on the
+Request-a-Ticker page.
 
 ```typescript
 // web/lib/types.ts — Request-a-Ticker shapes
@@ -849,8 +853,12 @@ holdings are the constituents. Each source URL is env-overridable; per-index
 sane-count + max-churn guards prevent a bad pull from wiping a basket. The Run page
 reads active members via `web/lib/index-membership.server.ts` (cached daily) →
 intersected with the universe in `baskets.ts`, so an update is live with **no
-redeploy**. Any constituent missing from `stocks` is enqueued into `ticker_requests`
-and fetched by the same night's drain.
+redeploy**. Any constituent missing from `stocks` is fetched **directly** by the
+same cron run (via `daily_refresh.run`) and audited in `universe_log` as
+`added_by='index_membership'` — it does **not** use the `ticker_requests` queue
+(that queue is for the user-facing Request-a-Ticker page only; cron-added
+constituents never appear there). A name with no data simply isn't added and is
+retried next run.
 
 ---
 
