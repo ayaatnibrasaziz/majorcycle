@@ -130,10 +130,12 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
             </div>
           )}
 
-          {/* Right — top holders table */}
-          {holders.length > 0 && (
-            <div>
-              <div className="table-section-label">Top Institutional Holders</div>
+          {/* Right — top holders table, or a graceful empty-state when a stock
+              (often a smaller listing) has no institutional-holder data, mirroring
+              the Smart Money / Analyst-rating empty states. */}
+          <div>
+            <div className="table-section-label">Top Institutional Holders</div>
+            {holders.length > 0 ? (
               <div className="table-wrapper">
                 <table className="ownership-table">
                   <thead>
@@ -156,8 +158,10 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="smart-empty">No institutional holder data available.</div>
+            )}
+          </div>
         </div>
       </div>
     </div>

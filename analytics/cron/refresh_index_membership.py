@@ -1,8 +1,11 @@
 """Refresh the `index_membership` table from official ETF holdings files.
 
-Runs in the daily cron AFTER `refresh_listings` and BEFORE `drain_requests`
-(see architecture.md §8 Tier 4), so any brand-new constituent we don't yet cover
-is enqueued here and fetched into the universe by the same night's drain.
+Runs in the daily cron after `refresh_listings` (see architecture.md §8 Tier 4).
+Any brand-new constituent we don't yet cover is fetched into the universe HERE,
+directly (via `daily_refresh.run`), and audited in `universe_log` as
+`added_by='index_membership'`. It deliberately does NOT use the `ticker_requests`
+queue — that queue belongs to the user-facing Request-a-Ticker page; index
+constituents are a cron concern, not user requests.
 
 Each index is fetched in isolation: if one source breaks (or returns an
 out-of-bounds / high-churn list), the others still update and that index's existing
@@ -23,6 +26,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional, cast
 
+from analytics.cron import daily_refresh
 from analytics.cron.daily_refresh import _get_supabase, _send_failure_email
 from analytics.index_membership import sources
 
@@ -44,14 +48,6 @@ _SOURCES: list[tuple[str, Callable[[], list[str]], int, int]] = [
 # active set, treat the pull as suspect and skip writing it (existing kept). Skipped
 # when there's no existing set (first run / freshly seeded with 0 rows).
 _MAX_CHURN = 0.15
-
-
-def _market_of(ticker: str) -> str:
-    if ticker.endswith(".AX"):
-        return "au"
-    if ticker.endswith(".TO"):
-        return "ca"
-    return "us"
 
 
 def _active_members(supabase: Any, index_id: str) -> set[str]:
@@ -81,31 +77,53 @@ def _write_index(supabase: Any, index_id: str, tickers: list[str], now: str) -> 
     ).lt("updated_at", now).execute()
 
 
-def _enqueue_missing(supabase: Any, members: set[str]) -> int:
-    """Enqueue any constituent not yet in `stocks` into `ticker_requests` so the
-    same night's drain fetches it. Skips symbols already queued/known (any status)
-    — in particular never resurrects a terminal 'unsupported'."""
+def _fetch_missing(supabase: Any, members: set[str]) -> int:
+    """Fetch any constituent not yet in `stocks` directly into the universe.
+
+    Index constituents are a CRON concern, NOT user requests — so we do NOT touch
+    `ticker_requests` (that queue is for the Request-a-Ticker page only). We fetch
+    the missing names through the same full pipeline a seeded ticker uses
+    (`daily_refresh.run`), then audit the ones that landed in `universe_log` with
+    `added_by='index_membership'` (never 'user_request'). A name that has no data
+    simply doesn't land and is retried on the next run.
+    """
     if not members:
         return 0
-    # The covered universe (~720 rows, under the 1000-row cap) — one select.
-    got = supabase.table("stocks").select("ticker").execute()
-    covered = {r["ticker"] for r in cast(list[dict[str, Any]], got.data or [])}
+    # The covered universe (one select; well under the 1000-row cap historically,
+    # but paginate defensively in case it grows past a page).
+    covered: set[str] = set()
+    start = 0
+    while True:
+        got = supabase.table("stocks").select("ticker").range(start, start + 999).execute()
+        batch = cast(list[dict[str, Any]], got.data or [])
+        covered.update(r["ticker"] for r in batch)
+        if len(batch) < 1000:
+            break
+        start += 1000
     missing = sorted(members - covered)
     if not missing:
         return 0
-    existing = supabase.table("ticker_requests").select("symbol").execute()
-    queued = {r["symbol"] for r in cast(list[dict[str, Any]], existing.data or [])}
-    to_add = [m for m in missing if m not in queued]
-    if not to_add:
-        return 0
-    rows = [
-        {"symbol": m, "market": _market_of(m), "status": "queued", "requested_by": None}
-        for m in to_add
-    ]
-    for i in range(0, len(rows), _DB_CHUNK):
-        supabase.table("ticker_requests").insert(rows[i: i + _DB_CHUNK]).execute()
-    logger.info("Enqueued %d new constituent(s) for fetch: %s", len(to_add), ", ".join(to_add))
-    return len(to_add)
+    logger.info("Fetching %d uncovered constituent(s) into the universe: %s", len(missing), ", ".join(missing))
+    # Full fetch (price + fundamentals + enriched) — same path as a seeded ticker,
+    # through the sacred DataProvider (#9). Don't email on per-ticker failures: a few
+    # genuinely data-less names are expected.
+    daily_refresh.run(only=missing, notify_on_failure=False)
+    # Reconcile: which of the missing names actually landed in `stocks`? Audit only
+    # those, once, as index-membership additions.
+    landed: set[str] = set()
+    for i in range(0, len(missing), _DB_CHUNK):
+        chunk = missing[i: i + _DB_CHUNK]
+        res = supabase.table("stocks").select("ticker").in_("ticker", chunk).execute()
+        landed.update(r["ticker"] for r in cast(list[dict[str, Any]], res.data or []))
+    if landed:
+        rows = [
+            {"ticker": t, "added_by": "index_membership", "added_by_user": None}
+            for t in sorted(landed)
+        ]
+        for i in range(0, len(rows), _DB_CHUNK):
+            supabase.table("universe_log").insert(rows[i: i + _DB_CHUNK]).execute()
+    logger.info("Constituent fetch complete — %d/%d landed in the universe", len(landed), len(missing))
+    return len(landed)
 
 
 def run(only: Optional[list[str]] = None) -> dict[str, object]:
@@ -150,11 +168,11 @@ def run(only: Optional[list[str]] = None) -> dict[str, object]:
             counts[index_id] = 0
             failed.append(index_id)
 
-    enqueued = _enqueue_missing(supabase, all_members)
+    fetched = _fetch_missing(supabase, all_members)
 
     logger.info(
-        "Index membership refresh complete — counts=%s refreshed=%s failed=%s enqueued=%d",
-        counts, refreshed, failed, enqueued,
+        "Index membership refresh complete — counts=%s refreshed=%s failed=%s fetched_new=%d",
+        counts, refreshed, failed, fetched,
     )
 
     # Only shout if everything failed (avoids noise from a single flaky source).
@@ -168,7 +186,7 @@ def run(only: Optional[list[str]] = None) -> dict[str, object]:
             ),
         )
 
-    return {"counts": counts, "refreshed": refreshed, "failed": failed, "enqueued": enqueued}
+    return {"counts": counts, "refreshed": refreshed, "failed": failed, "fetched_new": fetched}
 
 
 if __name__ == "__main__":
