@@ -28,7 +28,9 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
   const hasDonut = inst != null || insider != null;
   const holders  = topHolders ?? [];
 
-  if (!hasDonut && holders.length === 0) return null;
+  // Always render the card (with graceful empty-states), like Smart Money Activity —
+  // a stock with thin coverage shows "no data" messages rather than the whole
+  // section silently vanishing.
 
   const donutData = [
     { name: 'Institutions', value: inst    ?? 0 },
@@ -71,8 +73,10 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
       </div>
       <div className="card-body">
         <div className="ownership-grid">
-          {/* Left — donut + stat rows */}
-          {hasDonut && (
+          {/* Left — donut + stat rows, or a graceful empty-state */}
+          {!hasDonut ? (
+            <div className="smart-empty">No ownership breakdown available.</div>
+          ) : (
             <div>
               <div
                 style={{ display: 'flex', justifyContent: 'center' }}
@@ -130,10 +134,12 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
             </div>
           )}
 
-          {/* Right — top holders table */}
-          {holders.length > 0 && (
-            <div>
-              <div className="table-section-label">Top Institutional Holders</div>
+          {/* Right — top holders table, or a graceful empty-state when a stock
+              (often a smaller listing) has no institutional-holder data, mirroring
+              the Smart Money / Analyst-rating empty states. */}
+          <div>
+            <div className="table-section-label">Top Institutional Holders</div>
+            {holders.length > 0 ? (
               <div className="table-wrapper">
                 <table className="ownership-table">
                   <thead>
@@ -156,8 +162,10 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="smart-empty">No institutional holder data available.</div>
+            )}
+          </div>
         </div>
       </div>
     </div>

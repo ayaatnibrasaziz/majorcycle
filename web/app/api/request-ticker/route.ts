@@ -98,9 +98,13 @@ export async function POST(request: Request) {
 
 export async function GET() {
   const admin = createAdminClient();
+  // Only genuine user requests (requested_by set). Cron-originated universe
+  // additions (e.g. index constituents) never carry a requester and must not
+  // appear on the Request-a-Ticker page — they aren't user requests.
   const { data } = await admin
     .from('ticker_requests')
     .select(SELECT)
+    .not('requested_by', 'is', null)
     .order('requested_at', { ascending: false })
     .limit(50);
   const requests = ((data ?? []) as RawRequestRow[]).map(toTickerRequest);

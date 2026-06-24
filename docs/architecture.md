@@ -336,7 +336,7 @@ CREATE POLICY "users insert own runs" ON analysis_runs FOR INSERT WITH CHECK (au
 CREATE TABLE universe_log (
   ticker          text NOT NULL,
   added_at        timestamptz NOT NULL DEFAULT now(),
-  added_by        text NOT NULL,              -- 'seed' | 'cron' | 'user_upload' | 'user_request'
+  added_by        text NOT NULL,              -- 'seed' | 'cron' | 'user_upload' | 'user_request' | 'index_membership'
   added_by_user   uuid REFERENCES profiles(id),
   PRIMARY KEY (ticker, added_at)
 );
@@ -447,8 +447,8 @@ Two runtimes, two locations under `web/`:
 2. Set up Python 3.12
 3. Install requirements (yfinance, pandas, supabase, etc.)
 4. Run `python -m analytics.cron.refresh_listings` — refresh the `listings` "menu" from the free exchange symbol files (US/AU/CA), normalised to yfinance format. Fast (~seconds); failure is logged but does not abort the run (the cached `listings` table stays usable).
-5. Run `python -m analytics.cron.refresh_index_membership` — refresh the `index_membership` table (S&P 500 / ASX 200 / S&P/TSX 60) from official ETF holdings files (SPY/IOZ/XIU). Per-index sane-count + max-churn guards; failure logged, not fatal. **Enqueues any constituent not yet in `stocks` into `ticker_requests`** so the drain below fetches it the same night. The Run index baskets read this table at request time (no redeploy).
-6. Run `python -m analytics.cron.drain_requests` — fetch every `queued` row in `ticker_requests` (user requests **and** newly-enqueued index constituents) via the yfinance `DataProvider` (+ Stooq fallback), upsert into `stocks` + `price_bars`, log to `universe_log`, and flip `status` to `fetched` / `unsupported` / `failed`.
+5. Run `python -m analytics.cron.refresh_index_membership` — refresh the `index_membership` table (S&P 500 / ASX 200 / S&P/TSX 60) from official ETF holdings files (SPY/IOZ/XIU). Per-index sane-count + max-churn guards; failure logged, not fatal. **Any constituent not yet in `stocks` is fetched directly here** (via `daily_refresh.run`) and audited in `universe_log` as `added_by='index_membership'` — it does **not** use `ticker_requests` (that queue is user-facing only). The Run index baskets read this table at request time (no redeploy).
+6. Run `python -m analytics.cron.drain_requests` — fetch every `queued` row in `ticker_requests` (genuine user requests only) via the yfinance `DataProvider` (+ Stooq fallback), upsert into `stocks` + `price_bars`, log to `universe_log` (`added_by='user_request'`), and flip `status` to `fetched` / `unsupported` / `failed`.
 7. Run `python -m analytics.cron.daily_refresh` (smart mode by default) — refresh the analysed universe (loaded from the `stocks` table + benchmark indices).
 8. On failure: email owner via Resend with a summary of failed tickers
 

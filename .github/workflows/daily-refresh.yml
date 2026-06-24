@@ -48,9 +48,9 @@ jobs:
 
       # Refresh index membership (S&P 500 / ASX 200 / S&P/TSX 60) from official ETF
       # holdings files → `index_membership` table (read by the Run baskets, no
-      # redeploy). Runs BEFORE the drain so any new constituent we don't yet cover is
-      # enqueued here and fetched into the universe by the same drain step below.
-      # continue-on-error so a flaky source never blocks the price refresh.
+      # redeploy). Any new constituent we don't yet cover is fetched into the universe
+      # directly here (audited in universe_log as added_by='index_membership' — NOT a
+      # user request). continue-on-error so a flaky source never blocks the price refresh.
       - name: Refresh index membership
         continue-on-error: true
         env:
