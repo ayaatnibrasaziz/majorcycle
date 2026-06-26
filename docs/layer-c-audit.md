@@ -233,7 +233,7 @@ reopened Layer C to bring the Stock Detail page up to that same bar, **plus** fi
 | 2 | **Formal perf check** re-verified **live** (E: 700+ rows snappy; D: 0-skip reliability on a real deploy run). | Page-load perf was a **cross-cutting item** (streaming + parallel fetch, S4) — not a per-surface check, and not re-verified live recently. | Make perf a formal check: re-verify Stock-Detail cold + warm load (US/AU/CA) on **prod** — no jank, Suspense sections stream, charts mount cleanly. |
 | 3 | **Formal compliance check** — labels #16 + analyst verbatim #17 + **disclaimer #4/#12 visible without scrolling**, asserted per surface. | Compliance was verified implicitly via Parity/Data, not as a dedicated check; **no explicit "disclaimer above the fold" assertion** for Stock Detail. | Formalise: confirm only the 5 compliant tiers in our output, analyst verbatim, and an "information only — not advice" disclaimer **visible without scrolling** (VerdictCard has an inline one — confirm it's above the fold on load across viewports). |
 | 4 | **No-recompute / nothing-persisted (#15)** asserted via a **SQL *negative*** (E confirmed `analysis_runs.results` IS NULL; nothing stored). | Data check verified DB values (the *positive*); never asserted #15 for the detail page. | Assert #15 for Stock Detail: cycle/scores are derived **on-demand** by `cycle.py`; only raw price + fundamentals are stored — confirm no rating output is persisted. |
-| 5 | **Systematic edge/empty enumeration** as a matrix (E #8: no-run / all-skipped / no-match / hydration / partial / single-row). | Per-component empty states were done **piecemeal** (good, but ad-hoc). | **Owner ask:** a **systematic null-data render sweep across ALL ~25 Stock-Detail components** — render each with null/missing data and confirm graceful handling (no crash, no "NaN"/"$0"/"Invalid Date", no empty bars, no fabricated values, card hidden or honest empty-state). Fix any found. |
+| 5 | **Systematic edge/empty enumeration** as a matrix (E #8: no-run / all-skipped / no-match / hydration / partial / single-row). | Per-component empty states were done **piecemeal** (good, but ad-hoc). | **Owner ask:** a **systematic null-data render sweep across ALL ~25 Stock-Detail components** — render each with null/missing data, **verify it VISUALLY in Claude Preview** (looks nice + consistent page-wide, not just "no crash"), and **LIST every null case for the owner to eyeball** before fixing. No "NaN"/"$0"/"Invalid Date", no empty bars, no fabricated values; card hidden or honest empty-state. Fix what's flagged. |
 | 6 | **Deploy-gated live tail via Claude-in-Chrome** — drove the **live** site (real run, live states) as part of the audit. | Some prod verification (RSC-crash via `get_runtime_logs`, health checks) but **no formal live walk** of Stock Detail. | **Owner ask:** live-check Stock Detail end-to-end on www.majorcycle.com (US/AU/CA + a bank/REIT + a sparse/short-history ticker) — every section renders correctly, no console errors. |
 
 ### Round-2 scope (next session)
@@ -249,7 +249,13 @@ reopened Layer C to bring the Stock Detail page up to that same bar, **plus** fi
 - **C-R2 — Null-data render sweep (check 5).** Systematically render every Stock-Detail
   component with null/missing inputs (banks/REITs → withheld FH pillars; AU tickers → null
   short interest; non-payers → no dividends; spin-offs → short history; missing analyst
-  targets/news/overview). Confirm graceful handling; fix regressions.
+  targets/news/overview). **Verify each null state VISUALLY in Claude Preview** (real
+  tickers that exercise each null + seeded/edited fixtures for the rest) — not just "no
+  crash" but that it *looks nice* and is **consistent across the page** (every empty card
+  uses the same honest empty-state pattern / hidden-card rule; no lone "—" floating in an
+  otherwise full card, no half-empty grids). **Produce a LIST of every null case for the
+  owner** — `component → which field(s) null → how it renders (screenshot/desc) → verdict`
+  — so the owner can eyeball each before any fix is agreed; then fix what's flagged.
 - **C-R3 — Deep a11y pass (check 1).** Apply the D/E keyboard-a11y depth to all Stock-Detail
   interactive controls (table above).
 - **C-R4 — Formal perf + compliance + #15 (checks 2/3/4).** Re-verify live load perf; assert
