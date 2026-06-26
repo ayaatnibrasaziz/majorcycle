@@ -31,6 +31,7 @@ export function ResultsToolbar({
   onToggleAdvanced,
   resultCount,
   onExport,
+  onExportXlsx,
 }: {
   filter: FilterState;
   patch: (p: Partial<FilterState>) => void;
@@ -40,6 +41,7 @@ export function ResultsToolbar({
   onToggleAdvanced: () => void;
   resultCount: number;
   onExport: () => void;
+  onExportXlsx: () => void;
 }) {
   return (
     <div className="results-toolbar">
@@ -117,7 +119,7 @@ export function ResultsToolbar({
         ))}
       </div>
 
-      <ExportMenu onExport={onExport} />
+      <ExportMenu onExport={onExport} onExportXlsx={onExportXlsx} />
 
       <div className="result-count" role="status" aria-live="polite">
         {resultCount} result{resultCount === 1 ? '' : 's'}
@@ -126,7 +128,7 @@ export function ResultsToolbar({
   );
 }
 
-function ExportMenu({ onExport }: { onExport: () => void }) {
+function ExportMenu({ onExport, onExportXlsx }: { onExport: () => void; onExportXlsx: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -175,15 +177,21 @@ function ExportMenu({ onExport }: { onExport: () => void }) {
             <div className="eo-sub">Raw results — opens in any spreadsheet app</div>
           </div>
         </button>
-        <div className="export-opt soon" aria-disabled="true">
+        <button
+          type="button"
+          className="export-opt"
+          role="menuitem"
+          onClick={() => {
+            onExportXlsx();
+            setOpen(false);
+          }}
+        >
           <FileSpreadsheet />
           <div>
-            <div className="eo-title">
-              Download Excel<span className="eo-tag">SOON</span>
-            </div>
+            <div className="eo-title">Download Excel</div>
             <div className="eo-sub">Colour-coded report with styled rating cells</div>
           </div>
-        </div>
+        </button>
       </div>
     </div>
   );

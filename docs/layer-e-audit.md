@@ -308,15 +308,102 @@ verbatim (#17), disclaimer (#4/#12), visual/colour, perf (#6 clean), empty/edge,
 
 | # | Session | Scope | Status |
 |---|---|---|---|
-| E5 | Briefing asset | Replace the "AI-looking" `TrendingUp` Lucide icon in the Analyst Briefing (`BriefingCard.tsx` `.briefing-icon`) with a custom, professional brand asset. Decide format with owner (inline SVG mark / `next/image` PNG/SVG in `web/public/` / a refined Lucide composition). Must match the brand palette (#1A3A6E/#1E5CB3/#2E7DE8) + design-system. | ⬜ |
-| E6 | Missing-component overall score | **Correctness, cross-cutting (engine-adjacent).** Investigate which component scores can be `—`/null: `financialHealthScore` is withheld when <3 of 5 pillars are present (Layer C S3 / P3) → `calculate_overall_rating` falls back to a **cycle-only renormalised** Overall. A FH-withheld stock can then out-rank a fully-scored one → misleading on **both** `/results` AND the **Stock Detail** page (KpiStrip/VerdictCard). Determine the optimum fix (e.g. flag/segregate incomplete-data rows, a "data completeness" indicator, withhold or caveat the Overall, sort handling) and propose it. **Any change to how Overall is composed is a methodology change → propose FIRST (CLAUDE.md), engine untouched until signed off.** | ⬜ |
-| E7 | Unknown-ticker detail page | `/stocks/[market]/[ticker]` for a ticker NOT in our universe (e.g. `/stocks/us/ZZZZ`) still references the old live-fetch-from-Run-Analysis flow (outdated). Fix it, then run the same 9/10-check audit on the **Stock Detail page's unknown-ticker / not-covered path** (this is part of Layer E). | ⬜ |
-| E8 | Site-wide stale-info sweep | Enumerate any other outdated/stale on-site copy or flows like E7 (e.g. references to deprecated live-fetch, old provider names, dead routes) and list them for the owner to triage. | ⬜ |
-| E9 | Request-a-Ticker audit | Run the same Layer-E production-readiness audit (10 checks) on the **Request a Ticker** tab (`web/app/(app)/request/*`, `/api/listings/search`, `/api/request-ticker`, `SkippedTickers` tie-in). | ⬜ |
-| E10 | Download Excel export | The Export dropdown's **Download Excel** option (`ResultsToolbar.tsx` `ExportMenu`, `.export-opt.soon` + `aria-disabled` + "SOON" tag) is a disabled placeholder. Implement it: a colour-coded `.xlsx` of the current filtered+sorted rows with styled rating cells (reuse the `CSV_COLUMNS` set + tier colours; client-side download like the `downloadCsv` pattern in `ratings.ts`). Decide the library with owner (e.g. exceljs / SheetJS) — weigh bundle size. Remove the SOON tag + `aria-disabled` once live. **Depends on E6:** whatever E6 decides for missing-component Overall (withhold/caveat/flag/de-rank) MUST be reflected in BOTH the Excel export AND the existing CSV export (`CSV_COLUMNS`/`toCsv`) so exports match the table. | ⬜ |
+| E5 | Briefing asset | Replace the "AI-looking" `TrendingUp` Lucide icon in the Analyst Briefing (`BriefingCard.tsx` `.briefing-icon`) with a custom, professional brand asset. Decide format with owner (inline SVG mark / `next/image` PNG/SVG in `web/public/` / a refined Lucide composition). Must match the brand palette (#1A3A6E/#1E5CB3/#2E7DE8) + design-system. | 🔧 |
+| E6 | Missing-component overall score | **Correctness, cross-cutting (engine-adjacent).** Investigate which component scores can be `—`/null: `financialHealthScore` is withheld when <3 of 5 pillars are present (Layer C S3 / P3) → `calculate_overall_rating` falls back to a **cycle-only renormalised** Overall. A FH-withheld stock can then out-rank a fully-scored one → misleading on **both** `/results` AND the **Stock Detail** page (KpiStrip/VerdictCard). Determine the optimum fix (e.g. flag/segregate incomplete-data rows, a "data completeness" indicator, withhold or caveat the Overall, sort handling) and propose it. **Any change to how Overall is composed is a methodology change → propose FIRST (CLAUDE.md), engine untouched until signed off.** | 🔧 |
+| E7 | Unknown-ticker detail page | `/stocks/[market]/[ticker]` for a ticker NOT in our universe (e.g. `/stocks/us/ZZZZ`) still references the old live-fetch-from-Run-Analysis flow (outdated). Fix it, then run the same 9/10-check audit on the **Stock Detail page's unknown-ticker / not-covered path** (this is part of Layer E). | 🔧 |
+| E8 | Site-wide stale-info sweep | Enumerate any other outdated/stale on-site copy or flows like E7 (e.g. references to deprecated live-fetch, old provider names, dead routes) and list them for the owner to triage. | 🔧 |
+| E9 | Request-a-Ticker audit | Run the same Layer-E production-readiness audit (10 checks) on the **Request a Ticker** tab (`web/app/(app)/request/*`, `/api/listings/search`, `/api/request-ticker`, `SkippedTickers` tie-in). | 🔧 |
+| E10 | Download Excel export | The Export dropdown's **Download Excel** option (`ResultsToolbar.tsx` `ExportMenu`, `.export-opt.soon` + `aria-disabled` + "SOON" tag) is a disabled placeholder. Implement it: a colour-coded `.xlsx` of the current filtered+sorted rows with styled rating cells (reuse the `CSV_COLUMNS` set + tier colours; client-side download like the `downloadCsv` pattern in `ratings.ts`). Decide the library with owner (e.g. exceljs / SheetJS) — weigh bundle size. Remove the SOON tag + `aria-disabled` once live. **Depends on E6:** whatever E6 decides for missing-component Overall (withhold/caveat/flag/de-rank) MUST be reflected in BOTH the Excel export AND the existing CSV export (`CSV_COLUMNS`/`toCsv`) so exports match the table. | 🔧 |
 | E11 | Deploy-gated tail | **LAST — after everything else is fixed + PR #44 merges.** Confirm on www.majorcycle.com (Claude-in-Chrome, owner logged in) a genuine 700+ row run's perf + the live Request/Requested/Not-supported skipped states (need a listed-but-uncovered ticker in the real queue). | ⬜ |
 
 **Next session = E5–E11.** A self-contained kickoff prompt for it lives in the
 session handoff (and memory `project-layer-e-progress`). Everything (E1–E10) is fixed
 first on DRAFT PR #44 (`audit/layer-e-results`); the deploy-gated **E11** runs live
 ONLY after PR #44 merges (owner wants everything fixed before the one live check).
+
+### E5–E10 — reopened-scope build (2026-06-26) — built + verified, on PR #44 (uncommitted until asked)
+
+All web-only; **engine untouched** (no `analytics/`/`_engine/` edits; no Python). Owner
+decisions this session: E5 = score-ring avatar + freshness dot; E6 = badge + de-rank;
+E10 = ExcelJS. `pnpm --dir web typecheck` + `lint` green each round.
+
+- **E5 (Briefing asset) 🔧** — Owner rejected the flat-glyph / gold / navy-hero / logo
+  directions; converged on a **score-ring avatar** that reuses the Verdict score-ring
+  language (brand-blue arc on a light track) showing `constructivePlus/n`, with the
+  **live freshness dot after the "Analyst Briefing" text** (reuses `.pv-dot`/`metaPulse`,
+  gated by `prefers-reduced-motion`) and the existing custom `InfoTip` kept. `BriefingCard.tsx`
+  (`BriefingRing` + dot), `globals.css` (`.briefing-ring*`/`.briefing-live-dot`; dropped
+  `.briefing-icon`). No logo/`next/image`/new asset. **Preview-verified**: ring `aria-label`
+  "2 of 4 stocks rated Constructive or better", numbers `2`/`/4`, dot present, zero console errors.
+- **E6 (FH-null Overall) 🔧 — badge + de-rank, web-only, engine untouched.** `financialHealthScore`
+  is the ONLY nullable component (valuation/cyclePayoff always present; a fully-unscorable
+  ticker is `unavailable`, not partial). Treatment recorded in `docs/methodology-audit.md`
+  (composition unchanged per P3): **badge** "Cycle-only" on the Overall cell + mobile card
+  (`ResultsTable.tsx`, `InfoTip`) and on Stock Detail (`KpiStrip` Overall note + `VerdictCard`
+  eyebrow chip); **de-rank** in `sortRows` (key `overall`: fully-scored rows always group
+  above FH-null, so they never top the table) ; **briefing** standout picks from fully-scored
+  rows (`ratings.ts` `buildBriefing`); **exports** gain a "Data Completeness" column
+  (`CSV_COLUMNS`) + the Excel mutes the FH-null Overall cell. **Preview-verified**: a seeded
+  FH-null SHOP.TO (overall 78 — highest raw score) sorted **last** with the CYCLE-ONLY badge
+  and Health "—", while the briefing standout was the fully-scored AAPL (72), not SHOP.TO.
+- **E7 (Unknown-ticker detail) 🔧 + audited.** Fixed `web/app/(app)/stocks/[market]/[ticker]/not-found.tsx`:
+  stale "upload it in Run Analysis — we'll fetch it live and cache it" + Run-Analysis CTA →
+  current **queue model** "Not in our coverage yet · request it and we'll fetch it in our next
+  daily update" with **Request a Ticker → `/request`** (primary) + **Browse stocks → `/stocks`**.
+  **10-check audit of the not-covered path** (where applicable): no rating/score shown → disclaimer
+  #4/#12 **N/A**; a11y OK (`<h1>`, decorative `aria-hidden` icon, real `<Link>` buttons);
+  empty/not-covered state correct; 375px fits (centred `max-w-sm`, two buttons). **Preview-verified**
+  on `/stocks/us/ZZZZ`: heading "Not in our coverage yet" + queue copy + the two CTAs.
+- **E8 (stale-info sweep) 🔧.** Swept `web/`; the only user-facing stale-flow string beyond E7 was
+  the **Browse empty-state** (`StockBrowser.tsx`) — "run it in Run Analysis — we'll fetch it live
+  and add it" + Run CTA. Owner triaged → **fix like E7**: reworded to the queue model + the CTA
+  now points to **Request a Ticker → `/request`** (rendered only when a search query is present).
+  All `yfinance`/`FMP`/`Yahoo Finance` mentions are code comments / storage-format notes (not
+  user-facing); `CompanyOverview` intentionally omits the source label — **no further action**.
+- **E9 (Request-a-Ticker audit) 🔧.** 10-check audit of `/request` + the two API routes.
+  Correctness: `search` sanitises the query, single `search_listings` RPC, graceful-empty;
+  `request-ticker` POST validates a present symbol (400) / known active listing (404) /
+  already-covered (409), upsert re-queues failed/unsupported→queued, GET filters
+  `requested_by IS NOT NULL` (no cron leak) — all correct. Disclaimer **N/A** (no ratings shown).
+  One a11y gap fixed: the live search-results list didn't announce updates → added an `sr-only`
+  `role="status" aria-live="polite"` count/empty announcement in `RequestTicker.tsx`. Mobile/375px
+  is the pre-existing global sidebar (Layer H), not this page.
+- **E10 (Download Excel) 🔧 — depends on E6, done.** Added `exceljs@4.4.0`; new `web/lib/xlsx.ts`
+  `downloadXlsx` (dynamic `import('exceljs')` on click → never in the initial bundle) builds a
+  styled workbook from the filtered+sorted rows via `CSV_COLUMNS`: branded header, Overall/Valuation
+  painted by 5-tier colour, Health by its 3-tier colour, frozen header; **FH-null rows' Overall cell
+  muted** (mirrors the E6 badge), and the export carries the new "Data Completeness" column so it
+  matches the table + CSV. `ResultsToolbar.tsx` ExportMenu: the **SOON placeholder is now an active
+  `role="menuitem"` button** (`aria-disabled`/"SOON" tag removed); `Results.tsx` wires `onExportXlsx`
+  off the same `sorted` set (so order matches the de-ranked table).
+
+**Status:** E5–E10 built, typecheck/lint green; observable bits Preview-verified (E5/E6/E7;
+E9/E10 download verified in the consolidated sweep). `DEV_BYPASS_AUTH` removed after; PR #44
+stays a **draft**, uncommitted until the owner asks. **E11** is the only remaining item (post-merge).
+
+### E5/E10 owner polish rounds (2026-06-26) — verified, still uncommitted on PR #44
+
+All web-only, engine untouched; typecheck/lint/build green; Preview-verified; no console errors.
+
+- **Export precision (CSV + Excel identical), per-column.** Blanket 2dp rounding → `ExportFmt`
+  (`'int'|'num2'`) + `exportText` in `ratings.ts`; each `CSV_COLUMNS` entry carries `xf`. Whole:
+  Overall / Valuation / Health / Cycle Payoff / Cycle Position / Pullbacks / Rallies. 2dp (trailing
+  zeros, 1→"1.00"): Close / Target / Upside / the drawdown+profit %s / P/E…Days-to-Cover. CSV uses
+  `toFixed`; Excel keeps the cell **numeric** + `numFmt` (`'0'`/`'0.00'`) so it displays identically.
+- **Analyst Consensus** column proper-cased via `fmtAnalyst` (Strong Buy / Buy / Hold / Sell — no underscores).
+- **Health Rating** column added to the exports (Healthy / Adequate / At Risk; blank when FH withheld) —
+  sits beside Health Score, mirroring Valuation Score + Appeal. Shared `healthRatingLabel` in `ratings.ts`
+  now used by both `columns.ts` and `ResultsTable.tsx` (removed the duplicate local helper).
+- **Cycle Position Zone** column proper-cased via `ZONE_DISPLAY` (Deep Value / Value / Fair / Stretched).
+- **Excel styling:** all populated cells get **automatic black borders** (`{ style: 'thin' }`, no colour);
+  **column widths fit content** (max of header + every value's displayed text, via `exportText`);
+  **auto-filter on by default** (`ws.autoFilter` A1→last col); header fill stays per-cell so it never bleeds
+  past the data columns. Verified ExcelJS round-trips border(auto)/autoFilter/width/numFmt.
+- **Briefing ring redesigned** (owner: a % is meaningless; the detail-page ring looks better). Now mirrors
+  the `VerdictCard` score-ring (faint `--border-faint` track + `--brand-mid` arc, stroke 6, rotate-90), a big
+  **count** of Constructive-or-better centred (font scales by digit count → robust to 1,000+), `OF {total}`
+  caption beneath. **Green live dot removed entirely** (owner). `globals.css` `.briefing-ring-block/-bg/-fg/-num/-cap`.
+- **Run-tab top-pick consistency:** `RunComplete.tsx` picks the top stock from fully-scored rows first
+  (FH-null only if none are scored) — same rule as `buildBriefing`, so `/run` and `/results` agree.
+- **Owner Q (no code): Cycle Payoff** = 50% events_score `((pullbacks+rallies)/20·100`, capped) + 50% rr_score
+  (`typical_profit/|typical_drawdown|/3·100`, capped; neutral 50 if missing); averaged, 1dp. No price-trend term.

@@ -51,7 +51,12 @@ export function RunComplete({
     );
   }
 
-  const topPick = results.reduce((best, r) => (r.overallRating > best.overallRating ? r : best));
+  // Prefer a fully-scored name as the top pick — a stock with Financial Health
+  // withheld carries a cycle-only Overall, so it shouldn't headline unless nothing
+  // in the run is fully scored. Matches the Results briefing (ratings.ts buildBriefing).
+  const complete = results.filter((r) => r.financialHealthScore != null);
+  const pickPool = complete.length > 0 ? complete : results;
+  const topPick = pickPool.reduce((best, r) => (r.overallRating > best.overallRating ? r : best));
   const positive = results.filter(
     (r) => r.overallLabel === 'High Conviction' || r.overallLabel === 'Constructive',
   ).length;

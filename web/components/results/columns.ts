@@ -10,7 +10,15 @@
 // Analyst column shows the Wall-Street consensus verbatim (third-party data, #17).
 
 import type { Market, RunResult } from '@/lib/types';
-import { cyclePosition, upsidePct, valuationAppealLabel } from '@/lib/ratings';
+import {
+  ZONE_DISPLAY,
+  cyclePosition,
+  fmtAnalyst,
+  healthRatingLabel,
+  upsidePct,
+  valuationAppealLabel,
+  type ExportFmt,
+} from '@/lib/ratings';
 
 export interface ResultRow extends RunResult {
   name: string | null;
@@ -203,44 +211,59 @@ export function columnsForBand(band: BandKey): Field[] {
 /** All advanced-filterable fields, in display order. */
 export const FILTER_FIELDS: Field[] = FIELDS.filter((field) => field.filterable);
 
-/** The fixed, comprehensive CSV column set (independent of the active view). */
-export const CSV_COLUMNS: ReadonlyArray<{ header: string; get: (r: ResultRow) => string | number | null }> = [
+// The fixed, comprehensive export column set (CSV + Excel), independent of the active
+// view. `xf` sets the per-column precision so both exports agree exactly (see
+// docs request: scores/counts whole; prices/ratios/percentages 2dp; analyst verbatim
+// & proper-cased). Columns without `xf` are text and pass through unchanged.
+export const CSV_COLUMNS: ReadonlyArray<{
+  header: string;
+  get: (r: ResultRow) => string | number | null;
+  xf?: ExportFmt;
+}> = [
   { header: 'Ticker', get: (r) => r.ticker },
   { header: 'Company', get: (r) => r.name },
   { header: 'Sector', get: (r) => r.sector },
   { header: 'Market', get: (r) => r.market.toUpperCase() },
-  { header: 'Overall Rating', get: (r) => r.overallRating },
+  { header: 'Overall Rating', get: (r) => r.overallRating, xf: 'int' },
   { header: 'Rating Tier', get: (r) => r.overallLabel },
-  { header: 'Valuation Score', get: (r) => r.valuationScore },
+  { header: 'Valuation Score', get: (r) => r.valuationScore, xf: 'int' },
   { header: 'Valuation Appeal', get: (r) => valuationAppealLabel(r.valuationScore) },
-  { header: 'Health Score', get: (r) => r.financialHealthScore },
-  { header: 'Cycle Payoff', get: (r) => r.cyclePayoffScore },
-  { header: 'Cycle Position', get: (r) => (r.cyclePos == null ? null : Math.round(r.cyclePos)) },
-  { header: 'Cycle Position Zone', get: (r) => r.valuationZone },
-  { header: 'Close', get: (r) => r.currentClose },
-  { header: 'Analyst Target', get: (r) => r.fundamentals?.analystTargetPrice ?? null },
-  { header: 'Upside %', get: (r) => upsidePct(r.currentClose, r.fundamentals?.analystTargetPrice ?? null) },
-  { header: 'Analyst Consensus', get: (r) => r.fundamentals?.analystRecommendation ?? null },
-  { header: 'Current Drawdown %', get: (r) => r.currentDrawdownPct },
-  { header: 'Typical Drawdown %', get: (r) => r.typicalDrawdown },
-  { header: 'Lower Bound %', get: (r) => r.lowerBound },
-  { header: 'Pullback Events', get: (r) => r.totalPullbackEvents },
-  { header: 'Current Profit %', get: (r) => r.currentProfitPct },
-  { header: 'Typical Profit %', get: (r) => r.typicalProfit },
-  { header: 'Upper Bound %', get: (r) => r.upperBound },
-  { header: 'Rally Events', get: (r) => r.totalProfitEvents },
-  { header: 'P/E', get: (r) => r.fundamentals?.pe ?? null },
-  { header: 'PEG', get: (r) => r.fundamentals?.peg ?? null },
-  { header: 'ROE %', get: (r) => r.fundamentals?.roe ?? null },
-  { header: 'Gross Margin %', get: (r) => r.fundamentals?.grossMargin ?? null },
-  { header: 'Net Margin %', get: (r) => r.fundamentals?.netMargin ?? null },
-  { header: 'FCF Yield %', get: (r) => r.fundamentals?.fcfYieldPct ?? null },
-  { header: 'Debt/Equity', get: (r) => r.fundamentals?.debtToEquity ?? null },
-  { header: 'Current Ratio', get: (r) => r.fundamentals?.currentRatio ?? null },
-  { header: 'Interest Coverage', get: (r) => r.fundamentals?.interestCoverage ?? null },
-  { header: 'Revenue Growth %', get: (r) => r.fundamentals?.revenueGrowthYoy ?? null },
-  { header: 'Short % of Float', get: (r) => r.fundamentals?.shortPctOfFloat ?? null },
-  { header: 'Days to Cover', get: (r) => r.fundamentals?.shortRatio ?? null },
+  { header: 'Health Score', get: (r) => r.financialHealthScore, xf: 'int' },
+  {
+    header: 'Health Rating',
+    get: (r) => (r.financialHealthScore == null ? null : healthRatingLabel(r.financialHealthScore)),
+  },
+  {
+    header: 'Data Completeness',
+    get: (r) => (r.financialHealthScore == null ? 'Cycle-only (no Financial Health)' : 'Full'),
+  },
+  { header: 'Cycle Payoff', get: (r) => r.cyclePayoffScore, xf: 'int' },
+  { header: 'Cycle Position', get: (r) => r.cyclePos, xf: 'int' },
+  { header: 'Cycle Position Zone', get: (r) => ZONE_DISPLAY[r.valuationZone] },
+  { header: 'Close', get: (r) => r.currentClose, xf: 'num2' },
+  { header: 'Analyst Target', get: (r) => r.fundamentals?.analystTargetPrice ?? null, xf: 'num2' },
+  { header: 'Upside %', get: (r) => upsidePct(r.currentClose, r.fundamentals?.analystTargetPrice ?? null), xf: 'num2' },
+  { header: 'Analyst Consensus', get: (r) => fmtAnalyst(r.fundamentals?.analystRecommendation ?? null) },
+  { header: 'Current Drawdown %', get: (r) => r.currentDrawdownPct, xf: 'num2' },
+  { header: 'Typical Drawdown %', get: (r) => r.typicalDrawdown, xf: 'num2' },
+  { header: 'Lower Bound %', get: (r) => r.lowerBound, xf: 'num2' },
+  { header: 'Pullback Events', get: (r) => r.totalPullbackEvents, xf: 'int' },
+  { header: 'Current Profit %', get: (r) => r.currentProfitPct, xf: 'num2' },
+  { header: 'Typical Profit %', get: (r) => r.typicalProfit, xf: 'num2' },
+  { header: 'Upper Bound %', get: (r) => r.upperBound, xf: 'num2' },
+  { header: 'Rally Events', get: (r) => r.totalProfitEvents, xf: 'int' },
+  { header: 'P/E', get: (r) => r.fundamentals?.pe ?? null, xf: 'num2' },
+  { header: 'PEG', get: (r) => r.fundamentals?.peg ?? null, xf: 'num2' },
+  { header: 'ROE %', get: (r) => r.fundamentals?.roe ?? null, xf: 'num2' },
+  { header: 'Gross Margin %', get: (r) => r.fundamentals?.grossMargin ?? null, xf: 'num2' },
+  { header: 'Net Margin %', get: (r) => r.fundamentals?.netMargin ?? null, xf: 'num2' },
+  { header: 'FCF Yield %', get: (r) => r.fundamentals?.fcfYieldPct ?? null, xf: 'num2' },
+  { header: 'Debt/Equity', get: (r) => r.fundamentals?.debtToEquity ?? null, xf: 'num2' },
+  { header: 'Current Ratio', get: (r) => r.fundamentals?.currentRatio ?? null, xf: 'num2' },
+  { header: 'Interest Coverage', get: (r) => r.fundamentals?.interestCoverage ?? null, xf: 'num2' },
+  { header: 'Revenue Growth %', get: (r) => r.fundamentals?.revenueGrowthYoy ?? null, xf: 'num2' },
+  { header: 'Short % of Float', get: (r) => r.fundamentals?.shortPctOfFloat ?? null, xf: 'num2' },
+  { header: 'Days to Cover', get: (r) => r.fundamentals?.shortRatio ?? null, xf: 'num2' },
 ];
 
 /**
