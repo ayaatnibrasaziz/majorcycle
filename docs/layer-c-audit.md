@@ -3,6 +3,12 @@
 > Living checklist for the multi-session production-readiness audit of the Stock
 > Detail page. See the approved plan for context and session sequencing. Update
 > this file in the same PR as each session's fixes.
+>
+> **🔁 REOPENED 2026-06-26 for a round-2 re-audit** — round 1 (S1–S10) used the
+> 9-check model below; round 2 adds the Layer D/E techniques (deep a11y, formal
+> perf/compliance/#15, a systematic null-data render sweep, a deploy-gated live tail)
+> **plus** the Download Report button fix. Full gap analysis + scope at the bottom:
+> **"🔁 REOPENED — round 2"**.
 
 ## Definition of "audited" (9 checks)
 
@@ -208,3 +214,145 @@ Branch `feat/s10-methodology-modal` off main `68ff85d`. **Pure web + docs — no
 - **Uniform decimals on compact axes (owner: "whole when whole").** Per-value `fmtCompact` mixed "70.0M" beside "140M" on an axis. New **`makeCompactAxisFormatter(axisMax, currency?)`** — one unit + one dp per axis (0 dp when whole, uniform 1 dp when fractional); dp from a **nice-rounded** step (`ceilNiceStep`, because recharts nices its top tick — raw `dataMax/4` is unreliable). Applied to the only 2 compact-unit axes (BalanceSheet:131, QuarterlyFinancials:185), each computing `axisMax` from the currently-plotted values (BalanceSheet reacts to legend toggles + accounts for stacked bars). Off-axis keeps per-value `fmtCompact`. Verified across SEK.AX (FCF A$70M…A$280M, cash-only A$85M…A$340M, all-series A$1.5B…A$6.0B) + AAPL ($95B…$380B).
 - **Verified throughout:** `pnpm typecheck && lint && build` green on every commit; CI (Frontend/Python/Vercel) green; Claude-Preview DOM + screenshots on SEK.AX (small-cap) + AAPL (large-cap) + Browse; `web/.next` cleared post-build before dev (§12). Docs synced: roadmap (S10 ✅, Layer C complete), design-system §9/§15 + Ticker-display + Brand-logo, coding-standards §12 (3 new anti-patterns), CLAUDE.md #27 (logo), this tracker.
 - **STATUS: ✅ all green on PR #34 — owner authorised merge-live.** Instant-revert target = main `68ff85d`. **→ Layer C COMPLETE.** Next: Layer D (Run Analysis) or as owner directs. Deferred: the public high-level/no-formula methodology page (Layer F).
+
+---
+
+## 🔁 REOPENED — round 2: production-readiness re-audit (owner, 2026-06-26)
+
+Layer C's round-1 audit (S1–S10) used a **9-check** model. Since then, Layers **D**
+(`docs/layer-d-audit.md`) and **E** (`docs/layer-e-audit.md`) audited their tabs against
+a stronger **10-check** model and added techniques Layer C never applied. The owner
+reopened Layer C to bring the Stock Detail page up to that same bar, **plus** fix the
+**Download Report** button and do a systematic null-data render sweep + a live tail.
+
+### What D & E did that Layer C's round-1 audit did NOT (the gap to close)
+
+| # | New in D/E | What Layer C did in round 1 | Round-2 action for Layer C |
+|---|---|---|---|
+| 1 | **Deep keyboard-a11y** — every interactive control fully operable: `aria-sort` headers, the full `role=combobox/listbox/option` + arrow-key + `aria-activedescendant` pattern, `role=menu`/`aria-haspopup`/Esc dropdowns, `role=dialog`/focus-trap/Esc, `aria-pressed` toggles, `aria-live`/`role=status` regions, drop-zones as `role=button`+key handlers. | **"A11y (light)"** — only chart `aria-label` + `focus-visible`. | Full keyboard-operability pass on every Stock-Detail control: `StockSubnav` anchor pills + the 2 action buttons, the chart **range buttons** (PriceChart / SmartMoney / DrawdownOverlay 1Y/3Y/All), the **SmartMoney day-panel** + **MethodologyModal** dialogs (focus trap/Esc/return-focus), `WeekRangeGauge`, `MetricsTable`, InfoTips (re-confirm). |
+| 2 | **Formal perf check** re-verified **live** (E: 700+ rows snappy; D: 0-skip reliability on a real deploy run). | Page-load perf was a **cross-cutting item** (streaming + parallel fetch, S4) — not a per-surface check, and not re-verified live recently. | Make perf a formal check: re-verify Stock-Detail cold + warm load (US/AU/CA) on **prod** — no jank, Suspense sections stream, charts mount cleanly. |
+| 3 | **Formal compliance check** — labels #16 + analyst verbatim #17 + **disclaimer #4/#12 visible without scrolling**, asserted per surface. | Compliance was verified implicitly via Parity/Data, not as a dedicated check; **no explicit "disclaimer above the fold" assertion** for Stock Detail. | Formalise: confirm only the 5 compliant tiers in our output, analyst verbatim, and an "information only — not advice" disclaimer **visible without scrolling** (VerdictCard has an inline one — confirm it's above the fold on load across viewports). |
+| 4 | **No-recompute / nothing-persisted (#15)** asserted via a **SQL *negative*** (E confirmed `analysis_runs.results` IS NULL; nothing stored). | Data check verified DB values (the *positive*); never asserted #15 for the detail page. | Assert #15 for Stock Detail: cycle/scores are derived **on-demand** by `cycle.py`; only raw price + fundamentals are stored — confirm no rating output is persisted. |
+| 5 | **Systematic edge/empty enumeration** as a matrix (E #8: no-run / all-skipped / no-match / hydration / partial / single-row). | Per-component empty states were done **piecemeal** (good, but ad-hoc). | **Owner ask:** a **systematic null-data render sweep across ALL ~25 Stock-Detail components** — render each with null/missing data, **verify it VISUALLY in Claude Preview** (looks nice + consistent page-wide, not just "no crash"), and **LIST every null case for the owner to eyeball** before fixing. No "NaN"/"$0"/"Invalid Date", no empty bars, no fabricated values; card hidden or honest empty-state. Fix what's flagged. |
+| 6 | **Deploy-gated live tail via Claude-in-Chrome** — drove the **live** site (real run, live states) as part of the audit. | Some prod verification (RSC-crash via `get_runtime_logs`, health checks) but **no formal live walk** of Stock Detail. | **Owner ask:** live-check Stock Detail end-to-end on www.majorcycle.com (US/AU/CA + a bank/REIT + a sparse/short-history ticker) — every section renders correctly, no console errors. |
+
+### Round-2 scope (next session)
+
+- **C-R1 — Download Report button (fix the placeholder).** `StockSubnav.tsx` (lines ~151–160)
+  is a **disabled "Coming soon"** button (`disabled` + `aria-disabled` + `Download` icon) —
+  same shape as the old Excel "SOON" placeholder. Implement a real per-stock report download.
+  **Decide the format with the owner** (client print-to-PDF of the page · a generated HTML
+  report · a styled PDF/RTF) and the contents; then remove the disabled state. Mirrors the
+  E10 pattern (client-side download). *(The `anthropic-skills:investment-research-report`
+  skill generates a full HTML equity report — reference only; the detail-page "report" is a
+  snapshot of THIS page's analysis, scope TBD with owner.)*
+- **C-R2 — Null-data render sweep (check 5).** Systematically render every Stock-Detail
+  component with null/missing inputs (banks/REITs → withheld FH pillars; AU tickers → null
+  short interest; non-payers → no dividends; spin-offs → short history; missing analyst
+  targets/news/overview). **Verify each null state VISUALLY in Claude Preview** (real
+  tickers that exercise each null + seeded/edited fixtures for the rest) — not just "no
+  crash" but that it *looks nice* and is **consistent across the page** (every empty card
+  uses the same honest empty-state pattern / hidden-card rule; no lone "—" floating in an
+  otherwise full card, no half-empty grids). **Produce a LIST of every null case for the
+  owner** — `component → which field(s) null → how it renders (screenshot/desc) → verdict`
+  — so the owner can eyeball each before any fix is agreed; then fix what's flagged.
+- **C-R3 — Deep a11y pass (check 1).** Apply the D/E keyboard-a11y depth to all Stock-Detail
+  interactive controls (table above).
+- **C-R4 — Formal perf + compliance + #15 (checks 2/3/4).** Re-verify live load perf; assert
+  the disclaimer-above-the-fold + compliant labels; confirm nothing-persisted.
+- **C-R5 — Deploy-gated live tail (check 6).** Live walk on prod across US/AU/CA + a
+  bank/REIT + a sparse ticker, like D & E.
+
+**Audit model:** keep the 9 round-1 checks **+** the D/E additions above (effectively the
+10-check model). Engine stays UNTOUCHED unless a methodology change is proposed + signed off
+first. Pause-before-merge; explain-before-build; self-verify; the live tail is **deploy-gated**
+(after the round-2 fixes merge). Tracker continues here.
+
+### Owner additions to round-2 scope (2026-06-27)
+
+- **C-R6 — Drawdown/Profit bound correctness (TUA.AX).** Owner: the TUA Lower Bound looked
+  wrong (Sept-2020 deeper than June-2022 yet not reflected). Investigate + fix.
+- **C-R7 — Stock-split price-history handling.** The daily refresh re-pulls only the last 5
+  days, so a split *after* the initial full fetch leaves a two-scale history → fake crash. Add
+  split detection + full re-pull + a one-off backfill. (TUA is NOT a split — see C-R6.)
+- **C-R8 — Stock Browser tab (`/stocks`) full 10-check audit** as a new Layer C surface.
+- **C-R5 live tail** now also covers TUA + Browse.
+
+## Round-2 session log
+
+### C-R6 — drawdown/profit bound investigation + first-lookback warmup fix (2026-06-27) — built + verified locally, engine change OWNER-APPROVED
+
+Branch `feat/layer-c-round2` off the docs branch (`13162b4`, which carries the PR #45 reopen
+docs). **Investigated TUA.AX with real data, two owner forks, landed one engine fix.**
+
+- **First hypothesis (split) — REJECTED by evidence.** TUA's −63% drop (2026-05-18, $6.10→$2.27,
+  ~30× volume) is a **real crash**: live yfinance shows **no splits** and a fresh `max` pull
+  matches the stored bars. So TUA is not a split/stale-data case (that mechanism is real but
+  uncorrupted here → still fixed proactively as **C-R7**).
+- **Owner fork 1 (envelope the live value into the bound) — BUILT then REVERTED.** Owner decided
+  a current drawdown piercing the "deepest confirmed" line is *informative* (this dip is the
+  deepest since any confirmed prior one), so the math should NOT envelope the current. Reverted
+  cleanly (`git checkout`), no trace.
+- **Root cause of the TUA Lower Bound = `min_periods` warmup.** `ta_highest`/`ta_lowest` used
+  `min_periods=length`, blanking each stock's first lookback window (Short 63 / Medium 252 /
+  **Long 756** bars). So early dips are never measured → excluded from `lower_bound`/`typical`/
+  events. This also **diverges from the docstring's Pine `ta.highest` claim** (Pine uses available
+  bars in warmup) and from the **client chart** (`DrawdownOverlay.computeDrawdown` uses available
+  bars from bar 0 → the curve shows early dips the engine bound ignores → curve dips below its
+  own bound line).
+- **Owner fork 2 (fix the warmup) — APPROVED + DONE.** `min_periods=length → 1` in both
+  `analytics/major_cycle.py` and `web/_engine/major_cycle.py` (drift-checked in sync). Records
+  early **confirmed** cycle events. **Impact (before→after, isolated via git-stash on today's
+  data):** all Overall **labels unchanged**; only AAPL 70→69 (still Constructive, from a tiny
+  `typical` deepening); mature-stock bounds unchanged; **TUA Long bound −31.3% → −53.4%** (the
+  756-bar warmup had been dropping ~3 years of its history), events 38→70. Full table +
+  rationale recorded in `docs/methodology-audit.md` "C-R6 — first-lookback warmup".
+- **TUA Medium bound stays −53.45%** (owner's original case): the −58% Sept-2020 low is a 1-day
+  **V-spike that never satisfies the 5-bar pivot confirmation** — a denoising choice, not a
+  warmup artifact. So the Lower Bound = deepest **confirmed cyclical** low; the curve can still
+  dip below it on a sharp spike or the live ongoing dip (the latter intended/informative per the
+  owner). Relabelling the line was offered + not taken.
+- **Verified:** `pytest` (50, incl. updated `ta_highest`/`ta_lowest` warmup tests), `ruff`,
+  `mypy`, and the `_engine` drift check all green. Engine before/after captured on
+  TUA/AAPL/BHP/SHOP/BAC. Web charts unaffected (the client already used available bars).
+- **Still pending in C-R6/related:** owner to eyeball the TUA charts live in C-R5; **C-R7**
+  (split handling) next.
+
+### C-R7 — stock-split price-history handling + a zero-close data bug (2026-06-27) — built + verified locally
+
+**Forward fix + backfill BUILT, all Python CI green.** Engine cycle math UNTOUCHED — this is
+data-pipeline hygiene (`analytics/cron/*`, not `major_cycle.py`/scoring).
+- **Root cause** (same mechanism as the rejected C-R6 split hypothesis): `daily_refresh.py`
+  re-pulled only the last 5 days on incremental runs and upserted them, so a split *after* a
+  ticker's initial `max` pull leaves older bars on the pre-split scale → permanent fake gap.
+- **Forward fix** (`daily_refresh.py` + `yfinance_provider.py`): detection uses yfinance's
+  **authoritative split calendar**, not a price heuristic (owner flagged an 8% price-ratio as
+  dodgy — a real stock can drop 8% without a split). The provider reads the `Stock Splits` actions
+  column from the incremental fetch and surfaces split dates on `df.attrs['recent_splits']`;
+  `daily_refresh._recent_splits(df)` checks it, and a non-empty list triggers a full `max` re-pull
+  that overwrites the whole series re-adjusted. Incremental window widened `5d → 1mo` so a split in
+  the last month is in the window. A normal price move never appears in the split calendar → no
+  false positives. 4 unit tests (`test_daily_refresh.py`); live-verified the provider extracts
+  **DD's real 2026-06-24 split** (`['2026-06-24']`) while AAPL returns `[]`. ruff+mypy+pytest(54) green.
+- **Backfill** (`analytics/cron/fix_split_history.py`): one-off re-pull of full `max` history for
+  `--ticker` / `--tickers` / `--all` (reuses `_get_supabase`/`_upsert_price_bars`). Safe on
+  correct tickers (rewrites identical data).
+- **Universe scan (MCP SQL) — no current differential split victims.** Recent (2026) big
+  consecutive-day jumps are all either **real moves** (ZS −31%, SMCI −33%, COH.AX −41%, TUA −63%)
+  or **yfinance-non-bridged corporate actions** (DD/DuPont: a 1-for-3 reverse split dated
+  2026-06-24 that fresh yfinance auto_adjust *also* shows as a $48→$143 jump → our stored matches
+  fresh, not the incremental bug). Older (pre-2026) jumps sit inside each ticker's single `max`
+  pull (consistently adjusted) → not the bug. So the bug is **latent**; the forward fix guards it
+  and the backfill repairs any future victim with one command.
+- **SEPARATE data bug found + FIXED (owner-approved):** exactly **2 zero-close bad bars** in the
+  universe — **CM.TO 2001-12-26** and **ENB.TO 2003-05-19** (`close=0.0`, a yfinance glitch
+  surrounded by normal ~$9/~$4 prices). A $0 close = a −100% drawdown bar that became the
+  confirmed pivot → **both tickers' Long-preset `lower_bound` = −100.0** (corrupt). Re-pull
+  doesn't help (yfinance still serves the 0). **Fix:** drop non-positive-close bars in BOTH
+  download paths of `analytics/providers/yfinance_provider.py` (yfinance + stooq) + deleted the 2
+  stored bad bars via MCP. **Verified:** ENB.TO Long bound −100 → **−39.7%**, CM.TO −100 →
+  **−62.3%**; both Overall ratings **unchanged** (44 Cautious / 58 Neutral — the bad bar corrupted
+  the displayed bound line, not the rating). `yfinance_provider` is NOT in the `_engine` drift
+  mirror (the Vercel fn doesn't bundle the fetcher), so no mirror edit. ruff/mypy/pytest(55) green.
+- **C-R7 STATUS: built + verified locally, all Python CI green. Cron-side (split detection) is
+  exercised on the next nightly `daily_refresh`; no current victim to repair. Pause-before-merge.**

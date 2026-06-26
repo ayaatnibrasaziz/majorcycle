@@ -510,3 +510,51 @@ fully-scored one — misleading on `/results` and Stock Detail.
 **Engine untouched.** No `analytics/` / `web/_engine/` edits; the renormalisation stays
 as signed off. If the owner later wants to *change the composition* (e.g. penalise or
 withhold the cycle-only Overall), that is a fresh methodology proposal to add here first.
+
+---
+
+## C-R6 — first-lookback warmup: count early-history cycle events (Layer C round 2, 2026-06-27)
+
+**Engine change — owner signed off 2026-06-27 (AskUserQuestion: "Fix it").** Touches
+`ta_highest`/`ta_lowest` in `analytics/major_cycle.py` + its `web/_engine/` mirror.
+
+**Bug.** `ta_highest`/`ta_lowest` used `rolling(window=length, min_periods=length)`, which
+returns **NaN for the first `length` bars**. So the rolling drawdown/profit is undefined for
+each stock's first lookback window (Short 63 / Medium 252 / **Long 756** bars), and any major
+dip or rally in that window is **never measured** → it can't enter `lower_bound`/`upper_bound`,
+`typical_*`, or the event counts. This (a) silently drops the early history of young stocks
+(IPOs/spin-offs) and (b) **diverges from the docstring's own claim** that it "replicates Pine
+Script `ta.highest`" — Pine's `ta.highest` uses the highest of the *available* bars during
+warmup, it does not blank it — and (c) **diverges from the client chart**: `DrawdownOverlay`'s
+`computeDrawdown` uses available bars from bar 0, so the plotted curve shows the early dips while
+the engine's bound/typical lines ignore them (the curve dips below its own "bound" line).
+
+**Fix.** `min_periods=length` → `min_periods=1` in both functions. The drawdown/profit series
+now starts at bar 0 (highest/lowest of available bars), matching Pine and the client curve.
+`current_*`, the 5-bar pivot confirmation, and the threshold filter are all unchanged.
+
+**Impact (before → after, same data 2026-06-27, isolated via git-stash):**
+
+| Ticker / preset | Overall | Typical DD | Lower bound | Pullback events |
+|---|---|---|---|---|
+| TUA.AX medium | 87→87 HC | −20.6 → −22.9 | −53.45 → −53.45 (same) | 70 → 78 |
+| TUA.AX **long** | 87→87 HC | −18.4 → −26.9 | **−31.3 → −53.4** | 38 → 70 |
+| AAPL medium | 70 → **69** (Constructive) | −24.35 → −24.70 | −81.4 (same) | 592 → 608 |
+| BHP.AX medium | 70→70 | −16.73 (same) | −57.2 (same) | 357 (same) |
+| SHOP.TO medium | 80→80 HC | −26.4 → −27.0 | −84.1 (same) | 146 → 160 |
+| BAC medium | 54→54 | −22.4 → −22.3 | −92.3 (same) | 580 → 586 |
+
+- **All Overall labels unchanged; only AAPL moved 1 point (70→69, still Constructive)** — a
+  trivial knock-on from `typical_drawdown` deepening slightly (it feeds the Cycle-Payoff
+  reward/risk). Bounds for mature stocks are unchanged (their deepest confirmed pivots weren't in
+  the warmup).
+- **The real win is young stocks on long windows:** TUA's Long bound went from a too-shallow
+  −31.3% (only ~post-2023 data survived the 756-bar warmup) to −53.4% (full history), with events
+  38 → 70.
+
+**Note on TUA Medium (owner's original case).** The Medium bound stays −53.45% even after this
+fix: TUA's deepest *raw* dip (−58% on 2020-09-22) was a 1-day **V-spike that never satisfied the
+5-bar pivot confirmation**, so it is excluded as a denoising choice, not a warmup artifact. The
+"Lower Bound" is therefore the deepest **confirmed cyclical** low; sharp one-off spikes and a
+still-forming current dip can still sit below it on the chart (the latter is intended/informative
+per the owner). Relabelling that line was offered and not taken; left as-is.

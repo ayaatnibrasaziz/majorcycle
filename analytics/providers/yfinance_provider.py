@@ -515,13 +515,27 @@ class YFinanceProvider(DataProvider):
             df.index = pd.to_datetime(df.index)
             if df.index.tz is not None:
                 df.index = df.index.tz_convert(None)
+            # Capture split events in this window from yfinance's actions calendar
+            # (the authoritative "Stock Splits" column) BEFORE trimming to OHLCV. The
+            # daily refresh uses this to trigger a full re-adjusted re-pull — a real
+            # price move never appears here, so it can't false-fire like a price-ratio
+            # heuristic would.
+            split_dates: list[str] = []
+            if "Stock Splits" in df.columns:
+                sp = df["Stock Splits"].fillna(0)
+                split_dates = [d.strftime("%Y-%m-%d") for d in df.index[sp != 0]]
             df = df[["Open", "High", "Low", "Close", "Volume"]]
-            df = df[df["Close"].notna()].copy()
+            # Drop glitch bars with a non-positive close. yfinance occasionally
+            # serves a lone $0.00 close surrounded by normal prices (e.g. ENB.TO
+            # 2003-05-19, CM.TO 2001-12-26); a $0 close reads as a -100% drawdown
+            # and pins the cycle's lower bound to -100%. A real price is always > 0.
+            df = df[df["Close"].notna() & (df["Close"] > 0)].copy()
             df[["Open", "High", "Low", "Volume"]] = (
                 df[["Open", "High", "Low", "Volume"]].ffill()
             )
             if period == _DOWNLOAD_PERIOD and len(df) < _MIN_BARS:
                 return None, None
+            df.attrs["recent_splits"] = split_dates
             return df, t
         except Exception as e:
             logger.debug("yfinance error for %s: %s", ticker_str, e)
@@ -543,7 +557,8 @@ class YFinanceProvider(DataProvider):
                 if col not in df.columns:
                     return None, None
             df = df[["Open", "High", "Low", "Close", "Volume"]]
-            df = df[df["Close"].notna()].copy()
+            # Drop glitch bars with a non-positive close (see _download_yfinance).
+            df = df[df["Close"].notna() & (df["Close"] > 0)].copy()
             df[["Open", "High", "Low", "Volume"]] = (
                 df[["Open", "High", "Low", "Volume"]].ffill()
             )

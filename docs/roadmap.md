@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE (Layer C)**
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers C/D/E built + live; Layer D & E AUDITED; Layer C reopened for a round-2 production-readiness re-audit.**
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -173,7 +173,7 @@ After the components were built, Layer C was reframed into a per-section product
 - ✅ **Thesis re-audit** (Header / KPI / Verdict / Why-Attractive & Key-Risks / Company Overview) — re-aligned to the post-S3 engine: preset-aware lookback copy, value-trap-gated "Why Attractive" bullet, S9 sanity caps on the narrative numbers. Plus owner follow-ups: a **contradiction-free statement engine** (disjoint thresholds per metric + non-asserting fallbacks — swept all 720 tickers, 0 contradictions; full catalogue in the approved plan), the Verdict **entry-zone band** (typical dip → 85% of the distance to the lower bound), **drop the `.AX`/`.TO` suffix** in the Verdict eyebrow, and **page-wide uniform-2-decimal price formatting** (`fmtPrice`/`fmtPerShare`). *(PR #32.)*
 - ✅ **S10 Methodology modal** (in-app, signed-in only) — the Stock Detail subnav "Methodology" button now opens `MethodologyModal` (`web/components/stocks/MethodologyModal.tsx`), a reference-styled scoring explainer (visual parity with the `reference/original-design.html` methodology modal) corrected to the post-S3 engine: Overall = 40/35/25, the 5 compliant tiers, Financial Health pillars (omit-and-renormalise, withhold <3), value-trap-gated Valuation (`0.30 + 0.70·(FH/100)^1.5`), Cycle Payoff (signal-reliability + reward/risk, not momentum), and the Verdict entry-zone band — with formula blocks, since it's behind sign-up. Built on the existing Radix `Dialog`; static (no cycle-data coupling). Also corrected the stale `OnboardingModal` Valuation line. **A separate high-level, no-formula PUBLIC methodology page is deferred to Layer F** (for first-time visitors before sign-up). The same session also shipped Layer-C **hardening**: the real brand logo everywhere (`reference/logo.png`, via `next/image` + favicon), dropping the `.AX`/`.TO` suffix from user-facing labels (`tickerDisplay`/`marketLabel`), and **adaptive number formatting** (`fmtCompact` / `makeCompactAxisFormatter`) so small-cap values no longer collapse to "0M"/"0B" and chart axes keep uniform decimals — see `layer-c-audit.md` (S10 section) for the full list. **Layer C cross-cutting items now complete.**
 
-**→ Layer C complete.** Next: Layer D (Run Analysis tab).
+**→ Layer C round 1 complete** (S1–S10). **🔁 REOPENED for a round-2 production-readiness re-audit (2026-06-26)** — after Layers D & E introduced a stronger 10-check audit model (deep keyboard-a11y, formal perf/compliance/#15 checks, a systematic null-data render sweep, and a deploy-gated live tail via Claude-in-Chrome), the owner reopened Layer C to bring the Stock Detail page up to that same bar, plus fix the **Download Report** button (`StockSubnav.tsx` — a disabled "Coming soon" placeholder). See `docs/layer-c-audit.md` "REOPENED — round 2" for the scope + the C-vs-D/E gap analysis.
 
 ### Layer D: Run Analysis Tab ✅ MERGED + LIVE · ✅ AUDITED
 
@@ -216,24 +216,24 @@ Goal: Users can pick tickers (ready-made baskets / search / CSV), run analysis w
 > - **Polish** — Run tab restyled to the reference's compact look via ported `globals.css` classes; search shows bare symbols (no `.AX`/`.TO`); CSV re-upload fixed; **Download sample CSV** button.
 > - **Done (2026-06-16):** owner deleted the old Seoul project and **renamed the new us-east project to `MajorCycle`** (display name only — the ref/URL/keys are unchanged, so nothing broke). Email + Google auth verified live (two real sign-ins, one Google + one email, both auto-created a linked `profiles` row via `handle_new_user`). Local `.env.local` confirmed on the new project. Daily refresh cron confirmed writing to the new project (latest bar current).
 
-### Layer E: Results Tab ✅ BUILT + MERGED + LIVE · 🔍 AUDIT IN PROGRESS (reopened)
+### Layer E: Results Tab ✅ BUILT + AUDITED (E1–E11) + MERGED + LIVE
 
 Goal: The ranked Results view from reference HTML, fully functional.
 
-> **Audit status (2026-06-25):** The `/results` ranked-table audit (E1–E4) is done —
-> all 10 production-readiness checks pass; fixes applied on `audit/layer-e-results`
-> (9 findings: a11y cluster E-a1…E-a7 + E-f1 filter + E-c1 copy; 6 files, CI-green,
-> engine untouched, PAUSE-BEFORE-MERGE). Tracker: `docs/layer-e-audit.md`. **Owner
-> REOPENED Layer E** for follow-ups (sessions E5–E11): the Briefing custom asset; the
-> **missing-component Overall-score** issue (FH-withheld stocks still get an Overall
-> and can out-rank fully-scored names — affects `/results` AND Stock Detail; any
-> compose change = methodology proposal first); the **unknown-ticker Stock Detail
-> page** (`/stocks/us/ZZZZ` still cites the old live-fetch flow) + its audit; a
-> site-wide stale-info sweep; the **Request-a-Ticker** tab audit; the **Download
-> Excel** export (the dropdown's disabled "SOON" placeholder → a real colour-coded
-> `.xlsx`); and the deploy-gated tail (700+ row perf + live skipped states). All land
-> together via DRAFT PR #44 (`audit/layer-e-results`). Layer E stays OPEN until E5–E11
-> land. The PRs #38/#39 (+ index-membership #41/#42/#43) are MERGED + LIVE.
+> **Audit status — COMPLETE (2026-06-26).** The full Layer E audit (E1–E11) is done +
+> **merged to main (PR #44, `dad5091`) + live**. E1–E4 = the `/results` 10-check
+> production-readiness pass (a11y cluster E-a1…E-a7 + E-f1 + E-c1). Reopened E5–E11:
+> **E5** premium Briefing score-ring avatar (count of Constructive+; no icon/dot);
+> **E6** missing-component (FH-null) Overall — "Cycle-only" badge + de-rank (web-only;
+> engine untouched per P3, recorded in `methodology-audit.md`); **E7** unknown-ticker
+> Stock Detail page → queue model; **E8** site-wide stale-info sweep (Browse empty-state
+> fixed); **E9** Request-a-Ticker audit (+ aria-live); **E10** Download Excel (ExcelJS —
+> colour-coded `.xlsx`, per-column precision matching CSV, Health Rating + proper zone
+> labels, black borders, content-fit widths, default filters); **E11** deploy-gated tail
+> — **verified live on www.majorcycle.com**: a 759-stock run scored 759/0 skips in 243s,
+> /results rendered <1s with the Opportunity Map (~756 bubbles, no jank), CSV 15ms /
+> Excel 536ms, and all 5 Request/skipped states (Covered / Request / Requested / Available
+> / Not-supported). Tracker: `docs/layer-e-audit.md`. Engine never touched across E1–E11.
 >
 > **Build status (2026-06-17):** Built on `feat/layer-e-results` off `main` (**PR #38, CI
 > green, awaiting owner merge**; latest commit `10b4ccf`). Reads the SAME in-memory
@@ -414,11 +414,11 @@ Order of priority TBD based on user feedback. Candidate features:
    ↓
 ✅ Phase 1 Layer B: Frontend Foundation (auth, design system, layout)
    ↓
-⬅️ Phase 1 Layer C: Stock Detail Tab               ← NOW
+🔁 Phase 1 Layer C: Stock Detail Tab    ← NOW (round-2 re-audit reopened)
    ↓
-   Phase 1 Layer D: Run Analysis Tab
+✅ Phase 1 Layer D: Run Analysis Tab     (built + audited + live)
    ↓
-   Phase 1 Layer E: Results Tab
+✅ Phase 1 Layer E: Results Tab          (built + audited E1–E11 + live)
    ↓
    Phase 1 Layer F: Static Pages + Subscription
    ↓

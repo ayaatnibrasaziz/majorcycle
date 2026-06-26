@@ -35,6 +35,12 @@ _BATCH_SIZE = 10
 _SLEEP_BETWEEN_BATCHES = 2.0
 _DB_CHUNK = 500
 
+# Incremental price updates fetch a ~1-month window (not just the last few days) so
+# any stock split reported by yfinance's actions calendar within that window is
+# seen and triggers a full re-adjusted re-pull (see `_recent_splits`). The wider
+# window also survives a few missed cron days.
+_INCREMENTAL_PRICE_PERIOD = "1mo"
+
 
 def _jsonb(obj: Any) -> Any:
     return json.loads(json.dumps(obj, default=str))
@@ -114,6 +120,22 @@ def _upsert_price_bars(supabase: Client, ticker: str, df: pd.DataFrame) -> None:
     for i in range(0, len(bars), _DB_CHUNK):
         chunk = bars[i: i + _DB_CHUNK]
         supabase.table("price_bars").upsert(chunk, on_conflict="ticker,date").execute()
+
+
+def _recent_splits(df: pd.DataFrame) -> list[str]:
+    """ISO dates of any stock split inside the freshly-fetched window.
+
+    The provider surfaces yfinance's authoritative split *actions* (the `Stock
+    Splits` column) on ``df.attrs['recent_splits']``. This is the corporate-action
+    calendar, not a price heuristic — a normal price move (a stock simply falling
+    10%) never appears here, so it can't false-fire. A non-empty list means the
+    series was re-scaled by a split and the caller should re-pull the FULL history
+    so every stored bar is re-adjusted consistently (otherwise the pre-split bars
+    keep the old scale and a split reads as a fake one-day crash that wrecks the
+    cycle bounds).
+    """
+    val = getattr(df, "attrs", {}).get("recent_splits")
+    return list(val) if val else []
 
 
 def _should_fetch_enriched(
@@ -211,13 +233,32 @@ def run(
             try:
                 state = ticker_states.get(ticker)
                 fetch_enriched = _should_fetch_enriched(state, today_str, mode)
-                price_period = "max" if state is None else "5d"
+                first_fetch = state is None
 
-                df = DATA_PROVIDER.fetch_price_history(ticker, period=price_period)
+                df = DATA_PROVIDER.fetch_price_history(
+                    ticker, period="max" if first_fetch else _INCREMENTAL_PRICE_PERIOD
+                )
                 if df is None or df.empty:
                     logger.debug("%s: no price data", ticker)
                     failed.append(ticker)
                     continue
+
+                # Split guard: if yfinance's split calendar reports a split inside the
+                # fetched window, the incremental bars are on a new price scale while
+                # the stored older bars keep the old one — re-pull the FULL history so
+                # every bar is re-adjusted consistently, instead of leaving a permanent
+                # fake gap that corrupts the cycle bounds. (Authoritative — a normal
+                # price move never appears in the split calendar.)
+                splits = [] if first_fetch else _recent_splits(df)
+                if splits:
+                    logger.warning(
+                        "%s: stock split detected (%s) — re-pulling full re-adjusted history",
+                        ticker,
+                        ", ".join(splits),
+                    )
+                    full = DATA_PROVIDER.fetch_price_history(ticker, period="max")
+                    if full is not None and not full.empty:
+                        df = full
 
                 now = datetime.now(timezone.utc).isoformat()
                 market = _infer_market(ticker)

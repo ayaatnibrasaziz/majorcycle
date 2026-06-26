@@ -58,13 +58,23 @@ class CycleAnalysis:
 
 
 def ta_highest(series: pd.Series, length: int) -> pd.Series:  # type: ignore[type-arg]
-    """Replicates Pine Script ta.highest(series, length)."""
-    return series.rolling(window=length, min_periods=length).max()
+    """Replicates Pine Script ta.highest(series, length).
+
+    Pine's ta.highest uses the highest of the *available* bars before `length`
+    bars exist — it does NOT blank the warmup. min_periods=length would NaN the
+    first `length` bars, so a major early dip/rally (e.g. a recent IPO's first-year
+    crash) would never be measured and could be missed by the lower/upper bound.
+    min_periods=1 matches Pine and the client drawdown curve
+    (DrawdownOverlay.computeDrawdown, which uses available bars from bar 0).
+    See docs/methodology-audit.md "C-R6 — first-lookback warmup".
+    """
+    return series.rolling(window=length, min_periods=1).max()
 
 
 def ta_lowest(series: pd.Series, length: int) -> pd.Series:  # type: ignore[type-arg]
-    """Replicates Pine Script ta.lowest(series, length)."""
-    return series.rolling(window=length, min_periods=length).min()
+    """Replicates Pine Script ta.lowest(series, length). min_periods=1 so the first
+    `length` bars aren't blanked — see ta_highest + docs/methodology-audit.md."""
+    return series.rolling(window=length, min_periods=1).min()
 
 
 def ta_pivotlow(

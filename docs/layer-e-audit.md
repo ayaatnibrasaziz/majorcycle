@@ -314,7 +314,7 @@ verbatim (#17), disclaimer (#4/#12), visual/colour, perf (#6 clean), empty/edge,
 | E8 | Site-wide stale-info sweep | Enumerate any other outdated/stale on-site copy or flows like E7 (e.g. references to deprecated live-fetch, old provider names, dead routes) and list them for the owner to triage. | 🔧 |
 | E9 | Request-a-Ticker audit | Run the same Layer-E production-readiness audit (10 checks) on the **Request a Ticker** tab (`web/app/(app)/request/*`, `/api/listings/search`, `/api/request-ticker`, `SkippedTickers` tie-in). | 🔧 |
 | E10 | Download Excel export | The Export dropdown's **Download Excel** option (`ResultsToolbar.tsx` `ExportMenu`, `.export-opt.soon` + `aria-disabled` + "SOON" tag) is a disabled placeholder. Implement it: a colour-coded `.xlsx` of the current filtered+sorted rows with styled rating cells (reuse the `CSV_COLUMNS` set + tier colours; client-side download like the `downloadCsv` pattern in `ratings.ts`). Decide the library with owner (e.g. exceljs / SheetJS) — weigh bundle size. Remove the SOON tag + `aria-disabled` once live. **Depends on E6:** whatever E6 decides for missing-component Overall (withhold/caveat/flag/de-rank) MUST be reflected in BOTH the Excel export AND the existing CSV export (`CSV_COLUMNS`/`toCsv`) so exports match the table. | 🔧 |
-| E11 | Deploy-gated tail | **LAST — after everything else is fixed + PR #44 merges.** Confirm on www.majorcycle.com (Claude-in-Chrome, owner logged in) a genuine 700+ row run's perf + the live Request/Requested/Not-supported skipped states (need a listed-but-uncovered ticker in the real queue). | ⬜ |
+| E11 | Deploy-gated tail | **LAST — after everything else is fixed + PR #44 merges.** Confirm on www.majorcycle.com (Claude-in-Chrome, owner logged in) a genuine 700+ row run's perf + the live Request/Requested/Not-supported skipped states (need a listed-but-uncovered ticker in the real queue). | ✅ |
 
 **Next session = E5–E11.** A self-contained kickoff prompt for it lives in the
 session handoff (and memory `project-layer-e-progress`). Everything (E1–E10) is fixed
@@ -407,3 +407,22 @@ All web-only, engine untouched; typecheck/lint/build green; Preview-verified; no
   (FH-null only if none are scored) — same rule as `buildBriefing`, so `/run` and `/results` agree.
 - **Owner Q (no code): Cycle Payoff** = 50% events_score `((pullbacks+rallies)/20·100`, capped) + 50% rr_score
   (`typical_profit/|typical_drawdown|/3·100`, capped; neutral 50 if missing); averaged, 1dp. No price-trend term.
+
+### MERGED + E11 deploy-gated tail DONE (2026-06-26) — Layer E audit CLOSED
+
+**PR #44 merged to main** (merge commit `dad5091`) + Vercel **production deploy green**. Commit `f2ff017`
+(E5–E10 + 3 polish rounds, 20 files) on `audit/layer-e-results` → squashed into the merge; branch deleted.
+**E11 verified live on www.majorcycle.com via Claude-in-Chrome (owner logged in):**
+- **700+ row run perf:** combined S&P 500 + ASX 200 + S&P/TSX 60 = **759 stocks → 759 scored, 0 skips**,
+  runtime 243s (top pick **NEM** 96 High Conviction, 276/759 Constructive+). `/results` rendered 759 rows
+  in <1s; Opportunity Map drew ~756 bubbles, no jank; **CSV export 15ms / Excel export 536ms** (full set,
+  styled); a full re-sort ~1.6–2s (no freeze). No console errors.
+- **This session's work confirmed live at scale:** E5 briefing ring shows "276 / OF 759" (count, no green
+  dot); E6 **de-rank** — the 3 FH-null names (FISV, NAB, SGH) sit at the very bottom (rows 756–758) with the
+  Cycle-only badge; top pick NEM is fully scored (top-pick-from-scored held).
+- **Live Request/skipped states — all 5 confirmed:** Covered (AAPL·NASDAQ), Request-available (AAPL CDR·TSX),
+  Available-now/fetched (TSM/ASML/ZS/SLC/AMD/ALAB), Not-supported/unsupported (SPCX), and **Requested/queued**
+  — owner-approved live-DB write: requested **CRDO** (Credo Technology, NASDAQ) → flipped to "Requested" in
+  the search row + recent panel + notice. CRDO is now in the global queue; the nightly cron will fetch it.
+
+**Layer E (E1–E11) is COMPLETE + LIVE.** Engine never touched across the whole audit.
