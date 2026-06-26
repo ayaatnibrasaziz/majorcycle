@@ -39,7 +39,10 @@ class TestTaHighest:
         s = pd.Series([1.0, 3.0, 2.0, 5.0, 4.0])
         result = ta_highest(s, 3)
         assert result.iloc[-1] == 5.0
-        assert np.isnan(result.iloc[0])  # min_periods not met
+        # min_periods=1 (Pine ta.highest): warmup uses the highest of available
+        # bars, not NaN — so early major dips/rallies are still measured.
+        assert result.iloc[0] == 1.0
+        assert list(result) == [1.0, 3.0, 3.0, 5.0, 5.0]
 
     def test_window_of_one(self) -> None:
         s = pd.Series([1.0, 2.0, 3.0])
@@ -52,7 +55,9 @@ class TestTaLowest:
         s = pd.Series([5.0, 3.0, 4.0, 1.0, 2.0])
         result = ta_lowest(s, 3)
         assert result.iloc[-1] == 1.0
-        assert np.isnan(result.iloc[0])
+        # min_periods=1 (Pine ta.lowest): warmup uses the lowest of available bars.
+        assert result.iloc[0] == 5.0
+        assert list(result) == [5.0, 3.0, 3.0, 1.0, 1.0]
 
     def test_window_of_one(self) -> None:
         s = pd.Series([5.0, 4.0, 3.0])

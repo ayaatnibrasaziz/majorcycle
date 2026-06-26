@@ -267,3 +267,92 @@ reopened Layer C to bring the Stock Detail page up to that same bar, **plus** fi
 10-check model). Engine stays UNTOUCHED unless a methodology change is proposed + signed off
 first. Pause-before-merge; explain-before-build; self-verify; the live tail is **deploy-gated**
 (after the round-2 fixes merge). Tracker continues here.
+
+### Owner additions to round-2 scope (2026-06-27)
+
+- **C-R6 — Drawdown/Profit bound correctness (TUA.AX).** Owner: the TUA Lower Bound looked
+  wrong (Sept-2020 deeper than June-2022 yet not reflected). Investigate + fix.
+- **C-R7 — Stock-split price-history handling.** The daily refresh re-pulls only the last 5
+  days, so a split *after* the initial full fetch leaves a two-scale history → fake crash. Add
+  split detection + full re-pull + a one-off backfill. (TUA is NOT a split — see C-R6.)
+- **C-R8 — Stock Browser tab (`/stocks`) full 10-check audit** as a new Layer C surface.
+- **C-R5 live tail** now also covers TUA + Browse.
+
+## Round-2 session log
+
+### C-R6 — drawdown/profit bound investigation + first-lookback warmup fix (2026-06-27) — built + verified locally, engine change OWNER-APPROVED
+
+Branch `feat/layer-c-round2` off the docs branch (`13162b4`, which carries the PR #45 reopen
+docs). **Investigated TUA.AX with real data, two owner forks, landed one engine fix.**
+
+- **First hypothesis (split) — REJECTED by evidence.** TUA's −63% drop (2026-05-18, $6.10→$2.27,
+  ~30× volume) is a **real crash**: live yfinance shows **no splits** and a fresh `max` pull
+  matches the stored bars. So TUA is not a split/stale-data case (that mechanism is real but
+  uncorrupted here → still fixed proactively as **C-R7**).
+- **Owner fork 1 (envelope the live value into the bound) — BUILT then REVERTED.** Owner decided
+  a current drawdown piercing the "deepest confirmed" line is *informative* (this dip is the
+  deepest since any confirmed prior one), so the math should NOT envelope the current. Reverted
+  cleanly (`git checkout`), no trace.
+- **Root cause of the TUA Lower Bound = `min_periods` warmup.** `ta_highest`/`ta_lowest` used
+  `min_periods=length`, blanking each stock's first lookback window (Short 63 / Medium 252 /
+  **Long 756** bars). So early dips are never measured → excluded from `lower_bound`/`typical`/
+  events. This also **diverges from the docstring's Pine `ta.highest` claim** (Pine uses available
+  bars in warmup) and from the **client chart** (`DrawdownOverlay.computeDrawdown` uses available
+  bars from bar 0 → the curve shows early dips the engine bound ignores → curve dips below its
+  own bound line).
+- **Owner fork 2 (fix the warmup) — APPROVED + DONE.** `min_periods=length → 1` in both
+  `analytics/major_cycle.py` and `web/_engine/major_cycle.py` (drift-checked in sync). Records
+  early **confirmed** cycle events. **Impact (before→after, isolated via git-stash on today's
+  data):** all Overall **labels unchanged**; only AAPL 70→69 (still Constructive, from a tiny
+  `typical` deepening); mature-stock bounds unchanged; **TUA Long bound −31.3% → −53.4%** (the
+  756-bar warmup had been dropping ~3 years of its history), events 38→70. Full table +
+  rationale recorded in `docs/methodology-audit.md` "C-R6 — first-lookback warmup".
+- **TUA Medium bound stays −53.45%** (owner's original case): the −58% Sept-2020 low is a 1-day
+  **V-spike that never satisfies the 5-bar pivot confirmation** — a denoising choice, not a
+  warmup artifact. So the Lower Bound = deepest **confirmed cyclical** low; the curve can still
+  dip below it on a sharp spike or the live ongoing dip (the latter intended/informative per the
+  owner). Relabelling the line was offered + not taken.
+- **Verified:** `pytest` (50, incl. updated `ta_highest`/`ta_lowest` warmup tests), `ruff`,
+  `mypy`, and the `_engine` drift check all green. Engine before/after captured on
+  TUA/AAPL/BHP/SHOP/BAC. Web charts unaffected (the client already used available bars).
+- **Still pending in C-R6/related:** owner to eyeball the TUA charts live in C-R5; **C-R7**
+  (split handling) next.
+
+### C-R7 — stock-split price-history handling + a zero-close data bug (2026-06-27) — built + verified locally
+
+**Forward fix + backfill BUILT, all Python CI green.** Engine cycle math UNTOUCHED — this is
+data-pipeline hygiene (`analytics/cron/*`, not `major_cycle.py`/scoring).
+- **Root cause** (same mechanism as the rejected C-R6 split hypothesis): `daily_refresh.py`
+  re-pulled only the last 5 days on incremental runs and upserted them, so a split *after* a
+  ticker's initial `max` pull leaves older bars on the pre-split scale → permanent fake gap.
+- **Forward fix** (`daily_refresh.py` + `yfinance_provider.py`): detection uses yfinance's
+  **authoritative split calendar**, not a price heuristic (owner flagged an 8% price-ratio as
+  dodgy — a real stock can drop 8% without a split). The provider reads the `Stock Splits` actions
+  column from the incremental fetch and surfaces split dates on `df.attrs['recent_splits']`;
+  `daily_refresh._recent_splits(df)` checks it, and a non-empty list triggers a full `max` re-pull
+  that overwrites the whole series re-adjusted. Incremental window widened `5d → 1mo` so a split in
+  the last month is in the window. A normal price move never appears in the split calendar → no
+  false positives. 4 unit tests (`test_daily_refresh.py`); live-verified the provider extracts
+  **DD's real 2026-06-24 split** (`['2026-06-24']`) while AAPL returns `[]`. ruff+mypy+pytest(54) green.
+- **Backfill** (`analytics/cron/fix_split_history.py`): one-off re-pull of full `max` history for
+  `--ticker` / `--tickers` / `--all` (reuses `_get_supabase`/`_upsert_price_bars`). Safe on
+  correct tickers (rewrites identical data).
+- **Universe scan (MCP SQL) — no current differential split victims.** Recent (2026) big
+  consecutive-day jumps are all either **real moves** (ZS −31%, SMCI −33%, COH.AX −41%, TUA −63%)
+  or **yfinance-non-bridged corporate actions** (DD/DuPont: a 1-for-3 reverse split dated
+  2026-06-24 that fresh yfinance auto_adjust *also* shows as a $48→$143 jump → our stored matches
+  fresh, not the incremental bug). Older (pre-2026) jumps sit inside each ticker's single `max`
+  pull (consistently adjusted) → not the bug. So the bug is **latent**; the forward fix guards it
+  and the backfill repairs any future victim with one command.
+- **SEPARATE data bug found + FIXED (owner-approved):** exactly **2 zero-close bad bars** in the
+  universe — **CM.TO 2001-12-26** and **ENB.TO 2003-05-19** (`close=0.0`, a yfinance glitch
+  surrounded by normal ~$9/~$4 prices). A $0 close = a −100% drawdown bar that became the
+  confirmed pivot → **both tickers' Long-preset `lower_bound` = −100.0** (corrupt). Re-pull
+  doesn't help (yfinance still serves the 0). **Fix:** drop non-positive-close bars in BOTH
+  download paths of `analytics/providers/yfinance_provider.py` (yfinance + stooq) + deleted the 2
+  stored bad bars via MCP. **Verified:** ENB.TO Long bound −100 → **−39.7%**, CM.TO −100 →
+  **−62.3%**; both Overall ratings **unchanged** (44 Cautious / 58 Neutral — the bad bar corrupted
+  the displayed bound line, not the rating). `yfinance_provider` is NOT in the `_engine` drift
+  mirror (the Vercel fn doesn't bundle the fetcher), so no mirror edit. ruff/mypy/pytest(55) green.
+- **C-R7 STATUS: built + verified locally, all Python CI green. Cron-side (split detection) is
+  exercised on the next nightly `daily_refresh`; no current victim to repair. Pause-before-merge.**
