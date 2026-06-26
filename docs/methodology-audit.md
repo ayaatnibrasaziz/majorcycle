@@ -477,3 +477,36 @@ Payoff. Option-A sector-relative FH → Phase 2. Hold (2a/2b). Every step keeps
 commit**, with the CI drift check green.
 
 **Nothing here is implemented yet.** Proposals signed off; implementation is S3.
+
+---
+
+## E6 — Presenting the missing-component (FH-null) Overall (Layer E, 2026-06-26)
+
+**Not an engine change.** This records how the app *presents and ranks* the
+cycle-only Overall that the engine already produces when Financial Health is
+withheld — the composition itself is unchanged (Proposal 3, signed off above).
+
+**Behaviour today.** `score_financial_health` returns `None` when fewer than 3 of
+5 pillars have data (`_MIN_PILLARS_FOR_SCORE`). `calculate_overall_rating` then
+renormalises the Overall over Valuation (35) + Cycle Payoff (25) only — a cycle-only
+score on the **same 0–100 scale and the same five tier labels**. `financialHealthScore`
+is the **only** nullable component; Valuation and Cycle Payoff always exist (a ticker
+with no usable price history is dropped to `unavailable`, never partial). Because the
+cycle-only Overall is indistinguishable on screen, a data-poor name could out-rank a
+fully-scored one — misleading on `/results` and Stock Detail.
+
+**Agreed treatment (owner, 2026-06-26) — "Badge + de-rank", web/presentation only:**
+- **Badge** — FH-null rows are flagged "Cycle-only" on `/results` (Overall cell +
+  mobile card, with an InfoTip) and on Stock Detail (KpiStrip Overall card + Verdict
+  eyebrow), explaining the Overall excludes Financial Health.
+- **De-rank** — on the Overall sort (and the default Overall-desc), fully-scored rows
+  always rank above FH-null rows (`sortRows` groups by completeness first, then score),
+  so an incomplete name never tops the table. Other-column sorts honour the column order.
+- **Briefing** — `buildBriefing` picks the standout from fully-scored rows when any exist.
+- **Exports** — a "Data Completeness" column (`Full` / `Cycle-only (no Financial Health)`)
+  is added to CSV (and the E10 Excel), and the Excel mutes the Overall cell of FH-null
+  rows, so downloads match the on-screen table.
+
+**Engine untouched.** No `analytics/` / `web/_engine/` edits; the renormalisation stays
+as signed off. If the owner later wants to *change the composition* (e.g. penalise or
+withhold the cycle-only Overall), that is a fresh methodology proposal to add here first.

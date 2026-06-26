@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { TrendingUp } from 'lucide-react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
@@ -30,9 +29,7 @@ export function BriefingCard({
 
   return (
     <div className="briefing">
-      <div className="briefing-icon">
-        <TrendingUp className="h-[20px] w-[20px] text-white" strokeWidth={2.25} />
-      </div>
+      <BriefingRing constructive={briefing.constructivePlus} total={rows.length} />
       <div className="briefing-body">
         <div className="briefing-head">
           <span className="briefing-title">Analyst Briefing</span>
@@ -81,6 +78,45 @@ export function BriefingCard({
 
         <div className="briefing-disclaimer">Information only — not financial advice.</div>
       </div>
+    </div>
+  );
+}
+
+// The score-ring avatar — mirrors the Stock Detail Verdict score-ring (a brand-blue
+// arc on a faint track, big centred figure, caption beneath). The centre shows the
+// COUNT of stocks rating Constructive or better (the meaningful headline number); the
+// arc fills to that share of the run, and the caption gives the denominator. The
+// figure font scales with its digit count so it stays clean from 1 to 1,000+ stocks.
+function BriefingRing({ constructive, total }: { constructive: number; total: number }) {
+  const R = 34;
+  const C = 2 * Math.PI * R;
+  const frac = total > 0 ? Math.min(constructive / total, 1) : 0;
+  const offset = C * (1 - frac);
+  const digits = String(constructive).length;
+  const numSize = digits >= 4 ? 13 : digits === 3 ? 16 : 20;
+  return (
+    <div className="briefing-ring-block">
+      <div
+        className="briefing-ring"
+        role="img"
+        aria-label={`${constructive} of ${total} stocks rated Constructive or better`}
+      >
+        <svg viewBox="0 0 84 84" aria-hidden="true">
+          <circle className="briefing-ring-bg" cx="42" cy="42" r={R} />
+          <circle
+            className="briefing-ring-fg"
+            cx="42"
+            cy="42"
+            r={R}
+            strokeDasharray={C.toFixed(2)}
+            strokeDashoffset={offset.toFixed(2)}
+          />
+        </svg>
+        <div className="briefing-ring-num" style={{ fontSize: numSize }}>
+          {constructive}
+        </div>
+      </div>
+      <div className="briefing-ring-cap">of {total}</div>
     </div>
   );
 }

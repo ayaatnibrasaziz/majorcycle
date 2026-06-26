@@ -21,24 +21,25 @@ export default function StockNotFound() {
           </svg>
         </div>
         <h1 className="text-[15px] font-bold text-[var(--text-primary)] mb-1.5">
-          Ticker not found
+          Not in our coverage yet
         </h1>
         <p className="text-[12px] text-[var(--text-muted)] mb-5 leading-relaxed">
-          We don&apos;t have this ticker in our universe yet. Try uploading it in
-          the Run Analysis tab — we&apos;ll fetch it live and cache it.
+          We don&apos;t cover this ticker yet. Request it and we&apos;ll fetch it in
+          our next daily update (within ~24&nbsp;hours) — then it appears across
+          MajorCycle.
         </p>
         <div className="flex items-center gap-2 justify-center">
           <Link
-            href="/run"
+            href="/request"
             className="inline-flex items-center gap-1.5 bg-gradient-to-br from-[var(--brand-mid)] to-[var(--brand-deep)] text-white text-[12px] font-semibold px-4 py-2 rounded-[var(--radius-sm)] shadow-[0_2px_8px_rgba(30,92,179,.25)] hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(30,92,179,.35)] transition-all"
           >
-            Run Analysis
+            Request a Ticker
           </Link>
           <Link
-            href="/results"
+            href="/stocks"
             className="inline-flex items-center gap-1.5 bg-white border border-[var(--border-strong)] text-[var(--text-secondary)] text-[12px] font-semibold px-4 py-2 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)] transition-all"
           >
-            Back to Results
+            Browse stocks
           </Link>
         </div>
       </div>

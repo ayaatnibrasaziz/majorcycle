@@ -63,6 +63,13 @@ export function healthColor(score: number | null): string {
   return 'var(--c-tier-5)'; //                  At Risk  → red
 }
 
+/** Financial-Health 3-tier label (matches healthColor): Healthy / Adequate / At Risk. */
+export function healthRatingLabel(score: number): string {
+  if (score >= 80) return 'Healthy';
+  if (score >= 60) return 'Adequate';
+  return 'At Risk';
+}
+
 // The Valuation column's own vocabulary. The displayed valuation score is the
 // health-gated 0–100 (how attractively valued a name is *for its quality*), so it
 // gets labels distinct from the cycle-position zones (Deep Value…Stretched, which
@@ -80,6 +87,11 @@ const VALUATION_APPEAL: Record<1 | 2 | 3 | 4 | 5, string> = {
 /** Valuation-appeal label for a 0–100 (health-gated) valuation score. */
 export function valuationAppealLabel(score: number): string {
   return VALUATION_APPEAL[tierFromScore(score)];
+}
+
+/** "a"/"an" for the following word (vowel-initial → "an"). */
+function article(word: string): string {
+  return /^[aeiou]/i.test(word) ? 'an' : 'a';
 }
 
 // Valuation zone → tier + display. DEEP VALUE/VALUE are favourable (green),
@@ -157,7 +169,12 @@ export function buildBriefing<T extends BriefingRow>(rows: T[]): Briefing {
   if (n === 0) {
     return { sentences: [], topPick: null, constructivePlus: 0, cautiousBearish: 0 };
   }
-  const top = rows.reduce((best, r) => (r.overallRating > best.overallRating ? r : best));
+  // Prefer a fully-scored name as the standout — a stock with Financial Health
+  // withheld carries a cycle-only Overall, so it shouldn't headline the briefing
+  // unless nothing in the run is fully scored.
+  const complete = rows.filter((r) => r.financialHealthScore != null);
+  const pickPool = complete.length > 0 ? complete : rows;
+  const top = pickPool.reduce((best, r) => (r.overallRating > best.overallRating ? r : best));
   const constructivePlus = rows.filter((r) => POSITIVE_LABELS.includes(r.overallLabel)).length;
   const weak = rows.filter((r) => NEGATIVE_LABELS.includes(r.overallLabel));
 
@@ -176,7 +193,7 @@ export function buildBriefing<T extends BriefingRow>(rows: T[]): Briefing {
   if (constructivePlus > 0) {
     sentences.push(
       `The standout is {{TICKER}}${topName} — a ${healthWord} company${healthClause}, currently ` +
-        `rated ${top.overallLabel} with a ${valuationAppealLabel(top.valuationScore)} valuation.`,
+        `rated ${top.overallLabel} with ${article(valuationAppealLabel(top.valuationScore))} ${valuationAppealLabel(top.valuationScore)} valuation.`,
     );
   } else {
     sentences.push(
@@ -206,14 +223,33 @@ function csvField(value: string | number | null): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-/** Serialise rows to a CSV string given ordered [header, accessor] columns. */
+/**
+ * Per-column export precision. `int` = whole number; `num2` = exactly two decimals
+ * (trailing zeros kept, so 1 → "1.00"). Drives BOTH the CSV (`toCsv`, as strings)
+ * and the Excel export (`lib/xlsx.ts`, as numbers + a matching cell number-format),
+ * so the two files always show identical figures.
+ */
+export type ExportFmt = 'int' | 'num2';
+
+/** Format one export value to a string per its column precision (CSV path). */
+export function exportText(value: string | number | null, xf?: ExportFmt): string {
+  if (value == null || value === '') return '';
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    if (xf === 'int') return String(Math.round(value));
+    if (xf === 'num2') return value.toFixed(2);
+    return String(value);
+  }
+  return String(value);
+}
+
+/** Serialise rows to a CSV string given ordered [header, accessor, precision] columns. */
 export function toCsv<T>(
   rows: T[],
-  columns: ReadonlyArray<{ header: string; get: (r: T) => string | number | null }>,
+  columns: ReadonlyArray<{ header: string; get: (r: T) => string | number | null; xf?: ExportFmt }>,
 ): string {
   const head = columns.map((c) => csvField(c.header)).join(',');
   const body = rows
-    .map((r) => columns.map((c) => csvField(c.get(r))).join(','))
+    .map((r) => columns.map((c) => csvField(exportText(c.get(r), c.xf))).join(','))
     .join('\n');
   return `${head}\n${body}`;
 }

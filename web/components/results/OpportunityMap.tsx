@@ -88,6 +88,11 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
 
   // Only rows with a Financial Health score can be plotted.
   const plottable = rows.filter((r) => r.financialHealthScore != null);
+  // Count in the top-right Opportunity Zone (healthy + attractively valued) for the
+  // screen-reader summary.
+  const oppZoneCount = plottable.filter(
+    (r) => (r.financialHealthScore as number) >= SPLIT && r.valuationScore >= SPLIT,
+  ).length;
 
   // Group into one series per tier so each gets a toggleable legend entry.
   const series = OVERALL_LABELS.map((label) => ({
@@ -199,6 +204,12 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
               mouse.current = { x: e.clientX, y: e.clientY };
             }}
           >
+            {/* Text alternative for the scatter (SR-only — `role="img"` on the wrap
+                would hide the interactive legend inside it). The results table below
+                carries the full per-stock values. */}
+            <p className="sr-only">
+              {`Opportunity map: ${plottable.length} stock${plottable.length === 1 ? '' : 's'} plotted by Financial Health (horizontal axis) versus Valuation score (vertical axis); larger bubbles are higher Overall ratings. ${oppZoneCount} ${oppZoneCount === 1 ? 'sits' : 'sit'} in the top-right Opportunity Zone — healthy companies trading at a discount. Full per-stock values are in the results table below.`}
+            </p>
             <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 300 }}>
               <ScatterChart margin={{ top: 14, right: 18, bottom: 26, left: 6 }}>
                 {/* Quadrant tints */}
@@ -274,11 +285,19 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
                       {legendPayload.map((e) => {
                         const off = hidden.has(e.value);
                         return (
-                          <li key={e.id} className="opp-legend-item" onClick={() => toggle(e.value)}>
-                            <span className="opp-legend-dot" style={{ background: e.color, opacity: off ? 0.4 : 1 }} />
-                            <span style={{ color: off ? 'var(--text-muted)' : 'var(--text-secondary)', textDecoration: off ? 'line-through' : 'none' }}>
-                              {e.value}
-                            </span>
+                          <li key={e.id}>
+                            <button
+                              type="button"
+                              className="opp-legend-item"
+                              aria-pressed={!off}
+                              aria-label={`${off ? 'Show' : 'Hide'} ${e.value}`}
+                              onClick={() => toggle(e.value)}
+                            >
+                              <span className="opp-legend-dot" style={{ background: e.color, opacity: off ? 0.4 : 1 }} />
+                              <span style={{ color: off ? 'var(--text-muted)' : 'var(--text-secondary)', textDecoration: off ? 'line-through' : 'none' }}>
+                                {e.value}
+                              </span>
+                            </button>
                           </li>
                         );
                       })}

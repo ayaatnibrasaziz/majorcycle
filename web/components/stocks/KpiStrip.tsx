@@ -29,9 +29,10 @@ interface KpiCardProps {
   value: string;
   accentColor: string;
   tipBody: string;
+  note?: string;
 }
 
-function KpiCard({ label, value, accentColor, tipBody }: KpiCardProps) {
+function KpiCard({ label, value, accentColor, tipBody, note }: KpiCardProps) {
   return (
     <div
       className="kpi-card kpi-card--accent"
@@ -42,6 +43,11 @@ function KpiCard({ label, value, accentColor, tipBody }: KpiCardProps) {
         <InfoTip title={label}>{tipBody}</InfoTip>
       </div>
       <div className="kpi-value">{value}</div>
+      {note && (
+        <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', marginTop: 2 }}>
+          {note}
+        </div>
+      )}
     </div>
   );
 }
@@ -62,6 +68,7 @@ export function KpiStrip({ cycle }: Props) {
         value={`${overallRating}/100`}
         accentColor={ratingColor(overallRating)}
         tipBody="Our single 0–100 summary of the stock, combining Financial Health (40%), Valuation Zone (35%) and Cycle Payoff (25%). 80–100 = High Conviction · 65–79 = Constructive · 50–64 = Neutral · 35–49 = Cautious · 0–34 = Bearish. Higher is more favourable. Information only — not advice."
+        note={financialHealthScore == null ? 'Cycle-only — excludes Financial Health' : undefined}
       />
       <KpiCard
         label="Health Score"

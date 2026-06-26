@@ -48,12 +48,14 @@ function rulePasses(r: ResultRow, rule: AdvRule): boolean {
   if (rule.type === 'numeric') {
     if (v == null || typeof v !== 'number' || Number.isNaN(v)) return false;
     if (rule.op === 'gte') {
+      if (rule.value === '') return true; // no value yet = no constraint (matches between/categorical/text)
       const n = Number(rule.value);
-      return rule.value !== '' && !Number.isNaN(n) && v >= n;
+      return !Number.isNaN(n) && v >= n;
     }
     if (rule.op === 'lte') {
+      if (rule.value === '') return true; // no value yet = no constraint
       const n = Number(rule.value);
-      return rule.value !== '' && !Number.isNaN(n) && v <= n;
+      return !Number.isNaN(n) && v <= n;
     }
     if (rule.op === 'between') {
       const [a, b] = Array.isArray(rule.value) ? rule.value : ['', ''];
@@ -100,7 +102,18 @@ export function sortRows(rows: ResultRow[], key: string, asc: boolean): ResultRo
   const field = FIELD_BY_KEY[key];
   if (!field) return rows;
   const dir = asc ? 1 : -1;
+  // De-rank FH-incomplete rows on the Overall sort (and the default): a stock whose
+  // Financial Health is withheld gets a cycle-only renormalised Overall on the same
+  // scale, so it must never out-rank a fully-scored name. Group fully-scored rows
+  // above incomplete ones regardless of direction; sort by score within each group.
+  // Other-column sorts honour the column order as asked (the badge still flags them).
+  const segregateIncomplete = key === 'overall';
   return [...rows].sort((a, b) => {
+    if (segregateIncomplete) {
+      const ai = a.financialHealthScore == null ? 1 : 0;
+      const bi = b.financialHealthScore == null ? 1 : 0;
+      if (ai !== bi) return ai - bi;
+    }
     const av = field.get(a);
     const bv = field.get(b);
     // Nulls always sort last regardless of direction.

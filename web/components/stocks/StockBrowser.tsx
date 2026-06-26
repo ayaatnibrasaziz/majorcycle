@@ -447,23 +447,25 @@ function EmptyState({ query }: { query: string }) {
         <p className="text-[12px] text-[var(--text-muted)] leading-relaxed mb-4">
           {query.trim() ? (
             <>
-              We don&apos;t have a stock matching{' '}
+              We don&apos;t cover a stock matching{' '}
               <span className="font-[var(--font-mono)] text-[var(--text-secondary)]">
                 &ldquo;{query.trim()}&rdquo;
               </span>{' '}
-              in our universe yet. If it&apos;s a valid ticker, run it in Run
-              Analysis — we&apos;ll fetch it live and add it.
+              yet. If it&apos;s a valid US, Australian or Canadian stock, request it
+              and we&apos;ll fetch it in our next daily update (within ~24&nbsp;hours).
             </>
           ) : (
             'Try widening the market or sector filter.'
           )}
         </p>
-        <Link
-          href="/run"
-          className="inline-flex items-center gap-1.5 bg-gradient-to-br from-[var(--brand-mid)] to-[var(--brand-deep)] text-white text-[12px] font-semibold px-4 py-2 rounded-[var(--radius-sm)] shadow-[0_2px_8px_rgba(30,92,179,.25)] hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(30,92,179,.35)] transition-all"
-        >
-          Run Analysis
-        </Link>
+        {query.trim() && (
+          <Link
+            href="/request"
+            className="inline-flex items-center gap-1.5 bg-gradient-to-br from-[var(--brand-mid)] to-[var(--brand-deep)] text-white text-[12px] font-semibold px-4 py-2 rounded-[var(--radius-sm)] shadow-[0_2px_8px_rgba(30,92,179,.25)] hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(30,92,179,.35)] transition-all"
+          >
+            Request a Ticker
+          </Link>
+        )}
       </div>
     </div>
   );

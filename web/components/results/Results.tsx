@@ -6,6 +6,7 @@ import { FolderSearch, SearchX } from 'lucide-react';
 
 import { useAnalysis } from '@/lib/analysis';
 import { downloadCsv, toCsv } from '@/lib/ratings';
+import { downloadXlsx } from '@/lib/xlsx';
 import type { Market, OverallLabel, SkippedStatus } from '@/lib/types';
 
 import { BriefingCard } from './BriefingCard';
@@ -102,6 +103,9 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
   const onAdvancedRules = (advRules: AdvRule[]) => patch({ rules: advRules });
 
   const onExport = () => downloadCsv('majorcycle_results.csv', toCsv(sorted, CSV_COLUMNS));
+  const onExportXlsx = () => {
+    void downloadXlsx('majorcycle_results.xlsx', sorted, CSV_COLUMNS);
+  };
 
   // ── Empty: no usable results ───────────────────────────────────────────────
   if (rows.length === 0) {
@@ -164,6 +168,7 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
         onToggleAdvanced={() => setAdvancedOpen((o) => !o)}
         resultCount={sorted.length}
         onExport={onExport}
+        onExportXlsx={onExportXlsx}
       />
 
       {advancedOpen && (

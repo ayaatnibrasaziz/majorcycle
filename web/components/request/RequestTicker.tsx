@@ -148,6 +148,18 @@ export function RequestTicker() {
           {searching && <Loader2 className="h-[14px] w-[14px] shrink-0 animate-spin text-[var(--text-muted)]" />}
         </div>
 
+        {/* Screen-reader announcement of the live search results (the visible list
+            updates as you type; this gives non-visual users the same feedback). */}
+        <p className="sr-only" role="status" aria-live="polite">
+          {searching
+            ? 'Searching…'
+            : query.trim().length === 0
+              ? ''
+              : hits.length === 0
+                ? 'No matching US, Australian, or Canadian stock.'
+                : `${hits.length} matching stock${hits.length === 1 ? '' : 's'}.`}
+        </p>
+
         {notice && (
           <div className="req-notice" role="status">
             <Check className="h-3.5 w-3.5 shrink-0" />

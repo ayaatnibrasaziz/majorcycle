@@ -268,6 +268,14 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
               dip-and-recover cycle, plus its financial health and main risk. The
               score and label are an algorithmic summary — information only, not advice.
             </InfoTip>
+            {financialHealthScore == null && (
+              <span
+                className="verdict-cycleonly"
+                title="Financial Health data is unavailable for this stock, so this Overall reflects price cycle and valuation only."
+              >
+                Cycle-only
+              </span>
+            )}
           </div>
           <div className="verdict-label">{overallLabel}</div>
           <div
