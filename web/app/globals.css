@@ -1556,3 +1556,90 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Stock Detail Report (C-R1) ───────────────────────────────────────────────
+   The chrome-free /stocks/[market]/[ticker]/report page: a single-column,
+   print-optimized snapshot. On screen it still sits inside the app shell; the
+   @media print block below renders ONLY #report-root (clean PDF), and the
+   "Download HTML" helper clones only #report-root (clean self-contained file). */
+.report-doc {
+  max-width: 920px;
+  margin: 0 auto;
+}
+.report-header {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+.report-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.report-brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--brand-deep);
+  line-height: 1.1;
+}
+.report-brand-sub {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-muted);
+}
+.report-meta {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.report-meta-ticker {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.report-meta-name {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.report-meta-line {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.report-disclaimer {
+  margin-top: 12px;
+  padding: 8px 10px;
+  background: var(--bg-stripe);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+.report-body > .report-section + .report-section {
+  margin-top: 18px;
+}
+
+@media print {
+  /* Show only the report; hide app chrome (sidebar/header/disclaimer strip) and
+     the report toolbar via the visibility trick so layout is preserved. */
+  body * { visibility: hidden; }
+  #report-root, #report-root * { visibility: visible; }
+  #report-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+  .report-toolbar { display: none !important; }
+  /* Keep a card from splitting across a page break. */
+  .report-section { break-inside: avoid; }
+  @page { margin: 14mm; }
+}

@@ -20,8 +20,12 @@ type SectionId = (typeof SECTIONS)[number]['id'];
  * Sticky sub-navigation strip for the Stock Detail page. Five anchor pills +
  * two right-side actions (Methodology dialog, Download Report). Sticks below
  * the global header, frosted-glass background.
+ *
+ * `reportHref` points at the chrome-free report route for this stock, carrying
+ * the current Major Cycle horizon; the Download Report action opens it in a new
+ * tab (both export modes — Save-as-PDF / Download-HTML — live on that page).
  */
-export function StockSubnav() {
+export function StockSubnav({ reportHref }: { reportHref: string }) {
   const [active, setActive] = useState<SectionId>(SECTIONS[0].id);
   const [methodologyOpen, setMethodologyOpen] = useState(false);
 
@@ -148,16 +152,16 @@ export function StockSubnav() {
             <ShieldCheck className="w-[13px] h-[13px]" strokeWidth={1.8} />
             Methodology
           </button>
-          <button
-            type="button"
+          <a
+            href={reportHref}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 bg-white border border-[var(--border-strong)] text-[var(--text-secondary)] text-[11px] font-semibold px-3 py-1.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)] transition-all"
-            disabled
-            aria-disabled="true"
-            title="Coming soon"
+            title="Open a full printable report for this stock"
           >
             <Download className="w-[13px] h-[13px]" strokeWidth={1.8} />
             Download Report
-          </button>
+          </a>
         </div>
       </div>
     </div>

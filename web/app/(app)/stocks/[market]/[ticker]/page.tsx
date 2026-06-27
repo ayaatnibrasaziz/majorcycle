@@ -26,59 +26,13 @@ import { ValuationHistory } from '@/components/stocks/ValuationHistory';
 import { VerdictCard } from '@/components/stocks/VerdictCard';
 import { fetchBenchmarks } from '@/lib/benchmarks.server';
 import { fetchCycleAnalysis, type CycleSpec } from '@/lib/cycle';
-import { CUSTOM_PARAM_BOUNDS } from '@/lib/presets';
+import { parseSpec, isValidMarket, horizonQuery, type RouteSearch } from '@/lib/horizon';
 import { fetchMetricMedians } from '@/lib/medians.server';
 import { fetchStockDetail } from '@/lib/stocks';
 import { urlPartsToTicker, tickerDisplay } from '@/lib/ticker';
 import type { FundamentalsSnapshot, Market, PriceBar } from '@/lib/types';
 
 type RouteParams = { market: string; ticker: string };
-type RouteSearch = {
-  preset?: string;
-  pullback?: string;
-  profit?: string;
-  lookback?: string;
-};
-
-function isValidMarket(value: string): value is Market {
-  return value === 'us' || value === 'au' || value === 'ca';
-}
-
-const PRESET_LABEL = {
-  short: 'Short-term (≈ 3 months)',
-  medium: 'Medium-term (≈ 1 year)',
-  long: 'Long-term (≈ 3 years)',
-} as const;
-
-function inBounds(n: number, b: { min: number; max: number }): boolean {
-  return n >= b.min && n <= b.max;
-}
-
-// The Browse page picks the Major Cycle window and passes it via the query:
-// a named preset (?preset=short|medium|long) or a fully custom window
-// (?preset=custom&pullback=-7&profit=7&lookback=300). Invalid/unknown input
-// falls back to the Medium headline. Returns the spec + a human label.
-function parseSpec(sp: RouteSearch): { spec: CycleSpec; label: string } {
-  if (sp.preset === 'custom') {
-    const pullback = Number(sp.pullback);
-    const profit = Number(sp.profit);
-    const lookback = Number(sp.lookback);
-    const b = CUSTOM_PARAM_BOUNDS;
-    if (
-      Number.isFinite(pullback) && inBounds(pullback, b.pullbackThreshold) &&
-      Number.isFinite(profit) && inBounds(profit, b.profitThreshold) &&
-      Number.isInteger(lookback) && inBounds(lookback, b.lookbackBars)
-    ) {
-      return {
-        spec: { preset: 'custom', pullback, profit, lookback },
-        label: `Custom (${pullback}% / +${profit}% / ${lookback} bars)`,
-      };
-    }
-    return { spec: { preset: 'medium' }, label: PRESET_LABEL.medium };
-  }
-  const preset = sp.preset === 'short' || sp.preset === 'long' ? sp.preset : 'medium';
-  return { spec: { preset }, label: PRESET_LABEL[preset] };
-}
 
 // ── Streamed cycle sections ──────────────────────────────────────────────────
 // The cycle analysis is the slow part of the page (a cold compute can take a few
@@ -229,7 +183,11 @@ export default async function StockDetailPage({
 
   // Built ONCE here and passed by reference to every cycle section so React's
   // cache() (and the underlying fetch/dev-spawn dedup) computes the cycle once.
-  const { spec, label: horizonLabel } = parseSpec(await searchParams);
+  const sp = await searchParams;
+  const { spec, label: horizonLabel } = parseSpec(sp);
+  // The subnav "Download Report" link opens the chrome-free report route in a new
+  // tab, carrying the current Major Cycle horizon (medium → clean URL).
+  const reportHref = `/stocks/${market}/${ticker}/report${horizonQuery(sp)}`;
 
   const stored = urlPartsToTicker(market, ticker);
   // Only the stock row + sector medians block the initial render — both are
@@ -252,7 +210,7 @@ export default async function StockDetailPage({
 
   return (
     <div className="-mt-2">
-      <StockSubnav />
+      <StockSubnav reportHref={reportHref} />
 
       <div className="pt-5 space-y-[18px]">
         {/* Read-only note when a non-default horizon was chosen on Browse.
