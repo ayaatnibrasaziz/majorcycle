@@ -860,6 +860,39 @@ same cron run (via `daily_refresh.run`) and audited in `universe_log` as
 constituents never appear there). A name with no data simply isn't added and is
 retried next run.
 
+**`split_events` table** — dated state for the smart stock-split pipeline, giving
+the owner backend visibility into what the nightly refresh did with each split:
+
+```sql
+split_events (
+  id             uuid primary key,
+  ticker         text references stocks(ticker) on delete cascade,
+  split_date     date,          -- yfinance's reported split action date
+  ratio          numeric,       -- 'Stock Splits' value (0.3333 = 1-for-3 reverse; 2.0 = 2-for-1)
+  status         text,          -- 'pending' | 'resolved' | 'failed'
+  detected_at    timestamptz,
+  last_repull_at timestamptz,
+  repull_count   integer,
+  resolved_at    timestamptz,
+  cliff_date     date,          -- where the measured discontinuity sits (visibility/debug)
+  cliff_ratio    numeric,       -- measured adjacent-day close ratio at the cliff
+  updated_at     timestamptz,
+  unique (ticker, split_date)
+)
+```
+
+Written **only by `analytics/cron/daily_refresh.py`**. On detecting a split (via the
+provider's `df.attrs['recent_split_events']` = `[{date, ratio}]`) it records a
+`pending` row, re-pulls the full `max` history, then **verifies** the price
+discontinuity is gone (`_verify_split_resolved`): resolved → `status='resolved'` and
+it **stops re-pulling**; still broken after 30 days → `status='failed'`. This is the
+C-R9 fix for the **DD** case, where yfinance lists a 1-for-3 reverse split (ratio
+0.3333) but never back-adjusts the prices, leaving a ~3× cliff a fresh pull still
+returns. **DB-record-only** — no email/notification channel; the `failed` row is the
+flag. Server-only (RLS enabled, no policies — service-role access, like `stocks` /
+`index_membership`). The re-pull set is driven by the `pending` rows (not the 1-month
+incremental window), so a fixed split is never re-pulled again.
+
 ---
 
 ## 10. Stripe Subscription Schema
@@ -895,7 +928,7 @@ Webhook events handled:
 ## 12. Database access & Row-Level Security
 
 - **`profiles` is created automatically** by the `handle_new_user` trigger on `auth.users` (every sign-in method). Do not insert profiles from the client; only **update own row** (RLS policy `users update own profile`).
-- **RLS is on for every table.** `profiles` + `analysis_runs` have per-user policies (own-row). `stocks` / `price_bars` / `universe_log` / `listings` / `ticker_requests` have RLS enabled with **no policies** — read/write them **only server-side with the service-role key** (`createAdminClient` / the Python service client), never with the browser anon client. The `/api/listings/search` + `/api/request-ticker` routes gate on the authed user (server client) then touch `listings` / `ticker_requests` via `createAdminClient`.
+- **RLS is on for every table.** `profiles` + `analysis_runs` have per-user policies (own-row). `stocks` / `price_bars` / `universe_log` / `listings` / `ticker_requests` / `index_membership` / `split_events` have RLS enabled with **no policies** — read/write them **only server-side with the service-role key** (`createAdminClient` / the Python service client), never with the browser anon client. The `/api/listings/search` + `/api/request-ticker` routes gate on the authed user (server client) then touch `listings` / `ticker_requests` via `createAdminClient`.
 - The `get_price_bars_json(p_ticker)` RPC is the one-request way to read a ticker's full history (bypasses the 1000-row cap); it's service-role only. Schema lives in `supabase/migrations/` (mirrors the Supabase migration log).
 
 ---

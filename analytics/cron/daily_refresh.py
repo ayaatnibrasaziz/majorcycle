@@ -41,6 +41,19 @@ _DB_CHUNK = 500
 # window also survives a few missed cron days.
 _INCREMENTAL_PRICE_PERIOD = "1mo"
 
+# C-R9 smart split handling. A detected split is re-pulled + re-verified nightly while
+# 'pending'; once the discontinuity is resolved we stop (status 'resolved'). If still
+# unresolved this many days after first detection, it's flagged 'failed' (e.g. DD, where
+# yfinance lists the split but never back-adjusts the prices). State lives in split_events.
+_SPLIT_RETRY_DAYS = 30
+# Trading-day window each side of the reported split date to scan for a leftover scale
+# cliff (DD's price cliff is 2026-06-18, ~6 days before its 2026-06-24 split date).
+_SPLIT_VERIFY_WINDOW = 10
+# Multiplicative tolerance when matching a leftover adjacent-day cliff to the split's
+# expected unadjusted price factor (1/ratio). DD's cliff (x2.985 vs 1/0.3333 = 3.0) is a
+# 0.005 deviation; a normal price move is nowhere near 3x, so this can't false-fire.
+_SPLIT_RATIO_TOL = 0.20
+
 
 def _jsonb(obj: Any) -> Any:
     return json.loads(json.dumps(obj, default=str))
@@ -138,6 +151,167 @@ def _recent_splits(df: pd.DataFrame) -> list[str]:
     return list(val) if val else []
 
 
+def _recent_split_events(df: pd.DataFrame) -> list[dict[str, Any]]:
+    """``[{date, ratio}, ...]`` for splits in the freshly-fetched window.
+
+    Parallels ``_recent_splits`` but also carries the split ratio (the provider's
+    ``recent_split_events`` attr) so the caller can record + verify the split, not
+    just trigger a re-pull. Tolerant of the attr being absent (e.g. the stooq path).
+    """
+    val = getattr(df, "attrs", {}).get("recent_split_events")
+    return list(val) if val else []
+
+
+def _parse_dt(val: Any) -> Optional[datetime]:
+    """Parse a Supabase ISO timestamp into a tz-aware (UTC) datetime; None on failure."""
+    if not val:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(val).replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _verify_split_resolved(
+    df: pd.DataFrame, split_date: str, ratio: Optional[float]
+) -> tuple[bool, Optional[str], Optional[float]]:
+    """Has the split's price discontinuity been removed from the full series?
+
+    A correctly back-adjusted split leaves no scale cliff at the split. An unadjusted
+    one (e.g. DD) leaves an adjacent-day close ratio ≈ the split's expected unadjusted
+    price factor ``1/ratio`` (DD reverse 1-for-3 → 1/0.3333 ≈ 3.0, a one-day jump UP).
+    Scan the closes in a ``±_SPLIT_VERIFY_WINDOW``-bar window around the split date for
+    such a cliff; a matching one ⇒ unresolved. The expected direction/magnitude is fixed
+    by the ratio, so a real crash or spike (which doesn't match ``1/ratio``) is never
+    misread as a leftover split.
+
+    Returns ``(resolved, cliff_date, cliff_ratio)``. When unresolved, ``cliff_*`` describe
+    the worst offending bar (for backend visibility); when resolved they are ``None``.
+    """
+    try:
+        idx = df.index
+        closes = df["Close"].to_numpy()
+    except (KeyError, TypeError, AttributeError):
+        return True, None, None
+    if len(closes) < 2:
+        return True, None, None
+
+    try:
+        split_ts = pd.Timestamp(split_date)
+    except (ValueError, TypeError):
+        return True, None, None
+
+    pos = int(idx.searchsorted(split_ts))
+    lo = max(1, pos - _SPLIT_VERIFY_WINDOW)
+    hi = min(len(closes), pos + _SPLIT_VERIFY_WINDOW + 1)
+    if lo >= hi:
+        return True, None, None
+
+    target = (1.0 / ratio) if (ratio and ratio > 0) else None
+    # Generic fallback (missing/zero ratio): flag any large adjacent jump in-window.
+    generic_hi = 1.5
+    generic_lo = 1.0 / generic_hi
+
+    worst_ratio: Optional[float] = None
+    worst_date: Optional[str] = None
+    worst_dev = 0.0
+    for i in range(lo, hi):
+        prev = float(closes[i - 1])
+        cur = float(closes[i])
+        if prev <= 0 or cur <= 0:
+            continue
+        step = cur / prev
+        if target is not None:
+            is_cliff = abs(step / target - 1.0) <= _SPLIT_RATIO_TOL
+        else:
+            is_cliff = step >= generic_hi or step <= generic_lo
+        if is_cliff and abs(step - 1.0) > worst_dev:
+            worst_dev = abs(step - 1.0)
+            worst_ratio = round(step, 4)
+            worst_date = pd.Timestamp(idx[i]).strftime("%Y-%m-%d")
+
+    if worst_ratio is not None:
+        return False, worst_date, worst_ratio
+    return True, None, None
+
+
+def _classify_split(detected_at: datetime, now: datetime, resolved: bool) -> str:
+    """Next split status: resolved → 'resolved'; unresolved & under the retry window →
+    'pending' (keep retrying); unresolved & ≥ _SPLIT_RETRY_DAYS old → 'failed' (flag)."""
+    if resolved:
+        return "resolved"
+    if (now - detected_at).days >= _SPLIT_RETRY_DAYS:
+        return "failed"
+    return "pending"
+
+
+def _load_pending_splits(supabase: Client) -> dict[str, list[dict[str, Any]]]:
+    """All still-'pending' split_events, keyed by ticker — loaded once up front so the
+    nightly run can re-pull + re-verify carried-over splits even after they age out of
+    the 1-month incremental detection window."""
+    res = (
+        supabase.table("split_events")
+        .select("id,ticker,split_date,ratio,detected_at,repull_count")
+        .eq("status", "pending")
+        .execute()
+    )
+    rows = cast(list[dict[str, Any]], res.data or [])
+    out: dict[str, list[dict[str, Any]]] = {}
+    for r in rows:
+        out.setdefault(str(r["ticker"]), []).append(r)
+    return out
+
+
+def _ticker_pending_splits(supabase: Client, ticker: str) -> list[dict[str, Any]]:
+    """Re-read one ticker's pending split_events (after recording a fresh detection) so
+    just-detected rows get verified in the same run as carried-over ones."""
+    res = (
+        supabase.table("split_events")
+        .select("id,ticker,split_date,ratio,detected_at,repull_count")
+        .eq("ticker", ticker)
+        .eq("status", "pending")
+        .execute()
+    )
+    return cast(list[dict[str, Any]], res.data or [])
+
+
+def _record_split_detection(
+    supabase: Client, ticker: str, split_date: str, ratio: Optional[float]
+) -> None:
+    """Insert a 'pending' split_events row on first sighting. ``ignore_duplicates`` so a
+    re-detected split that's already resolved/failed is never reopened."""
+    supabase.table("split_events").upsert(
+        {"ticker": ticker, "split_date": split_date, "ratio": ratio},
+        on_conflict="ticker,split_date",
+        ignore_duplicates=True,
+    ).execute()
+
+
+def _update_split_state(
+    supabase: Client,
+    split_id: str,
+    *,
+    status: str,
+    now_iso: str,
+    repull_count: int,
+    cliff_date: Optional[str],
+    cliff_ratio: Optional[float],
+    resolved: bool,
+) -> None:
+    patch: dict[str, Any] = {
+        "status": status,
+        "last_repull_at": now_iso,
+        "repull_count": repull_count,
+        "cliff_date": cliff_date,
+        "cliff_ratio": cliff_ratio,
+        "updated_at": now_iso,
+    }
+    if resolved:
+        patch["resolved_at"] = now_iso
+    supabase.table("split_events").update(patch).eq("id", split_id).execute()
+
+
 def _should_fetch_enriched(
     state: Optional[dict[str, Any]], today_str: str, mode: str
 ) -> bool:
@@ -225,6 +399,16 @@ def run(
         len(ticker_states),
     )
 
+    # Carried-over splits still being verified (C-R9). Loaded once so a 'pending' split is
+    # re-pulled + re-checked nightly even after it ages out of the 1-month detection window.
+    pending_splits = _load_pending_splits(supabase)
+    if pending_splits:
+        logger.info(
+            "%d ticker(s) with pending split verification: %s",
+            len(pending_splits),
+            ", ".join(sorted(pending_splits)),
+        )
+
     batches = [universe[i: i + _BATCH_SIZE] for i in range(0, len(universe), _BATCH_SIZE)]
 
     for batch_idx, batch in enumerate(batches):
@@ -243,22 +427,66 @@ def run(
                     failed.append(ticker)
                     continue
 
-                # Split guard: if yfinance's split calendar reports a split inside the
-                # fetched window, the incremental bars are on a new price scale while
-                # the stored older bars keep the old one — re-pull the FULL history so
-                # every bar is re-adjusted consistently, instead of leaving a permanent
-                # fake gap that corrupts the cycle bounds. (Authoritative — a normal
-                # price move never appears in the split calendar.)
-                splits = [] if first_fetch else _recent_splits(df)
-                if splits:
+                # Smart split handling (C-R9). yfinance's split calendar is authoritative
+                # (a normal price move never appears in it). On detecting a split inside the
+                # incremental window we record a 'pending' split_events row; then — for any
+                # pending split (just-detected OR carried over) — we re-pull the FULL
+                # re-adjusted history once and VERIFY the discontinuity is actually gone.
+                # Resolved → stop re-pulling; still broken after 30 days → flagged 'failed'.
+                # (Driven by the pending set, not the 1-month window, so a still-broken split
+                # keeps being retried and a fixed one is never re-pulled again.)
+                pending = list(pending_splits.get(ticker, []))
+                if not first_fetch:
+                    detected = _recent_split_events(df)
+                    if detected:
+                        for ev in detected:
+                            _record_split_detection(
+                                supabase, ticker, ev["date"], ev.get("ratio")
+                            )
+                        # Re-read so just-detected rows are verified alongside carried-over ones.
+                        pending = _ticker_pending_splits(supabase, ticker)
+
+                if pending:
                     logger.warning(
-                        "%s: stock split detected (%s) — re-pulling full re-adjusted history",
+                        "%s: %d pending split(s) — re-pulling full re-adjusted history to verify",
                         ticker,
-                        ", ".join(splits),
+                        len(pending),
                     )
                     full = DATA_PROVIDER.fetch_price_history(ticker, period="max")
                     if full is not None and not full.empty:
                         df = full
+                        now_dt = datetime.now(timezone.utc)
+                        verify_iso = now_dt.isoformat()
+                        for sp in pending:
+                            resolved, cliff_date, cliff_ratio = _verify_split_resolved(
+                                full, str(sp["split_date"]), sp.get("ratio")
+                            )
+                            status = _classify_split(
+                                _parse_dt(sp.get("detected_at")) or now_dt, now_dt, resolved
+                            )
+                            _update_split_state(
+                                supabase,
+                                str(sp["id"]),
+                                status=status,
+                                now_iso=verify_iso,
+                                repull_count=int(sp.get("repull_count") or 0) + 1,
+                                cliff_date=cliff_date,
+                                cliff_ratio=cliff_ratio,
+                                resolved=resolved,
+                            )
+                            logger.info(
+                                "%s: split %s (ratio=%s) → %s%s",
+                                ticker,
+                                sp["split_date"],
+                                sp.get("ratio"),
+                                status,
+                                "" if resolved else f" — cliff {cliff_date} x{cliff_ratio}",
+                            )
+                    else:
+                        logger.warning(
+                            "%s: full re-pull returned no data — pending splits left for next run",
+                            ticker,
+                        )
 
                 now = datetime.now(timezone.utc).isoformat()
                 market = _infer_market(ticker)
