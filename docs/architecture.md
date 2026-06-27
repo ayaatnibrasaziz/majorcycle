@@ -68,7 +68,9 @@ flowchart TB
    - **Known ticker, earnings date has passed since last enrich** → refresh enriched data
    - **Known ticker, no earnings date stored** → refresh enriched data if last enrich was ≥7 days ago
    - **Everything else** → price bars (`period="1mo"`, a short overlap window) + fundamentals only (~2 seconds per ticker)
-4. **Split / data-quality guard on price bars.** yfinance returns split- and dividend-adjusted prices relative to the *latest* bar, so a split that happens *after* a ticker's initial `max` pull would leave the already-stored older bars on the pre-split scale — a permanent fake one-day crash that corrupts the cycle bounds. The provider surfaces yfinance's **authoritative split-actions calendar** (`df.attrs['recent_splits']`, not a price heuristic — a normal price move never appears there); if a split falls inside the fetched window, `daily_refresh` re-pulls the **full** `max` history so every bar is re-adjusted consistently. The provider also **drops glitch bars with a non-positive close** (yfinance occasionally serves a lone `$0` close, which would read as a −100% drawdown). One-off repair of already-corrupted tickers: `analytics/cron/fix_split_history.py` (`--ticker` / `--tickers` / `--all`).
+4. **Smart split verification + dated state on price bars.** yfinance returns split- and dividend-adjusted prices relative to the *latest* bar, so a split that happens *after* a ticker's initial `max` pull would leave the already-stored older bars on the pre-split scale — a permanent fake one-day crash that corrupts the cycle bounds. The provider surfaces yfinance's **authoritative split-actions calendar** with the split ratio (`df.attrs['recent_split_events']` = `[{date, ratio}]`, not a price heuristic — a normal price move never appears there). On detecting a split, `daily_refresh` records a **`pending` row in `split_events`**, re-pulls the **full** `max` history, then **verifies the discontinuity is actually gone** (`_verify_split_resolved` scans a ±10-bar window around the split date for a leftover cliff matching the expected unadjusted factor `1/ratio` within ±20%; split-ratio-specific, so a real crash never false-fires):
+   - **Resolved** (yfinance back-adjusted correctly) → `status='resolved'`, and it **stops re-pulling** (the re-pull set is driven by the `split_events` pending rows, not the 1-month window, so a fixed split is never touched again).
+   - **Still discontinuous** → stays `pending`, retried nightly; **after 30 days still broken → `status='failed'`** (e.g. **DD** — yfinance lists the split but never back-adjusts the prices, leaving a ~3× cliff a fresh `max` pull still returns). This is DB-record-only (no email — the `failed` row is the flag); the owner reads `split_events` for backend visibility. The provider also **drops glitch bars with a non-positive close** (yfinance occasionally serves a lone `$0` close, which would read as a −100% drawdown). One-off repair of already-corrupted tickers: `analytics/cron/fix_split_history.py` (`--ticker` / `--tickers` / `--all`).
 5. Always upserts `stocks` (fundamentals refreshed daily) and `price_bars`; enriched columns only written when the staleness check fires
 6. Logs runtime metrics and failures; emails owner on any failures via Resend
 
@@ -401,6 +403,38 @@ Both tables have **RLS enabled with no policies** — read/written only server-s
 with the service-role key (the search + request API routes use the admin client;
 the cron uses the Python service client), exactly like `stocks` / `price_bars` /
 `universe_log`.
+
+### `split_events` — dated state for the smart split pipeline
+
+One row per detected stock split per ticker (a ticker can split more than once over
+time). Written **only by the cron** (`daily_refresh.py`) and read by the owner for
+backend visibility into what the split pipeline did. See §6 step 4 for the lifecycle
+(`pending` → `resolved`, or `pending` → `failed` after 30 days unresolved).
+
+```sql
+CREATE TABLE split_events (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticker         text NOT NULL REFERENCES stocks(ticker) ON DELETE CASCADE,
+  split_date     date NOT NULL,            -- yfinance's reported split action date
+  ratio          numeric,                  -- 'Stock Splits' value (0.3333 = 1-for-3 reverse; 2.0 = 2-for-1)
+  status         text NOT NULL DEFAULT 'pending', -- 'pending' | 'resolved' | 'failed'
+  detected_at    timestamptz NOT NULL DEFAULT now(),
+  last_repull_at timestamptz,
+  repull_count   integer NOT NULL DEFAULT 0,
+  resolved_at    timestamptz,
+  cliff_date     date,                     -- where the measured discontinuity sits (DD's cliff ≈ 2026-06-18 vs split 2026-06-24)
+  cliff_ratio    numeric,                  -- measured adjacent-day close ratio at the cliff
+  updated_at     timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT valid_split_status CHECK (status IN ('pending', 'resolved', 'failed')),
+  CONSTRAINT uq_split_ticker_date UNIQUE (ticker, split_date)
+);
+
+CREATE INDEX idx_split_events_pending ON split_events (ticker) WHERE status = 'pending';
+CREATE INDEX idx_split_events_ticker  ON split_events (ticker);
+```
+
+**RLS enabled with no policies** — server-only (cron service client), like `stocks` /
+`price_bars` / `index_membership`. No new env vars or notification channel (DB-record-only).
 
 ---
 

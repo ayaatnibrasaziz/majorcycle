@@ -521,9 +521,16 @@ class YFinanceProvider(DataProvider):
             # price move never appears here, so it can't false-fire like a price-ratio
             # heuristic would.
             split_dates: list[str] = []
+            split_events: list[dict[str, Any]] = []
             if "Stock Splits" in df.columns:
                 sp = df["Stock Splits"].fillna(0)
-                split_dates = [d.strftime("%Y-%m-%d") for d in df.index[sp != 0]]
+                for d in df.index[sp != 0]:
+                    iso = d.strftime("%Y-%m-%d")
+                    split_dates.append(iso)
+                    # The "Stock Splits" value is the split ratio (0.3333 = 1-for-3
+                    # reverse; 2.0 = 2-for-1 forward). Surfaced so the daily refresh can
+                    # record + verify the split (C-R9), not just trigger a re-pull.
+                    split_events.append({"date": iso, "ratio": float(sp[d])})
             df = df[["Open", "High", "Low", "Close", "Volume"]]
             # Drop glitch bars with a non-positive close. yfinance occasionally
             # serves a lone $0.00 close surrounded by normal prices (e.g. ENB.TO
@@ -536,6 +543,7 @@ class YFinanceProvider(DataProvider):
             if period == _DOWNLOAD_PERIOD and len(df) < _MIN_BARS:
                 return None, None
             df.attrs["recent_splits"] = split_dates
+            df.attrs["recent_split_events"] = split_events
             return df, t
         except Exception as e:
             logger.debug("yfinance error for %s: %s", ticker_str, e)
