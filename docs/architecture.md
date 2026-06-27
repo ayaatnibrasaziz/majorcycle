@@ -67,9 +67,10 @@ flowchart TB
    - **New ticker** (not in DB) → full fetch including price history (`period="max"`) + fundamentals + all enriched data
    - **Known ticker, earnings date has passed since last enrich** → refresh enriched data
    - **Known ticker, no earnings date stored** → refresh enriched data if last enrich was ≥7 days ago
-   - **Everything else** → price bars (`period="5d"`) + fundamentals only (~2 seconds per ticker)
-4. Always upserts `stocks` (fundamentals refreshed daily) and `price_bars`; enriched columns only written when the staleness check fires
-5. Logs runtime metrics and failures; emails owner on any failures via Resend
+   - **Everything else** → price bars (`period="1mo"`, a short overlap window) + fundamentals only (~2 seconds per ticker)
+4. **Split / data-quality guard on price bars.** yfinance returns split- and dividend-adjusted prices relative to the *latest* bar, so a split that happens *after* a ticker's initial `max` pull would leave the already-stored older bars on the pre-split scale — a permanent fake one-day crash that corrupts the cycle bounds. The provider surfaces yfinance's **authoritative split-actions calendar** (`df.attrs['recent_splits']`, not a price heuristic — a normal price move never appears there); if a split falls inside the fetched window, `daily_refresh` re-pulls the **full** `max` history so every bar is re-adjusted consistently. The provider also **drops glitch bars with a non-positive close** (yfinance occasionally serves a lone `$0` close, which would read as a −100% drawdown). One-off repair of already-corrupted tickers: `analytics/cron/fix_split_history.py` (`--ticker` / `--tickers` / `--all`).
+5. Always upserts `stocks` (fundamentals refreshed daily) and `price_bars`; enriched columns only written when the staleness check fires
+6. Logs runtime metrics and failures; emails owner on any failures via Resend
 
 **Why this works:** Enriched data (financial statements, holders, insider transactions, PE history) changes only when a company reports earnings — typically quarterly. Fetching it daily was 95% wasted work. The earnings-date-driven approach cuts nightly runtime from ~2 hours to ~20–30 minutes while keeping data fresh where it matters.
 

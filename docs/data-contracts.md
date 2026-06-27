@@ -223,10 +223,10 @@ class CycleAnalysis:
     current_profit_pct: float       # from N-day low, positive number
 
     # Historical cycle statistics
-    typical_drawdown: Optional[float]      # mean of all historical pullbacks, negative
-    lower_bound: Optional[float]            # worst (most negative) historical pullback
-    typical_profit: Optional[float]         # mean of all historical recoveries, positive
-    upper_bound: Optional[float]            # best historical recovery, positive
+    typical_drawdown: Optional[float]      # mean of all confirmed pullback events, negative
+    lower_bound: Optional[float]            # deepest CONFIRMED pullback pivot (full history); the live dip can run below it — see glossary
+    typical_profit: Optional[float]         # mean of all confirmed profit events, positive
+    upper_bound: Optional[float]            # strongest CONFIRMED profit pivot; display-only (feeds no score)
     total_pullback_events: int
     total_profit_events: int
 

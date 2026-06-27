@@ -130,7 +130,7 @@
 
 **Lookback Bars** — The number of daily price bars used to compute "current" drawdown and profit. One of the three Cycle Params. 63 = ~3 months, 252 = ~1 year, 756 = ~3 years.
 
-**Lower Bound** — The worst-case historical drawdown across all detected cycles. The deepest dip ever seen for this stock in the data we have.
+**Lower Bound** — The deepest **confirmed** pullback event in the stock's history (`min` of the pivot-low drawdowns, computed over the *full* history — see the warmup note under Pivot). It is the deepest dip we've *confirmed*, not necessarily the deepest price ever touched: a sharp one-day spike that never satisfied the pivot confirmation, or the **current still-forming dip** (no right-side bars yet), can run *below* this line. That's why the live drawdown curve can pierce below the Lower Bound — intended behaviour. Feeds scoring only via Valuation's "drawdown ≤ Lower Bound → score 100" rule; it does **not** feed Cycle Payoff.
 
 ---
 
@@ -180,7 +180,7 @@
 
 **PEG (P/E to Growth)** — P/E ÷ earnings growth rate. < 1 generally considered attractive (growth justifies the P/E).
 
-**Pivot High / Pivot Low** — A local maximum or minimum in the price series, confirmed by N bars on each side being lower/higher respectively. Default `PIVOT_BARS = 5`. The mechanism Major Cycle uses to detect peaks and troughs.
+**Pivot High / Pivot Low** — A local maximum or minimum in the drawdown/profit series, **confirmed** by `PIVOT_BARS` (default 5) bars on *each* side being strictly less extreme (the trough/peak is flanked by 5 shallower days before and 5 after). This is how a dip/rally becomes a *counted* cycle event (feeding Typical, Bound, and the event count). Two consequences: (1) a one-day spike that immediately reverses won't confirm; (2) the **current, still-forming** move can't confirm until the price reverses and holds for ~5 bars (there are no right-side bars yet), so it's drawn on the chart but not yet counted. A counted event must also cross the horizon's threshold (−3% short / −5% medium / −8% long). **Warmup note:** `ta_highest`/`ta_lowest` use `min_periods=1` (since C-R6), so a stock's first lookback window is measured too (matching Pine `ta.highest` and the client drawdown curve) — earlier the first ~252/756 bars were blanked and their dips never evaluated.
 
 **Preset** — One of the three Run Analysis presets — `short`, `medium`, `long` — each specifying a pullback threshold, profit threshold, and lookback. Plus `custom` for user-defined values. See `data-contracts.md` §7.
 
@@ -260,7 +260,7 @@
 
 **Universe** — The set of tickers we have data for. Pre-seeded with S&P 500, ASX 200, S&P/TSX 60. Auto-expands when users upload new tickers.
 
-**Upper Bound** — The best-case historical profit across all detected cycles. The biggest recovery ever seen for this stock.
+**Upper Bound** — The strongest **confirmed** profit-recovery event in the stock's history (`max` of the pivot-high profits, over the full history). The mirror of Lower Bound: a still-forming rally can sit *above* it until it confirms. **Display-only** — it feeds no score (not even Cycle Payoff).
 
 ---
 
