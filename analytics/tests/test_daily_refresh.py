@@ -1,13 +1,23 @@
-"""Tests for split detection in the daily refresh.
+"""Tests for split detection + verification in the daily refresh.
 
 Detection is driven by yfinance's authoritative split *actions* calendar, surfaced
-by the provider on ``df.attrs['recent_splits']`` — not a price heuristic, so a
-normal price move never triggers a re-pull.
+by the provider on ``df.attrs['recent_splits']`` / ``recent_split_events`` — not a
+price heuristic, so a normal price move never triggers a re-pull. C-R9 adds
+post-re-pull verification (``_verify_split_resolved``) + a dated status machine
+(``_classify_split``).
 """
+
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 
-from analytics.cron.daily_refresh import _recent_splits
+from analytics.cron.daily_refresh import (
+    _SPLIT_RETRY_DAYS,
+    _classify_split,
+    _recent_split_events,
+    _recent_splits,
+    _verify_split_resolved,
+)
 
 
 def _bars(*, splits: list[str] | None = None) -> pd.DataFrame:
@@ -39,3 +49,81 @@ def test_normal_price_move_does_not_trigger() -> None:
     crash = pd.DataFrame({"Close": [10.0, 6.0]}, index=idx)
     crash.attrs["recent_splits"] = []
     assert _recent_splits(crash) == []
+
+
+# --- _recent_split_events (date + ratio) ---------------------------------------
+
+def test_recent_split_events_returns_date_and_ratio() -> None:
+    df = _bars()
+    df.attrs["recent_split_events"] = [{"date": "2026-05-04", "ratio": 0.3333}]
+    assert _recent_split_events(df) == [{"date": "2026-05-04", "ratio": 0.3333}]
+
+
+def test_recent_split_events_empty_when_attr_missing() -> None:
+    assert _recent_split_events(_bars()) == []
+
+
+# --- _verify_split_resolved ----------------------------------------------------
+
+def _closes(prices: list[float], start: str = "2026-06-10") -> pd.DataFrame:
+    idx = pd.date_range(start, periods=len(prices), freq="B")
+    return pd.DataFrame({"Close": prices}, index=idx)
+
+
+def test_unadjusted_reverse_split_is_unresolved() -> None:
+    # DD-like: 1-for-3 reverse (ratio 0.3333 -> expected price factor 3.0). yfinance lists
+    # the 2026-06-24 split but leaves a ~3x cliff at 2026-06-18 (note the 6-day mismatch).
+    # 06-10..: 6 bars ~48, then jump to ~143 from 2026-06-18 onward.
+    df = _closes([48.0] * 6 + [143.0] * 9)  # cliff at index 6 = 2026-06-18
+    resolved, cliff_date, cliff_ratio = _verify_split_resolved(df, "2026-06-24", 0.3333)
+    assert resolved is False
+    assert cliff_date == "2026-06-18"
+    assert cliff_ratio is not None and abs(cliff_ratio - 143.0 / 48.0) < 0.01
+
+
+def test_adjusted_series_is_resolved() -> None:
+    # Correctly back-adjusted: no scale cliff near the split ⇒ resolved.
+    df = _closes([142.0, 143.0, 144.0, 143.5, 142.5, 143.0, 144.0, 145.0, 144.0, 143.0])
+    resolved, cliff_date, cliff_ratio = _verify_split_resolved(df, "2026-06-24", 0.3333)
+    assert resolved is True
+    assert cliff_date is None and cliff_ratio is None
+
+
+def test_real_crash_not_misread_as_split() -> None:
+    # A real ~-63% one-day crash near a REVERSE split (expected cliff is a 3x jump UP,
+    # not a drop) must NOT be flagged as a leftover split ⇒ resolved.
+    df = _closes([100.0] * 6 + [37.0] * 9)  # -63% drop at index 6
+    resolved, cliff_date, _ = _verify_split_resolved(df, "2026-06-24", 0.3333)
+    assert resolved is True
+    assert cliff_date is None
+
+
+def test_missing_ratio_falls_back_to_generic_cliff_scan() -> None:
+    # With no ratio we can't match a factor, so any large in-window jump is flagged.
+    df = _closes([48.0] * 6 + [143.0] * 9)
+    resolved, cliff_date, _ = _verify_split_resolved(df, "2026-06-24", None)
+    assert resolved is False
+    assert cliff_date == "2026-06-18"
+
+    smooth = _closes([142.0, 143.0, 144.0, 143.5, 142.5, 143.0, 144.0])
+    assert _verify_split_resolved(smooth, "2026-06-13", None)[0] is True
+
+
+# --- _classify_split (dated status machine) ------------------------------------
+
+def test_classify_resolved_always_resolved() -> None:
+    now = datetime.now(timezone.utc)
+    old = now - timedelta(days=99)
+    assert _classify_split(old, now, resolved=True) == "resolved"
+
+
+def test_classify_unresolved_within_window_stays_pending() -> None:
+    now = datetime.now(timezone.utc)
+    recent = now - timedelta(days=_SPLIT_RETRY_DAYS - 1)
+    assert _classify_split(recent, now, resolved=False) == "pending"
+
+
+def test_classify_unresolved_at_retry_boundary_fails() -> None:
+    now = datetime.now(timezone.utc)
+    boundary = now - timedelta(days=_SPLIT_RETRY_DAYS)
+    assert _classify_split(boundary, now, resolved=False) == "failed"

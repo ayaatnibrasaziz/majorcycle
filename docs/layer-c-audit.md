@@ -504,3 +504,50 @@ Owner reviewed DD live after the cron and reported its chart still shows the un-
 **Revised round-2 order:** **C-R9** (smart split + backend state, plan mode) → **C-R1 redesign**
 (interactive-HTML report + blue button, plan mode) → C-R2 null sweep → C-R3 a11y → C-R4 perf/
 compliance/#15 → C-R8 Browse audit → **C-R5 live tail (last)**. One task at a time.
+
+### C-R9 — smart split-adjustment verification + dated backend state (2026-06-28) — built + verified locally, PAUSED for owner merge
+
+> **Branch note:** this entry is on `feat/layer-c-r9-split-state` (off `main` `b385180`). The round-2
+> session-2 scope/log (DD investigation, the C-R9 + C-R1-redesign scope blocks, the revised order) lives
+> on the un-merged `feat/layer-c-round2-report` branch; the two will reconcile when both merge.
+
+**Data-pipeline only — engine/methodology UNTOUCHED** (`major_cycle.py` / `scoring/*` / `web/_engine/*`
+clean; neither changed Python file is in the `_engine` drift mirror). Owner decisions via AskUserQuestion
+**before** building: **new `split_events` table** · **DB-record-only** (no email — a 30-day-unresolved split
+just sets `status='failed'`, visible in the table). Plan: `.claude/plans/woolly-dazzling-hedgehog.md`.
+
+- **Problem C-R9 fixes (from the DD case):** C-R7 re-pulled a ticker's full history on *every* nightly run
+  while its split sat in the 1-month window, with **no "did it work?" check and no record**. DD exposed both:
+  yfinance lists DD's 1-for-3 reverse split (2026-06-24, ratio 0.3333) but never back-adjusts the prices, so
+  a fresh `max` pull still returns a ~3x cliff at 2026-06-18 → re-pulling can't fix it, yet nothing was
+  recorded so the owner had no visibility.
+- **Migration `supabase/migrations/20260628000000_split_events.sql`** (applied via MCP + mirrored to the
+  repo). One row per detected split per ticker: `split_date / ratio / status (pending|resolved|failed) /
+  detected_at / last_repull_at / repull_count / resolved_at / cliff_date / cliff_ratio`. Unique
+  `(ticker, split_date)`; partial index on pending. **Server-only RLS** (enable, no policies — like
+  `stocks`/`index_membership`; service-role bypasses). Advisor shows only the intended INFO
+  `rls_enabled_no_policy` notice.
+- **Provider (`yfinance_provider.py`):** surfaces the split **ratio** on a new
+  `df.attrs['recent_split_events']` = `[{date, ratio}]` (the `Stock Splits` value), leaving `recent_splits`
+  (dates) + its tests intact. Not in the drift mirror → no mirror edit.
+- **`daily_refresh.py`:** new pure helpers — `_recent_split_events`; `_verify_split_resolved` (scans
+  adjacent-day close ratios in a ±10-bar window around the split date for a leftover cliff matching the
+  expected unadjusted factor `1/ratio` within ±20%; split-ratio-specific so a real crash/spike never
+  false-fires; returns `(resolved, cliff_date, cliff_ratio)`); `_classify_split` (resolved→`resolved`;
+  unresolved <30d→`pending`; ≥30d→`failed`) — plus DB helpers (`_load_pending_splits` up front,
+  `_ticker_pending_splits`, `_record_split_detection` with `ignore_duplicates` so a resolved/failed row is
+  never reopened, `_update_split_state`). **Main loop rewired:** detection records a `pending` row; the
+  re-pull+verify is **driven by the pending set, not the 1-month window**, so a still-broken split keeps
+  being retried for 30 days while a fixed one is **never re-pulled again** (kills the waste).
+- **Verified (real prod Supabase, `--only DD,KLAC`):** **DD** → detected (ratio 0.3333), re-pulled 13,630
+  bars, **`pending`**, `cliff_date 2026-06-18`, `cliff_ratio 2.985`. **KLAC** (real 10-for-1 forward, ratio
+  10.0) → re-pulled 11,521 bars, **`resolved`**, `resolved_at` set. **Idempotency:** a 2nd run re-pulled DD
+  (pending) but **skipped KLAC** (resolved row not reopened; `repull_count` stayed 1, DD's climbed). **30-day
+  flag:** backdated DD's `detected_at` 31 days → run flipped it to **`failed`** (cliff still present, DB-only)
+  → then **restored DD to its true `pending` state**. `ruff` + `mypy` (31 files) + `pytest` **63 passed**
+  (8 new helper tests incl. the 30-day boundary + crash-not-misread guard) all green.
+- **C-R9 STATUS: built + verified locally, all Python CI green, migration live on Supabase.
+  Pause-before-merge / commit only when asked.** Files: `supabase/migrations/20260628000000_split_events.sql`
+  (new), `analytics/providers/yfinance_provider.py`, `analytics/cron/daily_refresh.py`,
+  `analytics/tests/test_daily_refresh.py`. Next = **C-R1 redesign** (interactive-HTML report + blue button,
+  plan mode).
