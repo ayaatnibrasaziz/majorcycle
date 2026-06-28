@@ -12,6 +12,7 @@ import {
   type Time,
 } from 'lightweight-charts';
 
+import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import {
   createSyncSource,
   emitCrosshairSync,
@@ -98,7 +99,11 @@ export function PriceChart({ priceBars, ticker }: Props) {
         vertLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
         horzLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
       },
-      rightPriceScale: { borderColor: '#E2E8F0', textColor: '#8A97A8' },
+      rightPriceScale: {
+        borderColor: '#E2E8F0',
+        textColor: '#8A97A8',
+        minimumWidth: CHART_RIGHT_AXIS_WIDTH,
+      },
       // fixLeftEdge/fixRightEdge stop scrolling past the first/last bar into
       // empty whitespace. The Drawdown overlay shares this exact date extent but
       // can't follow a range that runs into no-data space (setVisibleRange clamps

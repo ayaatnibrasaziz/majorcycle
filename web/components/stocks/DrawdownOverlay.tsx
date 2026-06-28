@@ -20,6 +20,7 @@ import {
   subscribeTimeRangeSync,
   timeToMs,
 } from '@/lib/chartSync';
+import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { CycleAnalysis, PriceBar } from '@/lib/types';
 
 type Mode = 'drawdown' | 'profit';
@@ -157,7 +158,11 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
         vertLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
         horzLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
       },
-      rightPriceScale: { borderColor: '#E2E8F0', textColor: '#8A97A8' },
+      rightPriceScale: {
+        borderColor: '#E2E8F0',
+        textColor: '#8A97A8',
+        minimumWidth: CHART_RIGHT_AXIS_WIDTH,
+      },
       // Pin both edges so this overlay (and the Price chart, which does the same)
       // can't scroll past the data into empty whitespace — that desynced the two
       // charts because setVisibleRange can't reproduce an out-of-data range.

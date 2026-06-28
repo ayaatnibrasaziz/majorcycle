@@ -639,3 +639,22 @@ isRollbackCandidate) or `git revert 349c151`.
   public/ → graceful empty `logoDataUrl` (header shows the "MajorCycle" alt text; page not broken). If the logo
   is missing on a real authed prod report, switch to a build-traced path (`new URL('../public/logo.png',
   import.meta.url)`) or inline at build. Couldn't verify on prod (the report is auth-gated; no test session).
+
+### C-R1 follow-up 2 — LWC chart y-axis alignment (2026-06-28) — built + verified in Claude Preview, branch `fix/lwc-chart-axis-align` off main
+
+Owner-reported (after the Recharts alignment): the **Lightweight-Charts** plots (Price, Drawdown/Profit, Smart
+Money) didn't line up — specifically the **Drawdown** chart looked off. **Root cause:** LWC auto-sizes each
+chart's right price scale to its own labels, so Drawdown's `-100.0%`-style labels made its scale **72px** while
+Price/Smart Money were **66px** (and the Recharts were a fixed 66) → Drawdown's plot ended ~6px short.
+- **Fix:** bumped the shared `CHART_RIGHT_AXIS_WIDTH` (`lib/format.ts`) **66 → 72** and set
+  `rightPriceScale.minimumWidth: CHART_RIGHT_AXIS_WIDTH` on all three LWC charts (`PriceChart`,
+  `DrawdownOverlay`, `SmartMoneyActivity`). LWC only honours a `minimumWidth` floor (no hard cap), so 72 must be
+  ≥ the widest LWC label in the universe — the Drawdown `-100.0%` is the widest; verified **BKNG** (~$4–5k,
+  4-digit price labels) still fits at 72. The Recharts cards (fixed `width=72`) move with it, so everything stays
+  aligned. Same constant now drives both chart engines = one source of truth.
+- **Verified (Claude Preview, DEV_BYPASS removed after):** detail page — Price/Drawdown/Smart Money all
+  scale-width **72**, plot-right **828**; settled Recharts also **828**; Drawdown ↔ Price right edges line up
+  (screenshots). Downloaded report — all LWC + settled Recharts **825**, **0 external resources**. BKNG (4-digit)
+  also all 72/828. `typecheck`/`lint`/`build` green; offline bundle rebuilt.
+- Files: `lib/format.ts` (const 66→72 + doc), `components/stocks/{PriceChart,DrawdownOverlay,
+  SmartMoneyActivity}.tsx`. Pure web; engine UNTOUCHED.

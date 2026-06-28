@@ -13,6 +13,7 @@ import {
   type Time,
 } from 'lightweight-charts';
 
+import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { AnalystUpgrade, InsiderTransaction, PriceBar } from '@/lib/types';
 
 type Range = '1y' | '3y' | 'all';
@@ -282,7 +283,11 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
         vertLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
         horzLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
       },
-      rightPriceScale: { borderColor: '#E2E8F0', textColor: '#8A97A8' },
+      rightPriceScale: {
+        borderColor: '#E2E8F0',
+        textColor: '#8A97A8',
+        minimumWidth: CHART_RIGHT_AXIS_WIDTH,
+      },
       timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
