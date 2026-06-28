@@ -1,10 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ShieldCheck, Download } from 'lucide-react';
+import { ShieldCheck, Download, Loader2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { MethodologyModal } from '@/components/stocks/MethodologyModal';
+import {
+  downloadInteractiveReport,
+  prefetchReportBundle,
+  prefetchReportData,
+} from '@/lib/report-download';
+import { useScrollSpy } from '@/lib/useScrollSpy';
 
 const SECTIONS = [
   { id: 'sec-thesis', label: 'Thesis' },
@@ -14,6 +20,8 @@ const SECTIONS = [
   { id: 'sec-sentiment', label: 'Sentiment' },
 ] as const;
 
+const SECTION_IDS = SECTIONS.map((s) => s.id);
+
 type SectionId = (typeof SECTIONS)[number]['id'];
 
 /**
@@ -21,64 +29,69 @@ type SectionId = (typeof SECTIONS)[number]['id'];
  * two right-side actions (Methodology dialog, Download Report). Sticks below
  * the global header, frosted-glass background.
  *
- * `reportHref` points at the chrome-free report route for this stock, carrying
- * the current Major Cycle horizon; the Download Report action opens it in a new
- * tab (both export modes — Save-as-PDF / Download-HTML — live on that page).
+ * "Download Report" is a one-click action: it builds a single self-contained,
+ * fully-interactive .html for this stock (this stock's data + the prebuilt
+ * offline bundle) and downloads it — see lib/report-download.ts. Styled like the
+ * Results-tab Export button (blue `.export-btn` gradient).
  */
-export function StockSubnav({ reportHref }: { reportHref: string }) {
-  const [active, setActive] = useState<SectionId>(SECTIONS[0].id);
+export function StockSubnav({
+  market,
+  ticker,
+  horizonQuery,
+  symbol,
+  reportTitle,
+}: {
+  market: string;
+  ticker: string;
+  horizonQuery: string;
+  symbol: string;
+  reportTitle: string;
+}) {
   const [methodologyOpen, setMethodologyOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
-  // While a CLICK-triggered smooth scroll is in flight, the scroll-spy below
-  // would otherwise light up every pill the viewport passes through (the
-  // "walking highlight" bug). We lock it on click and release shortly after the
-  // scroll settles on the target — so the clicked pill highlights once and stays.
-  const scrollLockRef = useRef(false);
-  const releaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  // Warm the static offline bundle (~1.3 MB, same for every stock) once on mount,
+  // so a later Download click only waits on this stock's data, not the bundle.
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (scrollLockRef.current) return; // suppressed during click-scroll
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) {
-          setActive(visible.target.id as SectionId);
-        }
-      },
-      {
-        // Trigger when the section's top enters the band just below the
-        // sticky header + subnav.
-        rootMargin: '-120px 0px -60% 0px',
-        threshold: [0, 0.25, 0.5, 0.75, 1],
-      },
-    );
+    prefetchReportBundle();
+  }, []);
 
-    for (const { id } of SECTIONS) {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
+  // Start fetching this stock's report data the moment the user hovers/focuses the
+  // button, so the file is usually ready by the time they click.
+  function warmReportData() {
+    prefetchReportData({ market, ticker, horizonQuery });
+  }
+
+  // Deterministic scroll-spy: a section is active once its heading reaches just
+  // below this sticky subnav. The offset auto-tracks the subnav's current bottom
+  // (≈105 when stuck) + a gap matching the sections' scroll-mt-[120px].
+  const subnavRef = useRef<HTMLDivElement>(null);
+  const { active, setActive, lock } = useScrollSpy(
+    SECTION_IDS,
+    () => (subnavRef.current?.getBoundingClientRect().bottom ?? 105) + 24,
+  );
+
+  async function handleDownload() {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      await downloadInteractiveReport({
+        market,
+        ticker,
+        horizonQuery,
+        symbol,
+        title: reportTitle,
+      });
+    } catch {
+      // Non-technical owner safety net: never fail silently. The report bundle
+      // or data fetch failed — tell the user plainly rather than doing nothing.
+      window.alert(
+        'Sorry — the report could not be prepared just now. Please try again in a moment.',
+      );
+    } finally {
+      setDownloading(false);
     }
-    return () => observer.disconnect();
-  }, []);
-
-  // Release the scroll-lock ~140ms after scrolling stops (so the scroll-spy
-  // resumes only once the click-scroll has settled on the target). A safety
-  // timeout in handleClick covers the already-at-target case (no scroll events).
-  useEffect(() => {
-    const onScroll = () => {
-      if (!scrollLockRef.current) return;
-      if (releaseTimerRef.current) clearTimeout(releaseTimerRef.current);
-      releaseTimerRef.current = setTimeout(() => {
-        scrollLockRef.current = false;
-      }, 140);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      if (releaseTimerRef.current) clearTimeout(releaseTimerRef.current);
-    };
-  }, []);
+  }
 
   function handleClick(e: React.MouseEvent<HTMLAnchorElement>, id: SectionId) {
     e.preventDefault();
@@ -89,25 +102,18 @@ export function StockSubnav({ reportHref }: { reportHref: string }) {
     // the section heading lands just below the subnav instead of behind it.
     const headerOffset = 120;
     const top = el.getBoundingClientRect().top + window.scrollY - headerOffset;
+    // Highlight the clicked pill immediately and lock the scroll-spy so the
+    // in-flight smooth scroll doesn't walk the highlight through every section.
     setActive(id);
+    lock();
     history.replaceState(null, '', `#${id}`);
-    // Only lock when we'll actually scroll; otherwise no scroll events fire and
-    // the lock would never release via onScroll.
-    if (Math.abs(window.scrollY - top) > 2) {
-      scrollLockRef.current = true;
-      if (releaseTimerRef.current) clearTimeout(releaseTimerRef.current);
-      // Absolute safety: release even if the scroll is clamped (e.g. the target
-      // is near the page bottom and barely moves).
-      releaseTimerRef.current = setTimeout(() => {
-        scrollLockRef.current = false;
-      }, 1500);
-    }
     window.scrollTo({ top, behavior: 'smooth' });
   }
 
   return (
     <>
     <div
+      ref={subnavRef}
       className="sticky top-[var(--header-h)] z-[50] -mx-6 px-6 border-b border-[var(--border)] bg-white/92 backdrop-blur-md"
       role="navigation"
       aria-label="Section navigation"
@@ -152,16 +158,23 @@ export function StockSubnav({ reportHref }: { reportHref: string }) {
             <ShieldCheck className="w-[13px] h-[13px]" strokeWidth={1.8} />
             Methodology
           </button>
-          <a
-            href={reportHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 bg-white border border-[var(--border-strong)] text-[var(--text-secondary)] text-[11px] font-semibold px-3 py-1.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)] transition-all"
-            title="Open a full printable report for this stock"
+          <button
+            type="button"
+            onClick={handleDownload}
+            onMouseEnter={warmReportData}
+            onFocus={warmReportData}
+            disabled={downloading}
+            aria-busy={downloading}
+            className="export-btn disabled:opacity-70 disabled:cursor-default"
+            title="Download a full interactive report for this stock"
           >
-            <Download className="w-[13px] h-[13px]" strokeWidth={1.8} />
-            Download Report
-          </a>
+            {downloading ? (
+              <Loader2 className="w-[13px] h-[13px] animate-spin" strokeWidth={1.8} />
+            ) : (
+              <Download className="w-[13px] h-[13px]" strokeWidth={1.8} />
+            )}
+            {downloading ? 'Preparing…' : 'Download Report'}
+          </button>
         </div>
       </div>
     </div>

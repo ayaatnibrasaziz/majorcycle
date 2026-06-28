@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 
 import type { FinancialStatement, FundamentalsSnapshot } from '@/lib/types';
-import { fmtCompact, makeCompactAxisFormatter } from '@/lib/format';
+import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, makeCompactAxisFormatter } from '@/lib/format';
 
 interface Props {
   balanceSheetAnnual?: FinancialStatement;
@@ -122,7 +122,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
             <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 200 }}>
               <ComposedChart
                 data={chartData}
-                margin={{ top: 6, right: 12, left: 0, bottom: 0 }}
+                margin={{ top: 6, right: 0, left: 0, bottom: 0 }}
               >
                 <XAxis
                   dataKey="label"
@@ -140,7 +140,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                   tickFormatter={makeCompactAxisFormatter(axisMax, currency)}
                   axisLine={false}
                   tickLine={false}
-                  width={52}
+                  width={CHART_RIGHT_AXIS_WIDTH}
                 />
                 <Tooltip
                   content={({ active, payload, label }) => {

@@ -1558,10 +1558,10 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 }
 
 /* ── Stock Detail Report (C-R1) ───────────────────────────────────────────────
-   The chrome-free /stocks/[market]/[ticker]/report page: a single-column,
-   print-optimized snapshot. On screen it still sits inside the app shell; the
-   @media print block below renders ONLY #report-root (clean PDF), and the
-   "Download HTML" helper clones only #report-root (clean self-contained file). */
+   The single-column report layout (.report-doc) used by both the on-screen
+   /stocks/[market]/[ticker]/report preview and the offline interactive report
+   file. The offline bundle's report.css is generated from these same styles, so
+   the downloaded .html matches the live preview. */
 .report-doc {
   max-width: 920px;
   margin: 0 auto;
@@ -1596,17 +1596,7 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
-.report-meta-ticker {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.report-meta-name {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
 .report-meta-line {
-  margin-top: 4px;
   font-size: 11px;
   color: var(--text-muted);
 }
@@ -1620,26 +1610,52 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   font-style: italic;
   color: var(--text-muted);
 }
-.report-body > .report-section + .report-section {
+/* Section-nav: sticky pills that scroll to each group (scroll-spy in JS). */
+.report-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  padding: 7px 6px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.report-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 13px;
+  border-radius: var(--radius-sm);
+  font-family: 'Sora', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.report-nav-pill:hover {
+  background: var(--bg-stripe);
+  color: var(--brand-mid);
+}
+.report-nav-pill.is-active {
+  background: var(--brand-mid);
+  color: #fff;
+  box-shadow: inset 0 1px 0 var(--brand-deep);
+}
+/* Anchor groups land just below the sticky nav, never behind it. */
+.report-group {
+  scroll-margin-top: 64px;
+}
+.report-group + .report-group {
   margin-top: 18px;
 }
-
-@media print {
-  /* Show only the report; hide app chrome (sidebar/header/disclaimer strip) and
-     the report toolbar via the visibility trick so layout is preserved. */
-  body * { visibility: hidden; }
-  #report-root, #report-root * { visibility: visible; }
-  #report-root {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    max-width: none;
-    margin: 0;
-    padding: 0;
-  }
-  .report-toolbar { display: none !important; }
-  /* Keep a card from splitting across a page break. */
-  .report-section { break-inside: avoid; }
-  @page { margin: 14mm; }
+.report-group > .report-section + .report-section {
+  margin-top: 18px;
+}
+/* Smooth scroll for the report nav (scopes to the report page/file only). */
+.report-page {
+  scroll-behavior: smooth;
 }

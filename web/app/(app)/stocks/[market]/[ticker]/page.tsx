@@ -29,7 +29,7 @@ import { fetchCycleAnalysis, type CycleSpec } from '@/lib/cycle';
 import { parseSpec, isValidMarket, horizonQuery, type RouteSearch } from '@/lib/horizon';
 import { fetchMetricMedians } from '@/lib/medians.server';
 import { fetchStockDetail } from '@/lib/stocks';
-import { urlPartsToTicker, tickerDisplay } from '@/lib/ticker';
+import { urlPartsToTicker, tickerDisplay, tickerToUrlParts } from '@/lib/ticker';
 import type { FundamentalsSnapshot, Market, PriceBar } from '@/lib/types';
 
 type RouteParams = { market: string; ticker: string };
@@ -185,9 +185,6 @@ export default async function StockDetailPage({
   // cache() (and the underlying fetch/dev-spawn dedup) computes the cycle once.
   const sp = await searchParams;
   const { spec, label: horizonLabel } = parseSpec(sp);
-  // The subnav "Download Report" link opens the chrome-free report route in a new
-  // tab, carrying the current Major Cycle horizon (medium → clean URL).
-  const reportHref = `/stocks/${market}/${ticker}/report${horizonQuery(sp)}`;
 
   const stored = urlPartsToTicker(market, ticker);
   // Only the stock row + sector medians block the initial render — both are
@@ -198,6 +195,12 @@ export default async function StockDetailPage({
     fetchMetricMedians(),
   ]);
   if (!stock) notFound();
+
+  // Props for the subnav's one-click "Download Report" (carries the current
+  // Major Cycle horizon; medium → clean URL).
+  const reportSymbol = tickerToUrlParts(stored).symbol;
+  const reportTitle = `${tickerDisplay(stored)} — ${stock.name ?? stored} · MajorCycle report`;
+  const reportHorizonQuery = horizonQuery(sp);
 
   // Benchmark index series for the Relative Performance chart. Capped to the
   // later of the stock's first bar and ~20 years ago, so we never pull decades
@@ -210,7 +213,13 @@ export default async function StockDetailPage({
 
   return (
     <div className="-mt-2">
-      <StockSubnav reportHref={reportHref} />
+      <StockSubnav
+        market={market}
+        ticker={ticker}
+        horizonQuery={reportHorizonQuery}
+        symbol={reportSymbol}
+        reportTitle={reportTitle}
+      />
 
       <div className="pt-5 space-y-[18px]">
         {/* Read-only note when a non-default horizon was chosen on Browse.

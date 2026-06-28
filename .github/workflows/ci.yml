@@ -36,6 +36,11 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Check report ↔ Stock Detail section parity
+        # Fails if the downloadable report (ReportDocument.tsx) and the live
+        # Stock Detail page render different section sets. See the script header.
+        run: pnpm check:report-sections
+
       - name: Build
         run: pnpm build
 

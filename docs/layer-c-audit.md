@@ -551,3 +551,75 @@ just sets `status='failed'`, visible in the table). Plan: `.claude/plans/woolly-
   (new), `analytics/providers/yfinance_provider.py`, `analytics/cron/daily_refresh.py`,
   `analytics/tests/test_daily_refresh.py`. Next = **C-R1 redesign** (interactive-HTML report + blue button,
   plan mode).
+
+### C-R1 REDESIGN — Download Report = fully-interactive OFFLINE html (2026-06-28) — built + verified in Claude Preview, PAUSED for owner merge
+
+Branch `feat/layer-c-round2-report` (merged `main` in → picked up C-R9; the one `docs/layer-c-audit.md`
+conflict resolved keep-both). **Pure web — engine/data/Python UNTOUCHED.** Plan mode + AskUserQuestion
+first (owner: one-click direct download; branch reuse my call). Replaces the first cut's canvas→`<img>`
+snapshot + Save-as-PDF — those are GONE.
+
+- **Architecture (the hard part, solved):** the report sections are a self-contained React island (props
+  in; no `next/image`/routing/`*.server` runtime). A `prebuild` step (`scripts/build-report-bundle.mjs`,
+  **esbuild** IIFE + **@tailwindcss/cli** CSS + best-effort base64 fonts) compiles the REAL components into
+  `public/report-bundle/report.{js,css}` (git-ignored). The blue `.export-btn` "Download Report" (one-click,
+  `StockSubnav`) fetches this stock's data from a gated route + the bundle, and assembles ONE self-contained
+  `.html`. Opening it runs the genuine app from inlined JSON with **zero network**.
+- **Files:** new `components/stocks/ReportDocument.tsx` (single source of the report layout, client),
+  `lib/report-types.ts` (serializable `ReportData`), `lib/report-data.ts` (`buildReportData`, server, inlines
+  logo as data-URL), `app/(app)/stocks/[market]/[ticker]/report/data/route.ts` (GET, self-gates auth like the
+  layout + DEV_BYPASS), `report-bundle/entry.tsx`, `scripts/build-report-bundle.mjs`,
+  `scripts/check-report-sections.mjs` (CI guard), `lib/useScrollSpy.ts`. Rewritten `lib/report-download.ts`
+  (assembles interactive html, escapes `</script`+`<`), `report/page.tsx` (thin `<ReportDocument>` preview).
+  Edited `StockSubnav.tsx` (blue one-click button), detail `page.tsx` (passes market/ticker/horizonQuery/
+  symbol/title), `globals.css`, `package.json` (esbuild+cli, build runs the bundle), `.gitignore`,
+  `eslint.config.mjs` (ignore the generated bundle), `pnpm-workspace.yaml` (allowBuilds esbuild). Deleted
+  `ReportToolbar.tsx` + the `@media print` block.
+- **Sync safety net:** `ReportDocument` renders the SAME section components as the live page, rebuilt every
+  deploy → editing a section auto-propagates. The section LINE-UP can't be one shared list (detail page
+  streams, report renders all at once) → CI guard `check:report-sections` fails the build if the two diverge
+  (22 sections in sync). Owner-facing: edit a section = automatic; add/remove/reorder = one line in the
+  report too, and CI names it if you forget.
+- **NAV BUG (owner-reported) — found + fixed on BOTH surfaces.** Old scroll-spy used IntersectionObserver +
+  intersectionRatio → highlighted the NEXT section ~one step early on unequal-height sections (confirmed:
+  at y=1750 lit "Cycle" while "Scorecard" on screen). Replaced with deterministic `useScrollSpy` (active =
+  last section whose heading passed the sticky-nav offset; bottom-of-page override; rAF; ResizeObserver for
+  streamed sections; click-lock so smooth scroll doesn't walk). A 2nd offline-only off-by-3px bug (nav offset
+  61 < group scroll-margin-top 64 → clicked pill highlighted the previous one) fixed by `navBottom+24`.
+  Added `html{scroll-behavior:smooth}` to the offline file.
+- **Header redundancy (owner choice):** dropped the duplicated ticker + company name from the report header
+  (the `StockHeader` identity block directly below shows them with price + badges); header kept as branding +
+  Horizon + Generated date + disclaimer. Removed unused `.report-meta-ticker/.report-meta-name` CSS.
+- **Verified in Claude Preview (DEV_BYPASS, removed after):** `typecheck`+`lint`+`build`+section-guard green.
+  Offline file served from a SEPARATE origin → **0 external resources** (resource-timing) on AAPL/BHP/SHOP/BAC;
+  21 charts, Drawdown↔Profit toggle, 1Y/3Y/All, **48 InfoTip popups**, 110 native title tips, 0 console errors.
+  **Nav:** detail page slow-scroll **0 mismatches/39 steps** + click lands at offset 120; offline file click
+  each of 5 pills → correct, slow-scroll (fixed-offset, non-circular) **0 mismatches/51 steps**. **Horizon:**
+  default/short/long/custom/invalid all correct (different lower bounds; invalid→Medium) + the button forwards
+  `?preset=long`. Mobile **375px** no horizontal scroll. Bank (BAC withheld-FH) + non-payer (SHOP "Does not
+  pay a dividend") states honest. Each download ~2.7–4.6 MB (embeds real app + charts + fonts + data).
+- **C-R1 STATUS: built + verified in Claude Preview, all CI green. Pause-before-merge / commit only when
+  asked.** Next round-2 task after merge = **C-R2** (null-data render sweep).
+
+### C-R1 follow-ups — chart y-axis alignment + faster Download button (2026-06-28) — built + verified in Claude Preview, PAUSED for owner merge
+
+Two owner-reported polish items on the same `feat/layer-c-round2-report` branch. Pure web; engine UNTOUCHED.
+- **(1) Y-axis / plot-edge alignment.** Owner: the Recharts cards (Relative Performance, Earnings, Quarterly/
+  Annual, Valuation P/E, Balance Sheet, Dividend) didn't line up like the LWC charts (Price, Drawdown, Smart
+  Money). **Root cause:** each Recharts `<YAxis orientation="right">` used a different `width` (40/48/52/56) +
+  `margin.right:12`, so the right gutter (and thus the plot's right edge) differed per card; the LWC charts all
+  share a fixed **66px** price scale. **Fix:** one shared `CHART_RIGHT_AXIS_WIDTH = 66` (in `lib/format.ts`) +
+  `margin.right:0` across all six components → every plot ends at the same x as the LWC charts. **Verified
+  (Claude Preview):** detail page settled charts + LWC all at plot-right **870**; downloaded report all at
+  **909** (full-width body); Earnings/Quarterly y-axis labels visually aligned. Same components → fixes the
+  report automatically (bundle rebuilt).
+- **(2) Download button latency.** Owner: the save dialog takes a while. The two costs are the ~1.3 MB static
+  bundle and the ~3 MB data (full history, uncompressed in dev). **Fix (`lib/report-download.ts` +
+  `StockSubnav.tsx`):** `prefetchReportBundle()` on mount warms the session-cached bundle (off the click path);
+  `prefetchReportData()` on button hover/focus starts the data fetch before the click (deduped per horizon URL,
+  consumed on download). **Verified (Claude Preview):** hover fires exactly one `/report/data` request
+  (deduped on focus); with the hover prefetch complete, **click→blob = 48 ms** (was ~2.4 s cold). In prod the
+  data is gzipped (~300 KB) so it's faster again. Spinner still shows immediate feedback.
+- `typecheck`/`lint`/`build`/section-guard all green. Files: `lib/format.ts` (new const),
+  `components/stocks/{EarningsHistory,QuarterlyFinancials,ValuationHistory,BalanceSheet,DividendHistory,
+  RelativePerformance}.tsx`, `lib/report-download.ts`, `components/stocks/StockSubnav.tsx`. **Pause-before-merge.**

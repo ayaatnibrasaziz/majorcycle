@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 
 import { BENCHMARKS, type BenchmarkSeries } from '@/lib/benchmarks';
+import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { Market, PriceBar } from '@/lib/types';
 import { tickerToUrlParts } from '@/lib/ticker';
 
@@ -188,7 +189,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
         ) : (
           <div className="chart-canvas-wrap chart-h-sm">
             <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 200 }}>
-              <ComposedChart data={rows} margin={{ top: 6, right: 12, left: 0, bottom: 0 }}>
+              <ComposedChart data={rows} margin={{ top: 6, right: 0, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="#F0F4F8" vertical={false} />
                 <XAxis
                   dataKey="ts"
@@ -203,7 +204,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                 />
                 <YAxis
                   orientation="right"
-                  width={48}
+                  width={CHART_RIGHT_AXIS_WIDTH}
                   tickMargin={6}
                   tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
                   tickFormatter={(v: number) => `${v - 100 >= 0 ? '+' : ''}${(v - 100).toFixed(0)}%`}

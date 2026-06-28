@@ -11,7 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 
-import { fmtPerShare } from '@/lib/format';
+import { CHART_RIGHT_AXIS_WIDTH, fmtPerShare } from '@/lib/format';
 import type { FundamentalsSnapshot } from '@/lib/types';
 
 interface Props {
@@ -148,7 +148,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
           <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 200 }}>
             <BarChart
               data={chartData}
-              margin={{ top: 6, right: 12, left: 0, bottom: 0 }}
+              margin={{ top: 6, right: 0, left: 0, bottom: 0 }}
             >
               <XAxis
                 dataKey="label"
@@ -166,7 +166,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
                 tickFormatter={(v: number) => fmtPerShare(v, fundamentals.currency)}
                 axisLine={false}
                 tickLine={false}
-                width={48}
+                width={CHART_RIGHT_AXIS_WIDTH}
               />
               <Tooltip
                 cursor={{ fill: 'rgba(46,125,232,.05)' }}

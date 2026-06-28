@@ -1,121 +1,133 @@
-// Client-side "Download HTML" for the Stock Detail report. Mirrors the
-// downloadCsv (ratings.ts) / downloadXlsx (xlsx.ts) blob+click pattern, but
-// packages the whole #report-root into ONE self-contained .html file that works
-// offline:
-//   1. clone #report-root,
-//   2. swap every <canvas> (Lightweight-Charts) for an <img> of its toDataURL —
-//      a cloned canvas is blank, so we read the bitmap from the LIVE node in
-//      document order (Recharts SVG serializes natively, no action needed),
-//   3. inline any remaining same-origin <img> (the logo) as a data URL,
-//   4. embed every same-origin stylesheet (Tailwind + globals, incl. the :root
-//      CSS variables) into one <style>,
-//   5. blob → a.click() → revoke (no-op on the server).
+// Client-side "Download Report" — builds ONE self-contained, fully-interactive
+// .html file for a stock and triggers the download. Unlike a static snapshot, the
+// file embeds the real app code (the prebuilt offline bundle) + this stock's data,
+// so opening it from `file://` behaves exactly like the live Stock Detail page:
+// section-nav, chart pan/zoom over the full history, the Drawdown↔Profit and
+// 1Y/3Y/All toggles, and every tooltip all work with no server and no network.
+//
+// Flow:
+//   1. fetch the stock's JSON data from the gated /report/data route,
+//   2. fetch the prebuilt bundle (report.js + report.css) — static, CDN-cached,
+//   3. assemble a single HTML doc that inlines all three,
+//   4. blob → a.click().
+//
+// Latency: the two big costs are the ~1.3 MB static bundle and the stock's data.
+// `prefetchReportBundle()` (call on mount) warms the bundle once for the whole
+// session, and `prefetchReportData()` (call on hover/focus) starts the data fetch
+// before the click — so by the time the user clicks, both are usually already in
+// hand and the save dialog appears almost immediately.
 
-const ROOT_ID = 'report-root';
+/** Escape `<` so an embedded JSON/text blob can't break out of its <script>. */
+function escapeForScriptJson(text: string): string {
+  return text.replace(/</g, '\\u003c');
+}
 
-/** Read one same-origin URL as a data: URL. Returns null on any failure. */
-async function toDataUrl(src: string): Promise<string | null> {
-  try {
-    const res = await fetch(src);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return await new Promise<string | null>((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : null);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
+/** Neutralise any `</script`/`<!--` that could close the inline <script> early. */
+function escapeForInlineScript(js: string): string {
+  return js.replace(/<\/(script)/gi, '<\\/$1').replace(/<!--/g, '<\\!--');
+}
+
+async function fetchText(url: string): Promise<string> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url} → ${res.status}`);
+  return res.text();
+}
+
+// ── Prefetch caches ──────────────────────────────────────────────────────────
+// The offline bundle is identical for every stock, so cache it for the session.
+let bundlePromise: Promise<{ js: string; css: string }> | null = null;
+function getBundle(): Promise<{ js: string; css: string }> {
+  if (!bundlePromise) {
+    bundlePromise = Promise.all([
+      fetchText('/report-bundle/report.js'),
+      fetchText('/report-bundle/report.css'),
+    ])
+      .then(([js, css]) => ({ js, css }))
+      .catch((err) => {
+        bundlePromise = null; // let a later attempt retry
+        throw err;
+      });
+  }
+  return bundlePromise;
+}
+
+/** Warm the static offline bundle (call once on mount). Fire-and-forget. */
+export function prefetchReportBundle(): void {
+  if (typeof document === 'undefined') return;
+  void getBundle().catch(() => {});
+}
+
+const dataUrl = (a: Pick<DownloadReportArgs, 'market' | 'ticker' | 'horizonQuery'>): string =>
+  `/stocks/${a.market}/${a.ticker}/report/data${a.horizonQuery}`;
+
+// One in-flight data fetch per URL (horizon-specific), consumed on download so a
+// later click re-fetches fresh.
+const dataPromises = new Map<string, Promise<string>>();
+function getData(url: string): Promise<string> {
+  let p = dataPromises.get(url);
+  if (!p) {
+    p = fetchText(url).catch((err) => {
+      dataPromises.delete(url);
+      throw err;
     });
-  } catch {
-    return null;
+    dataPromises.set(url, p);
   }
+  return p;
 }
 
-/** Concatenated cssText of every reachable (same-origin) stylesheet. */
-function collectCss(): string {
-  let css = '';
-  for (const sheet of Array.from(document.styleSheets)) {
-    let rules: CSSRuleList | null = null;
-    try {
-      rules = sheet.cssRules; // throws for cross-origin sheets — skip those
-    } catch {
-      rules = null;
-    }
-    if (!rules) continue;
-    for (const rule of Array.from(rules)) css += rule.cssText + '\n';
-  }
-  return css;
+/** Start fetching this stock's report data (call on button hover/focus). */
+export function prefetchReportData(
+  args: Pick<DownloadReportArgs, 'market' | 'ticker' | 'horizonQuery'>,
+): void {
+  if (typeof document === 'undefined') return;
+  void getData(dataUrl(args)).catch(() => {});
 }
 
-/** Replace every <canvas> in the clone with an <img> of the live canvas bitmap. */
-function inlineCanvases(root: HTMLElement, clone: HTMLElement): void {
-  const live = Array.from(root.querySelectorAll('canvas'));
-  const cloned = Array.from(clone.querySelectorAll('canvas'));
-  cloned.forEach((canvas, i) => {
-    const source = live[i];
-    let dataUrl = '';
-    try {
-      dataUrl = source ? source.toDataURL('image/png') : '';
-    } catch {
-      dataUrl = '';
-    }
-    const img = document.createElement('img');
-    if (dataUrl) img.src = dataUrl;
-    // Preserve the canvas box so the chart lands where it did (LWC stacks
-    // absolutely-positioned canvases inside a relative wrapper).
-    if (canvas.getAttribute('style')) img.setAttribute('style', canvas.getAttribute('style')!);
-    if (canvas.width) img.width = canvas.width;
-    if (canvas.height) img.height = canvas.height;
-    img.className = canvas.className;
-    canvas.replaceWith(img);
-  });
-}
-
-/** Inline same-origin <img> sources (e.g. the brand logo) as data URLs. */
-async function inlineImages(clone: HTMLElement): Promise<void> {
-  const imgs = Array.from(clone.querySelectorAll('img')).filter((img) => {
-    const src = img.getAttribute('src') ?? '';
-    return src.length > 0 && !src.startsWith('data:');
-  });
-  await Promise.all(
-    imgs.map(async (img) => {
-      const dataUrl = await toDataUrl(img.src); // resolves relative → absolute
-      if (dataUrl) {
-        img.setAttribute('src', dataUrl);
-        // next/image emits a srcset/sizes pointing at /_next/image?… — offline the
-        // browser would prefer that (now-dead) srcset over our inlined src, so drop
-        // them and let the data URL win.
-        img.removeAttribute('srcset');
-        img.removeAttribute('sizes');
-      }
-    }),
-  );
+export interface DownloadReportArgs {
+  /** Route market segment, e.g. "au". */
+  market: string;
+  /** Route ticker segment, e.g. "BHP". */
+  ticker: string;
+  /** Horizon query string from horizonQuery(sp), e.g. "?preset=long" or "". */
+  horizonQuery: string;
+  /** Bare symbol for the filename, e.g. "BHP". */
+  symbol: string;
+  /** Document <title> for the saved file. */
+  title: string;
 }
 
 /**
- * Build + trigger a self-contained .html download of the report. No-op on the
- * server. `title` becomes the document <title>.
+ * Build + trigger the interactive report download. No-op on the server. Throws on
+ * any fetch failure so the caller can surface a friendly message.
  */
-export async function downloadReportHtml(filename: string, title: string): Promise<void> {
+export async function downloadInteractiveReport(args: DownloadReportArgs): Promise<void> {
   if (typeof document === 'undefined') return;
-  const root = document.getElementById(ROOT_ID);
-  if (!root) return;
+  const { symbol, title } = args;
 
-  const clone = root.cloneNode(true) as HTMLElement;
-  inlineCanvases(root, clone);
-  await inlineImages(clone);
+  // Reuse the hover-prefetched data + the session-cached bundle when available.
+  const reqUrl = dataUrl(args);
+  const [dataJson, { js, css }] = await Promise.all([getData(reqUrl), getBundle()]);
+  dataPromises.delete(reqUrl); // consume so a later click re-fetches fresh data
 
-  const css = collectCss();
   const html =
     '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-    `<title>${title}</title><style>${css}</style></head>` +
-    `<body style="background:#fff;margin:0;padding:24px;">${clone.outerHTML}</body></html>`;
+    `<title>${title}</title>` +
+    `<style>${css}</style>` +
+    '<style>html,body{margin:0;background:#fff;}html{scroll-behavior:smooth;}' +
+    'body{padding:24px;font-family:var(--font-sans, "Sora", sans-serif);' +
+    'color:var(--text-primary, #0f172a);}</style>' +
+    '</head><body class="report-page">' +
+    '<div id="report-mount"></div>' +
+    `<script type="application/json" id="__REPORT_DATA__">${escapeForScriptJson(dataJson)}</script>` +
+    `<script>${escapeForInlineScript(js)}</script>` +
+    '</body></html>';
 
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename;
+  a.download = `majorcycle_${symbol}_report.html`;
   a.click();
   URL.revokeObjectURL(url);
 }
