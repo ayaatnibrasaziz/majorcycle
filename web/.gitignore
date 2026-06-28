@@ -20,6 +20,10 @@
 # production
 /build
 
+# generated offline report bundle (rebuilt by scripts/build-report-bundle.mjs
+# during `pnpm build` — never commit the multi-MB artifact)
+/public/report-bundle/
+
 # misc
 .DS_Store
 *.pem

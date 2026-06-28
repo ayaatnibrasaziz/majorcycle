@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated offline report bundle (minified esbuild output).
+    "public/report-bundle/**",
   ]),
 ]);
 

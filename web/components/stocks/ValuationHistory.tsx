@@ -11,6 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 
+import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { PeHistoryItem } from '@/lib/types';
 
 interface Props {
@@ -105,7 +106,7 @@ export function ValuationHistory({ peHistory, currentPe }: Props) {
               <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 200 }}>
                 <ComposedChart
                   data={chartData}
-                  margin={{ top: 6, right: 12, left: 0, bottom: 0 }}
+                  margin={{ top: 6, right: 0, left: 0, bottom: 0 }}
                 >
                   <XAxis
                     dataKey="label"
@@ -124,7 +125,7 @@ export function ValuationHistory({ peHistory, currentPe }: Props) {
                     tickFormatter={(v: number) => `${v.toFixed(0)}x`}
                     axisLine={false}
                     tickLine={false}
-                    width={40}
+                    width={CHART_RIGHT_AXIS_WIDTH}
                   />
                   <Tooltip
                     content={({ active, payload, label }) => {

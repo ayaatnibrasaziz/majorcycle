@@ -278,6 +278,50 @@ first. Pause-before-merge; explain-before-build; self-verify; the live tail is *
 - **C-R8 — Stock Browser tab (`/stocks`) full 10-check audit** as a new Layer C surface.
 - **C-R5 live tail** now also covers TUA + Browse.
 
+### Owner additions to round-2 scope (2026-06-28)
+
+- **C-R9 — Smart split-adjustment verification + dated backend state (NEXT SESSION, plan mode).**
+  C-R7's split detection re-pulls on every nightly run while a split is inside the 1-month
+  incremental window, **with no record and no "is it actually fixed?" check**. Two problems the
+  owner hit on **DD** (see the session-2 log entry): (a) it keeps re-pulling for 30 days even after
+  the data is already correct (wasteful), and (b) **nothing is recorded in Supabase**, so the owner
+  can't see what the pipeline is doing. **New logic the owner wants:**
+  - After a detected split is re-pulled, **verify the discontinuity is actually resolved** (the
+    series is now continuous at the split). If resolved → **mark it done and STOP re-pulling** (don't
+    keep hammering for 30 days).
+  - If NOT resolved (yfinance served unadjusted prices, as with DD) → keep the **30-day retry**
+    window; **after 30 days still unresolved → notify the owner** that this ticker's data didn't
+    update correctly.
+  - **Record dated split-handling state in Supabase** (detected_at / split_date / ratio /
+    last_repull_at / status pending|resolved|failed / resolved_at or similar) so the owner has
+    **backend visibility** into exactly what happened and when.
+  - **Data-pipeline only — NOT a methodology/cycle-formula change** (no `analytics/scoring` /
+    `major_cycle.py` edit; like C-R7). Likely needs a new Supabase table/columns (migration) +
+    `daily_refresh.py` logic + a notification channel (Resend is available — channel is a design
+    fork). Owner: **"I don't want to do anything manually"** — no hand-editing of price data; the
+    fix must be the automatic pipeline detecting + reporting. START IN PLAN MODE; agree the schema +
+    notification approach first.
+- **C-R1 — Download Report REDESIGN (session after C-R9).** The first cut (built + verified this
+  session — see session-2 log) shipped **two** export modes (Save-as-PDF via `window.print()` + a
+  **static** HTML snapshot with charts flattened to `<img>`). **Owner redirected:**
+  - **DROP "Save as PDF" entirely.** A static print can't capture interactive/hidden content (full
+    price history needs pan/zoom; the Drawdown vs Profit toggle hides one series; chips switch data)
+    → a PDF/static snapshot is "useless".
+  - **HTML export ONLY, and it must be FULLY INTERACTIVE offline** — the downloaded `.html` must
+    **behave exactly like the live site**: the top section-nav works, charts **pan/zoom + show full
+    price history**, **chips/toggles** switch data, and **every tooltip works (normal title tips +
+    the custom InfoTips)**. Anything you can do on the live page, you can do in the offline file.
+    (The current `report-download.ts` canvas→`<img>` approach is the OPPOSITE of this and will be
+    largely replaced — a static image isn't interactive.)
+  - **Button styling:** the Stock-Detail "Download Report" button must look like the **Results-tab
+    Export button** — the brand-**blue** gradient `.export-btn` (`globals.css:1253`,
+    `linear-gradient(135deg, var(--brand-mid), var(--brand-deep))`, white text), NOT the current
+    outline button. (`StockSubnav.tsx`.)
+  - This is a substantial technical problem (a self-contained, offline, *interactive* React page —
+    not a snapshot). START IN PLAN MODE; design the approach with the owner before building. Reuse
+    what still fits from the first cut: the report route scaffolding, the `web/lib/horizon.ts` shared
+    util, the subnav wiring; rework the export + drop the print path.
+
 ## Round-2 session log
 
 ### C-R6 — drawdown/profit bound investigation + first-lookback warmup fix (2026-06-27) — built + verified locally, engine change OWNER-APPROVED
@@ -357,6 +401,110 @@ data-pipeline hygiene (`analytics/cron/*`, not `major_cycle.py`/scoring).
 - **C-R7 STATUS: built + verified locally, all Python CI green. Cron-side (split detection) is
   exercised on the next nightly `daily_refresh`; no current victim to repair. Pause-before-merge.**
 
+### TASK 0 — C-R7 split detection VERIFIED LIVE end-to-end (2026-06-28)
+
+The deploy-gated proof for C-R7. Today's prod cron (`Daily Data Refresh`, run 28272443624,
+2026-06-27 00:15Z — *after* PR #46 merged 2026-06-26 16:26Z) logged the split path firing:
+- `DD: stock split detected (2026-06-24) — re-pulling full re-adjusted history` → `DD | price+fund | bars=13630`.
+- Bonus multi-ticker proof: also caught **FDX** (2026-06-01) and **KLAC** (2026-06-12) splits.
+- **DD stored bars == fresh yfinance** (spot-checked 2026-06-18→26 OHLC to the cent; split
+  `0.333333` = the real 1-for-3 reverse split on 2026-06-24; the $48→$143 jump is genuine, as predicted).
+- **ENB.TO / CM.TO** now have **0 non-positive-close bars** (the −100% Long-bound cause is gone at the
+  data layer; the *live* prod bound refreshes as the 1h cycle cache cycles → re-confirm in C-R5).
+
+No backfill needed — the pipeline self-healed.
+
+### C-R1 — Download Report (report route + both export modes + subnav wiring) (2026-06-28) — built + verified locally, PAUSED for owner merge
+
+Branch `feat/layer-c-round2-report` off main (`b385180`). **Pure web — no engine/data/Python touched.**
+Design was LOCKED last session (owner picked BOTH export modes; contents = full snapshot, every section).
+- **New shared util `web/lib/horizon.ts`** — lifted `parseSpec`/`PRESET_LABEL`/`RouteSearch`/`isValidMarket`
+  out of the detail `page.tsx` (now imports them) + added `horizonQuery(sp)` (re-serializes the window to a
+  `?…` string; medium → clean URL). One source of truth for both pages.
+- **New report route `web/app/(app)/stocks/[market]/[ticker]/report/page.tsx`** — server component under
+  `(app)` (auth-gated by the layout for free). Reuses the same fetchers + section components as the detail
+  page but **awaits the cycle once** (print artifact — no Suspense) and renders **every section** single-column
+  inside `#report-root`: a report header (logo + ticker + horizon + generated-date + "Information only — not
+  advice" disclaimer) + all 21 sections, each wrapped in `.report-section` (`break-inside: avoid`). `robots:
+  noindex`. The `(app)` chrome (sidebar/header/app-disclaimer-strip) still shows ON SCREEN but is hidden in
+  both export artifacts.
+- **New client toolbar `web/components/stocks/ReportToolbar.tsx`** (OUTSIDE `#report-root`, class
+  `.report-toolbar`): **Save as PDF** → `window.print()`; **Download HTML** → `downloadReportHtml(...)` (spinner
+  while building).
+- **New client helper `web/lib/report-download.ts`** — mirrors `downloadCsv`/`downloadXlsx`: clones `#report-root`,
+  swaps every `<canvas>` (LWC) for an `<img>` of the **live** canvas `toDataURL` (cloned canvases are blank),
+  inlines same-origin `<img>` (the logo) as data URLs **and drops their `srcset`/`sizes`** (next/image's srcset
+  pointed at `/_next/image?…` and would beat the inlined `src` offline — caught in verification), embeds every
+  same-origin stylesheet (Tailwind + globals + `:root` vars) into one `<style>`, blob → download
+  `majorcycle_<SYMBOL>_report.html`.
+- **Print CSS** appended to `globals.css`: `@media print { body * {visibility:hidden} #report-root,#report-root *
+  {visibility:visible} … .report-toolbar{display:none} .report-section{break-inside:avoid} @page{margin:14mm} }`
+  + `.report-doc`/`.report-header`/`.report-section` screen styles.
+- **Subnav wiring** (`StockSubnav.tsx` + detail `page.tsx`): the disabled "Coming soon" `<button>` is now an
+  enabled `<a href={reportHref} target="_blank">` (removed `disabled`/`aria-disabled`/"Coming soon"); `page.tsx`
+  builds `reportHref = /stocks/<m>/<t>/report${horizonQuery(sp)}` and passes it as a prop.
+- **Verified (Claude Preview, `DEV_BYPASS_AUTH`, removed after; `.next` cleared post-build):**
+  - SHOP.TO (CA, non-payer), BAC (US **bank** → withheld-FH), BHP.AX (AU) report routes all **200**;
+    each renders **21 `.report-section` + 21 canvases + 78 svgs + the logo**; report header correct
+    ("SHOP · CA / Shopify Inc. / Horizon: Medium-term … / Generated 27 June 2026" + disclaimer). BAC's bank
+    state carries through honestly (radar aria-label = only the 3 real pillars; "Not scored / not enough data").
+    **0 console errors.**
+  - **Download HTML proven end-to-end** (intercepted the blob): `text/html;charset=utf-8`, ~510 KB, `<!doctype>`,
+    correct `<title>`, **22 inlined `data:image/png`** (21 charts + logo), **0 leftover `<canvas>` tags**,
+    **0 `/_next/image` refs** (srcset fix), CSS inlined.
+  - **Save-as-PDF** print rules confirmed in the CSSOM (only `#report-root` visible, `.report-toolbar` hidden).
+  - Subnav: detail page no longer has "Coming soon"; the Download Report link = `/stocks/au/BHP/report?preset=long`
+    (horizon carried; medium → clean URL).
+  - `pnpm typecheck && lint && build` green (twice — incl. after the srcset fix).
+- **C-R1 STATUS: built + verified locally, all CI green. Pause-before-merge / commit only when asked.**
+  Files: `web/lib/horizon.ts` (new), `web/lib/report-download.ts` (new),
+  `web/components/stocks/ReportToolbar.tsx` (new), `web/app/(app)/stocks/[market]/[ticker]/report/page.tsx`
+  (new), `web/components/stocks/StockSubnav.tsx`, `web/app/(app)/stocks/[market]/[ticker]/page.tsx`,
+  `web/app/globals.css`.
+
+### DD investigation + owner redirects (2026-06-28) — split-adjust gap found; C-R9 added; C-R1 redesign
+
+Owner reviewed DD live after the cron and reported its chart still shows the un-adjusted data while
+**FDX/KLAC** (never visited before) show corrected data — and asked to investigate/fix.
+
+- **Root cause = a yfinance data gap, NOT a cache.** `fetchStockDetail` (`web/lib/stocks.ts`) has **no
+  persistent cache** (React `cache()` per-request only; reads the DB fresh via the
+  `get_price_bars_json` RPC each request) — and DD renders wrong in **both** dev preview and live, so
+  it isn't a prod cache. A discontinuity scan (`lag(close)` SQL) found DD has **one ~3× cliff at
+  2026-06-18** (close 47.95 → 143.13, ratio 2.985), while **FDX/KLAC are smooth**. A **fresh** `period
+  ="max"` pull (auto_adjust=True) **still** returns DD's cliff — yfinance lists DD's split (dated
+  **2026-06-24**, ratio 0.333333 = a 1-for-3 reverse split) but **does not back-adjust the prices**
+  (and note the date mismatch: the price cliff is **2026-06-18**, ~6 days before yfinance's split
+  date). FDX/KLAC came back smooth because yfinance *did* adjust those. So **C-R7's re-pull can't fix
+  DD — the source itself serves it wrong**; the cliff also injects a fake +199% one-day spike + a
+  distorted drawdown window into DD's cycle math.
+- **C-R7 detection re-fires every night (verified in code).** `daily_refresh.py` fetches a **1-month**
+  incremental window (`_INCREMENTAL_PRICE_PERIOD="1mo"`, line 42) and re-checks the split calendar each
+  run with **no "already handled" flag** (lines 252-261), so DD is re-pulled on **every** nightly run
+  while its 2026-06-24 split is inside the 1-month window (until ~2026-07-24). **Conclusion to owner:
+  it auto-heals with NO manual action *iff* yfinance corrects DD's adjustment within that ~1-month
+  window** (the next nightly run then overwrites DD with the corrected series). Risks: yfinance may
+  never line up the 06-24 split date with the 06-18 cliff, and after ~1 month the split ages out of the
+  window so auto-healing stops.
+- **Owner decisions (2026-06-28):**
+  1. **"I don't want to do anything manually."** → No hand-editing of DD's prices. **Did NOT** apply a
+     manual ×3 re-adjust. DD left to auto-heal via the pipeline.
+  2. **Make the split logic SMART (→ new task C-R9, NEXT SESSION, plan mode):** verify the
+     discontinuity is actually resolved after a re-pull and **stop re-pulling once fixed**; keep the
+     30-day retry only for the still-broken ones; **after 30 days unresolved → notify the owner**; and
+     **record dated split state in Supabase for backend visibility** (the owner currently can't see
+     what the pipeline did). Data-pipeline only (no methodology change). See the C-R9 scope entry above.
+  3. **Redesign C-R1 (session after C-R9):** drop Save-as-PDF; HTML-only and **fully interactive
+     offline** (nav/pan-zoom/full-history/chips/tooltips all work, like the live site); button →
+     brand-**blue** like the Results Export `.export-btn`. See the C-R1 redesign scope entry above.
+- **State:** C-R1 first-cut code + this session's doc edits are **uncommitted** on
+  `feat/layer-c-round2-report`. Next session (C-R9) should branch off **main** — preserve or set aside
+  this WIP first so it doesn't pollute the C-R9 branch.
+
+**Revised round-2 order:** **C-R9** (smart split + backend state, plan mode) → **C-R1 redesign**
+(interactive-HTML report + blue button, plan mode) → C-R2 null sweep → C-R3 a11y → C-R4 perf/
+compliance/#15 → C-R8 Browse audit → **C-R5 live tail (last)**. One task at a time.
+
 ### C-R9 — smart split-adjustment verification + dated backend state (2026-06-28) — built + verified locally, PAUSED for owner merge
 
 > **Branch note:** this entry is on `feat/layer-c-r9-split-state` (off `main` `b385180`). The round-2
@@ -403,3 +551,75 @@ just sets `status='failed'`, visible in the table). Plan: `.claude/plans/woolly-
   (new), `analytics/providers/yfinance_provider.py`, `analytics/cron/daily_refresh.py`,
   `analytics/tests/test_daily_refresh.py`. Next = **C-R1 redesign** (interactive-HTML report + blue button,
   plan mode).
+
+### C-R1 REDESIGN — Download Report = fully-interactive OFFLINE html (2026-06-28) — built + verified in Claude Preview, PAUSED for owner merge
+
+Branch `feat/layer-c-round2-report` (merged `main` in → picked up C-R9; the one `docs/layer-c-audit.md`
+conflict resolved keep-both). **Pure web — engine/data/Python UNTOUCHED.** Plan mode + AskUserQuestion
+first (owner: one-click direct download; branch reuse my call). Replaces the first cut's canvas→`<img>`
+snapshot + Save-as-PDF — those are GONE.
+
+- **Architecture (the hard part, solved):** the report sections are a self-contained React island (props
+  in; no `next/image`/routing/`*.server` runtime). A `prebuild` step (`scripts/build-report-bundle.mjs`,
+  **esbuild** IIFE + **@tailwindcss/cli** CSS + best-effort base64 fonts) compiles the REAL components into
+  `public/report-bundle/report.{js,css}` (git-ignored). The blue `.export-btn` "Download Report" (one-click,
+  `StockSubnav`) fetches this stock's data from a gated route + the bundle, and assembles ONE self-contained
+  `.html`. Opening it runs the genuine app from inlined JSON with **zero network**.
+- **Files:** new `components/stocks/ReportDocument.tsx` (single source of the report layout, client),
+  `lib/report-types.ts` (serializable `ReportData`), `lib/report-data.ts` (`buildReportData`, server, inlines
+  logo as data-URL), `app/(app)/stocks/[market]/[ticker]/report/data/route.ts` (GET, self-gates auth like the
+  layout + DEV_BYPASS), `report-bundle/entry.tsx`, `scripts/build-report-bundle.mjs`,
+  `scripts/check-report-sections.mjs` (CI guard), `lib/useScrollSpy.ts`. Rewritten `lib/report-download.ts`
+  (assembles interactive html, escapes `</script`+`<`), `report/page.tsx` (thin `<ReportDocument>` preview).
+  Edited `StockSubnav.tsx` (blue one-click button), detail `page.tsx` (passes market/ticker/horizonQuery/
+  symbol/title), `globals.css`, `package.json` (esbuild+cli, build runs the bundle), `.gitignore`,
+  `eslint.config.mjs` (ignore the generated bundle), `pnpm-workspace.yaml` (allowBuilds esbuild). Deleted
+  `ReportToolbar.tsx` + the `@media print` block.
+- **Sync safety net:** `ReportDocument` renders the SAME section components as the live page, rebuilt every
+  deploy → editing a section auto-propagates. The section LINE-UP can't be one shared list (detail page
+  streams, report renders all at once) → CI guard `check:report-sections` fails the build if the two diverge
+  (22 sections in sync). Owner-facing: edit a section = automatic; add/remove/reorder = one line in the
+  report too, and CI names it if you forget.
+- **NAV BUG (owner-reported) — found + fixed on BOTH surfaces.** Old scroll-spy used IntersectionObserver +
+  intersectionRatio → highlighted the NEXT section ~one step early on unequal-height sections (confirmed:
+  at y=1750 lit "Cycle" while "Scorecard" on screen). Replaced with deterministic `useScrollSpy` (active =
+  last section whose heading passed the sticky-nav offset; bottom-of-page override; rAF; ResizeObserver for
+  streamed sections; click-lock so smooth scroll doesn't walk). A 2nd offline-only off-by-3px bug (nav offset
+  61 < group scroll-margin-top 64 → clicked pill highlighted the previous one) fixed by `navBottom+24`.
+  Added `html{scroll-behavior:smooth}` to the offline file.
+- **Header redundancy (owner choice):** dropped the duplicated ticker + company name from the report header
+  (the `StockHeader` identity block directly below shows them with price + badges); header kept as branding +
+  Horizon + Generated date + disclaimer. Removed unused `.report-meta-ticker/.report-meta-name` CSS.
+- **Verified in Claude Preview (DEV_BYPASS, removed after):** `typecheck`+`lint`+`build`+section-guard green.
+  Offline file served from a SEPARATE origin → **0 external resources** (resource-timing) on AAPL/BHP/SHOP/BAC;
+  21 charts, Drawdown↔Profit toggle, 1Y/3Y/All, **48 InfoTip popups**, 110 native title tips, 0 console errors.
+  **Nav:** detail page slow-scroll **0 mismatches/39 steps** + click lands at offset 120; offline file click
+  each of 5 pills → correct, slow-scroll (fixed-offset, non-circular) **0 mismatches/51 steps**. **Horizon:**
+  default/short/long/custom/invalid all correct (different lower bounds; invalid→Medium) + the button forwards
+  `?preset=long`. Mobile **375px** no horizontal scroll. Bank (BAC withheld-FH) + non-payer (SHOP "Does not
+  pay a dividend") states honest. Each download ~2.7–4.6 MB (embeds real app + charts + fonts + data).
+- **C-R1 STATUS: built + verified in Claude Preview, all CI green. Pause-before-merge / commit only when
+  asked.** Next round-2 task after merge = **C-R2** (null-data render sweep).
+
+### C-R1 follow-ups — chart y-axis alignment + faster Download button (2026-06-28) — built + verified in Claude Preview, PAUSED for owner merge
+
+Two owner-reported polish items on the same `feat/layer-c-round2-report` branch. Pure web; engine UNTOUCHED.
+- **(1) Y-axis / plot-edge alignment.** Owner: the Recharts cards (Relative Performance, Earnings, Quarterly/
+  Annual, Valuation P/E, Balance Sheet, Dividend) didn't line up like the LWC charts (Price, Drawdown, Smart
+  Money). **Root cause:** each Recharts `<YAxis orientation="right">` used a different `width` (40/48/52/56) +
+  `margin.right:12`, so the right gutter (and thus the plot's right edge) differed per card; the LWC charts all
+  share a fixed **66px** price scale. **Fix:** one shared `CHART_RIGHT_AXIS_WIDTH = 66` (in `lib/format.ts`) +
+  `margin.right:0` across all six components → every plot ends at the same x as the LWC charts. **Verified
+  (Claude Preview):** detail page settled charts + LWC all at plot-right **870**; downloaded report all at
+  **909** (full-width body); Earnings/Quarterly y-axis labels visually aligned. Same components → fixes the
+  report automatically (bundle rebuilt).
+- **(2) Download button latency.** Owner: the save dialog takes a while. The two costs are the ~1.3 MB static
+  bundle and the ~3 MB data (full history, uncompressed in dev). **Fix (`lib/report-download.ts` +
+  `StockSubnav.tsx`):** `prefetchReportBundle()` on mount warms the session-cached bundle (off the click path);
+  `prefetchReportData()` on button hover/focus starts the data fetch before the click (deduped per horizon URL,
+  consumed on download). **Verified (Claude Preview):** hover fires exactly one `/report/data` request
+  (deduped on focus); with the hover prefetch complete, **click→blob = 48 ms** (was ~2.4 s cold). In prod the
+  data is gzipped (~300 KB) so it's faster again. Spinner still shows immediate feedback.
+- `typecheck`/`lint`/`build`/section-guard all green. Files: `lib/format.ts` (new const),
+  `components/stocks/{EarningsHistory,QuarterlyFinancials,ValuationHistory,BalanceSheet,DividendHistory,
+  RelativePerformance}.tsx`, `lib/report-download.ts`, `components/stocks/StockSubnav.tsx`. **Pause-before-merge.**

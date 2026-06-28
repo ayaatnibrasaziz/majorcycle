@@ -13,7 +13,7 @@ import {
   YAxis,
 } from 'recharts';
 
-import { fmtPerShare } from '@/lib/format';
+import { CHART_RIGHT_AXIS_WIDTH, fmtPerShare } from '@/lib/format';
 import type { Currency, EarningsHistoryItem } from '@/lib/types';
 
 interface Props {
@@ -112,7 +112,7 @@ export function EarningsHistory({ earningsHistory, currency }: Props) {
             <BarChart
               data={data}
               barGap={2}
-              margin={{ top: 6, right: 12, left: 0, bottom: 0 }}
+              margin={{ top: 6, right: 0, left: 0, bottom: 0 }}
             >
               <XAxis
                 dataKey="label"
@@ -130,7 +130,7 @@ export function EarningsHistory({ earningsHistory, currency }: Props) {
                 tickFormatter={(v: number) => fmtPerShare(v, currency)}
                 axisLine={false}
                 tickLine={false}
-                width={48}
+                width={CHART_RIGHT_AXIS_WIDTH}
               />
               <Tooltip
                 content={({ active, payload, label }) => {
