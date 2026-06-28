@@ -622,4 +622,20 @@ Two owner-reported polish items on the same `feat/layer-c-round2-report` branch.
   data is gzipped (~300 KB) so it's faster again. Spinner still shows immediate feedback.
 - `typecheck`/`lint`/`build`/section-guard all green. Files: `lib/format.ts` (new const),
   `components/stocks/{EarningsHistory,QuarterlyFinancials,ValuationHistory,BalanceSheet,DividendHistory,
-  RelativePerformance}.tsx`, `lib/report-download.ts`, `components/stocks/StockSubnav.tsx`. **Pause-before-merge.**
+  RelativePerformance}.tsx`, `lib/report-download.ts`, `components/stocks/StockSubnav.tsx`.
+
+### C-R1 — MERGED + LIVE (2026-06-28) — PR #49, main `349c151`
+
+Owner authorized commit+push+merge. **PR #49 merged → main `349c151`** (feature commit `b1afafa`); the whole
+C-R1 redesign + both follow-ups (chart alignment, faster download) shipped together. All CI green (Frontend
+incl. the prebuild report-bundle build + section guard; Python; Vercel). **Production deploy
+`dpl_C86Aheq4cysrDH5LTrgeNWmHEBfA` READY + aliased majorcycle.com (iad1); 0 runtime errors; homepage 200 (via
+/login).** Instant-revert target = previous prod `dpl_J1W7BxTWsTAP8AXjPCZXWJT4K6uJ` (C-R9 merge `14aa043`,
+isRollbackCandidate) or `git revert 349c151`.
+- **Prod build confirmed the offline bundle pipeline works on Vercel** (esbuild + @tailwindcss/cli + best-effort
+  base64 fonts in `prebuild`; `pnpm-workspace.yaml` allowBuilds clears the esbuild build-script gate).
+- **One prod-only item to eyeball next session (C-R5/owner):** the report header logo is read server-side via
+  `fs.readFile(public/logo.png)` in `buildReportData` — works in dev; on Vercel the lambda fs may not include
+  public/ → graceful empty `logoDataUrl` (header shows the "MajorCycle" alt text; page not broken). If the logo
+  is missing on a real authed prod report, switch to a build-traced path (`new URL('../public/logo.png',
+  import.meta.url)`) or inline at build. Couldn't verify on prod (the report is auth-gated; no test session).
