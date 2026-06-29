@@ -757,3 +757,26 @@ keyboard-a11y depth to every Stock-Detail interactive control (round-2 gap table
   expanded=false`, gauge `role=img` + full label, table `aria-label`. `pnpm typecheck`/`lint`/`build` all
   green. **C-R3 STATUS: built + verified, all CI green. Pause-before-merge.** Next round-2 task = **C-R4**
   (perf/compliance/#15) → C-R8 (Browse) → C-R5 (deploy-gated live tail).
+- **C-R3 committed:** `20d4868`. Report cycle-null notice (so the downloadable HTML matches the page's
+  null-handling) committed `83a6d9d` — all other C-R2/C-R3 fixes already propagate to the report via the
+  shared section components (verified: BAC report carries the balance caption + 3 range-button groups; offline
+  bundle grep confirms the new strings). Engine UNTOUCHED.
+
+### C-R9 follow-up — FDX split false-positive (2026-06-29) — owner-approved, built + verified
+
+Found during the C-R2/split review (owner asked to confirm the split pipeline). `split_events` had **KLAC**
+(10:1) + **DD** (1-for-3) correctly **resolved** (DD's prices verified continuous; it self-healed after 5
+repulls — the headline C-R9 case working), but **FDX** was stuck `pending`: yfinance reported a dubious
+`1.241` "split" (FedEx didn't split — prices continuous) and `_verify_split_resolved` matched FDX's transient
+one-day dip (2026-06-10: −3.8% that bounced back +5.9%) to `1/1.241` within the 20% tolerance → would have
+**false-flagged as 'failed' ~2026-07-28**. No data corrupted.
+- **Fix (owner approved "persistence check"):** a matched adjacent-day step must now ALSO be a *persistent*
+  scale shift — `_window_median` of the closes just-before vs just-after the step must match the split factor
+  (`±_SPLIT_RATIO_TOL`), with a `_SPLIT_PERSIST_BARS=3` window. A one-day dip that reverts (FDX) no longer
+  counts; a real sustained cliff (DD ×3) still does. Edge-of-series (too few bars) falls back to the
+  single-step match so a split near the latest bar isn't missed.
+- **Data-pipeline only** (`analytics/cron/daily_refresh.py`) — NO `analytics/scoring` / `major_cycle.py` /
+  `web/_engine` change; not mirrored. **Self-healing:** next nightly run re-verifies FDX → no persistent cliff
+  → flips it to `resolved` automatically (no manual DB edit). New test `test_transient_dip_not_misread_as_split`;
+  existing DD/KLAC/crash/generic tests still pass. `ruff` clean, `pytest` 14 passed; `mypy` clean on the change
+  (only pre-existing `types-requests` stub gap remains, handled in CI).

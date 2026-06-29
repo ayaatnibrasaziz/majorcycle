@@ -98,6 +98,17 @@ def test_real_crash_not_misread_as_split() -> None:
     assert cliff_date is None
 
 
+def test_transient_dip_not_misread_as_split() -> None:
+    # FDX-like (C-R2 review): yfinance reported a dubious 1.241 'split' (expected price
+    # factor 1/1.241 ≈ 0.806). A one-day -3.8% dip matches that factor within tolerance but
+    # BOUNCES BACK the next day — not a persistent scale shift. The persistence guard must
+    # keep it resolved rather than flagging a phantom cliff (which left FDX stuck 'pending').
+    df = _closes([330.0] * 6 + [318.0, 337.0, 337.0, 337.0, 337.0])  # dip at index 6, recovers
+    resolved, cliff_date, _ = _verify_split_resolved(df, "2026-06-18", 1.241)
+    assert resolved is True
+    assert cliff_date is None
+
+
 def test_missing_ratio_falls_back_to_generic_cliff_scan() -> None:
     # With no ratio we can't match a factor, so any large in-window jump is flagged.
     df = _closes([48.0] * 6 + [143.0] * 9)
