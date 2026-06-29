@@ -75,6 +75,44 @@ async function CycleKpi({ ticker, spec }: CycleProps) {
   return cycle ? <KpiStrip cycle={cycle} /> : null;
 }
 
+/**
+ * Honest stand-in for the cycle block when the Major Cycle can't be computed for
+ * the chosen horizon (the engine needs ~lookback+ bars; e.g. the Long window
+ * needs ~3y of history a recent listing may not have yet). Without this, the
+ * rating badges, KPI strip, Verdict and Thesis insights all return null and the
+ * page silently jumps from the header to the Company Overview with no
+ * explanation. Renders nothing when the cycle IS available.
+ */
+async function CycleNotice({
+  ticker,
+  spec,
+  horizonLabel,
+}: CycleProps & { horizonLabel: string }) {
+  const cycle = await fetchCycleAnalysis(ticker, spec);
+  if (cycle) return null;
+  const suggestion =
+    spec.preset === 'short'
+      ? ''
+      : spec.preset === 'medium'
+        ? ' Switch to the Short horizon on Browse for the full cycle read.'
+        : ' Switch to the Short or Medium horizon on Browse for the full cycle read.';
+  return (
+    <div className="card card--stack-base" role="note">
+      <div className="card-header">
+        <div className="card-title">Major Cycle — not available at this horizon</div>
+      </div>
+      <div className="card-body">
+        <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
+          The <strong>{horizonLabel}</strong>{' '}Major Cycle needs more price history
+          than this stock has so far, so the overall rating, verdict and scorecard
+          can&apos;t be calculated for this horizon.{suggestion} The price chart,
+          financials and sentiment sections below still apply.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 async function CycleVerdict({
   ticker,
   spec,
@@ -113,7 +151,7 @@ async function CycleScorecard({ ticker, spec }: CycleProps) {
     <SectionAnchor
       id="sec-scorecard"
       title="Scorecard"
-      note="Snowflake radar scorecard is unavailable for this stock."
+      note="The financial-health scorecard isn't available at this Major Cycle horizon — see the note above."
     />
   );
 }
@@ -248,6 +286,13 @@ export default async function StockDetailPage({
               </Suspense>
             }
           />
+          <Suspense fallback={null}>
+            <CycleNotice
+              ticker={stored}
+              spec={spec}
+              horizonLabel={horizonLabel}
+            />
+          </Suspense>
           <Suspense fallback={<SectionSkeleton className="h-[96px]" />}>
             <CycleKpi ticker={stored} spec={spec} />
           </Suspense>

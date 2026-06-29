@@ -166,6 +166,21 @@ export function QuarterlyFinancials({
         </div>
       </div>
       <div className="card-body">
+        {chartData.length === 0 ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '32px 0',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 360, lineHeight: 1.55 }}>
+              {`No ${MODE_LABELS[mode]} data reported for this company — try another metric above. (Some companies, such as banks, don't report every line.)`}
+            </div>
+          </div>
+        ) : (
         <div className="chart-canvas-wrap chart-h-sm">
           <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 200 }}>
             <BarChart
@@ -265,6 +280,7 @@ export function QuarterlyFinancials({
             </BarChart>
           </ResponsiveContainer>
         </div>
+        )}
       </div>
     </div>
   );

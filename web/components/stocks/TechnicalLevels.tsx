@@ -88,6 +88,12 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
 
   const { label: crossBadge, color: crossColor } = computeMaSignal(priceBars);
 
+  // With fewer than ~50 bars neither moving average can be computed, so every
+  // tile would read "—". Show one honest message instead of a wall of dashes.
+  // (Doesn't occur in the real universe — min history is ~488 bars — but keeps a
+  // freshly-listed / sparse ticker graceful.)
+  const noMovingAverages = dma50 === null && dma200 === null;
+
   return (
     <section id="sec-cycle" className="scroll-mt-[120px] card card--stack-snug">
       <div className="card-header">
@@ -108,6 +114,11 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
         </div>
       </div>
       <div className="card-body card-body--compact">
+        {noMovingAverages ? (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0', lineHeight: 1.55 }}>
+            Not enough price history yet to calculate the 50- and 200-day moving averages.
+          </div>
+        ) : (
         <div className="tech-pill-grid">
 
           {/* 50 DMA */}
@@ -172,6 +183,7 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
           </div>
 
         </div>
+        )}
       </div>
     </section>
   );

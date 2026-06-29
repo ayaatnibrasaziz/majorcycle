@@ -90,6 +90,12 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
   const { currentRatio, debtToEquity, interestCoverage } = fundamentals;
   const currency = fundamentals.currency;
 
+  // Banks & REITs structurally don't report Debt/Equity, Current Ratio or
+  // Interest Coverage (no classified current assets/liabilities), so those pills
+  // show "—". Caption it so a beginner reads the dashes as "not applicable" rather
+  // than missing/broken data — mirrors the Scorecard's withheld-pillar note.
+  const ratiosWithheld = debtToEquity === null && interestCoverage === null;
+
   // Largest value currently drawn — cash + other STACK, debt is a separate line.
   // Reacts to the legend toggles so the axis unit follows what's actually plotted
   // (e.g. Cash-only rescales to millions instead of staying on the billions scale).
@@ -308,6 +314,12 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
             </div>
           </div>
         </div>
+        {ratiosWithheld && (
+          <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--text-muted)' }}>
+            Some ratios show &ldquo;—&rdquo; because banks &amp; REITs don&apos;t
+            report them in the usual way (no classified current assets/liabilities).
+          </div>
+        )}
       </div>
     </div>
   );

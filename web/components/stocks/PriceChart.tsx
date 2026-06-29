@@ -256,6 +256,31 @@ export function PriceChart({ priceBars, ticker }: Props) {
     sma200Ref.current?.applyOptions({ visible: show200 });
   }, [show200]);
 
+  // No price history at all → show one honest message rather than an empty chart
+  // frame with dead range/MA controls. (Doesn't occur in the real universe — min
+  // history is ~488 bars — but keeps a freshly-listed ticker graceful.)
+  if (priceBars.length === 0) {
+    return (
+      <section className="card card--stack-snug">
+        <div className="card-header">
+          <div className="card-title">
+            Price Chart — {tickerToUrlParts(ticker).symbol}
+            <InfoTip title="Price Chart">
+              Daily price drawn as candlesticks: each candle shows the open, high,
+              low and close for a day. Green = the price rose that day, red = it fell.
+              Toggle the 50- and 200-day average lines to see the trend.
+            </InfoTip>
+          </div>
+        </div>
+        <div className="card-body card-body--chart">
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '40px 0' }}>
+            No price history available for this stock yet.
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="card card--stack-snug">
       <div className="card-header">

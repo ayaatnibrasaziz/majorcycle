@@ -39,7 +39,11 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
   }
 
   const rawRange = analystHighPrice - analystLowPrice;
-  const padding  = rawRange * 0.18;
+  // When every analyst lands on the same number (low == high), rawRange is 0 →
+  // a 0-width domain would make every marker position NaN. Fall back to a small
+  // synthetic span around the value so the markers render (stacked at centre).
+  const padBase  = rawRange > 0 ? rawRange : Math.max(Math.abs(analystTargetPrice), 1);
+  const padding  = padBase * 0.18;
   const domLow   = analystLowPrice  - padding;
   const domHigh  = analystHighPrice + padding;
   const domRange = domHigh - domLow;

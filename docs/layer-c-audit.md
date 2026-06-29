@@ -658,3 +658,64 @@ Price/Smart Money were **66px** (and the Recharts were a fixed 66) → Drawdown'
   also all 72/828. `typecheck`/`lint`/`build` green; offline bundle rebuilt.
 - Files: `lib/format.ts` (const 66→72 + doc), `components/stocks/{PriceChart,DrawdownOverlay,
   SmartMoneyActivity}.tsx`. Pure web; engine UNTOUCHED.
+
+### C-R2 — Null-data render sweep (2026-06-29) — built + verified in Claude Preview, PAUSED for owner merge
+
+On `fix/lwc-chart-axis-align`. **Pure web — engine/data/Python UNTOUCHED.** Full code audit of all 21
+Stock-Detail components + live visual verification in Claude Preview, then (owner sign-off) fixes + a
+fake-data edge-case sweep.
+
+- **Tickers used as live evidence:** `BAC` (US bank — withheld FH pillars, no gross profit), `AOF.AX` (AU
+  office fund, delisted/degenerate — no analyst target, no news, AU-null short, distress dividend, P/E
+  building, no holders, no insider/analyst events), `SHOP.TO` (non-payer), `AAI.AX` (shortest history in the
+  universe, 488 bars).
+- **Universe reality (key finding):** the scariest "broken" code paths CAN'T occur on real data — **min
+  price history is 488 bars** (`select min(count)` over `price_bars`), and **every** stock carries a
+  fundamentals record + a balance-sheet statement (`bs_labels ≥ 4`). So the all-dash TechnicalLevels (<50
+  bars), blank PriceChart (0 bars), null-header (0 bars) and all-dash BalanceSheet (no statement) paths are
+  **fixture-only**. Verified those with fake data anyway (owner directive — see harness below).
+- **LIST presented for owner sign-off (component → null field → render → verdict).** Owner approved ALL four
+  flagged/review items + "**also check the edge cases that don't apply to our universe using fake data.**"
+
+**Fixes shipped (all pure web):**
+1. **Cycle-null notice (`page.tsx`).** When the engine returns no cycle (it needs ~`lookback`+ bars;
+   `major_cycle.py` `min_bars = lookback + pivot*2 + 10` → Long needs ~776, AAI has 488), the rating
+   badges / KPI / Verdict / Thesis insights ALL returned null and the page jumped silently header→Company
+   Overview. Added a streamed `CycleNotice` (renders only when cycle is null) explaining the horizon needs
+   more history + "switch to Short/Medium"; reworded the Scorecard `SectionAnchor` note to match. Verified
+   AAI **Long** → notice shows; AAI **Medium** → full cycle (Overall 63) returns.
+2. **QuarterlyFinancials blank chart.** Selecting a metric the company doesn't report (e.g. Gross Profit on a
+   bank) drew an empty plot. Now shows "No {metric} data reported for this company…". Verified BAC + Gross
+   Profit.
+3. **BalanceSheet dashed-ratio caption.** Banks/REITs show Current Ratio / D-E / Interest Coverage as "—";
+   added a caption ("…banks & REITs don't report them…") when D/E + interest-coverage are both null. Verified
+   BAC.
+4. **Dividend distress polish.** A 0.0% payout (or any payout alongside a distressed >20% yield) no longer
+   flashes green "sustainable" — neutral grey instead, so it doesn't contradict the ⚠ on the yield. Verified
+   AOF (yield 109.59% ⚠ amber, payout 0.0% now neutral).
+
+**Edge-case fixes (verified with fake data via a dev fixtures harness):**
+- **`web/app/dev-fixtures/page.tsx`** — dev-only gallery that renders each component with synthetic null/edge
+  props (typed factories `makeBars/makeFund/makeCycle/makeStock`, no DB mutation). **Owner decision: kept
+  LOCAL ONLY — git-ignored (`web/.gitignore` → `app/dev-fixtures/`), NEVER committed/merged to the live
+  site.** It also `notFound()`s in production as a belt-and-braces gate. To use it: set `DEV_BYPASS_AUTH=true`
+  in `web/.env.local`, `pnpm --dir web dev`, open `/dev-fixtures`. (The file lives on the dev machine only; if
+  it's ever lost, recreate from this entry / git history of this PR's review.)
+- **TechnicalLevels** <50 bars (all-dash) → "Not enough price history yet…" empty-state (partial <200-bar
+  case keeps 50-DMA + dashes the 200, which is honest). **PriceChart** 0 bars → "No price history available…".
+  **StockHeader** 0 bars → graceful identity block + "Price data unavailable" (was: rendered nothing).
+  **AnalystTargetTrack** low==high==target → guarded the zero-width domain (markers were NaN→piled at left;
+  now centred). **OwnershipStructure** only one of inst/insider known → no misleading near-100% donut; show
+  stat rows only. **ShortInterest** ratio-present-but-%-null → no false-zero gauge / "Bullish"; "Short % of
+  float not reported" + "—" signal. **VerdictCard/KpiStrip** cycle-only (FH null) → confirmed the existing
+  "Cycle-only" badge / Health "—" path looks correct.
+- **Confirmed OK (no change):** Analyst Targets / Short Interest / Earnings / Company Overview hide cleanly;
+  News / Valuation-building / non-payer Dividend / Smart-Money dual-empty / Ownership-partial / Key-Metrics
+  all use honest messages; Scorecard withheld-pillar radar.
+- **Files:** `components/stocks/{QuarterlyFinancials,BalanceSheet,DividendHistory,TechnicalLevels,PriceChart,
+  StockHeader,AnalystTargetTrack,OwnershipStructure,ShortInterest}.tsx`, `app/(app)/stocks/[market]/[ticker]/
+  page.tsx`, new `app/dev-fixtures/page.tsx`.
+- **Verified (Claude Preview, DEV_BYPASS removed after):** all 4 main fixes on real tickers + all 8 edge cases
+  in the fixtures gallery render gracefully (screenshots). `pnpm typecheck` / `lint` / `build` (incl. report-
+  bundle prebuild + `check:report-sections`) all green. **C-R2 STATUS: built + verified, all CI green.
+  Pause-before-merge / commit when the owner says.** Next round-2 task = **C-R3** (deep a11y).
