@@ -693,6 +693,10 @@ fake-data edge-case sweep.
 4. **Dividend distress polish.** A 0.0% payout (or any payout alongside a distressed >20% yield) no longer
    flashes green "sustainable" — neutral grey instead, so it doesn't contradict the ⚠ on the yield. Verified
    AOF (yield 109.59% ⚠ amber, payout 0.0% now neutral).
+5. **EarningsHistory no-actuals hide (added on the completeness re-check).** 15 tickers carry earnings-history
+   rows with no reported `epsactual` → the beat/miss chart rendered bare axis labels + "0/N Qtrs". Now hidden
+   entirely (mirrors the existing no-rows hide). Verified ALQ.AX (4 rows, no actuals) → card absent, page
+   otherwise intact.
 
 **Edge-case fixes (verified with fake data via a dev fixtures harness):**
 - **`web/app/dev-fixtures/page.tsx`** — dev-only gallery that renders each component with synthetic null/edge
