@@ -723,3 +723,37 @@ fake-data edge-case sweep.
   in the fixtures gallery render gracefully (screenshots). `pnpm typecheck` / `lint` / `build` (incl. report-
   bundle prebuild + `check:report-sections`) all green. **C-R2 STATUS: built + verified, all CI green.
   Pause-before-merge / commit when the owner says.** Next round-2 task = **C-R3** (deep a11y).
+- **C-R2 committed** to `fix/lwc-chart-axis-align`: `a64e0c0` (sweep + edge fixes) + `2fecda6` (EarningsHistory
+  no-actuals hide). dev-fixtures excluded (gitignored). Engine UNTOUCHED.
+
+### C-R3 — Deep accessibility pass (2026-06-29) — built + verified in Claude Preview, PAUSED for owner merge
+
+On `fix/lwc-chart-axis-align`. **Pure web — engine/data/Python UNTOUCHED.** Applied the Layer D/E
+keyboard-a11y depth to every Stock-Detail interactive control (round-2 gap table row 1).
+
+- **Audit found prior rounds already covered most of it:** `*:focus-visible` global ring (`globals.css:133`)
+  → every control has a visible keyboard focus; **MethodologyModal** uses the **Radix `Dialog`**
+  (`components/ui/dialog.tsx`) → focus-trap / Esc / return-focus / `aria-modal` / `aria-labelledby` +
+  `aria-describedby` all handled; **InfoTip** (S5) already full (button `aria-label`/`aria-expanded`/
+  `aria-describedby`, `role=tooltip`, Esc, focus+blur) — re-confirmed; chart `aria-label`s on radar/donut/
+  gauge (S6/S9); MA-pill / overlay-toggle / legend-chip `aria-pressed` (S6/S7). Subnav anchor pills already
+  carry `aria-current` + are real `<a href>` (keyboard-operable) inside `role=navigation`.
+- **Gaps fixed this pass:**
+  - **Chart range buttons** (`range-btn`) — PriceChart 1Y/3Y/Max, RelativePerformance 1Y/3Y/Max, SmartMoney
+    1Y/3Y/All — had no pressed state. Added `aria-pressed={active}` + wrapped each set in `role="group"` with
+    an `aria-label` ("Price chart date range" etc.) + `type="button"`. (DrawdownOverlay's Drawdown/Profit
+    toggle already had `aria-pressed`.)
+  - **Subnav Methodology button** → `aria-haspopup="dialog"` + `aria-expanded` bound to the modal state.
+  - **WeekRangeGauge** → `role="img"` + a spoken `aria-label` ("52-week range: low … high …; current price is
+    in the upper range, 10.6% off high.") so a screen reader gets the position, not just a hover `title`.
+  - **MetricsTable** → `aria-label` on the `<table>` ("Key metrics compared with industry, sector and market
+    peers").
+  - **SmartMoney day-panel** (`role=dialog`) → focus now moves to its Close button on open (rAF after the
+    portal mounts) so the pinned dialog is keyboard-operable; Esc / outside-click / close already present.
+- **Files:** `components/stocks/{PriceChart,RelativePerformance,SmartMoneyActivity,StockSubnav,WeekRangeGauge,
+  MetricsTable}.tsx`.
+- **Verified (Claude Preview, DEV_BYPASS removed after):** on AAPL the DOM/ARIA confirms — 3 labelled range
+  groups with correct `aria-pressed` (1Y true, others false), Methodology `aria-haspopup=dialog`/`aria-
+  expanded=false`, gauge `role=img` + full label, table `aria-label`. `pnpm typecheck`/`lint`/`build` all
+  green. **C-R3 STATUS: built + verified, all CI green. Pause-before-merge.** Next round-2 task = **C-R4**
+  (perf/compliance/#15) → C-R8 (Browse) → C-R5 (deploy-gated live tail).

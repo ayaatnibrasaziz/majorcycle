@@ -424,6 +424,11 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
   // rather than close; the panel's own internal scroll does not bubble to window.)
   useEffect(() => {
     if (!dayPanel) return;
+    // Move focus into the pinned day dialog so it's keyboard-operable (Tab through
+    // it, Esc / close button to dismiss). rAF: wait for the portal to mount.
+    requestAnimationFrame(() => {
+      panelRef.current?.querySelector<HTMLButtonElement>('.smart-day-panel-close')?.focus();
+    });
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDayPanel(null); };
     const onDown = (e: PointerEvent) => {
       const t = e.target as Node;
@@ -613,12 +618,13 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
                 <span className="smart-legend-chip-dot" />Reiterate
               </span>
             </div>
-            <div style={{ display: 'flex', gap: 4 }}>
+            <div style={{ display: 'flex', gap: 4 }} role="group" aria-label="Smart Money chart date range">
               {(['1y', '3y', 'all'] as Range[]).map(r => (
                 <button
                   key={r}
                   type="button"
                   className={`range-btn${range === r ? ' active' : ''}`}
+                  aria-pressed={range === r}
                   onClick={() => setRange(r)}
                 >
                   {RANGE_LABELS[r]}

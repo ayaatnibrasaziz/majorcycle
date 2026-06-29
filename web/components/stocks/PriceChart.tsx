@@ -316,9 +316,11 @@ export function PriceChart({ priceBars, ticker }: Props) {
             200D
           </button>
           <span className="chart-divider" aria-hidden="true" />
-          <button className={`range-btn${range === '1y' ? ' active' : ''}`} onClick={() => setRange('1y')}>1Y</button>
-          <button className={`range-btn${range === '3y' ? ' active' : ''}`} onClick={() => setRange('3y')}>3Y</button>
-          <button className={`range-btn${range === 'max' ? ' active' : ''}`} onClick={() => setRange('max')}>Max</button>
+          <span role="group" aria-label="Price chart date range" className="contents">
+            <button type="button" className={`range-btn${range === '1y' ? ' active' : ''}`} aria-pressed={range === '1y'} onClick={() => setRange('1y')}>1Y</button>
+            <button type="button" className={`range-btn${range === '3y' ? ' active' : ''}`} aria-pressed={range === '3y'} onClick={() => setRange('3y')}>3Y</button>
+            <button type="button" className={`range-btn${range === 'max' ? ' active' : ''}`} aria-pressed={range === 'max'} onClick={() => setRange('max')}>Max</button>
+          </span>
         </div>
       </div>
       <div className="card-body card-body--chart">

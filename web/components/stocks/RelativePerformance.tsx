@@ -168,12 +168,13 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
             lagged) its home-market index.
           </InfoTip>
         </div>
-        <div className="chart-controls">
+        <div className="chart-controls" role="group" aria-label="Relative performance date range">
           {(['1y', '3y', 'max'] as Range[]).map((r) => (
             <button
               key={r}
               type="button"
               className={`range-btn${range === r ? ' active' : ''}`}
+              aria-pressed={range === r}
               onClick={() => setRange(r)}
             >
               {RANGE_LABELS[r]}

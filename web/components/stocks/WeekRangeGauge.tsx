@@ -40,6 +40,8 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
   return (
     <div
       className="flex flex-col gap-[3px] mt-auto pt-[10px] border-t border-dotted border-[var(--border)] text-left cursor-help"
+      role="img"
+      aria-label={`52-week range: low ${fmtPrice(low, currency)}, high ${fmtPrice(high, currency)}; current price is in the ${zone.toLowerCase()}, ${offText}.`}
       title="52-Week Range Position — Shows where the current price sits between the lowest and highest closing prices over the past 52 weeks. Near the left edge (low) = potentially undervalued or beaten down. Near the right edge (high) = approaching resistance or extended."
     >
       <div className="flex items-center gap-[6px] w-full">
