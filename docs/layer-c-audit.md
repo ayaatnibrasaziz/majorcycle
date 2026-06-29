@@ -779,4 +779,27 @@ one-day dip (2026-06-10: −3.8% that bounced back +5.9%) to `1/1.241` within th
   `web/_engine` change; not mirrored. **Self-healing:** next nightly run re-verifies FDX → no persistent cliff
   → flips it to `resolved` automatically (no manual DB edit). New test `test_transient_dip_not_misread_as_split`;
   existing DD/KLAC/crash/generic tests still pass. `ruff` clean, `pytest` 14 passed; `mypy` clean on the change
-  (only pre-existing `types-requests` stub gap remains, handled in CI).
+  (only pre-existing `types-requests` stub gap remains, handled in CI). Committed `7527528`.
+
+### C-R4 — Formal perf + compliance + #15 (2026-06-29) — verification PASS, no code change
+
+The D/E-style formal checks (round-2 gap table rows 2–4). All pass; nothing to fix.
+- **#15 nothing-persisted (check 4) — PASS via SQL negative.** No `stocks` (or any public table) column
+  holds a derived rating/score/valuation/zone/verdict — `information_schema` shows the only candidate is
+  `analysis_runs.results`, and **0 of 44** runs have it non-null (`count(results)=0`). So only raw price +
+  fundamentals are stored; every score is derived on demand by `cycle.py` (`web/lib/cycle.ts` → the Vercel
+  Python fn / dev CLI). Mirrors Layer E's finding.
+- **Compliance (check 3) — PASS.** (a) Disclaimer **above the fold**: the strip "⚠ For educational and
+  research purposes only. Not financial advice…" is the FIRST element inside `<main>` in
+  `web/app/(app)/layout.tsx` (required on every authed page) → visible without scrolling at any width
+  (structurally; confirmed on desktop, 375px to be eyeballed live in C-R5). Plus the VerdictCard inline
+  footnote + the report's own disclaimer band. (b) **Only the 5 compliant tiers** in our output
+  (`OverallLabel`/`ValuationZone` unions — type-enforced; no Buy/Sell in our labels). The only Buy/Sell
+  strings (`SmartMoneyActivity` grade colouring, `ThesisInsights` "Analyst consensus is Strong Buy") are
+  **third-party Wall-Street grades shown verbatim** (decision #17), framed as not-our-rating.
+- **Perf (check 2) — architecture confirmed; live numbers deferred to C-R5.** Streaming via per-section
+  `<Suspense>` (only stock+medians block first paint; cycle sections stream) + parallel paginated price-bar
+  fetch (`stocks.ts` `Promise.all` over pages, with the count-RPC fast path). Cold + warm prod load on
+  US/AU/CA (no jank, charts mount clean) is **deploy-gated** → re-verified in the C-R5 live tail after merge.
+- **C-R4 STATUS: PASS, no code change.** Next = **C-R8** (Browse full audit) → **C-R5** (deploy-gated live
+  tail: perf numbers + disclaimer-at-375px + TUA + Browse + report-logo eyeball + DD/FDX split-row glance).
