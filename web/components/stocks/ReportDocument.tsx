@@ -88,6 +88,31 @@ function ReportNav() {
 }
 
 /**
+ * Honest stand-in for the cycle block when the Major Cycle couldn't be computed
+ * for the chosen horizon (mirrors the live page's CycleNotice). Without it the
+ * report would silently drop the rating badges / KPI / Verdict / Thesis /
+ * Scorecard with no explanation. Uses the stable `.card` classes + inline styles
+ * so it renders identically in the offline bundle (no Tailwind-scan dependency).
+ */
+function CycleUnavailableNotice({ horizonLabel }: { horizonLabel: string }) {
+  return (
+    <div className="card card--stack-base" role="note">
+      <div className="card-header">
+        <div className="card-title">Major Cycle — not available at this horizon</div>
+      </div>
+      <div className="card-body">
+        <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+          The <strong>{horizonLabel}</strong>{' '}Major Cycle needs more price history than
+          this stock has, so the overall rating, verdict and scorecard aren&apos;t
+          included for this horizon. A shorter horizon would include them. The price
+          chart, financials and sentiment sections below still apply.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
  * The full Stock-Detail analysis rendered as a single-column report. This is the
  * ONE source of truth for the report layout — rendered three ways from the same
  * code:
@@ -166,6 +191,11 @@ export function ReportDocument({ data }: { data: ReportData }) {
               }
             />
           </ReportSection>
+          {!cycle && (
+            <ReportSection>
+              <CycleUnavailableNotice horizonLabel={horizonLabel} />
+            </ReportSection>
+          )}
           {cycle && (
             <ReportSection>
               <KpiStrip cycle={cycle} />
@@ -199,7 +229,21 @@ export function ReportDocument({ data }: { data: ReportData }) {
             <ReportSection>
               <SnowflakeRadar cycle={cycle} />
             </ReportSection>
-          ) : null}
+          ) : (
+            <ReportSection>
+              <div className="card card--stack-base" role="note">
+                <div className="card-header">
+                  <div className="card-title">Scorecard</div>
+                </div>
+                <div className="card-body">
+                  <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                    The financial-health scorecard isn&apos;t available at this Major Cycle
+                    horizon — see the note above.
+                  </p>
+                </div>
+              </div>
+            </ReportSection>
+          )}
         </section>
 
         <section id="sec-cycle" className="report-group">
