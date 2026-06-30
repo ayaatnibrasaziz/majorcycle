@@ -863,5 +863,56 @@ pure web. Findings → owner sign-off (AskUserQuestion ×2) → fix.
   (11 + All), chevron + `appearance:none` applied, GMG.AX market cap "—", no-match → "No matching stock" +
   Request-a-Ticker, count region live, Custom error `aria-describedby` linked, **0 console errors**. Desktop +
   375px screenshots clean (375px squeeze = the documented Layer H sidebar, not these changes).
-- **STATUS: PAUSED for owner merge confirm.** Remaining round-2: **C-R5** (deploy-gated live tail — now the
-  final task; it already covers Browse). Engine UNTOUCHED.
+- **STATUS: MERGED + LIVE.** Owner authorized commit + push + merge. **PR #51 merged → main `91c3dd2`**;
+  prod deploy **`dpl_HhqVJrgYERu4gSJqriNBhFYsWDhz`** READY + aliased majorcycle.com, 0 runtime errors.
+  Instant-revert = prev prod `dpl_CnKGru9ri2c24gWa2BFvqKP8GGe1` (`ab54a7b`) or `git revert 91c3dd2`. Engine UNTOUCHED.
+
+### Round-2 session 5 — C-R5 deploy-gated live tail (2026-07-01) — ✅ COMPLETE, round-2 DONE
+
+The final round-2 task: a full live walk of **everything done in Layer C round 2** on `www.majorcycle.com`
+(prod `dpl_HhqVJrgYERu4gSJqriNBhFYsWDhz` / `91c3dd2`), to confirm no bugs or perf issues. Driven via Vercel MCP
+(runtime errors), Supabase MCP (`split_events` + price continuity), `curl` (the public `/api/cycle` data+perf
+path), and **Claude-in-Chrome on the owner's logged-in browser** (the auth-walled detail/Browse/report pages —
+the only place the prod cycle/report HTTP path is exercised). **All green; no code change needed.**
+
+- **Runtime errors:** none on the new prod deploy (Vercel `get_runtime_errors`, 2h). The only browser-console
+  line is an external **extension** artifact ("message channel closed…"), not app code.
+- **`split_events` (C-R9 / C-R7 / FDX fix):** **DD resolved** (repull 5, healed 06-29), **KLAC resolved**
+  (stable). **FDX still `pending`** — but its `last_repull_at` (06-30 00:24) **predates the persistence-fix
+  deploy** (`ed2ecf9`, ~13:00 06-30), AND its price series is **fully continuous** around the detected
+  2026-06-01 split (330.55→337.22→327.77, no cliff) — i.e. the 1.241 "split" is a **false positive with zero
+  user impact**. The fixed verifier (requires a *persistent* scale shift) will flip it to `resolved` on the next
+  nightly that runs post-deploy. **No bug; self-heals.**
+- **`/api/cycle` correctness + quality-gate, LIVE (curl on the prod domain):** AAPL 67 Constructive / FH 81 /
+  qf 0.81 / lookback 252; BHP.AX 70 Constructive / FH 84.5; SHOP.TO 80 High Conviction / FH 83.2; **BAC 54
+  Neutral / FH 74.2 with the 3-pillar bank case** (`fh_subscores` = profitability/growth/shareholder only —
+  balance_sheet + cashflow withheld, P3/C-R2 live); TUA.AX long **lower-bound −53.4%** (the C-R6 early-lookback
+  fix); AAI.AX medium computes (63), **AAI.AX long → insufficient-history**. All values match the rendered UI.
+- **Perf:** warm `/api/cycle` **~0.12–0.16s** (cache hit), cold ~0.6–2.3s. No jank; Suspense sections stream.
+- **Live UI walk (authed prod, Claude-in-Chrome):**
+  - **Browse (C-R8):** renders — 862 stocks, the new STOCK/SECTOR/MARKET CAP column headers, styled-native
+    Sector/Industry dropdowns with the brand chevron, disclaimer above the fold, **0 app console errors**.
+  - **AAPL (US) detail:** full render — badges Constructive/Fair/Buy, KPI 67/81/−11.2%/−24.7%, Verdict
+    "Constructive · 608 cycles"; **Scorecard radar** 5 pillars (96/53/85/80/100, score-based colours);
+    **LWC Price chart** (candles + solid-blue 50 DMA + dashed-navy 200 DMA = S7 colours) + **Drawdown**
+    (Current −11.2 / Typical −24.7 / Lower −81.4 / **Events 608**, ▲ markers = Events = S7 fix);
+    **Relative Performance** Recharts (5 benchmarks, Alpha +18.0% Outperforming). All mount; values match engine.
+  - **AAI.AX on Long (cycle-null, C-R2):** the **HTTP 500 `{"error":"…insufficient price history"}`** from
+    `/api/cycle` is caught by `fetchCycleAnalysis` (`!res.ok → null`) → the page shows the designed
+    **"MAJOR CYCLE — NOT AVAILABLE AT THIS HORIZON"** notice (header + price/financials/sentiment still render),
+    no NaN/crash. Graceful exactly as specified.
+  - **Report (C-R1) + logo (item c):** the `/report` route renders the full report **with the MajorCycle
+    header logo present** on a real authed prod page → `buildReportData`'s `fs.readFile(public/logo.png)`
+    **works on the Vercel lambda. Item (c) RESOLVED — no fix needed.**
+  - **BAC (US bank) + SHOP.TO (CA):** render correctly; CAD currency on SHOP (CA$162.32), AUD on AAI (A$78.52),
+    USD on AAPL/BAC — decision #13 holds. Analyst "Strong Buy"/"Buy" shown **verbatim** (decision #17); only the
+    five compliant tiers in our own output (decision #16); disclaimer above the fold (first `<main>` child,
+    top≈79px) on all pages and at 375px (structural + the C-R8 local 375px screenshot).
+- **One minor, optional flag (NOT a bug):** `/api/cycle` returns **HTTP 500** for the expected
+  "history too short for this horizon" case (AAI long). It degrades gracefully (the page shows the notice and it
+  doesn't appear in `get_runtime_errors`), but a 500 status for a normal user action is semantically off and adds
+  log noise. A cleaner contract would return 200-with-null + a reason, or 422 — a small `web/api/cycle.py` +
+  `fetchCycleAnalysis` change. Engine-adjacent → flagged for owner sign-off, not done this round.
+- **STATUS: C-R5 COMPLETE → Layer C round-2 re-audit DONE.** Every round-2 deliverable (C-R1/2/3/4/6/7/8/9 +
+  the report cycle-null notice + FDX split fix) verified live on prod with no bugs or perf issues. Engine UNTOUCHED
+  the entire round.
