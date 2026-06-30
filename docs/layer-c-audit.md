@@ -803,3 +803,18 @@ The D/E-style formal checks (round-2 gap table rows 2–4). All pass; nothing to
   US/AU/CA (no jank, charts mount clean) is **deploy-gated** → re-verified in the C-R5 live tail after merge.
 - **C-R4 STATUS: PASS, no code change.** Next = **C-R8** (Browse full audit) → **C-R5** (deploy-gated live
   tail: perf numbers + disclaimer-at-375px + TUA + Browse + report-logo eyeball + DD/FDX split-row glance).
+
+### Round-2 session 3 — MERGED + LIVE (2026-06-30) — PR #50, main `ed2ecf9`
+
+Owner authorized commit + push + merge live. **PR #50 merged → main `ed2ecf9`**; the whole session-3 scope
+shipped together: C-R2 (null-data sweep + EarningsHistory completeness), C-R3 (deep a11y), the report
+cycle-null notice, the FDX split persistence fix, C-R4 (verification), and the cross-doc updates
+(design-system §11/§14, architecture split-persistence, `.env.example`, roadmap). All CI green (Frontend;
+Python ruff/mypy/pytest 64; `_engine` drift; Vercel). **Production deploy `dpl_Ceyi6fCf569vtYu74rBQfE2gHNuD`
+READY + aliased majorcycle.com; 0 error/fatal runtime logs; live health: login 200, `/` 307→login,
+`/api/cycle?ticker=AAPL` 200, `/stocks` 307.** Instant-revert target = previous prod
+`dpl_E21xZrFeBR4hpTWgpqfFrSaGMZCr` (commit `f7b8d8d`) or `git revert ed2ecf9`.
+- **Eyeball next session (C-R5, deploy-gated):** live perf numbers (US/AU/CA cold+warm), the disclaimer above
+  the fold at 375px, the report header logo on a real authed prod report, and a glance that the **FDX** split
+  row flips to `resolved` on the next nightly run (the persistence fix self-heals it).
+- Engine UNTOUCHED. Remaining round-2: **C-R8** (Browse audit) → **C-R5** (live tail).
