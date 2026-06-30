@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useId, useMemo, useState, useSyncExternalStore } from 'react';
 import { Search } from 'lucide-react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
@@ -347,7 +347,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
             id="sector-filter"
             value={sector}
             onChange={(e) => selectSector(e.target.value)}
-            className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-sm)] px-2.5 py-[6px] text-[12px] text-[var(--text-secondary)] outline-none focus:border-[var(--brand-bright)] transition-colors cursor-pointer"
+            className="browse-select"
           >
             <option value="all">All sectors</option>
             {sectors.map((s) => (
@@ -369,7 +369,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
             id="industry-filter"
             value={industry}
             onChange={(e) => setIndustry(e.target.value)}
-            className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius-sm)] px-2.5 py-[6px] text-[12px] text-[var(--text-secondary)] outline-none focus:border-[var(--brand-bright)] transition-colors cursor-pointer max-w-[180px]"
+            className="browse-select max-w-[180px]"
           >
             <option value="all">All industries</option>
             {industries.map((i) => (
@@ -381,8 +381,13 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
         </div>
       </div>
 
-      {/* Result count */}
-      <div className="text-[11px] text-[var(--text-muted)] mb-2 font-[var(--font-mono)]">
+      {/* Result count — a live region so screen readers announce the new count
+          as the user types/filters (mirrors the Results-tab toolbar). */}
+      <div
+        className="text-[11px] text-[var(--text-muted)] mb-2 font-[var(--font-mono)]"
+        role="status"
+        aria-live="polite"
+      >
         {filtered.length} {filtered.length === 1 ? 'stock' : 'stocks'}
         {hiddenCount > 0 && (
           <span> · showing first {shown.length} — refine to see the rest</span>
@@ -392,7 +397,19 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
       {filtered.length === 0 ? (
         <EmptyState query={query} />
       ) : (
-        <ul className="card divide-y divide-[var(--border)]" aria-label="Stocks">
+        <>
+          {/* Column legend — aligns with the row layout below (same px-3.5 + gap-3
+              + per-column widths) so beginners can read the Sector / Market Cap
+              values. Hidden from a11y tree; the row links carry the real labels. */}
+          <div
+            className="flex items-center gap-3 px-3.5 pb-1.5 text-[9px] font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)]"
+            aria-hidden="true"
+          >
+            <div className="min-w-0 flex-1">Stock</div>
+            <div className="hidden sm:block flex-shrink-0 w-[160px]">Sector</div>
+            <div className="flex-shrink-0 w-[72px] text-right">Market Cap</div>
+          </div>
+          <ul className="card divide-y divide-[var(--border)]" aria-label="Stocks">
           {shown.map((s) => {
             const { symbol } = tickerToUrlParts(s.ticker);
             return (
@@ -424,7 +441,8 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
               </li>
             );
           })}
-        </ul>
+          </ul>
+        </>
       )}
     </div>
   );
@@ -488,6 +506,9 @@ function CustomField({
   error: string | null;
   onChange: (n: number) => void;
 }) {
+  // Link the inline error to the input so a screen reader announces the reason
+  // (not just `aria-invalid`) — mirrors the C-R3 deep-a11y bar.
+  const errorId = useId();
   return (
     <label className="flex flex-col gap-0.5">
       <span className="flex items-center gap-0.5 text-[9.5px] font-semibold uppercase tracking-[0.5px] text-[var(--brand-mid)]">
@@ -499,6 +520,7 @@ function CustomField({
         value={Number.isFinite(value) ? value : ''}
         step={step}
         aria-invalid={error !== null}
+        aria-describedby={error ? errorId : undefined}
         onChange={(e) => {
           const n = Number(e.target.value);
           if (!Number.isNaN(n)) onChange(n);
@@ -511,7 +533,9 @@ function CustomField({
         )}
       />
       {error && (
-        <span className="text-[9.5px] font-semibold text-[var(--c-tier-5)]">{error}</span>
+        <span id={errorId} className="text-[9.5px] font-semibold text-[var(--c-tier-5)]">
+          {error}
+        </span>
       )}
     </label>
   );
