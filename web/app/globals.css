@@ -1223,6 +1223,24 @@ td.num             { font-weight: 600; }
   cursor: pointer; outline: none; transition: border-color .15s;
 }
 .filter-select:focus { border-color: var(--brand-bright); }
+/* Browse filter dropdowns (Sector / Industry) — styled-native <select>: keeps
+   native keyboard + mobile-wheel behaviour, adds a consistent brand-mid chevron
+   (C-R8). brand-mid = #1E5CB3; CSS data-URIs can't read CSS vars, so it's inlined. */
+.browse-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--bg-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%231E5CB3' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 30px 6px 10px;
+  font-family: 'Sora', sans-serif; font-size: 12px; color: var(--text-secondary);
+  cursor: pointer; outline: none; transition: border-color .15s;
+}
+.browse-select:hover { border-color: var(--brand-mid); }
+.browse-select:focus { border-color: var(--brand-bright); }
 .quick-chip {
   display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid var(--border);
   border-radius: 20px; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 600;

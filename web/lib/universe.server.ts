@@ -6,8 +6,16 @@
 // sector, industry, currency, market_cap — for every non-index equity, cache it
 // for a day, and let the client filter/sort the small payload in memory.
 //
-// The 720 equities are well under PostgREST's 1000-row cap, so one select is
-// enough. `market='index'` rows are benchmarks (^GSPC etc.) and are excluded.
+// `market='index'` rows are benchmarks (^GSPC etc.) and are excluded.
+//
+// The universe AUTO-EXPANDS (decision #12 — every user-requested ticker is
+// fetched and cached forever), so it will eventually outgrow PostgREST's
+// 1000-row response cap. A single un-ranged select would then silently return
+// only the top-1000 by market cap, dropping the smallest stocks (and any
+// sectors/industries unique to them) from Browse with no error. So we page
+// through with `.range()` until a short page (mirrors the bar-fetch pattern in
+// `stocks.ts`). A `ticker` tiebreaker after `market_cap` keeps pagination stable
+// (deterministic order across page boundaries).
 
 import { unstable_cache } from 'next/cache';
 
@@ -25,29 +33,39 @@ export interface UniverseStock {
   marketCap: number | null;
 }
 
+interface RawUniverseRow {
+  ticker: string;
+  market: Market;
+  name: string | null;
+  sector: string | null;
+  industry: string | null;
+  currency: Currency;
+  // `market_cap` is a Postgres `numeric`, which PostgREST serialises as a
+  // string to preserve precision — coerce to a number for the client.
+  market_cap: string | number | null;
+}
+
+const PAGE_SIZE = 1000;
+
 async function _fetchUniverseIndex(): Promise<UniverseStock[]> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from('stocks')
-    .select('ticker,market,name,sector,industry,currency,market_cap')
-    .neq('market', 'index')
-    .order('market_cap', { ascending: false, nullsFirst: false });
 
-  if (error || !data) return [];
+  const rows: RawUniverseRow[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('stocks')
+      .select('ticker,market,name,sector,industry,currency,market_cap')
+      .neq('market', 'index')
+      .order('market_cap', { ascending: false, nullsFirst: false })
+      .order('ticker', { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
 
-  return (
-    data as {
-      ticker: string;
-      market: Market;
-      name: string | null;
-      sector: string | null;
-      industry: string | null;
-      currency: Currency;
-      // `market_cap` is a Postgres `numeric`, which PostgREST serialises as a
-      // string to preserve precision — coerce to a number for the client.
-      market_cap: string | number | null;
-    }[]
-  ).map((row) => ({
+    if (error || !data) break;
+    rows.push(...(data as RawUniverseRow[]));
+    if (data.length < PAGE_SIZE) break; // short page → no more rows
+  }
+
+  return rows.map((row) => ({
     ticker: row.ticker,
     market: row.market,
     name: row.name,

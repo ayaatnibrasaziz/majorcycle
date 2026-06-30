@@ -818,3 +818,50 @@ READY + aliased majorcycle.com; 0 error/fatal runtime logs; live health: login 2
   the fold at 375px, the report header logo on a real authed prod report, and a glance that the **FDX** split
   row flips to `resolved` on the next nightly run (the persistence fix self-heals it).
 - Engine UNTOUCHED. Remaining round-2: **C-R8** (Browse audit) → **C-R5** (live tail).
+
+### Round-2 session 4 — C-R8 Browse `/stocks` full 10-check audit (2026-06-30) — built + verified locally, PAUSED for owner merge
+
+Audited the Browse tab (`StockBrowser.tsx` + `stocks/page.tsx` + `universe.server.ts`) against the 10-check
+model, as a new Layer C surface. Branch `fix/c-r8-browse-audit` off main. **No engine/data/Python touched** —
+pure web. Findings → owner sign-off (AskUserQuestion ×2) → fix.
+
+- **Data grounded in live Supabase (project gurrrlogycxawududtyv):** the universe has **auto-grown 720 → 862**
+  non-index equities (534 US / 249 AU / 79 CA), 11 sectors / 127 industries. Real null cases confirmed:
+  **FISV, SGH.AX** (null sector/industry → "—", excluded from the Sector filter), **GMG.AX, SPL.AX** (null
+  `market_cap` → "—", sort last). All render honestly.
+- **Audit verdicts:** Parity ✅ (new screen, design-system vocabulary) · Data ✅ (+ scaling risk, fixed) · Calc ✅
+  (`fmtCompact`, AND-filter, industry-narrows-to-sector) · Colour ✅ · Layout/375px ✅ structural (mobile stacks;
+  Sector col `hidden sm:block`; the heavy 375px squeeze is the **pre-existing Layer H fixed-sidebar**, out of
+  scope) · Tooltips ✅ · Null/empty ✅ · Beginner clarity ✅ (+ headers added) · Deep a11y ⚠️→🔧 (2 gaps fixed) ·
+  Compliance ✅ (Browse shows **no ratings/scores/signals** → light burden; global disclaimer strip above the
+  fold via `(app)/layout.tsx`; no rating-label misuse).
+- **🔧 Fix A — silent-truncation scaling safety net (`universe.server.ts`).** The index loaded in **one
+  un-ranged select**, which silently caps at PostgREST's **1000-row** limit. With the universe auto-expanding
+  (decision #12) it would eventually return only the top-1000 by market cap, dropping the smallest stocks +
+  their unique sectors/industries from Browse **with no error** (invisible to a non-coder owner). Now pages
+  with `.range()` until a short page (mirrors the `stocks.ts` bar-fetch pattern) + a `ticker` tiebreaker after
+  `market_cap` for **stable** pagination. At 862 it's still one page; the loop is correct for >1000. Owner: **fix now.**
+- **🔧 Fix B — result-count `aria-live` (a11y).** The "N stocks" line was a plain `<div>`; now
+  `role="status" aria-live="polite"` so screen readers announce the count as you type/filter (mirrors the
+  Results-tab toolbar `.result-count`). Verified live: announces "862 stocks" / "1 stock" / "0 stocks".
+- **🔧 Fix C — Custom-horizon field errors linked (a11y).** The Pullback/Profit/Lookback inputs set
+  `aria-invalid` but the red error text had no `aria-describedby` link. Added `useId()` + `aria-describedby`
+  → the reason is announced, not just "invalid". Verified live (`aria-describedby` → "Max -1.").
+- **🔧 Fix D — column header legend (beginner clarity).** Added an `aria-hidden` "Stock / Sector / Market Cap"
+  header row aligned to the row layout (same `px-3.5 gap-3` + per-column widths) so the right-hand number is
+  labelled. Owner: **add headers.**
+- **🔧 Fix E — styled-native Sector/Industry dropdowns (`.browse-select`).** Owner first picked "rebuild as
+  custom" on my imprecise framing ("D/E built custom dropdowns"); I **corrected it** — D/E's *filter* dropdowns
+  are native `<select>` (`.filter-select`); only its live-search combobox + Export action-menu are custom. Owner
+  re-decided **styled-native**: kept the native `<select>` (native keyboard + mobile-wheel a11y, matches the
+  Results-tab filter pattern) and added `appearance:none` + a consistent brand-mid (`#1E5CB3`) chevron via
+  `.browse-select` in globals.css. The horizon buttons + market pills were already deep-a11y-compliant
+  (`role=group` + `aria-pressed`); search input labelled; result links focusable; global `*:focus-visible` ring.
+- **Verified (local dev, Claude-Preview — pure client filtering over server-loaded data, no `/api/cycle` HTTP
+  path → local IS representative):** `pnpm typecheck && lint && check:report-sections (22) && build` all green;
+  `.next` cleared post-build per the §12 gotcha. Live: 862 stocks load (pagination correct), 12 Sector options
+  (11 + All), chevron + `appearance:none` applied, GMG.AX market cap "—", no-match → "No matching stock" +
+  Request-a-Ticker, count region live, Custom error `aria-describedby` linked, **0 console errors**. Desktop +
+  375px screenshots clean (375px squeeze = the documented Layer H sidebar, not these changes).
+- **STATUS: PAUSED for owner merge confirm.** Remaining round-2: **C-R5** (deploy-gated live tail — now the
+  final task; it already covers Browse). Engine UNTOUCHED.

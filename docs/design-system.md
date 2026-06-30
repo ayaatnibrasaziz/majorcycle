@@ -439,6 +439,22 @@ For chart timeframe selectors (1Y / 3Y / Max).
 }
 ```
 
+### Filter dropdowns — native `<select>`, styled (C-R8)
+
+Plain value-filters (Results' Tier / Min-Rating; Browse's Sector / Industry) are **native
+`<select>` elements**, not custom JS comboboxes. Native selects give arrow-key navigation,
+type-to-jump, and the OS wheel-picker on mobile **for free**, can't desync, and are the most
+accessible option. **Do not rebuild a plain filter as a `role=listbox` widget** — the only
+custom dropdowns in the app are special-purpose (the live-search **combobox** `TickerSearchAdd`,
+which hits a search API as you type, and the **action menu** `ExportMenu` with rich multi-line
+items). Both `.filter-select` (Results) and `.browse-select` (Browse) are visually consistent;
+`.browse-select` additionally sets `appearance:none` + a brand-mid (`#1E5CB3`) chevron data-URI
+for a consistent caret across browsers. Each select carries a visible `<label>` (§14).
+
+Browse's result list also shows an **`aria-hidden` column-header legend** ("Stock / Sector /
+Market Cap") aligned to the row layout so the right-hand market-cap value is labelled; the live
+**result count** is a `role="status" aria-live="polite"` region (mirrors the Results toolbar).
+
 ### Provenance Bar
 
 The "Major Cycle engine" status strip at the top of Results.
