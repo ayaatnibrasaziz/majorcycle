@@ -639,3 +639,167 @@ isRollbackCandidate) or `git revert 349c151`.
   public/ → graceful empty `logoDataUrl` (header shows the "MajorCycle" alt text; page not broken). If the logo
   is missing on a real authed prod report, switch to a build-traced path (`new URL('../public/logo.png',
   import.meta.url)`) or inline at build. Couldn't verify on prod (the report is auth-gated; no test session).
+
+### C-R1 follow-up 2 — LWC chart y-axis alignment (2026-06-28) — built + verified in Claude Preview, branch `fix/lwc-chart-axis-align` off main
+
+Owner-reported (after the Recharts alignment): the **Lightweight-Charts** plots (Price, Drawdown/Profit, Smart
+Money) didn't line up — specifically the **Drawdown** chart looked off. **Root cause:** LWC auto-sizes each
+chart's right price scale to its own labels, so Drawdown's `-100.0%`-style labels made its scale **72px** while
+Price/Smart Money were **66px** (and the Recharts were a fixed 66) → Drawdown's plot ended ~6px short.
+- **Fix:** bumped the shared `CHART_RIGHT_AXIS_WIDTH` (`lib/format.ts`) **66 → 72** and set
+  `rightPriceScale.minimumWidth: CHART_RIGHT_AXIS_WIDTH` on all three LWC charts (`PriceChart`,
+  `DrawdownOverlay`, `SmartMoneyActivity`). LWC only honours a `minimumWidth` floor (no hard cap), so 72 must be
+  ≥ the widest LWC label in the universe — the Drawdown `-100.0%` is the widest; verified **BKNG** (~$4–5k,
+  4-digit price labels) still fits at 72. The Recharts cards (fixed `width=72`) move with it, so everything stays
+  aligned. Same constant now drives both chart engines = one source of truth.
+- **Verified (Claude Preview, DEV_BYPASS removed after):** detail page — Price/Drawdown/Smart Money all
+  scale-width **72**, plot-right **828**; settled Recharts also **828**; Drawdown ↔ Price right edges line up
+  (screenshots). Downloaded report — all LWC + settled Recharts **825**, **0 external resources**. BKNG (4-digit)
+  also all 72/828. `typecheck`/`lint`/`build` green; offline bundle rebuilt.
+- Files: `lib/format.ts` (const 66→72 + doc), `components/stocks/{PriceChart,DrawdownOverlay,
+  SmartMoneyActivity}.tsx`. Pure web; engine UNTOUCHED.
+
+### C-R2 — Null-data render sweep (2026-06-29) — built + verified in Claude Preview, PAUSED for owner merge
+
+On `fix/lwc-chart-axis-align`. **Pure web — engine/data/Python UNTOUCHED.** Full code audit of all 21
+Stock-Detail components + live visual verification in Claude Preview, then (owner sign-off) fixes + a
+fake-data edge-case sweep.
+
+- **Tickers used as live evidence:** `BAC` (US bank — withheld FH pillars, no gross profit), `AOF.AX` (AU
+  office fund, delisted/degenerate — no analyst target, no news, AU-null short, distress dividend, P/E
+  building, no holders, no insider/analyst events), `SHOP.TO` (non-payer), `AAI.AX` (shortest history in the
+  universe, 488 bars).
+- **Universe reality (key finding):** the scariest "broken" code paths CAN'T occur on real data — **min
+  price history is 488 bars** (`select min(count)` over `price_bars`), and **every** stock carries a
+  fundamentals record + a balance-sheet statement (`bs_labels ≥ 4`). So the all-dash TechnicalLevels (<50
+  bars), blank PriceChart (0 bars), null-header (0 bars) and all-dash BalanceSheet (no statement) paths are
+  **fixture-only**. Verified those with fake data anyway (owner directive — see harness below).
+- **LIST presented for owner sign-off (component → null field → render → verdict).** Owner approved ALL four
+  flagged/review items + "**also check the edge cases that don't apply to our universe using fake data.**"
+
+**Fixes shipped (all pure web):**
+1. **Cycle-null notice (`page.tsx`).** When the engine returns no cycle (it needs ~`lookback`+ bars;
+   `major_cycle.py` `min_bars = lookback + pivot*2 + 10` → Long needs ~776, AAI has 488), the rating
+   badges / KPI / Verdict / Thesis insights ALL returned null and the page jumped silently header→Company
+   Overview. Added a streamed `CycleNotice` (renders only when cycle is null) explaining the horizon needs
+   more history + "switch to Short/Medium"; reworded the Scorecard `SectionAnchor` note to match. Verified
+   AAI **Long** → notice shows; AAI **Medium** → full cycle (Overall 63) returns.
+2. **QuarterlyFinancials blank chart.** Selecting a metric the company doesn't report (e.g. Gross Profit on a
+   bank) drew an empty plot. Now shows "No {metric} data reported for this company…". Verified BAC + Gross
+   Profit.
+3. **BalanceSheet dashed-ratio caption.** Banks/REITs show Current Ratio / D-E / Interest Coverage as "—";
+   added a caption ("…banks & REITs don't report them…") when D/E + interest-coverage are both null. Verified
+   BAC.
+4. **Dividend distress polish.** A 0.0% payout (or any payout alongside a distressed >20% yield) no longer
+   flashes green "sustainable" — neutral grey instead, so it doesn't contradict the ⚠ on the yield. Verified
+   AOF (yield 109.59% ⚠ amber, payout 0.0% now neutral).
+5. **EarningsHistory no-actuals hide (added on the completeness re-check).** 15 tickers carry earnings-history
+   rows with no reported `epsactual` → the beat/miss chart rendered bare axis labels + "0/N Qtrs". Now hidden
+   entirely (mirrors the existing no-rows hide). Verified ALQ.AX (4 rows, no actuals) → card absent, page
+   otherwise intact.
+
+**Edge-case fixes (verified with fake data via a dev fixtures harness):**
+- **`web/app/dev-fixtures/page.tsx`** — dev-only gallery that renders each component with synthetic null/edge
+  props (typed factories `makeBars/makeFund/makeCycle/makeStock`, no DB mutation). **Owner decision: kept
+  LOCAL ONLY — git-ignored (`web/.gitignore` → `app/dev-fixtures/`), NEVER committed/merged to the live
+  site.** It also `notFound()`s in production as a belt-and-braces gate. To use it: set `DEV_BYPASS_AUTH=true`
+  in `web/.env.local`, `pnpm --dir web dev`, open `/dev-fixtures`. (The file lives on the dev machine only; if
+  it's ever lost, recreate from this entry / git history of this PR's review.)
+- **TechnicalLevels** <50 bars (all-dash) → "Not enough price history yet…" empty-state (partial <200-bar
+  case keeps 50-DMA + dashes the 200, which is honest). **PriceChart** 0 bars → "No price history available…".
+  **StockHeader** 0 bars → graceful identity block + "Price data unavailable" (was: rendered nothing).
+  **AnalystTargetTrack** low==high==target → guarded the zero-width domain (markers were NaN→piled at left;
+  now centred). **OwnershipStructure** only one of inst/insider known → no misleading near-100% donut; show
+  stat rows only. **ShortInterest** ratio-present-but-%-null → no false-zero gauge / "Bullish"; "Short % of
+  float not reported" + "—" signal. **VerdictCard/KpiStrip** cycle-only (FH null) → confirmed the existing
+  "Cycle-only" badge / Health "—" path looks correct.
+- **Confirmed OK (no change):** Analyst Targets / Short Interest / Earnings / Company Overview hide cleanly;
+  News / Valuation-building / non-payer Dividend / Smart-Money dual-empty / Ownership-partial / Key-Metrics
+  all use honest messages; Scorecard withheld-pillar radar.
+- **Files:** `components/stocks/{QuarterlyFinancials,BalanceSheet,DividendHistory,TechnicalLevels,PriceChart,
+  StockHeader,AnalystTargetTrack,OwnershipStructure,ShortInterest}.tsx`, `app/(app)/stocks/[market]/[ticker]/
+  page.tsx`, new `app/dev-fixtures/page.tsx`.
+- **Verified (Claude Preview, DEV_BYPASS removed after):** all 4 main fixes on real tickers + all 8 edge cases
+  in the fixtures gallery render gracefully (screenshots). `pnpm typecheck` / `lint` / `build` (incl. report-
+  bundle prebuild + `check:report-sections`) all green. **C-R2 STATUS: built + verified, all CI green.
+  Pause-before-merge / commit when the owner says.** Next round-2 task = **C-R3** (deep a11y).
+- **C-R2 committed** to `fix/lwc-chart-axis-align`: `a64e0c0` (sweep + edge fixes) + `2fecda6` (EarningsHistory
+  no-actuals hide). dev-fixtures excluded (gitignored). Engine UNTOUCHED.
+
+### C-R3 — Deep accessibility pass (2026-06-29) — built + verified in Claude Preview, PAUSED for owner merge
+
+On `fix/lwc-chart-axis-align`. **Pure web — engine/data/Python UNTOUCHED.** Applied the Layer D/E
+keyboard-a11y depth to every Stock-Detail interactive control (round-2 gap table row 1).
+
+- **Audit found prior rounds already covered most of it:** `*:focus-visible` global ring (`globals.css:133`)
+  → every control has a visible keyboard focus; **MethodologyModal** uses the **Radix `Dialog`**
+  (`components/ui/dialog.tsx`) → focus-trap / Esc / return-focus / `aria-modal` / `aria-labelledby` +
+  `aria-describedby` all handled; **InfoTip** (S5) already full (button `aria-label`/`aria-expanded`/
+  `aria-describedby`, `role=tooltip`, Esc, focus+blur) — re-confirmed; chart `aria-label`s on radar/donut/
+  gauge (S6/S9); MA-pill / overlay-toggle / legend-chip `aria-pressed` (S6/S7). Subnav anchor pills already
+  carry `aria-current` + are real `<a href>` (keyboard-operable) inside `role=navigation`.
+- **Gaps fixed this pass:**
+  - **Chart range buttons** (`range-btn`) — PriceChart 1Y/3Y/Max, RelativePerformance 1Y/3Y/Max, SmartMoney
+    1Y/3Y/All — had no pressed state. Added `aria-pressed={active}` + wrapped each set in `role="group"` with
+    an `aria-label` ("Price chart date range" etc.) + `type="button"`. (DrawdownOverlay's Drawdown/Profit
+    toggle already had `aria-pressed`.)
+  - **Subnav Methodology button** → `aria-haspopup="dialog"` + `aria-expanded` bound to the modal state.
+  - **WeekRangeGauge** → `role="img"` + a spoken `aria-label` ("52-week range: low … high …; current price is
+    in the upper range, 10.6% off high.") so a screen reader gets the position, not just a hover `title`.
+  - **MetricsTable** → `aria-label` on the `<table>` ("Key metrics compared with industry, sector and market
+    peers").
+  - **SmartMoney day-panel** (`role=dialog`) → focus now moves to its Close button on open (rAF after the
+    portal mounts) so the pinned dialog is keyboard-operable; Esc / outside-click / close already present.
+- **Files:** `components/stocks/{PriceChart,RelativePerformance,SmartMoneyActivity,StockSubnav,WeekRangeGauge,
+  MetricsTable}.tsx`.
+- **Verified (Claude Preview, DEV_BYPASS removed after):** on AAPL the DOM/ARIA confirms — 3 labelled range
+  groups with correct `aria-pressed` (1Y true, others false), Methodology `aria-haspopup=dialog`/`aria-
+  expanded=false`, gauge `role=img` + full label, table `aria-label`. `pnpm typecheck`/`lint`/`build` all
+  green. **C-R3 STATUS: built + verified, all CI green. Pause-before-merge.** Next round-2 task = **C-R4**
+  (perf/compliance/#15) → C-R8 (Browse) → C-R5 (deploy-gated live tail).
+- **C-R3 committed:** `20d4868`. Report cycle-null notice (so the downloadable HTML matches the page's
+  null-handling) committed `83a6d9d` — all other C-R2/C-R3 fixes already propagate to the report via the
+  shared section components (verified: BAC report carries the balance caption + 3 range-button groups; offline
+  bundle grep confirms the new strings). Engine UNTOUCHED.
+
+### C-R9 follow-up — FDX split false-positive (2026-06-29) — owner-approved, built + verified
+
+Found during the C-R2/split review (owner asked to confirm the split pipeline). `split_events` had **KLAC**
+(10:1) + **DD** (1-for-3) correctly **resolved** (DD's prices verified continuous; it self-healed after 5
+repulls — the headline C-R9 case working), but **FDX** was stuck `pending`: yfinance reported a dubious
+`1.241` "split" (FedEx didn't split — prices continuous) and `_verify_split_resolved` matched FDX's transient
+one-day dip (2026-06-10: −3.8% that bounced back +5.9%) to `1/1.241` within the 20% tolerance → would have
+**false-flagged as 'failed' ~2026-07-28**. No data corrupted.
+- **Fix (owner approved "persistence check"):** a matched adjacent-day step must now ALSO be a *persistent*
+  scale shift — `_window_median` of the closes just-before vs just-after the step must match the split factor
+  (`±_SPLIT_RATIO_TOL`), with a `_SPLIT_PERSIST_BARS=3` window. A one-day dip that reverts (FDX) no longer
+  counts; a real sustained cliff (DD ×3) still does. Edge-of-series (too few bars) falls back to the
+  single-step match so a split near the latest bar isn't missed.
+- **Data-pipeline only** (`analytics/cron/daily_refresh.py`) — NO `analytics/scoring` / `major_cycle.py` /
+  `web/_engine` change; not mirrored. **Self-healing:** next nightly run re-verifies FDX → no persistent cliff
+  → flips it to `resolved` automatically (no manual DB edit). New test `test_transient_dip_not_misread_as_split`;
+  existing DD/KLAC/crash/generic tests still pass. `ruff` clean, `pytest` 14 passed; `mypy` clean on the change
+  (only pre-existing `types-requests` stub gap remains, handled in CI). Committed `7527528`.
+
+### C-R4 — Formal perf + compliance + #15 (2026-06-29) — verification PASS, no code change
+
+The D/E-style formal checks (round-2 gap table rows 2–4). All pass; nothing to fix.
+- **#15 nothing-persisted (check 4) — PASS via SQL negative.** No `stocks` (or any public table) column
+  holds a derived rating/score/valuation/zone/verdict — `information_schema` shows the only candidate is
+  `analysis_runs.results`, and **0 of 44** runs have it non-null (`count(results)=0`). So only raw price +
+  fundamentals are stored; every score is derived on demand by `cycle.py` (`web/lib/cycle.ts` → the Vercel
+  Python fn / dev CLI). Mirrors Layer E's finding.
+- **Compliance (check 3) — PASS.** (a) Disclaimer **above the fold**: the strip "⚠ For educational and
+  research purposes only. Not financial advice…" is the FIRST element inside `<main>` in
+  `web/app/(app)/layout.tsx` (required on every authed page) → visible without scrolling at any width
+  (structurally; confirmed on desktop, 375px to be eyeballed live in C-R5). Plus the VerdictCard inline
+  footnote + the report's own disclaimer band. (b) **Only the 5 compliant tiers** in our output
+  (`OverallLabel`/`ValuationZone` unions — type-enforced; no Buy/Sell in our labels). The only Buy/Sell
+  strings (`SmartMoneyActivity` grade colouring, `ThesisInsights` "Analyst consensus is Strong Buy") are
+  **third-party Wall-Street grades shown verbatim** (decision #17), framed as not-our-rating.
+- **Perf (check 2) — architecture confirmed; live numbers deferred to C-R5.** Streaming via per-section
+  `<Suspense>` (only stock+medians block first paint; cycle sections stream) + parallel paginated price-bar
+  fetch (`stocks.ts` `Promise.all` over pages, with the count-RPC fast path). Cold + warm prod load on
+  US/AU/CA (no jank, charts mount clean) is **deploy-gated** → re-verified in the C-R5 live tail after merge.
+- **C-R4 STATUS: PASS, no code change.** Next = **C-R8** (Browse full audit) → **C-R5** (deploy-gated live
+  tail: perf numbers + disclaimer-at-375px + TUA + Browse + report-logo eyeball + DD/FDX split-row glance).

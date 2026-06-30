@@ -512,6 +512,38 @@ Pattern: icon (40px, muted stroke) + bold 14px title + muted 12px description + 
 Example from the reference:
 > "No analysis run yet — Upload a CSV of tickers in the Run Analysis tab and your ranked results will appear here."
 
+### Stock Detail null-render conventions (C-R2)
+
+A systematic sweep (C-R2) fixed every Stock-Detail section's missing-data state to one
+consistent, honest pattern. The rules:
+
+- **Hide the whole card** when there is genuinely nothing to show: Analyst Targets,
+  Short Interest, Earnings Performance (incl. when rows exist but carry **no actual
+  EPS**), Company Overview.
+- Otherwise show **one honest centred muted message** — never a half-empty card. News
+  ("No recent news available."), Valuation ("P/E history is building…"), non-payer
+  Dividend ("Does not pay a dividend…"), Quarterly Financials when the **selected metric**
+  has no data (e.g. Gross Profit on a bank → "No Gross Profit data reported…"), Smart Money
+  dual-empty (two graceful columns, chart skipped), Ownership partial ("No institutional
+  holder data available.").
+- **No lone "—" floating in an otherwise full card, and no all-dash grid.** A card whose
+  every value would be "—" is replaced by a single message (e.g. Technical Levels with
+  < 50 bars → "Not enough price history yet…").
+- **Cycle unavailable for the chosen horizon** (the engine needs ~`lookback`+ bars; a
+  short-history stock on the Long horizon can't compute one): show **one explanatory
+  notice** ("Major Cycle — not available at this horizon…") in place of the rating
+  badges / KPI / Verdict / Thesis, plus a matching note in the Scorecard section. This is
+  **mirrored in the downloadable report** (`ReportDocument`) so the offline file behaves the
+  same — the live page's notice lives in the detail `page.tsx`, the report's in
+  `ReportDocument.tsx`.
+- **Structurally N/A ratios are captioned, not just dashed.** Banks & REITs don't report
+  Current Ratio / Debt-Equity / Interest Coverage → the dashed pills carry a caption
+  ("…banks & REITs don't report them…"), mirroring the Scorecard's withheld-pillar note.
+- Fixture-only edge states (0-bar / very-short history, single-analyst zero-range target,
+  one-sided ownership, short-ratio-without-%) don't occur in the real universe (min history
+  ~488 bars; every stock has fundamentals) but still degrade gracefully — eyeball them in
+  the **local-only** `/dev-fixtures` gallery (git-ignored; see `web/.gitignore`).
+
 ### Error
 
 Pattern: red-tint card + 16px title + body explanation + CTA to retry or contact support.
@@ -561,6 +593,23 @@ Phase 1 minimums (not aspirations — requirements):
 - All form inputs have a visible `<label>`
 - Keyboard navigable: Tab moves through everything in document order
 - Screen-reader announces tier badges as "High Conviction rating" (via `aria-label`)
+
+**Control patterns (C-R3 deep a11y pass).** Applied across every Stock-Detail control:
+
+- **Mutually-exclusive view toggles** — chart range buttons (1Y / 3Y / All / Max on Price,
+  Drawdown, Smart Money, Relative Performance), the Drawdown/Profit toggle, and the
+  clickable legend chips — are `<button type="button">` with **`aria-pressed`** reflecting
+  the active option, wrapped in a **`role="group"` with an `aria-label`** ("Price chart date
+  range" etc.).
+- **A button that opens a dialog** carries **`aria-haspopup="dialog"` + `aria-expanded`**
+  (the subnav Methodology button).
+- **Dialogs** trap focus, close on Esc, and restore focus: the MethodologyModal uses the
+  Radix `Dialog` (handles all of this + `aria-modal`/labelledby/describedby); the Smart-Money
+  day-panel (`role="dialog"`) moves focus to its Close button on open.
+- **Data gauges** (the 52-week range) use **`role="img"` + a spoken `aria-label`** (position
+  summary), not just a hover `title`. **Data tables** carry an `aria-label`.
+- Charts already carry an `aria-label`; InfoTips are full (`role=tooltip`,
+  `aria-label`/`aria-expanded`/`aria-describedby`, Esc, hover+focus+tap).
 
 ---
 

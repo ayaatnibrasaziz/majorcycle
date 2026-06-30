@@ -25,7 +25,12 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
     ? Math.max(0, 100 - inst - insider)
     : null;
 
-  const hasDonut = inst != null || insider != null;
+  // The donut needs BOTH institutional and insider % to derive the public float;
+  // with only one known, the float is uncomputable and a donut would render a
+  // misleading near-100% single slice. So draw the donut only when both are
+  // present; with just one, show the stat rows (and "—" for the unknowns).
+  const hasDonut = inst != null && insider != null;
+  const hasAny   = inst != null || insider != null;
   const holders  = topHolders ?? [];
 
   // Always render the card (with graceful empty-states), like Smart Money Activity —
@@ -73,11 +78,14 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
       </div>
       <div className="card-body">
         <div className="ownership-grid">
-          {/* Left — donut + stat rows, or a graceful empty-state */}
-          {!hasDonut ? (
+          {/* Left — donut (only when both inst+insider known) + stat rows, or a
+              graceful empty-state when neither is known */}
+          {!hasAny ? (
             <div className="smart-empty">No ownership breakdown available.</div>
           ) : (
             <div>
+              {hasDonut && (
+              <>
               <div
                 style={{ display: 'flex', justifyContent: 'center' }}
                 role="img"
@@ -120,6 +128,8 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
                   </div>
                 ))}
               </div>
+              </>
+              )}
               <div className="ownership-stats">
                 {statRows.map((row) => (
                   <div key={row.label} className="ownership-stat-row">

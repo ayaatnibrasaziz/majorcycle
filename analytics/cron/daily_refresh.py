@@ -53,6 +53,12 @@ _SPLIT_VERIFY_WINDOW = 10
 # expected unadjusted price factor (1/ratio). DD's cliff (x2.985 vs 1/0.3333 = 3.0) is a
 # 0.005 deviation; a normal price move is nowhere near 3x, so this can't false-fire.
 _SPLIT_RATIO_TOL = 0.20
+# Bars each side used to confirm a candidate cliff is a *persistent* scale shift (a real
+# unadjusted split) rather than a one-day dip that bounces back (e.g. FDX 2026-06-10 fell
+# -3.8% then recovered +5.9%, which a loose ratio match would otherwise read as a cliff).
+# We compare the median close just-before vs just-after the step; only a sustained shift
+# matching the split factor counts. See C-R2 review (FDX false positive).
+_SPLIT_PERSIST_BARS = 3
 
 
 def _jsonb(obj: Any) -> Any:
@@ -173,6 +179,16 @@ def _parse_dt(val: Any) -> Optional[datetime]:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
+def _window_median(vals: list[float]) -> Optional[float]:
+    """Median of a small price window (used by the split-cliff persistence check)."""
+    if not vals:
+        return None
+    s = sorted(vals)
+    n = len(s)
+    mid = n // 2
+    return s[mid] if n % 2 else (s[mid - 1] + s[mid]) / 2.0
+
+
 def _verify_split_resolved(
     df: pd.DataFrame, split_date: str, ratio: Optional[float]
 ) -> tuple[bool, Optional[str], Optional[float]]:
@@ -184,7 +200,9 @@ def _verify_split_resolved(
     Scan the closes in a ``±_SPLIT_VERIFY_WINDOW``-bar window around the split date for
     such a cliff; a matching one ⇒ unresolved. The expected direction/magnitude is fixed
     by the ratio, so a real crash or spike (which doesn't match ``1/ratio``) is never
-    misread as a leftover split.
+    misread as a leftover split. A matched step must ALSO be a *persistent* shift (median
+    close just-before vs just-after ≈ the split factor), so a one-day dip that bounces back
+    (FDX) — which can match the per-bar ratio by coincidence — isn't read as a cliff.
 
     Returns ``(resolved, cliff_date, cliff_ratio)``. When unresolved, ``cliff_*`` describe
     the worst offending bar (for backend visibility); when resolved they are ``None``.
@@ -223,10 +241,35 @@ def _verify_split_resolved(
             continue
         step = cur / prev
         if target is not None:
-            is_cliff = abs(step / target - 1.0) <= _SPLIT_RATIO_TOL
+            is_match = abs(step / target - 1.0) <= _SPLIT_RATIO_TOL
         else:
-            is_cliff = step >= generic_hi or step <= generic_lo
-        if is_cliff and abs(step - 1.0) > worst_dev:
+            is_match = step >= generic_hi or step <= generic_lo
+        if not is_match:
+            continue
+        # Persistence guard: a real unadjusted split is a *sustained* scale shift —
+        # every bar after the split sits on the new scale. A one-day dip that bounces
+        # back (FDX 2026-06-10) matches the per-bar ratio by coincidence but does NOT
+        # persist. Compare the median close just-before vs just-after the step: only a
+        # sustained shift matching the split factor counts. Too few bars at the series
+        # edge → fall back to the single-step match (don't miss a split near the end).
+        expected = target if target is not None else step
+        before = [
+            float(closes[j])
+            for j in range(max(0, i - _SPLIT_PERSIST_BARS), i)
+            if float(closes[j]) > 0
+        ]
+        after = [
+            float(closes[j])
+            for j in range(i, min(len(closes), i + _SPLIT_PERSIST_BARS))
+            if float(closes[j]) > 0
+        ]
+        mb = _window_median(before)
+        ma = _window_median(after)
+        if mb is not None and ma is not None and mb > 0:
+            sustained = ma / mb
+            if abs(sustained / expected - 1.0) > _SPLIT_RATIO_TOL:
+                continue  # transient blip, not a persistent split cliff
+        if abs(step - 1.0) > worst_dev:
             worst_dev = abs(step - 1.0)
             worst_ratio = round(step, 4)
             worst_date = pd.Timestamp(idx[i]).strftime("%Y-%m-%d")

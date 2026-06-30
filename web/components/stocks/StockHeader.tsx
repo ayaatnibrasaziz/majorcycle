@@ -56,7 +56,34 @@ export function StockHeader({ stock, badgeSlot }: Props) {
   const latestBar = priceBars[priceBars.length - 1];
   const previousBar = priceBars[priceBars.length - 2];
 
-  if (!latestBar) return null;
+  // No price history at all: still show the identity block (ticker, name, badges)
+  // with an honest "price unavailable" note, rather than returning null and
+  // leaving the page with no header. (Doesn't occur in the real universe — every
+  // stock has ≥488 bars — but keeps a freshly-listed ticker graceful.)
+  if (!latestBar) {
+    return (
+      <div className="flex items-stretch gap-5 mb-5 fade-in">
+        <div className="flex flex-col min-w-0 flex-1">
+          <div className="flex items-center gap-2.5">
+            <span className="font-[var(--font-mono)] text-[var(--font-hero)] font-bold text-[var(--text-primary)] tracking-[-1px]">
+              {tickerToUrlParts(stock.ticker).symbol}
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[4px] px-[7px] py-[2px] flex-shrink-0">
+              {marketLabel(stock.market)}
+            </span>
+          </div>
+          <div className="text-[14px] text-[var(--text-secondary)] mt-[2px]">
+            {stock.name ?? stock.ticker}
+            {stock.sector ? <span> · {stock.sector}</span> : null}
+          </div>
+          {badgeSlot}
+        </div>
+        <div className="ml-auto text-right min-w-[240px] flex flex-col items-end justify-center">
+          <div className="text-[13px] text-[var(--text-muted)]">Price data unavailable</div>
+        </div>
+      </div>
+    );
+  }
 
   const currentClose = latestBar.close;
   const change = previousBar ? dailyChange(currentClose, previousBar.close) : null;

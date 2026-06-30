@@ -73,6 +73,14 @@ export function EarningsHistory({ earningsHistory, currency }: Props) {
 
   if (data.length === 0) return null;
 
+  // Some tickers carry earnings-history rows with no reported actual EPS (15 in the
+  // current universe). "Earnings Performance" is a beat/miss chart, so with no
+  // actuals to plot it would render bare axis labels + "0/N Qtrs". Hide the card
+  // entirely instead — consistent with the no-rows case above (decision: a card
+  // with nothing to show is hidden, not left half-empty).
+  const hasActuals = data.some((d) => d.act !== null);
+  if (!hasActuals) return null;
+
   const beats = data.filter((d) => d.beat).length;
   const surprises = data
     .filter((d) => d.surp !== null)

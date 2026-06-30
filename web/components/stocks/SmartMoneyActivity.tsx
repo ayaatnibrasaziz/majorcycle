@@ -13,6 +13,7 @@ import {
   type Time,
 } from 'lightweight-charts';
 
+import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { AnalystUpgrade, InsiderTransaction, PriceBar } from '@/lib/types';
 
 type Range = '1y' | '3y' | 'all';
@@ -282,7 +283,11 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
         vertLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
         horzLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
       },
-      rightPriceScale: { borderColor: '#E2E8F0', textColor: '#8A97A8' },
+      rightPriceScale: {
+        borderColor: '#E2E8F0',
+        textColor: '#8A97A8',
+        minimumWidth: CHART_RIGHT_AXIS_WIDTH,
+      },
       timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
@@ -419,6 +424,11 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
   // rather than close; the panel's own internal scroll does not bubble to window.)
   useEffect(() => {
     if (!dayPanel) return;
+    // Move focus into the pinned day dialog so it's keyboard-operable (Tab through
+    // it, Esc / close button to dismiss). rAF: wait for the portal to mount.
+    requestAnimationFrame(() => {
+      panelRef.current?.querySelector<HTMLButtonElement>('.smart-day-panel-close')?.focus();
+    });
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDayPanel(null); };
     const onDown = (e: PointerEvent) => {
       const t = e.target as Node;
@@ -608,12 +618,13 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
                 <span className="smart-legend-chip-dot" />Reiterate
               </span>
             </div>
-            <div style={{ display: 'flex', gap: 4 }}>
+            <div style={{ display: 'flex', gap: 4 }} role="group" aria-label="Smart Money chart date range">
               {(['1y', '3y', 'all'] as Range[]).map(r => (
                 <button
                   key={r}
                   type="button"
                   className={`range-btn${range === r ? ' active' : ''}`}
+                  aria-pressed={range === r}
                   onClick={() => setRange(r)}
                 >
                   {RANGE_LABELS[r]}

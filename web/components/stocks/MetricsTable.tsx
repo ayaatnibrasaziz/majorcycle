@@ -210,7 +210,8 @@ export function MetricsTable({ fundamentals, industry, sector, market, medians }
       </div>
       <div className="card-body card-body--bleed">
         <div className="km-scroll">
-          <table className="km-table">
+          <table className="km-table" aria-label="Key metrics compared with industry, sector and market peers">
+
             <thead>
               <tr>
                 <th className="km-th-metric">Metric</th>

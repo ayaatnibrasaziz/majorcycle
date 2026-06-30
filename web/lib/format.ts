@@ -1,14 +1,19 @@
 import type { AnalystRecommendation, Currency } from '@/lib/types';
 
 /**
- * Shared right-side gutter (px) for every Recharts chart's `<YAxis orientation=
- * "right">` plus a zero right margin. Matches the Lightweight-Charts price-scale
- * width (66px) so EVERY chart's plot area ends at the same x — the Recharts cards
- * (Earnings, Quarterly/Annual, Valuation, Balance Sheet, Dividend, Relative
- * Performance) line up with the LWC charts (Price, Drawdown, Smart Money) instead
- * of each auto-sizing its axis to its own label width. Keep margin.right = 0.
+ * Shared right-axis width (px) so EVERY chart's plot area ends at the same x and
+ * the cards line up down the page. Used two ways, both keyed to this one value:
+ *   - Recharts cards (Earnings, Quarterly/Annual, Valuation, Balance Sheet,
+ *     Dividend, Relative Performance): `<YAxis orientation="right" width={…}>` +
+ *     `margin.right = 0` (a hard fixed width).
+ *   - Lightweight-Charts (Price, Drawdown/Profit, Smart Money): the right price
+ *     scale auto-sizes to its labels and only honours a `minimumWidth` floor, so
+ *     we set `rightPriceScale.minimumWidth` to this value. It must therefore be
+ *     ≥ the widest LWC price-scale label across the universe — 72px covers the
+ *     Drawdown chart's "-100.0%"-style labels (the widest), which otherwise made
+ *     it 6px narrower than the rest.
  */
-export const CHART_RIGHT_AXIS_WIDTH = 66;
+export const CHART_RIGHT_AXIS_WIDTH = 72;
 
 /**
  * Currency-aware share-price formatter (via `Intl.NumberFormat`, so the symbol is

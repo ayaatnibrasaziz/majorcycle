@@ -273,12 +273,18 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
               <div
                 className="summary-strip-val"
                 style={{
+                  // A 0% payout, or any reading alongside a distressed yield, must
+                  // not flash green "sustainable" — that contradicts the ⚠ on the
+                  // yield. Show those neutral; colour the genuine sustainable/strained
+                  // bands only when the dividend isn't in distress.
                   color:
-                    payoutRatioPct < 60
-                      ? '#228B22'
-                      : payoutRatioPct < 80
-                        ? '#D4A017'
-                        : '#B22222',
+                    yieldDistressed || payoutRatioPct === 0
+                      ? 'var(--text-secondary)'
+                      : payoutRatioPct < 60
+                        ? '#228B22'
+                        : payoutRatioPct < 80
+                          ? '#D4A017'
+                          : '#B22222',
                 }}
               >
                 {Math.abs(payoutRatioPct) > 300

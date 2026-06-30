@@ -12,6 +12,7 @@ import {
   type Time,
 } from 'lightweight-charts';
 
+import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import {
   createSyncSource,
   emitCrosshairSync,
@@ -98,7 +99,11 @@ export function PriceChart({ priceBars, ticker }: Props) {
         vertLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
         horzLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
       },
-      rightPriceScale: { borderColor: '#E2E8F0', textColor: '#8A97A8' },
+      rightPriceScale: {
+        borderColor: '#E2E8F0',
+        textColor: '#8A97A8',
+        minimumWidth: CHART_RIGHT_AXIS_WIDTH,
+      },
       // fixLeftEdge/fixRightEdge stop scrolling past the first/last bar into
       // empty whitespace. The Drawdown overlay shares this exact date extent but
       // can't follow a range that runs into no-data space (setVisibleRange clamps
@@ -251,6 +256,31 @@ export function PriceChart({ priceBars, ticker }: Props) {
     sma200Ref.current?.applyOptions({ visible: show200 });
   }, [show200]);
 
+  // No price history at all → show one honest message rather than an empty chart
+  // frame with dead range/MA controls. (Doesn't occur in the real universe — min
+  // history is ~488 bars — but keeps a freshly-listed ticker graceful.)
+  if (priceBars.length === 0) {
+    return (
+      <section className="card card--stack-snug">
+        <div className="card-header">
+          <div className="card-title">
+            Price Chart — {tickerToUrlParts(ticker).symbol}
+            <InfoTip title="Price Chart">
+              Daily price drawn as candlesticks: each candle shows the open, high,
+              low and close for a day. Green = the price rose that day, red = it fell.
+              Toggle the 50- and 200-day average lines to see the trend.
+            </InfoTip>
+          </div>
+        </div>
+        <div className="card-body card-body--chart">
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '40px 0' }}>
+            No price history available for this stock yet.
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="card card--stack-snug">
       <div className="card-header">
@@ -286,9 +316,11 @@ export function PriceChart({ priceBars, ticker }: Props) {
             200D
           </button>
           <span className="chart-divider" aria-hidden="true" />
-          <button className={`range-btn${range === '1y' ? ' active' : ''}`} onClick={() => setRange('1y')}>1Y</button>
-          <button className={`range-btn${range === '3y' ? ' active' : ''}`} onClick={() => setRange('3y')}>3Y</button>
-          <button className={`range-btn${range === 'max' ? ' active' : ''}`} onClick={() => setRange('max')}>Max</button>
+          <span role="group" aria-label="Price chart date range" className="contents">
+            <button type="button" className={`range-btn${range === '1y' ? ' active' : ''}`} aria-pressed={range === '1y'} onClick={() => setRange('1y')}>1Y</button>
+            <button type="button" className={`range-btn${range === '3y' ? ' active' : ''}`} aria-pressed={range === '3y'} onClick={() => setRange('3y')}>3Y</button>
+            <button type="button" className={`range-btn${range === 'max' ? ' active' : ''}`} aria-pressed={range === 'max'} onClick={() => setRange('max')}>Max</button>
+          </span>
         </div>
       </div>
       <div className="card-body card-body--chart">

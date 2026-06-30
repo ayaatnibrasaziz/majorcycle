@@ -76,6 +76,11 @@ export function ShortInterest({ fundamentals }: Props) {
 
   if (shortPct == null && shortRatio == null) return null;
 
+  // Short % of float drives the gauge and the Bullish/Neutral/Bearish signal.
+  // When it's missing (some tickers report only the days-to-cover ratio), don't
+  // paint a 0% gauge / "Bullish" — that's a false zero. Show "not reported"
+  // instead and keep the Days-to-Cover stat.
+  const hasPct = shortPct != null;
   const pct = shortPct ?? 0;
   const sig = signalInfo(pct);
 
@@ -89,10 +94,10 @@ export function ShortInterest({ fundamentals }: Props) {
     },
     {
       label: 'Signal',
-      value: sig.label,
+      value: hasPct ? sig.label : '—',
       tipTitle: 'Short Interest Signal',
       tipBody: 'Derived from Short % of Float. Bullish = below 5% of the float shorted (low bearish pressure). Neutral = 5–15% (some caution warranted). Bearish = above 15% (significant short conviction) — though elevated short interest can also fuel a short-squeeze rally if positive news arrives.',
-      color: sig.color,
+      color: hasPct ? sig.color : undefined,
     },
   ];
 
@@ -113,7 +118,13 @@ export function ShortInterest({ fundamentals }: Props) {
         <div className="si-grid">
           <div>
             <div className="si-arc-wrap">
-              <ArcGauge pct={pct} />
+              {hasPct ? (
+                <ArcGauge pct={pct} />
+              ) : (
+                <div style={{ height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '0 12px', fontSize: 12, color: 'var(--text-muted)' }}>
+                  Short % of float not reported for this stock.
+                </div>
+              )}
             </div>
             <div className="ownership-stats">
               {statRows.map((row) => (
