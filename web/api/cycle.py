@@ -18,7 +18,10 @@ Responses:
     200  — application/json; CycleAnalysis fields, snake_case
     400  — bad query params
     404  — ticker not in DB / no price history
-    500  — analysis failed
+    422  — ticker has data, but not enough for THIS horizon (normal outcome —
+           e.g. a young stock on the Long preset; the UI shows a graceful
+           "not available at this horizon" notice)
+    500  — unexpected server error
 """
 
 from __future__ import annotations
@@ -281,7 +284,18 @@ def compute_cycle(
 
     analysis = analyze_ticker(ticker, df, fundamentals, params)
     if analysis is None:
-        return 500, {"error": f"analysis failed for '{ticker}' — insufficient price history"}
+        # The ticker exists and has price history, but not enough bars to fill
+        # the requested horizon's lookback window (e.g. a recently-listed stock
+        # on the Long preset). This is a normal, expected user action — NOT a
+        # server fault — so it must not be a 5xx (which reads as "we broke" and
+        # generates error-level log/alert noise). 422 Unprocessable Content:
+        # the request was well-formed, but this ticker+horizon combination can't
+        # be satisfied. The frontend treats any non-200 as null and renders the
+        # "Major Cycle — not available at this horizon" notice gracefully.
+        return 422, {
+            "error": f"insufficient price history for '{ticker}' at this horizon",
+            "reason": "insufficient_history",
+        }
 
     return 200, _serialise_analysis(analysis)
 

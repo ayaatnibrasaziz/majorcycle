@@ -69,7 +69,14 @@ function clampClusterPos(x: number, y: number): { left: number; top: number } {
   return { left, top };
 }
 
-export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
+export function OpportunityMap({
+  rows,
+  horizonQuery,
+}: {
+  rows: ResultRow[];
+  /** `?…` horizon suffix (from the run) so a bubble opens the same Major Cycle window. */
+  horizonQuery: string;
+}) {
   const router = useRouter();
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [cluster, setCluster] = useState<ClusterState | null>(null);
@@ -142,7 +149,7 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
       const sorted = [...group].sort((a, b) => b.overall - a.overall);
       setCluster({ points: sorted, x: mouse.current.x, y: mouse.current.y });
     } else {
-      router.push(tickerToPath(p.ticker));
+      router.push(tickerToPath(p.ticker) + horizonQuery);
     }
   };
 
@@ -350,7 +357,7 @@ export function OpportunityMap({ rows }: { rows: ResultRow[] }) {
                 type="button"
                 key={p.ticker}
                 className="opp-cluster-row"
-                onClick={() => router.push(tickerToPath(p.ticker))}
+                onClick={() => router.push(tickerToPath(p.ticker) + horizonQuery)}
               >
                 <span className="opp-cluster-dot" style={{ background: scoreColor(p.overall) }} />
                 <span className="opp-cluster-sym">{p.symbol}</span>

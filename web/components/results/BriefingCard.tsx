@@ -16,15 +16,18 @@ import type { QuickFilter } from './filters';
 export function BriefingCard({
   rows,
   onQuickFilter,
+  horizonQuery,
 }: {
   rows: BriefingRow[];
   onQuickFilter: (q: QuickFilter) => void;
+  /** `?…` horizon suffix (from the run) so the top pick opens the same Major Cycle window. */
+  horizonQuery: string;
 }) {
   const router = useRouter();
   const briefing = buildBriefing(rows);
 
   const openTopPick = () => {
-    if (briefing.topPick) router.push(tickerToPath(briefing.topPick.ticker));
+    if (briefing.topPick) router.push(tickerToPath(briefing.topPick.ticker) + horizonQuery);
   };
 
   return (
