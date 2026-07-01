@@ -550,7 +550,14 @@ the result is edge-cached per full query string.
 **Errors:**
 - `400` — missing `ticker` or invalid `preset` → `{ "error": "..." }`
 - `404` — ticker not in `stocks` table OR no `price_bars` rows → `{ "error": "..." }`
-- `500` — internal (insufficient bars for cycle math, env var missing, etc.) → `{ "error": "...", "detail": "..." }`
+- `422` — ticker exists and has price history, but not enough bars to fill the
+  requested horizon's lookback window (e.g. a recently-listed stock on the Long
+  preset; `analyze_ticker` returns `None`) → `{ "error": "...", "reason": "insufficient_history" }`.
+  This is an **expected outcome of a user choice, not a server fault**, so it must
+  not be a 5xx (which reads as "we broke" and raises false error-level log/alert
+  noise). The Stock Detail page treats any non-200 as `null` and renders the
+  graceful "Major Cycle — not available at this horizon" notice.
+- `500` — genuine internal error (env var missing, unhandled exception) → `{ "error": "...", "detail": "..." }`
 
 **Caching headers (200 only):** `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
 

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle2, ArrowRight, Ban } from 'lucide-react';
 
 import type { CycleAnalysis } from '@/lib/types';
+import { useAnalysis } from '@/lib/analysis';
+import { horizonQueryFromRequest } from '@/lib/horizon';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 
 // Post-run summary. Top pick + "Constructive or better" count are computed here
@@ -31,6 +33,10 @@ export function RunComplete({
   cancelled?: boolean;
 }) {
   const router = useRouter();
+  // The horizon this run used, so the top-pick link opens the same Major Cycle
+  // window the run scored on (not the detail page's Medium default).
+  const { params } = useAnalysis();
+  const horizonQuery = horizonQueryFromRequest(params);
 
   if (results.length === 0) {
     return (
@@ -83,7 +89,7 @@ export function RunComplete({
             </span>
           )}
           Top pick:{' '}
-          <Link href={tickerToPath(topPick.ticker)} className="rc-mono rc-link">
+          <Link href={tickerToPath(topPick.ticker) + horizonQuery} className="rc-mono rc-link">
             {tickerToUrlParts(topPick.ticker).symbol}
           </Link>{' '}
           with a rating of <span className="rc-mono">{topPick.overallRating}/100</span>{' '}

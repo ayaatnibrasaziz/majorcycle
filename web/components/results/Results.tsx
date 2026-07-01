@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FolderSearch, SearchX } from 'lucide-react';
 
 import { useAnalysis } from '@/lib/analysis';
+import { horizonQueryFromRequest } from '@/lib/horizon';
 import { downloadCsv, toCsv } from '@/lib/ratings';
 import { downloadXlsx } from '@/lib/xlsx';
 import type { Market, OverallLabel, SkippedStatus } from '@/lib/types';
@@ -39,6 +40,11 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
   const { results, unavailable, params, runMeta } = useAnalysis();
 
   const rows = useMemo(() => buildRows(results, lookup), [results, lookup]);
+
+  // The horizon this run used, as a `?…` suffix for every detail-page link on
+  // this surface — so opening a stock lands on the SAME Major Cycle window that
+  // produced its row, not the page's Medium default.
+  const horizonQuery = horizonQueryFromRequest(params);
 
   // Live status for the "couldn't be scored" tickers (in listings? covered?
   // already requested?) so the strip shows the right state up front. One batch
@@ -113,7 +119,7 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
     return (
       <div>
         {unavailable.length > 0 && (
-          <SkippedTickers unavailable={unavailable} lookup={lookup} statusMap={skippedStatus} />
+          <SkippedTickers unavailable={unavailable} lookup={lookup} statusMap={skippedStatus} horizonQuery={horizonQuery} />
         )}
         <div className="results-empty">
           {ran ? (
@@ -151,12 +157,12 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
   return (
     <div className="results-layout">
       <h1 className="sr-only">Analysis Results</h1>
-      <BriefingCard rows={rows} onQuickFilter={onQuickFilter} />
+      <BriefingCard rows={rows} onQuickFilter={onQuickFilter} horizonQuery={horizonQuery} />
       <ProvenanceBar params={params} runMeta={runMeta} tickerCount={rows.length} />
       {unavailable.length > 0 && (
-        <SkippedTickers unavailable={unavailable} lookup={lookup} statusMap={skippedStatus} />
+        <SkippedTickers unavailable={unavailable} lookup={lookup} statusMap={skippedStatus} horizonQuery={horizonQuery} />
       )}
-      <OpportunityMap rows={rows} />
+      <OpportunityMap rows={rows} horizonQuery={horizonQuery} />
 
       <div ref={tableRef} style={{ scrollMarginTop: 16 }}>
       <ResultsToolbar
@@ -183,6 +189,7 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
           sortAsc={sortAsc}
           onSort={onSort}
           onTierFilter={onTierFilter}
+          horizonQuery={horizonQuery}
         />
       ) : (
         <div className="results-empty">

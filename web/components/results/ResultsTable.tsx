@@ -53,6 +53,7 @@ export function ResultsTable({
   sortAsc,
   onSort,
   onTierFilter,
+  horizonQuery,
 }: {
   rows: ResultRow[];
   viewMode: ViewMode;
@@ -60,12 +61,14 @@ export function ResultsTable({
   sortAsc: boolean;
   onSort: (key: string) => void;
   onTierFilter: (label: OverallLabel) => void;
+  /** `?…` horizon suffix (from the run) so links open the same Major Cycle window. */
+  horizonQuery: string;
 }) {
   const router = useRouter();
   const bands = VIEW_MODES[viewMode];
   const columns: Field[] = bands.flatMap((b) => columnsForBand(b));
 
-  const open = (ticker: string) => router.push(tickerToPath(ticker));
+  const open = (ticker: string) => router.push(tickerToPath(ticker) + horizonQuery);
 
   return (
     <>
@@ -133,7 +136,7 @@ export function ResultsTable({
               >
                 {columns.map((col) => (
                   <td key={col.key} className={col.align === 'right' ? 'text-right' : ''}>
-                    {renderCell(col, r, onTierFilter)}
+                    {renderCell(col, r, onTierFilter, horizonQuery)}
                   </td>
                 ))}
               </tr>
@@ -154,7 +157,12 @@ export function ResultsTable({
 
 // ── Cell renderers ────────────────────────────────────────────────────────────
 
-function renderCell(col: Field, r: ResultRow, onTierFilter: (label: OverallLabel) => void): ReactNode {
+function renderCell(
+  col: Field,
+  r: ResultRow,
+  onTierFilter: (label: OverallLabel) => void,
+  horizonQuery: string,
+): ReactNode {
   switch (col.cell) {
     case 'ticker':
       // A real link gives keyboard users a focusable, announced way into the detail
@@ -162,7 +170,7 @@ function renderCell(col: Field, r: ResultRow, onTierFilter: (label: OverallLabel
       // avoids a double navigation (link + row).
       return (
         <Link
-          href={tickerToPath(r.ticker)}
+          href={tickerToPath(r.ticker) + horizonQuery}
           className="ticker-cell"
           onClick={(e) => e.stopPropagation()}
         >

@@ -916,3 +916,20 @@ the only place the prod cycle/report HTTP path is exercised). **All green; no co
 - **STATUS: C-R5 COMPLETE → Layer C round-2 re-audit DONE.** Every round-2 deliverable (C-R1/2/3/4/6/7/8/9 +
   the report cycle-null notice + FDX split fix) verified live on prod with no bugs or perf issues. Engine UNTOUCHED
   the entire round.
+
+### Follow-up (2026-07-01) — the two C-R5 loose ends closed
+
+Both open items flagged in the C-R5 tail are now resolved (web-only; **engine untouched**):
+
+- **FDX split_events false-positive — CONFIRMED self-healed.** Re-queried `split_events` (project
+  `gurrrlogycxawududtyv`): **FDX is now `resolved`** (`resolved_at` 2026-07-01 00:26, the first nightly
+  cron to run after the persistence-fix deploy), exactly as predicted. DD + KLAC stayed `resolved`, and a
+  brand-new real split (**HON** 0.5×) was detected → repulled → resolved end-to-end. **Zero** rows in
+  `pending`/`failed` — the C-R9 persistence fix works live.
+- **`/api/cycle` HTTP 500 → 422 — FIXED.** The "history too short for this horizon" case (e.g. AAI on Long)
+  returned an HTTP **500**, which reads as a server fault and adds false error-level log noise for a normal
+  user action. Changed `web/api/cycle.py` to return **422** (`{ error, reason: "insufficient_history" }`) —
+  the frontend still treats any non-200 as `null` and renders the same graceful "not available at this
+  horizon" notice, so there's no user-facing change; only the status semantics + log hygiene improve.
+  Contract updated in `docs/data-contracts.md` §5 (`GET /api/cycle` errors). `analyze_ticker`'s two
+  `None`-return paths are both pure data-insufficiency, so 422 is correct for both. Engine math untouched.

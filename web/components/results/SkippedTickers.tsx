@@ -30,10 +30,13 @@ export function SkippedTickers({
   unavailable,
   lookup,
   statusMap,
+  horizonQuery,
 }: {
   unavailable: string[];
   lookup: Record<string, { name: string | null; sector: string | null; market: Market }>;
   statusMap: Record<string, SkippedStatus>;
+  /** `?…` horizon suffix (from the run) so a skipped ticker opens the same window. */
+  horizonQuery: string;
 }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<Set<string>>(new Set());
@@ -98,7 +101,7 @@ export function SkippedTickers({
               </span>{' '}
               {coveredRows.map((r, i) => (
                 <span key={r.ticker}>
-                  <Link href={tickerToPath(r.ticker)} className="skipped-tk skipped-tk--link">
+                  <Link href={tickerToPath(r.ticker) + horizonQuery} className="skipped-tk skipped-tk--link">
                     {tickerToUrlParts(r.ticker).symbol}
                   </Link>
                   {i < coveredRows.length - 1 ? ', ' : ''}
@@ -118,6 +121,7 @@ export function SkippedTickers({
                     row={r}
                     pending={pending.has(r.ticker)}
                     onRequest={() => requestTicker(r.ticker)}
+                    horizonQuery={horizonQuery}
                   />
                 ))}
               </span>
@@ -133,17 +137,19 @@ function SkippedItem({
   row,
   pending,
   onRequest,
+  horizonQuery,
 }: {
   row: ResolvedRow;
   pending: boolean;
   onRequest: () => void;
+  horizonQuery: string;
 }) {
   const sym = tickerToUrlParts(row.ticker).symbol;
 
   let action: ReactNode;
   if (row.reqStatus === 'fetched') {
     action = (
-      <Link href={tickerToPath(row.ticker)} className="skipped-pill skipped-pill--ok">
+      <Link href={tickerToPath(row.ticker) + horizonQuery} className="skipped-pill skipped-pill--ok">
         <Check className="inline h-3 w-3" /> available
       </Link>
     );

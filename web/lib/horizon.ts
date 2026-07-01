@@ -6,7 +6,7 @@
 
 import { CUSTOM_PARAM_BOUNDS } from '@/lib/presets';
 import type { CycleSpec } from '@/lib/cycle';
-import type { Market } from '@/lib/types';
+import type { AnalyzeRequest, Market } from '@/lib/types';
 
 export type RouteSearch = {
   preset?: string;
@@ -73,4 +73,28 @@ export function horizonQuery(sp: RouteSearch): string {
     return `?${qs.toString()}`;
   }
   return spec.preset === 'medium' ? '' : `?preset=${spec.preset}`;
+}
+
+/**
+ * Build the same `?…` horizon suffix from a Run's `AnalyzeRequest` (the shape the
+ * Results/Run tabs hold in `useAnalysis().params`). Every link from a results
+ * surface — the ranked table, the Opportunity Map, the briefing top pick, the
+ * post-run summary — must carry the horizon the user actually ran on, otherwise
+ * the Stock Detail page falls back to its Medium default (decision #15/§7) and
+ * silently shows a different window than the one that produced the row. Reuses
+ * `horizonQuery` so the custom-window validation and the "medium → clean URL"
+ * rule stay in one place. Returns '' for Medium / null (a bare, canonical path).
+ */
+export function horizonQueryFromRequest(params: AnalyzeRequest | null): string {
+  if (!params) return '';
+  const sp: RouteSearch =
+    params.preset === 'custom'
+      ? {
+          preset: 'custom',
+          pullback: String(params.pullbackThreshold),
+          profit: String(params.profitThreshold),
+          lookback: String(params.lookbackBars),
+        }
+      : { preset: params.preset };
+  return horizonQuery(sp);
 }

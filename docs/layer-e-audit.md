@@ -426,3 +426,39 @@ All web-only, engine untouched; typecheck/lint/build green; Preview-verified; no
   the search row + recent panel + notice. CRDO is now in the global queue; the nightly cron will fetch it.
 
 **Layer E (E1–E11) is COMPLETE + LIVE.** Engine never touched across the whole audit.
+
+### Post-close follow-ups (2026-07-01) — horizon-in-links bug fix + table-combination re-verify
+
+Owner-reported bug + a correctness confirmation, both on the (closed) `/results`
+surface. Web-only; **engine untouched**; `pnpm typecheck`/`lint`/`build` green;
+verified live in Claude Preview (`DEV_BYPASS_AUTH`, seeded snapshot, removed after).
+
+- **BUG (horizon not carried into detail-page links) — FIXED.** Every link from a
+  results/run surface built a **bare** `/stocks/<m>/<t>` path, so opening a stock
+  always fell back to the Stock Detail page's **Medium** default — regardless of the
+  horizon the run actually used (Short/Long/Custom). Root cause: the links used
+  `tickerToPath(ticker)` with no `?preset=…` suffix. **Fix:** new shared helper
+  `horizonQueryFromRequest(params)` in `web/lib/horizon.ts` (reuses `horizonQuery`
+  so the custom-window validation + "Medium → clean URL" rule stay in one place),
+  threaded through all six link sites:
+  - `Results.tsx` — computes the suffix once from `useAnalysis().params` and passes
+    it to the table/map/briefing/skipped children.
+  - `ResultsTable.tsx` — row `open()` + the ticker `<Link>` + mobile card.
+  - `OpportunityMap.tsx` — bubble click + cluster-picker rows.
+  - `BriefingCard.tsx` — top-pick link.
+  - `SkippedTickers.tsx` — covered ("No data yet") + fetched ("available") links.
+  - `RunComplete.tsx` (Run tab) — reads `params` via `useAnalysis()`; top-pick link.
+  `StockBrowser.tsx` already had its own `hrefFor` (Browse has its own horizon
+  selector) and `RequestTicker.tsx` has no run horizon → both correctly left as-is.
+  **Preview-verified:** Short run → `/stocks/us/AAPL?preset=short`; Medium run →
+  clean `/stocks/us/AAPL` (no regression on the default); zero console errors.
+- **Results-table combination matrix — verified correct, NO change.** Confirmed via
+  the data contract (`CycleAnalysis`): `financialHealthScore` is the ONLY nullable
+  score — `valuationScore`/`overallRating`/`overallLabel`/`valuationZone` are always
+  present. So only two row-states can reach the table: **fully scored** (all cells)
+  and **cycle-only** (Health "—" + "Cycle-only" badge, de-ranked below fully-scored
+  via `sortRows`). "Overall+Valuation but no Health" = the cycle-only case (handled).
+  "None scored" **never** appears as a row — an unscorable ticker is `unavailable`
+  and shows in the "couldn't be scored" strip. All colour/label helpers null-safe;
+  the composition micro-bar collapses the health segment to 0 (`?? 0` + `|| 1`
+  divisor guard). Preview-confirmed the badge renders on exactly the null-health row.
