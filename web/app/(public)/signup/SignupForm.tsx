@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { AlertCircle, Mail, Check } from 'lucide-react';
 import { AuthCard } from '@/components/AuthCard';
 import { AuthDivider } from '@/components/AuthDivider';
-import { GoogleButton } from '@/components/GoogleButton';
+import { GoogleSignIn } from '@/components/GoogleSignIn';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createBrowserClient } from '@/lib/supabase/client';
+import { friendlyAuthError } from '@/lib/authErrors';
+import { getSiteURL } from '@/lib/url';
 
 const trialFeatures = [
   'Full access to every ticker, chart, and analysis tool',
@@ -37,30 +39,14 @@ export function SignupForm() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${getSiteURL()}/auth/callback`,
       },
     });
     if (authError) {
-      setError(authError.message);
+      setError(friendlyAuthError(authError.message));
       setLoading(false);
     } else {
       setSent(true);
-    }
-  }
-
-  async function handleGoogleSignup() {
-    setLoading(true);
-    setError(null);
-    const supabase = createBrowserClient();
-    const { error: authError } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
     }
   }
 
@@ -153,7 +139,7 @@ export function SignupForm() {
 
       <AuthDivider />
 
-      <GoogleButton onClick={handleGoogleSignup} disabled={loading} label="Sign up with Google" />
+      <GoogleSignIn next="/results" onError={setError} disabled={loading} label="signup_with" />
 
       <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
         Already have an account?{' '}

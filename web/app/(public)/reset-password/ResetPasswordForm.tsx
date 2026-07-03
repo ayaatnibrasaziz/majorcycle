@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createBrowserClient } from '@/lib/supabase/client';
+import { friendlyAuthError } from '@/lib/authErrors';
+import { getSiteURL } from '@/lib/url';
 
 export function ResetPasswordForm() {
   const [email, setEmail] = useState('');
@@ -21,10 +23,10 @@ export function ResetPasswordForm() {
     setError(null);
     const supabase = createBrowserClient();
     const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/account/update-password`,
+      redirectTo: `${getSiteURL()}/auth/callback?next=/account/update-password`,
     });
     if (authError) {
-      setError(authError.message);
+      setError(friendlyAuthError(authError.message));
       setLoading(false);
     } else {
       setSent(true);
