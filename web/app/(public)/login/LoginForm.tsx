@@ -6,11 +6,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
 import { AuthCard } from '@/components/AuthCard';
 import { AuthDivider } from '@/components/AuthDivider';
-import { GoogleButton } from '@/components/GoogleButton';
+import { GoogleSignIn } from '@/components/GoogleSignIn';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createBrowserClient } from '@/lib/supabase/client';
+import { friendlyAuthError } from '@/lib/authErrors';
 
 export function LoginForm() {
   const router = useRouter();
@@ -32,27 +33,11 @@ export function LoginForm() {
       password,
     });
     if (authError) {
-      setError(authError.message);
+      setError(friendlyAuthError(authError.message));
       setLoading(false);
     } else {
       router.push(next);
       router.refresh();
-    }
-  }
-
-  async function handleGoogleLogin() {
-    setLoading(true);
-    setError(null);
-    const supabase = createBrowserClient();
-    const { error: authError } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
     }
   }
 
@@ -113,7 +98,7 @@ export function LoginForm() {
 
       <AuthDivider />
 
-      <GoogleButton onClick={handleGoogleLogin} disabled={loading} />
+      <GoogleSignIn next={next} onError={setError} disabled={loading} label="continue_with" />
 
       <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
         New to MajorCycle?{' '}

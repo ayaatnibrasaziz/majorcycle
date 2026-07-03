@@ -290,6 +290,23 @@ Goal: The ranked Results view from reference HTML, fully functional.
 
 Goal: All non-app pages live, payment flow works end-to-end.
 
+**F0 — Auth branding / de-Supabase-ification (do first).** Make every auth
+touchpoint read as `majorcycle.com`, not a generic Supabase project. Code shipped;
+console/DNS steps are owner-driven (see `plan-mode-auth-virtual-ladybug.md`).
+- [x] Native Google sign-in (Google Identity Services + `signInWithIdToken`) to kill
+      the `*.supabase.co` address-bar flash — `web/components/GoogleSignIn.tsx`
+      (falls back to redirect flow until `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is set)
+- [x] Token-hash email verification route `web/app/auth/confirm/route.ts` (branded
+      `majorcycle.com` email links, no `supabase.co`)
+- [x] `/account/update-password` page (fixes the broken reset-flow 404)
+- [x] `getSiteURL()` helper + friendly auth-error copy (`web/lib/url.ts`,
+      `web/lib/authErrors.ts`)
+- [ ] **Console (owner):** Google consent-screen branding (name/logo/domains) +
+      publish to Production; Search Console domain verification
+- [ ] **Console (owner):** Supabase custom SMTP → Resend, brand all 6 email
+      templates (token-hash links), Auth Site URL + redirect allow-list, Google
+      provider Authorized Client IDs
+- [ ] **Console (owner):** Resend domain verify + SPF/DKIM/DMARC in Cloudflare DNS
 - [ ] `/methodology` — long-form content explaining Major Cycle (auto-generated draft, owner edits)
 - [ ] `/disclaimer` — full disclaimer page (ASIC-compliant template)
 - [ ] `/terms` — terms of service
