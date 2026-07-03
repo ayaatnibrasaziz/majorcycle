@@ -40,6 +40,8 @@
 
 **Current Profit** — How far the current price has recovered from the trough inside the lookback window. Always a positive number (or zero).
 
+**Custom SMTP** — Supabase Auth's setting to send auth emails through an external SMTP provider instead of Supabase's shared sender. MajorCycle points it at **Resend** (`smtp.resend.com:465`, user `resend`, password = a Resend API key) so auth mail is sent from `noreply@majorcycle.com`. Free on the Supabase free tier; part of the Layer F0 de-Supabase-ification. See `architecture.md` §7.
+
 **Cycle** — In Major Cycle terminology, one complete drawdown-and-recovery loop: peak → trough → next peak.
 
 **Cycle Analysis** — The full output of `major_cycle.py` for a given ticker + params. See `CycleAnalysis` dataclass in `data-contracts.md`.
@@ -247,6 +249,8 @@
 **Tier Badge** — The visual pill displaying a rating tier with its semantic colour. See `design-system.md` §9.
 
 **Ticker** — A stock's exchange symbol. We use yfinance native format internally (`AAPL`, `BHP.AX`, `SHOP.TO`).
+
+**Token-Hash Email Flow** — The branded auth-email link pattern that keeps every link on `majorcycle.com`. Templates use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…&next=…`; the route `web/app/auth/confirm/route.ts` calls `supabase.auth.verifyOtp({ type, token_hash })` and redirects to `next`. Replaces the default `{{ .ConfirmationURL }}` (a `supabase.co/auth/v1/verify` link). See `architecture.md` §7, `design-system.md` §17.
 
 **Trial** — 7-day free trial period at signup. Card required upfront, auto-converts to paid subscription.
 

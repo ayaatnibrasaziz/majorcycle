@@ -301,12 +301,18 @@ console/DNS steps are owner-driven (see `plan-mode-auth-virtual-ladybug.md`).
 - [x] `/account/update-password` page (fixes the broken reset-flow 404)
 - [x] `getSiteURL()` helper + friendly auth-error copy (`web/lib/url.ts`,
       `web/lib/authErrors.ts`)
-- [ ] **Console (owner):** Google consent-screen branding (name/logo/domains) +
-      publish to Production; Search Console domain verification
-- [ ] **Console (owner):** Supabase custom SMTP → Resend, brand all 6 email
-      templates (token-hash links), Auth Site URL + redirect allow-list, Google
-      provider Authorized Client IDs
-- [ ] **Console (owner):** Resend domain verify + SPF/DKIM/DMARC in Cloudflare DNS
+- [x] **Console:** Google consent branding + Authorized JS origins + published to
+      Production; Client ID in Vercel (`NEXT_PUBLIC_GOOGLE_CLIENT_ID`) + `web/.env.local`
+- [x] **Console:** Supabase custom SMTP → Resend (`noreply@majorcycle.com`), Auth Site
+      URL (`https://www.majorcycle.com`) + redirect allow-list, Google provider
+      Authorized Client IDs
+- [x] **Console:** Resend domain `majorcycle.com` verified + SPF/DKIM/DMARC in Cloudflare
+- [x] All 6 auth email templates branded with token-hash links + a slim header
+      (transparent `email-icon.png` + Sora wordmark + navy gradient) — design-system.md §17
+- [ ] Brand the newer Supabase **notification** emails (password-changed, email-changed,
+      sign-in-method-linked/removed, MFA added/removed) + a `security@majorcycle.com`
+      contact inbox via **Cloudflare Email Routing** (free forward to owner Gmail)
+- [ ] Live end-to-end test: Google no-flash sign-in + branded reset-email delivery
 - [ ] `/methodology` — long-form content explaining Major Cycle (auto-generated draft, owner edits)
 - [ ] `/disclaimer` — full disclaimer page (ASIC-compliant template)
 - [ ] `/terms` — terms of service
