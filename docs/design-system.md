@@ -698,4 +698,47 @@ page title.
 
 ---
 
+## 17. Auth Email Design (Layer F0)
+
+The six Supabase auth emails (Confirm signup, Magic Link, Invite, Change email,
+Reset password, Reauthentication) are branded to match the product. Delivered via
+**Custom SMTP → Resend** from `noreply@majorcycle.com`. All six share one shell.
+
+**Header — slim hybrid (~72px), NOT a full banner.** *(An earlier full-width banner
+image was dropped after a design review: too tall — it pushed the CTA below the fold
+on mobile — and it baked the wordmark + tagline into a JPEG, which fails image-blocking
+and accessibility.)* The header row is:
+- **Background:** `linear-gradient(120deg,#010F2C 0%,#04214F 58%,#063A80 100%)` — the
+  brand banner's diagonal navy→blue — with a **solid `#04163E` fallback** set via
+  `bgcolor` + `background-color` (Outlook ignores CSS gradients and gets the solid).
+- **Accent:** `border-bottom: 3px solid #2E7DE8` (brand-bright).
+- **Mark:** the **floating transparent icon** `https://www.majorcycle.com/email-icon.png`
+  at `height:44px`. Source `reference/email-icon.png` (pristine, transparent); optimized
+  web copy `web/public/email-icon.png` (107×128, ~17KB). Transparent so it floats on the
+  gradient with no square/ghost — do **not** use the navy-square `logo.png` here (it
+  blends into the navy).
+- **Wordmark:** "MajorCycle" as **live HTML text in Sora** (never an image) — accessible,
+  survives image-blocking, on-brand.
+
+**Body.** White card (`#ffffff`, `border-radius:14px`, `overflow:hidden`), 32px pad:
+heading (`#0f172a`, 20px/700), intro (`#475569`, 14.5px), a **`#1E5CB3` CTA button**,
+a "paste this link" fallback (`#1E5CB3`, `word-break:break-all`), and a muted security
+note (`#94a3b8`). Reauthentication swaps the button for the OTP `{{ .Token }}` in a
+JetBrains-Mono code box (`letter-spacing:8px`, `#1A3A6E`).
+
+**Footer.** `© MajorCycle — Information only, not financial advice.` (compliance #12).
+
+**Fonts.** Each template opens with `<style>@import url('…Sora…');</style>` and every text
+element carries the Sora stack (`'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',
+Roboto,Helvetica,Arial,sans-serif`). Sora renders where web fonts are allowed (Apple
+Mail, iOS Mail); **Gmail/Outlook strip custom fonts** — a universal email limitation, not
+a bug — and fall back to the system sans.
+
+**Links.** All use the **token-hash** pattern → `https://www.majorcycle.com/auth/confirm?
+token_hash=…&type=…&next=…` (never `supabase.co`). Verified by `web/app/auth/confirm/
+route.ts`. Per-template `type`/`next` mapping and the Supabase-Monaco editing method are
+recorded in project memory; see `architecture.md` §7 for the auth-branding overview.
+
+---
+
 **End of design-system.md.**
