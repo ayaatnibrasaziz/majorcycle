@@ -309,9 +309,20 @@ console/DNS steps are owner-driven (see `plan-mode-auth-virtual-ladybug.md`).
 - [x] **Console:** Resend domain `majorcycle.com` verified + SPF/DKIM/DMARC in Cloudflare
 - [x] All 6 auth email templates branded with token-hash links + a slim header
       (transparent `email-icon.png` + Sora wordmark + navy gradient) — design-system.md §17
-- [ ] Brand the newer Supabase **notification** emails (password-changed, email-changed,
-      sign-in-method-linked/removed, MFA added/removed) + a `security@majorcycle.com`
-      contact inbox via **Cloudflare Email Routing** (free forward to owner Gmail)
+- [x] Branded the 7 Supabase **security notification** emails (password / email-address /
+      phone-number changed, sign-in-method linked/removed, MFA added/removed) — enabled +
+      same slim header, each with a "didn't do this? `security@majorcycle.com`" callout.
+      Edited per-template at `/auth/templates/<slug>` (two saves: toggle + content)
+- [x] Footer standardised across **all 13** templates to the grey cell
+      (`#f8fafc` + top border) — design-system.md §17
+- [x] `security@majorcycle.com` inbox via **Cloudflare Email Routing** (free): destination =
+      owner Gmail (verified), rule `security@ → Gmail` active, routing enabled (root MX →
+      `route1/2/3.mx.cloudflare.net`); Resend sending on the `send.` subdomain untouched
+- [x] Reply **as** `security@majorcycle.com` from Gmail via a **"Send mail as"** identity
+      relaying through **Resend SMTP** (`smtp.resend.com:465`) + "reply from same address"
+- [ ] **Branded reply/signature email template** (do next) — a professional, on-brand HTML
+      signature/template for replies sent from `security@majorcycle.com`, matching the
+      auth/security template look. Then:
 - [ ] Live end-to-end test: Google no-flash sign-in + branded reset-email delivery
 - [ ] `/methodology` — long-form content explaining Major Cycle (auto-generated draft, owner edits)
 - [ ] `/disclaimer` — full disclaimer page (ASIC-compliant template)

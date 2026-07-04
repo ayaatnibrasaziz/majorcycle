@@ -700,9 +700,11 @@ page title.
 
 ## 17. Auth Email Design (Layer F0)
 
-The six Supabase auth emails (Confirm signup, Magic Link, Invite, Change email,
-Reset password, Reauthentication) are branded to match the product. Delivered via
-**Custom SMTP → Resend** from `noreply@majorcycle.com`. All six share one shell.
+Thirteen Supabase emails are branded to one shell: the **six auth emails** (Confirm
+signup, Magic Link, Invite, Change email, Reset password, Reauthentication) **plus the
+seven "security" notification emails** (password / email-address / phone-number changed,
+sign-in-method linked/removed, MFA method added/removed). Delivered via **Custom SMTP →
+Resend** from `noreply@majorcycle.com`.
 
 **Header — slim hybrid (~72px), NOT a full banner.** *(An earlier full-width banner
 image was dropped after a design review: too tall — it pushed the CTA below the fold
@@ -727,6 +729,10 @@ note (`#94a3b8`). Reauthentication swaps the button for the OTP `{{ .Token }}` i
 JetBrains-Mono code box (`letter-spacing:8px`, `#1A3A6E`).
 
 **Footer.** `© MajorCycle — Information only, not financial advice.` (compliance #12).
+Standardised across **all 13 templates** (6 auth + 7 security): a **grey footer cell**
+`padding:18px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;` with the disclaimer
+`<p>` at `#94a3b8`, 12px, Sora. (Earlier the 6 auth footers were white with a `#eef2f7`
+top border and no fill; unified to the grey security-template style 2026-07-04.)
 
 **Fonts.** Each template opens with `<style>@import url('…Sora…');</style>` and every text
 element carries the Sora stack (`'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',
@@ -734,10 +740,25 @@ Roboto,Helvetica,Arial,sans-serif`). Sora renders where web fonts are allowed (A
 Mail, iOS Mail); **Gmail/Outlook strip custom fonts** — a universal email limitation, not
 a bug — and fall back to the system sans.
 
-**Links.** All use the **token-hash** pattern → `https://www.majorcycle.com/auth/confirm?
+**Links.** Auth templates use the **token-hash** pattern → `https://www.majorcycle.com/auth/confirm?
 token_hash=…&type=…&next=…` (never `supabase.co`). Verified by `web/app/auth/confirm/
 route.ts`. Per-template `type`/`next` mapping and the Supabase-Monaco editing method are
 recorded in project memory; see `architecture.md` §7 for the auth-branding overview.
+
+**Security notification emails (the 7).** Same header + grey footer, **no CTA/link** (they
+notify, not act): heading, a short plain-language message, and a **red "didn't do this?"
+callout** (`#fff5f5` box, `#9b2c2c` text) pointing to `security@majorcycle.com`. They're
+toggle-only in Supabase's Emails list — each has a real HTML editor only at its own
+`/auth/templates/<slug>` URL, with **two independent saves** (Configuration = the enable
+toggle; Content = subject + body). Available vars: `{{ .Email }}`, `{{ .Data }}`,
+`{{ .SiteURL }}`. `security@majorcycle.com` is a real inbox (Cloudflare Email Routing →
+owner Gmail; see `architecture.md` §7).
+
+**Reply/signature template (planned).** Owner replies to `security@majorcycle.com` go out
+from Gmail via a Resend-SMTP "Send mail as" identity. Next task: a professional **branded
+HTML reply signature** (same navy header mark + Sora + `#1E5CB3`/grey palette) so those
+human replies match the transactional emails. Lives as a Gmail signature/template, not a
+Supabase template.
 
 ---
 
