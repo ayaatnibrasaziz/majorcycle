@@ -8,9 +8,11 @@
   Gmail -> Resend SMTP (Cloudflare Email Routing receives; Resend sends).
 
   Brand: navy #1A3A6E / mid #1E5CB3 / bright #2E7DE8, Sora font (decisions
-  #25/#26/#27). Uses signature-logo.png — a 108x108, ~10KB optimized copy of the
+  #25/#26/#27). Uses signature-logo.png — a 160x160, ~18KB optimized copy of the
   navy square logo.png mark (the full 512px logo.png is ~384KB, too heavy for
-  Gmail's image proxy to render reliably in a signature). NOT the transparent
+  Gmail's image proxy to render reliably in a signature). Displayed at 64px. The
+  ?v=2 cache-buster on the URL forces Gmail's image proxy to re-fetch (it had
+  cached a 404 from the brief window while the asset was still deploying). NOT the transparent
   email-icon.png, which is built to float on the dark header and washes out on a
   white signature background.
 
@@ -46,12 +48,12 @@
         <td style="padding:0 0 14px 0;">
           <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;">
             <tr>
-              <td style="vertical-align:middle;padding:0 16px 0 0;">
-                <img src="https://www.majorcycle.com/signature-logo.png" width="54" height="54" alt="MajorCycle" style="display:block;width:54px;height:54px;border-radius:12px;" />
+              <td style="vertical-align:middle;padding:0 18px 0 0;">
+                <img src="https://www.majorcycle.com/signature-logo.png?v=2" width="64" height="64" alt="MajorCycle" style="display:block;width:64px;height:64px;border-radius:14px;" />
               </td>
-              <td style="vertical-align:middle;border-left:2px solid #2E7DE8;padding:0 0 0 16px;">
-                <div style="font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;font-weight:700;color:#1A3A6E;line-height:1.15;letter-spacing:0.2px;">MajorCycle</div>
-                <div style="font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;font-weight:600;color:#1E5CB3;line-height:1.4;padding-top:3px;">Security Team</div>
+              <td style="vertical-align:middle;border-left:2px solid #2E7DE8;padding:0 0 0 18px;">
+                <div style="font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:18px;font-weight:700;color:#1A3A6E;line-height:1.15;letter-spacing:0.2px;">MajorCycle</div>
+                <div style="font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12.5px;font-weight:600;color:#1E5CB3;line-height:1.4;padding-top:3px;">Security Team</div>
                 <div style="font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#475569;line-height:1.5;padding-top:7px;">
                   <a href="mailto:security@majorcycle.com" style="color:#1E5CB3;text-decoration:none;font-weight:600;">security@majorcycle.com</a>
                   <span style="color:#cbd5e1;">&nbsp;&bull;&nbsp;</span>
