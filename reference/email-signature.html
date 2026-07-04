@@ -7,6 +7,13 @@
   to the "Send mail as" identity security@majorcycle.com. Sending path is
   Gmail -> Resend SMTP (Cloudflare Email Routing receives; Resend sends).
 
+  INSTALL GOTCHA: copy the RENDERED signature (open this file in a browser and
+  select the block, OR copy it from a received email) into the Gmail signature
+  box. Do NOT copy it out of a Gmail *draft* created via the API/MCP — Gmail's
+  draft sanitizer strips external <img> tags, so the logo would be dropped.
+  Verified 2026-07-04: delivered as a real received email (via Resend) the logo
+  renders correctly in Gmail.
+
   Brand: navy #1A3A6E / mid #1E5CB3 / bright #2E7DE8, Sora font (decisions
   #25/#26/#27). Uses signature-logo.png — a 160x160, ~18KB optimized copy of the
   navy square logo.png mark (the full 512px logo.png is ~384KB, too heavy for
