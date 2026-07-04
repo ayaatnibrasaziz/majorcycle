@@ -74,6 +74,8 @@
 
 **Earnings Calendar** — A planned Phase 2 UI feature showing upcoming earnings dates across the universe. The underlying data (`next_earnings_date` per ticker) is already collected in Phase 1 via `t.calendar` from yfinance and stored in `stocks.next_earnings_date`.
 
+**Email Routing (Cloudflare)** — Free Cloudflare feature that **receives** mail for a domain and forwards it to a verified destination (no mailbox hosting). MajorCycle uses it for `security@majorcycle.com` → owner Gmail (root `majorcycle.com` MX → `route1/2/3.mx.cloudflare.net`). It cannot **send** — receiving-only — so it coexists with Resend (which sends on the `send.` subdomain). Owner replies go out via a Gmail **"Send mail as"** identity relaying through Resend SMTP. See `architecture.md` §7.
+
 **Earnings Growth YoY** — Year-over-year change in net earnings per share. Sourced from yfinance.
 
 **Enriched Data** — The extended dataset fetched per ticker beyond price bars and fundamentals: income statements (annual + quarterly), balance sheets, cashflow statements, earnings history, top institutional holders, insider transactions, analyst upgrades/downgrades, PE history, and company overview. Stored as JSONB columns in the `stocks` table. Fetched selectively by the smart refresh pipeline — only when the staleness check fires. See `EnrichedData` dataclass in `data-contracts.md` §2.
