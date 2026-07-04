@@ -754,11 +754,19 @@ toggle; Content = subject + body). Available vars: `{{ .Email }}`, `{{ .Data }}`
 `{{ .SiteURL }}`. `security@majorcycle.com` is a real inbox (Cloudflare Email Routing →
 owner Gmail; see `architecture.md` §7).
 
-**Reply/signature template (planned).** Owner replies to `security@majorcycle.com` go out
-from Gmail via a Resend-SMTP "Send mail as" identity. Next task: a professional **branded
-HTML reply signature** (same navy header mark + Sora + `#1E5CB3`/grey palette) so those
-human replies match the transactional emails. Lives as a Gmail signature/template, not a
-Supabase template.
+**Reply/signature template (built).** Owner replies to `security@majorcycle.com` go out
+from Gmail via a Resend-SMTP "Send mail as" identity. The branded HTML signature lives at
+`reference/email-signature.html` (source of truth): navy square mark (64px) + a `#2E7DE8`
+accent bar + "MajorCycle" (navy `#1A3A6E`, Sora) + "Security Team" subtitle + `security@` /
+`majorcycle.com` links + the grey "information only" disclaimer line. Gmail-safe (table +
+inline styles only; Sora falls back to system sans). **Mark:** a dedicated
+`web/public/signature-logo.png` (160px native, ~18KB, navy square) — **not** `logo.png`
+(512px/~384KB is too heavy for Gmail's image proxy and renders as a placeholder), and not
+the transparent `email-icon.png` (built for the dark header, washes out on white). It's a
+Gmail signature, **not** a Supabase template. **Install gotcha:** Gmail's API/MCP
+`create_draft` strips external `<img>`, so paste the *rendered* block (open the reference
+file in a browser, or copy from a received email) into Gmail → Settings → Signature; do not
+copy from a draft. Verified rendering in a real received email (via Resend).
 
 ---
 

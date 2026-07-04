@@ -320,14 +320,40 @@ console/DNS steps are owner-driven (see `plan-mode-auth-virtual-ladybug.md`).
       `route1/2/3.mx.cloudflare.net`); Resend sending on the `send.` subdomain untouched
 - [x] Reply **as** `security@majorcycle.com` from Gmail via a **"Send mail as"** identity
       relaying through **Resend SMTP** (`smtp.resend.com:465`) + "reply from same address"
-- [ ] **Branded reply/signature email template** (do next) — a professional, on-brand HTML
-      signature/template for replies sent from `security@majorcycle.com`, matching the
-      auth/security template look. Then:
-- [ ] Live end-to-end test: Google no-flash sign-in + branded reset-email delivery
+- [x] **Branded reply/signature email template** — on-brand HTML Gmail signature for
+      `security@majorcycle.com` replies (`reference/email-signature.html`); uses a new
+      lightweight `web/public/signature-logo.png` (108→160px, ~18KB navy square mark; the
+      full `logo.png` was too heavy for Gmail's image proxy). Verified rendering in a real
+      received email via Resend. **Gotcha:** Gmail's API/MCP `create_draft` strips external
+      `<img>`, so install by copying the *rendered* block, not from a draft.
+- [x] Live end-to-end test — Google no-flash (deployed `/login` bundle uses GIS
+      `signInWithIdToken`, old `supabase.co/authorize` redirect gone) + branded reset email
+      (from `noreply@majorcycle.com`, link `www.majorcycle.com/auth/confirm…`, lands on the
+      branded `/account/update-password`). **F0 auth-branding COMPLETE.**
+
+**F0.5 — Auth hardening & security pass (do next; full audit in
+`plan-mode-auth-virtual-ladybug.md`).** Live F0 testing + a full code + platform
+(Supabase/Vercel/Resend/Cloudflare MCP) security audit surfaced issues to fix before the
+subscription flow lands. One PR for the code (A–F), plus DB/Auth/DNS changes:
+- [ ] **(A, security)** Confine the password-recovery session — a reset link currently mints
+      a *full* session, so a user reaches `/results` before setting a password. Add an
+      `mc_pw_recovery` marker cookie in `auth/confirm`, gate it in `proxy.ts`, move
+      `update-password` to the clean `(public)` layout, clear on success.
+- [ ] **(B)** Sign-out — `web/app/auth/signout/route.ts` + a `SignOutButton` in the Sidebar
+- [ ] **(C)** Build `/disclaimer`, `/terms`, `/privacy` public pages + make `not-found.tsx`
+      auth-aware (logged-out → `/login`)
+- [ ] **(D)** Sanitize the `next` redirect param (open-redirect hardening)
+- [ ] **(E, HIGH)** Lock down the `profiles` UPDATE grant — a user can currently self-set
+      `subscription_status`/`stripe_*` from the browser (latent billing bypass). Column-level
+      GRANT migration + `(select auth.uid())` RLS-perf rewrite (advisor L)
+- [ ] **(F)** Security headers (`X-Frame-Options`, CSP report-only, nosniff, Referrer/
+      Permissions-Policy) in `next.config.ts` — only HSTS is set today
+- [ ] **(J)** Enable Supabase leaked-password protection (HaveIBeenPwned)
+- [ ] **(M)** Add covering indexes on 3 unindexed FKs (perf advisor)
+- [ ] **(O)** Tighten DMARC `p=none → p=quarantine` + `rua`/`ruf` to `security@` (Cloudflare)
+- [ ] Deferred (tracked): (K) move `pg_trgm` off `public`, (N) drop unused index, (G)
+      in-`analyze.py` auth check, (H) subscription/trial gating, (I) rate-limiting
 - [ ] `/methodology` — long-form content explaining Major Cycle (auto-generated draft, owner edits)
-- [ ] `/disclaimer` — full disclaimer page (ASIC-compliant template)
-- [ ] `/terms` — terms of service
-- [ ] `/privacy` — privacy policy
 - [ ] `/contact` — simple contact form (email via Resend)
 - [ ] `/pricing` — monthly/annual plans, region-aware currency
 - [ ] `/account` — profile, subscription status, cancel/upgrade
