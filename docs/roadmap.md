@@ -320,14 +320,34 @@ console/DNS steps are owner-driven (see `plan-mode-auth-virtual-ladybug.md`).
       `route1/2/3.mx.cloudflare.net`); Resend sending on the `send.` subdomain untouched
 - [x] Reply **as** `security@majorcycle.com` from Gmail via a **"Send mail as"** identity
       relaying through **Resend SMTP** (`smtp.resend.com:465`) + "reply from same address"
-- [ ] **Branded reply/signature email template** (do next) — a professional, on-brand HTML
-      signature/template for replies sent from `security@majorcycle.com`, matching the
-      auth/security template look. Then:
-- [ ] Live end-to-end test: Google no-flash sign-in + branded reset-email delivery
+- [x] **Branded reply/signature email template** — on-brand Gmail signature for replies from
+      `security@majorcycle.com` (`reference/email-signature.html` + `web/public/signature-logo.png`)
+- [x] Live end-to-end test: Google no-flash sign-in + branded reset-email delivery (both verified live)
+
+**F0.5 — Auth hardening & security pass (shipped + live-verified 2026-07-05, PR #61).**
+Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`.
+- [x] **Recovery-session confinement (HIGH):** a password-reset link no longer grants roam-the-app
+      access before a new password is set. `mc_pw_recovery` httpOnly marker (`auth/confirm`) + guard in
+      `web/proxy.ts`; `/account/update-password` moved to the `(public)` shell (no sidebar); marker
+      cleared by `/auth/recovery-done`. **Live-verified:** reset link → confined page → `/results`
+      bounces back.
+- [x] **Sign-out** — POST `/auth/signout` + `SignOutButton` in the sidebar (live-verified)
+- [x] **Open-redirect guard** — `safeNextPath()` in `web/lib/url.ts` (login/Google/callback/confirm)
+- [x] **`profiles` billing-column lockdown** — migration `20260705032433`: `REVOKE UPDATE` + column
+      `GRANT` (display_name/country/acknowledged_disclaimer_at only) so subscription/stripe columns are
+      client-immutable; RLS policies rewritten `(select auth.uid())`. Verified via column_privileges.
+- [x] **FK covering indexes** — migration `20260705032503` (advisor M); advisor WARNs cleared
+- [x] **Security headers** — `web/next.config.ts`: X-Frame-Options, nosniff, Referrer-Policy,
+      Permissions-Policy + CSP **report-only** (flip to enforcing is a tracked follow-up)
+- [x] **DMARC hardened** — `_dmarc` `p=none` → `p=reject` (strict alignment + rua/ruf reporting);
+      safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Verified live.
+- Declined/deferred: leaked-password protection (Supabase Pro-only — skipped for an info product);
+      "require current password" → build into the future `/account` change-password page (not the
+      recovery flow); K/N/G/H/I per plan.
 - [ ] `/methodology` — long-form content explaining Major Cycle (auto-generated draft, owner edits)
-- [ ] `/disclaimer` — full disclaimer page (ASIC-compliant template)
-- [ ] `/terms` — terms of service
-- [ ] `/privacy` — privacy policy
+- [x] `/disclaimer` — disclaimer page (baseline content, owner to review) — F0.5
+- [x] `/terms` — terms of service (baseline content, owner to review) — F0.5
+- [x] `/privacy` — privacy policy (baseline content, owner to review) — F0.5
 - [ ] `/contact` — simple contact form (email via Resend)
 - [ ] `/pricing` — monthly/annual plans, region-aware currency
 - [ ] `/account` — profile, subscription status, cancel/upgrade
