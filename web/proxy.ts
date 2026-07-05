@@ -13,6 +13,7 @@ const PUBLIC_PATHS = [
   '/terms',
   '/privacy',
   '/pricing',
+  '/contact',
   // Well-known URIs (RFC 8615) — e.g. /.well-known/security.txt. Must be publicly
   // reachable by security scanners/researchers without an auth redirect.
   '/.well-known',
