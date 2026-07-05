@@ -754,11 +754,14 @@ toggle; Content = subject + body). Available vars: `{{ .Email }}`, `{{ .Data }}`
 `{{ .SiteURL }}`. `security@majorcycle.com` is a real inbox (Cloudflare Email Routing →
 owner Gmail; see `architecture.md` §7).
 
-**Reply/signature template (planned).** Owner replies to `security@majorcycle.com` go out
-from Gmail via a Resend-SMTP "Send mail as" identity. Next task: a professional **branded
-HTML reply signature** (same navy header mark + Sora + `#1E5CB3`/grey palette) so those
-human replies match the transactional emails. Lives as a Gmail signature/template, not a
-Supabase template.
+**Reply/signature template (built).** Owner replies to `security@majorcycle.com` go out
+from Gmail via a Resend-SMTP "Send mail as" identity. The branded **HTML reply signature**
+(navy square mark + Sora + `#1E5CB3`/grey palette + "information only" disclaimer) lives at
+`reference/email-signature.html` with the logo at `web/public/signature-logo.png` (a ~18KB
+optimized copy — the full `logo.png` is too heavy for Gmail's image proxy). It's a Gmail
+signature (table + inline styles, Gmail-safe), not a Supabase template. **Install gotcha:**
+copy the RENDERED block (from a browser or a received email) — Gmail's draft sanitizer strips
+external `<img>` tags, so copying from an API-made draft drops the logo.
 
 ---
 

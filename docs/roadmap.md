@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers C/D/E built + live; Layer D & E AUDITED; Layer C reopened for a round-2 production-readiness re-audit.**
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layer F in progress.** Layers C/D/E built + live (D & E audited); **Layer F0 (auth branding) + F0.5 (auth hardening) shipped + live-verified 2026-07-05.** Remaining in Layer F: `/methodology`, `/contact`, `/pricing`, `/account`, Stripe subscription flow.
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -24,8 +24,8 @@
 - [x] Vercel (sign in via GitHub)
 - [x] Supabase (sign in via GitHub)
 - [x] Cloudflare (any email)
-- [ ] Stripe (defer to Phase 1 payment work)
-- [ ] Resend (defer to Phase 1 email work)
+- [ ] Stripe (defer to Phase 1 payment work — not yet built)
+- [x] Resend (domain `majorcycle.com` verified, sending live; auth email via Supabase custom SMTP → Resend)
 
 ### MCP servers to connect via Claude
 
@@ -474,13 +474,13 @@ Order of priority TBD based on user feedback. Candidate features:
    ↓
 ✅ Phase 1 Layer B: Frontend Foundation (auth, design system, layout)
    ↓
-🔁 Phase 1 Layer C: Stock Detail Tab    ← NOW (round-2 re-audit reopened)
+✅ Phase 1 Layer C: Stock Detail Tab     (built + live; round-2 production-readiness re-audit ongoing)
    ↓
 ✅ Phase 1 Layer D: Run Analysis Tab     (built + audited + live)
    ↓
 ✅ Phase 1 Layer E: Results Tab          (built + audited E1–E11 + live)
    ↓
-   Phase 1 Layer F: Static Pages + Subscription
+🔁 Phase 1 Layer F: Static Pages + Subscription  ← NOW (F0 auth branding + F0.5 auth hardening shipped + live-verified; next: /methodology, /contact, /pricing, /account, Stripe)
    ↓
    Phase 1 Layer G: SEO + Performance
    ↓

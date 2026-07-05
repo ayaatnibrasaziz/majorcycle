@@ -194,7 +194,7 @@ These were agreed during planning. Do not relitigate.
 | 3 | Backend | Hybrid — Vercel Python serverless + GitHub Actions cron |
 | 4 | Database & Auth | Supabase free tier |
 | 5 | Hosting | Vercel Hobby ($0) |
-| 6 | Domain registrar | Cloudflare (name TBD post-MCP setup) |
+| 6 | Domain registrar | Cloudflare — domain is `majorcycle.com` (live) |
 | 7 | Source control | GitHub |
 | 8 | Transactional email | Resend (3,000/mo free) |
 | 9 | Payments | Stripe (subscription with `trial_period_days=7`) |
