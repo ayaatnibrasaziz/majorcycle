@@ -13,6 +13,9 @@ const PUBLIC_PATHS = [
   '/terms',
   '/privacy',
   '/pricing',
+  // Well-known URIs (RFC 8615) — e.g. /.well-known/security.txt. Must be publicly
+  // reachable by security scanners/researchers without an auth redirect.
+  '/.well-known',
   // Public stock-analysis endpoint (Vercel Python fn). Stock Detail pages render
   // on the server and fetch their own /api/cycle WITHOUT the viewer's cookies;
   // if this were gated the internal fetch would be redirected to /login and the
