@@ -1,0 +1,6 @@
+# MajorCycle security contact (RFC 9116 — https://securitytxt.org)
+# If you believe you've found a security issue, please email us.
+Contact: mailto:security@majorcycle.com
+Expires: 2027-07-05T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://www.majorcycle.com/.well-known/security.txt
