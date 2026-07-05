@@ -1,10 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import {
-  PW_RECOVERY_COOKIE,
-  PW_RECOVERY_ALLOWED_PATHS,
-  userHasPassword,
-} from '@/lib/authRecovery';
+import { PW_RECOVERY_COOKIE, PW_RECOVERY_ALLOWED_PATHS } from '@/lib/authRecovery';
 
 const PUBLIC_PATHS = [
   '/login',
@@ -75,18 +71,19 @@ export async function proxy(request: NextRequest) {
 
   // Recovery-session confinement: a session that arrived via a password-reset
   // link carries the mc_pw_recovery marker (set in auth/confirm), whose value is
-  // the recovering user's id. Confine ONLY when the marker matches the current
-  // session's user — so a stale marker can never cage a different login — and only
-  // for accounts that actually have a password (a Google-only user has none to set
-  // and must not be trapped). Until the password is changed (clearing the marker
-  // via /auth/recovery-done) the session may only reach the password-set page +
-  // the auth helper routes. Placed BEFORE the login/signup redirect so a recovery
-  // session can't slip through to the app.
+  // the recovering user's id. Confine when the marker matches the current
+  // session's user — so a stale marker can never cage a *different* login (and a
+  // fresh login self-heals by clearing the marker) — until the password is changed
+  // (which clears the marker via /auth/recovery-done). A recovery session is a
+  // FULL session, so this must fire regardless of whether the account has a
+  // password: a Google-only account can still set one here (it converts the
+  // account) or leave via the page's "Cancel and return to sign in" escape hatch —
+  // letting it roam unconfined would be the very hole this guards against. Placed
+  // BEFORE the login/signup redirect so a recovery session can't slip through.
   const recoveryMarker = request.cookies.get(PW_RECOVERY_COOKIE);
   if (
     user &&
     recoveryMarker?.value === user.id &&
-    userHasPassword(user) &&
     !PW_RECOVERY_ALLOWED_PATHS.includes(pathname)
   ) {
     return NextResponse.redirect(new URL('/account/update-password', request.url));
