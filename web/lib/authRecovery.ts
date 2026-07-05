@@ -12,11 +12,9 @@
  * Binding the value to the user id (rather than a bare "1") means a stale marker
  * left over from another session/user can never confine a different login, and a
  * fresh login always self-heals (the login forms POST /auth/recovery-done). The
- * password-set page also carries an explicit "Cancel and sign out" escape hatch,
- * so a confined session can never become an inescapable loop.
+ * password-set page also carries an explicit "Cancel and return to sign in" escape
+ * hatch, so a confined session can never become an inescapable loop.
  */
-import type { User } from '@supabase/supabase-js';
-
 export const PW_RECOVERY_COOKIE = 'mc_pw_recovery';
 
 /**
@@ -57,15 +55,4 @@ export function recoveryCookieClearOptions() {
     maxAge: 0,
     expires: new Date(0),
   };
-}
-
-/**
- * Whether an account has a password (email identity). A Google-only account has
- * no password to set, so it must never be confined to the password-set page —
- * that would be an inescapable state for them. Defaults to `true` (confine) when
- * the provider metadata is missing, to stay strict for genuine email users.
- */
-export function userHasPassword(user: User): boolean {
-  const providers = (user.app_metadata?.providers ?? []) as string[];
-  return providers.length === 0 || providers.includes('email');
 }
