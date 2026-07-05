@@ -37,6 +37,9 @@ export function LoginForm() {
       setError(friendlyAuthError(authError.message));
       setLoading(false);
     } else {
+      // Clear any lingering recovery-confinement marker (httpOnly → server-side)
+      // so a stale marker can't trap this fresh login on the password-set page.
+      await fetch('/auth/recovery-done', { method: 'POST' }).catch(() => {});
       router.push(next);
       router.refresh();
     }

@@ -110,6 +110,26 @@ export function UpdatePasswordForm() {
           {loading ? 'Updating…' : 'Update password'}
         </Button>
       </form>
+
+      {/* Escape hatch — a recovery-confined session is restricted to this page, so
+          the ONLY way out is to end the session: a plain "back" link would just be
+          bounced here again by the confinement middleware. This native POST to
+          /auth/signout terminates the session + clears the recovery marker and
+          returns to /login. Labelled "return to sign in" (the user's mental model)
+          rather than "sign out" — under the hood it must sign out. Also the right
+          exit for a Google account that has no password to set here. */}
+      <form
+        action="/auth/signout"
+        method="post"
+        className="mt-7 pt-6 border-t border-[var(--border)] text-center"
+      >
+        <button
+          type="submit"
+          className="text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--brand-mid)] transition-colors"
+        >
+          Cancel and return to sign in
+        </button>
+      </form>
     </AuthCard>
   );
 }

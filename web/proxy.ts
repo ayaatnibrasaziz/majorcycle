@@ -1,6 +1,10 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { PW_RECOVERY_COOKIE, PW_RECOVERY_ALLOWED_PATHS } from '@/lib/authRecovery';
+import {
+  PW_RECOVERY_COOKIE,
+  PW_RECOVERY_ALLOWED_PATHS,
+  userHasPassword,
+} from '@/lib/authRecovery';
 
 const PUBLIC_PATHS = [
   '/login',
@@ -70,14 +74,19 @@ export async function proxy(request: NextRequest) {
   }
 
   // Recovery-session confinement: a session that arrived via a password-reset
-  // link carries the mc_pw_recovery marker (set in auth/confirm). Until the
-  // password is actually changed (which clears it via /auth/recovery-done), that
-  // session may only reach the password-set page + its two helper routes —
-  // everything else bounces back. Placed BEFORE the login/signup redirect so a
-  // recovery session can't slip through to the app.
+  // link carries the mc_pw_recovery marker (set in auth/confirm), whose value is
+  // the recovering user's id. Confine ONLY when the marker matches the current
+  // session's user — so a stale marker can never cage a different login — and only
+  // for accounts that actually have a password (a Google-only user has none to set
+  // and must not be trapped). Until the password is changed (clearing the marker
+  // via /auth/recovery-done) the session may only reach the password-set page +
+  // the auth helper routes. Placed BEFORE the login/signup redirect so a recovery
+  // session can't slip through to the app.
+  const recoveryMarker = request.cookies.get(PW_RECOVERY_COOKIE);
   if (
     user &&
-    request.cookies.get(PW_RECOVERY_COOKIE) &&
+    recoveryMarker?.value === user.id &&
+    userHasPassword(user) &&
     !PW_RECOVERY_ALLOWED_PATHS.includes(pathname)
   ) {
     return NextResponse.redirect(new URL('/account/update-password', request.url));

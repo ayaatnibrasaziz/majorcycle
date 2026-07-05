@@ -44,6 +44,54 @@ jobs:
       - name: Build
         run: pnpm build
 
+  e2e:
+    name: Auth E2E (Playwright)
+    runs-on: ubuntu-latest
+    # Boots a real Next dev server, so it needs the (public) Supabase URL + anon
+    # key. They live as repo Variables — until they're set this job SKIPS cleanly
+    # instead of failing, so CI never goes red on missing config. Add repo
+    # Variables NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY to enable.
+    # (Optional: repo Secrets E2E_EMAIL + E2E_PASSWORD unlock the logged-in tests.)
+    if: ${{ vars.NEXT_PUBLIC_SUPABASE_URL != '' }}
+    defaults:
+      run:
+        working-directory: web
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: '11'
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run auth E2E
+        run: pnpm e2e
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: web/playwright-report/
+          retention-days: 7
+
   backend:
     name: Python checks
     runs-on: ubuntu-latest

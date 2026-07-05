@@ -48,3 +48,8 @@ next-env.d.ts
 # live site, per owner). Hard-gated to 404 in production anyway. Re-run locally
 # (DEV_BYPASS_AUTH=true) at /dev-fixtures to eyeball thin/null-data rendering.
 app/dev-fixtures/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
