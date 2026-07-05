@@ -139,6 +139,14 @@ test.describe('authenticated flows', () => {
     const cookies = await page.context().cookies();
     expect(cookies.find((c) => c.name === 'mc_pw_recovery')).toBeUndefined();
 
+    // First-login onboarding/disclaimer modal (decision #23) may overlay the app
+    // for a brand-new test account — acknowledge it so the sidebar is clickable.
+    const ack = page.locator('#ack');
+    if (await ack.isVisible().catch(() => false)) {
+      await ack.click();
+      await page.getByRole('button', { name: /continue to majorcycle/i }).click();
+    }
+
     // Sign out via the sidebar control.
     await page.getByRole('button', { name: /sign out/i }).click();
     await expect(page).toHaveURL(/\/login/);
