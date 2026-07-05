@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { PW_RECOVERY_COOKIE, PW_RECOVERY_ALLOWED_PATHS } from '@/lib/authRecovery';
 
 const PUBLIC_PATHS = [
   '/login',
@@ -63,6 +64,20 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('next', pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Recovery-session confinement: a session that arrived via a password-reset
+  // link carries the mc_pw_recovery marker (set in auth/confirm). Until the
+  // password is actually changed (which clears it via /auth/recovery-done), that
+  // session may only reach the password-set page + its two helper routes —
+  // everything else bounces back. Placed BEFORE the login/signup redirect so a
+  // recovery session can't slip through to the app.
+  if (
+    user &&
+    request.cookies.get(PW_RECOVERY_COOKIE) &&
+    !PW_RECOVERY_ALLOWED_PATHS.includes(pathname)
+  ) {
+    return NextResponse.redirect(new URL('/account/update-password', request.url));
   }
 
   if (user && (pathname === '/login' || pathname === '/signup')) {
