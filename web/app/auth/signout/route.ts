@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { PW_RECOVERY_COOKIE } from '@/lib/authRecovery';
+import { PW_RECOVERY_COOKIE, recoveryCookieClearOptions } from '@/lib/authRecovery';
 
 /**
  * Signs the user out and returns them to the login page. POST-only (invoked from
@@ -14,6 +14,6 @@ export async function POST(request: NextRequest) {
   await supabase.auth.signOut();
 
   const res = NextResponse.redirect(new URL('/login', request.url), { status: 303 });
-  res.cookies.set(PW_RECOVERY_COOKIE, '', { path: '/', maxAge: 0 });
+  res.cookies.set(PW_RECOVERY_COOKIE, '', recoveryCookieClearOptions());
   return res;
 }

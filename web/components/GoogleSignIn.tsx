@@ -92,6 +92,11 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
         onError(friendlyAuthError(error.message));
         return;
       }
+      // A fresh interactive login is never a confined recovery session — clear any
+      // lingering marker (httpOnly, so it must be cleared server-side) before we
+      // navigate, otherwise a stale marker would trap this login on the
+      // password-set page. No-op when there is no marker.
+      await fetch('/auth/recovery-done', { method: 'POST' }).catch(() => {});
       router.push(safeNextPath(next));
       router.refresh();
     },
