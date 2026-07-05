@@ -1,6 +1,27 @@
 import Link from 'next/link';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
-export default function NotFound() {
+/**
+ * Auth-aware 404. A logged-out visitor who hits a bad/unbuilt URL is sent back to
+ * sign-in (the old hard-coded "Back to Results" bounced them straight into a
+ * /login redirect); a logged-in user still gets "Back to Results". Server
+ * component so it can read the session.
+ */
+export default async function NotFound() {
+  let signedIn = false;
+  try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    signedIn = !!user;
+  } catch {
+    signedIn = false;
+  }
+
+  const href = signedIn ? '/results' : '/login';
+  const label = signedIn ? 'Back to Results' : 'Back to sign in';
+
   return (
     <div className="min-h-screen bg-[var(--bg-page)] flex items-center justify-center p-6">
       <div className="text-center max-w-sm">
@@ -17,10 +38,10 @@ export default function NotFound() {
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
         <Link
-          href="/results"
+          href={href}
           className="inline-flex items-center gap-1.5 bg-gradient-to-br from-[var(--brand-mid)] to-[var(--brand-deep)] text-white text-[12px] font-semibold px-4 py-2 rounded-[var(--radius-sm)] shadow-[0_2px_8px_rgba(30,92,179,.25)] hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(30,92,179,.35)] transition-all"
         >
-          Back to Results
+          {label}
         </Link>
       </div>
     </div>

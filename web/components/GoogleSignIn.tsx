@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { GoogleButton } from '@/components/GoogleButton';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
-import { getSiteURL } from '@/lib/url';
+import { getSiteURL, safeNextPath } from '@/lib/url';
 
 // ── Minimal typings for the Google Identity Services (GIS) client ────────────
 interface CredentialResponse {
@@ -92,7 +92,7 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
         onError(friendlyAuthError(error.message));
         return;
       }
-      router.push(next);
+      router.push(safeNextPath(next));
       router.refresh();
     },
     [next, onError, router]
@@ -104,7 +104,7 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${getSiteURL()}/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: `${getSiteURL()}/auth/callback?next=${encodeURIComponent(safeNextPath(next))}`,
       },
     });
     if (error) onError(friendlyAuthError(error.message));

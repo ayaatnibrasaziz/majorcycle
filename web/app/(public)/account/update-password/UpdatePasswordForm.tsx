@@ -36,6 +36,9 @@ export function UpdatePasswordForm() {
       setError(friendlyAuthError(authError.message));
       setLoading(false);
     } else {
+      // Clear the recovery-confinement marker (no-op for a normal logged-in user
+      // who has none) so the now-full session can leave this page for the app.
+      await fetch('/auth/recovery-done', { method: 'POST' }).catch(() => {});
       setDone(true);
       setTimeout(() => {
         router.push('/results');

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarChart3, Compass, ListPlus, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SignOutButton } from '@/components/SignOutButton';
 
 interface NavItem {
   label: string;
@@ -126,6 +127,7 @@ export function Sidebar({ subscriptionStatus }: SidebarProps) {
                 : 'Free Trial'}
           </div>
         </div>
+        <SignOutButton />
       </div>
     </aside>
   );
