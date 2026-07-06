@@ -141,16 +141,34 @@ test.describe('authenticated flows', () => {
     const cookies = await page.context().cookies();
     expect(cookies.find((c) => c.name === 'mc_pw_recovery')).toBeUndefined();
 
-    // First-login onboarding/disclaimer modal (decision #23) may overlay the app
-    // for a brand-new test account — acknowledge it so the sidebar is clickable.
-    const ack = page.locator('#ack');
-    if (await ack.isVisible().catch(() => false)) {
-      await ack.click();
-      await page.getByRole('button', { name: /continue to majorcycle/i }).click();
+    // First-login onboarding/disclaimer modal (decision #23) overlays the app for a
+    // brand-new test account. While it's open Radix marks the rest of the page
+    // aria-hidden, so the sidebar (incl. Sign out) is unreachable until it's
+    // dismissed. It's a hydrated client component (Radix checkbox + a state-gated
+    // Continue button), so on a dev server the first interaction can land before
+    // hydration — poll the (idempotent) check until it actually enables Continue.
+    const dialog = page.getByRole('dialog', { name: /welcome to majorcycle/i });
+    // The modal mounts only after a client-side profile check, so it isn't in the
+    // DOM the instant /results loads — wait for it to appear (or confirm it never
+    // will, for an already-acknowledged account) before deciding to dismiss it.
+    await dialog.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+    if (await dialog.isVisible().catch(() => false)) {
+      const ack = page.getByRole('checkbox', { name: /i understand and acknowledge/i });
+      const proceed = page.getByRole('button', { name: /continue to majorcycle/i });
+      await expect(async () => {
+        await ack.check(); // idempotent — safe to retry until hydration lands
+        await expect(proceed).toBeEnabled({ timeout: 1000 });
+      }).toPass({ timeout: 15000 });
+      await proceed.click();
+      await expect(dialog).toBeHidden();
     }
 
-    // Sign out via the sidebar control.
-    await page.getByRole('button', { name: /sign out/i }).click();
+    // Sign out via the sidebar control. It sits in the bottom-left, where the
+    // Next.js dev-server overlay portal also renders and intercepts pointer events
+    // (a dev-only artifact, absent in production). Activate it by keyboard instead —
+    // this mirrors a keyboard user and works pre-hydration (the form is a native POST).
+    const signOut = page.getByRole('button', { name: /sign out/i });
+    await signOut.press('Enter');
     await expect(page).toHaveURL(/\/login/);
 
     // Session gone → protected route re-gates.

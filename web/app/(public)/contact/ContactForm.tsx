@@ -35,10 +35,10 @@ export function ContactForm() {
         <p className="text-[13.5px] text-[var(--text-primary)] leading-relaxed">
           The contact form isn&apos;t connected yet. Please email us directly at{' '}
           <a
-            href="mailto:security@majorcycle.com"
+            href="mailto:support@majorcycle.com"
             className="font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-bright)] transition-colors"
           >
-            security@majorcycle.com
+            support@majorcycle.com
           </a>
           .
         </p>

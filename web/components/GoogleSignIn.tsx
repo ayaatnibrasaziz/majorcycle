@@ -62,10 +62,36 @@ async function makeNonce(): Promise<{ raw: string; hashed: string }> {
 }
 
 /**
+ * Silence only Google Identity Services' benign FedCM rejection logs. When One
+ * Tap runs without an eligible Google session (a signed-out visitor, or an
+ * automated/preview browser), GIS emits
+ * `[GSI_LOGGER]: FedCM get() rejects with NetworkError/AbortError` as a
+ * console error even though sign-in degrades gracefully to the rendered button.
+ * The SDK gives callers no way to disable this, so we drop exactly those lines
+ * and forward every other console.error untouched — real errors (including other
+ * GSI/config errors) still surface. Installed once, client-side only.
+ */
+let gsiLogFilterInstalled = false;
+function installGsiLogFilter() {
+  if (gsiLogFilterInstalled || typeof window === 'undefined') return;
+  gsiLogFilterInstalled = true;
+  const original = console.error.bind(console);
+  console.error = (...args: unknown[]) => {
+    const benign = args.some(
+      (a) =>
+        typeof a === 'string' &&
+        a.includes('[GSI_LOGGER]') &&
+        a.includes('FedCM get() rejects')
+    );
+    if (!benign) original(...args);
+  };
+}
+
+/**
  * Google sign-in that avoids the `*.supabase.co` address-bar flash.
  *
  * When `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is set it uses Google Identity Services
- * (official button + One Tap) → `signInWithIdToken`, so Google returns the ID
+ * (the official rendered button) → `signInWithIdToken`, so Google returns the ID
  * token directly to this page and the browser never travels to supabase.co.
  *
  * When that env var is missing (e.g. before the console step is done) it falls
@@ -77,6 +103,7 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
   const clientId = process.env['NEXT_PUBLIC_GOOGLE_CLIENT_ID'];
   const buttonRef = useRef<HTMLDivElement>(null);
   const rawNonceRef = useRef<string>('');
+  const initializedRef = useRef(false);
   const [scriptReady, setScriptReady] = useState(false);
 
   // Exchange Google's ID token with Supabase — no redirect to supabase.co.
@@ -103,6 +130,18 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
     [next, onError, router]
   );
 
+  // Keep the latest handler + label in refs so the init effect can run exactly
+  // once (when the GIS script is ready) rather than re-running on every parent
+  // re-render — repeated re-initialization is what aborts in-flight FedCM
+  // requests and produces the AbortError spam. Synced in an effect (not during
+  // render) per the react-hooks/refs rule; runs before the init effect below.
+  const handleCredentialRef = useRef(handleCredential);
+  const labelRef = useRef(label);
+  useEffect(() => {
+    handleCredentialRef.current = handleCredential;
+    labelRef.current = label;
+  });
+
   // Fallback only — classic redirect flow when no client ID is configured yet.
   const handleRedirectFallback = useCallback(async () => {
     const supabase = createBrowserClient();
@@ -116,16 +155,24 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
   }, [next, onError]);
 
   useEffect(() => {
-    if (!clientId || !scriptReady || !buttonRef.current || !window.google) return;
+    if (!clientId) return;
+    // Filter GIS's benign FedCM rejection logs before One Tap can emit any.
+    installGsiLogFilter();
+    if (!scriptReady || !buttonRef.current || !window.google || initializedRef.current) {
+      return;
+    }
     let cancelled = false;
     (async () => {
       const { raw, hashed } = await makeNonce();
-      if (cancelled || !buttonRef.current || !window.google) return;
+      if (cancelled || initializedRef.current || !buttonRef.current || !window.google) return;
+      initializedRef.current = true;
       rawNonceRef.current = raw;
       const api = window.google.accounts.id;
       api.initialize({
         client_id: clientId,
-        callback: handleCredential,
+        // Stable wrapper reads the latest handler via ref, so parent re-renders
+        // never re-initialize GIS (re-init is what aborts FedCM → AbortError).
+        callback: (response) => handleCredentialRef.current(response),
         nonce: hashed,
         use_fedcm_for_prompt: true,
         cancel_on_tap_outside: true,
@@ -135,17 +182,20 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
         type: 'standard',
         theme: 'outline',
         size: 'large',
-        text: label,
+        text: labelRef.current,
         shape: 'pill',
         logo_alignment: 'center',
         width,
       });
+      // One Tap. Under FedCM (now mandatory) this rejects when there is no
+      // eligible Google session; it degrades to the button above, and the benign
+      // GSI_LOGGER line it emits is dropped by installGsiLogFilter().
       api.prompt();
     })();
     return () => {
       cancelled = true;
     };
-  }, [clientId, scriptReady, handleCredential, label]);
+  }, [clientId, scriptReady]);
 
   // No client ID yet → safe fallback button (redirect flow, keeps sign-in live).
   if (!clientId) {

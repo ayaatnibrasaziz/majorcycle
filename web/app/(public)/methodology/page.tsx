@@ -154,6 +154,23 @@ export default function MethodologyPage() {
           >
             ← Back to sign in
           </Link>
+          <p className="text-[12px] text-[var(--text-muted)] leading-relaxed">
+            Questions about how this works? Email{' '}
+            <a
+              href="mailto:support@majorcycle.com"
+              className="font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-bright)] transition-colors"
+            >
+              support@majorcycle.com
+            </a>{' '}
+            or use our{' '}
+            <Link
+              href="/contact"
+              className="font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-bright)] transition-colors"
+            >
+              contact form
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </article>
