@@ -344,17 +344,47 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
 - Declined/deferred: leaked-password protection (Supabase Pro-only — skipped for an info product);
       "require current password" → build into the future `/account` change-password page (not the
       recovery flow); K/N/G/H/I per plan.
-- [ ] `/methodology` — long-form content explaining Major Cycle (auto-generated draft, owner edits)
+- [x] `/methodology` — public plain-English explainer (no formulas; owner to refine copy) — F1
 - [x] `/disclaimer` — disclaimer page (baseline content, owner to review) — F0.5
 - [x] `/terms` — terms of service (baseline content, owner to review) — F0.5
 - [x] `/privacy` — privacy policy (baseline content, owner to review) — F0.5
-- [ ] `/contact` — simple contact form (email via Resend)
+- [x] `/contact` — contact form → Resend, brand-styled email, `support@` fallback — F1
 - [ ] `/pricing` — monthly/annual plans, region-aware currency
 - [ ] `/account` — profile, subscription status, cancel/upgrade
 - [ ] Stripe Checkout integration
 - [ ] Stripe webhook handler with all subscription events
 - [ ] 3-day grace period flow on payment failure
 - [ ] Trial-ending email reminders (day 5, day 7)
+
+**F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
+- [x] `/methodology` — public, pre-sign-up plain-English explainer (cycle position, financial
+      health, valuation, overall rating + the five compliant tiers, **no formulas**); disclaimer
+      above the fold; CTA into the trial. `web/app/(public)/methodology/page.tsx`.
+- [x] `/contact` — form → Resend via a server action (`useActionState`); honeypot, input
+      validation, `reply-to` = sender; **brand-styled HTML email** (navy header + signature,
+      user input HTML-escaped); fails safe to an "email `support@`" fallback when the key is
+      absent. `web/app/(public)/contact/{page,ContactForm,actions}.tsx`.
+- [x] **Support email:** all public pages point to `support@majorcycle.com` (contact, terms,
+      disclaimer, privacy, methodology). `support@` set up as a second Cloudflare Email-Routing
+      inbox + Gmail "Send mail as" (Resend SMTP) with its own branded signature + a
+      `MajorCycle/Support` label filter — verified live via the Resend + Gmail MCPs.
+- [x] **Contact form live:** `RESEND_API_KEY` added to the Vercel project env (+ redeploy); the
+      form now sends and the fallback disappears. (`RESEND_FROM_EMAIL` was already present; a
+      Resend key is domain-scoped, so the same key serves every `@majorcycle.com` sender.)
+- [x] **CI Auth E2E enabled** — repo Variables `NEXT_PUBLIC_SUPABASE_URL/ANON_KEY` + Secrets
+      `E2E_EMAIL/E2E_PASSWORD` set, so the Playwright job runs (was skipping). Suite is now 20
+      tests incl. the logged-in flow (dedicated email/password test account).
+- [x] **e2e robustness** (`web/e2e/auth.spec.ts`) — wait for the async-mounted onboarding modal,
+      poll the idempotent ack-checkbox through hydration, and keyboard-activate Sign out (the
+      Next.js dev-overlay portal intercepts pointer events at that corner in dev).
+- [x] **Sign-out a11y** — `aria-hidden` on the decorative `LogOut` icon so the button exposes a
+      proper accessible name (`web/components/SignOutButton.tsx`).
+- [x] **Google One Tap + clean console** — `GoogleSignIn.tsx` initialises GIS exactly once
+      (latest handler/label held in refs → no re-init `AbortError` churn), keeps One Tap
+      (`api.prompt()`), and installs a narrowly-scoped filter that drops **only** the benign
+      `[GSI_LOGGER] … FedCM get() rejects` lines (emitted when there's no eligible Google
+      session) while forwarding every other `console.error`. CSP already allows the FedCM
+      endpoints (`connect-src`/`frame-src` include `accounts.google.com`).
 
 **Verification:**
 - Full signup → trial → paid conversion flow tested with Stripe test mode

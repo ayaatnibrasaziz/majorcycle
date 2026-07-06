@@ -13,7 +13,7 @@ export function SignOutButton() {
         type="submit"
         className="flex w-full items-center justify-center gap-[7px] rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-[12px] font-medium text-[var(--text-secondary)] transition-colors hover:border-[#bfdbfe] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)]"
       >
-        <LogOut className="h-[14px] w-[14px]" strokeWidth={1.8} />
+        <LogOut className="h-[14px] w-[14px]" strokeWidth={1.8} aria-hidden="true" />
         Sign out
       </button>
     </form>

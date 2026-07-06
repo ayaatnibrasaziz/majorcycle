@@ -754,11 +754,15 @@ toggle; Content = subject + body). Available vars: `{{ .Email }}`, `{{ .Data }}`
 `{{ .SiteURL }}`. `security@majorcycle.com` is a real inbox (Cloudflare Email Routing →
 owner Gmail; see `architecture.md` §7).
 
-**Reply/signature template (planned).** Owner replies to `security@majorcycle.com` go out
-from Gmail via a Resend-SMTP "Send mail as" identity. Next task: a professional **branded
-HTML reply signature** (same navy header mark + Sora + `#1E5CB3`/grey palette) so those
-human replies match the transactional emails. Lives as a Gmail signature/template, not a
-Supabase template.
+**Reply/signature templates (built).** Owner replies from `security@majorcycle.com` and
+`support@majorcycle.com` go out from Gmail via Resend-SMTP "Send mail as" identities, each
+with its own **branded HTML signature** (navy header mark + Sora + `#1E5CB3`/grey palette,
+role line "Security Team" / "Support Team") so human replies match the transactional emails.
+They live as per-identity Gmail signatures (`reference/email-signature.html` +
+`web/public/signature-logo.png`), not Supabase templates. Both inboxes forward to owner Gmail
+via Cloudflare Email Routing and are filed under `MajorCycle/Security` and `MajorCycle/Support`
+labels. The `/contact` form's own inbound notification email reuses the same palette (navy
+header + signature footer) with all user-supplied fields HTML-escaped.
 
 ---
 
