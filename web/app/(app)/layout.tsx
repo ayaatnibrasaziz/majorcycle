@@ -32,18 +32,19 @@ export default async function AppLayout({
   }
 
   const supabase = await createServerSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Local JWT verification (asymmetric key + cached JWKS) — no Auth-server
+  // round-trip. The middleware already refreshed the token for this request.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims ?? null;
 
-  if (!user) {
+  if (!claims) {
     redirect('/login');
   }
 
   const { data: profile } = await supabase
     .from('profiles')
     .select('subscription_status, acknowledged_disclaimer_at')
-    .eq('id', user.id)
+    .eq('id', claims.sub)
     .single();
 
   const needsOnboarding = profile && !profile.acknowledged_disclaimer_at;
@@ -63,7 +64,7 @@ export default async function AppLayout({
         </div>
         <AnalysisProvider>{children}</AnalysisProvider>
       </main>
-      {needsOnboarding && <OnboardingModal userId={user.id} />}
+      {needsOnboarding && <OnboardingModal userId={claims.sub} />}
     </div>
   );
 }

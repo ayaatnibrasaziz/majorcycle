@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
-import { useRouter } from 'next/navigation';
 import { GoogleButton } from '@/components/GoogleButton';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
@@ -99,7 +98,6 @@ function installGsiLogFilter() {
  * reintroduces the brief flash only until the client ID is configured.
  */
 export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' }: GoogleSignInProps) {
-  const router = useRouter();
   const clientId = process.env['NEXT_PUBLIC_GOOGLE_CLIENT_ID'];
   const buttonRef = useRef<HTMLDivElement>(null);
   const rawNonceRef = useRef<string>('');
@@ -124,10 +122,14 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
       // navigate, otherwise a stale marker would trap this login on the
       // password-set page. No-op when there is no marker.
       await fetch('/auth/recovery-done', { method: 'POST' }).catch(() => {});
-      router.push(safeNextPath(next));
-      router.refresh();
+      // Hard navigation (not router.push) so the just-written auth cookies are
+      // sent with the request for `next`. A client-side transition can race
+      // cookie propagation and momentarily bounce through /login before the new
+      // session is visible to middleware — the "goes back to sign-in, then logs
+      // in" delay. A full document load makes middleware see the session first try.
+      window.location.assign(safeNextPath(next));
     },
-    [next, onError, router]
+    [next, onError]
   );
 
   // Keep the latest handler + label in refs so the init effect can run exactly

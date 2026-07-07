@@ -55,16 +55,21 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() verifies the session JWT LOCALLY (WebCrypto + cached JWKS) because
+  // the project uses an asymmetric signing key — no Auth-server round-trip per
+  // request, unlike getUser(). It still refreshes an expired token and persists
+  // the new cookies via the setAll callback above, so it must run immediately
+  // after createServerClient with no code in between (per Supabase's proxy guide).
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const claims = claimsData?.claims ?? null;
+  const userId = claims?.sub ?? null;
 
   const pathname = request.nextUrl.pathname;
   const isPublicPath = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + '/')
   );
 
-  if (!user && !isPublicPath) {
+  if (!userId && !isPublicPath) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('next', pathname);
     return NextResponse.redirect(loginUrl);
@@ -83,14 +88,14 @@ export async function proxy(request: NextRequest) {
   // BEFORE the login/signup redirect so a recovery session can't slip through.
   const recoveryMarker = request.cookies.get(PW_RECOVERY_COOKIE);
   if (
-    user &&
-    recoveryMarker?.value === user.id &&
+    userId &&
+    recoveryMarker?.value === userId &&
     !PW_RECOVERY_ALLOWED_PATHS.includes(pathname)
   ) {
     return NextResponse.redirect(new URL('/account/update-password', request.url));
   }
 
-  if (user && (pathname === '/login' || pathname === '/signup')) {
+  if (userId && (pathname === '/login' || pathname === '/signup')) {
     return NextResponse.redirect(new URL('/results', request.url));
   }
 

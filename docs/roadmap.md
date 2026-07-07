@@ -386,6 +386,36 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
       session) while forwarding every other `console.error`. CSP already allows the FedCM
       endpoints (`connect-src`/`frame-src` include `accounts.google.com`).
 
+**F1 email-branding follow-ups.**
+- [x] **Unify the contact-form email with the transactional brand** (— F1). Extracted a shared
+      wrapper `web/lib/email/brandEmail.ts` (slim gradient header `#010F2C→#063A80` + `email-icon.png`
+      + Sora wordmark + grey `#f8fafc` disclaimer footer — design-system.md §17); `/contact`
+      (`actions.ts`) now renders through it via `renderBrandEmail()`, replacing the old flat `#1A3A6E`
+      header. Table + inline-style only (Gmail/Outlook-safe), gradient has a solid `#04163E` fallback.
+      Owner reviewed the before/after markup in-chat. Future app-sent emails reuse the same wrapper.
+- [ ] **Deliverability / trust polish (BIMI + workflow audit).** The "verified badge + logo" the
+      owner sees on Cloudflare mail = **BIMI** (avatar logo) + a **VMC/CMC** paid cert (the blue
+      check). Needs: DMARC enforced (already `p=reject` ✅) + `default._bimi.majorcycle.com` TXT →
+      an **SVG Tiny-PS** logo; the blue check additionally needs a VMC/CMC from DigiCert/Entrust
+      (~US$1k+/yr, requires a registered trademark). Decide BIMI-logo-now vs defer-paid-cert. Also
+      audit every outbound touchpoint for gaps: From-name consistency, footer disclaimer, plain-text
+      part, `List-Unsubscribe` on any bulk mail, and logo rendering across Gmail/Apple/Outlook.
+      (Email-hosting review done: staying on the free Cloudflare Routing + Resend + Gmail send-as
+      stack — Workspace/private hosting not worth it pre-revenue for a solo owner.)
+
+**F1 sign-in performance.**
+- [x] **Cut auth round-trips + fix the Google/One-Tap bounce** (— F1). Middleware (`proxy.ts`) and
+      the app layout (`(app)/layout.tsx`) now verify the session with `getClaims()` (local WebCrypto
+      + cached JWKS — the project already uses an ES256 asymmetric signing key) instead of `getUser()`,
+      which had made an Auth-server round-trip on **every** request (twice per protected page). After
+      an id-token / password sign-in the forms now do a hard `window.location.assign(next)` instead of
+      `router.push()+refresh()`, so the freshly-set cookies are sent with the request and middleware
+      sees the session first try — eliminating the "goes back to sign-in, waits, then logs in" bounce.
+      Added `<link rel="preconnect">` to Google GIS + the Supabase origin on the auth pages to warm the
+      TLS handshake. Auth e2e suite 20/20 (incl. login→results→signout→re-gate). Files: `proxy.ts`,
+      `(app)/layout.tsx`, `components/GoogleSignIn.tsx`, `(public)/login/LoginForm.tsx`,
+      `(public)/layout.tsx`.
+
 **Verification:**
 - Full signup → trial → paid conversion flow tested with Stripe test mode
 - Payment failure → grace period → hard lock tested

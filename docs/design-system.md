@@ -761,8 +761,11 @@ role line "Security Team" / "Support Team") so human replies match the transacti
 They live as per-identity Gmail signatures (`reference/email-signature.html` +
 `web/public/signature-logo.png`), not Supabase templates. Both inboxes forward to owner Gmail
 via Cloudflare Email Routing and are filed under `MajorCycle/Security` and `MajorCycle/Support`
-labels. The `/contact` form's own inbound notification email reuses the same palette (navy
-header + signature footer) with all user-supplied fields HTML-escaped.
+labels. The `/contact` form's own inbound notification email is rendered through the shared
+brand wrapper `web/lib/email/brandEmail.ts` (`renderBrandEmail()`) — the same gradient header
+(`#010F2C→#063A80`, solid `#04163E` fallback) + floating `email-icon.png` + Sora wordmark + grey
+`#f8fafc` disclaimer footer as the transactional/auth emails — with all user-supplied fields
+HTML-escaped. That wrapper is the single source of chrome for any future app-sent HTML email.
 
 ---
 
