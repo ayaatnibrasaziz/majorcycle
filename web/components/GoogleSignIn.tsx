@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
+import { Loader2 } from 'lucide-react';
 import { GoogleButton } from '@/components/GoogleButton';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
@@ -18,6 +19,7 @@ interface GoogleIdApi {
     nonce?: string;
     use_fedcm_for_prompt?: boolean;
     cancel_on_tap_outside?: boolean;
+    itp_support?: boolean;
   }): void;
   renderButton(
     parent: HTMLElement,
@@ -103,10 +105,15 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
   const rawNonceRef = useRef<string>('');
   const initializedRef = useRef(false);
   const [scriptReady, setScriptReady] = useState(false);
+  // True from the moment a Google credential arrives (One Tap or the button) until
+  // the redirect fires — drives a "Signing you in…" state so the token-exchange
+  // wait doesn't read as an idle sign-in page (the mobile "back to sign-in" gap).
+  const [signingIn, setSigningIn] = useState(false);
 
   // Exchange Google's ID token with Supabase — no redirect to supabase.co.
   const handleCredential = useCallback(
     async (response: CredentialResponse) => {
+      setSigningIn(true);
       const supabase = createBrowserClient();
       const { error } = await supabase.auth.signInWithIdToken({
         provider: 'google',
@@ -114,6 +121,7 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
         nonce: rawNonceRef.current,
       });
       if (error) {
+        setSigningIn(false);
         onError(friendlyAuthError(error.message));
         return;
       }
@@ -178,6 +186,10 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
         nonce: hashed,
         use_fedcm_for_prompt: true,
         cancel_on_tap_outside: true,
+        // Enables Google's "upgraded" One Tap UX on Intelligent Tracking
+        // Prevention browsers (Safari, incl. iOS), where One Tap is otherwise
+        // suppressed. Non-FedCM browsers use this path; FedCM ones ignore it.
+        itp_support: true,
       });
       const width = Math.max(240, Math.min(buttonRef.current.offsetWidth || 400, 400));
       api.renderButton(buttonRef.current, {
@@ -220,7 +232,20 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
       {/* Google renders its official button into this container. It lives in a
           cross-origin iframe, so it can't be custom-styled — width is matched
           to the container for mobile (375px) responsiveness. */}
-      <div ref={buttonRef} className="flex justify-center min-h-[44px]" aria-busy={!scriptReady} />
+      <div
+        ref={buttonRef}
+        className={`justify-center min-h-[44px] ${signingIn ? 'hidden' : 'flex'}`}
+        aria-busy={!scriptReady}
+      />
+      {signingIn && (
+        <div
+          role="status"
+          className="flex items-center justify-center gap-2 min-h-[44px] text-[13px] font-medium text-[var(--text-secondary)]"
+        >
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+          Signing you in…
+        </div>
+      )}
     </>
   );
 }
