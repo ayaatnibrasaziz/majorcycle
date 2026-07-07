@@ -61,8 +61,7 @@ export async function sendContact(
   // matches the Supabase auth templates (gradient header + icon + disclaimer
   // footer); plain text stays as the fallback for non-HTML clients.
   const bodyHtml = `              <p style="margin:0 0 14px;font-size:13px;color:#475569;line-height:1.5;"><strong style="color:#0f1923;">From:</strong> ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;</p>
-              <div style="font-size:14px;line-height:1.65;white-space:pre-wrap;color:#0f1923;">${escapeHtml(message)}</div>
-              <p style="margin:18px 0 0;padding-top:14px;border-top:1px solid #e2e8f0;font-size:11.5px;color:#94a3b8;line-height:1.5;">Reply directly to this email &mdash; it goes straight to ${escapeHtml(name)}. Sent via the majorcycle.com contact form.</p>`;
+              <div style="font-size:14px;line-height:1.65;white-space:pre-wrap;color:#0f1923;">${escapeHtml(message)}</div>`;
   const html = renderBrandEmail({
     heading: 'New contact message',
     bodyHtml,

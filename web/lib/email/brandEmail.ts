@@ -33,7 +33,6 @@ export interface BrandEmailOptions {
 
 /** Render a full, Gmail/Outlook-safe HTML email in the MajorCycle brand chrome. */
 export function renderBrandEmail({ heading, bodyHtml, preheader }: BrandEmailOptions): string {
-  const year = new Date().getUTCFullYear();
   return `<!DOCTYPE html>
 <html lang="en">
 <body style="margin:0;padding:0;background:#eef2f7;">
@@ -68,8 +67,7 @@ ${bodyHtml}
           <tr>
             <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 28px;">
               <div style="font-family:${FONT_STACK};font-size:11px;color:#94a3b8;line-height:1.5;">
-                MajorCycle provides educational information only &mdash; not financial advice.
-                <br />&copy; ${year} MajorCycle &middot; <a href="${SITE}" style="color:#1E5CB3;text-decoration:none;">majorcycle.com</a>
+                &copy; MajorCycle provides educational information only &mdash; not financial advice.
               </div>
             </td>
           </tr>
