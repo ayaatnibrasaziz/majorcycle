@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
 import { AuthCard } from '@/components/AuthCard';
 import { AuthDivider } from '@/components/AuthDivider';
@@ -15,7 +15,6 @@ import { friendlyAuthError } from '@/lib/authErrors';
 import { safeNextPath } from '@/lib/url';
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const next = safeNextPath(searchParams.get('next'));
 
@@ -40,8 +39,10 @@ export function LoginForm() {
       // Clear any lingering recovery-confinement marker (httpOnly → server-side)
       // so a stale marker can't trap this fresh login on the password-set page.
       await fetch('/auth/recovery-done', { method: 'POST' }).catch(() => {});
-      router.push(next);
-      router.refresh();
+      // Hard navigation (not router.push) so the freshly-set auth cookies are
+      // sent with the request for `next`; a client transition can race cookie
+      // propagation and bounce through /login before the session is visible.
+      window.location.assign(next);
     }
   }
 

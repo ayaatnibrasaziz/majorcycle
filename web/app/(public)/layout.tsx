@@ -1,6 +1,12 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
+// Origin of the Supabase project, derived from the public URL — used to warm the
+// TLS connection before the auth token exchange fires (see preconnect below).
+const supabaseOrigin = process.env['NEXT_PUBLIC_SUPABASE_URL']
+  ? new URL(process.env['NEXT_PUBLIC_SUPABASE_URL']).origin
+  : null;
+
 export default function PublicLayout({
   children,
 }: {
@@ -8,6 +14,13 @@ export default function PublicLayout({
 }) {
   return (
     <div className="relative min-h-screen bg-[var(--bg-page)] flex flex-col">
+      {/* Warm the connections the sign-in flow needs before it clicks: Google
+          Identity Services (the button + One Tap) and the Supabase Auth endpoint
+          (token exchange). Shaves the TLS handshake off the critical path. */}
+      <link rel="preconnect" href="https://accounts.google.com" />
+      {supabaseOrigin && (
+        <link rel="preconnect" href={supabaseOrigin} crossOrigin="anonymous" />
+      )}
       {/* Subtle background texture — fine grid + soft radial highlight (financial terminal feel) */}
       <div
         aria-hidden="true"
