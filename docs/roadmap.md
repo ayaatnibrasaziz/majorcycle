@@ -393,15 +393,18 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
       (`actions.ts`) now renders through it via `renderBrandEmail()`, replacing the old flat `#1A3A6E`
       header. Table + inline-style only (Gmail/Outlook-safe), gradient has a solid `#04163E` fallback.
       Owner reviewed the before/after markup in-chat. Future app-sent emails reuse the same wrapper.
-- [ ] **Deliverability / trust polish (BIMI + workflow audit).** The "verified badge + logo" the
-      owner sees on Cloudflare mail = **BIMI** (avatar logo) + a **VMC/CMC** paid cert (the blue
-      check). Needs: DMARC enforced (already `p=reject` ✅) + `default._bimi.majorcycle.com` TXT →
-      an **SVG Tiny-PS** logo; the blue check additionally needs a VMC/CMC from DigiCert/Entrust
-      (~US$1k+/yr, requires a registered trademark). Decide BIMI-logo-now vs defer-paid-cert. Also
-      audit every outbound touchpoint for gaps: From-name consistency, footer disclaimer, plain-text
-      part, `List-Unsubscribe` on any bulk mail, and logo rendering across Gmail/Apple/Outlook.
-      (Email-hosting review done: staying on the free Cloudflare Routing + Resend + Gmail send-as
-      stack — Workspace/private hosting not worth it pre-revenue for a solo owner.)
+      Tweaks (owner review): dropped the "reply directly…" line; footer is one `©`-prefixed disclaimer
+      line. **Sender changed to `support@majorcycle.com`** (was `noreply@`) via `CONTACT_FROM_EMAIL`,
+      since these are messages you actually reply to (reply-to stays the submitter). (PRs #69, #70+.)
+- [x] **Sender profile image / BIMI — DROPPED (owner decision 2026-07-08).** The "logo next to the
+      sender in the recipient's inbox" = BIMI (one domain-wide logo). Not worth it now: **Gmail** needs a
+      paid **VMC** (~US$1k+/yr + a registered trademark) to show it (Apple Mail/Yahoo are free), and it
+      requires a simplified ≤32KB **SVG Tiny-PS** (the owner's 1.7MB traced `reference/email-logo.svg`
+      is too large/complex). Revisit only with a trademark + revenue. **Email-hosting review done:**
+      staying on the free Cloudflare Routing + Resend + Gmail send-as stack (Workspace/private hosting
+      not worth it pre-revenue). **Resend Return-Path verified aligned** (custom `send.majorcycle.com`
+      bounce subdomain + DKIM `d=majorcycle.com`) → no "via resend". DMARC aggregate reports arriving =
+      healthy (`p=reject` working).
 
 **F1 sign-in performance.**
 - [x] **Cut auth round-trips + fix the Google/One-Tap bounce** (— F1). Middleware (`proxy.ts`) and
@@ -414,7 +417,14 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
       Added `<link rel="preconnect">` to Google GIS + the Supabase origin on the auth pages to warm the
       TLS handshake. Auth e2e suite 20/20 (incl. login→results→signout→re-gate). Files: `proxy.ts`,
       `(app)/layout.tsx`, `components/GoogleSignIn.tsx`, `(public)/login/LoginForm.tsx`,
-      `(public)/layout.tsx`.
+      `(public)/layout.tsx`. (PR #69.)
+- [x] **iOS One Tap + "Signing you in…" polish** (— F1, PR #70). Added `itp_support:true` to the GIS
+      init so One Tap surfaces on Safari/iOS (ITP browsers otherwise suppress it); added a
+      "Signing you in…" state (lucide `Loader2`) shown the moment a Google credential arrives (One Tap
+      or button) until the redirect, so the token-exchange wait no longer reads as an idle sign-in page.
+      **Owner live-verified 2026-07-08:** email + Google sign-in fast, One Tap popup shows for a
+      non-cooled-down session, console clean. (A "skipped" One Tap moment on the owner's device was
+      Google's post-dismissal cooldown, not a defect — confirmed via the GIS moment API.)
 
 **Verification:**
 - Full signup → trial → paid conversion flow tested with Stripe test mode

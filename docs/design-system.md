@@ -765,7 +765,9 @@ labels. The `/contact` form's own inbound notification email is rendered through
 brand wrapper `web/lib/email/brandEmail.ts` (`renderBrandEmail()`) — the same gradient header
 (`#010F2C→#063A80`, solid `#04163E` fallback) + floating `email-icon.png` + Sora wordmark + grey
 `#f8fafc` disclaimer footer as the transactional/auth emails — with all user-supplied fields
-HTML-escaped. That wrapper is the single source of chrome for any future app-sent HTML email.
+HTML-escaped. It sends **from `support@majorcycle.com`** (via `CONTACT_FROM_EMAIL`, not `noreply@` —
+these are messages the owner replies to) with **reply-to = the submitter**, delivered to the `support@`
+inbox. That wrapper is the single source of chrome for any future app-sent HTML email.
 
 ---
 

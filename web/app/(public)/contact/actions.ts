@@ -5,7 +5,10 @@ import { renderBrandEmail } from '@/lib/email/brandEmail';
 /** Where contact-form submissions are emailed. Defaults to the live support@
  *  inbox (Cloudflare Email Routing → owner Gmail), overridable via env. */
 const CONTACT_TO = process.env.CONTACT_TO_EMAIL || 'support@majorcycle.com';
-const CONTACT_FROM = process.env.RESEND_FROM_EMAIL || 'MajorCycle <noreply@majorcycle.com>';
+/** Sender for the contact-form notification. From support@ (a real, monitored
+ *  inbox) rather than noreply@, since these are messages you actually reply to;
+ *  reply-to is still the submitter, so hitting Reply reaches them. */
+const CONTACT_FROM = process.env.CONTACT_FROM_EMAIL || 'MajorCycle <support@majorcycle.com>';
 
 /** Escape user-supplied text before it is interpolated into the HTML email body,
  *  so a submitted message can never inject markup or links into the inbox. */
