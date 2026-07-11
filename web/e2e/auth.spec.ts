@@ -13,7 +13,7 @@ import { test, expect } from '@playwright/test';
  * with a dedicated test account without hard-coding secrets.
  */
 
-const PROTECTED_ROUTES = ['/results', '/run', '/stocks', '/request'];
+const PROTECTED_ROUTES = ['/results', '/run', '/stocks', '/request', '/account'];
 const BUILT_PUBLIC_PAGES = [
   '/login',
   '/signup',
@@ -162,6 +162,20 @@ test.describe('authenticated flows', () => {
       await proceed.click();
       await expect(dialog).toBeHidden();
     }
+
+    // Account hub renders for a logged-in user (F2). Assert the page and its
+    // core cards mount — the profile heading, subscription card, and either the
+    // password form or the Google-only notice (both render a "Password" heading).
+    await page.goto('/account');
+    await expect(page).toHaveURL(/\/account/);
+    // The visible page title lives in the app Header (topbar); the page's own h1
+    // is sr-only for the document outline, so assert it's attached, not visible.
+    await expect(page.getByRole('heading', { name: /^account$/i })).toBeAttached();
+    await expect(page.getByRole('heading', { name: /^profile$/i })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /^subscription$/i })
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^password$/i })).toBeVisible();
 
     // Sign out via the sidebar control. It sits in the bottom-left, where the
     // Next.js dev-server overlay portal also renders and intercepts pointer events

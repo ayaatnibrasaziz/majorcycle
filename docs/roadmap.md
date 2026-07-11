@@ -350,7 +350,48 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
 - [x] `/privacy` — privacy policy (baseline content, owner to review) — F0.5
 - [x] `/contact` — contact form → Resend, brand-styled email, `support@` fallback — F1
 - [ ] `/pricing` — monthly/annual plans, region-aware currency
-- [ ] `/account` — profile, subscription status, cancel/upgrade
+- [~] **`/account` — F2, PLAN APPROVED 2026-07-09** (detailed runbook in
+      `~/.claude/plans/plan-mode-auth-virtual-ladybug.md`). Three parts: **(A) core** — edit
+      `display_name` + full-country dropdown (read-only once subscribed, since Stripe currency is fixed
+      per subscription), read-only subscription placeholder, change-password with **current-password re-auth**
+      (Google-only accounts see "you sign in with Google"); **(B) delete account** — **soft-delete + 30-day
+      grace** (not immediate hard-delete, so a hijacked session/mistake is recoverable): `deletion_scheduled_at`
+      col (service-role-only) + branded "scheduled/deleted" emails via `renderBrandEmail` + reactivation gate in
+      `(app)/layout` + a `CRON_SECRET`-guarded Vercel-cron purge route; **needs a migration** to change
+      `universe_log.added_by_user` FK to `ON DELETE SET NULL` (currently NO ACTION → would block deletion);
+      Stripe-cancel-on-delete is a stub wired in F3; **(C) refer-a-friend** — "invite a friend" card → a
+      dedicated branded Resend email that **includes the referrer's name** (not the generic Supabase invite
+      template), `referrals` table + ~10/day/user rate-limit + honeypot (anti-abuse), rewards/tracking deferred.
+      Verified against the live DB (grants, FK rules, `handle_new_user` trigger). No further Supabase email-template
+      work needed (all branded in F0; deletion has no Supabase template → we send our own).
+  - [x] **Part A (core) — BUILT + LIVE-VERIFIED 2026-07-11 (awaiting owner sign-off; not yet merged).**
+        New: `web/app/(app)/account/page.tsx` (server; `getUser` for email + identity-provider detection,
+        loads the profile), `web/components/account/{ProfileForm,SubscriptionCard,PasswordForm}.tsx`,
+        `web/lib/countries.ts` (full ISO-3166 list; stores the alpha-2 **code**, `countryName()` helper).
+        Edited: `web/components/Sidebar.tsx` (Account nav link in the bottom block). ProfileForm writes only
+        `display_name`+`country` via the browser client (allowed by the F0.5 column grant); country locks when
+        `subscription_status ∈ {active,trialing,past_due}`. PasswordForm re-auths with the current password
+        (`signInWithPassword`) before `updateUser` — the fresh sign-in also makes the user "recently logged in",
+        so the change succeeds whether or not Supabase's *require-reauthentication* setting is on. The branded
+        "password changed" security email fires **only if** `[auth.email.notification.password_changed]` is
+        **enabled** in the project (opt-in, NOT on by default — must be enabled in the Supabase dashboard for the
+        UI's "we've emailed you to confirm" copy to be truthful). Supabase enforces **no password history**: it
+        only rejects reusing the *current* password, so a user can later change back to an earlier password.
+        Google-only accounts get a "you sign in with Google" notice instead. **Verified:** typecheck / lint /
+        build green; **e2e 24/24** — new `web/e2e/account.spec.ts` exercises the REAL page against a real
+        session (profile save writes to the DB + persists across reload; password form rejects a mismatch and a
+        wrong current password without changing anything). **2026-07-11 follow-up:** live-verified the real route
+        end-to-end in the **Claude Browser preview** by signing in with the test account — profile save,
+        country-lock (temporarily flipped `subscription_status`→`trialing` then reverted), and both password
+        guards, all watched live. The session-injection trick is still documented in `coding-standards.md` §15,
+        but signing in with the test account inside the preview is the primary method now (headless Playwright /
+        session-injection render nothing in the watched preview pane — that was why an earlier check appeared
+        blank). **UI consistency pass:** the account page + its three cards were refactored onto the shared
+        `.card` / `.card-header` / `.card-title` (uppercase) / `.card-body` system, and the page `h1` made
+        `sr-only` — the visible page title comes from the app Header/topbar (matching Results / Request a Ticker);
+        it previously rendered a **duplicate** visible "Account" title. Mobile at 375px inherits the **known
+        pre-existing shell overflow deferred to Layer H** (fixed sidebar) — the account cards themselves stack
+        cleanly. **Parts B + C not started.**
 - [ ] Stripe Checkout integration
 - [ ] Stripe webhook handler with all subscription events
 - [ ] 3-day grace period flow on payment failure

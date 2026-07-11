@@ -109,6 +109,14 @@ export function StockPage({ ticker }: { ticker: string }) {
 }
 ```
 
+### App-Page Chrome & Cards (shared — don't re-create per page)
+
+Authenticated pages under `web/app/(app)/` inherit chrome. Match it exactly:
+
+- **Page title comes from the Header.** `components/Header.tsx` renders the visible title + subtitle keyed by pathname (`PAGE_TITLES`). A page's own `<h1>` must be **`sr-only`** (document outline / screen readers only) — never a second visible title. Pattern: Results, Request a Ticker. *(F2's account page first shipped a duplicate visible "Account" heading + subtitle on top of the Header's — fixed 2026-07-11 by making the h1 `sr-only`.)*
+- **Disclaimer strip is layout-level.** `(app)/layout.tsx` renders the "educational only — not financial advice" strip above every page. Don't add your own.
+- **Use the shared card classes.** Section/settings cards use `.card` / `.card-header` / `.card-title` (uppercase 12px) / `.card-body` from `globals.css` (visual parity with `reference/original-design.html`) — **not** ad-hoc `rounded-[var(--radius)] border … p-5` boxes. This keeps every card identical to the rest of the terminal (the F2 account cards were migrated onto `.card` on 2026-07-11 for exactly this reason).
+
 ### Type Safety
 
 - Never use `any`. If you genuinely need an escape hatch, use `unknown` and narrow.
@@ -475,6 +483,93 @@ Every task ends with the relevant command(s) and shown output:
 | Schema change | Apply migration locally + run app | no broken queries |
 
 Never report "done" without showing the relevant verification output.
+
+---
+
+## 15. Previewing & Verifying Authenticated Pages Locally
+
+Pages under `app/(app)/` are gated twice: the Edge middleware (`web/proxy.ts`) redirects an
+unauthenticated request to `/login`, and pages that call `supabase.auth.getUser()` (e.g.
+`/account`) additionally redirect if there's no session. So "just open it in the preview" doesn't
+work for a logged-in page. Use the method that fits what you're verifying — in order of fidelity:
+
+### A. `DEV_BYPASS_AUTH` — the simplest bypass, but **broken for the middleware on Next 16**
+
+`web/proxy.ts` and `app/(app)/layout.tsx` both honour `DEV_BYPASS_AUTH=true` (guarded by
+`NODE_ENV !== 'production'`, so it can never fire in prod). Historically you'd set it in
+`web/.env.local`, run the dev server, and open the page.
+
+- **⚠️ Gotcha (Next 16):** `proxy.ts` is the renamed **middleware**, which runs in the **Edge
+  runtime**. Non-`NEXT_PUBLIC_` vars from `.env.local` are **not** exposed there — `process.env.DEV_BYPASS_AUTH`
+  reads `undefined` in the middleware, so the gate still redirects (the Node-runtime layout *does*
+  see it, but the middleware blocks first). Verified 2026-07-11. So this flag alone no longer lets
+  you reach a gated page. It also only helps for pages that **don't** call `getUser()` (which still
+  redirects with no session).
+- **⚠️ The auto-mode safety classifier blocks writing `*_BYPASS_*` to `.env`** unless the user has
+  explicitly asked to bypass auth — treat it as needing explicit owner sign-off.
+- If you do change `proxy.ts` for a bypass, **revert it byte-for-byte** and confirm `git diff web/proxy.ts`
+  is empty before finishing. Turbopack also inlines a stale middleware bundle — `rm -rf web/.next`
+  to force a clean recompile after env changes.
+
+### B. `/dev-fixtures` gallery — component states, no auth
+
+`web/app/dev-fixtures/page.tsx` (gitignored, 404 in prod) renders components in isolation with mock
+props — the right tool for eyeballing **null/edge states** and every variant of a component side by
+side. It does **not** show the real page composition, real data, or the app shell.
+
+### C. Session injection — render the **real** gated page in Claude preview (no auth weakened)
+
+To see the actual route (real shell + real DB data) in the preview browser, give the browser a real
+session instead of weakening any gate:
+
+1. A throwaway Node script uses the app's own `@supabase/ssr` `createServerClient` with a
+   cookie-recorder + `signInWithPassword({ E2E_EMAIL, E2E_PASSWORD })` (reads `.env.local`; the
+   dedicated `e2e@majorcycle.com` test account) to capture the exact `sb-<ref>-auth-token`
+   cookie(s) — same encoding/chunking the app uses.
+2. Serve them to the browser via a **middleware-excluded path** — copy the captured cookies to
+   `web/public/_mc-cookies.svg` (the `proxy.ts` matcher excludes `.svg$`, so it's fetchable without
+   a session, and the token stays out of the transcript).
+3. In the preview browser (already on the localhost origin), `fetch('/_mc-cookies.svg')` and set each
+   cookie: `document.cookie = name + '=' + encodeURIComponent(value) + '; path=/; SameSite=Lax'`
+   (**must `encodeURIComponent`** — Next URL-encodes cookie values on the wire and base64 contains
+   `+ / =`; `@supabase/ssr` cookies are not `httpOnly`, so `document.cookie` works). Then navigate to
+   the page — real middleware + real `getUser()` accept it.
+4. **Clean up:** delete the throwaway script, the cookies JSON, and `public/_mc-cookies.svg`.
+5. **Gotchas:** the auto-mode classifier blocks minting/writing a live token to a file ("credential
+   materialization") without explicit owner sign-off; after `signOut()` the access-token JWT stays
+   valid for a short window then dies; a broad `preview_click` selector can hit the Sidebar **Sign
+   out** button and end the session — click precisely.
+
+### D. Playwright — the **most robust + secure** way to verify authenticated interactions
+
+For functional checks (a real DB write, form validation, gated flows), prefer the project's
+Playwright suite (`web/e2e/`, run with `pnpm e2e`). It reads `E2E_EMAIL/E2E_PASSWORD` from
+`.env.local` **itself** (you never handle the password), logs in through the real UI flow against a
+real server with **middleware enforced** (`DEV_BYPASS_AUTH` unset), and can screenshot to the
+gitignored `test-results/`. `e2e/account.spec.ts` is the reference example (real profile save +
+persistence, password-guard checks). When asserting an error message, target the text
+(`getByText`), not `getByRole('alert')` — Next's route-announcer also carries `role="alert"`.
+**Never perform a *successful* password change against the shared test account** (it rotates
+`E2E_PASSWORD` and breaks CI) — verify only the guard rails (mismatch, wrong current password).
+
+### E. Sign in with the test account **in the Claude Browser preview** — to *watch* it live
+
+Methods C and D render **nothing in the preview pane the owner is watching** — Playwright and session
+injection both drive a *headless* browser, so a check done that way looks blank from the owner's side
+(this is exactly why an F2 check appeared empty on 2026-07-11). For an **owner-visible** walkthrough of
+a gated page:
+
+1. `preview_start` the `web` dev server (opens the Browser pane at `localhost:3000`).
+2. Navigate to `/login` and pre-fill the **email** with the test account (`e2e@majorcycle.com`) — an
+   email is not a credential. **Claude cannot type the password** (a hard safety rule, even on a test
+   account), so the **owner types the password once** in the preview and clicks Sign in.
+3. The real session cookie now lives in the Browser pane, so Claude drives everything else (navigate,
+   click, `form_input`, `read_page`, screenshots) on the real page with **middleware enforced** — no
+   credential handling. Use the Supabase MCP (`execute_sql`) to confirm writes or to stage state (e.g. a
+   temporary `subscription_status` to exercise the country-lock, reverted afterwards).
+
+Use **E** to *show* a flow working live; use **D (Playwright)** for repeatable/CI functional assertions.
+The single manual step (owner types the password) is unavoidable and by design.
 
 ---
 

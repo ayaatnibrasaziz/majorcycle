@@ -889,7 +889,9 @@ split_events (
 ```
 
 Written **only by `analytics/cron/daily_refresh.py`**. On detecting a split (via the
-provider's `df.attrs['recent_split_events']` = `[{date, ratio}]`) it records a
+provider's `df.attrs['recent_split_events']` = `[{date, ratio}]`, which drops spurious
+near-1.0 ratios via the `_MIN_SPLIT_DEVIATION = 0.10` sanity floor — see architecture.md
+§Tier 1 and the SPGI 1.057 case) it records a
 `pending` row, re-pulls the full `max` history, then **verifies** the price
 discontinuity is gone (`_verify_split_resolved`): resolved → `status='resolved'` and
 it **stops re-pulling**; still broken after 30 days → `status='failed'`. This is the

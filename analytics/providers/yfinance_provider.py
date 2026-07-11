@@ -30,6 +30,16 @@ _RETRY_BACKOFF_BASE = 2
 _MIN_BARS = 280  # lookback(252) + pivot_bars(5)*2 + buffer
 _DOWNLOAD_PERIOD = "max"
 
+# Sanity floor for split detection. A real stock split is never within a few
+# percent of 1.0 (the smallest genuine ones we see — e.g. FDX 1.241, HON 0.5 —
+# are well clear of it). yfinance occasionally emits a tiny "Stock Splits" value
+# that isn't a real corporate action (e.g. SPGI 1.057 on 2026-07-01). Recording
+# one creates a split_events row the resolver can NEVER clear: its ±20% cliff-match
+# tolerance (1/ratio ≈ 0.95 for a 1.057 ratio) overlaps ordinary daily volatility,
+# so it perpetually "matches" a normal down-day and churns 'pending' until it ages
+# out of the 1-month detection window. Ignore these near-1.0 ratios at the source.
+_MIN_SPLIT_DEVIATION = 0.10
+
 
 def _safe(v: Any) -> Optional[float]:
     try:
@@ -525,12 +535,19 @@ class YFinanceProvider(DataProvider):
             if "Stock Splits" in df.columns:
                 sp = df["Stock Splits"].fillna(0)
                 for d in df.index[sp != 0]:
-                    iso = d.strftime("%Y-%m-%d")
-                    split_dates.append(iso)
                     # The "Stock Splits" value is the split ratio (0.3333 = 1-for-3
                     # reverse; 2.0 = 2-for-1 forward). Surfaced so the daily refresh can
                     # record + verify the split (C-R9), not just trigger a re-pull.
-                    split_events.append({"date": iso, "ratio": float(sp[d])})
+                    ratio = float(sp[d])
+                    # Ignore spurious near-1.0 "splits" (see _MIN_SPLIT_DEVIATION) —
+                    # a genuine split is never this close to 1.0, and recording one
+                    # leaves an un-resolvable 'pending' row. Skip it from BOTH the
+                    # re-pull trigger and the recorded events.
+                    if abs(ratio - 1.0) < _MIN_SPLIT_DEVIATION:
+                        continue
+                    iso = d.strftime("%Y-%m-%d")
+                    split_dates.append(iso)
+                    split_events.append({"date": iso, "ratio": ratio})
             df = df[["Open", "High", "Low", "Close", "Volume"]]
             # Drop glitch bars with a non-positive close. yfinance occasionally
             # serves a lone $0.00 close surrounded by normal prices (e.g. ENB.TO

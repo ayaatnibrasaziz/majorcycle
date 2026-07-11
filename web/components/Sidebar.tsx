@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Compass, ListPlus, Play } from 'lucide-react';
+import { BarChart3, Compass, ListPlus, Play, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SignOutButton } from '@/components/SignOutButton';
 
@@ -110,9 +110,16 @@ export function Sidebar({ subscriptionStatus }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Bottom: subscription badge */}
+      {/* Bottom: account link + subscription badge */}
       <div className="px-2 py-3 border-t border-[var(--border)] flex-shrink-0">
-        <div className="bg-gradient-to-br from-[var(--brand-light)] to-[#dbeafe] border border-[#bfdbfe] rounded-[var(--radius-sm)] px-3 py-2 text-[10px]">
+        <NavLink
+          item={{
+            label: 'Account',
+            href: '/account',
+            icon: <UserRound className="w-[15px] h-[15px]" strokeWidth={1.8} />,
+          }}
+        />
+        <div className="mt-2 bg-gradient-to-br from-[var(--brand-light)] to-[#dbeafe] border border-[#bfdbfe] rounded-[var(--radius-sm)] px-3 py-2 text-[10px]">
           <div className="text-[var(--text-muted)] font-medium tracking-[0.5px] uppercase">
             Licence Status
           </div>

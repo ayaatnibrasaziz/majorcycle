@@ -1,0 +1,171 @@
+'use client';
+
+import { useState } from 'react';
+import { AlertCircle, CheckCircle2, Lock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { createBrowserClient } from '@/lib/supabase/client';
+import { COUNTRIES } from '@/lib/countries';
+
+interface ProfileFormProps {
+  userId: string;
+  email: string;
+  initialDisplayName: string;
+  initialCountry: string;
+  /**
+   * Country is fixed once a subscription exists (Stripe pins currency per
+   * subscription — F3). Passed from the server based on subscription_status.
+   */
+  countryLocked: boolean;
+}
+
+export function ProfileForm({
+  userId,
+  email,
+  initialDisplayName,
+  initialCountry,
+  countryLocked,
+}: ProfileFormProps) {
+  const [displayName, setDisplayName] = useState(initialDisplayName);
+  const [country, setCountry] = useState(initialCountry);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  // The last-persisted values. Seeded from props, then advanced on each
+  // successful save so `dirty` reflects "changed since last save" — otherwise it
+  // would compare against the stale initial props forever, leaving the form
+  // permanently "dirty" (Save never disables, the Saved confirmation never shows).
+  const [baseName, setBaseName] = useState(initialDisplayName);
+  const [baseCountry, setBaseCountry] = useState(initialCountry);
+
+  const dirty =
+    displayName.trim() !== baseName.trim() ||
+    (!countryLocked && country !== baseCountry);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSaved(false);
+
+    // Only ever send the columns the client is allowed to write (display_name,
+    // country). Never touch billing columns — the DB grant blocks them anyway.
+    const patch: { display_name: string | null; country?: string | null } = {
+      display_name: displayName.trim() || null,
+    };
+    if (!countryLocked) patch.country = country || null;
+
+    const supabase = createBrowserClient();
+    const { error: dbError } = await supabase
+      .from('profiles')
+      .update(patch)
+      .eq('id', userId);
+
+    if (dbError) {
+      setError('Could not save your changes. Please try again.');
+      setLoading(false);
+      return;
+    }
+    // Advance the persisted baseline to what we just wrote → form is no longer
+    // dirty, Save disables, and the Saved confirmation shows.
+    setBaseName(displayName);
+    if (!countryLocked) setBaseCountry(country);
+    setSaved(true);
+    setLoading(false);
+  }
+
+  return (
+    <section className="card">
+      <div className="card-header">
+        <h2 className="card-title">Profile</h2>
+      </div>
+      <div className="card-body">
+        <p className="mb-5 text-[12px] leading-relaxed text-[var(--text-muted)]">
+          How you appear in MajorCycle. Your email is used for sign-in and account
+          notices.
+        </p>
+
+        <form onSubmit={handleSave} className="flex flex-col gap-4 max-w-md">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="displayName">Display name</Label>
+            <Input
+              id="displayName"
+              type="text"
+              autoComplete="name"
+              maxLength={80}
+              value={displayName}
+              onChange={(e) => {
+                setDisplayName(e.target.value);
+                setSaved(false);
+              }}
+              placeholder="Your name"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" value={email} disabled readOnly />
+            <p className="text-[11px] text-[var(--text-muted)]">
+              Email can&apos;t be changed here yet — contact support@majorcycle.com
+              if you need it updated.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="country">Country</Label>
+            <select
+              id="country"
+              value={country}
+              disabled={countryLocked}
+              onChange={(e) => {
+                setCountry(e.target.value);
+                setSaved(false);
+              }}
+              className="w-full h-11 px-3.5 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] text-[13.5px] font-[var(--font-sans)] outline-none transition-all duration-150 hover:border-[var(--border-strong)] focus:border-[var(--brand-bright)] focus:ring-[3px] focus:ring-[var(--brand-bright)]/15 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <option value="">Select your country…</option>
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            {countryLocked && (
+              <p className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
+                <Lock className="w-3 h-3 flex-shrink-0" strokeWidth={2} aria-hidden />
+                Locked while you have an active subscription. Contact support to
+                change it.
+              </p>
+            )}
+          </div>
+
+          {error && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 text-[12px] text-[var(--c-tier-5-ink)] bg-[var(--tint-tier-5)] border border-[var(--tint-tier-5-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
+            >
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" />
+              <span className="leading-relaxed">{error}</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 mt-1">
+            <Button type="submit" disabled={loading || !dirty}>
+              {loading ? 'Saving…' : 'Save changes'}
+            </Button>
+            {saved && !dirty && (
+              <span
+                role="status"
+                className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--c-tier-2)]"
+              >
+                <CheckCircle2 className="w-4 h-4" strokeWidth={2} aria-hidden />
+                Saved
+              </span>
+            )}
+          </div>
+        </form>
+      </div>
+    </section>
+  );
+}
