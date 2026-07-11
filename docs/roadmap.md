@@ -373,9 +373,10 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
         `subscription_status ∈ {active,trialing,past_due}`. PasswordForm re-auths with the current password
         (`signInWithPassword`) before `updateUser` — the fresh sign-in also makes the user "recently logged in",
         so the change succeeds whether or not Supabase's *require-reauthentication* setting is on. The branded
-        "password changed" security email fires **only if** `[auth.email.notification.password_changed]` is
-        **enabled** in the project (opt-in, NOT on by default — must be enabled in the Supabase dashboard for the
-        UI's "we've emailed you to confirm" copy to be truthful). Supabase enforces **no password history**: it
+        "password changed" security email **does** fire on the change — this project's Supabase
+        `password_changed` security notification was **enabled + branded back in F0 (2026-07-04)**, so the UI's
+        "we've emailed you to confirm" copy is truthful (that notification is opt-in in Supabase generally, but
+        it is ON for MajorCycle). Supabase enforces **no password history**: it
         only rejects reusing the *current* password, so a user can later change back to an earlier password.
         Google-only accounts get a "you sign in with Google" notice instead. **Verified:** typecheck / lint /
         build green; **e2e 24/24** — new `web/e2e/account.spec.ts` exercises the REAL page against a real
