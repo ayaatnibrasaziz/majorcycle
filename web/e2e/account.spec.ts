@@ -125,4 +125,28 @@ test.describe('account hub (F2)', () => {
     await update().click();
     await expect(page.getByText(/current password is incorrect/i)).toBeVisible();
   });
+
+  test('delete-account card gates submission behind the acknowledgement checkbox', async ({
+    page,
+  }) => {
+    await page.goto('/account');
+    await page.getByRole('button', { name: /delete my account/i }).click();
+
+    const schedule = page.getByRole('button', { name: /schedule deletion/i });
+    await expect(schedule).toBeDisabled();
+
+    await page
+      .getByRole('checkbox', {
+        name: /i understand my account will be permanently deleted/i,
+      })
+      .check();
+    await expect(schedule).toBeEnabled();
+
+    // Never actually submit — that would schedule deletion of the shared test
+    // account. Cancelling returns the card to its initial state.
+    await page.getByRole('button', { name: /^cancel$/i }).click();
+    await expect(
+      page.getByRole('button', { name: /delete my account/i })
+    ).toBeVisible();
+  });
 });

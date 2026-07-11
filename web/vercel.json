@@ -12,5 +12,8 @@
       "memory": 1024,
       "includeFiles": "_engine/**"
     }
-  }
+  },
+  "crons": [
+    { "path": "/api/cron/purge-accounts", "schedule": "0 3 * * *" }
+  ]
 }

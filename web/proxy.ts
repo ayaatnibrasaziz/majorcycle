@@ -14,6 +14,9 @@ const PUBLIC_PATHS = [
   '/privacy',
   '/pricing',
   '/contact',
+  // Post-deletion confirmation — the user has just been signed out, so it must be
+  // reachable without a session (the reactivation page /reactivate stays gated).
+  '/deletion-requested',
   // Well-known URIs (RFC 8615) — e.g. /.well-known/security.txt. Must be publicly
   // reachable by security scanners/researchers without an auth redirect.
   '/.well-known',
@@ -23,6 +26,10 @@ const PUBLIC_PATHS = [
   // page would get no cycle data (blank rating/KPI/radar). It returns only
   // ticker→math (no user data), and the pages that surface it stay auth-gated.
   '/api/cycle',
+  // Cron endpoints run without a user session (Vercel Cron sends a Bearer secret,
+  // not cookies). They must bypass the auth redirect; each route enforces its own
+  // CRON_SECRET check, so opening them at the middleware is safe.
+  '/api/cron',
 ];
 
 export async function proxy(request: NextRequest) {

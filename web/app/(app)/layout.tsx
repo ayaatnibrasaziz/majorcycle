@@ -43,9 +43,17 @@ export default async function AppLayout({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('subscription_status, acknowledged_disclaimer_at')
+    .select('subscription_status, acknowledged_disclaimer_at, deletion_scheduled_at')
     .eq('id', claims.sub)
     .single();
+
+  // Soft-deleted (deletion scheduled) accounts are confined to /reactivate — the
+  // account is deactivated during the grace window until the user reactivates or
+  // it's purged. /reactivate lives in the (public) route group, so it isn't
+  // wrapped by this layout and can't loop.
+  if (profile?.deletion_scheduled_at) {
+    redirect('/reactivate');
+  }
 
   const needsOnboarding = profile && !profile.acknowledged_disclaimer_at;
 

@@ -392,7 +392,32 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
         `sr-only` — the visible page title comes from the app Header/topbar (matching Results / Request a Ticker);
         it previously rendered a **duplicate** visible "Account" title. Mobile at 375px inherits the **known
         pre-existing shell overflow deferred to Layer H** (fixed sidebar) — the account cards themselves stack
-        cleanly. **Parts B + C not started.**
+        cleanly. **Part C not started.**
+  - [x] **Part B (delete account) — BUILT + LIVE-VERIFIED 2026-07-11 (not yet merged).**
+        Soft-delete + 30-day grace + reactivation + purge cron + two branded emails (owner-approved copy).
+        Migration `20260711000000_account_deletion.sql` (applied via MCP): `universe_log.added_by_user` FK
+        `NO ACTION`→`ON DELETE SET NULL` (the last blocker to a hard delete — profiles→auth.users is already
+        CASCADE, analysis_runs CASCADE, ticker_requests SET NULL) + `profiles.deletion_scheduled_at timestamptz`
+        (service-role-only — excluded from the F0.5 authenticated UPDATE grant, verified). New: server actions
+        `web/app/(app)/account/actions.ts` (`requestAccountDeletion` = set flag + email + sign out + →/deletion-requested;
+        `reactivateAccount` = clear flag + →/results), `web/lib/account.ts` (`ACCOUNT_DELETION_GRACE_DAYS=30`; a
+        plain module because a `'use server'` file can only export async fns), `web/lib/email/{send.ts,accountEmails.ts}`
+        (Resend REST via `renderBrandEmail`, from **noreply@**; greeting falls back to "Hi there,"),
+        `web/components/account/DeleteAccountCard.tsx` (danger zone, two-step confirm gated on a checkbox),
+        `web/app/(public)/reactivate/page.tsx` (reactivation gate), `web/app/(public)/deletion-requested/page.tsx`
+        (public post-request confirmation), `web/app/api/cron/purge-accounts/route.ts` (CRON_SECRET-guarded GET;
+        emails + `admin.auth.admin.deleteUser` for rows past `deletion_scheduled_at`). Edited: `web/app/(app)/layout.tsx`
+        (confine scheduled accounts → /reactivate), `web/proxy.ts` (PUBLIC_PATHS += `/deletion-requested`, `/api/cron`
+        — the cron sends a Bearer secret, not cookies, so it must bypass the auth redirect; **this was a real bug the
+        live test caught — without it the middleware 307-redirected the cron to /login**), `web/vercel.json` (daily
+        cron `0 3 * * *`), `.env.example` (CRON_SECRET + RESEND_FROM_EMAIL now used). **Subscription-on-delete =
+        pause+cancel_at, reactivation resumes** and **trial-abuse guard (email + card fingerprint + hashed tombstone)**
+        are F3 commitments (TODO markers in the code) — decided now so the email copy is honest. **Verified live in
+        the Claude preview:** danger-zone confirm gating; setting the flag → confinement redirect to /reactivate →
+        one-click reactivate clears it (DB-confirmed); purge route returns 401 (no/blank secret) and
+        `{"purged":0}` (valid secret); typecheck/lint/build green, **e2e 25/25** (added a non-destructive
+        delete-gating test — never submits against the shared test account). Emails send via the same proven
+        Resend path as /contact; the two templates were owner-approved as an Artifact before building.
 - [ ] Stripe Checkout integration
 - [ ] Stripe webhook handler with all subscription events
 - [ ] 3-day grace period flow on payment failure
