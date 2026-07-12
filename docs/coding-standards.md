@@ -571,6 +571,15 @@ a gated page:
 Use **E** to *show* a flow working live; use **D (Playwright)** for repeatable/CI functional assertions.
 The single manual step (owner types the password) is unavoidable and by design.
 
+**Browser-pane gotcha (seen 2026-07-12):** the Claude Browser pane can drift between screenshot-pixel
+space and the accessibility-tree `ref` coordinates (and occasionally renders the whole page at a broken
+micro-zoom), so `computer` clicks silently miss and screenshots mislead. When a click "does nothing,"
+don't keep re-clicking — drive the element through `javascript_tool` instead: `el.click()`, then read the
+resulting DOM in a **separate** call (React re-renders on the next tick, so a same-call check is stale).
+Confirm the interaction really worked by asserting on DOM text/`getComputedStyle`, and cross-check with
+Playwright (**D**), whose real `getByRole` clicks are authoritative. Prefer `read_page`/`find` refs and
+`javascript_tool` state reads over pixel coordinates for anything the owner isn't watching in real time.
+
 ---
 
 **End of coding-standards.md.**

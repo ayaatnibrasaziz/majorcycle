@@ -425,7 +425,10 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
         gain paid time.) Both live-verified in the Claude preview (test account temporarily
         flipped to `trialing` then `active`, screenshotted, restored to null). SPGI phantom split re-appeared as
         expected (nightly cron runs `main`, which lacks the `_MIN_SPLIT_DEVIATION` guard on the unmerged branch) —
-        left in place; self-heals at the Layer-F merge.
+        left in place; self-heals at the Layer-F merge. The delete/danger buttons (`Button` `destructive` variant)
+        now lift on hover like the primary CTA (shadow-grow + 1px rise, red-tinted) instead of just fading, matching
+        the app's interaction language. The reworded deletion email (paid + trial variants) was **owner-approved via
+        an Artifact preview 2026-07-12** → **F2 = Part A + Part B complete; only Part C (refer-a-friend) remains.**
   - **F3 subscription/deletion mechanics (decided now so the on-card + email copy is honest — TODO markers in code):**
       **(a) Deletion never grants extra paid time — trial and paid differ:**
       · **Paid** — on delete, set `cancel_at_period_end` (NOT pause). The subscription stays valid through the period
