@@ -6,6 +6,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { ProfileForm } from '@/components/account/ProfileForm';
 import { SubscriptionCard } from '@/components/account/SubscriptionCard';
 import { PasswordForm } from '@/components/account/PasswordForm';
+import { ReferAFriendCard } from '@/components/account/ReferAFriendCard';
 import { DeleteAccountCard } from '@/components/account/DeleteAccountCard';
 
 export const metadata: Metadata = {
@@ -88,6 +89,8 @@ export default async function AccountPage() {
             </div>
           </section>
         )}
+
+        <ReferAFriendCard initialName={profile?.display_name ?? ''} />
 
         <DeleteAccountCard
           subscriptionStatus={profile?.subscription_status ?? null}

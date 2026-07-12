@@ -1,63 +1,22 @@
 import { sendBrandEmail } from '@/lib/email/send';
+import {
+  SITE,
+  escapeHtml,
+  p,
+  muted,
+  button,
+  greetingHtml,
+  greetingText,
+  formatDate,
+} from '@/lib/email/format';
 
 /**
  * The two branded account-lifecycle emails (F2 Part B): "deletion scheduled"
  * (sent when a user requests deletion) and "account deleted" (sent by the purge
  * cron after the 30-day grace). Both render through the shared brand chrome
  * (`renderBrandEmail`) and send from noreply@. Copy signed off with the owner.
+ * Body-formatting helpers live in `./format` (shared with referralEmails.ts).
  */
-
-const FONT =
-  "'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
-
-const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.majorcycle.com';
-
-/** Escape any user-controlled value (display name, email) before interpolating. */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function p(html: string): string {
-  return `<p style="margin:0 0 14px;font-family:${FONT};font-size:14.5px;line-height:1.65;color:#0f1923;">${html}</p>`;
-}
-
-function muted(html: string): string {
-  return `<p style="margin:16px 0 0;font-family:${FONT};font-size:12.5px;line-height:1.6;color:#64748b;">${html}</p>`;
-}
-
-function button(label: string, url: string): string {
-  return (
-    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0;"><tr>` +
-    `<td bgcolor="#1E5CB3" style="border-radius:8px;">` +
-    `<a href="${url}" style="display:inline-block;padding:11px 24px;font-family:${FONT};font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">${label}</a>` +
-    `</td></tr></table>`
-  );
-}
-
-/** "Hi Alex," when a display name exists, else the "Hi there," fallback. */
-function greetingHtml(name: string | null): string {
-  const n = name?.trim();
-  return p(n ? `Hi ${escapeHtml(n)},` : 'Hi there,');
-}
-
-function greetingText(name: string | null): string {
-  const n = name?.trim();
-  return n ? `Hi ${n},` : 'Hi there,';
-}
-
-/** "Friday, 10 August 2026" — owner is AU, so format in en-AU deterministically. */
-function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat('en-AU', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  }).format(date);
-}
 
 /** Email #1 — sent the moment a user schedules their account for deletion. */
 export async function sendDeletionScheduledEmail(opts: {

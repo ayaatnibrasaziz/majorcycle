@@ -4,7 +4,12 @@ import { redirect } from 'next/navigation';
 
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { sendDeletionScheduledEmail } from '@/lib/email/accountEmails';
+import { sendReferralEmail } from '@/lib/email/referralEmails';
 import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
+
+/** Refer-a-friend limits (F2 Part C). */
+const REFERRALS_PER_DAY = 10;
+const REFERRAL_DEDUPE_DAYS = 30;
 
 /** Map a raw subscription status to the reassurance-copy variant for the deletion email. */
 function subscriptionEmailKind(
@@ -100,4 +105,100 @@ export async function reactivateAccount(): Promise<void> {
   // F3 TODO (trial): restore the saved remaining trial days.
 
   redirect('/results');
+}
+
+/**
+ * Refer-a-friend (F2 Part C). Sends a one-off branded invite from the signed-in
+ * member to a friend's email and records a row (for the rate-limit + audit).
+ * Guards, in order: honeypot, auth, email validity, required referrer name, no
+ * self-referral, ≤10/day, and no re-inviting the same address within 30 days.
+ * The email is sent first and only a *successful* send is recorded, so a delivery
+ * failure never burns the rate-limit or blocks a retry.
+ */
+export async function sendReferral(input: {
+  friendEmail: string;
+  referrerName: string;
+  message: string;
+  /** Honeypot — a hidden field real users never fill. */
+  website: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  // Bots fill the hidden field. Report success without doing anything so we
+  // don't teach the bot how to evade the trap.
+  if (input.website?.trim()) return { ok: true };
+
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Please sign in again.' };
+
+  const friendEmail = input.friendEmail.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(friendEmail)) {
+    return { ok: false, error: 'Enter a valid email address.' };
+  }
+  const referrerName = input.referrerName.trim().slice(0, 80);
+  if (!referrerName) {
+    return { ok: false, error: 'Please add your name so your friend knows who invited them.' };
+  }
+  const message = input.message.trim().slice(0, 300);
+
+  if (user.email && friendEmail === user.email.toLowerCase()) {
+    return { ok: false, error: "That's your own email — invite a friend instead." };
+  }
+
+  // Rate-limit: at most REFERRALS_PER_DAY sent in the last 24h.
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count, error: countErr } = await supabase
+    .from('referrals')
+    .select('id', { count: 'exact', head: true })
+    .eq('referrer_id', user.id)
+    .gte('created_at', since);
+  if (countErr) {
+    console.error('sendReferral: rate-limit query failed', countErr);
+    return { ok: false, error: 'Could not send the invite. Please try again.' };
+  }
+  if ((count ?? 0) >= REFERRALS_PER_DAY) {
+    return {
+      ok: false,
+      error: `You can send up to ${REFERRALS_PER_DAY} invites a day. Please try again tomorrow.`,
+    };
+  }
+
+  // Don't let the same friend be re-invited within the dedupe window.
+  const dupeSince = new Date(
+    Date.now() - REFERRAL_DEDUPE_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+  const { data: dupe } = await supabase
+    .from('referrals')
+    .select('id')
+    .eq('referrer_id', user.id)
+    .eq('friend_email', friendEmail)
+    .gte('created_at', dupeSince)
+    .limit(1)
+    .maybeSingle();
+  if (dupe) {
+    return { ok: false, error: "You've already invited this person recently." };
+  }
+
+  // Send first — only a successful send is recorded.
+  const sent = await sendReferralEmail({
+    to: friendEmail,
+    referrerName,
+    message: message || null,
+  });
+  if (!sent) {
+    return { ok: false, error: 'Could not send the invite right now. Please try again later.' };
+  }
+
+  const { error: insErr } = await supabase.from('referrals').insert({
+    referrer_id: user.id,
+    friend_email: friendEmail,
+    message: message || null,
+  });
+  if (insErr) {
+    // The email already went out; log but don't fail the user's action.
+    console.error('sendReferral: insert failed after send', insErr);
+  }
+
+  return { ok: true };
 }

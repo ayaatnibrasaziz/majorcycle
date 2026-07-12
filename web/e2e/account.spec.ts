@@ -149,4 +149,27 @@ test.describe('account hub (F2)', () => {
       page.getByRole('button', { name: /delete my account/i })
     ).toBeVisible();
   });
+
+  test('refer-a-friend card validates and blocks self-referral (no email sent)', async ({
+    page,
+  }) => {
+    await page.goto('/account');
+    await expect(page.getByRole('heading', { name: /^refer a friend$/i })).toBeVisible();
+
+    const name = page.locator('#referrerName');
+    const friend = page.locator('#friendEmail');
+    const send = () => page.getByRole('button', { name: /send invite/i });
+
+    // 1) Invalid email → client-side validation, no server call / no email.
+    await name.fill('Test Referrer');
+    await friend.fill('not-an-email');
+    await send().click();
+    await expect(page.getByText(/valid email address/i)).toBeVisible();
+
+    // 2) Self-referral → the server action rejects it *before* any email is sent
+    //    (so this is non-destructive: no Resend send, no referrals row).
+    await friend.fill(EMAIL!);
+    await send().click();
+    await expect(page.getByText(/your own email/i)).toBeVisible();
+  });
 });

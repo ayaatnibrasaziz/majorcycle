@@ -392,7 +392,23 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
         `sr-only` — the visible page title comes from the app Header/topbar (matching Results / Request a Ticker);
         it previously rendered a **duplicate** visible "Account" title. Mobile at 375px inherits the **known
         pre-existing shell overflow deferred to Layer H** (fixed sidebar) — the account cards themselves stack
-        cleanly. **Part C not started.**
+        cleanly.
+  - [x] **Part C (refer-a-friend) — BUILT + VERIFIED 2026-07-12 (not yet merged).** Owner chose a **plain invite**
+        (no reward — deferred to F3) and to **collect the referrer's name in the form** (prefilled from
+        `display_name`, required) so every invite email is personal. Migration `20260712000000_referrals.sql`
+        (applied via MCP): new `referrals` table (`referrer_id → profiles ON DELETE CASCADE`, `friend_email`,
+        `message`, `created_at`) + RLS (owner-only select/insert; no update/delete = immutable audit) + index on
+        `(referrer_id, created_at)`. New: `web/lib/email/format.ts` (shared email helpers extracted from
+        `accountEmails.ts`), `web/lib/email/referralEmails.ts` (`sendReferralEmail` from **noreply@** — referrer
+        name + optional quoted note + 7-day-trial CTA + one-off provenance line for anti-spam), server action
+        `sendReferral` in `account/actions.ts` (guards in order: honeypot → auth → email validity → required name →
+        no self-referral → **≤10/day** → no re-invite same address within 30 days; **sends first, records only a
+        successful send** so a failure never burns the limit), `web/components/account/ReferAFriendCard.tsx` (invite
+        card with hidden honeypot + `noValidate` so brand-styled errors drive validation). Wired into `account/page.tsx`
+        before the danger zone. **Email owner-approved via Artifact preview 2026-07-12 before build.** Verified:
+        typecheck/lint/build green, **e2e 26/26** (new non-destructive test: invalid-email client validation +
+        self-referral server rejection — neither sends an email); card render + hidden honeypot confirmed live in the
+        preview DOM; `referrals` table left empty. **F2 (Parts A + B + C) COMPLETE — awaiting the Layer-F merge.**
   - [x] **Part B (delete account) — BUILT + LIVE-VERIFIED 2026-07-11 (not yet merged).**
         Soft-delete + 30-day grace + reactivation + purge cron + two branded emails (owner-approved copy).
         Migration `20260711000000_account_deletion.sql` (applied via MCP): `universe_log.added_by_user` FK
