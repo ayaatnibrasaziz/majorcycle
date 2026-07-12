@@ -51,7 +51,7 @@ export default async function ReactivatePage() {
       <div className="flex flex-col gap-5">
         <p className="text-[13.5px] leading-relaxed text-[var(--text-secondary)]">
           Reactivate to cancel the deletion and restore everything — your profile,
-          your history, and any paused subscription — exactly as you left it.
+          your history, and your subscription — exactly as you left it.
         </p>
 
         <form action={reactivateAccount}>

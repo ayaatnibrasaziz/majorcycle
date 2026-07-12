@@ -64,7 +64,8 @@ export async function sendDeletionScheduledEmail(opts: {
   to: string;
   name: string | null;
   deletionDate: Date;
-  hasSubscription: boolean;
+  /** 'paid' and 'trial' get different reassurance copy; null = no subscription line. */
+  subscriptionKind: 'paid' | 'trial' | null;
 }): Promise<boolean> {
   const dateStr = formatDate(opts.deletionDate);
   const to = escapeHtml(opts.to);
@@ -79,13 +80,18 @@ export async function sendDeletionScheduledEmail(opts: {
       `Until then, your account is deactivated but fully recoverable. To cancel the deletion, ` +
         `just sign back in any time before ${dateStr} — everything picks up right where you left off.`
     ),
-    opts.hasSubscription
+    opts.subscriptionKind === 'paid'
       ? p(
-          `If you have a MajorCycle subscription, it's <strong>paused, not cancelled</strong>, in ` +
-            `the meantime — no charges go out while your account is dormant, and signing back in ` +
-            `resumes it with no gap.`
+          `Your subscription stays valid until the end of the period you've already paid for — ` +
+            `deleting doesn't cut it short or extend it. Sign back in before ${dateStr} to keep your ` +
+            `account; otherwise it's removed then and won't renew, so no further charges go out.`
         )
-      : '',
+      : opts.subscriptionKind === 'trial'
+        ? p(
+            `You're on a free trial — the days you have left are saved, and you get them back if you ` +
+              `sign back in before ${dateStr}.`
+          )
+        : '',
     button('Sign in to cancel deletion', `${SITE}/login`),
     p(
       `After ${dateStr}, your account, profile, and all associated data are permanently removed ` +
@@ -102,10 +108,14 @@ export async function sendDeletionScheduledEmail(opts: {
     `for permanent deletion on ${dateStr}.\n\n` +
     `Until then your account is deactivated but fully recoverable — sign back in before ${dateStr} ` +
     `to cancel it: ${SITE}/login\n\n` +
-    (opts.hasSubscription
-      ? `Any MajorCycle subscription is paused, not cancelled, in the meantime — no charges go out, ` +
-        `and signing back in resumes it with no gap.\n\n`
-      : '') +
+    (opts.subscriptionKind === 'paid'
+      ? `Your subscription stays valid until the end of the period you've already paid for — deleting ` +
+        `doesn't cut it short or extend it. Sign back in before ${dateStr} to keep your account; ` +
+        `otherwise it's removed then and won't renew, so no further charges go out.\n\n`
+      : opts.subscriptionKind === 'trial'
+        ? `You're on a free trial — the days you have left are saved, and you get them back if you sign ` +
+          `back in before ${dateStr}.\n\n`
+        : '') +
     `After that date, your account and all associated data are permanently removed and can't be ` +
     `restored. If you didn't request this, sign in now to cancel it and change your password.`;
 

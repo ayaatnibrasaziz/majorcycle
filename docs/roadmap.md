@@ -416,23 +416,30 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
         `{"purged":0}` (valid secret); typecheck/lint/build green, **e2e 25/25** (added a non-destructive
         delete-gating test — never submits against the shared test account). Emails send via the same proven
         Resend path as /contact; the two templates were owner-approved as an Artifact before building.
-  - [x] **Part B follow-ups (2026-07-12, not yet merged).** Delete card now shows a **status-aware "paused"
-        reassurance BEFORE confirming** (`DeleteAccountCard` takes `subscriptionStatus`): a paying subscriber
-        reads "your subscription is *paused, not cancelled* — resumes with no gap and no extra charge"; a trial
-        user reads "your free trial is *paused, not cancelled* — the days you have left are saved, and you get them
-        back". Hidden for free/no-sub users. Both live-verified in the Claude preview (test account temporarily
+  - [x] **Part B follow-ups (2026-07-12, not yet merged).** Delete card + deletion email now show a **status-aware
+        reassurance BEFORE confirming** (`DeleteAccountCard` takes `subscriptionStatus`; the email takes
+        `subscriptionKind: 'paid'|'trial'|null`): a paying subscriber reads "your subscription **stays valid until the
+        end of the period you've already paid for — deleting won't cut it short or extend it**"; a trial user reads
+        "your free trial's remaining days are saved, and you get them back". Hidden for free/no-sub users. (Earlier
+        "paused, not cancelled — resumes with no gap" wording was removed: it implied a delete-and-restore loophole to
+        gain paid time.) Both live-verified in the Claude preview (test account temporarily
         flipped to `trialing` then `active`, screenshotted, restored to null). SPGI phantom split re-appeared as
         expected (nightly cron runs `main`, which lacks the `_MIN_SPLIT_DEVIATION` guard on the unmerged branch) —
         left in place; self-heals at the Layer-F merge.
   - **F3 subscription/deletion mechanics (decided now so the on-card + email copy is honest — TODO markers in code):**
-      **(a) "Paused" = FREEZE, not calendar.** On delete we pause billing (`pause_collection`) so nothing is charged
-      during the 30-day grace; we also record the time remaining. On reactivation we *restore that remaining time
-      from the moment they return* — a trial deleted on day 3 with 4 days left gives 4 fresh trial days on return
-      (even 20 days later, within grace); a paid subscriber resumes their remaining paid period and the next renewal
-      is pushed out by the paused duration (no double charge, no gap). **(b) Trial-abuse guard = email tombstone +
-      Stripe card fingerprint + hashed tombstone that survives account deletion** (owner confirmed the *original*
-      two-signal plan 2026-07-12: same email OR same card can't farm a second free trial; a genuinely different
-      person with a different email + card still gets one).
+      **(a) Deletion never grants extra paid time — trial and paid differ:**
+      · **Paid** — on delete, set `cancel_at_period_end` (NOT pause). The subscription stays valid through the period
+        the user already paid for, then stops with no renewal/charge. Deleting must **not** cut it short **or** extend
+        it — a delete-and-restore cycle must not buy more paid time (this is the loophole the owner flagged 2026-07-12;
+        the earlier "pause + push-out renewal" idea was wrong and has been removed from the copy). Reactivating within
+        grace clears `cancel_at_period_end` so it renews normally again; the user keeps only the paid-through time they
+        already had.
+      · **Trial** — freeze/restore: record the trial days remaining at deletion and give them back from the moment the
+        user returns (deleted day 3 with 4 left → 4 fresh trial days on return, even 20 days later within grace). A trial
+        is free, so there's no paid-time loophole. **(b) Trial-abuse guard = email tombstone + Stripe card fingerprint +
+      hashed tombstone that survives account deletion** (owner confirmed the *original* two-signal plan 2026-07-12: same
+      email OR same card can't farm a second free trial; a genuinely different person with a different email + card still
+      gets one).
 - [ ] Stripe Checkout integration
 - [ ] Stripe webhook handler with all subscription events
 - [ ] 3-day grace period flow on payment failure

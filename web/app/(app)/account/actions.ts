@@ -6,8 +6,14 @@ import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/se
 import { sendDeletionScheduledEmail } from '@/lib/email/accountEmails';
 import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
 
-/** Subscription states that mean "has a live subscription" (for the email copy). */
-const SUBSCRIBED_STATES = new Set(['active', 'trialing', 'past_due']);
+/** Map a raw subscription status to the reassurance-copy variant for the deletion email. */
+function subscriptionEmailKind(
+  status: string | null | undefined
+): 'paid' | 'trial' | null {
+  if (status === 'trialing') return 'trial';
+  if (status === 'active' || status === 'past_due') return 'paid';
+  return null;
+}
 
 /**
  * Schedule the signed-in user's account for deletion (soft-delete + 30-day grace).
@@ -46,8 +52,10 @@ export async function requestAccountDeletion(): Promise<void> {
       redirect('/account?error=delete');
     }
 
-    // F3 TODO: pause the Stripe subscription (`pause_collection`) and schedule
-    // `cancel_at` = deletionDate, so no charge goes out during the grace window.
+    // F3 TODO (paid): set the Stripe subscription to `cancel_at_period_end` — it
+    // stays valid through the period the user already paid for, then stops. Deleting
+    // must NOT pause or extend it (no delete-and-restore loophole to gain paid time).
+    // F3 TODO (trial): record the remaining trial days to restore on reactivation.
 
     const email = profile?.email ?? user.email ?? '';
     if (email) {
@@ -55,7 +63,7 @@ export async function requestAccountDeletion(): Promise<void> {
         to: email,
         name: profile?.display_name ?? null,
         deletionDate,
-        hasSubscription: SUBSCRIBED_STATES.has(profile?.subscription_status ?? ''),
+        subscriptionKind: subscriptionEmailKind(profile?.subscription_status),
       });
     }
   }
@@ -87,8 +95,9 @@ export async function reactivateAccount(): Promise<void> {
     redirect('/reactivate?error=1');
   }
 
-  // F3 TODO: resume the Stripe subscription (remove `pause_collection` + clear
-  // the scheduled `cancel_at`), so the subscription continues with no gap.
+  // F3 TODO (paid): clear `cancel_at_period_end` so the subscription renews normally
+  // again — the user keeps only the paid-through time they already had, never extended.
+  // F3 TODO (trial): restore the saved remaining trial days.
 
   redirect('/results');
 }

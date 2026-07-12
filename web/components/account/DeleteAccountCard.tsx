@@ -14,9 +14,10 @@ import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
  * emails the user, signs them out, and redirects to /deletion-requested).
  *
  * `subscriptionStatus` drives the reassurance copy shown before confirming:
- * a paying subscriber is told their subscription is *paused, not cancelled*; a
- * trial user is told their remaining trial days are saved. Both mean deletion
- * doesn't forfeit what they've got — signing back in restores it.
+ * a paying subscriber is told their plan stays valid through the period they've
+ * already paid for (deleting neither cuts it short nor extends it — no delete-and-
+ * restore loophole); a trial user is told their remaining trial days are saved.
+ * Both restore when they sign back in before the deletion date.
  */
 export function DeleteAccountCard({
   subscriptionStatus = null,
@@ -63,9 +64,10 @@ export function DeleteAccountCard({
 
             {isPaidSub && (
               <p className="text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
-                Your subscription is <strong>paused, not cancelled</strong> — sign
-                back in before the deletion date and it resumes with no gap and no
-                extra charge.
+                Your subscription stays valid until the end of the period you&apos;ve
+                already paid for — deleting won&apos;t cut it short or extend it. Sign
+                back in before the deletion date to restore your account; otherwise
+                it&apos;s removed then and won&apos;t renew.
               </p>
             )}
             {isTrial && (
