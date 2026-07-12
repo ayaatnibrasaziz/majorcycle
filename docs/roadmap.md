@@ -439,7 +439,13 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
         is free, so there's no paid-time loophole. **(b) Trial-abuse guard = email tombstone + Stripe card fingerprint +
       hashed tombstone that survives account deletion** (owner confirmed the *original* two-signal plan 2026-07-12: same
       email OR same card can't farm a second free trial; a genuinely different person with a different email + card still
-      gets one).
+      gets one). **(c) EDGE CASES — plan thoroughly WITH the owner before coding (owner's ask 2026-07-12).** The grace
+      window and the billing clock are independent, so their timings cross in several ways that each need a defined
+      behaviour, e.g.: paid period (or trial) **ends during the 30-day grace**, then the user reactivates **after** it
+      lapsed — is the account restored as a lapsed/free user prompted to resubscribe, or something else? Payment fails
+      mid-grace; a `past_due` account requests deletion; reactivation exactly on the boundary date; trial ends mid-grace
+      then reactivate. Enumerate every timing combination and its outcome as a table before implementation — do NOT
+      code the deletion↔Stripe wiring until that plan is agreed.
 - [ ] Stripe Checkout integration
 - [ ] Stripe webhook handler with all subscription events
 - [ ] 3-day grace period flow on payment failure
