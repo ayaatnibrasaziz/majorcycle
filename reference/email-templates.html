@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MajorCycle — Resend Email Templates (record)</title>
+<style>
+  :root {
+    --ground: #eef1f6;
+    --panel: #ffffff;
+    --ink: #0f1923;
+    --muted: #5b6b80;
+    --faint: #8494a8;
+    --border: #dbe2ec;
+    --border-strong: #c3cedd;
+    --navy: #1a3a6e;
+    --mid: #1e5cb3;
+    --bright: #2e7de8;
+    --chip: #eef4fc;
+    --mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+    --sans: "Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0c111b;
+      --panel: #131b28;
+      --ink: #e8edf4;
+      --muted: #9aa8bd;
+      --faint: #6b7a90;
+      --border: #223044;
+      --border-strong: #2d3e56;
+      --chip: #172234;
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #eef1f6; --panel: #ffffff; --ink: #0f1923; --muted: #5b6b80;
+    --faint: #8494a8; --border: #dbe2ec; --border-strong: #c3cedd; --chip: #eef4fc;
+  }
+  :root[data-theme="dark"] {
+    --ground: #0c111b; --panel: #131b28; --ink: #e8edf4; --muted: #9aa8bd;
+    --faint: #6b7a90; --border: #223044; --border-strong: #2d3e56; --chip: #172234;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+
+  header.doc {
+    border-left: 4px solid var(--bright);
+    padding: 4px 0 4px 20px;
+    margin-bottom: 8px;
+  }
+  header.doc h1 { font-size: 26px; line-height: 1.2; margin: 0 0 6px; letter-spacing: -0.01em; }
+  header.doc p { margin: 0; color: var(--muted); font-size: 14.5px; max-width: 62ch; }
+  .meta-note {
+    margin: 22px 0 34px; padding: 14px 16px; border: 1px solid var(--border);
+    border-radius: 10px; background: var(--panel); font-size: 12.5px; color: var(--muted);
+  }
+  .meta-note strong { color: var(--ink); }
+  .meta-note code { font-family: var(--mono); font-size: 12px; background: var(--chip); padding: 1px 5px; border-radius: 4px; }
+
+  section.mail { margin: 0 0 46px; }
+  .mail-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+  .mail-idx {
+    font-family: var(--mono); font-size: 12px; font-weight: 700; color: #fff;
+    background: var(--navy); border-radius: 6px; padding: 3px 9px; flex: 0 0 auto;
+  }
+  .mail-title { font-size: 18px; font-weight: 700; margin: 0; }
+  .mail-purpose { font-size: 13px; color: var(--muted); margin: 2px 0 0; }
+
+  table.spec { width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 12.5px; }
+  table.spec td { border: 1px solid var(--border); padding: 7px 11px; vertical-align: top; }
+  table.spec td.k {
+    width: 130px; color: var(--faint); font-family: var(--mono); font-size: 11.5px;
+    text-transform: uppercase; letter-spacing: 0.04em; background: var(--chip); white-space: nowrap;
+  }
+  table.spec td.v { color: var(--ink); }
+  table.spec code { font-family: var(--mono); font-size: 11.5px; }
+  .from-noreply { color: var(--mid); font-weight: 600; }
+  .from-support { color: #2f855a; font-weight: 600; }
+
+  .note {
+    margin: 14px 0 0; padding: 11px 14px; border-radius: 9px; font-size: 12.5px;
+    background: var(--chip); border: 1px solid var(--border); color: var(--muted);
+  }
+  .note b { color: var(--ink); }
+  .note .variant { color: var(--navy); font-weight: 700; }
+  @media (prefers-color-scheme: dark) { .note .variant { color: var(--bright); } }
+  :root[data-theme="dark"] .note .variant { color: var(--bright); }
+
+  /* Email preview frame — the light inbox ground the real email renders on,
+     kept light in both themes because that is how it appears in a mailbox. */
+  .inbox {
+    border: 1px solid var(--border-strong); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 2px 10px rgba(16,42,90,0.06);
+  }
+  .inbox-bar {
+    background: #e2e8f2; color: #5b6b80; font-family: var(--mono); font-size: 11px;
+    padding: 6px 12px; border-bottom: 1px solid #cdd6e3; letter-spacing: 0.03em;
+  }
+  .footer-note { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--faint); font-size: 12px; }
+  .footer-note code { font-family: var(--mono); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="doc">
+    <h1>MajorCycle — Transactional email templates</h1>
+    <p>A single visual record of every email the app sends through <strong>Resend</strong> (Supabase auth emails are configured separately in Supabase and are not included here).</p>
+  </header>
+
+  <div class="meta-note">
+    <strong>Source of truth:</strong> the code, not this file. These render from
+    <code>web/lib/email/*</code> and <code>web/app/(public)/contact/actions.ts</code>.
+    Every email shares one brand wrapper — <code>renderBrandEmail()</code> in
+    <code>brandEmail.ts</code> (navy→blue gradient header, brand mark, disclaimer footer).
+    The header mark below is drawn inline for portability; the real emails load the hosted
+    <code>email-icon.png</code>. Sample names, dates and addresses are illustrative.
+  </div>
+
+  <!-- ============================================================= 1 -->
+  <section class="mail">
+    <div class="mail-head">
+      <span class="mail-idx">01</span>
+      <div>
+        <p class="mail-title">Contact-form notification</p>
+        <p class="mail-purpose">Sent to the support inbox whenever someone submits the /contact form.</p>
+      </div>
+    </div>
+    <table class="spec">
+      <tr><td class="k">Trigger</td><td class="v">Visitor submits the public contact form</td></tr>
+      <tr><td class="k">From</td><td class="v"><span class="from-support">support@majorcycle.com</span> &nbsp;·&nbsp; reply-to = the submitter</td></tr>
+      <tr><td class="k">To</td><td class="v">support@majorcycle.com (monitored inbox)</td></tr>
+      <tr><td class="k">Subject</td><td class="v"><code>[MajorCycle contact] {name}</code></td></tr>
+      <tr><td class="k">Header label</td><td class="v">New contact message</td></tr>
+      <tr><td class="k">Source</td><td class="v"><code>web/app/(public)/contact/actions.ts</code></td></tr>
+    </table>
+    <div class="inbox">
+      <div class="inbox-bar">Subject: [MajorCycle contact] Jane Smith &nbsp;—&nbsp; from support@majorcycle.com</div>
+      <!--EMAIL:contact-->
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;background:#eef2f7;">
+        <tr><td align="center" style="padding:28px 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;border-collapse:collapse;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 18px rgba(16,42,90,0.08);">
+            <tr><td bgcolor="#04163E" style="background-color:#04163E;background:linear-gradient(120deg,#010F2C 0%,#04214F 58%,#063A80 100%);border-bottom:3px solid #2E7DE8;padding:22px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr>
+                <td style="vertical-align:middle;padding:0 14px 0 0;"><svg width="38" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" style="display:block;"><rect width="40" height="40" rx="9" fill="#12305f"/><path d="M9 29 V13 L20 24 L31 13 V29" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/></svg></td>
+                <td style="vertical-align:middle;">
+                  <div style="font-family:'Sora',Arial,sans-serif;font-size:19px;font-weight:700;color:#ffffff;letter-spacing:0.2px;line-height:1.1;">MajorCycle</div>
+                  <div style="font-family:'Sora',Arial,sans-serif;font-size:12.5px;font-weight:600;color:#9db8e0;line-height:1.4;padding-top:3px;">New contact message</div>
+                </td>
+              </tr></table>
+            </td></tr>
+            <tr><td style="padding:26px 28px;font-family:'Sora',Arial,sans-serif;color:#0f1923;">
+              <p style="margin:0 0 14px;font-size:13px;color:#475569;line-height:1.5;"><strong style="color:#0f1923;">From:</strong> Jane Smith &lt;jane@example.com&gt;</p>
+              <div style="font-size:14px;line-height:1.65;white-space:pre-wrap;color:#0f1923;">I love the cycle analysis — do you cover New Zealand stocks too? Thanks for building this.</div>
+            </td></tr>
+            <tr><td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 28px;">
+              <div style="font-family:'Sora',Arial,sans-serif;font-size:11px;color:#94a3b8;line-height:1.5;">&copy; MajorCycle provides educational information only &mdash; not financial advice.</div>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================================= 2 -->
+  <section class="mail">
+    <div class="mail-head">
+      <span class="mail-idx">02</span>
+      <div>
+        <p class="mail-title">Account deletion scheduled</p>
+        <p class="mail-purpose">Sent the moment a signed-in user schedules their account for deletion (30-day grace).</p>
+      </div>
+    </div>
+    <table class="spec">
+      <tr><td class="k">Trigger</td><td class="v">User confirms "Schedule deletion" on /account</td></tr>
+      <tr><td class="k">From</td><td class="v"><span class="from-noreply">noreply@majorcycle.com</span></td></tr>
+      <tr><td class="k">Subject</td><td class="v"><code>Your MajorCycle account is scheduled for deletion</code></td></tr>
+      <tr><td class="k">Header label</td><td class="v">Account deletion scheduled</td></tr>
+      <tr><td class="k">Source</td><td class="v"><code>web/lib/email/accountEmails.ts → sendDeletionScheduledEmail</code></td></tr>
+    </table>
+    <div class="inbox">
+      <div class="inbox-bar">Subject: Your MajorCycle account is scheduled for deletion &nbsp;—&nbsp; from noreply@majorcycle.com</div>
+      <!--EMAIL:deletion (paid variant shown)-->
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;background:#eef2f7;">
+        <tr><td align="center" style="padding:28px 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;border-collapse:collapse;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 18px rgba(16,42,90,0.08);">
+            <tr><td bgcolor="#04163E" style="background-color:#04163E;background:linear-gradient(120deg,#010F2C 0%,#04214F 58%,#063A80 100%);border-bottom:3px solid #2E7DE8;padding:22px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr>
+                <td style="vertical-align:middle;padding:0 14px 0 0;"><svg width="38" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" style="display:block;"><rect width="40" height="40" rx="9" fill="#12305f"/><path d="M9 29 V13 L20 24 L31 13 V29" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/></svg></td>
+                <td style="vertical-align:middle;">
+                  <div style="font-family:'Sora',Arial,sans-serif;font-size:19px;font-weight:700;color:#ffffff;letter-spacing:0.2px;line-height:1.1;">MajorCycle</div>
+                  <div style="font-family:'Sora',Arial,sans-serif;font-size:12.5px;font-weight:600;color:#9db8e0;line-height:1.4;padding-top:3px;">Account deletion scheduled</div>
+                </td>
+              </tr></table>
+            </td></tr>
+            <tr><td style="padding:26px 28px;font-family:'Sora',Arial,sans-serif;color:#0f1923;">
+              <p style="margin:0 0 14px;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">Hi Alex,</p>
+              <p style="margin:0 0 14px;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">We&rsquo;ve received a request to delete your MajorCycle account (<strong>alex@example.com</strong>). It&rsquo;s now scheduled for permanent deletion on <strong>Friday, 10 August 2026</strong>.</p>
+              <p style="margin:0 0 14px;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">Until then, your account is deactivated but fully recoverable. To cancel the deletion, just sign back in any time before Friday, 10 August 2026 &mdash; everything picks up right where you left off.</p>
+              <p style="margin:0 0 14px;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">Your subscription stays valid until the end of the period you&rsquo;ve already paid for &mdash; deleting doesn&rsquo;t cut it short or extend it. Sign back in before Friday, 10 August 2026 to keep your account; otherwise it&rsquo;s removed then and won&rsquo;t renew, so no further charges go out.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0;"><tr><td bgcolor="#1E5CB3" style="border-radius:8px;"><a href="https://www.majorcycle.com/login" style="display:inline-block;padding:11px 24px;font-family:'Sora',Arial,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">Sign in to cancel deletion</a></td></tr></table>
+              <p style="margin:0 0 14px;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">After Friday, 10 August 2026, your account, profile, and all associated data are permanently removed and can&rsquo;t be restored.</p>
+              <p style="margin:16px 0 0;font-family:'Sora',Arial,sans-serif;font-size:12.5px;line-height:1.6;color:#64748b;">If you didn&rsquo;t request this, sign in now to cancel it and change your password.</p>
+            </td></tr>
+            <tr><td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 28px;">
+              <div style="font-family:'Sora',Arial,sans-serif;font-size:11px;color:#94a3b8;line-height:1.5;">&copy; MajorCycle provides educational information only &mdash; not financial advice.</div>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </div>
+    <div class="note">
+      The 4th paragraph is <b>status-aware</b>. Shown above: <span class="variant">paid</span> subscriber.
+      Other variants swap only that line:
+      <br>· <span class="variant">trial</span> — &ldquo;You&rsquo;re on a free trial — the days you have left are saved, and you get them back if you sign back in before [date].&rdquo;
+      <br>· <span class="variant">no subscription</span> — the paragraph is omitted entirely.
+    </div>
+  </section>
+
+  <!-- ============================================================= 3 -->
+  <section class="mail">
+    <div class="mail-head">
+      <span class="mail-idx">03</span>
+      <div>
+        <p class="mail-title">Account deleted</p>
+        <p class="mail-purpose">Sent by the purge cron once the 30-day grace has elapsed and the account is gone.</p>
+      </div>
+    </div>
+    <table class="spec">
+      <tr><td class="k">Trigger</td><td class="v">Daily purge cron finds a grace period has expired</td></tr>
+      <tr><td class="k">From</td><td class="v"><span class="from-noreply">noreply@majorcycle.com</span></td></tr>
+      <tr><td class="k">Subject</td><td class="v"><code>Your MajorCycle account has been deleted</code></td></tr>
+      <tr><td class="k">Header label</td><td class="v">Account deleted</td></tr>
+      <tr><td class="k">Source</td><td class="v"><code>web/lib/email/accountEmails.ts → sendAccountDeletedEmail</code></td></tr>
+    </table>
+    <div class="inbox">
+      <div class="inbox-bar">Subject: Your MajorCycle account has been deleted &nbsp;—&nbsp; from noreply@majorcycle.com</div>
+      <!--EMAIL:deleted-->
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;background:#eef2f7;">
+        <tr><td align="center" style="padding:28px 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;border-collapse:collapse;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 18px rgba(16,42,90,0.08);">
+            <tr><td bgcolor="#04163E" style="background-color:#04163E;background:linear-gradient(120deg,#010F2C 0%,#04214F 58%,#063A80 100%);border-bottom:3px solid #2E7DE8;padding:22px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr>
+                <td style="vertical-align:middle;padding:0 14px 0 0;"><svg width="38" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" style="display:block;"><rect width="40" height="40" rx="9" fill="#12305f"/><path d="M9 29 V13 L20 24 L31 13 V29" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/></svg></td>
+                <td style="vertical-align:middle;">
+                  <div style="font-family:'Sora',Arial,sans-serif;font-size:19px;font-weight:700;color:#ffffff;letter-spacing:0.2px;line-height:1.1;">MajorCycle</div>
+                  <div style="font-family:'Sora',Arial,sans-serif;font-size:12.5px;font-weight:600;color:#9db8e0;line-height:1.4;padding-top:3px;">Account deleted</div>
+                </td>
+              </tr></table>
+            </td></tr>
+            <tr><td style="padding:26px 28px;font-family:'Sora',Arial,sans-serif;color:#0f1923;">
+              <p style="margin:0 0 14px;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">Hi Alex,</p>
+              <p style="margin:0 0 14px;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">As scheduled, your MajorCycle account (<strong>alex@example.com</strong>) and all associated data have now been permanently deleted. There&rsquo;s nothing more you need to do.</p>
+              <p style="margin:0 0 14px;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">We&rsquo;re sorry to see you go. You&rsquo;re always welcome back &mdash; you can create a new account any time.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0;"><tr><td bgcolor="#1E5CB3" style="border-radius:8px;"><a href="https://www.majorcycle.com/signup" style="display:inline-block;padding:11px 24px;font-family:'Sora',Arial,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">Return to MajorCycle</a></td></tr></table>
+              <p style="margin:16px 0 0;font-family:'Sora',Arial,sans-serif;font-size:12.5px;line-height:1.6;color:#64748b;">Thank you for trying MajorCycle.</p>
+            </td></tr>
+            <tr><td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 28px;">
+              <div style="font-family:'Sora',Arial,sans-serif;font-size:11px;color:#94a3b8;line-height:1.5;">&copy; MajorCycle provides educational information only &mdash; not financial advice.</div>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============================================================= 4 -->
+  <section class="mail">
+    <div class="mail-head">
+      <span class="mail-idx">04</span>
+      <div>
+        <p class="mail-title">Refer-a-friend invite</p>
+        <p class="mail-purpose">A one-off invite a member sends from the /account "Refer a friend" card (F2 Part C).</p>
+      </div>
+    </div>
+    <table class="spec">
+      <tr><td class="k">Trigger</td><td class="v">Signed-in member submits the refer-a-friend form</td></tr>
+      <tr><td class="k">From</td><td class="v"><span class="from-noreply">noreply@majorcycle.com</span></td></tr>
+      <tr><td class="k">Subject</td><td class="v"><code>{referrer} thought you'd like MajorCycle</code></td></tr>
+      <tr><td class="k">Header label</td><td class="v">You're invited</td></tr>
+      <tr><td class="k">Source</td><td class="v"><code>web/lib/email/referralEmails.ts → sendReferralEmail</code></td></tr>
+    </table>
+    <div class="inbox">
+      <div class="inbox-bar">Subject: Alex Chen thought you'd like MajorCycle &nbsp;—&nbsp; from noreply@majorcycle.com</div>
+      <!--EMAIL:referral (with name + note)-->
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;background:#eef2f7;">
+        <tr><td align="center" style="padding:28px 14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;border-collapse:collapse;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 18px rgba(16,42,90,0.08);">
+            <tr><td bgcolor="#04163E" style="background-color:#04163E;background:linear-gradient(120deg,#010F2C 0%,#04214F 58%,#063A80 100%);border-bottom:3px solid #2E7DE8;padding:22px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;"><tr>
+                <td style="vertical-align:middle;padding:0 14px 0 0;"><svg width="38" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" style="display:block;"><rect width="40" height="40" rx="9" fill="#12305f"/><path d="M9 29 V13 L20 24 L31 13 V29" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/></svg></td>
+                <td style="vertical-align:middle;">
+                  <div style="font-family:'Sora',Arial,sans-serif;font-size:19px;font-weight:700;color:#ffffff;letter-spacing:0.2px;line-height:1.1;">MajorCycle</div>
+                  <div style="font-family:'Sora',Arial,sans-serif;font-size:12.5px;font-weight:600;color:#9db8e0;line-height:1.4;padding-top:3px;">You're invited</div>
+                </td>
+              </tr></table>
+            </td></tr>
+            <tr><td style="padding:26px 28px;font-family:'Sora',Arial,sans-serif;color:#0f1923;">
+              <p style="margin:0 0 14px;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">Hi there,</p>
+              <p style="margin:0 0 14px;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;"><strong>Alex Chen</strong> uses MajorCycle and thought you&rsquo;d find it useful.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:0 0 14px;"><tr><td style="border-left:3px solid #2E7DE8;padding:3px 0 3px 15px;"><p style="margin:0;font-style:italic;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.6;color:#334155;">&ldquo;This is the tool I mentioned — worth a look before you buy anything.&rdquo;</p></td></tr></table>
+              <p style="margin:0 0 14px;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">MajorCycle is a premium terminal that shows where US, Australian and Canadian stocks sit in their historical drawdown and recovery cycles &mdash; alongside financial-health, valuation and analyst data. It&rsquo;s educational information to support your own research, not financial advice.</p>
+              <p style="margin:0 0 14px;font-family:'Sora',Arial,sans-serif;font-size:14.5px;line-height:1.65;color:#0f1923;">New members start with a <strong>7-day free trial</strong>.</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:18px 0;"><tr><td bgcolor="#1E5CB3" style="border-radius:8px;"><a href="https://www.majorcycle.com/signup" style="display:inline-block;padding:11px 24px;font-family:'Sora',Arial,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px;">Start your free trial</a></td></tr></table>
+              <p style="margin:16px 0 0;font-family:'Sora',Arial,sans-serif;font-size:12.5px;line-height:1.6;color:#64748b;">You received this one-off invitation because Alex Chen entered your email address. We won&rsquo;t email you again unless you sign up.</p>
+            </td></tr>
+            <tr><td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 28px;">
+              <div style="font-family:'Sora',Arial,sans-serif;font-size:11px;color:#94a3b8;line-height:1.5;">&copy; MajorCycle provides educational information only &mdash; not financial advice.</div>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </div>
+    <div class="note">
+      Two fields flex: the <b>personal note</b> block is dropped when the referrer leaves it blank, and if the
+      referrer somehow has <b>no name</b>, the copy falls back to &ldquo;<span class="variant">A MajorCycle member</span>&rdquo;
+      (subject, intro line and provenance line all use the fallback). In practice the form requires a name, so the fallback is a safety net.
+    </div>
+  </section>
+
+  <div class="footer-note">
+    Generated as a static record on 2026-07-12 · MajorCycle F2. Update this file if
+    <code>brandEmail.ts</code>, <code>format.ts</code>, <code>accountEmails.ts</code> or
+    <code>referralEmails.ts</code> change. Not sent to anyone — reference only.
+  </div>
+
+</div>
+</body>
+</html>
