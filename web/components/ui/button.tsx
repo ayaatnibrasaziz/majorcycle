@@ -18,8 +18,10 @@ const buttonVariants = cva(
           'bg-[var(--bg-surface)] border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)]',
         ghost:
           'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+        // Same lift-on-hover interaction as `primary` (shadow grows + 1px rise),
+        // red-tinted to stay destructive.
         destructive:
-          'bg-[var(--c-tier-5)] text-white hover:opacity-90',
+          'bg-[var(--c-tier-5)] text-white shadow-[0_2px_8px_rgba(178,34,34,0.25)] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(178,34,34,0.40)]',
       },
       size: {
         default: 'h-11 px-4 text-[13px]',
