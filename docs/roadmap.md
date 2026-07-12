@@ -410,14 +410,29 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
         (confine scheduled accounts → /reactivate), `web/proxy.ts` (PUBLIC_PATHS += `/deletion-requested`, `/api/cron`
         — the cron sends a Bearer secret, not cookies, so it must bypass the auth redirect; **this was a real bug the
         live test caught — without it the middleware 307-redirected the cron to /login**), `web/vercel.json` (daily
-        cron `0 3 * * *`), `.env.example` (CRON_SECRET + RESEND_FROM_EMAIL now used). **Subscription-on-delete =
-        pause+cancel_at, reactivation resumes** and **trial-abuse guard (email + card fingerprint + hashed tombstone)**
-        are F3 commitments (TODO markers in the code) — decided now so the email copy is honest. **Verified live in
+        cron `0 3 * * *`), `.env.example` (CRON_SECRET + RESEND_FROM_EMAIL now used). **Verified live in
         the Claude preview:** danger-zone confirm gating; setting the flag → confinement redirect to /reactivate →
         one-click reactivate clears it (DB-confirmed); purge route returns 401 (no/blank secret) and
         `{"purged":0}` (valid secret); typecheck/lint/build green, **e2e 25/25** (added a non-destructive
         delete-gating test — never submits against the shared test account). Emails send via the same proven
         Resend path as /contact; the two templates were owner-approved as an Artifact before building.
+  - [x] **Part B follow-ups (2026-07-12, not yet merged).** Delete card now shows a **status-aware "paused"
+        reassurance BEFORE confirming** (`DeleteAccountCard` takes `subscriptionStatus`): a paying subscriber
+        reads "your subscription is *paused, not cancelled* — resumes with no gap and no extra charge"; a trial
+        user reads "your free trial is *paused, not cancelled* — the days you have left are saved, and you get them
+        back". Hidden for free/no-sub users. Both live-verified in the Claude preview (test account temporarily
+        flipped to `trialing` then `active`, screenshotted, restored to null). SPGI phantom split re-appeared as
+        expected (nightly cron runs `main`, which lacks the `_MIN_SPLIT_DEVIATION` guard on the unmerged branch) —
+        left in place; self-heals at the Layer-F merge.
+  - **F3 subscription/deletion mechanics (decided now so the on-card + email copy is honest — TODO markers in code):**
+      **(a) "Paused" = FREEZE, not calendar.** On delete we pause billing (`pause_collection`) so nothing is charged
+      during the 30-day grace; we also record the time remaining. On reactivation we *restore that remaining time
+      from the moment they return* — a trial deleted on day 3 with 4 days left gives 4 fresh trial days on return
+      (even 20 days later, within grace); a paid subscriber resumes their remaining paid period and the next renewal
+      is pushed out by the paused duration (no double charge, no gap). **(b) Trial-abuse guard = email tombstone +
+      Stripe card fingerprint + hashed tombstone that survives account deletion** (owner confirmed the *original*
+      two-signal plan 2026-07-12: same email OR same card can't farm a second free trial; a genuinely different
+      person with a different email + card still gets one).
 - [ ] Stripe Checkout integration
 - [ ] Stripe webhook handler with all subscription events
 - [ ] 3-day grace period flow on payment failure

@@ -12,10 +12,23 @@ import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
  * acknowledgement checkbox that gates the actual submit. Submitting calls the
  * `requestAccountDeletion` server action (schedules the 30-day soft-delete,
  * emails the user, signs them out, and redirects to /deletion-requested).
+ *
+ * `subscriptionStatus` drives the reassurance copy shown before confirming:
+ * a paying subscriber is told their subscription is *paused, not cancelled*; a
+ * trial user is told their remaining trial days are saved. Both mean deletion
+ * doesn't forfeit what they've got — signing back in restores it.
  */
-export function DeleteAccountCard() {
+export function DeleteAccountCard({
+  subscriptionStatus = null,
+}: {
+  subscriptionStatus?: string | null;
+}) {
   const [confirming, setConfirming] = useState(false);
   const [ack, setAck] = useState(false);
+
+  const isTrial = subscriptionStatus === 'trialing';
+  const isPaidSub =
+    subscriptionStatus === 'active' || subscriptionStatus === 'past_due';
 
   return (
     <section className="card">
@@ -47,6 +60,21 @@ export function DeleteAccountCard() {
                 emailed a confirmation. Sign back in before then to cancel.
               </p>
             </div>
+
+            {isPaidSub && (
+              <p className="text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
+                Your subscription is <strong>paused, not cancelled</strong> — sign
+                back in before the deletion date and it resumes with no gap and no
+                extra charge.
+              </p>
+            )}
+            {isTrial && (
+              <p className="text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
+                Your free trial is <strong>paused, not cancelled</strong> — the days
+                you have left are saved, and you get them back when you sign in before
+                the deletion date.
+              </p>
+            )}
 
             <label className="flex items-start gap-2.5 text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
               <input

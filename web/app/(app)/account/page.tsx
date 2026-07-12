@@ -89,7 +89,9 @@ export default async function AccountPage() {
           </section>
         )}
 
-        <DeleteAccountCard />
+        <DeleteAccountCard
+          subscriptionStatus={profile?.subscription_status ?? null}
+        />
       </div>
     </div>
   );
