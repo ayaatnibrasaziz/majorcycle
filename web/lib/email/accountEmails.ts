@@ -25,8 +25,10 @@ export async function sendDeletionScheduledEmail(opts: {
   deletionDate: Date;
   /** 'paid' and 'trial' get different reassurance copy; null = no subscription line. */
   subscriptionKind: 'paid' | 'trial' | null;
+  /** ISO-3166 alpha-2 — renders the date in the account's local zone (UI-consistent). */
+  country?: string | null;
 }): Promise<boolean> {
-  const dateStr = formatDate(opts.deletionDate);
+  const dateStr = formatDate(opts.deletionDate, opts.country);
   const to = escapeHtml(opts.to);
 
   const bodyHtml = [

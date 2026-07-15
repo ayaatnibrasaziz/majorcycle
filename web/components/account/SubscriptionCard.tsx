@@ -1,18 +1,26 @@
 import { CreditCard } from 'lucide-react';
+import { zoneForCountry } from '@/lib/timezone';
 
 interface SubscriptionCardProps {
   status: string | null;
   plan: string | null;
   trialEndsAt: string | null;
+  /** ISO-3166 alpha-2; picks the zone billing dates are shown in (their local day). */
+  country: string | null;
 }
 
 interface StatusMeta {
   label: string;
   tone: 'ok' | 'warn' | 'muted';
-  detail: (plan: string | null, trialEndsAt: string | null) => string;
+  // The trial-end date is pre-formatted (in the account's local zone) by the
+  // component so meta.detail stays a pure string builder.
+  detail: (plan: string | null, trialEndText: string | null) => string;
 }
 
-function formatDate(iso: string | null): string | null {
+// Formats in the account's country zone when known, else the runtime default.
+// This Card is server-rendered, so without an explicit timeZone the date would be
+// the server's UTC day — off by one for users east of UTC near midnight.
+function formatDate(iso: string | null, country: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
@@ -20,6 +28,7 @@ function formatDate(iso: string | null): string | null {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: zoneForCountry(country),
   });
 }
 
@@ -42,12 +51,10 @@ const STATUS_META: Record<string, StatusMeta> = {
   trialing: {
     label: 'Trial active',
     tone: 'ok',
-    detail: (_plan, trialEndsAt) => {
-      const end = formatDate(trialEndsAt);
-      return end
-        ? `Your free trial runs until ${end}.`
-        : 'Your free trial is active.';
-    },
+    detail: (_plan, trialEndText) =>
+      trialEndText
+        ? `Your free trial runs until ${trialEndText}.`
+        : 'Your free trial is active.',
   },
   past_due: {
     label: 'Payment due',
@@ -63,7 +70,7 @@ const STATUS_META: Record<string, StatusMeta> = {
 };
 
 const NONE_META: StatusMeta = {
-  label: 'Free trial',
+  label: 'No plan',
   tone: 'muted',
   detail: () => 'You don’t have an active subscription yet.',
 };
@@ -79,8 +86,10 @@ export function SubscriptionCard({
   status,
   plan,
   trialEndsAt,
+  country,
 }: SubscriptionCardProps) {
   const meta = (status && STATUS_META[status]) || NONE_META;
+  const trialEndText = formatDate(trialEndsAt, country);
 
   return (
     <section className="card">
@@ -100,7 +109,7 @@ export function SubscriptionCard({
               {meta.label}
             </span>
             <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
-              {meta.detail(plan, trialEndsAt)}
+              {meta.detail(plan, trialEndText)}
             </p>
           </div>
 

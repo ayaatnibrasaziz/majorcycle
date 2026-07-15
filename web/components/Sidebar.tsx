@@ -67,6 +67,20 @@ interface SidebarProps {
   subscriptionStatus?: string | null;
 }
 
+// Licence-badge copy per Stripe subscription status. `null`/unknown (a fresh
+// account hasn't started a trial — account creation ≠ trial start) reads "No plan".
+// Fixes the old fall-through where past_due/canceled wrongly showed "Free Trial".
+const LICENCE_LABELS: Record<string, string> = {
+  active: 'Active',
+  trialing: 'Trial Active',
+  past_due: 'Payment Due',
+  canceled: 'Cancelled',
+};
+
+function licenceLabel(status: string | null | undefined): string {
+  return (status && LICENCE_LABELS[status]) || 'No plan';
+}
+
 export function Sidebar({ subscriptionStatus }: SidebarProps) {
   return (
     <aside
@@ -127,11 +141,7 @@ export function Sidebar({ subscriptionStatus }: SidebarProps) {
             className="font-[var(--font-mono)] text-[10px] text-[var(--brand-mid)] font-semibold mt-0.5"
             aria-label="Subscription status"
           >
-            {subscriptionStatus === 'active'
-              ? 'Active'
-              : subscriptionStatus === 'trialing'
-                ? 'Trial Active'
-                : 'Free Trial'}
+            {licenceLabel(subscriptionStatus)}
           </div>
         </div>
         <SignOutButton />

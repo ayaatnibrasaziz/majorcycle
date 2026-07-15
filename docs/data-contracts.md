@@ -904,21 +904,76 @@ incremental window), so a fixed split is never re-pulled again.
 
 ---
 
-## 10. Stripe Subscription Schema
+## 10. Stripe Subscription Schema (F3)
 
-Two products in Stripe:
-1. **`MajorCycle` Monthly**
-   - 3 prices: USD $15, AUD $19, CAD $20
-   - `trial_period_days: 7`
-2. **`MajorCycle` Annual**
-   - 3 prices: USD $126, AUD $159, CAD $168 (~30% off monthly equivalent)
-   - `trial_period_days: 7`
+**Stripe is the source of truth; the DB is a synced cache.** One product, addressed
+by `lookup_key` (never hard-coded price ids — test and live ids differ, lookup_keys
+are stable across both modes):
 
-Webhook events handled:
-- `checkout.session.completed` → set `profiles.subscription_status = 'trialing'`
-- `customer.subscription.updated` → sync status
-- `customer.subscription.deleted` → set status `'canceled'`
-- `invoice.payment_failed` → trigger 3-day grace period flow
+- **Product `MajorCycle`** (`prod_UrMvM8SaVr5YIl`), two active recurring **multi-currency** prices:
+  - **Monthly** — `lookup_key: majorcycle_monthly` — USD $15 / AUD $19 / CAD $20
+  - **Annual** — `lookup_key: majorcycle_annual` — USD $126 / AUD $159 / CAD $168 (~30% off)
+- The **7-day trial is NOT on the price.** It is applied in checkout code via
+  `subscription_data.trial_period_days: 7` (so the abuse guard can drop it for a
+  repeat email/card — see plan §6). Currency is fixed per subscription by country:
+  `AU→aud`, `CA→cad`, everyone-else→`usd`.
+- `automatic_tax: { enabled: false }` at launch (a one-line switch for GST later).
+
+### `profiles` billing columns (all SERVICE-ROLE-ONLY — client-immutable)
+
+Written **only** by the Stripe webhook via the service-role admin client; excluded
+from the `authenticated` UPDATE grant (`20260705032433`) so a browser session can
+never forge entitlement. Migration `20260523133635` + `20260711000000` +
+`20260715000000_f3_stripe_billing`:
+
+| Column | Type | Meaning |
+|---|---|---|
+| `stripe_customer_id` | text UNIQUE | Stripe `cus_…`. |
+| `stripe_subscription_id` | text | Active `sub_…` — portal/cancel/sync. |
+| `subscription_status` | text | `trialing`/`active`/`past_due`/`canceled` (our mapped view of Stripe status). |
+| `subscription_plan` | text | `monthly`/`annual` (from the Price lookup_key). |
+| `subscription_currency` | text | Locked `usd`/`aud`/`cad`. |
+| `trial_ends_at` | timestamptz | Stripe `sub.trial_end`. |
+| `current_period_end` | timestamptz | Stripe `current_period_end` — "renews on" + delete-during-paid. |
+| `cancel_at_period_end` | boolean (default false) | Sub set to end at period end (user cancel / delete-during-paid). |
+| `grace_until` | timestamptz | `now()+3d` on `invoice.payment_failed`; `past_due` beyond it hard-locks. |
+| `frozen_trial_ms` | bigint | Remaining trial (ms) saved when a *trialing* account is deleted; restored on reactivation. |
+| `billing_blocked` | boolean (default false) | Chargeback/fraud dispute revoked access; cleared only if the dispute is won. |
+| `trial_reminder_sent` | text | Which trial-ending reminders (day5/day7) already sent — prevents double-send by the cron. |
+
+**Stripe status → our `subscription_status`:** `trialing→trialing`, `active→active`,
+`past_due→past_due` (+`grace_until`), `unpaid→` hard-locked (past_due-equivalent),
+`canceled→canceled`, `incomplete`/`incomplete_expired→` no active sub. **Hard-lock
+rule:** `past_due` AND `now > grace_until` ⇒ the gate denies access (status stays
+`past_due`; the gate reads grace). `billing_blocked = true` ⇒ no access regardless of status.
+
+### Supporting tables (server-only — RLS on, no policies)
+
+- **`stripe_events`** (`id text pk`, `type text`, `received_at timestamptz`) — webhook
+  **idempotency ledger**. Insert-on-first-sight of the Stripe event id; if it already
+  exists, the webhook returns 200 and skips (exactly-once side effects).
+- **`trial_tombstones`** (`id uuid pk`, `email_hash text`, `card_fingerprint text`,
+  `created_at timestamptz`; indexed on both hash columns) — **trial-abuse guard**.
+  `sha256(lower(email))` + Stripe card `fingerprint` of consumed trials. **Not** a FK
+  to `profiles` — it must survive account deletion so a purged user can't farm a fresh
+  free trial. Reused email → no-trial checkout; reused card fingerprint → trial ended
+  at the webhook. Written when a trial is first consumed and at purge time.
+
+### Webhook events handled (`/api/stripe/webhook`)
+
+Verified (`constructEvent(rawBody, sig, secret)`; bad signature → 400), idempotent
+(`stripe_events`), all writes via the service-role admin client:
+
+- `checkout.session.completed` — capture customer + subscription ids; set status,
+  plan, currency, `trial_ends_at`, `current_period_end`; write trial tombstone.
+- `customer.subscription.created` / `.updated` — sync status, period, plan, `cancel_at_period_end`.
+- `customer.subscription.trial_will_end` — backup reminder log (primary reminders are cron).
+- `invoice.payment_succeeded` / `invoice.paid` — status `active`; update period; clear `grace_until`.
+- `invoice.payment_failed` — status `past_due`; `grace_until = now()+3d`; payment-failed email.
+- `customer.subscription.deleted` — status `canceled`; clear `stripe_subscription_id`.
+- `charge.dispute.created` / `.closed` / `.funds_withdrawn` / `.funds_reinstated` —
+  on `created` set `billing_blocked=true` (revoke access immediately); on resolution
+  clear it only if won. No custom email (Stripe notifies the owner natively).
 
 ---
 
@@ -940,6 +995,18 @@ Webhook events handled:
 - **RLS is on for every table.** `profiles` + `analysis_runs` have per-user policies (own-row). `stocks` / `price_bars` / `universe_log` / `listings` / `ticker_requests` / `index_membership` / `split_events` have RLS enabled with **no policies** — read/write them **only server-side with the service-role key** (`createAdminClient` / the Python service client), never with the browser anon client. The `/api/listings/search` + `/api/request-ticker` routes gate on the authed user (server client) then touch `listings` / `ticker_requests` via `createAdminClient`.
 - The `get_price_bars_json(p_ticker)` RPC is the one-request way to read a ticker's full history (bypasses the 1000-row cap); it's service-role only. Schema lives in `supabase/migrations/` (mirrors the Supabase migration log).
 - **Account deletion (F2 Part B).** `profiles.deletion_scheduled_at timestamptz` marks a soft-deleted account: set = scheduled for permanent purge at that time (30-day grace); `NULL` = active. It is **service-role-only** — deliberately excluded from the authenticated column-UPDATE grant (`20260705032433`), so only the server (delete action / reactivation / the purge route) can set or clear it. The hard delete runs `admin.auth.admin.deleteUser(id)` and cascades: `auth.*` + `profiles` (`ON DELETE CASCADE`) + `analysis_runs` (CASCADE); `universe_log.added_by_user` and `ticker_requests.requested_by` are **`ON DELETE SET NULL`** (audit breadcrumbs kept, the user reference nulled). Migration `20260711000000_account_deletion.sql` flipped `universe_log`'s FK from `NO ACTION`→`SET NULL` — it was the last constraint that would have blocked a delete. The daily **`/api/cron/purge-accounts`** route (Vercel Cron, guarded by `CRON_SECRET` via the `Authorization: Bearer` header) purges rows whose `deletion_scheduled_at` has passed, emailing the branded "account deleted" notice first.
+- **Stripe billing (F3).** The eight billing columns added to `profiles` by
+  `20260715000000_f3_stripe_billing` (`stripe_subscription_id`, `subscription_currency`,
+  `current_period_end`, `cancel_at_period_end`, `grace_until`, `frozen_trial_ms`,
+  `billing_blocked`, `trial_reminder_sent`) — like the pre-existing `subscription_status`
+  / `subscription_plan` / `trial_ends_at` / `stripe_customer_id` — are **service-role-only**:
+  deliberately excluded from the authenticated column-UPDATE grant (`20260705032433`), so
+  only the Stripe webhook (service-role admin client) writes them. This is the anti-freeload
+  backbone: entitlement is server-derived Stripe truth the browser cannot forge. The two new
+  tables **`stripe_events`** (webhook idempotency) and **`trial_tombstones`** (trial-abuse
+  guard; **not** a FK to `profiles` so it outlives a deleted account) are server-only —
+  **RLS enabled, no policies** (service-role access only, like `stocks` / `split_events`);
+  their "RLS enabled, no policy" advisor notice is intentional. See §10 for the full schema.
 - **Referrals (F2 Part C — refer-a-friend).** `referrals` (`id uuid pk`, `referrer_id uuid → profiles ON DELETE CASCADE`, `friend_email text`, `message text`, `created_at timestamptz`) records one row per invite sent — it powers the per-user daily rate-limit and the duplicate-invite guard, and is a plain audit trail (no rewards/tracking yet — deferred to F3). **RLS: owner-only** `select` + `insert` (`auth.uid() = referrer_id`); **no `update`/`delete` policy** (immutable) and a deleted account's rows cascade away. Unlike the server-only tables, this one **is written with the user's own session client** (the RLS `insert` check enforces `referrer_id = auth.uid()`). Migration `20260712000000_referrals.sql`. The `sendReferral` server action layers the app-level guards on top (honeypot, email validity, required referrer name, no self-referral, ≤10/day, no re-invite within 30 days) and only records a **successful** email send.
 
 ---

@@ -38,7 +38,7 @@ export async function requestAccountDeletion(): Promise<void> {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from('profiles')
-    .select('email, display_name, subscription_status, deletion_scheduled_at')
+    .select('email, display_name, country, subscription_status, deletion_scheduled_at')
     .eq('id', user.id)
     .single();
 
@@ -69,6 +69,7 @@ export async function requestAccountDeletion(): Promise<void> {
         name: profile?.display_name ?? null,
         deletionDate,
         subscriptionKind: subscriptionEmailKind(profile?.subscription_status),
+        country: profile?.country ?? null,
       });
     }
   }

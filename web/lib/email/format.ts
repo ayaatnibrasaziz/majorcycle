@@ -5,6 +5,8 @@
  * paragraph / button / greeting styling stays identical across every app email.
  */
 
+import { zoneForCountry } from '@/lib/timezone';
+
 export const FONT =
   "'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
@@ -47,12 +49,21 @@ export function greetingText(name: string | null): string {
   return n ? `Hi ${n},` : 'Hi there,';
 }
 
-/** "Friday, 10 August 2026" — owner is AU, so format in en-AU deterministically. */
-export function formatDate(date: Date): string {
+/**
+ * "Friday, 10 August 2026" — en-AU for a deterministic day-month-year style.
+ *
+ * Emails render on the server (no browser), so the date is shown in the account's
+ * COUNTRY zone (from `profiles.country`) — the same `zoneForCountry` helper the
+ * account UI uses, so an email date and the on-screen date never disagree by a day.
+ * Unknown/absent country -> the runtime default zone (UTC on Vercel), i.e. today's
+ * behaviour. See web/lib/timezone.ts and SubscriptionCard.
+ */
+export function formatDate(date: Date, country?: string | null): string {
   return new Intl.DateTimeFormat('en-AU', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: zoneForCountry(country),
   }).format(date);
 }

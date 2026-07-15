@@ -65,6 +65,7 @@ export default async function AccountPage() {
           status={profile?.subscription_status ?? null}
           plan={profile?.subscription_plan ?? null}
           trialEndsAt={profile?.trial_ends_at ?? null}
+          country={profile?.country ?? null}
         />
 
         {hasPasswordIdentity ? (
