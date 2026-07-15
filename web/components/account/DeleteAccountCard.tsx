@@ -1,10 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requestAccountDeletion } from '@/app/(app)/account/actions';
 import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
+
+// The viewer's device IANA timezone (client-only; '' on the server / no JS). Sent
+// with the deletion request so the "deletion scheduled" email shows the date in the
+// zone the user is actually in — never a country guess. See coding-standards.md §16.
+const noopSubscribe = () => () => {};
+function getDeviceTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  } catch {
+    return '';
+  }
+}
 
 /**
  * Danger-zone card: request account deletion. Two-step to avoid an accidental
@@ -26,6 +38,7 @@ export function DeleteAccountCard({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [ack, setAck] = useState(false);
+  const timeZone = useSyncExternalStore(noopSubscribe, getDeviceTimeZone, () => '');
 
   const isTrial = subscriptionStatus === 'trialing';
   const isPaidSub =
@@ -90,8 +103,10 @@ export function DeleteAccountCard({
             </label>
 
             <div className="flex items-center gap-3">
-              {/* Submits the server action; disabled until acknowledged. */}
+              {/* Submits the server action; disabled until acknowledged. The
+                  hidden field carries the device timezone for the email date. */}
               <form action={requestAccountDeletion}>
+                <input type="hidden" name="timeZone" value={timeZone} />
                 <Button type="submit" variant="destructive" disabled={!ack}>
                   Schedule deletion
                 </Button>

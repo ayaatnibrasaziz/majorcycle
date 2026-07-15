@@ -28,7 +28,13 @@ function subscriptionEmailKind(
  * already scheduled doesn't reset the clock or re-send. The purge cron does the
  * permanent delete once the date passes; signing back in + reactivating cancels it.
  */
-export async function requestAccountDeletion(): Promise<void> {
+export async function requestAccountDeletion(formData: FormData): Promise<void> {
+  // Device IANA timezone captured in the browser at submit time (hidden field), so
+  // the "deletion scheduled" email shows the date in the user's own zone. May be
+  // absent (no JS) — the email then falls back to the runtime zone.
+  const rawZone = formData.get('timeZone');
+  const timeZone = typeof rawZone === 'string' && rawZone ? rawZone : null;
+
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -38,7 +44,7 @@ export async function requestAccountDeletion(): Promise<void> {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from('profiles')
-    .select('email, display_name, country, subscription_status, deletion_scheduled_at')
+    .select('email, display_name, subscription_status, deletion_scheduled_at')
     .eq('id', user.id)
     .single();
 
@@ -69,7 +75,7 @@ export async function requestAccountDeletion(): Promise<void> {
         name: profile?.display_name ?? null,
         deletionDate,
         subscriptionKind: subscriptionEmailKind(profile?.subscription_status),
-        country: profile?.country ?? null,
+        timeZone,
       });
     }
   }

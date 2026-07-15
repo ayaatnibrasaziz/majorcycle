@@ -828,6 +828,12 @@ PRESETS = {
 
 **No FX conversion in Phase 1.** Australian users browsing AAPL see USD prices. This is the standard for finance products.
 
+**`profiles.country` drives currency only — never date/timezone display.** Dates shown to a
+user (trial end, renewal, deletion date) are rendered in their **device timezone**, not a
+country-derived zone. See `coding-standards.md` §16 for the full convention (client-side
+`<LocalDate>` on screen; device-zone captured at action time for user-triggered emails;
+relative phrasing for cron/webhook emails).
+
 ---
 
 ## 9. Universe Source & Index Membership

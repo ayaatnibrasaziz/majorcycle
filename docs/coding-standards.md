@@ -582,4 +582,38 @@ Playwright (**D**), whose real `getByRole` clicks are authoritative. Prefer `rea
 
 ---
 
+## 16. Date & timezone display
+
+**Decision (owner, 2026-07-15):** dates shown to a user are rendered in **their device
+timezone** — never derived from `profiles.country`. Country is for **currency only**
+(§8 of data-contracts). The device's OS timezone is the only signal for "where the user
+actually is right now" (it normally auto-tracks location), and it's independent of the
+account's stored country — a user who moves keeps a stale country but a correct device zone.
+
+Store instants in **UTC** (Stripe timestamps, Postgres `timestamptz`); the instant is
+absolute and unambiguous. Only the *display* is localised. Rules by surface:
+
+- **On-screen (web).** Format on the **client**, in the device zone. A Server Component
+  formats in the runtime zone (UTC on Vercel) → off-by-one near midnight, so use the
+  `<LocalDate iso fallback />` client component (`web/components/LocalDate.tsx`): SSR emits
+  the server-formatted `fallback`, and it reformats via
+  `toLocaleDateString(undefined, …)` (device zone) on mount.
+- **User-triggered emails** (the user clicked something, so a browser is present): capture
+  `Intl.DateTimeFormat().resolvedOptions().timeZone` in the browser at action time and pass
+  it to the server action / email, so the emailed date matches what the user just saw. See
+  `DeleteAccountCard` → `requestAccountDeletion` → `sendDeletionScheduledEmail` (hidden
+  `timeZone` field). `email/format.ts::formatDate(date, timeZone?)` takes the IANA zone
+  directly and falls back to the runtime zone on an absent/invalid value.
+- **System-triggered emails** (cron / Stripe webhook — **no** browser, so no device zone):
+  prefer **relative phrasing** ("your trial ends in 2 days", "tomorrow") which sidesteps
+  timezones entirely; if an exact calendar date is unavoidable, append an explicit zone
+  label. Do **not** guess from country. (This is why the purge-cron "account deleted" email
+  carries no date, and why F3 trial-reminder emails should count down in days.)
+
+**Anti-pattern:** deriving a display timezone from `profiles.country` (a country-representative
+zone is still a guess — the US/CA/AU each span several zones — and it conflates the
+currency signal with the display signal). We tried it briefly on 2026-07-15 and replaced it.
+
+---
+
 **End of coding-standards.md.**

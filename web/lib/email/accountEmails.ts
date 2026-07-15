@@ -25,10 +25,13 @@ export async function sendDeletionScheduledEmail(opts: {
   deletionDate: Date;
   /** 'paid' and 'trial' get different reassurance copy; null = no subscription line. */
   subscriptionKind: 'paid' | 'trial' | null;
-  /** ISO-3166 alpha-2 — renders the date in the account's local zone (UI-consistent). */
-  country?: string | null;
+  /**
+   * The user's device IANA timezone, captured in the browser at deletion request
+   * time, so the emailed date matches what they saw on screen. Null -> runtime zone.
+   */
+  timeZone?: string | null;
 }): Promise<boolean> {
-  const dateStr = formatDate(opts.deletionDate, opts.country);
+  const dateStr = formatDate(opts.deletionDate, opts.timeZone);
   const to = escapeHtml(opts.to);
 
   const bodyHtml = [

@@ -5,8 +5,6 @@
  * paragraph / button / greeting styling stays identical across every app email.
  */
 
-import { zoneForCountry } from '@/lib/timezone';
-
 export const FONT =
   "'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
@@ -52,18 +50,28 @@ export function greetingText(name: string | null): string {
 /**
  * "Friday, 10 August 2026" — en-AU for a deterministic day-month-year style.
  *
- * Emails render on the server (no browser), so the date is shown in the account's
- * COUNTRY zone (from `profiles.country`) — the same `zoneForCountry` helper the
- * account UI uses, so an email date and the on-screen date never disagree by a day.
- * Unknown/absent country -> the runtime default zone (UTC on Vercel), i.e. today's
- * behaviour. See web/lib/timezone.ts and SubscriptionCard.
+ * Emails render on the server with no browser, so we can't read the device zone
+ * here. For a USER-TRIGGERED email we pass the device's IANA `timeZone` captured in
+ * the browser at the moment of the action (see requestAccountDeletion), so the
+ * emailed date matches what the user just saw on screen. Absent/invalid -> the
+ * runtime default (UTC on Vercel). System-triggered emails (cron/webhook) have no
+ * device zone and should prefer relative phrasing ("in 2 days"). See
+ * docs/coding-standards.md "Date & timezone display".
  */
-export function formatDate(date: Date, country?: string | null): string {
-  return new Intl.DateTimeFormat('en-AU', {
+export function formatDate(date: Date, timeZone?: string | null): string {
+  const opts: Intl.DateTimeFormatOptions = {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-    timeZone: zoneForCountry(country),
-  }).format(date);
+  };
+  try {
+    // A bad timeZone string makes Intl throw — fall back to the runtime default.
+    return new Intl.DateTimeFormat('en-AU', {
+      ...opts,
+      timeZone: timeZone || undefined,
+    }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat('en-AU', opts).format(date);
+  }
 }

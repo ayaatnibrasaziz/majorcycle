@@ -1,34 +1,31 @@
+import type { ReactNode } from 'react';
 import { CreditCard } from 'lucide-react';
-import { zoneForCountry } from '@/lib/timezone';
+import { LocalDate } from '@/components/LocalDate';
 
 interface SubscriptionCardProps {
   status: string | null;
   plan: string | null;
   trialEndsAt: string | null;
-  /** ISO-3166 alpha-2; picks the zone billing dates are shown in (their local day). */
-  country: string | null;
 }
 
 interface StatusMeta {
   label: string;
   tone: 'ok' | 'warn' | 'muted';
-  // The trial-end date is pre-formatted (in the account's local zone) by the
-  // component so meta.detail stays a pure string builder.
-  detail: (plan: string | null, trialEndText: string | null) => string;
+  // `trialEnd` is a <LocalDate> node (renders in the viewer's device timezone),
+  // or null when there's no trial-end date. See docs/coding-standards.md.
+  detail: (plan: string | null, trialEnd: ReactNode | null) => ReactNode;
 }
 
-// Formats in the account's country zone when known, else the runtime default.
-// This Card is server-rendered, so without an explicit timeZone the date would be
-// the server's UTC day — off by one for users east of UTC near midnight.
-function formatDate(iso: string | null, country: string | null): string | null {
-  if (!iso) return null;
+// Server-side fallback string only — shown until <LocalDate> reformats in the
+// device zone on mount. This Card is a Server Component, so this runs in the
+// runtime (UTC) zone; the on-mount swap is what makes the date the user's own.
+function formatFallback(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
+  if (Number.isNaN(d.getTime())) return '';
   return d.toLocaleDateString(undefined, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-    timeZone: zoneForCountry(country),
   });
 }
 
@@ -51,10 +48,12 @@ const STATUS_META: Record<string, StatusMeta> = {
   trialing: {
     label: 'Trial active',
     tone: 'ok',
-    detail: (_plan, trialEndText) =>
-      trialEndText
-        ? `Your free trial runs until ${trialEndText}.`
-        : 'Your free trial is active.',
+    detail: (_plan, trialEnd) =>
+      trialEnd ? (
+        <>Your free trial runs until {trialEnd}.</>
+      ) : (
+        'Your free trial is active.'
+      ),
   },
   past_due: {
     label: 'Payment due',
@@ -86,10 +85,11 @@ export function SubscriptionCard({
   status,
   plan,
   trialEndsAt,
-  country,
 }: SubscriptionCardProps) {
   const meta = (status && STATUS_META[status]) || NONE_META;
-  const trialEndText = formatDate(trialEndsAt, country);
+  const trialEnd = trialEndsAt ? (
+    <LocalDate iso={trialEndsAt} fallback={formatFallback(trialEndsAt)} />
+  ) : null;
 
   return (
     <section className="card">
@@ -109,7 +109,7 @@ export function SubscriptionCard({
               {meta.label}
             </span>
             <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
-              {meta.detail(plan, trialEndText)}
+              {meta.detail(plan, trialEnd)}
             </p>
           </div>
 
