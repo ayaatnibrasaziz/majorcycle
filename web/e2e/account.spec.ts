@@ -54,6 +54,12 @@ async function gotoAccount(page: Page) {
     await signIn(page);
     await page.goto('/account');
   }
+  // The (app) shell paints from local JWT claims, but the page body awaits
+  // getUser() (a network call) before rendering the form. Under heavy parallel
+  // load that call lags, so the sidebar can show while #displayName hasn't. Wait a
+  // BOUNDED time for the form, then throw so the caller's toPass re-navigates —
+  // never hang the full retry window on a locator that isn't there yet.
+  await page.locator('#displayName').waitFor({ state: 'visible', timeout: 8000 });
 }
 
 /**
@@ -74,8 +80,8 @@ async function saveProfile(page: Page, displayName: string, country: string) {
     await page.locator('#displayName').fill(displayName);
     await page.locator('#country').selectOption(country);
     await page.getByRole('button', { name: /save changes/i }).click();
-    await expect(page.getByText(/^Saved$/)).toBeVisible({ timeout: 6000 });
-  }).toPass({ timeout: 45_000 });
+    await expect(page.getByText(/^Saved$/)).toBeVisible({ timeout: 8000 });
+  }).toPass({ timeout: 60_000 });
 }
 
 /** Reload /account and assert the persisted fields, healing a transient bounce. */
@@ -87,12 +93,12 @@ async function expectAccountFields(
   await expect(async () => {
     await gotoAccount(page);
     await expect(page.locator('#displayName')).toHaveValue(displayName, {
-      timeout: 6000,
+      timeout: 4000,
     });
     await expect(page.locator('#country')).toHaveValue(country, {
-      timeout: 6000,
+      timeout: 4000,
     });
-  }).toPass({ timeout: 45_000 });
+  }).toPass({ timeout: 60_000 });
 }
 
 test.describe('account hub (F2)', () => {
@@ -129,6 +135,10 @@ test.describe('account hub (F2)', () => {
   test('profile save writes display name + country and persists across reload', async ({
     page,
   }) => {
+    // Four retrying save/verify blocks; give the whole test room so that, under a
+    // loaded parallel run, each block's re-navigation retries have time to land.
+    test.setTimeout(180_000);
+
     // Unique marker guarantees the field is dirty every run (and no collision
     // with residue from a prior run).
     const marker = `E2E ${Date.now()}`;

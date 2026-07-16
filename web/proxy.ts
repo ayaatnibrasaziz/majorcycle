@@ -30,6 +30,10 @@ const PUBLIC_PATHS = [
   // not cookies). They must bypass the auth redirect; each route enforces its own
   // CRON_SECRET check, so opening them at the middleware is safe.
   '/api/cron',
+  // Stripe posts webhook events server-to-server (no cookies). The route verifies
+  // every request with the Stripe signature secret, so opening it at the middleware
+  // is safe — an unsigned/forged POST is rejected 400 inside the handler.
+  '/api/stripe/webhook',
 ];
 
 export async function proxy(request: NextRequest) {
