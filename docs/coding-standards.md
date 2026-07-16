@@ -139,6 +139,11 @@ Authenticated pages under `web/app/(app)/` inherit chrome. Match it exactly:
 - **Never gate a portal / JSX branch on `typeof document` or `typeof window` for content that renders at hydration time.** The branch is `false` on the server and `true` on the client → the first client render differs from the SSR HTML → **hydration mismatch**. Instead: render imperative DOM with `document.createElement` + `appendChild` inside an effect (for imperatively-updated nodes like a chart tooltip), or gate the portal on a state that is `false` on the first render (e.g. `InfoTip`'s `open`, a chart's `dayPanel` — both null/false until interaction, so they render nothing at hydration). A `mounted` flag set in `useEffect` works too but trips the `react-hooks/set-state-in-effect` lint rule.
 - The `react-hooks/refs` lint rule forbids mutating a ref during render (`ref.current = x` in the component body). Sync derived-from-prop refs inside a `useEffect` instead.
 
+### Supabase from the client (learned the hard way — F3)
+
+- **`createBrowserClient()` must be a module-level singleton.** Building a new client per call spins up multiple `GoTrueClient`s, each with its own auto-refresh loop over the same cookie storage; they race on refresh-token rotation and can invalidate the session (intermittent, unrecoverable sign-outs). `web/lib/supabase/client.ts` memoises it — never `new` one ad-hoc.
+- **Authenticated DB writes go through a server action, not the browser client.** A cold browser client can fire an `UPDATE` before it has hydrated the session from cookies → the write goes out unauthenticated → RLS matches **zero rows** → and PostgREST returns **no error** for a zero-row update, so the UI shows a *false* success while nothing persisted. In a server action the cookie-bound client is already authenticated for the request, so the write is reliable and its result is truthful. (See `ProfileForm` → `updateProfile` in `web/app/(app)/account/actions.ts`.)
+
 ---
 
 ## 4. Python Conventions

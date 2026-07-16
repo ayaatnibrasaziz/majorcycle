@@ -965,21 +965,43 @@ rule:** `past_due` AND `now > grace_until` ⇒ the gate denies access (status st
   free trial. Reused email → no-trial checkout; reused card fingerprint → trial ended
   at the webhook. Written when a trial is first consumed and at purge time.
 
-### Webhook events handled (`/api/stripe/webhook`)
+### Webhook events handled (`/api/stripe/webhook`) — BUILT (F3 step 4, `ec0b441`)
 
-Verified (`constructEvent(rawBody, sig, secret)`; bad signature → 400), idempotent
-(`stripe_events`), all writes via the service-role admin client:
+Verified (`constructEvent(rawBody via req.text(), sig, secret)`; bad signature → 400),
+idempotent (`stripe_events`: claim the event id; duplicate → 200 skip; a handler throw
+releases the claim so Stripe retries), all writes via the service-role admin client.
+**Handlers re-derive state straight from the event object — no live Stripe retrieves —
+so they're order-independent and replay-safe.** The subscription lifecycle drives the
+state sync; checkout just links the customer:
 
-- `checkout.session.completed` — capture customer + subscription ids; set status,
-  plan, currency, `trial_ends_at`, `current_period_end`; write trial tombstone.
-- `customer.subscription.created` / `.updated` — sync status, period, plan, `cancel_at_period_end`.
-- `customer.subscription.trial_will_end` — backup reminder log (primary reminders are cron).
-- `invoice.payment_succeeded` / `invoice.paid` — status `active`; update period; clear `grace_until`.
-- `invoice.payment_failed` — status `past_due`; `grace_until = now()+3d`; payment-failed email.
-- `customer.subscription.deleted` — status `canceled`; clear `stripe_subscription_id`.
-- `charge.dispute.created` / `.closed` / `.funds_withdrawn` / `.funds_reinstated` —
-  on `created` set `billing_blocked=true` (revoke access immediately); on resolution
-  clear it only if won. No custom email (Stripe notifies the owner natively).
+- `customer.subscription.created` / `.updated` — **full sync**: `subscription_status`
+  (`mapStripeStatus`), `subscription_plan` (from the item's Price `lookup_key`),
+  `subscription_currency` (`sub.currency`), `current_period_end` (from
+  `sub.items.data[0].current_period_end` — note: on the ITEM in the pinned API version,
+  not the subscription), `cancel_at_period_end`, `trial_ends_at`; a healthy state
+  (active/trialing) clears `grace_until`. Resolves the profile via `sub.metadata.user_id`
+  (set at checkout) → falls back to `stripe_customer_id`.
+- `customer.subscription.deleted` — status `canceled`; clear `stripe_subscription_id`,
+  `trial_ends_at`, `grace_until`, `cancel_at_period_end`.
+- `invoice.payment_succeeded` / `invoice.paid` — status `active`; clear `grace_until`
+  (the renewed period end arrives on the accompanying `subscription.updated`). Profile
+  resolved via `invoice.parent.subscription_details.metadata.user_id` → customer.
+- `invoice.payment_failed` — status `past_due`; `grace_until = now()+3d`.
+- `checkout.session.completed` — **links `stripe_customer_id`** to the user (via
+  `client_reference_id`); subscription state itself comes from `subscription.created`.
+- `customer.subscription.trial_will_end` — no-op (recorded in `stripe_events` only;
+  the primary day-5/day-7 reminders are cron-driven — step 8).
+
+**Deferred by design (subscribed but not yet acted on — TODO markers in the route):**
+trial-tombstone write + card-fingerprint guard (step 7); billing emails —
+trial-started / payment-failed (step 8); dispute events
+(`charge.dispute.created`/`.closed`/`.funds_withdrawn`/`.funds_reinstated` →
+`billing_blocked`, step 8). The `charge.dispute.*` and email/tombstone effects above
+remain the *target* behaviour; the plan (§3/§6/§7B) is the spec, this list is the
+current build state.
+
+Contract-tested by `web/e2e/stripe-webhook.spec.ts` (plan §14) — offline signed events
+asserting the `profiles` write, idempotency, and bad-signature rejection.
 
 ---
 

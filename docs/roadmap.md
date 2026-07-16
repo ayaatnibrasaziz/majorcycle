@@ -350,8 +350,10 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
 - [x] `/privacy` — privacy policy (baseline content, owner to review) — F0.5
 - [x] `/contact` — contact form → Resend, brand-styled email, `support@` fallback — F1
 - [ ] `/pricing` — monthly/annual plans, region-aware currency
-- [~] **`/account` — F2, PLAN APPROVED 2026-07-09** (detailed runbook in
-      `~/.claude/plans/plan-mode-auth-virtual-ladybug.md`). Three parts: **(A) core** — edit
+- [x] **`/account` — F2 COMPLETE + MERGED LIVE + FULLY VERIFIED 2026-07-13** (Parts A+B+C merged as a clean
+      fast-forward of `feat/f2-account-part-a` into `main` `d6c5eb9` → live on www.majorcycle.com; see the live-verification
+      note under Part C). Original plan runbook in
+      `~/.claude/plans/plan-mode-auth-virtual-ladybug.md`. Three parts: **(A) core** — edit
       `display_name` + full-country dropdown (read-only once subscribed, since Stripe currency is fixed
       per subscription), read-only subscription placeholder, change-password with **current-password re-auth**
       (Google-only accounts see "you sign in with Google"); **(B) delete account** — **soft-delete + 30-day
@@ -408,7 +410,26 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
         before the danger zone. **Email owner-approved via Artifact preview 2026-07-12 before build.** Verified:
         typecheck/lint/build green, **e2e 26/26** (new non-destructive test: invalid-email client validation +
         self-referral server rejection — neither sends an email); card render + hidden honeypot confirmed live in the
-        preview DOM; `referrals` table left empty. **F2 (Parts A + B + C) COMPLETE — awaiting the Layer-F merge.**
+        preview DOM; `referrals` table left empty. **F2 (Parts A + B + C) COMPLETE.**
+  - [x] **F2 MERGED LIVE + FULLY VERIFIED 2026-07-13.** Owner gave the go; clean fast-forward of `feat/f2-account-part-a`
+        into `main` (`d6c5eb9`), Vercel prod deploy READY on www.majorcycle.com. Pre-merge typecheck/lint/build green;
+        both F2 migrations confirmed present in the prod DB (Supabase MCP + REST check) before deploy.
+        **Live-verified via Claude-in-Chrome** on `nibrasctg@gmail.com` (an email/password account; owner typed the
+        password at each sign-in, Claude drove the DB via Supabase MCP and read sends via Resend MCP):
+        (i) **all 6 subscription-status renders** — set `subscription_status`/`plan`/`trial_ends_at` in the DB, reload
+        /account: null="Free Trial", trialing="Trial Active + runs until <date>", active·monthly/annual="Active + You're
+        on the Monthly/Annual plan", past_due="Payment Due" (amber), canceled="Cancelled" (muted); country-lock ON for
+        active/trialing/past_due; delete-card reassurance copy correct per state.
+        (ii) **refer-a-friend** — real invite delivered (Resend) and landed in the Gmail **inbox** with name + quoted note;
+        `referrals` row written then cleaned up.
+        (iii) **delete + all three deletion-email variants fired live and body-verified via Resend `get-email`** — paid
+        ("stays valid until the end of the period you've already paid for — doesn't cut it short or extend it"), trial
+        ("free trial — the days you have left are saved"), none (no subscription line); each set `deletion_scheduled_at`
+        to exactly +30d and delivered with the real hosted logo + en-AU date + disclaimer.
+        (iv) **flows** — reactivate-by-signin → confined to /reactivate → "Reactivate my account" cleared the flag → back
+        in the app; **sign-out on /reactivate logs out AND leaves the deletion scheduled** (correct — only reactivate
+        cancels). Account restored to a clean baseline afterward. **Email spam audit: all 19 Resend sends `delivered`, zero
+        bounces; the connected Gmail shows every MajorCycle email in INBOX (mostly IMPORTANT) and the spam folder empty.**
   - [x] **Part B (delete account) — BUILT + LIVE-VERIFIED 2026-07-11 (not yet merged).**
         Soft-delete + 30-day grace + reactivation + purge cron + two branded emails (owner-approved copy).
         Migration `20260711000000_account_deletion.sql` (applied via MCP): `universe_log.added_by_user` FK
@@ -465,10 +486,65 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
       mid-grace; a `past_due` account requests deletion; reactivation exactly on the boundary date; trial ends mid-grace
       then reactivate. Enumerate every timing combination and its outcome as a table before implementation — do NOT
       code the deletion↔Stripe wiring until that plan is agreed.
-- [ ] Stripe Checkout integration
-- [ ] Stripe webhook handler with all subscription events
-- [ ] 3-day grace period flow on payment failure
-- [ ] Trial-ending email reminders (day 5, day 7)
+  - **F3 carry-over findings from the F2 live verification (2026-07-13) — ✅ ALL RESOLVED in the F3 build (see progress below):**
+      · **Sidebar licence badge** (`web/components/Sidebar.tsx`) only mapped `active`→"Active" and `trialing`→"Trial
+        Active"; `past_due`/`canceled`/null fell through to "Free Trial." **✅ FIXED (F3 step 1):** full mapping
+        (active/trialing/past_due/canceled/null→"No plan"). Live-confirmed the badge reads "No plan" for the E2E user.
+      · **Deletion-date display timezone.** The 30-day grace *length* was always timezone-safe (absolute +30×24h
+        `timestamptz`); only the *displayed* string was UTC-formatted. **✅ RESOLVED (F3, commit `6fe6d5a`) — but by a
+        BETTER approach than originally suggested:** dates render in the user's **DEVICE timezone** (`LocalDate.tsx`, and
+        device-zone captured at action time for user-triggered emails), NEVER `profiles.country`. Country = currency only.
+        Rationale: someone travelling/relocated should see the date where their device actually is. See coding-standards §16.
+      · **SPGI phantom split** — **✅ VERIFIED RESOLVED (2026-07-16):** the Daily Data Refresh cron ran 2026-07-16 00:03
+        UTC *after* the stale pending row was deleted, and did NOT recreate it (`split_events`: 0 SPGI rows, 0 pending). The
+        `_MIN_SPLIT_DEVIATION` guard is proven in production.
+  - **F3 product decisions (owner, 2026-07-13):**
+      · **Account creation ≠ trial start.** A user can register a FREE account with no card and no trial (already the DB
+        behaviour — `handle_new_user` sets no status/trial; the "Free Trial" label is just the null-status fallback).
+        Starting the 7-day trial (card required upfront) is an explicit opt-in later. Card-upfront + trial-abuse guard fire
+        at the trial-START moment, not signup. Needs a distinct "No active plan" state (not "Free Trial") — folds into the
+        sidebar-badge fix. **The paywall/gate is the FINAL F3 step, built LAST after all Stripe plumbing works. What exactly
+        gets gated for a free/no-trial account is an OPEN owner decision (owner rejected the Results/Run/Stocks assumption) —
+        do NOT presume; ASK the owner to define the gated scope before building the gate.**
+      · **Global signups allowed; non-AU/CA billed in USD.** Anyone worldwide can sign up and subscribe; currency rule
+        extends to AU→AUD, CA→CAD, everyone-else→USD (US$15/mo, US$126/yr). Add **Stripe Tax** for VAT/GST regions. Stock
+        coverage stays US/AU/CA (still useful globally). The /account country dropdown already lists all countries.
+**F3 BUILD PROGRESS** — branch `feat/f3-stripe` (NOT merged to `main` until F3 is complete + owner-approved).
+Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done entirely in Stripe **TEST mode**
+(test cards/clocks, never real money).
+- [x] **Step 1 — migration + carry-over fixes + secret-scan hook** (`1138090`). 8 service-role-only billing columns
+      on `profiles` + `stripe_events` (webhook idempotency) + `trial_tombstones` (abuse guard, survives deletion);
+      Sidebar badge mapping fixed; `.githooks/pre-commit` blocks `sk_`/`rk_`/`whsec_` in staged diffs.
+- [x] **Device-timezone rework** (`6fe6d5a`) — on-screen + emailed dates in the viewer's device zone, not country.
+- [x] **Step 2 — `web/lib/stripe.ts`** (`6a7fdf6`): pinned API version `2026-06-24.dahlia`, `resolvePriceId` by
+      lookup_key, `currencyForCountry` (AU→aud/CA→cad/else usd), `mapStripeStatus`, `TRIAL_PERIOD_DAYS=7`.
+- [x] **Step 3 — Checkout + `/pricing` + `/account` wiring** (`4d087a9`): auth-gated `POST /api/checkout` (hosted
+      Checkout, 7-day trial applied in code, currency forced by country, `automatic_tax:false`); public `/pricing`
+      (monthly/annual toggle, region currency from profile.country→geo→USD); `/account` "Start free trial" → /pricing.
+      **Live-verified in Stripe TEST via preview**: CTA → `checkout.stripe.com` sandbox, 7-day trial, correct price
+      ($15/mo)/currency (USD)/email-prefill.
+- [x] **Account-save flake fix** (`991db2d`): profile save moved to a **server action** (the cold browser client
+      could fire the UPDATE pre-auth → 0-row RLS no-op → a *false* "Saved"); browser Supabase client made a true
+      singleton; e2e helpers re-auth + bounded-wait through transient middleware bounces + slow dev renders.
+- [x] **Step 4 — Stripe webhook** (`ec0b441`): `web/app/api/stripe/webhook/route.ts` — the ONE writer of the billing
+      columns (service-role; entitlement = server-derived Stripe truth). Signature-verified (bad sig → 400), idempotent
+      (`stripe_events`; dup → 200 skip; handler throw → release claim → Stripe retries). Handlers re-derive from the
+      event object (no live retrieves): subscription.created/updated → full sync; deleted → canceled; invoice.paid/
+      payment_succeeded → active+clear grace; payment_failed → past_due+3-day grace; checkout.session.completed → link
+      customer. **Contract tests** `web/e2e/stripe-webhook.spec.ts` (plan §14): 8/8 — sign events → POST → assert the
+      `profiles` row + idempotency + bad-sig 400, no network to Stripe; run in the existing CI e2e job, self-skip until
+      `STRIPE_TEST_SECRET_KEY`+`STRIPE_TEST_WEBHOOK_SECRET`+`SUPABASE_SERVICE_ROLE_KEY` secrets set.
+- **Owner setup done (2026-07-16):** GitHub Secret `STRIPE_TEST_SECRET_KEY` ✅; Vercel **Preview** env
+      `STRIPE_SECRET_KEY`=`sk_test_…` ✅ (Sensitive, Preview-only). Stripe **test-mode** product + 2 prices built
+      (mirror live, same lookup_keys).
+- [ ] **Finish Step 4:** create the Stripe TEST webhook endpoint → preview `/api/stripe/webhook`; put its `whsec_…` in
+      Vercel Preview `STRIPE_WEBHOOK_SECRET` + GitHub `STRIPE_TEST_WEBHOOK_SECRET`; run the real end-to-end (test card).
+- [ ] **Auth-middleware consistency** (next session, agreed with owner) — a transient empty `getClaims()` under load
+      bounces a valid session to `/login`; add an authoritative `getUser()` fallback on the empty-claims path so prod +
+      e2e behave identically, then drop the test's re-auth workaround. Scoped as its own session (touches hardened auth).
+- [ ] Step 5 — Customer Portal route + wire the `/account` "Manage billing" button (portal config already exists).
+- [ ] Step 6 — delete↔billing wiring (edge-case table) · Step 7 — trial-abuse guard · Step 8 — trial reminders + billing
+      emails + dispute handling · Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
 - [x] `/methodology` — public, pre-sign-up plain-English explainer (cycle position, financial
@@ -633,6 +709,7 @@ Order of priority TBD based on user feedback. Candidate features:
 | **Portfolios** | User-defined portfolios with weighted aggregate scores. |
 | **Backtesting** | Simulate what entering at typical drawdown would have returned. |
 | **Mobile app (React Native)** | If web product validates. |
+| **CI / Actions-minutes budget (if repo goes private)** | Public repo = unlimited GitHub Actions minutes; **private = a monthly allowance** (~2,000 min GitHub Free / ~3,000 Pro), then pay-per-minute. Measured usage (2026-07-13) ≈ **900–1,100 min/month, dominated by the daily-refresh cron** (`daily-refresh.yml`, ~25–35 min/day); CI + e2e jobs are trivial (~1–3 min/run). Under the Free cap today (~2× headroom) but the daily cron **grows as the universe auto-expands**, and each manual full-refresh (`weekly-enriched-refresh.yml`, up to 6 h) eats a big chunk. Steps if it nears the cap: monitor **Settings → Billing → Actions**; then **GitHub Pro (~US$4/mo → 3,000 min)**; then **optimise/shard the daily cron**; then a **self-hosted runner / external scheduler** for the heavy job (Vercel Python's 300 s cap rules it out). Keep the full refresh manual + sparing. *(Repo was made public in Layer A specifically for unlimited minutes for this cron.)* |
 
 ---
 
