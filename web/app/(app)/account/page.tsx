@@ -54,7 +54,6 @@ export default async function AccountPage() {
 
       <div className="flex flex-col gap-4">
         <ProfileForm
-          userId={user.id}
           email={email}
           initialDisplayName={profile?.display_name ?? ''}
           initialCountry={profile?.country ?? ''}

@@ -11,6 +11,57 @@ import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
 const REFERRALS_PER_DAY = 10;
 const REFERRAL_DEDUPE_DAYS = 30;
 
+/**
+ * Subscription states that pin the account's country (Stripe fixes the billing
+ * currency per subscription — F3). While in one of these, country can't change.
+ * Mirrors the same set in the account page (server is the authority).
+ */
+const COUNTRY_LOCK_STATES = new Set(['active', 'trialing', 'past_due']);
+
+/**
+ * Save the signed-in user's profile (display name, and country when not locked).
+ *
+ * A server action, deliberately — the earlier client-side write raced its own auth
+ * hydration: a cold browser Supabase client could fire the UPDATE before the session
+ * loaded, so RLS matched zero rows and PostgREST returned NO error (a silent non-save
+ * shown as a false "Saved"). Here the cookie-bound client is already authenticated
+ * (the middleware validated the session for this request), so the write always runs
+ * as the user. The country lock is re-derived server-side (never trust the client),
+ * and only writable columns are touched (billing columns are client-immutable anyway).
+ */
+export async function updateProfile(input: {
+  displayName: string;
+  country: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Please sign in again.' };
+
+  const { data: current } = await supabase
+    .from('profiles')
+    .select('subscription_status')
+    .eq('id', user.id)
+    .single();
+  const countryLocked = COUNTRY_LOCK_STATES.has(current?.subscription_status ?? '');
+
+  const patch: { display_name: string | null; country?: string | null } = {
+    display_name: input.displayName.trim().slice(0, 80) || null,
+  };
+  if (!countryLocked) patch.country = input.country.trim() || null;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(patch)
+    .eq('id', user.id);
+  if (error) {
+    console.error('updateProfile: update failed', error);
+    return { ok: false, error: 'Could not save your changes. Please try again.' };
+  }
+  return { ok: true };
+}
+
 /** Map a raw subscription status to the reassurance-copy variant for the deletion email. */
 function subscriptionEmailKind(
   status: string | null | undefined

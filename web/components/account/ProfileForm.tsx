@@ -5,11 +5,10 @@ import { AlertCircle, CheckCircle2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { createBrowserClient } from '@/lib/supabase/client';
+import { updateProfile } from '@/app/(app)/account/actions';
 import { COUNTRIES } from '@/lib/countries';
 
 interface ProfileFormProps {
-  userId: string;
   email: string;
   initialDisplayName: string;
   initialCountry: string;
@@ -21,7 +20,6 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({
-  userId,
   email,
   initialDisplayName,
   initialCountry,
@@ -49,21 +47,17 @@ export function ProfileForm({
     setError(null);
     setSaved(false);
 
-    // Only ever send the columns the client is allowed to write (display_name,
-    // country). Never touch billing columns — the DB grant blocks them anyway.
-    const patch: { display_name: string | null; country?: string | null } = {
-      display_name: displayName.trim() || null,
-    };
-    if (!countryLocked) patch.country = country || null;
+    // Persist via a server action: the cookie-bound client there is already
+    // authenticated for this request, so the write can't race auth hydration the
+    // way a cold browser client could (which silently no-op'd under RLS). Only
+    // writable columns are sent; the server re-checks the country lock.
+    const result = await updateProfile({
+      displayName,
+      country: countryLocked ? '' : country,
+    });
 
-    const supabase = createBrowserClient();
-    const { error: dbError } = await supabase
-      .from('profiles')
-      .update(patch)
-      .eq('id', userId);
-
-    if (dbError) {
-      setError('Could not save your changes. Please try again.');
+    if (!result.ok) {
+      setError(result.error ?? 'Could not save your changes. Please try again.');
       setLoading(false);
       return;
     }
