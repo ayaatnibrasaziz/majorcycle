@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
-import { CreditCard } from 'lucide-react';
+import Link from 'next/link';
+import { CreditCard, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { LocalDate } from '@/components/LocalDate';
 
 interface SubscriptionCardProps {
@@ -91,6 +93,12 @@ export function SubscriptionCard({
     <LocalDate iso={trialEndsAt} fallback={formatFallback(trialEndsAt)} />
   ) : null;
 
+  // No live subscription (never subscribed, or lapsed) → offer the trial. Plan
+  // choice happens on /pricing, so the button links there rather than picking a
+  // plan for them. Subscribed states show billing management (wired to the Stripe
+  // Customer Portal in F3 build-step 5 — placeholder until then).
+  const canStartTrial = !status || status === 'canceled';
+
   return (
     <section className="card">
       <div className="card-header">
@@ -113,16 +121,30 @@ export function SubscriptionCard({
             </p>
           </div>
 
-          {/* Billing management lands with Stripe in F3 — placeholder for now. */}
-          <button
-            type="button"
-            disabled
-            title="Billing management is coming soon"
-            className="inline-flex items-center justify-center gap-2 h-11 px-4 text-[13px] font-semibold rounded-[var(--radius-sm)] bg-[var(--bg-surface)] border border-[var(--border-strong)] text-[var(--text-muted)] opacity-60 cursor-not-allowed flex-shrink-0"
-          >
-            <CreditCard className="w-4 h-4" strokeWidth={1.8} aria-hidden />
-            Manage billing (coming soon)
-          </button>
+          {canStartTrial ? (
+            <Button
+              asChild
+              variant="primary"
+              className="flex-shrink-0"
+            >
+              <Link href="/pricing">
+                <Sparkles className="w-4 h-4" strokeWidth={1.8} aria-hidden />
+                Start free trial
+              </Link>
+            </Button>
+          ) : (
+            /* Manage billing → Stripe Customer Portal (F3 build-step 5). Placeholder
+               until that route lands; no subscribed user exists yet to hit it. */
+            <button
+              type="button"
+              disabled
+              title="Billing management is coming soon"
+              className="inline-flex items-center justify-center gap-2 h-11 px-4 text-[13px] font-semibold rounded-[var(--radius-sm)] bg-[var(--bg-surface)] border border-[var(--border-strong)] text-[var(--text-muted)] opacity-60 cursor-not-allowed flex-shrink-0"
+            >
+              <CreditCard className="w-4 h-4" strokeWidth={1.8} aria-hidden />
+              Manage billing (coming soon)
+            </button>
+          )}
         </div>
       </div>
     </section>
