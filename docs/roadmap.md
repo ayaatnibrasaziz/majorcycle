@@ -537,8 +537,26 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
 - **Owner setup done (2026-07-16):** GitHub Secret `STRIPE_TEST_SECRET_KEY` ✅; Vercel **Preview** env
       `STRIPE_SECRET_KEY`=`sk_test_…` ✅ (Sensitive, Preview-only). Stripe **test-mode** product + 2 prices built
       (mirror live, same lookup_keys).
-- [ ] **Finish Step 4:** create the Stripe TEST webhook endpoint → preview `/api/stripe/webhook`; put its `whsec_…` in
-      Vercel Preview `STRIPE_WEBHOOK_SECRET` + GitHub `STRIPE_TEST_WEBHOOK_SECRET`; run the real end-to-end (test card).
+- [x] **Step 4 real end-to-end verified (2026-07-17) — via Stripe CLI, and it caught a real bug.** The preview URL is
+      behind **Vercel Deployment Protection** (`vercel_auth_enabled:true`) → Stripe's server-to-server POST gets 401 and
+      never reaches the route, so the "register webhook at preview URL" plan can't work without exposing previews. Instead
+      tested the canonical way: **Stripe CLI** (`stripe login` → main account **test mode**; owner-interactive) +
+      `stripe listen --forward-to localhost:3000/api/stripe/webhook` (its `whsec_` written to `web/.env.local`, gitignored,
+      never displayed). Created a throwaway product/price (`lookup_key=majorcycle_monthly`) + customer (`pm_card_visa`) +
+      trialing subscription with `metadata.user_id`=e2e profile. Real events forwarded → route returned **200** for all →
+      DB written (plan=monthly, currency=aud, customer/sub ids, trial-end). **BUG FOUND + FIXED:** a 7-day trial's **$0
+      invoice is marked paid instantly**, so `invoice.paid`/`payment_succeeded` fired and the handler's unconditional
+      `status='active'` **clobbered `trialing`** → a real trial user would show as a paying "active" sub. Fix
+      (`web/app/api/stripe/webhook/route.ts`): a paid invoice now **only clears grace + recovers `past_due`→active**
+      (atomic guarded update, `.eq('subscription_status','past_due')`) — never downgrades `trialing`/resurrects `canceled`;
+      `customer.subscription.*` stays the authoritative status writer. Re-tested with a fresh trial sub → status=**trialing** ✅.
+      Added regression test (`stripe-webhook.spec.ts`: "a trial's paid $0 invoice must NOT downgrade trialing → active").
+      Suite now **35/35 green**. Stripe test data cleaned up (customers deleted, price/product archived, `stripe_events` cleared,
+      profile reset). Note: the whsec in `.env.local` is a real **test-mode CLI** secret (local only).
+- [ ] **Remaining webhook setup:** (a) CI — set GitHub secret `STRIPE_TEST_WEBHOOK_SECRET` to turn ON the contract tests
+      in CI (any `whsec_…`; they self-skip until present, offline-signed so value need not match a real endpoint).
+      (b) **Production webhook (at F3 merge):** register the LIVE endpoint at `majorcycle.com/api/stripe/webhook` (prod is
+      NOT auth-walled and is LIVE mode) → put its `whsec_` in Vercel **Production** `STRIPE_WEBHOOK_SECRET`.
 - [x] **Auth-middleware / session consistency (done 2026-07-17).** The `getClaims()`-hiccup theory was WRONG (JWTs
       live ~1h, so no refresh race during a test). Real root cause: the e2e account + auth suites share ONE test user,
       and the app's Sign-out used the Supabase default **`scope: 'global'`** — which revokes the user's sessions on

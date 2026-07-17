@@ -180,6 +180,21 @@ test.describe.serial('stripe webhook contract', () => {
     expect(rows?.length).toBe(1);
   });
 
+  test("a trial's paid $0 invoice must NOT downgrade trialing → active", async ({
+    request,
+  }) => {
+    // Regression: a 7-day trial's $0 invoice is marked paid the instant the trial
+    // starts, firing invoice.paid/payment_succeeded alongside subscription.created.
+    // The invoice handler must clear grace but leave 'trialing' intact (only
+    // customer.subscription.* sets status). The prior test left status 'trialing'.
+    const event = makeEvent('invoice.paid', invoiceObject());
+    expect((await post(request, event)).ok()).toBeTruthy();
+
+    const p = await profile();
+    expect(p['subscription_status']).toBe('trialing'); // NOT 'active'
+    expect(p['grace_until']).toBeNull();
+  });
+
   test('same event id twice ⇒ one effect (idempotent)', async ({ request }) => {
     const event = makeEvent('customer.subscription.updated', subObject({ status: 'active', trial_end: null }));
     const first = await post(request, event);

@@ -155,18 +155,27 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<void> {
       return;
     case 'invoice.paid':
     case 'invoice.payment_succeeded': {
-      // Payment cleared → active + clear the grace clock. The renewed period end
-      // arrives on the accompanying customer.subscription.updated event.
+      // A successful payment clears any payment-failure grace clock. It must NOT
+      // set 'active' unconditionally: a trial subscription's $0 invoice is marked
+      // paid the instant the trial starts, and forcing 'active' here would clobber
+      // the 'trialing' status that customer.subscription.created/updated set (those
+      // events are the authoritative status writer). So we only *recover* a
+      // past_due account back to active — an atomic guarded update that never
+      // downgrades 'trialing' (or resurrects 'canceled'), and is order-independent
+      // vs the accompanying subscription.* event. The renewed period end arrives on
+      // that subscription.updated event.
       const invoice = event.data.object as Stripe.Invoice;
       const userId = await resolveUserIdFromInvoice(admin, invoice);
       if (!userId) {
         console.error('stripe webhook: no profile for paid invoice', invoice.id);
         return;
       }
+      await admin.from('profiles').update({ grace_until: null }).eq('id', userId);
       await admin
         .from('profiles')
-        .update({ subscription_status: 'active', grace_until: null })
-        .eq('id', userId);
+        .update({ subscription_status: 'active' })
+        .eq('id', userId)
+        .eq('subscription_status', 'past_due');
       return;
     }
     case 'invoice.payment_failed': {
