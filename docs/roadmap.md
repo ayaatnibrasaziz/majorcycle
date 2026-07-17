@@ -570,7 +570,14 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       row → country-lock collision) and dropped the account suite's re-auth crutch. Full auth+account+webhook suite:
       34/34 green ×3 under 3 parallel workers. Broader auth audit found no other issues (singleton browser client, no
       `getSession()` footgun, careful recovery confinement). The exploratory middleware `getUser()` fallback was reverted.
-- [ ] Step 5 — Customer Portal route + wire the `/account` "Manage billing" button (portal config already exists).
+- [ ] **Step 5 (next session) — Customer Portal + a full clickable demo.** Build the portal route + wire the `/account`
+      "Manage billing" button (portal config already exists). THEN do an owner-facing end-to-end demo **locally**: click
+      "Start 7-day free trial" → Stripe Checkout → test card `4242 4242 4242 4242` → watch `/account` flip to "Trial Active"
+      and the DB update live via `stripe listen`. **Prerequisite (2-min):** align the Stripe environment — the app's
+      `majorcycle_*` prices live in the **"MajorCycle sandbox"**, but this session's Stripe CLI is paired to the **main
+      account test mode**; for a real UI checkout the app key + `stripe listen` must be the SAME environment (either
+      re-pair the CLI to the sandbox, or point the local app key at main test mode where a matching price then needs
+      creating). Verify with test cards, TEST mode only — never real money.
 - [ ] Step 6 — delete↔billing wiring (edge-case table) · Step 7 — trial-abuse guard · Step 8 — trial reminders + billing
       emails + dispute handling · Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**
 
