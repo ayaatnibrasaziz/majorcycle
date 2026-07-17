@@ -36,37 +36,33 @@ async function signIn(page: Page) {
   }
 }
 
-/** True when the auth middleware has bounced us to the sign-in page. */
-function onLogin(page: Page): boolean {
-  return new URL(page.url()).pathname.startsWith('/login');
-}
-
 /**
- * Open /account, healing a transient auth bounce. Under a loaded dev server the
- * middleware's local JWT check (getClaims) can momentarily return no claims for a
- * still-valid session and redirect to /login; we re-authenticate and retry. This
- * is test-harness resilience only — prod is compiled and uncontended, so real
- * users hit it far less, and the app's own behaviour is unchanged.
+ * Open /account and wait for the profile form.
+ *
+ * No auth-bounce healing here by design. This suite and the auth suite share one
+ * test user; a *global* sign-out (the old default) in the concurrently-running
+ * auth suite used to revoke THIS suite's session mid-run, bouncing us to /login.
+ * That is fixed at the source — the app's Sign-out is now scope:'local' (see
+ * app/auth/signout/route.ts), so one session's sign-out no longer revokes another.
+ * This helper therefore does NOT re-authenticate: if that regresses, the bounce
+ * surfaces as a real failure here instead of being silently masked.
+ *
+ * The one wait we keep is dev-only: the (app) shell paints from local JWT claims,
+ * but the page body awaits its own getUser() (a network call) before rendering the
+ * form, so under heavy parallel load on `next dev` the sidebar can show while
+ * #displayName hasn't. Wait a BOUNDED time for the form, then throw so the caller's
+ * toPass re-navigates — never hang the full retry window on a locator not there yet.
  */
 async function gotoAccount(page: Page) {
   await page.goto('/account');
-  if (onLogin(page)) {
-    await signIn(page);
-    await page.goto('/account');
-  }
-  // The (app) shell paints from local JWT claims, but the page body awaits
-  // getUser() (a network call) before rendering the form. Under heavy parallel
-  // load that call lags, so the sidebar can show while #displayName hasn't. Wait a
-  // BOUNDED time for the form, then throw so the caller's toPass re-navigates —
-  // never hang the full retry window on a locator that isn't there yet.
   await page.locator('#displayName').waitFor({ state: 'visible', timeout: 8000 });
 }
 
 /**
- * Fill + save the profile, retrying through any transient auth bounce (a page load
- * OR the save's server-action POST can be redirected to /login under load). If a
- * prior attempt already persisted — its bounce merely hid the "Saved" toast — the
- * reloaded form shows the target values, so there's nothing left to do.
+ * Fill + save the profile, retrying through the dev-only form-render lag
+ * (gotoAccount throws if #displayName hasn't painted yet, and toPass re-navigates).
+ * If a prior attempt already persisted — a slow reload merely hid the "Saved" toast
+ * — the reloaded form shows the target values, so there's nothing left to do.
  */
 async function saveProfile(page: Page, displayName: string, country: string) {
   await expect(async () => {
@@ -84,7 +80,7 @@ async function saveProfile(page: Page, displayName: string, country: string) {
   }).toPass({ timeout: 60_000 });
 }
 
-/** Reload /account and assert the persisted fields, healing a transient bounce. */
+/** Reload /account and assert the persisted fields (toPass rides out render lag). */
 async function expectAccountFields(
   page: Page,
   displayName: string,

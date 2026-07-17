@@ -10,15 +10,15 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
  * one effect), and bad-signature rejection. Runs only when the Stripe + Supabase
  * service creds are present (skips cleanly otherwise, like the auth/account suites).
  *
- * Uses the shared E2E account and RESTORES its billing columns afterwards, so it
- * leaves no residue. Billing columns are service-role-only, so only this admin
- * client (never a browser) can set or reset them.
+ * Creates its OWN throwaway auth user + profiles row in beforeAll and deletes it in
+ * afterAll, so it never touches the shared login account — the account and webhook
+ * suites can run fully in parallel without contending on one row. Billing columns
+ * are service-role-only, so only this admin client (never a browser) writes them.
  */
 
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const EMAIL = process.env.E2E_EMAIL;
 
 const BILLING_COLUMNS =
   'subscription_status, subscription_plan, subscription_currency, ' +
@@ -38,7 +38,6 @@ const periodEnd = nowSec + 30 * 24 * 60 * 60;
 
 let admin: SupabaseClient;
 let userId: string;
-let snapshot: Record<string, unknown>;
 
 function makeEvent(type: string, object: unknown) {
   return {
@@ -114,30 +113,38 @@ function invoiceObject(overrides: Record<string, unknown> = {}) {
 
 test.describe.serial('stripe webhook contract', () => {
   test.skip(
-    !WEBHOOK_SECRET || !SERVICE_KEY || !SUPABASE_URL || !EMAIL,
-    'set STRIPE_WEBHOOK_SECRET + Supabase service creds + E2E_EMAIL to run',
+    !WEBHOOK_SECRET || !SERVICE_KEY || !SUPABASE_URL,
+    'set STRIPE_WEBHOOK_SECRET + Supabase service creds to run',
   );
 
   test.beforeAll(async () => {
     admin = createClient(SUPABASE_URL!, SERVICE_KEY!, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
-    const { data, error } = await admin
-      .from('profiles')
-      .select(`id, ${BILLING_COLUMNS}`)
-      .eq('email', EMAIL!)
-      .single();
-    if (error || !data) throw new Error(`E2E profile not found for ${EMAIL}`);
-    const { id, ...billing } = data as unknown as Record<string, unknown>;
-    userId = id as string;
-    snapshot = billing;
+    // Dedicated throwaway account for this run only — never the shared login user.
+    // @example.com is reserved + non-deliverable, and admin.createUser sends no
+    // email (email_confirm: true), so this has no outside side-effects.
+    const email = `stripe-webhook-e2e-${RUN}@example.com`;
+    const { data: created, error } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      password: `E2e!webhook-${RUN}`,
+    });
+    if (error || !created?.user) {
+      throw new Error(`could not create webhook test user: ${error?.message}`);
+    }
+    userId = created.user.id;
+    // The on_auth_user_created trigger creates the profiles row; upsert defensively
+    // so it is guaranteed present regardless of trigger timing.
+    await admin.from('profiles').upsert({ id: userId, email }, { onConflict: 'id' });
   });
 
   test.afterAll(async () => {
-    // Restore the shared account exactly as we found it, and drop our event rows.
+    // Drop our event rows, then delete the throwaway user — the profiles row goes
+    // with it via ON DELETE CASCADE, leaving zero residue.
     if (admin && userId) {
-      await admin.from('profiles').update(snapshot).eq('id', userId);
       await admin.from('stripe_events').delete().like('id', `evt_e2e_${RUN}_%`);
+      await admin.auth.admin.deleteUser(userId);
     }
   });
 

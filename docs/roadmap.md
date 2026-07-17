@@ -539,9 +539,16 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       (mirror live, same lookup_keys).
 - [ ] **Finish Step 4:** create the Stripe TEST webhook endpoint → preview `/api/stripe/webhook`; put its `whsec_…` in
       Vercel Preview `STRIPE_WEBHOOK_SECRET` + GitHub `STRIPE_TEST_WEBHOOK_SECRET`; run the real end-to-end (test card).
-- [ ] **Auth-middleware consistency** (next session, agreed with owner) — a transient empty `getClaims()` under load
-      bounces a valid session to `/login`; add an authoritative `getUser()` fallback on the empty-claims path so prod +
-      e2e behave identically, then drop the test's re-auth workaround. Scoped as its own session (touches hardened auth).
+- [x] **Auth-middleware / session consistency (done 2026-07-17).** The `getClaims()`-hiccup theory was WRONG (JWTs
+      live ~1h, so no refresh race during a test). Real root cause: the e2e account + auth suites share ONE test user,
+      and the app's Sign-out used the Supabase default **`scope: 'global'`** — which revokes the user's sessions on
+      EVERY device. Run concurrently, the auth suite's sign-out revoked the account suite's session mid-test → bounce
+      to `/login`. Fix (at the source, not a test crutch): `auth/signout` → **`scope: 'local'`** (one device only; also
+      correct product behaviour + explains the rare prod "Session not found") and account-deletion → explicit
+      `scope: 'global'`. Also gave the Stripe webhook contract tests their **own throwaway user** (was sharing the login
+      row → country-lock collision) and dropped the account suite's re-auth crutch. Full auth+account+webhook suite:
+      34/34 green ×3 under 3 parallel workers. Broader auth audit found no other issues (singleton browser client, no
+      `getSession()` footgun, careful recovery confinement). The exploratory middleware `getUser()` fallback was reverted.
 - [ ] Step 5 — Customer Portal route + wire the `/account` "Manage billing" button (portal config already exists).
 - [ ] Step 6 — delete↔billing wiring (edge-case table) · Step 7 — trial-abuse guard · Step 8 — trial reminders + billing
       emails + dispute handling · Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**

@@ -133,7 +133,10 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
 
   // Deactivate: end the session so the account can't be used during the grace
   // window. A returning user signs back in and is funnelled to /reactivate.
-  await supabase.auth.signOut();
+  // scope: 'global' here is deliberate — a deletion request should end the
+  // account's sessions on EVERY device, not just the one that requested it
+  // (unlike the normal Sign-out button, which is local — see auth/signout).
+  await supabase.auth.signOut({ scope: 'global' });
   redirect('/deletion-requested');
 }
 
