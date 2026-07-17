@@ -49,8 +49,8 @@ flowchart TB
     Cron --> DB
     UI -.->|signup/login| Auth
     UI -.->|subscribe| Stripe
-    Stripe -.->|webhook| PyFn
-    PyFn -.->|trigger email| Resend
+    Stripe -.->|webhook → TS route| SSR
+    SSR -.->|trigger email| Resend
 ```
 
 ---
@@ -565,15 +565,13 @@ SUPABASE_SERVICE_ROLE_KEY=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
-# Stripe
+# Stripe (F3). NO price-id env vars — prices are resolved at runtime by lookup_key
+# (majorcycle_monthly / majorcycle_annual), so the same code works in test and live.
+# STRIPE_WEBHOOK_SECRET: test value from the Stripe CLI (`stripe listen`); live value
+# from the production webhook endpoint (the preview URL can't receive Stripe posts —
+# it's behind Vercel Deployment Protection).
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
-STRIPE_PRICE_MONTHLY_USD=
-STRIPE_PRICE_MONTHLY_AUD=
-STRIPE_PRICE_MONTHLY_CAD=
-STRIPE_PRICE_ANNUAL_USD=
-STRIPE_PRICE_ANNUAL_AUD=
-STRIPE_PRICE_ANNUAL_CAD=
 
 # Email
 RESEND_API_KEY=

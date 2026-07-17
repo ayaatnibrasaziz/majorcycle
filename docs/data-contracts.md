@@ -949,9 +949,16 @@ never forge entitlement. Migration `20260523133635` + `20260711000000` +
 
 **Stripe status → our `subscription_status`:** `trialing→trialing`, `active→active`,
 `past_due→past_due` (+`grace_until`), `unpaid→` hard-locked (past_due-equivalent),
-`canceled→canceled`, `incomplete`/`incomplete_expired→` no active sub. **Hard-lock
-rule:** `past_due` AND `now > grace_until` ⇒ the gate denies access (status stays
-`past_due`; the gate reads grace). `billing_blocked = true` ⇒ no access regardless of status.
+`canceled→canceled`, `incomplete`/`incomplete_expired`/`paused→ null` (no active sub).
+`paused` is defensive only — we don't offer pause, and because the trial requires a card
+upfront (decision #19) Stripe won't emit it (that needs a trial ending with no payment
+method). **Cancel** has two paths, both handled: *cancel at period end* keeps the status
+(`active`/`trialing`) and stores `cancel_at_period_end=true`, then `subscription.deleted`
+fires at period end → `canceled`; *immediate cancel* fires `subscription.deleted` directly
+→ `canceled`. **Hard-lock rule:** `past_due` AND `now > grace_until` ⇒ the gate denies
+access (status stays `past_due`; the gate reads grace). `billing_blocked = true` ⇒ no
+access regardless of status. Enforcing these statuses (the paywall gate) is build step 10;
+the webhook only *records* them.
 
 ### Supporting tables (server-only — RLS on, no policies)
 
@@ -983,9 +990,14 @@ state sync; checkout just links the customer:
   (set at checkout) → falls back to `stripe_customer_id`.
 - `customer.subscription.deleted` — status `canceled`; clear `stripe_subscription_id`,
   `trial_ends_at`, `grace_until`, `cancel_at_period_end`.
-- `invoice.payment_succeeded` / `invoice.paid` — status `active`; clear `grace_until`
-  (the renewed period end arrives on the accompanying `subscription.updated`). Profile
-  resolved via `invoice.parent.subscription_details.metadata.user_id` → customer.
+- `invoice.payment_succeeded` / `invoice.paid` — **clear `grace_until`**, and recover
+  `past_due → active` **only** (an atomic guarded update, `.eq('subscription_status',
+  'past_due')`). It must NOT set `active` unconditionally: a 7-day trial's `$0` invoice is
+  marked paid the instant the trial starts, so this fires alongside `subscription.created`
+  — forcing `active` here would clobber `trialing` (found + fixed 2026-07-17 by the real
+  end-to-end test; the offline contract tests missed it because they fire events singly).
+  `customer.subscription.*` stays the authoritative status writer. Profile resolved via
+  `invoice.parent.subscription_details.metadata.user_id` → customer.
 - `invoice.payment_failed` — status `past_due`; `grace_until = now()+3d`.
 - `checkout.session.completed` — **links `stripe_customer_id`** to the user (via
   `client_reference_id`); subscription state itself comes from `subscription.created`.

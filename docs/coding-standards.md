@@ -143,6 +143,7 @@ Authenticated pages under `web/app/(app)/` inherit chrome. Match it exactly:
 
 - **`createBrowserClient()` must be a module-level singleton.** Building a new client per call spins up multiple `GoTrueClient`s, each with its own auto-refresh loop over the same cookie storage; they race on refresh-token rotation and can invalidate the session (intermittent, unrecoverable sign-outs). `web/lib/supabase/client.ts` memoises it — never `new` one ad-hoc.
 - **Authenticated DB writes go through a server action, not the browser client.** A cold browser client can fire an `UPDATE` before it has hydrated the session from cookies → the write goes out unauthenticated → RLS matches **zero rows** → and PostgREST returns **no error** for a zero-row update, so the UI shows a *false* success while nothing persisted. In a server action the cookie-bound client is already authenticated for the request, so the write is reliable and its result is truthful. (See `ProfileForm` → `updateProfile` in `web/app/(app)/account/actions.ts`.)
+- **`signOut()` defaults to `scope: 'global'` — pass `'local'` for a normal Sign-out button.** The default revokes the user's sessions on **every device**, so signing out on one device silently logs them out everywhere (and, in the e2e suite where suites share one test user, one suite's sign-out revoked another's session mid-test). A normal Sign-out must be `signOut({ scope: 'local' })` (this device only). Reserve `'global'` for deliberate "end everywhere" actions — e.g. account deletion. (See `web/app/auth/signout/route.ts` vs `account/actions.ts`.)
 
 ---
 
@@ -363,6 +364,12 @@ Phase 1 does NOT require 100% coverage. It DOES require these things tested:
 | UI components | No tests required Phase 1 (visual reference is the spec) | — |
 
 Run via `pytest` (Python) and `vitest` (TS). Both must pass in CI.
+
+### Stripe webhooks — offline contract tests + a real end-to-end pass
+
+- **Contract tests** (`web/e2e/stripe-webhook.spec.ts`) sign events **offline** with the same secret the route verifies with (`generateTestHeaderString` ↔ `constructEvent`), so any consistent `whsec_…` works — no reachable endpoint or network to Stripe needed. They create their **own throwaway user** per run (never the shared login account) so they can run in parallel without contention.
+- **But also do one real end-to-end pass** — the offline tests fire events **one at a time** and miss ordering bugs. A real trial signup fires an **event storm** (`subscription.created` + a paid `$0` invoice) at once; that's how the "paid invoice clobbers `trialing`" bug was caught. Do it with the **Stripe CLI**: `stripe login` (owner-interactive) → `stripe listen --forward-to localhost:3000/api/stripe/webhook`; put its `whsec_` in `web/.env.local`; create a test subscription and assert the DB.
+- **Vercel preview URLs are behind Deployment Protection** (`vercel_auth_enabled`) — Stripe's POST gets a **401** and never reaches the route. So webhooks can't be registered against a preview URL; test locally via the CLI, and register the **real** endpoint in **production** (not walled, LIVE mode).
 
 ---
 

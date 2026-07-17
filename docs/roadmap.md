@@ -553,10 +553,13 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       Added regression test (`stripe-webhook.spec.ts`: "a trial's paid $0 invoice must NOT downgrade trialing → active").
       Suite now **35/35 green**. Stripe test data cleaned up (customers deleted, price/product archived, `stripe_events` cleared,
       profile reset). Note: the whsec in `.env.local` is a real **test-mode CLI** secret (local only).
-- [ ] **Remaining webhook setup:** (a) CI — set GitHub secret `STRIPE_TEST_WEBHOOK_SECRET` to turn ON the contract tests
-      in CI (any `whsec_…`; they self-skip until present, offline-signed so value need not match a real endpoint).
-      (b) **Production webhook (at F3 merge):** register the LIVE endpoint at `majorcycle.com/api/stripe/webhook` (prod is
-      NOT auth-walled and is LIVE mode) → put its `whsec_` in Vercel **Production** `STRIPE_WEBHOOK_SECRET`.
+- [x] **CI webhook tests enabled (2026-07-17).** GitHub secret `STRIPE_TEST_WEBHOOK_SECRET` set (a transparent
+      non-sensitive offline-signing value — the contract tests sign+verify with the same string, so it need not match a
+      real endpoint). All three CI secrets now present. NOTE: CI only runs on **push to `main`** / **PRs to `main`**
+      (`ci.yml`), not on feature-branch pushes — so these first execute in CI on the **F3 PR**. Proven green locally (35/35).
+- [ ] **Production webhook (at F3 merge):** register the LIVE endpoint at `majorcycle.com/api/stripe/webhook` (prod is
+      NOT auth-walled and is LIVE mode) → put its `whsec_` in Vercel **Production** `STRIPE_WEBHOOK_SECRET`. (The preview
+      URL can't be used — it's behind Vercel Deployment Protection; Stripe gets 401.)
 - [x] **Auth-middleware / session consistency (done 2026-07-17).** The `getClaims()`-hiccup theory was WRONG (JWTs
       live ~1h, so no refresh race during a test). Real root cause: the e2e account + auth suites share ONE test user,
       and the app's Sign-out used the Supabase default **`scope: 'global'`** — which revokes the user's sessions on
