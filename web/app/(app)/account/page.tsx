@@ -20,7 +20,21 @@ export const dynamic = 'force-dynamic';
 // subscription — F3). While in one of these, the country field is read-only.
 const COUNTRY_LOCK_STATES = new Set(['active', 'trialing', 'past_due']);
 
-export default async function AccountPage() {
+// Friendly messages for a return from /api/portal that couldn't open the portal.
+const BILLING_NOTICE: Record<string, string> = {
+  error:
+    'We couldn’t open billing management just now. Please try again in a moment.',
+  none: 'There’s no billing to manage on your account yet.',
+};
+
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ billing?: string }>;
+}) {
+  const { billing } = await searchParams;
+  const billingNotice = (billing && BILLING_NOTICE[billing]) || null;
+
   const supabase = await createServerSupabaseClient();
 
   // Full user (not just claims) — we need the email + identity providers to
@@ -64,6 +78,7 @@ export default async function AccountPage() {
           status={profile?.subscription_status ?? null}
           plan={profile?.subscription_plan ?? null}
           trialEndsAt={profile?.trial_ends_at ?? null}
+          notice={billingNotice}
         />
 
         {hasPasswordIdentity ? (

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { CreditCard, Sparkles } from 'lucide-react';
+import { AlertCircle, CreditCard, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LocalDate } from '@/components/LocalDate';
 
@@ -8,6 +8,9 @@ interface SubscriptionCardProps {
   status: string | null;
   plan: string | null;
   trialEndsAt: string | null;
+  // Optional inline message shown above the action row — e.g. after a failed
+  // return from the billing portal (see /account ?billing= handling).
+  notice?: string | null;
 }
 
 interface StatusMeta {
@@ -87,6 +90,7 @@ export function SubscriptionCard({
   status,
   plan,
   trialEndsAt,
+  notice,
 }: SubscriptionCardProps) {
   const meta = (status && STATUS_META[status]) || NONE_META;
   const trialEnd = trialEndsAt ? (
@@ -95,8 +99,8 @@ export function SubscriptionCard({
 
   // No live subscription (never subscribed, or lapsed) → offer the trial. Plan
   // choice happens on /pricing, so the button links there rather than picking a
-  // plan for them. Subscribed states show billing management (wired to the Stripe
-  // Customer Portal in F3 build-step 5 — placeholder until then).
+  // plan for them. Subscribed states show "Manage billing", which opens the
+  // Stripe Customer Portal via a plain form POST to /api/portal.
   const canStartTrial = !status || status === 'canceled';
 
   return (
@@ -108,6 +112,16 @@ export function SubscriptionCard({
         <p className="mb-5 text-[12px] leading-relaxed text-[var(--text-muted)]">
           Your MajorCycle plan and billing.
         </p>
+
+        {notice && (
+          <div
+            role="alert"
+            className="mb-4 flex items-start gap-2 text-[12px] text-[var(--c-tier-3-ink)] bg-[var(--tint-tier-3)] border border-[var(--tint-tier-3-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
+          >
+            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" aria-hidden />
+            <span className="leading-relaxed">{notice}</span>
+          </div>
+        )}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -133,17 +147,15 @@ export function SubscriptionCard({
               </Link>
             </Button>
           ) : (
-            /* Manage billing → Stripe Customer Portal (F3 build-step 5). Placeholder
-               until that route lands; no subscribed user exists yet to hit it. */
-            <button
-              type="button"
-              disabled
-              title="Billing management is coming soon"
-              className="inline-flex items-center justify-center gap-2 h-11 px-4 text-[13px] font-semibold rounded-[var(--radius-sm)] bg-[var(--bg-surface)] border border-[var(--border-strong)] text-[var(--text-muted)] opacity-60 cursor-not-allowed flex-shrink-0"
-            >
-              <CreditCard className="w-4 h-4" strokeWidth={1.8} aria-hidden />
-              Manage billing (coming soon)
-            </button>
+            /* Manage billing → Stripe Customer Portal. A plain form POST to
+               /api/portal, which creates a portal session and 303-redirects to
+               it (no client JS, no Stripe key in the browser). */
+            <form action="/api/portal" method="post" className="flex-shrink-0">
+              <Button type="submit" variant="secondary">
+                <CreditCard className="w-4 h-4" strokeWidth={1.8} aria-hidden />
+                Manage billing
+              </Button>
+            </form>
           )}
         </div>
       </div>
