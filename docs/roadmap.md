@@ -581,6 +581,44 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       NOT downgrade to "active") + country locked → **Manage billing → Stripe Customer Portal** (trial ends Jul 25, $19/mo,
       update/cancel, Visa ••4242) → Return → `/account`. All demo data cleaned up (sub cancelled, customer deleted, throwaway
       user + 12 stripe_events rows removed). Prod webhook endpoint still deferred to F3 merge (Vercel preview is auth-walled).
+- [x] **Audit pass — Stripe + Supabase best practices (2026-07-18, commits `907b948` + `93a681c`).** (a) Webhook
+      idempotency: `web/app/api/stripe/webhook/route.ts` now claims the event id via an **ON CONFLICT DO NOTHING** upsert
+      (`.upsert({id,type},{onConflict:'id',ignoreDuplicates:true}).select('id')`; empty result = duplicate) instead of
+      insert-then-catch-23505 — identical semantics, but a Stripe redelivery no longer spams the Postgres log with
+      `duplicate key … stripe_events_pkey`. (b) `web/lib/stripe.ts` client now sets **`maxNetworkRetries: 2`** (SDK
+      default is 0). (c) `web/app/api/checkout/route.ts` — the two silent `catch {}` now `console.error` the real cause
+      (owner can't debug a blank 500/502) while still returning clean user copy. (d) Supabase: **referrals RLS** policies
+      rewritten to `(select auth.uid())` (migration `20260718000000_referrals_rls_initplan.sql`) → advisor
+      `auth_rls_initplan` cleared; **pg_trgm moved `public`→`extensions`** (migration
+      `20260718010000_move_pg_trgm_out_of_public.sql`; verified search_listings still uses the trigram index) → advisor
+      `extension_in_public` cleared. (e) Owner enabled **leaked-password protection** in the Supabase dashboard (UI already
+      surfaces it via `friendlyAuthError`, no code change). Remaining advisors are intentional/non-issues (9× server-only
+      `rls_enabled_no_policy` = correct lockdown; `unused_index` = pre-launch false positives, revisit at live-Stripe;
+      `auth_db_connections_absolute` INFO = scale-time knob, N/A on current compute). All verified: typecheck+lint clean,
+      webhook e2e 9/9, account e2e 5/5.
+- [x] **Profile-save Back-nav bug FIXED (2026-07-18, commit `9029762`).** `updateProfile` (account/actions.ts) persisted
+      correctly but didn't invalidate the client Router Cache, so save → `/pricing` → Back re-showed `/account` from the
+      stale pre-save snapshot (country looked unsaved though the DB was right). Fix = `revalidatePath('/account')` after a
+      successful update. Verified live (set AU, saved, soft-nav to /pricing, Back → shows Australia).
+- [ ] **NEXT-SESSION PUNCH-LIST (owner-agreed 2026-07-18, do in order):**
+      1. **DB-write sweep** — the profile-save `revalidatePath` gap likely exists in other write flows; audit every
+         mutation (server actions + API routes that write Supabase, e.g. deletion/reactivation/referrals, and any client
+         write) and add `revalidatePath`/`revalidateTag`/`router.refresh` where a later navigation could show stale data.
+      2. **Teach the owner to run a local webhook forwarder** — step-by-step `stripe listen` setup so they can confirm the
+         trial→checkout→Trial-Active loop locally themselves. (Env: app key = SANDBOX `acct_1TrdbF…`; run `stripe listen`
+         against the sandbox via `STRIPE_API_KEY` from `web/.env.local`; whsec already in `.env.local`.)
+      3. (dotted zero — owner said leave as-is, JetBrains Mono trait. No change.)
+      4. **Auto-fill country from IP** (owner approved) — pre-fill the profile/pricing country from the visitor's location
+         as a *default the user can change*, not a lock. BEFORE building: (i) explain to the owner WHY our stored country
+         must match the Stripe billing currency (owner asked: "isn't currency handled by Stripe automatically?" — discuss:
+         Stripe locks currency per subscription at creation, we set it from country, so the two must agree and be
+         deliberate — but confirm the exact robustness plan together). (ii) **AUDIT `web/lib/countries.ts`** — owner flagged
+         it may be a "dummy list" that doesn't match Stripe's country codes; verify our ISO-3166 alpha-2 codes match what
+         Stripe expects and that `currencyForCountry` (AU→aud/CA→cad/else usd) can't break on a mismatch. (iii) READ Stripe
+         docs for best practice on country/currency + Checkout `customer`/locale before implementing.
+      5. **Pricing/trial entry styling** — the `/pricing` (or a signed-in trial modal) should visually match the Stock
+         Detail **Methodology modal** (blurry backdrop + popup card; see `web/components/stocks/MethodologyModal.tsx`).
+         Content is done; make it look consistent. (Ties to the earlier #6 discussion re public page vs in-app modal.)
 - [ ] Step 6 — delete↔billing wiring (edge-case table) · Step 7 — trial-abuse guard · Step 8 — trial reminders + billing
       emails + dispute handling · Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**
 

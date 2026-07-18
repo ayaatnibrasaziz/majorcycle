@@ -963,8 +963,11 @@ the webhook only *records* them.
 ### Supporting tables (server-only — RLS on, no policies)
 
 - **`stripe_events`** (`id text pk`, `type text`, `received_at timestamptz`) — webhook
-  **idempotency ledger**. Insert-on-first-sight of the Stripe event id; if it already
-  exists, the webhook returns 200 and skips (exactly-once side effects).
+  **idempotency ledger**. Claim the Stripe event id via an **`ON CONFLICT DO NOTHING`**
+  upsert (`.upsert({id,type},{onConflict:'id',ignoreDuplicates:true}).select('id')`);
+  an empty returned array = already processed → 200 skip (exactly-once side effects).
+  Deliberately NOT insert-then-catch-23505 — that logged a Postgres `duplicate key` error
+  on every legitimate Stripe redelivery (audit 2026-07-18, `907b948`).
 - **`trial_tombstones`** (`id uuid pk`, `email_hash text`, `card_fingerprint text`,
   `created_at timestamptz`; indexed on both hash columns) — **trial-abuse guard**.
   `sha256(lower(email))` + Stripe card `fingerprint` of consumed trials. **Not** a FK
@@ -975,8 +978,9 @@ the webhook only *records* them.
 ### Webhook events handled (`/api/stripe/webhook`) — BUILT (F3 step 4, `ec0b441`)
 
 Verified (`constructEvent(rawBody via req.text(), sig, secret)`; bad signature → 400),
-idempotent (`stripe_events`: claim the event id; duplicate → 200 skip; a handler throw
-releases the claim so Stripe retries), all writes via the service-role admin client.
+idempotent (`stripe_events`: claim the event id via ON CONFLICT DO NOTHING; duplicate →
+200 skip; a handler throw releases the claim so Stripe retries), all writes via the
+service-role admin client.
 **Handlers re-derive state straight from the event object — no live Stripe retrieves —
 so they're order-independent and replay-safe.** The subscription lifecycle drives the
 state sync; checkout just links the customer:
@@ -1013,7 +1017,22 @@ remain the *target* behaviour; the plan (§3/§6/§7B) is the spec, this list is
 current build state.
 
 Contract-tested by `web/e2e/stripe-webhook.spec.ts` (plan §14) — offline signed events
-asserting the `profiles` write, idempotency, and bad-signature rejection.
+asserting the `profiles` write, idempotency, and bad-signature rejection. **Also
+live-verified end-to-end** (2026-07-18): real Stripe Checkout (test card 4242) →
+`stripe listen` forwarded the event storm [200] → `/account` flipped to Trial Active.
+
+### Customer Portal — `POST /api/portal` — BUILT (F3 step 5, `89424af`)
+
+Auth-gated (NOT in `PUBLIC_PATHS`). `getUser` → read `profiles.stripe_customer_id` →
+`stripe.billingPortal.sessions.create({ customer, return_url: origin+'/account' })` →
+**303 redirect** to the hosted portal. No customer on file → `/account?billing=none`;
+Stripe error (usually "no portal config in this Stripe mode") → `console.error` +
+`/account?billing=error`. The `/account` "Manage billing" button is a plain form POST
+(no client JS, no Stripe key in the browser). **The portal must be activated per Stripe
+mode** (sandbox config `bpc_1TuR6R…`: update/cancel-at-period-end/payment/invoice).
+
+**Stripe client** (`web/lib/stripe.ts`) sets `maxNetworkRetries: 2` (SDK default 0;
+retried POSTs get automatic idempotency keys).
 
 ---
 
