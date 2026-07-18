@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { currencyForCountry } from '@/lib/stripe';
+import { currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
 import { PricingPlans } from './PricingPlans';
 
 export const metadata: Metadata = {
@@ -29,7 +29,7 @@ export default async function PricingPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  let country: string | null = null;
+  let savedCountry: string | null = null;
   let hasSubscription = false;
 
   if (user) {
@@ -38,17 +38,19 @@ export default async function PricingPage() {
       .select('country, subscription_status')
       .eq('id', user.id)
       .single();
-    country = profile?.country ?? null;
+    savedCountry = profile?.country ?? null;
     hasSubscription = ACTIVE_STATES.has(profile?.subscription_status ?? '');
   }
 
-  if (!country) {
-    // Edge geo (Vercel sets this at the CDN). Null on localhost → USD default.
-    const hdrs = await headers();
-    country = hdrs.get('x-vercel-ip-country');
-  }
+  // Edge geo (Vercel sets this at the CDN, ISO alpha-2). Null on localhost.
+  const hdrs = await headers();
+  const edgeCountry = hdrs.get('x-vercel-ip-country');
 
-  const currency = currencyForCountry(country);
+  // Same resolution as the account trial modal and /api/checkout, so the price
+  // shown here equals the currency Stripe will charge.
+  const currency = currencyForCountry(
+    effectiveBillingCountry(savedCountry, edgeCountry),
+  );
 
   return (
     <PricingPlans

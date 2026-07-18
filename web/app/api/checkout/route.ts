@@ -6,6 +6,7 @@ import {
   getStripe,
   resolvePriceId,
   currencyForCountry,
+  effectiveBillingCountry,
   TRIAL_PERIOD_DAYS,
   type PlanKey,
 } from '@/lib/stripe';
@@ -58,7 +59,28 @@ export async function POST(request: Request) {
     );
   }
 
-  const currency = currencyForCountry(profile?.country);
+  // Currency basis = saved country, else the visitor's edge-detected country
+  // (Vercel), else USD — the SAME resolution the /pricing page and the account
+  // trial modal use to DISPLAY the price, so the amount shown equals the amount
+  // charged. `x-vercel-ip-country` is empty on localhost (no edge) → USD.
+  const savedCountry = profile?.country ?? null;
+  const edgeCountry = request.headers.get('x-vercel-ip-country');
+  const billingCountry = effectiveBillingCountry(savedCountry, edgeCountry);
+  const currency = currencyForCountry(billingCountry);
+
+  // If the user had no saved country, persist the resolved one now — before the
+  // subscription (and its currency) is created. The account locks the country
+  // field once subscribed, so the stored value must match the currency we're
+  // about to charge in. Non-fatal: a failed write just leaves country unset.
+  if (!savedCountry && billingCountry) {
+    const { error: countryErr } = await supabase
+      .from('profiles')
+      .update({ country: billingCountry })
+      .eq('id', user.id);
+    if (countryErr) {
+      console.error('checkout: could not persist resolved country', countryErr);
+    }
+  }
 
   let priceId: string;
   try {

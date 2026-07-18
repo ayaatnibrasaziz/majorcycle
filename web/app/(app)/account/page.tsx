@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { KeyRound } from 'lucide-react';
 
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { currencyForCountry } from '@/lib/stripe';
+import { currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
 import { ProfileForm } from '@/components/account/ProfileForm';
 import { SubscriptionCard } from '@/components/account/SubscriptionCard';
 import { PasswordForm } from '@/components/account/PasswordForm';
@@ -61,15 +61,19 @@ export default async function AccountPage({
     profile?.subscription_status ?? ''
   );
 
-  // Billing currency for the in-app "Start free trial" modal. Mirrors /pricing:
-  // the user's saved country wins (it also locks their billing currency),
-  // otherwise Vercel's edge geo header, otherwise USD.
-  let billingCountry = profile?.country ?? null;
-  if (!billingCountry) {
+  // Billing currency for the in-app "Start free trial" modal, and the auto-fill
+  // suggestion for the country dropdown. The saved country wins (it also locks
+  // the billing currency); only when there's none do we consult Vercel's edge geo
+  // header (empty on localhost). `edgeCountry` is passed to the form as a
+  // changeable default when nothing is saved yet — never written until the user
+  // saves or starts a trial.
+  const savedCountry = profile?.country ?? null;
+  let edgeCountry: string | null = null;
+  if (!savedCountry) {
     const hdrs = await headers();
-    billingCountry = hdrs.get('x-vercel-ip-country');
+    edgeCountry = hdrs.get('x-vercel-ip-country');
   }
-  const currency = currencyForCountry(billingCountry);
+  const currency = currencyForCountry(effectiveBillingCountry(savedCountry, edgeCountry));
 
   return (
     <div className="max-w-3xl">
@@ -83,6 +87,7 @@ export default async function AccountPage({
           email={email}
           initialDisplayName={profile?.display_name ?? ''}
           initialCountry={profile?.country ?? ''}
+          suggestedCountry={edgeCountry ?? ''}
           countryLocked={countryLocked}
         />
 

@@ -13,6 +13,13 @@ interface ProfileFormProps {
   initialDisplayName: string;
   initialCountry: string;
   /**
+   * Auto-fill suggestion (the visitor's edge-detected country) used ONLY when no
+   * country is saved yet. It pre-selects the dropdown as a changeable default;
+   * because the saved baseline is still empty, the form starts "dirty" so the user
+   * can save the suggestion in one click. Ignored once a country is saved.
+   */
+  suggestedCountry?: string;
+  /**
    * Country is fixed once a subscription exists (Stripe pins currency per
    * subscription — F3). Passed from the server based on subscription_status.
    */
@@ -23,10 +30,14 @@ export function ProfileForm({
   email,
   initialDisplayName,
   initialCountry,
+  suggestedCountry = '',
   countryLocked,
 }: ProfileFormProps) {
+  // Pre-fill the dropdown with the saved country, or (if none) the detected
+  // suggestion. The saved baseline below stays empty in the suggestion case, so
+  // the suggested value reads as an unsaved change the user can Save immediately.
   const [displayName, setDisplayName] = useState(initialDisplayName);
-  const [country, setCountry] = useState(initialCountry);
+  const [country, setCountry] = useState(initialCountry || suggestedCountry);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);

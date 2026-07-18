@@ -106,6 +106,24 @@ export function currencyForCountry(country: string | null | undefined): BillingC
   }
 }
 
+/**
+ * The effective billing country used to pick the charge currency: the user's
+ * saved country wins (it also permanently locks their subscription currency once
+ * they subscribe — Stripe can't change a subscription's currency later),
+ * otherwise the edge-detected country (Vercel's `x-vercel-ip-country`), otherwise
+ * null. Feed the result to currencyForCountry (null → usd).
+ *
+ * The single source of truth shared by /pricing, the account trial modal, and
+ * /api/checkout — so the price we DISPLAY always equals the currency Stripe
+ * CHARGES (they'd otherwise drift when a user has no saved country yet).
+ */
+export function effectiveBillingCountry(
+  savedCountry: string | null | undefined,
+  edgeCountry: string | null | undefined,
+): string | null {
+  return savedCountry?.trim() || edgeCountry?.trim() || null;
+}
+
 // ── Status mapping (Stripe → our profiles.subscription_status) ───────────────
 export type AppSubscriptionStatus =
   | 'trialing'
