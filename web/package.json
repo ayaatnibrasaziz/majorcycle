@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "stripe:listen": "node scripts/stripe-listen.mjs"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
