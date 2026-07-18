@@ -63,9 +63,11 @@ export async function POST(request: Request) {
   let priceId: string;
   try {
     priceId = await resolvePriceId(plan as PlanKey);
-  } catch {
+  } catch (err) {
     // Missing price = the product/prices weren't built in THIS Stripe mode
-    // (test vs live are isolated). Surface a clean 500, not a stack trace.
+    // (test vs live are isolated). Log the real cause (owner can't debug a blank
+    // 500), but surface a clean message — never a stack trace — to the user.
+    console.error('checkout: could not resolve price', plan, err);
     return NextResponse.json(
       { error: 'Billing is temporarily unavailable. Please try again shortly.' },
       { status: 500 },
@@ -119,7 +121,10 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json({ url: session.url });
-  } catch {
+  } catch (err) {
+    // A Stripe API / network failure — log the real error for diagnosis, return a
+    // clean retry message to the user (no internal details leak).
+    console.error('checkout: stripe session create failed', err);
     return NextResponse.json(
       { error: 'Could not start checkout. Please try again.' },
       { status: 502 },

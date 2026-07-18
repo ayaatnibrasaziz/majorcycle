@@ -228,17 +228,26 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  // Idempotency: claim the event id. A duplicate delivery hits the primary-key
-  // conflict (23505) → ack + skip so side effects happen exactly once.
-  const { error: claimErr } = await admin
+  // Idempotency: claim the event id with an ON CONFLICT DO NOTHING upsert. Stripe
+  // legitimately redelivers events, so a duplicate must be a clean no-op. `.select()`
+  // returns the row only when THIS request won the claim; an empty result means the
+  // id was already recorded → ack + skip so side effects happen exactly once. Using
+  // ignoreDuplicates (rather than a plain insert that trips the primary-key
+  // constraint) means a redelivery no longer logs a Postgres error. Concurrency-safe:
+  // of two racing deliveries, exactly one gets the row back and processes the event.
+  const { data: claimed, error: claimErr } = await admin
     .from('stripe_events')
-    .insert({ id: event.id, type: event.type });
+    .upsert(
+      { id: event.id, type: event.type },
+      { onConflict: 'id', ignoreDuplicates: true },
+    )
+    .select('id');
   if (claimErr) {
-    if (claimErr.code === '23505') {
-      return NextResponse.json({ received: true, duplicate: true });
-    }
     console.error('stripe webhook: could not record event', claimErr);
     return new NextResponse('Storage error', { status: 500 }); // let Stripe retry
+  }
+  if (!claimed || claimed.length === 0) {
+    return NextResponse.json({ received: true, duplicate: true });
   }
 
   try {

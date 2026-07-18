@@ -34,6 +34,10 @@ export function getStripe(): Stripe {
     apiVersion: STRIPE_API_VERSION,
     typescript: true,
     appInfo: { name: 'MajorCycle', url: 'https://www.majorcycle.com' },
+    // Auto-retry transient network failures with idempotency keys + exponential
+    // backoff (Stripe's recommended resilience default; the SDK does 0 retries
+    // unless told to). Safe for our GETs (price list) and the checkout POST alike.
+    maxNetworkRetries: 2,
   });
   return _stripe;
 }
