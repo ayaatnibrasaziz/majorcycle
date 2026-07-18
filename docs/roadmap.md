@@ -600,25 +600,42 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       correctly but didn't invalidate the client Router Cache, so save → `/pricing` → Back re-showed `/account` from the
       stale pre-save snapshot (country looked unsaved though the DB was right). Fix = `revalidatePath('/account')` after a
       successful update. Verified live (set AU, saved, soft-nav to /pricing, Back → shows Australia).
-- [ ] **NEXT-SESSION PUNCH-LIST (owner-agreed 2026-07-18, do in order):**
-      1. **DB-write sweep** — the profile-save `revalidatePath` gap likely exists in other write flows; audit every
-         mutation (server actions + API routes that write Supabase, e.g. deletion/reactivation/referrals, and any client
-         write) and add `revalidatePath`/`revalidateTag`/`router.refresh` where a later navigation could show stale data.
-      2. **Teach the owner to run a local webhook forwarder** — step-by-step `stripe listen` setup so they can confirm the
-         trial→checkout→Trial-Active loop locally themselves. (Env: app key = SANDBOX `acct_1TrdbF…`; run `stripe listen`
-         against the sandbox via `STRIPE_API_KEY` from `web/.env.local`; whsec already in `.env.local`.)
-      3. (dotted zero — owner said leave as-is, JetBrains Mono trait. No change.)
-      4. **Auto-fill country from IP** (owner approved) — pre-fill the profile/pricing country from the visitor's location
-         as a *default the user can change*, not a lock. BEFORE building: (i) explain to the owner WHY our stored country
-         must match the Stripe billing currency (owner asked: "isn't currency handled by Stripe automatically?" — discuss:
-         Stripe locks currency per subscription at creation, we set it from country, so the two must agree and be
-         deliberate — but confirm the exact robustness plan together). (ii) **AUDIT `web/lib/countries.ts`** — owner flagged
-         it may be a "dummy list" that doesn't match Stripe's country codes; verify our ISO-3166 alpha-2 codes match what
-         Stripe expects and that `currencyForCountry` (AU→aud/CA→cad/else usd) can't break on a mismatch. (iii) READ Stripe
-         docs for best practice on country/currency + Checkout `customer`/locale before implementing.
-      5. **Pricing/trial entry styling** — the `/pricing` (or a signed-in trial modal) should visually match the Stock
-         Detail **Methodology modal** (blurry backdrop + popup card; see `web/components/stocks/MethodologyModal.tsx`).
-         Content is done; make it look consistent. (Ties to the earlier #6 discussion re public page vs in-app modal.)
+- [x] **PUNCH-LIST (owner-agreed 2026-07-18) — WORKED 2026-07-18/19, branch `feat/f3-stripe`:**
+      1. [x] **DB-write sweep DONE** (commit `cc9c0a5`). Audited every mutating server action + write API route:
+         the profile-save `revalidatePath` gap was the ONLY real staleness bug — everything else is already safe
+         (deletion signs out globally; reactivation redirects → fresh layout; referrals/contact display nothing back;
+         request-ticker manages its own client list; password/onboarding use `router.refresh`). **Bonus fix:**
+         `OnboardingModal` was the last client-side Supabase write (same silent-no-op-under-RLS risk as the old profile
+         bug) → **converted to a server action** `web/app/(app)/actions.ts` `acknowledgeDisclaimer` (derives user from
+         session, `revalidatePath('/','layout')`, surfaces a retry error instead of getting stuck). **NEXT SESSION: verify
+         the onboarding change with a real login** (couldn't exercise the first-login modal locally — DEV_BYPASS_AUTH skips
+         it; compile + typecheck clean).
+      2. [x] **Local webhook forwarder DONE** (commits `120501d`, `0122f4d`). `pnpm stripe:listen`
+         (`web/scripts/stripe-listen.mjs`) forces the SANDBOX account via `STRIPE_API_KEY` read from `web/.env.local`
+         (never printed / not in argv), sidestepping the CLI-default-account gotcha. Verified: connects to "MajorCycle
+         sandbox" `acct_1TrdbFGc5r0QcK9U`, reaches Ready, and the CLI signing secret **already matches**
+         `STRIPE_WEBHOOK_SECRET` in `.env.local` (loop works with zero manual step). Full owner guide:
+         `docs/local-stripe-testing.md`. **NEXT SESSION: I start `pnpm dev` + `pnpm stripe:listen` and walk the owner
+         through a live 4242 checkout → watch `[200]` webhooks → confirm "Trial active".** (Owner hit a stale-PATH
+         `'pnpm' not recognized` in an old terminal → fix = open a fresh terminal; noted in the guide.)
+      3. [x] (dotted zero — left as-is, JetBrains Mono trait. No change, as agreed.)
+      4. [x] **Country IP auto-fill + currency consistency DONE** (commit `e30c7aa`). `web/lib/countries.ts` audited =
+         the FULL correct ISO-3166-1 alpha-2 list (same codes Stripe + Vercel use), **NOT a dummy list**; only AU/CA
+         affect currency and both correct; every other country → USD safely. Explained to owner: Stripe **locks a
+         subscription's currency permanently** (verified in Stripe docs), we set it explicitly from country so *shown
+         price == charged price* (that's why country is locked once subscribed). **Bug found + fixed:** the trial modal
+         DISPLAYED price via saved→IP→USD but checkout CHARGED via saved-only → new resolver `effectiveBillingCountry`
+         (`web/lib/stripe.ts`) now shared by /pricing, the account trial modal, and `/api/checkout`; checkout also
+         **persists the resolved country** before the sub locks the currency, so stored country == charged currency.
+         Autofill = pre-fill dropdown from `x-vercel-ip-country` as a changeable default; `ProfileForm.suggestedCountry`
+         keeps the saved baseline empty so it's savable in one click; saved only on user action. **NEXT SESSION: verify
+         autofill ON THE LIVE/PREVIEW SITE — the edge header is empty on localhost, so the IP path can't be exercised
+         locally** (the Save-enabled-with-suggestion behaviour WAS verified in the dev-fixtures gallery).
+      5. [x] **Trial entry styled like the Methodology modal DONE** (commit `767c9da`). New `StartTrialModal` +
+         `StartTrialButton` (`web/components/account/`): the Account "Start free trial" button now opens an in-app modal
+         reusing the Methodology modal's shell (blurred backdrop, gradient header + icon, disclaimer footer) with the plan
+         chooser + `/api/checkout` hand-off — instead of jumping to `/pricing`. Public `/pricing` page unchanged (owner
+         chose "Account button only"). Verified in dev-fixtures: AUD price + annual toggle correct, no console/a11y errors.
 - [ ] Step 6 — delete↔billing wiring (edge-case table) · Step 7 — trial-abuse guard · Step 8 — trial reminders + billing
       emails + dispute handling · Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**
 

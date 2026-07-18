@@ -1034,6 +1034,35 @@ mode** (sandbox config `bpc_1TuR6R…`: update/cancel-at-period-end/payment/invo
 **Stripe client** (`web/lib/stripe.ts`) sets `maxNetworkRetries: 2` (SDK default 0;
 retried POSTs get automatic idempotency keys).
 
+### Billing currency resolution + trial entry (F3, `e30c7aa` / `767c9da`)
+
+- **One currency resolver, three call sites.** `effectiveBillingCountry(saved, edge)`
+  (`web/lib/stripe.ts`) → `currencyForCountry` (AU→aud/CA→cad/else usd). Precedence:
+  `profiles.country` → Vercel `x-vercel-ip-country` edge header → USD. Used identically by
+  `/pricing`, the account **Start-free-trial** modal, and `POST /api/checkout`, so the
+  displayed price always equals the charged currency (Stripe locks a subscription's
+  currency at creation, so a display/charge drift would be unfixable after the fact).
+- **`POST /api/checkout` persists the resolved country** when `profiles.country` was empty
+  — before creating the session — so the (soon-locked) stored country matches the charged
+  currency. Written with the user's own cookie-bound client (not yet subscribed → not
+  locked). Non-fatal on failure (logs, continues).
+- **Country auto-fill:** the account page passes the edge-detected country to
+  `ProfileForm` as `suggestedCountry` (pre-selects the dropdown as a *changeable default*
+  when nothing is saved; the saved baseline stays empty so it's savable in one click).
+  Never written until the user saves or starts a trial. **Only observable on live/preview**
+  — the edge header is empty on localhost.
+- **Start-free-trial modal:** `web/components/account/StartTrialModal.tsx` +
+  `StartTrialButton.tsx` reuse the Methodology modal's shell (blurred backdrop, gradient
+  header, disclaimer footer) with the plan chooser + `/api/checkout` hand-off. The public
+  `/pricing` page is unchanged (marketing/SEO shop-window).
+
+### Local webhook testing (F3, `120501d`)
+
+- `pnpm stripe:listen` (`web/scripts/stripe-listen.mjs`) forwards Stripe webhooks to the
+  local dev server. It forces the **sandbox** account by reading `STRIPE_SECRET_KEY` from
+  `web/.env.local` and passing it as `STRIPE_API_KEY` (env, not argv; never printed),
+  sidestepping the Stripe-CLI-default-account gotcha. Owner guide: `docs/local-stripe-testing.md`.
+
 ---
 
 ## 11. Disallowed Patterns
