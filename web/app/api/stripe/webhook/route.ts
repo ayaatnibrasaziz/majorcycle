@@ -32,6 +32,17 @@ const GRACE_DAYS = 3;
 
 type Admin = ReturnType<typeof createAdminClient>;
 
+/**
+ * Who/what an event resolved to. Returned by every handler so the POST handler can
+ * stamp the idempotency-ledger row for post-launch auditability (see Part G). Any
+ * field may be null when it isn't resolvable for that event.
+ */
+type EventContext = {
+  userId?: string | null;
+  customerId?: string | null;
+  subscriptionId?: string | null;
+};
+
 function toISO(unixSeconds: number | null | undefined): string | null {
   return unixSeconds ? new Date(unixSeconds * 1000).toISOString() : null;
 }
@@ -41,6 +52,12 @@ function customerId(
 ): string | null {
   if (!c) return null;
   return typeof c === 'string' ? c : c.id;
+}
+
+/** Normalise a Stripe expandable ref (a string id or an expanded object) to its id. */
+function refId(ref: string | { id: string } | null | undefined): string | null {
+  if (!ref) return null;
+  return typeof ref === 'string' ? ref : ref.id;
 }
 
 /** Look up a profile id by its stored Stripe customer id. */
@@ -83,37 +100,45 @@ async function resolveUserIdFromInvoice(
 async function syncSubscription(
   admin: Admin,
   sub: Stripe.Subscription,
-): Promise<void> {
+): Promise<EventContext> {
+  const cust = customerId(sub.customer);
   const userId = await resolveUserId(admin, sub);
   if (!userId) {
     console.error('stripe webhook: no profile for subscription', sub.id);
-    return;
+    return { customerId: cust, subscriptionId: sub.id };
   }
 
   const item = sub.items.data[0];
   const status = mapStripeStatus(sub.status);
   const patch: Record<string, unknown> = {
-    stripe_customer_id: customerId(sub.customer),
+    stripe_customer_id: cust,
     stripe_subscription_id: sub.id,
     subscription_status: status,
     subscription_plan: planFromLookupKey(item?.price?.lookup_key),
     subscription_currency: sub.currency ?? null,
     current_period_end: toISO(item?.current_period_end),
-    cancel_at_period_end: sub.cancel_at_period_end ?? false,
+    // Pinned API 2026-06-24.dahlia: a cancel-at-period-end sets `sub.cancel_at` (the
+    // stop timestamp) and leaves the legacy `cancel_at_period_end` boolean FALSE. So
+    // derive "scheduled to cancel" from cancel_at; the old boolean is only a fallback.
+    // (We only ever schedule period-end cancels — the delete flow + the portal — so
+    // cancel_at == current_period_end, which drives the account's "Cancels on" line.)
+    cancel_at_period_end: sub.cancel_at != null || (sub.cancel_at_period_end ?? false),
     trial_ends_at: toISO(sub.trial_end),
   };
   // Healthy states clear the 3-day payment-failure grace clock.
   if (status === 'active' || status === 'trialing') patch['grace_until'] = null;
 
   await admin.from('profiles').update(patch).eq('id', userId);
+  return { userId, customerId: cust, subscriptionId: sub.id };
 }
 
 /** Subscription ended for good → lapse to a free (canceled) account. */
-async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<void> {
+async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<EventContext> {
+  const cust = customerId(sub.customer);
   const userId = await resolveUserId(admin, sub);
   if (!userId) {
     console.error('stripe webhook: no profile for canceled subscription', sub.id);
-    return;
+    return { customerId: cust, subscriptionId: sub.id };
   }
   await admin
     .from('profiles')
@@ -125,10 +150,11 @@ async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<voi
       cancel_at_period_end: false,
     })
     .eq('id', userId);
+  return { userId, customerId: cust, subscriptionId: sub.id };
 }
 
 /** Route a verified event to its handler. Unknown/deferred types are no-op (acked). */
-async function handleEvent(admin: Admin, event: Stripe.Event): Promise<void> {
+async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventContext> {
   switch (event.type) {
     case 'checkout.session.completed': {
       // Link the Stripe customer to our user. The subscription state itself arrives
@@ -144,15 +170,17 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<void> {
       }
       // TODO (step 7): write the trial tombstone (email hash + card fingerprint).
       // TODO (step 8): send the trial-started / subscription-confirmed email.
-      return;
+      return {
+        userId: userId ?? null,
+        customerId: cust,
+        subscriptionId: refId(session.subscription),
+      };
     }
     case 'customer.subscription.created':
     case 'customer.subscription.updated':
-      await syncSubscription(admin, event.data.object as Stripe.Subscription);
-      return;
+      return syncSubscription(admin, event.data.object as Stripe.Subscription);
     case 'customer.subscription.deleted':
-      await markCanceled(admin, event.data.object as Stripe.Subscription);
-      return;
+      return markCanceled(admin, event.data.object as Stripe.Subscription);
     case 'invoice.paid':
     case 'invoice.payment_succeeded': {
       // A successful payment clears any payment-failure grace clock. It must NOT
@@ -165,10 +193,12 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<void> {
       // vs the accompanying subscription.* event. The renewed period end arrives on
       // that subscription.updated event.
       const invoice = event.data.object as Stripe.Invoice;
+      const cust = customerId(invoice.customer);
+      const subscriptionId = refId(invoice.parent?.subscription_details?.subscription);
       const userId = await resolveUserIdFromInvoice(admin, invoice);
       if (!userId) {
         console.error('stripe webhook: no profile for paid invoice', invoice.id);
-        return;
+        return { customerId: cust, subscriptionId };
       }
       await admin.from('profiles').update({ grace_until: null }).eq('id', userId);
       await admin
@@ -176,15 +206,17 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<void> {
         .update({ subscription_status: 'active' })
         .eq('id', userId)
         .eq('subscription_status', 'past_due');
-      return;
+      return { userId, customerId: cust, subscriptionId };
     }
     case 'invoice.payment_failed': {
       // Past_due + open the 3-day grace window before the hard lock.
       const invoice = event.data.object as Stripe.Invoice;
+      const cust = customerId(invoice.customer);
+      const subscriptionId = refId(invoice.parent?.subscription_details?.subscription);
       const userId = await resolveUserIdFromInvoice(admin, invoice);
       if (!userId) {
         console.error('stripe webhook: no profile for failed invoice', invoice.id);
-        return;
+        return { customerId: cust, subscriptionId };
       }
       const graceUntil = new Date(
         Date.now() + GRACE_DAYS * 24 * 60 * 60 * 1000,
@@ -194,16 +226,22 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<void> {
         .update({ subscription_status: 'past_due', grace_until: graceUntil })
         .eq('id', userId);
       // TODO (step 8): send the branded "payment failed — update your card" email.
-      return;
+      return { userId, customerId: cust, subscriptionId };
     }
-    case 'customer.subscription.trial_will_end':
-      // Backup only — the primary day-5/day-7 reminders are cron-driven (step 8).
-      // Recorded in stripe_events for observability; no DB write.
-      return;
+    case 'customer.subscription.trial_will_end': {
+      // Backup only — the primary day-5/day-7 reminders are cron-driven (step 8). No
+      // DB write, but resolve the context so the ledger row is still traceable.
+      const sub = event.data.object as Stripe.Subscription;
+      return {
+        userId: await resolveUserId(admin, sub),
+        customerId: customerId(sub.customer),
+        subscriptionId: sub.id,
+      };
+    }
     // TODO (step 8): charge.dispute.created/.closed/.funds_withdrawn/.funds_reinstated
     // → set/clear billing_blocked (revoke access on dispute, restore only if won).
     default:
-      return; // acknowledged, no-op
+      return {}; // acknowledged, no-op
   }
 }
 
@@ -250,13 +288,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, duplicate: true });
   }
 
+  let ctx: EventContext;
   try {
-    await handleEvent(admin, event);
+    ctx = await handleEvent(admin, event);
   } catch (err) {
     console.error('stripe webhook: handler failed', event.type, err);
     // Release the claim so Stripe's automatic retry reprocesses this event.
     await admin.from('stripe_events').delete().eq('id', event.id);
     return new NextResponse('Handler error', { status: 500 });
+  }
+
+  // Stamp the just-claimed ledger row with who/what this event resolved to, for
+  // post-launch auditability (`select … from stripe_events where user_id = …`).
+  // Best-effort: the event is already handled, so a failed enrich must not 500 (that
+  // would make Stripe retry an event whose side effects already ran).
+  if (ctx.userId || ctx.customerId || ctx.subscriptionId) {
+    const { error: enrichErr } = await admin
+      .from('stripe_events')
+      .update({
+        user_id: ctx.userId ?? null,
+        stripe_customer_id: ctx.customerId ?? null,
+        stripe_subscription_id: ctx.subscriptionId ?? null,
+      })
+      .eq('id', event.id);
+    if (enrichErr) {
+      console.error('stripe webhook: could not enrich event row', event.id, enrichErr);
+    }
   }
 
   return NextResponse.json({ received: true });
