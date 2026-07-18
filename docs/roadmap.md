@@ -661,9 +661,21 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
         *scheduled* to cancel (the eventual `subscription.deleted`→`markCanceled` still works, so nothing gets stuck — only
         the interim "scheduled" state is invisible). Fold the fix into Step 6 (capture `cancel_at`; derive "will cancel"
         from it; then surface a "Cancels on <date>" line on the SubscriptionCard, which is also currently missing).
-- [ ] Step 6 — delete↔billing wiring (edge-case table) **+ read `cancel_at` (not the deprecated `cancel_at_period_end`
-      boolean) and show a "Cancels on <date>" line** · Step 7 — trial-abuse guard · Step 8 — trial reminders + billing
-      emails + dispute handling · Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**
+- [x] **Step 6 — delete↔billing wiring + `cancel_at` fix + traceability (2026-07-19, branch `feat/f3-stripe`).**
+      Owner chose the **simpler trial path** (cancel-at-trial-end via `cancel_at_period_end`, not freeze/recreate), so
+      trial + paid delete are one mechanism; `frozen_trial_ms` is now unused. Changes: (A) webhook derives
+      `cancel_at_period_end` from `sub.cancel_at` (the dahlia signal; the old boolean stays false); (B) SubscriptionCard
+      shows a "…cancels on <date>, won't renew" line; (C) `requestAccountDeletion` sets `cancel_at_period_end=true` on
+      the live sub (trial cancels at trial end, no charge; paid runs out the paid period); (D) `reactivateAccount` clears
+      it if the sub is still live (else lapsed free user); (E) purge cron hard-cancels the sub (+ list-by-customer
+      fallback for the pre-sync-id race); (G, owner-requested) `stripe_events` gains `user_id`/customer/subscription
+      traceability columns (migration `20260719000000`), stamped after each handled event. E7: trial deletion-email copy
+      corrected (no more "days saved/restored"). **Verified:** typecheck/lint/build green; webhook contract tests 10/10
+      (incl. new cancel_at + ledger-enrichment case); the delete/reactivate/purge Stripe ops driven against the real
+      sandbox (8/8 — cancel_at set==trial_end, cleared, list-fallback, hard-cancel); advisors show no new warnings;
+      `stripe_events` test rows purged. NOT merged. Owner to do the final delete/reactivate UI confirmation.
+- [ ] Step 7 — trial-abuse guard · Step 8 — trial reminders + billing emails + dispute handling · Step 9 — branding ·
+      **Step 10 — paywall gate LAST (scope = open owner decision).**
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
 - [x] `/methodology` — public, pre-sign-up plain-English explainer (cycle position, financial

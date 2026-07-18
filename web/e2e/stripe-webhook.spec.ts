@@ -234,6 +234,42 @@ test.describe.serial('stripe webhook contract', () => {
     expect(p['grace_until']).toBeNull();
   });
 
+  test('subscription.updated with cancel_at (dahlia) → scheduled cancel + ledger enriched', async ({
+    request,
+  }) => {
+    // In API 2026-06-24.dahlia a cancel-at-period-end sets `cancel_at` and leaves the
+    // legacy `cancel_at_period_end` boolean FALSE. The handler must derive the flag
+    // from cancel_at (Step 6 fix A). Same event also proves Part G (ledger enrichment).
+    const event = makeEvent(
+      'customer.subscription.updated',
+      subObject({
+        status: 'active',
+        trial_end: null,
+        cancel_at_period_end: false, // deprecated boolean stays false…
+        cancel_at: periodEnd, // …but cancel_at is the real signal
+        items: {
+          data: [
+            { current_period_end: periodEnd, price: { lookup_key: 'majorcycle_monthly' } },
+          ],
+        },
+      }),
+    );
+    expect((await post(request, event)).ok()).toBeTruthy();
+
+    const p = await profile();
+    expect(p['cancel_at_period_end']).toBe(true); // derived from cancel_at, not the boolean
+
+    // Part G: the idempotency-ledger row is stamped with who/what it resolved to.
+    const { data: row } = await admin
+      .from('stripe_events')
+      .select('user_id, stripe_customer_id, stripe_subscription_id')
+      .eq('id', event.id)
+      .single();
+    expect(row?.user_id).toBe(userId);
+    expect(row?.stripe_customer_id).toBe(CUSTOMER);
+    expect(row?.stripe_subscription_id).toBe(SUB);
+  });
+
   test('invoice.payment_failed → past_due + grace window', async ({ request }) => {
     const event = makeEvent('invoice.payment_failed', invoiceObject());
     expect((await post(request, event)).ok()).toBeTruthy();

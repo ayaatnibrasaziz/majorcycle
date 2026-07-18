@@ -969,12 +969,19 @@ the webhook only *records* them.
 
 ### Supporting tables (server-only — RLS on, no policies)
 
-- **`stripe_events`** (`id text pk`, `type text`, `received_at timestamptz`) — webhook
-  **idempotency ledger**. Claim the Stripe event id via an **`ON CONFLICT DO NOTHING`**
-  upsert (`.upsert({id,type},{onConflict:'id',ignoreDuplicates:true}).select('id')`);
-  an empty returned array = already processed → 200 skip (exactly-once side effects).
-  Deliberately NOT insert-then-catch-23505 — that logged a Postgres `duplicate key` error
-  on every legitimate Stripe redelivery (audit 2026-07-18, `907b948`).
+- **`stripe_events`** (`id text pk`, `type text`, `received_at timestamptz`, plus
+  traceability columns `user_id uuid` (FK `auth.users` **ON DELETE SET NULL**),
+  `stripe_customer_id text`, `stripe_subscription_id text`; indexed on `user_id` +
+  `stripe_customer_id`) — webhook **idempotency ledger + audit trail**. Claim the Stripe
+  event id via an **`ON CONFLICT DO NOTHING`** upsert
+  (`.upsert({id,type},{onConflict:'id',ignoreDuplicates:true}).select('id')`); an empty
+  returned array = already processed → 200 skip (exactly-once side effects). Deliberately
+  NOT insert-then-catch-23505 — that logged a Postgres `duplicate key` error on every
+  legitimate Stripe redelivery (audit 2026-07-18, `907b948`). **After** a successful
+  handle, the row is enriched with the resolved `user_id`/customer/subscription (F3 Step 6,
+  best-effort — a failed enrich never 500s), so a post-launch issue is one
+  `select … where user_id = …` instead of guesswork. The `ON DELETE SET NULL` keeps the
+  audit row after an account purge.
 - **`trial_tombstones`** (`id uuid pk`, `email_hash text`, `card_fingerprint text`,
   `created_at timestamptz`; indexed on both hash columns) — **trial-abuse guard**.
   `sha256(lower(email))` + Stripe card `fingerprint` of consumed trials. **Not** a FK
