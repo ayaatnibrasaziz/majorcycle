@@ -138,6 +138,7 @@ This sends a *synthetic* event. Useful to confirm the forwarder → app link ret
 | Webhooks show `[400]` | Signing secret mismatch | Copy the `whsec_…` from Terminal 2 into `STRIPE_WEBHOOK_SECRET`, restart `pnpm dev` |
 | No webhook lines appear after checkout | Forwarder not running, or app on a different port | Ensure Terminal 2 is running; if `pnpm dev` used a port other than 3000, run `PORT=3001 pnpm stripe:listen` (match the port) |
 | `stripe: command not found` | CLI not installed | Install the Stripe CLI, then `stripe version` |
+| `'pnpm' is not recognized` | Your terminal was open before pnpm was installed (stale PATH) | Close the terminal and open a **fresh** one — `pnpm` is on your permanent PATH, so a new window finds it |
 | Checkout page stuck on "Processing" | Link asked for a phone number | Untick "Save my info" and resubmit |
 
 ---
