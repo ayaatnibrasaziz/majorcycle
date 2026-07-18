@@ -570,14 +570,17 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       row → country-lock collision) and dropped the account suite's re-auth crutch. Full auth+account+webhook suite:
       34/34 green ×3 under 3 parallel workers. Broader auth audit found no other issues (singleton browser client, no
       `getSession()` footgun, careful recovery confinement). The exploratory middleware `getUser()` fallback was reverted.
-- [ ] **Step 5 (next session) — Customer Portal + a full clickable demo.** Build the portal route + wire the `/account`
-      "Manage billing" button (portal config already exists). THEN do an owner-facing end-to-end demo **locally**: click
-      "Start 7-day free trial" → Stripe Checkout → test card `4242 4242 4242 4242` → watch `/account` flip to "Trial Active"
-      and the DB update live via `stripe listen`. **Prerequisite (2-min):** align the Stripe environment — the app's
-      `majorcycle_*` prices live in the **"MajorCycle sandbox"**, but this session's Stripe CLI is paired to the **main
-      account test mode**; for a real UI checkout the app key + `stripe listen` must be the SAME environment (either
-      re-pair the CLI to the sandbox, or point the local app key at main test mode where a matching price then needs
-      creating). Verify with test cards, TEST mode only — never real money.
+- [x] **Step 5 — Customer Portal + full clickable demo (DONE + LIVE-VERIFIED 2026-07-18).** New `web/app/api/portal/route.ts`
+      (auth-gated POST → `billingPortal.sessions.create` → 303 redirect; no customer → `?billing=none`, error → log +
+      `?billing=error`); `SubscriptionCard` disabled placeholder → real "Manage billing" form-POST button + inline notice;
+      account page reads `?billing=` and passes the notice. Gates green; committed. **Env aligned to the sandbox** (app key +
+      prices already there); created the sandbox Customer Portal config `bpc_1TuR6R…` (update/cancel/payment/invoice, Terms +
+      Privacy URLs) and ran `stripe listen` against the sandbox. **Full demo driven in the browser (Claude preview, TEST):**
+      magic-link login (AU demo user) → `/pricing` shows A$19 → Start trial → Stripe Checkout (7 days free, A$19, card 4242) →
+      webhooks forwarded [200] → `/account` flipped to **Trial Active** (trial-status fix re-proven: the $0 trial invoice did
+      NOT downgrade to "active") + country locked → **Manage billing → Stripe Customer Portal** (trial ends Jul 25, $19/mo,
+      update/cancel, Visa ••4242) → Return → `/account`. All demo data cleaned up (sub cancelled, customer deleted, throwaway
+      user + 12 stripe_events rows removed). Prod webhook endpoint still deferred to F3 merge (Vercel preview is auth-walled).
 - [ ] Step 6 — delete↔billing wiring (edge-case table) · Step 7 — trial-abuse guard · Step 8 — trial reminders + billing
       emails + dispute handling · Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**
 
