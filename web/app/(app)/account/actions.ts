@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { sendDeletionScheduledEmail } from '@/lib/email/accountEmails';
@@ -59,6 +60,10 @@ export async function updateProfile(input: {
     console.error('updateProfile: update failed', error);
     return { ok: false, error: 'Could not save your changes. Please try again.' };
   }
+  // Invalidate the cached /account render so a later back-navigation (e.g. after
+  // visiting /pricing) re-fetches the saved values instead of showing the stale
+  // pre-save snapshot from the client Router Cache.
+  revalidatePath('/account');
   return { ok: true };
 }
 
