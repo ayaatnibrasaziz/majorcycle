@@ -1,13 +1,17 @@
 import type { ReactNode } from 'react';
-import Link from 'next/link';
-import { AlertCircle, CreditCard, Sparkles } from 'lucide-react';
+import { AlertCircle, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LocalDate } from '@/components/LocalDate';
+import { StartTrialButton } from '@/components/account/StartTrialButton';
+import type { BillingCurrency } from '@/lib/stripe';
 
 interface SubscriptionCardProps {
   status: string | null;
   plan: string | null;
   trialEndsAt: string | null;
+  // The signed-in user's billing currency (from their saved country), used by the
+  // in-app "Start free trial" modal to show the right region price.
+  currency: BillingCurrency;
   // Optional inline message shown above the action row — e.g. after a failed
   // return from the billing portal (see /account ?billing= handling).
   notice?: string | null;
@@ -90,6 +94,7 @@ export function SubscriptionCard({
   status,
   plan,
   trialEndsAt,
+  currency,
   notice,
 }: SubscriptionCardProps) {
   const meta = (status && STATUS_META[status]) || NONE_META;
@@ -97,10 +102,10 @@ export function SubscriptionCard({
     <LocalDate iso={trialEndsAt} fallback={formatFallback(trialEndsAt)} />
   ) : null;
 
-  // No live subscription (never subscribed, or lapsed) → offer the trial. Plan
-  // choice happens on /pricing, so the button links there rather than picking a
-  // plan for them. Subscribed states show "Manage billing", which opens the
-  // Stripe Customer Portal via a plain form POST to /api/portal.
+  // No live subscription (never subscribed, or lapsed) → offer the trial. The
+  // button opens the in-app trial modal (methodology-styled) for the plan choice
+  // + checkout. Subscribed states show "Manage billing", which opens the Stripe
+  // Customer Portal via a plain form POST to /api/portal.
   const canStartTrial = !status || status === 'canceled';
 
   return (
@@ -136,16 +141,7 @@ export function SubscriptionCard({
           </div>
 
           {canStartTrial ? (
-            <Button
-              asChild
-              variant="primary"
-              className="flex-shrink-0"
-            >
-              <Link href="/pricing">
-                <Sparkles className="w-4 h-4" strokeWidth={1.8} aria-hidden />
-                Start free trial
-              </Link>
-            </Button>
+            <StartTrialButton currency={currency} />
           ) : (
             /* Manage billing → Stripe Customer Portal. A plain form POST to
                /api/portal, which creates a portal session and 303-redirects to

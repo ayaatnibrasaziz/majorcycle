@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { KeyRound } from 'lucide-react';
 
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { currencyForCountry } from '@/lib/stripe';
 import { ProfileForm } from '@/components/account/ProfileForm';
 import { SubscriptionCard } from '@/components/account/SubscriptionCard';
 import { PasswordForm } from '@/components/account/PasswordForm';
@@ -59,6 +61,16 @@ export default async function AccountPage({
     profile?.subscription_status ?? ''
   );
 
+  // Billing currency for the in-app "Start free trial" modal. Mirrors /pricing:
+  // the user's saved country wins (it also locks their billing currency),
+  // otherwise Vercel's edge geo header, otherwise USD.
+  let billingCountry = profile?.country ?? null;
+  if (!billingCountry) {
+    const hdrs = await headers();
+    billingCountry = hdrs.get('x-vercel-ip-country');
+  }
+  const currency = currencyForCountry(billingCountry);
+
   return (
     <div className="max-w-3xl">
       {/* The visible page title comes from the app Header (topbar). Keep an
@@ -78,6 +90,7 @@ export default async function AccountPage({
           status={profile?.subscription_status ?? null}
           plan={profile?.subscription_plan ?? null}
           trialEndsAt={profile?.trial_ends_at ?? null}
+          currency={currency}
           notice={billingNotice}
         />
 
