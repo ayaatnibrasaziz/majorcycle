@@ -72,7 +72,7 @@ export default async function AppLayout({
         </div>
         <AnalysisProvider>{children}</AnalysisProvider>
       </main>
-      {needsOnboarding && <OnboardingModal userId={claims.sub} />}
+      {needsOnboarding && <OnboardingModal />}
     </div>
   );
 }

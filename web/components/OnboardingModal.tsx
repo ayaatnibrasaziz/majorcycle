@@ -14,26 +14,27 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { createBrowserClient } from '@/lib/supabase/client';
+import { acknowledgeDisclaimer } from '@/app/(app)/actions';
 
-interface OnboardingModalProps {
-  userId: string;
-}
-
-export function OnboardingModal({ userId }: OnboardingModalProps) {
+export function OnboardingModal() {
   const router = useRouter();
   const [acknowledged, setAcknowledged] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleProceed() {
     if (!acknowledged) return;
     setLoading(true);
-    const supabase = createBrowserClient();
-    await supabase
-      .from('profiles')
-      .update({ acknowledged_disclaimer_at: new Date().toISOString() })
-      .eq('id', userId);
-    router.refresh();
+    setError(null);
+    // Server action — writes with the authenticated cookie-bound session, so it
+    // can't silently no-op the way a cold browser-client write could.
+    const { ok } = await acknowledgeDisclaimer();
+    if (ok) {
+      router.refresh();
+    } else {
+      setError('Something went wrong. Please try again.');
+      setLoading(false);
+    }
   }
 
   return (
@@ -118,6 +119,12 @@ export function OnboardingModal({ userId }: OnboardingModalProps) {
             </p>
           </div>
         </div>
+
+        {error && (
+          <p role="alert" className="px-5 -mt-1 text-[12px] text-[var(--c-tier-5-ink)]">
+            {error}
+          </p>
+        )}
 
         <DialogFooter className="flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
