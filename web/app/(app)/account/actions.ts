@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
+import { getStripe } from '@/lib/stripe';
 import { sendDeletionScheduledEmail } from '@/lib/email/accountEmails';
 import { sendReferralEmail } from '@/lib/email/referralEmails';
 import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
@@ -18,6 +19,13 @@ const REFERRAL_DEDUPE_DAYS = 30;
  * Mirrors the same set in the account page (server is the authority).
  */
 const COUNTRY_LOCK_STATES = new Set(['active', 'trialing', 'past_due']);
+
+/**
+ * Subscription states that have a LIVE Stripe subscription — so delete/reactivate
+ * should act on it (schedule/clear the period-end cancel). Same set as the country
+ * lock: a live sub is exactly what pins the billing currency (and thus the country).
+ */
+const LIVE_SUBSCRIPTION_STATES = COUNTRY_LOCK_STATES;
 
 /**
  * Save the signed-in user's profile (display name, and country when not locked).
@@ -100,7 +108,9 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from('profiles')
-    .select('email, display_name, subscription_status, deletion_scheduled_at')
+    .select(
+      'email, display_name, subscription_status, deletion_scheduled_at, stripe_subscription_id'
+    )
     .eq('id', user.id)
     .single();
 
@@ -119,10 +129,24 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
       redirect('/account?error=delete');
     }
 
-    // F3 TODO (paid): set the Stripe subscription to `cancel_at_period_end` — it
-    // stays valid through the period the user already paid for, then stops. Deleting
-    // must NOT pause or extend it (no delete-and-restore loophole to gain paid time).
-    // F3 TODO (trial): record the remaining trial days to restore on reactivation.
+    // Schedule the Stripe subscription to stop at the end of the current period —
+    // trial and paid alike. A trialing sub cancels at trial end with NO charge; a paid
+    // sub stays valid through the period the user already paid for, then stops (never
+    // paused, never extended — no delete-and-restore loophole to gain time). We only
+    // ever schedule (never immediate-cancel) here; the 30-day purge hard-cancels as a
+    // backstop. Best-effort: a Stripe hiccup must not block the user's deletion.
+    if (
+      profile?.stripe_subscription_id &&
+      LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '')
+    ) {
+      try {
+        await getStripe().subscriptions.update(profile.stripe_subscription_id, {
+          cancel_at_period_end: true,
+        });
+      } catch (err) {
+        console.error('requestAccountDeletion: could not schedule subscription cancel', err);
+      }
+    }
 
     const email = profile?.email ?? user.email ?? '';
     if (email) {
@@ -157,6 +181,15 @@ export async function reactivateAccount(): Promise<void> {
   if (!user) redirect('/login');
 
   const admin = createAdminClient();
+
+  // Read the sub state BEFORE clearing the flag, so we know whether there's still a
+  // live subscription to un-cancel.
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('stripe_subscription_id, subscription_status')
+    .eq('id', user.id)
+    .single();
+
   const { error } = await admin
     .from('profiles')
     .update({ deletion_scheduled_at: null })
@@ -166,9 +199,25 @@ export async function reactivateAccount(): Promise<void> {
     redirect('/reactivate?error=1');
   }
 
-  // F3 TODO (paid): clear `cancel_at_period_end` so the subscription renews normally
-  // again — the user keeps only the paid-through time they already had, never extended.
-  // F3 TODO (trial): restore the saved remaining trial days.
+  // If the subscription is still live (it didn't lapse during the grace window), clear
+  // the scheduled cancel so it renews/converts normally again. If it already canceled
+  // (status canceled / no sub id) there's nothing to undo — the user simply returns as
+  // a lapsed free user. Best-effort: the deletion flag is already cleared above, so a
+  // Stripe hiccup still reactivates the account (the cancel is recoverable via the
+  // portal). NOTE: if the user had separately cancelled in the portal before deleting,
+  // this un-cancels it — they can re-cancel via "Manage billing" (accepted tradeoff).
+  if (
+    profile?.stripe_subscription_id &&
+    LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '')
+  ) {
+    try {
+      await getStripe().subscriptions.update(profile.stripe_subscription_id, {
+        cancel_at_period_end: false,
+      });
+    } catch (err) {
+      console.error('reactivateAccount: could not clear subscription cancel', err);
+    }
+  }
 
   redirect('/results');
 }

@@ -49,7 +49,7 @@ export default async function AccountPage({
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'display_name, country, subscription_status, subscription_plan, trial_ends_at'
+      'display_name, country, subscription_status, subscription_plan, trial_ends_at, cancel_at_period_end, current_period_end'
     )
     .eq('id', user.id)
     .single();
@@ -95,6 +95,8 @@ export default async function AccountPage({
           status={profile?.subscription_status ?? null}
           plan={profile?.subscription_plan ?? null}
           trialEndsAt={profile?.trial_ends_at ?? null}
+          cancelAtPeriodEnd={profile?.cancel_at_period_end ?? false}
+          currentPeriodEnd={profile?.current_period_end ?? null}
           currency={currency}
           notice={billingNotice}
         />

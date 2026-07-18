@@ -2,9 +2,45 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { getStripe } from '@/lib/stripe';
 import { sendAccountDeletedEmail } from '@/lib/email/accountEmails';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Immediately cancel any live Stripe subscription for a to-be-purged account, so none
+ * outlives the deleted user. Prefers the stored subscription id; if that's absent but
+ * we have the customer (a delete that raced the subscription.created webhook — edge
+ * E1), list the customer's subscriptions and cancel any that are still live. Its own
+ * try/catch: a Stripe failure logs but must NOT abort the user deletion (a stray
+ * canceled-later sub is less bad than a user we fail to purge; the row won't recur).
+ */
+async function cancelStripeForRow(row: {
+  id: string;
+  stripe_subscription_id: string | null;
+  stripe_customer_id: string | null;
+}): Promise<void> {
+  try {
+    if (row.stripe_subscription_id) {
+      await getStripe().subscriptions.cancel(row.stripe_subscription_id);
+      return;
+    }
+    if (row.stripe_customer_id) {
+      const subs = await getStripe().subscriptions.list({
+        customer: row.stripe_customer_id,
+        status: 'all',
+        limit: 100,
+      });
+      for (const s of subs.data) {
+        if (s.status !== 'canceled' && s.status !== 'incomplete_expired') {
+          await getStripe().subscriptions.cancel(s.id);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('purge-accounts: could not cancel Stripe subscription(s)', row.id, err);
+  }
+}
 
 /**
  * Purge cron (F2 Part B). Runs daily via Vercel Cron (see web/vercel.json) and
@@ -26,7 +62,7 @@ export async function GET(request: NextRequest) {
 
   const { data: due, error } = await admin
     .from('profiles')
-    .select('id, email, display_name')
+    .select('id, email, display_name, stripe_subscription_id, stripe_customer_id')
     .not('deletion_scheduled_at', 'is', null)
     .lte('deletion_scheduled_at', nowIso);
 
@@ -40,8 +76,10 @@ export async function GET(request: NextRequest) {
 
   for (const row of due ?? []) {
     try {
-      // F3 TODO: cancel the Stripe subscription for this customer before deleting.
-      // Email BEFORE deleting, while we still hold the captured address/name.
+      // Cancel any live Stripe subscription before deleting the user (own try/catch —
+      // never blocks the purge). Then email BEFORE deleting, while we still hold the
+      // captured address/name.
+      await cancelStripeForRow(row);
       if (row.email) {
         await sendAccountDeletedEmail({ to: row.email, name: row.display_name ?? null });
       }

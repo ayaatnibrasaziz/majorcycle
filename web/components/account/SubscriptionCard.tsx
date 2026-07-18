@@ -9,6 +9,13 @@ interface SubscriptionCardProps {
   status: string | null;
   plan: string | null;
   trialEndsAt: string | null;
+  // True when the subscription is set to stop at the end of the current period (user
+  // cancelled in the portal, or the account is scheduled for deletion). Drives the
+  // "Cancels on <date>" line below.
+  cancelAtPeriodEnd: boolean;
+  // End of the current paid/trial period — the date the sub cancels when
+  // cancelAtPeriodEnd is true (== Stripe cancel_at for a period-end cancel).
+  currentPeriodEnd: string | null;
   // The signed-in user's billing currency (from their saved country), used by the
   // in-app "Start free trial" modal to show the right region price.
   currency: BillingCurrency;
@@ -94,6 +101,8 @@ export function SubscriptionCard({
   status,
   plan,
   trialEndsAt,
+  cancelAtPeriodEnd,
+  currentPeriodEnd,
   currency,
   notice,
 }: SubscriptionCardProps) {
@@ -101,6 +110,17 @@ export function SubscriptionCard({
   const trialEnd = trialEndsAt ? (
     <LocalDate iso={trialEndsAt} fallback={formatFallback(trialEndsAt)} />
   ) : null;
+
+  // A scheduled cancel (portal cancel, or an account queued for deletion) only makes
+  // sense for a live sub. When set, we override the normal "runs until / active"
+  // detail with an explicit "won't renew" line so the user isn't misled into thinking
+  // it'll convert or renew. The date is current_period_end (== Stripe cancel_at).
+  const cancelDate =
+    cancelAtPeriodEnd && currentPeriodEnd ? (
+      <LocalDate iso={currentPeriodEnd} fallback={formatFallback(currentPeriodEnd)} />
+    ) : null;
+  const scheduledCancel =
+    cancelDate !== null && (status === 'active' || status === 'trialing');
 
   // No live subscription (never subscribed, or lapsed) → offer the trial. The
   // button opens the in-app trial modal (methodology-styled) for the plan choice
@@ -136,7 +156,15 @@ export function SubscriptionCard({
               {meta.label}
             </span>
             <p className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
-              {meta.detail(plan, trialEnd)}
+              {scheduledCancel ? (
+                status === 'trialing' ? (
+                  <>Your free trial ends {cancelDate} and won&apos;t renew.</>
+                ) : (
+                  <>Your subscription is active until {cancelDate} and won&apos;t renew.</>
+                )
+              ) : (
+                meta.detail(plan, trialEnd)
+              )}
             </p>
           </div>
 
