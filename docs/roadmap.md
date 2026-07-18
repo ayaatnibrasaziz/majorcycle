@@ -651,8 +651,10 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
         account → owner saw the "Welcome to MajorCycle" modal → ticked ack + Continue → DB showed a fresh timestamp →
         proves `acknowledgeDisclaimer()` writes reliably (old browser-client write could silently no-op under RLS).
         Original timestamp restored; e2e account reset to a clean never-subscribed baseline afterward.
-      - **⚠ STILL OPEN — country autofill on live/preview** (`x-vercel-ip-country` is empty on localhost, so the IP path
-        genuinely can't run locally; needs a Vercel deploy with a real edge header).
+      - **Country autofill VERIFIED on preview (2026-07-19).** On the `feat/f3-stripe` preview alias, signed into the
+        `country=null` e2e account from Australia: `/account` Country pre-filled to "Australia" (savable in one click),
+        `/pricing` + the trial modal showed **A$19 AUD** — the `x-vercel-ip-country` edge path works end-to-end (it's
+        just empty on localhost, which is why it needed a real deploy).
       - **⚠ REAL STEP-6 FINDING — read `cancel_at`, not `cancel_at_period_end`.** In API `2026-06-24.dahlia` a portal
         cancel-at-period-end leaves `cancel_at_period_end=false` and instead sets `cancel_at` (= period/trial end) +
         `cancellation_details.reason`. `syncSubscription` reads only the old boolean, so the DB never records that a sub is
