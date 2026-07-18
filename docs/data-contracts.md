@@ -953,9 +953,16 @@ never forge entitlement. Migration `20260523133635` + `20260711000000` +
 `paused` is defensive only — we don't offer pause, and because the trial requires a card
 upfront (decision #19) Stripe won't emit it (that needs a trial ending with no payment
 method). **Cancel** has two paths, both handled: *cancel at period end* keeps the status
-(`active`/`trialing`) and stores `cancel_at_period_end=true`, then `subscription.deleted`
-fires at period end → `canceled`; *immediate cancel* fires `subscription.deleted` directly
-→ `canceled`. **Hard-lock rule:** `past_due` AND `now > grace_until` ⇒ the gate denies
+(`active`/`trialing`) until `subscription.deleted` fires at period end → `canceled`;
+*immediate cancel* fires `subscription.deleted` directly → `canceled`.
+> ⚠ **API-shape gotcha (found in local verify 2026-07-19, fix in Step 6):** in the pinned
+> `2026-06-24.dahlia` API a portal cancel-at-period-end leaves `sub.cancel_at_period_end =
+> **false**` and instead sets `sub.cancel_at` (= the period/trial end) + `cancellation_details`.
+> `syncSubscription` currently reads only the boolean, so the DB never records that a sub is
+> *scheduled* to cancel (the eventual `subscription.deleted` still lands, so nothing gets
+> stuck — only the interim "scheduled" state is invisible, and the account UI can't show a
+> "Cancels on <date>" line). Step 6 fix: also capture `cancel_at` and derive "will cancel"
+> from it, not the deprecated boolean. **Hard-lock rule:** `past_due` AND `now > grace_until` ⇒ the gate denies
 access (status stays `past_due`; the gate reads grace). `billing_blocked = true` ⇒ no
 access regardless of status. Enforcing these statuses (the paywall gate) is build step 10;
 the webhook only *records* them.

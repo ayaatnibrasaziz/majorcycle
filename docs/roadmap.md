@@ -636,7 +636,31 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
          reusing the Methodology modal's shell (blurred backdrop, gradient header + icon, disclaimer footer) with the plan
          chooser + `/api/checkout` hand-off — instead of jumping to `/pricing`. Public `/pricing` page unchanged (owner
          chose "Account button only"). Verified in dev-fixtures: AUD price + annual toggle correct, no console/a11y errors.
-- [ ] Step 6 — delete↔billing wiring (edge-case table) · Step 7 — trial-abuse guard · Step 8 — trial reminders + billing
+- [x] **LOCAL VERIFY SESSION (2026-07-19) — owner drove the browser, agent drove servers + DB; verification only, no code
+      changes committed.** Two of the three deferred punch-list checks passed:
+      - **Local Stripe trial loop VERIFIED.** `pnpm dev` + `pnpm stripe:listen` (sandbox, signing secret already matched
+        `.env.local`); owner paid test card 4242 on `e2e@majorcycle.com` → **every webhook `[200]`** → DB confirmed
+        `subscription_status=trialing`, `subscription_currency=usd` (no edge header locally → USD, correct),
+        `trial_ends_at=2026-07-25 15:18:56Z`, `country=null` (checkout persists a country only when it can resolve one;
+        empty edge header locally → nothing persisted → correct). Manage billing opened the sandbox Customer Portal; the
+        portal **Cancel** fired `customer.subscription.updated` `[200]`. Owner's four "is this a bug?" questions all
+        resolved as working-as-designed: trial "25th" (portal shows UTC; our app shows the local 26th via `<LocalDate>`;
+        exactly 7 days), cancel-at-period-end keeps access (decision #21), portal stays on Stripe after cancel (its UX;
+        Return uses our `return_url`→/account), `$0.00 Paid` trial invoice (zero-dollar trial-start invoice, no money).
+      - **OnboardingModal server-action VERIFIED with a real login.** Reset `acknowledged_disclaimer_at=null` on the e2e
+        account → owner saw the "Welcome to MajorCycle" modal → ticked ack + Continue → DB showed a fresh timestamp →
+        proves `acknowledgeDisclaimer()` writes reliably (old browser-client write could silently no-op under RLS).
+        Original timestamp restored; e2e account reset to a clean never-subscribed baseline afterward.
+      - **⚠ STILL OPEN — country autofill on live/preview** (`x-vercel-ip-country` is empty on localhost, so the IP path
+        genuinely can't run locally; needs a Vercel deploy with a real edge header).
+      - **⚠ REAL STEP-6 FINDING — read `cancel_at`, not `cancel_at_period_end`.** In API `2026-06-24.dahlia` a portal
+        cancel-at-period-end leaves `cancel_at_period_end=false` and instead sets `cancel_at` (= period/trial end) +
+        `cancellation_details.reason`. `syncSubscription` reads only the old boolean, so the DB never records that a sub is
+        *scheduled* to cancel (the eventual `subscription.deleted`→`markCanceled` still works, so nothing gets stuck — only
+        the interim "scheduled" state is invisible). Fold the fix into Step 6 (capture `cancel_at`; derive "will cancel"
+        from it; then surface a "Cancels on <date>" line on the SubscriptionCard, which is also currently missing).
+- [ ] Step 6 — delete↔billing wiring (edge-case table) **+ read `cancel_at` (not the deprecated `cancel_at_period_end`
+      boolean) and show a "Cancels on <date>" line** · Step 7 — trial-abuse guard · Step 8 — trial reminders + billing
       emails + dispute handling · Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
