@@ -699,6 +699,17 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       the free "request 3DS on all cards" stand-in was declined (signup friction). The now-dead
       `trial_tombstones.card_fingerprint` column + index were dropped
       (`20260720120000_drop_trial_tombstones_card_fingerprint`).
+      **Step 7 live end-to-end verified 2026-07-20 (owner-driven, localhost + Stripe sandbox, Claude-in-Chrome):**
+      fresh email → "Start free trial" → sandbox checkout "7 days free" → DB `trialing`/monthly/AUD + `trial_ends_at`
+      + **email tombstone written, hash == sha256(email)** + UI "Trial Active" + country-lock engaged. Repeat
+      (tombstoned) email → button "Subscribe" → honest modal ("Subscribe to MajorCycle / your free trial has already
+      been used / charged A$19 today, no free week") → sandbox checkout shows "A$19.00/month" with **no free-trial
+      line** (proves the backend omit-trial enforcement). Currency: USD on localhost (no Vercel geo header), AU$19
+      once `country=AU` — geo-currency only runs on the deployed site, so this is correct, not a bug. Sandbox sub
+      canceled + test customer deleted + DB/tombstones/`stripe_events` reset to baseline. NOTE: the checkout route's
+      `getUser()` is a network call that cold-connect-stalled locally ("Not signed in"); same client-side IPv6 stall
+      (see [[reference-local-dev-ipv6-connect-fix]]) — not a live issue (Vercel↔Supabase), fixed for the test with a
+      keep-warm pinger.
 - [ ] Step 8 — trial reminders + billing emails + dispute handling · Step 9 — branding ·
       **Step 10 — paywall gate LAST (scope = open owner decision).**
 
