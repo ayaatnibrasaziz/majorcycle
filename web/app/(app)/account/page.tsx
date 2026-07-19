@@ -3,8 +3,9 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { KeyRound } from 'lucide-react';
 
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
+import { hasUsedTrial } from '@/lib/trialGuard';
 import { ProfileForm } from '@/components/account/ProfileForm';
 import { SubscriptionCard } from '@/components/account/SubscriptionCard';
 import { PasswordForm } from '@/components/account/PasswordForm';
@@ -75,6 +76,15 @@ export default async function AccountPage({
   }
   const currency = currencyForCountry(effectiveBillingCountry(savedCountry, edgeCountry));
 
+  // Only a user with no live subscription can start a trial; for them, check whether
+  // this email has already consumed one (Step 7 tombstone). If so, the trial modal
+  // tells them — before payment — that subscribing is billed today, no free week.
+  const subStatus = profile?.subscription_status ?? null;
+  const trialUsed =
+    !subStatus || subStatus === 'canceled'
+      ? await hasUsedTrial(createAdminClient(), user.email)
+      : false;
+
   return (
     <div className="max-w-3xl">
       {/* The visible page title comes from the app Header (topbar). Keep an
@@ -98,6 +108,7 @@ export default async function AccountPage({
           cancelAtPeriodEnd={profile?.cancel_at_period_end ?? false}
           currentPeriodEnd={profile?.current_period_end ?? null}
           currency={currency}
+          trialUsed={trialUsed}
           notice={billingNotice}
         />
 

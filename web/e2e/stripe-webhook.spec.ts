@@ -1,6 +1,7 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import Stripe from 'stripe';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createHash } from 'node:crypto';
 
 /**
  * F3 Stripe webhook — contract tests (plan §14). No network to Stripe: each event
@@ -35,6 +36,11 @@ const SUB = `sub_e2e_${RUN}`;
 const nowSec = Math.floor(RUN / 1000);
 const trialEnd = nowSec + 7 * 24 * 60 * 60;
 const periodEnd = nowSec + 30 * 24 * 60 * 60;
+
+// The throwaway user's email + its Step-7 tombstone hash (sha256 of lower+trim,
+// matching web/lib/trialGuard.ts hashEmail — recomputed here to avoid an app import).
+const EMAIL = `stripe-webhook-e2e-${RUN}@example.com`;
+const EMAIL_HASH = createHash('sha256').update(EMAIL.trim().toLowerCase()).digest('hex');
 
 let admin: SupabaseClient;
 let userId: string;
@@ -124,9 +130,8 @@ test.describe.serial('stripe webhook contract', () => {
     // Dedicated throwaway account for this run only — never the shared login user.
     // @example.com is reserved + non-deliverable, and admin.createUser sends no
     // email (email_confirm: true), so this has no outside side-effects.
-    const email = `stripe-webhook-e2e-${RUN}@example.com`;
     const { data: created, error } = await admin.auth.admin.createUser({
-      email,
+      email: EMAIL,
       email_confirm: true,
       password: `E2e!webhook-${RUN}`,
     });
@@ -136,7 +141,7 @@ test.describe.serial('stripe webhook contract', () => {
     userId = created.user.id;
     // The on_auth_user_created trigger creates the profiles row; upsert defensively
     // so it is guaranteed present regardless of trigger timing.
-    await admin.from('profiles').upsert({ id: userId, email }, { onConflict: 'id' });
+    await admin.from('profiles').upsert({ id: userId, email: EMAIL }, { onConflict: 'id' });
   });
 
   test.afterAll(async () => {
@@ -144,6 +149,7 @@ test.describe.serial('stripe webhook contract', () => {
     // with it via ON DELETE CASCADE, leaving zero residue.
     if (admin && userId) {
       await admin.from('stripe_events').delete().like('id', `evt_e2e_${RUN}_%`);
+      await admin.from('trial_tombstones').delete().eq('email_hash', EMAIL_HASH);
       await admin.auth.admin.deleteUser(userId);
     }
   });
@@ -178,6 +184,17 @@ test.describe.serial('stripe webhook contract', () => {
       .select('id')
       .eq('id', event.id);
     expect(rows?.length).toBe(1);
+  });
+
+  test('trialing sync writes the email trial-tombstone (Step 7)', async () => {
+    // The prior test left the sub trialing → syncSubscription should have recorded a
+    // trial_tombstones row for this email's hash, so a re-signup with the same address
+    // (even after account deletion) can't farm a second free trial.
+    const { data: rows } = await admin
+      .from('trial_tombstones')
+      .select('id')
+      .eq('email_hash', EMAIL_HASH);
+    expect(rows?.length ?? 0).toBeGreaterThanOrEqual(1);
   });
 
   test("a trial's paid $0 invoice must NOT downgrade trialing → active", async ({

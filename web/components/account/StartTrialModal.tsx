@@ -26,7 +26,6 @@ const FEATURES = [
   'Every ticker, chart, and Major Cycle analysis',
   'Financial health, valuation, and overall rating',
   'US, Australian, and Canadian equities',
-  'Cancel anytime — no charge until day 7',
 ];
 
 /** Money with the currency's symbol; whole numbers stay whole, otherwise 2dp. */
@@ -39,6 +38,9 @@ interface StartTrialModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currency: BillingCurrency;
+  // True when this email already used its free trial (Step 7). Switches the modal to
+  // an honest "subscribe, billed today, no free week" flow so there's no surprise charge.
+  trialUsed?: boolean;
 }
 
 /**
@@ -51,7 +53,12 @@ interface StartTrialModalProps {
  * only to a signed-in user with no live plan, so it always POSTs /api/checkout
  * and hands off to Stripe hosted Checkout.
  */
-export function StartTrialModal({ open, onOpenChange, currency }: StartTrialModalProps) {
+export function StartTrialModal({
+  open,
+  onOpenChange,
+  currency,
+  trialUsed = false,
+}: StartTrialModalProps) {
   const [plan, setPlan] = useState<PlanKey>('monthly');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +66,14 @@ export function StartTrialModal({ open, onOpenChange, currency }: StartTrialModa
   const prices = PRICE_TABLE[currency];
   const isAnnual = plan === 'annual';
   const saving = annualSavingPercent(currency);
+
+  // The last feature line depends on whether a free week applies.
+  const features = [
+    ...FEATURES,
+    trialUsed
+      ? 'Cancel anytime — your plan runs to the end of the paid period'
+      : 'Cancel anytime — no charge until day 7',
+  ];
 
   async function startCheckout() {
     setLoading(true);
@@ -96,11 +111,12 @@ export function StartTrialModal({ open, onOpenChange, currency }: StartTrialModa
               strokeWidth={2}
               aria-hidden="true"
             />
-            Start your 7-day free trial
+            {trialUsed ? 'Subscribe to MajorCycle' : 'Start your 7-day free trial'}
           </DialogTitle>
           <DialogDescription className="pl-[28px]">
-            Full access to MajorCycle for 7 days — your card is required upfront and
-            isn&apos;t charged until the trial ends.
+            {trialUsed
+              ? 'Full access to MajorCycle. Your subscription starts today and is billed immediately — your free trial has already been used.'
+              : 'Full access to MajorCycle for 7 days — your card is required upfront and isn’t charged until the trial ends.'}
           </DialogDescription>
         </div>
 
@@ -159,9 +175,24 @@ export function StartTrialModal({ open, onOpenChange, currency }: StartTrialModa
               : 'Billed monthly.'}
           </p>
 
+          {/* Know-before-you-pay: a repeat customer sees, BEFORE checkout, that this
+              starts billing today with no free week (Step 7 — no surprise charge). */}
+          {trialUsed && (
+            <div className="mt-4 flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--tint-tier-3-strong)] bg-[var(--tint-tier-3)] px-3 py-2.5 text-[12.5px] leading-relaxed text-[var(--c-tier-3-ink)]">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2} aria-hidden />
+              <p>
+                You&apos;ve already used your free trial, so subscribing starts your paid
+                plan today — you&apos;ll be charged{' '}
+                {money(isAnnual ? prices.annual : prices.monthly, currency)}{' '}
+                {isAnnual ? 'for the year' : 'for the first month'} right away, with no free
+                week.
+              </p>
+            </div>
+          )}
+
           {/* Features */}
           <ul className="mt-6 flex flex-col gap-2.5">
-            {FEATURES.map((f) => (
+            {features.map((f) => (
               <li
                 key={f}
                 className="flex items-start gap-2.5 text-[13px] text-[var(--text-secondary)] leading-relaxed"
@@ -191,6 +222,8 @@ export function StartTrialModal({ open, onOpenChange, currency }: StartTrialModa
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                   Redirecting to checkout…
                 </>
+              ) : trialUsed ? (
+                'Subscribe now'
               ) : (
                 'Start 7-day free trial'
               )}

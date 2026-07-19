@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getStripe } from '@/lib/stripe';
 import { sendAccountDeletedEmail } from '@/lib/email/accountEmails';
+import { recordTrialConsumed } from '@/lib/trialGuard';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,6 +81,10 @@ export async function GET(request: NextRequest) {
       // never blocks the purge). Then email BEFORE deleting, while we still hold the
       // captured address/name.
       await cancelStripeForRow(row);
+      // Trial-abuse guard (Step 7): tombstone the email BEFORE the account is gone, so
+      // a re-signup with the same address can't farm a fresh free trial. Best-effort
+      // (a trial started at checkout is already tombstoned; this is belt-and-suspenders).
+      await recordTrialConsumed(admin, row.email);
       if (row.email) {
         await sendAccountDeletedEmail({ to: row.email, name: row.display_name ?? null });
       }

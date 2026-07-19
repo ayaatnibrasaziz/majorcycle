@@ -34,6 +34,9 @@ interface PricingPlansProps {
   currency: BillingCurrency;
   isLoggedIn: boolean;
   hasSubscription: boolean;
+  // Signed-in visitor who already used their free trial (Step 7). Their CTA subscribes
+  // with no free week, billed today — labelled + noted honestly so it's never a surprise.
+  trialUsed?: boolean;
 }
 
 /**
@@ -48,6 +51,7 @@ export function PricingPlans({
   currency,
   isLoggedIn,
   hasSubscription,
+  trialUsed = false,
 }: PricingPlansProps) {
   const [plan, setPlan] = useState<PlanKey>('monthly');
   const [loading, setLoading] = useState(false);
@@ -188,10 +192,24 @@ export function PricingPlans({
                   <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                   Redirecting to checkout…
                 </>
+              ) : trialUsed ? (
+                'Subscribe now'
               ) : (
                 'Start 7-day free trial'
               )}
             </Button>
+          )}
+
+          {/* Honest note: a signed-in visitor who already used their trial is told,
+              before they click through to payment, that this is billed today. */}
+          {isLoggedIn && !hasSubscription && trialUsed && (
+            <p className="mt-3 flex items-start gap-2 text-[12px] leading-relaxed text-[var(--text-muted)]">
+              <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2} aria-hidden />
+              <span>
+                You&apos;ve already used your free trial, so subscribing starts your paid
+                plan today — billed immediately, with no free week.
+              </span>
+            </p>
           )}
 
           {error && (

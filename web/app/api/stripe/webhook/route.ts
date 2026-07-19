@@ -3,6 +3,7 @@ import type Stripe from 'stripe';
 
 import { getStripe, mapStripeStatus, planFromLookupKey } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
+import { recordTrialConsumed } from '@/lib/trialGuard';
 
 /**
  * Stripe webhook — the ONE writer of the billing columns (the anti-freeload
@@ -20,9 +21,10 @@ import { createAdminClient } from '@/lib/supabase/server';
  * Division of labour: `customer.subscription.*` carry the full subscription object and
  * drive the state sync; `checkout.session.completed` just links the Stripe customer to
  * our user; invoices flip active/past_due + the grace clock. Not yet handled (later
- * steps, deliberately): trial-tombstone writes + card-fingerprint guard (step 7),
- * billing emails (step 8), dispute events (step 8) — subscribing to those now is safe,
- * they're acknowledged as no-ops.
+ * steps, deliberately): billing emails (step 8), dispute events (step 8) — subscribing
+ * to those now is safe, they're acknowledged as no-ops. The Step-7 email trial-tombstone
+ * is written in `syncSubscription` when a sub goes trialing (the same-card vector is
+ * handled by Stripe Radar, no code here).
  */
 
 export const dynamic = 'force-dynamic';
@@ -128,7 +130,22 @@ async function syncSubscription(
   // Healthy states clear the 3-day payment-failure grace clock.
   if (status === 'active' || status === 'trialing') patch['grace_until'] = null;
 
-  await admin.from('profiles').update(patch).eq('id', userId);
+  // Return the email in the same round-trip so a consumed trial can be tombstoned
+  // without an extra query.
+  const { data: updated } = await admin
+    .from('profiles')
+    .update(patch)
+    .eq('id', userId)
+    .select('email')
+    .maybeSingle();
+
+  // Trial-abuse guard (Step 7): once a subscription is trialing, tombstone the email
+  // (a record that survives account deletion) so the same address can't farm a second
+  // free week. Idempotent + best-effort; the checkout guard and the account/pricing UI
+  // read the same tombstone to omit the trial and warn the user before any charge.
+  if (status === 'trialing') {
+    await recordTrialConsumed(admin, updated?.email ?? null);
+  }
   return { userId, customerId: cust, subscriptionId: sub.id };
 }
 
@@ -168,7 +185,8 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
           .update({ stripe_customer_id: cust })
           .eq('id', userId);
       }
-      // TODO (step 7): write the trial tombstone (email hash + card fingerprint).
+      // (Trial tombstone is written from the trialing customer.subscription.* sync,
+      // where the trial flag is authoritative — see syncSubscription.)
       // TODO (step 8): send the trial-started / subscription-confirmed email.
       return {
         userId: userId ?? null,

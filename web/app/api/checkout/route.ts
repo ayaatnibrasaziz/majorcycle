@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { getSiteURL } from '@/lib/url';
+import { hasUsedTrial } from '@/lib/trialGuard';
 import {
   getStripe,
   resolvePriceId,
@@ -101,10 +102,13 @@ export async function POST(request: Request) {
   // to the canonical site URL for any caller without an Origin header.
   const origin = request.headers.get('origin') ?? getSiteURL();
 
-  // TODO (F3 build-step 7 — trial-abuse guard): before creating the session, hash
-  // the user's email and, if it matches a `trial_tombstones` row, omit the trial so
-  // a repeat customer subscribes with no free week (locked decision C). For now every
-  // eligible checkout gets the 7-day trial.
+  // Trial-abuse guard (Step 7): if this email has already consumed a free trial
+  // (a `trial_tombstones` row that survives account deletion), omit the trial so the
+  // repeat customer subscribes with no free week — never hard-blocked. The account /
+  // pricing UI shows honest "already used your trial, billing starts today" copy from
+  // the SAME check, so this is never a surprise. `trial_tombstones` is service-role
+  // only (RLS, no policies), so the lookup takes the admin client, not the user's.
+  const grantTrial = !(await hasUsedTrial(createAdminClient(), user.email));
 
   const stripeCustomerId = profile?.stripe_customer_id ?? null;
 
@@ -115,7 +119,9 @@ export async function POST(request: Request) {
       // Force the multi-currency Price to charge (and lock) this currency.
       currency,
       subscription_data: {
-        trial_period_days: TRIAL_PERIOD_DAYS,
+        // Grant the 7-day trial only to a first-time email; a repeat subscribes with
+        // no free week (guard above). Omitting the field entirely = charge from day one.
+        ...(grantTrial ? { trial_period_days: TRIAL_PERIOD_DAYS } : {}),
         // Carried on the subscription so the webhook can map it back to our user
         // even if the Customer was created fresh by Checkout.
         metadata: { user_id: user.id },

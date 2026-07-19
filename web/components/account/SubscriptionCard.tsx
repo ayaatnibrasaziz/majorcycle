@@ -19,6 +19,9 @@ interface SubscriptionCardProps {
   // The signed-in user's billing currency (from their saved country), used by the
   // in-app "Start free trial" modal to show the right region price.
   currency: BillingCurrency;
+  // True when this email has already consumed a free trial (Step 7). Flips the trial
+  // entry to an honest "subscribe — billed today, no free week" flow before payment.
+  trialUsed?: boolean;
   // Optional inline message shown above the action row — e.g. after a failed
   // return from the billing portal (see /account ?billing= handling).
   notice?: string | null;
@@ -104,6 +107,7 @@ export function SubscriptionCard({
   cancelAtPeriodEnd,
   currentPeriodEnd,
   currency,
+  trialUsed = false,
   notice,
 }: SubscriptionCardProps) {
   const meta = (status && STATUS_META[status]) || NONE_META;
@@ -169,7 +173,7 @@ export function SubscriptionCard({
           </div>
 
           {canStartTrial ? (
-            <StartTrialButton currency={currency} />
+            <StartTrialButton currency={currency} trialUsed={trialUsed} />
           ) : (
             /* Manage billing → Stripe Customer Portal. A plain form POST to
                /api/portal, which creates a portal session and 303-redirects to

@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
+import { hasUsedTrial } from '@/lib/trialGuard';
 import { PricingPlans } from './PricingPlans';
 
 export const metadata: Metadata = {
@@ -31,6 +32,10 @@ export default async function PricingPage() {
 
   let savedCountry: string | null = null;
   let hasSubscription = false;
+  // Whether this signed-in visitor has already consumed their free trial (Step 7).
+  // Only relevant when they have no live plan; drives the honest "billed today, no
+  // free week" CTA + note so /pricing can't produce a surprise charge either.
+  let trialUsed = false;
 
   if (user) {
     const { data: profile } = await supabase
@@ -40,6 +45,9 @@ export default async function PricingPage() {
       .single();
     savedCountry = profile?.country ?? null;
     hasSubscription = ACTIVE_STATES.has(profile?.subscription_status ?? '');
+    if (!hasSubscription) {
+      trialUsed = await hasUsedTrial(createAdminClient(), user.email);
+    }
   }
 
   // Edge geo (Vercel sets this at the CDN, ISO alpha-2). Null on localhost.
@@ -57,6 +65,7 @@ export default async function PricingPage() {
       currency={currency}
       isLoggedIn={Boolean(user)}
       hasSubscription={hasSubscription}
+      trialUsed={trialUsed}
     />
   );
 }
