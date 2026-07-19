@@ -981,16 +981,18 @@ the webhook only *records* them.
   best-effort — a failed enrich never 500s), so a post-launch issue is one
   `select … where user_id = …` instead of guesswork. The `ON DELETE SET NULL` keeps the
   audit row after an account purge.
-- **`trial_tombstones`** (`id uuid pk`, `email_hash text`, `card_fingerprint text`,
-  `created_at timestamptz`; indexed on both hash columns) — **trial-abuse guard (Step 7)**.
+- **`trial_tombstones`** (`id uuid pk`, `email_hash text`, `created_at timestamptz`; indexed
+  on `email_hash`) — **trial-abuse guard (Step 7)**.
   Enforcement is by `email_hash` = `sha256(lower(trim(email)))` (`web/lib/trialGuard.ts`):
   written once a subscription goes trialing (in `syncSubscription`) and at purge; read at
   checkout (omit `trial_period_days` for a repeat email) and on the account/pricing UI to
   show the honest "already used your free trial — billed today, no free week" copy *before*
   payment. **Not** a FK to `profiles` — it must survive account deletion so a purged user
-  can't farm a fresh free trial. **`card_fingerprint` is UNUSED** (kept for audit/future):
-  the same-card-across-different-emails vector is handled by Stripe Radar's Free-trial-abuse
-  control (a Dashboard setting), not code.
+  can't farm a fresh free trial. The same-card-across-different-emails vector is handled by
+  Stripe Radar's Free-trial-abuse control (a Dashboard setting), not code — so the originally
+  reserved `card_fingerprint` column + its index were **dropped as dead**
+  (`20260720120000_drop_trial_tombstones_card_fingerprint`; never written or read, and the
+  index was flagged unused by the Supabase performance advisor).
 
 ### Webhook events handled (`/api/stripe/webhook`) — BUILT (F3 step 4, `ec0b441`)
 

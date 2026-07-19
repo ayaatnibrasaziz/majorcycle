@@ -15,8 +15,7 @@ import type { createAdminClient } from '@/lib/supabase/server';
  *
  * The same-card-across-different-emails vector is handled separately by Stripe's
  * Radar "Free trial abuse" control (a Dashboard setting), so this module only deals
- * with the email signal. `trial_tombstones.card_fingerprint` stays unused here
- * (kept for future/audit).
+ * with the email signal.
  *
  * Service-role only: `trial_tombstones` has RLS on with no policies, so every call
  * takes the admin client. All functions are best-effort and never throw — a guard
