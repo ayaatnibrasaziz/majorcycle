@@ -689,7 +689,12 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       → **Stripe Radar "Free trial abuse" control (owner Dashboard toggle)**; `card_fingerprint` column left unused
       (audit/future). Dead `frozen_trial_ms` column dropped (`20260719120000`). Gates green; webhook contract tests
       **11/11** (incl. tombstone write); honest modal verified in-browser (monthly + annual pre-pay callout). NOT merged.
-      **Owner TODO: enable Radar → Risk controls → Free trial abuse in the Stripe Dashboard** (verify tier/cost first).
+      **Radar finding (checked live 2026-07-19 via Claude-in-Chrome, LIVE acct):** the managed **"Free trials"** Radar
+      control is **in private preview** — the "Enable control" button only shows *"Free trial abuse risk control is in
+      preview"* and can't be self-toggled. This is an **availability** gate, NOT free-vs-paid (a paid Radar tier wouldn't
+      unlock it either; custom Radar rules that could approximate it DO need paid Radar for Fraud Teams). **Owner decision:
+      rely on the email guard now, enable the Radar control when it exits preview.** No Radar settings were changed
+      (baseline Fraudulent-dispute + Fraudulent-non-card controls remain Active as they already were).
 - [ ] Step 8 — trial reminders + billing emails + dispute handling · Step 9 — branding ·
       **Step 10 — paywall gate LAST (scope = open owner decision).**
 
