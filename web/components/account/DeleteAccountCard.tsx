@@ -28,8 +28,9 @@ function getDeviceTimeZone(): string {
  * `subscriptionStatus` drives the reassurance copy shown before confirming:
  * a paying subscriber is told their plan stays valid through the period they've
  * already paid for (deleting neither cuts it short nor extends it — no delete-and-
- * restore loophole); a trial user is told their remaining trial days are saved.
- * Both restore when they sign back in before the deletion date.
+ * restore loophole); a trial user is told the trial stays active to its normal end
+ * with no charge (F3 Step 6 = cancel-at-trial-end, not freeze/restore). Signing back
+ * in before the deletion date restores the account (and un-cancels a still-live sub).
  */
 export function DeleteAccountCard({
   subscriptionStatus = null,
@@ -85,9 +86,9 @@ export function DeleteAccountCard({
             )}
             {isTrial && (
               <p className="text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
-                Your free trial is <strong>paused, not cancelled</strong> — the days
-                you have left are saved, and you get them back when you sign in before
-                the deletion date.
+                Your free trial stays active until its normal end date, with{' '}
+                <strong>no charge</strong>. Sign back in before then to keep it; if the
+                trial ends first, you&apos;ll come back to a free account.
               </p>
             )}
 
