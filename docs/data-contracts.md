@@ -982,11 +982,15 @@ the webhook only *records* them.
   `select … where user_id = …` instead of guesswork. The `ON DELETE SET NULL` keeps the
   audit row after an account purge.
 - **`trial_tombstones`** (`id uuid pk`, `email_hash text`, `card_fingerprint text`,
-  `created_at timestamptz`; indexed on both hash columns) — **trial-abuse guard**.
-  `sha256(lower(email))` + Stripe card `fingerprint` of consumed trials. **Not** a FK
-  to `profiles` — it must survive account deletion so a purged user can't farm a fresh
-  free trial. Reused email → no-trial checkout; reused card fingerprint → trial ended
-  at the webhook. Written when a trial is first consumed and at purge time.
+  `created_at timestamptz`; indexed on both hash columns) — **trial-abuse guard (Step 7)**.
+  Enforcement is by `email_hash` = `sha256(lower(trim(email)))` (`web/lib/trialGuard.ts`):
+  written once a subscription goes trialing (in `syncSubscription`) and at purge; read at
+  checkout (omit `trial_period_days` for a repeat email) and on the account/pricing UI to
+  show the honest "already used your free trial — billed today, no free week" copy *before*
+  payment. **Not** a FK to `profiles` — it must survive account deletion so a purged user
+  can't farm a fresh free trial. **`card_fingerprint` is UNUSED** (kept for audit/future):
+  the same-card-across-different-emails vector is handled by Stripe Radar's Free-trial-abuse
+  control (a Dashboard setting), not code.
 
 ### Webhook events handled (`/api/stripe/webhook`) — BUILT (F3 step 4, `ec0b441`)
 
@@ -1020,9 +1024,11 @@ state sync; checkout just links the customer:
   `client_reference_id`); subscription state itself comes from `subscription.created`.
 - `customer.subscription.trial_will_end` — no-op (recorded in `stripe_events` only;
   the primary day-5/day-7 reminders are cron-driven — step 8).
+- **Step 7 (done):** `syncSubscription` writes the email trial-tombstone once the sub is
+  trialing (the card-fingerprint guard was dropped — that vector is Stripe Radar's job).
 
 **Deferred by design (subscribed but not yet acted on — TODO markers in the route):**
-trial-tombstone write + card-fingerprint guard (step 7); billing emails —
+billing emails —
 trial-started / payment-failed (step 8); dispute events
 (`charge.dispute.created`/`.closed`/`.funds_withdrawn`/`.funds_reinstated` →
 `billing_blocked`, step 8). The `charge.dispute.*` and email/tombstone effects above

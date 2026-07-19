@@ -478,10 +478,11 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
         idea): on delete set `cancel_at_period_end` so the trial simply runs to its normal end with no charge;
         reactivating before then un-cancels it, otherwise the user returns as a lapsed free account. A trial is free, so
         there's no paid-time loophole — and this makes trial + paid deletion one identical mechanism (`frozen_trial_ms`
-        now unused). **(b) Trial-abuse guard = email tombstone + Stripe card fingerprint +
-      hashed tombstone that survives account deletion** (owner confirmed the *original* two-signal plan 2026-07-12: same
-      email OR same card can't farm a second free trial; a genuinely different person with a different email + card still
-      gets one). **(c) EDGE CASES — plan thoroughly WITH the owner before coding (owner's ask 2026-07-12).** The grace
+        now unused). **(b) Trial-abuse guard (built Step 7 — see below) = deterministic email tombstone + Stripe Radar
+      for the card vector.** The owner's later "no surprise charges" requirement (2026-07-19) replaced the original
+      "card fingerprint → end trial at the webhook" idea (that charged by surprise): the email signal is enforced with
+      know-before-pay copy, and the same-card-across-different-emails vector is Stripe Radar's Free-trial-abuse control
+      (a Dashboard toggle). The hashed tombstone still survives account deletion. **(c) EDGE CASES — plan thoroughly WITH the owner before coding (owner's ask 2026-07-12).** The grace
       window and the billing clock are independent, so their timings cross in several ways that each need a defined
       behaviour, e.g.: paid period (or trial) **ends during the 30-day grace**, then the user reactivates **after** it
       lapsed — is the account restored as a lapsed/free user prompted to resubscribe, or something else? Payment fails
@@ -678,7 +679,18 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       confirmed in the DB + Stripe sandbox (deletion scheduled with no charge, then un-cancelled on reactivate) and
       Part G traceability confirmed on the real events. The in-app `DeleteAccountCard` trial copy still described the
       old freeze model — caught during the live drive and fixed (commit `ba56c31`). NOT merged.
-- [ ] Step 7 — trial-abuse guard · Step 8 — trial reminders + billing emails + dispute handling · Step 9 — branding ·
+- [x] **Step 7 — trial-abuse guard (email tombstone + Stripe Radar) (2026-07-19, branch `feat/f3-stripe`, commit
+      `ff461ab`; column drop `ee67042`).** Owner requirement **no surprise charges — the user is told before paying**
+      overrode the original email+card-fingerprint-end-trial-at-webhook plan (which charged by surprise). Design:
+      deterministic **email tombstone** (`trial_tombstones.email_hash` = sha256 lower+trim; new `web/lib/trialGuard.ts`),
+      written once a sub goes trialing (`syncSubscription`) + at purge; read at checkout (omit `trial_period_days` for a
+      repeat email) and on the account trial modal + signed-in `/pricing` (honest "already used your free trial — billed
+      today, no free week" copy + dynamic price BEFORE checkout; button → "Subscribe"). Same-card-across-accounts vector
+      → **Stripe Radar "Free trial abuse" control (owner Dashboard toggle)**; `card_fingerprint` column left unused
+      (audit/future). Dead `frozen_trial_ms` column dropped (`20260719120000`). Gates green; webhook contract tests
+      **11/11** (incl. tombstone write); honest modal verified in-browser (monthly + annual pre-pay callout). NOT merged.
+      **Owner TODO: enable Radar → Risk controls → Free trial abuse in the Stripe Dashboard** (verify tier/cost first).
+- [ ] Step 8 — trial reminders + billing emails + dispute handling · Step 9 — branding ·
       **Step 10 — paywall gate LAST (scope = open owner decision).**
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
