@@ -943,7 +943,6 @@ never forge entitlement. Migration `20260523133635` + `20260711000000` +
 | `current_period_end` | timestamptz | Stripe `current_period_end` — "renews on" + delete-during-paid. |
 | `cancel_at_period_end` | boolean (default false) | Sub set to end at period end (user cancel / delete-during-paid). |
 | `grace_until` | timestamptz | `now()+3d` on `invoice.payment_failed`; `past_due` beyond it hard-locks. |
-| `frozen_trial_ms` | bigint | **Unused since Step 6** — the freeze/restore trial-delete model was replaced by cancel-at-trial-end (`cancel_at_period_end`). Column kept for now; drop in a later cleanup. |
 | `billing_blocked` | boolean (default false) | Chargeback/fraud dispute revoked access; cleared only if the dispute is won. |
 | `trial_reminder_sent` | text | Which trial-ending reminders (day5/day7) already sent — prevents double-send by the cron. |
 
@@ -1097,10 +1096,11 @@ retried POSTs get automatic idempotency keys).
 - **RLS is on for every table.** `profiles` + `analysis_runs` have per-user policies (own-row). `stocks` / `price_bars` / `universe_log` / `listings` / `ticker_requests` / `index_membership` / `split_events` have RLS enabled with **no policies** — read/write them **only server-side with the service-role key** (`createAdminClient` / the Python service client), never with the browser anon client. The `/api/listings/search` + `/api/request-ticker` routes gate on the authed user (server client) then touch `listings` / `ticker_requests` via `createAdminClient`.
 - The `get_price_bars_json(p_ticker)` RPC is the one-request way to read a ticker's full history (bypasses the 1000-row cap); it's service-role only. Schema lives in `supabase/migrations/` (mirrors the Supabase migration log).
 - **Account deletion (F2 Part B).** `profiles.deletion_scheduled_at timestamptz` marks a soft-deleted account: set = scheduled for permanent purge at that time (30-day grace); `NULL` = active. It is **service-role-only** — deliberately excluded from the authenticated column-UPDATE grant (`20260705032433`), so only the server (delete action / reactivation / the purge route) can set or clear it. The hard delete runs `admin.auth.admin.deleteUser(id)` and cascades: `auth.*` + `profiles` (`ON DELETE CASCADE`) + `analysis_runs` (CASCADE); `universe_log.added_by_user` and `ticker_requests.requested_by` are **`ON DELETE SET NULL`** (audit breadcrumbs kept, the user reference nulled). Migration `20260711000000_account_deletion.sql` flipped `universe_log`'s FK from `NO ACTION`→`SET NULL` — it was the last constraint that would have blocked a delete. The daily **`/api/cron/purge-accounts`** route (Vercel Cron, guarded by `CRON_SECRET` via the `Authorization: Bearer` header) purges rows whose `deletion_scheduled_at` has passed, emailing the branded "account deleted" notice first.
-- **Stripe billing (F3).** The eight billing columns added to `profiles` by
+- **Stripe billing (F3).** The billing columns added to `profiles` by
   `20260715000000_f3_stripe_billing` (`stripe_subscription_id`, `subscription_currency`,
-  `current_period_end`, `cancel_at_period_end`, `grace_until`, `frozen_trial_ms`,
-  `billing_blocked`, `trial_reminder_sent`) — like the pre-existing `subscription_status`
+  `current_period_end`, `cancel_at_period_end`, `grace_until`,
+  `billing_blocked`, `trial_reminder_sent`; the original `frozen_trial_ms` was dropped in
+  `20260719120000_drop_frozen_trial_ms` — see Step 6/7) — like the pre-existing `subscription_status`
   / `subscription_plan` / `trial_ends_at` / `stripe_customer_id` — are **service-role-only**:
   deliberately excluded from the authenticated column-UPDATE grant (`20260705032433`), so
   only the Stripe webhook (service-role admin client) writes them. This is the anti-freeload
