@@ -478,11 +478,12 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
         idea): on delete set `cancel_at_period_end` so the trial simply runs to its normal end with no charge;
         reactivating before then un-cancels it, otherwise the user returns as a lapsed free account. A trial is free, so
         there's no paid-time loophole — and this makes trial + paid deletion one identical mechanism (`frozen_trial_ms`
-        now unused). **(b) Trial-abuse guard (built Step 7 — see below) = deterministic email tombstone + Stripe Radar
-      for the card vector.** The owner's later "no surprise charges" requirement (2026-07-19) replaced the original
+        now unused). **(b) Trial-abuse guard (built Step 7 — see below) = deterministic email tombstone (Stripe Radar's
+      Free-trial-abuse control was the intended card-vector backstop, but was later left OFF — see Step 7).** The owner's later "no surprise charges" requirement (2026-07-19) replaced the original
       "card fingerprint → end trial at the webhook" idea (that charged by surprise): the email signal is enforced with
-      know-before-pay copy, and the same-card-across-different-emails vector is Stripe Radar's Free-trial-abuse control
-      (a Dashboard toggle). The hashed tombstone still survives account deletion. **(c) EDGE CASES — plan thoroughly WITH the owner before coding (owner's ask 2026-07-12).** The grace
+      know-before-pay copy. The same-card-across-different-emails vector was meant for Stripe Radar's Free-trial-abuse
+      control (a Dashboard toggle), but that control was **left off** (per-signup fee; owner decision 2026-07-20) —
+      it's an accepted gap now (see the Step 7 record below). The hashed tombstone still survives account deletion. **(c) EDGE CASES — plan thoroughly WITH the owner before coding (owner's ask 2026-07-12).** The grace
       window and the billing clock are independent, so their timings cross in several ways that each need a defined
       behaviour, e.g.: paid period (or trial) **ends during the 30-day grace**, then the user reactivates **after** it
       lapsed — is the account restored as a lapsed/free user prompted to resubscribe, or something else? Payment fails
