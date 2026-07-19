@@ -14,7 +14,8 @@
 // and which overrides its saved login), so it ALWAYS listens on the right
 // account. The key is never printed and never placed on the command line.
 //
-// Prereqs: the Stripe CLI (`stripe version`) and Node. See docs/local-stripe-testing.md.
+// Prereqs: the Stripe CLI (`stripe version`) and Node. Run via `pnpm stripe:listen`
+// (from web/) with the dev server on the configured PORT.
 
 import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';

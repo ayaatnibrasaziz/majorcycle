@@ -943,7 +943,7 @@ never forge entitlement. Migration `20260523133635` + `20260711000000` +
 | `current_period_end` | timestamptz | Stripe `current_period_end` — "renews on" + delete-during-paid. |
 | `cancel_at_period_end` | boolean (default false) | Sub set to end at period end (user cancel / delete-during-paid). |
 | `grace_until` | timestamptz | `now()+3d` on `invoice.payment_failed`; `past_due` beyond it hard-locks. |
-| `frozen_trial_ms` | bigint | Remaining trial (ms) saved when a *trialing* account is deleted; restored on reactivation. |
+| `frozen_trial_ms` | bigint | **Unused since Step 6** — the freeze/restore trial-delete model was replaced by cancel-at-trial-end (`cancel_at_period_end`). Column kept for now; drop in a later cleanup. |
 | `billing_blocked` | boolean (default false) | Chargeback/fraud dispute revoked access; cleared only if the dispute is won. |
 | `trial_reminder_sent` | text | Which trial-ending reminders (day5/day7) already sent — prevents double-send by the cron. |
 
@@ -955,14 +955,14 @@ upfront (decision #19) Stripe won't emit it (that needs a trial ending with no p
 method). **Cancel** has two paths, both handled: *cancel at period end* keeps the status
 (`active`/`trialing`) until `subscription.deleted` fires at period end → `canceled`;
 *immediate cancel* fires `subscription.deleted` directly → `canceled`.
-> ⚠ **API-shape gotcha (found in local verify 2026-07-19, fix in Step 6):** in the pinned
-> `2026-06-24.dahlia` API a portal cancel-at-period-end leaves `sub.cancel_at_period_end =
+> ⚠ **API-shape gotcha (found 2026-07-19, FIXED in Step 6):** in the pinned
+> `2026-06-24.dahlia` API a cancel-at-period-end leaves `sub.cancel_at_period_end =
 > **false**` and instead sets `sub.cancel_at` (= the period/trial end) + `cancellation_details`.
-> `syncSubscription` currently reads only the boolean, so the DB never records that a sub is
-> *scheduled* to cancel (the eventual `subscription.deleted` still lands, so nothing gets
-> stuck — only the interim "scheduled" state is invisible, and the account UI can't show a
-> "Cancels on <date>" line). Step 6 fix: also capture `cancel_at` and derive "will cancel"
-> from it, not the deprecated boolean. **Hard-lock rule:** `past_due` AND `now > grace_until` ⇒ the gate denies
+> `syncSubscription` therefore derives "scheduled to cancel" as `sub.cancel_at != null` (the
+> deprecated boolean is only a fallback), so the DB records the interim "scheduled" state and
+> the account card renders a "…cancels on <date>, won't renew" line. The display date is the
+> stored `current_period_end` (== `cancel_at` for a period-end cancel; == `trial_end` for a
+> trialing sub). **Hard-lock rule:** `past_due` AND `now > grace_until` ⇒ the gate denies
 access (status stays `past_due`; the gate reads grace). `billing_blocked = true` ⇒ no
 access regardless of status. Enforcing these statuses (the paywall gate) is build step 10;
 the webhook only *records* them.
@@ -1075,7 +1075,7 @@ retried POSTs get automatic idempotency keys).
 - `pnpm stripe:listen` (`web/scripts/stripe-listen.mjs`) forwards Stripe webhooks to the
   local dev server. It forces the **sandbox** account by reading `STRIPE_SECRET_KEY` from
   `web/.env.local` and passing it as `STRIPE_API_KEY` (env, not argv; never printed),
-  sidestepping the Stripe-CLI-default-account gotcha. Owner guide: `docs/local-stripe-testing.md`.
+  sidestepping the Stripe-CLI-default-account gotcha. Run it from `web/` with the dev server up.
 
 ---
 

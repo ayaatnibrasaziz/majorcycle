@@ -474,9 +474,11 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
         the earlier "pause + push-out renewal" idea was wrong and has been removed from the copy). Reactivating within
         grace clears `cancel_at_period_end` so it renews normally again; the user keeps only the paid-through time they
         already had.
-      · **Trial** — freeze/restore: record the trial days remaining at deletion and give them back from the moment the
-        user returns (deleted day 3 with 4 left → 4 fresh trial days on return, even 20 days later within grace). A trial
-        is free, so there's no paid-time loophole. **(b) Trial-abuse guard = email tombstone + Stripe card fingerprint +
+      · **Trial** — cancel-at-trial-end (**Step 6 final decision 2026-07-19**, superseding the earlier freeze/restore
+        idea): on delete set `cancel_at_period_end` so the trial simply runs to its normal end with no charge;
+        reactivating before then un-cancels it, otherwise the user returns as a lapsed free account. A trial is free, so
+        there's no paid-time loophole — and this makes trial + paid deletion one identical mechanism (`frozen_trial_ms`
+        now unused). **(b) Trial-abuse guard = email tombstone + Stripe card fingerprint +
       hashed tombstone that survives account deletion** (owner confirmed the *original* two-signal plan 2026-07-12: same
       email OR same card can't farm a second free trial; a genuinely different person with a different email + card still
       gets one). **(c) EDGE CASES — plan thoroughly WITH the owner before coding (owner's ask 2026-07-12).** The grace
@@ -614,10 +616,9 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
          (`web/scripts/stripe-listen.mjs`) forces the SANDBOX account via `STRIPE_API_KEY` read from `web/.env.local`
          (never printed / not in argv), sidestepping the CLI-default-account gotcha. Verified: connects to "MajorCycle
          sandbox" `acct_1TrdbFGc5r0QcK9U`, reaches Ready, and the CLI signing secret **already matches**
-         `STRIPE_WEBHOOK_SECRET` in `.env.local` (loop works with zero manual step). Full owner guide:
-         `docs/local-stripe-testing.md`. **NEXT SESSION: I start `pnpm dev` + `pnpm stripe:listen` and walk the owner
-         through a live 4242 checkout → watch `[200]` webhooks → confirm "Trial active".** (Owner hit a stale-PATH
-         `'pnpm' not recognized` in an old terminal → fix = open a fresh terminal; noted in the guide.)
+         `STRIPE_WEBHOOK_SECRET` in `.env.local` (loop works with zero manual step). **DONE + owner-verified
+         2026-07-19** — live 4242 checkout drove `[200]` webhooks and `/account` flipped to "Trial Active". (Owner
+         hit a stale-PATH `'pnpm' not recognized` in an old terminal → fix = open a fresh terminal.)
       3. [x] (dotted zero — left as-is, JetBrains Mono trait. No change, as agreed.)
       4. [x] **Country IP auto-fill + currency consistency DONE** (commit `e30c7aa`). `web/lib/countries.ts` audited =
          the FULL correct ISO-3166-1 alpha-2 list (same codes Stripe + Vercel use), **NOT a dummy list**; only AU/CA
@@ -673,7 +674,10 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       corrected (no more "days saved/restored"). **Verified:** typecheck/lint/build green; webhook contract tests 10/10
       (incl. new cancel_at + ledger-enrichment case); the delete/reactivate/purge Stripe ops driven against the real
       sandbox (8/8 — cancel_at set==trial_end, cleared, list-fallback, hard-cancel); advisors show no new warnings;
-      `stripe_events` test rows purged. NOT merged. Owner to do the final delete/reactivate UI confirmation.
+      `stripe_events` test rows purged. **Owner-live-verified 2026-07-19** — owner drove the login; delete→reactivate
+      confirmed in the DB + Stripe sandbox (deletion scheduled with no charge, then un-cancelled on reactivate) and
+      Part G traceability confirmed on the real events. The in-app `DeleteAccountCard` trial copy still described the
+      old freeze model — caught during the live drive and fixed (commit `ba56c31`). NOT merged.
 - [ ] Step 7 — trial-abuse guard · Step 8 — trial reminders + billing emails + dispute handling · Step 9 — branding ·
       **Step 10 — paywall gate LAST (scope = open owner decision).**
 
