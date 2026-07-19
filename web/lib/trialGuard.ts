@@ -13,9 +13,10 @@ import type { createAdminClient } from '@/lib/supabase/server';
  * billed from day one — never hard-blocked). The same lookup drives the honest
  * "you've already used your free trial" copy shown BEFORE payment.
  *
- * The same-card-across-different-emails vector is handled separately by Stripe's
- * Radar "Free trial abuse" control (a Dashboard setting), so this module only deals
- * with the email signal.
+ * The same-card-across-different-emails vector is NOT actively blocked: Stripe's Radar
+ * "Free trial abuse" control is available but deliberately left OFF (it bills a per-signup
+ * SetupIntent fee; the owner chose the free email guard). It's an accepted gap, covered
+ * only by base Radar's always-on high-risk blocking. This module handles the email signal.
  *
  * Service-role only: `trial_tombstones` has RLS on with no policies, so every call
  * takes the admin client. All functions are best-effort and never throw — a guard

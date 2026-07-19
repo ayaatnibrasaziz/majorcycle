@@ -988,11 +988,13 @@ the webhook only *records* them.
   checkout (omit `trial_period_days` for a repeat email) and on the account/pricing UI to
   show the honest "already used your free trial — billed today, no free week" copy *before*
   payment. **Not** a FK to `profiles` — it must survive account deletion so a purged user
-  can't farm a fresh free trial. The same-card-across-different-emails vector is handled by
-  Stripe Radar's Free-trial-abuse control (a Dashboard setting), not code — so the originally
-  reserved `card_fingerprint` column + its index were **dropped as dead**
-  (`20260720120000_drop_trial_tombstones_card_fingerprint`; never written or read, and the
-  index was flagged unused by the Supabase performance advisor).
+  can't farm a fresh free trial. The same-card-across-different-emails vector would be Stripe
+  Radar's Free-trial-abuse control, but that's deliberately **left off** (its prerequisite bills
+  a per-signup SetupIntent fee; owner chose the free email guard 2026-07-20) — an **accepted
+  gap** covered only by base Radar's always-on high-risk blocking + the enabled CVC-fail/
+  postal-fail Radar rules. So the originally reserved `card_fingerprint` column + its index were
+  **dropped as dead** (`20260720120000_drop_trial_tombstones_card_fingerprint`; never written or
+  read, and the index was flagged unused by the Supabase performance advisor).
 
 ### Webhook events handled (`/api/stripe/webhook`) — BUILT (F3 step 4, `ec0b441`)
 

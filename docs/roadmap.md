@@ -685,16 +685,20 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       deterministic **email tombstone** (`trial_tombstones.email_hash` = sha256 lower+trim; new `web/lib/trialGuard.ts`),
       written once a sub goes trialing (`syncSubscription`) + at purge; read at checkout (omit `trial_period_days` for a
       repeat email) and on the account trial modal + signed-in `/pricing` (honest "already used your free trial — billed
-      today, no free week" copy + dynamic price BEFORE checkout; button → "Subscribe"). Same-card-across-accounts vector
-      → **Stripe Radar "Free trial abuse" control (owner Dashboard toggle)**; `card_fingerprint` column left unused
-      (audit/future). Dead `frozen_trial_ms` column dropped (`20260719120000`). Gates green; webhook contract tests
-      **11/11** (incl. tombstone write); honest modal verified in-browser (monthly + annual pre-pay callout). NOT merged.
-      **Radar finding (checked live 2026-07-19 via Claude-in-Chrome, LIVE acct):** the managed **"Free trials"** Radar
-      control is **in private preview** — the "Enable control" button only shows *"Free trial abuse risk control is in
-      preview"* and can't be self-toggled. This is an **availability** gate, NOT free-vs-paid (a paid Radar tier wouldn't
-      unlock it either; custom Radar rules that could approximate it DO need paid Radar for Fraud Teams). **Owner decision:
-      rely on the email guard now, enable the Radar control when it exits preview.** No Radar settings were changed
-      (baseline Fraudulent-dispute + Fraudulent-non-card controls remain Active as they already were).
+      today, no free week" copy + dynamic price BEFORE checkout; button → "Subscribe"). Dead `frozen_trial_ms` column dropped
+      (`20260719120000`). Gates green; webhook contract tests **11/11** (incl. tombstone write); honest modal verified
+      in-browser (monthly + annual pre-pay callout). NOT merged.
+      **Radar review + fraud settings (redone live 2026-07-20 via Claude-in-Chrome, LIVE acct — supersedes the 07-19
+      "private preview" finding):** the managed **"Free trials"** control is now **available** (out of preview), but its
+      prerequisite *"Radar on payment methods saved for future use"* **bills a per-SetupIntent fee** (~A$0.05–0.07 on
+      every trial signup, converting or not). **Owner decision: leave it OFF and rely on the free email guard**; enable
+      later only if real card-based trial abuse appears. So the same-card-across-different-emails vector is an **accepted
+      gap**, covered only by base Radar's always-on high-risk blocking. Free wins we DID enable (backtest = 0 legit
+      blocks): the built-in **CVC-fail** and **postal-fail** "block based on risk score" Radar rules. Adaptive 3DS +
+      editing the risk dial (left at "Balance risk and revenue") both require **paid Radar for Fraud Teams** → skipped;
+      the free "request 3DS on all cards" stand-in was declined (signup friction). The now-dead
+      `trial_tombstones.card_fingerprint` column + index were dropped
+      (`20260720120000_drop_trial_tombstones_card_fingerprint`).
 - [ ] Step 8 — trial reminders + billing emails + dispute handling · Step 9 — branding ·
       **Step 10 — paywall gate LAST (scope = open owner decision).**
 
