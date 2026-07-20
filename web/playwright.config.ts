@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
+// Local dev: force IPv4-only DNS in the test process so its Supabase admin calls
+// don't cold-connect time out. The spawned `next dev` webServer gets the same fix
+// via web/instrumentation.ts. See scripts/prefer-ipv4.mjs.
+import { preferIPv4 } from './scripts/prefer-ipv4.mjs';
+preferIPv4();
+
 /**
  * E2E config for the auth/routing regression suite (`e2e/`). Boots a real Next
  * dev server (middleware enforced — DEV_BYPASS_AUTH is NOT set) on an isolated

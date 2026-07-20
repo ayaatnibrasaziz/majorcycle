@@ -21,6 +21,11 @@ import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { preferIPv4 } from './prefer-ipv4.mjs';
+
+// Local dev: skip the stalling IPv6/AAAA DNS lookup so the preflight fetch below
+// doesn't cold-connect time out. See prefer-ipv4.mjs.
+preferIPv4();
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const envPath = join(scriptDir, '..', '.env.local'); // web/.env.local
