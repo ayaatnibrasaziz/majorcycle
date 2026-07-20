@@ -20,6 +20,13 @@ export interface SendBrandEmailInput {
   preheader?: string;
   /** Plain-text fallback for non-HTML clients. */
   text: string;
+  /**
+   * Optional Resend Idempotency-Key. When set, Resend delivers at most one email
+   * per key within a 24-hour window — so a duplicate trigger (e.g. a re-processed
+   * webhook) can never send a customer the same message twice. Omitted by
+   * user-action emails (account/referral/contact), which fire once per click.
+   */
+  idempotencyKey?: string;
 }
 
 /**
@@ -41,13 +48,16 @@ export async function sendBrandEmail(input: SendBrandEmailInput): Promise<boolea
     preheader: input.preheader,
   });
 
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  };
+  if (input.idempotencyKey) headers['Idempotency-Key'] = input.idempotencyKey;
+
   try {
     const res = await fetch(RESEND_ENDPOINT, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         from: FROM,
         to: [input.to],
