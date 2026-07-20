@@ -24,7 +24,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const BILLING_COLUMNS =
   'subscription_status, subscription_plan, subscription_currency, ' +
   'stripe_subscription_id, stripe_customer_id, cancel_at_period_end, ' +
-  'trial_ends_at, current_period_end, grace_until';
+  'trial_ends_at, current_period_end, grace_until, trial_reminder_sent, billing_blocked';
 
 // Only used offline for generateTestHeaderString (signs with the webhook secret,
 // never calls the API), so the API key value is irrelevant — any non-empty string.
@@ -110,6 +110,9 @@ function invoiceObject(overrides: Record<string, unknown> = {}) {
     id: `in_e2e_${RUN}_${Math.random().toString(36).slice(2)}`,
     object: 'invoice',
     customer: CUSTOMER,
+    // Default to a renewal so the dunning tests are dunned. A first-invoice failure
+    // (billing_reason 'subscription_create') is skipped by the handler — tested separately.
+    billing_reason: 'subscription_cycle',
     parent: {
       subscription_details: { subscription: SUB, metadata: { user_id: userId } },
     },
@@ -334,5 +337,106 @@ test.describe.serial('stripe webhook contract', () => {
 
     const p = await profile();
     expect(p['stripe_customer_id']).toBe(CUSTOMER);
+  });
+
+  // ---- Step 8: trial reminder, dunning, recovery (each sets its own preconditions) ----
+
+  test('trial_will_end → marks trial_reminder_sent, idempotent on redelivery', async ({ request }) => {
+    await admin
+      .from('profiles')
+      .update({
+        subscription_status: 'trialing',
+        subscription_currency: 'aud',
+        subscription_plan: 'monthly',
+        trial_reminder_sent: null,
+      })
+      .eq('id', userId);
+    const first = makeEvent('customer.subscription.trial_will_end', subObject({ trial_end: trialEnd }));
+    expect((await post(request, first)).ok()).toBeTruthy();
+    expect((await profile())['trial_reminder_sent']).toBe('trial_will_end');
+    // A redelivery (fresh event id) is a clean no-op — still marked once, no crash.
+    const again = makeEvent('customer.subscription.trial_will_end', subObject({ trial_end: trialEnd }));
+    expect((await post(request, again)).ok()).toBeTruthy();
+    expect((await profile())['trial_reminder_sent']).toBe('trial_will_end');
+  });
+
+  test('trial_will_end with a scheduled cancel → no reminder (user is not charged)', async ({ request }) => {
+    await admin.from('profiles').update({ trial_reminder_sent: null }).eq('id', userId);
+    const event = makeEvent(
+      'customer.subscription.trial_will_end',
+      subObject({ trial_end: trialEnd, cancel_at: periodEnd }),
+    );
+    expect((await post(request, event)).ok()).toBeTruthy();
+    expect((await profile())['trial_reminder_sent']).toBeNull();
+  });
+
+  test('payment_failed on the signup invoice (subscription_create) is not dunned', async ({ request }) => {
+    await admin
+      .from('profiles')
+      .update({ subscription_status: 'trialing', grace_until: null })
+      .eq('id', userId);
+    const event = makeEvent(
+      'invoice.payment_failed',
+      invoiceObject({ billing_reason: 'subscription_create' }),
+    );
+    expect((await post(request, event)).ok()).toBeTruthy();
+    const p = await profile();
+    expect(p['subscription_status']).toBe('trialing'); // not forced past_due
+    expect(p['grace_until']).toBeNull(); // no grace, no email
+  });
+
+  test('renewal failure anchors grace once; a second failure does not reset it', async ({ request }) => {
+    await admin
+      .from('profiles')
+      .update({ subscription_status: 'active', grace_until: null })
+      .eq('id', userId);
+    expect((await post(request, makeEvent('invoice.payment_failed', invoiceObject()))).ok()).toBeTruthy();
+    const firstGrace = (await profile())['grace_until'] as string | null;
+    expect(firstGrace).not.toBeNull();
+    // A later Smart-Retry failure while grace is already set → grace unchanged.
+    expect((await post(request, makeEvent('invoice.payment_failed', invoiceObject()))).ok()).toBeTruthy();
+    expect((await profile())['grace_until']).toBe(firstGrace);
+  });
+
+  test('subscription.updated→past_due before payment_failed still anchors grace', async ({ request }) => {
+    await admin
+      .from('profiles')
+      .update({ subscription_status: 'active', grace_until: null })
+      .eq('id', userId);
+    // The subscription event lands first and sets past_due — but must NOT touch grace.
+    const subEvt = makeEvent(
+      'customer.subscription.updated',
+      subObject({ status: 'past_due', trial_end: null }),
+    );
+    expect((await post(request, subEvt)).ok()).toBeTruthy();
+    const p = await profile();
+    expect(p['subscription_status']).toBe('past_due');
+    expect(p['grace_until']).toBeNull(); // sync never sets grace (single-owner marker)
+    // Then the invoice failure anchors grace — proving the anchor is grace-null, not status.
+    expect((await post(request, makeEvent('invoice.payment_failed', invoiceObject()))).ok()).toBeTruthy();
+    expect((await profile())['grace_until']).not.toBeNull();
+  });
+
+  test('payment_succeeded recovers past_due→active + clears grace; a plain renewal is a no-op', async ({ request }) => {
+    await admin
+      .from('profiles')
+      .update({
+        subscription_status: 'past_due',
+        grace_until: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+      })
+      .eq('id', userId);
+    expect((await post(request, makeEvent('invoice.payment_succeeded', invoiceObject()))).ok()).toBeTruthy();
+    let p = await profile();
+    expect(p['subscription_status']).toBe('active');
+    expect(p['grace_until']).toBeNull();
+    // A normal renewal (already active, no grace) must not re-trigger the recovery path.
+    await admin
+      .from('profiles')
+      .update({ subscription_status: 'active', grace_until: null })
+      .eq('id', userId);
+    expect((await post(request, makeEvent('invoice.payment_succeeded', invoiceObject()))).ok()).toBeTruthy();
+    p = await profile();
+    expect(p['subscription_status']).toBe('active');
+    expect(p['grace_until']).toBeNull();
   });
 });
