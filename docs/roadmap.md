@@ -711,8 +711,18 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       `getUser()` is a network call that cold-connect-stalled locally ("Not signed in"); same client-side IPv6 stall
       (see [[reference-local-dev-ipv6-connect-fix]]) — not a live issue (Vercel↔Supabase), fixed for the test with a
       keep-warm pinger.
-- [ ] Step 8 — trial reminders + billing emails + dispute handling · Step 9 — branding ·
-      **Step 10 — paywall gate LAST (scope = open owner decision).**
+- [x] **Step 8 — trial reminders + billing emails + dispute handling (built 2026-07-20; branch
+      `feat/f3-stripe`, NOT merged).** New `web/lib/email/billingEmails.ts` (3 branded senders:
+      trial-ending, payment-failed dunning, payment-recovered) + optional Resend `Idempotency-Key`
+      on `send.ts`. Webhook now: `trial_will_end` → branded reminder (skipped if `cancel_at` set) +
+      `trial_reminder_sent`; `invoice.payment_failed` (renewals only) → single-owner `grace_until`
+      anchor + dunning email once; paid/succeeded → guarded recover + recovery email; `charge.dispute.*`
+      → `billing_blocked` (real chargeback only) + cancel-on-lost. `grace_until` made single-owner
+      (removed the healthy-sync clear) → ordering-proof, dedup-safe. Contract tests 17/17; email
+      previews 05–07 in `reference/email-templates.html`. Owner dashboard toggles (Stripe's own
+      trial/failed-payment emails OFF) + sandbox drive + guided live check = the collaborative
+      finish.
+- [ ] Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
 - [x] `/methodology` — public, pre-sign-up plain-English explainer (cycle position, financial

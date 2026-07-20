@@ -942,9 +942,9 @@ never forge entitlement. Migration `20260523133635` + `20260711000000` +
 | `trial_ends_at` | timestamptz | Stripe `sub.trial_end`. |
 | `current_period_end` | timestamptz | Stripe `current_period_end` — "renews on" + delete-during-paid. |
 | `cancel_at_period_end` | boolean (default false) | Sub set to end at period end (user cancel / delete-during-paid). |
-| `grace_until` | timestamptz | `now()+3d` on `invoice.payment_failed`; `past_due` beyond it hard-locks. |
-| `billing_blocked` | boolean (default false) | Chargeback/fraud dispute revoked access; cleared only if the dispute is won. |
-| `trial_reminder_sent` | text | Which trial-ending reminders (day5/day7) already sent — prevents double-send by the cron. |
+| `grace_until` | timestamptz | **Single-owner dunning marker** — set `now()+3d` on the FIRST `invoice.payment_failed` (renewal only), cleared only by the paid/succeeded handler + `markCanceled`. `past_due` beyond it hard-locks (step 10). |
+| `billing_blocked` | boolean (default false) | Chargeback/fraud dispute revoked access — set by `charge.dispute.created`/`.funds_withdrawn`, cleared only if the dispute is won (`.closed` won / `.funds_reinstated`). |
+| `trial_reminder_sent` | text | Set to `'trial_will_end'` when the branded trial-ending reminder is sent (event-driven, ~3 days out) — guards against a double-send on webhook redelivery. |
 
 **Stripe status → our `subscription_status`:** `trialing→trialing`, `active→active`,
 `past_due→past_due` (+`grace_until`), `unpaid→` hard-locked (past_due-equivalent),
@@ -1010,34 +1010,43 @@ state sync; checkout just links the customer:
   (`mapStripeStatus`), `subscription_plan` (from the item's Price `lookup_key`),
   `subscription_currency` (`sub.currency`), `current_period_end` (from
   `sub.items.data[0].current_period_end` — note: on the ITEM in the pinned API version,
-  not the subscription), `cancel_at_period_end`, `trial_ends_at`; a healthy state
-  (active/trialing) clears `grace_until`. Resolves the profile via `sub.metadata.user_id`
-  (set at checkout) → falls back to `stripe_customer_id`.
+  not the subscription), `cancel_at_period_end`, `trial_ends_at`. **Does NOT touch
+  `grace_until`** (that is single-owner — see below). Resolves the profile via
+  `sub.metadata.user_id` (set at checkout) → falls back to `stripe_customer_id`.
 - `customer.subscription.deleted` — status `canceled`; clear `stripe_subscription_id`,
   `trial_ends_at`, `grace_until`, `cancel_at_period_end`.
-- `invoice.payment_succeeded` / `invoice.paid` — **clear `grace_until`**, and recover
-  `past_due → active` **only** (an atomic guarded update, `.eq('subscription_status',
-  'past_due')`). It must NOT set `active` unconditionally: a 7-day trial's `$0` invoice is
-  marked paid the instant the trial starts, so this fires alongside `subscription.created`
-  — forcing `active` here would clobber `trialing` (found + fixed 2026-07-17 by the real
-  end-to-end test; the offline contract tests missed it because they fire events singly).
-  `customer.subscription.*` stays the authoritative status writer. Profile resolved via
+- `invoice.payment_succeeded` / `invoice.paid` — recover `past_due → active` **only** (an
+  atomic guarded update, `.eq('subscription_status','past_due')`; never forces `active`, so
+  a 7-day trial's `$0` invoice can't clobber `trialing`). Then **clear `grace_until` with a
+  guarded update** (`WHERE grace_until IS NOT NULL`): a returned row means we recovered from
+  a real failure → send the branded **payment-recovered** email. Of the two events (both
+  fire for one payment), only the first to clear grace emails; the second no-ops. A normal
+  renewal / the $0 trial invoice never set grace, so no email. Profile resolved via
   `invoice.parent.subscription_details.metadata.user_id` → customer.
-- `invoice.payment_failed` — status `past_due`; `grace_until = now()+3d`.
+- `invoice.payment_failed` — **renewals only** (skip `billing_reason = subscription_create`,
+  the signup charge Checkout owns). Set `past_due`; anchor `grace_until = now()+3d` with a
+  guarded update (`WHERE grace_until IS NULL`) so it fires exactly once on the first failure
+  regardless of event ordering → send the branded **payment-failed / update-card** email.
 - `checkout.session.completed` — **links `stripe_customer_id`** to the user (via
   `client_reference_id`); subscription state itself comes from `subscription.created`.
-- `customer.subscription.trial_will_end` — no-op (recorded in `stripe_events` only;
-  the primary day-5/day-7 reminders are cron-driven — step 8).
+- `customer.subscription.trial_will_end` — fires ~3 days out → send the branded
+  **trial-ending** reminder and set `trial_reminder_sent = 'trial_will_end'`. **Skipped** if
+  `sub.cancel_at != null` (the user cancelled during the trial — no charge is coming).
+- `charge.dispute.created` / `.funds_withdrawn` — set `billing_blocked = true`, but only for
+  a **real chargeback** (funds moved / status not `warning_*`); a mere inquiry doesn't lock a
+  legit customer. `charge.dispute.closed` — won ⇒ `billing_blocked = false`; lost ⇒ keep
+  blocked **and cancel the subscription** so it can't renew. `charge.dispute.funds_reinstated`
+  ⇒ `billing_blocked = false`. The `Dispute` object carries no customer, so these are the ONE
+  place the webhook does a live Stripe retrieve (charge → customer); best-effort.
 - **Step 7 (done):** `syncSubscription` writes the email trial-tombstone once the sub is
   trialing (the card-fingerprint guard was dropped — that vector is Stripe Radar's job).
 
-**Deferred by design (subscribed but not yet acted on — TODO markers in the route):**
-billing emails —
-trial-started / payment-failed (step 8); dispute events
-(`charge.dispute.created`/`.closed`/`.funds_withdrawn`/`.funds_reinstated` →
-`billing_blocked`, step 8). The `charge.dispute.*` and email/tombstone effects above
-remain the *target* behaviour; the plan (§3/§6/§7B) is the spec, this list is the
-current build state.
+**`grace_until` is the single-owner dunning marker** — set only by `invoice.payment_failed`,
+cleared only by the paid/succeeded handler + `markCanceled`. This one-writer discipline (plus
+gating both dunning emails on its transitions, and making each email the last best-effort
+action in its handler) is what makes the emails ordering-proof and duplicate-proof despite
+Stripe not guaranteeing event order. Each send also carries a Resend `Idempotency-Key`
+(`<event.id>:<type>`) as a second guarantee.
 
 Contract-tested by `web/e2e/stripe-webhook.spec.ts` (plan §14) — offline signed events
 asserting the `profiles` write, idempotency, and bad-signature rejection. **Also
