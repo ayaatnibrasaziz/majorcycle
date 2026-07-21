@@ -335,7 +335,7 @@
       </div>
     </div>
     <table class="spec">
-      <tr><td class="k">Trigger</td><td class="v">Stripe <code>customer.subscription.trial_will_end</code> (~3 days before trial end)</td></tr>
+      <tr><td class="k">Trigger</td><td class="v">Stripe <code>customer.subscription.trial_will_end</code> (~3 days before trial end) &mdash; <b>or</b> on reactivation of a still-trialing sub inside that last-3-days window (fired from <code>reactivateAccount</code>, see note)</td></tr>
       <tr><td class="k">From</td><td class="v"><span class="from-noreply">noreply@majorcycle.com</span> &nbsp;·&nbsp; unmonitored (no reply)</td></tr>
       <tr><td class="k">To</td><td class="v">the subscriber</td></tr>
       <tr><td class="k">Subject</td><td class="v"><code>Your MajorCycle free trial ends soon</code></td></tr>
@@ -371,7 +371,7 @@
         </td></tr>
       </table>
     </div>
-    <div class="note">Price adapts to the member&rsquo;s plan + currency &mdash; e.g. <span class="variant">US$15/month</span> or <span class="variant">A$159/year</span>; falls back to &ldquo;your regular subscription rate&rdquo; if unknown. <b>Skipped entirely</b> if the member already cancelled during the trial (they won&rsquo;t be charged, so a &ldquo;you&rsquo;ll be billed&rdquo; note would be false).</div>
+    <div class="note">Price adapts to the member&rsquo;s plan + currency &mdash; e.g. <span class="variant">US$15/month</span> or <span class="variant">A$159/year</span>; falls back to &ldquo;your regular subscription rate&rdquo; if unknown. <b>Skipped entirely</b> if the member already cancelled during the trial (they won&rsquo;t be charged, so a &ldquo;you&rsquo;ll be billed&rdquo; note would be false). <b>Reactivation gap-fill:</b> Stripe&rsquo;s trial-ending signal fires only <b>once</b> and is suppressed while a trial is scheduled to cancel &mdash; so if a member cancels then reactivates inside the final 3 days of the trial, <code>reactivateAccount</code> sends this same email itself (once, idempotency-keyed), so no one converts to paid without a heads-up.</div>
   </section>
 
   <!-- ============================================================= 06 -->
@@ -380,11 +380,11 @@
       <span class="mail-idx">06</span>
       <div>
         <p class="mail-title">Payment failed (dunning)</p>
-        <p class="mail-purpose">Sent once when a renewal payment first fails, nudging the member to update their card.</p>
+        <p class="mail-purpose">Sent once when a renewal payment first fails &mdash; a decline or a needed authentication &mdash; nudging the member to sort out payment.</p>
       </div>
     </div>
     <table class="spec">
-      <tr><td class="k">Trigger</td><td class="v">Stripe <code>invoice.payment_failed</code> on a renewal (first failure only)</td></tr>
+      <tr><td class="k">Trigger</td><td class="v">Stripe <code>invoice.payment_failed</code> <b>or</b> <code>invoice.payment_action_required</code> (3-D Secure) on a renewal &mdash; first failure only, for the sub currently on file</td></tr>
       <tr><td class="k">From</td><td class="v"><span class="from-noreply">noreply@majorcycle.com</span> &nbsp;·&nbsp; unmonitored (no reply)</td></tr>
       <tr><td class="k">To</td><td class="v">the subscriber</td></tr>
       <tr><td class="k">Subject</td><td class="v"><code>Action needed: your MajorCycle payment didn't go through</code></td></tr>
@@ -420,7 +420,7 @@
         </td></tr>
       </table>
     </div>
-    <div class="note">Amount adapts to plan + currency (e.g. <span class="variant">C$20</span>, <span class="variant">A$159</span>). The &ldquo;we&rsquo;ll automatically retry&rdquo; line shows only while Stripe Smart Retries is on. Sent <b>once</b>, on the first failed renewal &mdash; not on every retry, and <b>not</b> for a failed initial signup (Checkout handles that).</div>
+    <div class="note">Amount adapts to plan + currency (e.g. <span class="variant">C$20</span>, <span class="variant">A$159</span>). The &ldquo;we&rsquo;ll automatically retry&rdquo; line shows only while Stripe Smart Retries is on. Sent <b>once</b>, on the first failed renewal &mdash; not on every retry, and <b>not</b> for a failed initial signup (Checkout handles that). Also covers a renewal that needs fresh <b>3-D Secure</b> authentication (<code>invoice.payment_action_required</code>) &mdash; same nudge. Only fires for the <b>subscription currently on file</b>, so a late/out-of-order failure for an old or already-cancelled sub can&rsquo;t dun the wrong account.</div>
   </section>
 
   <!-- ============================================================= 07 -->

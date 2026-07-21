@@ -718,10 +718,26 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       `trial_reminder_sent`; `invoice.payment_failed` (renewals only) → single-owner `grace_until`
       anchor + dunning email once; paid/succeeded → guarded recover + recovery email; `charge.dispute.*`
       → `billing_blocked` (real chargeback only) + cancel-on-lost. `grace_until` made single-owner
-      (removed the healthy-sync clear) → ordering-proof, dedup-safe. Contract tests 17/17; email
-      previews 05–07 in `reference/email-templates.html`. Owner dashboard toggles (Stripe's own
-      trial/failed-payment emails OFF) + sandbox drive + guided live check = the collaborative
-      finish.
+      (removed the healthy-sync clear) → ordering-proof, dedup-safe. Email previews 05–07 in
+      `reference/email-templates.html`.
+      **Sandbox drive DONE (2026-07-21, agent self-check):** trial reminder / dunning / recovery /
+      dispute (created→won→lost) all verified live against the Stripe sandbox + a test clock; every
+      webhook 200, zero errors; sandbox + DB reset to baseline. (CLI `stripe listen` drops test-clock
+      event bursts on its ~60–90s session-reconnect → resend the missed event via `stripe events
+      resend`; local-only artifact, prod uses a registered endpoint + Stripe retries.)
+      **Cancellation edge cases + 2 fixes:** cancel-during-trial (reminder suppressed, no charge) and
+      cancel-paid (no Step-8 email) verified; (1) **reactivation reminder gap-fill** — `reactivateAccount`
+      sends the trial-ending email if a member cancels then reactivates inside the last 3 trial days
+      (Stripe's one-time signal already passed); (2) **stale `subscription.deleted` guard** (only lapse
+      the sub on file).
+      **Full audit vs official Stripe + Supabase docs + 2 fixes:** (3) `invoice.payment_failed`
+      **and** `invoice.payment_action_required` (3-D Secure) now share the dunning path, both guarded on
+      the current sub (recovery guarded the same way) — a late/out-of-order failure can't lock a
+      cancelled or newer account. Contract tests **20/20**; gates green.
+      **Collaborative finish (remaining):** owner dashboard Part C — turn Stripe's own trial/failed-payment
+      emails OFF, confirm Smart Retries ON, **confirm "when all retries fail" = Cancel subscription**, and
+      when the LIVE endpoint is created **include `invoice.payment_action_required` (event list = 13)** —
+      then the guided live check together.
 - [ ] Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**

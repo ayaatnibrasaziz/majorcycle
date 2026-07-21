@@ -64,6 +64,10 @@
 
 **DEEP VALUE** — Valuation Zone label when current drawdown ≤ lower bound (at or beyond worst-ever pullback). Replaces "STRONG BUY".
 
+**Dispute (chargeback)** — When a cardholder asks their bank to reverse a charge. Stripe sends `charge.dispute.*` webhooks; a *real* chargeback (funds withdrawn, not a mere inquiry) sets `billing_blocked = true` on the account. If we lose (`closed`, status not `won`) we keep access revoked and cancel the subscription; if we win, access is restored. See `docs/data-contracts.md` §10.
+
+**Dunning** — The process of chasing a failed subscription payment: a first renewal failure sets the account `past_due`, starts the 3-day grace clock (`grace_until`), and sends the branded "payment failed / update your card" email. Covers both a decline (`invoice.payment_failed`) and a needed 3-D Secure authentication (`invoice.payment_action_required`). See Grace period, Smart Retries.
+
 **DMA (Daily Moving Average)** — Rolling average of closing prices over N days. The app uses 50-day and 200-day DMAs overlaid on price charts.
 
 **Drawdown** — A peak-to-trough decline expressed as a percentage. Negative number. See also Current Drawdown, Lower Bound, Typical Drawdown.
@@ -105,6 +109,8 @@
 ---
 
 ## G
+
+**Grace period (billing)** — The 3-day window (`grace_until` = now + 3 days) after a subscription payment first fails, during which the member keeps access while they update their card. Set once on the first failure and cleared on recovery (or on cancellation). Distinct from the 30-day account-deletion grace. After it lapses, a still-`past_due` account is hard-locked (the paywall gate, Step 10).
 
 **Gross Margin** — Gross Profit ÷ Revenue × 100. The fundamental profitability of a product/service before operating costs.
 
@@ -208,6 +214,8 @@
 
 **Rating Tier** — One of the five composite tiers: High Conviction, Constructive, Neutral, Cautious, Bearish. See `design-system.md` §4.
 
+**Reactivation** — When a member who scheduled account deletion signs back in and cancels it (`reactivateAccount` in `web/app/(app)/account/actions.ts`): clears `deletion_scheduled_at` and un-cancels a still-live subscription. Edge case handled: if they reactivate inside the last 3 days of a trial, it also sends the trial-ending reminder (Stripe's one-time signal already passed) so they aren't charged without warning.
+
 **Reward / Risk Ratio** — Typical Profit ÷ |Typical Drawdown|. Used in Cycle Payoff scoring. >1.5 = decent; 3.0 = max score.
 
 **ROE (Return on Equity)** — Net Income ÷ Shareholder Equity × 100. How efficiently a company generates profit from its equity base.
@@ -226,6 +234,8 @@
 
 **Smart Refresh Pipeline** — The nightly cron logic in `analytics/cron/daily_refresh.py` (default mode: `smart`). Runs at 23:00 UTC daily. For every ticker it always refreshes price bars (5-day lookback for existing tickers, full history for new ones) and fundamentals. It only fetches Enriched Data when the staleness check returns true. Use `--mode full` to force enriched refresh for all tickers regardless. See `architecture.md` §8 for full specification.
 
+**Smart Retries (billing)** — Stripe's automatic re-attempts of a failed subscription payment (recommended default: 8 tries over 2 weeks). While it's on, our dunning email says "we'll automatically retry"; the constant `SMART_RETRIES_ENABLED` in `billingEmails.ts` gates that line so we never over-promise. Confirmed on in the Stripe dashboard (Part C).
+
 **Staleness Check** — The `_should_fetch_enriched()` function in `daily_refresh.py`. Returns `True` (fetch enriched data) in three cases: (1) ticker is new — no `enriched_updated_at` in DB; (2) ticker has a `next_earnings_date` that has passed since the last enrich; (3) ticker has no earnings date — last enrich was ≥7 days ago. Returns `False` (skip enriched fetch) otherwise.
 
 **S&P 500** — Standard & Poor's 500 Index — the 500 largest publicly traded US companies. One of three universes we cover in Phase 1.
@@ -239,6 +249,8 @@
 **Short Ratio (Days to Cover)** — Short Interest ÷ Average Daily Volume. How many trading days it would take short sellers to cover their positions.
 
 **Snowflake Radar** — The pentagonal radar chart on Stock Detail showing the five Financial Health sub-pillar scores. Visual at-a-glance summary.
+
+**Strong Customer Authentication (SCA) / 3-D Secure (3DS)** — A bank-required identity check on a card payment (a one-time code, fingerprint, or banking-app tap), mandatory mainly in the EU/UK. On an automatic renewal the customer isn't present to complete it, so Stripe fires `invoice.payment_action_required`; we treat that like a failed payment (dunning path — see Dunning). Uncommon for our AU/US/CA markets, handled defensively.
 
 **STRETCHED** — Valuation Zone label when current drawdown > -5% (stock is near recent highs). Replaces "HOLD" (the original valuation-zone HOLD, not the rating-tier HOLD).
 
