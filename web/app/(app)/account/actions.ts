@@ -7,7 +7,17 @@ import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/se
 import { getStripe } from '@/lib/stripe';
 import { sendDeletionScheduledEmail } from '@/lib/email/accountEmails';
 import { sendReferralEmail } from '@/lib/email/referralEmails';
+import { sendTrialEndingEmail } from '@/lib/email/billingEmails';
 import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
+
+/**
+ * Stripe fires the one-time `trial_will_end` reminder ~3 days before a trial ends, and
+ * our webhook suppresses it while a trial is scheduled to cancel (a cancelling user
+ * shouldn't be told "you'll be charged"). So if a user cancels then reactivates INSIDE
+ * that last-3-days window, the signal has already passed and won't fire again — leaving
+ * them with no heads-up before the first charge. Reactivation covers that gap (below).
+ */
+const TRIAL_REMINDER_LEAD_DAYS = 3;
 
 /** Refer-a-friend limits (F2 Part C). */
 const REFERRALS_PER_DAY = 10;
@@ -183,10 +193,12 @@ export async function reactivateAccount(): Promise<void> {
   const admin = createAdminClient();
 
   // Read the sub state BEFORE clearing the flag, so we know whether there's still a
-  // live subscription to un-cancel.
+  // live subscription to un-cancel (plus the fields the trial-reminder gap-fill needs).
   const { data: profile } = await admin
     .from('profiles')
-    .select('stripe_subscription_id, subscription_status')
+    .select(
+      'email, display_name, stripe_subscription_id, subscription_status, subscription_currency, subscription_plan, trial_ends_at, trial_reminder_sent'
+    )
     .eq('id', user.id)
     .single();
 
@@ -206,6 +218,7 @@ export async function reactivateAccount(): Promise<void> {
   // Stripe hiccup still reactivates the account (the cancel is recoverable via the
   // portal). NOTE: if the user had separately cancelled in the portal before deleting,
   // this un-cancels it — they can re-cancel via "Manage billing" (accepted tradeoff).
+  let subReactivated = false;
   if (
     profile?.stripe_subscription_id &&
     LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '')
@@ -214,9 +227,44 @@ export async function reactivateAccount(): Promise<void> {
       await getStripe().subscriptions.update(profile.stripe_subscription_id, {
         cancel_at_period_end: false,
       });
+      subReactivated = true;
     } catch (err) {
       console.error('reactivateAccount: could not clear subscription cancel', err);
     }
+  }
+
+  // Trial-reminder gap-fill: if we just brought a TRIALING sub back to life inside the
+  // last 3 days of its trial, Stripe's one-time `trial_will_end` reminder has already
+  // passed (it's suppressed while a trial is scheduled to cancel) and won't fire again —
+  // so send the branded reminder now, so the user still gets a heads-up before the first
+  // charge. Only when: we actually un-cancelled the sub (else it won't convert — no charge
+  // to warn about), it's still trialing, the reminder wasn't already sent, and we're inside
+  // the window (earlier reactivations don't need this — the normal event fires again once
+  // the cancel is cleared). Mark sent FIRST so the (now un-cancelled) event can't double up;
+  // best-effort — never block reactivation. Idempotency-keyed so a double reactivation
+  // within 24h can't send twice.
+  const trialEndMs = profile?.trial_ends_at ? new Date(profile.trial_ends_at).getTime() : null;
+  const withinWindow =
+    trialEndMs != null &&
+    trialEndMs - Date.now() <= TRIAL_REMINDER_LEAD_DAYS * 24 * 60 * 60 * 1000;
+  if (
+    subReactivated &&
+    profile?.subscription_status === 'trialing' &&
+    profile?.trial_reminder_sent !== 'trial_will_end' &&
+    withinWindow &&
+    profile?.email
+  ) {
+    await admin
+      .from('profiles')
+      .update({ trial_reminder_sent: 'trial_will_end' })
+      .eq('id', user.id);
+    await sendTrialEndingEmail({
+      to: profile.email,
+      name: profile.display_name ?? null,
+      currency: profile.subscription_currency,
+      plan: profile.subscription_plan,
+      idempotencyKey: `reactivate-trial-reminder:${user.id}:${trialEndMs}`,
+    });
   }
 
   redirect('/results');

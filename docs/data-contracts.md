@@ -1014,7 +1014,9 @@ state sync; checkout just links the customer:
   `grace_until`** (that is single-owner — see below). Resolves the profile via
   `sub.metadata.user_id` (set at checkout) → falls back to `stripe_customer_id`.
 - `customer.subscription.deleted` — status `canceled`; clear `stripe_subscription_id`,
-  `trial_ends_at`, `grace_until`, `cancel_at_period_end`.
+  `trial_ends_at`, `grace_until`, `cancel_at_period_end`. **Guarded on the sub id**
+  (`WHERE stripe_subscription_id = sub.id OR IS NULL`) so an out-of-order deletion of an *old*
+  subscription can't lapse a *newer* active one the user has since started.
 - `invoice.payment_succeeded` / `invoice.paid` — recover `past_due → active` **only** (an
   atomic guarded update, `.eq('subscription_status','past_due')`; never forces `active`, so
   a 7-day trial's `$0` invoice can't clobber `trialing`). Then **clear `grace_until` with a
@@ -1032,6 +1034,12 @@ state sync; checkout just links the customer:
 - `customer.subscription.trial_will_end` — fires ~3 days out → send the branded
   **trial-ending** reminder and set `trial_reminder_sent = 'trial_will_end'`. **Skipped** if
   `sub.cancel_at != null` (the user cancelled during the trial — no charge is coming).
+  Because this reminder is Stripe's **one-time** ~3-days-out signal and is suppressed while a
+  trial is scheduled to cancel, `reactivateAccount` (in `account/actions.ts`) fills the gap: if
+  a reactivation un-cancels a *trialing* sub inside the last 3 days of its trial and the
+  reminder wasn't already sent, it sends the branded trial-ending email then (idempotency-keyed;
+  `trial_reminder_sent` set first). Earlier reactivations need nothing — the normal event fires
+  again once `cancel_at` is cleared.
 - `charge.dispute.created` / `.funds_withdrawn` — set `billing_blocked = true`, but only for
   a **real chargeback** (funds moved / status not `warning_*`); a mere inquiry doesn't lock a
   legit customer. `charge.dispute.closed` — won ⇒ `billing_blocked = false`; lost ⇒ keep

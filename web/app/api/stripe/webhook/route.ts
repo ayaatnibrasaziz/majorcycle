@@ -197,6 +197,11 @@ async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<Eve
     console.error('stripe webhook: no profile for canceled subscription', sub.id);
     return { customerId: cust, subscriptionId: sub.id };
   }
+  // Only lapse the account if this deleted sub is the one currently on file (or none is).
+  // A DIFFERENT subscription id on file means this deletion is stale — e.g. the user
+  // cancelled an old sub and started a new one, and Stripe delivered the old
+  // `subscription.deleted` out of order (delivery order isn't guaranteed). Guarding on the
+  // id means a late deletion of a superseded sub can never clobber a newer active one.
   await admin
     .from('profiles')
     .update({
@@ -206,7 +211,8 @@ async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<Eve
       grace_until: null,
       cancel_at_period_end: false,
     })
-    .eq('id', userId);
+    .eq('id', userId)
+    .or(`stripe_subscription_id.eq.${sub.id},stripe_subscription_id.is.null`);
   return { userId, customerId: cust, subscriptionId: sub.id };
 }
 

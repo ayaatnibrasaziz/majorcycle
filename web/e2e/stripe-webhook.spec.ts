@@ -323,6 +323,38 @@ test.describe.serial('stripe webhook contract', () => {
     expect(p['cancel_at_period_end']).toBe(false);
   });
 
+  test('a stale subscription.deleted for a superseded sub does not clobber the current one', async ({
+    request,
+  }) => {
+    // The user has a NEW live subscription on file; an OLD sub's deletion arrives out of
+    // order (Stripe doesn't guarantee delivery order). It must NOT lapse the account.
+    const current = `sub_current_${RUN}`;
+    await admin
+      .from('profiles')
+      .update({ subscription_status: 'active', stripe_subscription_id: current, cancel_at_period_end: false })
+      .eq('id', userId);
+
+    // Deletion of a DIFFERENT (old) sub id → guarded no-op, account stays active.
+    const stale = makeEvent(
+      'customer.subscription.deleted',
+      subObject({ id: `sub_old_${RUN}`, status: 'canceled' }),
+    );
+    expect((await post(request, stale)).ok()).toBeTruthy();
+    let p = await profile();
+    expect(p['subscription_status']).toBe('active');
+    expect(p['stripe_subscription_id']).toBe(current);
+
+    // Deletion of the CURRENT sub id → lapses correctly.
+    const real = makeEvent(
+      'customer.subscription.deleted',
+      subObject({ id: current, status: 'canceled' }),
+    );
+    expect((await post(request, real)).ok()).toBeTruthy();
+    p = await profile();
+    expect(p['subscription_status']).toBe('canceled');
+    expect(p['stripe_subscription_id']).toBeNull();
+  });
+
   test('checkout.session.completed → links the Stripe customer', async ({ request }) => {
     // First clear the customer link so we can prove the handler sets it.
     await admin.from('profiles').update({ stripe_customer_id: null }).eq('id', userId);
