@@ -1023,12 +1023,20 @@ state sync; checkout just links the customer:
   guarded update** (`WHERE grace_until IS NOT NULL`): a returned row means we recovered from
   a real failure → send the branded **payment-recovered** email. Of the two events (both
   fire for one payment), only the first to clear grace emails; the second no-ops. A normal
-  renewal / the $0 trial invoice never set grace, so no email. Profile resolved via
-  `invoice.parent.subscription_details.metadata.user_id` → customer.
-- `invoice.payment_failed` — **renewals only** (skip `billing_reason = subscription_create`,
-  the signup charge Checkout owns). Set `past_due`; anchor `grace_until = now()+3d` with a
-  guarded update (`WHERE grace_until IS NULL`) so it fires exactly once on the first failure
-  regardless of event ordering → send the branded **payment-failed / update-card** email.
+  renewal / the $0 trial invoice never set grace, so no email. Both updates are also guarded
+  on `stripe_subscription_id = <invoice's sub>` (skip if the invoice has no sub) so an
+  *old/superseded* sub's payment can't recover a *different* current subscription. Profile
+  resolved via `invoice.parent.subscription_details.metadata.user_id` → customer.
+- `invoice.payment_failed` **and `invoice.payment_action_required`** — a renewal that's
+  declined *or* needs off-session authentication (e.g. 3-D Secure) both land the sub in
+  `past_due` and share this dunning path. **Renewals only** (skip `billing_reason =
+  subscription_create`, the signup charge Checkout owns). Set `past_due` + anchor
+  `grace_until = now()+3d`, both guarded on `stripe_subscription_id = <invoice's sub>` (and
+  the grace anchor also `WHERE grace_until IS NULL`) so it fires exactly once on the first
+  failure regardless of event ordering, and a stale/old failure — or one arriving *after*
+  cancellation (sub id now null) — can't lock a cancelled or newer-active account → send the
+  branded **payment-failed / update-card** email. ⚠ The LIVE webhook endpoint must include
+  `invoice.payment_action_required` in its event list (sandbox `stripe listen` forwards all).
 - `checkout.session.completed` — **links `stripe_customer_id`** to the user (via
   `client_reference_id`); subscription state itself comes from `subscription.created`.
 - `customer.subscription.trial_will_end` — fires ~3 days out → send the branded

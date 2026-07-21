@@ -420,7 +420,7 @@ test.describe.serial('stripe webhook contract', () => {
   test('renewal failure anchors grace once; a second failure does not reset it', async ({ request }) => {
     await admin
       .from('profiles')
-      .update({ subscription_status: 'active', grace_until: null })
+      .update({ subscription_status: 'active', grace_until: null, stripe_subscription_id: SUB })
       .eq('id', userId);
     expect((await post(request, makeEvent('invoice.payment_failed', invoiceObject()))).ok()).toBeTruthy();
     const firstGrace = (await profile())['grace_until'] as string | null;
@@ -428,6 +428,38 @@ test.describe.serial('stripe webhook contract', () => {
     // A later Smart-Retry failure while grace is already set → grace unchanged.
     expect((await post(request, makeEvent('invoice.payment_failed', invoiceObject()))).ok()).toBeTruthy();
     expect((await profile())['grace_until']).toBe(firstGrace);
+  });
+
+  test('invoice.payment_action_required (3-D Secure renewal) duns like a failure', async ({ request }) => {
+    await admin
+      .from('profiles')
+      .update({ subscription_status: 'active', grace_until: null, stripe_subscription_id: SUB })
+      .eq('id', userId);
+    // A renewal that needs off-session authentication → same nudge as a decline.
+    const event = makeEvent('invoice.payment_action_required', invoiceObject());
+    expect((await post(request, event)).ok()).toBeTruthy();
+    const p = await profile();
+    expect(p['subscription_status']).toBe('past_due');
+    expect(p['grace_until']).not.toBeNull();
+  });
+
+  test('a failure for a superseded/old sub does not touch the current account', async ({ request }) => {
+    // Current sub on file (SUB) is healthy; a failure arrives out of order for a DIFFERENT
+    // (old) sub. The guard must leave the current account untouched — no past_due, no dunning.
+    await admin
+      .from('profiles')
+      .update({ subscription_status: 'active', grace_until: null, stripe_subscription_id: SUB })
+      .eq('id', userId);
+    const stale = makeEvent(
+      'invoice.payment_failed',
+      invoiceObject({
+        parent: { subscription_details: { subscription: `sub_old_${RUN}`, metadata: { user_id: userId } } },
+      }),
+    );
+    expect((await post(request, stale)).ok()).toBeTruthy();
+    const p = await profile();
+    expect(p['subscription_status']).toBe('active');
+    expect(p['grace_until']).toBeNull();
   });
 
   test('subscription.updated→past_due before payment_failed still anchors grace', async ({ request }) => {
@@ -455,6 +487,7 @@ test.describe.serial('stripe webhook contract', () => {
       .update({
         subscription_status: 'past_due',
         grace_until: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+        stripe_subscription_id: SUB,
       })
       .eq('id', userId);
     expect((await post(request, makeEvent('invoice.payment_succeeded', invoiceObject()))).ok()).toBeTruthy();

@@ -263,13 +263,18 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
         console.error('stripe webhook: no profile for paid invoice', invoice.id);
         return { customerId: cust, subscriptionId };
       }
+      // Act only on the sub currently on file. A payment for an OLD/superseded sub (or a
+      // non-subscription invoice) must not recover a DIFFERENT current subscription —
+      // symmetric to the payment_failed + deletion guards (event order isn't guaranteed).
+      if (!subscriptionId) return { userId, customerId: cust, subscriptionId };
       // Recover a past_due account back to active (guarded — never downgrades trialing or
-      // resurrects canceled; order-independent vs the subscription.* event).
+      // resurrects canceled, and only for the current sub; order-independent vs subscription.*).
       await admin
         .from('profiles')
         .update({ subscription_status: 'active' })
         .eq('id', userId)
-        .eq('subscription_status', 'past_due');
+        .eq('subscription_status', 'past_due')
+        .eq('stripe_subscription_id', subscriptionId);
       // Clear the single-owner dunning marker. A returned row means grace WAS set, i.e. we
       // just recovered from a real failure → send the branded "you're all set" email. Of
       // invoice.paid vs invoice.payment_succeeded (both fire for one payment), only the
@@ -280,6 +285,7 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
         .from('profiles')
         .update({ grace_until: null })
         .eq('id', userId)
+        .eq('stripe_subscription_id', subscriptionId)
         .not('grace_until', 'is', null)
         .select('email, display_name')
         .maybeSingle();
@@ -292,7 +298,12 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       }
       return { userId, customerId: cust, subscriptionId };
     }
-    case 'invoice.payment_failed': {
+    case 'invoice.payment_failed':
+    case 'invoice.payment_action_required': {
+      // Two ways a renewal doesn't get paid: the card is declined (payment_failed) or it
+      // needs fresh authentication the customer must complete off-session, e.g. 3-D Secure
+      // (payment_action_required). Both leave the sub past_due and both need the same nudge —
+      // "sort out your payment to keep access" — so they share this dunning path.
       const invoice = event.data.object as Stripe.Invoice;
       const cust = customerId(invoice.customer);
       const subscriptionId = refId(invoice.parent?.subscription_details?.subscription);
@@ -301,17 +312,21 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
         console.error('stripe webhook: no profile for failed invoice', invoice.id);
         return { customerId: cust, subscriptionId };
       }
-      // Only dun a RENEWAL. A first-invoice failure (billing_reason 'subscription_create')
-      // is the initial signup charge — the sub is 'incomplete', and hosted Checkout handles
-      // that failure on its own page, so a "your renewal failed" email would be wrong.
-      if (invoice.billing_reason === 'subscription_create') {
+      // Only dun a RENEWAL of the sub currently on file. Skip `subscription_create` (the
+      // initial signup charge — the sub is 'incomplete' and hosted Checkout handles that on
+      // its own page). Skip if we can't identify the sub, or it isn't the one on file: a
+      // stale/old failure — or one arriving after cancellation (id now null) — must NOT lock
+      // a cancelled or newer-active account (event order isn't guaranteed).
+      if (invoice.billing_reason === 'subscription_create' || !subscriptionId) {
         return { userId, customerId: cust, subscriptionId };
       }
-      // Reflect past_due (agrees with the subscription.updated event; ordering-safe).
+      // Reflect past_due (agrees with the subscription.updated event; ordering-safe), for
+      // the current sub only.
       await admin
         .from('profiles')
         .update({ subscription_status: 'past_due' })
-        .eq('id', userId);
+        .eq('id', userId)
+        .eq('stripe_subscription_id', subscriptionId);
       // Anchor grace on the FIRST failure only: grace_until is the single-owner dunning
       // marker, so this guarded set (only where it's currently NULL) fires exactly once —
       // even if subscription.updated→past_due landed first (that never sets grace). A
@@ -322,6 +337,7 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
         .from('profiles')
         .update({ grace_until: graceUntil })
         .eq('id', userId)
+        .eq('stripe_subscription_id', subscriptionId)
         .is('grace_until', null)
         .select('email, display_name, subscription_currency, subscription_plan')
         .maybeSingle();
