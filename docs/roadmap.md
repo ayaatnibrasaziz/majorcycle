@@ -712,14 +712,25 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       (see [[reference-local-dev-ipv6-connect-fix]]) — not a live issue (Vercel↔Supabase), fixed for the test with a
       keep-warm pinger.
 - [x] **Step 8 — trial reminders + billing emails + dispute handling (built 2026-07-20; branch
-      `feat/f3-stripe`, NOT merged).** New `web/lib/email/billingEmails.ts` (3 branded senders:
-      trial-ending, payment-failed dunning, payment-recovered) + optional Resend `Idempotency-Key`
+      `feat/f3-stripe`, NOT merged).** New `web/lib/email/billingEmails.ts` (4 branded senders:
+      trial-**started** welcome, trial-ending, payment-failed dunning, payment-recovered) + optional Resend `Idempotency-Key`
       on `send.ts`. Webhook now: `trial_will_end` → branded reminder (skipped if `cancel_at` set) +
       `trial_reminder_sent`; `invoice.payment_failed` (renewals only) → single-owner `grace_until`
       anchor + dunning email once; paid/succeeded → guarded recover + recovery email; `charge.dispute.*`
       → `billing_blocked` (real chargeback only) + cancel-on-lost. `grace_until` made single-owner
-      (removed the healthy-sync clear) → ordering-proof, dedup-safe. Email previews 05–07 in
+      (removed the healthy-sync clear) → ordering-proof, dedup-safe. Email previews 05–08 in
       `reference/email-templates.html`.
+      **Audit-driven additions (2026-07-22, this session):** full re-audit vs the *latest* Stripe docs +
+      the live account (all 3 MCP connectors verified). Findings: (a) no unhandled event can error — the
+      webhook no-ops unknown types; (b) collection works (card_payments/charges/payouts all active), and
+      subscription-mode Checkout auto-filters to recurring-capable methods (cards + wallets + Link), so the
+      account's active BNPL capabilities simply don't show — no error; (c) two **notification** gaps closed:
+      **(1) trial-started welcome email** — new `sendTrialStartedEmail`, fired from `subscription.created`
+      only when `trialing` (repeat/no-trial customers get the Stripe receipt instead); **(2) receipts/invoices**
+      = Stripe's built-in **"Successful payments"** Dashboard toggle (owner-approved) — auto-emails a branded
+      receipt + invoice-PDF link on every real charge, no $0-trial spam; folded into the Part C dashboard pass.
+      Also per owner: trial-ending body reworded "ends in a few days" → **"ends soon"** (robust across the
+      reactivation path). Added a contract test for the non-trial `created` path (no welcome). Tests **21/21**.
       **Sandbox drive DONE (2026-07-21, agent self-check):** trial reminder / dunning / recovery /
       dispute (created→won→lost) all verified live against the Stripe sandbox + a test clock; every
       webhook 200, zero errors; sandbox + DB reset to baseline. (CLI `stripe listen` drops test-clock
@@ -735,7 +746,9 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       the current sub (recovery guarded the same way) — a late/out-of-order failure can't lock a
       cancelled or newer account. Contract tests **20/20**; gates green.
       **Collaborative finish (remaining):** owner dashboard Part C — turn Stripe's own trial/failed-payment
-      emails OFF, confirm Smart Retries ON, **confirm "when all retries fail" = Cancel subscription**, and
+      emails OFF, **turn "Successful payments" receipts ON** (branded receipt + invoice PDF on every real
+      charge), confirm Smart Retries ON, **confirm "when all retries fail" = Cancel subscription**, set
+      branding (logo/colours — Step 9, so receipts look on-brand), consider payouts Manual→Auto, and
       when the LIVE endpoint is created **include `invoice.payment_action_required` (event list = 13)** —
       then the guided live check together.
 - [ ] Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**

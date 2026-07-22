@@ -1039,6 +1039,13 @@ state sync; checkout just links the customer:
   `invoice.payment_action_required` in its event list (sandbox `stripe listen` forwards all).
 - `checkout.session.completed` — **links `stripe_customer_id`** to the user (via
   `client_reference_id`); subscription state itself comes from `subscription.created`.
+- `customer.subscription.created` — syncs the new subscription, then — **only when the new
+  sub is `trialing`** (and not already scheduled to cancel) — sends the branded **trial-started
+  welcome** email (`sendTrialStartedEmail`). Fires exactly once (the `.created` event is
+  one-shot; `stripe_events` dedups a redelivery; Resend `Idempotency-Key = <event.id>:trial_started`).
+  A repeat customer whose trial was already used is created straight into `active`/`incomplete`
+  → no welcome; they get Stripe's payment receipt instead (see receipts note below). No new
+  DB column — the `trialing` status on the created event is the single-fire signal.
 - `customer.subscription.trial_will_end` — fires ~3 days out → send the branded
   **trial-ending** reminder and set `trial_reminder_sent = 'trial_will_end'`. **Skipped** if
   `sub.cancel_at != null` (the user cancelled during the trial — no charge is coming).
@@ -1056,6 +1063,22 @@ state sync; checkout just links the customer:
   place the webhook does a live Stripe retrieve (charge → customer); best-effort.
 - **Step 7 (done):** `syncSubscription` writes the email trial-tombstone once the sub is
   trialing (the card-fingerprint guard was dropped — that vector is Stripe Radar's job).
+
+**Branded billing emails (four, all in `web/lib/email/billingEmails.ts`):** trial-started
+welcome (`subscription.created`, trialing) · trial-ending reminder (`trial_will_end`, or the
+reactivation gap-fill) · payment-failed (first renewal failure) · payment-recovered. Copy uses
+relative date phrasing ("soon" / "a few days beforehand") — no device date at webhook time — so
+the trial-ending line is also correct on the reactivation path where days-remaining can vary.
+
+**Payment receipts / invoices are NOT app code — they're Stripe's, via a Dashboard toggle.**
+Subscriptions auto-generate an invoice per charge; enabling **Settings → Emails → "Successful
+payments"** makes Stripe email a branded receipt (with a downloadable invoice PDF link) after
+every *real* charge — trial-conversion + each renewal. Stripe does **not** send a receipt for the
+$0 trial-start invoice, so this never spams and never overlaps the welcome email. The Customer
+Portal (`/api/portal`) also lists every past invoice for download on demand. This toggle is
+**LIVE-only** (sandbox never sends Stripe customer emails) → flip it in the Part C do-together
+dashboard pass near merge, alongside turning **off** Stripe's own trial-ending + failed-payment
+customer emails (so they don't collide with our branded ones).
 
 **`grace_until` is the single-owner dunning marker** — set only by `invoice.payment_failed`,
 cleared only by the paid/succeeded handler + `markCanceled`. This one-writer discipline (plus

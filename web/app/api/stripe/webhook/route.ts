@@ -5,6 +5,7 @@ import { getStripe, mapStripeStatus, planFromLookupKey } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import { recordTrialConsumed } from '@/lib/trialGuard';
 import {
+  sendTrialStartedEmail,
   sendTrialEndingEmail,
   sendPaymentFailedEmail,
   sendPaymentRecoveredEmail,
@@ -24,10 +25,11 @@ import {
  *    the claim and 500 so Stripe retries.
  *
  * Division of labour: `customer.subscription.*` carry the full subscription object and
- * drive the state sync; `checkout.session.completed` just links the Stripe customer to
- * our user; invoices flip active/past_due + the grace clock AND send the branded dunning /
- * recovery emails (step 8); `trial_will_end` sends the branded trial-ending reminder
- * (step 8); `charge.dispute.*` set/clear `billing_blocked` and cancel the sub on a lost
+ * drive the state sync; `subscription.created` also sends the branded "trial started"
+ * welcome when the sub begins trialing (step 8); `checkout.session.completed` just links
+ * the Stripe customer to our user; invoices flip active/past_due + the grace clock AND
+ * send the branded dunning / recovery emails (step 8); `trial_will_end` sends the branded
+ * trial-ending reminder (step 8); `charge.dispute.*` set/clear `billing_blocked` and cancel the sub on a lost
  * dispute (step 8). The Step-7 email trial-tombstone is written in `syncSubscription` when
  * a sub goes trialing (the same-card vector is handled by Stripe Radar, no code here).
  *
@@ -239,7 +241,35 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
         subscriptionId: refId(session.subscription),
       };
     }
-    case 'customer.subscription.created':
+    case 'customer.subscription.created': {
+      // Sync the new subscription, then — if it's a genuine trial start — send the
+      // branded welcome email. `subscription.created` fires exactly once per sub, so
+      // this is a natural single-fire (no extra marker column); stripe_events dedups a
+      // redelivery and the Resend Idempotency-Key is a second guard. Skip when NOT
+      // trialing (a repeat customer whose trial was already used subscribes straight to
+      // active/incomplete — they get the Stripe payment receipt, not a "trial started"
+      // note) and when the trial is already scheduled to cancel. Email is the last,
+      // best-effort action.
+      const sub = event.data.object as Stripe.Subscription;
+      const ctx = await syncSubscription(admin, sub);
+      if (ctx.userId && sub.status === 'trialing' && sub.cancel_at == null) {
+        const { data: prof } = await admin
+          .from('profiles')
+          .select('email, display_name, subscription_currency, subscription_plan')
+          .eq('id', ctx.userId)
+          .maybeSingle();
+        if (prof?.email) {
+          await sendTrialStartedEmail({
+            to: prof.email,
+            name: prof.display_name ?? null,
+            currency: prof.subscription_currency,
+            plan: prof.subscription_plan,
+            idempotencyKey: `${event.id}:trial_started`,
+          });
+        }
+      }
+      return ctx;
+    }
     case 'customer.subscription.updated':
       return syncSubscription(admin, event.data.object as Stripe.Subscription);
     case 'customer.subscription.deleted':

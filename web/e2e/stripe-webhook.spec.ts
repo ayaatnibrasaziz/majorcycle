@@ -504,4 +504,22 @@ test.describe.serial('stripe webhook contract', () => {
     expect(p['subscription_status']).toBe('active');
     expect(p['grace_until']).toBeNull();
   });
+
+  // Last test — mutates the shared row to a non-trial state, so it must run after all
+  // others. A repeat customer (trial already used) subscribes straight to `active`, not
+  // `trialing`: subscription.created must still sync cleanly and must NOT take the
+  // "trial started" welcome branch (that email is only for a genuine trial start; the
+  // repeat customer gets Stripe's payment receipt instead). We assert the sync landed and
+  // the handler acked — the welcome guard is the `status === 'trialing'` check.
+  test('subscription.created for a non-trial (repeat) customer syncs active, no welcome branch', async ({ request }) => {
+    const event = makeEvent(
+      'customer.subscription.created',
+      subObject({ status: 'active', trial_end: null }),
+    );
+    expect((await post(request, event)).ok()).toBeTruthy();
+    const p = await profile();
+    expect(p['subscription_status']).toBe('active');
+    expect(p['stripe_subscription_id']).toBe(SUB);
+    expect(p['trial_ends_at']).toBeNull();
+  });
 });
