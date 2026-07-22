@@ -745,12 +745,16 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       **and** `invoice.payment_action_required` (3-D Secure) now share the dunning path, both guarded on
       the current sub (recovery guarded the same way) — a late/out-of-order failure can't lock a
       cancelled or newer account. Contract tests **20/20**; gates green.
-      **Collaborative finish (remaining):** owner dashboard Part C — turn Stripe's own trial/failed-payment
-      emails OFF, **turn "Successful payments" receipts ON** (branded receipt + invoice PDF on every real
-      charge), confirm Smart Retries ON, **confirm "when all retries fail" = Cancel subscription**, set
-      branding (logo/colours — Step 9, so receipts look on-brand), consider payouts Manual→Auto, and
-      when the LIVE endpoint is created **include `invoice.payment_action_required` (event list = 13)** —
-      then the guided live check together.
+      **Part C dashboard toggles — DONE 2026-07-22 (owner-driven via Claude-in-Chrome, LIVE mode).**
+      **"Successful payments" receipts turned ON** (Settings → Emails; verified persisted) → branded
+      receipt + invoice-PDF link on every real charge. Verified already-correct (no change needed):
+      Stripe's own **trial-ending + failed-payment** customer emails all **OFF** (Settings → Billing →
+      Subscriptions and emails) so they don't collide with our branded ones; **Smart Retries ON** (8 tries
+      / 2 weeks); **"if all retries fail" = cancel the subscription**. Deferred by owner: **payouts kept
+      MANUAL** (no customers yet — switch to Automatic later; how-to goes in the **F-layer payments
+      monitoring checklist**); **branding (logo/navy) = Step 9** (receipts valid but plain until then).
+      **Still remaining:** when the LIVE webhook endpoint is created at merge, **include
+      `invoice.payment_action_required` (event list = 13)**; then the **guided live check together**.
 - [ ] Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
