@@ -70,7 +70,7 @@ export async function sendTrialStartedEmail(opts: {
     greetingHtml(opts.name),
     p(
       `Welcome to MajorCycle — your <strong>${days} free trial</strong> is now active, with full ` +
-        `access to every analysis, score, and signal. No limits.`,
+        `access to everything your plan includes.`,
     ),
     p(
       `When the trial ends, your subscription continues automatically at ${rateHtml}, billed to the ` +
@@ -86,8 +86,8 @@ export async function sendTrialStartedEmail(opts: {
 
   const text =
     `${greetingText(opts.name)}\n\n` +
-    `Welcome to MajorCycle — your ${days} free trial is now active, with full access to every ` +
-    `analysis, score, and signal. No limits.\n\n` +
+    `Welcome to MajorCycle — your ${days} free trial is now active, with full access to everything ` +
+    `your plan includes.\n\n` +
     `When the trial ends, your subscription continues automatically at ${rateText}, billed to the ` +
     `card on file. We'll send a reminder a few days beforehand, so the first charge is never a ` +
     `surprise.\n\n` +
