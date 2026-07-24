@@ -490,6 +490,20 @@ events is explicitly discouraged). The list:
   failed→recovered (dunning), and disputes (create→lock, won→unlock, lost→stay-locked +
   cancel). Sandbox + DB reset to baseline afterward.
 
+**Stripe Dashboard branding (F3 Step 9 — LIVE, no code, 2026-07-25).** Every Stripe-hosted
+customer surface (receipts, invoices, hosted Checkout, Customer Portal) is branded via the LIVE
+account's Dashboard (`acct_1Trdax…`); for a non-Connect account this is Dashboard-only (the
+`branding_settings` API is Connect-only). Values on file: **icon** = `web/public/logo.png` (512²,
+navy "M") + a logo (prefer-logo-over-icon ON); **primary + secondary colour both `#04163e`**
+(owner's monochrome navy); **support email** `support@majorcycle.com`, **support URL** `…/contact`,
+**Privacy** `…/privacy`, **Terms** `…/terms`; **support address deliberately blank** (only a bare
+`country:AU` persists — no street/city, so no home address on receipts); Checkout legal + contact
+display ON, refund/return OFF (no-refund SaaS); invoice memo + ABN/not-advice footer set. The
+Branding page requires an explicit **Save changes** (no auto-save). Confirmed live via
+`GET /v1/accounts` + a real branded test receipt delivered to the owner's inbox. Excluded (paid or
+by preference): custom domain (~US$10/mo), custom email domain (owner keeps the trust-signalling
+`stripe.com` receipt). Statement descriptors + Product name were already clean (unchanged).
+
 **Auth pattern:** Access is **authentication-only today** — `web/proxy.ts` (middleware) and `(app)/layout.tsx` check that a `user` session exists and refresh it; **subscription/trial gating is not yet enforced** (planned with the Stripe build, roadmap #20). F3 in progress: checkout + the webhook now populate the client-immutable entitlement columns on `profiles`, but the **paywall gate that reads them is the final F3 step** (scope is an open owner decision), so nothing is gated on subscription state yet. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
 
 **Security posture (F0.5 hardening — shipped 2026-07-05, PR #61):** a full code + platform audit hardened the auth surface. (a) **Recovery-session confinement:** a password-reset link mints a full session, so `auth/confirm` sets an httpOnly `mc_pw_recovery` marker and `proxy.ts` restricts that session to `/account/update-password` (+ `/auth/recovery-done`, `/auth/signout`) until the password is changed — a leaked/forwarded reset link can no longer roam the app (live-verified). The page now lives under the `(public)` shell (no sidebar). (b) **Sign-out:** POST `/auth/signout` + a sidebar `SignOutButton`. (c) **`profiles` billing-column lockdown:** table-level `UPDATE` revoked; a column `GRANT` allows only `display_name`/`country`/`acknowledged_disclaimer_at`, so `subscription_*`/`trial_ends_at`/`stripe_*` are client-immutable (cron/webhooks write them via the service-role key) — migration `20260705032433`. (d) **Security headers** in `web/next.config.ts` (X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, CSP report-only). (e) **Open-redirect guard** `safeNextPath()`. (f) **DMARC** tightened to `p=reject` (strict) — safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Deferred: leaked-password protection (Supabase Pro-only), CSP flip to enforcing.

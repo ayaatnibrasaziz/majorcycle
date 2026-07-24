@@ -769,7 +769,30 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       seen locally are a `stripe listen` firehose artifact; disputes legitimately have no subscription id.
       **Still remaining for Step 8:** at merge, create the LIVE webhook endpoint subscribed to the **13
       event types** (incl. `invoice.payment_action_required`).
-- [ ] Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**
+- [x] **Step 9 — Stripe branding — DONE + LIVE-VERIFIED 2026-07-25 (owner-driven via Claude-in-Chrome,
+      LIVE account `acct_1Trdax…`; no code — pure Dashboard config).** Confirmed against current Stripe docs
+      + the live account (`GET /v1/accounts`). All customer-facing Stripe surfaces now read as MajorCycle:
+      **Branding** (`settings/branding`) — icon `web/public/logo.png` (512²) + a logo (owner also uploaded one,
+      "prefer logo over icon" ON); **brand + accent colour both `#04163e`** (owner chose monochrome navy after
+      previewing — the mid-blue `#1E5CB3` muddied against the icon's own blue). **Public details** — support
+      email `support@majorcycle.com`, support URL `…/contact`, Privacy `…/privacy` + Terms `…/terms`;
+      **support address left BLANK** (owner: no address on receipts — Stripe accepted it; only a bare
+      `country:AU` lingers, no street/city, home address never shown). **Checkout settings** — Legal-policy
+      links + "agree to legal terms" + Contact-info display ON; Refund/return OFF (no-refund SaaS). **Invoice
+      template** — memo "Thanks for subscribing to MajorCycle." + footer "ABN 60 469 571 324 · MajorCycle
+      provides educational information only — not financial advice." **Customer Portal** already on-brand
+      (header "Manage your MajorCycle subscription and billing.", redirect `/account`). Left as-is: statement
+      descriptors (`WWW.MAJORCYCLE.COM` / prefix `MAJORCYCLE`), business name, Product (all already clean).
+      **EXCLUDED (researched):** custom domain (paid ~US$10/mo, not free); custom email domain (free but owner
+      prefers the `stripe.com` receipt as a trust signal); wordmark-only logo; return/refund UI; product image.
+      **Checkout font/shape polish declined** (owner kept the clean default look). **GOTCHA: the Branding page
+      does NOT auto-save — the "Save changes" button is mandatory** (verified branding was still null in the API
+      until Save clicked). Icon upload can't be automated (Stripe native file picker) — owner picks the file.
+      **VERIFIED:** re-`GET /v1/accounts` shows branding populated; **real branded test receipt landed in
+      `ayaatnibrasaziz@gmail.com`** (read via Gmail connector) — navy `#04163e` header, M icon, support
+      email+URL, **no address**, Stripe trust-signal footer; Checkout + Portal previews on-brand.
+- [ ] **Step 10 — paywall gate LAST (scope = open owner decision — plan together, don't presume).** No merge
+      to `main` until Step 10 + owner approval.
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
 - [x] `/methodology` — public, pre-sign-up plain-English explainer (cycle position, financial
