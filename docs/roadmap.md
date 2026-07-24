@@ -753,8 +753,22 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       / 2 weeks); **"if all retries fail" = cancel the subscription**. Deferred by owner: **payouts kept
       MANUAL** (no customers yet — switch to Automatic later; how-to goes in the **F-layer payments
       monitoring checklist**); **branding (logo/navy) = Step 9** (receipts valid but plain until then).
-      **Still remaining:** when the LIVE webhook endpoint is created at merge, **include
-      `invoice.payment_action_required` (event list = 13)**; then the **guided live check together**.
+      **Guided live check together — DONE 2026-07-24 (owner present, Stripe sandbox + real inbox).**
+      All five billing-lifecycle paths driven end-to-end via test clocks + the `sk_test` harness (NOT the
+      LIVE-scoped Stripe MCP), every branded email verified in `ayaatnibrasaziz@gmail.com` via the Gmail
+      connector: (1) trial-started welcome (AU$19/mo copy, name, approved wording); (2) trial-ending
+      "ends soon" + `trial_reminder_sent` marker; (3) cancelled-trial → **zero** emails (welcome + reminder
+      both suppressed); (4) payment failed → `past_due` + `grace_until` + "update your card", then good-card
+      pay → `active` + grace cleared + "you're all set"; (5) disputes: create → `billing_blocked=true`,
+      won → false, lost → stays true + sub cancelled + `stripe_subscription_id` nulled. Sandbox (test clocks)
+      + all touched DB rows / tombstones / `stripe_events` reset to the exact 0/0/0 baseline afterward.
+      **Webhook event-subscription policy decided + documented** (architecture §7): the LIVE endpoint
+      subscribes to **only the 13 handled event types** (Stripe best practice — don't ingest events you
+      don't act on); `stripe_events` is for idempotency + our-actions attribution only, NOT a copy of
+      Stripe's raw stream (that's Workbench → Event deliveries, 30-day retention). Null-attribution rows
+      seen locally are a `stripe listen` firehose artifact; disputes legitimately have no subscription id.
+      **Still remaining for Step 8:** at merge, create the LIVE webhook endpoint subscribed to the **13
+      event types** (incl. `invoice.payment_action_required`).
 - [ ] Step 9 — branding · **Step 10 — paywall gate LAST (scope = open owner decision).**
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**

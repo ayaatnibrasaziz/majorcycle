@@ -460,6 +460,36 @@ Two runtimes, two locations under `web/`:
 | `/api/portal` | POST | TS | `web/app/api/portal/route.ts` | Required | **Built (F3 step 5).** Open the Stripe Customer Portal — create a `billingPortal` session for the user's `stripe_customer_id`, 303-redirect to it (`return_url` = `/account`); no customer → `?billing=none`, error → `?billing=error`. The `/account` "Manage billing" button is a plain form POST |
 | `/api/health` | GET | TS | `web/app/api/health/route.ts` | Public | System health (DB + provider) |
 
+**Webhook event-subscription policy (F3 Step 8 decision — 2026-07-24).** The production
+LIVE webhook endpoint subscribes to **only the 13 event types the handler acts on**, per
+Stripe's best-practice guidance (["only listen to event types your integration
+requires"](https://docs.stripe.com/webhooks#best-practices) — subscribing to extra/all
+events is explicitly discouraged). The list:
+`checkout.session.completed`, `customer.subscription.{created,updated,deleted,trial_will_end}`,
+`invoice.{paid,payment_succeeded,payment_failed,payment_action_required}`,
+`charge.dispute.{created,funds_withdrawn,closed,funds_reinstated}`.
+- **`stripe_events` has two jobs only:** (1) **idempotency** — every received event id is
+  claimed so a Stripe re-delivery is a no-op; (2) **attribution** of the events we handle —
+  each handler stamps `user_id` / `stripe_customer_id` / `stripe_subscription_id` so
+  `select … from stripe_events where user_id = …` reconstructs *our system's* actions for a
+  customer. We deliberately **do NOT** extract IDs from events we don't act on.
+- **Why not enrich everything:** Stripe's Workbench → *Event deliveries* (and the Events API,
+  `stripe events list`) is the system of record for the **raw** stream — full payloads +
+  delivery/retry status, retained 30 days. Re-deriving that in our DB would duplicate a
+  better-maintained source and add fragile per-event-shape parsing + extra `profiles` lookups
+  on events we don't care about. Use Workbench for raw-stream forensics; use `stripe_events`
+  for our-actions attribution.
+- **Expected null columns are correct, not gaps:** `charge.dispute.*` rows carry
+  `user_id` + `stripe_customer_id` but **no `stripe_subscription_id`** — a Stripe Dispute
+  object references only a charge, never a subscription. Any *other* null-attribution rows
+  seen locally are a `stripe listen` firehose artifact (the CLI forwards **every** event in
+  dev); production only receives the 13 above, so nearly every stored row is attributed.
+- **Guided live check (Step 8) — DONE 2026-07-24:** all five billing-lifecycle paths were
+  driven end-to-end in the Stripe **sandbox** (test clocks) with emails verified in a real
+  inbox — trial-started welcome, trial-ending, cancelled-trial (no email), payment
+  failed→recovered (dunning), and disputes (create→lock, won→unlock, lost→stay-locked +
+  cancel). Sandbox + DB reset to baseline afterward.
+
 **Auth pattern:** Access is **authentication-only today** — `web/proxy.ts` (middleware) and `(app)/layout.tsx` check that a `user` session exists and refresh it; **subscription/trial gating is not yet enforced** (planned with the Stripe build, roadmap #20). F3 in progress: checkout + the webhook now populate the client-immutable entitlement columns on `profiles`, but the **paywall gate that reads them is the final F3 step** (scope is an open owner decision), so nothing is gated on subscription state yet. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
 
 **Security posture (F0.5 hardening — shipped 2026-07-05, PR #61):** a full code + platform audit hardened the auth surface. (a) **Recovery-session confinement:** a password-reset link mints a full session, so `auth/confirm` sets an httpOnly `mc_pw_recovery` marker and `proxy.ts` restricts that session to `/account/update-password` (+ `/auth/recovery-done`, `/auth/signout`) until the password is changed — a leaked/forwarded reset link can no longer roam the app (live-verified). The page now lives under the `(public)` shell (no sidebar). (b) **Sign-out:** POST `/auth/signout` + a sidebar `SignOutButton`. (c) **`profiles` billing-column lockdown:** table-level `UPDATE` revoked; a column `GRANT` allows only `display_name`/`country`/`acknowledged_disclaimer_at`, so `subscription_*`/`trial_ends_at`/`stripe_*` are client-immutable (cron/webhooks write them via the service-role key) — migration `20260705032433`. (d) **Security headers** in `web/next.config.ts` (X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, CSP report-only). (e) **Open-redirect guard** `safeNextPath()`. (f) **DMARC** tightened to `p=reject` (strict) — safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Deferred: leaked-password protection (Supabase Pro-only), CSP flip to enforcing.
