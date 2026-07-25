@@ -80,7 +80,9 @@ export async function sendTrialStartedEmail(opts: {
       `You can change your plan or cancel anytime from your account — cancel before the trial ends and ` +
         `you won't be charged a cent.`,
     ),
-    button('Start exploring', `${SITE}/results`),
+    // Browse, not Results: Results is empty until a screen has been run, so a brand
+    // new subscriber clicking "Start exploring" would land on nothing (F3 Step 10).
+    button('Start exploring', `${SITE}/stocks`),
     muted(`Questions? Get in touch anytime at ${contactLink}.`),
   ].join('\n');
 

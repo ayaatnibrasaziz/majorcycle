@@ -1,10 +1,20 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { PW_RECOVERY_COOKIE, PW_RECOVERY_ALLOWED_PATHS } from '@/lib/authRecovery';
+import { accessDenialReason, hasAccess } from '@/lib/entitlement';
 import { INTERNAL_HEADER, hasInternalSecret } from '@/lib/internalAuth';
 
 /** Internal-only analysis endpoint — secret-gated, never session-gated. */
 const CYCLE_PATH = '/api/cycle';
+
+/**
+ * Endpoints that require a live subscription. The screener is fully premium — the
+ * highest-value feature and the only one with a meaningful per-use cost — so there
+ * is no free form of it to fall back to. `/api/analyze-dev` is the local shim that
+ * stands in for the Python function under `next dev`; gating it too keeps dev
+ * behaviour honest instead of quietly permissive.
+ */
+const PREMIUM_API_PATHS = ['/api/analyze', '/api/analyze-dev'];
 
 const PUBLIC_PATHS = [
   '/login',
@@ -127,8 +137,40 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/account/update-password', request.url));
   }
 
+  // ── Premium API gate ────────────────────────────────────────────────────────
+  // The screener has no free form, so /api/analyze is refused outright for an
+  // unentitled caller. This is where the check must live: analyze.py is a Vercel
+  // Python function with no way to read a Supabase session cookie, so the proxy —
+  // which has already verified the JWT locally — is the session authority.
+  //
+  // On success the internal secret is INJECTED into the forwarded request, and
+  // analyze.py requires it. That way the function can't be reached at all except
+  // through this gate, even if the platform's routing ever changed underneath us.
+  //
+  // Scoped to this one path so ordinary page requests never pay for the profile
+  // read. The read is a PK lookup on the same region, scoped by RLS to the caller's
+  // own row. (F3 Step 10.)
+  if (userId && PREMIUM_API_PATHS.some((p) => pathname === p)) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_status, grace_until, billing_blocked')
+      .eq('id', userId)
+      .single();
+
+    if (!hasAccess(profile)) {
+      return NextResponse.json(
+        { error: 'Payment Required', reason: accessDenialReason(profile) },
+        { status: 402 },
+      );
+    }
+
+    const headers = new Headers(request.headers);
+    headers.set(INTERNAL_HEADER, process.env.CYCLE_INTERNAL_SECRET ?? '');
+    return NextResponse.next({ request: { headers } });
+  }
+
   if (userId && (pathname === '/login' || pathname === '/signup')) {
-    return NextResponse.redirect(new URL('/results', request.url));
+    return NextResponse.redirect(new URL('/stocks', request.url));
   }
 
   return response;

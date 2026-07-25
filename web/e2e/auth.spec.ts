@@ -130,12 +130,14 @@ const PASSWORD = process.env.E2E_PASSWORD;
 test.describe('authenticated flows', () => {
   test.skip(!EMAIL || !PASSWORD, 'set E2E_EMAIL + E2E_PASSWORD to run');
 
-  test('email login → /results, sign-out → /login, re-gate works', async ({ page }) => {
+  test('email login → /stocks, sign-out → /login, re-gate works', async ({ page }) => {
     await page.goto('/login');
     await page.fill('input#email', EMAIL!);
     await page.fill('input#password', PASSWORD!);
     await page.getByRole('button', { name: /^sign in$/i }).click();
-    await expect(page).toHaveURL(/\/results/);
+    // Post-auth home is Browse, not Results (F3 Step 10) — Results is the output of
+    // a screener run, so it is empty for a new or free account. See POST_AUTH_HOME.
+    await expect(page).toHaveURL(/\/stocks/);
 
     // A fresh login must have cleared any recovery marker (F0.6 self-heal).
     const cookies = await page.context().cookies();

@@ -107,6 +107,12 @@ interface AnalysisSnapshot {
 interface AnalysisContextValue extends AnalysisSnapshot {
   progress: RunProgress;
   lastRun: AnalysisRunRecord | null;
+  /**
+   * True when the run stopped because the subscription is no longer live (a 402
+   * from /api/analyze — typically a trial expiring mid-run). Lets the UI show an
+   * honest "your access ended" prompt instead of a wall of unavailable tickers.
+   */
+  lapsed: boolean;
   run: (req: AnalyzeRequest) => Promise<void>;
   cancel: () => void;
   clear: () => void;
@@ -119,6 +125,18 @@ function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
+}
+
+/**
+ * Raised when /api/analyze answers 402 — the viewer's subscription is no longer
+ * live. Distinct from a transient chunk failure so the run aborts cleanly rather
+ * than burning its retries against a wall.
+ */
+export class EntitlementLapsedError extends Error {
+  constructor() {
+    super('subscription required');
+    this.name = 'EntitlementLapsedError';
+  }
 }
 
 /** POST one chunk. Results arrive snake_case → converted to camelCase here. */
@@ -144,6 +162,12 @@ async function postChunk(
     body: JSON.stringify(body),
     signal,
   });
+  // 402 means entitlement lapsed — most plausibly a trial that expired PART WAY
+  // through a long run. Thrown as a distinct error so the caller aborts and says
+  // "your access ended" instead of retrying and quietly reporting the remaining
+  // tickers as "unavailable", which would look like a broken app rather than a
+  // billing state. (F3 Step 10 audit, finding B6.)
+  if (res.status === 402) throw new EntitlementLapsedError();
   if (!res.ok) throw new Error(`analyze failed: ${res.status}`);
   // A session that expired mid-run gets redirected to the /login HTML page;
   // .json() then throws — caught by the caller, which marks the chunk unavailable.
@@ -209,6 +233,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
   const [runMeta, setRunMeta] = useState<RunMeta | null>(null);
   const [progress, setProgress] = useState<RunProgress>({ done: 0, total: 0, running: false });
   const [lastRun, setLastRun] = useState<AnalysisRunRecord | null>(null);
+  const [lapsed, setLapsed] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   // Hydrate the live snapshot from sessionStorage AFTER mount (so navigating to
@@ -279,6 +304,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
     setUnavailable([]);
     setParams(null);
     setRunMeta(null);
+    setLapsed(false);
     setProgress({ done: 0, total: 0, running: false });
     try {
       sessionStorage.removeItem(SNAPSHOT_KEY);
@@ -292,6 +318,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       const controller = new AbortController();
       abortRef.current = controller;
       const { signal } = controller;
+      setLapsed(false);
 
       const chunks = chunk(req.tickers, CHUNK_SIZE);
       const startedAt = new Date().toISOString();
@@ -338,7 +365,15 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
           const r = await postWithRetry(tickers);
           allResults.push(...r.results);
           serverUnavailable.push(...r.unavailable);
-        } catch {
+        } catch (err) {
+          // A lapsed subscription is not a transient failure — every remaining
+          // chunk would fail identically. Abort the whole run and let the UI say so,
+          // rather than retrying into a wall and calling the tickers "unavailable".
+          if (err instanceof EntitlementLapsedError) {
+            setLapsed(true);
+            controller.abort();
+            return;
+          }
           if (!signal.aborted) chunkFailed.push(...tickers);
         } finally {
           if (!signal.aborted) bump();
@@ -482,12 +517,25 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       runMeta,
       progress,
       lastRun,
+      lapsed,
       run,
       cancel,
       clear,
       refreshLastRun,
     }),
-    [results, unavailable, params, runMeta, progress, lastRun, run, cancel, clear, refreshLastRun],
+    [
+      results,
+      unavailable,
+      params,
+      runMeta,
+      progress,
+      lastRun,
+      lapsed,
+      run,
+      cancel,
+      clear,
+      refreshLastRun,
+    ],
   );
 
   return <AnalysisContext.Provider value={value}>{children}</AnalysisContext.Provider>;

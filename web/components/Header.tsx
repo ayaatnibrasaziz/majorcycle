@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Play } from 'lucide-react';
 
+import { UserMenu } from '@/components/UserMenu';
+
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   '/results': {
     title: 'Results',
@@ -44,9 +46,11 @@ function getPageMeta(pathname: string) {
 
 interface HeaderProps {
   lastRunAt?: string | null;
+  /** Shown on the account menu trigger; omitted in the dev-bypass render. */
+  email?: string | null;
 }
 
-export function Header({ lastRunAt }: HeaderProps) {
+export function Header({ lastRunAt, email }: HeaderProps) {
   const pathname = usePathname();
   const { title, subtitle } = getPageMeta(pathname);
 
@@ -80,6 +84,8 @@ export function Header({ lastRunAt }: HeaderProps) {
           <Play className="w-3 h-3" strokeWidth={2} aria-hidden="true" />
           Run Analysis
         </Link>
+
+        <UserMenu email={email} />
       </div>
     </header>
   );

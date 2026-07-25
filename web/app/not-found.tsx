@@ -19,7 +19,7 @@ export default async function NotFound() {
     signedIn = false;
   }
 
-  const href = signedIn ? '/results' : '/login';
+  const href = signedIn ? '/stocks' : '/login';
   const label = signedIn ? 'Back to Results' : 'Back to sign in';
 
   return (

@@ -267,7 +267,7 @@ export async function reactivateAccount(): Promise<void> {
     });
   }
 
-  redirect('/results');
+  redirect('/stocks');
 }
 
 /**

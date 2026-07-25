@@ -36,6 +36,8 @@ export interface ViewerEntitlement {
   /** Present so callers needing onboarding state don't re-query. */
   acknowledgedDisclaimerAt: string | null;
   subscriptionStatus: string | null;
+  /** Shown on the header account menu. */
+  email: string | null;
 }
 
 const SIGNED_OUT: ViewerEntitlement = {
@@ -45,6 +47,7 @@ const SIGNED_OUT: ViewerEntitlement = {
   deletionScheduled: false,
   acknowledgedDisclaimerAt: null,
   subscriptionStatus: null,
+  email: null,
 };
 
 export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> => {
@@ -58,7 +61,7 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'subscription_status, grace_until, billing_blocked, acknowledged_disclaimer_at, deletion_scheduled_at',
+      'email, subscription_status, grace_until, billing_blocked, acknowledged_disclaimer_at, deletion_scheduled_at',
     )
     .eq('id', userId)
     .single();
@@ -78,6 +81,7 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
     deletionScheduled: !!profile.deletion_scheduled_at,
     acknowledgedDisclaimerAt: profile.acknowledged_disclaimer_at ?? null,
     subscriptionStatus: profile.subscription_status ?? null,
+    email: profile.email ?? null,
   };
 });
 

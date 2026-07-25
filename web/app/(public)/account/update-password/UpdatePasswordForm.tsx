@@ -41,7 +41,7 @@ export function UpdatePasswordForm() {
       await fetch('/auth/recovery-done', { method: 'POST' }).catch(() => {});
       setDone(true);
       setTimeout(() => {
-        router.push('/results');
+        router.push('/stocks');
         router.refresh();
       }, 1500);
     }

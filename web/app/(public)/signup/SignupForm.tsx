@@ -139,7 +139,7 @@ export function SignupForm() {
 
       <AuthDivider />
 
-      <GoogleSignIn next="/results" onError={setError} disabled={loading} label="signup_with" />
+      <GoogleSignIn next="/stocks" onError={setError} disabled={loading} label="signup_with" />
 
       <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
         Already have an account?{' '}
