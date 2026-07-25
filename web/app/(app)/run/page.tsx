@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { RunAnalysis } from '@/components/run/RunAnalysis';
+import { requireEntitled } from '@/lib/entitlement.server';
 import { fetchIndexMembership } from '@/lib/index-membership.server';
 import { fetchUniverseIndex } from '@/lib/universe.server';
 
@@ -16,6 +17,10 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function RunPage() {
+  // Fully premium — the screener is the highest-value feature and the only one with
+  // a meaningful per-use cost. No free or sample form of it exists.
+  await requireEntitled();
+
   const [universe, membership] = await Promise.all([
     fetchUniverseIndex(),
     fetchIndexMembership(),

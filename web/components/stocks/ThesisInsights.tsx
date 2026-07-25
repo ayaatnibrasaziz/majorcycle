@@ -1,9 +1,22 @@
-import type { CycleAnalysis, Currency, FundamentalsSnapshot } from '@/lib/types';
+import {
+  isFullCycle,
+  type CycleAnalysis,
+  type CycleAnalysisFree,
+  type Currency,
+  type FundamentalsSnapshot,
+} from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
 import { fmtCapped, fmtPrice } from '@/lib/format';
 
 interface Props {
-  cycle: CycleAnalysis;
+  /**
+   * FREE tier (F3 Step 10), with one bullet degrading gracefully: the only scored
+   * input here is Financial Health, and it merely GATES a positive claim (see
+   * `fhWeak`). A free viewer has no FH value, which the existing logic already
+   * treats the same as a withheld one — so the "historically attractive entry zone"
+   * bullet is simply withheld rather than a false claim being made.
+   */
+  cycle: CycleAnalysis | CycleAnalysisFree;
   fundamentals: FundamentalsSnapshot;
   currency: Currency;
 }
@@ -24,7 +37,7 @@ interface Bullet {
  * `buildRisks`, and `riskInvalidation` in /reference/original-design.html
  * (lines 2126–2178). Educational signals only — no Buy/Sell verbs in our copy.
  */
-function buildAttractive(c: CycleAnalysis, f: FundamentalsSnapshot, currency: Currency): Bullet[] {
+function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapshot, currency: Currency): Bullet[] {
   const out: string[] = [];
   const dd = c.currentDrawdownPct;
   const tdd = c.typicalDrawdown;
@@ -35,7 +48,10 @@ function buildAttractive(c: CycleAnalysis, f: FundamentalsSnapshot, currency: Cu
   // deteriorating fundamentals — so we drop the "historically attractive entry
   // zone" claim (and its Strong tag) rather than cheerlead it. FH < 50 is the
   // same "stressed" line the Verdict card uses for its financial-health sentence.
-  const fhWeak = c.financialHealthScore == null || c.financialHealthScore < 50;
+  // A free viewer has no Financial Health at all — which lands on the same branch as
+  // a withheld score, exactly as intended above (withheld ⇒ don't cheerlead).
+  const fh = isFullCycle(c) ? c.financialHealthScore : null;
+  const fhWeak = fh == null || fh < 50;
   // `tdd <= -5` keeps this disjoint from the "near highs" risk (which needs dd > -5):
   // a stock whose typical dip is itself < 5% never earns an "attractive entry zone" claim.
   if (tdd != null && tdd <= -5 && dd <= tdd && !fhWeak)
@@ -68,7 +84,7 @@ function buildAttractive(c: CycleAnalysis, f: FundamentalsSnapshot, currency: Cu
   return out.slice(0, 6).map((text, i) => ({ text, strong: !usedFallback && i < 2 }));
 }
 
-function riskInvalidation(c: CycleAnalysis, f: FundamentalsSnapshot): string | undefined {
+function riskInvalidation(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapshot): string | undefined {
   const dd = c.currentDrawdownPct;
   if (dd > -5 && c.typicalDrawdown != null)
     return `A pullback past ${fmt(c.typicalDrawdown)}% (the typical-dip level) would restore historical entry-zone characteristics.`;
@@ -89,7 +105,7 @@ function riskInvalidation(c: CycleAnalysis, f: FundamentalsSnapshot): string | u
   return `Should the cycle low hold and the historical pattern reassert, the setup would re-rate.`;
 }
 
-function buildRisks(c: CycleAnalysis, f: FundamentalsSnapshot): Bullet[] {
+function buildRisks(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapshot): Bullet[] {
   const out: string[] = [];
   const dd = c.currentDrawdownPct;
 

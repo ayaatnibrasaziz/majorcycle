@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getViewerEntitlement } from '@/lib/entitlement.server';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { OnboardingModal } from '@/components/OnboardingModal';
@@ -15,7 +15,12 @@ export default async function AppLayout({
   if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {
     return (
       <div className="min-h-screen bg-[var(--bg-page)]">
-        <Sidebar subscriptionStatus={null} />
+        {/* Dev bypass renders the ENTITLED view so local work sees the full app.
+            Set DEV_FORCE_FREE=true to preview the locked/free-tier states instead. */}
+        <Sidebar
+          subscriptionStatus={null}
+          entitled={process.env.DEV_FORCE_FREE !== 'true'}
+        />
         <Header />
         <main
           className="ml-[var(--sidebar-w)] mt-[var(--header-h)] p-6 min-h-[calc(100vh-var(--header-h))]"
@@ -31,35 +36,30 @@ export default async function AppLayout({
     );
   }
 
-  const supabase = await createServerSupabaseClient();
-  // Local JWT verification (asymmetric key + cached JWKS) — no Auth-server
-  // round-trip. The middleware already refreshed the token for this request.
-  const { data: claimsData } = await supabase.auth.getClaims();
-  const claims = claimsData?.claims ?? null;
+  // One memoised read serves the whole render pass — this layout, the page beneath
+  // it, and any nested server component that needs to know whether to lock.
+  const viewer = await getViewerEntitlement();
 
-  if (!claims) {
+  if (!viewer.userId) {
     redirect('/login');
   }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('subscription_status, acknowledged_disclaimer_at, deletion_scheduled_at')
-    .eq('id', claims.sub)
-    .single();
 
   // Soft-deleted (deletion scheduled) accounts are confined to /reactivate — the
   // account is deactivated during the grace window until the user reactivates or
   // it's purged. /reactivate lives in the (public) route group, so it isn't
   // wrapped by this layout and can't loop.
-  if (profile?.deletion_scheduled_at) {
+  //
+  // Checked BEFORE entitlement: a mid-deletion account must be sent to /reactivate,
+  // never to /pricing (it can't meaningfully subscribe while scheduled for purge).
+  if (viewer.deletionScheduled) {
     redirect('/reactivate');
   }
 
-  const needsOnboarding = profile && !profile.acknowledged_disclaimer_at;
+  const needsOnboarding = !viewer.acknowledgedDisclaimerAt;
 
   return (
     <div className="min-h-screen bg-[var(--bg-page)]">
-      <Sidebar subscriptionStatus={profile?.subscription_status ?? null} />
+      <Sidebar subscriptionStatus={viewer.subscriptionStatus} entitled={viewer.entitled} />
       <Header />
       <main
         className="ml-[var(--sidebar-w)] mt-[var(--header-h)] p-6 min-h-[calc(100vh-var(--header-h))]"

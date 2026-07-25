@@ -194,25 +194,31 @@ export function BadgeRow({
   analystRecommendation,
   numAnalysts,
 }: {
-  overallLabel: OverallLabel;
-  valuationZone: ValuationZone;
+  /** Omitted for an unentitled viewer — our rating is premium (F3 Step 10). */
+  overallLabel?: OverallLabel;
+  /** Omitted for an unentitled viewer — premium. */
+  valuationZone?: ValuationZone;
   analystRecommendation: AnalystRecommendation | null;
   numAnalysts: number | null;
 }) {
   return (
     <div className="flex flex-wrap gap-[6px] mt-[10px]">
-      <span
-        className={`tier-badge tier-badge--${LABEL_TIER[overallLabel]}`}
-        title={`Overall rating: ${overallLabel}. Composite of Financial Health (40%) + Valuation Zone (35%) + Cycle Payoff (25%).`}
-      >
-        {overallLabel}
-      </span>
-      <span
-        className={`tier-badge tier-badge--${ZONE_TIER[valuationZone]}`}
-        title={`Valuation zone: ${ZONE_DISPLAY[valuationZone]}. Derived from the current drawdown vs the stock's typical historical pullback.`}
-      >
-        {ZONE_DISPLAY[valuationZone]}
-      </span>
+      {overallLabel && (
+        <span
+          className={`tier-badge tier-badge--${LABEL_TIER[overallLabel]}`}
+          title={`Overall rating: ${overallLabel}. Composite of Financial Health (40%) + Valuation Zone (35%) + Cycle Payoff (25%).`}
+        >
+          {overallLabel}
+        </span>
+      )}
+      {valuationZone && (
+        <span
+          className={`tier-badge tier-badge--${ZONE_TIER[valuationZone]}`}
+          title={`Valuation zone: ${ZONE_DISPLAY[valuationZone]}. Derived from the current drawdown vs the stock's typical historical pullback.`}
+        >
+          {ZONE_DISPLAY[valuationZone]}
+        </span>
+      )}
       {analystRecommendation && (
         <span
           className="tier-badge tier-badge--analyst"

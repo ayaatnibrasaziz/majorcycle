@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 
 import { isValidMarket, type RouteSearch } from '@/lib/horizon';
+import { getViewerEntitlement } from '@/lib/entitlement.server';
 import { buildReportData } from '@/lib/report-data';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 type RouteParams = { market: string; ticker: string };
 
@@ -23,12 +23,20 @@ export async function GET(
   const bypass =
     process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true';
   if (!bypass) {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    // Route handlers aren't wrapped by the (app) layout, so this gates itself —
+    // and it must gate on ENTITLEMENT, not just a session. The report payload
+    // contains the full scorecard, so an authenticated free user requesting this
+    // URL directly would otherwise walk away with everything the paywall protects.
+    // 402 Payment Required, distinct from the 401 a signed-out caller gets.
+    const viewer = await getViewerEntitlement();
+    if (!viewer.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!viewer.entitled) {
+      return NextResponse.json(
+        { error: 'Payment Required', reason: viewer.reason },
+        { status: 402 },
+      );
     }
   }
 

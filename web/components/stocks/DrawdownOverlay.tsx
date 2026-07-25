@@ -21,7 +21,7 @@ import {
   timeToMs,
 } from '@/lib/chartSync';
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
-import type { CycleAnalysis, PriceBar } from '@/lib/types';
+import type { CycleAnalysisFree, PriceBar } from '@/lib/types';
 
 type Mode = 'drawdown' | 'profit';
 
@@ -101,7 +101,13 @@ function fmt(n: number, d = 1): string {
 
 interface Props {
   priceBars: PriceBar[];
-  cycle: CycleAnalysis;
+  /**
+   * FREE tier (F3 Step 10): this chart reads only descriptive cycle fields —
+   * the bands (typical/bound), current position and event counts — never a score.
+   * Typed to the free shape so it renders identically for a free viewer, and so
+   * a future premium field can't be added here without the type complaining.
+   */
+  cycle: CycleAnalysisFree;
 }
 
 export function DrawdownOverlay({ priceBars, cycle }: Props) {

@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Compass, ListPlus, Play, UserRound } from 'lucide-react';
+import { BarChart3, Compass, ListPlus, Lock, Play, UserRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SignOutButton } from '@/components/SignOutButton';
 
@@ -13,24 +13,19 @@ interface NavItem {
   icon: React.ReactNode;
 }
 
-const NAV_ANALYSIS: NavItem[] = [
+// Grouped by what the viewer OWNS vs what they're buying — which also happens to be
+// the order the work actually flows in. The old grouping put Results (an output) above
+// Browse, and filed Run Analysis under "Data" beside a support form, so a new user
+// landed on an empty table with no hint of what to do first.
+//
+// Splitting free from premium also makes the paywall legible rather than hidden: a
+// free user sees a complete, working DISCOVER group and a SCREEN group wearing locks,
+// which advertises what a subscription buys instead of quietly failing.
+const NAV_DISCOVER: NavItem[] = [
   {
-    label: 'Results',
-    href: '/results',
-    icon: <BarChart3 className="w-[15px] h-[15px]" strokeWidth={1.8} />,
-  },
-  {
-    label: 'Browse',
+    label: 'Browse Stocks',
     href: '/stocks',
     icon: <Compass className="w-[15px] h-[15px]" strokeWidth={1.8} />,
-  },
-];
-
-const NAV_DATA: NavItem[] = [
-  {
-    label: 'Run Analysis',
-    href: '/run',
-    icon: <Play className="w-[15px] h-[15px]" strokeWidth={1.8} />,
   },
   {
     label: 'Request a Ticker',
@@ -39,7 +34,21 @@ const NAV_DATA: NavItem[] = [
   },
 ];
 
-function NavLink({ item }: { item: NavItem }) {
+// Run Analysis before Results: the verb that produces the noun.
+const NAV_SCREEN: NavItem[] = [
+  {
+    label: 'Run Analysis',
+    href: '/run',
+    icon: <Play className="w-[15px] h-[15px]" strokeWidth={1.8} />,
+  },
+  {
+    label: 'Results',
+    href: '/results',
+    icon: <BarChart3 className="w-[15px] h-[15px]" strokeWidth={1.8} />,
+  },
+];
+
+function NavLink({ item, locked = false }: { item: NavItem; locked?: boolean }) {
   const pathname = usePathname();
   const isActive =
     pathname === item.href ||
@@ -59,12 +68,23 @@ function NavLink({ item }: { item: NavItem }) {
         {item.icon}
       </span>
       {item.label}
+      {/* The link still navigates — the destination explains what a plan unlocks,
+          which converts better than a dead, unclickable row. */}
+      {locked && (
+        <Lock
+          className="w-[11px] h-[11px] ml-auto flex-shrink-0 text-[var(--text-muted)]"
+          strokeWidth={2}
+          aria-label="Requires a subscription"
+        />
+      )}
     </Link>
   );
 }
 
 interface SidebarProps {
   subscriptionStatus?: string | null;
+  /** Drives the lock affordance on the premium (SCREEN) group. */
+  entitled?: boolean;
 }
 
 // Licence-badge copy per Stripe subscription status. `null`/unknown (a fresh
@@ -81,7 +101,7 @@ function licenceLabel(status: string | null | undefined): string {
   return (status && LICENCE_LABELS[status]) || 'No plan';
 }
 
-export function Sidebar({ subscriptionStatus }: SidebarProps) {
+export function Sidebar({ subscriptionStatus, entitled = false }: SidebarProps) {
   return (
     <aside
       className="fixed top-0 left-0 w-[var(--sidebar-w)] h-screen bg-[var(--bg-sidebar)] border-r border-[var(--border)] flex flex-col z-[100] shadow-[var(--shadow-sm)]"
@@ -110,17 +130,17 @@ export function Sidebar({ subscriptionStatus }: SidebarProps) {
       {/* Nav: Analysis */}
       <nav className="flex-1 overflow-y-auto pt-1">
         <div className="px-[18px] py-[6px] mt-[10px] text-[9px] font-semibold tracking-[1.2px] uppercase text-[var(--text-muted)]">
-          Analysis
+          Discover
         </div>
-        {NAV_ANALYSIS.map((item) => (
+        {NAV_DISCOVER.map((item) => (
           <NavLink key={item.href} item={item} />
         ))}
 
         <div className="px-[18px] py-[6px] mt-[10px] text-[9px] font-semibold tracking-[1.2px] uppercase text-[var(--text-muted)]">
-          Data
+          Screen
         </div>
-        {NAV_DATA.map((item) => (
-          <NavLink key={item.href} item={item} />
+        {NAV_SCREEN.map((item) => (
+          <NavLink key={item.href} item={item} locked={!entitled} />
         ))}
       </nav>
 

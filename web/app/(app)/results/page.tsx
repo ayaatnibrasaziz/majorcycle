@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { Results, type ResultsLookup } from '@/components/results/Results';
+import { requireEntitled } from '@/lib/entitlement.server';
 import { fetchUniverseIndex } from '@/lib/universe.server';
 
 export const metadata: Metadata = {
@@ -16,6 +17,10 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function ResultsPage() {
+  // Premium: results are the output of the screener, and the ranked table exposes
+  // every rating and score. Gated with /run so the pair can't be reached separately.
+  await requireEntitled();
+
   const universe = await fetchUniverseIndex();
   const lookup: ResultsLookup = {};
   for (const s of universe) {

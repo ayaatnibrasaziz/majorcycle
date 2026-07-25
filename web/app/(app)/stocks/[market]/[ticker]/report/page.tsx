@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { ReportDocument } from '@/components/stocks/ReportDocument';
+import { requireEntitled } from '@/lib/entitlement.server';
 import { buildReportData } from '@/lib/report-data';
 import { isValidMarket, type RouteSearch } from '@/lib/horizon';
 import { fetchStockDetail } from '@/lib/stocks';
@@ -43,6 +44,10 @@ export default async function StockReportPage({
   params: Promise<RouteParams>;
   searchParams: Promise<RouteSearch>;
 }) {
+  // Premium: the report bakes in the full scorecard, verdict and rating — it is the
+  // takeaway artefact of a subscription. Gated before any data is built.
+  await requireEntitled();
+
   const { market, ticker } = await params;
   if (!isValidMarket(market)) notFound();
 

@@ -10,7 +10,7 @@ import { fetchMetricMedians } from '@/lib/medians.server';
 import type { ReportData } from '@/lib/report-types';
 import { fetchStockDetail } from '@/lib/stocks';
 import { urlPartsToTicker, tickerDisplay, tickerToUrlParts } from '@/lib/ticker';
-import type { Market } from '@/lib/types';
+import { isFullCycle, type Market } from '@/lib/types';
 
 let _logoCache: string | null = null;
 
@@ -54,7 +54,12 @@ export async function buildReportData(
   ]);
   if (!stock) return null;
 
-  const cycle = await fetchCycleAnalysis(stored, spec);
+  // The report is premium in its entirety — both the page and the download are
+  // refused for unentitled users before this ever runs — so it always asks for the
+  // fully-scored payload. `isFullCycle` narrows it back to CycleAnalysis for the
+  // ReportData contract; a null cycle is already a supported state downstream.
+  const rawCycle = await fetchCycleAnalysis(stored, spec, true);
+  const cycle = isFullCycle(rawCycle) ? rawCycle : null;
 
   // Benchmark series for Relative Performance — same cap as the detail page
   // (later of the stock's first bar and ~20y ago, so we never pull decades of

@@ -12,6 +12,7 @@ import { KpiStrip } from '@/components/stocks/KpiStrip';
 import { MetricsTable } from '@/components/stocks/MetricsTable';
 import { NewsFeed } from '@/components/stocks/NewsFeed';
 import { OwnershipStructure } from '@/components/stocks/OwnershipStructure';
+import { PremiumLockCard } from '@/components/stocks/PremiumLock';
 import { PriceChart } from '@/components/stocks/PriceChart';
 import { QuarterlyFinancials } from '@/components/stocks/QuarterlyFinancials';
 import { RelativePerformance } from '@/components/stocks/RelativePerformance';
@@ -26,11 +27,12 @@ import { ValuationHistory } from '@/components/stocks/ValuationHistory';
 import { VerdictCard } from '@/components/stocks/VerdictCard';
 import { fetchBenchmarks } from '@/lib/benchmarks.server';
 import { fetchCycleAnalysis, type CycleSpec } from '@/lib/cycle';
+import { getViewerEntitlement } from '@/lib/entitlement.server';
 import { parseSpec, isValidMarket, horizonQuery, type RouteSearch } from '@/lib/horizon';
 import { fetchMetricMedians } from '@/lib/medians.server';
 import { fetchStockDetail } from '@/lib/stocks';
 import { urlPartsToTicker, tickerDisplay, tickerToUrlParts } from '@/lib/ticker';
-import type { FundamentalsSnapshot, Market, PriceBar } from '@/lib/types';
+import { isFullCycle, type FundamentalsSnapshot, type Market, type PriceBar } from '@/lib/types';
 
 type RouteParams = { market: string; ticker: string };
 
@@ -42,7 +44,12 @@ type RouteParams = { market: string; ticker: string };
 // React-cached fetchCycleAnalysis(ticker, preset), so there is still exactly one
 // underlying compute shared across them.
 
-type CycleProps = { ticker: string; spec: CycleSpec };
+// `entitled` is threaded explicitly into every cycle section rather than read from a
+// context: each is an async server component that fetches its own (memoised) cycle,
+// and `fetchCycleAnalysis` requires the flag because it is part of the cache key.
+// Passing it here is what guarantees a free render and a paid render can never share
+// a cached payload.
+type CycleProps = { ticker: string; spec: CycleSpec; entitled: boolean };
 
 /** A muted placeholder matching a section's height, to limit layout shift. */
 function SectionSkeleton({ className }: { className?: string }) {
@@ -56,10 +63,21 @@ function SectionSkeleton({ className }: { className?: string }) {
 async function CycleBadges({
   ticker,
   spec,
+  entitled,
   fundamentals,
 }: CycleProps & { fundamentals: FundamentalsSnapshot }) {
-  const cycle = await fetchCycleAnalysis(ticker, spec);
-  if (!cycle) return null;
+  const cycle = await fetchCycleAnalysis(ticker, spec, entitled);
+  // PREMIUM: the rating + valuation-zone chips are pure judgement. For a free viewer
+  // they're absent rather than replaced — a lock chip beside the company name would
+  // be noise, and the locked KPI tiles just below already make the offer.
+  if (!isFullCycle(cycle)) {
+    return fundamentals.analystRecommendation ? (
+      <BadgeRow
+        analystRecommendation={fundamentals.analystRecommendation}
+        numAnalysts={fundamentals.numAnalystOpinions}
+      />
+    ) : null;
+  }
   return (
     <BadgeRow
       overallLabel={cycle.overallLabel}
@@ -70,8 +88,10 @@ async function CycleBadges({
   );
 }
 
-async function CycleKpi({ ticker, spec }: CycleProps) {
-  const cycle = await fetchCycleAnalysis(ticker, spec);
+async function CycleKpi({ ticker, spec, entitled }: CycleProps) {
+  const cycle = await fetchCycleAnalysis(ticker, spec, entitled);
+  // MIXED: KpiStrip locks cards 1–2 (Overall Rating, Health Score) and keeps
+  // cards 3–4 (Current/Typical Drawdown) working. See KpiStrip.
   return cycle ? <KpiStrip cycle={cycle} /> : null;
 }
 
@@ -86,9 +106,10 @@ async function CycleKpi({ ticker, spec }: CycleProps) {
 async function CycleNotice({
   ticker,
   spec,
+  entitled,
   horizonLabel,
 }: CycleProps & { horizonLabel: string }) {
-  const cycle = await fetchCycleAnalysis(ticker, spec);
+  const cycle = await fetchCycleAnalysis(ticker, spec, entitled);
   if (cycle) return null;
   const suggestion =
     spec.preset === 'short'
@@ -116,10 +137,21 @@ async function CycleNotice({
 async function CycleVerdict({
   ticker,
   spec,
+  entitled,
   fundamentals,
 }: CycleProps & { fundamentals: FundamentalsSnapshot }) {
-  const cycle = await fetchCycleAnalysis(ticker, spec);
-  return cycle ? (
+  const cycle = await fetchCycleAnalysis(ticker, spec, entitled);
+  // PREMIUM: the Verdict is the single most concentrated piece of judgement on the
+  // page — the rating, the label and the valuation zone in one card.
+  if (!entitled) {
+    return (
+      <PremiumLockCard
+        title="The Verdict"
+        blurb="Where this stock sits in its Major Cycle right now, its rating and valuation zone, in one read — included with a subscription."
+      />
+    );
+  }
+  return isFullCycle(cycle) ? (
     <VerdictCard
       cycle={cycle}
       fundamentals={fundamentals}
@@ -131,9 +163,13 @@ async function CycleVerdict({
 async function CycleThesis({
   ticker,
   spec,
+  entitled,
   fundamentals,
 }: CycleProps & { fundamentals: FundamentalsSnapshot }) {
-  const cycle = await fetchCycleAnalysis(ticker, spec);
+  const cycle = await fetchCycleAnalysis(ticker, spec, entitled);
+  // FREE (with one bullet withheld) — see the note on ThesisInsights' Props: its only
+  // scored input gates a positive claim, so a free viewer loses that bullet rather
+  // than being shown anything untrue.
   return cycle ? (
     <ThesisInsights
       cycle={cycle}
@@ -143,9 +179,18 @@ async function CycleThesis({
   ) : null;
 }
 
-async function CycleScorecard({ ticker, spec }: CycleProps) {
-  const cycle = await fetchCycleAnalysis(ticker, spec);
-  return cycle ? (
+async function CycleScorecard({ ticker, spec, entitled }: CycleProps) {
+  const cycle = await fetchCycleAnalysis(ticker, spec, entitled);
+  // PREMIUM: the radar is built entirely from the five Financial Health pillars.
+  if (!entitled) {
+    return (
+      <PremiumLockCard
+        title="Scorecard"
+        blurb="The five-pillar financial-health breakdown — profitability, balance sheet, growth, cash flow and shareholder returns — is included with a subscription."
+      />
+    );
+  }
+  return isFullCycle(cycle) ? (
     <SnowflakeRadar cycle={cycle} />
   ) : (
     <SectionAnchor
@@ -159,9 +204,12 @@ async function CycleScorecard({ ticker, spec }: CycleProps) {
 async function CycleDrawdown({
   ticker,
   spec,
+  entitled,
   priceBars,
 }: CycleProps & { priceBars: PriceBar[] }) {
-  const cycle = await fetchCycleAnalysis(ticker, spec);
+  const cycle = await fetchCycleAnalysis(ticker, spec, entitled);
+  // FREE: the drawdown overlay and its cycle bands are descriptive price history —
+  // the hook that gives a free viewer a reason to come back.
   return cycle ? <DrawdownOverlay priceBars={priceBars} cycle={cycle} /> : null;
 }
 
@@ -228,11 +276,16 @@ export default async function StockDetailPage({
   // Only the stock row + sector medians block the initial render — both are
   // fast. The slow cycle analysis and the benchmark series are streamed in via
   // Suspense below, so the bulk of the page paints without waiting on them.
-  const [stock, medians] = await Promise.all([
+  // Memoised by React cache() and already resolved by the (app) layout for this
+  // request, so this costs no extra query. Threaded into every cycle section below —
+  // it selects which shape /api/cycle returns, and is part of that fetch's cache key.
+  const [stock, medians, viewer] = await Promise.all([
     fetchStockDetail(stored),
     fetchMetricMedians(),
+    getViewerEntitlement(),
   ]);
   if (!stock) notFound();
+  const entitled = viewer.entitled;
 
   // Props for the subnav's one-click "Download Report" (carries the current
   // Major Cycle horizon; medium → clean URL).
@@ -281,6 +334,7 @@ export default async function StockDetailPage({
                 <CycleBadges
                   ticker={stored}
                   spec={spec}
+              entitled={entitled}
                   fundamentals={stock.fundamentals}
                 />
               </Suspense>
@@ -290,16 +344,19 @@ export default async function StockDetailPage({
             <CycleNotice
               ticker={stored}
               spec={spec}
+              entitled={entitled}
               horizonLabel={horizonLabel}
             />
           </Suspense>
           <Suspense fallback={<SectionSkeleton className="h-[96px]" />}>
-            <CycleKpi ticker={stored} spec={spec} />
+            <CycleKpi ticker={stored} spec={spec}
+              entitled={entitled} />
           </Suspense>
           <Suspense fallback={<SectionSkeleton className="h-[200px]" />}>
             <CycleVerdict
               ticker={stored}
               spec={spec}
+              entitled={entitled}
               fundamentals={stock.fundamentals}
             />
           </Suspense>
@@ -308,6 +365,7 @@ export default async function StockDetailPage({
             <CycleThesis
               ticker={stored}
               spec={spec}
+              entitled={entitled}
               fundamentals={stock.fundamentals}
             />
           </Suspense>
@@ -315,7 +373,8 @@ export default async function StockDetailPage({
         <Suspense
           fallback={<SectionSkeleton className="h-[320px] scroll-mt-[120px]" />}
         >
-          <CycleScorecard ticker={stored} spec={spec} />
+          <CycleScorecard ticker={stored} spec={spec}
+              entitled={entitled} />
         </Suspense>
         <section id="sec-cycle" className="scroll-mt-[120px] space-y-[18px]">
         {stock.priceBars.length > 0 && (
@@ -329,6 +388,7 @@ export default async function StockDetailPage({
           <CycleDrawdown
             ticker={stored}
             spec={spec}
+              entitled={entitled}
             priceBars={stock.priceBars}
           />
         </Suspense>
