@@ -791,8 +791,28 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       **VERIFIED:** re-`GET /v1/accounts` shows branding populated; **real branded test receipt landed in
       `ayaatnibrasaziz@gmail.com`** (read via Gmail connector) — navy `#04163e` header, M icon, support
       email+URL, **no address**, Stripe trust-signal footer; Checkout + Portal previews on-brand.
-- [ ] **Step 10 — paywall gate LAST (scope = open owner decision — plan together, don't presume).** No merge
-      to `main` until Step 10 + owner approval.
+- [~] **Step 10 — paywall gate + free tier (owner-approved plan, 2026-07-26).** Code COMPLETE and
+      self-verified; **NOT merged**. Scope agreed with the owner: a signed-in FREE tier (no card)
+      keeps browse, the price chart, the drawdown overlay + cycle bands and every
+      fundamentals/sentiment section; PREMIUM is our judgement (Overall Rating, Health Score,
+      verdict, scorecard/radar, rating badges), the report, and the whole screener. See
+      architecture §7.1 for the rule, the seam and the two cache traps.
+      - Built: `lib/entitlement.ts` (+13 contract tests) · `lib/entitlement.server.ts` (React
+        `cache()` so layout+page share one query) · `CycleAnalysisFree`/`CycleAnalysis` split ·
+        `/api/cycle` internal-secret + `entitled` query param + `private, no-store` ·
+        `/api/analyze` 402 + secret injection · locked-state UI · sidebar DISCOVER/SCREEN ·
+        header account menu · home moved Results→Browse via the `POST_AUTH_HOME` choke point ·
+        honest signup copy (signing up never did start a trial) · CI paywall tripwire.
+      - Gates green: typecheck, lint, build, report-parity, entitlement-guard, ruff, mypy,
+        pytest 86, Playwright 60/60.
+      - **Owner actions still outstanding:** (1) upgrade Vercel to **Pro** — Hobby forbids
+        commercial use and the site takes payments; (2) apply the two migrations (production DDL
+        was blocked pending approval) — drop the redundant 301 MB `idx_bars_ticker_date`, and add
+        the service-role-only free-tier counter columns; (3) set `CYCLE_INTERNAL_SECRET` in Vercel;
+        (4) create the LIVE Stripe webhook endpoint (13 events) at merge.
+      - **Deferred:** free-tier daily view counter (blocked on migration 2); SEO/public pages;
+        the arrays-instead-of-objects RPC encoding; Supabase Auth percentage-based connections.
+      - No merge to `main` until the owner-driven live guided check passes and the owner approves.
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
 - [x] `/methodology` — public, pre-sign-up plain-English explainer (cycle position, financial

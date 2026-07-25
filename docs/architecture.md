@@ -447,9 +447,9 @@ Two runtimes, two locations under `web/`:
 
 | Route | Method | Runtime | Path on disk | Auth | Purpose |
 |---|---|---|---|---|---|
-| `/api/cycle` | GET | Python | `web/api/cycle.py` | **Public** (in `PUBLIC_PATHS`) | Compute Major Cycle for one ticker + preset. Called by the Stock Detail Server Component as a cookieless self-fetch — must be public **and** reached via the production custom domain (see §2). |
-| `/api/analyze` | POST | Python | `web/api/analyze.py` | Required | Run cycle analysis on a **chunk** of tickers (≤60) with given params. **Stateless** — no DB write, no `runId`; the client batches chunks + writes the inputs-only `analysis_runs` row itself. |
-| `/api/analyze-dev` | POST | TS | `web/app/api/analyze-dev/route.ts` | Required | **Dev-only** shim: spawns `analyze.py` as a CLI so the Run tab works under `next dev` (mirrors `cycle.ts`). Returns 404 in production; the client targets `/api/analyze` there. |
+| `/api/cycle` | GET | Python | `web/api/cycle.py` | **Internal secret** (`x-mc-internal`) — F3 Step 10 | Compute Major Cycle for one ticker + preset. Called by the Stock Detail Server Component as a cookieless self-fetch — so it must bypass the auth *redirect*, and is gated by a shared secret instead (see §7.1). Reached via the production custom domain (see §2). Response varies by the `entitled` **query param**. |
+| `/api/analyze` | POST | Python | `web/api/analyze.py` | Required **+ entitlement (402)** | Run cycle analysis on a **chunk** of tickers (≤60) with given params. **Stateless** — no DB write, no `runId`; the client batches chunks + writes the inputs-only `analysis_runs` row itself. Fully premium — the proxy refuses an unentitled caller and injects the internal secret on success. |
+| `/api/analyze-dev` | POST | TS | `web/app/api/analyze-dev/route.ts` | Required **+ entitlement (402)** | **Dev-only** shim: spawns `analyze.py` as a CLI so the Run tab works under `next dev` (mirrors `cycle.ts`). Returns 404 in production; the client targets `/api/analyze` there. |
 | `/api/ticker/[symbol]` | GET | TS | `web/app/api/ticker/[symbol]/route.ts` | Public | Read stored stock + price bars for SSR |
 | `/api/search` | GET | TS | `web/app/api/search/route.ts` | Public | Autocomplete over the analysed universe index (Run tab "search & add") |
 | `/api/listings/search` | GET | TS | `web/app/api/listings/search/route.ts` | Required | Choose-only search over `listings` via the `search_listings` RPC (one round-trip: trigram match + `covered`/`requestStatus` annotation + ranking, all server-side) so the UI shows the right badge |
@@ -459,6 +459,65 @@ Two runtimes, two locations under `web/`:
 | `/api/stripe/webhook` | POST | TS | `web/app/api/stripe/webhook/route.ts` | **Public** (in `PUBLIC_PATHS`) — gated by the **Stripe signature** | **Built (F3 steps 4/7/8).** Verify → idempotency-claim (`stripe_events`, ON CONFLICT DO NOTHING) → service-role sync of the billing columns; a trialing `subscription.*` writes the email trial-tombstone (step 7). **Step 8:** sends the four branded billing emails via Resend — **trial-started welcome** (on `subscription.created` when the sub is `trialing`; one-shot + idempotency-keyed; skipped for a repeat/no-trial customer, who instead gets Stripe's payment receipt) / trial-ending / payment-failed / payment-recovered (the last two gated on the single-owner `grace_until` marker + idempotency key) and handles `charge.dispute.*` → `billing_blocked` (+ cancel-on-lost). **Payment receipts + invoice PDFs are NOT app code** — they're Stripe's built-in "Successful payments" Dashboard email (turned ON in Part C), sent on every real charge; the Customer Portal also lists past invoices. Disputes do the ONE live Stripe retrieve (charge→customer). **Order-safety guards (Stripe doesn't guarantee event order):** the failure (`invoice.payment_failed` **and `invoice.payment_action_required`** / 3-D Secure) + recovery paths only act on the sub currently on file, and `subscription.deleted` only lapses the account when its sub id matches — so a late/out-of-order event can't dun, recover, or cancel a *newer* or *already-cancelled* subscription. (LIVE endpoint event list = 13, incl. `invoice.payment_action_required`.) See data-contracts §10 for the event→DB map |
 | `/api/portal` | POST | TS | `web/app/api/portal/route.ts` | Required | **Built (F3 step 5).** Open the Stripe Customer Portal — create a `billingPortal` session for the user's `stripe_customer_id`, 303-redirect to it (`return_url` = `/account`); no customer → `?billing=none`, error → `?billing=error`. The `/account` "Manage billing" button is a plain form POST |
 | `/api/health` | GET | TS | `web/app/api/health/route.ts` | Public | System health (DB + provider) |
+
+### 7.1 The paywall / entitlement gate (F3 Step 10)
+
+Steps 1–9 built the billing machine; **nothing read it**. `subscription_status` was used
+in five cosmetic places only, so auth alone granted the full product and a cancelled
+account kept everything. Step 10 is that gate.
+
+**The rule** — `web/lib/entitlement.ts`, pure and exhaustively unit-tested, mirroring the
+spec that was already written against `mapStripeStatus`:
+
+```
+billing_blocked === true                  → NO   (dispute lock; outranks everything)
+'active' | 'trialing'                     → YES
+'past_due' && now <  grace_until          → YES  (3-day grace, decision #20)
+'past_due' && now >= grace_until          → NO
+'canceled' | null | anything else         → NO
+```
+
+Fails **closed** — the opposite of `trialGuard.ts`, deliberately: giving premium away
+costs revenue, whereas a denied view is recoverable and visible.
+`deletion_scheduled_at` is evaluated **before** entitlement so a mid-deletion account
+still goes to `/reactivate`, not `/pricing`.
+
+**Where the split falls.** `analyze_ticker()` is already two halves —
+`calculate_cycle_metrics` (free) then the scoring pass (premium) — so the paywall lands on
+an existing seam. For an unentitled viewer `api/cycle.py` **strips** the scoring keys
+(`PREMIUM_KEYS`) before `json.dumps`. Nothing is CSS-hidden or blurred: the bytes never
+leave the server. Stripping at serialisation rather than skipping the computation keeps
+`analytics/` untouched (it is mirrored into `web/_engine/` under a CI drift check, and
+CLAUDE.md #9 makes it sacred); the scoring pass is pure arithmetic over already-loaded
+fundamentals, so the saving would have been nil.
+
+Free = the whole page **except** our judgement: price chart, technical levels, drawdown
+overlay + cycle bands, company overview and every fundamentals/sentiment section (those
+read the `stocks` table, not the engine). Premium = Overall Rating, Health Score, verdict,
+scorecard/radar, rating badges, the report, and the entire screener (`/run`, `/results`).
+
+**Three enforcement layers.** (1) `app/(app)/layout.tsx` + `requireEntitled()` redirect
+premium *pages* to `/pricing?reason=…` — UX, not security. (2) `proxy.ts` refuses premium
+*APIs* with 402 after one PK-indexed profile read, and injects the internal secret on
+success. (3) The Python functions re-check that secret and do the stripping — the authority.
+
+**Two traps this design exists to avoid**, both found while auditing the plan:
+
+- **Never send `public`/`s-maxage` from `/api/cycle`.** It used to. A shared cache keys on
+  the URL alone, so once a server render warmed the edge with a scored payload, any later
+  request — no secret, no session — would have been served the paid analysis *before the
+  function ran*. It now sends `private, no-store`; Next's Data Cache
+  (`revalidate: 3600`, server-side, only fillable by us) preserves the caching.
+- **`entitled` rides in the query string, never a header.** The Data Cache keys on the URL,
+  so a header-borne flag would let the free and paid variants of one ticker collide on a
+  single entry.
+
+**Verification note.** The HTTP gate is exercised by `analytics/tests/test_cycle_handler.py`,
+which boots the real handler on a loopback port — because neither local dev (which spawns
+`cycle.py` as a **CLI**, no HTTP) nor a Vercel **preview** (whose `baseUrl()` resolves to the
+*production* domain) would otherwise run it before production.
+`web/scripts/check-entitlement-gates.mjs` is a credential-free CI tripwire covering all of
+the above; it can never skip, unlike the e2e suite.
 
 **Webhook event-subscription policy (F3 Step 8 decision — 2026-07-24).** The production
 LIVE webhook endpoint subscribes to **only the 13 event types the handler acts on**, per
@@ -621,6 +680,13 @@ STRIPE_WEBHOOK_SECRET=
 # Email
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
+
+# Paywall (F3 Step 10). Marks a request as coming from our own server: /api/cycle
+# can't be session-gated (the Stock Detail page self-fetches it without cookies), and
+# the proxy injects the same secret into /api/analyze once entitlement is verified.
+# REQUIRED in production — both Python functions fail CLOSED (503 + loud log) without
+# it rather than falling back to "open".
+CYCLE_INTERNAL_SECRET=
 
 # Misc
 NEXT_PUBLIC_SITE_URL=
