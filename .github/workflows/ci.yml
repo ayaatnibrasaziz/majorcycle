@@ -41,11 +41,20 @@ jobs:
         # Stock Detail page render different section sets. See the script header.
         run: pnpm check:report-sections
 
+      - name: Check paywall (entitlement) gates
+        # Static tripwire for the F3 Step 10 paywall. Needs NO credentials, so —
+        # unlike the behavioural e2e suite, which self-skips without secrets — it
+        # can never go quiet. Fails if /api/cycle becomes public again, if it
+        # re-advertises a shared cache (the CDN bypass that would defeat the whole
+        # paywall), if a premium route loses its gate, or if the free-tier counter
+        # columns become user-writable. See the script header.
+        run: pnpm check:entitlement-gates
+
       - name: Build
         run: pnpm build
 
   e2e:
-    name: E2E (Playwright — auth + Stripe webhook)
+    name: E2E (Playwright — auth + Stripe webhook + entitlement)
     runs-on: ubuntu-latest
     # Boots a real Next dev server, so it needs the (public) Supabase URL + anon
     # key. They live as repo Variables — until they're set this job SKIPS cleanly

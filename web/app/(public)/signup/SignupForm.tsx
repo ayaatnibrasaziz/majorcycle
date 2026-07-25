@@ -13,10 +13,15 @@ import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
 import { getSiteURL } from '@/lib/url';
 
-const trialFeatures = [
-  'Full access to every ticker, chart, and analysis tool',
-  'Cancel anytime — no charge until day 7',
-  'Email reminder 2 days before trial ends',
+// Signing up has never actually started a trial — `supabase.auth.signUp` just
+// creates the account, and the 7-day trial begins at checkout, where the card is
+// taken (decision #19). The old copy here promised a trial anyway, which is now
+// plainly wrong: a new account lands on the FREE tier. These lines describe what
+// creating an account really gets you, and the trial is offered separately.
+const freeFeatures = [
+  'Browse every US, Australian and Canadian stock we cover',
+  'Full price history, cycle chart and company financials',
+  'No card required — start a 7-day free trial whenever you like',
 ];
 
 export function SignupForm() {
@@ -62,7 +67,7 @@ export function SignupForm() {
             <strong className="text-[var(--brand-deep)]">{email}</strong>.
           </p>
           <p className="text-[12.5px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-            Click it to activate your 7-day free trial.
+            Click it to activate your free account.
           </p>
         </div>
         <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
@@ -77,13 +82,13 @@ export function SignupForm() {
 
   return (
     <AuthCard
-      title="Start your free trial"
-      subtitle="7 days free. Card required — no charge until day 7."
+      title="Create your free account"
+      subtitle="No card required. Start a 7-day free trial whenever you’re ready."
     >
-      {/* Trial value props — matches reference briefing-card aesthetic */}
+      {/* Free-tier value props — matches reference briefing-card aesthetic */}
       <div className="mb-6 bg-gradient-to-br from-white to-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius)] px-4 py-3.5">
         <ul className="flex flex-col gap-2">
-          {trialFeatures.map((line) => (
+          {freeFeatures.map((line) => (
             <li key={line} className="flex items-start gap-2.5 text-[12.5px] text-[var(--text-secondary)] leading-snug">
               <span className="mt-[2px] w-[15px] h-[15px] rounded-full bg-[var(--c-tier-2)] flex items-center justify-center flex-shrink-0">
                 <Check className="w-[10px] h-[10px] text-white" strokeWidth={3.5} />
@@ -133,7 +138,7 @@ export function SignupForm() {
         )}
 
         <Button type="submit" size="lg" disabled={loading} className="w-full mt-1">
-          {loading ? 'Creating account…' : 'Create account & start trial'}
+          {loading ? 'Creating account…' : 'Create free account'}
         </Button>
       </form>
 

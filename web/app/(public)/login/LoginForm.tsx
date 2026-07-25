@@ -108,7 +108,7 @@ export function LoginForm() {
       <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
         New to MajorCycle?{' '}
         <Link href="/signup" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">
-          Start your free trial
+          Create a free account
         </Link>
       </p>
     </AuthCard>

@@ -1,0 +1,236 @@
+// CI guard: the paywall (F3 Step 10) must not silently regress.
+//
+// WHY A STATIC SCRIPT AND NOT JUST TESTS. The behavioural suites that cover this
+// (e2e/entitlement.spec.ts, analytics/tests/test_cycle_handler.py) are the real
+// proof — but the Playwright half SELF-SKIPS when its Supabase/Stripe credentials
+// are absent, which is exactly the situation in which a misconfigured repo would
+// most like to go quiet. This script needs no credentials, no database and no
+// server, so it can never skip: if someone reopens the paywall, CI goes red.
+//
+// It is a text scan, deliberately. It cannot prove the gate WORKS — that's the
+// tests' job — only that the specific mistakes we already made, or nearly made,
+// cannot be made again unnoticed. Each check below names the failure it prevents.
+//
+// Run: pnpm check:entitlement-gates   (wired into the CI `frontend` job)
+
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const webRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const read = (...p) => readFileSync(path.join(webRoot, ...p), 'utf8');
+
+const failures = [];
+const fail = (check, detail) => failures.push({ check, detail });
+
+// The scoring keys, in the snake_case the Python function emits. Kept in step with
+// PREMIUM_KEYS in web/api/cycle.py and CycleAnalysis in web/lib/types.ts.
+const PREMIUM_KEYS = [
+  'financial_health_score',
+  'fh_subscores',
+  'valuation_score',
+  'valuation_score_raw',
+  'quality_factor',
+  'valuation_zone',
+  'cycle_payoff_score',
+  'overall_rating',
+  'overall_label',
+];
+
+// ── 1. /api/cycle must not be blanket-public ─────────────────────────────────
+// It was, once: the whole analysis engine was a free, unauthenticated, unthrottled
+// API. Re-adding it to PUBLIC_PATHS would restore that in one line.
+{
+  const proxy = read('proxy.ts');
+  const publicBlockMatch = proxy.match(/const PUBLIC_PATHS = \[([\s\S]*?)\n\];/);
+  const publicBlock = publicBlockMatch ? publicBlockMatch[1] : '';
+  // A commented mention is fine (there's an explanatory note); an actual entry isn't.
+  const hasEntry = publicBlock
+    .split('\n')
+    .some((line) => !line.trim().startsWith('//') && /['"]\/api\/cycle['"]/.test(line));
+  if (hasEntry) {
+    fail(
+      '/api/cycle is back in PUBLIC_PATHS',
+      'That makes the entire analysis engine a free public API. It must stay on the\n' +
+        '  secret-gated branch instead (see CYCLE_PATH in proxy.ts).',
+    );
+  }
+  if (!/CYCLE_PATH/.test(proxy) || !/hasInternalSecret/.test(proxy)) {
+    fail(
+      'the /api/cycle secret branch is missing from proxy.ts',
+      'Without it the endpoint is either wide open or (if merely removed from\n' +
+        '  PUBLIC_PATHS) redirected to /login, which blanks every Stock Detail page.',
+    );
+  }
+  if (!/PREMIUM_API_PATHS/.test(proxy) || !/402/.test(proxy)) {
+    fail(
+      'the premium API gate is missing from proxy.ts',
+      '/api/analyze must answer 402 for an unentitled caller.',
+    );
+  }
+}
+
+// ── 2. /api/cycle must never advertise a shared cache ────────────────────────
+// The bug that would have defeated the whole paywall: `public, s-maxage=3600` let
+// a CDN store a fully-scored response keyed on URL alone, so any later request —
+// no secret, no session — would have been served the paid analysis before the
+// function ran. (Audit finding B1.)
+{
+  const cycle = read('api', 'cycle.py');
+  const code = cycle
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('#'))
+    .join('\n');
+  for (const bad of ['s-maxage', 'stale-while-revalidate']) {
+    if (code.includes(bad)) {
+      fail(
+        `api/cycle.py sends a shared-cache directive (${bad})`,
+        'This response varies by entitlement and a shared cache keys on the URL\n' +
+          '  alone. It must send `private, no-store`; Next\'s Data Cache does the caching.',
+      );
+    }
+  }
+  if (!/private, no-store/.test(code)) {
+    fail(
+      'api/cycle.py no longer sends `private, no-store`',
+      'Required so no shared cache can retain a scored payload.',
+    );
+  }
+  if (!/hmac\.compare_digest/.test(code) || !/INTERNAL_HEADER/.test(code)) {
+    fail(
+      'api/cycle.py lost its internal-secret check',
+      'It is the authoritative half of the gate — the proxy check alone is not enough.',
+    );
+  }
+  for (const key of PREMIUM_KEYS) {
+    if (!cycle.includes(key)) {
+      fail(
+        `api/cycle.py PREMIUM_KEYS no longer lists ${key}`,
+        'Every scored field must be stripped for an unentitled viewer.',
+      );
+    }
+  }
+}
+
+// ── 3. /api/analyze must require the injected secret ─────────────────────────
+{
+  const analyze = read('api', 'analyze.py');
+  if (!/hmac\.compare_digest/.test(analyze) || !/INTERNAL_HEADER/.test(analyze)) {
+    fail(
+      'api/analyze.py lost its internal-secret check',
+      'The proxy injects the secret only after verifying entitlement, so without\n' +
+        '  this check the screener could be reached without passing the gate.',
+    );
+  }
+}
+
+// ── 4. entitlement must ride in the URL, not a header ────────────────────────
+// Next's Data Cache keys on the URL, so a header-borne flag would let the free and
+// paid variants of a ticker collide on one cache entry. (Audit finding B3.)
+{
+  const cycleTs = read('lib', 'cycle.ts');
+  if (!/entitled: entitled \? '1' : '0'/.test(cycleTs)) {
+    fail(
+      'lib/cycle.ts no longer puts `entitled` in the /api/cycle query string',
+      'A header would not be part of the cache key, so a free response and a paid\n' +
+        '  one could be served to the wrong viewer.',
+    );
+  }
+  if (!/INTERNAL_HEADER\]: process\.env\.CYCLE_INTERNAL_SECRET/.test(cycleTs)) {
+    fail('lib/cycle.ts no longer sends the internal secret', 'Every call would 401.');
+  }
+}
+
+// ── 5. premium routes must still call the gate ───────────────────────────────
+{
+  const premiumPages = [
+    ['app', '(app)', 'run', 'page.tsx'],
+    ['app', '(app)', 'results', 'page.tsx'],
+    ['app', '(app)', 'stocks', '[market]', '[ticker]', 'report', 'page.tsx'],
+  ];
+  for (const parts of premiumPages) {
+    const src = read(...parts);
+    if (!/requireEntitled\(\)/.test(src)) {
+      fail(
+        `${parts.join('/')} no longer calls requireEntitled()`,
+        'This page exposes scored output and must redirect an unentitled viewer.',
+      );
+    }
+  }
+  const reportData = read('app', '(app)', 'stocks', '[market]', '[ticker]', 'report', 'data', 'route.ts');
+  if (!/getViewerEntitlement/.test(reportData) || !/402/.test(reportData)) {
+    fail(
+      'the report data route no longer checks entitlement',
+      'Route handlers are not wrapped by the (app) layout, so it must gate itself —\n' +
+        '  its payload contains the full scorecard.',
+    );
+  }
+}
+
+// ── 6. the entitlement rule must stay fail-closed ────────────────────────────
+{
+  const ent = read('lib', 'entitlement.ts');
+  if (!/billing_blocked === true\) return false/.test(ent)) {
+    fail(
+      'lib/entitlement.ts no longer denies on billing_blocked first',
+      'A dispute lock must outrank an otherwise-active subscription.',
+    );
+  }
+  if (!/if \(!profile\) return false/.test(ent)) {
+    fail('lib/entitlement.ts no longer fails closed on a missing profile', '');
+  }
+}
+
+// ── 7. the free-tier counter must never be user-writable ─────────────────────
+// profiles RLS lets a user UPDATE their own row, so a counter they can write is a
+// counter they can reset. (Audit finding B4.)
+{
+  const migrationDir = path.join(webRoot, '..', 'supabase', 'migrations');
+  let counterMigration = '';
+  try {
+    counterMigration = readFileSync(
+      path.join(migrationDir, '20260726010000_free_tier_view_counter.sql'),
+      'utf8',
+    );
+  } catch {
+    fail('the free-tier counter migration is missing', 'Expected 20260726010000_free_tier_view_counter.sql');
+  }
+  if (counterMigration && !/revoke all \(free_views_date, free_views_tickers\)/.test(counterMigration)) {
+    fail(
+      'the counter columns are no longer revoked from the browser-facing roles',
+      'profiles RLS lets a user update their own row, so a grant here would let\n' +
+        '  anyone reset their own quota from the browser.',
+    );
+  }
+  // Match only a real GRANT *statement*, not the word "granted" inside a comment
+  // (the migration's own prose explains that these columns are never granted, and
+  // a looser regex flagged that as a violation).
+  const statements = counterMigration
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('--'))
+    .join('\n')
+    .split(';');
+  const grantsCounter = statements.some(
+    (st) => /^\s*grant\b/i.test(st) && /free_views/.test(st),
+  );
+  if (grantsCounter) {
+    fail('a GRANT on the free-tier counter columns was found', 'These are service-role only.');
+  }
+}
+
+// ── report ───────────────────────────────────────────────────────────────────
+if (failures.length > 0) {
+  console.error('\nPAYWALL GUARD FAILED — the entitlement gate has regressed:\n');
+  for (const { check, detail } of failures) {
+    console.error(`  ✗ ${check}`);
+    if (detail) console.error(`    ${detail}`);
+    console.error('');
+  }
+  console.error(
+    'These checks encode bugs that were already found once (see the Step 10 plan).\n' +
+      'If a change here is intentional, update this script in the same commit and say why.\n',
+  );
+  process.exit(1);
+}
+
+console.log('paywall guard: entitlement gates intact (7 checks passed)');

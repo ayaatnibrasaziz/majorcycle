@@ -20,7 +20,8 @@ async function signIn(page: Page) {
   await page.fill('input#email', EMAIL!);
   await page.fill('input#password', PASSWORD!);
   await page.getByRole('button', { name: /^sign in$/i }).click();
-  await expect(page).toHaveURL(/\/results/);
+  // Post-auth home is Browse, not Results (F3 Step 10) — see POST_AUTH_HOME.
+  await expect(page).toHaveURL(/\/stocks/);
 
   const dialog = page.getByRole('dialog', { name: /welcome to majorcycle/i });
   await dialog.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});

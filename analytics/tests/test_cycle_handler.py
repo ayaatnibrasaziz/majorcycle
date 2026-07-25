@@ -185,7 +185,7 @@ class TestEntitlementStripping:
         ):
             assert key in body, f"free field {key} went missing"
 
-    def test_premium_keys_are_ABSENT_not_null(self, server: int) -> None:
+    def test_premium_keys_are_absent_not_null(self, server: int) -> None:
         # Nulls would still tell a free user the shape of what they're missing, and
         # would let a client "un-hide" a placeholder. They must simply not be there.
         _, _, body = _get(server, f"{MEDIUM}&entitled=0")

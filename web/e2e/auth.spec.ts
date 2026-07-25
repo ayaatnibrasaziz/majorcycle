@@ -52,7 +52,9 @@ test.describe('public pages render', () => {
     await expect(page.locator('input#email')).toBeVisible();
     await expect(page.locator('input#password')).toBeVisible();
     await expect(page.getByRole('link', { name: /forgot password/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /start your free trial/i })).toBeVisible();
+    // Signup creates a FREE account; the trial starts at checkout where the card is
+    // taken (F3 Step 10). The CTA says so rather than promising a trial it can't give.
+    await expect(page.getByRole('link', { name: /create a free account/i })).toBeVisible();
   });
 });
 
@@ -179,11 +181,13 @@ test.describe('authenticated flows', () => {
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: /^password$/i })).toBeVisible();
 
-    // Sign out via the sidebar control. It sits in the bottom-left, where the
-    // Next.js dev-server overlay portal also renders and intercepts pointer events
-    // (a dev-only artifact, absent in production). Activate it by keyboard instead —
-    // this mirrors a keyboard user and works pre-hydration (the form is a native POST).
-    const signOut = page.getByRole('button', { name: /sign out/i });
+    // Sign out now lives in the header account menu rather than at the foot of the
+    // sidebar (F3 Step 10) — that keeps it ONE click, which matters most on a shared
+    // computer, while clearing the nav. Open the menu, then activate by keyboard:
+    // the submit control is still a native form POST, so this works pre-hydration and
+    // mirrors a keyboard user.
+    await page.getByRole('button', { name: /account menu/i }).click();
+    const signOut = page.getByRole('menuitem', { name: /sign out/i });
     await signOut.press('Enter');
     await expect(page).toHaveURL(/\/login/);
 
