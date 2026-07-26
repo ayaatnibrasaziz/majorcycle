@@ -21,6 +21,12 @@ analytics/.pytest_cache/
 .env.*.local
 .env.production
 
+# Owner's personal secret vault (SECRETS.local.md). Holds real key values, so it
+# must never be tracked. Ignored by name AND by pattern so a copy/rename still
+# can't be committed by accident.
+SECRETS.local.md
+*.local.md
+
 # OS
 .DS_Store
 Thumbs.db

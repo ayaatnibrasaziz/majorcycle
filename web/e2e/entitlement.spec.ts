@@ -5,14 +5,19 @@ import { hasAccess, accessDenialReason } from '../lib/entitlement';
 /**
  * Paywall (F3 Step 10) — contract tests.
  *
- * This file is the regression net for the entitlement gate. It has two halves:
+ * This file pins the DECISION — the `hasAccess` truth table below is pure and
+ * credential-free, so it always runs, and it locks down decision #20 (3-day grace,
+ * then hard lock) plus the fail-closed posture against silent drift.
  *
- *   1. The `hasAccess` truth table below — PURE, credential-free, always runs. It
- *      pins locked decision #20 (3-day grace, then hard lock) and the fail-closed
- *      posture so neither can drift silently.
- *   2. The behavioural matrix (added alongside the gate wiring) — drives real routes
- *      and the API for each subscription state, and self-skips without creds, exactly
- *      like `e2e/auth.spec.ts` and `e2e/stripe-webhook.spec.ts`.
+ * It deliberately does NOT drive routes. The enforcement of that decision is proved
+ * elsewhere, by tests that do not depend on a live subscription state:
+ *   · `analytics/tests/test_cycle_handler.py` boots the real /api/cycle handler and
+ *     asserts the wire format — 401 without the secret, premium keys absent at
+ *     entitled=0, present at entitled=1, and `private, no-store` always.
+ *   · `web/scripts/check-entitlement-gates.mjs` is the credential-free tripwire for
+ *     the wiring itself (proxy branches, page guards, counter atomicity).
+ * The end-to-end pass across all seven live subscription states is the owner-driven
+ * guided check against the Stripe sandbox, not CI.
  *
  * Imported relatively rather than via the `@/` alias, matching the existing specs
  * (none of which rely on the path alias being available to the Playwright transform).

@@ -13,11 +13,31 @@
 --
 -- SECURITY -- these columns MUST NOT be user-writable. `profiles` RLS lets a user
 -- UPDATE their own row ("users update own profile"), so a user-writable counter
--- could simply be reset to zero by the browser. Access is therefore restricted at
--- the COLUMN level: only the service role (which bypasses RLS) may write them,
--- exactly like the billing columns added in 20260715000000. The revokes below are
--- explicit and defensive -- they must hold even if a future table-level GRANT is
--- ever issued. (Step 10 audit, finding B4.)
+-- could simply be reset to zero by the browser. Only the service role (which
+-- bypasses RLS) may write them, exactly like the billing columns added in
+-- 20260715000000. (Step 10 audit, finding B4.)
+--
+-- WHAT ACTUALLY ENFORCES THAT -- verified against the live database after applying
+-- this migration, because the answer is not the obvious one:
+--
+--   `authenticated` holds NO table-level UPDATE on profiles. Its UPDATE is granted
+--   per column, and lists exactly display_name, country and acknowledged_disclaimer_at.
+--   A new column is therefore not updatable by a logged-in user the moment it is
+--   added -- that absence is the real guarantee here.
+--
+-- The REVOKEs below are kept as a tripwire and a statement of intent, but be clear
+-- about their limits: Postgres does NOT let a column-level REVOKE subtract from a
+-- table-level GRANT. `authenticated` does hold table-level SELECT/INSERT on
+-- profiles, and these columns are consequently still readable by their owner (which
+-- is harmless -- it is their own count) despite the revoke. The lesson for anyone
+-- editing this later: if you ever issue `grant update on public.profiles to
+-- authenticated`, these revokes will NOT save you and the counter becomes
+-- user-resettable. Grant UPDATE per column, never on the table.
+--
+-- `anon` does hold table-level UPDATE (pre-existing, inherited from the Supabase
+-- defaults). It is not exploitable: the "users update own profile" policy requires
+-- auth.uid() = id, and an anonymous caller has no auth.uid(), so the policy matches
+-- zero rows. Tightening that grant is tracked separately.
 
 alter table public.profiles
   add column if not exists free_views_date date,

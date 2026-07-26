@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -28,6 +29,7 @@ import { VerdictCard } from '@/components/stocks/VerdictCard';
 import { fetchBenchmarks } from '@/lib/benchmarks.server';
 import { fetchCycleAnalysis, type CycleSpec } from '@/lib/cycle';
 import { getViewerEntitlement } from '@/lib/entitlement.server';
+import { recordFreeView } from '@/lib/freeViews';
 import { parseSpec, isValidMarket, horizonQuery, type RouteSearch } from '@/lib/horizon';
 import { fetchMetricMedians } from '@/lib/medians.server';
 import { fetchStockDetail } from '@/lib/stocks';
@@ -287,6 +289,16 @@ export default async function StockDetailPage({
   if (!stock) notFound();
   const entitled = viewer.entitled;
 
+  // Free-tier fence (F3 Step 10). Counted AFTER the notFound() above, so a typo'd
+  // ticker never costs a real reader one of their views. Subscribers are never
+  // counted at all — locked decision #18 promises them no usage limits — so this
+  // whole block is skipped when entitled. Re-opening a stock seen earlier today is
+  // free, which is what makes a refresh or a prefetch harmless. See lib/freeViews.ts.
+  if (!entitled && viewer.userId) {
+    const view = await recordFreeView(viewer.userId, stored);
+    if (!view.allowed) return <FreeViewLimitNotice limit={view.limit} />;
+  }
+
   // Props for the subnav's one-click "Download Report" (carries the current
   // Major Cycle horizon; medium → clean URL).
   const reportSymbol = tickerToUrlParts(stored).symbol;
@@ -461,6 +473,57 @@ export default async function StockDetailPage({
           <NewsFeed news={stock.news} />
         </section>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Shown instead of the page when a free viewer opens a NEW stock having already
+ * reached the daily cap (F3 Step 10). Stocks they opened earlier today still load
+ * normally, so this is never a dead end — and it resets on its own.
+ *
+ * Local to this page rather than a shared component: it is the one place the fence
+ * can fire, and keeping it here also keeps it out of the report-parity guard's
+ * import scan (scripts/check-report-sections.mjs), which tracks only
+ * @/components/stocks/* sections.
+ */
+function FreeViewLimitNotice({ limit }: { limit: number }) {
+  return (
+    <div className="pt-5">
+      <div className="card card--stack-base" role="note">
+        <div className="card-header">
+          <div className="card-title">Daily browsing limit reached</div>
+        </div>
+        <div className="card-body space-y-3">
+          <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
+            You&apos;ve opened {limit} different stocks today on the free plan. The
+            count resets at midnight UTC, and any stock you&apos;ve already looked at
+            today still opens normally.
+          </p>
+          <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
+            A subscription removes the limit entirely and unlocks the Major Cycle
+            rating, financial-health scorecard, the full screener and downloadable
+            reports.
+          </p>
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <Link
+              href="/pricing"
+              className="text-[13px] font-semibold text-[var(--brand-mid)] underline underline-offset-2"
+            >
+              See plans
+            </Link>
+            <Link
+              href="/stocks"
+              className="text-[13px] text-[var(--text-muted)] underline underline-offset-2"
+            >
+              Back to Browse
+            </Link>
+          </div>
+        </div>
+      </div>
+      <p className="mt-3 text-[11px] text-[var(--text-muted)]">
+        Information only — not financial advice.
+      </p>
     </div>
   );
 }

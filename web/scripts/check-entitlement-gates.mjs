@@ -13,7 +13,7 @@
 //
 // Run: pnpm check:entitlement-gates   (wired into the CI `frontend` job)
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -218,6 +218,84 @@ const PREMIUM_KEYS = [
   }
 }
 
+// ── 8. the counter must stay atomic and out of the browser's reach ───────────
+// Two separate hazards, both found by inspecting the LIVE database rather than the
+// code, and neither visible from the migration text alone.
+{
+  const migrationDir = path.join(webRoot, '..', 'supabase', 'migrations');
+  let migrations = [];
+  try {
+    migrations = readdirSync(migrationDir).filter((f) => f.endsWith('.sql'));
+  } catch {
+    fail('the migrations directory could not be read', migrationDir);
+  }
+
+  // (a) A TABLE-level UPDATE grant to `authenticated` would make the counter
+  // user-resettable — and the column-level REVOKEs in the counter migration would
+  // NOT prevent it, because Postgres cannot subtract a column from a table grant.
+  // What protects the counter today is that `authenticated`'s UPDATE is granted per
+  // column (display_name, country, acknowledged_disclaimer_at). Keep it that way.
+  for (const file of migrations) {
+    const sql = readFileSync(path.join(migrationDir, file), 'utf8')
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('--'))
+      .join('\n');
+    // A column list in parentheses before ON is the safe form; its absence is not.
+    if (/grant[^;(]*\bupdate\b[^;(]*\bon\b\s+(public\.)?profiles\b[^;]*\bto\b[^;]*\bauthenticated\b/i.test(sql)) {
+      fail(
+        `${file} grants table-level UPDATE on profiles to authenticated`,
+        'That silently overrides the free-tier counter\'s column REVOKEs (Postgres\n' +
+          '  cannot subtract a column from a table-level grant), letting any user reset\n' +
+          '  their own quota. Grant UPDATE per column instead.',
+      );
+    }
+  }
+
+  // (b) The counting must happen inside the database function, which row-locks the
+  // profile. Doing it as a read-then-write in TypeScript loses count under exactly
+  // the concurrent traffic the fence exists to stop.
+  const fnMigration = migrations.find((f) => f.includes('record_free_view'));
+  if (!fnMigration) {
+    fail(
+      'the record_free_view migration is missing',
+      'The counter must be applied atomically in Postgres, not read-modify-written\n' +
+        '  from the app, or parallel requests overwrite each other and the cap is free.',
+    );
+  } else {
+    const sql = readFileSync(path.join(migrationDir, fnMigration), 'utf8');
+    if (!/for update/i.test(sql)) {
+      fail(
+        'record_free_view no longer takes a row lock (`for update`)',
+        'Without it, concurrent views read the same stale array and clobber each\n' +
+          '  other\'s writes — a scraper gets N pages for one recorded view.',
+      );
+    }
+    if (/grant\s+execute[^;]*\b(anon|authenticated)\b/i.test(sql)) {
+      fail(
+        'record_free_view is executable by a browser-facing role',
+        'Only service_role may call it — otherwise a user can drive their own counter.',
+      );
+    }
+  }
+
+  // (c) The fence has to actually be called, or it is decorative.
+  const detail = read('app', '(app)', 'stocks', '[market]', '[ticker]', 'page.tsx');
+  if (!/recordFreeView\(/.test(detail)) {
+    fail(
+      'the Stock Detail page no longer calls recordFreeView()',
+      'The free-tier daily cap is enforced there and nowhere else.',
+    );
+  }
+  const browser = read('components', 'stocks', 'StockBrowser.tsx');
+  if (!/prefetch=\{false\}/.test(browser)) {
+    fail(
+      'StockBrowser stock links lost prefetch={false}',
+      'next/link would prefetch the detail route on hover, running the server\n' +
+        '  component and burning free-tier views the reader never opened.',
+    );
+  }
+}
+
 // ── report ───────────────────────────────────────────────────────────────────
 if (failures.length > 0) {
   console.error('\nPAYWALL GUARD FAILED — the entitlement gate has regressed:\n');
@@ -233,4 +311,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('paywall guard: entitlement gates intact (7 checks passed)');
+console.log('paywall guard: entitlement gates intact (8 checks passed)');

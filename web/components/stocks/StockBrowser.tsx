@@ -416,6 +416,12 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
               <li key={s.ticker}>
                 <Link
                   href={hrefFor(s.ticker)}
+                  // Prefetch OFF (F3 Step 10, audit finding B5). next/link otherwise
+                  // prefetches on hover/viewport, which RUNS the stock detail server
+                  // component — so merely scrolling this list would record free-tier
+                  // views the reader never asked for. The page is streamed and fast
+                  // enough that losing the prefetch costs little.
+                  prefetch={false}
                   className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-[var(--bg-hover)] transition-colors duration-150 group"
                 >
                   <div className="min-w-0 flex-1">

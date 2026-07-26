@@ -512,6 +512,31 @@ success. (3) The Python functions re-check that secret and do the stripping — 
   so a header-borne flag would let the free and paid variants of one ticker collide on a
   single entry.
 
+**Free-tier daily fence** (`web/lib/freeViews.ts` + the `record_free_view` Postgres
+function, migration `20260726020000`). A free account may open **25 distinct tickers per
+UTC day**. This is an *anti-scraping* measure, not a revenue lever — the premium fields
+are already stripped from every one of those 25 responses. What is left worth protecting
+is the bulk: someone walking all ~866 tickers to rebuild the corpus. Accordingly it
+**fails OPEN** (a DB error lets the reader through), the deliberate opposite of the
+entitlement rule above.
+
+- **Counted in the database, not the app.** The obvious read-append-write in TypeScript is
+  wrong: it is two round-trips over a whole array, so N concurrent requests all read the
+  same stale set and each write clobbers the others — the scraper gets N pages recorded as
+  one. `record_free_view` does the check and the append under `select … for update`.
+- **Distinct tickers, not page loads**, so a refresh, a back-navigation or a prefetch is
+  free. Browse stock links also carry `prefetch={false}`: `next/link` prefetch *runs the
+  server component*, so scrolling the list would otherwise burn quota invisibly.
+- Counted only after `notFound()` (a bad ticker costs nothing) and never for a subscriber
+  — locked decision #18 promises them no usage limits.
+- **The columns are not user-writable, but not for the reason the migration first claimed.**
+  Postgres cannot subtract a column from a table-level GRANT, so the column-level `REVOKE`
+  is only a tripwire. The real guarantee is that `authenticated` holds **no table-level
+  UPDATE** on `profiles` at all — its UPDATE is granted per column
+  (`display_name`, `country`, `acknowledged_disclaimer_at`), so any new column is
+  unwritable on arrival. If anyone ever issues `grant update on profiles to authenticated`,
+  the counter becomes user-resettable; CI now fails on exactly that statement.
+
 **Verification note.** The HTTP gate is exercised by `analytics/tests/test_cycle_handler.py`,
 which boots the real handler on a loopback port — because neither local dev (which spawns
 `cycle.py` as a **CLI**, no HTTP) nor a Vercel **preview** (whose `baseUrl()` resolves to the
@@ -563,7 +588,7 @@ Branding page requires an explicit **Save changes** (no auto-save). Confirmed li
 by preference): custom domain (~US$10/mo), custom email domain (owner keeps the trust-signalling
 `stripe.com` receipt). Statement descriptors + Product name were already clean (unchanged).
 
-**Auth pattern:** Access is **authentication-only today** — `web/proxy.ts` (middleware) and `(app)/layout.tsx` check that a `user` session exists and refresh it; **subscription/trial gating is not yet enforced** (planned with the Stripe build, roadmap #20). F3 in progress: checkout + the webhook now populate the client-immutable entitlement columns on `profiles`, but the **paywall gate that reads them is the final F3 step** (scope is an open owner decision), so nothing is gated on subscription state yet. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
+**Auth pattern:** `web/proxy.ts` (middleware) and `(app)/layout.tsx` check that a `user` session exists and refresh it. **Subscription gating is enforced on top of that as of F3 Step 10 — see §7.1 above** (branch `feat/f3-stripe`, not yet merged to `main`): checkout + the webhook populate the client-immutable entitlement columns on `profiles`, and `lib/entitlement.ts` is the single rule that reads them, enforced at the page, the proxy and the Python functions. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
 
 **Security posture (F0.5 hardening — shipped 2026-07-05, PR #61):** a full code + platform audit hardened the auth surface. (a) **Recovery-session confinement:** a password-reset link mints a full session, so `auth/confirm` sets an httpOnly `mc_pw_recovery` marker and `proxy.ts` restricts that session to `/account/update-password` (+ `/auth/recovery-done`, `/auth/signout`) until the password is changed — a leaked/forwarded reset link can no longer roam the app (live-verified). The page now lives under the `(public)` shell (no sidebar). (b) **Sign-out:** POST `/auth/signout` + a sidebar `SignOutButton`. (c) **`profiles` billing-column lockdown:** table-level `UPDATE` revoked; a column `GRANT` allows only `display_name`/`country`/`acknowledged_disclaimer_at`, so `subscription_*`/`trial_ends_at`/`stripe_*` are client-immutable (cron/webhooks write them via the service-role key) — migration `20260705032433`. (d) **Security headers** in `web/next.config.ts` (X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, CSP report-only). (e) **Open-redirect guard** `safeNextPath()`. (f) **DMARC** tightened to `p=reject` (strict) — safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Deferred: leaked-password protection (Supabase Pro-only), CSP flip to enforcing.
 

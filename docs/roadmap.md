@@ -811,19 +811,65 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
         locally `next dev` computes the cycle by spawning `cycle.py` as a CLI, so it never makes
         the HTTP call the secret guards. Vercel injects env vars at BUILD time, so it takes
         effect on the next deployment (i.e. when this branch deploys — no action needed).
+      - [x] **All three migrations APPLIED to production — DONE 2026-07-26** (owner approved the
+        DDL; applied via the Supabase connector, each verified against the live DB afterwards).
+        - `20260726000000` drop `idx_bars_ticker_date` — a DESC-only duplicate of the PK.
+          **Database went 1,211 MB → 910 MB**, so it now fits inside the Micro instance's 1 GB
+          RAM and the US$15/mo compute upgrade stays unnecessary. One fewer index per cron upsert.
+        - `20260726010000` `free_views_date` + `free_views_tickers` on `profiles`.
+        - `20260726020000` **`record_free_view()`** — added during the build, not in the original
+          plan. The plan's read-append-write in TypeScript was **wrong**: two round-trips over a
+          whole array lose count under concurrency, and the array overwrite means N parallel
+          requests each write "their" single ticker and clobber each other — a scraper (the exact
+          thing the fence exists to stop) would get N pages recorded as one. The function does the
+          check and the append under `select … for update`, so it cannot be raced. Service-role
+          EXECUTE only; `search_path` pinned. Verified live: first view, repeat view (free, no
+          increment), at-cap, over-cap denial, already-seen-still-allowed-at-cap, UTC-day reset,
+          unknown-user fail-open, and that neither `anon` nor `authenticated` may execute it.
+      - [x] **Free-tier daily view counter — BUILT 2026-07-26.** `lib/freeViews.ts` +
+        `FREE_VIEW_DAILY_LIMIT = 25` distinct tickers per **UTC** day, enforced in the Stock
+        Detail page *after* `notFound()` (a typo'd ticker never costs a view) and skipped
+        entirely for subscribers (locked decision #18 — no usage limits). Over the cap, a new
+        stock renders an honest "daily browsing limit reached" notice; stocks opened earlier the
+        same day still load. **Fails OPEN** on a DB error, the deliberate opposite of the
+        entitlement gate — the premium fields are already stripped upstream, so over-throttling a
+        free reader would cost goodwill for no security gain. `prefetch={false}` added to the
+        Browse stock links (finding B5): `next/link` prefetch RUNS the server component, so
+        scrolling the list would otherwise have burned quota silently.
+      - **GRANT finding (2026-07-26, from the live DB — not visible in the migration text).**
+        The counter migration's column-level `REVOKE` does **not** do what its comment claimed:
+        Postgres cannot subtract a column from a table-level GRANT, and `authenticated` does hold
+        table-level SELECT/INSERT on `profiles`. What actually protects the counter is that
+        **`authenticated` has no table-level UPDATE at all** — its UPDATE is granted per column
+        (`display_name`, `country`, `acknowledged_disclaimer_at`), so a new column is unwritable
+        the moment it is added. The migration comment was corrected to say so, and
+        `check-entitlement-gates.mjs` gained a check that fails CI if any migration ever issues
+        table-level `grant update on profiles to authenticated`. (`anon` does hold table-level
+        UPDATE, inherited from Supabase defaults — not exploitable, since the RLS policy requires
+        `auth.uid() = id` and an anonymous caller has none. Tightening it is still open.)
+      - Guard now at **8 checks**; both new checks proven to fail on a deliberately broken input
+        and to pass on the correct column-scoped form. Supabase security advisors re-run after
+        the migrations: same 9 INFO `rls_enabled_no_policy` notices as before, no new findings,
+        and no `function_search_path_mutable` warning for the new function.
       - **Owner actions still outstanding:** (1) upgrade Vercel to **Pro** — Hobby forbids
         commercial use and the site takes payments (**plan badge visually confirmed as Hobby
-        2026-07-26**); (2) apply the two migrations (production DDL was blocked pending
-        approval) — drop the redundant 301 MB `idx_bars_ticker_date`, and add the
-        service-role-only free-tier counter columns; (3) create the LIVE Stripe webhook endpoint
-        (13 events) at merge.
-      - **NEW pre-launch finding (2026-07-26, spotted on the Vercel env-vars page):**
+        2026-07-26**); owner has scheduled this for **the end of Phase 1, at official launch**;
+        (2) create the LIVE Stripe webhook endpoint (13 events) at merge; (3) add a LIVE
+        `STRIPE_SECRET_KEY` to Production (below).
+      - **Pre-launch finding (2026-07-26, spotted on the Vercel env-vars page):**
         `STRIPE_SECRET_KEY` is scoped to **Preview only**, whereas `CRON_SECRET` and
-        `RESEND_API_KEY` are Production + Preview. Correct while billing is unlaunched, but
-        **live checkout, the portal and the webhook will fail in Production until a LIVE key is
-        added there.** Do it at merge, alongside creating the LIVE webhook endpoint.
-      - **Deferred:** free-tier daily view counter (blocked on migration 2); SEO/public pages;
-        the arrays-instead-of-objects RPC encoding; Supabase Auth percentage-based connections.
+        `RESEND_API_KEY` are Production + Preview. Harmless today — `main` contains **no Stripe
+        code at all**, so nothing in Production reads it — but **live checkout, the portal and
+        the webhook will fail in Production the moment this branch merges** unless a LIVE key is
+        added there first. The app calls: `checkout.sessions.create`,
+        `billingPortal.sessions.create`, `subscriptions.{list,update,cancel}`, `prices.list`,
+        `charges.retrieve` — so a restricted key needs Checkout Sessions (write), Customer portal
+        (write), Customers (write), Subscriptions (write), Prices (read), Charges (read).
+      - **Secret record:** `SECRETS.local.md` at the repo root — gitignored by name *and* by a
+        `*.local.md` pattern, verified with `git check-ignore`. Documents every key, what it does
+        in plain English, and which Vercel environments it belongs in. `.env.example` points at it.
+      - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
+        percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`.
       - No merge to `main` until the owner-driven live guided check passes and the owner approves.
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
