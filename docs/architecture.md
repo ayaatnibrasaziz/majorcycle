@@ -686,6 +686,12 @@ RESEND_FROM_EMAIL=
 # the proxy injects the same secret into /api/analyze once entitlement is verified.
 # REQUIRED in production — both Python functions fail CLOSED (503 + loud log) without
 # it rather than falling back to "open".
+#
+# SET IN VERCEL 2026-07-26: Sensitive, scoped Production + Preview. Development is
+# deliberately excluded — `next dev` spawns cycle.py as a CLI, so it never makes the
+# HTTP call this guards. "Sensitive" means the value can't be read back from the
+# dashboard, so keep a copy in a password manager; rotate by setting a new value and
+# redeploying (Vercel injects env vars at BUILD time, not runtime).
 CYCLE_INTERNAL_SECRET=
 
 # Misc

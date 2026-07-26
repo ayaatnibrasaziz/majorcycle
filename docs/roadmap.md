@@ -805,11 +805,23 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
         honest signup copy (signing up never did start a trial) · CI paywall tripwire.
       - Gates green: typecheck, lint, build, report-parity, entitlement-guard, ruff, mypy,
         pytest 86, Playwright 60/60.
+      - [x] **`CYCLE_INTERNAL_SECRET` set in Vercel — DONE 2026-07-26** (owner-driven via
+        Claude-in-Chrome; owner typed the value blind, I never saw it). **Sensitive**, scoped
+        **Production + Preview**, with a rotation note. Development deliberately excluded —
+        locally `next dev` computes the cycle by spawning `cycle.py` as a CLI, so it never makes
+        the HTTP call the secret guards. Vercel injects env vars at BUILD time, so it takes
+        effect on the next deployment (i.e. when this branch deploys — no action needed).
       - **Owner actions still outstanding:** (1) upgrade Vercel to **Pro** — Hobby forbids
-        commercial use and the site takes payments; (2) apply the two migrations (production DDL
-        was blocked pending approval) — drop the redundant 301 MB `idx_bars_ticker_date`, and add
-        the service-role-only free-tier counter columns; (3) set `CYCLE_INTERNAL_SECRET` in Vercel;
-        (4) create the LIVE Stripe webhook endpoint (13 events) at merge.
+        commercial use and the site takes payments (**plan badge visually confirmed as Hobby
+        2026-07-26**); (2) apply the two migrations (production DDL was blocked pending
+        approval) — drop the redundant 301 MB `idx_bars_ticker_date`, and add the
+        service-role-only free-tier counter columns; (3) create the LIVE Stripe webhook endpoint
+        (13 events) at merge.
+      - **NEW pre-launch finding (2026-07-26, spotted on the Vercel env-vars page):**
+        `STRIPE_SECRET_KEY` is scoped to **Preview only**, whereas `CRON_SECRET` and
+        `RESEND_API_KEY` are Production + Preview. Correct while billing is unlaunched, but
+        **live checkout, the portal and the webhook will fail in Production until a LIVE key is
+        added there.** Do it at merge, alongside creating the LIVE webhook endpoint.
       - **Deferred:** free-tier daily view counter (blocked on migration 2); SEO/public pages;
         the arrays-instead-of-objects RPC encoding; Supabase Auth percentage-based connections.
       - No merge to `main` until the owner-driven live guided check passes and the owner approves.
