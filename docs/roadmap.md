@@ -874,15 +874,45 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
         2026-07-26**); owner has scheduled this for **the end of Phase 1, at official launch**;
         (2) create the LIVE Stripe webhook endpoint (13 events) at merge; (3) add a LIVE
         `STRIPE_SECRET_KEY` to Production (below).
-      - **Pre-launch finding (2026-07-26, spotted on the Vercel env-vars page):**
-        `STRIPE_SECRET_KEY` is scoped to **Preview only**, whereas `CRON_SECRET` and
-        `RESEND_API_KEY` are Production + Preview. Harmless today — `main` contains **no Stripe
-        code at all**, so nothing in Production reads it — but **live checkout, the portal and
-        the webhook will fail in Production the moment this branch merges** unless a LIVE key is
-        added there first. The app calls: `checkout.sessions.create`,
-        `billingPortal.sessions.create`, `subscriptions.{list,update,cancel}`, `prices.list`,
-        `charges.retrieve` — so a restricted key needs Checkout Sessions (write), Customer portal
-        (write), Customers (write), Subscriptions (write), Prices (read), Charges (read).
+      - [x] **LIVE `STRIPE_SECRET_KEY` set in Vercel Production — DONE 2026-07-26**
+        (owner-driven Claude-in-Chrome; owner revealed and pasted the value, I never saw it).
+        A **restricted** key (`rk_live_`) named `MajorCycle web app - production`, created with
+        exactly **6** permissions — deliberately NOT Stripe's "Recurring subscriptions and
+        billing" template, which grants 40. Scoped **Production only**, *Sensitive*; the
+        pre-existing Preview entry (test key) was left untouched. Permissions verified twice:
+        once before saving and once by re-reading the key's own edit page.
+        - Mapping to real call sites (Stripe's rule: GET → read, POST/DELETE → write, and
+          **write implies read**): Checkout Sessions **write** (`POST /v1/checkout/sessions`) ·
+          Customer Portal **write** (`POST /v1/billing_portal/sessions`) · Subscriptions
+          **write** (`POST`/`DELETE /v1/subscriptions`; `list` covered by write→read) · Prices
+          **read** (`GET /v1/prices`) · Charges and Refunds **read** (`GET /v1/charges/:id`,
+          dispute attribution). No `Products`, `Invoices` or `Payment Intents` permission is
+          needed — the webhook reads invoice/dispute data from the **event payload**, and
+          `webhooks.constructEvent` is local crypto with no API call.
+        - **Open, deliberately not yet tightened:** `Customers` was granted **write** but **no
+          `/v1/customers` request exists anywhere in the code**. Passing `customer` /
+          `customer_email` to a Checkout Session is a field on *that* resource. Verify in the
+          **sandbox** with an identically-scoped test key set to Customers = None; if checkout
+          and portal still work, drop it live. Stripe returns an `invalid_request_error` naming
+          the missing permission, so a failure would be self-diagnosing.
+        - Also found: an **unnamed, never-used restricted key from 10 Jul with broad write
+          scopes** still exists on the live account. Left alone; recommend expiring it.
+      - 🔴 **WEBHOOK FINDINGS (2026-07-26) — both must be handled at merge:**
+        1. **The endpoint URL must use `www`:** `https://www.majorcycle.com/api/stripe/webhook`.
+           Verified by request: the apex `majorcycle.com` answers **307 → www**, and Stripe's
+           docs are explicit — *"We consider redirect responses to webhook requests as
+           failures."* Pointing it at the apex would fail **every** delivery, silently, with no
+           app-side error to see.
+        2. **`STRIPE_WEBHOOK_SECRET` is not set in Vercel at all** — not Production *and not
+           Preview* (verified by reading the live env-var list; only 11 vars exist and it isn't
+           among them). Webhook contract testing has only ever run locally via `stripe listen`,
+           which is why this went unnoticed. Preview deployments therefore cannot verify a
+           Stripe signature today.
+        Creating the live endpoint is deliberately **deferred to merge** rather than done now:
+        `main` has no Stripe code, so that URL currently 307s to `/login`, which means a
+        Stripe test-send would fail and the endpoint could not be verified. Do it as ONE atomic
+        step — create endpoint (13 events) → copy signing secret into Vercel **Production** →
+        redeploy → send a test event → confirm 200.
       - **Secret record:** `SECRETS.local.md` at the repo root — gitignored by name *and* by a
         `*.local.md` pattern, verified with `git check-ignore`. Documents every key, what it does
         in plain English, and which Vercel environments it belongs in. `.env.example` points at it.
