@@ -9,15 +9,17 @@ import { hasAccess, accessDenialReason } from '../lib/entitlement';
  * credential-free, so it always runs, and it locks down decision #20 (3-day grace,
  * then hard lock) plus the fail-closed posture against silent drift.
  *
- * It deliberately does NOT drive routes. The enforcement of that decision is proved
- * elsewhere, by tests that do not depend on a live subscription state:
- *   · `analytics/tests/test_cycle_handler.py` boots the real /api/cycle handler and
- *     asserts the wire format — 401 without the secret, premium keys absent at
- *     entitled=0, present at entitled=1, and `private, no-store` always.
- *   · `web/scripts/check-entitlement-gates.mjs` is the credential-free tripwire for
- *     the wiring itself (proxy branches, page guards, counter atomicity).
- * The end-to-end pass across all seven live subscription states is the owner-driven
- * guided check against the Stripe sandbox, not CI.
+ * It deliberately does NOT drive routes — that is `entitlement-routes.spec.ts`, which
+ * signs in as a throwaway account and walks all seven subscription states against real
+ * pages and the real API. The split is on purpose: those tests need Supabase service
+ * credentials and self-skip without them, whereas the truth table below must ALWAYS
+ * run, including on a fork PR with no secrets configured.
+ *
+ * The rest of the net: `analytics/tests/test_cycle_handler.py` boots the real
+ * /api/cycle handler and asserts the wire format (401 without the secret, premium keys
+ * absent at entitled=0, present at entitled=1, `private, no-store` always), and
+ * `web/scripts/check-entitlement-gates.mjs` is the credential-free tripwire for the
+ * wiring itself.
  *
  * Imported relatively rather than via the `@/` alias, matching the existing specs
  * (none of which rely on the path alias being available to the Playwright transform).

@@ -68,6 +68,13 @@ jobs:
     # STRIPE_TEST_WEBHOOK_SECRET + SUPABASE_SERVICE_ROLE_KEY. They sign events with the
     # test webhook secret, POST to /api/stripe/webhook, and assert the profiles row —
     # all in Stripe TEST mode, no network to Stripe, no real money.
+    #
+    # The PAYWALL BEHAVIOURAL MATRIX (e2e/entitlement-routes.spec.ts) also runs here. It
+    # signs in as its own throwaway account and walks all seven subscription states
+    # against real pages and the real API, then deletes the account. It needs only
+    # SUPABASE_SERVICE_ROLE_KEY (already required above) and self-skips without it.
+    # This is the only test that answers "is the paywall actually enforced end to end?"
+    # — the static guard proves the wiring exists, this proves it works.
     if: ${{ vars.NEXT_PUBLIC_SUPABASE_URL != '' }}
     defaults:
       run:
@@ -81,6 +88,11 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
       STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_TEST_WEBHOOK_SECRET }}
+      # NOT a secret — a throwaway fixture value. e2e/entitlement-routes.spec.ts uses it
+      # to prove /api/cycle's edge gate accepts a correct secret as well as rejecting a
+      # missing one. The real production secret lives only in Vercel and is never needed
+      # here: `next dev` computes the cycle by spawning cycle.py as a CLI, no HTTP.
+      CYCLE_INTERNAL_SECRET: ci-throwaway-not-a-real-secret
 
     steps:
       - uses: actions/checkout@v6

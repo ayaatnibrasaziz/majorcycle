@@ -847,6 +847,24 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
         table-level `grant update on profiles to authenticated`. (`anon` does hold table-level
         UPDATE, inherited from Supabase defaults — not exploitable, since the RLS policy requires
         `auth.uid() = id` and an anonymous caller has none. Tightening it is still open.)
+      - [x] **Behavioural matrix BUILT 2026-07-26** — `web/e2e/entitlement-routes.spec.ts`, 23
+        tests. This was specified in the approved plan (§9.3) and had **not** been built; the
+        gap was found by the owner asking why the guided check came before full self-checking.
+        It creates its own throwaway auth user, signs in, and walks **all seven** subscription
+        states against real pages and the real API, then deletes the account (verified: zero
+        DB residue). Covers `/run` + `/results` + the report page (render vs
+        `/pricing?reason=…`), `POST /api/analyze` (past-the-gate vs **402** with the right
+        reason), `/api/cycle` (**401** without the secret and never a redirect; accepted with
+        it), deletion-scheduled → `/reactivate` outranking `/pricing`, the free-tier cap
+        (blocked on a NEW ticker, allowed on one already seen, never applied to a subscriber),
+        and that a signed-in user **cannot** write their own counter or `subscription_status`
+        while **can** still write `display_name`/`country`. The decisive one: a free viewer's
+        Stock Detail markup contains no `NN/100` anywhere, and the same page for an `active`
+        account does — proving the bytes are withheld, not hidden.
+        **Mutation-tested:** forcing `hasAccess` to return true makes the suite fail
+        immediately; `lib/entitlement.ts` restored byte-identical afterwards (empty git diff).
+        Wired into the CI `e2e` job (self-skips without the service-role key).
+        **Playwright now 83 tests, all passing** (was 60).
       - Guard now at **8 checks**; both new checks proven to fail on a deliberately broken input
         and to pass on the correct column-scoped form. Supabase security advisors re-run after
         the migrations: same 9 INFO `rls_enabled_no_policy` notices as before, no new findings,
