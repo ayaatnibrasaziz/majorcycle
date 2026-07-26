@@ -90,10 +90,10 @@ flowchart TB
 2. Calls `/api/cycle?ticker=AAPL&preset=medium` — a Vercel Python serverless function (`web/api/cycle.py`) that reads the same Supabase data and computes the Major Cycle math via the vendored `_engine` package. The **preset** comes from the Stock Detail page's `?preset=` query param (set on the Browse page — see below); default is **Medium** (-5%/+5%/252 bars), with **Short** (-3%/+3%/63) and **Long** (-8%/+8%/756) also supported. The function never calls yfinance — that's the cron's job. Result is cached via Next's data cache (`revalidate: 3600`), keyed per **ticker AND preset**, so the cold compute only bites the first viewer of a (ticker, preset) per hour. `cycle.py`'s own price-bar fetch is **parallel** — it counts rows on the first page (`count=exact`) then pulls the rest concurrently via a `ThreadPoolExecutor` (same idea as `fetchStockDetail`).
 
    **This is a server-to-server self-fetch over HTTP, with no viewer cookies, so two things must hold or every cycle section renders blank:**
-   - **`/api/cycle` must be public.** It's listed in `PUBLIC_PATHS` in `web/proxy.ts`; otherwise the auth middleware 307-redirects the cookieless internal call to `/login`, the fetch gets HTML instead of JSON, and `fetchCycleAnalysis` returns `null`. It exposes only ticker→analysis math (no user data); the pages that surface it stay auth-gated.
+   - **`/api/cycle` must bypass the auth *redirect* — but it is NOT public** (changed in F3 Step 10). It used to be listed in `PUBLIC_PATHS`, which made the whole analysis engine a free, unauthenticated, unthrottled API. It now has its own branch in `web/proxy.ts`: present the shared secret `x-mc-internal` and the request passes through; otherwise **401** — never a redirect, because a 307 to `/login` would hand our own SSR fetch HTML instead of JSON and `fetchCycleAnalysis` would return `null`, blanking every cycle section. `cycle.py` re-checks the same header and is the authority. See §7.1.
    - **The URL must use the production custom domain, not the `*.vercel.app` deployment URL.** `web/lib/cycle.ts` `baseUrl()` prefers `VERCEL_PROJECT_PRODUCTION_URL` (e.g. `majorcycle.com`) over `VERCEL_URL`, because **Vercel Deployment Protection walls every `*.vercel.app` URL with a 401 — even in production** (only assigned custom domains are exempt). Using `VERCEL_URL` made the self-fetch hit that 401. (This class of bug is invisible in `next dev`, which computes the cycle via a local Python CLI and skips the HTTP path entirely, and on preview deploys, which are also walled — it only reproduces on the production custom domain once the Next Data Cache is cleared by a fresh deploy.)
 3. Renders HTML with full data baked in (good for SEO). **The page streams:** only the stock row + sector medians are awaited up front (both fast); the slow cycle analysis and the benchmark series are not blocking. The cycle-dependent sections (rating badges, KPI strip, verdict, scorecard radar, drawdown overlay) and the relative-performance chart each render inside their own `<Suspense>` boundary, so the header, price chart, fundamentals, and sentiment paint immediately while the cycle streams in. Every cycle wrapper calls the same React-`cache()`d `fetchCycleAnalysis(ticker, preset)`, so there is still exactly one underlying compute shared across them.
-4. Vercel Edge caches the HTML for 24 hours (stale-while-revalidate); `/api/cycle` itself returns `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
+4. Vercel Edge caches the HTML for 24 hours (stale-while-revalidate). **`/api/cycle` itself returns `Cache-Control: private, no-store`** — it must never be shared-cached, because its content varies by entitlement while a shared cache keys on the URL alone (F3 Step 10, finding B1 — see §7.1). Its caching is done instead by Next's Data Cache (`revalidate: 3600`), which is server-side and only fillable by us.
 
 **Why this works:** Warm pages load fast (cycle + benchmarks cached); cold pages stream — the shell paints in ~1.7s and the cycle sections fill in when the (now-parallel) compute returns. Googlebot sees rich content, not a loading spinner. No DB write churn.
 
@@ -544,6 +544,18 @@ which boots the real handler on a loopback port — because neither local dev (w
 `web/scripts/check-entitlement-gates.mjs` is a credential-free CI tripwire covering all of
 the above; it can never skip, unlike the e2e suite.
 
+> 🔴 **The LIVE webhook endpoint URL must be `https://www.majorcycle.com/api/stripe/webhook`
+> — with the `www`.** Verified by request 2026-07-26: the apex `majorcycle.com` answers
+> **307 → www**, and [Stripe's docs](https://docs.stripe.com/webhooks) are explicit —
+> *"We consider redirect responses to webhook requests as failures."* Pointed at the apex,
+> **every** event would fail: no payment confirmations, no cancellations, no dispute locks —
+> and nothing would appear in our logs, because the request never reaches us.
+>
+> Also outstanding: **`STRIPE_WEBHOOK_SECRET` is not set in Vercel at all**, Preview
+> included (verified against the live env-var list). Webhook contract testing has only ever
+> run locally via `stripe listen`, which supplies its own secret — which is how this went
+> unnoticed. Set the live value in **Production** when the endpoint is created at merge.
+
 **Webhook event-subscription policy (F3 Step 8 decision — 2026-07-24).** The production
 LIVE webhook endpoint subscribes to **only the 13 event types the handler acts on**, per
 Stripe's best-practice guidance (["only listen to event types your integration
@@ -699,6 +711,14 @@ GOOGLE_CLIENT_SECRET=
 # STRIPE_WEBHOOK_SECRET: test value from the Stripe CLI (`stripe listen`); live value
 # from the production webhook endpoint (the preview URL can't receive Stripe posts —
 # it's behind Vercel Deployment Protection).
+#
+# STRIPE_SECRET_KEY is a RESTRICTED key (rk_…), never a full sk_. The LIVE key is scoped
+# to Vercel PRODUCTION only; a separate Preview entry holds the test key. Live key name in
+# Stripe: "MajorCycle web app - production", with exactly 6 permissions derived from the
+# real call sites (Stripe's rule: GET→read, POST/DELETE→write, write implies read):
+#   Checkout Sessions write · Customer Portal write · Subscriptions write
+#   Prices read · Charges and Refunds read · (Customers write — granted but NOT required;
+#   no /v1/customers call exists in our code. Tighten to None once proven in the sandbox.)
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 

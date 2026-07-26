@@ -490,6 +490,54 @@ A single collapsible line (`⚠ N tickers couldn't be scored · show`), expandin
 
 Pattern: centered icon + bold heading + muted descriptive text + optional CTA link.
 
+### Locked (premium) states — F3 Step 10
+
+Three components in `web/components/stocks/PremiumLock.tsx`, plus one page-local notice.
+All of them are **honest placeholders, not redactions**: for an unentitled viewer the
+underlying numbers are stripped server-side before serialisation, so there is nothing in
+the DOM to blur, un-hide or read out. What renders *is* all that exists.
+
+| Where | Component | Treatment |
+|---|---|---|
+| KPI strip cards 1–2 (Overall Rating, Health Score) | `PremiumLockKpi` | Keeps the exact `kpi-card` shape so the 4-up grid stays aligned. Muted `--text-muted` accent, lock icon + the word **Unlock**. The whole tile is a link to `/pricing`, with an `aria-label` of "<label> — requires a subscription. See plans." |
+| Verdict, Scorecard | `PremiumLockCard` | Standard `card` + `card-header`/`card-body`, lock icon beside the title, one sentence naming what it unlocks, ending in a **See plans** link. |
+| Rating + valuation-zone badges | — | **Absent**, not locked. A lock chip beside the company name would be noise, and the locked KPI tiles directly below already make the offer. |
+| Daily fence reached | page-local `FreeViewLimitNotice` | Full-width card: what happened, that it resets at midnight UTC, that already-seen stocks still open, then **See plans** + **Back to Browse**. Carries the standard not-advice line. |
+
+**The 2–2 split is the whole design idea.** `KpiStrip` locks cards 1–2 and leaves cards
+3–4 (Current Drawdown, Typical Drawdown) fully working. Two locked tiles sitting beside two
+live ones is the clearest possible statement of what a subscription adds — much better than
+hiding the row. Never "helpfully" collapse the locked pair.
+
+> **CI note:** premium components must stay **imported and rendered inside a conditional**,
+> never deleted. `scripts/check-report-sections.mjs` is a static text scan and will fail if
+> a section disappears from the page. `PremiumLockCard` is on its `PAGE_ONLY` list — the
+> report is premium in its entirety, so a lock can never appear inside one.
+
+### App navigation (F3 Step 10)
+
+Sidebar is grouped by intent, with the premium group carrying a lock affordance when the
+viewer isn't entitled:
+
+```
+DISCOVER            ← free
+  Browse Stocks
+  Request a Ticker
+SCREEN              ← premium
+  Run Analysis      ← verb before noun
+  Results
+────────────
+  Account · Licence status
+```
+
+**Sign out moved to a header account menu** (top-right, `UserMenu.tsx`) rather than the foot
+of the sidebar. It stays **one click**, which matters most on a shared computer, while
+clearing the nav rail. The old `SignOutButton` component was deleted after confirming no
+remaining references. **Post-login home is `/stocks` (Browse), not `/results`** — Results is
+the *output* of a screener run, so it is empty for a new or free account. The single choke
+point is `POST_AUTH_HOME` in `web/lib/url.ts`; every auth email inherits it via
+`safeNextPath()`, so no email template hard-codes a landing path.
+
 ---
 
 ## 10. Responsive Breakpoints

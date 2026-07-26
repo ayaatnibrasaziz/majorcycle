@@ -11,7 +11,9 @@ This is the master brief for **MajorCycle** (`majorcycle.com`). Any AI assistant
 
 **MajorCycle** is a premium financial terminal that runs a proprietary **Major Cycle** analysis on US, Australian, and Canadian equities. Users discover where stocks sit relative to their historical drawdown/recovery cycles, alongside fundamental health scores, valuation positioning, and analyst data.
 
-The product launches as a **web app** with a **7-day free trial** that converts to a monthly or annual subscription.
+The product launches as a **web app** with a **signed-in free tier** and a **7-day free trial** that converts to a monthly or annual subscription.
+
+**Free vs premium (F3 Step 10 — owner-agreed).** Signing up is free and takes **no card**: a free account keeps Browse, the price chart, the drawdown overlay *with its cycle bands*, and every fundamentals/sentiment section — *the data is free; our analysis is paid*. **Premium is our judgement**: Overall Rating, Health Score, the Verdict, the scorecard/radar, rating badges, the downloadable report, and the entire screener (`/run`, `/results`). The trial starts at Stripe Checkout, not at signup. The rule lives in `web/lib/entitlement.ts` and is described in `docs/architecture.md` §7.1 — read it before touching anything that renders a score.
 
 **This is not a financial advice product.** It is an educational/informational analysis tool. All copy, labels, and disclaimers reflect this.
 
@@ -136,6 +138,8 @@ These rules cannot be bent. If a task seems to require breaking one, **stop and 
 10. **Edit existing files with targeted edits only** — never rewrite a whole file unless explicitly asked.
 
 11. **No `console.log`, no `print()`, no commented-out code** in committed files.
+
+11a. **Never share-cache a response whose content varies by viewer.** `Cache-Control: public` / `s-maxage` is a **shared**-cache directive and Vercel's edge keys on the **URL alone** — so the first viewer's response is served to everyone else at that URL, *before your function runs*. That is an authorisation bypass, not a caching bug, and no in-function check can catch it. `/api/cycle` shipped exactly this while returning the full paid analysis (F3 Step 10, finding B1); it now sends `private, no-store`, and entitlement rides in the **query string** so the free and paid variants can never collide on one cache entry. If a response varies by viewer: put the varying dimension in the URL *and* keep the cache private, or use Next's server-side Data Cache. `pnpm check:entitlement-gates` fails CI if this regresses.
 
 ### Data & Compliance
 

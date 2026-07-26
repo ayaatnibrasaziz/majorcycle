@@ -82,6 +82,8 @@
 
 **Earnings Growth YoY** — Year-over-year change in net earnings per share. Sourced from yfinance.
 
+**Entitlement gate** — The single rule deciding whether a viewer may see premium content, in `web/lib/entitlement.ts` (F3 Step 10). `billing_blocked` denies outright (a dispute lock outranks everything); `active`/`trialing` allow; `past_due` allows only inside `grace_until`; `canceled`, `null` and anything unrecognised deny. **Fails closed** — a missing profile or an unreadable row denies. Deliberately the opposite posture to the trial guard and the free-view fence, which fail *open*: giving premium away costs revenue, whereas a wrongly-denied view is visible and recoverable. Enforced at three layers — pages (`requireEntitled()` → `/pricing?reason=…`), APIs (`proxy.ts` → **402**), and the Python functions (authoritative: they strip the premium keys). See `architecture.md` §7.1.
+
 **Enriched Data** — The extended dataset fetched per ticker beyond price bars and fundamentals: income statements (annual + quarterly), balance sheets, cashflow statements, earnings history, top institutional holders, insider transactions, analyst upgrades/downgrades, PE history, and company overview. Stored as JSONB columns in the `stocks` table. Fetched selectively by the smart refresh pipeline — only when the staleness check fires. See `EnrichedData` dataclass in `data-contracts.md` §2.
 
 **EBITDA** — Earnings Before Interest, Taxes, Depreciation, and Amortisation. A measure of operating profitability.
@@ -104,13 +106,17 @@
 
 **Free Cashflow** — Operating cashflow minus capital expenditures. The cash a business generates after maintaining its operations.
 
+**Free tier** — A signed-in account with no live subscription (F3 Step 10). Keeps Browse + search, the price chart, technical levels, the drawdown overlay **including the cycle bands**, the company overview, and **every** fundamentals/sentiment section (those read the `stocks` table, not the cycle engine — "the data is free; our analysis is paid"). Does **not** get the Overall Rating, Health Score, Verdict, scorecard/radar, rating badges, the downloadable report, or the screener (`/run`, `/results`) at all. Subject to the **Free-view fence**.
+
+**Free-view fence** — The anti-scraping cap on the free tier: **25 distinct tickers per UTC day** (`FREE_VIEW_DAILY_LIMIT`). Counts a *set of tickers*, not page loads, so a refresh, a back-navigation or a `next/link` prefetch never costs quota; re-opening a stock seen earlier the same day is always free. Applied by the `record_free_view` Postgres function under a row lock (a read-then-write in app code would lose count under exactly the concurrent traffic a scraper generates). **Fails open** — it is a fence, not the paywall, and premium fields are already stripped from every response a free user gets. Subscribers are never counted (locked decision #18). See `data-contracts.md` §10.
+
 **Fundamentals Snapshot** — The canonical fundamentals data shape returned by any DataProvider. Defined in `data-contracts.md` §2.
 
 ---
 
 ## G
 
-**Grace period (billing)** — The 3-day window (`grace_until` = now + 3 days) after a subscription payment first fails, during which the member keeps access while they update their card. Set once on the first failure and cleared on recovery (or on cancellation). Distinct from the 30-day account-deletion grace. After it lapses, a still-`past_due` account is hard-locked (the paywall gate, Step 10).
+**Grace period (billing)** — The 3-day window (`grace_until` = now + 3 days) after a subscription payment first fails, during which the member keeps access while they update their card. Set once on the first failure and cleared on recovery (or on cancellation). Distinct from the 30-day account-deletion grace. After it lapses, a still-`past_due` account is hard-locked by the **Entitlement gate**.
 
 **Gross Margin** — Gross Profit ÷ Revenue × 100. The fundamental profitability of a product/service before operating costs.
 
@@ -266,7 +272,7 @@
 
 **Token-Hash Email Flow** — The branded auth-email link pattern that keeps every link on `majorcycle.com`. Templates use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…&next=…`; the route `web/app/auth/confirm/route.ts` calls `supabase.auth.verifyOtp({ type, token_hash })` and redirects to `next`. Replaces the default `{{ .ConfirmationURL }}` (a `supabase.co/auth/v1/verify` link). See `architecture.md` §7, `design-system.md` §17.
 
-**Trial** — 7-day free trial period at signup. Card required upfront, auto-converts to paid subscription.
+**Trial** — 7-day free trial. Card required upfront, auto-converts to a paid subscription (locked decision #19). **It does not start at signup** — signing up creates a FREE account with no card; the trial begins when the user clicks "Start free trial" and completes Stripe Checkout (F3 Step 10). Signing up never did start a trial; the earlier copy that implied it did was corrected. A repeat email that has already consumed a trial subscribes with **no** free week — see **Trial tombstone**.
 
 **Typical Drawdown** — Mean of all historical pullback events that exceeded the pullback threshold. The "average dip" for this stock.
 

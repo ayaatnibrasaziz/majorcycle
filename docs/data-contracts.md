@@ -362,7 +362,16 @@ export interface CycleParams {
   pivotBars?: number;
 }
 
-export interface CycleAnalysis {
+// F3 Step 10 — the paywall splits this in TWO. The free half is what an unentitled
+// viewer receives; the premium half is our judgement and is STRIPPED server-side in
+// web/api/cycle.py before serialisation (PREMIUM_KEYS), so those bytes never leave the
+// server for a free viewer. Nothing is hidden client-side.
+//
+// Two types rather than making the scored fields optional: /results, /run, RunComplete,
+// ReportDocument, columns.ts, filters.ts, OpportunityMap and ResultsTable are all
+// premium-only and keep the full `CycleAnalysis` unchanged. Only KpiStrip,
+// ThesisInsights and StockHeader accept the union and narrow with `isFullCycle()`.
+export interface CycleAnalysisFree {
   ticker: string;
   params: CycleParams;
   asOf: string;
@@ -377,7 +386,13 @@ export interface CycleAnalysis {
   upperBound: number | null;
   totalPullbackEvents: number;
   totalProfitEvents: number;
+}
 
+/** Narrowing guard. Tests `overallLabel` — `overallRating` can legitimately be 0, and
+ *  `financialHealthScore` is nullable even for a paying viewer, so neither is safe. */
+export function isFullCycle(c: CycleAnalysisFree | CycleAnalysis | null): c is CycleAnalysis;
+
+export interface CycleAnalysis extends CycleAnalysisFree {
   financialHealthScore: number | null;
   valuationScore: number; // quality-gated — feeds the overall rating
   valuationScoreRaw: number; // un-gated cycle-position score
@@ -502,7 +517,22 @@ export interface StockRecord {
 
 ### `GET /api/cycle`
 
-Single-ticker Major Cycle analysis. Called by the Stock Detail Server Component on every page render (cached by Vercel edge for 1h, stale-while-revalidate 24h). Implemented in `web/api/cycle.py` (Python serverless function); reads price bars and fundamentals from Supabase, runs the cycle math via the vendored `web/_engine/` package, never calls yfinance.
+Single-ticker Major Cycle analysis. Called by the Stock Detail Server Component on every page render. Implemented in `web/api/cycle.py` (Python serverless function); reads price bars and fundamentals from Supabase, runs the cycle math via the vendored `web/_engine/` package, never calls yfinance.
+
+> ⚠️ **INTERNAL ONLY, and NEVER edge-cached (F3 Step 10).** This endpoint used to send
+> `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`, which was a
+> paywall bypass: `s-maxage` is a *shared*-cache directive keyed on the URL alone, so once
+> a server render warmed Vercel's edge with a fully scored payload, any later request —
+> no secret, no session — would have been served the paid analysis **before the function
+> ran**. It now sends **`Cache-Control: private, no-store`**. Caching is preserved by
+> Next's Data Cache (`next: { revalidate: 3600 }` in `web/lib/cycle.ts`), which is
+> server-side and can only ever be filled by us.
+>
+> Every request must carry `x-mc-internal: $CYCLE_INTERNAL_SECRET`. Checked twice — at the
+> edge in `web/proxy.ts` (**401**, never a redirect: a 302 would be parsed as JSON by our
+> own SSR fetch and blank every cycle section) and authoritatively in `cycle.py`, which
+> returns **503** if the env var is unset. It fails CLOSED; there is no "open" fallback.
+> `pnpm check:entitlement-gates` fails CI if `s-maxage`/`public` ever returns.
 
 **Query params:**
 ```typescript
@@ -512,14 +542,33 @@ interface CycleQuery {
   pullback?: number;                                       // required if preset === 'custom' (bounds §7)
   profit?: number;                                         // required if preset === 'custom'
   lookback?: number;                                       // required if preset === 'custom'
+  entitled?: '0' | '1';                                    // F3 Step 10 — default '0'
 }
 ```
+
+**`entitled` rides in the QUERY STRING, never a header.** Next's Data Cache keys on the
+URL alone, so a header-borne flag would let the free and paid variants of the same ticker
+collide on one cache entry — a free viewer could be served a scored payload from a
+subscriber's earlier render, or vice versa. It is therefore part of the
+`fetchCycleAnalysis(ticker, spec, entitled)` signature (required, not optional) so React's
+`cache()` dedupe key includes it too. At `entitled=0` the nine premium keys are **absent
+from the JSON**, not null — see the response note below.
 The Browse page sets the window: named presets via `?preset=`, or a fully custom
 window (`?preset=custom&pullback=-7&profit=7&lookback=300`) that the detail page
 passes straight through. Custom values are validated to the §7 bounds (else 400);
 the result is edge-cached per full query string.
 
-**Response (200):** the full `CycleAnalysis` shape from section 3, serialised with snake_case keys (the Python dataclass field names). The frontend converts to camelCase via `web/lib/case.ts` if typed consumption is needed. Sample:
+**Response (200):** the `CycleAnalysis` shape from section 3, serialised with snake_case keys (the Python dataclass field names). The frontend converts to camelCase via `web/lib/case.ts` if typed consumption is needed.
+
+At **`entitled=1`** the full shape below. At **`entitled=0`** these nine `PREMIUM_KEYS` are
+omitted entirely — `financial_health_score`, `fh_subscores`, `valuation_score`,
+`valuation_score_raw`, `quality_factor`, `valuation_zone`, `cycle_payoff_score`,
+`overall_rating`, `overall_label`. **Absent, not null**: a null would still tell a scraper
+the field exists and let a client distinguish "no score" from "not paid for". The stripping
+happens in `_serialise_analysis()` at serialisation time — deliberately *not* by adding an
+`include_scoring` flag to the engine, because `analytics/` is mirrored into `web/_engine/`
+under a CI drift check and CLAUDE.md #9 makes it sacred. Scoring is pure arithmetic over
+already-loaded fundamentals, so computing-then-stripping costs nothing. Sample (`entitled=1`):
 
 ```json
 {
@@ -557,9 +606,16 @@ the result is edge-cached per full query string.
   not be a 5xx (which reads as "we broke" and raises false error-level log/alert
   noise). The Stock Detail page treats any non-200 as `null` and renders the
   graceful "Major Cycle — not available at this horizon" notice.
+- `401` — missing or wrong `x-mc-internal` secret (F3 Step 10). Returned by the edge
+  (`proxy.ts`) before the function is invoked, and again by `cycle.py` itself. **Never a
+  redirect** — a 302 to `/login` would be parsed as JSON by our own SSR fetch.
 - `500` — genuine internal error (env var missing, unhandled exception) → `{ "error": "...", "detail": "..." }`
+- `503` — `CYCLE_INTERNAL_SECRET` is not configured. Fails **closed** with a loud log rather
+  than falling back to "open", which would silently reopen the paywall.
 
-**Caching headers (200 only):** `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
+**Caching headers (all responses):** `Cache-Control: private, no-store`. **Never `public`
+or `s-maxage`** — see the boxed note at the top of this section. Caching is provided by
+Next's Data Cache (`revalidate: 3600`, keyed on the full URL *including* `entitled`).
 
 ### `POST /api/analyze`
 
@@ -571,6 +627,20 @@ handoff), and writes **one** `analysis_runs` history row itself — **inputs onl
 never the computed results (CLAUDE.md #15 / §11). Reads price bars + fundamentals
 from Supabase and runs the math via the vendored `_engine`; never calls yfinance.
 Auth is enforced by `proxy.ts` (this path is not in `PUBLIC_PATHS`).
+
+**Premium-only, and gated in the proxy (F3 Step 10).** The screener has no free form — it
+is the highest-value feature and the only one with a meaningful per-use cost — so an
+unentitled caller is refused outright with **402**, body `{ error: 'Payment Required',
+reason }` where `reason` is the `AccessDenialReason`. The check must live in `proxy.ts`
+because `analyze.py` is a Vercel Python function with no way to read a Supabase session
+cookie; the proxy has already verified the JWT locally, so it is the session authority. It
+costs one PK-indexed profile read, scoped to this path so ordinary page requests never pay
+for it. On success the proxy **injects** `x-mc-internal`, and `analyze.py` requires it — so
+the function cannot be reached at all except through the gate, even if platform routing
+changed underneath us. The dev shim `/api/analyze-dev` is gated identically, so local dev
+is never quietly more permissive than production. Client-side, a mid-run 402 raises
+`EntitlementLapsedError` and **aborts the whole run** with an upgrade message rather than
+retrying and reporting tickers as "unavailable" (audit finding B6).
 
 **Request:**
 ```typescript
@@ -642,9 +712,12 @@ interface AnalysisRunRecord {
 
 **Errors:**
 - `400` — invalid params (empty tickers, bad preset, custom out of §7 bounds, > 60/request)
-- `401` — not logged in (enforced by `proxy.ts`)
-- `402` — subscription expired *(Layer F)*
+- `401` — not logged in (enforced by `proxy.ts`), or the internal secret is absent/wrong
+  (`analyze.py` re-checks the header the proxy injects)
+- `402` — **no live subscription** (F3 Step 10). Body `{ error: 'Payment Required', reason }`
+  with `reason` ∈ `no_subscription` / `canceled` / `payment_failed` / `billing_blocked`
 - `500` — internal — return `{ error: string }`
+- `503` — `CYCLE_INTERNAL_SECRET` unset (fails closed, loud log)
 
 ### Universe expansion — "Request a Ticker" (queue model)
 
@@ -946,6 +1019,48 @@ never forge entitlement. Migration `20260523133635` + `20260711000000` +
 | `billing_blocked` | boolean (default false) | Chargeback/fraud dispute revoked access — set by `charge.dispute.created`/`.funds_withdrawn`, cleared only if the dispute is won (`.closed` won / `.funds_reinstated`). |
 | `trial_reminder_sent` | text | Set to `'trial_will_end'` when the branded trial-ending reminder is sent (event-driven, ~3 days out) — guards against a double-send on webhook redelivery. |
 
+### `profiles` free-tier counter columns (F3 Step 10 — also service-role-only)
+
+Migration `20260726010000_free_tier_view_counter`. An **anti-scraping fence**, not a
+revenue lever: premium fields are already stripped from every response a free viewer gets,
+so what is left worth protecting is the *bulk* (walking all ~866 tickers to rebuild the
+corpus). Subscribers are never counted — locked decision #18 promises them no usage limits.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `free_views_date` | date | The UTC day the set below applies to. Null for subscribers. |
+| `free_views_tickers` | text[] | Distinct tickers a free user opened on that day; cap **25** (`FREE_VIEW_DAILY_LIMIT`). |
+
+**Why a distinct-ticker SET and not a counter.** `next/link` prefetches on hover/viewport
+in production, which *runs the server component* — a plain counter would be burned by
+scrolling the Browse list. A set makes prefetch-then-click, a refresh, and any re-visit
+cost exactly one view. (Stock links also pass `prefetch={false}`.)
+
+**🔑 What actually makes these unwritable by the user — not what you'd assume.** The
+migration's column-level `REVOKE` is only a tripwire: **Postgres cannot subtract a column
+from a table-level GRANT**, and `authenticated` does hold table-level SELECT/INSERT on
+`profiles`. The real guarantee is that **`authenticated` has no table-level UPDATE at
+all** — its UPDATE is granted per column (`display_name`, `country`,
+`acknowledged_disclaimer_at`), so any new column is unwritable the moment it is added.
+If anyone ever runs `grant update on public.profiles to authenticated`, the counter becomes
+user-resettable and the revokes will NOT save you. `check-entitlement-gates.mjs` fails CI
+on exactly that statement. (`anon` does hold table-level UPDATE from the Supabase defaults;
+not exploitable — the RLS policy requires `auth.uid() = id` and anon has none.)
+
+### Function `record_free_view(p_user_id uuid, p_ticker text, p_limit int)`
+
+Migration `20260726020000`. Returns `(allowed boolean, used int)`. `service_role` EXECUTE
+only, `search_path` pinned.
+
+**Why this is a database function and not application code.** The obvious version — read
+the array, append in TypeScript, write it back — is read-modify-write across two round
+trips, and it is defeated by exactly the traffic this fence exists to stop. A scraper
+firing N concurrent requests would have all N read the same stale array, and each write
+would clobber the others: the row ends holding one or two tickers while the scraper walked
+away with N pages. `select … for update` row-locks the profile so the check and the append
+cannot be raced. **Fails OPEN** on a missing profile row — this is a fence, not the
+paywall, so denying would be a lie with no security gain.
+
 **Stripe status → our `subscription_status`:** `trialing→trialing`, `active→active`,
 `past_due→past_due` (+`grace_until`), `unpaid→` hard-locked (past_due-equivalent),
 `canceled→canceled`, `incomplete`/`incomplete_expired`/`paused→ null` (no active sub).
@@ -963,8 +1078,15 @@ method). **Cancel** has two paths, both handled: *cancel at period end* keeps th
 > stored `current_period_end` (== `cancel_at` for a period-end cancel; == `trial_end` for a
 > trialing sub). **Hard-lock rule:** `past_due` AND `now > grace_until` ⇒ the gate denies
 access (status stays `past_due`; the gate reads grace). `billing_blocked = true` ⇒ no
-access regardless of status. Enforcing these statuses (the paywall gate) is build step 10;
-the webhook only *records* them.
+access regardless of status.
+
+**The gate that enforces all of this is BUILT (F3 Step 10)** — `web/lib/entitlement.ts`,
+the single source of truth. The webhook still only *records* status; `hasAccess()` is the
+only thing that interprets it, and it fails **closed** (missing profile, unreadable row or
+unrecognised status all deny). Enforced at three layers: the `(app)` layout +
+`requireEntitled()` for premium pages (UX), `web/proxy.ts` for premium APIs (**402**), and
+the Python functions themselves (authoritative — they strip the premium keys and re-check
+the internal secret). See `architecture.md` §7.1 for the full rule and the two cache traps.
 
 ### Supporting tables (server-only — RLS on, no policies)
 

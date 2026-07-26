@@ -232,6 +232,11 @@ Each `.py` file in `web/api/` becomes one Vercel serverless function (file path 
 - **Env vars.** Functions read `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (set in Vercel project env). The `NEXT_PUBLIC_` prefix is for client-side JS only.
 - **JSON serialisation.** Use `dataclasses.asdict(obj)` then `json.dumps(d, default=str)`.
 - **Caching.** GET responses that don't depend on per-user state should set `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400` so Vercel's edge serves repeated hits without re-invoking the function.
+  > 🔴 **"Don't depend on per-user state" is doing all the work in that sentence — read it before you copy the header.** `s-maxage` is a **shared**-cache directive and Vercel's edge keys on the **URL alone**. Any response whose *content* varies by who is asking — entitlement, plan, role — must NOT use it, or the first viewer's response is served to everyone else at that URL, from the CDN, **before your function runs**. That is not a caching bug, it is an authorisation bypass, and no amount of in-function checking can catch it because the function is never invoked.
+  >
+  > This happened: `/api/cycle` shipped `public, s-maxage=3600` while returning a fully scored analysis, which would have handed the paid product to anyone once the cache was warm (F3 Step 10, finding B1). It now sends **`Cache-Control: private, no-store`**, and `pnpm check:entitlement-gates` fails CI if `public`/`s-maxage` reappears there.
+  >
+  > **Rule:** if the response varies by viewer, either put the varying dimension **in the URL** (a query param — as `entitled` now is) *and* keep the cache private, or don't share-cache at all. Next's Data Cache (`next: { revalidate }`) is the safe alternative — it lives server-side and only we can fill it.
 - **Errors.** Catch broad `Exception` at the top of the handler, log via `logger.exception`, return a structured JSON error: `{ "error": "...", "detail": "..." }`. Never expose stack traces directly.
 - **Bundling.** Configure `includeFiles` in `web/vercel.json` to pull `_engine/**` into the function bundle (Vercel's auto-tracing may not catch the `sys.path` indirection).
 
