@@ -255,7 +255,7 @@ test.describe('entitlement enforcement across subscription states', () => {
     // Clicking a lock explains itself WITHOUT leaving the page — the regression this
     // guards is a lock silently turning back into a navigation.
     await ratingLock.click();
-    await expect(page.getByRole('dialog')).toContainText(/premium feature/i);
+    await expect(page.getByRole('dialog')).toContainText(/A subscription also includes/i);
     expect(new URL(page.url()).pathname).toBe(new URL(DETAIL, page.url()).pathname);
     await page.keyboard.press('Escape');
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { AlertCircle, Mail, Check } from 'lucide-react';
+import { AlertCircle, Mail, Check, Sparkles } from 'lucide-react';
 import { AuthCard } from '@/components/AuthCard';
 import { AuthDivider } from '@/components/AuthDivider';
 import { GoogleSignIn } from '@/components/GoogleSignIn';
@@ -39,6 +39,12 @@ export function SignupForm() {
   // `safeNextPath` is the same open-redirect guard the login form uses.
   const searchParams = useSearchParams();
   const next = safeNextPath(searchParams.get('next'));
+  // Arrived by clicking "Start 7-day free trial" while signed out. Without saying so,
+  // landing on a page headed "Create your free account" reads as the button having
+  // failed — the reader asked for a trial and appears to have been given something
+  // else. The trial genuinely needs an account first (checkout is session-gated), so
+  // the honest fix is to name this as step one rather than to hide it.
+  const startingTrial = next.startsWith('/pricing?start=');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -82,7 +88,9 @@ export function SignupForm() {
             <strong className="text-[var(--brand-deep)]">{email}</strong>.
           </p>
           <p className="text-[12.5px] text-[var(--text-secondary)] mt-2 leading-relaxed">
-            Click it to activate your free account.
+            {startingTrial
+              ? 'Click it and we’ll take you straight back to start your 7-day free trial.'
+              : 'Click it to activate your free account.'}
           </p>
         </div>
         <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
@@ -97,9 +105,27 @@ export function SignupForm() {
 
   return (
     <AuthCard
-      title="Create your free account"
-      subtitle="Free to sign up and free to keep. No card needed."
+      title={startingTrial ? 'First, create your account' : 'Create your free account'}
+      subtitle={
+        startingTrial
+          ? 'Step 1 of 2 — your 7-day free trial starts right after this. No card needed yet.'
+          : 'Free to sign up and free to keep. No card needed.'
+      }
     >
+      {startingTrial && (
+        <div className="mb-5 flex gap-2.5 rounded-[var(--radius-sm)] border border-[#bfdbfe] bg-[var(--brand-light)] px-3.5 py-3">
+          <Sparkles
+            className="mt-[2px] h-[15px] w-[15px] flex-shrink-0 text-[var(--brand-mid)]"
+            strokeWidth={2}
+            aria-hidden
+          />
+          <p className="text-[12.5px] leading-relaxed text-[var(--brand-deep)]">
+            Your trial is waiting. We just need an account to attach it to — once you
+            confirm your email we&apos;ll take you straight back to start it.
+          </p>
+        </div>
+      )}
+
       {/* Free-tier value props — matches reference briefing-card aesthetic */}
       <div className="mb-6 bg-gradient-to-br from-white to-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius)] px-4 py-3.5">
         <ul className="flex flex-col gap-2">

@@ -22,6 +22,18 @@ export function OnboardingModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // NOTE (F3 Step 10): opening this dialog logs a React hydration warning in dev —
+  // Radix sets `aria-hidden` directly on sibling DOM nodes, and App Router hydrates
+  // the page subtree progressively, so the mutation lands on nodes React hasn't
+  // hydrated yet. Deferring the open makes it MORE likely, not less; `ssr: false`,
+  // `useSyncExternalStore` and a `requestAnimationFrame` were all tried and none
+  // helps, because the race is with a subtree that hydrates later regardless.
+  // The warning is cosmetic (React keeps the client's aria-hidden, which is the
+  // correct accessible state) and dev-only. Fixing it properly means either dropping
+  // Radix's modal semantics — losing the focus trap on a mandatory disclaimer — or
+  // making onboarding its own route instead of an overlay. Left as-is deliberately.
+
+
   async function handleProceed() {
     if (!acknowledged) return;
     setLoading(true);
