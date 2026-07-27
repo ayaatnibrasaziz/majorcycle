@@ -367,10 +367,20 @@ export interface CycleParams {
 // web/api/cycle.py before serialisation (PREMIUM_KEYS), so those bytes never leave the
 // server for a free viewer. Nothing is hidden client-side.
 //
+// STRIPPED IN TWO PLACES, deliberately (added 2026-07-28). web/lib/cycle.ts's
+// `stripPremium()` removes the same keys again — in camelCase — at both parse seams of
+// `fetchCycleAnalysis` whenever `entitled` is false. Redundant when the API behaves.
+// It exists because this object is passed to CLIENT components, so React serialises it
+// into the RSC payload embedded in the HTML: withholding a value from the *render* does
+// not withhold it from the *page source*. Keep the two lists in step — the Python side
+// is pinned by `pnpm check:entitlement-gates`.
+//
 // Two types rather than making the scored fields optional: /results, /run, RunComplete,
 // ReportDocument, columns.ts, filters.ts, OpportunityMap and ResultsTable are all
 // premium-only and keep the full `CycleAnalysis` unchanged. Only KpiStrip,
-// ThesisInsights and StockHeader accept the union and narrow with `isFullCycle()`.
+// ThesisInsights and StockHeader accept the union and narrow with `isFullCycle()` —
+// and KpiStrip/StockHeader additionally require an `entitled` viewer, so the type guard
+// is never the sole control on the two headline scores.
 export interface CycleAnalysisFree {
   ticker: string;
   params: CycleParams;
