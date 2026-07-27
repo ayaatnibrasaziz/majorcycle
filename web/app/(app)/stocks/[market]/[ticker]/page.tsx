@@ -72,7 +72,9 @@ async function CycleBadges({
   // PREMIUM: the rating + valuation-zone chips are pure judgement. For a free viewer
   // they're absent rather than replaced — a lock chip beside the company name would
   // be noise, and the locked KPI tiles just below already make the offer.
-  if (!isFullCycle(cycle)) {
+  // `!entitled` is checked alongside the type guard so the chips stay hidden even if
+  // an unstripped payload ever reaches this component (see KpiStrip's `entitled`).
+  if (!entitled || !isFullCycle(cycle)) {
     return fundamentals.analystRecommendation ? (
       <BadgeRow
         analystRecommendation={fundamentals.analystRecommendation}
@@ -94,7 +96,9 @@ async function CycleKpi({ ticker, spec, entitled }: CycleProps) {
   const cycle = await fetchCycleAnalysis(ticker, spec, entitled);
   // MIXED: KpiStrip locks cards 1–2 (Overall Rating, Health Score) and keeps
   // cards 3–4 (Current/Typical Drawdown) working. See KpiStrip.
-  return cycle ? <KpiStrip cycle={cycle} /> : null;
+  // `entitled` is passed as well as the stripped payload so the two tiles need
+  // BOTH to render — the API strip is no longer their only defence.
+  return cycle ? <KpiStrip cycle={cycle} entitled={entitled} /> : null;
 }
 
 /**

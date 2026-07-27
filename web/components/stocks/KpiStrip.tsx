@@ -4,6 +4,18 @@ import { PremiumLockKpi } from '@/components/stocks/PremiumLock';
 
 interface Props {
   cycle: CycleAnalysis | CycleAnalysisFree;
+  /**
+   * The viewer's entitlement, checked INDEPENDENTLY of whether premium fields
+   * happen to be present in `cycle`. Both must hold before a score renders.
+   *
+   * `/api/cycle` strips premium keys for an unentitled viewer, so in a healthy
+   * system the type guard alone would be enough. This is the second lock: B1
+   * proved a single control can fail open (a shared-cache directive served the
+   * full paid payload before the function ever ran), and these two tiles are
+   * the product. The Verdict and Scorecard have always required both — this
+   * brings the rating and health score up to the same standard.
+   */
+  entitled: boolean;
 }
 
 function ratingColor(rating: number): string {
@@ -58,14 +70,14 @@ function KpiCard({ label, value, accentColor, tipBody, note }: KpiCardProps) {
  * Visual parity with `.detail-kpi-grid` in /reference/original-design.html
  * (lines 2619-2624). Colours are data-driven via CSS custom properties.
  */
-export function KpiStrip({ cycle }: Props) {
+export function KpiStrip({ cycle, entitled }: Props) {
   const { currentDrawdownPct, typicalDrawdown } = cycle;
   const lookback = cycle.params.lookbackBars;
   // The paywall runs straight through this strip: cards 1–2 are our judgement and
   // lock; cards 3–4 are observed price facts and stay free. Deliberately kept
   // side-by-side rather than hiding the locked pair — two working tiles next to two
   // locked ones is the clearest statement of what a subscription adds.
-  const scored = isFullCycle(cycle) ? cycle : null;
+  const scored = entitled && isFullCycle(cycle) ? cycle : null;
 
   return (
     <div className="detail-kpi-grid">

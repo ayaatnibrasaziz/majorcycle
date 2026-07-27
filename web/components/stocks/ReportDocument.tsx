@@ -198,7 +198,10 @@ export function ReportDocument({ data }: { data: ReportData }) {
           )}
           {cycle && (
             <ReportSection>
-              <KpiStrip cycle={cycle} />
+              {/* The report is premium end-to-end: both the page and its data route
+                  refuse an unentitled viewer before this renders, so reaching here
+                  already means entitled. */}
+              <KpiStrip cycle={cycle} entitled />
             </ReportSection>
           )}
           {cycle && (
