@@ -102,6 +102,11 @@ interface PricingPlansProps {
   trialUsed?: boolean;
   /** Set when `requireEntitled()` bounced them here; drives the explanatory banner. */
   reason?: AccessDenialReason | null;
+  /**
+   * The plan they picked BEFORE signing up, carried through the confirmation email.
+   * Preselects the toggle and greets them, so the round trip reads as one flow.
+   */
+  startPlan?: PlanKey | null;
 }
 
 /**
@@ -118,8 +123,11 @@ export function PricingPlans({
   hasSubscription,
   trialUsed = false,
   reason = null,
+  startPlan = null,
 }: PricingPlansProps) {
-  const [plan, setPlan] = useState<PlanKey>('monthly');
+  const [plan, setPlan] = useState<PlanKey>(startPlan ?? 'monthly');
+  // Only greet someone who actually came back from signup AND still needs to buy.
+  const resumed = Boolean(startPlan) && isLoggedIn && !hasSubscription;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -179,6 +187,22 @@ export function PricingPlans({
             ended" to someone who merely typed the parameter would state something we
             haven't verified, right beside a first-time trial offer. */}
         {isLoggedIn && reason && <DenialNotice reason={reason} />}
+        {resumed && (
+          <div
+            role="status"
+            className="mb-6 flex gap-2.5 rounded-[var(--radius-sm)] border border-[#bfdbfe] bg-[var(--brand-light)] px-3.5 py-3"
+          >
+            <Check
+              className="mt-[2px] h-[15px] w-[15px] flex-shrink-0 text-[var(--brand-mid)]"
+              strokeWidth={2.5}
+              aria-hidden
+            />
+            <p className="text-[12.5px] leading-relaxed text-[var(--brand-deep)]">
+              <strong>Your free account is ready.</strong> Pick up where you left off —
+              continue below to start your 7-day free trial.
+            </p>
+          </div>
+        )}
         <h1 className="text-[22px] sm:text-[24px] font-bold text-[var(--text-primary)] tracking-[-0.4px] leading-[1.2]">
           {heading.title}
         </h1>
@@ -263,8 +287,17 @@ export function PricingPlans({
               <Link href="/account">Manage your plan</Link>
             </Button>
           ) : !isLoggedIn ? (
+            // Carries the chosen plan through signup and the confirmation email, so
+            // they come back HERE with it preselected instead of landing on /stocks
+            // having lost the thing they clicked. Checkout is session-gated and the
+            // account needs email confirmation, so an account genuinely must exist
+            // first — this makes that a step in one flow rather than a dead end.
             <Button asChild variant="primary" size="lg" className="w-full">
-              <Link href="/signup">Start 7-day free trial</Link>
+              <Link
+                href={`/signup?next=${encodeURIComponent(`/pricing?start=${plan}`)}`}
+              >
+                Start 7-day free trial
+              </Link>
             </Button>
           ) : (
             <Button

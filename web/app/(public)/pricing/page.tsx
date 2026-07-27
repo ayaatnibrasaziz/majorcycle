@@ -53,7 +53,13 @@ export default async function PricingPage({
   // Why they were sent here, if they were sent (F3 Step 10). Without this the page
   // greeted a locked-out subscriber with the same generic shop-window as a first-time
   // visitor — "your payment failed" and "your trial ended" need to read differently.
-  const reason = parseReason((await searchParams).reason);
+  const params = await searchParams;
+  const reason = parseReason(params.reason);
+  // `?start=monthly|annual` — the plan they chose before signing up, round-tripped
+  // through the confirmation email so the flow resumes instead of restarting.
+  const rawStart = Array.isArray(params.start) ? params.start[0] : params.start;
+  const startPlan =
+    rawStart === 'monthly' || rawStart === 'annual' ? rawStart : null;
 
   const supabase = await createServerSupabaseClient();
   const {
@@ -97,6 +103,7 @@ export default async function PricingPage({
       hasSubscription={hasSubscription}
       trialUsed={trialUsed}
       reason={reason}
+      startPlan={startPlan}
     />
   );
 }

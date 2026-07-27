@@ -1,8 +1,6 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Lock, Play } from 'lucide-react';
 
 import { UserMenu } from '@/components/UserMenu';
 
@@ -48,15 +46,9 @@ interface HeaderProps {
   lastRunAt?: string | null;
   /** Shown on the account menu trigger; omitted in the dev-bypass render. */
   email?: string | null;
-  /**
-   * Drives the lock on the Run Analysis CTA, matching the sidebar's SCREEN group.
-   * Without it this button was the most prominent control on every page and the
-   * only premium entry point wearing no lock at all.
-   */
-  entitled?: boolean;
 }
 
-export function Header({ lastRunAt, email, entitled = false }: HeaderProps) {
+export function Header({ lastRunAt, email }: HeaderProps) {
   const pathname = usePathname();
   const { title, subtitle } = getPageMeta(pathname);
 
@@ -83,21 +75,8 @@ export function Header({ lastRunAt, email, entitled = false }: HeaderProps) {
           </div>
         )}
 
-        {/* Still points at /run when locked — the redirect there carries the reason
-            the viewer was refused, which a direct /pricing link would throw away. */}
-        <Link
-          href="/run"
-          title={entitled ? undefined : 'The screener is included with a subscription'}
-          className="flex items-center gap-1.5 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] px-3.5 py-[7px] text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)] transition-all duration-150"
-        >
-          {entitled ? (
-            <Play className="w-3 h-3" strokeWidth={2} aria-hidden="true" />
-          ) : (
-            <Lock className="w-3 h-3" strokeWidth={2} aria-label="Requires a subscription" />
-          )}
-          Run Analysis
-        </Link>
-
+        {/* Run Analysis lived here too, duplicating the sidebar's SCREEN group.
+            Removed in F3 Step 10 — one entry point per destination. */}
         <UserMenu email={email} />
       </div>
     </header>

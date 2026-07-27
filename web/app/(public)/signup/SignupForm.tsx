@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { AlertCircle, Mail, Check } from 'lucide-react';
 import { AuthCard } from '@/components/AuthCard';
 import { AuthDivider } from '@/components/AuthDivider';
@@ -11,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
-import { getSiteURL } from '@/lib/url';
+import { getSiteURL, safeNextPath } from '@/lib/url';
 
 // Signing up has never actually started a trial — `supabase.auth.signUp` just
 // creates the account, and the 7-day trial begins at checkout, where the card is
@@ -31,6 +32,14 @@ const freeFeatures = [
 ];
 
 export function SignupForm() {
+  // Where to land AFTER the confirmation email is clicked. Signup previously dropped
+  // this on the floor and always went to /stocks, which is why someone who arrived
+  // from "Start 7-day free trial" on /pricing was bounced back to a page telling them
+  // to create the account they'd just created (F3 Step 10, owner-reported).
+  // `safeNextPath` is the same open-redirect guard the login form uses.
+  const searchParams = useSearchParams();
+  const next = safeNextPath(searchParams.get('next'));
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,7 +59,7 @@ export function SignupForm() {
       email,
       password,
       options: {
-        emailRedirectTo: `${getSiteURL()}/auth/callback`,
+        emailRedirectTo: `${getSiteURL()}/auth/callback?next=${encodeURIComponent(next)}`,
       },
     });
     if (authError) {
@@ -166,7 +175,7 @@ export function SignupForm() {
 
       <AuthDivider />
 
-      <GoogleSignIn next="/stocks" onError={setError} disabled={loading} label="signup_with" />
+      <GoogleSignIn next={next} onError={setError} disabled={loading} label="signup_with" />
 
       <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
         Already have an account?{' '}

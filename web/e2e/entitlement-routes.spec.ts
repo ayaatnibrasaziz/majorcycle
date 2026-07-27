@@ -238,16 +238,26 @@ test.describe('entitlement enforcement across subscription states', () => {
     // The free half is present — this is a real page, not a wall.
     await expect(page.getByText('Current Drawdown').first()).toBeVisible({ timeout: 60_000 });
 
-    // The two scored KPI tiles are locks, not values.
+    // The two scored KPI tiles are locks, not values. They are BUTTONS, not links:
+    // a lock opens the upgrade dialog in place rather than navigating away from the
+    // stock the reader is deciding about.
+    const ratingLock = page.getByRole('button', {
+      name: /Overall Rating — included with a subscription/i,
+    });
+    await expect(ratingLock).toBeVisible();
     await expect(
-      page.getByRole('link', { name: /Overall Rating — requires a subscription/i }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('link', { name: /Health Score — requires a subscription/i }),
+      page.getByRole('button', { name: /Health Score — included with a subscription/i }),
     ).toBeVisible();
 
     // Verdict + Scorecard are upgrade prompts.
     await expect(page.getByText(/included with a subscription/i).first()).toBeVisible();
+
+    // Clicking a lock explains itself WITHOUT leaving the page — the regression this
+    // guards is a lock silently turning back into a navigation.
+    await ratingLock.click();
+    await expect(page.getByRole('dialog')).toContainText(/premium feature/i);
+    expect(new URL(page.url()).pathname).toBe(new URL(DETAIL, page.url()).pathname);
+    await page.keyboard.press('Escape');
 
     // The decisive assertion: the scored numbers are not merely hidden, they were never
     // sent. `NN/100` is the only rendering of a rating or health score anywhere on the
@@ -270,7 +280,7 @@ test.describe('entitlement enforcement across subscription states', () => {
       timeout: 60_000,
     });
     await expect(
-      page.getByRole('link', { name: /Overall Rating — requires a subscription/i }),
+      page.getByRole('button', { name: /Overall Rating — included with a subscription/i }),
     ).toHaveCount(0);
   });
 

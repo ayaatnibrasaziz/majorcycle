@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { ShieldCheck, Download, Loader2, Lock } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { MethodologyModal } from '@/components/stocks/MethodologyModal';
+import { UpgradeDialog } from '@/components/UpgradeDialog';
 import {
   downloadInteractiveReport,
   prefetchReportBundle,
@@ -57,6 +57,7 @@ export function StockSubnav({
   entitled?: boolean;
 }) {
   const [methodologyOpen, setMethodologyOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   // Warm the static offline bundle (~1.3 MB, same for every stock) once on mount,
@@ -190,20 +191,26 @@ export function StockSubnav({
               {downloading ? 'Preparing…' : 'Download Report'}
             </button>
           ) : (
-            <Link
-              href="/pricing"
+            <button
+              type="button"
+              onClick={() => setUpgradeOpen(true)}
               className="inline-flex items-center gap-1.5 bg-white border border-[var(--border-strong)] text-[var(--text-secondary)] text-[11px] font-semibold px-3 py-1.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)] transition-all"
               title="The downloadable report is included with a subscription"
             >
               <Lock className="w-[13px] h-[13px]" strokeWidth={1.8} aria-hidden="true" />
               Download Report
-            </Link>
+            </button>
           )}
         </div>
       </div>
     </div>
 
     <MethodologyModal open={methodologyOpen} onOpenChange={setMethodologyOpen} />
+    <UpgradeDialog
+      open={upgradeOpen}
+      onOpenChange={setUpgradeOpen}
+      feature="The downloadable report"
+    />
     </>
   );
 }

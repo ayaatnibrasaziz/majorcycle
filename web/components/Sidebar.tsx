@@ -3,8 +3,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Compass, ListPlus, Lock, Play, UserRound } from 'lucide-react';
+import { useState } from 'react';
+import { BarChart3, Compass, ListPlus, Lock, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { UpgradeDialog } from '@/components/UpgradeDialog';
 
 interface NavItem {
   label: string;
@@ -47,28 +49,36 @@ const NAV_SCREEN: NavItem[] = [
   },
 ];
 
-function NavLink({ item, locked = false }: { item: NavItem; locked?: boolean }) {
+function NavLink({
+  item,
+  locked = false,
+  onLockedClick,
+}: {
+  item: NavItem;
+  locked?: boolean;
+  onLockedClick?: (label: string) => void;
+}) {
   const pathname = usePathname();
   const isActive =
     pathname === item.href ||
     (item.href !== '/' && pathname.startsWith(item.href));
 
-  return (
-    <Link
-      href={item.href}
-      className={cn(
-        'flex items-center gap-[10px] px-[18px] py-[9px] mx-2 rounded-[var(--radius-sm)] text-[13px] font-medium transition-all duration-150 select-none',
-        isActive
-          ? 'bg-[var(--brand-light)] text-[var(--brand-mid)] font-semibold'
-          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)]'
-      )}
-    >
+  // The inset margin lives on the WRAPPER, not here. A <button> doesn't stretch the
+  // way an <a class="flex"> does, so it needs w-full — and w-full plus mx-2 is 100%
+  // + 16px, which overflowed the nav and produced a horizontal scrollbar.
+  const className = cn(
+    'w-full flex items-center gap-[10px] px-[18px] py-[9px] rounded-[var(--radius-sm)] text-[13px] font-medium transition-all duration-150 select-none',
+    isActive
+      ? 'bg-[var(--brand-light)] text-[var(--brand-mid)] font-semibold'
+      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)]'
+  );
+
+  const body = (
+    <>
       <span className="w-[18px] flex-shrink-0 flex justify-center text-[15px]">
         {item.icon}
       </span>
       {item.label}
-      {/* The link still navigates — the destination explains what a plan unlocks,
-          which converts better than a dead, unclickable row. */}
       {locked && (
         <Lock
           className="w-[11px] h-[11px] ml-auto flex-shrink-0 text-[var(--text-muted)]"
@@ -76,7 +86,29 @@ function NavLink({ item, locked = false }: { item: NavItem; locked?: boolean }) 
           aria-label="Requires a subscription"
         />
       )}
-    </Link>
+    </>
+  );
+
+  // A locked row explains itself in place rather than navigating. Sending the reader
+  // to /pricing meant losing whatever they were looking at, and the page they landed
+  // on couldn't say which feature they'd just reached for. The route still redirects
+  // if they type the URL — this is the affordance, not the gate.
+  return (
+    <div className="px-2">
+      {locked ? (
+        <button
+          type="button"
+          className={cn(className, 'text-left')}
+          onClick={() => onLockedClick?.(item.label)}
+        >
+          {body}
+        </button>
+      ) : (
+        <Link href={item.href} className={className}>
+          {body}
+        </Link>
+      )}
+    </div>
   );
 }
 
@@ -101,6 +133,7 @@ function licenceLabel(status: string | null | undefined): string {
 }
 
 export function Sidebar({ subscriptionStatus, entitled = false }: SidebarProps) {
+  const [lockedFeature, setLockedFeature] = useState<string | null>(null);
   return (
     <aside
       className="fixed top-0 left-0 w-[var(--sidebar-w)] h-screen bg-[var(--bg-sidebar)] border-r border-[var(--border)] flex flex-col z-[100] shadow-[var(--shadow-sm)]"
@@ -139,20 +172,19 @@ export function Sidebar({ subscriptionStatus, entitled = false }: SidebarProps) 
           Screen
         </div>
         {NAV_SCREEN.map((item) => (
-          <NavLink key={item.href} item={item} locked={!entitled} />
+          <NavLink
+            key={item.href}
+            item={item}
+            locked={!entitled}
+            onLockedClick={setLockedFeature}
+          />
         ))}
       </nav>
 
-      {/* Bottom: account link + subscription badge */}
+      {/* Bottom: subscription badge. Account moved to the header user menu in F3
+          Step 10 — keeping a second entry point here just duplicated it. */}
       <div className="px-2 py-3 border-t border-[var(--border)] flex-shrink-0">
-        <NavLink
-          item={{
-            label: 'Account',
-            href: '/account',
-            icon: <UserRound className="w-[15px] h-[15px]" strokeWidth={1.8} />,
-          }}
-        />
-        <div className="mt-2 bg-gradient-to-br from-[var(--brand-light)] to-[#dbeafe] border border-[#bfdbfe] rounded-[var(--radius-sm)] px-3 py-2 text-[10px]">
+        <div className="bg-gradient-to-br from-[var(--brand-light)] to-[#dbeafe] border border-[#bfdbfe] rounded-[var(--radius-sm)] px-3 py-2 text-[10px]">
           <div className="text-[var(--text-muted)] font-medium tracking-[0.5px] uppercase">
             Licence Status
           </div>
@@ -164,6 +196,12 @@ export function Sidebar({ subscriptionStatus, entitled = false }: SidebarProps) 
           </div>
         </div>
       </div>
+
+      <UpgradeDialog
+        open={lockedFeature !== null}
+        onOpenChange={(v) => !v && setLockedFeature(null)}
+        feature={lockedFeature ?? ''}
+      />
     </aside>
   );
 }

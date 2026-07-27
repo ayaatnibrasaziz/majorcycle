@@ -126,14 +126,22 @@ export function OnboardingModal() {
           </p>
         )}
 
-        <DialogFooter className="flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
+        {/* Stacked, not side-by-side. The acknowledgement is a full sentence and the
+            button is fixed-width, so sharing one row squeezed the label into a
+            three-line column against the dialog's max-w-lg. It now gets the full
+            width and the button sits beneath it. */}
+        <DialogFooter className="flex-col items-stretch gap-3">
+          <div className="flex items-start gap-2.5">
             <Checkbox
               id="ack"
+              className="mt-[1px] flex-shrink-0"
               checked={acknowledged}
               onCheckedChange={(v) => setAcknowledged(v === true)}
             />
-            <Label htmlFor="ack" className="text-[12px] font-medium text-[var(--text-secondary)] cursor-pointer">
+            <Label
+              htmlFor="ack"
+              className="text-[12px] font-medium leading-relaxed text-[var(--text-secondary)] cursor-pointer"
+            >
               I understand and acknowledge — this is not financial advice
             </Label>
           </div>
