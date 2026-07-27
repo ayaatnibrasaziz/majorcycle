@@ -1010,16 +1010,41 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           the API strip as their single control. Now all four require both. Surfaced *because*
           of M4: fed unstripped production data, the preview rendered 60/100 and 81/100 to a
           free viewer.
-        - **Found, not fixed (owner's call):** the unauthorised `/api/cycle` 401 carries
-          `Cache-Control: public, max-age=0, must-revalidate`. Not exploitable — `max-age=0` +
-          `must-revalidate` prevent any reuse — but `public` on a viewer-dependent response is
-          the same category as B1 and contradicts rule 11a. The hazard is someone later dropping
-          `max-age=0` without realising it was the only thing making it safe.
+        - **Found + fixed (`686fdd9`):** the middleware's own refusals carried
+          `Cache-Control: public, max-age=0, must-revalidate` (NextResponse.json's default) —
+          the 401 on `/api/cycle` and, worse, the 402 on `/api/analyze`, whose body names the
+          caller's denial reason from their billing columns. Not exploitable (`max-age=0` +
+          `must-revalidate` stop reuse), but `public` on a viewer-dependent response is the
+          directive that made B1 an authorisation bypass, and it left both refusals safe only
+          because of a modifier a later edit could delete. Both now send `private, no-store`.
+          Guard check 9 added and **mutation-tested**. Verified on the deployed preview:
+          401 → `private, no-store`, 402 → `private, no-store`.
+        - **Found + fixed (`10d8ff6`) — the sharpest finding of the session.** `ea84d01` stopped
+          an unentitled viewer *seeing* the scores; it did not stop them being *sent*. The cycle
+          object reaches client components, so React serialises it into the RSC payload embedded
+          in the HTML — the page showed "🔒 Unlock" while the source carried
+          `"overallRating":60,"overallLabel":"Neutral","financialHealthScore":81`. The M4 artifact
+          again (preview → production's ungated endpoint), so not shipping, but it proved
+          `api/cycle.py`'s strip was the **only** control on the payload: a regression there
+          would leave the UI looking locked while quietly shipping the data — the failure mode
+          that looks safe. `fetchCycleAnalysis` now strips premium keys on the way in at both
+          parse seams whenever `entitled` is false. Side benefit: previews stop being silently
+          more permissive than production, which is what let this hide in the first place.
         - **Not a defect:** `?reason=no_subscription` deliberately renders no banner (a
           first-time free user shouldn't be scolded); every other reason does. The silent case
           only occurs on direct navigation — the sidebar path opens the dialog.
-        - **Still open after this session:** geo currency via `x-vercel-ip-country` (needs a
-          null-country profile), real Stripe Checkout/Portal in sandbox, and the at-merge items.
+        - **Geo currency — verified.** Saved country and edge header made to disagree so the
+          result is discriminating: profile `country='US'` → **US$15/USD** (the saved country
+          wins, which is the billing-currency lock); `country=null` → **A$19/AUD** read from
+          `x-vercel-ip-country`. Without the header it would have fallen back to USD, so this
+          is the edge geo path, not a default.
+        - **Still open after this session:** real Stripe Checkout/Portal in sandbox, and the
+          at-merge items.
+        - **Tooling note:** use the stable branch alias
+          `majorcycle-git-feat-f3-stripe-…vercel.app`, not per-deployment URLs — it follows the
+          latest build, so a session survives each redeploy (cookies are per-host, so a new
+          deployment URL means signing in again). Preview deployment protection is bypassed for
+          non-browser clients with the Vercel MCP's shareable `_vercel_share` link.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
         **375px mobile — pre-existing, already triaged to Layer H, now measured there.**

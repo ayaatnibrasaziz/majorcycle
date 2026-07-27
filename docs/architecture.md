@@ -502,6 +502,28 @@ premium *pages* to `/pricing?reason=…` — UX, not security. (2) `proxy.ts` re
 *APIs* with 402 after one PK-indexed profile read, and injects the internal secret on
 success. (3) The Python functions re-check that secret and do the stripping — the authority.
 
+**Two more locks, added after the 2026-07-28 live check — and why "the bytes never leave
+the server" needs help to stay true.**
+
+*On the wire.* `fetchCycleAnalysis` re-strips the same keys on the way in whenever
+`entitled` is false (`stripPremium`, both parse seams). Redundant in a healthy system.
+It exists because hiding a score in the UI does **not** take it off the wire: the cycle
+object is passed to client components, so React serialises it into the RSC payload baked
+into the HTML. Observed live — the page rendered "🔒 Unlock" while View Source carried
+`"overallRating":60,"overallLabel":"Neutral"`. Before this, `api/cycle.py`'s strip was the
+*only* control on the payload, and a regression there would have left the UI looking locked
+while shipping the data: the failure mode that looks safe.
+
+*On the screen.* Every premium surface now requires an entitled viewer **and** the data.
+`VerdictCard` and `SnowflakeRadar` always did; `KpiStrip` (Overall Rating, Health Score)
+and the header rating/valuation chips previously narrowed on the type guard alone, i.e. on
+whether the fields happened to be present — trusting the API strip as their single control.
+
+Both were found because a **preview** deployment fetches **production's** `/api/cycle`
+(`baseUrl()` prefers `VERCEL_PROJECT_PRODUCTION_URL` — see M4), so the preview was being fed
+unstripped data and behaving as a live fault injection. The `stripPremium` layer also ends
+that divergence: previews now behave like production instead of silently more permissive.
+
 **`?reason=` is consumed, not just emitted.** `/pricing` reads it (allow-listed against
 `AccessDenialReason`, **signed-in only** — we can't assert a billing state for an anonymous
 reader) and shows copy that names what actually happened. Its headline also varies:
