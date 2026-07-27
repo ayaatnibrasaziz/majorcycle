@@ -916,6 +916,69 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       - **Secret record:** `SECRETS.local.md` at the repo root — gitignored by name *and* by a
         `*.local.md` pattern, verified with `git check-ignore`. Documents every key, what it does
         in plain English, and which Vercel environments it belongs in. `.env.example` points at it.
+      - [x] **VISUAL browser pass — DONE 2026-07-27 (`cc501c6`).** The owner's standing rule:
+        code gates prove logic, not that a page *looks* right, so a self-driven browser pass
+        with screenshots now precedes any live check. **Nine defects, every one of which had
+        passed typecheck, lint, both guards, pytest 86 and Playwright 83** — because all nine
+        were wording, an affordance, or a whitespace rule.
+        - `/pricing` **ignored `?reason=` entirely** — `requireEntitled()` had always sent it and
+          the page never read `searchParams`, so every locked-out customer saw the same generic
+          shop-window. Now an allow-listed banner, **signed-in only**.
+        - The pricing **headline was hard-coded to the trial pitch** — offering a free week both
+          to a past-due customer (directly under a banner saying they don't need a new plan) and
+          to someone the Step 7 tombstone bills on day one. Headline, closing bullet and CTA now
+          vary by reader.
+        - Free "Download Report" reported a **402 as a transient fault** ("try again in a
+          moment") — telling a prospective subscriber the app is broken.
+        - `PremiumLockCard` had **no `id`**, so the subnav's Scorecard pill was a silently dead
+          click for exactly the viewers being sold to.
+        - A bare **"Buy" chip** sat where our rating badge had been, attribution in a hover
+          `title` only → reads as *our* call (CLAUDE.md #2). Now visibly "Analysts: Buy".
+        - **Owner-caught:** signup said *"No card required. Start a 7-day free trial"*, which
+          parses as "the trial needs no card" — the opposite of decision #19. Same false promise
+          in the refer-a-friend card **and email**, and the signup `<title>` still read "Start
+          Free Trial".
+        - `"You've opened 25different stocks"` — JSX trims the leading space off a text segment
+          following an interpolation.
+        - Verified with screenshots: free vs entitled Stock Detail A/B, **no premium key and no
+          `NN/100` anywhere in free HTML**, the fence at the cap, `/api/cycle` 401, every denial
+          banner. **Not** verifiable locally and still open: true 375px (the browser pane clamps
+          to 566px), geo currency, real Checkout, CDN cache behaviour.
+      - [x] **Locks explain themselves in place — DONE 2026-07-27 (`cf61908`, `03d5161`).**
+        Owner feedback. Every lock now opens `UpgradeDialog` (Methodology-modal shell, blurred
+        backdrop) instead of navigating to `/pricing`, so the reader keeps the stock they were
+        deciding about; each of the seven surfaces explains **what that feature is**, then hands
+        off to `StartTrialModal` — the same in-app checkout entry `/account` uses, which is what
+        keeps every subscription rule in one place. New `GET /api/billing-context` labels the CTA
+        only and is explicitly not authoritative. Also: sidebar Account row and header Run
+        Analysis button removed (each duplicated a nav row); the signed-out trial CTA now carries
+        the chosen plan through signup and the confirmation email (`?next=/pricing?start=…`,
+        working for email/password **and** both Google paths) instead of dead-ending; onboarding
+        acknowledgement no longer squeezed into three lines.
+        **Edge cases re-verified after the rewiring:** one dialog at a time (no stacking), scroll
+        lock and `pointer-events` restored on close, no orphaned `data-aria-hidden`, tombstoned
+        email → "Subscribe … charged today, no free week", `billing_blocked` subscriber →
+        "Manage your plan" and **no trial offered**, `/api/billing-context` 307s a signed-out
+        caller.
+      - [x] **Onboarding made a real gate — DONE 2026-07-27 (`c4264fd`).** Fixes a React
+        hydration warning on first login that was **not** a regression of the Layer C portal fix
+        (`74a17ab`) — different component, different cause. Radix writes `aria-hidden` onto
+        sibling DOM nodes when a modal opens; App Router hydrates progressively, so the write hit
+        the 862-stock Browse subtree mid-hydration and React discarded and re-rendered it — a
+        real production cost, not just dev noise. Upstream
+        [radix-ui/primitives#1386](https://github.com/radix-ui/primitives/issues/1386), still
+        open; `dynamic(ssr:false)`, `useSyncExternalStore`, `requestAnimationFrame` and upgrading
+        `@radix-ui/react-dialog` 1.1.15 → **1.1.23** all failed. Fix: when the disclaimer is
+        unacknowledged the layout returns the modal **alone** and never renders the page behind
+        it — nothing to race, and first login stops paying for a universe fetch plus a 120-row
+        client component nobody sees. Verified in a clean tab: modal shows, console clean,
+        acknowledging still lands on Browse. See architecture §7.3.
+      - **Known non-issue:** `pytest` prints one `DeprecationWarning` about the `gotrue` package.
+        It originates inside the installed `supabase` library (`supabase/_async/auth_client.py`
+        does `from gotrue import …`); our code never imports it. The local env has supabase 2.7.4
+        while `web/requirements.txt` pins `supabase>=2.4.0`, so CI and Vercel resolve a current
+        release that has already migrated to `supabase_auth`. No action. (Open, minor: that pin
+        is open-ended, so a future 2.x could reach production unreviewed.)
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`.
       - No merge to `main` until the owner-driven live guided check passes and the owner approves.

@@ -457,6 +457,7 @@ Two runtimes, two locations under `web/`:
 | `/api/listings/status` | POST | TS | `web/app/api/listings/status/route.ts` | Required | Batch status (`{ inListings, covered, requestStatus }`) for the run's `unavailable[]` tickers — drives the Results "couldn't be scored" smart states (Request / Requested / Not supported / Not covered / No data yet) |
 | `/api/checkout` | POST | TS | `web/app/api/checkout/route.ts` | Required | **Built (F3 step 3; step 7 guard).** Create a Stripe hosted-Checkout session for `{plan}` — resolves the Price by lookup_key, forces currency by country, applies the 7-day trial in code (**omitted for an email that already used a trial — step 7 tombstone guard**), `automatic_tax:false`; returns `{ url }` |
 | `/api/stripe/webhook` | POST | TS | `web/app/api/stripe/webhook/route.ts` | **Public** (in `PUBLIC_PATHS`) — gated by the **Stripe signature** | **Built (F3 steps 4/7/8).** Verify → idempotency-claim (`stripe_events`, ON CONFLICT DO NOTHING) → service-role sync of the billing columns; a trialing `subscription.*` writes the email trial-tombstone (step 7). **Step 8:** sends the four branded billing emails via Resend — **trial-started welcome** (on `subscription.created` when the sub is `trialing`; one-shot + idempotency-keyed; skipped for a repeat/no-trial customer, who instead gets Stripe's payment receipt) / trial-ending / payment-failed / payment-recovered (the last two gated on the single-owner `grace_until` marker + idempotency key) and handles `charge.dispute.*` → `billing_blocked` (+ cancel-on-lost). **Payment receipts + invoice PDFs are NOT app code** — they're Stripe's built-in "Successful payments" Dashboard email (turned ON in Part C), sent on every real charge; the Customer Portal also lists past invoices. Disputes do the ONE live Stripe retrieve (charge→customer). **Order-safety guards (Stripe doesn't guarantee event order):** the failure (`invoice.payment_failed` **and `invoice.payment_action_required`** / 3-D Secure) + recovery paths only act on the sub currently on file, and `subscription.deleted` only lapses the account when its sub id matches — so a late/out-of-order event can't dun, recover, or cancel a *newer* or *already-cancelled* subscription. (LIVE endpoint event list = 13, incl. `invoice.payment_action_required`.) See data-contracts §10 for the event→DB map |
+| `/api/billing-context` | GET | TS | `web/app/api/billing-context/route.ts` | Required | **Built (F3 step 10).** Returns `{ currency, trialUsed, hasSubscription }` so the upgrade dialog can label its CTA (`Start free trial` / `Subscribe` / `Manage your plan`) before the reader clicks. Fetched **on dialog open**, not per page render — a lock is clicked far less often than a page is drawn. **Explicitly NOT authoritative:** `/api/checkout` re-derives all three and still 409s an existing subscriber and still omits `trial_period_days` for a tombstoned email. Sends `private, no-store` (CLAUDE.md 11a) |
 | `/api/portal` | POST | TS | `web/app/api/portal/route.ts` | Required | **Built (F3 step 5).** Open the Stripe Customer Portal — create a `billingPortal` session for the user's `stripe_customer_id`, 303-redirect to it (`return_url` = `/account`); no customer → `?billing=none`, error → `?billing=error`. The `/account` "Manage billing" button is a plain form POST |
 | `/api/health` | GET | TS | `web/app/api/health/route.ts` | Public | System health (DB + provider) |
 
@@ -501,6 +502,19 @@ premium *pages* to `/pricing?reason=…` — UX, not security. (2) `proxy.ts` re
 *APIs* with 402 after one PK-indexed profile read, and injects the internal secret on
 success. (3) The Python functions re-check that secret and do the stripping — the authority.
 
+**`?reason=` is consumed, not just emitted.** `/pricing` reads it (allow-listed against
+`AccessDenialReason`, **signed-in only** — we can't assert a billing state for an anonymous
+reader) and shows copy that names what actually happened. Its headline also varies:
+already-subscribed → "Your MajorCycle plan"; trial already used → "Subscribe to MajorCycle
+… a new subscription starts today" with the day-7 promise removed from the feature list.
+`?start=monthly|annual` is the return leg of the signed-out trial flow — see §7.2.
+
+**In-app upgrade path.** Locks do **not** navigate to `/pricing`; they open
+`UpgradeDialog`, which explains the feature and hands off to `StartTrialModal` — the same
+in-app checkout entry `/account` uses. Reusing that component (and `/api/checkout` beneath
+it) is what keeps every subscription rule in one place rather than reimplemented per
+surface. See design-system "Locked (premium) states".
+
 **Two traps this design exists to avoid**, both found while auditing the plan:
 
 - **Never send `public`/`s-maxage` from `/api/cycle`.** It used to. A shared cache keys on
@@ -529,6 +543,48 @@ entitlement rule above.
   server component*, so scrolling the list would otherwise burn quota invisibly.
 - Counted only after `notFound()` (a bad ticker costs nothing) and never for a subscriber
   — locked decision #18 promises them no usage limits.
+
+### 7.2 Signed-out trial flow, and why signup comes first
+
+Checkout needs a session (the webhook maps Stripe → our user by an id in the subscription
+metadata), and a new account needs email confirmation before one exists. So an account
+genuinely must be created before a trial can start — the only question was whether that
+felt like one flow or a dead end. It used to be a dead end: signup ignored `next`
+entirely and always landed on `/stocks`, so someone who clicked "Start 7-day free trial"
+while signed out was returned to a page telling them to create the account they had just
+created.
+
+Now the chosen plan rides through the whole loop:
+
+```
+/pricing (signed out) → /signup?next=/pricing?start=annual
+   → confirm email (or Google, which signs in directly)
+   → /auth/callback → safeNextPath → /pricing?start=annual
+   → banner "Your free account is ready", annual preselected, one click to Stripe
+```
+
+Both providers carry it: email/password via `emailRedirectTo`, Google One Tap via
+`window.location.assign(safeNextPath(next))`, Google OAuth via `redirectTo`. Signup copy
+switches to "First, create your account / Step 1 of 2" when `next` points at a
+`?start=` pricing URL, and must **not** say "once you confirm your email" — Google has no
+confirmation step.
+
+### 7.3 Onboarding is a gate, not an overlay
+
+When `acknowledged_disclaimer_at` is null, `app/(app)/layout.tsx` returns the disclaimer
+modal **alone** and never renders `children`. Two reasons:
+
+- **Correctness.** Radix writes `aria-hidden` directly onto sibling DOM nodes when a modal
+  opens — a DOM mutation, not a render. App Router hydrates progressively, so on first
+  login that write landed on the 862-stock Browse subtree while React was still hydrating
+  it, and React discarded and re-rendered that subtree client-side. This is upstream
+  [radix-ui/primitives#1386](https://github.com/radix-ui/primitives/issues/1386) (confirmed,
+  still open). `dynamic(ssr:false)`, `useSyncExternalStore`, `requestAnimationFrame` and
+  upgrading `@radix-ui/react-dialog` to 1.1.23 were all tried and none helps — the race is
+  with a subtree that finishes hydrating whenever it finishes. With nothing rendered behind
+  the dialog there is nothing to race.
+- **Cost.** First login no longer pays for a universe fetch and a 120-row client component
+  the user cannot see or interact with.
 - **The columns are not user-writable, but not for the reason the migration first claimed.**
   Postgres cannot subtract a column from a table-level GRANT, so the column-level `REVOKE`
   is only a tripwire. The real guarantee is that `authenticated` holds **no table-level

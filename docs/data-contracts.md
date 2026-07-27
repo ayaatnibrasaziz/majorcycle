@@ -1227,12 +1227,38 @@ mode** (sandbox config `bpc_1TuR6R…`: update/cancel-at-period-end/payment/invo
 **Stripe client** (`web/lib/stripe.ts`) sets `maxNetworkRetries: 2` (SDK default 0;
 retried POSTs get automatic idempotency keys).
 
+### Upgrade-dialog context — `GET /api/billing-context` — BUILT (F3 step 10)
+
+Auth-gated. Returns exactly what the upgrade dialog needs to offer the right thing:
+
+```ts
+{ currency: BillingCurrency; trialUsed: boolean; hasSubscription: boolean }
+```
+
+- `hasSubscription` — `subscription_status ∈ {active, trialing, past_due}`. CTA becomes
+  **Manage your plan** → `/account`; no trial is offered and `StartTrialModal` isn't rendered.
+- `trialUsed` — the Step 7 email tombstone. CTA becomes **Subscribe**, and the modal states
+  that billing starts today with no free week. **Skipped** (returned `false`) when
+  `hasSubscription`, which also avoids a pointless admin-client read for the common case.
+- `currency` — same resolver as `/pricing` and `/api/checkout` (see above).
+
+Sends `Cache-Control: private, no-store` — per-viewer billing state must never reach a
+shared cache (CLAUDE.md 11a). Signed-out callers never reach the handler: `proxy.ts`
+redirects them to `/login` first.
+
+> **Not a source of truth.** `POST /api/checkout` independently re-derives all three and
+> remains the authority — it 409s a caller who already has a subscription and omits
+> `trial_period_days` for a tombstoned email regardless of what this endpoint said. This
+> exists so the UI can be honest *before* the click; a failed fetch degrades to a
+> `/pricing` link rather than to a wrong offer.
+
 ### Billing currency resolution + trial entry (F3, `e30c7aa` / `767c9da`)
 
-- **One currency resolver, three call sites.** `effectiveBillingCountry(saved, edge)`
+- **One currency resolver, four call sites.** `effectiveBillingCountry(saved, edge)`
   (`web/lib/stripe.ts`) → `currencyForCountry` (AU→aud/CA→cad/else usd). Precedence:
   `profiles.country` → Vercel `x-vercel-ip-country` edge header → USD. Used identically by
-  `/pricing`, the account **Start-free-trial** modal, and `POST /api/checkout`, so the
+  `/pricing`, the account **Start-free-trial** modal, `GET /api/billing-context` (which
+  feeds that same modal when it is opened from a lock), and `POST /api/checkout`, so the
   displayed price always equals the charged currency (Stripe locks a subscription's
   currency at creation, so a display/charge drift would be unfixable after the fact).
 - **`POST /api/checkout` persists the resolved country** when `profiles.country` was empty

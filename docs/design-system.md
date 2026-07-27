@@ -492,17 +492,34 @@ Pattern: centered icon + bold heading + muted descriptive text + optional CTA li
 
 ### Locked (premium) states — F3 Step 10
 
-Three components in `web/components/stocks/PremiumLock.tsx`, plus one page-local notice.
+Two components in `web/components/stocks/PremiumLock.tsx`, the shared
+`web/components/UpgradeDialog.tsx`, plus one page-local notice.
 All of them are **honest placeholders, not redactions**: for an unentitled viewer the
 underlying numbers are stripped server-side before serialisation, so there is nothing in
 the DOM to blur, un-hide or read out. What renders *is* all that exists.
 
 | Where | Component | Treatment |
 |---|---|---|
-| KPI strip cards 1–2 (Overall Rating, Health Score) | `PremiumLockKpi` | Keeps the exact `kpi-card` shape so the 4-up grid stays aligned. Muted `--text-muted` accent, lock icon + the word **Unlock**. The whole tile is a link to `/pricing`, with an `aria-label` of "<label> — requires a subscription. See plans." |
-| Verdict, Scorecard | `PremiumLockCard` | Standard `card` + `card-header`/`card-body`, lock icon beside the title, one sentence naming what it unlocks, ending in a **See plans** link. |
+| KPI strip cards 1–2 (Overall Rating, Health Score) | `PremiumLockKpi` | Keeps the exact `kpi-card` shape so the 4-up grid stays aligned. Muted `--text-muted` accent, lock icon + the word **Unlock**. The tile is a **button** that opens the upgrade dialog, `aria-label` "<label> — included with a subscription. See what's included." |
+| Verdict, Scorecard | `PremiumLockCard` | Standard `card` + `card-header`/`card-body`, lock icon beside the title, one sentence naming what it unlocks, ending in a **See what's included** button. Takes an optional `id` so a locked section still answers the subnav's anchor. |
+| Download Report | `StockSubnav` | Swaps the blue `.export-btn` for a neutral bordered button with a lock, opening the same dialog. It must **not** attempt the download: the gated route answers 402, which the generic catch could only report as "try again in a moment". |
+| Run Analysis, Results (sidebar) | `Sidebar` | Locked rows render as buttons, not links, and open the dialog in place. |
 | Rating + valuation-zone badges | — | **Absent**, not locked. A lock chip beside the company name would be noise, and the locked KPI tiles directly below already make the offer. |
+| Analyst consensus chip | `BadgeRow` | When our badges are absent the chip gains a visible **"Analysts:"** prefix. Alone in that row a bare "Buy" reads as *our* call — CLAUDE.md #2. Attribution must be on screen, not only in a `title`. |
 | Daily fence reached | page-local `FreeViewLimitNotice` | Full-width card: what happened, that it resets at midnight UTC, that already-seen stocks still open, then **See plans** + **Back to Browse**. Carries the standard not-advice line. |
+
+**Locks explain themselves in place; they never navigate.** Every lock opens
+`UpgradeDialog` — same shell and blurred backdrop as the Methodology modal — so the reader
+keeps the stock they were deciding about. The dialog names the feature, says in plain
+language **what that feature is**, lists what else a subscription includes, and then hands
+off to `StartTrialModal` (the same in-app checkout entry the Account page uses).
+
+It deliberately **shows no price**. Currency, trial-vs-billed-today and the
+already-used-trial case are resolved server-side on `/pricing` and in `/api/checkout`;
+duplicating any of that here would be a second source of truth for the one thing that must
+never be wrong. `/api/billing-context` supplies only enough to label the button
+(`Start free trial` / `Subscribe` / `Manage your plan`), and if that fetch fails the CTA
+falls back to `/pricing` — a failure must never become a wrong offer.
 
 **The 2–2 split is the whole design idea.** `KpiStrip` locks cards 1–2 and leaves cards
 3–4 (Current Drawdown, Typical Drawdown) fully working. Two locked tiles sitting beside two
@@ -527,8 +544,12 @@ SCREEN              ← premium
   Run Analysis      ← verb before noun
   Results
 ────────────
-  Account · Licence status
+  Licence status
 ```
+
+**One entry point per destination.** Account lives *only* in the header menu, and the
+header's old "Run Analysis" button was removed — both duplicated a nav row. The header now
+carries the page title and the account menu, nothing else.
 
 **Sign out moved to a header account menu** (top-right, `UserMenu.tsx`) rather than the foot
 of the sidebar. It stays **one click**, which matters most on a shared computer, while
