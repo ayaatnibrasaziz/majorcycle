@@ -187,6 +187,10 @@ async function CycleScorecard({ ticker, spec, entitled }: CycleProps) {
   if (!entitled) {
     return (
       <PremiumLockCard
+        // Carries the section's anchor id so the subnav's "Scorecard" pill still
+        // scrolls here and the scroll-spy can still highlight it. Without it the
+        // pill was a dead click for exactly the viewers being sold to.
+        id="sec-scorecard"
         title="Scorecard"
         blurb="The five-pillar financial-health breakdown — profitability, balance sheet, growth, cash flow and shareholder returns — is included with a subscription."
       />
@@ -322,6 +326,7 @@ export default async function StockDetailPage({
         horizonQuery={reportHorizonQuery}
         symbol={reportSymbol}
         reportTitle={reportTitle}
+        entitled={entitled}
       />
 
       <div className="pt-5 space-y-[18px]">
@@ -496,9 +501,12 @@ function FreeViewLimitNotice({ limit }: { limit: number }) {
         </div>
         <div className="card-body space-y-3">
           <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
-            You&apos;ve opened {limit} different stocks today on the free plan. The
-            count resets at midnight UTC, and any stock you&apos;ve already looked at
-            today still opens normally.
+            {/* One expression, not text-around-an-interpolation: JSX trims the
+                leading whitespace off a text segment that follows `{limit}`, which
+                rendered "25different stocks". A template literal has no such rule. */}
+            {`You've opened ${limit} different stocks today on the free plan. The ` +
+              `count resets at midnight UTC, and any stock you've already looked at ` +
+              `today still opens normally.`}
           </p>
           <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
             A subscription removes the limit entirely and unlocks the Major Cycle

@@ -224,15 +224,31 @@ export function BadgeRow({
           className="tier-badge tier-badge--analyst"
           title={`Analyst consensus: ${analystRecommendation}${numAnalysts ? ` (${numAnalysts} analysts)` : ''}. Third-party analyst data — not our rating.`}
         >
+          {/* Attribution becomes VISIBLE, not just a tooltip, whenever our own badges
+              are absent (free tier, F3 Step 10). Otherwise a bare "Buy" sits exactly
+              where our rating used to be, with nothing on screen to say it is Wall
+              Street's word and not ours — the one thing CLAUDE.md #2 forbids. When our
+              label is present it already frames this chip, so the prefix is redundant. */}
+          {!overallLabel && <span className="opacity-70">Analysts:&nbsp;</span>}
           {analystRecommendation}
         </span>
       )}
       <InfoTip title="Rating badges">
-        Three quick reads at a glance. The first is MajorCycle&apos;s overall label
-        (High Conviction → Bearish). The second is the Valuation Zone — how the
-        current dip compares with this stock&apos;s typical pullback (Deep Value →
-        Stretched). The third, if shown, is the Wall Street analyst consensus —
-        third-party data, not our rating.
+        {overallLabel ? (
+          <>
+            Three quick reads at a glance. The first is MajorCycle&apos;s overall label
+            (High Conviction → Bearish). The second is the Valuation Zone — how the
+            current dip compares with this stock&apos;s typical pullback (Deep Value →
+            Stretched). The third, if shown, is the Wall Street analyst consensus —
+            third-party data, not our rating.
+          </>
+        ) : (
+          <>
+            The badge shown is the Wall Street analyst consensus — third-party data,
+            reproduced as published. It is <strong>not</strong> a MajorCycle rating.
+            Our own overall label and Valuation Zone are included with a subscription.
+          </>
+        )}
       </InfoTip>
     </div>
   );

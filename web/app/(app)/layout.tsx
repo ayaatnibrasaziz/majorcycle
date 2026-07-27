@@ -21,7 +21,7 @@ export default async function AppLayout({
           subscriptionStatus={null}
           entitled={process.env.DEV_FORCE_FREE !== 'true'}
         />
-        <Header />
+        <Header entitled={process.env.DEV_FORCE_FREE !== 'true'} />
         <main
           className="ml-[var(--sidebar-w)] mt-[var(--header-h)] p-6 min-h-[calc(100vh-var(--header-h))]"
           id="main-content"
@@ -60,7 +60,7 @@ export default async function AppLayout({
   return (
     <div className="min-h-screen bg-[var(--bg-page)]">
       <Sidebar subscriptionStatus={viewer.subscriptionStatus} entitled={viewer.entitled} />
-      <Header email={viewer.email} />
+      <Header email={viewer.email} entitled={viewer.entitled} />
       <main
         className="ml-[var(--sidebar-w)] mt-[var(--header-h)] p-6 min-h-[calc(100vh-var(--header-h))]"
         id="main-content"

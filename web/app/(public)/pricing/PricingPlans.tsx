@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Check, AlertCircle, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import type { AccessDenialReason } from '@/lib/entitlement';
 import type { BillingCurrency } from '@/lib/stripe';
 import {
   PRICE_TABLE,
@@ -21,8 +22,70 @@ const FEATURES = [
   'Every ticker, chart, and Major Cycle analysis',
   'Financial health, valuation, and overall rating',
   'US, Australian, and Canadian equities',
-  'Cancel anytime — no charge until day 7',
 ];
+
+/**
+ * The last bullet is the only one that depends on the reader: "no charge until day 7"
+ * is false for anyone who has already used their trial (Step 7 bills them today) and
+ * for anyone already subscribed.
+ */
+function closingFeature(trialAvailable: boolean): string {
+  return trialAvailable ? 'Cancel anytime — no charge until day 7' : 'Cancel anytime';
+}
+
+/**
+ * What to say to someone who was just bounced off a premium page (F3 Step 10).
+ *
+ * Each line names what actually happened and what fixes it. "no_subscription" gets
+ * no banner: that's a free user meeting the paywall for the first time, and the page
+ * below already explains the offer — a notice would only read as a scolding.
+ */
+const DENIAL_COPY: Record<
+  Exclude<AccessDenialReason, 'no_subscription'>,
+  { title: string; body: string }
+> = {
+  canceled: {
+    title: 'Your subscription has ended',
+    body: 'Browsing, charts and company financials are still yours on the free plan. Resubscribe below to bring back the Major Cycle rating, the health scorecard, the screener and downloadable reports.',
+  },
+  payment_failed: {
+    title: 'We couldn’t take your last payment',
+    body: 'Your access is paused until the payment goes through. Updating your card on the Account page is usually all it takes — you don’t need to buy a new plan.',
+  },
+  billing_blocked: {
+    title: 'Your account is on hold',
+    body: 'A payment on this account was disputed with the bank, so access is on hold while that’s resolved. Please contact support and we’ll sort it out with you.',
+  },
+};
+
+function DenialNotice({ reason }: { reason: AccessDenialReason }) {
+  if (reason === 'no_subscription') return null;
+  const copy = DENIAL_COPY[reason];
+  return (
+    <div
+      role="status"
+      className="mb-6 flex gap-2.5 rounded-[var(--radius-sm)] border border-[#fcd34d] bg-[#fffbeb] px-3.5 py-3"
+    >
+      <AlertCircle
+        className="mt-[1px] h-[15px] w-[15px] flex-shrink-0 text-[#b45309]"
+        strokeWidth={2}
+        aria-hidden="true"
+      />
+      <div>
+        <p className="text-[12.5px] font-semibold text-[#92400e]">{copy.title}</p>
+        <p className="mt-1 text-[12px] leading-relaxed text-[#92400e]">{copy.body}</p>
+        {reason === 'billing_blocked' && (
+          <Link
+            href="/contact"
+            className="mt-1.5 inline-block text-[12px] font-semibold text-[#92400e] underline underline-offset-2"
+          >
+            Contact support
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /** Money with the currency's symbol; whole numbers stay whole, otherwise 2dp. */
 function money(amount: number, currency: BillingCurrency): string {
@@ -37,6 +100,8 @@ interface PricingPlansProps {
   // Signed-in visitor who already used their free trial (Step 7). Their CTA subscribes
   // with no free week, billed today — labelled + noted honestly so it's never a surprise.
   trialUsed?: boolean;
+  /** Set when `requireEntitled()` bounced them here; drives the explanatory banner. */
+  reason?: AccessDenialReason | null;
 }
 
 /**
@@ -52,10 +117,30 @@ export function PricingPlans({
   isLoggedIn,
   hasSubscription,
   trialUsed = false,
+  reason = null,
 }: PricingPlansProps) {
   const [plan, setPlan] = useState<PlanKey>('monthly');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // The headline has to agree with whoever is reading it. Hard-coding the trial pitch
+  // put "Start your 7-day free trial" directly beneath a banner telling a past-due
+  // customer they don't need a new plan, and offered a free week to someone the
+  // tombstone (Step 7) will bill on day one. Three readers, three different truths.
+  const heading = hasSubscription
+    ? {
+        title: 'Your MajorCycle plan',
+        body: 'Manage your subscription, payment method and invoices from the Account page.',
+      }
+    : trialUsed
+      ? {
+          title: 'Subscribe to MajorCycle',
+          body: "You've already used your free trial on this email, so a new subscription starts today. Cancel any time — you keep access to the end of the period you've paid for.",
+        }
+      : {
+          title: 'Start your 7-day free trial',
+          body: "Full access to MajorCycle for 7 days. Your card is required upfront and isn't charged until the trial ends — cancel any time before then and you pay nothing.",
+        };
 
   const prices = PRICE_TABLE[currency];
   const isAnnual = plan === 'annual';
@@ -89,13 +174,16 @@ export function PricingPlans({
   return (
     <article className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[12px] shadow-[0_24px_60px_-12px_rgba(15,25,35,0.12),0_8px_24px_-8px_rgba(15,25,35,0.08)] overflow-hidden">
       <div className="px-7 py-8 sm:px-9 sm:py-10">
+        {/* Signed-in only. `?reason=` describes THIS account's billing state, and we
+            can't know that for a signed-out reader — showing "your subscription has
+            ended" to someone who merely typed the parameter would state something we
+            haven't verified, right beside a first-time trial offer. */}
+        {isLoggedIn && reason && <DenialNotice reason={reason} />}
         <h1 className="text-[22px] sm:text-[24px] font-bold text-[var(--text-primary)] tracking-[-0.4px] leading-[1.2]">
-          Start your 7-day free trial
+          {heading.title}
         </h1>
         <p className="mt-2 text-[13px] text-[var(--text-secondary)] leading-relaxed">
-          Full access to MajorCycle for 7 days. Your card is required upfront and
-          isn&apos;t charged until the trial ends — cancel any time before then and
-          you pay nothing.
+          {heading.body}
         </p>
 
         {/* Monthly / annual toggle — segmented control */}
@@ -153,7 +241,7 @@ export function PricingPlans({
 
         {/* Features */}
         <ul className="mt-6 flex flex-col gap-2.5">
-          {FEATURES.map((f) => (
+          {[...FEATURES, closingFeature(!hasSubscription && !trialUsed)].map((f) => (
             <li
               key={f}
               className="flex items-start gap-2.5 text-[13px] text-[var(--text-secondary)] leading-relaxed"

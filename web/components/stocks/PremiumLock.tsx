@@ -15,14 +15,21 @@ import { Lock } from 'lucide-react';
 
 /** Full-width card standing in for a locked section (Verdict, Scorecard). */
 export function PremiumLockCard({
+  id,
   title,
   blurb,
 }: {
+  /**
+   * Section anchor, when this lock stands in for a section the subnav links to.
+   * The pill's click handler bails on a missing element, so a locked section
+   * WITHOUT this id is a silently dead nav link for free viewers.
+   */
+  id?: string;
   title: string;
   blurb: string;
 }) {
   return (
-    <div className="card card--stack-base" role="note">
+    <div id={id} className="card card--stack-base scroll-mt-[120px]" role="note">
       <div className="card-header">
         <div className="card-title flex items-center gap-[6px]">
           <Lock

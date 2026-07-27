@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
+import type { AccessDenialReason } from '@/lib/entitlement';
 import { currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
 import { hasUsedTrial } from '@/lib/trialGuard';
 import { PricingPlans } from './PricingPlans';
@@ -19,12 +20,41 @@ export const dynamic = 'force-dynamic';
 const ACTIVE_STATES = new Set(['active', 'trialing', 'past_due']);
 
 /**
+ * `?reason=…` is set by `requireEntitled()` when it bounces someone off a premium
+ * page. Allow-listed rather than trusted: the value lands in rendered copy, and it
+ * arrives from the URL bar where anyone can type anything. An unrecognised value is
+ * dropped, so the page simply shows no banner.
+ */
+const DENIAL_REASONS = new Set<AccessDenialReason>([
+  'no_subscription',
+  'canceled',
+  'payment_failed',
+  'billing_blocked',
+]);
+
+function parseReason(raw: string | string[] | undefined): AccessDenialReason | null {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return value && DENIAL_REASONS.has(value as AccessDenialReason)
+    ? (value as AccessDenialReason)
+    : null;
+}
+
+/**
  * Public pricing shop-window (build-order step 3). Region currency is resolved
  * server-side: a signed-in user's saved country wins (it also locks their billing
  * currency), otherwise Vercel's edge geo header, otherwise USD. The signed-in state
  * decides whether the CTA starts checkout directly or routes a visitor to sign up.
  */
-export default async function PricingPage() {
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // Why they were sent here, if they were sent (F3 Step 10). Without this the page
+  // greeted a locked-out subscriber with the same generic shop-window as a first-time
+  // visitor — "your payment failed" and "your trial ended" need to read differently.
+  const reason = parseReason((await searchParams).reason);
+
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -66,6 +96,7 @@ export default async function PricingPage() {
       isLoggedIn={Boolean(user)}
       hasSubscription={hasSubscription}
       trialUsed={trialUsed}
+      reason={reason}
     />
   );
 }

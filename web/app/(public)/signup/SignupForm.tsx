@@ -18,10 +18,16 @@ import { getSiteURL } from '@/lib/url';
 // taken (decision #19). The old copy here promised a trial anyway, which is now
 // plainly wrong: a new account lands on the FREE tier. These lines describe what
 // creating an account really gets you, and the trial is offered separately.
+//
+// Each bullet describes the FREE ACCOUNT only. The trial is deliberately not
+// mentioned here: putting "no card required" and "7-day free trial" in one breath
+// reads as "the trial needs no card", which is the opposite of decision #19 (card
+// upfront, charged on day 7). The trial gets its own separated note below, where the
+// card requirement is stated in the same sentence and can't be detached from it.
 const freeFeatures = [
   'Browse every US, Australian and Canadian stock we cover',
   'Full price history, cycle chart and company financials',
-  'No card required — start a 7-day free trial whenever you like',
+  'Yours to keep free — no card, no expiry',
 ];
 
 export function SignupForm() {
@@ -83,7 +89,7 @@ export function SignupForm() {
   return (
     <AuthCard
       title="Create your free account"
-      subtitle="No card required. Start a 7-day free trial whenever you’re ready."
+      subtitle="Free to sign up and free to keep. No card needed."
     >
       {/* Free-tier value props — matches reference briefing-card aesthetic */}
       <div className="mb-6 bg-gradient-to-br from-white to-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius)] px-4 py-3.5">
@@ -98,6 +104,22 @@ export function SignupForm() {
           ))}
         </ul>
       </div>
+
+      {/* Kept OUT of the free-tier list on purpose. The trial is a separate, later
+          choice with a different requirement, and the card must be named in the same
+          sentence — a reader who takes only half of this must still take a true half. */}
+      <p className="-mt-3 mb-6 text-[11.5px] leading-relaxed text-[var(--text-muted)]">
+        Our ratings, scorecard and screener are paid. When you want them, you can start
+        a 7-day free trial from your account — that step does ask for a card, and
+        nothing is charged until day 7.{' '}
+        <Link
+          href="/pricing"
+          className="font-semibold text-[var(--brand-mid)] underline underline-offset-2"
+        >
+          See what&apos;s included
+        </Link>
+        .
+      </p>
 
       <form onSubmit={handleSignup} className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
