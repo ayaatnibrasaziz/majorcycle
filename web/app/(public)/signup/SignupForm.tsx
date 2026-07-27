@@ -120,8 +120,11 @@ export function SignupForm() {
             aria-hidden
           />
           <p className="text-[12.5px] leading-relaxed text-[var(--brand-deep)]">
-            Your trial is waiting. We just need an account to attach it to — once you
-            confirm your email we&apos;ll take you straight back to start it.
+            {/* Deliberately not "once you confirm your email": Google sign-up has no
+                confirmation step — it signs you straight in and lands you back here.
+                One line has to be true for both providers. */}
+            Your trial is waiting. We just need an account to attach it to — as soon as
+            it&apos;s ready we&apos;ll take you straight back to start it.
           </p>
         </div>
       )}

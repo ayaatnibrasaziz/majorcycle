@@ -55,7 +55,26 @@ export default async function AppLayout({
     redirect('/reactivate');
   }
 
-  const needsOnboarding = !viewer.acknowledgedDisclaimerAt;
+  // Onboarding is a GATE, so render it as one: the page underneath is never shown
+  // and never usable, and building it costs a universe fetch plus a 120-row client
+  // component on every first login.
+  //
+  // It also fixes a hydration warning that survived four narrower attempts. Radix
+  // sets `aria-hidden` directly on sibling DOM nodes when a modal opens, and App
+  // Router hydrates the page subtree progressively — so the mutation landed on nodes
+  // React hadn't hydrated yet, and React discarded and re-rendered that subtree on
+  // the client. Deferring the open (`ssr: false`, `useSyncExternalStore`,
+  // requestAnimationFrame) all failed because the race is with a large subtree that
+  // finishes hydrating whenever it finishes; upgrading @radix-ui/react-dialog to
+  // 1.1.23 didn't help either (radix-ui/primitives#1386, still open). With no page
+  // rendered behind the dialog there is nothing to race.
+  if (!viewer.acknowledgedDisclaimerAt) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-page)]">
+        <OnboardingModal />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[var(--bg-page)]">
@@ -72,7 +91,6 @@ export default async function AppLayout({
         </div>
         <AnalysisProvider>{children}</AnalysisProvider>
       </main>
-      {needsOnboarding && <OnboardingModal />}
     </div>
   );
 }
