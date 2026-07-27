@@ -942,8 +942,12 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           following an interpolation.
         - Verified with screenshots: free vs entitled Stock Detail A/B, **no premium key and no
           `NN/100` anywhere in free HTML**, the fence at the cap, `/api/cycle` 401, every denial
-          banner. **Not** verifiable locally and still open: true 375px (the browser pane clamps
-          to 566px), geo currency, real Checkout, CDN cache behaviour.
+          banner. **Not** verifiable locally and still open: geo currency, real Checkout,
+          CDN cache behaviour.
+          *(Correction, 2026-07-28: this line previously also claimed true 375px was not
+          verifiable because "the browser pane clamps to 566px". That was wrong — the pane
+          reports a true `innerWidth: 375`. See the Layer H entry for what the measurement
+          actually found.)*
       - [x] **Locks explain themselves in place — DONE 2026-07-27 (`cf61908`, `03d5161`).**
         Owner feedback. Every lock now opens `UpgradeDialog` (Methodology-modal shell, blurred
         backdrop) instead of navigating to `/pricing`, so the reader keeps the stock they were
@@ -979,8 +983,46 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
         while `web/requirements.txt` pins `supabase>=2.4.0`, so CI and Vercel resolve a current
         release that has already migrated to `supabase_auth`. No action. (Open, minor: that pin
         is open-ended, so a future 2.x could reach production unreviewed.)
+      - [x] **OWNER-DRIVEN LIVE CHECK on the deployed preview — 2026-07-28 (`ea84d01`).**
+        Run against the `feat/f3-stripe` preview with a throwaway account signed in via an
+        admin-generated one-time token aimed at the preview's own `/auth/confirm` (no password
+        typed, no dependence on `NEXT_PUBLIC_SITE_URL`, which points at production and would
+        otherwise bounce a preview sign-in). Billing states driven by flipping columns directly.
+        - **Baseline captured first:** production `/api/cycle` today answers an anonymous,
+          session-less, secret-less `curl` with **HTTP 200, `Cache-Control: public`, and the
+          complete paid payload** (`overall_rating 60`, `financial_health_score 81.0`). That is
+          §2.2 + B1 reproduced in the wild. Merging Step 10 strictly *reduces* exposure.
+        - **M4 is narrower than recorded.** The audit said neither local dev nor a preview
+          exercises the new HTTP gate, because `baseUrl()` sends SSR to production. True for the
+          SSR path — but calling `/api/cycle` **directly from the preview page** reaches the
+          preview's own function. It returned **401 `{"error":"unauthorized"}`** from a fully
+          authenticated browser with no internal secret. So B2's edge gate IS verifiable before
+          merge, and it works.
+        - **Passed:** `/api/analyze` → 402; `/run` + `/results` → `/pricing?reason=…`;
+          `billing_blocked` overriding an `active` subscription (locked, correct banner, Contact
+          support link); a subscriber rendering the full page (rating, verdict, radar, report,
+          no upsell); the free-view fence at 25 with the "already-seen stocks still open"
+          promise verified true rather than assumed; `UpgradeDialog` explaining each feature in
+          place; the nav rework (locks, no sidebar Account, no header Run Analysis).
+        - **Found + fixed (`ea84d01`):** the four premium surfaces were not equally defended —
+          Verdict and Scorecard require `!entitled` **and** the type guard, while the Overall
+          Rating tile, Health Score tile and header chips required only the type guard, trusting
+          the API strip as their single control. Now all four require both. Surfaced *because*
+          of M4: fed unstripped production data, the preview rendered 60/100 and 81/100 to a
+          free viewer.
+        - **Found, not fixed (owner's call):** the unauthorised `/api/cycle` 401 carries
+          `Cache-Control: public, max-age=0, must-revalidate`. Not exploitable — `max-age=0` +
+          `must-revalidate` prevent any reuse — but `public` on a viewer-dependent response is
+          the same category as B1 and contradicts rule 11a. The hazard is someone later dropping
+          `max-age=0` without realising it was the only thing making it safe.
+        - **Not a defect:** `?reason=no_subscription` deliberately renders no banner (a
+          first-time free user shouldn't be scolded); every other reason does. The silent case
+          only occurs on direct navigation — the sidebar path opens the dialog.
+        - **Still open after this session:** geo currency via `x-vercel-ip-country` (needs a
+          null-country profile), real Stripe Checkout/Portal in sandbox, and the at-merge items.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
-        percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`.
+        percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
+        **375px mobile — pre-existing, already triaged to Layer H, now measured there.**
       - No merge to `main` until the owner-driven live guided check passes and the owner approves.
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
@@ -1083,6 +1125,17 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 ### Layer H: Pre-launch Hardening (Phase 1.5, target: 1 week)
 
 - [ ] Mobile responsive audit on every page
+  - **Measured 2026-07-28** (F3 Step 10 live check, deployed preview, real 375×812 viewport —
+    the long-standing "can't test this locally" note was wrong). Signed-in app shell:
+    `scrollWidth 505` vs `clientWidth 375` — **130px of horizontal overflow on every page
+    inside `(app)`**, which is CLAUDE.md #3. Root cause is the shell, not any one page:
+    `Header` is `fixed … left-[var(--sidebar-w)] right-0` and `Sidebar` never collapses, so
+    the sidebar keeps its desktop width (~215px of a 375px screen). Body copy wraps one word
+    per line and the Browse table's STOCK / MARKET CAP columns overlap.
+  - **Public pages measured clean** at 375px (`/pricing` → `scrollWidth 375`, no overflow), so
+    the fix is scoped to the `(app)` layout + `Sidebar` + `Header`, not a site-wide sweep.
+  - Likely shape: a `md:` breakpoint that collapses the sidebar behind a hamburger and drops
+    the header's left offset below it. Re-measure with the same probe afterwards.
 - [ ] Accessibility audit (axe-core)
 - [ ] Cross-browser test (Chrome, Safari, Firefox, mobile Safari)
 - [ ] Disclaimer copy review (ideally by AU fintech lawyer — owner's decision)
