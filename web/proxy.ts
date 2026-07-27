@@ -8,6 +8,23 @@ import { INTERNAL_HEADER, hasInternalSecret } from '@/lib/internalAuth';
 const CYCLE_PATH = '/api/cycle';
 
 /**
+ * Cache headers for the two refusals this middleware issues itself.
+ *
+ * Both depend on WHO is asking — the 401 on whether the caller holds the internal
+ * secret, the 402 on the caller's own billing columns (its body names their denial
+ * reason). Rule 11a: a viewer-dependent response must never carry a shared-cache
+ * directive, because Vercel's edge keys on the URL alone and would hand one caller's
+ * answer to the next.
+ *
+ * `NextResponse.json` otherwise defaults these to `public, max-age=0, must-revalidate`.
+ * That is not exploitable on its own — `max-age=0` plus `must-revalidate` stop any
+ * reuse — but it is the same directive that made B1 an authorisation bypass, and it
+ * leaves the safety resting on a modifier someone could later remove without knowing
+ * it was load-bearing. Stated explicitly instead.
+ */
+const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
+
+/**
  * Endpoints that require a live subscription. The screener is fully premium — the
  * highest-value feature and the only one with a meaningful per-use cost — so there
  * is no free form of it to fall back to. `/api/analyze-dev` is the local shim that
@@ -71,7 +88,10 @@ export async function proxy(request: NextRequest) {
     if (hasInternalSecret(request.headers.get(INTERNAL_HEADER))) {
       return NextResponse.next({ request });
     }
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    return NextResponse.json(
+      { error: 'unauthorized' },
+      { status: 401, headers: NO_STORE },
+    );
   }
 
   let response = NextResponse.next({ request });
@@ -160,7 +180,7 @@ export async function proxy(request: NextRequest) {
     if (!hasAccess(profile)) {
       return NextResponse.json(
         { error: 'Payment Required', reason: accessDenialReason(profile) },
-        { status: 402 },
+        { status: 402, headers: NO_STORE },
       );
     }
 

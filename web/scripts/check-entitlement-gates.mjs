@@ -102,6 +102,32 @@ const PREMIUM_KEYS = [
       'It is the authoritative half of the gate — the proxy check alone is not enough.',
     );
   }
+
+  // The same rule for the refusals the middleware issues itself. Both vary by
+  // viewer — the 401 by whether the caller holds the internal secret, the 402 by
+  // the caller's own billing columns (its body names their denial reason) — and
+  // `NextResponse.json` defaults to `public, max-age=0, must-revalidate`. Harmless
+  // only because of the modifiers; this keeps `private, no-store` explicit so the
+  // safety never rests on someone not deleting `max-age=0`. (Live check, 2026-07-28.)
+  {
+    const proxy = read('proxy.ts');
+    if (!/'Cache-Control':\s*'private, no-store'/.test(proxy)) {
+      fail(
+        'proxy.ts no longer declares a `private, no-store` header constant',
+        'Its 401 (/api/cycle) and 402 (/api/analyze) both vary by viewer and must not\n' +
+          '  carry a shared-cache directive. See CLAUDE.md rule 11a.',
+      );
+    }
+    for (const status of ['401', '402']) {
+      const re = new RegExp(`status:\\s*${status},\\s*headers:\\s*NO_STORE`);
+      if (!re.test(proxy)) {
+        fail(
+          `proxy.ts's ${status} no longer sends the no-store header`,
+          'A viewer-dependent refusal must never be shared-cacheable.',
+        );
+      }
+    }
+  }
   for (const key of PREMIUM_KEYS) {
     if (!cycle.includes(key)) {
       fail(
@@ -311,4 +337,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('paywall guard: entitlement gates intact (8 checks passed)');
+console.log('paywall guard: entitlement gates intact (9 checks passed)');
