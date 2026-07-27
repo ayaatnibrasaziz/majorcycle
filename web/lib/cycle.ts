@@ -21,6 +21,49 @@ function specKey(spec: CycleSpec): string {
     : spec.preset;
 }
 
+/**
+ * The premium keys, in the camelCase shape the app uses after `toCamel`. Mirrors
+ * the snake_case strip list in `api/cycle.py::_serialise_analysis`.
+ */
+const PREMIUM_FIELDS = [
+  'financialHealthScore',
+  'fhSubscores',
+  'valuationScore',
+  'valuationScoreRaw',
+  'qualityFactor',
+  'valuationZone',
+  'cyclePayoffScore',
+  'overallRating',
+  'overallLabel',
+] as const;
+
+/**
+ * Belt-and-braces strip on the way IN, for an unentitled viewer.
+ *
+ * `api/cycle.py` already withholds these keys when `entitled=0`, so in a healthy
+ * system this removes nothing. It exists because hiding a score in the UI does not
+ * take it off the wire: this object is passed to client components, so React
+ * serialises it into the RSC payload embedded in the HTML. A viewer who never sees
+ * the number in the page can still read it in View Source.
+ *
+ * Observed live on 2026-07-28 — the preview renders "🔒 Unlock" while the page
+ * source carried `"overallRating":60,"overallLabel":"Neutral"`. That was the M4
+ * cross-environment artifact (a preview fetches PRODUCTION's ungated /api/cycle),
+ * not a shipping leak, but it makes the point exactly: the API strip was the only
+ * thing standing between a free viewer and the payload, and a regression there
+ * would leave the UI looking locked while quietly shipping the data — the worst
+ * kind of failure, because it looks safe.
+ *
+ * Stripping here also makes preview deployments behave like production instead of
+ * silently more permissive.
+ */
+function stripPremium<T>(value: T, entitled: boolean): T {
+  if (entitled || !value || typeof value !== 'object') return value;
+  const out = { ...(value as Record<string, unknown>) };
+  for (const key of PREMIUM_FIELDS) delete out[key];
+  return out as T;
+}
+
 function baseUrl(): string {
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
   // Prefer the project's production custom domain (e.g. majorcycle.com). A custom
@@ -107,7 +150,10 @@ async function computeCycleLocally(
     );
     const raw: unknown = JSON.parse(stdout);
     if (!(raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>))) {
-      result = toCamel<CycleAnalysis | CycleAnalysisFree>(raw as never);
+      result = stripPremium(
+        toCamel<CycleAnalysis | CycleAnalysisFree>(raw as never),
+        entitled,
+      );
     }
   } catch {
     // Non-zero exit (404/500), bad JSON, or python missing — degrade gracefully.
@@ -174,7 +220,10 @@ export const fetchCycleAnalysis = cache(
       });
       if (!res.ok) return null;
       const raw: unknown = await res.json();
-      return toCamel<CycleAnalysis | CycleAnalysisFree>(raw as never);
+      return stripPremium(
+        toCamel<CycleAnalysis | CycleAnalysisFree>(raw as never),
+        entitled,
+      );
     } catch {
       return null;
     }
