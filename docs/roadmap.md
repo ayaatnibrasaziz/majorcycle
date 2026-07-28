@@ -1104,6 +1104,50 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           Note the AAAA *query* stalls even when there is no AAAA record to return, so "the host is
           IPv4-only" does not rule this out — and `--dns-result-order=ipv4first` still doesn't help,
           because it reorders results *after* resolution.
+      - [x] **DISPUTE LIFECYCLE, END TO END — 2026-07-28 (`aabc865`).** Owner asked whether the
+        dispute path had ever been checked *against the paywall*. It had not, and the reason is
+        a timing trap: disputes were live-checked on **2026-07-24**, at Step 8, when the paywall
+        did not yet exist (Step 10 landed on the 26th). So "dispute → `billing_blocked`" was
+        proven, and "`billing_blocked` → locked" was proven separately by e2e and the preview
+        check — but **always by setting the column directly**. No run had ever crossed the seam,
+        which is where `resolveUserIdFromDispute` lives: a dispute carries a charge id, not a
+        customer, so the webhook does its one live Stripe retrieve there **and swallows failure**.
+        If that retrieve breaks, both halves still pass their own tests and the chargebacker keeps
+        full access.
+        - **Seam proven.** A real `pm_card_createDispute` charge fired `dispute.created` +
+          `funds_withdrawn` → attributed to the right profile → `billing_blocked=true` with
+          `subscription_status` untouched at `active` → the page lost both scores, **premium keys
+          left the wire entirely**, `/api/analyze` answered **402 `billing_blocked`** (not
+          "no_subscription" — a chargeback must not be reported as "update your card"), and
+          `/run`, `/results` and the report all redirected to `/pricing?reason=billing_blocked`.
+          Stripe test mode then auto-resolved the dispute ~2 min later, which incidentally proved
+          the other half live: `funds_reinstated` + `closed(won)` → access restored.
+        - **🔴 The money bug.** Losing a chargeback cancels the subscription, so a lost dispute
+          lands on **`canceled` + `billing_blocked`** — and `canceled` is precisely the status
+          allowed to re-subscribe. `/api/checkout` never checked `billing_blocked`, so the blocked
+          user could **pay again and still be denied**, because the block outranks any status.
+          Money taken for access we then refuse. Checkout now **403s** a held account.
+        - **🟡 The honesty bugs.** `billing_blocked` is orthogonal to `subscription_status` (a
+          disputed account keeps its Stripe status), and both status displays read the status
+          alone: the sidebar badge announced **ACTIVE**, and the account card said **"ACTIVE —
+          You're on the Monthly plan"**, to someone locked out of everything, with no mention of
+          a hold anywhere. Both now read **"On hold"** with the reason; the card's action becomes
+          support rather than a plan button.
+        - **UX, owner-directed.** A lock now explains the hold instead of pitching a subscription
+          (an upsell there is an offer checkout refuses). Support opens **in place** as a dialog
+          — same treatment as the upgrade dialog, reusing the same form and server action,
+          prefilled — rather than throwing a signed-in reader onto public `/contact`.
+        - **Flash fixed.** Billing context is fetched **once per page at mount** and shared by
+          every lock, not per dialog-open. Fetching on open meant the answer landed after the
+          dialog was already on screen, so a held reader saw the upsell for a beat before it
+          corrected itself. Same failure as the `See plans` flash: a placeholder that *asserts*
+          something about the reader.
+        - **Also verified this pass:** Supabase advisors re-run — 9 INFO `rls_enabled_no_policy`,
+          identical to the M1 baseline, all service-role-only tables where deny-by-default is
+          intended. **Playwright 88** (3 new dispute tests). Sandbox + DB reset to baseline.
+        - **Flake noted:** a first full run had 2 failures that did not reproduce (a webhook route
+          answering 404, a free-tier redirect) — first-hit route compilation under `next dev`,
+          not a regression. Worth watching if it recurs in CI.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
         **375px mobile — pre-existing, already triaged to Layer H, now measured there.**
