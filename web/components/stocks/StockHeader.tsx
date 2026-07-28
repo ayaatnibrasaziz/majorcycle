@@ -224,12 +224,14 @@ export function BadgeRow({
           className="tier-badge tier-badge--analyst"
           title={`Analyst consensus: ${analystRecommendation}${numAnalysts ? ` (${numAnalysts} analysts)` : ''}. Third-party analyst data — not our rating.`}
         >
-          {/* Attribution becomes VISIBLE, not just a tooltip, whenever our own badges
-              are absent (free tier, F3 Step 10). Otherwise a bare "Buy" sits exactly
-              where our rating used to be, with nothing on screen to say it is Wall
-              Street's word and not ours — the one thing CLAUDE.md #2 forbids. When our
-              label is present it already frames this chip, so the prefix is redundant. */}
-          {!overallLabel && <span className="opacity-70">Analysts:&nbsp;</span>}
+          {/* Attribution is VISIBLE, not just a tooltip, and unconditional. It used to
+              appear only when our own badges were absent, on the theory that our label
+              framed this chip. That reads backwards: beside "Neutral" and "Stretched",
+              a bare "Buy" looks like the third thing WE concluded, which is precisely
+              what CLAUDE.md #2 forbids. Colour and a hover title are not enough — the
+              tooltip is invisible on touch, and the entitled view is the one where the
+              chip has our labels to be mistaken for. Six characters, no ambiguity. */}
+          <span className="opacity-70">Analysts:&nbsp;</span>
           {analystRecommendation}
         </span>
       )}
