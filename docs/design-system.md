@@ -125,6 +125,8 @@ The five composite rating tiers display as **neutral, advice-free language**. Th
 
 **Allowed verbatim from yfinance for the Analyst Consensus field only:** "Strong Buy / Buy / Hold / Underperform / Sell" — these are reported as third-party data, with an "Analyst consensus from Yahoo Finance" attribution underneath.
 
+**The attribution is visible and unconditional — never colour or a tooltip alone.** The analyst chip in `BadgeRow` renders a literal `Analysts:` prefix in every state. It once appeared only when our own badges were absent, on the reasoning that our label already framed the chip; that is backwards. In a row reading "Neutral · Stretched · **Buy**", the third chip looks like the third thing *we* concluded — the one reading rule 2 exists to prevent. A `title` attribute doesn't rescue it either: tooltips don't exist on touch. Six characters of prefix, no ambiguity.
+
 ### Valuation Zone Labels (a separate dimension)
 
 The Major Cycle valuation_zone is also re-labelled:

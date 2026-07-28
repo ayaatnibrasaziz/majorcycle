@@ -1040,11 +1040,65 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           is the edge geo path, not a default.
         - **Still open after this session:** real Stripe Checkout/Portal in sandbox, and the
           at-merge items.
-        - **Tooling note:** use the stable branch alias
+        - **Tooling note (superseded for Stripe):** use the stable branch alias
           `majorcycle-git-feat-f3-stripe-…vercel.app`, not per-deployment URLs — it follows the
           latest build, so a session survives each redeploy (cookies are per-host, so a new
           deployment URL means signing in again). Preview deployment protection is bypassed for
           non-browser clients with the Vercel MCP's shareable `_vercel_share` link.
+      - [x] **SANDBOX CHECKOUT + PORTAL, END TO END — 2026-07-28 (`f8374d0`, `09f1885`,
+        `7ff5abe`).** Run on **localhost**, not the preview, and deliberately so: the paying
+        half of the loop is the webhook, and a preview cannot receive one — `STRIPE_WEBHOOK_SECRET`
+        exists in no Vercel environment, and preview SSO would bounce Stripe's POST before it
+        reached the function. `pnpm stripe:listen` forwards real sandbox events with a matching
+        secret, which is the only place the full chain runs today. Sandbox account
+        `acct_1TrdbF…` (≠ LIVE `acct_1Trdax…`); the forwarder and every harness script refuse a
+        live key outright.
+        - **The whole loop, verified in order:** free viewer → both scores locked and **zero
+          premium keys in 3.29 MB of HTML** → lock opens `UpgradeDialog` → `StartTrialModal` at
+          **A$19 AUD** (profile country AU) → real Stripe Checkout, sandbox-badged, *"7 days
+          free, then A$19.00 per month starting August 4, 2026"* → card `4242` → **11 webhooks,
+          all 200** → `subscription_status='trialing'`, `plan=monthly`, `currency=aud`,
+          `trial_ends_at=2026-08-04`, **tombstone written with `email_hash = sha256(email)`** →
+          Account shows "TRIAL ACTIVE · runs until August 4, 2026" → sidebar locks gone, `/run`
+          open, scores render, **premium keys now present**. Free/entitled symmetry is the proof
+          the strip is entitlement-driven and not incidental.
+        - **Portal:** opened on `billing.stripe.com` with the trial badge, A$19/month, the 4242
+          card. Cancelling set `cancel_at_period_end=true` while status **stayed `trialing`** —
+          access is preserved to the end of the paid period, never revoked early — and the card
+          switched to *"ends August 4, 2026 and won't renew."* Confirmed still entitled after.
+        - **Found + fixed (`f8374d0`) — `UpgradeDialog` offered the wrong door while loading.**
+          `ctx === null` meant both "billing context in flight" and "the fetch failed", and both
+          rendered a live `<Link href="/pricing">See plans</Link>`. Every reader who opened a lock
+          got a real, clickable escape hatch out of the in-place dialog for as long as the request
+          took. Loading is now an inert disabled button; only a genuine failure routes to
+          `/pricing`. Proven by stalling the fetch: `disabled: true`, click changes nothing, and
+          no `/pricing` link exists in the dialog at any point. **Owner-reported.**
+        - **Found + fixed (`7ff5abe`) — the analyst chip lost its attribution when entitled.**
+          The "Analysts:" prefix was conditional on our own label being *absent*, so a subscriber
+          saw "Neutral · Stretched · **Buy**" — a bare Wall Street verb sitting in a row of our
+          own judgements, which is exactly what CLAUDE.md #2 forbids. Colour and a `title` were
+          carrying the distinction alone, and a tooltip is invisible on touch. Now unconditional.
+          **Only a subscriber ever saw this**, which is why the free-tier visual pass on
+          2026-07-27 could not have caught it — a standing lesson for paywalled UI: every
+          conditional branch needs a viewer who actually lands on it.
+        - **Found + fixed (`09f1885`) — three account-surface issues, all owner-reported.** The
+          subscription status pill is a flex child, so on a narrow column it shrank and wrapped
+          its own label to two lines *inside* the rounded border; it now refuses to shrink and the
+          row top-aligns. Sidebar licence status uppercased (in CSS, not in `LICENCE_LABELS`, so
+          the strings stay prose for screen readers). Refer-a-friend dropped "— they can create a
+          free account, no card needed": a free account is what every visitor already gets, so
+          framing it as part of an invite reads as an offer when it is not. The referral **email**
+          keeps the line deliberately — it goes to someone who has never heard of MajorCycle.
+        - **Gates after:** typecheck, lint, entitlement guard (9), report sections (22),
+          **Playwright 83/83**. Sandbox reset to 0 customers / 0 live subscriptions; DB reset to
+          0 tombstones / 0 `stripe_events` / no subscribed profile.
+        - **Noted, no action:** Stripe Checkout now renders an **"I am an AI agent acting on
+          behalf of someone else"** disclosure control. It is genuine Stripe UI (agentic
+          commerce), not injected content, and it appears on the live checkout too.
+        - **Gotcha:** `api.stripe.com`'s *first* TCP connect from this machine takes ~11 s, which
+          overruns undici's 10 s default and surfaces as `UND_ERR_CONNECT_TIMEOUT`. It is **not**
+          the IPv6 stall — DNS returns only A records. `--dns-result-order=ipv4first` does nothing
+          here; retry (or a curl warm-up) is the fix.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
         **375px mobile — pre-existing, already triaged to Layer H, now measured there.**
