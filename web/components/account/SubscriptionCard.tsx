@@ -153,9 +153,14 @@ export function SubscriptionCard({
         )}
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
+          {/* items-start, not items-center: on a narrow screen the sentence wraps to
+              two lines, and a vertically-centred pill next to it reads as misaligned.
+              The pill also needs flex-shrink-0 + whitespace-nowrap — as a flex child it
+              would otherwise shrink and wrap its own label onto two lines inside the
+              rounded border. */}
+          <div className="flex items-start gap-3">
             <span
-              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.4px] ${TONE_CLS[meta.tone]}`}
+              className={`inline-flex flex-shrink-0 items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.4px] ${TONE_CLS[meta.tone]}`}
             >
               {meta.label}
             </span>

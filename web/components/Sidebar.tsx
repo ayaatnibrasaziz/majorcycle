@@ -188,8 +188,10 @@ export function Sidebar({ subscriptionStatus, entitled = false }: SidebarProps) 
           <div className="text-[var(--text-muted)] font-medium tracking-[0.5px] uppercase">
             Licence Status
           </div>
+          {/* Uppercased in CSS, not in LICENCE_LABELS, so the source strings stay
+              readable prose for screen readers and for any other surface reusing them. */}
           <div
-            className="font-[var(--font-mono)] text-[10px] text-[var(--brand-mid)] font-semibold mt-0.5"
+            className="font-[var(--font-mono)] text-[10px] text-[var(--brand-mid)] font-semibold mt-0.5 uppercase tracking-[0.5px]"
             aria-label="Subscription status"
           >
             {licenceLabel(subscriptionStatus)}
