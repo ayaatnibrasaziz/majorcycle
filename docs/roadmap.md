@@ -1095,10 +1095,15 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
         - **Noted, no action:** Stripe Checkout now renders an **"I am an AI agent acting on
           behalf of someone else"** disclosure control. It is genuine Stripe UI (agentic
           commerce), not injected content, and it appears on the live checkout too.
-        - **Gotcha:** `api.stripe.com`'s *first* TCP connect from this machine takes ~11 s, which
-          overruns undici's 10 s default and surfaces as `UND_ERR_CONNECT_TIMEOUT`. It is **not**
-          the IPv6 stall — DNS returns only A records. `--dns-result-order=ipv4first` does nothing
-          here; retry (or a curl warm-up) is the fix.
+        - **Gotcha — self-inflicted, worth recording.** Ad-hoc scratchpad scripts hit
+          `UND_ERR_CONNECT_TIMEOUT` against `api.stripe.com` and Supabase. This *is* the known AAAA
+          stall, and the repo already fixes it: `web/scripts/prefer-ipv4.mjs` (`preferIPv4()`,
+          `family: 4`) is wired into `instrumentation.ts`, `stripe-listen.mjs` and
+          `playwright.config.ts` — which is why `pnpm stripe:listen` worked all session while the
+          throwaway scripts beside it did not. **One-off tooling must import `preferIPv4()` too.**
+          Note the AAAA *query* stalls even when there is no AAAA record to return, so "the host is
+          IPv4-only" does not rule this out — and `--dns-result-order=ipv4first` still doesn't help,
+          because it reorders results *after* resolution.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
         **375px mobile — pre-existing, already triaged to Layer H, now measured there.**
