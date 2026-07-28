@@ -95,22 +95,32 @@ export function UpgradeDialog({
   feature: string;
 }) {
   const [ctx, setCtx] = useState<BillingContext | null>(null);
+  const [failed, setFailed] = useState(false);
   const [trialOpen, setTrialOpen] = useState(false);
 
   // Loaded when the dialog opens, so the CTA is already correct by the time they
   // reach for it. Fetched once per mount; billing state can't change underneath a
   // reader mid-dialog.
+  //
+  // `failed` is tracked SEPARATELY from `ctx === null` on purpose. Both used to mean
+  // "no context", so the in-flight moment rendered the same live /pricing link as a
+  // hard failure — a reader quick enough to click during that flash was thrown out to
+  // the public pricing page, losing the stock they were reading and the whole point of
+  // an in-place dialog. Loading is now inert; only a real failure offers a way out.
   useEffect(() => {
     if (!open || ctx) return;
     let cancelled = false;
     fetch('/api/billing-context')
       .then((r) => (r.ok ? r.json() : null))
       .then((d: BillingContext | null) => {
-        if (!cancelled && d) setCtx(d);
+        if (cancelled) return;
+        if (d) setCtx(d);
+        else setFailed(true);
       })
       .catch(() => {
-        /* Leave ctx null — the CTA falls back to /pricing, which resolves the same
-           facts server-side. A failed fetch must never become a wrong offer. */
+        /* /pricing resolves the same facts server-side, so it stays the safe
+           destination. A failed fetch must never become a wrong offer. */
+        if (!cancelled) setFailed(true);
       });
     return () => {
       cancelled = true;
@@ -172,14 +182,19 @@ export function UpgradeDialog({
               Not now
             </Button>
             {ctx === null ? (
-              // Context still in flight (or it failed) — /pricing resolves the same
-              // facts server-side, so this is always a safe destination.
-              <Button asChild variant="primary">
-                <Link href="/pricing">
+              failed ? (
+                // Only a genuine failure routes away from the dialog.
+                <Button asChild variant="primary">
+                  <Link href="/pricing">See plans</Link>
+                </Button>
+              ) : (
+                // In flight: inert, so the offer can never be the wrong one and can
+                // never be clicked before we know which offer is right.
+                <Button variant="primary" disabled aria-live="polite">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                  See plans
-                </Link>
-              </Button>
+                  Checking your plan…
+                </Button>
+              )
             ) : ctx.hasSubscription ? (
               <Button asChild variant="primary">
                 <Link href="/account">Manage your plan</Link>
