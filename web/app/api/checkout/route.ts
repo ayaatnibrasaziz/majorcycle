@@ -48,9 +48,25 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('country, stripe_customer_id, subscription_status')
+    .select('country, stripe_customer_id, subscription_status, billing_blocked')
     .eq('id', user.id)
     .single();
+
+  // A dispute lock must stop the sale, not just the product. Losing a chargeback
+  // cancels the subscription, so the account lands on `canceled` + billing_blocked —
+  // and `canceled` is deliberately allowed to re-subscribe. Without this check the
+  // blocked user could pay again and STILL be denied by hasAccess(), because
+  // billing_blocked outranks any status: we would have taken money for access we
+  // then refuse. Support has to lift the block first.
+  if (profile?.billing_blocked) {
+    return NextResponse.json(
+      {
+        error:
+          'Your account is on hold while a payment dispute is resolved, so we can’t start a new subscription yet. Please contact support and we’ll sort it out with you.',
+      },
+      { status: 403 },
+    );
+  }
 
   // Already subscribed → don't let them stack a second subscription.
   if (ACTIVE_STATES.has(profile?.subscription_status ?? '')) {

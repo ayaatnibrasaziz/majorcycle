@@ -119,6 +119,15 @@ const STATES: StateCase[] = [
     entitled: false,
     reason: 'billing_blocked',
   },
+  {
+    // Losing a chargeback cancels the subscription, so this — not `active` — is where a
+    // lost dispute actually lands. `canceled` is the one status allowed to re-subscribe,
+    // which is exactly why the block has to be checked independently of it.
+    name: 'billing_blocked after a LOST dispute (subscription cancelled)',
+    patch: { subscription_status: 'canceled', billing_blocked: true },
+    entitled: false,
+    reason: 'billing_blocked',
+  },
 ];
 
 test.describe.configure({ mode: 'serial' });
@@ -226,6 +235,39 @@ test.describe('entitlement enforcement across subscription states', () => {
       }
     });
   }
+
+  // ── A dispute hold must stop the SALE, not just the product ────────────────
+  // Losing a chargeback cancels the subscription, and `canceled` is precisely the
+  // state allowed to re-subscribe. Without an independent billing_blocked check the
+  // blocked user could pay again and still be denied by hasAccess() — money taken for
+  // access we then refuse. Both shapes of a hold are covered.
+  for (const status of ['active', 'canceled'] as const) {
+    test(`billing_blocked (${status}) → POST /api/checkout is refused, not charged`, async ({
+      page,
+    }) => {
+      await setState({ subscription_status: status, billing_blocked: true });
+      const res = await page.request.post('/api/checkout', {
+        headers: { 'content-type': 'application/json' },
+        data: { plan: 'monthly' },
+      });
+      expect(res.status(), 'a held account must never reach Stripe Checkout').toBe(403);
+      expect((await res.json()).error).toMatch(/on hold/i);
+    });
+  }
+
+  test('billing_context tells the UI it is blocked, so the lock can explain itself', async ({
+    page,
+  }) => {
+    await setState({ subscription_status: 'active', billing_blocked: true });
+    const res = await page.request.get('/api/billing-context');
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body.billingBlocked, 'the upgrade dialog keys its whole copy off this').toBe(
+      true,
+    );
+    // Per-viewer billing state must never touch a shared cache (CLAUDE.md 11a).
+    expect(res.headers()['cache-control']).toContain('no-store');
+  });
 
   // ── The end-to-end proof: premium data is absent from the free page ─────────
   test('a FREE viewer\'s Stock Detail HTML contains no scored value anywhere', async ({

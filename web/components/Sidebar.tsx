@@ -116,6 +116,8 @@ interface SidebarProps {
   subscriptionStatus?: string | null;
   /** Drives the lock affordance on the premium (SCREEN) group. */
   entitled?: boolean;
+  /** Dispute lock — outranks `subscriptionStatus` in the licence badge. */
+  billingBlocked?: boolean;
 }
 
 // Licence-badge copy per Stripe subscription status. `null`/unknown (a fresh
@@ -128,11 +130,25 @@ const LICENCE_LABELS: Record<string, string> = {
   canceled: 'Cancelled',
 };
 
-function licenceLabel(status: string | null | undefined): string {
+// `billing_blocked` is an ORTHOGONAL dimension, not a status value — a disputed
+// account keeps whatever Stripe status it had (usually `active`). Reading the status
+// alone made the badge announce "ACTIVE" to someone locked out of every paid surface,
+// which is the opposite of what the rest of the app was telling them. Entitlement
+// already ranks the block above the status (hasAccess / accessDenialReason); the badge
+// now agrees.
+function licenceLabel(
+  status: string | null | undefined,
+  billingBlocked?: boolean,
+): string {
+  if (billingBlocked) return 'On hold';
   return (status && LICENCE_LABELS[status]) || 'No plan';
 }
 
-export function Sidebar({ subscriptionStatus, entitled = false }: SidebarProps) {
+export function Sidebar({
+  subscriptionStatus,
+  entitled = false,
+  billingBlocked = false,
+}: SidebarProps) {
   const [lockedFeature, setLockedFeature] = useState<string | null>(null);
   return (
     <aside
@@ -194,7 +210,7 @@ export function Sidebar({ subscriptionStatus, entitled = false }: SidebarProps) 
             className="font-[var(--font-mono)] text-[10px] text-[var(--brand-mid)] font-semibold mt-0.5 uppercase tracking-[0.5px]"
             aria-label="Subscription status"
           >
-            {licenceLabel(subscriptionStatus)}
+            {licenceLabel(subscriptionStatus, billingBlocked)}
           </div>
         </div>
       </div>

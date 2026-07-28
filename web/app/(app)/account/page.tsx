@@ -50,7 +50,7 @@ export default async function AccountPage({
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'display_name, country, subscription_status, subscription_plan, trial_ends_at, cancel_at_period_end, current_period_end'
+      'display_name, country, subscription_status, subscription_plan, trial_ends_at, cancel_at_period_end, current_period_end, billing_blocked'
     )
     .eq('id', user.id)
     .single();
@@ -110,6 +110,9 @@ export default async function AccountPage({
           currency={currency}
           trialUsed={trialUsed}
           notice={billingNotice}
+          billingBlocked={profile?.billing_blocked ?? false}
+          displayName={profile?.display_name ?? ''}
+          email={email}
         />
 
         {hasPasswordIdentity ? (

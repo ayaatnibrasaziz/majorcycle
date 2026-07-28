@@ -34,11 +34,15 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('country, subscription_status')
+    .select('country, subscription_status, billing_blocked, display_name')
     .eq('id', user.id)
     .single();
 
   const hasSubscription = ACTIVE_STATES.has(profile?.subscription_status ?? '');
+  // Surfaced so a locked feature can say WHY it's locked. A disputed account must
+  // never be shown an upsell: /api/checkout 403s it anyway, so offering a plan would
+  // be an offer we refuse at the till.
+  const billingBlocked = !!profile?.billing_blocked;
   // Only relevant when there's no live plan — and skipping it there also skips a
   // pointless admin-client read for the majority case.
   const trialUsed = hasSubscription
@@ -51,7 +55,16 @@ export async function GET() {
   );
 
   return NextResponse.json(
-    { currency, trialUsed, hasSubscription },
+    {
+      currency,
+      trialUsed,
+      hasSubscription,
+      billingBlocked,
+      // Prefill the in-place support dialog, so the lock path matches the account
+      // page rather than asking a signed-in reader who they are.
+      email: user.email ?? null,
+      displayName: profile?.display_name ?? null,
+    },
     // Per-viewer billing state — must never touch a shared cache (CLAUDE.md 11a).
     { headers: { 'Cache-Control': 'private, no-store' } },
   );

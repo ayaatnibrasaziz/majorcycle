@@ -3,6 +3,7 @@ import { AlertCircle, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LocalDate } from '@/components/LocalDate';
 import { StartTrialButton } from '@/components/account/StartTrialButton';
+import { ContactSupportButton } from '@/components/account/ContactSupportButton';
 import type { BillingCurrency } from '@/lib/stripe';
 
 interface SubscriptionCardProps {
@@ -25,6 +26,12 @@ interface SubscriptionCardProps {
   // Optional inline message shown above the action row — e.g. after a failed
   // return from the billing portal (see /account ?billing= handling).
   notice?: string | null;
+  // Dispute lock. Overrides the status badge/detail entirely and replaces the
+  // buy/manage action with support, because /api/checkout refuses this account.
+  billingBlocked?: boolean;
+  // Prefill the in-place support dialog shown when billingBlocked.
+  displayName?: string;
+  email?: string;
 }
 
 interface StatusMeta {
@@ -93,6 +100,17 @@ const NONE_META: StatusMeta = {
   detail: () => 'You don’t have an active subscription yet.',
 };
 
+// A dispute lock is orthogonal to the Stripe status and outranks it everywhere else
+// (hasAccess, accessDenialReason, /pricing). Without this the card told a locked-out
+// customer "ACTIVE — You're on the Monthly plan", which is both wrong and the single
+// most support-generating thing we could say to someone whose access just vanished.
+const BLOCKED_META: StatusMeta = {
+  label: 'On hold',
+  tone: 'warn',
+  detail: () =>
+    'A payment on this account was disputed with the bank, so access is on hold while that’s resolved. Contact support and we’ll sort it out with you.',
+};
+
 const TONE_CLS: Record<StatusMeta['tone'], string> = {
   ok: 'bg-[var(--brand-light)] text-[var(--brand-mid)] border-[#bfdbfe]',
   warn: 'bg-[var(--tint-tier-3)] text-[var(--c-tier-3-ink)] border-[var(--tint-tier-3-strong)]',
@@ -109,8 +127,13 @@ export function SubscriptionCard({
   currency,
   trialUsed = false,
   notice,
+  billingBlocked = false,
+  displayName = '',
+  email = '',
 }: SubscriptionCardProps) {
-  const meta = (status && STATUS_META[status]) || NONE_META;
+  const meta = billingBlocked
+    ? BLOCKED_META
+    : (status && STATUS_META[status]) || NONE_META;
   const trialEnd = trialEndsAt ? (
     <LocalDate iso={trialEndsAt} fallback={formatFallback(trialEndsAt)} />
   ) : null;
@@ -123,14 +146,23 @@ export function SubscriptionCard({
     cancelAtPeriodEnd && currentPeriodEnd ? (
       <LocalDate iso={currentPeriodEnd} fallback={formatFallback(currentPeriodEnd)} />
     ) : null;
+  // Never let "won't renew" mask the hold: a blocked account needs to hear why it
+  // lost access, and the renewal date is the lesser fact.
   const scheduledCancel =
-    cancelDate !== null && (status === 'active' || status === 'trialing');
+    !billingBlocked &&
+    cancelDate !== null &&
+    (status === 'active' || status === 'trialing');
 
   // No live subscription (never subscribed, or lapsed) → offer the trial. The
   // button opens the in-app trial modal (methodology-styled) for the plan choice
   // + checkout. Subscribed states show "Manage billing", which opens the Stripe
   // Customer Portal via a plain form POST to /api/portal.
-  const canStartTrial = !status || status === 'canceled';
+  // A LOST dispute cancels the subscription, so a blocked account lands on
+  // `canceled` — which is exactly the state that may re-subscribe. Without the
+  // billingBlocked guard the card would offer a trial/subscribe button to someone
+  // /api/checkout 403s, and (worse, before that check existed) they could have paid
+  // and stayed locked out, since billing_blocked outranks any status.
+  const canStartTrial = !billingBlocked && (!status || status === 'canceled');
 
   return (
     <section className="card">
@@ -177,7 +209,11 @@ export function SubscriptionCard({
             </p>
           </div>
 
-          {canStartTrial ? (
+          {billingBlocked ? (
+            /* Support is the only action that can lift a dispute hold — the portal
+               can't, and checkout refuses this account. Opens in place. */
+            <ContactSupportButton defaultName={displayName} defaultEmail={email} />
+          ) : canStartTrial ? (
             <StartTrialButton currency={currency} trialUsed={trialUsed} />
           ) : (
             /* Manage billing → Stripe Customer Portal. A plain form POST to

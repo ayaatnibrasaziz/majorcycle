@@ -36,6 +36,13 @@ export interface ViewerEntitlement {
   /** Present so callers needing onboarding state don't re-query. */
   acknowledgedDisclaimerAt: string | null;
   subscriptionStatus: string | null;
+  /**
+   * Dispute lock. Exposed separately from `subscriptionStatus` because it is an
+   * orthogonal dimension — a disputed account keeps its Stripe status — and any
+   * surface that DISPLAYS the status must say "on hold" instead of announcing the
+   * stale "Active" to someone who is locked out.
+   */
+  billingBlocked: boolean;
   /** Shown on the header account menu. */
   email: string | null;
 }
@@ -47,6 +54,7 @@ const SIGNED_OUT: ViewerEntitlement = {
   deletionScheduled: false,
   acknowledgedDisclaimerAt: null,
   subscriptionStatus: null,
+  billingBlocked: false,
   email: null,
 };
 
@@ -81,6 +89,7 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
     deletionScheduled: !!profile.deletion_scheduled_at,
     acknowledgedDisclaimerAt: profile.acknowledged_disclaimer_at ?? null,
     subscriptionStatus: profile.subscription_status ?? null,
+    billingBlocked: !!profile.billing_blocked,
     email: profile.email ?? null,
   };
 });

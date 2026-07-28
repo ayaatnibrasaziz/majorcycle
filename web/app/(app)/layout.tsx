@@ -78,7 +78,11 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen bg-[var(--bg-page)]">
-      <Sidebar subscriptionStatus={viewer.subscriptionStatus} entitled={viewer.entitled} />
+      <Sidebar
+        subscriptionStatus={viewer.subscriptionStatus}
+        entitled={viewer.entitled}
+        billingBlocked={viewer.billingBlocked}
+      />
       <Header email={viewer.email} />
       <main
         className="ml-[var(--sidebar-w)] mt-[var(--header-h)] p-6 min-h-[calc(100vh-var(--header-h))]"
