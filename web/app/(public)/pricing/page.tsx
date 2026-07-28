@@ -72,16 +72,24 @@ export default async function PricingPage({
   // Only relevant when they have no live plan; drives the honest "billed today, no
   // free week" CTA + note so /pricing can't produce a surprise charge either.
   let trialUsed = false;
+  // Dispute hold. Read from the ROW, not inferred from `?reason=`, because the banner
+  // and the CTA must be right for someone who typed /pricing straight into the bar.
+  // It matters most in the case the status can't reveal: losing a chargeback cancels
+  // the subscription, so a held ex-disputer reads as `canceled` — the one status that
+  // may re-subscribe — and would otherwise be shown a buy button that /api/checkout
+  // then refuses with a 403.
+  let billingBlocked = false;
 
   if (user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('country, subscription_status')
+      .select('country, subscription_status, billing_blocked')
       .eq('id', user.id)
       .single();
     savedCountry = profile?.country ?? null;
     hasSubscription = ACTIVE_STATES.has(profile?.subscription_status ?? '');
-    if (!hasSubscription) {
+    billingBlocked = !!profile?.billing_blocked;
+    if (!hasSubscription && !billingBlocked) {
       trialUsed = await hasUsedTrial(createAdminClient(), user.email);
     }
   }
@@ -102,7 +110,9 @@ export default async function PricingPage({
       isLoggedIn={Boolean(user)}
       hasSubscription={hasSubscription}
       trialUsed={trialUsed}
-      reason={reason}
+      // A verified hold always speaks, even without `?reason=` in the URL.
+      reason={billingBlocked ? 'billing_blocked' : reason}
+      billingBlocked={billingBlocked}
       startPlan={startPlan}
     />
   );

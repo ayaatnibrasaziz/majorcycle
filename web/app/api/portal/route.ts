@@ -35,9 +35,19 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('stripe_customer_id')
+    .select('stripe_customer_id, billing_blocked')
     .eq('id', user.id)
     .single();
+
+  // The portal is a second way to spend money — it switches monthly⇄annual (which
+  // prorates and charges) and can resume a cancelled subscription. A held account
+  // must be refused here for the same reason /api/checkout refuses it: billing_blocked
+  // outranks any subscription status, so anything bought while held is paid for and
+  // still locked. /account no longer renders this button for a held user, but the
+  // endpoint must not depend on the UI hiding it.
+  if (profile?.billing_blocked) {
+    return NextResponse.redirect(`${origin}/account?billing=blocked`, { status: 303 });
+  }
 
   const customerId = profile?.stripe_customer_id;
   if (!customerId) {

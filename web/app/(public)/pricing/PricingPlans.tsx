@@ -103,6 +103,12 @@ interface PricingPlansProps {
   /** Set when `requireEntitled()` bounced them here; drives the explanatory banner. */
   reason?: AccessDenialReason | null;
   /**
+   * Verified server-side from the profile row, NOT inferred from `?reason=`. A held
+   * account must never be shown a buy button: /api/checkout and /api/portal both
+   * refuse it, so the offer would be one we decline at the till.
+   */
+  billingBlocked?: boolean;
+  /**
    * The plan they picked BEFORE signing up, carried through the confirmation email.
    * Preselects the toggle and greets them, so the round trip reads as one flow.
    */
@@ -123,6 +129,7 @@ export function PricingPlans({
   hasSubscription,
   trialUsed = false,
   reason = null,
+  billingBlocked = false,
   startPlan = null,
 }: PricingPlansProps) {
   const [plan, setPlan] = useState<PlanKey>(startPlan ?? 'monthly');
@@ -135,7 +142,12 @@ export function PricingPlans({
   // put "Start your 7-day free trial" directly beneath a banner telling a past-due
   // customer they don't need a new plan, and offered a free week to someone the
   // tombstone (Step 7) will bill on day one. Three readers, three different truths.
-  const heading = hasSubscription
+  const heading = billingBlocked
+    ? {
+        title: 'Your account is on hold',
+        body: 'A payment on this account was disputed with the bank. We can’t start or change a subscription until that’s resolved — contact us and we’ll sort it out with you.',
+      }
+    : hasSubscription
     ? {
         title: 'Your MajorCycle plan',
         body: 'Manage your subscription, payment method and invoices from the Account page.',
@@ -265,7 +277,12 @@ export function PricingPlans({
 
         {/* Features */}
         <ul className="mt-6 flex flex-col gap-2.5">
-          {[...FEATURES, closingFeature(!hasSubscription && !trialUsed)].map((f) => (
+          {[
+            ...FEATURES,
+            // A held account can't start anything, so "no charge until day 7" would be
+            // describing an offer it can't take.
+            closingFeature(!billingBlocked && !hasSubscription && !trialUsed),
+          ].map((f) => (
             <li
               key={f}
               className="flex items-start gap-2.5 text-[13px] text-[var(--text-secondary)] leading-relaxed"
@@ -282,7 +299,14 @@ export function PricingPlans({
 
         {/* CTA */}
         <div className="mt-7">
-          {hasSubscription ? (
+          {billingBlocked ? (
+            // Both money routes (/api/checkout, /api/portal) refuse a held account, so
+            // there is no button here that could succeed. Support is the only step that
+            // changes anything.
+            <Button asChild variant="primary" size="lg" className="w-full">
+              <Link href="/contact">Contact support</Link>
+            </Button>
+          ) : hasSubscription ? (
             <Button asChild variant="primary" size="lg" className="w-full">
               <Link href="/account">Manage your plan</Link>
             </Button>

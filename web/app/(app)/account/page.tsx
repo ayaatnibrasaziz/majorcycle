@@ -28,6 +28,8 @@ const BILLING_NOTICE: Record<string, string> = {
   error:
     'We couldn’t open billing management just now. Please try again in a moment.',
   none: 'There’s no billing to manage on your account yet.',
+  blocked:
+    'Billing management is unavailable while a payment dispute is being resolved. Contact support and we’ll sort it out with you.',
 };
 
 export default async function AccountPage({
