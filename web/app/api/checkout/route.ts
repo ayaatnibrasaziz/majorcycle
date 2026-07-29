@@ -154,7 +154,12 @@ export async function POST(request: Request) {
       // dynamically; the owner tunes them in Dashboard → Payment methods).
       // Tax stays OFF at launch — one-line flip when GST registration lands (decision D).
       automatic_tax: { enabled: false },
-      success_url: `${origin}/account?checkout=success`,
+      // `{CHECKOUT_SESSION_ID}` is a literal Stripe template — it substitutes the real id
+      // on redirect. /account uses it to reconcile immediately rather than waiting on the
+      // webhook: Stripe holds this redirect for our 2xx but only for 10 SECONDS, so a slow
+      // or misconfigured webhook would otherwise land a paying customer on a page saying
+      // they have no plan. See lib/billing/reconcileCheckout.ts.
+      success_url: `${origin}/account?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       // Backing out of Checkout returns a SIGNED-IN user, so they belong in the app —
       // /pricing is the signed-out shop window and now redirects them here anyway.
       cancel_url: `${origin}/account?checkout=cancelled`,

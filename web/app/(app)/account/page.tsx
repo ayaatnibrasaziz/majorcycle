@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { KeyRound } from 'lucide-react';
 
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
+import { reconcileCheckoutSession } from '@/lib/billing/reconcileCheckout';
 import { currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
 import { hasUsedTrial } from '@/lib/trialGuard';
 import { ProfileForm } from '@/components/account/ProfileForm';
@@ -23,6 +24,15 @@ export const dynamic = 'force-dynamic';
 // subscription — F3). While in one of these, the country field is read-only.
 const COUNTRY_LOCK_STATES = new Set(['active', 'trialing', 'past_due']);
 
+// Returning from Stripe Checkout. Success is deliberately understated — the Subscription
+// card right below states the real status, and this only needs to confirm the payment
+// landed. Cancelling must say "not charged" out loud: someone who backed out of a payment
+// page wants that in writing.
+const CHECKOUT_NOTICE: Record<string, string> = {
+  success: 'Payment received — your plan is set up below.',
+  cancelled: 'Checkout cancelled. You haven’t been charged.',
+};
+
 // Friendly messages for a return from /api/portal that couldn't open the portal.
 const BILLING_NOTICE: Record<string, string> = {
   error:
@@ -35,10 +45,13 @@ const BILLING_NOTICE: Record<string, string> = {
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ billing?: string }>;
+  searchParams: Promise<{ billing?: string; checkout?: string; session_id?: string }>;
 }) {
-  const { billing } = await searchParams;
-  const billingNotice = (billing && BILLING_NOTICE[billing]) || null;
+  const { billing, checkout, session_id: sessionId } = await searchParams;
+  const notice =
+    (checkout && CHECKOUT_NOTICE[checkout]) ||
+    (billing && BILLING_NOTICE[billing]) ||
+    null;
 
   const supabase = await createServerSupabaseClient();
 
@@ -48,6 +61,16 @@ export default async function AccountPage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
+
+  // Just back from Stripe Checkout: reconcile BEFORE reading the profile, so the card
+  // below shows the plan they just bought rather than "No plan". Stripe holds the
+  // redirect for our webhook's 2xx but gives up after 10 seconds, so this is what stops
+  // a paying customer being told they have nothing. Ownership of `session_id` is proven
+  // against the session itself — see lib/billing/reconcileCheckout.ts. Best-effort: the
+  // webhook (retried by Stripe for 3 days) remains the guarantee.
+  if (checkout === 'success' && sessionId) {
+    await reconcileCheckoutSession(sessionId, user.id);
+  }
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -111,7 +134,7 @@ export default async function AccountPage({
           currentPeriodEnd={profile?.current_period_end ?? null}
           currency={currency}
           trialUsed={trialUsed}
-          notice={billingNotice}
+          notice={notice}
           billingBlocked={profile?.billing_blocked ?? false}
           displayName={profile?.display_name ?? ''}
           email={email}

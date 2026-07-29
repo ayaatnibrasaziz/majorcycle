@@ -616,6 +616,30 @@ preselected it and showed a "pick up where you left off" banner; simpler is bett
 `/account` already says the right thing on its own). `/account` is the destination rather
 than `/pricing` because `/pricing` now redirects a signed-in reader away anyway.
 
+**Coming back from Checkout: two paths to provisioning, on purpose.** Stripe sends
+`checkout.session.completed` *before* redirecting, and holds the redirect until our endpoint
+answers 2xx — **but only for 10 seconds**, then redirects regardless. So a slow, failing or
+misconfigured webhook would land a customer who has just paid on `/account` reading "No
+plan", beside a button inviting them to subscribe again. Stripe's documented answer is
+belt-and-braces, and we now do both:
+
+1. **The webhook is the guarantee.** It runs even if the customer closes the tab, and Stripe
+   retries it for up to three days.
+2. **`/account` reconciles on arrival.** `success_url` carries `{CHECKOUT_SESSION_ID}`;
+   `reconcileCheckoutSession()` (`web/lib/billing/reconcileCheckout.ts`) runs *before* the
+   page reads the profile, so the card shows the plan they just bought.
+
+The reconciler is **not** a second source of truth. It re-retrieves the subscription from
+Stripe's API and applies `syncSubscription()` — the *same* function the webhook uses, which
+is why that function moved to `web/lib/billing/sync.ts` rather than being copied. Running it
+after the webhook already ran writes identical values.
+
+`session_id` arrives in the URL bar, so it is never treated as proof: the session is fetched
+from Stripe and refused unless its own `client_reference_id`/`metadata.user_id` (stamped by
+`/api/checkout`) matches the signed-in caller. Pasting someone else's id does nothing —
+asserted by e2e. The whole path is best-effort: a Stripe outage during this render must never
+turn "your payment worked" into an error page.
+
 Both providers carry it: email/password via `emailRedirectTo`, Google One Tap via
 `window.location.assign(safeNextPath(next))`, Google OAuth via `redirectTo`. Signup copy
 switches to "First, create your account / Step 1 of 2" when `next` points at a

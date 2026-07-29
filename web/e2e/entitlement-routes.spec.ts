@@ -408,6 +408,30 @@ test.describe('entitlement enforcement across subscription states', () => {
     expect(allowed.headers()['cache-control']).toContain('no-store');
   });
 
+  // ── The checkout reconciler must not be a way to grant yourself a plan ─────
+  // /account?checkout=success&session_id=… closes the gap between paying and the webhook
+  // landing. `session_id` arrives in the URL bar, so it is never treated as proof: the
+  // session is retrieved from Stripe and refused unless ITS OWN client_reference_id (set
+  // by /api/checkout) matches the caller. A forged or foreign id must change nothing.
+  for (const forged of ['cs_test_forged_not_a_real_session', 'not-a-session-id']) {
+    test(`a forged session_id (${forged.slice(0, 12)}…) grants nothing`, async ({ page }) => {
+      await setState({ subscription_status: null });
+      await page.goto(`/account?checkout=success&session_id=${forged}`);
+
+      const { data: after } = await admin
+        .from('profiles')
+        .select('subscription_status, stripe_customer_id, stripe_subscription_id')
+        .eq('id', userId)
+        .single();
+      expect(after?.subscription_status, 'no plan may be granted from a URL').toBeNull();
+      expect(after?.stripe_customer_id).toBeNull();
+      expect(after?.stripe_subscription_id).toBeNull();
+
+      // And the page still renders — a bad id is ignored, never an error page.
+      await expect(page.getByRole('heading', { name: /subscription/i })).toBeVisible();
+    });
+  }
+
   // ── /pricing is the signed-out shop window and nothing else ────────────────
   // It used to branch on ?reason=, billing_blocked, hasSubscription and trialUsed, all
   // to serve signed-in readers the paywall had thrown out here. None of them can arrive
