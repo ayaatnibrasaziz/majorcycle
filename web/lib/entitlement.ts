@@ -38,7 +38,11 @@ export interface EntitlementProfile {
   billing_blocked?: boolean | null;
 }
 
-/** Why access was refused — drives the honest copy on /pricing?reason=… */
+/**
+ * Why access was refused. Drives the honest copy on the in-app locked panel
+ * (PremiumLockPage) and the `reason` in /api/analyze's 402 body — "your trial ended"
+ * reads very differently from "your payment failed".
+ */
 export type AccessDenialReason =
   | 'no_subscription'
   | 'canceled'

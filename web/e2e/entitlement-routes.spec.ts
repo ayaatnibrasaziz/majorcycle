@@ -75,14 +75,27 @@ async function setState(patch: Record<string, unknown>): Promise<void> {
   if (error) throw new Error(`setState failed: ${error.message}`);
 }
 
-/** The premium PAGES — each must redirect an unentitled viewer, render for an entitled one. */
-const PREMIUM_PAGES = ['/run', '/results', `${DETAIL}/report`];
+/**
+ * The premium PAGES — each renders for an entitled viewer, and for an unentitled one
+ * shows the in-app locked panel WITHOUT leaving the route. They used to redirect to the
+ * public /pricing page, which threw a signed-in reader out of the app shell entirely.
+ *
+ * The report is not among them: it has no page, only the gated /report/data route that
+ * the one-click download reads (covered by its own test below).
+ */
+const PREMIUM_PAGES = ['/run', '/results'];
+
+/** The report's only surface — a route handler, so it gates itself. */
+const REPORT_DATA = `${DETAIL}/report/data`;
+
+/** The panel's CTA — "Contact support" for a hold, "See what's included" otherwise. */
+const LOCK_CTA = /see what’s included|see what's included|contact support/i;
 
 interface StateCase {
   name: string;
   patch: Record<string, unknown>;
   entitled: boolean;
-  /** Expected `?reason=` on /pricing when not entitled. */
+  /** Denial reason: the 402 body's `reason`, and what the locked panel explains. */
   reason?: string;
 }
 
@@ -187,7 +200,7 @@ test.describe('entitlement enforcement across subscription states', () => {
 
   // ── The matrix ──────────────────────────────────────────────────────────────
   for (const state of STATES) {
-    test(`${state.name} → premium pages ${state.entitled ? 'render' : 'redirect'}`, async ({
+    test(`${state.name} → premium pages ${state.entitled ? 'render' : 'show the locked panel in place'}`, async ({
       page,
     }) => {
       test.setTimeout(120_000);
@@ -195,16 +208,37 @@ test.describe('entitlement enforcement across subscription states', () => {
 
       for (const route of PREMIUM_PAGES) {
         await page.goto(route);
+        // Nobody is ever bounced to /pricing or /login from here any more — an
+        // entitled viewer gets the page, an unentitled one gets the panel, and BOTH
+        // keep the route and the app shell.
+        await expect(page, `${route} should not navigate away for ${state.name}`).not.toHaveURL(
+          /\/pricing/,
+        );
+        await expect(page).not.toHaveURL(/\/login/);
+        expect(new URL(page.url()).pathname, `${route} should stay put`).toBe(
+          new URL(route, page.url()).pathname,
+        );
+
         if (state.entitled) {
-          // Must stay put — never bounced to /pricing or /login.
-          await expect(page, `${route} should render for ${state.name}`).not.toHaveURL(
-            /\/pricing/,
-          );
-          await expect(page).not.toHaveURL(/\/login/);
+          await expect(
+            page.getByRole('button', { name: LOCK_CTA }),
+            `${route} should not be locked for ${state.name}`,
+          ).toHaveCount(0);
         } else {
-          await expect(page, `${route} should be gated for ${state.name}`).toHaveURL(
-            new RegExp(`/pricing\\?reason=${state.reason}`),
-          );
+          await expect(
+            page.getByRole('button', { name: LOCK_CTA }),
+            `${route} should be locked for ${state.name}`,
+          ).toBeVisible();
+          // The panel must name what happened, not just that something is locked.
+          if (state.reason === 'billing_blocked') {
+            await expect(page.getByText(/your account is on hold/i).first()).toBeVisible();
+          }
+          // The decisive half: locked means the scores were never built, not merely
+          // covered up. `NN/100` is the only rendering of a rating anywhere.
+          expect(
+            await page.content(),
+            `${route} must ship no scored value for ${state.name}`,
+          ).not.toMatch(/\d{1,3}\/100/);
         }
       }
     });
@@ -351,6 +385,54 @@ test.describe('entitlement enforcement across subscription states', () => {
     // a 404 is the correct and expected outcome — what matters is that it is NOT the
     // proxy's 401, i.e. the secret was accepted at the edge.
     expect(res.status()).not.toBe(401);
+  });
+
+  // ── The report is a download, not a page ───────────────────────────────────
+  // Its on-screen preview page was deleted on 2026-07-29 (nothing linked to it), so
+  // /report/data is the whole attack surface: it is a route handler, which the (app)
+  // layout does not wrap, so it must gate itself. Its payload is the full scorecard.
+  test('GET /report/data refuses an unentitled viewer and serves an entitled one', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+
+    await setState({ subscription_status: null });
+    const denied = await page.request.get(REPORT_DATA, { maxRedirects: 0 });
+    expect(denied.status(), 'a free viewer must not be able to fetch the report').toBe(402);
+    expect(await denied.text()).not.toMatch(/\d{1,3}\/100/);
+
+    await setState({ subscription_status: 'active' });
+    const allowed = await page.request.get(REPORT_DATA);
+    expect(allowed.status(), 'a subscriber must still get their report').toBe(200);
+    // Per-viewer payload — must never be shared-cacheable (CLAUDE.md 11a).
+    expect(allowed.headers()['cache-control']).toContain('no-store');
+  });
+
+  // ── /pricing is the signed-out shop window and nothing else ────────────────
+  // It used to branch on ?reason=, billing_blocked, hasSubscription and trialUsed, all
+  // to serve signed-in readers the paywall had thrown out here. None of them can arrive
+  // any more, and an unreachable branch about someone's money is one that can quietly
+  // become wrong. The redirect is what keeps the public page unconditional.
+  for (const status of [null, 'active', 'canceled'] as const) {
+    test(`a signed-in visitor (${status ?? 'free'}) is sent from /pricing to /account`, async ({
+      page,
+    }) => {
+      await setState({ subscription_status: status });
+      await page.goto('/pricing');
+      await expect(page).toHaveURL(/\/account/);
+    });
+  }
+
+  test('a held account reaching /pricing is not offered a buy button', async ({ page }) => {
+    // The public page can no longer warn anyone, so it must not be reachable by someone
+    // /api/checkout would refuse. This is the assertion that keeps those two facts tied.
+    await setState({ subscription_status: 'canceled', billing_blocked: true });
+    await page.goto('/pricing');
+    await expect(page).toHaveURL(/\/account/);
+    await expect(page.getByRole('button', { name: /start free trial|subscribe/i })).toHaveCount(
+      0,
+    );
+    await expect(page.getByRole('button', { name: /contact support/i })).toBeVisible();
   });
 
   // ── Mid-deletion accounts belong at /reactivate, not /pricing ───────────────

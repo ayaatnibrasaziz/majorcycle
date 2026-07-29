@@ -155,7 +155,9 @@ export async function POST(request: Request) {
       // Tax stays OFF at launch — one-line flip when GST registration lands (decision D).
       automatic_tax: { enabled: false },
       success_url: `${origin}/account?checkout=success`,
-      cancel_url: `${origin}/pricing?checkout=cancelled`,
+      // Backing out of Checkout returns a SIGNED-IN user, so they belong in the app —
+      // /pricing is the signed-out shop window and now redirects them here anyway.
+      cancel_url: `${origin}/account?checkout=cancelled`,
     });
 
     if (!session.url) {

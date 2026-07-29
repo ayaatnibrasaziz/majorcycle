@@ -184,6 +184,7 @@ export function SubscriptionCard({
           </div>
         )}
 
+
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           {/* items-start, not items-center: on a narrow screen the sentence wraps to
               two lines, and a vertically-centred pill next to it reads as misaligned.

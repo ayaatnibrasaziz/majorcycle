@@ -169,17 +169,31 @@ const PREMIUM_KEYS = [
 
 // ── 5. premium routes must still call the gate ───────────────────────────────
 {
+  // The report has no PAGE of its own: "Download Report" builds the file client-side
+  // from the gated /report/data route, so the only surface to protect is that route
+  // (checked below). An on-screen preview page existed until 2026-07-29 and was
+  // unreachable — nothing ever linked to it.
   const premiumPages = [
     ['app', '(app)', 'run', 'page.tsx'],
     ['app', '(app)', 'results', 'page.tsx'],
-    ['app', '(app)', 'stocks', '[market]', '[ticker]', 'report', 'page.tsx'],
   ];
   for (const parts of premiumPages) {
     const src = read(...parts);
-    if (!/requireEntitled\(\)/.test(src)) {
+    if (!/requirePremiumPage\(\)/.test(src)) {
       fail(
-        `${parts.join('/')} no longer calls requireEntitled()`,
-        'This page exposes scored output and must redirect an unentitled viewer.',
+        `${parts.join('/')} no longer calls requirePremiumPage()`,
+        'This page exposes scored output and must consult the gate before building it.',
+      );
+    }
+    // The gate no longer redirects an unentitled viewer (it used to bounce them to the
+    // public /pricing page, which threw a signed-in reader out of the app). It now just
+    // REPORTS, so a page that calls it and ignores `entitled` renders the premium thing
+    // to everyone. The early return is the enforcement.
+    if (!/if \(!viewer\.entitled\)/.test(src) || !/PremiumLockPage/.test(src)) {
+      fail(
+        `${parts.join('/')} does not return <PremiumLockPage> when unentitled`,
+        'requirePremiumPage() reports entitlement rather than redirecting on it, so\n' +
+          '  without this early return the page renders its premium content for everyone.',
       );
     }
   }
@@ -188,8 +202,26 @@ const PREMIUM_KEYS = [
     fail(
       'the report data route no longer checks entitlement',
       'Route handlers are not wrapped by the (app) layout, so it must gate itself —\n' +
-        '  its payload contains the full scorecard.',
+        '  its payload contains the full scorecard. It is also the report\'s ONLY\n' +
+        '  surface: the on-screen preview page was removed on 2026-07-29.',
     );
+  }
+  // Every response from it varies by viewer (the 200 is the scorecard; the 402 names
+  // the caller's denial reason), and a shared cache keys on the URL alone. It sent no
+  // Cache-Control at all until 2026-07-29 — caught by e2e, not by reading the code.
+  if (!/'Cache-Control':\s*'private, no-store'/.test(reportData)) {
+    fail(
+      'the report data route no longer declares `private, no-store`',
+      'Its payload is per-viewer and must never be shared-cacheable (CLAUDE.md 11a).',
+    );
+  }
+  for (const bad of ['s-maxage', 'stale-while-revalidate']) {
+    if (reportData.includes(bad)) {
+      fail(
+        `the report data route sends a shared-cache directive (${bad})`,
+        'That would let the edge serve one subscriber\'s report to everyone else.',
+      );
+    }
   }
 }
 

@@ -114,12 +114,11 @@ function CycleUnavailableNotice({ horizonLabel }: { horizonLabel: string }) {
 
 /**
  * The full Stock-Detail analysis rendered as a single-column report. This is the
- * ONE source of truth for the report layout — rendered three ways from the same
- * code:
- *   1. the on-screen /report preview page (server component → hydrates), and
- *   2. the offline interactive report file (web/report-bundle/entry.tsx mounts it
- *      client-side from the inlined `__REPORT_DATA__` JSON, so it behaves exactly
- *      like the live site with no server/network).
+ * ONE source of truth for the report layout, and it now has exactly one consumer:
+ * the offline interactive report file (web/report-bundle/entry.tsx mounts it
+ * client-side from the inlined `__REPORT_DATA__` JSON, so it behaves exactly like
+ * the live site with no server or network). An on-screen preview page rendered it
+ * server-side until 2026-07-29; nothing ever linked there, so it was removed.
  *
  * Sections are grouped under the same five anchors the live page + subnav use, so
  * the report's section-nav scrolls identically. Every section component is a

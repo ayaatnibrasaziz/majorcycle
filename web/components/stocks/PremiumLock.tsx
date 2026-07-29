@@ -18,6 +18,35 @@ import { UpgradeDialog } from '@/components/UpgradeDialog';
  * is the whole context for the decision they're being asked to make.
  */
 
+/**
+ * Inline text CTA for prose that needs to offer the upsell mid-sentence — the
+ * daily-limit panel, the "access ended mid-run" alert. It exists so those places don't
+ * have to link to the public /pricing page, which drops a signed-in reader out of the
+ * app shell onto a page that reads as signed-out. A client island, so Server Components
+ * can use it too.
+ */
+export function PremiumLockInlineCta({
+  feature,
+  label = "See what's included",
+}: {
+  feature: string;
+  label?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="font-semibold text-[var(--brand-mid)] underline underline-offset-2 hover:text-[var(--brand-bright)]"
+      >
+        {label}
+      </button>
+      <UpgradeDialog open={open} onOpenChange={setOpen} feature={feature} />
+    </>
+  );
+}
+
 /** Full-width card standing in for a locked section (Verdict, Scorecard). */
 export function PremiumLockCard({
   id,

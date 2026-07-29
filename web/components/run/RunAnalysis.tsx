@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Play } from 'lucide-react';
 
+import { PremiumLockInlineCta } from '@/components/stocks/PremiumLock';
 import { useAnalysis } from '@/lib/analysis';
 import { PRESETS } from '@/lib/presets';
 import type { AnalyzeRequest, IndexMembership } from '@/lib/types';
@@ -164,13 +164,7 @@ export function RunAnalysis({
           <strong className="text-[var(--text-primary)]">Your access ended mid-run.</strong>{' '}
           The analysis stopped because this account no longer has an active
           subscription. Anything already scored is still shown below.{' '}
-          <Link
-            href="/pricing"
-            className="font-semibold text-[var(--brand-mid)] underline underline-offset-2"
-          >
-            See plans
-          </Link>
-          .
+          <PremiumLockInlineCta feature="Run Analysis" />.
         </div>
       )}
 

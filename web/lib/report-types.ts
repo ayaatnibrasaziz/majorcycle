@@ -1,5 +1,5 @@
-// The serializable payload that drives both the on-screen /report preview AND
-// the offline interactive report file. Kept type-only (zero runtime imports) so
+// The serializable payload that drives the downloadable offline interactive
+// report. Kept type-only (zero runtime imports) so
 // it is safe to import from a client component, a server module, and the
 // esbuild offline bundle alike — nothing here is ever emitted into JS.
 

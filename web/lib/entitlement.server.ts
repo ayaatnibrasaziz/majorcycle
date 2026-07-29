@@ -29,7 +29,7 @@ export interface ViewerEntitlement {
   /** Null when signed out. */
   userId: string | null;
   entitled: boolean;
-  /** Null when entitled; otherwise why not — drives /pricing?reason=… */
+  /** Null when entitled; otherwise why not — drives the locked panel's copy. */
   reason: AccessDenialReason | null;
   /** True when the account is mid-deletion; callers must send these to /reactivate. */
   deletionScheduled: boolean;
@@ -45,6 +45,8 @@ export interface ViewerEntitlement {
   billingBlocked: boolean;
   /** Shown on the header account menu. */
   email: string | null;
+  /** Prefills the in-app support form, so a locked reader retypes nothing. */
+  displayName: string | null;
 }
 
 const SIGNED_OUT: ViewerEntitlement = {
@@ -56,6 +58,7 @@ const SIGNED_OUT: ViewerEntitlement = {
   subscriptionStatus: null,
   billingBlocked: false,
   email: null,
+  displayName: null,
 };
 
 export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> => {
@@ -69,7 +72,7 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'email, subscription_status, grace_until, billing_blocked, acknowledged_disclaimer_at, deletion_scheduled_at',
+      'email, display_name, subscription_status, grace_until, billing_blocked, acknowledged_disclaimer_at, deletion_scheduled_at',
     )
     .eq('id', userId)
     .single();
@@ -91,23 +94,34 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
     subscriptionStatus: profile.subscription_status ?? null,
     billingBlocked: !!profile.billing_blocked,
     email: profile.email ?? null,
+    displayName: profile.display_name ?? null,
   };
 });
 
 /**
- * Guard for a fully-premium PAGE (/run, /results, the report). Redirects an
- * unentitled viewer to /pricing with an honest reason so the page there can say what
- * actually happened — "your trial ended" reads very differently from "your payment
- * failed", and both are more useful than a generic upsell.
+ * Guard for a fully-premium PAGE (/run, /results, the report).
+ *
+ * Redirects only for the two states where the reader genuinely belongs elsewhere:
+ * signed out (→ /login) and mid-deletion (→ /reactivate, which must keep winning over
+ * any billing consideration — offering to sell a plan to someone whose account is
+ * being deleted answers the wrong question).
+ *
+ * An unentitled-but-signed-in viewer is deliberately NOT redirected. Sending them to
+ * the public /pricing page threw them out of the app — sidebar, header and account
+ * menu gone, landing on a page that reads as signed-out. The caller instead renders
+ * <PremiumLockPage> in place, so the shell, the route and the reader's sense of being
+ * inside the product all survive. `reason` on the returned viewer drives its copy.
+ *
+ * CALLER CONTRACT: return the panel BEFORE fetching any premium payload. React
+ * serialises client-component props into the HTML, so a panel drawn over data already
+ * loaded would ship the scores regardless of what renders (CLAUDE.md 11b).
  *
  * This is the UX layer, not the security boundary: the data itself is refused by the
  * proxy (402) and by the Python functions regardless of what any page does.
  */
-export async function requireEntitled(): Promise<ViewerEntitlement> {
+export async function requirePremiumPage(): Promise<ViewerEntitlement> {
   const viewer = await getViewerEntitlement();
   if (!viewer.userId) redirect('/login');
-  // Mid-deletion accounts belong at /reactivate, never at /pricing.
   if (viewer.deletionScheduled) redirect('/reactivate');
-  if (!viewer.entitled) redirect(`/pricing?reason=${viewer.reason ?? 'no_subscription'}`);
   return viewer;
 }

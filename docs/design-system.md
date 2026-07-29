@@ -517,11 +517,12 @@ language **what that feature is**, lists what else a subscription includes, and 
 off to `StartTrialModal` (the same in-app checkout entry the Account page uses).
 
 It deliberately **shows no price**. Currency, trial-vs-billed-today and the
-already-used-trial case are resolved server-side on `/pricing` and in `/api/checkout`;
+already-used-trial case are resolved server-side on `/account` and in `/api/checkout`;
 duplicating any of that here would be a second source of truth for the one thing that must
 never be wrong. `/api/billing-context` supplies only enough to label the button
 (`Start free trial` / `Subscribe` / `Manage your plan`), and if that fetch fails the CTA
-falls back to `/pricing` — a failure must never become a wrong offer.
+falls back to `/account` — a failure must never become a wrong offer, and it must not
+throw a signed-in reader onto the public shop-window either.
 
 **The 2–2 split is the whole design idea.** `KpiStrip` locks cards 1–2 and leaves cards
 3–4 (Current Drawdown, Typical Drawdown) fully working. Two locked tiles sitting beside two

@@ -7,6 +7,19 @@ import { buildReportData } from '@/lib/report-data';
 type RouteParams = { market: string; ticker: string };
 
 /**
+ * EVERY response here varies by viewer — the 200 carries the full scorecard, and even
+ * the 402 names the caller's own denial reason. A shared cache keys on the URL alone, so
+ * one subscriber's report could be served from the edge to a free user at the same URL,
+ * before this function runs (CLAUDE.md 11a — the exact bug `/api/cycle` shipped).
+ *
+ * The route sent NO Cache-Control at all until 2026-07-29, which left the payload's
+ * safety resting on Vercel happening not to cache an uncacheable-looking response.
+ * Found by the e2e test added when the report's preview page was deleted, leaving this
+ * as the report's only surface.
+ */
+const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
+
+/**
  * JSON payload that powers the one-click "Download Report" on the Stock Detail
  * page. Returns the exact `buildReportData` snapshot for (market, ticker, horizon)
  * — the client wraps it together with the prebuilt offline bundle into a single
@@ -30,19 +43,25 @@ export async function GET(
     // 402 Payment Required, distinct from the 401 a signed-out caller gets.
     const viewer = await getViewerEntitlement();
     if (!viewer.userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401, headers: NO_STORE },
+      );
     }
     if (!viewer.entitled) {
       return NextResponse.json(
         { error: 'Payment Required', reason: viewer.reason },
-        { status: 402 },
+        { status: 402, headers: NO_STORE },
       );
     }
   }
 
   const { market, ticker } = await params;
   if (!isValidMarket(market)) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Not found' },
+      { status: 404, headers: NO_STORE },
+    );
   }
 
   const sp = Object.fromEntries(
@@ -51,8 +70,11 @@ export async function GET(
 
   const data = await buildReportData(market, ticker, sp);
   if (!data) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Not found' },
+      { status: 404, headers: NO_STORE },
+    );
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json(data, { headers: NO_STORE });
 }

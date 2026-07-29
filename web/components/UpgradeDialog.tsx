@@ -146,8 +146,8 @@ export function UpgradeDialog({
     loadBillingContext().then((d) => {
       if (cancelled) return;
       if (d) setCtx(d);
-      // /pricing resolves the same facts server-side, so it stays the safe
-      // destination. A failed fetch must never become a wrong offer.
+      // /account resolves the same facts server-side and stays inside the app, so it
+      // is the safe destination. A failed fetch must never become a wrong offer.
       else setFailed(true);
     });
     return () => {
@@ -267,9 +267,11 @@ export function UpgradeDialog({
               </Button>
             ) : ctx === null ? (
               failed ? (
-                // Only a genuine failure routes away from the dialog.
+                // Only a genuine failure routes away from the dialog — and it routes
+                // to /account, not the public shop window, so a signed-in reader is
+                // never dropped onto a page that reads as signed-out.
                 <Button asChild variant="primary">
-                  <Link href="/pricing">See plans</Link>
+                  <Link href="/account">Go to your account</Link>
                 </Button>
               ) : (
                 // In flight: inert, so the offer can never be the wrong one and can

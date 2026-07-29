@@ -49,10 +49,10 @@ export function StockSubnav({
   symbol: string;
   reportTitle: string;
   /**
-   * The report is premium (F3 Step 10). When false the button becomes a link to
-   * /pricing instead of attempting a download that the gated /report/data route would
-   * refuse with a 402 — which the catch below could only report as "try again in a
-   * moment", telling a prospective subscriber the app is broken.
+   * The report is premium (F3 Step 10). When false the button opens `UpgradeDialog`
+   * instead of attempting a download that the gated /report/data route would refuse
+   * with a 402 — which the catch below could only report as "try again in a moment",
+   * telling a prospective subscriber the app is broken.
    */
   entitled?: boolean;
 }) {

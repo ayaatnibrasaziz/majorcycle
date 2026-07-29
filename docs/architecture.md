@@ -497,10 +497,10 @@ overlay + cycle bands, company overview and every fundamentals/sentiment section
 read the `stocks` table, not the engine). Premium = Overall Rating, Health Score, verdict,
 scorecard/radar, rating badges, the report, and the entire screener (`/run`, `/results`).
 
-**Three enforcement layers.** (1) `app/(app)/layout.tsx` + `requireEntitled()` redirect
-premium *pages* to `/pricing?reason=…` — UX, not security. (2) `proxy.ts` refuses premium
-*APIs* with 402 after one PK-indexed profile read, and injects the internal secret on
-success. (3) The Python functions re-check that secret and do the stripping — the authority.
+**Three enforcement layers.** (1) `app/(app)/layout.tsx` + `requirePremiumPage()` gate
+premium *pages* — UX, not security. (2) `proxy.ts` refuses premium *APIs* with 402 after
+one PK-indexed profile read, and injects the internal secret on success. (3) The Python
+functions re-check that secret and do the stripping — the authority.
 
 **Two more locks, added after the 2026-07-28 live check — and why "the bytes never leave
 the server" needs help to stay true.**
@@ -524,12 +524,38 @@ Both were found because a **preview** deployment fetches **production's** `/api/
 unstripped data and behaving as a live fault injection. The `stripPremium` layer also ends
 that divergence: previews now behave like production instead of silently more permissive.
 
-**`?reason=` is consumed, not just emitted.** `/pricing` reads it (allow-listed against
-`AccessDenialReason`, **signed-in only** — we can't assert a billing state for an anonymous
-reader) and shows copy that names what actually happened. Its headline also varies:
-already-subscribed → "Your MajorCycle plan"; trial already used → "Subscribe to MajorCycle
-… a new subscription starts today" with the day-7 promise removed from the feature list.
-`?start=monthly|annual` is the return leg of the signed-out trial flow — see §7.2.
+**Nobody signed-in is ever sent to `/pricing`** (owner decision, 2026-07-29). A premium
+page renders `PremiumLockPage` **in place** instead: same route, same sidebar, same header,
+same account menu, and the explanation arrives in the same `UpgradeDialog` every other lock
+opens. Redirecting to the public shop-window stripped the app shell away, so losing access
+looked like being logged out — and a dispute-held reader was then sent onward to `/contact`
+to retype a name and email we already hold.
+
+`requirePremiumPage()` therefore **reports** entitlement rather than redirecting on it. It
+still redirects the two cases that genuinely belong elsewhere: signed out → `/login`, and
+mid-deletion → `/reactivate` (checked first, so a cancelled-and-deleting account is offered
+its account back rather than a plan). Because the gate no longer enforces by redirecting,
+the page's early `if (!viewer.entitled) return <PremiumLockPage …>` **is** the enforcement —
+and it must sit before any premium fetch, or the scores ship in the RSC payload regardless
+of what renders (CLAUDE.md 11b). `check-entitlement-gates.mjs` asserts both halves.
+
+**The report has no page.** "Download Report" builds the file client-side from the gated
+`/report/data` route plus the prebuilt offline bundle, so that route is the report's entire
+surface. An on-screen preview page rendered `ReportDocument` server-side until 2026-07-29;
+nothing ever linked to it, so it was removed. Being a route handler, it is not wrapped by
+the `(app)` layout and gates itself: **401** signed out, **402** unentitled, and — added at
+the same time, after an e2e test caught it — `private, no-store` on *every* branch. It had
+been sending no `Cache-Control` at all, leaving a full-scorecard payload's safety resting on
+Vercel happening not to cache it. Same rule as `/api/cycle` (CLAUDE.md 11a); now guarded.
+
+**`/pricing` is the signed-out shop-window and nothing else.** A signed-in visitor is
+redirected to `/account`, where their real state lives beside the actions that change it.
+That redirect is what lets the page be unconditional: it previously branched on `?reason=`,
+`billing_blocked`, `hasSubscription`, `trialUsed` and `?start=` — all of them serving
+readers the paywall had thrown out there. None can arrive now, and an unreachable branch
+about someone's money is one that can quietly become wrong. `AccessDenialReason` survives
+as the locked panel's copy and the `reason` in `/api/analyze`'s 402 body; the `?reason=`
+and `?start=` URL parameters are gone. Stripe's `cancel_url` moved to `/account` too.
 
 **In-app upgrade path.** Locks do **not** navigate to `/pricing`; they open
 `UpgradeDialog`, which explains the feature and hands off to `StartTrialModal` — the same
@@ -576,14 +602,19 @@ entirely and always landed on `/stocks`, so someone who clicked "Start 7-day fre
 while signed out was returned to a page telling them to create the account they had just
 created.
 
-Now the chosen plan rides through the whole loop:
+Now the destination rides through the whole loop:
 
 ```
-/pricing (signed out) → /signup?next=/pricing?start=annual
+/pricing (signed out) → /signup?next=/account
    → confirm email (or Google, which signs in directly)
-   → /auth/callback → safeNextPath → /pricing?start=annual
-   → banner "Your free account is ready", annual preselected, one click to Stripe
+   → /auth/callback → safeNextPath → /account
+   → Subscription card, "Start free trial" → StartTrialModal → Stripe
 ```
+
+The plan choice itself is **not** carried (owner decision, 2026-07-29 — an earlier version
+preselected it and showed a "pick up where you left off" banner; simpler is better, and
+`/account` already says the right thing on its own). `/account` is the destination rather
+than `/pricing` because `/pricing` now redirects a signed-in reader away anyway.
 
 Both providers carry it: email/password via `emailRedirectTo`, Google One Tap via
 `window.location.assign(safeNextPath(next))`, Google OAuth via `redirectTo`. Signup copy

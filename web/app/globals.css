@@ -1576,10 +1576,11 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 }
 
 /* ── Stock Detail Report (C-R1) ───────────────────────────────────────────────
-   The single-column report layout (.report-doc) used by both the on-screen
-   /stocks/[market]/[ticker]/report preview and the offline interactive report
-   file. The offline bundle's report.css is generated from these same styles, so
-   the downloaded .html matches the live preview. */
+   The single-column report layout (.report-doc) used by the offline interactive
+   report file. The offline bundle's report.css is generated from these same
+   styles, so the downloaded .html matches the app's own typography and colours.
+   These rules stay in globals.css because that is what build-report-bundle.mjs
+   compiles against — they are not dead just because no route renders them. */
 .report-doc {
   max-width: 920px;
   margin: 0 auto;

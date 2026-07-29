@@ -24,7 +24,10 @@ const REPORT = path.join(webRoot, 'components', 'stocks', 'ReportDocument.tsx');
 // (F3 Step 10). It is chrome, not analysis: the report is premium in its entirety —
 // both the page and the download refuse an unentitled viewer before any data is
 // built — so a lock can never appear inside one.
-const PAGE_ONLY = new Set(['StockSubnav', 'PremiumLockCard']);
+// PremiumLockInlineCta is the same argument in miniature: an inline "see what's
+// included" button inside the free-tier daily-limit panel. It replaced a link to the
+// public /pricing page, which dropped a signed-in reader out of the app shell.
+const PAGE_ONLY = new Set(['StockSubnav', 'PremiumLockCard', 'PremiumLockInlineCta']);
 
 /** Names imported from '@/components/stocks/...' in a source file. */
 function importedStockComponents(src) {

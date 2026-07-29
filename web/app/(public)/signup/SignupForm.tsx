@@ -44,7 +44,10 @@ export function SignupForm() {
   // failed — the reader asked for a trial and appears to have been given something
   // else. The trial genuinely needs an account first (checkout is session-gated), so
   // the honest fix is to name this as step one rather than to hide it.
-  const startingTrial = next.startsWith('/pricing?start=');
+  //
+  // /account is where that button now points: /pricing is the signed-out shop window
+  // and redirects a signed-in reader away, so it can't be a post-signup destination.
+  const startingTrial = next.startsWith('/account');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

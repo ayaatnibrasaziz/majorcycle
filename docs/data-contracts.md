@@ -1094,7 +1094,8 @@ access regardless of status.
 the single source of truth. The webhook still only *records* status; `hasAccess()` is the
 only thing that interprets it, and it fails **closed** (missing profile, unreadable row or
 unrecognised status all deny). Enforced at three layers: the `(app)` layout +
-`requireEntitled()` for premium pages (UX), `web/proxy.ts` for premium APIs (**402**), and
+`requirePremiumPage()` for premium pages (UX — it reports rather than redirects, and the
+page returns `<PremiumLockPage>` in place), `web/proxy.ts` for premium APIs (**402**), and
 the Python functions themselves (authoritative — they strip the premium keys and re-check
 the internal secret). See `architecture.md` §7.1 for the full rule and the two cache traps.
 

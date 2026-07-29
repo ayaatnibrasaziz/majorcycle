@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 
+import { PremiumLockPage } from '@/components/PremiumLockPage';
 import { Results, type ResultsLookup } from '@/components/results/Results';
-import { requireEntitled } from '@/lib/entitlement.server';
+import { requirePremiumPage } from '@/lib/entitlement.server';
 import { fetchUniverseIndex } from '@/lib/universe.server';
 
 export const metadata: Metadata = {
@@ -19,7 +20,18 @@ export const dynamic = 'force-dynamic';
 export default async function ResultsPage() {
   // Premium: results are the output of the screener, and the ranked table exposes
   // every rating and score. Gated with /run so the pair can't be reached separately.
-  await requireEntitled();
+  const viewer = await requirePremiumPage();
+  if (!viewer.entitled) {
+    return (
+      <PremiumLockPage
+        feature="Results"
+        blurb="The ranked output of a screener run — every stock you analysed sorted by rating, with filters, the opportunity map and CSV export."
+        reason={viewer.reason ?? 'no_subscription'}
+        displayName={viewer.displayName ?? ''}
+        email={viewer.email ?? ''}
+      />
+    );
+  }
 
   const universe = await fetchUniverseIndex();
   const lookup: ResultsLookup = {};

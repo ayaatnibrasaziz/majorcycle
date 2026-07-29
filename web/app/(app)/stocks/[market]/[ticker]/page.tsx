@@ -13,7 +13,7 @@ import { KpiStrip } from '@/components/stocks/KpiStrip';
 import { MetricsTable } from '@/components/stocks/MetricsTable';
 import { NewsFeed } from '@/components/stocks/NewsFeed';
 import { OwnershipStructure } from '@/components/stocks/OwnershipStructure';
-import { PremiumLockCard } from '@/components/stocks/PremiumLock';
+import { PremiumLockCard, PremiumLockInlineCta } from '@/components/stocks/PremiumLock';
 import { PriceChart } from '@/components/stocks/PriceChart';
 import { QuarterlyFinancials } from '@/components/stocks/QuarterlyFinancials';
 import { RelativePerformance } from '@/components/stocks/RelativePerformance';
@@ -517,13 +517,8 @@ function FreeViewLimitNotice({ limit }: { limit: number }) {
             rating, financial-health scorecard, the full screener and downloadable
             reports.
           </p>
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            <Link
-              href="/pricing"
-              className="text-[13px] font-semibold text-[var(--brand-mid)] underline underline-offset-2"
-            >
-              See plans
-            </Link>
+          <div className="flex flex-wrap items-center gap-3 pt-1 text-[13px]">
+            <PremiumLockInlineCta feature="Overall Rating" />
             <Link
               href="/stocks"
               className="text-[13px] text-[var(--text-muted)] underline underline-offset-2"
