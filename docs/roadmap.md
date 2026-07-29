@@ -1148,6 +1148,65 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
         - **Flake noted:** a first full run had 2 failures that did not reproduce (a webhook route
           answering 404, a free-tier redirect) — first-hit route compilation under `next dev`,
           not a regression. Worth watching if it recurs in CI.
+      - [x] **PAYWALL UX REWORK — signed-in users never leave the app (2026-07-29, `ba3a6f2`).**
+        Owner challenge: *"why do you always create a public page for all this? everything is
+        happening for the logged-in user."* They were right, and the audit found it was worse
+        than the original complaint.
+        - **What was wrong.** `/run`, `/results` and the report `redirect()`ed an unentitled
+          viewer to the public `/pricing` page — sidebar, header and account menu gone, landing
+          on a page that reads as signed-out. A dispute-held reader was then sent *onward* to
+          `/contact` to retype a name and email we already hold. That second jump was a defect I
+          had introduced two commits earlier while fixing the P2 pricing hole.
+        - **Fix.** `requireEntitled()` → **`requirePremiumPage()`**, which REPORTS entitlement
+          instead of redirecting on it; each page returns the new `PremiumLockPage` in place.
+          Still redirects signed-out→`/login` and mid-deletion→`/reactivate`. Because the gate
+          no longer enforces, **the page's early return IS the enforcement** — it sits before any
+          premium fetch, and `check:entitlement-gates` now asserts *both* halves.
+        - **`/pricing` is signed-out-only.** A signed-in visitor redirects to `/account`. That
+          let the page drop six branches (`?reason=`, `billing_blocked`, `hasSubscription`,
+          `trialUsed`, `?start=`, the support dialog) that no reachable reader could hit any
+          more. Owner also rejected an interim plan-preselect + "pick up where you left off"
+          banner as over-complex — **nothing is carried across; `/account` says the right thing
+          on its own.** Four other exits to `/pricing` repointed (mid-run alert, daily-fence
+          notice, UpgradeDialog fallback, Stripe `cancel_url`).
+        - **Report preview page DELETED.** Nothing had ever linked to it — Download Report builds
+          the file client-side from `/report/data` + the offline bundle — yet it rendered the full
+          scorecard server-side and had to be gated, cached and kept in step with `ReportDocument`
+          forever. `ReportDocument`, `report-data.ts` and the `.report-page`/`.report-doc` CSS all
+          STAY: the CSS is the downloaded file's `<body>` class, not dead.
+        - 🔴 **REAL BUG found by the e2e written to replace that page's coverage:**
+          `/report/data` sent **no `Cache-Control` at all**, on any branch, on a full-scorecard
+          payload. Its safety rested on Vercel happening not to cache an uncacheable-*looking*
+          response. Now `private, no-store` everywhere + guarded. Second occurrence of the
+          CLAUDE.md 11a class; the rule was updated to say the missing header is itself the bug.
+        - **Verified:** 33/33 entitlement e2e, typecheck, lint, build, both static guards, plus
+          browser checks of free / dispute-held / active on `/run` and `/results`.
+      - [x] **CHECKOUT→WEBHOOK RACE CLOSED (2026-07-29, `b2d2343`).** Found while grounding the
+        live-check plan in the Stripe docs, *before* it could bite in production.
+        - **The gap.** Stripe sends `checkout.session.completed` BEFORE redirecting and holds the
+          redirect for our 2xx — **but only 10 seconds**, then redirects regardless. Our
+          `success_url` carried no session id and `/account` ignored `?checkout` entirely, so a
+          slow/failed/misconfigured webhook put someone who had just paid on a page reading
+          **"No plan"**, beside a button inviting them to subscribe again.
+        - **Fix (Stripe's documented belt-and-braces).** Webhook stays the guarantee (runs even
+          if they close the tab; retried 3 days). `success_url` now carries
+          `{CHECKOUT_SESSION_ID}` and `/account` runs `reconcileCheckoutSession()` before it reads
+          the profile. `/account` also finally *says* something: "Payment received", or after
+          cancelling, "You haven't been charged."
+        - **Not a second source of truth.** It re-retrieves the subscription from Stripe and runs
+          the SAME `syncSubscription()` the webhook runs — which is why that function + helpers
+          moved to `web/lib/billing/sync.ts` instead of being copied. Two derivations of "who has
+          paid" would drift. The webhook contract tests (**21/21**) are what proved the extraction
+          was behaviour-preserving.
+        - **Security.** `session_id` comes from the URL bar, so it is never proof: the session is
+          fetched from Stripe and refused unless its own `client_reference_id` matches the caller.
+          Two e2e cases assert a forged id grants nothing and still renders. Re-retrieving the
+          subscription (not the session's embedded copy) also stops a stale session overwriting
+          newer state. Note `payment_status` is `no_payment_required` for a 7-day trial — treating
+          that as unpaid would refuse exactly the flow we sell.
+        - **Verified:** entitlement e2e 35/35, webhook 21/21, typecheck, lint, guards.
+          ⚠ **The happy path is NOT yet proven live** — that is a next-session check, deliberately
+          run with the webhook forwarder OFF so only the reconciler can provision.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
         **375px mobile — pre-existing, already triaged to Layer H, now measured there.**

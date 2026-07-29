@@ -1099,6 +1099,17 @@ page returns `<PremiumLockPage>` in place), `web/proxy.ts` for premium APIs (**4
 the Python functions themselves (authoritative — they strip the premium keys and re-check
 the internal secret). See `architecture.md` §7.1 for the full rule and the two cache traps.
 
+**Report payload — `GET /stocks/[market]/[ticker]/report/data`.** The one-click "Download
+Report" fetches this JSON and wraps it with the prebuilt offline bundle into a single
+self-contained `.html`. It is the report's **only** surface (the on-screen preview page was
+removed on 2026-07-29 — nothing linked to it). Being a route handler it is *not* wrapped by
+the `(app)` layout, so it gates itself: **401** signed out, **402** unentitled (body names
+the `reason`), **404** unknown market/ticker, **200** + `ReportData` otherwise. Every branch
+sends `Cache-Control: private, no-store` — the 200 carries the full scorecard and even the
+402 names the caller's own denial reason, and a shared cache keys on the URL alone
+(CLAUDE.md 11a). It sent **no** `Cache-Control` at all until 2026-07-29; the gap was found
+by e2e, not by reading the code, and `check:entitlement-gates` now pins it.
+
 ### Supporting tables (server-only — RLS on, no policies)
 
 - **`stripe_events`** (`id text pk`, `type text`, `received_at timestamptz`, plus
@@ -1243,7 +1254,14 @@ retried POSTs get automatic idempotency keys).
 Auth-gated. Returns exactly what the upgrade dialog needs to offer the right thing:
 
 ```ts
-{ currency: BillingCurrency; trialUsed: boolean; hasSubscription: boolean }
+{
+  currency: BillingCurrency;
+  trialUsed: boolean;
+  hasSubscription: boolean;
+  billingBlocked: boolean;
+  email: string | null;
+  displayName: string | null;
+}
 ```
 
 - `hasSubscription` — `subscription_status ∈ {active, trialing, past_due}`. CTA becomes
@@ -1252,6 +1270,13 @@ Auth-gated. Returns exactly what the upgrade dialog needs to offer the right thi
   that billing starts today with no free week. **Skipped** (returned `false`) when
   `hasSubscription`, which also avoids a pointless admin-client read for the common case.
 - `currency` — same resolver as `/pricing` and `/api/checkout` (see above).
+- `billingBlocked` — the dispute hold, and it **outranks every field above it**. It is an
+  orthogonal flag, not a status: a held account keeps its Stripe status, so `hasSubscription`
+  can be `true` while the reader is locked out. The dialog keys its entire copy off this —
+  no feature pitch, no plan list, **Contact support** instead of any buy button, because
+  `/api/checkout` and `/api/portal` both refuse a held account.
+- `email` / `displayName` — prefill for the in-place `SupportDialog`, so a locked reader
+  doesn't retype what we already hold.
 
 Sends `Cache-Control: private, no-store` — per-viewer billing state must never reach a
 shared cache (CLAUDE.md 11a). Signed-out callers never reach the handler: `proxy.ts`
@@ -1260,8 +1285,10 @@ redirects them to `/login` first.
 > **Not a source of truth.** `POST /api/checkout` independently re-derives all three and
 > remains the authority — it 409s a caller who already has a subscription and omits
 > `trial_period_days` for a tombstoned email regardless of what this endpoint said. This
-> exists so the UI can be honest *before* the click; a failed fetch degrades to a
-> `/pricing` link rather than to a wrong offer.
+> exists so the UI can be honest *before* the click; a failed fetch degrades to an
+> `/account` link rather than to a wrong offer. **In flight is a third state**, distinct
+> from failed: the CTA is a disabled "Checking your plan…" button, never a live control
+> carrying a guessed default (see coding-standards).
 
 ### Billing currency resolution + trial entry (F3, `e30c7aa` / `767c9da`)
 
@@ -1283,8 +1310,44 @@ redirects them to `/login` first.
   — the edge header is empty on localhost.
 - **Start-free-trial modal:** `web/components/account/StartTrialModal.tsx` +
   `StartTrialButton.tsx` reuse the Methodology modal's shell (blurred backdrop, gradient
-  header, disclaimer footer) with the plan chooser + `/api/checkout` hand-off. The public
-  `/pricing` page is unchanged (marketing/SEO shop-window).
+  header, disclaimer footer) with the plan chooser + `/api/checkout` hand-off. It is the
+  ONLY in-app entry to checkout — the public `/pricing` page is a marketing/SEO
+  shop-window for signed-out visitors and **redirects a signed-in one to `/account`**
+  (2026-07-29), so it never has to reason about anybody's billing state.
+
+### Returning from Checkout — `/account?checkout=…` (F3 Step 10, `b2d2343`)
+
+`success_url` = `/account?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
+`cancel_url` = `/account?checkout=cancelled` (both land inside the app — a signed-in user
+must never be returned to the public shop-window).
+
+**Why the session id is there.** Stripe sends `checkout.session.completed` *before*
+redirecting and holds the redirect for our 2xx — **but only 10 seconds**. A slow, failing
+or misconfigured webhook would therefore land a customer who has just paid on a page
+reading "No plan", beside a button inviting them to subscribe again. So `/account` calls
+`reconcileCheckoutSession()` (`web/lib/billing/reconcileCheckout.ts`) **before** it reads
+the profile:
+
+1. Retrieve the Checkout Session from Stripe.
+2. **Refuse** unless its own `client_reference_id`/`metadata.user_id` (stamped by
+   `/api/checkout`) matches the signed-in caller — `session_id` arrives in the URL bar and
+   is never treated as proof. A forged id grants nothing (asserted by e2e).
+3. Require `session.status === 'complete'`. Note `payment_status` is
+   **`no_payment_required`** for a 7-day trial — no money has moved yet — so treating that
+   as unpaid would refuse exactly the flow we sell.
+4. Link `stripe_customer_id`, then **re-retrieve the subscription** from Stripe (never the
+   session's embedded copy, so a stale session can't overwrite newer state) and apply
+   `syncSubscription()`.
+
+**It is not a second source of truth.** `syncSubscription()` is the *same* function the
+webhook uses — which is why it lives in `web/lib/billing/sync.ts` rather than inside the
+webhook route. Two derivations of "who has paid" would drift. Re-running after the webhook
+already ran writes identical values. The webhook remains the guarantee (it runs even if the
+customer closes the tab, and Stripe retries it for three days); this only removes the wait.
+
+Best-effort throughout: it runs during a page render, and a Stripe outage must never turn
+"your payment worked" into an error page. `/account` shows "Payment received — your plan is
+set up below", or after cancelling, "You haven't been charged."
 
 ### Local webhook testing (F3, `120501d`)
 
