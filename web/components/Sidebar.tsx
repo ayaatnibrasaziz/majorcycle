@@ -136,11 +136,19 @@ const LICENCE_LABELS: Record<string, string> = {
 // which is the opposite of what the rest of the app was telling them. Entitlement
 // already ranks the block above the status (hasAccess / accessDenialReason); the badge
 // now agrees.
+// `past_due` is the other status that needs a second dimension to read honestly. It
+// spans BOTH sides of the 3-day grace window (decision #20): inside it the reader
+// still has full access and "Payment Due" is a nudge; outside it their access has
+// already stopped, and the identical badge would tell them nothing had changed.
+// `entitled` is the same value the nav rows already use for their lock icons, so the
+// badge and the locks can no longer disagree.
 function licenceLabel(
   status: string | null | undefined,
   billingBlocked?: boolean,
+  entitled?: boolean,
 ): string {
   if (billingBlocked) return 'On hold';
+  if (status === 'past_due' && !entitled) return 'Access paused';
   return (status && LICENCE_LABELS[status]) || 'No plan';
 }
 
@@ -210,7 +218,7 @@ export function Sidebar({
             className="font-[var(--font-mono)] text-[10px] text-[var(--brand-mid)] font-semibold mt-0.5 uppercase tracking-[0.5px]"
             aria-label="Subscription status"
           >
-            {licenceLabel(subscriptionStatus, billingBlocked)}
+            {licenceLabel(subscriptionStatus, billingBlocked, entitled)}
           </div>
         </div>
       </div>

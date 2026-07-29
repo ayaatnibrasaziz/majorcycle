@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { KeyRound } from 'lucide-react';
 
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
+import { hasAccess } from '@/lib/entitlement';
 import { reconcileCheckoutSession } from '@/lib/billing/reconcileCheckout';
 import { currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
 import { hasUsedTrial } from '@/lib/trialGuard';
@@ -29,9 +30,18 @@ const COUNTRY_LOCK_STATES = new Set(['active', 'trialing', 'past_due']);
 // landed. Cancelling must say "not charged" out loud: someone who backed out of a payment
 // page wants that in writing.
 const CHECKOUT_NOTICE: Record<string, string> = {
-  success: 'Payment received — your plan is set up below.',
   cancelled: 'Checkout cancelled. You haven’t been charged.',
 };
+
+// `success` is deliberately NOT in the map above: what to say depends on whether the
+// plan actually landed, which isn't known until the reconciler has run and the profile
+// has been read. Asserting "your plan is set up below" from the URL alone put that
+// sentence directly above a card reading "NO PLAN" — and it did so precisely in the
+// case the reconciler exists for (Stripe slow or erroring AND the webhook not yet
+// arrived). Telling a paying customer both at once is worse than either alone.
+const CHECKOUT_SUCCESS_NOTICE = 'Payment received — your plan is set up below.';
+const CHECKOUT_SUCCESS_PENDING_NOTICE =
+  'Payment received. We’re still setting your plan up — refresh in a few seconds and it’ll appear. Nothing further is needed from you.';
 
 // Friendly messages for a return from /api/portal that couldn't open the portal.
 const BILLING_NOTICE: Record<string, string> = {
@@ -48,10 +58,6 @@ export default async function AccountPage({
   searchParams: Promise<{ billing?: string; checkout?: string; session_id?: string }>;
 }) {
   const { billing, checkout, session_id: sessionId } = await searchParams;
-  const notice =
-    (checkout && CHECKOUT_NOTICE[checkout]) ||
-    (billing && BILLING_NOTICE[billing]) ||
-    null;
 
   const supabase = await createServerSupabaseClient();
 
@@ -68,17 +74,42 @@ export default async function AccountPage({
   // a paying customer being told they have nothing. Ownership of `session_id` is proven
   // against the session itself — see lib/billing/reconcileCheckout.ts. Best-effort: the
   // webhook (retried by Stripe for 3 days) remains the guarantee.
-  if (checkout === 'success' && sessionId) {
-    await reconcileCheckoutSession(sessionId, user.id);
-  }
+  const reconciled =
+    checkout === 'success' && sessionId
+      ? await reconcileCheckoutSession(sessionId, user.id)
+      : false;
 
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'display_name, country, subscription_status, subscription_plan, trial_ends_at, cancel_at_period_end, current_period_end, billing_blocked'
+      'display_name, country, subscription_status, subscription_plan, trial_ends_at, cancel_at_period_end, current_period_end, billing_blocked, grace_until'
     )
     .eq('id', user.id)
     .single();
+
+  // `grace_until` is selected purely so the Subscription card can tell the two
+  // halves of `past_due` apart. Without it the card read the status alone and told a
+  // reader whose grace window had closed to "update your card to keep access" — the
+  // access was already gone. Reuses the shared rule so the card, the sidebar badge
+  // and the paywall can never disagree about who is entitled.
+  const entitled = hasAccess(profile);
+
+  // Only claim the plan is "set up below" when the card below will actually show one.
+  // Either half is enough: the reconciler provisioned it, or the webhook already had.
+  // Otherwise the payment is confirmed but provisioning is still in flight, and we say
+  // exactly that rather than pointing at a card that reads "No plan".
+  const checkoutNotice =
+    checkout === 'success'
+      ? reconciled || profile?.subscription_status
+        ? CHECKOUT_SUCCESS_NOTICE
+        : CHECKOUT_SUCCESS_PENDING_NOTICE
+      : null;
+
+  const notice =
+    checkoutNotice ||
+    (checkout && CHECKOUT_NOTICE[checkout]) ||
+    (billing && BILLING_NOTICE[billing]) ||
+    null;
 
   const email = user.email ?? '';
   const hasPasswordIdentity =
@@ -136,6 +167,7 @@ export default async function AccountPage({
           trialUsed={trialUsed}
           notice={notice}
           billingBlocked={profile?.billing_blocked ?? false}
+          entitled={entitled}
           displayName={profile?.display_name ?? ''}
           email={email}
         />

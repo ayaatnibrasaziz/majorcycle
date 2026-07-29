@@ -588,13 +588,19 @@ SCREEN              ← premium
 |---|---|
 | `active` | ACTIVE |
 | `trialing` | TRIAL ACTIVE |
-| `past_due` | PAYMENT DUE |
+| `past_due`, **inside** the grace window | PAYMENT DUE |
+| `past_due`, **past** the grace window | **ACCESS PAUSED** |
 | `canceled` | CANCELLED |
 | `null` / unknown | NO PLAN |
 | *any status, `billing_blocked = true`* | **ON HOLD** |
 
 `null` reads "No plan" because **account creation is not trial start** — an earlier
 fall-through showed "Free Trial" to `past_due` and `canceled` accounts.
+
+`past_due` splits on **entitlement**, not status — the badge already had `entitled` in
+hand (it draws the nav lock icons with it) but wasn't using it here, so a reader whose
+grace had closed saw the same PAYMENT DUE as one who still had full access. The badge and
+the locks beside it now agree.
 
 `billing_blocked` **overrides the status entirely**, because it is an orthogonal flag
 rather than a status value: a disputed account keeps whatever Stripe status it had (usually
@@ -612,7 +618,8 @@ sentence of detail, and exactly one action.
 |---|---|---|---|
 | `active` | Active (ok) | "You're on the Monthly/Annual plan." | Manage billing → `/api/portal` |
 | `trialing` | Trial active (ok) | "Your free trial runs until \<date\>." | Manage billing |
-| `past_due` | Payment due (warn) | "We couldn't take your last payment. Update your card to keep access." | Manage billing |
+| `past_due` **inside grace** | Payment due (warn) | "We couldn't take your last payment. Update your card to keep access." | Manage billing |
+| `past_due` **past grace** | **Access paused (warn)** | "We couldn't take your last payment, so access is paused for now. Update your card and it comes straight back — nothing has been lost." | Manage billing |
 | `canceled` | Cancelled (muted) | "Your subscription has been cancelled." | Start free trial / **Subscribe** |
 | `null` | No plan (muted) | "You don't have an active subscription yet." | Start free trial / **Subscribe** |
 | **`billing_blocked`** | **On hold (warn)** | "A payment on this account was disputed… Contact support and we'll sort it out with you." | **Contact support** (in-place dialog) |
@@ -625,13 +632,24 @@ sentence of detail, and exactly one action.
   checkout 403s a held account and the portal refuses it, so offering either would be an
   offer we decline at the till. The card previously said *"ACTIVE — You're on the Monthly
   plan"* to someone locked out — the single most support-generating sentence we could write.
+- **`past_due` needs two dimensions, not one.** The status is identical on both sides of
+  the 3-day grace window (decision #20) while the *access* is opposite, so the card takes
+  `entitled` (from the shared `hasAccess`) and picks its copy from that. Reading the status
+  alone told a reader whose grace had closed to "update your card to keep access" — the
+  access was already gone. Exactly the `billing_blocked` mistake in a second place, which
+  is why `/account` now selects `grace_until` at all.
 - **Scheduled cancel** is derived from `cancel_at != null` (the legacy boolean stays
   `false` in API `2026-06-24.dahlia`), and is suppressed while blocked.
 - **Dates render in the reader's device timezone** via `<LocalDate>` — see §16 of
   coding-standards; never `profiles.country`, which is currency only.
-- Returning from Stripe: `?checkout=success` → "Payment received — your plan is set up
-  below"; `?checkout=cancelled` → "You haven't been charged"; `?billing=blocked|none|error`
-  → the matching portal notice.
+- Returning from Stripe: `?checkout=cancelled` → "You haven't been charged";
+  `?billing=blocked|none|error` → the matching portal notice. **`?checkout=success` has two
+  forms** and is chosen *after* reconciliation, never from the URL: a plan on the row (the
+  reconciler provisioned it, or the webhook already had) → "Payment received — your plan is
+  set up below"; nothing yet → "Payment received. We're still setting your plan up — refresh
+  in a few seconds." Deriving it from the URL alone printed "your plan is set up below"
+  directly above a card reading **No plan**, in precisely the slow-webhook case the
+  reconciler exists for.
 
 **One entry point per destination.** Account lives *only* in the header menu, and the
 header's old "Run Analysis" button was removed — both duplicated a nav row. The header now

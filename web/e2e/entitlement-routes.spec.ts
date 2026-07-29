@@ -468,6 +468,47 @@ test.describe('entitlement enforcement across subscription states', () => {
     await expect(page).toHaveURL(/\/reactivate/);
   });
 
+  // ── /account must tell the truth about WHICH side of grace you're on ────────
+  // `past_due` spans both sides of the 3-day window (decision #20) and the account
+  // surfaces used to read the status alone, so a reader whose grace had closed — who
+  // had already lost access — was told to "update your card to keep access". Same
+  // shape as the dispute badge that once announced "ACTIVE" to a locked-out account:
+  // one dimension short of the truth. Both halves are asserted, because a fix that
+  // only ever says "paused" would be just as wrong in the other direction.
+  test('past_due INSIDE grace still promises continued access', async ({ page }) => {
+    await setState({ subscription_status: 'past_due', grace_until: iso(2 * DAY) });
+    await page.goto('/account');
+    await expect(page.getByText(/update your card to keep access/i)).toBeVisible();
+    await expect(page.getByText(/access is paused/i)).toHaveCount(0);
+  });
+
+  test('past_due PAST grace says access is paused, never "keep access"', async ({ page }) => {
+    await setState({ subscription_status: 'past_due', grace_until: iso(-1 * DAY) });
+    await page.goto('/account');
+    await expect(page.getByText(/access is paused/i)).toBeVisible();
+    await expect(page.getByText(/keep access/i)).toHaveCount(0);
+  });
+
+  // ── Never claim a plan is set up when none is showing ───────────────────────
+  // The success banner used to come from the URL alone, so it asserted "your plan is
+  // set up below" directly above a card reading "No plan" — and did so precisely in
+  // the case the reconciler exists for (Stripe slow AND the webhook not yet landed).
+  test('checkout=success with nothing provisioned says setup is still in flight', async ({
+    page,
+  }) => {
+    await setState({ subscription_status: null });
+    await page.goto('/account?checkout=success');
+    await expect(page.getByText(/still setting your plan up/i)).toBeVisible();
+    await expect(page.getByText(/plan is set up below/i)).toHaveCount(0);
+  });
+
+  test('checkout=success with a live plan keeps the confident confirmation', async ({ page }) => {
+    await setState({ subscription_status: 'trialing' });
+    await page.goto('/account?checkout=success');
+    await expect(page.getByText(/plan is set up below/i)).toBeVisible();
+    await expect(page.getByText(/still setting your plan up/i)).toHaveCount(0);
+  });
+
   // ── Free-tier daily fence ───────────────────────────────────────────────────
   test('a free viewer at the daily cap is stopped on a NEW stock but not a seen one', async ({
     page,

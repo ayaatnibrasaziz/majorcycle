@@ -29,6 +29,10 @@ interface SubscriptionCardProps {
   // Dispute lock. Overrides the status badge/detail entirely and replaces the
   // buy/manage action with support, because /api/checkout refuses this account.
   billingBlocked?: boolean;
+  // Does this reader currently have access? Only `past_due` needs it: that status
+  // spans both sides of the 3-day grace window (decision #20), and the two sides
+  // need opposite copy — see PAST_DUE_LAPSED_META.
+  entitled?: boolean;
   // Prefill the in-place support dialog shown when billingBlocked.
   displayName?: string;
   email?: string;
@@ -104,6 +108,17 @@ const NONE_META: StatusMeta = {
 // (hasAccess, accessDenialReason, /pricing). Without this the card told a locked-out
 // customer "ACTIVE — You're on the Monthly plan", which is both wrong and the single
 // most support-generating thing we could say to someone whose access just vanished.
+// `past_due` after the 3-day grace window has closed. The status is unchanged, so
+// STATUS_META.past_due alone told a locked-out customer to "keep access" they had
+// already lost — the same failure as the dispute badge below, one dimension short of
+// the truth. Entitlement is what separates the two, so the copy follows it.
+const PAST_DUE_LAPSED_META: StatusMeta = {
+  label: 'Access paused',
+  tone: 'warn',
+  detail: () =>
+    'We couldn’t take your last payment, so access is paused for now. Update your card and it comes straight back — nothing has been lost.',
+};
+
 const BLOCKED_META: StatusMeta = {
   label: 'On hold',
   tone: 'warn',
@@ -128,12 +143,15 @@ export function SubscriptionCard({
   trialUsed = false,
   notice,
   billingBlocked = false,
+  entitled = false,
   displayName = '',
   email = '',
 }: SubscriptionCardProps) {
   const meta = billingBlocked
     ? BLOCKED_META
-    : (status && STATUS_META[status]) || NONE_META;
+    : status === 'past_due' && !entitled
+      ? PAST_DUE_LAPSED_META
+      : (status && STATUS_META[status]) || NONE_META;
   const trialEnd = trialEndsAt ? (
     <LocalDate iso={trialEndsAt} fallback={formatFallback(trialEndsAt)} />
   ) : null;
