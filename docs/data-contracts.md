@@ -1090,6 +1090,25 @@ method). **Cancel** has two paths, both handled: *cancel at period end* keeps th
 access (status stays `past_due`; the gate reads grace). `billing_blocked = true` ⇒ no
 access regardless of status.
 
+> **Dashboard settings this depends on — read live 2026-07-30, identical in the sandbox.**
+> Neither is visible from code, so they are recorded here rather than re-discovered.
+>
+> - **Revenue recovery → Retries → "If all retries for a payment fail":
+>   `cancel the subscription`** (invoice left overdue). So the terminal state is
+>   **`canceled`, never `unpaid`** — the `unpaid → past_due` fold in `mapStripeStatus`
+>   is insurance that will not fire. The full path: day 0 `invoice.payment_failed` →
+>   `past_due` + `grace_until` = +3d (access retained, decision #20) → day 3 grace closes
+>   (locked, status unchanged — this is the "Access paused" card) → ~day 14 retries
+>   exhausted → `customer.subscription.deleted` → `canceled` (still locked). Fixing the
+>   card at any point before that pays the invoice and recovers `past_due → active`.
+> - **All five Stripe customer emails are OFF** (trial-ending reminder, upcoming renewals,
+>   expiring cards, card-payment failed, bank-debit failed). Deliberate: our branded Resend
+>   senders own trial-ending, payment-failed and payment-recovered, and two senders would
+>   mean two different dates and two voices for one event. **If any of these is ever
+>   switched on, retire our matching sender in the same change.**
+> - The one-time "trial over" statement-descriptor message is **off by owner decision**
+>   (2026-07-30): the descriptor already names the site, and fewer moving parts wins.
+
 **The gate that enforces all of this is BUILT (F3 Step 10)** — `web/lib/entitlement.ts`,
 the single source of truth. The webhook still only *records* status; `hasAccess()` is the
 only thing that interprets it, and it fails **closed** (missing profile, unreadable row or
