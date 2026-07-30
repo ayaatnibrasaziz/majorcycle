@@ -1247,6 +1247,61 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           message **off** — the descriptor already names the site.
         - **Still open from Session 1:** nothing. Sessions 2–5 (paywall/wire-level, billing
           lifecycle on a test clock, fix sweep, merge day) remain.
+      - [x] **LIVE-CHECK SESSION 2 — the paywall at the wire (2026-07-30).**
+        Gates first: typecheck, lint, build, both guards, **pytest 86**, **Playwright 99**.
+        Every Layer F app surface driven across **all twelve viewer states**, asserting on the
+        raw body and the response headers rather than on what renders.
+        - **The paywall holds, and it is entitlement-driven rather than blanket.** Free Stock
+          Detail = **3.16 MB of HTML, zero premium keys, zero `NN/100`**; an entitled viewer at
+          the same URL gets **7** score readings and `/report/data` returns all **nine** premium
+          keys. The same probe proves both, so "safe" cannot be an artifact of the data simply
+          being absent.
+        - **Denied states are refused honestly and in place.** `/run` and `/results` return the
+          locked panel **at the same URL inside the app shell**, each carrying the caller's own
+          reason — lapsed `past_due` → "We couldn't take your last payment", `canceled` → "Your
+          subscription has ended", `billing_blocked` → "Your account is on hold" — and a
+          first-time free reader correctly gets **no** warning banner at all. `/api/analyze-dev`
+          and `/report/data` both 402 with the matching `reason` in the body
+          (`no_subscription` / `payment_failed` / `canceled` / `billing_blocked`), all
+          `private, no-store`.
+        - **Signed out, every gated surface 307s to `/login`** with `next` preserved — pages,
+          route handlers and both POST endpoints alike. `/api/cycle`: **401** for anonymous and
+          **401** for a wrong secret (both `private, no-store`), while the correct secret passes
+          the proxy gate. `/api/stripe/webhook` unsigned → **400**, the merge-day liveness probe.
+        - **Also confirmed:** the free 25-ticker fence stops a **new** stock while still serving
+          an **already-seen** one; `/api/portal` gives all three outcomes (`?billing=none`,
+          `?billing=blocked`, `?billing=error`); `/api/checkout` 409s a double-subscribe and
+          403s a held account; `/request` stays free for everyone; bad market/ticker on
+          `/report/data` → **404 `private, no-store`** (refusals carry the header too);
+          deletion-scheduled really is confined to `/reactivate`; the onboarding modal blocks
+          the page for an unacknowledged reader; and a **free** viewer keeps the drawdown
+          overlay **with its cycle bands** plus all 22 sections.
+        - 🟡 **Three findings, none a leak — all deferred to the Session 4 fix sweep.**
+          1. **`api/analyze.py` is the one premium route with no header guard.** It sends
+             `Cache-Control: no-store` on every branch, which Vercel honours, but the house rule
+             (11a) is `private, no-store` and `check:entitlement-gates` asserts that for
+             `api/cycle.py`, `proxy.ts` and `/report/data` — not for the route returning the
+             full screener payload. Align the header and add a 10th static check.
+          2. **Nothing rejects a *second* completed Checkout Session.** Three concurrent POSTs
+             each returned a distinct session; the 409 guard runs at session *creation*, while
+             `customer.subscription.created` overwrites `stripe_subscription_id` unconditionally
+             at *completion*. Abandon-then-retry-then-complete-both would leave two live Stripe
+             subscriptions billing with only the second on file, and decision #21 means no
+             refund. **Not yet reproduced end to end** — confirm in Session 3, which already owns
+             the checkout race.
+          3. **`pnpm build` and the dev/e2e servers share `web/.next`.** A stale production build
+             makes real routes return HTML 404s; it cost time in Session 1 and again here, where
+             it made a *paywalled* route look like a broken gate. A false security signal during
+             the checks meant to find real ones deserves more than the anti-pattern note it has:
+             give the dev/e2e server its own `distDir`.
+        - **A "200" is not proof the guard failed.** `/run` and `/stocks` returned 200 for a
+          deletion-scheduled account, which reads as confinement broken — but the bodies carry
+          `NEXT_REDIRECT` to `/reactivate`: Next emits a server-component `redirect()` inside a
+          streaming 200 once the shell has flushed. Check the body for the marker, not the status.
+        - **Two probe markers were worthless and nearly produced false findings** — "reactivate"
+          and "Run Analysis" both appear in every page's nav, and the onboarding modal is
+          client-rendered so it is absent from the SSR HTML entirely. Grep for copy unique to the
+          state, and confirm anything client-rendered in a real browser.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
         **375px mobile — pre-existing, already triaged to Layer H, now measured there.**
