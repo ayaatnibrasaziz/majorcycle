@@ -1207,6 +1207,46 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
         - **Verified:** entitlement e2e 35/35, webhook 21/21, typecheck, lint, guards.
           ⚠ **The happy path is NOT yet proven live** — that is a next-session check, deliberately
           run with the webhook forwarder OFF so only the reconciler can provision.
+      - [x] **LIVE-CHECK SESSION 1 — static + identity surfaces (2026-07-30, `66c46f2` + `2f4f98b`).**
+        First of the multi-session Layer F live-check plan (`~/.claude/plans/lovely-napping-neumann.md`).
+        Gates first: typecheck, lint, build, both guards, **pytest 86**, **Playwright 95 → 99**.
+        - **Passed:** all 7 public pages 200 with the disclaimer, every gated route 307 → `/login`
+          with `next` preserved; `/pricing` signed-out is a plain shop window (**US$126/yr is
+          exactly 30% off** $180) and signed-in redirects to `/account`; `/login` + `/signup`
+          redirect to `/stocks`; recovery confinement holds and self-heals on fresh login;
+          deletion-scheduled sends **both** `/account` and `/run` to `/reactivate` (deletion
+          outranks billing); contact honeypot accepts silently with **zero** emails sent while a
+          real submission is **delivered** with `reply_to` set to the sender; self-referral blocked.
+        - 🔴 **TWO DEFECTS FOUND + FIXED (`66c46f2`)** — both the same shape as the dispute-hold
+          bug: *a surface reading one dimension when the truth needs two.*
+          1. **A lapsed `past_due` account was told its access was intact.** The status is identical
+             either side of the 3-day grace window while the access is opposite, but `/account`
+             never selected `grace_until` — so a reader whose grace had closed got "update your
+             card to **keep access**". The sidebar said PAYMENT DUE in both states too, while the
+             lock icons beside it (same `entitled` it already had) said otherwise. Both now split
+             on entitlement via the shared `hasAccess`; lapsed reads **"Access paused"**.
+          2. **"Payment received — your plan is set up below" printed above "No plan".** The banner
+             came from the URL param before reconciliation ran, and `reconcileCheckoutSession`'s
+             return value was **discarded** — so it made that claim in precisely the slow-webhook
+             case the reconciler exists for. Now chosen after the fact, with an honest
+             "still setting your plan up" when nothing is provisioned yet.
+          Neither was a security hole (the paywall locked all these readers correctly) — both were
+          honesty bugs on the paid surface. **4 new e2e cases assert BOTH halves of each fix**, so
+          an over-correction fails too.
+        - **Paywall re-verified live after the fixes:** free Stock Detail = **3.16 MB of HTML with
+          zero premium keys and zero `NN/100`**, free data intact; an `active` viewer gets all four
+          premium keys and the scores render (59/100, 81/100) — proving the strip is
+          entitlement-driven, not blanket. `/run` locked in-place for free and for lapsed
+          `past_due`, open for `active`. `/api/analyze-dev` **402 `payment_failed`**, `/api/cycle`
+          without the secret **401**, `/report/data` **402** — all `private, no-store`.
+        - **Stripe dashboard read (live + sandbox, identical)** — see data-contracts for the
+          durable record: failed-payment terminal state is **`cancel the subscription`** (so
+          `canceled`, never `unpaid` — our rule already denies both), and **all five Stripe
+          customer emails are OFF**, which is what makes our branded Resend senders the single
+          voice. Owner decision 2026-07-30: leave the one-time "trial over" statement-descriptor
+          message **off** — the descriptor already names the site.
+        - **Still open from Session 1:** nothing. Sessions 2–5 (paywall/wire-level, billing
+          lifecycle on a test clock, fix sweep, merge day) remain.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
         **375px mobile — pre-existing, already triaged to Layer H, now measured there.**
