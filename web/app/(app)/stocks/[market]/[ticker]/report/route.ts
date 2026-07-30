@@ -20,10 +20,17 @@ type RouteParams = { market: string; ticker: string };
 const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
 
 /**
- * JSON payload that powers the one-click "Download Report" on the Stock Detail
- * page. Returns the exact `buildReportData` snapshot for (market, ticker, horizon)
- * — the client wraps it together with the prebuilt offline bundle into a single
- * self-contained .html.
+ * `GET /stocks/[market]/[ticker]/report` — the JSON payload behind the one-click
+ * "Download Report" on the Stock Detail page. Returns the exact `buildReportData`
+ * snapshot for (market, ticker, horizon); the client wraps it with the prebuilt
+ * offline bundle into a single self-contained .html.
+ *
+ * Lived at `/report/data` until 2026-07-30. The `data` suffix existed only to sit
+ * beside an on-screen `/report` PREVIEW PAGE — deleted 2026-07-29 when nothing was
+ * found linking to it — so the suffix was naming a distinction that no longer
+ * existed. Renamed at the owner's request. Next.js forbids a `page.tsx` and a
+ * `route.ts` in one segment, so this deliberately forecloses re-adding a `/report`
+ * page; the download is the report's only form.
  *
  * Route handlers aren't wrapped by the (app) layout, so this gates auth itself,
  * mirroring app/(app)/layout.tsx (including the same NODE_ENV-guarded

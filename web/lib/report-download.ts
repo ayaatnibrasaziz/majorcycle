@@ -6,7 +6,7 @@
 // 1Y/3Y/All toggles, and every tooltip all work with no server and no network.
 //
 // Flow:
-//   1. fetch the stock's JSON data from the gated /report/data route,
+//   1. fetch the stock's JSON data from the gated /report route,
 //   2. fetch the prebuilt bundle (report.js + report.css) — static, CDN-cached,
 //   3. assemble a single HTML doc that inlines all three,
 //   4. blob → a.click().
@@ -57,8 +57,16 @@ export function prefetchReportBundle(): void {
   void getBundle().catch(() => {});
 }
 
+// `/report`, not `/report/data` — renamed 2026-07-30 at the owner's request. The `data`
+// segment only ever existed to sit beside an on-screen `/report` PREVIEW PAGE, and that
+// page was deleted on 2026-07-29 (nothing linked to it), leaving the suffix describing a
+// distinction that no longer exists.
+//
+// Note this forecloses re-adding a `/report` page: Next.js rejects a `page.tsx` and a
+// `route.ts` in the same segment. That is the intended trade — the preview page was
+// removed deliberately, and the download is now the report's only form.
 const dataUrl = (a: Pick<DownloadReportArgs, 'market' | 'ticker' | 'horizonQuery'>): string =>
-  `/stocks/${a.market}/${a.ticker}/report/data${a.horizonQuery}`;
+  `/stocks/${a.market}/${a.ticker}/report${a.horizonQuery}`;
 
 // One in-flight data fetch per URL (horizon-specific), consumed on download so a
 // later click re-fetches fresh.

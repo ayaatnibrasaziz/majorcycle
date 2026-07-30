@@ -567,7 +567,7 @@ snapshot + Save-as-PDF — those are GONE.
   `.html`. Opening it runs the genuine app from inlined JSON with **zero network**.
 - **Files:** new `components/stocks/ReportDocument.tsx` (single source of the report layout, client),
   `lib/report-types.ts` (serializable `ReportData`), `lib/report-data.ts` (`buildReportData`, server, inlines
-  logo as data-URL), `app/(app)/stocks/[market]/[ticker]/report/data/route.ts` (GET, self-gates auth like the
+  logo as data-URL), `app/(app)/stocks/[market]/[ticker]/report/route.ts` (GET, self-gates auth like the
   layout + DEV_BYPASS), `report-bundle/entry.tsx`, `scripts/build-report-bundle.mjs`,
   `scripts/check-report-sections.mjs` (CI guard), `lib/useScrollSpy.ts`. Rewritten `lib/report-download.ts`
   (assembles interactive html, escapes `</script`+`<`), `report/page.tsx` (thin `<ReportDocument>` preview).
@@ -618,6 +618,7 @@ Two owner-reported polish items on the same `feat/layer-c-round2-report` branch.
   `StockSubnav.tsx`):** `prefetchReportBundle()` on mount warms the session-cached bundle (off the click path);
   `prefetchReportData()` on button hover/focus starts the data fetch before the click (deduped per horizon URL,
   consumed on download). **Verified (Claude Preview):** hover fires exactly one `/report/data` request
+  *(that route is now simply `/report` — renamed 2026-07-30; the measurement is unchanged)*
   (deduped on focus); with the hover prefetch complete, **click→blob = 48 ms** (was ~2.4 s cold). In prod the
   data is gzipped (~300 KB) so it's faster again. Spinner still shows immediate feedback.
 - `typecheck`/`lint`/`build`/section-guard all green. Files: `lib/format.ts` (new const),

@@ -355,6 +355,44 @@ test.describe.serial('stripe webhook contract', () => {
     expect(p['stripe_subscription_id']).toBeNull();
   });
 
+  // ── The duplicate-subscription guard's FAIL-SAFE half (Session 2, finding B) ───
+  // `rejectDuplicateSubscription` cancels an incoming subscription when the one already
+  // on file is confirmed live — and it confirms that by RETRIEVING it from Stripe, because
+  // our own column can name a sub that is already dead (webhook order isn't guaranteed).
+  //
+  // These fixtures use synthetic `sub_*` ids that Stripe has never heard of, so the
+  // retrieve fails. That is precisely the case this test pins: when the incumbent cannot
+  // be verified, the guard must FALL THROUGH and write normally — never cancel on a guess.
+  // Cancelling a real subscription in error is far worse than the duplicate it prevents.
+  //
+  // The positive half (a genuinely live incumbent ⇒ the incoming duplicate is cancelled and
+  // the profile keeps the original) cannot be expressed here — it needs real subscriptions.
+  // It was proven against the Stripe sandbox on 2026-07-30 with two live subs on one
+  // customer: the duplicate came back `canceled` and the profile stayed on the first, while
+  // a re-subscribe after a genuine cancellation was still accepted. See roadmap.
+  test('an unverifiable incumbent must not cancel anything — the guard falls through', async ({
+    request,
+  }) => {
+    const incumbent = `sub_unverifiable_${RUN}`;
+    await admin
+      .from('profiles')
+      .update({ subscription_status: 'active', stripe_subscription_id: incumbent })
+      .eq('id', userId);
+
+    const incoming = makeEvent(
+      'customer.subscription.created',
+      subObject({ id: `sub_incoming_${RUN}`, status: 'active', trial_end: null }),
+    );
+    expect((await post(request, incoming)).ok()).toBeTruthy();
+
+    const p = await profile();
+    expect(
+      p['stripe_subscription_id'],
+      'an incumbent we cannot confirm must not block the write',
+    ).toBe(`sub_incoming_${RUN}`);
+    expect(p['subscription_status']).toBe('active');
+  });
+
   test('checkout.session.completed → links the Stripe customer', async ({ request }) => {
     // First clear the customer link so we can prove the handler sets it.
     await admin.from('profiles').update({ stripe_customer_id: null }).eq('id', userId);

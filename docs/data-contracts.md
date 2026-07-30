@@ -729,6 +729,15 @@ interface AnalysisRunRecord {
 - `500` — internal — return `{ error: string }`
 - `503` — `CYCLE_INTERNAL_SECRET` unset (fails closed, loud log)
 
+**Caching headers (all responses):** `Cache-Control: private, no-store`, emitted by
+`analyze.py::_json` so it applies to **every** branch — the 200 is a whole basket's paid
+analysis and even the 401 is that caller's own refusal. It sent bare `no-store` until
+2026-07-30; Vercel honours that (its edge caches only on `s-maxage`/`stale-while-revalidate`),
+so nothing was ever exposed — but it was the one premium surface `check:entitlement-gates`
+did not assert, so a future edit could have removed it unnoticed. That is the CLAUDE.md 11a
+trap exactly: safe by someone else's default rather than by our own statement. Now guarded
+(check 10), and the guard was verified to fail when the header is weakened.
+
 ### Universe expansion — "Request a Ticker" (queue model)
 
 Unknown tickers are **not** fetched synchronously (no `/api/fetch-ticker`). The
@@ -1121,7 +1130,7 @@ page returns `<PremiumLockPage>` in place), `web/proxy.ts` for premium APIs (**4
 the Python functions themselves (authoritative — they strip the premium keys and re-check
 the internal secret). See `architecture.md` §7.1 for the full rule and the two cache traps.
 
-**Report payload — `GET /stocks/[market]/[ticker]/report/data`.** The one-click "Download
+**Report payload — `GET /stocks/[market]/[ticker]/report`.** The one-click "Download
 Report" fetches this JSON and wraps it with the prebuilt offline bundle into a single
 self-contained `.html`. It is the report's **only** surface (the on-screen preview page was
 removed on 2026-07-29 — nothing linked to it). Being a route handler it is *not* wrapped by
@@ -1179,6 +1188,23 @@ state sync; checkout just links the customer:
   not the subscription), `cancel_at_period_end`, `trial_ends_at`. **Does NOT touch
   `grace_until`** (that is single-owner — see below). Resolves the profile via
   `sub.metadata.user_id` (set at checkout) → falls back to `stripe_customer_id`.
+  **Duplicate guard (2026-07-30, live-check Session 2 finding B).** Before writing,
+  `rejectDuplicateSubscription` refuses a SECOND live subscription for one profile.
+  `/api/checkout` 409s an existing subscriber, but that fires when a Checkout **Session is
+  created**; nothing fired when one was **completed**, so *start checkout → abandon → start
+  again → complete both from history* produced two subscriptions billing one person, with
+  only the second on file. Decision #21 (no refunds) leaves no clean remedy.
+  The guard **retrieves the on-file subscription from Stripe** rather than trusting our own
+  column — event order isn't guaranteed, so the column can name a subscription that is
+  already dead, and cancelling a real plan in error would be worse than the duplicate.
+  Live = `active`/`trialing`/`past_due`/`unpaid`; **`incomplete` is excluded**, so a retry
+  after a declined card is never mistaken for a duplicate. On a confirmed duplicate the
+  **incoming** subscription is cancelled (the incumbent owns the billing anchor and consumed
+  any trial) and the profile is left as-is; if the retrieve fails it falls through and writes
+  normally. It lives in `syncSubscription`, so it covers the webhook **and** the checkout
+  reconciler. **Cancelling does not refund** — a duplicate caught while `trialing` was never
+  charged, but a charged one needs a manual Dashboard refund, hence the loud log naming both
+  subscription ids.
 - `customer.subscription.deleted` — status `canceled`; clear `stripe_subscription_id`,
   `trial_ends_at`, `grace_until`, `cancel_at_period_end`. **Guarded on the sub id**
   (`WHERE stripe_subscription_id = sub.id OR IS NULL`) so an out-of-order deletion of an *old*

@@ -561,7 +561,7 @@ hiding the row. Never "helpfully" collapse the locked pair.
 > inside one.
 >
 > **The report has no page to lock.** "Download Report" builds the file client-side from
-> the gated `/report/data` route plus the prebuilt offline bundle, so the subnav button is
+> the gated `/report` route plus the prebuilt offline bundle, so the subnav button is
 > the only report surface a reader ever sees. An on-screen preview page existed until
 > 2026-07-29 and was removed — nothing linked to it.
 

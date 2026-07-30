@@ -80,13 +80,13 @@ async function setState(patch: Record<string, unknown>): Promise<void> {
  * shows the in-app locked panel WITHOUT leaving the route. They used to redirect to the
  * public /pricing page, which threw a signed-in reader out of the app shell entirely.
  *
- * The report is not among them: it has no page, only the gated /report/data route that
+ * The report is not among them: it has no page, only the gated /report route that
  * the one-click download reads (covered by its own test below).
  */
 const PREMIUM_PAGES = ['/run', '/results'];
 
 /** The report's only surface — a route handler, so it gates itself. */
-const REPORT_DATA = `${DETAIL}/report/data`;
+const REPORT = `${DETAIL}/report`;
 
 /** The panel's CTA — "Contact support" for a hold, "See what's included" otherwise. */
 const LOCK_CTA = /see what’s included|see what's included|contact support/i;
@@ -389,20 +389,20 @@ test.describe('entitlement enforcement across subscription states', () => {
 
   // ── The report is a download, not a page ───────────────────────────────────
   // Its on-screen preview page was deleted on 2026-07-29 (nothing linked to it), so
-  // /report/data is the whole attack surface: it is a route handler, which the (app)
+  // /report is the whole attack surface: it is a route handler, which the (app)
   // layout does not wrap, so it must gate itself. Its payload is the full scorecard.
-  test('GET /report/data refuses an unentitled viewer and serves an entitled one', async ({
+  test('GET /report refuses an unentitled viewer and serves an entitled one', async ({
     page,
   }) => {
     test.setTimeout(120_000);
 
     await setState({ subscription_status: null });
-    const denied = await page.request.get(REPORT_DATA, { maxRedirects: 0 });
+    const denied = await page.request.get(REPORT, { maxRedirects: 0 });
     expect(denied.status(), 'a free viewer must not be able to fetch the report').toBe(402);
     expect(await denied.text()).not.toMatch(/\d{1,3}\/100/);
 
     await setState({ subscription_status: 'active' });
-    const allowed = await page.request.get(REPORT_DATA);
+    const allowed = await page.request.get(REPORT);
     expect(allowed.status(), 'a subscriber must still get their report').toBe(200);
     // Per-viewer payload — must never be shared-cacheable (CLAUDE.md 11a).
     expect(allowed.headers()['cache-control']).toContain('no-store');

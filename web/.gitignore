@@ -15,6 +15,9 @@
 
 # next.js
 /.next/
+# dev/e2e build output — kept separate from /.next so a production build can never
+# poison the dev server (next.config.ts `distDir`; live-check Session 2, finding C)
+/.next-dev/
 /out/
 
 # production

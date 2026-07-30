@@ -1302,6 +1302,47 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           and "Run Analysis" both appear in every page's nav, and the onboarding modal is
           client-rendered so it is absent from the SSR HTML entirely. Grep for copy unique to the
           state, and confirm anything client-rendered in a real browser.
+      - [x] **SESSION 2 FIX SWEEP — all three findings closed (2026-07-30).** Brought forward
+        from Session 4 at the owner's request; each fix is proven, not merely written.
+        - **A — `api/analyze.py` now sends `private, no-store`** on every branch, matching
+          `cycle.py`, plus a **10th static check** in `check:entitlement-gates` asserting both the
+          header and the absence of `s-maxage`/`stale-while-revalidate`. The guard was verified to
+          actually fail: weakening the header to bare `no-store` and, separately, injecting
+          `s-maxage=60` each turned CI red, then the file was restored. `/api/analyze-dev` got the
+          same header on all four branches — a dev stand-in that answers differently from
+          production is a test that lies, and its silence is why the local checks could never have
+          caught this.
+        - **B — a second completed Checkout Session is now refused.** `rejectDuplicateSubscription`
+          in `lib/billing/sync.ts` runs inside `syncSubscription`, so it covers **both** writers
+          (the webhook and the checkout landing page's reconciler). If a *different* subscription is
+          already on file, it **retrieves that one from Stripe** before judging — our column can name
+          a subscription that is already dead, because event order isn't guaranteed, and cancelling a
+          real plan in error would be far worse than the duplicate. Live states are
+          `active`/`trialing`/`past_due`/`unpaid`; **`incomplete` is excluded** so a retry after a
+          declined card is never mistaken for a duplicate. On a confirmed duplicate the **incoming**
+          subscription is cancelled (the incumbent owns the billing anchor and consumed any trial)
+          and the profile is left untouched. If the retrieve fails, it falls through and writes
+          normally — never cancel on a guess.
+          **Proven in the Stripe sandbox with two REAL subscriptions on one customer:** the duplicate
+          came back `canceled` while the profile stayed on the first; and with the incumbent genuinely
+          cancelled, a re-subscribe was still accepted and recorded. A committed e2e pins the
+          fail-safe half (synthetic ids ⇒ unverifiable incumbent ⇒ must fall through, never cancel).
+          **Cancelling does not refund** — a duplicate caught while `trialing` was never charged, but
+          a charged one needs a manual refund, so the guard logs both ids loudly. Worth an alerting
+          path once Sentry lands in Layer H.
+        - **C — dev and build no longer share `web/.next`.** `next.config.ts` sets
+          `distDir = '.next-dev'` under `NODE_ENV=development`; `next dev` and `next build` set that
+          themselves, so nothing has to be passed or remembered. Verified: a production build sits in
+          `.next` with its `BUILD_ID` intact while the dev server runs from `.next-dev`. Needed
+          `.next-dev/**` added to the eslint ignores and both `.gitignore`s.
+        - **Owner-requested rename: `/report/data` → `/report`.** The `data` segment only ever existed
+          to sit beside an on-screen `/report` preview page, deleted 2026-07-29 when nothing was found
+          linking to it — so the suffix named a distinction that no longer existed. Verified signed-in:
+          `/report` → **402 `no_subscription`** free / **200, 3.2 MB, `private, no-store`** subscribed,
+          and the old path is cleanly **404**. Callers, the CI guard path, the e2e constant and every
+          doc updated. **Trade-off accepted:** Next.js forbids a `page.tsx` and a `route.ts` in one
+          segment, so this forecloses ever re-adding a `/report` page — intended, as the download is
+          now the report's only form.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
         **375px mobile — pre-existing, already triaged to Layer H, now measured there.**

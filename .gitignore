@@ -1,5 +1,8 @@
 # Next.js
 web/.next/
+# The dev/e2e server writes here instead, so a production build can never poison it
+# (next.config.ts `distDir`; live-check Session 2, finding C).
+web/.next-dev/
 web/out/
 web/node_modules/
 

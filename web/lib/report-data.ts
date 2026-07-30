@@ -34,7 +34,7 @@ async function logoDataUrl(): Promise<string> {
 /**
  * Gather everything the report needs into one JSON-serializable payload. Reuses
  * the exact same fetchers as the live detail page, so the report can never drift
- * from the page's data. Used by the gated /report/data route that powers the
+ * from the page's data. Used by the gated /report route that powers the
  * one-click download — the report's only surface (the on-screen preview page was
  * removed on 2026-07-29; nothing linked to it).
  *

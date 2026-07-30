@@ -42,7 +42,23 @@ const securityHeaders = [
   { key: 'Content-Security-Policy-Report-Only', value: csp },
 ];
 
+// ── Build output directory (live-check Session 2, finding C) ─────────────────
+// `pnpm build` and the dev server used to share ONE `web/.next`, so a production
+// build left behind would make `next dev` serve HTML 404s for routes that exist.
+// That cost time twice, and the second time it made a PAYWALLED route (the report
+// download) look like a broken gate — a false security signal produced during the
+// very checks meant to find real ones. A note in the anti-pattern table wasn't
+// enough; the directories are now simply separate.
+//
+// `next dev` sets NODE_ENV=development, `next build` sets production, so the split
+// is automatic — nothing to remember and nothing to pass. `pnpm e2e` spawns its own
+// `next dev`, so it lands in `.next-dev` too and can no longer be poisoned by a build.
+// Vercel runs `next build` and reads `.next`, so deployment is unaffected.
+// Both paths are gitignored (`.next*` — see .gitignore).
+const distDir = process.env.NODE_ENV === 'development' ? '.next-dev' : '.next';
+
 const nextConfig: NextConfig = {
+  distDir,
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

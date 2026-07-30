@@ -492,10 +492,18 @@ class handler(BaseHTTPRequestHandler):
             self._json(500, {"error": "internal error", "detail": str(e)})
 
     def _json(self, status: int, body: dict[str, Any]) -> None:
+        # `private, no-store` on EVERY branch — the 200 carries a whole basket's paid
+        # analysis, and even the 401 is a per-caller answer. Vercel's edge caches only
+        # on `s-maxage`/`stale-while-revalidate` and never on `no-store`, so bare
+        # `no-store` (what this sent until 2026-07-30) was already safe in practice —
+        # but it was the ONE premium surface `check:entitlement-gates` did not assert,
+        # while it guards api/cycle.py, proxy.ts and the report route. Safe-by-someone-
+        # else's-default is exactly the posture CLAUDE.md 11a exists to forbid: it is
+        # how the report route came to send no Cache-Control at all. Matches cycle.py.
         payload = json.dumps(body, default=str).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", "private, no-store")
         self.end_headers()
         self.wfile.write(payload)
 

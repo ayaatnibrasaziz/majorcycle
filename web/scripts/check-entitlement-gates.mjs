@@ -148,6 +148,33 @@ const PREMIUM_KEYS = [
         '  this check the screener could be reached without passing the gate.',
     );
   }
+  // Added 2026-07-30 (live-check Session 2, finding A). This was the ONE premium
+  // surface with no header assertion, while its three siblings — api/cycle.py,
+  // proxy.ts and the report route — were all guarded. It sent bare `no-store`,
+  // which Vercel does honour, so nothing was exposed; the gap was that a future
+  // edit could delete the line and no check would notice. On the route that
+  // returns a whole basket's paid analysis, that is the CLAUDE.md 11a trap
+  // exactly: safe because of someone else's default, not because we said so.
+  const analyzeCode = analyze
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('#'))
+    .join('\n');
+  if (!/"Cache-Control", "private, no-store"/.test(analyzeCode)) {
+    fail(
+      'api/analyze.py no longer sends `private, no-store`',
+      'Every branch is per-caller — the 200 is the paid analysis, the 401 is that\n' +
+        '  caller\'s own refusal. Nothing here may ever reach a shared cache.',
+    );
+  }
+  for (const bad of ['s-maxage', 'stale-while-revalidate']) {
+    if (analyzeCode.includes(bad)) {
+      fail(
+        `api/analyze.py sends a shared-cache directive (${bad})`,
+        'That is the trigger that makes Vercel\'s edge cache a response, keyed on\n' +
+          '  the URL alone — one subscriber\'s screener run served to everyone.',
+      );
+    }
+  }
 }
 
 // ── 4. entitlement must ride in the URL, not a header ────────────────────────
@@ -197,7 +224,7 @@ const PREMIUM_KEYS = [
       );
     }
   }
-  const reportData = read('app', '(app)', 'stocks', '[market]', '[ticker]', 'report', 'data', 'route.ts');
+  const reportData = read('app', '(app)', 'stocks', '[market]', '[ticker]', 'report', 'route.ts');
   if (!/getViewerEntitlement/.test(reportData) || !/402/.test(reportData)) {
     fail(
       'the report data route no longer checks entitlement',
@@ -369,4 +396,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('paywall guard: entitlement gates intact (9 checks passed)');
+console.log('paywall guard: entitlement gates intact (10 checks passed)');

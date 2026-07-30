@@ -50,7 +50,7 @@ export function StockSubnav({
   reportTitle: string;
   /**
    * The report is premium (F3 Step 10). When false the button opens `UpgradeDialog`
-   * instead of attempting a download that the gated /report/data route would refuse
+   * instead of attempting a download that the gated /report route would refuse
    * with a 402 — which the catch below could only report as "try again in a moment",
    * telling a prospective subscriber the app is broken.
    */
