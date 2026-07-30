@@ -104,8 +104,10 @@ export function HorizonSelector({ onSelect }: { onSelect: (preset: Preset) => vo
 'use client';
 export function StockPage({ ticker }: { ticker: string }) {
   const [data, setData] = useState(null);
-  useEffect(() => { fetch(`/api/ticker/${ticker}`).then(...) }, [ticker]);
+  useEffect(() => { fetch(`/api/some-ticker-endpoint/${ticker}`).then(...) }, [ticker]);
   // Googlebot sees null. Use Server Component instead.
+  // (The endpoint is hypothetical — no such route exists, deliberately. Stock Detail
+  //  reads Supabase during the server render. See data-contracts.md §5.)
 }
 ```
 

@@ -831,11 +831,14 @@ per input symbol. Symbols are upper-cased + deduped; capped at 200.
 and can be requested from the strip. Baskets + the search-add are universe-only, so
 CSV is the only Run input that can carry an uncovered ticker.
 
-### `GET /api/ticker/[symbol]`
-
-**Path param:** symbol in URL form (`AAPL`, `BHP-au`, etc.) — see ticker mapping below.
-
-**Response (200):** `{ stock: StockRecord; priceBars: PriceBar[] }`
+> **`GET /api/ticker/[symbol]` was specified here but never built, and is not needed.**
+> Removed 2026-07-30 after a docs-vs-disk sweep found no `web/app/api/ticker/` directory
+> and no caller anywhere in the codebase. The Stock Detail page is a **Server Component**:
+> it reads `stocks` + `price_bars` from Supabase directly during the render
+> (`fetchStockDetail`), so there is no browser round-trip for a client endpoint to serve.
+> Adding one would reintroduce exactly the client-fetch anti-pattern in
+> `coding-standards.md` — and, post-paywall, a second surface returning stock data would be
+> a second surface needing its own entitlement gate. Don't rebuild it.
 
 ### `GET /api/search?q={query}`
 
