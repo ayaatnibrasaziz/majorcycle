@@ -1466,6 +1466,25 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 - [ ] Fix all P0 / P1 issues from beta
 - [ ] Final design review against reference HTML
 - [ ] Set up basic error monitoring (Sentry free tier)
+  - **Alert on the money paths first.** Layer F ships several conditions that are handled
+    correctly in code but only ever announced to a `console.error` nobody reads — the owner
+    cannot watch Vercel logs, so today these are silent. Each already logs a distinctive
+    message; Sentry's job is to turn them into something that arrives:
+    - **`billing sync: DUPLICATE SUBSCRIPTION`** — the highest-value alert. The guard
+      (2026-07-30, finding B) cancels the duplicate, but **cancelling does not refund**, so a
+      duplicate that was already charged needs a manual Dashboard refund. Nobody currently
+      finds out. The log names both subscription ids.
+    - **`billing sync: could not verify existing subscription`** — the guard's fail-open path.
+      Rare, but it means the duplicate check was skipped for that event.
+    - **`stripe webhook: no profile for …`** — a paid event that couldn't be attributed to an
+      account, i.e. someone may have paid and not been provisioned.
+    - **`portal: could not create billing portal session`** and checkout's `502` branch — a
+      customer unable to pay or manage their plan.
+    - **`[freeViews] record_free_view failed`** — the anti-scraping fence has stopped counting
+      (fails open by design, so the only symptom is a quiet bandwidth bill).
+  - Also worth a Sentry breadcrumb: `CYCLE_INTERNAL_SECRET` mismatches render every Stock
+    Detail page **200 with empty cycle sections and no error at all** (see `.env.example`),
+    which is the one failure mode that would otherwise never surface.
 
 ---
 
@@ -1474,7 +1493,7 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 The product is "ready to launch" when ALL of these are true:
 
 ### Functionality
-- [ ] All 19 Stock Detail sections work with real data for every ticker in S&P 500, ASX 200, S&P/TSX 60
+- [ ] Every Stock Detail section works with real data for every ticker in S&P 500, ASX 200, S&P/TSX 60. **Don't hard-code the count** — it read "19" here, "14" in CLAUDE.md decision #29 and "22" from `pnpm check:report-sections` on the same day (2026-07-30). The first two are frozen planning-era numbers; the guard reports the live figure and also proves the downloadable report mirrors the page, so **treat `check:report-sections` as the source of truth**
 - [ ] All three Run Analysis presets + Custom produce correct results
 - [ ] Universe auto-expansion works for arbitrary US/AU/CA tickers
 - [ ] Signup → trial → paid flow works end-to-end with real cards

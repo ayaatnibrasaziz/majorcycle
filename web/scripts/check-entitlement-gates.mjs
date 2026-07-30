@@ -197,9 +197,10 @@ const PREMIUM_KEYS = [
 // ── 5. premium routes must still call the gate ───────────────────────────────
 {
   // The report has no PAGE of its own: "Download Report" builds the file client-side
-  // from the gated /report/data route, so the only surface to protect is that route
+  // from the gated /report route, so the only surface to protect is that route
   // (checked below). An on-screen preview page existed until 2026-07-29 and was
-  // unreachable — nothing ever linked to it.
+  // unreachable — nothing ever linked to it. Its removal is also why the route lost
+  // its `/data` suffix on 2026-07-30: the segment only existed to sit beside that page.
   const premiumPages = [
     ['app', '(app)', 'run', 'page.tsx'],
     ['app', '(app)', 'results', 'page.tsx'],
