@@ -468,6 +468,74 @@ test.describe('entitlement enforcement across subscription states', () => {
     await expect(page).toHaveURL(/\/reactivate/);
   });
 
+  // ── Deletion confinement must reach the ROUTE HANDLERS, not just the pages ──
+  // Live-check Session 3: every page redirected correctly while `/report` returned the
+  // full 3.2 MB paid report, `/api/analyze*` the full premium payload, and `/api/portal`
+  // a 303 into a live Customer Portal session — for an account signed out globally and
+  // told everywhere else that it was deactivated. The pages were never in doubt because
+  // requirePremiumPage() evaluates deletion BEFORE entitlement; these four surfaces gate
+  // themselves and simply never asked.
+  //
+  // The account here is deliberately `active` — an entitled subscriber mid-deletion. An
+  // unentitled one would be refused by the paywall anyway, which would mask whether the
+  // deletion check exists at all.
+  test('a deletion-scheduled SUBSCRIBER is refused by report, analyze, portal and checkout', async ({
+    page,
+  }) => {
+    await setState({ subscription_status: 'active', deletion_scheduled_at: iso(20 * DAY) });
+
+    const report = await page.request.get(REPORT, { maxRedirects: 0 });
+    expect(report.status(), 'the full paid report must not be downloadable').toBe(403);
+    expect((await report.json()).reason).toBe('account_deleting');
+    expect(report.headers()['cache-control']).toContain('no-store');
+
+    const analyze = await page.request.post('/api/analyze-dev', {
+      data: { tickers: [TICKER], preset: 'medium' },
+      maxRedirects: 0,
+    });
+    expect(analyze.status(), 'the screener payload must not be served').toBe(403);
+    expect((await analyze.json()).reason).toBe('account_deleting');
+
+    // The portal is the sharp one: its configuration allows price switches (which
+    // charge a proration) and resuming a subscription scheduled to cancel, so a
+    // to-be-purged account could spend money and un-cancel the very subscription the
+    // delete flow just set to stop. It must land on /reactivate, never on Stripe.
+    const portal = await page.request.post('/api/portal', { maxRedirects: 0 });
+    expect(portal.status()).toBe(303);
+    expect(portal.headers()['location']).toContain('/reactivate');
+    expect(portal.headers()['location'], 'must never reach Stripe').not.toContain('stripe.com');
+
+    const checkout = await page.request.post('/api/checkout', {
+      data: { plan: 'monthly' },
+      maxRedirects: 0,
+    });
+    expect(checkout.status(), 'must not sell to an account being deleted').toBe(403);
+    expect((await checkout.json()).reason).toBe('account_deleting');
+  });
+
+  // The other half: an over-correction that locked out paying customers would be just
+  // as wrong. Same account, deletion cleared — everything must come straight back.
+  test('clearing the deletion restores the report and the screener', async ({ page }) => {
+    test.setTimeout(120_000);
+    await setState({ subscription_status: 'active', deletion_scheduled_at: null });
+
+    expect(
+      (await page.request.get(REPORT)).status(),
+      'a subscriber who cancelled their deletion must get their report back',
+    ).toBe(200);
+    expect(
+      (
+        await page.request.post('/api/analyze-dev', {
+          data: { tickers: [TICKER], preset: 'medium' },
+        })
+      ).status(),
+    ).toBe(200);
+
+    // The portal isn't asserted here: with no stripe_customer_id this account takes the
+    // `?billing=none` branch, which would pass whether or not the deletion check exists.
+    // A test that cannot fail is worse than no test.
+  });
+
   // ── /account must tell the truth about WHICH side of grace you're on ────────
   // `past_due` spans both sides of the 3-day window (decision #20) and the account
   // surfaces used to read the status alone, so a reader whose grace had closed — who

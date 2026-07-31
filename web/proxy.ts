@@ -181,9 +181,24 @@ export async function proxy(request: NextRequest) {
   if (userId && PREMIUM_API_PATHS.some((p) => pathname === p)) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('subscription_status, grace_until, billing_blocked')
+      .select('subscription_status, grace_until, billing_blocked, deletion_scheduled_at')
       .eq('id', userId)
       .single();
+
+    // Deletion outranks billing, exactly as it does for pages (requirePremiumPage
+    // redirects to /reactivate before it ever consults entitlement). Until live-check
+    // Session 3 this gate asked only about entitlement, so a deletion-scheduled account
+    // — signed out globally, and told by every page that it is deactivated — still got
+    // the full paid payload from this endpoint. 403, not 402: 402 invites them to pay,
+    // which answers the wrong question for someone whose account is being deleted, and
+    // they may already have paid. Placed before hasAccess so the reason is never
+    // mistaken for a billing problem.
+    if (profile?.deletion_scheduled_at) {
+      return NextResponse.json(
+        { error: 'Account scheduled for deletion', reason: 'account_deleting' },
+        { status: 403, headers: NO_STORE },
+      );
+    }
 
     if (!hasAccess(profile)) {
       return NextResponse.json(

@@ -62,9 +62,26 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('country, stripe_customer_id, subscription_status, billing_blocked')
+    .select('country, stripe_customer_id, subscription_status, billing_blocked, deletion_scheduled_at')
     .eq('id', user.id)
     .single();
+
+  // Don't sell to an account that is being deleted. Live-check Session 3 found this
+  // endpoint had no deletion check at all; it merely happened to 409 in testing because
+  // that account also had a subscription. A deletion-scheduled account with NO
+  // subscription would have been handed a Checkout Session, paid, and then been purged
+  // within 30 days — money taken for an account we destroy. Reactivating first is one
+  // click, and /reactivate is the only page this account may use.
+  if (profile?.deletion_scheduled_at) {
+    return NextResponse.json(
+      {
+        error:
+          'Your account is scheduled for deletion, so we can’t start a subscription. Reactivate your account first — you can do that from the reactivate page.',
+        reason: 'account_deleting',
+      },
+      { status: 403, headers: NO_STORE },
+    );
+  }
 
   // A dispute lock must stop the sale, not just the product. Losing a chargeback
   // cancels the subscription, so the account lands on `canceled` + billing_blocked —

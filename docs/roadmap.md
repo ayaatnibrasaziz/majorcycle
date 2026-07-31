@@ -1421,13 +1421,60 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
              just scheduled to stop. This is the sentence already written into `/api/portal` for the
              dispute case — *"the endpoint must not depend on the UI hiding it"* — applied to the one
              case where it still does.
-        - **Still open (owner action, 2 minutes, reversible):** whether the LIVE restricted key can
-          drop **Customers write**. Shipped code makes 10 Stripe calls and **none** is `customers.*`;
-          Stripe's own guidance is to map SDK calls to permissions, or to read the key's request logs
-          and remove what was never used. What code inspection cannot settle is whether Stripe needs
-          it as an internal dependency of `checkout.sessions.create`/`billingPortal.sessions.create`
-          — that needs a sandbox restricted key with `Customers = None`, and creating API keys is the
-          owner's to do.
+      - [x] **SESSION 3 FIX SWEEP — both findings closed, plus the Stripe key (2026-08-01).**
+        Brought forward from Session 4 at the owner's request. Each fix proven, and each new
+        guard broken on purpose first to prove it can fail.
+        - **A — `/api/portal` and `/api/checkout` now state `private, no-store`** on every
+          branch, refusals included. An **11th** static check asserts three things per file:
+          the constant is present and is exactly `private, no-store`; no shared-cache directive
+          appears; and the count of `headers: NO_STORE` **matches the count of NextResponse
+          returns**, so a single unguarded branch fails. Verified to actually fail three ways —
+          dropping NO_STORE from one portal branch, weakening the constant to bare `no-store`,
+          and injecting `s-maxage=60` — then restored.
+          **Same defect found while fixing, wider blast radius:** `proxy.ts`'s three redirects
+          were equally silent — the signed-out bounce to `/login` (which fires on **every**
+          gated path), the recovery confinement, and the signed-in bounce off `/login`. All are
+          per-viewer: whether the bounce happens at all depends on the caller's session. In the
+          opposite direction from a leak — a cached bounce would *deny* a signed-in user — but
+          the file already held the constant for its 401/402, so three bare siblings were an
+          omission. Wire-verified: signed-out portal/checkout/page all 307 with the header.
+        - **B — deletion confinement now reaches the route handlers.** `deletion_scheduled_at`
+          is evaluated **before** entitlement in `proxy.ts` (covering `/api/analyze` and its dev
+          twin), in the report route, in `/api/portal` and in `/api/checkout` — which had no
+          deletion check at all and merely *happened* to 409 in testing because that account
+          also had a subscription. **403 `account_deleting`**, never 402: 402 invites someone
+          whose account is being deleted to pay again, and they may already have paid. The
+          portal redirects to `/reactivate` — the one page such an account may use, and
+          reactivating makes the portal legitimately available again.
+          **Proven at the wire on an ENTITLED deleting account** (an unentitled one would be
+          refused by the paywall anyway, masking whether the check exists): `/report` 200 → **403**,
+          `/api/analyze-dev` 200 → **403**, `/api/portal` Stripe session → **303 `/reactivate`**,
+          `/api/checkout` → **403**, all `private, no-store`, while `/reactivate` still renders.
+          **And the mirror image**: clearing `deletion_scheduled_at` on the *same* account
+          restored all of it — report 3.2 MB, screener 200, the real Stripe portal, checkout
+          409 (already subscribed), `/reactivate` now redirecting away. An over-correction that
+          locked out paying customers would have been just as wrong. Two e2e cases pin both
+          halves; a **13th** guard check covers all four surfaces plus the proxy's `select`
+          (a check without the column could only ever read `undefined` — fail open). All five
+          sabotages went red.
+        - **LIVE Stripe key: `Customers` dropped from Write to None** (owner typed the 2FA
+          code; key value unchanged, so no redeploy). Proven first in the sandbox with an
+          identically-scoped restricted key: all nine calls the app makes succeeded —
+          including `checkout.sessions.create` with `customer_email`, the one that makes Stripe
+          create a Customer, and `billingPortal.sessions.create` — while `customers.create` and
+          `customers.retrieve` were refused with `StripePermissionError`. That control is what
+          makes the nine passes meaningful. The throwaway sandbox key was expired afterwards
+          (Stripe renders test keys in plaintext). Live key now holds exactly: Subscriptions W,
+          Checkout Sessions W, Customer Portal W, Prices R, Charges R — each re-verified.
+        - **Owner decision — NOT doing the "paid during deletion" handler.** The idea (auto-cancel
+          the deletion and email the customer when a subscription lands on a deleting account) was
+          the owner's, then withdrawn as too unlikely to be worth the machinery. **Residual risk,
+          recorded deliberately:** `/api/checkout` now refuses to *create* a session for a deleting
+          account, but a session created **before** the deletion can still be completed from
+          browser history within Stripe's 24-hour window. That writes a live subscription onto an
+          account the purge cron destroys within 30 days — a real charge for a repeat customer
+          (a first-timer would be on a trial, so no money moves). Nothing detects it today.
+      - **Still open (optional, low value):** nothing blocking. The LIVE key question is closed.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
         **375px mobile — pre-existing, already triaged to Layer H, now measured there.**

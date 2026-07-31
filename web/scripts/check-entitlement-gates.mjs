@@ -437,6 +437,64 @@ const PREMIUM_KEYS = [
   }
 }
 
+// ── 10. deletion confinement must reach the route handlers, not just the pages ─
+// Live-check Session 3: every PAGE correctly streamed NEXT_REDIRECT to /reactivate for
+// a deletion-scheduled account, while `/report` returned the full 3.2 MB paid report,
+// `/api/analyze*` returned the full premium payload, and `/api/portal` 303'd into a live
+// Customer Portal session — on an account the app had just signed out globally and told
+// was deactivated. `/api/checkout` had no check either; it only 409'd in testing because
+// that account happened to also have a subscription.
+//
+// The asymmetry is the bug: `requirePremiumPage()` evaluates deletion BEFORE
+// entitlement, so the pages were never in doubt. These four surfaces each gate
+// themselves and simply never asked. Same class as the duplicate-subscription finding —
+// a guard present on one path and absent on its twin.
+{
+  const checks = [
+    ['proxy.ts', ['proxy.ts'], /deletion_scheduled_at/],
+    [
+      'app/(app)/stocks/[market]/[ticker]/report/route.ts',
+      ['app', '(app)', 'stocks', '[market]', '[ticker]', 'report', 'route.ts'],
+      /viewer\.deletionScheduled/,
+    ],
+    ['app/api/portal/route.ts', ['app', 'api', 'portal', 'route.ts'], /deletion_scheduled_at/],
+    ['app/api/checkout/route.ts', ['app', 'api', 'checkout', 'route.ts'], /deletion_scheduled_at/],
+  ];
+  for (const [label, file, re] of checks) {
+    const code = read(...file)
+      .split('\n')
+      .filter((l) => {
+        const t = l.trim();
+        return !t.startsWith('//') && !t.startsWith('*') && !t.startsWith('/*');
+      })
+      .join('\n');
+    if (!re.test(code)) {
+      fail(
+        `${label} no longer checks whether the account is scheduled for deletion`,
+        'A soft-deleted account is signed out everywhere and told it is deactivated;\n' +
+          '  these endpoints must not keep serving it. Deletion outranks billing —\n' +
+          '  evaluate it BEFORE entitlement, as requirePremiumPage() does.',
+      );
+    }
+  }
+  // The proxy must read the column as well as mention it, and must gate the premium
+  // API paths on it — a select without a branch would satisfy a naive grep.
+  const proxy = read('proxy.ts');
+  if (!/select\([^)]*deletion_scheduled_at/.test(proxy)) {
+    fail(
+      'proxy.ts stopped SELECTING deletion_scheduled_at on the premium API gate',
+      'Without the column the check below it can only ever see undefined, i.e. fail open.',
+    );
+  }
+  if (!/account_deleting/.test(proxy)) {
+    fail(
+      'proxy.ts no longer returns the account_deleting reason',
+      'The refusal must name deletion, not a billing state — 402 would invite someone\n' +
+        '  whose account is being deleted to pay again.',
+    );
+  }
+}
+
 // ── report ───────────────────────────────────────────────────────────────────
 if (failures.length > 0) {
   console.error('\nPAYWALL GUARD FAILED — the entitlement gate has regressed:\n');
@@ -452,4 +510,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('paywall guard: entitlement gates intact (11 checks passed)');
+console.log('paywall guard: entitlement gates intact (13 checks passed)');

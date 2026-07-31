@@ -55,6 +55,19 @@ export async function GET(
         { status: 401, headers: NO_STORE },
       );
     }
+    // Deletion outranks billing, as it does on every page (requirePremiumPage sends a
+    // deletion-scheduled reader to /reactivate before consulting entitlement). This
+    // route checked only entitlement until live-check Session 3, so an account that had
+    // just been deleted — signed out globally, and shown "your account is deactivated"
+    // everywhere else — could still pull the full 3.2 MB paid report from this URL.
+    // 403 rather than 402: offering to sell a plan answers the wrong question, and this
+    // reader may well have paid already.
+    if (viewer.deletionScheduled) {
+      return NextResponse.json(
+        { error: 'Account scheduled for deletion', reason: 'account_deleting' },
+        { status: 403, headers: NO_STORE },
+      );
+    }
     if (!viewer.entitled) {
       return NextResponse.json(
         { error: 'Payment Required', reason: viewer.reason },

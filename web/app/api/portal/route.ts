@@ -50,9 +50,22 @@ export async function POST(request: Request) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('stripe_customer_id, billing_blocked')
+    .select('stripe_customer_id, billing_blocked, deletion_scheduled_at')
     .eq('id', user.id)
     .single();
+
+  // A deletion-scheduled account must not be taken into the portal — the sharpest case
+  // of the rule already written below for `billing_blocked`, and the one where the
+  // endpoint really was relying on the UI hiding the button (live-check Session 3).
+  // The portal is configured to allow price switches with prorations (which CHARGE) and
+  // to resume a subscription scheduled to cancel — so a to-be-purged account could spend
+  // money and un-cancel the very subscription the delete flow just set to stop, while
+  // `deletion_scheduled_at` stayed put and the purge cron destroyed the account anyway.
+  // /reactivate is the honest destination: it is the one page this account may use, and
+  // reactivating first makes the portal legitimately available again.
+  if (profile?.deletion_scheduled_at) {
+    return NextResponse.redirect(`${origin}/reactivate`, { status: 303, headers: NO_STORE });
+  }
 
   // The portal is a second way to spend money — it switches monthly⇄annual (which
   // prorates and charges) and can resume a cancelled subscription. A held account
