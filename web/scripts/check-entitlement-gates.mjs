@@ -382,6 +382,61 @@ const PREMIUM_KEYS = [
   }
 }
 
+// ── 9. the billing endpoints must declare a private cache posture ────────────
+// /api/portal and /api/checkout were the LAST two per-viewer surfaces saying nothing
+// at all about caching (live-check Session 3). Next attaches no Cache-Control to route
+// handlers — unlike pages, which get `no-cache, must-revalidate` — so "no header" was
+// literal, and the portal's 303 `Location` is the most sensitive payload this app
+// emits: a live Customer Portal session granting one customer's card, invoices and
+// cancel button. Nothing leaked, because Vercel's CDN caches only on `s-maxage` and
+// these are POSTs carrying none — which is exactly the objection. That is "safe by
+// someone else's default", the failure CLAUDE.md 11a records THREE times, and the rule
+// it now states is "say it AND guard it". This is the guard.
+{
+  for (const [label, file] of [
+    ['app/api/portal/route.ts', ['app', 'api', 'portal', 'route.ts']],
+    ['app/api/checkout/route.ts', ['app', 'api', 'checkout', 'route.ts']],
+  ]) {
+    const src = read(...file);
+    // Strip comments so the prose above (which quotes the directives) can't satisfy
+    // — or trip — the scan. Same technique as the api/cycle.py and analyze.py checks.
+    const code = src
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('*') && !l.trim().startsWith('//') && !l.trim().startsWith('/*'))
+      .join('\n');
+
+    if (!/'Cache-Control':\s*'private, no-store'/.test(code)) {
+      fail(
+        `${label} no longer declares a \`private, no-store\` header constant`,
+        'Its success AND its refusals are per-caller answers — the 200/303 carries a\n' +
+          '  single-customer Stripe URL, and each refusal names that caller\'s own reason.\n' +
+          '  See CLAUDE.md rule 11a.',
+      );
+    }
+    for (const bad of ['s-maxage', 'stale-while-revalidate', 'public,']) {
+      if (code.includes(bad)) {
+        fail(
+          `${label} sends a shared-cache directive (${bad})`,
+          'A shared cache keys on the URL alone, so the first caller\'s Stripe session\n' +
+            '  URL would be handed to everyone else at that path.',
+        );
+      }
+    }
+    // Every return must carry it — a single unguarded branch is the whole hole, and
+    // the refusals are exactly the branches people forget.
+    const returns = code.match(/return NextResponse\.(json|redirect)\(/g) ?? [];
+    const guarded = code.match(/headers:\s*NO_STORE/g) ?? [];
+    if (returns.length === 0) {
+      fail(`${label} has no NextResponse returns to check`, 'The scan below cannot be trusted; update this guard.');
+    } else if (guarded.length < returns.length) {
+      fail(
+        `${label} has ${returns.length} responses but only ${guarded.length} carry NO_STORE`,
+        'Every branch, including the 4xx/5xx refusals, must send `private, no-store`.',
+      );
+    }
+  }
+}
+
 // ── report ───────────────────────────────────────────────────────────────────
 if (failures.length > 0) {
   console.error('\nPAYWALL GUARD FAILED — the entitlement gate has regressed:\n');
@@ -397,4 +452,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('paywall guard: entitlement gates intact (10 checks passed)');
+console.log('paywall guard: entitlement gates intact (11 checks passed)');

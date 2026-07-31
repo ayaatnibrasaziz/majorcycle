@@ -134,7 +134,13 @@ export async function proxy(request: NextRequest) {
   if (!userId && !isPublicPath) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('next', pathname);
-    return NextResponse.redirect(loginUrl);
+    // Same rule as the 401/402 below, and for the same reason: whether this bounce
+    // happens at all depends on the caller's session, so it is a per-viewer answer.
+    // Found while closing live-check Session 3's finding A — the two billing routes
+    // were the reported gap, but their signed-out bounce came from here and was
+    // equally silent. Harmless today (a cached bounce would deny a signed-in user,
+    // not leak to them) and still worth stating rather than assuming.
+    return NextResponse.redirect(loginUrl, { headers: NO_STORE });
   }
 
   // Recovery-session confinement: a session that arrived via a password-reset
@@ -154,7 +160,9 @@ export async function proxy(request: NextRequest) {
     recoveryMarker?.value === userId &&
     !PW_RECOVERY_ALLOWED_PATHS.includes(pathname)
   ) {
-    return NextResponse.redirect(new URL('/account/update-password', request.url));
+    return NextResponse.redirect(new URL('/account/update-password', request.url), {
+      headers: NO_STORE,
+    });
   }
 
   // ── Premium API gate ────────────────────────────────────────────────────────
@@ -190,7 +198,10 @@ export async function proxy(request: NextRequest) {
   }
 
   if (userId && (pathname === '/login' || pathname === '/signup')) {
-    return NextResponse.redirect(new URL('/stocks', request.url));
+    // Per-viewer for the same reason: /login answers a signed-in caller with a bounce
+    // and a signed-out one with the page. A shared cache keyed on the URL alone could
+    // not tell them apart.
+    return NextResponse.redirect(new URL('/stocks', request.url), { headers: NO_STORE });
   }
 
   return response;

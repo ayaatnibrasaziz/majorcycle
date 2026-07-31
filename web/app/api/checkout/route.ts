@@ -26,6 +26,20 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Every branch is a per-caller answer: the 200 carries a Checkout Session URL bound to
+ * one `client_reference_id`, and each refusal names that caller's own reason (on hold,
+ * already subscribed). Route handlers get NO Cache-Control from Next, so without this
+ * the response states nothing about caching at all.
+ *
+ * Nothing was ever exposed — Vercel's CDN caches only on `s-maxage`/`stale-while-revalidate`
+ * and this is a POST carrying neither — and that is precisely the objection: safe by
+ * someone else's default rather than by our own statement. CLAUDE.md 11a records that
+ * failure three times and now reads "say it AND guard it". Found in live-check Session 3;
+ * `pnpm check:entitlement-gates` asserts it.
+ */
+const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
+
 // Statuses that already have (or recently had) a live subscription — starting a
 // second checkout would create a duplicate. These are sent to billing management
 // instead. `canceled`/null may start a fresh subscription.
@@ -35,7 +49,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { plan?: unknown } | null;
   const plan = body?.plan;
   if (plan !== 'monthly' && plan !== 'annual') {
-    return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid plan' }, { status: 400, headers: NO_STORE });
   }
 
   const supabase = await createServerSupabaseClient();
@@ -43,7 +57,7 @@ export async function POST(request: Request) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401, headers: NO_STORE });
   }
 
   const { data: profile } = await supabase
@@ -64,7 +78,7 @@ export async function POST(request: Request) {
         error:
           'Your account is on hold while a payment dispute is resolved, so we can’t start a new subscription yet. Please contact support and we’ll sort it out with you.',
       },
-      { status: 403 },
+      { status: 403, headers: NO_STORE },
     );
   }
 
@@ -72,7 +86,7 @@ export async function POST(request: Request) {
   if (ACTIVE_STATES.has(profile?.subscription_status ?? '')) {
     return NextResponse.json(
       { error: 'You already have a subscription. Manage it from your account.' },
-      { status: 409 },
+      { status: 409, headers: NO_STORE },
     );
   }
 
@@ -109,7 +123,7 @@ export async function POST(request: Request) {
     console.error('checkout: could not resolve price', plan, err);
     return NextResponse.json(
       { error: 'Billing is temporarily unavailable. Please try again shortly.' },
-      { status: 500 },
+      { status: 500, headers: NO_STORE },
     );
   }
 
@@ -168,17 +182,17 @@ export async function POST(request: Request) {
     if (!session.url) {
       return NextResponse.json(
         { error: 'Could not start checkout. Please try again.' },
-        { status: 502 },
+        { status: 502, headers: NO_STORE },
       );
     }
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url }, { headers: NO_STORE });
   } catch (err) {
     // A Stripe API / network failure — log the real error for diagnosis, return a
     // clean retry message to the user (no internal details leak).
     console.error('checkout: stripe session create failed', err);
     return NextResponse.json(
       { error: 'Could not start checkout. Please try again.' },
-      { status: 502 },
+      { status: 502, headers: NO_STORE },
     );
   }
 }
