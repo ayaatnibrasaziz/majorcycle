@@ -1343,6 +1343,91 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           doc updated. **Trade-off accepted:** Next.js forbids a `page.tsx` and a `route.ts` in one
           segment, so this forecloses ever re-adding a `/report` page — intended, as the download is
           now the report's only form.
+      - [x] **LIVE-CHECK SESSION 3 — the money actually moving (2026-08-01).**
+        Gates first and last: typecheck, lint, build, both guards, **pytest 86**, **Playwright 100**.
+        Everything below ran against the Stripe **sandbox** on real test clocks, with the DB and the
+        sandbox returned to baseline afterwards. The destructive halves (delete, purge) ran on
+        **throwaway accounts**, never the owner's — the purge cron hard-deletes.
+        - **The full subscription lifecycle, end to end on one clock.** day 0 `trialing` + tombstone
+          written + `trial_ends_at` +7d → day 4 `trial_will_end` sets `trial_reminder_sent` → trial
+          converts and the account **stays `active`** (the Step-4 regression where `invoice.paid`
+          clobbered `trialing` does not recur) → a renewal advances `current_period_end` → a forced
+          decline (`pm_card_chargeCustomerFail`, Stripe's documented 4000…0341) gives `past_due` +
+          `grace_until` = now+3d with **access still intact** and the honest "we couldn't take your
+          last payment" notice → past the window the lock is hard (**scores 7 → 0**, `/report` and
+          `/api/analyze-dev` **402 `private, no-store`**, `/run` and `/results` showing the *payment*
+          reason and never "your trial ended") → card fixed → `active`, `grace_until` cleared, access
+          restored. ⚠ **The +3-day step was simulated by ageing `grace_until`, not by the Stripe
+          clock** — grace is anchored on our own server time (`Date.now()`), which a test clock cannot
+          move. Everything either side of it is genuine.
+        - **3-D Secure is a real path and shares the dunning route.** `pm_card_authenticationRequired`
+          on a renewal fired **both** `invoice.payment_failed` and `invoice.payment_action_required`
+          for the same invoice; the account went `past_due` with **one** grace anchor and **one**
+          email. That single-owner `grace_until` guard is what stops a customer being emailed twice
+          about one failure — same for recovery, where `invoice.paid` and `invoice.payment_succeeded`
+          both fire and only the first to clear the marker sends.
+        - **A dispute *inquiry* must not lock a paying customer, and doesn't.**
+          `pm_card_createDisputeInquiry` produced `charge.dispute.created` with status
+          `warning_needs_response` and `billing_blocked` stayed **false**. A real
+          `pm_card_createDispute` on the same customer flipped it **true** (with the subscription
+          still `active` — state S7) and the app refused in place with the *on hold* copy; closing it
+          **won** restored access. The whole cycle driven by the webhook, not by hand-set columns.
+        - 🟢 **The checkout reconciler works in anger — its first real test.** With `stripe listen`
+          **killed**, a real 4242 payment landed the user on `/account?checkout=success&session_id=…`
+          reading **"Payment received — your plan is set up below" / TRIAL ACTIVE**, not "No plan".
+          Conclusive because `stripe_events` held **zero** rows for that user while the profile was
+          fully provisioned: nothing but `reconcileCheckoutSession()` could have written it. Restarting
+          the forwarder and **resending the three missed events** left the row **byte-identical** —
+          idempotent, exactly as designed. Adversarially, user B pasting user A's real `session_id`
+          (and a well-formed nonexistent one, and junk) granted **nothing**: profile still all nulls,
+          and the honest "still setting your plan up" wording — the Session-1 fix — rather than the
+          confident one.
+        - **The four seams, each crossed for the first time since the paywall existed.**
+          *Delete with a live subscription* → Stripe `cancel_at` set to period end (**scheduled, never
+          cut short**), `deletion_scheduled_at` +30d, global sign-out, and the confirmation copy tells
+          the truth about the paid period; *reactivate* → both undone, access restored.
+          *Purge cron* → 401 for no header, a wrong secret, **and a bare secret without `Bearer`**;
+          with the right one it hard-cancels the live subscription, tombstones the email **before**
+          deleting, and purges — proven on both paths, the stored subscription id **and** the
+          customer-id fallback with `stripe_subscription_id` NULL.
+          *Tombstone re-signup* → a brand-new account on a purged email is offered **"Subscribe"**,
+          not "Start free trial", the modal says *"your free trial has already been used … no free
+          week"* **before** payment, and the created session charges **A$19 immediately** (trial
+          sessions total 0). A fresh email at the same moment showed "Start free trial" — the control.
+          *`/api/portal`* → all three outcomes, and a held account is refused by **both** the portal
+          and checkout.
+        - **Every branded email verified in Resend's own logs**, from
+          `MajorCycle <noreply@majorcycle.com>`: trial-started, trial-ending, payment-failed ×2,
+          payment-recovered ×2, deletion-scheduled, account-deleted ×2 — **exactly one each, no
+          duplicates**, including the two cases where two Stripe events hit one handler. A repo-wide
+          grep found **no** reply-inviting language in any template, and the ones that offer support
+          point at `majorcycle.com/contact`.
+        - 🟡 **Two findings, neither a leak — both for the Session 4 fix sweep.**
+          1. **`/api/portal` and `/api/checkout` state no caching posture at all** (observed at the
+             wire: no `Cache-Control` whatsoever; Next sets nothing on route handlers, unlike pages).
+             Both return a **credential-equivalent, single-customer** payload — the portal `Location`
+             is a live session granting card details, invoices and the cancel button. Nothing is
+             exposed today (Vercel caches only on `s-maxage`, and these are POSTs without one), which
+             is precisely the "safe because of someone else's default" class rule 11a records as
+             having happened three times. Only 3 of 15 route handlers say anything. Say
+             `private, no-store` and **guard it**.
+          2. **Deletion confinement stops at the pages.** Every page correctly streams
+             `NEXT_REDIRECT` → `/reactivate`, but `GET /report` returns **200 with the full 3.2 MB
+             paid report**, `POST /api/analyze-dev` returns the full premium payload, and
+             `POST /api/portal` 303s into a live portal session — for an account the app has just
+             declared deactivated and signed out everywhere. The portal is the sharp one: its config
+             (verified this session) allows price switches with prorations and a renew action, so a
+             to-be-purged account can spend money and un-cancel the very subscription the delete flow
+             just scheduled to stop. This is the sentence already written into `/api/portal` for the
+             dispute case — *"the endpoint must not depend on the UI hiding it"* — applied to the one
+             case where it still does.
+        - **Still open (owner action, 2 minutes, reversible):** whether the LIVE restricted key can
+          drop **Customers write**. Shipped code makes 10 Stripe calls and **none** is `customers.*`;
+          Stripe's own guidance is to map SDK calls to permissions, or to read the key's request logs
+          and remove what was never used. What code inspection cannot settle is whether Stripe needs
+          it as an internal dependency of `checkout.sessions.create`/`billingPortal.sessions.create`
+          — that needs a sandbox restricted key with `Customers = None`, and creating API keys is the
+          owner's to do.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
         **375px mobile — pre-existing, already triaged to Layer H, now measured there.**
