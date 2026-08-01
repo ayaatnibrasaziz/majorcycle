@@ -495,6 +495,59 @@ const PREMIUM_KEYS = [
   }
 }
 
+// ── 11. the dev harness's admin key must never reach shipped code ────────────
+// The app's STRIPE_SECRET_KEY is a RESTRICTED key scoped exactly like the live one
+// (Subscriptions/Checkout Sessions/Customer Portal write, Prices/Charges read,
+// Customers NONE), so local dev cannot do anything production cannot. That property
+// is what makes a local sandbox walk a truthful rehearsal — the whole point of
+// Sessions 1–3. STRIPE_TEST_ADMIN_KEY is the escape hatch it needs a hole for: a
+// full sk_test the scratchpad harness and `stripe:listen` use for test clocks,
+// disputes and fake customers.
+//
+// The hole is only safe while it stays outside the app. One `process.env
+// .STRIPE_TEST_ADMIN_KEY` in a route handler would silently restore full access on
+// that path and undo the split — and, being a fallback, would most likely be added
+// to "fix" precisely the permissions error the restriction is supposed to cause.
+// It would also be a live-mode landmine: the variable does not exist in production,
+// so the code would work locally and throw in front of a customer.
+{
+  const walk = (dir) => {
+    const out = [];
+    for (const e of readdirSync(path.join(webRoot, dir), { withFileTypes: true })) {
+      if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+      const rel = `${dir}/${e.name}`;
+      if (e.isDirectory()) out.push(...walk(rel));
+      else if (/\.(ts|tsx|mjs|js|py)$/.test(e.name)) out.push(rel);
+    }
+    return out;
+  };
+
+  // Everything that SHIPS. scripts/ and e2e/ are dev-only and may use the admin key;
+  // api/ is the Python function bundle, which has no business holding it either.
+  const shipped = [...walk('app'), ...walk('lib'), ...walk('api'), ...walk('components'), 'proxy.ts'];
+
+  // A scan over an empty list passes for the wrong reason. If a rename or a walk bug
+  // ever empties this, the check must go red rather than quietly stop protecting.
+  if (shipped.length < 100) {
+    fail(
+      `the shipped-code scan found only ${shipped.length} files`,
+      'It should see the whole app (hundreds). A near-empty list means the walk broke,\n' +
+        '  and a scan over nothing reports success — fix the walk, do not lower this floor.',
+    );
+  }
+
+  const offenders = shipped.filter((f) => read(f).includes('STRIPE_TEST_ADMIN_KEY'));
+  if (offenders.length > 0) {
+    fail(
+      `shipped code reads STRIPE_TEST_ADMIN_KEY (${offenders.join(', ')})`,
+      'That variable is the dev harness\'s FULL-access sk_test. Reading it from shipped\n' +
+        '  code re-widens the app beyond its live scope on that path, and the variable does\n' +
+        '  not exist in production — so the code would pass locally and throw for a real\n' +
+        '  customer. The app gets STRIPE_SECRET_KEY only.',
+    );
+  }
+}
+
 // ── report ───────────────────────────────────────────────────────────────────
 if (failures.length > 0) {
   console.error('\nPAYWALL GUARD FAILED — the entitlement gate has regressed:\n');
@@ -510,4 +563,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('paywall guard: entitlement gates intact (13 checks passed)');
+console.log('paywall guard: entitlement gates intact (14 checks passed)');

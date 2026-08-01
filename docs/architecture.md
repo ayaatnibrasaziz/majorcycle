@@ -905,10 +905,17 @@ GOOGLE_CLIENT_SECRET=
 #   Checkout Sessions write · Customer Portal write · Subscriptions write
 #   Prices read · Charges and Refunds read
 # CUSTOMERS IS "None" as of 2026-08-01 — granted on 2026-07-26 out of caution, then proven
-# unnecessary in the sandbox and dropped. Do not re-grant it. See .env.example for the
-# proof, and for the KNOWN DRIFT: the local/sandbox key is still a full-access sk_test_,
-# so dev and CI are currently MORE permissive than production.
+# unnecessary in the sandbox and dropped. Do not re-grant it. See .env.example for the proof.
+#
+# THE SANDBOX KEY CARRIES THE SAME 5 PERMISSIONS (2026-08-01). It was a full-access
+# sk_test_ until then, which made local dev more permissive than production — and local dev
+# is where nearly every real Stripe call gets exercised before release.
 STRIPE_SECRET_KEY=
+# Dev harness ONLY — full sk_test_ for test clocks, disputes, fake customers, and
+# `pnpm stripe:listen` (which needs GET /v1/account: 403 on the restricted key, 200 on this
+# one). NEVER set in any Vercel environment, and never read by shipped code — CI check 11
+# fails the build if app/, lib/, api/, components/ or proxy.ts mentions it.
+STRIPE_TEST_ADMIN_KEY=
 STRIPE_WEBHOOK_SECRET=
 
 # Email

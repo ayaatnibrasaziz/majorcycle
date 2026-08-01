@@ -1474,20 +1474,38 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           browser history within Stripe's 24-hour window. That writes a live subscription onto an
           account the purge cron destroys within 30 days — a real charge for a repeat customer
           (a first-timer would be on a trial, so no money moves). Nothing detects it today.
-      - 🟡 **OPEN — the sandbox key is NOT scoped like the live key (owner spotted, 2026-08-01).**
-        The live key is now a restricted `rk_live_` with 5 permissions; the local/sandbox
-        `STRIPE_SECRET_KEY` is still a **full-access `sk_test_`**. Pure drift — the sandbox key
-        predates the hardening and nobody went back. **It matters for the same reason the
-        `/api/analyze-dev` finding did: a dev stand-in that behaves differently from production
-        is a test that lies.** Local dev and CI are currently MORE permissive than production, so
-        a `customers.*` call added tomorrow would pass every test and fail only in production,
-        with nothing going red until a real customer hit it. Note the protection existed for
-        about five minutes during the S3 sweep and was then expired with the throwaway key.
-        **Fix (Session 4, ~15 min, needs the owner to create + paste the key):** a restricted
-        test key with scope *identical* to live in `STRIPE_SECRET_KEY`, plus a **separate** full
-        `sk_test` for the scratchpad harness, which legitimately needs test clocks, disputes and
-        fake customers. That split is Stripe's own guidance — one restricted key per service or
-        use case — and without it the harness breaks the moment the app key is tightened.
+      - ✅ **CLOSED 2026-08-01 (Session 4) — the sandbox key is now scoped like the live key
+        (owner spotted the drift).** The live key had been a restricted `rk_live_` with 5
+        permissions since 2026-07-26 while the local/sandbox `STRIPE_SECRET_KEY` was still a
+        **full-access `sk_test_`** — pure drift, the sandbox key predating the hardening.
+        **It mattered for the same reason the `/api/analyze-dev` finding did: a dev stand-in
+        that behaves differently from production is a test that lies.**
+        **What shipped:** a restricted `rk_test_` with scope *identical* to live
+        (Subscriptions/Checkout Sessions/Customer Portal write, Prices/Charges read,
+        **Customers None**) in `STRIPE_SECRET_KEY`, plus a **separate** full `sk_test` in the
+        new `STRIPE_TEST_ADMIN_KEY` for the harness and `pnpm stripe:listen`, which
+        legitimately need test clocks, disputes and fake customers. One restricted key per use
+        case is Stripe's own guidance.
+        **Proven, not assumed:** all 9 shipped call sites passed on the restricted key while
+        `customers.create`/`retrieve`/`list` were refused with `StripePermissionError` — the
+        refusals being the control that makes the passes mean anything — and the full
+        Playwright suite (102) re-ran green under it.
+        **The split is necessary, not cosmetic:** `GET /v1/account` returns **403** on the
+        restricted key and **200** on the admin key, so `stripe:listen` genuinely could not run
+        on the app's key. Guarded by **check 11** in `check-entitlement-gates.mjs`, which fails
+        the build if anything under `app/`, `lib/`, `api/`, `components/` or `proxy.ts` reads
+        `STRIPE_TEST_ADMIN_KEY` — the tempting "fix" for a permissions error, and one that
+        would pass locally then throw in production, where the variable does not exist.
+        Broken four ways before being trusted (fallback in `lib/stripe.ts`, a deep route
+        handler, the Python bundle, and an empty file walk).
+      - 📌 **One correction to the record.** The entry above originally said local dev **and CI**
+        were more permissive than production. CI's extra permissions were real but the stated
+        consequence was wrong: it is not that CI never reaches Stripe — the forged-`session_id`
+        test really does call `checkout.sessions.retrieve` and gets a 404 back, visible as a
+        Stripe request id in the e2e server log. That call is covered by the restricted key's
+        Checkout Sessions permission, which is why the suite still passes. Noted because the
+        original claim would have made someone think CI was a safe place to catch this; it is
+        not, and local dev remains where nearly every real Stripe call gets exercised.
       - **Otherwise nothing blocking.** The LIVE key permission question is closed.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
