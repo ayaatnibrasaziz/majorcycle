@@ -743,7 +743,7 @@ analysis and even the 401 is that caller's own refusal. It sent bare `no-store` 
 so nothing was ever exposed — but it was the one premium surface `check:entitlement-gates`
 did not assert, so a future edit could have removed it unnoticed. That is the CLAUDE.md 11a
 trap exactly: safe by someone else's default rather than by our own statement. Now guarded
-(check 10), and the guard was verified to fail when the header is weakened.
+(the `/api/analyze` section of `check:entitlement-gates`), and the guard was verified to fail when the header is weakened.
 
 ### Universe expansion — "Request a Ticker" (queue model)
 
@@ -1236,6 +1236,10 @@ state sync; checkout just links the customer:
   cancellation (sub id now null) — can't lock a cancelled or newer-active account → send the
   branded **payment-failed / update-card** email. ⚠ The LIVE webhook endpoint must include
   `invoice.payment_action_required` in its event list (sandbox `stripe listen` forwards all).
+  ✅ Confirmed present on the live endpoint `we_1TzaT1K8OQZXQEminyKXmO3M` (2026-08-01), read
+  back from `GET /v1/webhook_endpoints`. This is the easiest of the 13 to omit — it never
+  fires in a `stripe listen` session unless SCA is triggered, so its absence would go
+  unnoticed until a real 3DS card needed re-authentication.
 - `checkout.session.completed` — **links `stripe_customer_id`** to the user (via
   `client_reference_id`); subscription state itself comes from `subscription.created`.
 - `customer.subscription.created` — syncs the new subscription, then — **only when the new

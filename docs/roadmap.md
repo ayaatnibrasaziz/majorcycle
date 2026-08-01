@@ -513,7 +513,10 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
       · **Global signups allowed; non-AU/CA billed in USD.** Anyone worldwide can sign up and subscribe; currency rule
         extends to AU→AUD, CA→CAD, everyone-else→USD (US$15/mo, US$126/yr). Add **Stripe Tax** for VAT/GST regions. Stock
         coverage stays US/AU/CA (still useful globally). The /account country dropdown already lists all countries.
-**F3 BUILD PROGRESS** — branch `feat/f3-stripe` (NOT merged to `main` until F3 is complete + owner-approved).
+**F3 BUILD PROGRESS** — **✅ MERGED TO `main` AND LIVE IN PRODUCTION 2026-08-01** (PR #72,
+merge commit `cd6b014`, 98 commits, owner-approved). The "NOT merged" notes throughout the
+steps below were accurate when written and are left as history — the merge-day record is the
+go/no-go table at the end of this section.
 Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done entirely in Stripe **TEST mode**
 (test cards/clocks, never real money).
 - [x] **Step 1 — migration + carry-over fixes + secret-scan hook** (`1138090`). 8 service-role-only billing columns
@@ -897,7 +900,11 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           the missing permission, so a failure would be self-diagnosing.
         - Also found: an **unnamed, never-used restricted key from 10 Jul with broad write
           scopes** still exists on the live account. Left alone; recommend expiring it.
-      - 🔴 **WEBHOOK FINDINGS (2026-07-26) — both must be handled at merge:**
+      - ✅ **WEBHOOK FINDINGS (2026-07-26) — BOTH CLOSED ON MERGE DAY, 2026-08-01.** The
+        endpoint was created on `www` and its `whsec_` set in Vercel Production; see the
+        go/no-go table at the end of this section for the read-back evidence. Kept in full
+        below because the `www` rule governs any future endpoint, and because finding 2 is a
+        good example of a gap that only local testing could hide. Original text:
         1. **The endpoint URL must use `www`:** `https://www.majorcycle.com/api/stripe/webhook`.
            Verified by request: the apex `majorcycle.com` answers **307 → www**, and Stripe's
            docs are explicit — *"We consider redirect responses to webhook requests as
@@ -1017,7 +1024,7 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           `must-revalidate` stop reuse), but `public` on a viewer-dependent response is the
           directive that made B1 an authorisation bypass, and it left both refusals safe only
           because of a modifier a later edit could delete. Both now send `private, no-store`.
-          Guard check 9 added and **mutation-tested**. Verified on the deployed preview:
+          Guard section added and **mutation-tested**. Verified on the deployed preview:
           401 → `private, no-store`, 402 → `private, no-store`.
         - **Found + fixed (`10d8ff6`) — the sharpest finding of the session.** `ea84d01` stopped
           an unentitled viewer *seeing* the scores; it did not stop them being *sent*. The cycle
@@ -1492,7 +1499,7 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
         Playwright suite (102) re-ran green under it.
         **The split is necessary, not cosmetic:** `GET /v1/account` returns **403** on the
         restricted key and **200** on the admin key, so `stripe:listen` genuinely could not run
-        on the app's key. Guarded by **check 11** in `check-entitlement-gates.mjs`, which fails
+        on the app's key. Guarded by the **dev-harness-key section** of `check-entitlement-gates.mjs`, which fails
         the build if anything under `app/`, `lib/`, `api/`, `components/` or `proxy.ts` reads
         `STRIPE_TEST_ADMIN_KEY` — the tempting "fix" for a permissions error, and one that
         would pass locally then throw in production, where the variable does not exist.
@@ -1537,21 +1544,60 @@ running system from outside rather than reading the code.
 | 12 | Deletion outranks entitlement, everywhere | ✅ GO | S3-B; 403 `account_deleting` from report/analyze/checkout, 303 `/reactivate` from portal — wire-proven on an **entitled** deleting account *and in reverse* |
 | 13 | Branded emails, each sent once | ✅ GO | S3; verified in Resend's own logs, not by reading our senders |
 | 14 | Sandbox key scoped like live | ✅ GO | S4; 12/12 — 9 app calls pass, `customers.*` refused. **The refusals are the control** |
-| 15 | Harness key cannot reach shipped code | ✅ GO | S4; CI **check 11**, broken 4 ways before being trusted, incl. an empty file walk |
+| 15 | Harness key cannot reach shipped code | ✅ GO | S4; the dev-harness-key section of `check:entitlement-gates`, broken 4 ways before being trusted, incl. an empty file walk |
 
-**Not go, by design — these are Session 5, merge day, and cannot be done sooner:**
+**Merge-day items — ALL CLOSED 2026-08-01, except F which is deliberately deferred:**
 
-| # | Blocked item | Why it cannot be checked before merge |
+| # | Item | Outcome |
 |---|---|---|
-| A | LIVE `STRIPE_SECRET_KEY` in Vercel **Production** | Preview-only today |
-| B | LIVE webhook at `https://www.majorcycle.com/api/stripe/webhook` | **`www` matters** — the apex 307s and Stripe counts every 3xx as a failed delivery |
-| C | `STRIPE_WEBHOOK_SECRET` | Currently set in **no** Vercel environment |
-| D | `CYCLE_INTERNAL_SECRET` present in Production **and identical in Preview** | If it is missing or mismatched, every Stock Detail page still renders with **every cycle section silently empty** — no error, no log |
-| E | `/api/cycle` 200+payload → **401** for a stranger | Production's route is open today; the gate only takes effect on merge |
-| F | **Roll the live restricted key** | Its value entered a chat transcript when `SECRETS.local.md` was read; nearly free to do at the step that already re-enters it. Stripe **Roll key** changes the value, **Edit key** preserves it |
+| A | LIVE `STRIPE_SECRET_KEY` in Vercel **Production** | ✅ **Was already done** — this row was WRONG when written. Read back from the Vercel env list on merge day: Production entry added **Jul 26** (live key, Sensitive), plus a separate Preview entry from Jul 16 holding the test key. The "Preview-only today" claim was a stale note carried forward, and §2's own audit table had already corrected it once. **Lesson: a go/no-go row must cite a reading, not a memory.** |
+| B | LIVE webhook at `https://www.majorcycle.com/api/stripe/webhook` | ✅ `we_1TzaT1K8OQZXQEminyKXmO3M`, `livemode: true`, enabled, 13 events, `api_version 2026-06-24.dahlia`, one endpoint only — read from `GET /v1/webhook_endpoints`. **Near-miss:** the create URL silently redirected to the *sandbox*; pinning `/acct_1Trdax…/` in the URL is what avoided pointing the test account at production |
+| C | `STRIPE_WEBHOOK_SECRET` | ✅ Set in Vercel **Production** only (Sensitive), production rebuilt **without build cache**. Unsigned `POST` → **400 "Missing signature"** — the only proof available, since Stripe cannot send a test event to a live endpoint |
+| D | `CYCLE_INTERNAL_SECRET` in Production **and identical in Preview** | ✅ **Stronger than asked:** it is a *single* variable scoped to "Production and Preview", so the two cannot differ — the risk is closed by construction, not by comparison. Independently confirmed on the wire: the documented value was accepted by production's `/api/cycle`, and the page's own fetch reads that same variable |
+| E | `/api/cycle` 200+payload → **401** for a stranger | ✅ anon **401** · wrong secret **401** · correct secret **200** with premium keys · `entitled=0` **200 with premium keys absent**. All four carry `private, no-store`. **Both halves**, per §2 |
+| F | **Roll the live restricted key** | 🟡 **Open, deliberately.** Its value entered a chat transcript when `SECRETS.local.md` was read to update it. Nothing exposed beyond the owner's account and no evidence of misuse, so it was not made a merge blocker. Do it at the next planned touch of that key. Stripe **Roll key** changes the value; **Edit key** preserves it |
+
+**Product-level proof in production** (throwaway free account, asserted on raw HTML, account
+deleted afterwards): Stock Detail **200 / 3.12 MB with "Current Drawdown" present** — so the
+cycle really renders and D's blackout risk is closed in fact, not just in config; **no
+premium keys and no `NN/100` patterns anywhere in the HTML**; lock affordance and the
+"not financial advice" disclaimer both present; `/run` served **at the same URL** with the
+locked panel rather than a redirect; `/report` **402** with `private, no-store`.
 
 > **Rollback trigger, agreed in advance:** any of A–E failing → Vercel instant rollback. No
-> debugging in production.
+> debugging in production. **Not needed — none failed.**
+
+---
+
+### 🚀 Session 5 — MERGE DAY, 2026-08-01. Layer F is live.
+
+`feat/f3-stripe` → `main` via **PR #72**, merge commit **`cd6b014`**, 98 commits (`git rev-list --count cd6b014^1..cd6b014^2`).
+Production deployment READY on that commit; `/pricing` did not exist on `main` beforehand
+and returns 200 now, which is what proves the live site is running the merged code.
+
+**The PR was the point.** CI runs only on `main` pushes and PRs, so these 98 commits had
+never been through it. Opening a PR instead of merging directly caught **two** real failures
+that every local gate had passed — an unpinned ruff release breaking the build on untouched
+code, and an E2E job with no Python interpreter (both written up in
+`docs/coding-standards.md` §13). Third run: all three jobs green, plus Vercel's preview
+deploy. **Merging directly would have put both into `main`.**
+
+**Merge-day sequence, in order:** merge → deploy → create the LIVE webhook → set
+`STRIPE_WEBHOOK_SECRET` in Production → **redeploy without build cache** (a variable added
+after a build does nothing until the next one) → verify. Evidence for each in the table
+above.
+
+**Two corrections this session, both from checking rather than remembering:**
+- Go/no-go row A ("live key is Preview-only") was **wrong**. It had been in Production since
+  Jul 26. A row that cites a memory instead of a reading is worse than no row.
+- The Stripe Dashboard's `/webhooks/create` URL **silently redirected to the sandbox**,
+  because it remembers the last mode used. Pinning the account id in the URL and confirming
+  `livemode: true` from the API is what caught it.
+
+**Still open after merge:** (F) roll the live restricted key — see the row above; and the
+two items the owner had already scheduled elsewhere — **375px mobile → Layer H**, and
+**Vercel Hobby → Pro at official launch** (Hobby forbids commercial use, so that is a
+*launch* blocker, not a merge blocker, and it is now the nearest thing to one).
 
 **Accepted residual risks, recorded rather than fixed** (owner's decisions, not oversights):
 a Checkout Session created *before* a deletion can still be completed inside Stripe's 24-hour

@@ -254,7 +254,7 @@ Each `.py` file in `web/api/` becomes one Vercel serverless function (file path 
   >
   > **Rule:** if the response varies by viewer, either put the varying dimension **in the URL** (a query param — as `entitled` now is) *and* keep the cache private, or don't share-cache at all. Next's Data Cache (`next: { revalidate }`) is the safe alternative — it lives server-side and only we can fill it.
   >
-  > **This applies to refusals too, and they're easy to miss.** `NextResponse.json(...)` defaults to `Cache-Control: public, max-age=0, must-revalidate`. Our middleware's 401 (`/api/cycle`) and 402 (`/api/analyze`) both shipped that — and the 402's body names the caller's denial reason, read from their billing columns. Not exploitable, because `max-age=0` + `must-revalidate` stop any reuse. But `public` on a viewer-dependent response is the exact directive from B1, and it left both refusals safe only because of a modifier someone could delete without knowing it was load-bearing. Both now pass an explicit `private, no-store`; guard check 9 asserts it and is mutation-tested. **Set the header deliberately on every refusal — don't inherit the framework default.**
+  > **This applies to refusals too, and they're easy to miss.** `NextResponse.json(...)` defaults to `Cache-Control: public, max-age=0, must-revalidate`. Our middleware's 401 (`/api/cycle`) and 402 (`/api/analyze`) both shipped that — and the 402's body names the caller's denial reason, read from their billing columns. Not exploitable, because `max-age=0` + `must-revalidate` stop any reuse. But `public` on a viewer-dependent response is the exact directive from B1, and it left both refusals safe only because of a modifier someone could delete without knowing it was load-bearing. Both now pass an explicit `private, no-store`; the guard asserts it (the `/api/cycle` and `/api/analyze` sections) and is mutation-tested. **Set the header deliberately on every refusal — don't inherit the framework default.**
 - **Errors.** Catch broad `Exception` at the top of the handler, log via `logger.exception`, return a structured JSON error: `{ "error": "...", "detail": "..." }`. Never expose stack traces directly.
 - **Bundling.** Configure `includeFiles` in `web/vercel.json` to pull `_engine/**` into the function bundle (Vercel's auto-tracing may not catch the `sys.path` indirection).
 
@@ -514,7 +514,32 @@ def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[
 7. `pytest analytics/` — all Python tests pass
 8. `_engine` drift check — `web/_engine/<file>.py` matches `analytics/<file>.py` modulo the `from analytics.` → `from _engine.` rewrite
 
+9. `pnpm check:entitlement-gates` — 14 credential-free paywall tripwires (§ CLAUDE.md 11a/11b)
+10. `pnpm check:report-sections` — the downloadable report matches the 22-section detail page
+11. Playwright e2e — 102 tests, incl. the paywall behavioural matrix
+
 CI is configured in `.github/workflows/ci.yml`. Bypassing CI to merge is forbidden.
+
+> 🔴 **CI runs ONLY on pushes and PRs to `main`.** A long-lived feature branch therefore
+> gets **no CI at all** until a PR is opened. F3 ran 98 commits that way, and opening the PR
+> on merge day (2026-08-01) turned it red **twice**, on two things no local run could catch:
+>
+> 1. **An unpinned linter changed under us.** `analytics/` had its own ruff config; `web/`
+>    had none, so `web/_engine/` and `web/api/` ran on ruff's *defaults*. CI installs
+>    `ruff>=0.4.0`, and 0.16.1 promoted `UP045` into its defaults — so the build broke on
+>    code nobody had touched, in a file whose `analytics/` twin passed the same step seconds
+>    earlier. Fixed by adding `web/ruff.toml` mirroring `analytics/pyproject.toml`.
+>    **Keep the two lint configs in step; the drift check only guarantees the CODE matches,
+>    not the rules it is judged by.**
+> 2. **The E2E job had no Python.** Its server is `next dev`, which computes a cycle by
+>    *spawning* `web/api/cycle.py`. With no interpreter the spawn failed **silently**,
+>    because `fetchCycleAnalysis` degrades to `null` by design — so the page returned 200
+>    with every cycle section simply missing. Fixed with `setup-python` +
+>    `pip install -r requirements.txt`.
+>
+> **Open a PR early on any branch that will run long.** Both failures were environmental, so
+> a green local run said nothing about them — and #2 in particular shows the recurring
+> hazard: *graceful degradation converts a configuration fault into an empty page.*
 
 ---
 

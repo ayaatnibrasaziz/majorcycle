@@ -730,17 +730,33 @@ which boots the real handler on a loopback port — because neither local dev (w
 `web/scripts/check-entitlement-gates.mjs` is a credential-free CI tripwire covering all of
 the above; it can never skip, unlike the e2e suite.
 
-> 🔴 **The LIVE webhook endpoint URL must be `https://www.majorcycle.com/api/stripe/webhook`
+> ✅ **DONE 2026-08-01 (merge day). Both items below are closed; kept because the `www`
+> rule still governs any future endpoint.**
+>
+> **The LIVE webhook endpoint URL must be `https://www.majorcycle.com/api/stripe/webhook`
 > — with the `www`.** Verified by request 2026-07-26: the apex `majorcycle.com` answers
 > **307 → www**, and [Stripe's docs](https://docs.stripe.com/webhooks) are explicit —
 > *"We consider redirect responses to webhook requests as failures."* Pointed at the apex,
 > **every** event would fail: no payment confirmations, no cancellations, no dispute locks —
 > and nothing would appear in our logs, because the request never reaches us.
 >
-> Also outstanding: **`STRIPE_WEBHOOK_SECRET` is not set in Vercel at all**, Preview
-> included (verified against the live env-var list). Webhook contract testing has only ever
-> run locally via `stripe listen`, which supplies its own secret — which is how this went
-> unnoticed. Set the live value in **Production** when the endpoint is created at merge.
+> **As built**, read back from `GET /v1/webhook_endpoints` rather than from the screen:
+> `we_1TzaT1K8OQZXQEminyKXmO3M` · `livemode: true` · `status: enabled` ·
+> `url: https://www.majorcycle.com/api/stripe/webhook` · `api_version: 2026-06-24.dahlia`
+> (equal to `STRIPE_API_VERSION` in `web/lib/stripe.ts`, so payload shapes cannot drift) ·
+> exactly the 13 `enabled_events` below. The list returned **one** endpoint — no strays.
+>
+> **`STRIPE_WEBHOOK_SECRET` is now set in Vercel Production** (Sensitive, Production only),
+> and the production deployment was rebuilt **without build cache** so it took effect.
+> Proven on the wire: an unsigned `POST` to the live URL returns **400 "Missing signature"**
+> — which is the only available proof that a live endpoint works, because Stripe cannot
+> send a test event to a live endpoint. It shows the route exists, executes, and verifies.
+>
+> ⚠️ **A near-miss worth keeping.** `dashboard.stripe.com/webhooks/create` silently
+> redirected to the **sandbox** account, because the Dashboard remembers the last mode used.
+> Creating it there would have pointed the *test* account at the production URL and looked
+> finished. Always pin the account in the URL (`/acct_1TrdaxK8OQZXQEmi/…`) and confirm
+> `livemode: true` from the API afterwards.
 
 **Webhook event-subscription policy (F3 Step 8 decision — 2026-07-24).** The production
 LIVE webhook endpoint subscribes to **only the 13 event types the handler acts on**, per
@@ -786,7 +802,7 @@ Branding page requires an explicit **Save changes** (no auto-save). Confirmed li
 by preference): custom domain (~US$10/mo), custom email domain (owner keeps the trust-signalling
 `stripe.com` receipt). Statement descriptors + Product name were already clean (unchanged).
 
-**Auth pattern:** `web/proxy.ts` (middleware) and `(app)/layout.tsx` check that a `user` session exists and refresh it. **Subscription gating is enforced on top of that as of F3 Step 10 — see §7.1 above** (branch `feat/f3-stripe`, not yet merged to `main`): checkout + the webhook populate the client-immutable entitlement columns on `profiles`, and `lib/entitlement.ts` is the single rule that reads them, enforced at the page, the proxy and the Python functions. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
+**Auth pattern:** `web/proxy.ts` (middleware) and `(app)/layout.tsx` check that a `user` session exists and refresh it. **Subscription gating is enforced on top of that as of F3 Step 10 — see §7.1 above** (merged to `main` and live in production 2026-08-01, PR #72, merge commit `cd6b014`): checkout + the webhook populate the client-immutable entitlement columns on `profiles`, and `lib/entitlement.ts` is the single rule that reads them, enforced at the page, the proxy and the Python functions. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
 
 **Security posture (F0.5 hardening — shipped 2026-07-05, PR #61):** a full code + platform audit hardened the auth surface. (a) **Recovery-session confinement:** a password-reset link mints a full session, so `auth/confirm` sets an httpOnly `mc_pw_recovery` marker and `proxy.ts` restricts that session to `/account/update-password` (+ `/auth/recovery-done`, `/auth/signout`) until the password is changed — a leaked/forwarded reset link can no longer roam the app (live-verified). The page now lives under the `(public)` shell (no sidebar). (b) **Sign-out:** POST `/auth/signout` + a sidebar `SignOutButton`. (c) **`profiles` billing-column lockdown:** table-level `UPDATE` revoked; a column `GRANT` allows only `display_name`/`country`/`acknowledged_disclaimer_at`, so `subscription_*`/`trial_ends_at`/`stripe_*` are client-immutable (cron/webhooks write them via the service-role key) — migration `20260705032433`. (d) **Security headers** in `web/next.config.ts` (X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, CSP report-only). (e) **Open-redirect guard** `safeNextPath()`. (f) **DMARC** tightened to `p=reject` (strict) — safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Deferred: leaked-password protection (Supabase Pro-only), CSP flip to enforcing.
 
@@ -913,7 +929,7 @@ GOOGLE_CLIENT_SECRET=
 STRIPE_SECRET_KEY=
 # Dev harness ONLY — full sk_test_ for test clocks, disputes, fake customers, and
 # `pnpm stripe:listen` (which needs GET /v1/account: 403 on the restricted key, 200 on this
-# one). NEVER set in any Vercel environment, and never read by shipped code — CI check 11
+# one). NEVER set in any Vercel environment, and never read by shipped code — the dev-harness-key section of check:entitlement-gates
 # fails the build if app/, lib/, api/, components/ or proxy.ts mentions it.
 STRIPE_TEST_ADMIN_KEY=
 STRIPE_WEBHOOK_SECRET=

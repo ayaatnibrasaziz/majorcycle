@@ -563,4 +563,10 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log('paywall guard: entitlement gates intact (14 checks passed)');
+// Count the numbered sections in THIS file rather than hard-coding a total. The literal
+// had drifted to "14" against 11 actual sections, because it was bumped by hand whenever a
+// check was added and nothing tied it to reality — the same failure `pnpm
+// check:report-sections` was taught to avoid in 736ce06. A number nobody can verify is
+// worse than no number: it invites "13 checks passed" to be quoted in docs as a fact.
+const sectionCount = (readFileSync(fileURLToPath(import.meta.url), 'utf8').match(/^\/\/ ── \d+\. /gm) ?? []).length;
+console.log(`paywall guard: entitlement gates intact (${sectionCount} checks passed)`);
