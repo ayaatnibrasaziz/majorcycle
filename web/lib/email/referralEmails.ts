@@ -5,8 +5,14 @@ import { FONT, SITE, escapeHtml, p, muted, button } from '@/lib/email/format';
  * Refer-a-friend invite email (F2 Part C). A one-off, member-initiated invite
  * sent from noreply@ through the shared brand chrome. Carries the referrer's
  * name (collected on the invite form, so it's always present), an optional
- * personal note, a 7-day-trial CTA, and a clear one-off provenance line for
+ * personal note, a free-account CTA, and a clear one-off provenance line for
  * anti-spam hygiene. Copy owner-approved before build.
+ *
+ * The CTA promises a FREE ACCOUNT, not a trial (corrected in F3 Step 10). An invite
+ * grants nothing extra: the recipient signs up on the free tier like anyone else, and
+ * the 7-day trial is a separate choice that asks for a card. Promising them a trial
+ * here would be a promise the signup flow doesn't keep — and it would arrive by
+ * email, where we can't correct it afterwards.
  */
 
 /** A left-bordered italic quote block for the referrer's optional personal note. */
@@ -45,8 +51,11 @@ export async function sendReferralEmail(opts: {
         `financial-health, valuation and analyst data. It&rsquo;s educational information ` +
         `to support your own research, not financial advice.`
     ),
-    p(`New members start with a <strong>7-day free trial</strong>.`),
-    button('Start your free trial', `${SITE}/signup`),
+    p(
+      `Creating an account is <strong>free and takes no card</strong> &mdash; you get ` +
+        `the full browser, price history, cycle charts and company financials.`
+    ),
+    button('Create a free account', `${SITE}/signup`),
     muted(
       `You received this one-off invitation because ${name ?? 'a MajorCycle member'} ` +
         `entered your email address. We won&rsquo;t email you again unless you sign up.`
@@ -66,7 +75,8 @@ export async function sendReferralEmail(opts: {
     `MajorCycle shows where US, Australian and Canadian stocks sit in their historical ` +
     `drawdown and recovery cycles, alongside financial-health, valuation and analyst data. ` +
     `It's educational information to support your own research, not financial advice.\n\n` +
-    `New members start with a 7-day free trial: ${SITE}/signup\n\n` +
+    `Creating an account is free and takes no card — you get the full browser, price ` +
+    `history, cycle charts and company financials: ${SITE}/signup\n\n` +
     `You received this one-off invitation because ${rawName ?? 'a MajorCycle member'} ` +
     `entered your email address. We won't email you again unless you sign up.`;
 
@@ -75,7 +85,7 @@ export async function sendReferralEmail(opts: {
     subject: `${rawName ?? 'A MajorCycle member'} thought you'd like MajorCycle`,
     heading: "You're invited",
     bodyHtml,
-    preheader: `${name ?? 'A MajorCycle member'} invited you to try MajorCycle — 7-day free trial.`,
+    preheader: `${name ?? 'A MajorCycle member'} invited you to try MajorCycle — free to join, no card.`,
     text,
   });
 }

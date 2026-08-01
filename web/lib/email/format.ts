@@ -47,12 +47,31 @@ export function greetingText(name: string | null): string {
   return n ? `Hi ${n},` : 'Hi there,';
 }
 
-/** "Friday, 10 August 2026" — owner is AU, so format in en-AU deterministically. */
-export function formatDate(date: Date): string {
-  return new Intl.DateTimeFormat('en-AU', {
+/**
+ * "Friday, 10 August 2026" — en-AU for a deterministic day-month-year style.
+ *
+ * Emails render on the server with no browser, so we can't read the device zone
+ * here. For a USER-TRIGGERED email we pass the device's IANA `timeZone` captured in
+ * the browser at the moment of the action (see requestAccountDeletion), so the
+ * emailed date matches what the user just saw on screen. Absent/invalid -> the
+ * runtime default (UTC on Vercel). System-triggered emails (cron/webhook) have no
+ * device zone and should prefer relative phrasing ("in 2 days"). See
+ * docs/coding-standards.md "Date & timezone display".
+ */
+export function formatDate(date: Date, timeZone?: string | null): string {
+  const opts: Intl.DateTimeFormatOptions = {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
-  }).format(date);
+  };
+  try {
+    // A bad timeZone string makes Intl throw — fall back to the runtime default.
+    return new Intl.DateTimeFormat('en-AU', {
+      ...opts,
+      timeZone: timeZone || undefined,
+    }).format(date);
+  } catch {
+    return new Intl.DateTimeFormat('en-AU', opts).format(date);
+  }
 }

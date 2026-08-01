@@ -1,7 +1,8 @@
 import { cache } from 'react';
 
 import { toCamel } from '@/lib/case';
-import type { CycleAnalysis } from '@/lib/types';
+import { INTERNAL_HEADER } from '@/lib/internalAuth';
+import type { CycleAnalysis, CycleAnalysisFree } from '@/lib/types';
 
 export type CyclePreset = 'short' | 'medium' | 'long';
 
@@ -18,6 +19,49 @@ function specKey(spec: CycleSpec): string {
   return spec.preset === 'custom'
     ? `custom:${spec.pullback}:${spec.profit}:${spec.lookback}`
     : spec.preset;
+}
+
+/**
+ * The premium keys, in the camelCase shape the app uses after `toCamel`. Mirrors
+ * the snake_case strip list in `api/cycle.py::_serialise_analysis`.
+ */
+const PREMIUM_FIELDS = [
+  'financialHealthScore',
+  'fhSubscores',
+  'valuationScore',
+  'valuationScoreRaw',
+  'qualityFactor',
+  'valuationZone',
+  'cyclePayoffScore',
+  'overallRating',
+  'overallLabel',
+] as const;
+
+/**
+ * Belt-and-braces strip on the way IN, for an unentitled viewer.
+ *
+ * `api/cycle.py` already withholds these keys when `entitled=0`, so in a healthy
+ * system this removes nothing. It exists because hiding a score in the UI does not
+ * take it off the wire: this object is passed to client components, so React
+ * serialises it into the RSC payload embedded in the HTML. A viewer who never sees
+ * the number in the page can still read it in View Source.
+ *
+ * Observed live on 2026-07-28 — the preview renders "🔒 Unlock" while the page
+ * source carried `"overallRating":60,"overallLabel":"Neutral"`. That was the M4
+ * cross-environment artifact (a preview fetches PRODUCTION's ungated /api/cycle),
+ * not a shipping leak, but it makes the point exactly: the API strip was the only
+ * thing standing between a free viewer and the payload, and a regression there
+ * would leave the UI looking locked while quietly shipping the data — the worst
+ * kind of failure, because it looks safe.
+ *
+ * Stripping here also makes preview deployments behave like production instead of
+ * silently more permissive.
+ */
+function stripPremium<T>(value: T, entitled: boolean): T {
+  if (entitled || !value || typeof value !== 'object') return value;
+  const out = { ...(value as Record<string, unknown>) };
+  for (const key of PREMIUM_FIELDS) delete out[key];
+  return out as T;
 }
 
 function baseUrl(): string {
@@ -51,26 +95,35 @@ function useLocalCompute(): boolean {
 
 // Dev-only in-memory cache so repeat page loads/HMR don't re-spawn Python
 // (the local compute reads the full price history from Supabase, which is slow).
-const _devCycleCache = new Map<string, { at: number; value: CycleAnalysis | null }>();
+const _devCycleCache = new Map<
+  string,
+  { at: number; value: CycleAnalysis | CycleAnalysisFree | null }
+>();
 const _DEV_CACHE_TTL = 5 * 60 * 1000;
 
-function specToCliArgs(spec: CycleSpec): string[] {
+function specToCliArgs(spec: CycleSpec, entitled: boolean): string[] {
+  const base = entitled ? ['--entitled', '1'] : ['--entitled', '0'];
   if (spec.preset === 'custom') {
     return [
+      ...base,
       '--preset', 'custom',
       '--pullback', String(spec.pullback),
       '--profit', String(spec.profit),
       '--lookback', String(spec.lookback),
     ];
   }
-  return ['--preset', spec.preset];
+  return [...base, '--preset', spec.preset];
 }
 
 async function computeCycleLocally(
   ticker: string,
   spec: CycleSpec,
-): Promise<CycleAnalysis | null> {
-  const key = `${ticker}:${specKey(spec)}`;
+  entitled: boolean,
+): Promise<CycleAnalysis | CycleAnalysisFree | null> {
+  // Entitlement is part of the cache key — otherwise a free render and a subscribed
+  // render of the same ticker would share one entry (the local mirror of the Data
+  // Cache hazard in `fetchCycleAnalysis`).
+  const key = `${ticker}:${specKey(spec)}:${entitled ? '1' : '0'}`;
   const hit = _devCycleCache.get(key);
   if (hit && Date.now() - hit.at < _DEV_CACHE_TTL) return hit.value;
   const { execFile } = await import('node:child_process');
@@ -88,16 +141,19 @@ async function computeCycleLocally(
   if (!script) return null;
 
   const python = process.env.PYTHON_BIN || 'python';
-  let result: CycleAnalysis | null = null;
+  let result: CycleAnalysis | CycleAnalysisFree | null = null;
   try {
     const { stdout } = await run(
       python,
-      [script, '--ticker', ticker, ...specToCliArgs(spec)],
+      [script, '--ticker', ticker, ...specToCliArgs(spec, entitled)],
       { env: process.env, maxBuffer: 10 * 1024 * 1024 },
     );
     const raw: unknown = JSON.parse(stdout);
     if (!(raw && typeof raw === 'object' && 'error' in (raw as Record<string, unknown>))) {
-      result = toCamel<CycleAnalysis>(raw as never);
+      result = stripPremium(
+        toCamel<CycleAnalysis | CycleAnalysisFree>(raw as never),
+        entitled,
+      );
     }
   } catch {
     // Non-zero exit (404/500), bad JSON, or python missing — degrade gracefully.
@@ -107,8 +163,17 @@ async function computeCycleLocally(
   return result;
 }
 
-function specToQuery(ticker: string, spec: CycleSpec): string {
-  const qs = new URLSearchParams({ ticker, preset: spec.preset });
+function specToQuery(ticker: string, spec: CycleSpec, entitled: boolean): string {
+  // `entitled` rides in the QUERY STRING, never a header. Next's Data Cache (and any
+  // shared cache) keys on the URL alone, so a header-borne flag would let the free
+  // and paid variants of one ticker collide on a single cache entry — serving a
+  // stripped payload to a subscriber, or a scored one to a free user.
+  // (F3 Step 10 audit, finding B3.)
+  const qs = new URLSearchParams({
+    ticker,
+    preset: spec.preset,
+    entitled: entitled ? '1' : '0',
+  });
   if (spec.preset === 'custom') {
     qs.set('pullback', String(spec.pullback));
     qs.set('profit', String(spec.profit));
@@ -125,20 +190,40 @@ function specToQuery(ticker: string, spec: CycleSpec): string {
  * share a single underlying compute. Pass the SAME `spec` object reference to
  * every consumer in a render so React's cache() dedupes them.
  *
- * Returns null on any error (404, 500, network failure) so the UI can degrade
+ * `entitled` is REQUIRED, not optional, so every call site has to decide — and it
+ * is part of the cache() key, so the free and subscribed renders never share a
+ * memoised result. When false the response is the `CycleAnalysisFree` shape: the
+ * scoring keys are absent, having been stripped server-side before serialisation.
+ * Narrow with `isFullCycle` before reading any premium field.
+ *
+ * Returns null on any error (401, 404, 500, network failure) so the UI can degrade
  * gracefully — cycle data is enriching, not blocking.
  */
 export const fetchCycleAnalysis = cache(
-  async (ticker: string, spec: CycleSpec): Promise<CycleAnalysis | null> => {
+  async (
+    ticker: string,
+    spec: CycleSpec,
+    entitled: boolean,
+  ): Promise<CycleAnalysis | CycleAnalysisFree | null> => {
     if (useLocalCompute()) {
-      return computeCycleLocally(ticker, spec);
+      return computeCycleLocally(ticker, spec, entitled);
     }
     try {
-      const url = `${baseUrl()}/api/cycle?${specToQuery(ticker, spec)}`;
-      const res = await fetch(url, { next: { revalidate: 3600 } });
+      const url = `${baseUrl()}/api/cycle?${specToQuery(ticker, spec, entitled)}`;
+      // /api/cycle is internal-only. The Stock Detail page renders on the server and
+      // fetches it over the PUBLIC url carrying no cookies, so it can't be gated by
+      // session auth — this shared secret is what distinguishes our own render from
+      // anyone else on the internet. Missing secret ⇒ 401 ⇒ null ⇒ graceful degrade.
+      const res = await fetch(url, {
+        next: { revalidate: 3600 },
+        headers: { [INTERNAL_HEADER]: process.env.CYCLE_INTERNAL_SECRET ?? '' },
+      });
       if (!res.ok) return null;
       const raw: unknown = await res.json();
-      return toCamel<CycleAnalysis>(raw as never);
+      return stripPremium(
+        toCamel<CycleAnalysis | CycleAnalysisFree>(raw as never),
+        entitled,
+      );
     } catch {
       return null;
     }

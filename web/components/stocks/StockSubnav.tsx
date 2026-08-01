@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ShieldCheck, Download, Loader2 } from 'lucide-react';
+import { ShieldCheck, Download, Loader2, Lock } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { MethodologyModal } from '@/components/stocks/MethodologyModal';
+import { UpgradeDialog } from '@/components/UpgradeDialog';
 import {
   downloadInteractiveReport,
   prefetchReportBundle,
@@ -40,14 +41,23 @@ export function StockSubnav({
   horizonQuery,
   symbol,
   reportTitle,
+  entitled = false,
 }: {
   market: string;
   ticker: string;
   horizonQuery: string;
   symbol: string;
   reportTitle: string;
+  /**
+   * The report is premium (F3 Step 10). When false the button opens `UpgradeDialog`
+   * instead of attempting a download that the gated /report route would refuse
+   * with a 402 — which the catch below could only report as "try again in a moment",
+   * telling a prospective subscriber the app is broken.
+   */
+  entitled?: boolean;
 }) {
   const [methodologyOpen, setMethodologyOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   // Warm the static offline bundle (~1.3 MB, same for every stock) once on mount,
@@ -59,6 +69,8 @@ export function StockSubnav({
   // Start fetching this stock's report data the moment the user hovers/focuses the
   // button, so the file is usually ready by the time they click.
   function warmReportData() {
+    // Nothing to warm without access — the route would only answer 402.
+    if (!entitled) return;
     prefetchReportData({ market, ticker, horizonQuery });
   }
 
@@ -160,28 +172,45 @@ export function StockSubnav({
             <ShieldCheck className="w-[13px] h-[13px]" strokeWidth={1.8} />
             Methodology
           </button>
-          <button
-            type="button"
-            onClick={handleDownload}
-            onMouseEnter={warmReportData}
-            onFocus={warmReportData}
-            disabled={downloading}
-            aria-busy={downloading}
-            className="export-btn disabled:opacity-70 disabled:cursor-default"
-            title="Download a full interactive report for this stock"
-          >
-            {downloading ? (
-              <Loader2 className="w-[13px] h-[13px] animate-spin" strokeWidth={1.8} />
-            ) : (
-              <Download className="w-[13px] h-[13px]" strokeWidth={1.8} />
-            )}
-            {downloading ? 'Preparing…' : 'Download Report'}
-          </button>
+          {entitled ? (
+            <button
+              type="button"
+              onClick={handleDownload}
+              onMouseEnter={warmReportData}
+              onFocus={warmReportData}
+              disabled={downloading}
+              aria-busy={downloading}
+              className="export-btn disabled:opacity-70 disabled:cursor-default"
+              title="Download a full interactive report for this stock"
+            >
+              {downloading ? (
+                <Loader2 className="w-[13px] h-[13px] animate-spin" strokeWidth={1.8} />
+              ) : (
+                <Download className="w-[13px] h-[13px]" strokeWidth={1.8} />
+              )}
+              {downloading ? 'Preparing…' : 'Download Report'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setUpgradeOpen(true)}
+              className="inline-flex items-center gap-1.5 bg-white border border-[var(--border-strong)] text-[var(--text-secondary)] text-[11px] font-semibold px-3 py-1.5 rounded-[var(--radius-sm)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)] transition-all"
+              title="The downloadable report is included with a subscription"
+            >
+              <Lock className="w-[13px] h-[13px]" strokeWidth={1.8} aria-hidden="true" />
+              Download Report
+            </button>
+          )}
         </div>
       </div>
     </div>
 
     <MethodologyModal open={methodologyOpen} onOpenChange={setMethodologyOpen} />
+    <UpgradeDialog
+      open={upgradeOpen}
+      onOpenChange={setUpgradeOpen}
+      feature="The downloadable report"
+    />
     </>
   );
 }

@@ -1,15 +1,89 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
+import { getStripe } from '@/lib/stripe';
 import { sendDeletionScheduledEmail } from '@/lib/email/accountEmails';
 import { sendReferralEmail } from '@/lib/email/referralEmails';
+import { sendTrialEndingEmail } from '@/lib/email/billingEmails';
 import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
+
+/**
+ * Stripe fires the one-time `trial_will_end` reminder ~3 days before a trial ends, and
+ * our webhook suppresses it while a trial is scheduled to cancel (a cancelling user
+ * shouldn't be told "you'll be charged"). So if a user cancels then reactivates INSIDE
+ * that last-3-days window, the signal has already passed and won't fire again — leaving
+ * them with no heads-up before the first charge. Reactivation covers that gap (below).
+ */
+const TRIAL_REMINDER_LEAD_DAYS = 3;
 
 /** Refer-a-friend limits (F2 Part C). */
 const REFERRALS_PER_DAY = 10;
 const REFERRAL_DEDUPE_DAYS = 30;
+
+/**
+ * Subscription states that pin the account's country (Stripe fixes the billing
+ * currency per subscription — F3). While in one of these, country can't change.
+ * Mirrors the same set in the account page (server is the authority).
+ */
+const COUNTRY_LOCK_STATES = new Set(['active', 'trialing', 'past_due']);
+
+/**
+ * Subscription states that have a LIVE Stripe subscription — so delete/reactivate
+ * should act on it (schedule/clear the period-end cancel). Same set as the country
+ * lock: a live sub is exactly what pins the billing currency (and thus the country).
+ */
+const LIVE_SUBSCRIPTION_STATES = COUNTRY_LOCK_STATES;
+
+/**
+ * Save the signed-in user's profile (display name, and country when not locked).
+ *
+ * A server action, deliberately — the earlier client-side write raced its own auth
+ * hydration: a cold browser Supabase client could fire the UPDATE before the session
+ * loaded, so RLS matched zero rows and PostgREST returned NO error (a silent non-save
+ * shown as a false "Saved"). Here the cookie-bound client is already authenticated
+ * (the middleware validated the session for this request), so the write always runs
+ * as the user. The country lock is re-derived server-side (never trust the client),
+ * and only writable columns are touched (billing columns are client-immutable anyway).
+ */
+export async function updateProfile(input: {
+  displayName: string;
+  country: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Please sign in again.' };
+
+  const { data: current } = await supabase
+    .from('profiles')
+    .select('subscription_status')
+    .eq('id', user.id)
+    .single();
+  const countryLocked = COUNTRY_LOCK_STATES.has(current?.subscription_status ?? '');
+
+  const patch: { display_name: string | null; country?: string | null } = {
+    display_name: input.displayName.trim().slice(0, 80) || null,
+  };
+  if (!countryLocked) patch.country = input.country.trim() || null;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(patch)
+    .eq('id', user.id);
+  if (error) {
+    console.error('updateProfile: update failed', error);
+    return { ok: false, error: 'Could not save your changes. Please try again.' };
+  }
+  // Invalidate the cached /account render so a later back-navigation (e.g. after
+  // visiting /pricing) re-fetches the saved values instead of showing the stale
+  // pre-save snapshot from the client Router Cache.
+  revalidatePath('/account');
+  return { ok: true };
+}
 
 /** Map a raw subscription status to the reassurance-copy variant for the deletion email. */
 function subscriptionEmailKind(
@@ -28,7 +102,13 @@ function subscriptionEmailKind(
  * already scheduled doesn't reset the clock or re-send. The purge cron does the
  * permanent delete once the date passes; signing back in + reactivating cancels it.
  */
-export async function requestAccountDeletion(): Promise<void> {
+export async function requestAccountDeletion(formData: FormData): Promise<void> {
+  // Device IANA timezone captured in the browser at submit time (hidden field), so
+  // the "deletion scheduled" email shows the date in the user's own zone. May be
+  // absent (no JS) — the email then falls back to the runtime zone.
+  const rawZone = formData.get('timeZone');
+  const timeZone = typeof rawZone === 'string' && rawZone ? rawZone : null;
+
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },
@@ -38,7 +118,9 @@ export async function requestAccountDeletion(): Promise<void> {
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from('profiles')
-    .select('email, display_name, subscription_status, deletion_scheduled_at')
+    .select(
+      'email, display_name, subscription_status, deletion_scheduled_at, stripe_subscription_id'
+    )
     .eq('id', user.id)
     .single();
 
@@ -57,10 +139,24 @@ export async function requestAccountDeletion(): Promise<void> {
       redirect('/account?error=delete');
     }
 
-    // F3 TODO (paid): set the Stripe subscription to `cancel_at_period_end` — it
-    // stays valid through the period the user already paid for, then stops. Deleting
-    // must NOT pause or extend it (no delete-and-restore loophole to gain paid time).
-    // F3 TODO (trial): record the remaining trial days to restore on reactivation.
+    // Schedule the Stripe subscription to stop at the end of the current period —
+    // trial and paid alike. A trialing sub cancels at trial end with NO charge; a paid
+    // sub stays valid through the period the user already paid for, then stops (never
+    // paused, never extended — no delete-and-restore loophole to gain time). We only
+    // ever schedule (never immediate-cancel) here; the 30-day purge hard-cancels as a
+    // backstop. Best-effort: a Stripe hiccup must not block the user's deletion.
+    if (
+      profile?.stripe_subscription_id &&
+      LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '')
+    ) {
+      try {
+        await getStripe().subscriptions.update(profile.stripe_subscription_id, {
+          cancel_at_period_end: true,
+        });
+      } catch (err) {
+        console.error('requestAccountDeletion: could not schedule subscription cancel', err);
+      }
+    }
 
     const email = profile?.email ?? user.email ?? '';
     if (email) {
@@ -69,13 +165,17 @@ export async function requestAccountDeletion(): Promise<void> {
         name: profile?.display_name ?? null,
         deletionDate,
         subscriptionKind: subscriptionEmailKind(profile?.subscription_status),
+        timeZone,
       });
     }
   }
 
   // Deactivate: end the session so the account can't be used during the grace
   // window. A returning user signs back in and is funnelled to /reactivate.
-  await supabase.auth.signOut();
+  // scope: 'global' here is deliberate — a deletion request should end the
+  // account's sessions on EVERY device, not just the one that requested it
+  // (unlike the normal Sign-out button, which is local — see auth/signout).
+  await supabase.auth.signOut({ scope: 'global' });
   redirect('/deletion-requested');
 }
 
@@ -91,6 +191,17 @@ export async function reactivateAccount(): Promise<void> {
   if (!user) redirect('/login');
 
   const admin = createAdminClient();
+
+  // Read the sub state BEFORE clearing the flag, so we know whether there's still a
+  // live subscription to un-cancel (plus the fields the trial-reminder gap-fill needs).
+  const { data: profile } = await admin
+    .from('profiles')
+    .select(
+      'email, display_name, stripe_subscription_id, subscription_status, subscription_currency, subscription_plan, trial_ends_at, trial_reminder_sent'
+    )
+    .eq('id', user.id)
+    .single();
+
   const { error } = await admin
     .from('profiles')
     .update({ deletion_scheduled_at: null })
@@ -100,11 +211,63 @@ export async function reactivateAccount(): Promise<void> {
     redirect('/reactivate?error=1');
   }
 
-  // F3 TODO (paid): clear `cancel_at_period_end` so the subscription renews normally
-  // again — the user keeps only the paid-through time they already had, never extended.
-  // F3 TODO (trial): restore the saved remaining trial days.
+  // If the subscription is still live (it didn't lapse during the grace window), clear
+  // the scheduled cancel so it renews/converts normally again. If it already canceled
+  // (status canceled / no sub id) there's nothing to undo — the user simply returns as
+  // a lapsed free user. Best-effort: the deletion flag is already cleared above, so a
+  // Stripe hiccup still reactivates the account (the cancel is recoverable via the
+  // portal). NOTE: if the user had separately cancelled in the portal before deleting,
+  // this un-cancels it — they can re-cancel via "Manage billing" (accepted tradeoff).
+  let subReactivated = false;
+  if (
+    profile?.stripe_subscription_id &&
+    LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '')
+  ) {
+    try {
+      await getStripe().subscriptions.update(profile.stripe_subscription_id, {
+        cancel_at_period_end: false,
+      });
+      subReactivated = true;
+    } catch (err) {
+      console.error('reactivateAccount: could not clear subscription cancel', err);
+    }
+  }
 
-  redirect('/results');
+  // Trial-reminder gap-fill: if we just brought a TRIALING sub back to life inside the
+  // last 3 days of its trial, Stripe's one-time `trial_will_end` reminder has already
+  // passed (it's suppressed while a trial is scheduled to cancel) and won't fire again —
+  // so send the branded reminder now, so the user still gets a heads-up before the first
+  // charge. Only when: we actually un-cancelled the sub (else it won't convert — no charge
+  // to warn about), it's still trialing, the reminder wasn't already sent, and we're inside
+  // the window (earlier reactivations don't need this — the normal event fires again once
+  // the cancel is cleared). Mark sent FIRST so the (now un-cancelled) event can't double up;
+  // best-effort — never block reactivation. Idempotency-keyed so a double reactivation
+  // within 24h can't send twice.
+  const trialEndMs = profile?.trial_ends_at ? new Date(profile.trial_ends_at).getTime() : null;
+  const withinWindow =
+    trialEndMs != null &&
+    trialEndMs - Date.now() <= TRIAL_REMINDER_LEAD_DAYS * 24 * 60 * 60 * 1000;
+  if (
+    subReactivated &&
+    profile?.subscription_status === 'trialing' &&
+    profile?.trial_reminder_sent !== 'trial_will_end' &&
+    withinWindow &&
+    profile?.email
+  ) {
+    await admin
+      .from('profiles')
+      .update({ trial_reminder_sent: 'trial_will_end' })
+      .eq('id', user.id);
+    await sendTrialEndingEmail({
+      to: profile.email,
+      name: profile.display_name ?? null,
+      currency: profile.subscription_currency,
+      plan: profile.subscription_plan,
+      idempotencyKey: `reactivate-trial-reminder:${user.id}:${trialEndMs}`,
+    });
+  }
+
+  redirect('/stocks');
 }
 
 /**

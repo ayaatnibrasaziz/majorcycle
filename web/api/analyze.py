@@ -33,6 +33,7 @@ Responses:
 from __future__ import annotations
 
 import dataclasses
+import hmac
 import json
 import logging
 import os
@@ -61,6 +62,10 @@ from _engine.presets import PRESETS  # noqa: E402
 from _engine.providers.base import FundamentalsSnapshot  # noqa: E402
 
 logger = logging.getLogger("api.analyze")
+
+# Header carrying the internal shared secret, injected by web/proxy.ts once it has
+# verified the caller's session AND entitlement. Must match web/lib/internalAuth.ts.
+INTERNAL_HEADER = "x-mc-internal"
 logging.basicConfig(level=logging.INFO)
 
 # The client chunks the user's selection; this is a defensive per-request cap so
@@ -452,6 +457,21 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
 class handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         try:
+            # The screener is premium and has no free form. Entitlement itself is
+            # decided in web/proxy.ts — this function can't read a Supabase session
+            # cookie, so the proxy (which has already verified the JWT locally) is
+            # the session authority. On success it INJECTS this secret into the
+            # forwarded request, so arriving without it means the gate was not
+            # traversed, and the request is refused. (F3 Step 10.)
+            secret = os.environ.get("CYCLE_INTERNAL_SECRET") or ""
+            if not secret:
+                logger.error("CYCLE_INTERNAL_SECRET is not set — refusing all requests")
+                self._json(503, {"error": "server misconfigured"})
+                return
+            if not hmac.compare_digest(self.headers.get(INTERNAL_HEADER) or "", secret):
+                self._json(401, {"error": "unauthorized"})
+                return
+
             length = int(self.headers.get("Content-Length", 0) or 0)
             raw = self.rfile.read(length) if length else b"{}"
             try:
@@ -472,10 +492,18 @@ class handler(BaseHTTPRequestHandler):
             self._json(500, {"error": "internal error", "detail": str(e)})
 
     def _json(self, status: int, body: dict[str, Any]) -> None:
+        # `private, no-store` on EVERY branch — the 200 carries a whole basket's paid
+        # analysis, and even the 401 is a per-caller answer. Vercel's edge caches only
+        # on `s-maxage`/`stale-while-revalidate` and never on `no-store`, so bare
+        # `no-store` (what this sent until 2026-07-30) was already safe in practice —
+        # but it was the ONE premium surface `check:entitlement-gates` did not assert,
+        # while it guards api/cycle.py, proxy.ts and the report route. Safe-by-someone-
+        # else's-default is exactly the posture CLAUDE.md 11a exists to forbid: it is
+        # how the report route came to send no Cache-Control at all. Matches cycle.py.
         payload = json.dumps(body, default=str).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", "private, no-store")
         self.end_headers()
         self.wfile.write(payload)
 

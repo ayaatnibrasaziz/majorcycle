@@ -19,8 +19,8 @@ export default async function NotFound() {
     signedIn = false;
   }
 
-  const href = signedIn ? '/results' : '/login';
-  const label = signedIn ? 'Back to Results' : 'Back to sign in';
+  const href = signedIn ? '/stocks' : '/login';
+  const label = signedIn ? 'Back to Browse' : 'Back to sign in';
 
   return (
     <div className="min-h-screen bg-[var(--bg-page)] flex items-center justify-center p-6">

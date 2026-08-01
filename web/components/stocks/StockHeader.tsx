@@ -194,39 +194,63 @@ export function BadgeRow({
   analystRecommendation,
   numAnalysts,
 }: {
-  overallLabel: OverallLabel;
-  valuationZone: ValuationZone;
+  /** Omitted for an unentitled viewer — our rating is premium (F3 Step 10). */
+  overallLabel?: OverallLabel;
+  /** Omitted for an unentitled viewer — premium. */
+  valuationZone?: ValuationZone;
   analystRecommendation: AnalystRecommendation | null;
   numAnalysts: number | null;
 }) {
   return (
     <div className="flex flex-wrap gap-[6px] mt-[10px]">
-      <span
-        className={`tier-badge tier-badge--${LABEL_TIER[overallLabel]}`}
-        title={`Overall rating: ${overallLabel}. Composite of Financial Health (40%) + Valuation Zone (35%) + Cycle Payoff (25%).`}
-      >
-        {overallLabel}
-      </span>
-      <span
-        className={`tier-badge tier-badge--${ZONE_TIER[valuationZone]}`}
-        title={`Valuation zone: ${ZONE_DISPLAY[valuationZone]}. Derived from the current drawdown vs the stock's typical historical pullback.`}
-      >
-        {ZONE_DISPLAY[valuationZone]}
-      </span>
+      {overallLabel && (
+        <span
+          className={`tier-badge tier-badge--${LABEL_TIER[overallLabel]}`}
+          title={`Overall rating: ${overallLabel}. Composite of Financial Health (40%) + Valuation Zone (35%) + Cycle Payoff (25%).`}
+        >
+          {overallLabel}
+        </span>
+      )}
+      {valuationZone && (
+        <span
+          className={`tier-badge tier-badge--${ZONE_TIER[valuationZone]}`}
+          title={`Valuation zone: ${ZONE_DISPLAY[valuationZone]}. Derived from the current drawdown vs the stock's typical historical pullback.`}
+        >
+          {ZONE_DISPLAY[valuationZone]}
+        </span>
+      )}
       {analystRecommendation && (
         <span
           className="tier-badge tier-badge--analyst"
           title={`Analyst consensus: ${analystRecommendation}${numAnalysts ? ` (${numAnalysts} analysts)` : ''}. Third-party analyst data — not our rating.`}
         >
+          {/* Attribution is VISIBLE, not just a tooltip, and unconditional. It used to
+              appear only when our own badges were absent, on the theory that our label
+              framed this chip. That reads backwards: beside "Neutral" and "Stretched",
+              a bare "Buy" looks like the third thing WE concluded, which is precisely
+              what CLAUDE.md #2 forbids. Colour and a hover title are not enough — the
+              tooltip is invisible on touch, and the entitled view is the one where the
+              chip has our labels to be mistaken for. Six characters, no ambiguity. */}
+          <span className="opacity-70">Analysts:&nbsp;</span>
           {analystRecommendation}
         </span>
       )}
       <InfoTip title="Rating badges">
-        Three quick reads at a glance. The first is MajorCycle&apos;s overall label
-        (High Conviction → Bearish). The second is the Valuation Zone — how the
-        current dip compares with this stock&apos;s typical pullback (Deep Value →
-        Stretched). The third, if shown, is the Wall Street analyst consensus —
-        third-party data, not our rating.
+        {overallLabel ? (
+          <>
+            Three quick reads at a glance. The first is MajorCycle&apos;s overall label
+            (High Conviction → Bearish). The second is the Valuation Zone — how the
+            current dip compares with this stock&apos;s typical pullback (Deep Value →
+            Stretched). The third, if shown, is the Wall Street analyst consensus —
+            third-party data, not our rating.
+          </>
+        ) : (
+          <>
+            The badge shown is the Wall Street analyst consensus — third-party data,
+            reproduced as published. It is <strong>not</strong> a MajorCycle rating.
+            Our own overall label and Valuation Zone are included with a subscription.
+          </>
+        )}
       </InfoTip>
     </div>
   );

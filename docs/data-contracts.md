@@ -362,7 +362,26 @@ export interface CycleParams {
   pivotBars?: number;
 }
 
-export interface CycleAnalysis {
+// F3 Step 10 — the paywall splits this in TWO. The free half is what an unentitled
+// viewer receives; the premium half is our judgement and is STRIPPED server-side in
+// web/api/cycle.py before serialisation (PREMIUM_KEYS), so those bytes never leave the
+// server for a free viewer. Nothing is hidden client-side.
+//
+// STRIPPED IN TWO PLACES, deliberately (added 2026-07-28). web/lib/cycle.ts's
+// `stripPremium()` removes the same keys again — in camelCase — at both parse seams of
+// `fetchCycleAnalysis` whenever `entitled` is false. Redundant when the API behaves.
+// It exists because this object is passed to CLIENT components, so React serialises it
+// into the RSC payload embedded in the HTML: withholding a value from the *render* does
+// not withhold it from the *page source*. Keep the two lists in step — the Python side
+// is pinned by `pnpm check:entitlement-gates`.
+//
+// Two types rather than making the scored fields optional: /results, /run, RunComplete,
+// ReportDocument, columns.ts, filters.ts, OpportunityMap and ResultsTable are all
+// premium-only and keep the full `CycleAnalysis` unchanged. Only KpiStrip,
+// ThesisInsights and StockHeader accept the union and narrow with `isFullCycle()` —
+// and KpiStrip/StockHeader additionally require an `entitled` viewer, so the type guard
+// is never the sole control on the two headline scores.
+export interface CycleAnalysisFree {
   ticker: string;
   params: CycleParams;
   asOf: string;
@@ -377,7 +396,13 @@ export interface CycleAnalysis {
   upperBound: number | null;
   totalPullbackEvents: number;
   totalProfitEvents: number;
+}
 
+/** Narrowing guard. Tests `overallLabel` — `overallRating` can legitimately be 0, and
+ *  `financialHealthScore` is nullable even for a paying viewer, so neither is safe. */
+export function isFullCycle(c: CycleAnalysisFree | CycleAnalysis | null): c is CycleAnalysis;
+
+export interface CycleAnalysis extends CycleAnalysisFree {
   financialHealthScore: number | null;
   valuationScore: number; // quality-gated — feeds the overall rating
   valuationScoreRaw: number; // un-gated cycle-position score
@@ -502,7 +527,22 @@ export interface StockRecord {
 
 ### `GET /api/cycle`
 
-Single-ticker Major Cycle analysis. Called by the Stock Detail Server Component on every page render (cached by Vercel edge for 1h, stale-while-revalidate 24h). Implemented in `web/api/cycle.py` (Python serverless function); reads price bars and fundamentals from Supabase, runs the cycle math via the vendored `web/_engine/` package, never calls yfinance.
+Single-ticker Major Cycle analysis. Called by the Stock Detail Server Component on every page render. Implemented in `web/api/cycle.py` (Python serverless function); reads price bars and fundamentals from Supabase, runs the cycle math via the vendored `web/_engine/` package, never calls yfinance.
+
+> ⚠️ **INTERNAL ONLY, and NEVER edge-cached (F3 Step 10).** This endpoint used to send
+> `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`, which was a
+> paywall bypass: `s-maxage` is a *shared*-cache directive keyed on the URL alone, so once
+> a server render warmed Vercel's edge with a fully scored payload, any later request —
+> no secret, no session — would have been served the paid analysis **before the function
+> ran**. It now sends **`Cache-Control: private, no-store`**. Caching is preserved by
+> Next's Data Cache (`next: { revalidate: 3600 }` in `web/lib/cycle.ts`), which is
+> server-side and can only ever be filled by us.
+>
+> Every request must carry `x-mc-internal: $CYCLE_INTERNAL_SECRET`. Checked twice — at the
+> edge in `web/proxy.ts` (**401**, never a redirect: a 302 would be parsed as JSON by our
+> own SSR fetch and blank every cycle section) and authoritatively in `cycle.py`, which
+> returns **503** if the env var is unset. It fails CLOSED; there is no "open" fallback.
+> `pnpm check:entitlement-gates` fails CI if `s-maxage`/`public` ever returns.
 
 **Query params:**
 ```typescript
@@ -512,14 +552,33 @@ interface CycleQuery {
   pullback?: number;                                       // required if preset === 'custom' (bounds §7)
   profit?: number;                                         // required if preset === 'custom'
   lookback?: number;                                       // required if preset === 'custom'
+  entitled?: '0' | '1';                                    // F3 Step 10 — default '0'
 }
 ```
+
+**`entitled` rides in the QUERY STRING, never a header.** Next's Data Cache keys on the
+URL alone, so a header-borne flag would let the free and paid variants of the same ticker
+collide on one cache entry — a free viewer could be served a scored payload from a
+subscriber's earlier render, or vice versa. It is therefore part of the
+`fetchCycleAnalysis(ticker, spec, entitled)` signature (required, not optional) so React's
+`cache()` dedupe key includes it too. At `entitled=0` the nine premium keys are **absent
+from the JSON**, not null — see the response note below.
 The Browse page sets the window: named presets via `?preset=`, or a fully custom
 window (`?preset=custom&pullback=-7&profit=7&lookback=300`) that the detail page
 passes straight through. Custom values are validated to the §7 bounds (else 400);
 the result is edge-cached per full query string.
 
-**Response (200):** the full `CycleAnalysis` shape from section 3, serialised with snake_case keys (the Python dataclass field names). The frontend converts to camelCase via `web/lib/case.ts` if typed consumption is needed. Sample:
+**Response (200):** the `CycleAnalysis` shape from section 3, serialised with snake_case keys (the Python dataclass field names). The frontend converts to camelCase via `web/lib/case.ts` if typed consumption is needed.
+
+At **`entitled=1`** the full shape below. At **`entitled=0`** these nine `PREMIUM_KEYS` are
+omitted entirely — `financial_health_score`, `fh_subscores`, `valuation_score`,
+`valuation_score_raw`, `quality_factor`, `valuation_zone`, `cycle_payoff_score`,
+`overall_rating`, `overall_label`. **Absent, not null**: a null would still tell a scraper
+the field exists and let a client distinguish "no score" from "not paid for". The stripping
+happens in `_serialise_analysis()` at serialisation time — deliberately *not* by adding an
+`include_scoring` flag to the engine, because `analytics/` is mirrored into `web/_engine/`
+under a CI drift check and CLAUDE.md #9 makes it sacred. Scoring is pure arithmetic over
+already-loaded fundamentals, so computing-then-stripping costs nothing. Sample (`entitled=1`):
 
 ```json
 {
@@ -557,9 +616,16 @@ the result is edge-cached per full query string.
   not be a 5xx (which reads as "we broke" and raises false error-level log/alert
   noise). The Stock Detail page treats any non-200 as `null` and renders the
   graceful "Major Cycle — not available at this horizon" notice.
+- `401` — missing or wrong `x-mc-internal` secret (F3 Step 10). Returned by the edge
+  (`proxy.ts`) before the function is invoked, and again by `cycle.py` itself. **Never a
+  redirect** — a 302 to `/login` would be parsed as JSON by our own SSR fetch.
 - `500` — genuine internal error (env var missing, unhandled exception) → `{ "error": "...", "detail": "..." }`
+- `503` — `CYCLE_INTERNAL_SECRET` is not configured. Fails **closed** with a loud log rather
+  than falling back to "open", which would silently reopen the paywall.
 
-**Caching headers (200 only):** `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
+**Caching headers (all responses):** `Cache-Control: private, no-store`. **Never `public`
+or `s-maxage`** — see the boxed note at the top of this section. Caching is provided by
+Next's Data Cache (`revalidate: 3600`, keyed on the full URL *including* `entitled`).
 
 ### `POST /api/analyze`
 
@@ -571,6 +637,20 @@ handoff), and writes **one** `analysis_runs` history row itself — **inputs onl
 never the computed results (CLAUDE.md #15 / §11). Reads price bars + fundamentals
 from Supabase and runs the math via the vendored `_engine`; never calls yfinance.
 Auth is enforced by `proxy.ts` (this path is not in `PUBLIC_PATHS`).
+
+**Premium-only, and gated in the proxy (F3 Step 10).** The screener has no free form — it
+is the highest-value feature and the only one with a meaningful per-use cost — so an
+unentitled caller is refused outright with **402**, body `{ error: 'Payment Required',
+reason }` where `reason` is the `AccessDenialReason`. The check must live in `proxy.ts`
+because `analyze.py` is a Vercel Python function with no way to read a Supabase session
+cookie; the proxy has already verified the JWT locally, so it is the session authority. It
+costs one PK-indexed profile read, scoped to this path so ordinary page requests never pay
+for it. On success the proxy **injects** `x-mc-internal`, and `analyze.py` requires it — so
+the function cannot be reached at all except through the gate, even if platform routing
+changed underneath us. The dev shim `/api/analyze-dev` is gated identically, so local dev
+is never quietly more permissive than production. Client-side, a mid-run 402 raises
+`EntitlementLapsedError` and **aborts the whole run** with an upgrade message rather than
+retrying and reporting tickers as "unavailable" (audit finding B6).
 
 **Request:**
 ```typescript
@@ -642,9 +722,28 @@ interface AnalysisRunRecord {
 
 **Errors:**
 - `400` — invalid params (empty tickers, bad preset, custom out of §7 bounds, > 60/request)
-- `401` — not logged in (enforced by `proxy.ts`)
-- `402` — subscription expired *(Layer F)*
+- `401` — not logged in (enforced by `proxy.ts`), or the internal secret is absent/wrong
+  (`analyze.py` re-checks the header the proxy injects)
+- `402` — **no live subscription** (F3 Step 10). Body `{ error: 'Payment Required', reason }`
+  with `reason` ∈ `no_subscription` / `canceled` / `payment_failed` / `billing_blocked`
+- `403` — **account scheduled for deletion** (live-check S3, 2026-08-01). Body
+  `{ error: 'Account scheduled for deletion', reason: 'account_deleting' }`, issued by
+  `proxy.ts` **before** the entitlement check, mirroring the page order (`requirePremiumPage`
+  sends a deleting reader to `/reactivate` before consulting entitlement). Deliberately not
+  402: that would invite someone whose account is being deleted to pay again, and they may
+  already have paid. The proxy `select` must include `deletion_scheduled_at` — without the
+  column the check can only read `undefined`, i.e. fail open, which is its own guard check.
 - `500` — internal — return `{ error: string }`
+- `503` — `CYCLE_INTERNAL_SECRET` unset (fails closed, loud log)
+
+**Caching headers (all responses):** `Cache-Control: private, no-store`, emitted by
+`analyze.py::_json` so it applies to **every** branch — the 200 is a whole basket's paid
+analysis and even the 401 is that caller's own refusal. It sent bare `no-store` until
+2026-07-30; Vercel honours that (its edge caches only on `s-maxage`/`stale-while-revalidate`),
+so nothing was ever exposed — but it was the one premium surface `check:entitlement-gates`
+did not assert, so a future edit could have removed it unnoticed. That is the CLAUDE.md 11a
+trap exactly: safe by someone else's default rather than by our own statement. Now guarded
+(check 10), and the guard was verified to fail when the header is weakened.
 
 ### Universe expansion — "Request a Ticker" (queue model)
 
@@ -748,11 +847,14 @@ per input symbol. Symbols are upper-cased + deduped; capped at 200.
 and can be requested from the strip. Baskets + the search-add are universe-only, so
 CSV is the only Run input that can carry an uncovered ticker.
 
-### `GET /api/ticker/[symbol]`
-
-**Path param:** symbol in URL form (`AAPL`, `BHP-au`, etc.) — see ticker mapping below.
-
-**Response (200):** `{ stock: StockRecord; priceBars: PriceBar[] }`
+> **`GET /api/ticker/[symbol]` was specified here but never built, and is not needed.**
+> Removed 2026-07-30 after a docs-vs-disk sweep found no `web/app/api/ticker/` directory
+> and no caller anywhere in the codebase. The Stock Detail page is a **Server Component**:
+> it reads `stocks` + `price_bars` from Supabase directly during the render
+> (`fetchStockDetail`), so there is no browser round-trip for a client endpoint to serve.
+> Adding one would reintroduce exactly the client-fetch anti-pattern in
+> `coding-standards.md` — and, post-paywall, a second surface returning stock data would be
+> a second surface needing its own entitlement gate. Don't rebuild it.
 
 ### `GET /api/search?q={query}`
 
@@ -827,6 +929,12 @@ PRESETS = {
 2. Stripe location lookup at checkout time
 
 **No FX conversion in Phase 1.** Australian users browsing AAPL see USD prices. This is the standard for finance products.
+
+**`profiles.country` drives currency only — never date/timezone display.** Dates shown to a
+user (trial end, renewal, deletion date) are rendered in their **device timezone**, not a
+country-derived zone. See `coding-standards.md` §16 for the full convention (client-side
+`<LocalDate>` on screen; device-zone captured at action time for user-triggered emails;
+relative phrasing for cron/webhook emails).
 
 ---
 
@@ -904,21 +1012,456 @@ incremental window), so a fixed split is never re-pulled again.
 
 ---
 
-## 10. Stripe Subscription Schema
+## 10. Stripe Subscription Schema (F3)
 
-Two products in Stripe:
-1. **`MajorCycle` Monthly**
-   - 3 prices: USD $15, AUD $19, CAD $20
-   - `trial_period_days: 7`
-2. **`MajorCycle` Annual**
-   - 3 prices: USD $126, AUD $159, CAD $168 (~30% off monthly equivalent)
-   - `trial_period_days: 7`
+**Stripe is the source of truth; the DB is a synced cache.** One product, addressed
+by `lookup_key` (never hard-coded price ids — test and live ids differ, lookup_keys
+are stable across both modes):
 
-Webhook events handled:
-- `checkout.session.completed` → set `profiles.subscription_status = 'trialing'`
-- `customer.subscription.updated` → sync status
-- `customer.subscription.deleted` → set status `'canceled'`
-- `invoice.payment_failed` → trigger 3-day grace period flow
+- **Product `MajorCycle`** (`prod_UrMvM8SaVr5YIl`), two active recurring **multi-currency** prices:
+  - **Monthly** — `lookup_key: majorcycle_monthly` — USD $15 / AUD $19 / CAD $20
+  - **Annual** — `lookup_key: majorcycle_annual` — USD $126 / AUD $159 / CAD $168 (~30% off)
+- The **7-day trial is NOT on the price.** It is applied in checkout code via
+  `subscription_data.trial_period_days: 7` (so the abuse guard can drop it for a
+  repeat email/card — see plan §6). Currency is fixed per subscription by country:
+  `AU→aud`, `CA→cad`, everyone-else→`usd`.
+- `automatic_tax: { enabled: false }` at launch (a one-line switch for GST later).
+
+### `profiles` billing columns (all SERVICE-ROLE-ONLY — client-immutable)
+
+Written **only** by the Stripe webhook via the service-role admin client; excluded
+from the `authenticated` UPDATE grant (`20260705032433`) so a browser session can
+never forge entitlement. Migration `20260523133635` + `20260711000000` +
+`20260715000000_f3_stripe_billing`:
+
+| Column | Type | Meaning |
+|---|---|---|
+| `stripe_customer_id` | text UNIQUE | Stripe `cus_…`. |
+| `stripe_subscription_id` | text | Active `sub_…` — portal/cancel/sync. |
+| `subscription_status` | text | `trialing`/`active`/`past_due`/`canceled` (our mapped view of Stripe status). |
+| `subscription_plan` | text | `monthly`/`annual` (from the Price lookup_key). |
+| `subscription_currency` | text | Locked `usd`/`aud`/`cad`. |
+| `trial_ends_at` | timestamptz | Stripe `sub.trial_end`. |
+| `current_period_end` | timestamptz | Stripe `current_period_end` — "renews on" + delete-during-paid. |
+| `cancel_at_period_end` | boolean (default false) | Sub set to end at period end (user cancel / delete-during-paid). |
+| `grace_until` | timestamptz | **Single-owner dunning marker** — set `now()+3d` on the FIRST `invoice.payment_failed` (renewal only), cleared only by the paid/succeeded handler + `markCanceled`. `past_due` beyond it hard-locks (step 10). |
+| `billing_blocked` | boolean (default false) | Chargeback/fraud dispute revoked access — set by `charge.dispute.created`/`.funds_withdrawn`, cleared only if the dispute is won (`.closed` won / `.funds_reinstated`). |
+| `trial_reminder_sent` | text | Set to `'trial_will_end'` when the branded trial-ending reminder is sent (event-driven, ~3 days out) — guards against a double-send on webhook redelivery. |
+
+### `profiles` free-tier counter columns (F3 Step 10 — also service-role-only)
+
+Migration `20260726010000_free_tier_view_counter`. An **anti-scraping fence**, not a
+revenue lever: premium fields are already stripped from every response a free viewer gets,
+so what is left worth protecting is the *bulk* (walking all ~866 tickers to rebuild the
+corpus). Subscribers are never counted — locked decision #18 promises them no usage limits.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `free_views_date` | date | The UTC day the set below applies to. Null for subscribers. |
+| `free_views_tickers` | text[] | Distinct tickers a free user opened on that day; cap **25** (`FREE_VIEW_DAILY_LIMIT`). |
+
+**Why a distinct-ticker SET and not a counter.** `next/link` prefetches on hover/viewport
+in production, which *runs the server component* — a plain counter would be burned by
+scrolling the Browse list. A set makes prefetch-then-click, a refresh, and any re-visit
+cost exactly one view. (Stock links also pass `prefetch={false}`.)
+
+**🔑 What actually makes these unwritable by the user — not what you'd assume.** The
+migration's column-level `REVOKE` is only a tripwire: **Postgres cannot subtract a column
+from a table-level GRANT**, and `authenticated` does hold table-level SELECT/INSERT on
+`profiles`. The real guarantee is that **`authenticated` has no table-level UPDATE at
+all** — its UPDATE is granted per column (`display_name`, `country`,
+`acknowledged_disclaimer_at`), so any new column is unwritable the moment it is added.
+If anyone ever runs `grant update on public.profiles to authenticated`, the counter becomes
+user-resettable and the revokes will NOT save you. `check-entitlement-gates.mjs` fails CI
+on exactly that statement. (`anon` does hold table-level UPDATE from the Supabase defaults;
+not exploitable — the RLS policy requires `auth.uid() = id` and anon has none.)
+
+### Function `record_free_view(p_user_id uuid, p_ticker text, p_limit int)`
+
+Migration `20260726020000`. Returns `(allowed boolean, used int)`. `service_role` EXECUTE
+only, `search_path` pinned.
+
+**Why this is a database function and not application code.** The obvious version — read
+the array, append in TypeScript, write it back — is read-modify-write across two round
+trips, and it is defeated by exactly the traffic this fence exists to stop. A scraper
+firing N concurrent requests would have all N read the same stale array, and each write
+would clobber the others: the row ends holding one or two tickers while the scraper walked
+away with N pages. `select … for update` row-locks the profile so the check and the append
+cannot be raced. **Fails OPEN** on a missing profile row — this is a fence, not the
+paywall, so denying would be a lie with no security gain.
+
+**Stripe status → our `subscription_status`:** `trialing→trialing`, `active→active`,
+`past_due→past_due` (+`grace_until`), `unpaid→` hard-locked (past_due-equivalent),
+`canceled→canceled`, `incomplete`/`incomplete_expired`/`paused→ null` (no active sub).
+`paused` is defensive only — we don't offer pause, and because the trial requires a card
+upfront (decision #19) Stripe won't emit it (that needs a trial ending with no payment
+method). **Cancel** has two paths, both handled: *cancel at period end* keeps the status
+(`active`/`trialing`) until `subscription.deleted` fires at period end → `canceled`;
+*immediate cancel* fires `subscription.deleted` directly → `canceled`.
+> ⚠ **API-shape gotcha (found 2026-07-19, FIXED in Step 6):** in the pinned
+> `2026-06-24.dahlia` API a cancel-at-period-end leaves `sub.cancel_at_period_end =
+> **false**` and instead sets `sub.cancel_at` (= the period/trial end) + `cancellation_details`.
+> `syncSubscription` therefore derives "scheduled to cancel" as `sub.cancel_at != null` (the
+> deprecated boolean is only a fallback), so the DB records the interim "scheduled" state and
+> the account card renders a "…cancels on <date>, won't renew" line. The display date is the
+> stored `current_period_end` (== `cancel_at` for a period-end cancel; == `trial_end` for a
+> trialing sub). **Hard-lock rule:** `past_due` AND `now > grace_until` ⇒ the gate denies
+access (status stays `past_due`; the gate reads grace). `billing_blocked = true` ⇒ no
+access regardless of status.
+
+> **Dashboard settings this depends on — read live 2026-07-30, identical in the sandbox.**
+> Neither is visible from code, so they are recorded here rather than re-discovered.
+>
+> - **Revenue recovery → Retries → "If all retries for a payment fail":
+>   `cancel the subscription`** (invoice left overdue). So the terminal state is
+>   **`canceled`, never `unpaid`** — the `unpaid → past_due` fold in `mapStripeStatus`
+>   is insurance that will not fire. The full path: day 0 `invoice.payment_failed` →
+>   `past_due` + `grace_until` = +3d (access retained, decision #20) → day 3 grace closes
+>   (locked, status unchanged — this is the "Access paused" card) → ~day 14 retries
+>   exhausted → `customer.subscription.deleted` → `canceled` (still locked). Fixing the
+>   card at any point before that pays the invoice and recovers `past_due → active`.
+> - **All five Stripe customer emails are OFF** (trial-ending reminder, upcoming renewals,
+>   expiring cards, card-payment failed, bank-debit failed). Deliberate: our branded Resend
+>   senders own trial-ending, payment-failed and payment-recovered, and two senders would
+>   mean two different dates and two voices for one event. **If any of these is ever
+>   switched on, retire our matching sender in the same change.**
+> - The one-time "trial over" statement-descriptor message is **off by owner decision**
+>   (2026-07-30): the descriptor already names the site, and fewer moving parts wins.
+
+**The gate that enforces all of this is BUILT (F3 Step 10)** — `web/lib/entitlement.ts`,
+the single source of truth. The webhook still only *records* status; `hasAccess()` is the
+only thing that interprets it, and it fails **closed** (missing profile, unreadable row or
+unrecognised status all deny). Enforced at three layers: the `(app)` layout +
+`requirePremiumPage()` for premium pages (UX — it reports rather than redirects, and the
+page returns `<PremiumLockPage>` in place), `web/proxy.ts` for premium APIs (**402**), and
+the Python functions themselves (authoritative — they strip the premium keys and re-check
+the internal secret). See `architecture.md` §7.1 for the full rule and the two cache traps.
+
+**Report payload — `GET /stocks/[market]/[ticker]/report`.** The one-click "Download
+Report" fetches this JSON and wraps it with the prebuilt offline bundle into a single
+self-contained `.html`. It is the report's **only** surface (the on-screen preview page was
+removed on 2026-07-29 — nothing linked to it). Being a route handler it is *not* wrapped by
+the `(app)` layout, so it gates itself: **401** signed out, **402** unentitled (body names
+the `reason`), **404** unknown market/ticker, **200** + `ReportData` otherwise. Every branch
+sends `Cache-Control: private, no-store` — the 200 carries the full scorecard and even the
+402 names the caller's own denial reason, and a shared cache keys on the URL alone
+(CLAUDE.md 11a). It sent **no** `Cache-Control` at all until 2026-07-29; the gap was found
+by e2e, not by reading the code, and `check:entitlement-gates` now pins it.
+
+### Supporting tables (server-only — RLS on, no policies)
+
+- **`stripe_events`** (`id text pk`, `type text`, `received_at timestamptz`, plus
+  traceability columns `user_id uuid` (FK `auth.users` **ON DELETE SET NULL**),
+  `stripe_customer_id text`, `stripe_subscription_id text`; indexed on `user_id` +
+  `stripe_customer_id`) — webhook **idempotency ledger + audit trail**. Claim the Stripe
+  event id via an **`ON CONFLICT DO NOTHING`** upsert
+  (`.upsert({id,type},{onConflict:'id',ignoreDuplicates:true}).select('id')`); an empty
+  returned array = already processed → 200 skip (exactly-once side effects). Deliberately
+  NOT insert-then-catch-23505 — that logged a Postgres `duplicate key` error on every
+  legitimate Stripe redelivery (audit 2026-07-18, `907b948`). **After** a successful
+  handle, the row is enriched with the resolved `user_id`/customer/subscription (F3 Step 6,
+  best-effort — a failed enrich never 500s), so a post-launch issue is one
+  `select … where user_id = …` instead of guesswork. The `ON DELETE SET NULL` keeps the
+  audit row after an account purge.
+- **`trial_tombstones`** (`id uuid pk`, `email_hash text`, `created_at timestamptz`; indexed
+  on `email_hash`) — **trial-abuse guard (Step 7)**.
+  Enforcement is by `email_hash` = `sha256(lower(trim(email)))` (`web/lib/trialGuard.ts`):
+  written once a subscription goes trialing (in `syncSubscription`) and at purge; read at
+  checkout (omit `trial_period_days` for a repeat email) and on the account/pricing UI to
+  show the honest "already used your free trial — billed today, no free week" copy *before*
+  payment. **Not** a FK to `profiles` — it must survive account deletion so a purged user
+  can't farm a fresh free trial. The same-card-across-different-emails vector would be Stripe
+  Radar's Free-trial-abuse control, but that's deliberately **left off** (its prerequisite bills
+  a per-signup SetupIntent fee; owner chose the free email guard 2026-07-20) — an **accepted
+  gap** covered only by base Radar's always-on high-risk blocking + the enabled CVC-fail/
+  postal-fail Radar rules. So the originally reserved `card_fingerprint` column + its index were
+  **dropped as dead** (`20260720120000_drop_trial_tombstones_card_fingerprint`; never written or
+  read, and the index was flagged unused by the Supabase performance advisor).
+
+### Webhook events handled (`/api/stripe/webhook`) — BUILT (F3 step 4, `ec0b441`)
+
+Verified (`constructEvent(rawBody via req.text(), sig, secret)`; bad signature → 400),
+idempotent (`stripe_events`: claim the event id via ON CONFLICT DO NOTHING; duplicate →
+200 skip; a handler throw releases the claim so Stripe retries), all writes via the
+service-role admin client.
+**Handlers re-derive state straight from the event object — no live Stripe retrieves —
+so they're order-independent and replay-safe.** The subscription lifecycle drives the
+state sync; checkout just links the customer:
+
+- `customer.subscription.created` / `.updated` — **full sync**: `subscription_status`
+  (`mapStripeStatus`), `subscription_plan` (from the item's Price `lookup_key`),
+  `subscription_currency` (`sub.currency`), `current_period_end` (from
+  `sub.items.data[0].current_period_end` — note: on the ITEM in the pinned API version,
+  not the subscription), `cancel_at_period_end`, `trial_ends_at`. **Does NOT touch
+  `grace_until`** (that is single-owner — see below). Resolves the profile via
+  `sub.metadata.user_id` (set at checkout) → falls back to `stripe_customer_id`.
+  **Duplicate guard (2026-07-30, live-check Session 2 finding B).** Before writing,
+  `rejectDuplicateSubscription` refuses a SECOND live subscription for one profile.
+  `/api/checkout` 409s an existing subscriber, but that fires when a Checkout **Session is
+  created**; nothing fired when one was **completed**, so *start checkout → abandon → start
+  again → complete both from history* produced two subscriptions billing one person, with
+  only the second on file. Decision #21 (no refunds) leaves no clean remedy.
+  The guard **retrieves the on-file subscription from Stripe** rather than trusting our own
+  column — event order isn't guaranteed, so the column can name a subscription that is
+  already dead, and cancelling a real plan in error would be worse than the duplicate.
+  Live = `active`/`trialing`/`past_due`/`unpaid`; **`incomplete` is excluded**, so a retry
+  after a declined card is never mistaken for a duplicate. On a confirmed duplicate the
+  **incoming** subscription is cancelled (the incumbent owns the billing anchor and consumed
+  any trial) and the profile is left as-is; if the retrieve fails it falls through and writes
+  normally. It lives in `syncSubscription`, so it covers the webhook **and** the checkout
+  reconciler. **Cancelling does not refund** — a duplicate caught while `trialing` was never
+  charged, but a charged one needs a manual Dashboard refund, hence the loud log naming both
+  subscription ids.
+- `customer.subscription.deleted` — status `canceled`; clear `stripe_subscription_id`,
+  `trial_ends_at`, `grace_until`, `cancel_at_period_end`. **Guarded on the sub id**
+  (`WHERE stripe_subscription_id = sub.id OR IS NULL`) so an out-of-order deletion of an *old*
+  subscription can't lapse a *newer* active one the user has since started.
+- `invoice.payment_succeeded` / `invoice.paid` — recover `past_due → active` **only** (an
+  atomic guarded update, `.eq('subscription_status','past_due')`; never forces `active`, so
+  a 7-day trial's `$0` invoice can't clobber `trialing`). Then **clear `grace_until` with a
+  guarded update** (`WHERE grace_until IS NOT NULL`): a returned row means we recovered from
+  a real failure → send the branded **payment-recovered** email. Of the two events (both
+  fire for one payment), only the first to clear grace emails; the second no-ops. A normal
+  renewal / the $0 trial invoice never set grace, so no email. Both updates are also guarded
+  on `stripe_subscription_id = <invoice's sub>` (skip if the invoice has no sub) so an
+  *old/superseded* sub's payment can't recover a *different* current subscription. Profile
+  resolved via `invoice.parent.subscription_details.metadata.user_id` → customer.
+- `invoice.payment_failed` **and `invoice.payment_action_required`** — a renewal that's
+  declined *or* needs off-session authentication (e.g. 3-D Secure) both land the sub in
+  `past_due` and share this dunning path. **Renewals only** (skip `billing_reason =
+  subscription_create`, the signup charge Checkout owns). Set `past_due` + anchor
+  `grace_until = now()+3d`, both guarded on `stripe_subscription_id = <invoice's sub>` (and
+  the grace anchor also `WHERE grace_until IS NULL`) so it fires exactly once on the first
+  failure regardless of event ordering, and a stale/old failure — or one arriving *after*
+  cancellation (sub id now null) — can't lock a cancelled or newer-active account → send the
+  branded **payment-failed / update-card** email. ⚠ The LIVE webhook endpoint must include
+  `invoice.payment_action_required` in its event list (sandbox `stripe listen` forwards all).
+- `checkout.session.completed` — **links `stripe_customer_id`** to the user (via
+  `client_reference_id`); subscription state itself comes from `subscription.created`.
+- `customer.subscription.created` — syncs the new subscription, then — **only when the new
+  sub is `trialing`** (and not already scheduled to cancel) — sends the branded **trial-started
+  welcome** email (`sendTrialStartedEmail`). Fires exactly once (the `.created` event is
+  one-shot; `stripe_events` dedups a redelivery; Resend `Idempotency-Key = <event.id>:trial_started`).
+  A repeat customer whose trial was already used is created straight into `active`/`incomplete`
+  → no welcome; they get Stripe's payment receipt instead (see receipts note below). No new
+  DB column — the `trialing` status on the created event is the single-fire signal.
+- `customer.subscription.trial_will_end` — fires ~3 days out → send the branded
+  **trial-ending** reminder and set `trial_reminder_sent = 'trial_will_end'`. **Skipped** if
+  `sub.cancel_at != null` (the user cancelled during the trial — no charge is coming).
+  Because this reminder is Stripe's **one-time** ~3-days-out signal and is suppressed while a
+  trial is scheduled to cancel, `reactivateAccount` (in `account/actions.ts`) fills the gap: if
+  a reactivation un-cancels a *trialing* sub inside the last 3 days of its trial and the
+  reminder wasn't already sent, it sends the branded trial-ending email then (idempotency-keyed;
+  `trial_reminder_sent` set first). Earlier reactivations need nothing — the normal event fires
+  again once `cancel_at` is cleared.
+- `charge.dispute.created` / `.funds_withdrawn` — set `billing_blocked = true`, but only for
+  a **real chargeback** (funds moved / status not `warning_*`); a mere inquiry doesn't lock a
+  legit customer. `charge.dispute.closed` — won ⇒ `billing_blocked = false`; lost ⇒ keep
+  blocked **and cancel the subscription** so it can't renew. `charge.dispute.funds_reinstated`
+  ⇒ `billing_blocked = false`. The `Dispute` object carries no customer, so these are the ONE
+  place the webhook does a live Stripe retrieve (charge → customer); best-effort.
+- **Step 7 (done):** `syncSubscription` writes the email trial-tombstone once the sub is
+  trialing (the card-fingerprint guard was dropped — that vector is Stripe Radar's job).
+
+**Branded billing emails (four, all in `web/lib/email/billingEmails.ts`):** trial-started
+welcome (`subscription.created`, trialing) · trial-ending reminder (`trial_will_end`, or the
+reactivation gap-fill) · payment-failed (first renewal failure) · payment-recovered. Copy uses
+relative date phrasing ("soon" / "a few days beforehand") — no device date at webhook time — so
+the trial-ending line is also correct on the reactivation path where days-remaining can vary.
+
+**Payment receipts / invoices are NOT app code — they're Stripe's, via a Dashboard toggle.**
+Subscriptions auto-generate an invoice per charge; enabling **Settings → Emails → "Successful
+payments"** makes Stripe email a branded receipt (with a downloadable invoice PDF link) after
+every *real* charge — trial-conversion + each renewal. Stripe does **not** send a receipt for the
+$0 trial-start invoice, so this never spams and never overlaps the welcome email. The Customer
+Portal (`/api/portal`) also lists every past invoice for download on demand. This toggle is
+**LIVE-only** (sandbox never sends Stripe customer emails) → flip it in the Part C do-together
+dashboard pass near merge, alongside turning **off** Stripe's own trial-ending + failed-payment
+customer emails (so they don't collide with our branded ones).
+
+**`grace_until` is the single-owner dunning marker** — set only by `invoice.payment_failed`,
+cleared only by the paid/succeeded handler + `markCanceled`. This one-writer discipline (plus
+gating both dunning emails on its transitions, and making each email the last best-effort
+action in its handler) is what makes the emails ordering-proof and duplicate-proof despite
+Stripe not guaranteeing event order. Each send also carries a Resend `Idempotency-Key`
+(`<event.id>:<type>`) as a second guarantee.
+
+Contract-tested by `web/e2e/stripe-webhook.spec.ts` (plan §14) — offline signed events
+asserting the `profiles` write, idempotency, and bad-signature rejection. **Also
+live-verified end-to-end** (2026-07-18): real Stripe Checkout (test card 4242) →
+`stripe listen` forwarded the event storm [200] → `/account` flipped to Trial Active.
+
+### Customer Portal — `POST /api/portal` — BUILT (F3 step 5, `89424af`)
+
+Auth-gated (NOT in `PUBLIC_PATHS`). `getUser` → read `profiles.stripe_customer_id` →
+`stripe.billingPortal.sessions.create({ customer, return_url: origin+'/account' })` →
+**303 redirect** to the hosted portal. No customer on file → `/account?billing=none`;
+Stripe error (usually "no portal config in this Stripe mode") → `console.error` +
+`/account?billing=error`. The `/account` "Manage billing" button is a plain form POST
+(no client JS, no Stripe key in the browser). **The portal must be activated per Stripe
+mode** (sandbox config `bpc_1TuR6R…`: update/cancel-at-period-end/payment/invoice).
+
+**Two refusals outrank the customer lookup, both checked BEFORE it** (live-check S2 + S3):
+
+| Condition | Outcome | Why |
+|---|---|---|
+| `billing_blocked` | 303 `/account?billing=blocked` | The portal is a *second* way to spend money — it switches monthly⇄annual, which prorates and charges. Anything bought while held is paid for and still locked. |
+| `deletion_scheduled_at` | 303 **`/reactivate`** | Same rule, sharper case. The portal can also **resume a subscription scheduled to cancel**, so a to-be-purged account could un-cancel the very subscription the delete flow just set to stop — and be charged — while `deletion_scheduled_at` stayed put and the purge cron destroyed the account anyway. `/reactivate` is the one page such an account may use, and reactivating makes the portal legitimately available again. |
+
+`/account` renders the button for neither state, but **the endpoint must not depend on the
+UI hiding it** — that sentence was already written here for the dispute case, and S3 found
+deletion was the case where it still did.
+
+**Every branch sends `private, no-store`** (added 2026-08-01). It sent **no
+`Cache-Control` at all** until then: Next attaches none to route handlers, unlike pages
+which get `no-cache, must-revalidate` free. Nothing was exposed — Vercel caches only on
+`s-maxage` and this is a POST — but the 303's `Location` is a **live Customer Portal
+session**, i.e. that one customer's card, invoices and cancel button. The most sensitive
+payload the app emits was the one saying nothing about caching (CLAUDE.md 11a, 4th
+instance). `pnpm check:entitlement-gates` now asserts the header count **equals** the
+`NextResponse` count, so one unguarded branch fails CI.
+
+**Stripe client** (`web/lib/stripe.ts`) sets `maxNetworkRetries: 2` (SDK default 0;
+retried POSTs get automatic idempotency keys).
+
+### Upgrade-dialog context — `GET /api/billing-context` — BUILT (F3 step 10)
+
+Auth-gated. Returns exactly what the upgrade dialog needs to offer the right thing:
+
+```ts
+{
+  currency: BillingCurrency;
+  trialUsed: boolean;
+  hasSubscription: boolean;
+  billingBlocked: boolean;
+  email: string | null;
+  displayName: string | null;
+}
+```
+
+- `hasSubscription` — `subscription_status ∈ {active, trialing, past_due}`. CTA becomes
+  **Manage your plan** → `/account`; no trial is offered and `StartTrialModal` isn't rendered.
+- `trialUsed` — the Step 7 email tombstone. CTA becomes **Subscribe**, and the modal states
+  that billing starts today with no free week. **Skipped** (returned `false`) when
+  `hasSubscription`, which also avoids a pointless admin-client read for the common case.
+- `currency` — same resolver as `/pricing` and `/api/checkout` (see above).
+- `billingBlocked` — the dispute hold, and it **outranks every field above it**. It is an
+  orthogonal flag, not a status: a held account keeps its Stripe status, so `hasSubscription`
+  can be `true` while the reader is locked out. The dialog keys its entire copy off this —
+  no feature pitch, no plan list, **Contact support** instead of any buy button, because
+  `/api/checkout` and `/api/portal` both refuse a held account.
+- `email` / `displayName` — prefill for the in-place `SupportDialog`, so a locked reader
+  doesn't retype what we already hold.
+
+Sends `Cache-Control: private, no-store` — per-viewer billing state must never reach a
+shared cache (CLAUDE.md 11a). Signed-out callers never reach the handler: `proxy.ts`
+redirects them to `/login` first.
+
+> **Not a source of truth.** `POST /api/checkout` independently re-derives all three and
+> remains the authority — it 409s a caller who already has a subscription and omits
+> `trial_period_days` for a tombstoned email regardless of what this endpoint said. This
+> exists so the UI can be honest *before* the click; a failed fetch degrades to an
+> `/account` link rather than to a wrong offer. **In flight is a third state**, distinct
+> from failed: the CTA is a disabled "Checking your plan…" button, never a live control
+> carrying a guessed default (see coding-standards).
+
+### `POST /api/checkout` — the refusal ladder + cache posture
+
+Checked in this order, all **before** a Stripe session is created, so nothing is sold to
+an account that cannot use what it buys:
+
+| # | Condition | Status | Body `reason` / message |
+|---|---|---|---|
+| 1 | plan not `monthly`/`annual` | 400 | `Invalid plan` |
+| 2 | signed out | 401 | `Not signed in` (proxy 307s first; this is defence in depth) |
+| 3 | `billing_blocked` | 403 | dispute-hold copy — a held account must not be sellable, since `billing_blocked` outranks any status and the purchase would be paid for and still locked |
+| 4 | **`deletion_scheduled_at`** | **403** | **`account_deleting`** — added 2026-08-01 |
+| 5 | status in `active`/`trialing`/`past_due` | 409 | already subscribed |
+| 6 | price unresolvable in this Stripe mode | 500 | clean retry message; real cause logged |
+| 7 | Stripe create fails / no `url` | 502 | clean retry message |
+
+**Row 4 is new and was a genuine gap.** Live-check S3 found `/api/checkout` had *no*
+deletion check at all — it merely *happened* to 409 in testing because that account also
+had a subscription. A deletion-scheduled account with **no** subscription would have been
+handed a Checkout Session, paid, and then been purged within 30 days. **403, not 402:** a
+402 invites someone whose account is being deleted to pay again, which answers the wrong
+question, and they may already have paid.
+
+> ⚠️ **Residual risk, accepted by the owner (do not re-propose the handler).** Row 4 stops
+> a session being **created**. A session created *before* the deletion can still be
+> **completed** from browser history inside Stripe's 24-hour window, writing a live
+> subscription onto an account the purge cron then destroys. For a repeat customer that is
+> a real charge; a first-timer is on a trial, so no money moves. Nothing detects it today.
+
+**Every branch sends `private, no-store`**, refusals included — the 200 carries a Checkout
+Session URL bound to one `client_reference_id`, and each refusal names that caller's own
+reason. It sent none at all until 2026-08-01 (CLAUDE.md 11a, 4th instance).
+
+### Billing currency resolution + trial entry (F3, `e30c7aa` / `767c9da`)
+
+- **One currency resolver, four call sites.** `effectiveBillingCountry(saved, edge)`
+  (`web/lib/stripe.ts`) → `currencyForCountry` (AU→aud/CA→cad/else usd). Precedence:
+  `profiles.country` → Vercel `x-vercel-ip-country` edge header → USD. Used identically by
+  `/pricing`, the account **Start-free-trial** modal, `GET /api/billing-context` (which
+  feeds that same modal when it is opened from a lock), and `POST /api/checkout`, so the
+  displayed price always equals the charged currency (Stripe locks a subscription's
+  currency at creation, so a display/charge drift would be unfixable after the fact).
+- **`POST /api/checkout` persists the resolved country** when `profiles.country` was empty
+  — before creating the session — so the (soon-locked) stored country matches the charged
+  currency. Written with the user's own cookie-bound client (not yet subscribed → not
+  locked). Non-fatal on failure (logs, continues).
+- **Country auto-fill:** the account page passes the edge-detected country to
+  `ProfileForm` as `suggestedCountry` (pre-selects the dropdown as a *changeable default*
+  when nothing is saved; the saved baseline stays empty so it's savable in one click).
+  Never written until the user saves or starts a trial. **Only observable on live/preview**
+  — the edge header is empty on localhost.
+- **Start-free-trial modal:** `web/components/account/StartTrialModal.tsx` +
+  `StartTrialButton.tsx` reuse the Methodology modal's shell (blurred backdrop, gradient
+  header, disclaimer footer) with the plan chooser + `/api/checkout` hand-off. It is the
+  ONLY in-app entry to checkout — the public `/pricing` page is a marketing/SEO
+  shop-window for signed-out visitors and **redirects a signed-in one to `/account`**
+  (2026-07-29), so it never has to reason about anybody's billing state.
+
+### Returning from Checkout — `/account?checkout=…` (F3 Step 10, `b2d2343`)
+
+`success_url` = `/account?checkout=success&session_id={CHECKOUT_SESSION_ID}`;
+`cancel_url` = `/account?checkout=cancelled` (both land inside the app — a signed-in user
+must never be returned to the public shop-window).
+
+**Why the session id is there.** Stripe sends `checkout.session.completed` *before*
+redirecting and holds the redirect for our 2xx — **but only 10 seconds**. A slow, failing
+or misconfigured webhook would therefore land a customer who has just paid on a page
+reading "No plan", beside a button inviting them to subscribe again. So `/account` calls
+`reconcileCheckoutSession()` (`web/lib/billing/reconcileCheckout.ts`) **before** it reads
+the profile:
+
+1. Retrieve the Checkout Session from Stripe.
+2. **Refuse** unless its own `client_reference_id`/`metadata.user_id` (stamped by
+   `/api/checkout`) matches the signed-in caller — `session_id` arrives in the URL bar and
+   is never treated as proof. A forged id grants nothing (asserted by e2e).
+3. Require `session.status === 'complete'`. Note `payment_status` is
+   **`no_payment_required`** for a 7-day trial — no money has moved yet — so treating that
+   as unpaid would refuse exactly the flow we sell.
+4. Link `stripe_customer_id`, then **re-retrieve the subscription** from Stripe (never the
+   session's embedded copy, so a stale session can't overwrite newer state) and apply
+   `syncSubscription()`.
+
+**It is not a second source of truth.** `syncSubscription()` is the *same* function the
+webhook uses — which is why it lives in `web/lib/billing/sync.ts` rather than inside the
+webhook route. Two derivations of "who has paid" would drift. Re-running after the webhook
+already ran writes identical values. The webhook remains the guarantee (it runs even if the
+customer closes the tab, and Stripe retries it for three days); this only removes the wait.
+
+Best-effort throughout: it runs during a page render, and a Stripe outage must never turn
+"your payment worked" into an error page. `/account` shows "Payment received — your plan is
+set up below", or after cancelling, "You haven't been charged."
+
+### Local webhook testing (F3, `120501d`)
+
+- `pnpm stripe:listen` (`web/scripts/stripe-listen.mjs`) forwards Stripe webhooks to the
+  local dev server. It forces the **sandbox** account by reading `STRIPE_SECRET_KEY` from
+  `web/.env.local` and passing it as `STRIPE_API_KEY` (env, not argv; never printed),
+  sidestepping the Stripe-CLI-default-account gotcha. Run it from `web/` with the dev server up.
 
 ---
 
@@ -940,6 +1483,19 @@ Webhook events handled:
 - **RLS is on for every table.** `profiles` + `analysis_runs` have per-user policies (own-row). `stocks` / `price_bars` / `universe_log` / `listings` / `ticker_requests` / `index_membership` / `split_events` have RLS enabled with **no policies** — read/write them **only server-side with the service-role key** (`createAdminClient` / the Python service client), never with the browser anon client. The `/api/listings/search` + `/api/request-ticker` routes gate on the authed user (server client) then touch `listings` / `ticker_requests` via `createAdminClient`.
 - The `get_price_bars_json(p_ticker)` RPC is the one-request way to read a ticker's full history (bypasses the 1000-row cap); it's service-role only. Schema lives in `supabase/migrations/` (mirrors the Supabase migration log).
 - **Account deletion (F2 Part B).** `profiles.deletion_scheduled_at timestamptz` marks a soft-deleted account: set = scheduled for permanent purge at that time (30-day grace); `NULL` = active. It is **service-role-only** — deliberately excluded from the authenticated column-UPDATE grant (`20260705032433`), so only the server (delete action / reactivation / the purge route) can set or clear it. The hard delete runs `admin.auth.admin.deleteUser(id)` and cascades: `auth.*` + `profiles` (`ON DELETE CASCADE`) + `analysis_runs` (CASCADE); `universe_log.added_by_user` and `ticker_requests.requested_by` are **`ON DELETE SET NULL`** (audit breadcrumbs kept, the user reference nulled). Migration `20260711000000_account_deletion.sql` flipped `universe_log`'s FK from `NO ACTION`→`SET NULL` — it was the last constraint that would have blocked a delete. The daily **`/api/cron/purge-accounts`** route (Vercel Cron, guarded by `CRON_SECRET` via the `Authorization: Bearer` header) purges rows whose `deletion_scheduled_at` has passed, emailing the branded "account deleted" notice first.
+- **Stripe billing (F3).** The billing columns added to `profiles` by
+  `20260715000000_f3_stripe_billing` (`stripe_subscription_id`, `subscription_currency`,
+  `current_period_end`, `cancel_at_period_end`, `grace_until`,
+  `billing_blocked`, `trial_reminder_sent`; the original `frozen_trial_ms` was dropped in
+  `20260719120000_drop_frozen_trial_ms` — see Step 6/7) — like the pre-existing `subscription_status`
+  / `subscription_plan` / `trial_ends_at` / `stripe_customer_id` — are **service-role-only**:
+  deliberately excluded from the authenticated column-UPDATE grant (`20260705032433`), so
+  only the Stripe webhook (service-role admin client) writes them. This is the anti-freeload
+  backbone: entitlement is server-derived Stripe truth the browser cannot forge. The two new
+  tables **`stripe_events`** (webhook idempotency) and **`trial_tombstones`** (trial-abuse
+  guard; **not** a FK to `profiles` so it outlives a deleted account) are server-only —
+  **RLS enabled, no policies** (service-role access only, like `stocks` / `split_events`);
+  their "RLS enabled, no policy" advisor notice is intentional. See §10 for the full schema.
 - **Referrals (F2 Part C — refer-a-friend).** `referrals` (`id uuid pk`, `referrer_id uuid → profiles ON DELETE CASCADE`, `friend_email text`, `message text`, `created_at timestamptz`) records one row per invite sent — it powers the per-user daily rate-limit and the duplicate-invite guard, and is a plain audit trail (no rewards/tracking yet — deferred to F3). **RLS: owner-only** `select` + `insert` (`auth.uid() = referrer_id`); **no `update`/`delete` policy** (immutable) and a deleted account's rows cascade away. Unlike the server-only tables, this one **is written with the user's own session client** (the RLS `insert` check enforces `referrer_id = auth.uid()`). Migration `20260712000000_referrals.sql`. The `sendReferral` server action layers the app-level guards on top (honeypot, email validity, required referrer name, no self-referral, ≤10/day, no re-invite within 30 days) and only records a **successful** email send.
 
 ---

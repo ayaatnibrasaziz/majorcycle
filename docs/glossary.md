@@ -64,6 +64,10 @@
 
 **DEEP VALUE** — Valuation Zone label when current drawdown ≤ lower bound (at or beyond worst-ever pullback). Replaces "STRONG BUY".
 
+**Dispute (chargeback)** — When a cardholder asks their bank to reverse a charge. Stripe sends `charge.dispute.*` webhooks; a *real* chargeback (funds withdrawn, not a mere inquiry) sets `billing_blocked = true` on the account. An **inquiry** is the pre-dispute stage some networks use (Amex, Discover) where no money has moved; in the API its `status` is prefixed `warning_` (`warning_needs_response`, `warning_under_review`, `warning_closed`), and our handler deliberately does **not** lock on it — locking would revoke a paying customer's access over a question. If we lose (`closed`, status not `won`) we keep access revoked and cancel the subscription; if we win, access is restored. See `docs/data-contracts.md` §10.
+
+**Dunning** — The process of chasing a failed subscription payment: a first renewal failure sets the account `past_due`, starts the 3-day grace clock (`grace_until`), and sends the branded "payment failed / update your card" email. Covers both a decline (`invoice.payment_failed`) and a needed 3-D Secure authentication (`invoice.payment_action_required`). See Grace period, Smart Retries.
+
 **DMA (Daily Moving Average)** — Rolling average of closing prices over N days. The app uses 50-day and 200-day DMAs overlaid on price charts.
 
 **Drawdown** — A peak-to-trough decline expressed as a percentage. Negative number. See also Current Drawdown, Lower Bound, Typical Drawdown.
@@ -77,6 +81,10 @@
 **Email Routing (Cloudflare)** — Free Cloudflare feature that **receives** mail for a domain and forwards it to a verified destination (no mailbox hosting). MajorCycle uses it for `security@majorcycle.com` → owner Gmail (root `majorcycle.com` MX → `route1/2/3.mx.cloudflare.net`). It cannot **send** — receiving-only — so it coexists with Resend (which sends on the `send.` subdomain). Owner replies go out via a Gmail **"Send mail as"** identity relaying through Resend SMTP. See `architecture.md` §7.
 
 **Earnings Growth YoY** — Year-over-year change in net earnings per share. Sourced from yfinance.
+
+**Deletion confinement** — The rule that an account with `deletion_scheduled_at` set may use exactly one surface, `/reactivate`, and nothing else. Requesting deletion signs the user out on **every** device and deactivates the account for the whole 30-day grace window; confinement is what makes that true for anyone who signs back in. It is evaluated **before** the **Entitlement gate** everywhere, because offering to sell a plan to someone whose account is being deleted answers the wrong question — and they may already have paid. Pages redirect to `/reactivate`; the self-gating route handlers answer **403 `account_deleting`** (`/report`, `/api/analyze*`, `/api/checkout`) or **303 `/reactivate`** (`/api/portal`). Never 402. The route-handler half was missing until live-check Session 3 (2026-08-01), when a deletion-scheduled *subscriber* was found still able to pull the full paid report, the full screener payload, and a live Stripe Customer Portal session — the last of which could have charged them and un-cancelled the subscription the delete flow had just stopped. See `architecture.md` §7.1.
+
+**Entitlement gate** — The single rule deciding whether a viewer may see premium content, in `web/lib/entitlement.ts` (F3 Step 10). `billing_blocked` denies outright (a dispute lock outranks everything); `active`/`trialing` allow; `past_due` allows only inside `grace_until`; `canceled`, `null` and anything unrecognised deny. **Fails closed** — a missing profile or an unreadable row denies. Deliberately the opposite posture to the trial guard and the free-view fence, which fail *open*: giving premium away costs revenue, whereas a wrongly-denied view is visible and recoverable. Enforced at three layers — pages (`requirePremiumPage()`, whose caller returns the in-app **locked panel** in place; from 2026-07-29 a signed-in reader is never redirected to the public `/pricing` page), APIs (`proxy.ts` → **402**), and the Python functions (authoritative: they strip the premium keys). Two further locks were added on 2026-07-28: `fetchCycleAnalysis` **re-strips** the same keys on the way in when unentitled (because a value passed to a client component is serialised into the page source even when it is never rendered), and every premium surface now requires the viewer's entitlement **and** the data's presence, so no single control failing open exposes the product. See `architecture.md` §7.1 and CLAUDE.md rules 11a/11b.
 
 **Enriched Data** — The extended dataset fetched per ticker beyond price bars and fundamentals: income statements (annual + quarterly), balance sheets, cashflow statements, earnings history, top institutional holders, insider transactions, analyst upgrades/downgrades, PE history, and company overview. Stored as JSONB columns in the `stocks` table. Fetched selectively by the smart refresh pipeline — only when the staleness check fires. See `EnrichedData` dataclass in `data-contracts.md` §2.
 
@@ -100,11 +108,23 @@
 
 **Free Cashflow** — Operating cashflow minus capital expenditures. The cash a business generates after maintaining its operations.
 
+**Upgrade dialog** — `web/components/UpgradeDialog.tsx` (F3 Step 10). The modal every lock opens instead of navigating to `/pricing`, so the reader keeps the stock they were deciding about. Names the feature, explains **what it is** in plain language, lists what else a subscription includes, then hands off to the **Start-free-trial modal**. Shows **no price**: currency, trial-vs-billed-today and the already-used-trial case stay resolved server-side, so there is one source of truth for the thing that must never be wrong. `/api/billing-context` supplies only the CTA label; if it fails the button falls back to `/account` (never the public `/pricing` page — a signed-in reader must not be dropped somewhere that reads as signed-out).
+
+**Locked panel** — `web/components/PremiumLockPage.tsx` (F3 Step 10, 2026-07-29). What a whole premium page (`/run`, `/results`) shows an unentitled viewer *instead of redirecting them away*. The route, the sidebar, the header and the account menu all stay, so hitting the paywall never resembles being logged out; the explanation opens in the same **Upgrade dialog** every other lock uses. Its copy names what actually happened (trial ended / payment failed / account on hold), and on a dispute hold the CTA becomes **Contact support** rather than a buy button, because `/api/checkout` and `/api/portal` both refuse a held account. Because `requirePremiumPage()` only *reports* entitlement, the page's early `return <PremiumLockPage…>` is the actual enforcement — and it must precede any premium fetch. See `architecture.md` §7.1.
+
+**Checkout reconciler** — `reconcileCheckoutSession()` in `web/lib/billing/reconcileCheckout.ts` (F3 Step 10, 2026-07-29). Runs on `/account?checkout=success&session_id=…` and provisions the subscription immediately, instead of waiting for the webhook. It exists because Stripe holds the post-payment redirect for our webhook's 2xx **only 10 seconds** — after that a paying customer would land on a page saying "No plan". Not a second source of truth: it re-retrieves the subscription from Stripe and runs the *same* `syncSubscription()` the webhook runs (hence `web/lib/billing/sync.ts`). `session_id` comes from the URL bar so it is never trusted — the session is fetched and refused unless its own `client_reference_id` matches the caller. The webhook remains the guarantee; this only removes the wait.
+
+**Free tier** — A signed-in account with no live subscription (F3 Step 10). Keeps Browse + search, the price chart, technical levels, the drawdown overlay **including the cycle bands**, the company overview, and **every** fundamentals/sentiment section (those read the `stocks` table, not the cycle engine — "the data is free; our analysis is paid"). Does **not** get the Overall Rating, Health Score, Verdict, scorecard/radar, rating badges, the downloadable report, or the screener (`/run`, `/results`) at all. Subject to the **Free-view fence**.
+
+**Free-view fence** — The anti-scraping cap on the free tier: **25 distinct tickers per UTC day** (`FREE_VIEW_DAILY_LIMIT`). Counts a *set of tickers*, not page loads, so a refresh, a back-navigation or a `next/link` prefetch never costs quota; re-opening a stock seen earlier the same day is always free. Applied by the `record_free_view` Postgres function under a row lock (a read-then-write in app code would lose count under exactly the concurrent traffic a scraper generates). **Fails open** — it is a fence, not the paywall, and premium fields are already stripped from every response a free user gets. Subscribers are never counted (locked decision #18). See `data-contracts.md` §10.
+
 **Fundamentals Snapshot** — The canonical fundamentals data shape returned by any DataProvider. Defined in `data-contracts.md` §2.
 
 ---
 
 ## G
+
+**Grace period (billing)** — The 3-day window (`grace_until` = now + 3 days) after a subscription payment first fails, during which the member keeps access while they update their card. Set once on the first failure and cleared on recovery (or on cancellation). Distinct from the 30-day account-deletion grace. After it lapses, a still-`past_due` account is hard-locked by the **Entitlement gate**.
 
 **Gross Margin** — Gross Profit ÷ Revenue × 100. The fundamental profitability of a product/service before operating costs.
 
@@ -208,6 +228,8 @@
 
 **Rating Tier** — One of the five composite tiers: High Conviction, Constructive, Neutral, Cautious, Bearish. See `design-system.md` §4.
 
+**Reactivation** — When a member who scheduled account deletion signs back in and cancels it (`reactivateAccount` in `web/app/(app)/account/actions.ts`): clears `deletion_scheduled_at` and un-cancels a still-live subscription. Edge case handled: if they reactivate inside the last 3 days of a trial, it also sends the trial-ending reminder (Stripe's one-time signal already passed) so they aren't charged without warning.
+
 **Reward / Risk Ratio** — Typical Profit ÷ |Typical Drawdown|. Used in Cycle Payoff scoring. >1.5 = decent; 3.0 = max score.
 
 **ROE (Return on Equity)** — Net Income ÷ Shareholder Equity × 100. How efficiently a company generates profit from its equity base.
@@ -226,6 +248,8 @@
 
 **Smart Refresh Pipeline** — The nightly cron logic in `analytics/cron/daily_refresh.py` (default mode: `smart`). Runs at 23:00 UTC daily. For every ticker it always refreshes price bars (5-day lookback for existing tickers, full history for new ones) and fundamentals. It only fetches Enriched Data when the staleness check returns true. Use `--mode full` to force enriched refresh for all tickers regardless. See `architecture.md` §8 for full specification.
 
+**Smart Retries (billing)** — Stripe's automatic re-attempts of a failed subscription payment (recommended default: 8 tries over 2 weeks). While it's on, our dunning email says "we'll automatically retry"; the constant `SMART_RETRIES_ENABLED` in `billingEmails.ts` gates that line so we never over-promise. Confirmed on in the Stripe dashboard (Part C).
+
 **Staleness Check** — The `_should_fetch_enriched()` function in `daily_refresh.py`. Returns `True` (fetch enriched data) in three cases: (1) ticker is new — no `enriched_updated_at` in DB; (2) ticker has a `next_earnings_date` that has passed since the last enrich; (3) ticker has no earnings date — last enrich was ≥7 days ago. Returns `False` (skip enriched fetch) otherwise.
 
 **S&P 500** — Standard & Poor's 500 Index — the 500 largest publicly traded US companies. One of three universes we cover in Phase 1.
@@ -239,6 +263,8 @@
 **Short Ratio (Days to Cover)** — Short Interest ÷ Average Daily Volume. How many trading days it would take short sellers to cover their positions.
 
 **Snowflake Radar** — The pentagonal radar chart on Stock Detail showing the five Financial Health sub-pillar scores. Visual at-a-glance summary.
+
+**Strong Customer Authentication (SCA) / 3-D Secure (3DS)** — A bank-required identity check on a card payment (a one-time code, fingerprint, or banking-app tap), mandatory mainly in the EU/UK. On an automatic renewal the customer isn't present to complete it, so Stripe fires `invoice.payment_action_required`; we treat that like a failed payment (dunning path — see Dunning). Uncommon for our AU/US/CA markets, handled defensively.
 
 **STRETCHED** — Valuation Zone label when current drawdown > -5% (stock is near recent highs). Replaces "HOLD" (the original valuation-zone HOLD, not the rating-tier HOLD).
 
@@ -254,7 +280,7 @@
 
 **Token-Hash Email Flow** — The branded auth-email link pattern that keeps every link on `majorcycle.com`. Templates use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…&next=…`; the route `web/app/auth/confirm/route.ts` calls `supabase.auth.verifyOtp({ type, token_hash })` and redirects to `next`. Replaces the default `{{ .ConfirmationURL }}` (a `supabase.co/auth/v1/verify` link). See `architecture.md` §7, `design-system.md` §17.
 
-**Trial** — 7-day free trial period at signup. Card required upfront, auto-converts to paid subscription.
+**Trial** — 7-day free trial. Card required upfront, auto-converts to a paid subscription (locked decision #19). **It does not start at signup** — signing up creates a FREE account with no card; the trial begins when the user clicks "Start free trial" and completes Stripe Checkout (F3 Step 10). Signing up never did start a trial; the earlier copy that implied it did was corrected. A repeat email that has already consumed a trial subscribes with **no** free week — see **Trial tombstone**.
 
 **Typical Drawdown** — Mean of all historical pullback events that exceeded the pullback threshold. The "average dip" for this stock.
 

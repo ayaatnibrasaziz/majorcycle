@@ -146,7 +146,7 @@ export default function MethodologyPage() {
             href="/signup"
             className="inline-flex items-center justify-center rounded-[var(--radius-sm)] bg-[var(--brand-mid)] px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_2px_8px_rgba(30,92,179,.25)] hover:bg-[var(--brand-bright)] transition-colors"
           >
-            Start your free trial →
+            Create a free account →
           </Link>
           <Link
             href="/login"

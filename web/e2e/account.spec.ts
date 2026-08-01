@@ -20,7 +20,8 @@ async function signIn(page: Page) {
   await page.fill('input#email', EMAIL!);
   await page.fill('input#password', PASSWORD!);
   await page.getByRole('button', { name: /^sign in$/i }).click();
-  await expect(page).toHaveURL(/\/results/);
+  // Post-auth home is Browse, not Results (F3 Step 10) — see POST_AUTH_HOME.
+  await expect(page).toHaveURL(/\/stocks/);
 
   const dialog = page.getByRole('dialog', { name: /welcome to majorcycle/i });
   await dialog.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
@@ -34,6 +35,67 @@ async function signIn(page: Page) {
     await proceed.click();
     await expect(dialog).toBeHidden();
   }
+}
+
+/**
+ * Open /account and wait for the profile form.
+ *
+ * No auth-bounce healing here by design. This suite and the auth suite share one
+ * test user; a *global* sign-out (the old default) in the concurrently-running
+ * auth suite used to revoke THIS suite's session mid-run, bouncing us to /login.
+ * That is fixed at the source — the app's Sign-out is now scope:'local' (see
+ * app/auth/signout/route.ts), so one session's sign-out no longer revokes another.
+ * This helper therefore does NOT re-authenticate: if that regresses, the bounce
+ * surfaces as a real failure here instead of being silently masked.
+ *
+ * The one wait we keep is dev-only: the (app) shell paints from local JWT claims,
+ * but the page body awaits its own getUser() (a network call) before rendering the
+ * form, so under heavy parallel load on `next dev` the sidebar can show while
+ * #displayName hasn't. Wait a BOUNDED time for the form, then throw so the caller's
+ * toPass re-navigates — never hang the full retry window on a locator not there yet.
+ */
+async function gotoAccount(page: Page) {
+  await page.goto('/account');
+  await page.locator('#displayName').waitFor({ state: 'visible', timeout: 8000 });
+}
+
+/**
+ * Fill + save the profile, retrying through the dev-only form-render lag
+ * (gotoAccount throws if #displayName hasn't painted yet, and toPass re-navigates).
+ * If a prior attempt already persisted — a slow reload merely hid the "Saved" toast
+ * — the reloaded form shows the target values, so there's nothing left to do.
+ */
+async function saveProfile(page: Page, displayName: string, country: string) {
+  await expect(async () => {
+    await gotoAccount(page);
+    if (
+      (await page.locator('#displayName').inputValue()) === displayName &&
+      (await page.locator('#country').inputValue()) === country
+    ) {
+      return;
+    }
+    await page.locator('#displayName').fill(displayName);
+    await page.locator('#country').selectOption(country);
+    await page.getByRole('button', { name: /save changes/i }).click();
+    await expect(page.getByText(/^Saved$/)).toBeVisible({ timeout: 8000 });
+  }).toPass({ timeout: 60_000 });
+}
+
+/** Reload /account and assert the persisted fields (toPass rides out render lag). */
+async function expectAccountFields(
+  page: Page,
+  displayName: string,
+  country: string,
+) {
+  await expect(async () => {
+    await gotoAccount(page);
+    await expect(page.locator('#displayName')).toHaveValue(displayName, {
+      timeout: 4000,
+    });
+    await expect(page.locator('#country')).toHaveValue(country, {
+      timeout: 4000,
+    });
+  }).toPass({ timeout: 60_000 });
 }
 
 test.describe('account hub (F2)', () => {
@@ -70,33 +132,21 @@ test.describe('account hub (F2)', () => {
   test('profile save writes display name + country and persists across reload', async ({
     page,
   }) => {
-    await page.goto('/account');
-    const name = page.locator('#displayName');
-    const country = page.locator('#country');
-    const save = () => page.getByRole('button', { name: /save changes/i });
+    // Four retrying save/verify blocks; give the whole test room so that, under a
+    // loaded parallel run, each block's re-navigation retries have time to land.
+    test.setTimeout(180_000);
 
     // Unique marker guarantees the field is dirty every run (and no collision
     // with residue from a prior run).
     const marker = `E2E ${Date.now()}`;
-    await name.fill(marker);
-    await country.selectOption('AU');
-    await expect(save()).toBeEnabled();
-    await save().click();
-    await expect(page.getByText(/^Saved$/)).toBeVisible();
+    await saveProfile(page, marker, 'AU');
 
-    // Round-trip: reload pulls the freshly-written row from the DB.
-    await page.reload();
-    await expect(page.locator('#displayName')).toHaveValue(marker);
-    await expect(page.locator('#country')).toHaveValue('AU');
+    // Round-trip: a fresh navigation pulls the freshly-written row from the DB.
+    await expectAccountFields(page, marker, 'AU');
 
     // Reset so the shared test account isn't left mutated.
-    await page.locator('#displayName').fill('');
-    await page.locator('#country').selectOption('');
-    await save().click();
-    await expect(page.getByText(/^Saved$/)).toBeVisible();
-    await page.reload();
-    await expect(page.locator('#displayName')).toHaveValue('');
-    await expect(page.locator('#country')).toHaveValue('');
+    await saveProfile(page, '', '');
+    await expectAccountFields(page, '', '');
   });
 
   test('password form rejects a mismatch and a wrong current password (no change made)', async ({

@@ -1,10 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requestAccountDeletion } from '@/app/(app)/account/actions';
 import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
+
+// The viewer's device IANA timezone (client-only; '' on the server / no JS). Sent
+// with the deletion request so the "deletion scheduled" email shows the date in the
+// zone the user is actually in — never a country guess. See coding-standards.md §16.
+const noopSubscribe = () => () => {};
+function getDeviceTimeZone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+  } catch {
+    return '';
+  }
+}
 
 /**
  * Danger-zone card: request account deletion. Two-step to avoid an accidental
@@ -16,8 +28,9 @@ import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
  * `subscriptionStatus` drives the reassurance copy shown before confirming:
  * a paying subscriber is told their plan stays valid through the period they've
  * already paid for (deleting neither cuts it short nor extends it — no delete-and-
- * restore loophole); a trial user is told their remaining trial days are saved.
- * Both restore when they sign back in before the deletion date.
+ * restore loophole); a trial user is told the trial stays active to its normal end
+ * with no charge (F3 Step 6 = cancel-at-trial-end, not freeze/restore). Signing back
+ * in before the deletion date restores the account (and un-cancels a still-live sub).
  */
 export function DeleteAccountCard({
   subscriptionStatus = null,
@@ -26,6 +39,7 @@ export function DeleteAccountCard({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [ack, setAck] = useState(false);
+  const timeZone = useSyncExternalStore(noopSubscribe, getDeviceTimeZone, () => '');
 
   const isTrial = subscriptionStatus === 'trialing';
   const isPaidSub =
@@ -72,9 +86,9 @@ export function DeleteAccountCard({
             )}
             {isTrial && (
               <p className="text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
-                Your free trial is <strong>paused, not cancelled</strong> — the days
-                you have left are saved, and you get them back when you sign in before
-                the deletion date.
+                Your free trial stays active until its normal end date, with{' '}
+                <strong>no charge</strong>. Sign back in before then to keep it; if the
+                trial ends first, you&apos;ll come back to a free account.
               </p>
             )}
 
@@ -90,8 +104,10 @@ export function DeleteAccountCard({
             </label>
 
             <div className="flex items-center gap-3">
-              {/* Submits the server action; disabled until acknowledged. */}
+              {/* Submits the server action; disabled until acknowledged. The
+                  hidden field carries the device timezone for the email date. */}
               <form action={requestAccountDeletion}>
+                <input type="hidden" name="timeZone" value={timeZone} />
                 <Button type="submit" variant="destructive" disabled={!ack}>
                   Schedule deletion
                 </Button>

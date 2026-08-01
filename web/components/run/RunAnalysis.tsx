@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Play } from 'lucide-react';
 
+import { PremiumLockInlineCta } from '@/components/stocks/PremiumLock';
 import { useAnalysis } from '@/lib/analysis';
 import { PRESETS } from '@/lib/presets';
 import type { AnalyzeRequest, IndexMembership } from '@/lib/types';
@@ -150,6 +151,22 @@ export function RunAnalysis({
         Screen a basket or your own list through the Major Cycle + health scoring, then
         rank them. Pick a ready-made basket, search and add, or import a CSV.
       </p>
+
+      {/* A subscription that lapsed PART WAY through a run (most plausibly a trial
+          expiring mid-screen). Without this the aborted chunks would read as
+          "unavailable" tickers, which looks like a broken app rather than a
+          billing state the user can act on. */}
+      {analysis.lapsed && (
+        <div
+          className="mb-4 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-stripe)] px-3 py-2.5 text-[12px] leading-relaxed text-[var(--text-secondary)]"
+          role="alert"
+        >
+          <strong className="text-[var(--text-primary)]">Your access ended mid-run.</strong>{' '}
+          The analysis stopped because this account no longer has an active
+          subscription. Anything already scored is still shown below.{' '}
+          <PremiumLockInlineCta feature="Run Analysis" />.
+        </div>
+      )}
 
       {showLastRun && lastRun && (
         <LastAnalysisCard

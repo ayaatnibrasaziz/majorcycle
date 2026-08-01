@@ -1,8 +1,21 @@
-import type { CycleAnalysis } from '@/lib/types';
+import { isFullCycle, type CycleAnalysis, type CycleAnalysisFree } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
+import { PremiumLockKpi } from '@/components/stocks/PremiumLock';
 
 interface Props {
-  cycle: CycleAnalysis;
+  cycle: CycleAnalysis | CycleAnalysisFree;
+  /**
+   * The viewer's entitlement, checked INDEPENDENTLY of whether premium fields
+   * happen to be present in `cycle`. Both must hold before a score renders.
+   *
+   * `/api/cycle` strips premium keys for an unentitled viewer, so in a healthy
+   * system the type guard alone would be enough. This is the second lock: B1
+   * proved a single control can fail open (a shared-cache directive served the
+   * full paid payload before the function ever ran), and these two tiles are
+   * the product. The Verdict and Scorecard have always required both — this
+   * brings the rating and health score up to the same standard.
+   */
+  entitled: boolean;
 }
 
 function ratingColor(rating: number): string {
@@ -57,25 +70,50 @@ function KpiCard({ label, value, accentColor, tipBody, note }: KpiCardProps) {
  * Visual parity with `.detail-kpi-grid` in /reference/original-design.html
  * (lines 2619-2624). Colours are data-driven via CSS custom properties.
  */
-export function KpiStrip({ cycle }: Props) {
-  const { overallRating, financialHealthScore, currentDrawdownPct, typicalDrawdown } = cycle;
+export function KpiStrip({ cycle, entitled }: Props) {
+  const { currentDrawdownPct, typicalDrawdown } = cycle;
   const lookback = cycle.params.lookbackBars;
+  // The paywall runs straight through this strip: cards 1–2 are our judgement and
+  // lock; cards 3–4 are observed price facts and stay free. Deliberately kept
+  // side-by-side rather than hiding the locked pair — two working tiles next to two
+  // locked ones is the clearest statement of what a subscription adds.
+  const scored = entitled && isFullCycle(cycle) ? cycle : null;
 
   return (
     <div className="detail-kpi-grid">
-      <KpiCard
-        label="Overall Rating"
-        value={`${overallRating}/100`}
-        accentColor={ratingColor(overallRating)}
-        tipBody="Our single 0–100 summary of the stock, combining Financial Health (40%), Valuation Zone (35%) and Cycle Payoff (25%). 80–100 = High Conviction · 65–79 = Constructive · 50–64 = Neutral · 35–49 = Cautious · 0–34 = Bearish. Higher is more favourable. Information only — not advice."
-        note={financialHealthScore == null ? 'Cycle-only — excludes Financial Health' : undefined}
-      />
-      <KpiCard
-        label="Health Score"
-        value={financialHealthScore != null ? `${fmt(financialHealthScore, 0)}/100` : '—'}
-        accentColor={financialHealthScore != null ? ratingColor(financialHealthScore) : '#8A97A8'}
-        tipBody="How financially strong the business is (0–100), based on profitability, a safe balance sheet, and steady cash generation. 80+ = very healthy · 60–79 = adequate · below 60 = elevated risk."
-      />
+      {scored ? (
+        <KpiCard
+          label="Overall Rating"
+          value={`${scored.overallRating}/100`}
+          accentColor={ratingColor(scored.overallRating)}
+          tipBody="Our single 0–100 summary of the stock, combining Financial Health (40%), Valuation Zone (35%) and Cycle Payoff (25%). 80–100 = High Conviction · 65–79 = Constructive · 50–64 = Neutral · 35–49 = Cautious · 0–34 = Bearish. Higher is more favourable. Information only — not advice."
+          note={
+            scored.financialHealthScore == null
+              ? 'Cycle-only — excludes Financial Health'
+              : undefined
+          }
+        />
+      ) : (
+        <PremiumLockKpi label="Overall Rating" />
+      )}
+      {scored ? (
+        <KpiCard
+          label="Health Score"
+          value={
+            scored.financialHealthScore != null
+              ? `${fmt(scored.financialHealthScore, 0)}/100`
+              : '—'
+          }
+          accentColor={
+            scored.financialHealthScore != null
+              ? ratingColor(scored.financialHealthScore)
+              : '#8A97A8'
+          }
+          tipBody="How financially strong the business is (0–100), based on profitability, a safe balance sheet, and steady cash generation. 80+ = very healthy · 60–79 = adequate · below 60 = elevated risk."
+        />
+      ) : (
+        <PremiumLockKpi label="Health Score" />
+      )}
       <KpiCard
         label="Current Drawdown"
         value={`${fmt(currentDrawdownPct, 1)}%`}

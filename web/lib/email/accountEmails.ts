@@ -25,8 +25,13 @@ export async function sendDeletionScheduledEmail(opts: {
   deletionDate: Date;
   /** 'paid' and 'trial' get different reassurance copy; null = no subscription line. */
   subscriptionKind: 'paid' | 'trial' | null;
+  /**
+   * The user's device IANA timezone, captured in the browser at deletion request
+   * time, so the emailed date matches what they saw on screen. Null -> runtime zone.
+   */
+  timeZone?: string | null;
 }): Promise<boolean> {
-  const dateStr = formatDate(opts.deletionDate);
+  const dateStr = formatDate(opts.deletionDate, opts.timeZone);
   const to = escapeHtml(opts.to);
 
   const bodyHtml = [
@@ -47,8 +52,9 @@ export async function sendDeletionScheduledEmail(opts: {
         )
       : opts.subscriptionKind === 'trial'
         ? p(
-            `You're on a free trial — the days you have left are saved, and you get them back if you ` +
-              `sign back in before ${dateStr}.`
+            `You're on a free trial — it stays active until its normal end date, with no charge. Sign ` +
+              `back in before ${dateStr} to keep your account; if the trial ends first, you'll come back ` +
+              `to a free account.`
           )
         : '',
     button('Sign in to cancel deletion', `${SITE}/login`),
@@ -72,8 +78,9 @@ export async function sendDeletionScheduledEmail(opts: {
         `doesn't cut it short or extend it. Sign back in before ${dateStr} to keep your account; ` +
         `otherwise it's removed then and won't renew, so no further charges go out.\n\n`
       : opts.subscriptionKind === 'trial'
-        ? `You're on a free trial — the days you have left are saved, and you get them back if you sign ` +
-          `back in before ${dateStr}.\n\n`
+        ? `You're on a free trial — it stays active until its normal end date, with no charge. Sign back ` +
+          `in before ${dateStr} to keep your account; if the trial ends first, you'll come back to a ` +
+          `free account.\n\n`
         : '') +
     `After that date, your account and all associated data are permanently removed and can't be ` +
     `restored. If you didn't request this, sign in now to cancel it and change your password.`;

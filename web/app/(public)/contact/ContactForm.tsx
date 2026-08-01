@@ -10,7 +10,21 @@ import { sendContact, type ContactState } from './actions';
 
 const initialState: ContactState = { status: 'idle' };
 
-export function ContactForm() {
+/**
+ * Also rendered inside the app, in the support dialog a dispute-locked reader opens
+ * from a lock (see components/SupportDialog.tsx) — hence the props: a signed-in user
+ * shouldn't retype what we already know, and "Back to sign in" is nonsense to someone
+ * who is signed in.
+ */
+export function ContactForm({
+  defaultName = '',
+  defaultEmail = '',
+  showSignInLink = true,
+}: {
+  defaultName?: string;
+  defaultEmail?: string;
+  showSignInLink?: boolean;
+} = {}) {
   const [state, formAction, pending] = useActionState(sendContact, initialState);
 
   if (state.status === 'success') {
@@ -56,7 +70,15 @@ export function ContactForm() {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="name">Name</Label>
-        <Input id="name" name="name" type="text" required minLength={2} placeholder="Your name" />
+        <Input
+          id="name"
+          name="name"
+          type="text"
+          required
+          minLength={2}
+          placeholder="Your name"
+          defaultValue={defaultName}
+        />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -68,6 +90,7 @@ export function ContactForm() {
           autoComplete="email"
           required
           placeholder="you@example.com"
+          defaultValue={defaultEmail}
         />
       </div>
 
@@ -98,14 +121,16 @@ export function ContactForm() {
         {pending ? 'Sending…' : 'Send message'}
       </Button>
 
-      <p className="mt-3 pt-5 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
-        <Link
-          href="/login"
-          className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors"
-        >
-          ← Back to sign in
-        </Link>
-      </p>
+      {showSignInLink && (
+        <p className="mt-3 pt-5 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
+          <Link
+            href="/login"
+            className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors"
+          >
+            ← Back to sign in
+          </Link>
+        </p>
+      )}
     </form>
   );
 }

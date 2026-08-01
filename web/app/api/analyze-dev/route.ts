@@ -16,16 +16,25 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Mirrors `analyze.py::_json` so the shim can't be quietly more permissive than the
+ * function it stands in for. Without it this route sent NO `Cache-Control` at all on its
+ * 200 — the proxy supplied one only on the 402 — which meant a local or e2e check of the
+ * success path could never have caught a regression in production's header. A dev stand-in
+ * that behaves differently from production is a test that lies. (Live-check Session 2.)
+ */
+const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
+
 export async function POST(request: Request) {
   if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'not found' }, { status: 404 });
+    return NextResponse.json({ error: 'not found' }, { status: 404, headers: NO_STORE });
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'invalid JSON body' }, { status: 400 });
+    return NextResponse.json({ error: 'invalid JSON body' }, { status: 400, headers: NO_STORE });
   }
 
   // `next dev` runs with cwd = web/ (pnpm --dir web dev); fall back to repo root.
@@ -35,7 +44,10 @@ export async function POST(request: Request) {
   ];
   const script = candidates.find((p) => existsSync(p));
   if (!script) {
-    return NextResponse.json({ error: 'analyze.py not found (dev)' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'analyze.py not found (dev)' },
+      { status: 500, headers: NO_STORE },
+    );
   }
 
   const python = process.env.PYTHON_BIN || 'python';
@@ -53,8 +65,11 @@ export async function POST(request: Request) {
   try {
     const parsed = JSON.parse(stdout);
     // analyze.py exits 0 on success, non-zero on a 400/500 (and prints {error:…}).
-    return NextResponse.json(parsed, { status: code === 0 ? 200 : 400 });
+    return NextResponse.json(parsed, { status: code === 0 ? 200 : 400, headers: NO_STORE });
   } catch {
-    return NextResponse.json({ error: 'analyze failed (dev)', detail: stdout.slice(0, 500) }, { status: 500 });
+    return NextResponse.json(
+      { error: 'analyze failed (dev)', detail: stdout.slice(0, 500) },
+      { status: 500, headers: NO_STORE },
+    );
   }
 }

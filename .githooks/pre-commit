@@ -1,0 +1,36 @@
+#!/bin/sh
+# Pre-commit secret scan — blocks Stripe (and generic private) key material from
+# ever being committed. F3 security requirement (plan §7A): no Stripe secret ever
+# reaches the repo; keys live only in web/.env.local or Vercel/GitHub Secrets.
+#
+# Enable once per clone (already set on the owner's machine):
+#     git config core.hooksPath .githooks
+# Emergency bypass (e.g. a documented placeholder, not a real key):
+#     git commit --no-verify
+#
+# Scans only ADDED lines in the staged diff, so it never trips on unrelated history.
+set -eu
+
+# Real secret shapes: Stripe live/test secret + restricted keys, webhook signing
+# secrets, and generic PEM private-key blocks. The trailing char class requires an
+# actual key body, so bare prose like "sk_test_…" (placeholder) does not match.
+pattern='sk_live_[0-9A-Za-z]|sk_test_[0-9A-Za-z]|rk_live_[0-9A-Za-z]|rk_test_[0-9A-Za-z]|whsec_[0-9A-Za-z]|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+
+added=$(git diff --cached --no-color -U0 -- . ':(exclude).githooks/pre-commit' \
+  | grep -E '^\+' \
+  | grep -Ev '^\+\+\+' \
+  || true)
+
+hits=$(printf '%s\n' "$added" | grep -nE "$pattern" || true)
+
+if [ -n "$hits" ]; then
+  echo "✖ Commit blocked: a secret-key pattern was found in your staged changes."
+  echo "  Secrets belong in web/.env.local or Vercel/GitHub Secrets — never in git."
+  echo "  Offending added lines:"
+  printf '%s\n' "$hits" | sed 's/^/    /'
+  echo "  If this is a genuine false positive (e.g. documentation), bypass with:"
+  echo "      git commit --no-verify"
+  exit 1
+fi
+
+exit 0

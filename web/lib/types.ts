@@ -104,7 +104,17 @@ export interface CycleParams {
   pivotBars?: number;
 }
 
-export interface CycleAnalysis {
+/**
+ * The FREE half of the cycle output (F3 Step 10) — descriptive facts about price
+ * history: where the stock is now, and the bands its past cycles carved out.
+ *
+ * This mirrors a real seam in the engine: `analyze_ticker` computes
+ * `calculate_cycle_metrics` (these fields) and only then runs the scoring pass that
+ * produces `CycleAnalysis`'s extra fields. For an unentitled viewer `/api/cycle`
+ * strips the scoring keys before serialising, so a free response is *literally* this
+ * shape — the premium numbers never reach the browser to be un-hidden.
+ */
+export interface CycleAnalysisFree {
   ticker: string;
   params: CycleParams;
   asOf: string;
@@ -119,7 +129,18 @@ export interface CycleAnalysis {
   upperBound: number | null;
   totalPullbackEvents: number;
   totalProfitEvents: number;
+}
 
+/**
+ * The full cycle output — the free fields PLUS every judgement we make.
+ *
+ * Kept as a superset (rather than making the premium fields optional) so that the
+ * premium-only surfaces — /results, /run, the report, the screener columns/filters —
+ * keep their non-nullable guarantees and need no narrowing at all. Only the Stock
+ * Detail components that must render in BOTH modes accept the union and narrow with
+ * `isFullCycle`.
+ */
+export interface CycleAnalysis extends CycleAnalysisFree {
   financialHealthScore: number | null;
   valuationScore: number; // quality-gated (feeds the overall rating)
   valuationScoreRaw: number; // un-gated cycle-position score
@@ -136,6 +157,19 @@ export interface CycleAnalysis {
     cashflow?: number;
     shareholder?: number;
   };
+}
+
+/**
+ * Narrows a cycle payload to the scored form. Tests `overallLabel` because it is the
+ * one premium key that is always a non-empty string when present — `overallRating`
+ * could legitimately be 0, and `financialHealthScore` is nullable even for
+ * subscribers (it's withheld when fewer than 3 of 5 pillars are available), so
+ * neither is a safe discriminator.
+ */
+export function isFullCycle(
+  cycle: CycleAnalysis | CycleAnalysisFree | null | undefined,
+): cycle is CycleAnalysis {
+  return !!cycle && typeof (cycle as CycleAnalysis).overallLabel === 'string';
 }
 
 // A slim, display-only fundamentals subset returned alongside each scored result

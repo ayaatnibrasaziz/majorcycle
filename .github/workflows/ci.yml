@@ -41,17 +41,40 @@ jobs:
         # Stock Detail page render different section sets. See the script header.
         run: pnpm check:report-sections
 
+      - name: Check paywall (entitlement) gates
+        # Static tripwire for the F3 Step 10 paywall. Needs NO credentials, so —
+        # unlike the behavioural e2e suite, which self-skips without secrets — it
+        # can never go quiet. Fails if /api/cycle becomes public again, if it
+        # re-advertises a shared cache (the CDN bypass that would defeat the whole
+        # paywall), if a premium route loses its gate, or if the free-tier counter
+        # columns become user-writable. See the script header.
+        run: pnpm check:entitlement-gates
+
       - name: Build
         run: pnpm build
 
   e2e:
-    name: Auth E2E (Playwright)
+    name: E2E (Playwright — auth + Stripe webhook + entitlement)
     runs-on: ubuntu-latest
     # Boots a real Next dev server, so it needs the (public) Supabase URL + anon
     # key. They live as repo Variables — until they're set this job SKIPS cleanly
     # instead of failing, so CI never goes red on missing config. Add repo
     # Variables NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY to enable.
     # (Optional: repo Secrets E2E_EMAIL + E2E_PASSWORD unlock the logged-in tests.)
+    #
+    # The Stripe webhook CONTRACT TESTS (e2e/stripe-webhook.spec.ts, plan §14) run in
+    # this same job — they self-skip until their creds are present, so they never
+    # block contributors. Enable them by adding repo Secrets STRIPE_TEST_SECRET_KEY +
+    # STRIPE_TEST_WEBHOOK_SECRET + SUPABASE_SERVICE_ROLE_KEY. They sign events with the
+    # test webhook secret, POST to /api/stripe/webhook, and assert the profiles row —
+    # all in Stripe TEST mode, no network to Stripe, no real money.
+    #
+    # The PAYWALL BEHAVIOURAL MATRIX (e2e/entitlement-routes.spec.ts) also runs here. It
+    # signs in as its own throwaway account and walks all seven subscription states
+    # against real pages and the real API, then deletes the account. It needs only
+    # SUPABASE_SERVICE_ROLE_KEY (already required above) and self-skips without it.
+    # This is the only test that answers "is the paywall actually enforced end to end?"
+    # — the static guard proves the wiring exists, this proves it works.
     if: ${{ vars.NEXT_PUBLIC_SUPABASE_URL != '' }}
     defaults:
       run:
@@ -61,6 +84,15 @@ jobs:
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
       E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
       E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+      # Stripe webhook contract tests (skip cleanly if any is empty):
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_TEST_WEBHOOK_SECRET }}
+      # NOT a secret — a throwaway fixture value. e2e/entitlement-routes.spec.ts uses it
+      # to prove /api/cycle's edge gate accepts a correct secret as well as rejecting a
+      # missing one. The real production secret lives only in Vercel and is never needed
+      # here: `next dev` computes the cycle by spawning cycle.py as a CLI, no HTTP.
+      CYCLE_INTERNAL_SECRET: ci-throwaway-not-a-real-secret
 
     steps:
       - uses: actions/checkout@v6
@@ -80,6 +112,21 @@ jobs:
 
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
+
+      # The E2E server is `next dev`, which computes a stock's cycle by SPAWNING
+      # web/api/cycle.py as a CLI (lib/cycle.ts) rather than over HTTP. Without a Python
+      # interpreter and these deps that spawn fails — and it fails SILENTLY, because
+      # fetchCycleAnalysis degrades gracefully to null (lib/cycle.ts). The page still
+      # renders 200 with every cycle section simply absent, which is exactly how it
+      # presented: "Current Drawdown" never appearing for the free-viewer test.
+      # Same class as the CYCLE_INTERNAL_SECRET blackout recorded in the roadmap — a
+      # missing prerequisite that produces empty output instead of an error.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install engine Python deps (next dev spawns cycle.py)
+        run: pip install -r requirements.txt
 
       - name: Run auth E2E
         run: pnpm e2e

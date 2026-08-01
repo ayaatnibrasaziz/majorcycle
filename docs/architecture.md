@@ -49,8 +49,8 @@ flowchart TB
     Cron --> DB
     UI -.->|signup/login| Auth
     UI -.->|subscribe| Stripe
-    Stripe -.->|webhook| PyFn
-    PyFn -.->|trigger email| Resend
+    Stripe -.->|webhook → TS route| SSR
+    SSR -.->|trigger email| Resend
 ```
 
 ---
@@ -90,10 +90,10 @@ flowchart TB
 2. Calls `/api/cycle?ticker=AAPL&preset=medium` — a Vercel Python serverless function (`web/api/cycle.py`) that reads the same Supabase data and computes the Major Cycle math via the vendored `_engine` package. The **preset** comes from the Stock Detail page's `?preset=` query param (set on the Browse page — see below); default is **Medium** (-5%/+5%/252 bars), with **Short** (-3%/+3%/63) and **Long** (-8%/+8%/756) also supported. The function never calls yfinance — that's the cron's job. Result is cached via Next's data cache (`revalidate: 3600`), keyed per **ticker AND preset**, so the cold compute only bites the first viewer of a (ticker, preset) per hour. `cycle.py`'s own price-bar fetch is **parallel** — it counts rows on the first page (`count=exact`) then pulls the rest concurrently via a `ThreadPoolExecutor` (same idea as `fetchStockDetail`).
 
    **This is a server-to-server self-fetch over HTTP, with no viewer cookies, so two things must hold or every cycle section renders blank:**
-   - **`/api/cycle` must be public.** It's listed in `PUBLIC_PATHS` in `web/proxy.ts`; otherwise the auth middleware 307-redirects the cookieless internal call to `/login`, the fetch gets HTML instead of JSON, and `fetchCycleAnalysis` returns `null`. It exposes only ticker→analysis math (no user data); the pages that surface it stay auth-gated.
+   - **`/api/cycle` must bypass the auth *redirect* — but it is NOT public** (changed in F3 Step 10). It used to be listed in `PUBLIC_PATHS`, which made the whole analysis engine a free, unauthenticated, unthrottled API. It now has its own branch in `web/proxy.ts`: present the shared secret `x-mc-internal` and the request passes through; otherwise **401** — never a redirect, because a 307 to `/login` would hand our own SSR fetch HTML instead of JSON and `fetchCycleAnalysis` would return `null`, blanking every cycle section. `cycle.py` re-checks the same header and is the authority. See §7.1.
    - **The URL must use the production custom domain, not the `*.vercel.app` deployment URL.** `web/lib/cycle.ts` `baseUrl()` prefers `VERCEL_PROJECT_PRODUCTION_URL` (e.g. `majorcycle.com`) over `VERCEL_URL`, because **Vercel Deployment Protection walls every `*.vercel.app` URL with a 401 — even in production** (only assigned custom domains are exempt). Using `VERCEL_URL` made the self-fetch hit that 401. (This class of bug is invisible in `next dev`, which computes the cycle via a local Python CLI and skips the HTTP path entirely, and on preview deploys, which are also walled — it only reproduces on the production custom domain once the Next Data Cache is cleared by a fresh deploy.)
 3. Renders HTML with full data baked in (good for SEO). **The page streams:** only the stock row + sector medians are awaited up front (both fast); the slow cycle analysis and the benchmark series are not blocking. The cycle-dependent sections (rating badges, KPI strip, verdict, scorecard radar, drawdown overlay) and the relative-performance chart each render inside their own `<Suspense>` boundary, so the header, price chart, fundamentals, and sentiment paint immediately while the cycle streams in. Every cycle wrapper calls the same React-`cache()`d `fetchCycleAnalysis(ticker, preset)`, so there is still exactly one underlying compute shared across them.
-4. Vercel Edge caches the HTML for 24 hours (stale-while-revalidate); `/api/cycle` itself returns `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
+4. Vercel Edge caches the HTML for 24 hours (stale-while-revalidate). **`/api/cycle` itself returns `Cache-Control: private, no-store`** — it must never be shared-cached, because its content varies by entitlement while a shared cache keys on the URL alone (F3 Step 10, finding B1 — see §7.1). Its caching is done instead by Next's Data Cache (`revalidate: 3600`), which is server-side and only fillable by us.
 
 **Why this works:** Warm pages load fast (cycle + benchmarks cached); cold pages stream — the shell paints in ~1.7s and the cycle sections fill in when the (now-parallel) compute returns. Googlebot sees rich content, not a loading spinner. No DB write churn.
 
@@ -196,7 +196,7 @@ class DataProvider(ABC):
 
     @abstractmethod
     def is_healthy(self) -> bool:
-        """Provider self-check — used by /api/health endpoint."""
+        """Quick provider health check."""
         ...
 ```
 
@@ -438,6 +438,44 @@ CREATE INDEX idx_split_events_ticker  ON split_events (ticker);
 
 ---
 
+## 6.5 Page Surface (every screen, and what gates it)
+
+> **`(app)` and `(public)` are Next.js route *groups* — they choose a layout, NOT an auth
+> rule.** A folder named `(public)` means "render without the sidebar", nothing more. The
+> only authority on who may reach a path is **`PUBLIC_PATHS` in `web/proxy.ts`**. Two pages
+> sit in `(public)` and are nonetheless fully gated — `/reactivate` and
+> `/account/update-password` — because both are for a signed-in user who simply shouldn't see
+> the app chrome. Reading the folder name instead of `PUBLIC_PATHS` is how you conclude a
+> page is public when it is not; it was queried twice during the F3 live checks.
+
+**Public — no session needed** (each is in `PUBLIC_PATHS`; all verified 200 signed-out in
+live-check Session 1):
+
+| Page | Purpose | Note |
+|---|---|---|
+| `/login` · `/signup` · `/reset-password` | Sign in, create a free account, request a reset link | Signed-in users are bounced to `/stocks` by the proxy. Signup takes **no card** (§7.2) |
+| `/pricing` | The signed-out shop window: both plans, local currency | A **signed-in** visitor is redirected to `/account` — they are a customer, not a shopper |
+| `/methodology` | Plain-English explainer, deliberately pre-signup so the product can be judged before an account exists | No formulas (decision #34) |
+| `/disclaimer` · `/terms` · `/privacy` | Legal | Reachable from every footer |
+| `/contact` | Contact form → Resend | Honeypot; `reply_to` = sender |
+| `/deletion-requested` | Post-deletion confirmation | **Must** be public: `requestAccountDeletion` ends with a global `signOut`, so the reader has no session at this moment. Gating it would bounce them to `/login` and they would never see the confirmation. Copy is entirely generic — no email, name or date |
+
+**Gated — a session is required** (a signed-out caller gets `307 → /login?next=…`):
+
+| Page | Shell | Free or premium | Purpose |
+|---|---|---|---|
+| `/` | — | — | Redirects straight to `/stocks` |
+| `/stocks` | `(app)` | **Free** | Browse the universe |
+| `/stocks/[market]/[ticker]` | `(app)` | **Mixed** | The 22-section Stock Detail. Free keeps the price chart, the drawdown overlay **with its cycle bands** and every fundamentals/sentiment section; Overall Rating, Health Score, the Verdict and the scorecard/radar are premium (§7.1). Free accounts are additionally capped at **25 distinct tickers per UTC day** (`lib/freeViews.ts`) — an anti-scraping fence, not a paywall; re-opening an already-seen ticker is free |
+| `/run` · `/results` | `(app)` | **Premium** | The screener and its results. Unentitled readers get `<PremiumLockPage>` **at the same URL inside the app shell** — never a redirect to `/pricing`, which reads as being logged out |
+| `/request` | `(app)` | **Free** | Request-a-Ticker — deliberately free, so a free account can still ask for coverage |
+| `/account` | `(app)` | **Free** | Profile, plan, card, referrals, delete account |
+| `/reactivate` | `(public)` | **Free** | "Changed your mind?" for an account inside its 30-day deletion grace. `requirePremiumPage()` sends a deletion-scheduled reader here **before** any billing consideration — offering to sell a plan to someone mid-deletion answers the wrong question |
+| `/account/update-password` | `(public)` | **Free** | Set a new password after a reset link. **Not** a duplicate of `/account`'s password form: that one demands the *current* password, which someone who forgot it cannot supply. It is also the only actionable entry in `PW_RECOVERY_ALLOWED_PATHS`, so routing recovery through `/account` would re-open the F0.5 HIGH-severity hole (reset link → full account access) |
+
+**Local only, never deployed:** `/dev-fixtures` (gitignored null/edge-case render gallery) and
+the `/api/analyze-dev` shim below, which returns 404 when `NODE_ENV === 'production'`.
+
 ## 7. API Surface
 
 Two runtimes, two locations under `web/`:
@@ -447,19 +485,308 @@ Two runtimes, two locations under `web/`:
 
 | Route | Method | Runtime | Path on disk | Auth | Purpose |
 |---|---|---|---|---|---|
-| `/api/cycle` | GET | Python | `web/api/cycle.py` | **Public** (in `PUBLIC_PATHS`) | Compute Major Cycle for one ticker + preset. Called by the Stock Detail Server Component as a cookieless self-fetch — must be public **and** reached via the production custom domain (see §2). |
-| `/api/analyze` | POST | Python | `web/api/analyze.py` | Required | Run cycle analysis on a **chunk** of tickers (≤60) with given params. **Stateless** — no DB write, no `runId`; the client batches chunks + writes the inputs-only `analysis_runs` row itself. |
-| `/api/analyze-dev` | POST | TS | `web/app/api/analyze-dev/route.ts` | Required | **Dev-only** shim: spawns `analyze.py` as a CLI so the Run tab works under `next dev` (mirrors `cycle.ts`). Returns 404 in production; the client targets `/api/analyze` there. |
-| `/api/ticker/[symbol]` | GET | TS | `web/app/api/ticker/[symbol]/route.ts` | Public | Read stored stock + price bars for SSR |
-| `/api/search` | GET | TS | `web/app/api/search/route.ts` | Public | Autocomplete over the analysed universe index (Run tab "search & add") |
+| `/api/cycle` | GET | Python | `web/api/cycle.py` | **Internal secret** (`x-mc-internal`) — F3 Step 10 | Compute Major Cycle for one ticker + preset. Called by the Stock Detail Server Component as a cookieless self-fetch — so it must bypass the auth *redirect*, and is gated by a shared secret instead (see §7.1). Reached via the production custom domain (see §2). Response varies by the `entitled` **query param**. |
+| `/api/analyze` | POST | Python | `web/api/analyze.py` | Required **+ entitlement (402) + deletion (403)** | Run cycle analysis on a **chunk** of tickers (≤60) with given params. **Stateless** — no DB write, no `runId`; the client batches chunks + writes the inputs-only `analysis_runs` row itself. Fully premium — the proxy refuses an unentitled caller and injects the internal secret on success. |
+| `/api/analyze-dev` | POST | TS | `web/app/api/analyze-dev/route.ts` | Required **+ entitlement (402) + deletion (403)** | **Dev-only** shim: spawns `analyze.py` as a CLI so the Run tab works under `next dev` (mirrors `cycle.ts`). Returns 404 in production; the client targets `/api/analyze` there. |
+| `/api/search` | GET | TS | `web/app/api/search/route.ts` | Required | Autocomplete over the analysed universe index (Run tab "search & add"). **Not** in `PUBLIC_PATHS` — a signed-out caller is redirected to `/login` by the proxy like any other app route. |
 | `/api/listings/search` | GET | TS | `web/app/api/listings/search/route.ts` | Required | Choose-only search over `listings` via the `search_listings` RPC (one round-trip: trigram match + `covered`/`requestStatus` annotation + ranking, all server-side) so the UI shows the right badge |
 | `/api/request-ticker` | POST / GET | TS | `web/app/api/request-ticker/route.ts` | Required | **POST** enqueues a listed symbol into `ticker_requests` (validates it exists in `listings`, dedups globally, records `requested_by`). **GET** returns recent requests + their status for the Request-a-Ticker page |
 | `/api/listings/status` | POST | TS | `web/app/api/listings/status/route.ts` | Required | Batch status (`{ inListings, covered, requestStatus }`) for the run's `unavailable[]` tickers — drives the Results "couldn't be scored" smart states (Request / Requested / Not supported / Not covered / No data yet) |
-| `/api/checkout` | POST | TS | `web/app/api/checkout/route.ts` | Required | Create Stripe Checkout session |
-| `/api/webhooks/stripe` | POST | TS | `web/app/api/webhooks/stripe/route.ts` | Stripe signature | Receive subscription events |
-| `/api/health` | GET | TS | `web/app/api/health/route.ts` | Public | System health (DB + provider) |
+| `/api/checkout` | POST | TS | `web/app/api/checkout/route.ts` | Required | **Built (F3 step 3; step 7 guard).** Create a Stripe hosted-Checkout session for `{plan}` — resolves the Price by lookup_key, forces currency by country, applies the 7-day trial in code (**omitted for an email that already used a trial — step 7 tombstone guard**), `automatic_tax:false`; returns `{ url }`. **Live-check S3:** refuses a **deletion-scheduled** account with **403 `account_deleting`** (evaluated BEFORE entitlement, as on every page — 402 would invite someone whose account is being deleted to pay again), and every branch now sends `private, no-store` — it sent none at all until 2026-08-01, on a response carrying a single-customer Stripe URL (CLAUDE.md 11a). |
+| `/api/stripe/webhook` | POST | TS | `web/app/api/stripe/webhook/route.ts` | **Public** (in `PUBLIC_PATHS`) — gated by the **Stripe signature** | **Built (F3 steps 4/7/8).** Verify → idempotency-claim (`stripe_events`, ON CONFLICT DO NOTHING) → service-role sync of the billing columns; a trialing `subscription.*` writes the email trial-tombstone (step 7). **Step 8:** sends the four branded billing emails via Resend — **trial-started welcome** (on `subscription.created` when the sub is `trialing`; one-shot + idempotency-keyed; skipped for a repeat/no-trial customer, who instead gets Stripe's payment receipt) / trial-ending / payment-failed / payment-recovered (the last two gated on the single-owner `grace_until` marker + idempotency key) and handles `charge.dispute.*` → `billing_blocked` (+ cancel-on-lost). **Payment receipts + invoice PDFs are NOT app code** — they're Stripe's built-in "Successful payments" Dashboard email (turned ON in Part C), sent on every real charge; the Customer Portal also lists past invoices. Disputes do the ONE live Stripe retrieve (charge→customer). **Order-safety guards (Stripe doesn't guarantee event order):** the failure (`invoice.payment_failed` **and `invoice.payment_action_required`** / 3-D Secure) + recovery paths only act on the sub currently on file, and `subscription.deleted` only lapses the account when its sub id matches — so a late/out-of-order event can't dun, recover, or cancel a *newer* or *already-cancelled* subscription. (LIVE endpoint event list = 13, incl. `invoice.payment_action_required`.) See data-contracts §10 for the event→DB map |
+| `/api/billing-context` | GET | TS | `web/app/api/billing-context/route.ts` | Required | **Built (F3 step 10).** Returns `{ currency, trialUsed, hasSubscription, billingBlocked, email, displayName }` so the upgrade dialog can label its CTA (`Start free trial` / `Subscribe` / `Manage your plan`) before the reader clicks. Fetched **on dialog open**, not per page render — a lock is clicked far less often than a page is drawn. **Explicitly NOT authoritative:** `/api/checkout` re-derives all three and still 409s an existing subscriber and still omits `trial_period_days` for a tombstoned email. Sends `private, no-store` (CLAUDE.md 11a) |
+| `/api/portal` | POST | TS | `web/app/api/portal/route.ts` | Required | **Built (F3 step 5).** Open the Stripe Customer Portal — create a `billingPortal` session for the user's `stripe_customer_id`, 303-redirect to it (`return_url` = `/account`); no customer → `?billing=none`, **`billing_blocked` → `?billing=blocked`**, error → `?billing=error`. The blocked branch matters because the portal is a *second* way to spend money (it switches monthly⇄annual, which prorates and charges, and can resume a cancelled sub) — `/account` no longer renders the button for a held user, but the endpoint must not rely on the UI hiding it. The `/account` "Manage billing" button is a plain form POST. All three redirect outcomes live-verified in live-check Session 2. **Live-check S3:** a **deletion-scheduled** account is sent to **/reactivate**, never into Stripe — the sharpest case of that same rule, and the one where the endpoint really was relying on the UI, since the portal can switch price (charging a proration) and resume a subscription scheduled to cancel. Every branch now sends `private, no-store`; the 303 Location is a live portal session, the most sensitive payload the app emits |
+| `/stocks/[market]/[ticker]/report` | GET | TS | `web/app/(app)/stocks/[market]/[ticker]/report/route.ts` | Required **+ entitlement (402) + deletion (403)** | The **report download's only surface** (its on-screen preview page was deleted 2026-07-29), and the most sensitive route we have — its 200 carries the entire scorecard. Route handlers are **not** wrapped by the `(app)` layout, so it gates itself: 401 signed out, 402 unentitled (naming the caller's own `reason`), 404 for a bad market/ticker, and (live-check S3) **403 `account_deleting`** for an account mid-deletion, checked before entitlement. **Every branch, refusals included, sends `private, no-store`** — it sent no `Cache-Control` at all until 2026-07-29 (CLAUDE.md 11a). |
+| `/api/cron/purge-accounts` | GET | TS | `web/app/api/cron/purge-accounts/route.ts` | **`CRON_SECRET` Bearer** (path is in `PUBLIC_PATHS` so Vercel Cron's cookieless call isn't redirected; the route enforces the secret itself) | Daily purge of accounts past their 30-day deletion grace. Hard-cancels the live Stripe subscription (with a `stripe_customer_id` fallback) **before** `deleteUser`, so a purged account can never keep billing. See §8. |
+| `/auth/callback` | GET | TS | `web/app/auth/callback/route.ts` | **Public** | OAuth return leg — exchanges the provider code for a session, then `safeNextPath()` (open-redirect guard). Used by the redirect-based Google fallback; the primary Google path is `signInWithIdToken`, which never leaves the page. |
+| `/auth/confirm` | GET | TS | `web/app/auth/confirm/route.ts` | **Public** | Email-link landing (`?token_hash=…&type=…`) → `verifyOtp`. For `type=recovery` it also sets the httpOnly `mc_pw_recovery` marker that confines the session to `/account/update-password` (F0.5). |
+| `/auth/recovery-done` | POST | TS | `web/app/auth/recovery-done/route.ts` | Required | Clears the `mc_pw_recovery` marker once the password has actually been changed, releasing the confinement. |
+| `/auth/signout` | POST | TS | `web/app/auth/signout/route.ts` | Required | Sign-out as a plain form POST (no client JS). `scope: 'local'` — ends this browser's session only, never the user's other devices. |
 
-**Auth pattern:** Access is **authentication-only today** — `web/proxy.ts` (middleware) and `(app)/layout.tsx` check that a `user` session exists and refresh it; **subscription/trial gating is not yet enforced** (planned with the Stripe build, roadmap #20). A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
+### 7.1 The paywall / entitlement gate (F3 Step 10)
+
+Steps 1–9 built the billing machine; **nothing read it**. `subscription_status` was used
+in five cosmetic places only, so auth alone granted the full product and a cancelled
+account kept everything. Step 10 is that gate.
+
+**The rule** — `web/lib/entitlement.ts`, pure and exhaustively unit-tested, mirroring the
+spec that was already written against `mapStripeStatus`:
+
+```
+billing_blocked === true                  → NO   (dispute lock; outranks everything)
+'active' | 'trialing'                     → YES
+'past_due' && now <  grace_until          → YES  (3-day grace, decision #20)
+'past_due' && now >= grace_until          → NO
+'canceled' | null | anything else         → NO
+```
+
+Fails **closed** — the opposite of `trialGuard.ts`, deliberately: giving premium away
+costs revenue, whereas a denied view is recoverable and visible.
+`deletion_scheduled_at` is evaluated **before** entitlement so a mid-deletion account
+still goes to `/reactivate`, not `/pricing`.
+
+> **That ordering is a property of the system, not of the page layer.** Until live-check
+> Session 3 it held only in `requirePremiumPage()`, so every *page* confined a
+> deletion-scheduled account correctly while four self-gating surfaces never asked:
+> `/report` returned the full paid report, `/api/analyze*` the full screener payload,
+> `/api/portal` a 303 into a live Stripe Customer Portal session, and `/api/checkout` would
+> have sold a subscription to an account the purge cron destroys within 30 days. All four
+> now check it first and answer **403 `account_deleting`** (portal: **303 `/reactivate`**).
+> Never 402 — that invites someone whose account is being deleted to pay again, and they
+> may already have paid. Guarded by `check:entitlement-gates`, including the proxy's
+> `select`: without the column the check reads `undefined` and fails open.
+
+**Where the split falls.** `analyze_ticker()` is already two halves —
+`calculate_cycle_metrics` (free) then the scoring pass (premium) — so the paywall lands on
+an existing seam. For an unentitled viewer `api/cycle.py` **strips** the scoring keys
+(`PREMIUM_KEYS`) before `json.dumps`. Nothing is CSS-hidden or blurred: the bytes never
+leave the server. Stripping at serialisation rather than skipping the computation keeps
+`analytics/` untouched (it is mirrored into `web/_engine/` under a CI drift check, and
+CLAUDE.md #9 makes it sacred); the scoring pass is pure arithmetic over already-loaded
+fundamentals, so the saving would have been nil.
+
+Free = the whole page **except** our judgement: price chart, technical levels, drawdown
+overlay + cycle bands, company overview and every fundamentals/sentiment section (those
+read the `stocks` table, not the engine). Premium = Overall Rating, Health Score, verdict,
+scorecard/radar, rating badges, the report, and the entire screener (`/run`, `/results`).
+
+**Three enforcement layers.** (1) `app/(app)/layout.tsx` + `requirePremiumPage()` gate
+premium *pages* — UX, not security. (2) `proxy.ts` refuses premium *APIs* with 402 after
+one PK-indexed profile read, and injects the internal secret on success. (3) The Python
+functions re-check that secret and do the stripping — the authority.
+
+**Two more locks, added after the 2026-07-28 live check — and why "the bytes never leave
+the server" needs help to stay true.**
+
+*On the wire.* `fetchCycleAnalysis` re-strips the same keys on the way in whenever
+`entitled` is false (`stripPremium`, both parse seams). Redundant in a healthy system.
+It exists because hiding a score in the UI does **not** take it off the wire: the cycle
+object is passed to client components, so React serialises it into the RSC payload baked
+into the HTML. Observed live — the page rendered "🔒 Unlock" while View Source carried
+`"overallRating":60,"overallLabel":"Neutral"`. Before this, `api/cycle.py`'s strip was the
+*only* control on the payload, and a regression there would have left the UI looking locked
+while shipping the data: the failure mode that looks safe.
+
+*On the screen.* Every premium surface now requires an entitled viewer **and** the data.
+`VerdictCard` and `SnowflakeRadar` always did; `KpiStrip` (Overall Rating, Health Score)
+and the header rating/valuation chips previously narrowed on the type guard alone, i.e. on
+whether the fields happened to be present — trusting the API strip as their single control.
+
+Both were found because a **preview** deployment fetches **production's** `/api/cycle`
+(`baseUrl()` prefers `VERCEL_PROJECT_PRODUCTION_URL` — see M4), so the preview was being fed
+unstripped data and behaving as a live fault injection. The `stripPremium` layer also ends
+that divergence: previews now behave like production instead of silently more permissive.
+
+**Nobody signed-in is ever sent to `/pricing`** (owner decision, 2026-07-29). A premium
+page renders `PremiumLockPage` **in place** instead: same route, same sidebar, same header,
+same account menu, and the explanation arrives in the same `UpgradeDialog` every other lock
+opens. Redirecting to the public shop-window stripped the app shell away, so losing access
+looked like being logged out — and a dispute-held reader was then sent onward to `/contact`
+to retype a name and email we already hold.
+
+`requirePremiumPage()` therefore **reports** entitlement rather than redirecting on it. It
+still redirects the two cases that genuinely belong elsewhere: signed out → `/login`, and
+mid-deletion → `/reactivate` (checked first, so a cancelled-and-deleting account is offered
+its account back rather than a plan). Because the gate no longer enforces by redirecting,
+the page's early `if (!viewer.entitled) return <PremiumLockPage …>` **is** the enforcement —
+and it must sit before any premium fetch, or the scores ship in the RSC payload regardless
+of what renders (CLAUDE.md 11b). `check-entitlement-gates.mjs` asserts both halves.
+
+**The report has no page.** "Download Report" builds the file client-side from the gated
+`/report` route plus the prebuilt offline bundle, so that route is the report's entire
+surface. An on-screen preview page rendered `ReportDocument` server-side until 2026-07-29;
+nothing ever linked to it, so it was removed. Being a route handler, it is not wrapped by
+the `(app)` layout and gates itself: **401** signed out, **402** unentitled, and — added at
+the same time, after an e2e test caught it — `private, no-store` on *every* branch. It had
+been sending no `Cache-Control` at all, leaving a full-scorecard payload's safety resting on
+Vercel happening not to cache it. Same rule as `/api/cycle` (CLAUDE.md 11a); now guarded.
+
+**`/pricing` is the signed-out shop-window and nothing else.** A signed-in visitor is
+redirected to `/account`, where their real state lives beside the actions that change it.
+That redirect is what lets the page be unconditional: it previously branched on `?reason=`,
+`billing_blocked`, `hasSubscription`, `trialUsed` and `?start=` — all of them serving
+readers the paywall had thrown out there. None can arrive now, and an unreachable branch
+about someone's money is one that can quietly become wrong. `AccessDenialReason` survives
+as the locked panel's copy and the `reason` in `/api/analyze`'s 402 body; the `?reason=`
+and `?start=` URL parameters are gone. Stripe's `cancel_url` moved to `/account` too.
+
+**In-app upgrade path.** Locks do **not** navigate to `/pricing`; they open
+`UpgradeDialog`, which explains the feature and hands off to `StartTrialModal` — the same
+in-app checkout entry `/account` uses. Reusing that component (and `/api/checkout` beneath
+it) is what keeps every subscription rule in one place rather than reimplemented per
+surface. See design-system "Locked (premium) states".
+
+**Two traps this design exists to avoid**, both found while auditing the plan:
+
+- **Never send `public`/`s-maxage` from `/api/cycle`.** It used to. A shared cache keys on
+  the URL alone, so once a server render warmed the edge with a scored payload, any later
+  request — no secret, no session — would have been served the paid analysis *before the
+  function ran*. It now sends `private, no-store`; Next's Data Cache
+  (`revalidate: 3600`, server-side, only fillable by us) preserves the caching.
+- **`entitled` rides in the query string, never a header.** The Data Cache keys on the URL,
+  so a header-borne flag would let the free and paid variants of one ticker collide on a
+  single entry.
+
+**Free-tier daily fence** (`web/lib/freeViews.ts` + the `record_free_view` Postgres
+function, migration `20260726020000`). A free account may open **25 distinct tickers per
+UTC day**. This is an *anti-scraping* measure, not a revenue lever — the premium fields
+are already stripped from every one of those 25 responses. What is left worth protecting
+is the bulk: someone walking all ~866 tickers to rebuild the corpus. Accordingly it
+**fails OPEN** (a DB error lets the reader through), the deliberate opposite of the
+entitlement rule above.
+
+- **Counted in the database, not the app.** The obvious read-append-write in TypeScript is
+  wrong: it is two round-trips over a whole array, so N concurrent requests all read the
+  same stale set and each write clobbers the others — the scraper gets N pages recorded as
+  one. `record_free_view` does the check and the append under `select … for update`.
+- **Distinct tickers, not page loads**, so a refresh, a back-navigation or a prefetch is
+  free. Browse stock links also carry `prefetch={false}`: `next/link` prefetch *runs the
+  server component*, so scrolling the list would otherwise burn quota invisibly.
+- Counted only after `notFound()` (a bad ticker costs nothing) and never for a subscriber
+  — locked decision #18 promises them no usage limits.
+
+### 7.2 Signed-out trial flow, and why signup comes first
+
+Checkout needs a session (the webhook maps Stripe → our user by an id in the subscription
+metadata), and a new account needs email confirmation before one exists. So an account
+genuinely must be created before a trial can start — the only question was whether that
+felt like one flow or a dead end. It used to be a dead end: signup ignored `next`
+entirely and always landed on `/stocks`, so someone who clicked "Start 7-day free trial"
+while signed out was returned to a page telling them to create the account they had just
+created.
+
+Now the destination rides through the whole loop:
+
+```
+/pricing (signed out) → /signup?next=/account
+   → confirm email (or Google, which signs in directly)
+   → /auth/callback → safeNextPath → /account
+   → Subscription card, "Start free trial" → StartTrialModal → Stripe
+```
+
+The plan choice itself is **not** carried (owner decision, 2026-07-29 — an earlier version
+preselected it and showed a "pick up where you left off" banner; simpler is better, and
+`/account` already says the right thing on its own). `/account` is the destination rather
+than `/pricing` because `/pricing` now redirects a signed-in reader away anyway.
+
+**Coming back from Checkout: two paths to provisioning, on purpose.** Stripe sends
+`checkout.session.completed` *before* redirecting, and holds the redirect until our endpoint
+answers 2xx — **but only for 10 seconds**, then redirects regardless. So a slow, failing or
+misconfigured webhook would land a customer who has just paid on `/account` reading "No
+plan", beside a button inviting them to subscribe again. Stripe's documented answer is
+belt-and-braces, and we now do both:
+
+1. **The webhook is the guarantee.** It runs even if the customer closes the tab, and Stripe
+   retries it for up to three days.
+2. **`/account` reconciles on arrival.** `success_url` carries `{CHECKOUT_SESSION_ID}`;
+   `reconcileCheckoutSession()` (`web/lib/billing/reconcileCheckout.ts`) runs *before* the
+   page reads the profile, so the card shows the plan they just bought.
+
+The reconciler is **not** a second source of truth. It re-retrieves the subscription from
+Stripe's API and applies `syncSubscription()` — the *same* function the webhook uses, which
+is why that function moved to `web/lib/billing/sync.ts` rather than being copied. Running it
+after the webhook already ran writes identical values.
+
+`session_id` arrives in the URL bar, so it is never treated as proof: the session is fetched
+from Stripe and refused unless its own `client_reference_id`/`metadata.user_id` (stamped by
+`/api/checkout`) matches the signed-in caller. Pasting someone else's id does nothing —
+asserted by e2e. The whole path is best-effort: a Stripe outage during this render must never
+turn "your payment worked" into an error page.
+
+Both providers carry it: email/password via `emailRedirectTo`, Google One Tap via
+`window.location.assign(safeNextPath(next))`, Google OAuth via `redirectTo`. Signup copy
+switches to "First, create your account / Step 1 of 2" when `next` points at a
+`?start=` pricing URL, and must **not** say "once you confirm your email" — Google has no
+confirmation step.
+
+### 7.3 Onboarding is a gate, not an overlay
+
+When `acknowledged_disclaimer_at` is null, `app/(app)/layout.tsx` returns the disclaimer
+modal **alone** and never renders `children`. Two reasons:
+
+- **Correctness.** Radix writes `aria-hidden` directly onto sibling DOM nodes when a modal
+  opens — a DOM mutation, not a render. App Router hydrates progressively, so on first
+  login that write landed on the 862-stock Browse subtree while React was still hydrating
+  it, and React discarded and re-rendered that subtree client-side. This is upstream
+  [radix-ui/primitives#1386](https://github.com/radix-ui/primitives/issues/1386) (confirmed,
+  still open). `dynamic(ssr:false)`, `useSyncExternalStore`, `requestAnimationFrame` and
+  upgrading `@radix-ui/react-dialog` to 1.1.23 were all tried and none helps — the race is
+  with a subtree that finishes hydrating whenever it finishes. With nothing rendered behind
+  the dialog there is nothing to race.
+- **Cost.** First login no longer pays for a universe fetch and a 120-row client component
+  the user cannot see or interact with.
+- **The columns are not user-writable, but not for the reason the migration first claimed.**
+  Postgres cannot subtract a column from a table-level GRANT, so the column-level `REVOKE`
+  is only a tripwire. The real guarantee is that `authenticated` holds **no table-level
+  UPDATE** on `profiles` at all — its UPDATE is granted per column
+  (`display_name`, `country`, `acknowledged_disclaimer_at`), so any new column is
+  unwritable on arrival. If anyone ever issues `grant update on profiles to authenticated`,
+  the counter becomes user-resettable; CI now fails on exactly that statement.
+
+**Verification note.** The HTTP gate is exercised by `analytics/tests/test_cycle_handler.py`,
+which boots the real handler on a loopback port — because neither local dev (which spawns
+`cycle.py` as a **CLI**, no HTTP) nor a Vercel **preview** (whose `baseUrl()` resolves to the
+*production* domain) would otherwise run it before production.
+`web/scripts/check-entitlement-gates.mjs` is a credential-free CI tripwire covering all of
+the above; it can never skip, unlike the e2e suite.
+
+> 🔴 **The LIVE webhook endpoint URL must be `https://www.majorcycle.com/api/stripe/webhook`
+> — with the `www`.** Verified by request 2026-07-26: the apex `majorcycle.com` answers
+> **307 → www**, and [Stripe's docs](https://docs.stripe.com/webhooks) are explicit —
+> *"We consider redirect responses to webhook requests as failures."* Pointed at the apex,
+> **every** event would fail: no payment confirmations, no cancellations, no dispute locks —
+> and nothing would appear in our logs, because the request never reaches us.
+>
+> Also outstanding: **`STRIPE_WEBHOOK_SECRET` is not set in Vercel at all**, Preview
+> included (verified against the live env-var list). Webhook contract testing has only ever
+> run locally via `stripe listen`, which supplies its own secret — which is how this went
+> unnoticed. Set the live value in **Production** when the endpoint is created at merge.
+
+**Webhook event-subscription policy (F3 Step 8 decision — 2026-07-24).** The production
+LIVE webhook endpoint subscribes to **only the 13 event types the handler acts on**, per
+Stripe's best-practice guidance (["only listen to event types your integration
+requires"](https://docs.stripe.com/webhooks#best-practices) — subscribing to extra/all
+events is explicitly discouraged). The list:
+`checkout.session.completed`, `customer.subscription.{created,updated,deleted,trial_will_end}`,
+`invoice.{paid,payment_succeeded,payment_failed,payment_action_required}`,
+`charge.dispute.{created,funds_withdrawn,closed,funds_reinstated}`.
+- **`stripe_events` has two jobs only:** (1) **idempotency** — every received event id is
+  claimed so a Stripe re-delivery is a no-op; (2) **attribution** of the events we handle —
+  each handler stamps `user_id` / `stripe_customer_id` / `stripe_subscription_id` so
+  `select … from stripe_events where user_id = …` reconstructs *our system's* actions for a
+  customer. We deliberately **do NOT** extract IDs from events we don't act on.
+- **Why not enrich everything:** Stripe's Workbench → *Event deliveries* (and the Events API,
+  `stripe events list`) is the system of record for the **raw** stream — full payloads +
+  delivery/retry status, retained 30 days. Re-deriving that in our DB would duplicate a
+  better-maintained source and add fragile per-event-shape parsing + extra `profiles` lookups
+  on events we don't care about. Use Workbench for raw-stream forensics; use `stripe_events`
+  for our-actions attribution.
+- **Expected null columns are correct, not gaps:** `charge.dispute.*` rows carry
+  `user_id` + `stripe_customer_id` but **no `stripe_subscription_id`** — a Stripe Dispute
+  object references only a charge, never a subscription. Any *other* null-attribution rows
+  seen locally are a `stripe listen` firehose artifact (the CLI forwards **every** event in
+  dev); production only receives the 13 above, so nearly every stored row is attributed.
+- **Guided live check (Step 8) — DONE 2026-07-24:** all five billing-lifecycle paths were
+  driven end-to-end in the Stripe **sandbox** (test clocks) with emails verified in a real
+  inbox — trial-started welcome, trial-ending, cancelled-trial (no email), payment
+  failed→recovered (dunning), and disputes (create→lock, won→unlock, lost→stay-locked +
+  cancel). Sandbox + DB reset to baseline afterward.
+
+**Stripe Dashboard branding (F3 Step 9 — LIVE, no code, 2026-07-25).** Every Stripe-hosted
+customer surface (receipts, invoices, hosted Checkout, Customer Portal) is branded via the LIVE
+account's Dashboard (`acct_1Trdax…`); for a non-Connect account this is Dashboard-only (the
+`branding_settings` API is Connect-only). Values on file: **icon** = `web/public/logo.png` (512²,
+navy "M") + a logo (prefer-logo-over-icon ON); **primary + secondary colour both `#04163e`**
+(owner's monochrome navy); **support email** `support@majorcycle.com`, **support URL** `…/contact`,
+**Privacy** `…/privacy`, **Terms** `…/terms`; **support address deliberately blank** (only a bare
+`country:AU` persists — no street/city, so no home address on receipts); Checkout legal + contact
+display ON, refund/return OFF (no-refund SaaS); invoice memo + ABN/not-advice footer set. The
+Branding page requires an explicit **Save changes** (no auto-save). Confirmed live via
+`GET /v1/accounts` + a real branded test receipt delivered to the owner's inbox. Excluded (paid or
+by preference): custom domain (~US$10/mo), custom email domain (owner keeps the trust-signalling
+`stripe.com` receipt). Statement descriptors + Product name were already clean (unchanged).
+
+**Auth pattern:** `web/proxy.ts` (middleware) and `(app)/layout.tsx` check that a `user` session exists and refresh it. **Subscription gating is enforced on top of that as of F3 Step 10 — see §7.1 above** (branch `feat/f3-stripe`, not yet merged to `main`): checkout + the webhook populate the client-immutable entitlement columns on `profiles`, and `lib/entitlement.ts` is the single rule that reads them, enforced at the page, the proxy and the Python functions. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
 
 **Security posture (F0.5 hardening — shipped 2026-07-05, PR #61):** a full code + platform audit hardened the auth surface. (a) **Recovery-session confinement:** a password-reset link mints a full session, so `auth/confirm` sets an httpOnly `mc_pw_recovery` marker and `proxy.ts` restricts that session to `/account/update-password` (+ `/auth/recovery-done`, `/auth/signout`) until the password is changed — a leaked/forwarded reset link can no longer roam the app (live-verified). The page now lives under the `(public)` shell (no sidebar). (b) **Sign-out:** POST `/auth/signout` + a sidebar `SignOutButton`. (c) **`profiles` billing-column lockdown:** table-level `UPDATE` revoked; a column `GRANT` allows only `display_name`/`country`/`acknowledged_disclaimer_at`, so `subscription_*`/`trial_ends_at`/`stripe_*` are client-immutable (cron/webhooks write them via the service-role key) — migration `20260705032433`. (d) **Security headers** in `web/next.config.ts` (X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, CSP report-only). (e) **Open-redirect guard** `safeNextPath()`. (f) **DMARC** tightened to `p=reject` (strict) — safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Deferred: leaked-password protection (Supabase Pro-only), CSP flip to enforcing.
 
@@ -509,7 +836,7 @@ A **Vercel** cron (a Next.js route handler), distinct from the GitHub-Actions da
 
 **Auth:** Vercel Cron sends `Authorization: Bearer <CRON_SECRET>` (the project env var); the route rejects anything else with 401. `/api/cron` is in `proxy.ts` PUBLIC_PATHS so the middleware doesn't 307-redirect the cookie-less cron request to /login — the Bearer check is the real gate.
 
-**What:** Selects `profiles` whose `deletion_scheduled_at <= now()` (F2 Part B soft-delete), emails each the branded "account deleted" notice from noreply@, then `admin.auth.admin.deleteUser(id)` — which cascades across `auth.*`, `profiles`, `analysis_runs` and nulls `universe_log` / `ticker_requests` (see data-contracts §12). Per-row try/catch; returns `{purged, failed, checkedAt}`. Idempotent: a failed delete is retried next night, and a reactivated account has a `NULL` flag so it is skipped.
+**What:** Selects `profiles` whose `deletion_scheduled_at <= now()` (F2 Part B soft-delete), emails each the branded "account deleted" notice from noreply@, **hard-cancels any still-live Stripe subscription** (by `stripe_subscription_id`, or — if that never synced — by listing the customer's subscriptions and cancelling live ones; F3 Step 6, own try/catch so a Stripe error never blocks the purge), **writes the email trial-tombstone so a purged user can't farm a fresh free trial (F3 Step 7)**, then `admin.auth.admin.deleteUser(id)` — which cascades across `auth.*`, `profiles`, `analysis_runs` and nulls `universe_log` / `ticker_requests` (see data-contracts §12). Per-row try/catch; returns `{purged, failed, checkedAt}`. Idempotent: a failed delete is retried next night, and a reactivated account has a `NULL` flag so it is skipped.
 
 ### Tier 4 — Universe expansion (user-requested tickers)
 
@@ -565,19 +892,55 @@ SUPABASE_SERVICE_ROLE_KEY=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
-# Stripe
+# Stripe (F3). NO price-id env vars — prices are resolved at runtime by lookup_key
+# (majorcycle_monthly / majorcycle_annual), so the same code works in test and live.
+# STRIPE_WEBHOOK_SECRET: test value from the Stripe CLI (`stripe listen`); live value
+# from the production webhook endpoint (the preview URL can't receive Stripe posts —
+# it's behind Vercel Deployment Protection).
+#
+# STRIPE_SECRET_KEY: the LIVE key is a RESTRICTED key (rk_…) scoped to Vercel PRODUCTION
+# only; a separate Preview entry holds the test key. Live key name in Stripe:
+# "MajorCycle web app - production", with exactly 5 permissions derived from the real call
+# sites (Stripe's rule: GET→read, POST/DELETE→write, write implies read):
+#   Checkout Sessions write · Customer Portal write · Subscriptions write
+#   Prices read · Charges and Refunds read
+# CUSTOMERS IS "None" as of 2026-08-01 — granted on 2026-07-26 out of caution, then proven
+# unnecessary in the sandbox and dropped. Do not re-grant it. See .env.example for the proof.
+#
+# THE SANDBOX KEY CARRIES THE SAME 5 PERMISSIONS (2026-08-01). It was a full-access
+# sk_test_ until then, which made local dev more permissive than production — and local dev
+# is where nearly every real Stripe call gets exercised before release.
 STRIPE_SECRET_KEY=
+# Dev harness ONLY — full sk_test_ for test clocks, disputes, fake customers, and
+# `pnpm stripe:listen` (which needs GET /v1/account: 403 on the restricted key, 200 on this
+# one). NEVER set in any Vercel environment, and never read by shipped code — CI check 11
+# fails the build if app/, lib/, api/, components/ or proxy.ts mentions it.
+STRIPE_TEST_ADMIN_KEY=
 STRIPE_WEBHOOK_SECRET=
-STRIPE_PRICE_MONTHLY_USD=
-STRIPE_PRICE_MONTHLY_AUD=
-STRIPE_PRICE_MONTHLY_CAD=
-STRIPE_PRICE_ANNUAL_USD=
-STRIPE_PRICE_ANNUAL_AUD=
-STRIPE_PRICE_ANNUAL_CAD=
 
 # Email
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
+
+# Paywall (F3 Step 10). Marks a request as coming from our own server: /api/cycle
+# can't be session-gated (the Stock Detail page self-fetches it without cookies), and
+# the proxy injects the same secret into /api/analyze once entitlement is verified.
+# REQUIRED in production — both Python functions fail CLOSED (503 + loud log) without
+# it rather than falling back to "open".
+#
+# SET IN VERCEL 2026-07-26: Sensitive, scoped Production + Preview. Development is
+# deliberately excluded — `next dev` spawns cycle.py as a CLI, so it never makes the
+# HTTP call this guards. "Sensitive" means the value can't be read back from the
+# dashboard, so keep a copy in a password manager; rotate by setting a new value and
+# redeploying (Vercel injects env vars at BUILD time, not runtime).
+#
+# BOTH environments must hold the SAME value, and a mismatch FAILS SILENTLY. baseUrl()
+# prefers VERCEL_PROJECT_PRODUCTION_URL, so every deployment (previews included) fetches
+# *production's* /api/cycle, and fetchCycleAnalysis returns null on any non-ok response as
+# a deliberate graceful degrade. A wrong/missing secret therefore renders every Stock
+# Detail page 200 with all cycle sections EMPTY, and logs nothing. Merge-day corollary:
+# prove /api/cycle 200s OUR OWN RENDER, not just that it 401s a stranger.
+CYCLE_INTERNAL_SECRET=
 
 # Misc
 NEXT_PUBLIC_SITE_URL=
@@ -585,14 +948,26 @@ NEXT_PUBLIC_SITE_URL=
 
 ---
 
-## 11. SEO Architecture (Important — Don't Break)
+## 11. SEO Architecture — **TARGET STATE (Layer G), NOT YET BUILT**
 
-- **Per-ticker pages:** `/stocks/[market]/[symbol]` rendered server-side with full data baked into HTML
-- **Sitemap:** `/sitemap.ts` auto-generated from `stocks` table — every ticker becomes an entry, pinged to Search Console on each deploy
-- **Structured data:** Every ticker page includes JSON-LD with `@type: Article` + `FinancialProduct` schemas
-- **OG images:** Dynamic via `@vercel/og` per ticker — shows ticker, current price, rating tier, sparkline
-- **Robots:** `/robots.ts` allows all crawlers; `/stocks/*` is public; `/account/*`, `/api/*` are blocked
-- **Canonical URLs:** Every page has a canonical tag pointing to the market-prefixed URL
+> ⚠️ **Only the first bullet is true today.** Verified 2026-07-30: `web/app/sitemap.ts`,
+> `web/app/robots.ts` and any `opengraph-image` file **do not exist**, and no page emits
+> `application/ld+json`. This section had been written in the present tense, which read as
+> "already shipped". It is the **Layer G specification** — see `roadmap.md`. Nothing here is
+> a regression to investigate; it is work not yet started.
+
+- ✅ **Per-ticker pages:** `/stocks/[market]/[ticker]` rendered server-side with full data baked into the HTML — **built, and the one piece of this list that is live**
+- ⛔ **Sitemap:** `/sitemap.ts` auto-generated from the `stocks` table — every ticker an entry, pinged to Search Console on each deploy
+- ⛔ **Structured data:** JSON-LD per ticker page (`@type: Article` + `FinancialProduct`)
+- ⛔ **OG images:** dynamic via `@vercel/og` — ticker, price, rating tier, sparkline
+- ⛔ **Robots:** `/robots.ts` allowing crawlers on `/stocks/*`, blocking `/account/*` and `/api/*`
+- ⛔ **Canonical URLs:** canonical tag on every page pointing at the market-prefixed URL
+
+**Note for whoever builds this:** the paywall changes what may be indexed. A crawler is an
+anonymous visitor, so it sees exactly the free tier — Stock Detail without the scores. That is
+the correct thing to index (it is real, useful content and the honest shop window), but the
+robots rules must keep `/run`, `/results`, `/account/*` and every `/api/*` path out, and the
+`/stocks/[market]/[ticker]/report` route must never appear in a sitemap.
 - **Methodology page:** `/methodology` is a long-form content page targeting "Major Cycle" + educational queries — topical authority anchor
 
 ---

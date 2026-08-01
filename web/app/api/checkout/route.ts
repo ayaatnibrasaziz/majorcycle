@@ -1,0 +1,215 @@
+import { NextResponse } from 'next/server';
+
+import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
+import { getSiteURL } from '@/lib/url';
+import { hasUsedTrial } from '@/lib/trialGuard';
+import {
+  getStripe,
+  resolvePriceId,
+  currencyForCountry,
+  effectiveBillingCountry,
+  TRIAL_PERIOD_DAYS,
+  type PlanKey,
+} from '@/lib/stripe';
+
+/**
+ * POST /api/checkout — start a subscription via Stripe hosted Checkout.
+ *
+ * Auth is enforced by proxy.ts (this path is NOT in PUBLIC_PATHS); we re-check the
+ * user here anyway (defence in depth — never trust the middleware alone). The body
+ * is `{ plan: 'monthly' | 'annual' }`. We resolve the Price by lookup_key, force the
+ * charge currency from the user's country (AU→AUD, CA→CAD, else USD — locked), apply
+ * the 7-day trial in code (not on the Price), and return `{ url }` for the browser to
+ * redirect to. NO Stripe secret ever reaches the client — hosted Checkout is a plain
+ * redirect. See plan §2 and docs/data-contracts.md §10.
+ */
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * Every branch is a per-caller answer: the 200 carries a Checkout Session URL bound to
+ * one `client_reference_id`, and each refusal names that caller's own reason (on hold,
+ * already subscribed). Route handlers get NO Cache-Control from Next, so without this
+ * the response states nothing about caching at all.
+ *
+ * Nothing was ever exposed — Vercel's CDN caches only on `s-maxage`/`stale-while-revalidate`
+ * and this is a POST carrying neither — and that is precisely the objection: safe by
+ * someone else's default rather than by our own statement. CLAUDE.md 11a records that
+ * failure three times and now reads "say it AND guard it". Found in live-check Session 3;
+ * `pnpm check:entitlement-gates` asserts it.
+ */
+const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
+
+// Statuses that already have (or recently had) a live subscription — starting a
+// second checkout would create a duplicate. These are sent to billing management
+// instead. `canceled`/null may start a fresh subscription.
+const ACTIVE_STATES = new Set(['active', 'trialing', 'past_due']);
+
+export async function POST(request: Request) {
+  const body = (await request.json().catch(() => null)) as { plan?: unknown } | null;
+  const plan = body?.plan;
+  if (plan !== 'monthly' && plan !== 'annual') {
+    return NextResponse.json({ error: 'Invalid plan' }, { status: 400, headers: NO_STORE });
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401, headers: NO_STORE });
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('country, stripe_customer_id, subscription_status, billing_blocked, deletion_scheduled_at')
+    .eq('id', user.id)
+    .single();
+
+  // Don't sell to an account that is being deleted. Live-check Session 3 found this
+  // endpoint had no deletion check at all; it merely happened to 409 in testing because
+  // that account also had a subscription. A deletion-scheduled account with NO
+  // subscription would have been handed a Checkout Session, paid, and then been purged
+  // within 30 days — money taken for an account we destroy. Reactivating first is one
+  // click, and /reactivate is the only page this account may use.
+  if (profile?.deletion_scheduled_at) {
+    return NextResponse.json(
+      {
+        error:
+          'Your account is scheduled for deletion, so we can’t start a subscription. Reactivate your account first — you can do that from the reactivate page.',
+        reason: 'account_deleting',
+      },
+      { status: 403, headers: NO_STORE },
+    );
+  }
+
+  // A dispute lock must stop the sale, not just the product. Losing a chargeback
+  // cancels the subscription, so the account lands on `canceled` + billing_blocked —
+  // and `canceled` is deliberately allowed to re-subscribe. Without this check the
+  // blocked user could pay again and STILL be denied by hasAccess(), because
+  // billing_blocked outranks any status: we would have taken money for access we
+  // then refuse. Support has to lift the block first.
+  if (profile?.billing_blocked) {
+    return NextResponse.json(
+      {
+        error:
+          'Your account is on hold while a payment dispute is resolved, so we can’t start a new subscription yet. Please contact support and we’ll sort it out with you.',
+      },
+      { status: 403, headers: NO_STORE },
+    );
+  }
+
+  // Already subscribed → don't let them stack a second subscription.
+  if (ACTIVE_STATES.has(profile?.subscription_status ?? '')) {
+    return NextResponse.json(
+      { error: 'You already have a subscription. Manage it from your account.' },
+      { status: 409, headers: NO_STORE },
+    );
+  }
+
+  // Currency basis = saved country, else the visitor's edge-detected country
+  // (Vercel), else USD — the SAME resolution the /pricing page and the account
+  // trial modal use to DISPLAY the price, so the amount shown equals the amount
+  // charged. `x-vercel-ip-country` is empty on localhost (no edge) → USD.
+  const savedCountry = profile?.country ?? null;
+  const edgeCountry = request.headers.get('x-vercel-ip-country');
+  const billingCountry = effectiveBillingCountry(savedCountry, edgeCountry);
+  const currency = currencyForCountry(billingCountry);
+
+  // If the user had no saved country, persist the resolved one now — before the
+  // subscription (and its currency) is created. The account locks the country
+  // field once subscribed, so the stored value must match the currency we're
+  // about to charge in. Non-fatal: a failed write just leaves country unset.
+  if (!savedCountry && billingCountry) {
+    const { error: countryErr } = await supabase
+      .from('profiles')
+      .update({ country: billingCountry })
+      .eq('id', user.id);
+    if (countryErr) {
+      console.error('checkout: could not persist resolved country', countryErr);
+    }
+  }
+
+  let priceId: string;
+  try {
+    priceId = await resolvePriceId(plan as PlanKey);
+  } catch (err) {
+    // Missing price = the product/prices weren't built in THIS Stripe mode
+    // (test vs live are isolated). Log the real cause (owner can't debug a blank
+    // 500), but surface a clean message — never a stack trace — to the user.
+    console.error('checkout: could not resolve price', plan, err);
+    return NextResponse.json(
+      { error: 'Billing is temporarily unavailable. Please try again shortly.' },
+      { status: 500, headers: NO_STORE },
+    );
+  }
+
+  // Return to the SAME origin the request came from — so a Vercel preview deploy
+  // lands back on the preview (not production), and prod lands on prod. Falls back
+  // to the canonical site URL for any caller without an Origin header.
+  const origin = request.headers.get('origin') ?? getSiteURL();
+
+  // Trial-abuse guard (Step 7): if this email has already consumed a free trial
+  // (a `trial_tombstones` row that survives account deletion), omit the trial so the
+  // repeat customer subscribes with no free week — never hard-blocked. The account /
+  // pricing UI shows honest "already used your trial, billing starts today" copy from
+  // the SAME check, so this is never a surprise. `trial_tombstones` is service-role
+  // only (RLS, no policies), so the lookup takes the admin client, not the user's.
+  const grantTrial = !(await hasUsedTrial(createAdminClient(), user.email));
+
+  const stripeCustomerId = profile?.stripe_customer_id ?? null;
+
+  try {
+    const session = await getStripe().checkout.sessions.create({
+      mode: 'subscription',
+      line_items: [{ price: priceId, quantity: 1 }],
+      // Force the multi-currency Price to charge (and lock) this currency.
+      currency,
+      subscription_data: {
+        // Grant the 7-day trial only to a first-time email; a repeat subscribes with
+        // no free week (guard above). Omitting the field entirely = charge from day one.
+        ...(grantTrial ? { trial_period_days: TRIAL_PERIOD_DAYS } : {}),
+        // Carried on the subscription so the webhook can map it back to our user
+        // even if the Customer was created fresh by Checkout.
+        metadata: { user_id: user.id },
+      },
+      // Reuse the existing Customer if we have one; otherwise let Checkout create it
+      // and prefill the email (the webhook captures the new id). `customer` and
+      // `customer_email` are mutually exclusive, so only ever set one.
+      ...(stripeCustomerId
+        ? { customer: stripeCustomerId }
+        : { customer_email: user.email ?? undefined }),
+      client_reference_id: user.id,
+      metadata: { user_id: user.id },
+      // NO `payment_method_types` (Stripe guidance — omit so eligible methods show
+      // dynamically; the owner tunes them in Dashboard → Payment methods).
+      // Tax stays OFF at launch — one-line flip when GST registration lands (decision D).
+      automatic_tax: { enabled: false },
+      // `{CHECKOUT_SESSION_ID}` is a literal Stripe template — it substitutes the real id
+      // on redirect. /account uses it to reconcile immediately rather than waiting on the
+      // webhook: Stripe holds this redirect for our 2xx but only for 10 SECONDS, so a slow
+      // or misconfigured webhook would otherwise land a paying customer on a page saying
+      // they have no plan. See lib/billing/reconcileCheckout.ts.
+      success_url: `${origin}/account?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      // Backing out of Checkout returns a SIGNED-IN user, so they belong in the app —
+      // /pricing is the signed-out shop window and now redirects them here anyway.
+      cancel_url: `${origin}/account?checkout=cancelled`,
+    });
+
+    if (!session.url) {
+      return NextResponse.json(
+        { error: 'Could not start checkout. Please try again.' },
+        { status: 502, headers: NO_STORE },
+      );
+    }
+    return NextResponse.json({ url: session.url }, { headers: NO_STORE });
+  } catch (err) {
+    // A Stripe API / network failure — log the real error for diagnosis, return a
+    // clean retry message to the user (no internal details leak).
+    console.error('checkout: stripe session create failed', err);
+    return NextResponse.json(
+      { error: 'Could not start checkout. Please try again.' },
+      { status: 502, headers: NO_STORE },
+    );
+  }
+}

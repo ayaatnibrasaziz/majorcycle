@@ -1,0 +1,48 @@
+# Ruff config for the Python that lives under web/ — the vendored engine snapshot
+# (web/_engine/) and the Vercel serverless functions (web/api/).
+#
+# WHY THIS FILE EXISTS. web/_engine/ is a copy of analytics/, kept byte-identical by the
+# CI drift check apart from rewritten imports. But analytics/ is governed by
+# analytics/pyproject.toml while web/ had NO ruff config, so the same code was judged by
+# two different rulebooks: analytics/ by an explicit rule selection, web/_engine/ by
+# whatever ruff's defaults happen to be that week.
+#
+# That is not theoretical. CI installs `ruff>=0.4.0` (unpinned), and on 2026-08-01 ruff
+# 0.16.1 added UP045 to its defaults. analytics/ passed — its config ignores UP045 on
+# purpose — while the identical lines in web/_engine/major_cycle.py failed the build.
+# Nobody had touched that code. Any future default-rule change would do the same again.
+#
+# KEEP THE LINT SECTION IN STEP WITH analytics/pyproject.toml [tool.ruff]. If you change
+# the rules there, change them here in the same commit — the drift check enforces that the
+# CODE matches, and this file is what makes the JUDGEMENT of that code match too.
+target-version = "py312"
+line-length = 100
+
+[lint]
+# Identical to analytics/pyproject.toml. UP007/UP017/UP035/UP045 are ignored deliberately:
+# the engine uses Optional[X] / Union[X, Y] style throughout, and rewriting it is a
+# cosmetic change to cycle maths that is mirrored in two places.
+select = ["E", "F", "I", "UP", "N", "B", "RUF"]
+ignore = ["E501", "UP007", "UP017", "UP035", "UP045"]
+
+# web/api/ is NOT mirrored from analytics/ — these are the Vercel serverless functions,
+# and they answer to Vercel's contract as well as ours. Scoped to this directory so the
+# vendored engine keeps the full rule set.
+[lint.per-file-ignores]
+"api/*.py" = [
+  # Vercel's Python runtime dispatches to a class literally named `handler`. Renaming it
+  # to CapWords would stop the function being found at all — this is their API, not our
+  # naming choice.
+  "N801",
+  # `PAGE` is a loop constant (page size for paginated Supabase reads). Uppercase reads
+  # correctly as a constant; renaming is churn in a shipped function for no gain.
+  "N806",
+  # `×` in prose ("63 × daily bars"). The multiplication sign is intentional and correct
+  # in a docstring; RUF002/RUF003 exist to catch homoglyphs smuggled into identifiers.
+  "RUF002",
+  "RUF003",
+  # Four `# noqa: BLE001` directives are dead, because BLE is not in our select list.
+  # Genuinely worth removing, but that edits two shipped serverless functions, so it is
+  # tracked as follow-up rather than done on merge day. Re-enable this rule when they go.
+  "RUF100",
+]

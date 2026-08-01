@@ -14,26 +14,39 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { createBrowserClient } from '@/lib/supabase/client';
+import { acknowledgeDisclaimer } from '@/app/(app)/actions';
 
-interface OnboardingModalProps {
-  userId: string;
-}
-
-export function OnboardingModal({ userId }: OnboardingModalProps) {
+export function OnboardingModal() {
   const router = useRouter();
   const [acknowledged, setAcknowledged] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // NOTE (F3 Step 10): opening this dialog logs a React hydration warning in dev —
+  // Radix sets `aria-hidden` directly on sibling DOM nodes, and App Router hydrates
+  // the page subtree progressively, so the mutation lands on nodes React hasn't
+  // hydrated yet. Deferring the open makes it MORE likely, not less; `ssr: false`,
+  // `useSyncExternalStore` and a `requestAnimationFrame` were all tried and none
+  // helps, because the race is with a subtree that hydrates later regardless.
+  // The warning is cosmetic (React keeps the client's aria-hidden, which is the
+  // correct accessible state) and dev-only. Fixing it properly means either dropping
+  // Radix's modal semantics — losing the focus trap on a mandatory disclaimer — or
+  // making onboarding its own route instead of an overlay. Left as-is deliberately.
+
 
   async function handleProceed() {
     if (!acknowledged) return;
     setLoading(true);
-    const supabase = createBrowserClient();
-    await supabase
-      .from('profiles')
-      .update({ acknowledged_disclaimer_at: new Date().toISOString() })
-      .eq('id', userId);
-    router.refresh();
+    setError(null);
+    // Server action — writes with the authenticated cookie-bound session, so it
+    // can't silently no-op the way a cold browser-client write could.
+    const { ok } = await acknowledgeDisclaimer();
+    if (ok) {
+      router.refresh();
+    } else {
+      setError('Something went wrong. Please try again.');
+      setLoading(false);
+    }
   }
 
   return (
@@ -119,14 +132,28 @@ export function OnboardingModal({ userId }: OnboardingModalProps) {
           </div>
         </div>
 
-        <DialogFooter className="flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
+        {error && (
+          <p role="alert" className="px-5 -mt-1 text-[12px] text-[var(--c-tier-5-ink)]">
+            {error}
+          </p>
+        )}
+
+        {/* Stacked, not side-by-side. The acknowledgement is a full sentence and the
+            button is fixed-width, so sharing one row squeezed the label into a
+            three-line column against the dialog's max-w-lg. It now gets the full
+            width and the button sits beneath it. */}
+        <DialogFooter className="flex-col items-stretch gap-3">
+          <div className="flex items-start gap-2.5">
             <Checkbox
               id="ack"
+              className="mt-[1px] flex-shrink-0"
               checked={acknowledged}
               onCheckedChange={(v) => setAcknowledged(v === true)}
             />
-            <Label htmlFor="ack" className="text-[12px] font-medium text-[var(--text-secondary)] cursor-pointer">
+            <Label
+              htmlFor="ack"
+              className="text-[12px] font-medium leading-relaxed text-[var(--text-secondary)] cursor-pointer"
+            >
               I understand and acknowledge — this is not financial advice
             </Label>
           </div>

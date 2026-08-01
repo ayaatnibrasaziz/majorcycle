@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Play } from 'lucide-react';
+
+import { UserMenu } from '@/components/UserMenu';
 
 const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
   '/results': {
@@ -44,9 +44,11 @@ function getPageMeta(pathname: string) {
 
 interface HeaderProps {
   lastRunAt?: string | null;
+  /** Shown on the account menu trigger; omitted in the dev-bypass render. */
+  email?: string | null;
 }
 
-export function Header({ lastRunAt }: HeaderProps) {
+export function Header({ lastRunAt, email }: HeaderProps) {
   const pathname = usePathname();
   const { title, subtitle } = getPageMeta(pathname);
 
@@ -73,13 +75,9 @@ export function Header({ lastRunAt }: HeaderProps) {
           </div>
         )}
 
-        <Link
-          href="/run"
-          className="flex items-center gap-1.5 bg-[var(--bg-surface)] border border-[var(--border-strong)] rounded-[var(--radius-sm)] px-3.5 py-[7px] text-[12px] font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)] transition-all duration-150"
-        >
-          <Play className="w-3 h-3" strokeWidth={2} aria-hidden="true" />
-          Run Analysis
-        </Link>
+        {/* Run Analysis lived here too, duplicating the sidebar's SCREEN group.
+            Removed in F3 Step 10 — one entry point per destination. */}
+        <UserMenu email={email} />
       </div>
     </header>
   );

@@ -1,0 +1,24 @@
+-- Drop the redundant `idx_bars_ticker_date` index on price_bars.
+--
+-- price_bars carried TWO indexes over the same columns:
+--   price_bars_pkey       (ticker, date)        -- primary key
+--   idx_bars_ticker_date  (ticker, date DESC)   -- this one
+--
+-- Postgres scans a btree backwards just as efficiently as forwards, so a
+-- DESC-only duplicate of the primary key buys nothing. The planner agreed --
+-- live pg_stat_user_indexes at the time of removal:
+--
+--   idx_bars_ticker_date   301 MB          19 scans
+--   price_bars_pkey        208 MB   7,537,999 scans
+--
+-- i.e. the PK was chosen ~400,000x more often, and the duplicate was LARGER
+-- than the PK it shadowed. Dropping it frees ~301 MB -- about 25% of the whole
+-- 1,211 MB database -- taking it to ~910 MB, which then fits inside the Micro
+-- instance's 1 GB RAM instead of spilling the working set to disk. It also
+-- removes one index from every upsert the daily cron performs.
+--
+-- Reversible: recreate with
+--   create index idx_bars_ticker_date on public.price_bars (ticker, date desc);
+-- (F3 Step 10 audit, finding M2.)
+
+drop index if exists public.idx_bars_ticker_date;

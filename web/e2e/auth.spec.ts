@@ -52,7 +52,9 @@ test.describe('public pages render', () => {
     await expect(page.locator('input#email')).toBeVisible();
     await expect(page.locator('input#password')).toBeVisible();
     await expect(page.getByRole('link', { name: /forgot password/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /start your free trial/i })).toBeVisible();
+    // Signup creates a FREE account; the trial starts at checkout where the card is
+    // taken (F3 Step 10). The CTA says so rather than promising a trial it can't give.
+    await expect(page.getByRole('link', { name: /create a free account/i })).toBeVisible();
   });
 });
 
@@ -130,12 +132,14 @@ const PASSWORD = process.env.E2E_PASSWORD;
 test.describe('authenticated flows', () => {
   test.skip(!EMAIL || !PASSWORD, 'set E2E_EMAIL + E2E_PASSWORD to run');
 
-  test('email login → /results, sign-out → /login, re-gate works', async ({ page }) => {
+  test('email login → /stocks, sign-out → /login, re-gate works', async ({ page }) => {
     await page.goto('/login');
     await page.fill('input#email', EMAIL!);
     await page.fill('input#password', PASSWORD!);
     await page.getByRole('button', { name: /^sign in$/i }).click();
-    await expect(page).toHaveURL(/\/results/);
+    // Post-auth home is Browse, not Results (F3 Step 10) — Results is the output of
+    // a screener run, so it is empty for a new or free account. See POST_AUTH_HOME.
+    await expect(page).toHaveURL(/\/stocks/);
 
     // A fresh login must have cleared any recovery marker (F0.6 self-heal).
     const cookies = await page.context().cookies();
@@ -177,11 +181,13 @@ test.describe('authenticated flows', () => {
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: /^password$/i })).toBeVisible();
 
-    // Sign out via the sidebar control. It sits in the bottom-left, where the
-    // Next.js dev-server overlay portal also renders and intercepts pointer events
-    // (a dev-only artifact, absent in production). Activate it by keyboard instead —
-    // this mirrors a keyboard user and works pre-hydration (the form is a native POST).
-    const signOut = page.getByRole('button', { name: /sign out/i });
+    // Sign out now lives in the header account menu rather than at the foot of the
+    // sidebar (F3 Step 10) — that keeps it ONE click, which matters most on a shared
+    // computer, while clearing the nav. Open the menu, then activate by keyboard:
+    // the submit control is still a native form POST, so this works pre-hydration and
+    // mirrors a keyboard user.
+    await page.getByRole('button', { name: /account menu/i }).click();
+    const signOut = page.getByRole('menuitem', { name: /sign out/i });
     await signOut.press('Enter');
     await expect(page).toHaveURL(/\/login/);
 

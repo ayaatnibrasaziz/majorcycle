@@ -1,0 +1,15 @@
+-- Security hygiene (Supabase advisor 0014 extension_in_public): move the pg_trgm
+-- extension out of the `public` schema into the Supabase-managed `extensions` schema.
+--
+-- Why this is safe here:
+--   * `extensions` is already on the database search_path ("$user", public, extensions),
+--     so any unqualified trigram operator/function still resolves.
+--   * The trigram GIN indexes (idx_listings_symbol_trgm / idx_listings_name_trgm from
+--     20260620000000_request_a_ticker.sql) reference the gin_trgm_ops operator class by
+--     OID, not by schema name — a schema move does not invalidate them.
+--   * The only consumer, search_listings(), uses the built-in LIKE operator (accelerated
+--     by those indexes); no app code calls a pg_trgm function by name.
+--
+-- Verified after applying: pg_trgm now in `extensions`; search_listings('AAP')/('BHP')
+-- return the same rows; EXPLAIN still shows a Bitmap Index Scan on idx_listings_symbol_trgm.
+alter extension pg_trgm set schema extensions;

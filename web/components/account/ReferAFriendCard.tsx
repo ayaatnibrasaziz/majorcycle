@@ -69,8 +69,12 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
       <div className="card-body">
         <p className="mb-5 flex items-start gap-2 text-[12px] leading-relaxed text-[var(--text-muted)]">
           <Gift className="mt-px h-3.5 w-3.5 flex-shrink-0" strokeWidth={2} aria-hidden />
-          Know someone who&apos;d find MajorCycle useful? Send them a personal invite —
-          they&apos;ll get a 7-day free trial.
+          {/* The invite grants no trial — signing up creates a FREE account, and the
+              7-day trial starts at checkout if they choose to (F3 Step 10). Promising
+              them a trial here would be a promise the signup flow doesn't keep. Nor do
+              we advertise the free account: it's what every visitor already gets, so
+              dressing it up as a referral perk reads as an offer when it isn't. */}
+          Know someone who&apos;d find MajorCycle useful? Send them a personal invite.
         </p>
 
         {/* noValidate: our own EMAIL_RE check drives the (brand-styled) error copy,

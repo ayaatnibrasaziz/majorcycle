@@ -39,7 +39,7 @@ export default async function ReactivatePage() {
     .single();
 
   // Nothing scheduled → nothing to reactivate; send them into the app.
-  if (!profile?.deletion_scheduled_at) redirect('/results');
+  if (!profile?.deletion_scheduled_at) redirect('/stocks');
 
   const dateStr = formatDate(profile.deletion_scheduled_at);
 

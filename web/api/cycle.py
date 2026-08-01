@@ -27,6 +27,7 @@ Responses:
 from __future__ import annotations
 
 import dataclasses
+import hmac
 import json
 import logging
 import os
@@ -54,6 +55,10 @@ from _engine.providers.base import FundamentalsSnapshot  # noqa: E402
 
 logger = logging.getLogger("api.cycle")
 logging.basicConfig(level=logging.INFO)
+
+# Header carrying the internal shared secret (CYCLE_INTERNAL_SECRET). Must match
+# the constant in web/lib/cycle.ts and the check in web/proxy.ts.
+INTERNAL_HEADER = "x-mc-internal"
 
 # Whether the get_price_bars_json RPC (one-shot history fetch) exists in this DB.
 # None = not yet probed; False = confirmed missing (use pagination); True = present.
@@ -197,9 +202,48 @@ def _load_fundamentals(
     return row, snapshot
 
 
-def _serialise_analysis(analysis: Any) -> dict[str, Any]:
-    """Convert the CycleAnalysis dataclass tree to a JSON-safe dict."""
-    return dataclasses.asdict(analysis)
+# The paywall (F3 Step 10). These are the keys produced by the SCORING half of
+# `analyze_ticker` — every judgement we make about a stock. For an unentitled viewer
+# they are removed from the payload before it is serialised, so the premium numbers
+# never leave the server: nothing is hidden with CSS, blurred, or filtered in the
+# browser, so there is no response to replay and no DOM to un-hide.
+#
+# Everything NOT listed here is free: where the price sits now, and the historical
+# cycle bands. That split mirrors the seam already present in the engine
+# (`calculate_cycle_metrics` -> free, the scoring pass -> premium).
+#
+# Kept in sync with `CycleAnalysis` / `CycleAnalysisFree` in web/lib/types.ts and
+# enforced by web/scripts/check-entitlement-gates.mjs.
+PREMIUM_KEYS = frozenset(
+    {
+        "financial_health_score",
+        "fh_subscores",
+        "valuation_score",
+        "valuation_score_raw",
+        "quality_factor",
+        "valuation_zone",
+        "cycle_payoff_score",
+        "overall_rating",
+        "overall_label",
+    }
+)
+
+
+def _serialise_analysis(analysis: Any, entitled: bool = True) -> dict[str, Any]:
+    """Convert the CycleAnalysis dataclass tree to a JSON-safe dict.
+
+    When ``entitled`` is False the premium keys are dropped entirely (absent, not
+    null) — an unentitled response is literally the `CycleAnalysisFree` shape.
+
+    The scoring pass still RUNS (it is pure arithmetic over fundamentals we have
+    already loaded, so the saving would be nil) — we simply never serialise it. The
+    engine in analytics/ is deliberately left untouched: it is mirrored into
+    web/_engine/ under a CI drift check, and CLAUDE.md #9 makes it sacred.
+    """
+    payload = dataclasses.asdict(analysis)
+    if entitled:
+        return payload
+    return {k: v for k, v in payload.items() if k not in PREMIUM_KEYS}
 
 
 # Custom-param validation bounds — the canonical contract (data-contracts.md §7),
@@ -256,12 +300,17 @@ def compute_cycle(
     pullback: float | None = None,
     profit: float | None = None,
     lookback: int | None = None,
+    entitled: bool = True,
 ) -> tuple[int, dict[str, Any]]:
     """Core cycle computation, shared by the HTTP handler and the CLI entry point.
 
     Returns ``(status_code, body)``. Reads price bars + fundamentals from Supabase
     and runs the cycle math; never touches yfinance. ``preset`` is one of the named
     presets OR 'custom' (with explicit pullback/profit/lookback).
+
+    ``entitled`` decides whether the scoring keys are included in the payload — see
+    `_serialise_analysis` and `PREMIUM_KEYS`. Callers must pass it explicitly; the
+    HTTP handler defaults it to False so a missing query param strips rather than leaks.
     """
     ticker = (ticker or "").strip().upper()
     preset = (preset or "medium").lower()
@@ -297,15 +346,40 @@ def compute_cycle(
             "reason": "insufficient_history",
         }
 
-    return 200, _serialise_analysis(analysis)
+    return 200, _serialise_analysis(analysis, entitled)
 
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         try:
+            # ── Gate 1: this endpoint is INTERNAL ─────────────────────────────
+            # Only our own server-rendered pages may call it. The Stock Detail page
+            # fetches its own /api/cycle over the public URL carrying no cookies, so
+            # it cannot be gated by session auth — hence a shared secret. The proxy
+            # rejects secret-less requests at the edge; this is the second, and
+            # authoritative, check.
+            secret = os.environ.get("CYCLE_INTERNAL_SECRET") or ""
+            if not secret:
+                # Fail CLOSED, and loudly. Never fall back to "open" — that would
+                # silently restore the very hole this closes. The page degrades to a
+                # graceful "no cycle data" state while this shouts in the logs.
+                logger.error("CYCLE_INTERNAL_SECRET is not set — refusing all requests")
+                self._json(503, {"error": "server misconfigured"})
+                return
+            presented = self.headers.get(INTERNAL_HEADER) or ""
+            if not hmac.compare_digest(presented, secret):
+                self._json(401, {"error": "unauthorized"})
+                return
+
             query = parse_qs(urlparse(self.path).query)
             ticker = query.get("ticker", [""])[0] or ""
             preset = query.get("preset", ["medium"])[0] or "medium"
+            # ── Gate 2: entitlement ───────────────────────────────────────────
+            # A QUERY PARAM, never a header: Next's Data Cache and any shared cache
+            # key on the URL alone, so a header-borne flag would let a free response
+            # and a paid one collide on one cache entry. Absent/anything-but-1 ⇒ not
+            # entitled, so a caller that forgets it strips rather than leaks.
+            entitled = query.get("entitled", ["0"])[0] == "1"
 
             def _num(key: str) -> float | None:
                 raw = query.get(key, [""])[0]
@@ -320,8 +394,8 @@ class handler(BaseHTTPRequestHandler):
             profit = _num("profit")
             _lb = _num("lookback")
             lookback = int(_lb) if _lb is not None else None
-            status, body = compute_cycle(ticker, preset, pullback, profit, lookback)
-            self._json(status, body, cache_for_seconds=3600 if status == 200 else 0)
+            status, body = compute_cycle(ticker, preset, pullback, profit, lookback, entitled)
+            self._json(status, body)
         except KeyError as e:
             logger.exception("Missing env var")
             self._json(500, {"error": "server misconfigured", "detail": f"missing env: {e}"})
@@ -329,17 +403,25 @@ class handler(BaseHTTPRequestHandler):
             logger.exception("Unhandled error in /api/cycle")
             self._json(500, {"error": "internal error", "detail": str(e)})
 
-    def _json(self, status: int, body: dict[str, Any], cache_for_seconds: int = 0) -> None:
+    def _json(self, status: int, body: dict[str, Any]) -> None:
         payload = json.dumps(body, default=str).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
-        if cache_for_seconds > 0:
-            self.send_header(
-                "Cache-Control",
-                f"public, s-maxage={cache_for_seconds}, stale-while-revalidate=86400",
-            )
-        else:
-            self.send_header("Cache-Control", "no-store")
+        # NEVER `public` and NEVER `s-maxage` on this endpoint.
+        #
+        # This response varies by entitlement, and a shared/CDN cache keys on the URL
+        # alone. Previously this sent `public, s-maxage=3600`: once a server-rendered
+        # request warmed the edge cache with a fully-scored payload, ANY subsequent
+        # request for that URL — no secret, no session — would have been served the
+        # paid analysis straight from the cache, before this function ran at all. That
+        # would have defeated the paywall completely and invisibly.
+        #
+        # Caching is not lost: web/lib/cycle.ts fetches with `next: { revalidate: 3600 }`,
+        # so Next's Data Cache still collapses repeat renders to one compute per
+        # ticker+spec+entitlement per hour. That cache is server-side and can only be
+        # populated by us. (F3 Step 10 audit, finding B1 — guarded in CI by
+        # web/scripts/check-entitlement-gates.mjs.)
+        self.send_header("Cache-Control", "private, no-store")
         self.end_headers()
         self.wfile.write(payload)
 
@@ -357,10 +439,21 @@ if __name__ == "__main__":
     _p.add_argument("--pullback", type=float, default=None)
     _p.add_argument("--profit", type=float, default=None)
     _p.add_argument("--lookback", type=int, default=None)
+    # Mirrors the HTTP `entitled` query param so the dev path can render both the
+    # free and the subscribed Stock Detail page. `next dev` does not serve this
+    # function over HTTP, so the CLI is the only cycle source locally — which is
+    # also why the HTTP gate itself is covered by analytics/tests/test_cycle_handler.py
+    # rather than by anything exercised in local development.
+    _p.add_argument("--entitled", type=int, default=1, choices=[0, 1])
     _args = _p.parse_args()
 
     _status, _body = compute_cycle(
-        _args.ticker, _args.preset, _args.pullback, _args.profit, _args.lookback
+        _args.ticker,
+        _args.preset,
+        _args.pullback,
+        _args.profit,
+        _args.lookback,
+        bool(_args.entitled),
     )
     print(json.dumps(_body, default=str))
     sys.exit(0 if _status == 200 else 1)

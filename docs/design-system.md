@@ -125,6 +125,8 @@ The five composite rating tiers display as **neutral, advice-free language**. Th
 
 **Allowed verbatim from yfinance for the Analyst Consensus field only:** "Strong Buy / Buy / Hold / Underperform / Sell" — these are reported as third-party data, with an "Analyst consensus from Yahoo Finance" attribution underneath.
 
+**The attribution is visible and unconditional — never colour or a tooltip alone.** The analyst chip in `BadgeRow` renders a literal `Analysts:` prefix in every state. It once appeared only when our own badges were absent, on the reasoning that our label already framed the chip; that is backwards. In a row reading "Neutral · Stretched · **Buy**", the third chip looks like the third thing *we* concluded — the one reading rule 2 exists to prevent. A `title` attribute doesn't rescue it either: tooltips don't exist on touch. Six characters of prefix, no ambiguity.
+
 ### Valuation Zone Labels (a separate dimension)
 
 The Major Cycle valuation_zone is also re-labelled:
@@ -489,6 +491,177 @@ A single collapsible line (`⚠ N tickers couldn't be scored · show`), expandin
 ### Empty State
 
 Pattern: centered icon + bold heading + muted descriptive text + optional CTA link.
+
+### Locked (premium) states — F3 Step 10
+
+Three components in `web/components/stocks/PremiumLock.tsx`, the whole-page
+`web/components/PremiumLockPage.tsx`, the shared `web/components/UpgradeDialog.tsx` and
+`web/components/SupportDialog.tsx`, plus one page-local notice.
+All of them are **honest placeholders, not redactions**: for an unentitled viewer the
+underlying numbers are stripped server-side before serialisation, so there is nothing in
+the DOM to blur, un-hide or read out. What renders *is* all that exists.
+
+| Where | Component | Treatment |
+|---|---|---|
+| KPI strip cards 1–2 (Overall Rating, Health Score) | `PremiumLockKpi` | Keeps the exact `kpi-card` shape so the 4-up grid stays aligned. Muted `--text-muted` accent, lock icon + the word **Unlock**. The tile is a **button** that opens the upgrade dialog, `aria-label` "<label> — included with a subscription. See what's included." |
+| Verdict, Scorecard | `PremiumLockCard` | Standard `card` + `card-header`/`card-body`, lock icon beside the title, one sentence naming what it unlocks, ending in a **See what's included** button. Takes an optional `id` so a locked section still answers the subnav's anchor. |
+| Download Report | `StockSubnav` | Swaps the blue `.export-btn` for a neutral bordered button with a lock, opening the same dialog. It must **not** attempt the download: the gated route answers 402, which the generic catch could only report as "try again in a moment". |
+| Run Analysis, Results (sidebar) | `Sidebar` | Locked rows render as buttons, not links, and open the dialog in place. |
+| Rating + valuation-zone badges | — | **Absent**, not locked. A lock chip beside the company name would be noise, and the locked KPI tiles directly below already make the offer. |
+| Analyst consensus chip | `BadgeRow` | When our badges are absent the chip gains a visible **"Analysts:"** prefix. Alone in that row a bare "Buy" reads as *our* call — CLAUDE.md #2. Attribution must be on screen, not only in a `title`. |
+| Daily fence reached | page-local `FreeViewLimitNotice` | Full-width card: what happened, that it resets at midnight UTC, that already-seen stocks still open, then **See what's included** (a `PremiumLockInlineCta`, opening the dialog in place) + **Back to Browse**. Carries the standard not-advice line. |
+| Prose that needs the offer mid-sentence | `PremiumLockInlineCta` | A text button styled like a link, opening `UpgradeDialog`. Used by the daily-fence notice and the "your access ended mid-run" alert in `RunAnalysis`. Exists so those places don't `<Link href="/pricing">` — that dropped a signed-in reader out of the app shell. A client island, so Server Components can use it. |
+| A whole premium PAGE (`/run`, `/results`) | `PremiumLockPage` | Full card inside the normal app shell — sidebar, header and account menu all stay, and the route does **not** change. Lock icon + the feature name, an amber notice naming what happened when the reason isn't "no subscription yet", one sentence of blurb, then **See what's included**. When the account is on hold the CTA becomes **Contact support** (`SupportDialog`) instead, because checkout and the portal both refuse a held account. |
+
+**Locks explain themselves in place; they never navigate.** Every lock opens
+`UpgradeDialog` — same shell and blurred backdrop as the Methodology modal — so the reader
+keeps the stock they were deciding about. The dialog names the feature, says in plain
+language **what that feature is**, lists what else a subscription includes, and then hands
+off to `StartTrialModal` (the same in-app checkout entry the Account page uses).
+
+**That rule now covers whole pages too** (owner decision, 2026-07-29). `/run` and
+`/results` used to `redirect()` an unentitled viewer to the public `/pricing` page, which
+took the sidebar, header and account menu with it — losing access looked like being logged
+out, and a dispute-held reader was then sent on to `/contact` to retype a name and email we
+already hold. They now render `PremiumLockPage` in place. Nothing signed-in points at
+`/pricing` any more: the mid-run alert, the daily-fence notice, the `UpgradeDialog` failure
+fallback and Stripe's `cancel_url` were all repointed at the dialog or `/account`.
+
+**Loading must never render the wrong claim.** `UpgradeDialog` tracks "still fetching"
+separately from "fetch failed". While in flight the CTA is a **disabled** button reading
+*Checking your plan…*; only a genuine failure offers the `/account` escape hatch. Both used
+to be `ctx === null`, so for a beat the dialog showed the ordinary upsell to a
+dispute-held reader — the wrong claim about their account, not merely a slow one. The
+billing context is fetched once per page at mount and shared by every lock on it, so the
+answer is normally ready before the first click.
+
+**A dispute hold changes the whole dialog,** not just a line of it: no feature pitch, no
+plan list, and **Contact support** in place of any buy button — because `/api/checkout` and
+`/api/portal` both refuse a held account, so an upsell would be an offer we decline at the
+till. Support opens as `SupportDialog` (the same form and server action as `/contact`,
+prefilled), never as a page jump.
+
+It deliberately **shows no price**. Currency, trial-vs-billed-today and the
+already-used-trial case are resolved server-side on `/account` and in `/api/checkout`;
+duplicating any of that here would be a second source of truth for the one thing that must
+never be wrong. `/api/billing-context` supplies only enough to label the button
+(`Start free trial` / `Subscribe` / `Manage your plan`), and if that fetch fails the CTA
+falls back to `/account` — a failure must never become a wrong offer, and it must not
+throw a signed-in reader onto the public shop-window either.
+
+**The 2–2 split is the whole design idea.** `KpiStrip` locks cards 1–2 and leaves cards
+3–4 (Current Drawdown, Typical Drawdown) fully working. Two locked tiles sitting beside two
+live ones is the clearest possible statement of what a subscription adds — much better than
+hiding the row. Never "helpfully" collapse the locked pair.
+
+> **CI note:** premium components must stay **imported and rendered inside a conditional**,
+> never deleted. `scripts/check-report-sections.mjs` is a static text scan and will fail if
+> a section disappears from the page. `PremiumLockCard` and `PremiumLockInlineCta` are on
+> its `PAGE_ONLY` list — the report is premium in its entirety, so a lock can never appear
+> inside one.
+>
+> **The report has no page to lock.** "Download Report" builds the file client-side from
+> the gated `/report` route plus the prebuilt offline bundle, so the subnav button is
+> the only report surface a reader ever sees. An on-screen preview page existed until
+> 2026-07-29 and was removed — nothing linked to it.
+
+### App navigation (F3 Step 10)
+
+Sidebar is grouped by intent, with the premium group carrying a lock affordance when the
+viewer isn't entitled:
+
+```
+DISCOVER            ← free
+  Browse Stocks
+  Request a Ticker
+SCREEN              ← premium
+  Run Analysis      ← verb before noun
+  Results
+────────────
+  Licence status
+```
+
+**Licence badge** (sidebar foot). Mono, 10px, brand-mid, **uppercase with
+`tracking-[0.5px]`** — it reads as a status chip, not a sentence:
+
+| `subscription_status` | Badge |
+|---|---|
+| `active` | ACTIVE |
+| `trialing` | TRIAL ACTIVE |
+| `past_due`, **inside** the grace window | PAYMENT DUE |
+| `past_due`, **past** the grace window | **ACCESS PAUSED** |
+| `canceled` | CANCELLED |
+| `null` / unknown | NO PLAN |
+| *any status, `billing_blocked = true`* | **ON HOLD** |
+
+`null` reads "No plan" because **account creation is not trial start** — an earlier
+fall-through showed "Free Trial" to `past_due` and `canceled` accounts.
+
+`past_due` splits on **entitlement**, not status — the badge already had `entitled` in
+hand (it draws the nav lock icons with it) but wasn't using it here, so a reader whose
+grace had closed saw the same PAYMENT DUE as one who still had full access. The badge and
+the locks beside it now agree.
+
+`billing_blocked` **overrides the status entirely**, because it is an orthogonal flag
+rather than a status value: a disputed account keeps whatever Stripe status it had (usually
+`active`), so reading the status alone announced **ACTIVE** to someone locked out of every
+paid surface. Entitlement had ranked the block above the status from the start; the badge,
+the account card and the purchase path were the three places that hadn't caught up.
+
+### `/account` — Subscription card states (F3)
+
+`web/components/account/SubscriptionCard.tsx`. A pill (`flex-shrink-0 whitespace-nowrap`,
+row `items-start` so a wrapped sentence beside it stays aligned on narrow screens), one
+sentence of detail, and exactly one action.
+
+| State | Pill (tone) | Detail | Action |
+|---|---|---|---|
+| `active` | Active (ok) | "You're on the Monthly/Annual plan." | Manage billing → `/api/portal` |
+| `trialing` | Trial active (ok) | "Your free trial runs until \<date\>." | Manage billing |
+| `past_due` **inside grace** | Payment due (warn) | "We couldn't take your last payment. Update your card to keep access." | Manage billing |
+| `past_due` **past grace** | **Access paused (warn)** | "We couldn't take your last payment, so access is paused for now. Update your card and it comes straight back — nothing has been lost." | Manage billing |
+| `canceled` | Cancelled (muted) | "Your subscription has been cancelled." | Start free trial / **Subscribe** |
+| `null` | No plan (muted) | "You don't have an active subscription yet." | Start free trial / **Subscribe** |
+| **`billing_blocked`** | **On hold (warn)** | "A payment on this account was disputed… Contact support and we'll sort it out with you." | **Contact support** (in-place dialog) |
+| scheduled to cancel | *(status pill unchanged)* | "Your free trial ends / subscription is active until \<date\> and won't renew." | Manage billing |
+
+- **Subscribe vs Start free trial** — the label flips to *Subscribe* once the Step-7 email
+  tombstone says this address already used its free week, and the modal states billing
+  starts today. Never a surprise charge.
+- **`billing_blocked` overrides everything above it** and removes both money actions:
+  checkout 403s a held account and the portal refuses it, so offering either would be an
+  offer we decline at the till. The card previously said *"ACTIVE — You're on the Monthly
+  plan"* to someone locked out — the single most support-generating sentence we could write.
+- **`past_due` needs two dimensions, not one.** The status is identical on both sides of
+  the 3-day grace window (decision #20) while the *access* is opposite, so the card takes
+  `entitled` (from the shared `hasAccess`) and picks its copy from that. Reading the status
+  alone told a reader whose grace had closed to "update your card to keep access" — the
+  access was already gone. Exactly the `billing_blocked` mistake in a second place, which
+  is why `/account` now selects `grace_until` at all.
+- **Scheduled cancel** is derived from `cancel_at != null` (the legacy boolean stays
+  `false` in API `2026-06-24.dahlia`), and is suppressed while blocked.
+- **Dates render in the reader's device timezone** via `<LocalDate>` — see §16 of
+  coding-standards; never `profiles.country`, which is currency only.
+- Returning from Stripe: `?checkout=cancelled` → "You haven't been charged";
+  `?billing=blocked|none|error` → the matching portal notice. **`?checkout=success` has two
+  forms** and is chosen *after* reconciliation, never from the URL: a plan on the row (the
+  reconciler provisioned it, or the webhook already had) → "Payment received — your plan is
+  set up below"; nothing yet → "Payment received. We're still setting your plan up — refresh
+  in a few seconds." Deriving it from the URL alone printed "your plan is set up below"
+  directly above a card reading **No plan**, in precisely the slow-webhook case the
+  reconciler exists for.
+
+**One entry point per destination.** Account lives *only* in the header menu, and the
+header's old "Run Analysis" button was removed — both duplicated a nav row. The header now
+carries the page title and the account menu, nothing else.
+
+**Sign out moved to a header account menu** (top-right, `UserMenu.tsx`) rather than the foot
+of the sidebar. It stays **one click**, which matters most on a shared computer, while
+clearing the nav rail. The old `SignOutButton` component was deleted after confirming no
+remaining references. **Post-login home is `/stocks` (Browse), not `/results`** — Results is
+the *output* of a screener run, so it is empty for a new or free account. The single choke
+point is `POST_AUTH_HOME` in `web/lib/url.ts`; every auth email inherits it via
+`safeNextPath()`, so no email template hard-codes a landing path.
 
 ---
 
