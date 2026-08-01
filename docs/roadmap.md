@@ -1512,6 +1512,53 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
         **375px mobile — pre-existing, already triaged to Layer H, now measured there.**
       - No merge to `main` until the owner-driven live guided check passes and the owner approves.
 
+---
+
+### 🚦 Layer F go/no-go — Session 4 sign-off (2026-08-01)
+
+Every check from the four live-check sessions, its result, and **the evidence that produced
+it**. The evidence column matters more than the tick: each of these sessions found a real
+defect that the existing tests had missed, and in every case what found it was looking at the
+running system from outside rather than reading the code.
+
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| 1 | Standing gates from cold caches | ✅ GO | typecheck · lint · build · entitlement-gates **14** · report-sections **22** · pytest **86** · Playwright **102** |
+| 2 | Public + legal pages, signed out and in | ✅ GO | S1 walk; disclaimer present on every rating surface (#12) |
+| 3 | Auth surfaces + recovery confinement | ✅ GO | S1; `token_hash` confirm, `scope:'local'` sign-out, open-redirect guard |
+| 4 | `/account` across all 9 billing states | ✅ GO | S1; **2 honesty defects found and fixed** (#68 locked-out user told access intact; #69 "Payment received" when provisioning had failed) |
+| 5 | Paywall at the wire, all 12 viewer states | ✅ GO | S2; asserted against **raw HTML and headers**, never the screen — the method that caught a score sitting in View Source behind a "🔒 Unlock" |
+| 6 | `/api/cycle` **both** halves | ✅ GO | S2; 401 to a stranger **and** 200 to our own render — checking only the first would blank the product while every security assertion passed |
+| 7 | Premium routes' cache posture | ✅ GO | S2 + S3; all now say `private, no-store` explicitly; **CI checks 9 + 11** assert the `NO_STORE` count *equals* the `NextResponse` count |
+| 8 | Full billing lifecycle on a test clock | ✅ GO | S3; trial → convert → renew → decline → grace → hard-lock → recover, real money moving in the sandbox. **Caveat recorded honestly:** the +3-day hard-lock step was forced by ageing `grace_until` in SQL, because grace is anchored on server time and a test clock cannot move it |
+| 9 | Dispute inquiry vs real chargeback | ✅ GO | S3; inquiry must **not** lock, `charge.dispute.created` must |
+| 10 | The checkout race, `stripe listen` **killed** | ✅ GO | S3; 0 webhook events for that user, account still provisioned by the reconciler; replay byte-identical. First time that safety net had ever run in anger |
+| 11 | The four account↔billing seams | ✅ GO | S3; delete↔billing, reactivate, purge cron (incl. customer-id fallback), tombstone re-signup — each proven **before** the paywall existed, so each was re-crossed |
+| 12 | Deletion outranks entitlement, everywhere | ✅ GO | S3-B; 403 `account_deleting` from report/analyze/checkout, 303 `/reactivate` from portal — wire-proven on an **entitled** deleting account *and in reverse* |
+| 13 | Branded emails, each sent once | ✅ GO | S3; verified in Resend's own logs, not by reading our senders |
+| 14 | Sandbox key scoped like live | ✅ GO | S4; 12/12 — 9 app calls pass, `customers.*` refused. **The refusals are the control** |
+| 15 | Harness key cannot reach shipped code | ✅ GO | S4; CI **check 11**, broken 4 ways before being trusted, incl. an empty file walk |
+
+**Not go, by design — these are Session 5, merge day, and cannot be done sooner:**
+
+| # | Blocked item | Why it cannot be checked before merge |
+|---|---|---|
+| A | LIVE `STRIPE_SECRET_KEY` in Vercel **Production** | Preview-only today |
+| B | LIVE webhook at `https://www.majorcycle.com/api/stripe/webhook` | **`www` matters** — the apex 307s and Stripe counts every 3xx as a failed delivery |
+| C | `STRIPE_WEBHOOK_SECRET` | Currently set in **no** Vercel environment |
+| D | `CYCLE_INTERNAL_SECRET` present in Production **and identical in Preview** | If it is missing or mismatched, every Stock Detail page still renders with **every cycle section silently empty** — no error, no log |
+| E | `/api/cycle` 200+payload → **401** for a stranger | Production's route is open today; the gate only takes effect on merge |
+| F | **Roll the live restricted key** | Its value entered a chat transcript when `SECRETS.local.md` was read; nearly free to do at the step that already re-enters it. Stripe **Roll key** changes the value, **Edit key** preserves it |
+
+> **Rollback trigger, agreed in advance:** any of A–E failing → Vercel instant rollback. No
+> debugging in production.
+
+**Accepted residual risks, recorded rather than fixed** (owner's decisions, not oversights):
+a Checkout Session created *before* a deletion can still be completed inside Stripe's 24-hour
+window (the owner considered and declined the handler — **do not re-propose**); 375px mobile
+overflow is triaged to Layer H; Vercel Hobby→Pro is scheduled for official launch, and Hobby
+forbids commercial use, so **that is a launch blocker, not a merge blocker**.
+
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
 - [x] `/methodology` — public, pre-sign-up plain-English explainer (cycle position, financial
       health, valuation, overall rating + the five compliant tiers, **no formulas**); disclaimer
