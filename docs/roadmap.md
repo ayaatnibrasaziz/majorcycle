@@ -1276,7 +1276,7 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           deletion-scheduled really is confined to `/reactivate`; the onboarding modal blocks
           the page for an unacknowledged reader; and a **free** viewer keeps the drawdown
           overlay **with its cycle bands** plus all 22 sections.
-        - 🟡 **Three findings, none a leak — all deferred to the Session 4 fix sweep.**
+        - 🟡 **Three findings, none a leak.** Recorded here as discovered; **ALL THREE CLOSED the same day** — see the Session 2 fix sweep immediately below.
           1. **`api/analyze.py` is the one premium route with no header guard.** It sends
              `Cache-Control: no-store` on every branch, which Vercel honours, but the house rule
              (11a) is `private, no-store` and `check:entitlement-gates` asserts that for
@@ -1402,7 +1402,7 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           duplicates**, including the two cases where two Stripe events hit one handler. A repo-wide
           grep found **no** reply-inviting language in any template, and the ones that offer support
           point at `majorcycle.com/contact`.
-        - 🟡 **Two findings, neither a leak — both for the Session 4 fix sweep.**
+        - 🟡 **Two findings, neither a leak.** Recorded here as discovered; **BOTH CLOSED the same day** — see the Session 3 fix sweep immediately below.
           1. **`/api/portal` and `/api/checkout` state no caching posture at all** (observed at the
              wire: no `Cache-Control` whatsoever; Next sets nothing on route handlers, unlike pages).
              Both return a **credential-equivalent, single-customer** payload — the portal `Location`
@@ -1474,7 +1474,21 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
           browser history within Stripe's 24-hour window. That writes a live subscription onto an
           account the purge cron destroys within 30 days — a real charge for a repeat customer
           (a first-timer would be on a trial, so no money moves). Nothing detects it today.
-      - **Still open (optional, low value):** nothing blocking. The LIVE key question is closed.
+      - 🟡 **OPEN — the sandbox key is NOT scoped like the live key (owner spotted, 2026-08-01).**
+        The live key is now a restricted `rk_live_` with 5 permissions; the local/sandbox
+        `STRIPE_SECRET_KEY` is still a **full-access `sk_test_`**. Pure drift — the sandbox key
+        predates the hardening and nobody went back. **It matters for the same reason the
+        `/api/analyze-dev` finding did: a dev stand-in that behaves differently from production
+        is a test that lies.** Local dev and CI are currently MORE permissive than production, so
+        a `customers.*` call added tomorrow would pass every test and fail only in production,
+        with nothing going red until a real customer hit it. Note the protection existed for
+        about five minutes during the S3 sweep and was then expired with the throwaway key.
+        **Fix (Session 4, ~15 min, needs the owner to create + paste the key):** a restricted
+        test key with scope *identical* to live in `STRIPE_SECRET_KEY`, plus a **separate** full
+        `sk_test` for the scratchpad harness, which legitimately needs test clocks, disputes and
+        fake customers. That split is Stripe's own guidance — one restricted key per service or
+        use case — and without it the harness breaks the moment the app key is tightened.
+      - **Otherwise nothing blocking.** The LIVE key permission question is closed.
       - **Deferred:** SEO/public pages; the arrays-instead-of-objects RPC encoding; Supabase Auth
         percentage-based connections; revoking `anon`'s table-level UPDATE on `profiles`;
         **375px mobile — pre-existing, already triaged to Layer H, now measured there.**

@@ -726,6 +726,13 @@ interface AnalysisRunRecord {
   (`analyze.py` re-checks the header the proxy injects)
 - `402` — **no live subscription** (F3 Step 10). Body `{ error: 'Payment Required', reason }`
   with `reason` ∈ `no_subscription` / `canceled` / `payment_failed` / `billing_blocked`
+- `403` — **account scheduled for deletion** (live-check S3, 2026-08-01). Body
+  `{ error: 'Account scheduled for deletion', reason: 'account_deleting' }`, issued by
+  `proxy.ts` **before** the entitlement check, mirroring the page order (`requirePremiumPage`
+  sends a deleting reader to `/reactivate` before consulting entitlement). Deliberately not
+  402: that would invite someone whose account is being deleted to pay again, and they may
+  already have paid. The proxy `select` must include `deletion_scheduled_at` — without the
+  column the check can only read `undefined`, i.e. fail open, which is its own guard check.
 - `500` — internal — return `{ error: string }`
 - `503` — `CYCLE_INTERNAL_SECRET` unset (fails closed, loud log)
 
@@ -1294,6 +1301,26 @@ Stripe error (usually "no portal config in this Stripe mode") → `console.error
 (no client JS, no Stripe key in the browser). **The portal must be activated per Stripe
 mode** (sandbox config `bpc_1TuR6R…`: update/cancel-at-period-end/payment/invoice).
 
+**Two refusals outrank the customer lookup, both checked BEFORE it** (live-check S2 + S3):
+
+| Condition | Outcome | Why |
+|---|---|---|
+| `billing_blocked` | 303 `/account?billing=blocked` | The portal is a *second* way to spend money — it switches monthly⇄annual, which prorates and charges. Anything bought while held is paid for and still locked. |
+| `deletion_scheduled_at` | 303 **`/reactivate`** | Same rule, sharper case. The portal can also **resume a subscription scheduled to cancel**, so a to-be-purged account could un-cancel the very subscription the delete flow just set to stop — and be charged — while `deletion_scheduled_at` stayed put and the purge cron destroyed the account anyway. `/reactivate` is the one page such an account may use, and reactivating makes the portal legitimately available again. |
+
+`/account` renders the button for neither state, but **the endpoint must not depend on the
+UI hiding it** — that sentence was already written here for the dispute case, and S3 found
+deletion was the case where it still did.
+
+**Every branch sends `private, no-store`** (added 2026-08-01). It sent **no
+`Cache-Control` at all** until then: Next attaches none to route handlers, unlike pages
+which get `no-cache, must-revalidate` free. Nothing was exposed — Vercel caches only on
+`s-maxage` and this is a POST — but the 303's `Location` is a **live Customer Portal
+session**, i.e. that one customer's card, invoices and cancel button. The most sensitive
+payload the app emits was the one saying nothing about caching (CLAUDE.md 11a, 4th
+instance). `pnpm check:entitlement-gates` now asserts the header count **equals** the
+`NextResponse` count, so one unguarded branch fails CI.
+
 **Stripe client** (`web/lib/stripe.ts`) sets `maxNetworkRetries: 2` (SDK default 0;
 retried POSTs get automatic idempotency keys).
 
@@ -1337,6 +1364,38 @@ redirects them to `/login` first.
 > `/account` link rather than to a wrong offer. **In flight is a third state**, distinct
 > from failed: the CTA is a disabled "Checking your plan…" button, never a live control
 > carrying a guessed default (see coding-standards).
+
+### `POST /api/checkout` — the refusal ladder + cache posture
+
+Checked in this order, all **before** a Stripe session is created, so nothing is sold to
+an account that cannot use what it buys:
+
+| # | Condition | Status | Body `reason` / message |
+|---|---|---|---|
+| 1 | plan not `monthly`/`annual` | 400 | `Invalid plan` |
+| 2 | signed out | 401 | `Not signed in` (proxy 307s first; this is defence in depth) |
+| 3 | `billing_blocked` | 403 | dispute-hold copy — a held account must not be sellable, since `billing_blocked` outranks any status and the purchase would be paid for and still locked |
+| 4 | **`deletion_scheduled_at`** | **403** | **`account_deleting`** — added 2026-08-01 |
+| 5 | status in `active`/`trialing`/`past_due` | 409 | already subscribed |
+| 6 | price unresolvable in this Stripe mode | 500 | clean retry message; real cause logged |
+| 7 | Stripe create fails / no `url` | 502 | clean retry message |
+
+**Row 4 is new and was a genuine gap.** Live-check S3 found `/api/checkout` had *no*
+deletion check at all — it merely *happened* to 409 in testing because that account also
+had a subscription. A deletion-scheduled account with **no** subscription would have been
+handed a Checkout Session, paid, and then been purged within 30 days. **403, not 402:** a
+402 invites someone whose account is being deleted to pay again, which answers the wrong
+question, and they may already have paid.
+
+> ⚠️ **Residual risk, accepted by the owner (do not re-propose the handler).** Row 4 stops
+> a session being **created**. A session created *before* the deletion can still be
+> **completed** from browser history inside Stripe's 24-hour window, writing a live
+> subscription onto an account the purge cron then destroys. For a repeat customer that is
+> a real charge; a first-timer is on a trial, so no money moves. Nothing detects it today.
+
+**Every branch sends `private, no-store`**, refusals included — the 200 carries a Checkout
+Session URL bound to one `client_reference_id`, and each refusal names that caller's own
+reason. It sent none at all until 2026-08-01 (CLAUDE.md 11a, 4th instance).
 
 ### Billing currency resolution + trial entry (F3, `e30c7aa` / `767c9da`)
 

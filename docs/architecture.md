@@ -486,8 +486,8 @@ Two runtimes, two locations under `web/`:
 | Route | Method | Runtime | Path on disk | Auth | Purpose |
 |---|---|---|---|---|---|
 | `/api/cycle` | GET | Python | `web/api/cycle.py` | **Internal secret** (`x-mc-internal`) — F3 Step 10 | Compute Major Cycle for one ticker + preset. Called by the Stock Detail Server Component as a cookieless self-fetch — so it must bypass the auth *redirect*, and is gated by a shared secret instead (see §7.1). Reached via the production custom domain (see §2). Response varies by the `entitled` **query param**. |
-| `/api/analyze` | POST | Python | `web/api/analyze.py` | Required **+ entitlement (402)** | Run cycle analysis on a **chunk** of tickers (≤60) with given params. **Stateless** — no DB write, no `runId`; the client batches chunks + writes the inputs-only `analysis_runs` row itself. Fully premium — the proxy refuses an unentitled caller and injects the internal secret on success. |
-| `/api/analyze-dev` | POST | TS | `web/app/api/analyze-dev/route.ts` | Required **+ entitlement (402)** | **Dev-only** shim: spawns `analyze.py` as a CLI so the Run tab works under `next dev` (mirrors `cycle.ts`). Returns 404 in production; the client targets `/api/analyze` there. |
+| `/api/analyze` | POST | Python | `web/api/analyze.py` | Required **+ entitlement (402) + deletion (403)** | Run cycle analysis on a **chunk** of tickers (≤60) with given params. **Stateless** — no DB write, no `runId`; the client batches chunks + writes the inputs-only `analysis_runs` row itself. Fully premium — the proxy refuses an unentitled caller and injects the internal secret on success. |
+| `/api/analyze-dev` | POST | TS | `web/app/api/analyze-dev/route.ts` | Required **+ entitlement (402) + deletion (403)** | **Dev-only** shim: spawns `analyze.py` as a CLI so the Run tab works under `next dev` (mirrors `cycle.ts`). Returns 404 in production; the client targets `/api/analyze` there. |
 | `/api/search` | GET | TS | `web/app/api/search/route.ts` | Required | Autocomplete over the analysed universe index (Run tab "search & add"). **Not** in `PUBLIC_PATHS` — a signed-out caller is redirected to `/login` by the proxy like any other app route. |
 | `/api/listings/search` | GET | TS | `web/app/api/listings/search/route.ts` | Required | Choose-only search over `listings` via the `search_listings` RPC (one round-trip: trigram match + `covered`/`requestStatus` annotation + ranking, all server-side) so the UI shows the right badge |
 | `/api/request-ticker` | POST / GET | TS | `web/app/api/request-ticker/route.ts` | Required | **POST** enqueues a listed symbol into `ticker_requests` (validates it exists in `listings`, dedups globally, records `requested_by`). **GET** returns recent requests + their status for the Request-a-Ticker page |
@@ -496,7 +496,7 @@ Two runtimes, two locations under `web/`:
 | `/api/stripe/webhook` | POST | TS | `web/app/api/stripe/webhook/route.ts` | **Public** (in `PUBLIC_PATHS`) — gated by the **Stripe signature** | **Built (F3 steps 4/7/8).** Verify → idempotency-claim (`stripe_events`, ON CONFLICT DO NOTHING) → service-role sync of the billing columns; a trialing `subscription.*` writes the email trial-tombstone (step 7). **Step 8:** sends the four branded billing emails via Resend — **trial-started welcome** (on `subscription.created` when the sub is `trialing`; one-shot + idempotency-keyed; skipped for a repeat/no-trial customer, who instead gets Stripe's payment receipt) / trial-ending / payment-failed / payment-recovered (the last two gated on the single-owner `grace_until` marker + idempotency key) and handles `charge.dispute.*` → `billing_blocked` (+ cancel-on-lost). **Payment receipts + invoice PDFs are NOT app code** — they're Stripe's built-in "Successful payments" Dashboard email (turned ON in Part C), sent on every real charge; the Customer Portal also lists past invoices. Disputes do the ONE live Stripe retrieve (charge→customer). **Order-safety guards (Stripe doesn't guarantee event order):** the failure (`invoice.payment_failed` **and `invoice.payment_action_required`** / 3-D Secure) + recovery paths only act on the sub currently on file, and `subscription.deleted` only lapses the account when its sub id matches — so a late/out-of-order event can't dun, recover, or cancel a *newer* or *already-cancelled* subscription. (LIVE endpoint event list = 13, incl. `invoice.payment_action_required`.) See data-contracts §10 for the event→DB map |
 | `/api/billing-context` | GET | TS | `web/app/api/billing-context/route.ts` | Required | **Built (F3 step 10).** Returns `{ currency, trialUsed, hasSubscription, billingBlocked, email, displayName }` so the upgrade dialog can label its CTA (`Start free trial` / `Subscribe` / `Manage your plan`) before the reader clicks. Fetched **on dialog open**, not per page render — a lock is clicked far less often than a page is drawn. **Explicitly NOT authoritative:** `/api/checkout` re-derives all three and still 409s an existing subscriber and still omits `trial_period_days` for a tombstoned email. Sends `private, no-store` (CLAUDE.md 11a) |
 | `/api/portal` | POST | TS | `web/app/api/portal/route.ts` | Required | **Built (F3 step 5).** Open the Stripe Customer Portal — create a `billingPortal` session for the user's `stripe_customer_id`, 303-redirect to it (`return_url` = `/account`); no customer → `?billing=none`, **`billing_blocked` → `?billing=blocked`**, error → `?billing=error`. The blocked branch matters because the portal is a *second* way to spend money (it switches monthly⇄annual, which prorates and charges, and can resume a cancelled sub) — `/account` no longer renders the button for a held user, but the endpoint must not rely on the UI hiding it. The `/account` "Manage billing" button is a plain form POST. All three redirect outcomes live-verified in live-check Session 2. **Live-check S3:** a **deletion-scheduled** account is sent to **/reactivate**, never into Stripe — the sharpest case of that same rule, and the one where the endpoint really was relying on the UI, since the portal can switch price (charging a proration) and resume a subscription scheduled to cancel. Every branch now sends `private, no-store`; the 303 Location is a live portal session, the most sensitive payload the app emits |
-| `/stocks/[market]/[ticker]/report` | GET | TS | `web/app/(app)/stocks/[market]/[ticker]/report/route.ts` | Required **+ entitlement (402)** | The **report download's only surface** (its on-screen preview page was deleted 2026-07-29), and the most sensitive route we have — its 200 carries the entire scorecard. Route handlers are **not** wrapped by the `(app)` layout, so it gates itself: 401 signed out, 402 unentitled (naming the caller's own `reason`), 404 for a bad market/ticker, and (live-check S3) **403 `account_deleting`** for an account mid-deletion, checked before entitlement. **Every branch, refusals included, sends `private, no-store`** — it sent no `Cache-Control` at all until 2026-07-29 (CLAUDE.md 11a). |
+| `/stocks/[market]/[ticker]/report` | GET | TS | `web/app/(app)/stocks/[market]/[ticker]/report/route.ts` | Required **+ entitlement (402) + deletion (403)** | The **report download's only surface** (its on-screen preview page was deleted 2026-07-29), and the most sensitive route we have — its 200 carries the entire scorecard. Route handlers are **not** wrapped by the `(app)` layout, so it gates itself: 401 signed out, 402 unentitled (naming the caller's own `reason`), 404 for a bad market/ticker, and (live-check S3) **403 `account_deleting`** for an account mid-deletion, checked before entitlement. **Every branch, refusals included, sends `private, no-store`** — it sent no `Cache-Control` at all until 2026-07-29 (CLAUDE.md 11a). |
 | `/api/cron/purge-accounts` | GET | TS | `web/app/api/cron/purge-accounts/route.ts` | **`CRON_SECRET` Bearer** (path is in `PUBLIC_PATHS` so Vercel Cron's cookieless call isn't redirected; the route enforces the secret itself) | Daily purge of accounts past their 30-day deletion grace. Hard-cancels the live Stripe subscription (with a `stripe_customer_id` fallback) **before** `deleteUser`, so a purged account can never keep billing. See §8. |
 | `/auth/callback` | GET | TS | `web/app/auth/callback/route.ts` | **Public** | OAuth return leg — exchanges the provider code for a session, then `safeNextPath()` (open-redirect guard). Used by the redirect-based Google fallback; the primary Google path is `signInWithIdToken`, which never leaves the page. |
 | `/auth/confirm` | GET | TS | `web/app/auth/confirm/route.ts` | **Public** | Email-link landing (`?token_hash=…&type=…`) → `verifyOtp`. For `type=recovery` it also sets the httpOnly `mc_pw_recovery` marker that confines the session to `/account/update-password` (F0.5). |
@@ -524,6 +524,17 @@ Fails **closed** — the opposite of `trialGuard.ts`, deliberately: giving premi
 costs revenue, whereas a denied view is recoverable and visible.
 `deletion_scheduled_at` is evaluated **before** entitlement so a mid-deletion account
 still goes to `/reactivate`, not `/pricing`.
+
+> **That ordering is a property of the system, not of the page layer.** Until live-check
+> Session 3 it held only in `requirePremiumPage()`, so every *page* confined a
+> deletion-scheduled account correctly while four self-gating surfaces never asked:
+> `/report` returned the full paid report, `/api/analyze*` the full screener payload,
+> `/api/portal` a 303 into a live Stripe Customer Portal session, and `/api/checkout` would
+> have sold a subscription to an account the purge cron destroys within 30 days. All four
+> now check it first and answer **403 `account_deleting`** (portal: **303 `/reactivate`**).
+> Never 402 — that invites someone whose account is being deleted to pay again, and they
+> may already have paid. Guarded by `check:entitlement-gates`, including the proxy's
+> `select`: without the column the check reads `undefined` and fails open.
 
 **Where the split falls.** `analyze_ticker()` is already two halves —
 `calculate_cycle_metrics` (free) then the scoring pass (premium) — so the paywall lands on
@@ -887,13 +898,16 @@ GOOGLE_CLIENT_SECRET=
 # from the production webhook endpoint (the preview URL can't receive Stripe posts —
 # it's behind Vercel Deployment Protection).
 #
-# STRIPE_SECRET_KEY is a RESTRICTED key (rk_…), never a full sk_. The LIVE key is scoped
-# to Vercel PRODUCTION only; a separate Preview entry holds the test key. Live key name in
-# Stripe: "MajorCycle web app - production", with exactly 6 permissions derived from the
-# real call sites (Stripe's rule: GET→read, POST/DELETE→write, write implies read):
+# STRIPE_SECRET_KEY: the LIVE key is a RESTRICTED key (rk_…) scoped to Vercel PRODUCTION
+# only; a separate Preview entry holds the test key. Live key name in Stripe:
+# "MajorCycle web app - production", with exactly 5 permissions derived from the real call
+# sites (Stripe's rule: GET→read, POST/DELETE→write, write implies read):
 #   Checkout Sessions write · Customer Portal write · Subscriptions write
-#   Prices read · Charges and Refunds read · (Customers write — granted but NOT required;
-#   no /v1/customers call exists in our code. Tighten to None once proven in the sandbox.)
+#   Prices read · Charges and Refunds read
+# CUSTOMERS IS "None" as of 2026-08-01 — granted on 2026-07-26 out of caution, then proven
+# unnecessary in the sandbox and dropped. Do not re-grant it. See .env.example for the
+# proof, and for the KNOWN DRIFT: the local/sandbox key is still a full-access sk_test_,
+# so dev and CI are currently MORE permissive than production.
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 
