@@ -113,6 +113,21 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm exec playwright install --with-deps chromium
 
+      # The E2E server is `next dev`, which computes a stock's cycle by SPAWNING
+      # web/api/cycle.py as a CLI (lib/cycle.ts) rather than over HTTP. Without a Python
+      # interpreter and these deps that spawn fails — and it fails SILENTLY, because
+      # fetchCycleAnalysis degrades gracefully to null (lib/cycle.ts). The page still
+      # renders 200 with every cycle section simply absent, which is exactly how it
+      # presented: "Current Drawdown" never appearing for the free-viewer test.
+      # Same class as the CYCLE_INTERNAL_SECRET blackout recorded in the roadmap — a
+      # missing prerequisite that produces empty output instead of an error.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install engine Python deps (next dev spawns cycle.py)
+        run: pip install -r requirements.txt
+
       - name: Run auth E2E
         run: pnpm e2e
 
