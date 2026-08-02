@@ -155,8 +155,51 @@ Buy/Sell/Strong-Buy/Avoid in our own outputs.
 
 ## Session log
 
-*(F-A0 — tracker created 2026-08-02, on `main` after `ab11e18`. Build record moved here from
-`docs/roadmap.md` in the same commit; the roadmap keeps a ~110-line summary.)*
+### F-A0 — tracker created (2026-08-02)
+
+On `main` after `ab11e18`. Build record moved here from `docs/roadmap.md` in commit `2644880`
+(roadmap 1,916 → 594 lines; Layer F 1,462 → 103, against 63/41/64 for C/D/E). Move proven
+lossless: 1,426 of 1,427 non-blank lines verbatim, the one exception being the H3 heading
+deliberately demoted to `## F0 → F3`.
+
+### F-A1 — public/static pages (2026-08-02) — **STARTED, `/contact` partially done**
+
+Local dev server, driven through the browser; assertions read the accessibility tree and the
+source, not the screenshot.
+
+**`/contact` — a11y checks pass, and the finding I predicted does not exist.**
+
+The plan flagged `/contact` as the likeliest source of an a11y finding, on the evidence that
+`app/(public)/contact` carries only **2** `aria-`/`role` attributes across 2 files against 26 in
+the audited `components/run`. **That inference was wrong, and the raw count was a bad proxy:**
+
+- **Labels are properly associated.** Every field exposes its label as its accessible name
+  (Name / Email / Message) — via shadcn's `Label htmlFor`, which needs no extra ARIA.
+- **The honeypot is correctly hidden from assistive tech.** `ContactForm.tsx:66` wraps it in
+  `aria-hidden="true"` with `tabIndex={-1}` and `autoComplete="off"`. This matters more than it
+  looks: a honeypot drops matching submissions *silently*, so one exposed to a screen reader
+  would discard a blind user's message with no error. It doesn't.
+- **The result is announced** — `role="alert"` on the outcome region (`ContactForm.tsx:112`).
+- **Disclaimer present** — the public footer carries "Information only — not financial advice"
+  with a working `/disclaimer` link, on every `(public)` page.
+
+**Two false leads worth recording, because both would have become bogus findings.** The
+accessibility tree dump listed the honeypot as a visible labelled textbox, and rendered the
+footer as `advice. .` with a doubled full stop. Both are **artifacts of the reading tool** —
+`read_page` enumerates DOM nodes including `aria-hidden` ones, and it flattens the text nodes
+either side of an inline link. Checking the source settled both. *Lesson, and it is the same
+one as the skipped-tests trap: know what your instrument actually measures before you file a bug
+against what it printed.*
+
+**Layer-wide a11y spot check — all five Layer F forms announce their outcome:** `ContactForm`,
+`LoginForm`, `ProfileForm`, `PasswordForm` and `ReferAFriendCard` each carry an `aria-live`,
+`role="status"` or `role="alert"` region. So Layer F's a11y baseline is materially better than
+the attribute-density proxy suggested, and F-A2/F-A3 should be scoped accordingly — the open
+question is now **keyboard traversal and focus management**, not labelling.
+
+**Still open in F-A1:** `/pricing`, `/methodology`, `/terms`, `/privacy`, `/disclaimer`,
+`/deletion-requested` — visual parity, copy, keyboard traversal, empty/edge renders. Then
+F-A2, F-A3, F-A4 (incl. the live tail) and F-A5 (the copy inventory).
 
 ---
 ---
