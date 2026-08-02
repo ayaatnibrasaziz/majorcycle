@@ -225,8 +225,63 @@ instrument** — every one would have been a bogus finding had I trusted the pri
 *precision and completeness* findings, which is exactly what check 11 was added to catch, and they
 concentrate on the two pages that do the selling and the explaining.
 
-**Still open:** F-A2 (auth surfaces), F-A3 (`/account` + paywall), F-A4 (cross-cutting + live
-tail), F-A5 (the consolidated copy inventory — the four above are its first entries).
+### F-A2 — auth surfaces (2026-08-02) — ✅ **PASS, no findings**
+
+Rescoped away from labelling (settled in F-A1) toward input semantics and focus. All five
+password-bearing forms carry correct `autocomplete` tokens, which is both an a11y and a
+password-manager requirement and is routinely missed:
+
+| Form | Tokens |
+|---|---|
+| `LoginForm` | `email` · `current-password` |
+| `SignupForm` | `email` · `new-password` |
+| `ResetPasswordForm` | `email` (no password field — correct) |
+| `UpdatePasswordForm` | `new-password` ×2 (new + confirm) |
+| `PasswordForm` (account) | **`username`** · `current-password` · `new-password` ×2 |
+
+That `username` token on the account form is the advanced-correct pattern: without a username
+field in the DOM, password managers cannot bind a changed credential to the right account. It is
+present. **No findings.**
+
+### F-A3 — `/account` + paywall surfaces (2026-08-02) — **in progress**
+
+**`PremiumLockPage` denial copy — ✅ pass, and the correctness is structural, not just written.**
+Each of the four `AccessDenialReason` values gets its own message, each naming the caller's real
+situation and the real remedy: `canceled` reassures that browsing and financials remain free;
+`payment_failed` says update the card rather than buy a new plan; `billing_blocked` names the
+dispute. `no_subscription` is deliberately `null` — a first-time free viewer has had nothing go
+wrong, so a warning banner would read as a telling-off.
+
+**Why it cannot silently rot:** `DENIAL_COPY` is typed `Record<AccessDenialReason, …>`, so adding
+a fifth denial reason **fails the build** until its copy exists. That is the same principle as the
+CI guards — the property is enforced by the toolchain rather than by remembering. Worth recording
+as a strength, given this is precisely the surface where two real copy defects have already
+occurred.
+
+**Still open in F-A3:** `SubscriptionCard`'s seven rows across their real billing states,
+`/reactivate`, `StartTrialModal` (incl. the no-free-week repeat-email wording), `UpgradeDialog`,
+and keyboard/focus traversal on the dialogs.
+
+---
+
+## F-A5 — copy inventory (draft, **awaiting owner approval**)
+
+Nothing below is edited until it is signed off. Split so the mechanical fixes can be accepted
+wholesale and the voice changes weighed individually.
+
+### Group 1 — completeness gaps (recommend accept)
+
+| # | Surface | Issue | Proposed |
+|---|---|---|---|
+| 1 | `/pricing` `PricingPlans.tsx:20` | The screener is absent from the feature list | Add a bullet naming it, e.g. *"Screen hundreds of stocks at once — rank, filter and export"* |
+| 2 | `/pricing` | Bullets 1 and 3 describe the free tier, not the paid one | Re-cut the four bullets around what is actually paid: the judgement layer (Overall Rating, Health Score, Verdict, scorecard), the downloadable report, and the screener |
+| 3 | `/methodology` | "Cycle Payoff" described but never named | Name it where it is described, so the public vocabulary matches the app's and the glossary's |
+
+### Group 2 — positioning (owner's call, not mine)
+
+| # | Surface | Issue | Options |
+|---|---|---|---|
+| 4 | `/pricing` | The free account is never mentioned; `/methodology` does mention it. A visitor landing on `/pricing` first could conclude a card is required to use MajorCycle at all | **(a)** add a line — *"Or create a free account, no card needed"*; **(b)** add a free-vs-premium comparison; **(c)** leave as-is if `/pricing` is meant to be a pure conversion page. This is a strategy question, so it is the owner's |
 
 ---
 ---
