@@ -148,6 +148,11 @@ Buy/Sell/Strong-Buy/Avoid in our own outputs.
 - ✅ **Console cleanliness** on every Layer F route in a fresh tab — done in the live tail.
   **Zero** messages of any level across 18 production routes. The instrument was proven first
   (see the live-tail log); "no messages found" and "not listening" read identically otherwise.
+  One message did appear later, on the re-verify pass, and it is **not ours**: *"a listener
+  indicated an asynchronous response by returning true, but the message channel closed"* — the
+  canonical `chrome.runtime.onMessage` error — attributed to `/request:0:0` while the tab was on
+  `/results`, on a page whose only scripts are `/_next/` chunks. Browser-extension noise. Recorded
+  rather than dropped, because "I decided that one didn't count" is how a real error gets missed.
 
 ### 🔧 F-A4-a — a design token that existed only as a bare hex, 13 times (fixed)
 
@@ -257,6 +262,23 @@ loop itself works. Restored → green. The assertion lives inside the existing a
 
 *Gates: typecheck, lint, entitlement guard (11), report sections (22), **e2e 105/105**, production
 build green.*
+
+### Both fixes re-verified ON THE LIVE DEPLOY (`459c82f`)
+
+Not in the diff, and not on the local build — on `www.majorcycle.com`, signed in:
+
+- `/deletion-requested` now redirects to `/stocks`. It rendered the false claim before the deploy
+  and redirects after it, on the same account, in the same browser.
+- The trial modal lists the four corrected lines plus the state-aware cancel line; the upgrade
+  dialog lists the same four. **Rendering both from the one constant is what proves the
+  "cannot drift again" claim** — asserting a shared import in the diff would not have.
+
+> Two deploy-detection markers I tried first were worthless and I say so rather than bury it: the
+> `buildId` I grepped for **does not exist** in the HTML (it returned empty *both* times, so the
+> poll compared nothing to nothing), and a chunk-hash signature taken on `/methodology` cannot
+> move, because that page imports none of the changed files and Next content-hashes per chunk.
+> Both would have reported "not deployed yet" through a perfectly good deploy. The behaviour test
+> settled it in one request. **Prefer testing the change over detecting the deploy.**
 
 ## Known carry-over (recorded, not fixed in this audit)
 
