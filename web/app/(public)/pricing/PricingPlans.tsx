@@ -17,10 +17,23 @@ import {
 
 type PlanKey = keyof PlanPrices; // 'monthly' | 'annual'
 
+/**
+ * What the SUBSCRIPTION adds — not what the product contains.
+ *
+ * These must name only fields a free account genuinely does not get, or the page
+ * advertises the free tier back to a prospective subscriber. The paid set is the
+ * judgement layer (`PREMIUM_FIELDS` in lib/cycle.ts: overall rating + label,
+ * financial-health score + pillar subscores, valuation score/zone, Cycle Payoff),
+ * plus the downloadable report and the whole screener. Charts, the drawdown overlay
+ * with its cycle bands, and every fundamentals section are FREE — so they belong in
+ * the free-account line below, never here. Keep this list and lib/entitlement.ts
+ * telling the same story.
+ */
 const FEATURES = [
-  'Every ticker, chart, and Major Cycle analysis',
-  'Financial health, valuation, and overall rating',
-  'US, Australian, and Canadian equities',
+  'Overall Rating and Health Score on every stock',
+  'The full Verdict, five-pillar scorecard and valuation zone',
+  'Screen hundreds of stocks at once — rank, filter and export',
+  'Download a complete report for any stock',
   'Cancel anytime — no charge until day 7',
 ];
 
@@ -146,6 +159,21 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
               Start 7-day free trial
             </Link>
           </Button>
+
+          {/* The free tier, stated plainly. Without this the page reads as "a card is
+              required to use MajorCycle", which is untrue and the opposite of the
+              owner-agreed positioning: the data is free, our judgement is paid. */}
+          <p className="mt-4 text-center text-[12.5px] text-[var(--text-secondary)] leading-relaxed">
+            Or{' '}
+            <Link
+              href={`/signup?next=${encodeURIComponent('/stocks')}`}
+              className="font-semibold text-[var(--brand-mid)] underline underline-offset-2 hover:text-[var(--brand-deep)]"
+            >
+              create a free account
+            </Link>{' '}
+            — no card needed — for charts, drawdown cycles and company financials across US,
+            Australian and Canadian equities.
+          </p>
 
           <p className="mt-3 text-center text-[12px] text-[var(--text-muted)]">
             Already have an account?{' '}

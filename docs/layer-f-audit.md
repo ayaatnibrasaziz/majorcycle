@@ -264,12 +264,42 @@ and keyboard/focus traversal on the dialogs.
 
 ---
 
-## F-A5 — copy inventory (draft, **awaiting owner approval**)
+## F-A5 — copy inventory — ✅ **APPROVED AND SHIPPED 2026-08-02**
 
-Nothing below is edited until it is signed off. Split so the mechanical fixes can be accepted
-wholesale and the voice changes weighed individually.
+Owner accepted Group 1 in full and chose option **(a)** for Group 4 — add the free-account line
+to `/pricing`. All four changes are live in the codebase; gates green (typecheck, lint, both
+static guards, e2e **105/105**).
 
-### Group 1 — completeness gaps (recommend accept)
+**What shipped:**
+
+- **`/pricing` features re-cut** (`PricingPlans.tsx`) to name only what a subscription actually
+  adds: Overall Rating + Health Score · the Verdict, five-pillar scorecard and valuation zone ·
+  the screener (rank, filter, export) · the downloadable report · cancel anytime. Cross-checked
+  field by field against `PREMIUM_FIELDS` in `lib/cycle.ts`, so the page cannot advertise
+  something a free account already has. A comment on the array says exactly that, and points at
+  `lib/entitlement.ts`, so the next person editing it knows the constraint.
+- **`/pricing` free-account line** — *"Or create a free account — no card needed — for charts,
+  drawdown cycles and company financials across US, Australian and Canadian equities."* This
+  also rehomes the coverage fact that used to masquerade as a paid feature.
+- **`/methodology` names Cycle Payoff** where it previously only described it, closing the gap to
+  the 7 app files and the glossary.
+
+### 🔴 A real defect, in my own new copy, caught by the verification rule
+
+The methodology sentence rendered as **"Cycle Payoff— how reliable"** — no space before the em
+dash. JSX had swallowed the whitespace across the `</strong>` boundary. **The diff looked
+correct; the page was wrong.** Fixed with an explicit `{' — '}` and re-confirmed on the rendered
+DOM.
+
+This is precisely why the plan says approved copy must be re-read **on the rendered page, not in
+the diff** — and it is the fourth whitespace-around-markup issue this session. The other three
+were tool artifacts I correctly dismissed; **this one was real, and had I generalised from those
+three I would have shipped it.** The instrument being unreliable does not make the defect class
+unreal. Verify each instance on the DOM.
+
+---
+
+### Group 1 — completeness gaps ✅ accepted
 
 | # | Surface | Issue | Proposed |
 |---|---|---|---|
@@ -277,11 +307,11 @@ wholesale and the voice changes weighed individually.
 | 2 | `/pricing` | Bullets 1 and 3 describe the free tier, not the paid one | Re-cut the four bullets around what is actually paid: the judgement layer (Overall Rating, Health Score, Verdict, scorecard), the downloadable report, and the screener |
 | 3 | `/methodology` | "Cycle Payoff" described but never named | Name it where it is described, so the public vocabulary matches the app's and the glossary's |
 
-### Group 2 — positioning (owner's call, not mine)
+### Group 2 — positioning (owner's call) ✅ **owner chose (a)**
 
-| # | Surface | Issue | Options |
+| # | Surface | Issue | Outcome |
 |---|---|---|---|
-| 4 | `/pricing` | The free account is never mentioned; `/methodology` does mention it. A visitor landing on `/pricing` first could conclude a card is required to use MajorCycle at all | **(a)** add a line — *"Or create a free account, no card needed"*; **(b)** add a free-vs-premium comparison; **(c)** leave as-is if `/pricing` is meant to be a pure conversion page. This is a strategy question, so it is the owner's |
+| 4 | `/pricing` | The free account was never mentioned; `/methodology` did mention it. A visitor landing on `/pricing` first could conclude a card is required to use MajorCycle at all | Owner chose **(a)** — add the free-account line. Shipped. The alternatives were (b) a full free-vs-premium comparison table, or (c) leave `/pricing` as a pure conversion page |
 
 ---
 ---

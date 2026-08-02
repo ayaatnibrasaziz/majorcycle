@@ -104,9 +104,11 @@ export default function MethodologyPage() {
 
           <Section heading="Overall Rating">
             <p>
-              A single 0–100 score that blends financial health, valuation, and the
-              reliability of the stock&apos;s historical cycle, mapped to one of five
-              labels:
+              A single 0–100 score that blends financial health, valuation, and{' '}
+              <strong>Cycle Payoff</strong>
+              {' — '}
+              how reliable the stock&apos;s historical cycle has been, and what it has paid
+              off relative to the risk taken. Mapped to one of five labels:
             </p>
             <div className="grid grid-cols-5 gap-1.5 mt-3">
               {TIERS.map((t) => (
