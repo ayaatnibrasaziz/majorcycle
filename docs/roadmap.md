@@ -328,7 +328,15 @@ tier, 7-day trial, paid conversion, and the paywall that separates them.
 > Note what the live-check sessions were and were not: they were a **security and billing**
 > audit — the paywall cannot be bypassed, the money moves correctly, proven at the wire across
 > twelve viewer states and a full test-clock lifecycle. They never asked whether the pages are
-> accessible, on-brand or well written. Those axes are the audit now in progress (F-A1…F-A5).
+> accessible, on-brand or well written. Those axes are the audit F-A1…F-A5.
+>
+> **Audit progress (2026-08-02): F-A1, F-A2, F-A3 and the F-A4 sweep are DONE; only the
+> deploy-gated live tail remains.** Seven findings, **none functional, none a compliance breach,
+> none that reached a user** — five copy, one misfiled comment block, one design token. Fixed and
+> shipped: `/pricing` no longer advertises the free tier back to a prospective subscriber and now
+> names the screener, the report and the free account; `/methodology` names **Cycle Payoff**;
+> `--brand-light-border` is a token instead of a hex written out 13 times. Auth surfaces and the
+> paywall lock copy passed with no findings.
 
 **F0 — Auth branding / de-Supabase-ification.** Every auth touchpoint reads as `majorcycle.com`.
 - [x] Native Google sign-in (Google Identity Services + `signInWithIdToken`) — kills the

@@ -28,6 +28,7 @@ The new build's job is to **rebuild the same product on a modern foundation**, n
   --brand-mid:     #1E5CB3;
   --brand-bright:  #2E7DE8;
   --brand-light:   #EBF3FF;
+  --brand-light-border: #BFDBFE;  /* the border that PAIRS with --brand-light */
 
   /* Surfaces */
   --bg-page:       #F0F4F8;
@@ -72,6 +73,13 @@ The new build's job is to **rebuild the same product on a modern foundation**, n
   --tint-brand:         rgba(46,125,232,.10);
 }
 ```
+
+> **Notice panels use the pair `--brand-light` + `--brand-light-border`.** Never write the
+> border as a bare `#bfdbfe`. It had been hand-written **13 times across 8 components and 3
+> rules in `globals.css`** before the Layer F audit named it (F-A4) — the fill was tokenised and
+> its companion border was not. The consequence is invisible until it isn't: retuning the brand
+> palette moves every panel's background and leaves thirteen borders on the old blue. **If you
+> introduce a colour that pairs with an existing token, tokenise it in the same commit.**
 
 These are exposed as Tailwind v4 theme tokens in `tailwind.config.ts`:
 
