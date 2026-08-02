@@ -280,6 +280,52 @@ Not in the diff, and not on the local build — on `www.majorcycle.com`, signed 
 > Both would have reported "not deployed yet" through a perfectly good deploy. The behaviour test
 > settled it in one request. **Prefer testing the change over detecting the deploy.**
 
+### F-A6 — subscription-state matrix, driven from the LIVE database (2026-08-02) — ✅ **14/14 PASS**
+
+The one dimension nothing had ever exercised **on production**: the *paid* states. S3 drove the
+money in the Stripe **sandbox**; this drove the rendering on `www.majorcycle.com` by writing the
+owner's own `profiles` row and reading every premium surface back. **No Stripe call, no money.**
+
+Method: snapshot the row into a temp table → set each state → probe → restore. Restoration was
+verified by `(p.*) IS DISTINCT FROM (b.*)` returning **0 rows differing**, then the temp table was
+dropped and the injected `trial_tombstones` row deleted (leaving it would have silently consumed
+the owner's own free week — the CTA reverting to "Start free trial" is the proof it's gone).
+
+| # | State | Card badge · detail | Premium surfaces |
+|---|---|---|---|
+| 1 | `active` + monthly | Active · "on the Monthly plan" · Manage billing | unlocked, report 200 |
+| 2 | `active` + annual | Active · "on the Annual plan" | unlocked |
+| 3 | `trialing` | Trial active · "runs until <date>" | unlocked |
+| 4 | `trialing` + cancel_at_period_end | Trial active · **"free trial ends <date> and won't renew"**, "runs until" correctly gone | unlocked |
+| 5 | `active` + cancel_at_period_end | Active · "active until <date> and won't renew" | unlocked — correct, they've paid through the period |
+| 6 | `past_due` **inside** grace | Payment due · "update your card to keep access" | unlocked |
+| 7 | `past_due` **past** grace | **Access paused** · "access is paused for now" | LOCKED, report 402 `payment_failed` |
+| 8 | `canceled` | Cancelled · CTA becomes re-subscribe | LOCKED, 402 `canceled` |
+| 9 | `canceled` + trial already used | CTA **"Subscribe"**, not "Start free trial"; `billing-context.trialUsed=true` | LOCKED — no second free week |
+| 10 | `billing_blocked` **while active** | **On hold** outranks the live sub · dispute copy · Manage billing → Contact support · **no plan-label leak** | LOCKED, 402 `billing_blocked` |
+| 11 | unrecognised status (`unpaid`) | **fails closed** → No plan; does NOT leak "on the Monthly plan" though `subscription_plan` is still set | LOCKED, 402 `no_subscription` |
+| 12 | `past_due`, `grace_until` **NULL** | **fails closed** → Access paused; the false "keep access" promise absent | LOCKED, 402 `payment_failed` |
+| 13 | `active`, plan NULL | Active · "Your subscription is active." — no `"on the  plan"` artifact | unlocked |
+| 14 | `deletion_scheduled_at` on a **paying** account | every `(app)` page → `/reactivate`; portal → `/reactivate` | report **403** `account_deleting`, analyze **403** `account_deleting` |
+
+**States 6 vs 7 are the headline.** Identical Stripe status, opposite copy and opposite access —
+the defect fixed earlier in this project, now proven on production. **State 10** proves the dispute
+lock outranks an otherwise-healthy subscription. **11 and 12** prove `hasAccess` genuinely fails
+closed rather than merely being written to.
+
+> **The fetch probe could not see a redirect, and nearly produced a false finding.** State 14 first
+> read as "all four pages return 200, no confinement" — with the Stock Detail HTML carrying 9
+> premium keys. Both readings were artifacts: the `(app)` layout's `redirect()` fires during
+> **streaming**, after headers are flushed, so Next cannot send a 307 and instead embeds the
+> redirect in the RSC payload for the **client** to execute. `fetch()` never runs the client
+> runtime. A real navigation put `/run`, `/stocks/us/AAPL` and `/account` on `/reactivate`, as
+> designed. **Redirects must be tested by navigating, never by fetching.**
+>
+> The 9 keys in that payload are not a leak: that viewer was `active`, so billing-entitled to their
+> own data — deletion confinement is a product decision, not an entitlement one. Checked directly:
+> the **unentitled + deleting** combination ships **0** premium keys and 403s. No path exists where
+> unentitled data reaches the wire.
+
 ## Known carry-over (recorded, not fixed in this audit)
 
 - **CSP is still `Content-Security-Policy-Report-Only`** (`web/next.config.ts:42`). Flipping it

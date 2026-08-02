@@ -349,6 +349,14 @@ tier, 7-day trial, paid conversion, and the paywall that separates them.
 > proven with a probe first), all eight `PREMIUM_FIELDS` absent from a free account's raw HTML,
 > `/report` 402 `private, no-store`, and AUD pricing correct to the cent. Auth surfaces and the
 > paywall lock copy passed with no findings.
+>
+> **F-A6 — subscription-state matrix on LIVE, 14/14 pass (2026-08-02).** The paid states had only
+> ever been exercised in the Stripe sandbox; this drove them on production by writing the owner's
+> own `profiles` row (**no Stripe call, no money**) and reading every premium surface back. Covers
+> monthly/annual, trial, both scheduled-cancel variants, **both sides of the grace window**, the
+> dispute lock outranking a live subscription, "no second free week", deletion confinement, and
+> two fail-closed cases (unknown status, missing grace marker). Account restored to byte-identical
+> (`0 rows differing`) with the injected trial tombstone removed.
 
 **F0 — Auth branding / de-Supabase-ification.** Every auth touchpoint reads as `majorcycle.com`.
 - [x] Native Google sign-in (Google Identity Services + `signInWithIdToken`) — kills the
