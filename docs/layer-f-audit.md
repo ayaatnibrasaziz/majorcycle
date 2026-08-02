@@ -197,9 +197,36 @@ against what it printed.*
 the attribute-density proxy suggested, and F-A2/F-A3 should be scoped accordingly — the open
 question is now **keyboard traversal and focus management**, not labelling.
 
-**Still open in F-A1:** `/pricing`, `/methodology`, `/terms`, `/privacy`, `/disclaimer`,
-`/deletion-requested` — visual parity, copy, keyboard traversal, empty/edge renders. Then
-F-A2, F-A3, F-A4 (incl. the live tail) and F-A5 (the copy inventory).
+**`/methodology` — technically accurate, and the numbers were checked against the engine.**
+The five bands printed on the page (80 / 65 / 50 / 35) match `analytics/scoring/overall.py`
+exactly. Disclaimer sits above the fold. "We deliberately avoid 'Buy' and 'Sell' language" plus
+the analyst-consensus carve-out are both present and correct (#2, #17).
+
+**`/terms`, `/privacy`, `/disclaimer`, `/deletion-requested` — all 200**, all carrying the
+"not financial advice" line and the Major Cycle vocabulary; the three legal pages all route to
+`support@majorcycle.com`. *(`/deletion-requested` deliberately does not — it is a status page,
+and its action is `/reactivate`.)*
+
+**A third tool artifact, recorded like the other two.** `/methodology` appeared to read
+"rather than guess— you'll see" with a missing space. The source has the space; the extraction
+dropped it across a `</strong>` boundary. **Three false leads in one session from the same
+instrument** — every one would have been a bogus finding had I trusted the printout.
+
+### F-A1 findings — all check 11 (copy), none blocking, all owner-gated
+
+| id | Surface | Finding |
+|---|---|---|
+| **F-A1-a** | `/pricing` | **The screener is never mentioned.** `/run` + `/results` — batch-analyse hundreds of tickers, rank, filter, export — is the single largest paid capability and appears nowhere in the four feature bullets (`PricingPlans.tsx:20`) |
+| **F-A1-b** | `/pricing` | **Three of the four bullets describe what a free account already has.** Per the F3 Step 10 split, free keeps every ticker, the charts, the drawdown overlay *with cycle bands*, and all fundamentals. So "Every ticker, chart, and Major Cycle analysis" and "US, Australian, and Canadian equities" are not differentiators. Only "Financial health, valuation, and overall rating" names something actually paid. The page under-sells the product by describing the free tier |
+| **F-A1-c** | `/pricing` | **The free account is never mentioned.** `/methodology` ends with "Create a free account →"; `/pricing` offers only a card-required trial. A visitor landing on `/pricing` first could reasonably conclude a card is required to use MajorCycle at all — which is not true, and is the opposite of the owner-agreed positioning |
+| **F-A1-d** | `/methodology` | **"Cycle Payoff" is never named.** It is the third component of the Overall Rating, it is `cycle_payoff_score` in the engine, and it appears in **7 app files plus `docs/glossary.md`** — KPI strip, Verdict card, Stock header, results table. The public page describes it ("the reliability of the stock's historical cycle") but never names it, so a reader gets no bridge from the public vocabulary to the one they meet after signing up |
+
+**Nothing here is a bug** — no incorrect claim, no compliance breach, no broken state. All four are
+*precision and completeness* findings, which is exactly what check 11 was added to catch, and they
+concentrate on the two pages that do the selling and the explaining.
+
+**Still open:** F-A2 (auth surfaces), F-A3 (`/account` + paywall), F-A4 (cross-cutting + live
+tail), F-A5 (the consolidated copy inventory — the four above are its first entries).
 
 ---
 ---
