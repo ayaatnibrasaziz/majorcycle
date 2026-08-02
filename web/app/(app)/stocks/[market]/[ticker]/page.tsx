@@ -338,7 +338,7 @@ export default async function StockDetailPage({
             (No horizon selector lives on the detail page by design.) */}
         {spec.preset !== 'medium' && (
           <div
-            className="flex items-center gap-1.5 text-[11px] text-[var(--brand-mid)] bg-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius-sm)] px-3 py-2"
+            className="flex items-center gap-1.5 text-[11px] text-[var(--brand-mid)] bg-[var(--brand-light)] border border-[var(--brand-light-border)] rounded-[var(--radius-sm)] px-3 py-2"
             role="note"
           >
             <span className="font-semibold uppercase tracking-[0.5px] text-[10px]">

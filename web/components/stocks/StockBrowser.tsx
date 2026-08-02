@@ -227,7 +227,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
     <div>
       {/* Cycle horizon — chosen before opening a stock; carried into the
           detail page via ?preset=. Distinct from the list filters below. */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap mb-3 px-3 py-2.5 bg-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius-sm)]">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap mb-3 px-3 py-2.5 bg-[var(--brand-light)] border border-[var(--brand-light-border)] rounded-[var(--radius-sm)]">
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[var(--brand-mid)]">
             Cycle horizon

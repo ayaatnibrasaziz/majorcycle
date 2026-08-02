@@ -82,7 +82,7 @@ export function SignupForm() {
   if (sent) {
     return (
       <AuthCard title="Check your email">
-        <div className="bg-gradient-to-br from-white to-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius)] p-6 text-center">
+        <div className="bg-gradient-to-br from-white to-[var(--brand-light)] border border-[var(--brand-light-border)] rounded-[var(--radius)] p-6 text-center">
           <div className="w-14 h-14 mx-auto rounded-full bg-white shadow-[var(--shadow-md)] flex items-center justify-center mb-4">
             <Mail className="w-7 h-7 text-[var(--brand-mid)]" strokeWidth={2} />
           </div>
@@ -116,7 +116,7 @@ export function SignupForm() {
       }
     >
       {startingTrial && (
-        <div className="mb-5 flex gap-2.5 rounded-[var(--radius-sm)] border border-[#bfdbfe] bg-[var(--brand-light)] px-3.5 py-3">
+        <div className="mb-5 flex gap-2.5 rounded-[var(--radius-sm)] border border-[var(--brand-light-border)] bg-[var(--brand-light)] px-3.5 py-3">
           <Sparkles
             className="mt-[2px] h-[15px] w-[15px] flex-shrink-0 text-[var(--brand-mid)]"
             strokeWidth={2}
@@ -133,7 +133,7 @@ export function SignupForm() {
       )}
 
       {/* Free-tier value props — matches reference briefing-card aesthetic */}
-      <div className="mb-6 bg-gradient-to-br from-white to-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius)] px-4 py-3.5">
+      <div className="mb-6 bg-gradient-to-br from-white to-[var(--brand-light)] border border-[var(--brand-light-border)] rounded-[var(--radius)] px-4 py-3.5">
         <ul className="flex flex-col gap-2">
           {freeFeatures.map((line) => (
             <li key={line} className="flex items-start gap-2.5 text-[12.5px] text-[var(--text-secondary)] leading-snug">

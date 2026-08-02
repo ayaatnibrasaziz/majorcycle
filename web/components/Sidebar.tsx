@@ -208,7 +208,7 @@ export function Sidebar({
       {/* Bottom: subscription badge. Account moved to the header user menu in F3
           Step 10 — keeping a second entry point here just duplicated it. */}
       <div className="px-2 py-3 border-t border-[var(--border)] flex-shrink-0">
-        <div className="bg-gradient-to-br from-[var(--brand-light)] to-[#dbeafe] border border-[#bfdbfe] rounded-[var(--radius-sm)] px-3 py-2 text-[10px]">
+        <div className="bg-gradient-to-br from-[var(--brand-light)] to-[#dbeafe] border border-[var(--brand-light-border)] rounded-[var(--radius-sm)] px-3 py-2 text-[10px]">
           <div className="text-[var(--text-muted)] font-medium tracking-[0.5px] uppercase">
             Licence Status
           </div>

@@ -46,6 +46,12 @@
   --brand-mid: #1E5CB3;
   --brand-bright: #2E7DE8;
   --brand-light: #EBF3FF;
+  /* The border that pairs with --brand-light on info/notice panels. Named during the
+     Layer F audit (F-A4), where it turned up as a bare #bfdbfe **13 times across 8
+     components and 3 rules in this file** — the fill was tokenised, its companion
+     border never was. Retuning the brand palette (decision #25) would have moved every
+     background and left thirteen borders on the old blue. Use this, not the hex. */
+  --brand-light-border: #BFDBFE;
 
   /* Surfaces */
   --bg-page: #F0F4F8;
@@ -1108,7 +1114,7 @@ td.num             { font-weight: 600; }
 /* Analyst Briefing */
 .briefing {
   background: linear-gradient(135deg, #fff, var(--brand-light));
-  border: 1px solid #bfdbfe; border-radius: var(--radius);
+  border: 1px solid var(--brand-light-border); border-radius: var(--radius);
   padding: 16px 20px; margin-bottom: 16px; box-shadow: var(--shadow-sm);
   display: flex; gap: 16px; align-items: flex-start;
 }
@@ -1491,7 +1497,7 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 .req-notice {
   display: flex; align-items: center; gap: 8px; margin-top: 10px;
   padding: 8px 12px; border-radius: var(--radius-sm);
-  background: var(--brand-light); border: 1px solid #bfdbfe;
+  background: var(--brand-light); border: 1px solid var(--brand-light-border);
   font-size: 12px; color: var(--brand-mid);
 }
 .req-notice-x { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--brand-mid); opacity: .7; }
@@ -1548,7 +1554,7 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 .skipped-req {
   display: inline-flex; align-items: center; gap: 3px;
   padding: 2px 7px; border-radius: 999px; cursor: pointer;
-  background: var(--brand-light); color: var(--brand-mid); border: 1px solid #bfdbfe;
+  background: var(--brand-light); color: var(--brand-mid); border: 1px solid var(--brand-light-border);
   font-size: 10px; font-weight: 600; transition: all .15s;
 }
 .skipped-req:hover:not(:disabled) { background: var(--brand-mid); color: #fff; }

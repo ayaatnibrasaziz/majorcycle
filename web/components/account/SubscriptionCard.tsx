@@ -128,7 +128,7 @@ const BLOCKED_META: StatusMeta = {
 };
 
 const TONE_CLS: Record<StatusMeta['tone'], string> = {
-  ok: 'bg-[var(--brand-light)] text-[var(--brand-mid)] border-[#bfdbfe]',
+  ok: 'bg-[var(--brand-light)] text-[var(--brand-mid)] border-[var(--brand-light-border)]',
   warn: 'bg-[var(--tint-tier-3)] text-[var(--c-tier-3-ink)] border-[var(--tint-tier-3-strong)]',
   muted:
     'bg-[var(--bg-hover)] text-[var(--text-secondary)] border-[var(--border)]',

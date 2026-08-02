@@ -133,12 +133,48 @@ Buy/Sell/Strong-Buy/Avoid in our own outputs.
 
 ## Cross-cutting items (apply layer-wide)
 
-- ⬜ **Compliant labels** (#2) across every Layer F surface.
-- ⬜ **Disclaimer without scrolling** (#4/#12) on every page showing a rating or score.
-- ⬜ **Currency** (#13) — subscription pricing in the viewer's local currency; stock prices always
-  in the stock's home currency.
-- ⬜ **Console cleanliness** on every Layer F route, judged in a fresh tab.
-- ⬜ **Design-token conformance** — no hard-coded hexes outside the token set.
+- ✅ **Compliant labels** (#2) — F-A4: swept every Layer F surface. Every `buy`/`sell`/`avoid` hit
+  is ordinary English in a *disclaimer* ("not recommendations to buy, hold, or sell"), the
+  deliberate "we avoid 'Buy' and 'Sell' language" line, or unrelated ("sell your personal
+  information", "buy a new plan", "avoid an accidental deletion"). **No rating label anywhere.**
+- ✅ **Disclaimer presence** (#4/#12) — the `(public)` footer carries it on every public page; the
+  `(app)` layout strip covers the authenticated ones. Position above the fold was confirmed in
+  C-R5 and re-confirmed for paywalled states in S2.
+- ✅ **Currency** (#13) — `/pricing` resolves the viewer's currency from country and labels it
+  explicitly ("Prices in USD"); annual is exactly 30% off (US$126 vs US$180), matching decision
+  #18. Stock prices remain in the stock's home currency (C-R5: CAD on SHOP.TO, AUD on AAI, USD on
+  AAPL/BAC).
+- 🔧 **Design-token conformance** — one real finding, fixed. See F-A4-a.
+- ⬜ **Console cleanliness** on every Layer F route in a fresh tab — deferred to the live tail,
+  where it is worth more (dev-only overlay noise makes the local signal weak).
+
+### 🔧 F-A4-a — a design token that existed only as a bare hex, 13 times (fixed)
+
+`#bfdbfe` is the border that pairs with `var(--brand-light)` on every info/notice panel. The
+**fill was tokenised; its companion border never was** — so the hex was hand-written **13 times
+across 8 components and 3 rules in `globals.css`**.
+
+That is not cosmetic. Decision #25 fixes the brand palette, and any future retune moves
+`--brand-light` while leaving thirteen borders on the old blue — a drift that shows up only as
+"something looks slightly off" long after the change. Added `--brand-light-border` in `:root`
+and replaced every usage.
+
+**Scope note, stated plainly:** the sweep began as Layer F but the same hex was in Layer B
+(`Sidebar.tsx`) and Layer C (`StockBrowser.tsx`, the Stock Detail page). I completed the
+replacement there too, because a half-applied token is worse than none — it *looks* done. Purely
+mechanical: identical value, identical rendering.
+
+> **The dev server lied about it, and the production build settled it.** After the edit the
+> browser reported `--brand-light-border` as **empty** with **0** elements carrying that border,
+> while the HTML already referenced `var(--brand-light-border)` — a combination that would render
+> a colourless border. The served stylesheet was **stale**: Next had HMR'd the TSX but not
+> recompiled `globals.css`, so it still held the old bare hexes and no token. `pnpm build`
+> resolved it — the production CSS defines `--brand-light-border:#bfdbfe` and consumes
+> `var(--brand-light-border)` **4×**. *Fourth instrument-lied-to-me episode this session: when a
+> dev-server reading contradicts the source, rebuild before believing it.*
+
+*Gates: typecheck, lint, entitlement guard (11), report sections (22), **e2e 105/105**, production
+build green.*
 
 ## Known carry-over (recorded, not fixed in this audit)
 

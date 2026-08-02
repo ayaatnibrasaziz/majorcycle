@@ -36,7 +36,7 @@ export function ResetPasswordForm() {
   if (sent) {
     return (
       <AuthCard title="Check your email">
-        <div className="bg-gradient-to-br from-white to-[var(--brand-light)] border border-[#bfdbfe] rounded-[var(--radius)] p-6 text-center">
+        <div className="bg-gradient-to-br from-white to-[var(--brand-light)] border border-[var(--brand-light-border)] rounded-[var(--radius)] p-6 text-center">
           <div className="w-14 h-14 mx-auto rounded-full bg-white shadow-[var(--shadow-md)] flex items-center justify-center mb-4">
             <KeyRound className="w-7 h-7 text-[var(--brand-mid)]" strokeWidth={2} />
           </div>
