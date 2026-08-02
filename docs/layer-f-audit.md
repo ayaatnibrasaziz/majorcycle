@@ -145,8 +145,9 @@ Buy/Sell/Strong-Buy/Avoid in our own outputs.
   #18. Stock prices remain in the stock's home currency (C-R5: CAD on SHOP.TO, AUD on AAI, USD on
   AAPL/BAC).
 - 🔧 **Design-token conformance** — one real finding, fixed. See F-A4-a.
-- ⬜ **Console cleanliness** on every Layer F route in a fresh tab — deferred to the live tail,
-  where it is worth more (dev-only overlay noise makes the local signal weak).
+- ✅ **Console cleanliness** on every Layer F route in a fresh tab — done in the live tail.
+  **Zero** messages of any level across 18 production routes. The instrument was proven first
+  (see the live-tail log); "no messages found" and "not listening" read identically otherwise.
 
 ### 🔧 F-A4-a — a design token that existed only as a bare hex, 13 times (fixed)
 
@@ -172,6 +173,87 @@ mechanical: identical value, identical rendering.
 > resolved it — the production CSS defines `--brand-light-border:#bfdbfe` and consumes
 > `var(--brand-light-border)` **4×**. *Fourth instrument-lied-to-me episode this session: when a
 > dev-server reading contradicts the source, rebuild before believing it.*
+
+*Gates: typecheck, lint, entitlement guard (11), report sections (22), **e2e 105/105**, production
+build green.*
+
+### F-A4 live tail — `www.majorcycle.com`, owner signed in (2026-08-02) — ✅ **COMPLETE**
+
+Run on the real deploy (`2da1065`) with the owner signed in as a **free, NO PLAN** account — the
+state most of Layer F's copy is written for.
+
+**First, the three changes shipped earlier today, confirmed on the live wire** (not in the diff):
+`/pricing` carries all five re-cut bullets and the free-account line, with **zero** matches for the
+old free-tier advertising; `/methodology` renders `Cycle Payoff</strong> — `, so the JSX
+space-swallowing fix is genuinely live; the global CSS defines `--brand-light-border` once with
+**4** `var()` consumers and the only remaining `#bfdbfe` is the definition itself.
+
+**Console:** zero messages, any level, across `/account` `/methodology` `/terms` `/privacy`
+`/disclaimer` `/contact` `/login` `/signup` `/reset-password` `/reactivate` `/deletion-requested`
+`/account/update-password` `/stocks/us/AAPL` `/run` `/results` `/request` `/pricing` and the two
+modals.
+
+**Paywall, live, on a real free account:** Stock Detail shows Current/Typical Drawdown and locks
+Overall Rating, Health Score and the Verdict; **all eight `PREMIUM_FIELDS` names appear 0× in the
+raw HTML**; `/run` and `/results` render the lock panel; `/stocks/us/AAPL/report` answers **402
+`private, no-store`** naming the caller's own reason (`no_subscription`) with zero premium leak.
+Trial modal prices in **AUD** (#13) — A$19/mo, A$159/yr = A$13.25/mo exactly, and "SAVE 30%" is
+true (A$159 vs A$228 = 30.3%).
+
+**Redirects:** `/login`, `/signup`, `/reactivate` bounce a signed-in reader to `/stocks`;
+`/pricing` bounces to `/account` by its own guard. `/account/update-password` rendering for a
+signed-in Google user is **deliberate and documented** (`proxy.ts` — a Google-only account can
+convert itself by setting one) and is not a finding.
+
+> **Two instrument notes, both of which would have produced false results.** (1) `read_console_messages`
+> reports "no messages found" identically whether the console is clean or the listener is dead — I
+> emitted a probe `console.error`/`console.warn` and read them back, and confirmed the listener
+> survives a navigation, *before* recording any route as clean. (2) A `javascript_tool` read fired
+> immediately after `navigate` runs against the **previous document**: on AAPL it returned an
+> 8-character body, which turned out to be the literal string `Loading…`. Any *absence* claim —
+> "zero premium keys" — is worthless from such a read, so the final measurement asserts
+> `htmlLen` (3.26 MB) and two positive sanity markers alongside the zeros.
+
+### 🔧 F-A4-b — the trial modal sold three things the free tier already gives away (fixed)
+
+`StartTrialModal` kept its own `FEATURES` list, and **2 of its 3 benefit lines described what a
+free account already has** — "Every ticker, chart, and Major Cycle analysis" (charts and the
+drawdown cycle are free) and "US, Australian, and Canadian equities" (all three markets are free).
+Only "Financial health, valuation, and overall rating" was actually premium.
+
+This is the same defect as **F-A1-b**, which was fixed on `/pricing` earlier the same day — and it
+survived that fix because it lived in a *different copy of the list*. It also matters more: this is
+the **last screen a reader sees before paying**, and `UpgradeDialog`, one click earlier, was
+showing a *correct* list. The two disagreed with each other in the same funnel.
+
+**Fix (owner-approved):** the correct four lines moved to `PREMIUM_UNLOCKS` in `lib/pricing.ts`,
+imported by **both** modals. Rewriting the words alone would have left two private lists free to
+drift again; sharing the constant is the part that stops it recurring. Documented with the rule
+that every line must name something in `PREMIUM_FIELDS` or the screener.
+
+### 🔧 F-A4-c — `/deletion-requested` told a signed-in reader their account was being deleted (fixed)
+
+The page states *"Your MajorCycle account is now scheduled for permanent deletion after a 30-day
+grace period"* **unconditionally**. It renders no user data by design (the date is in the email),
+so nothing ever checked whether the claim was true for the reader. **It said this to the owner,
+live, during this session.**
+
+Being in `PUBLIC_PATHS` only exempts a page from the *login bounce*; it does not stop a signed-in
+reader seeing it. Realistic path: delete → see the page → sign back in → reactivate → press **Back**,
+and be told the account is still going away. Same class as the two real defects this audit already
+caught (`past_due` promising intact access; "Payment received" when provisioning had failed):
+**copy that is true in one state and asserted in all of them.**
+
+The structural cause is worth more than the bug: the "signed-out readers only" rule was implemented
+**twice, in two places, with two memberships** — `proxy.ts` for `/login` and `/signup`,
+`pricing/page.tsx:43` for `/pricing` — so a third page opted out simply by not being written into
+either. **Fix:** one `SIGNED_OUT_ONLY_PATHS` list in `proxy.ts`, with `/deletion-requested` added.
+
+**Broken on purpose first.** With the path removed the e2e went red naming the right thing —
+`/deletion-requested must not render to a signed-in reader`, received
+`http://localhost:3100/deletion-requested` — and `/login`/`/signup` passed before it, proving the
+loop itself works. Restored → green. The assertion lives inside the existing authenticated test, so
+**the suite total stays 105**: unchanged count is correct here, not a skipped suite.
 
 *Gates: typecheck, lint, entitlement guard (11), report sections (22), **e2e 105/105**, production
 build green.*

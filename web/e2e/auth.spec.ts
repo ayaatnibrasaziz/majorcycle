@@ -181,6 +181,21 @@ test.describe('authenticated flows', () => {
     ).toBeVisible();
     await expect(page.getByRole('heading', { name: /^password$/i })).toBeVisible();
 
+    // Pages whose content is only TRUE for a signed-out reader must bounce a
+    // signed-in one (proxy.ts, SIGNED_OUT_ONLY_PATHS). /deletion-requested is the
+    // one that motivated the rule and the reason this loop exists rather than a
+    // single assertion: it states "your account is now scheduled for permanent
+    // deletion" unconditionally, so before the guard a user who deleted, reactivated
+    // and pressed Back was told their account was still going away. Found on the live
+    // site during the Layer F audit (F-A4-c) — reading the code had not caught it,
+    // because the bug was a guard that wasn't there.
+    for (const route of ['/login', '/signup', '/deletion-requested']) {
+      await page.goto(route);
+      await expect(page, `${route} must not render to a signed-in reader`).toHaveURL(
+        /\/stocks/
+      );
+    }
+
     // Sign out now lives in the header account menu rather than at the foot of the
     // sidebar (F3 Step 10) — that keeps it ONE click, which matters most on a shared
     // computer, while clearing the nav. Open the menu, then activate by keyboard:

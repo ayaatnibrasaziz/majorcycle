@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged and live. C, D and E audited; Layer F's production-readiness audit is in progress (`docs/layer-f-audit.md`). Next build layer: G (SEO + performance).**
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Next build layer: G (SEO + performance).**
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -310,7 +310,7 @@ Goal: The ranked Results view from reference HTML, fully functional.
 - Mobile (375px): table collapses to cards; the Results component adds no horizontal overflow (the residual shell overflow is the pre-existing non-responsive sidebar — **deferred Layer H**, not a Layer E regression)
 - Files: `web/lib/ratings.ts`, `web/components/results/*` (Results orchestrator + BriefingCard / ProvenanceBar / OpportunityMap / ResultsToolbar / AdvancedFilters / ResultsTable / SkippedTickers + `columns.ts` / `filters.ts`), `web/app/(app)/results/page.tsx` (server page → universe lookup), Results CSS appended to `globals.css`
 
-### Layer F: Static Pages + Subscription ✅ BUILT + MERGED + LIVE · 🔍 AUDIT IN PROGRESS
+### Layer F: Static Pages + Subscription ✅ BUILT + AUDITED (F-A1…F-A5) + MERGED + LIVE
 
 Goal: every non-app page live, and the subscription flow working end to end — signed-in free
 tier, 7-day trial, paid conversion, and the paywall that separates them.
@@ -330,12 +330,24 @@ tier, 7-day trial, paid conversion, and the paywall that separates them.
 > twelve viewer states and a full test-clock lifecycle. They never asked whether the pages are
 > accessible, on-brand or well written. Those axes are the audit F-A1…F-A5.
 >
-> **Audit progress (2026-08-02): F-A1, F-A2, F-A3 and the F-A4 sweep are DONE; only the
-> deploy-gated live tail remains.** Seven findings, **none functional, none a compliance breach,
-> none that reached a user** — five copy, one misfiled comment block, one design token. Fixed and
-> shipped: `/pricing` no longer advertises the free tier back to a prospective subscriber and now
-> names the screener, the report and the free account; `/methodology` names **Cycle Payoff**;
-> `--brand-light-border` is a token instead of a hex written out 13 times. Auth surfaces and the
+> **Audit COMPLETE (2026-08-02) — F-A1 … F-A5 including the live tail on `www.majorcycle.com`.**
+> Nine findings, **none a security or compliance breach**; seven were copy or presentation, and
+> the two found only on the live site were real behaviour:
+>
+> - `/pricing` no longer advertises the free tier back to a prospective subscriber, and names the
+>   screener, the report and the free account; `/methodology` names **Cycle Payoff**;
+>   `--brand-light-border` is a token instead of a hex written out 13 times.
+> - **F-A4-b** — the **trial modal**, the last screen before payment, listed three benefits a free
+>   account already had. Its list was a private copy that had drifted from the (correct) one in the
+>   upgrade dialog; both now import one `PREMIUM_UNLOCKS` constant, so they cannot disagree again.
+> - **F-A4-c** — `/deletion-requested` told **any** signed-in reader their account was scheduled
+>   for permanent deletion. The "signed-out readers only" rule lived in two places with two
+>   memberships, so the page opted out by omission; it is now one `SIGNED_OUT_ONLY_PATHS` list in
+>   `proxy.ts`, guarded by an e2e assertion proven to fail without it.
+>
+> Live tail also confirmed: **zero console messages** across 18 production routes (instrument
+> proven with a probe first), all eight `PREMIUM_FIELDS` absent from a free account's raw HTML,
+> `/report` 402 `private, no-store`, and AUD pricing correct to the cent. Auth surfaces and the
 > paywall lock copy passed with no findings.
 
 **F0 — Auth branding / de-Supabase-ification.** Every auth touchpoint reads as `majorcycle.com`.

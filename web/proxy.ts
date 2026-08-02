@@ -33,6 +33,13 @@ const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
  */
 const PREMIUM_API_PATHS = ['/api/analyze', '/api/analyze-dev'];
 
+/**
+ * Public pages whose content is only true for a reader with NO session. A signed-in
+ * caller is redirected to /stocks. See the guard near the end of `proxy` for why this
+ * is a list rather than a condition per page.
+ */
+const SIGNED_OUT_ONLY_PATHS = ['/login', '/signup', '/deletion-requested'];
+
 const PUBLIC_PATHS = [
   '/login',
   '/signup',
@@ -47,6 +54,7 @@ const PUBLIC_PATHS = [
   '/contact',
   // Post-deletion confirmation — the user has just been signed out, so it must be
   // reachable without a session (the reactivation page /reactivate stays gated).
+  // Also in SIGNED_OUT_ONLY_PATHS: reachable without a session, but *only* without one.
   '/deletion-requested',
   // Well-known URIs (RFC 8615) — e.g. /.well-known/security.txt. Must be publicly
   // reachable by security scanners/researchers without an auth redirect.
@@ -212,10 +220,20 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request: { headers } });
   }
 
-  if (userId && (pathname === '/login' || pathname === '/signup')) {
-    // Per-viewer for the same reason: /login answers a signed-in caller with a bounce
-    // and a signed-out one with the page. A shared cache keyed on the URL alone could
-    // not tell them apart.
+  // Pages that only make sense to a SIGNED-OUT reader. Being in PUBLIC_PATHS only
+  // exempts a page from the login bounce; it does not stop a signed-in one seeing it,
+  // and each of these asserts something false to a reader who already has a session.
+  //
+  // /deletion-requested was the one that proved the point: it states "your account is
+  // now scheduled for permanent deletion" unconditionally, so a user who deleted, then
+  // reactivated, then pressed Back was told their account was still going away. Found
+  // on the live site during the Layer F audit (F-A4-c). The rule is enforced HERE, in
+  // one list, because it had been spread across this file and pricing/page.tsx — which
+  // is exactly how a page comes to opt out of it by omission.
+  if (userId && SIGNED_OUT_ONLY_PATHS.includes(pathname)) {
+    // Per-viewer for the same reason as the bounce above: /login answers a signed-in
+    // caller with a redirect and a signed-out one with the page. A shared cache keyed
+    // on the URL alone could not tell them apart.
     return NextResponse.redirect(new URL('/stocks', request.url), { headers: NO_STORE });
   }
 

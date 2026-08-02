@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { StartTrialModal } from '@/components/account/StartTrialModal';
 import { SupportDialog } from '@/components/SupportDialog';
 import type { BillingCurrency } from '@/lib/stripe';
+import { PREMIUM_UNLOCKS } from '@/lib/pricing';
 
 /**
  * The one place a locked feature explains itself (F3 Step 10, owner-requested).
@@ -72,12 +73,9 @@ const FEATURES: Record<string, { title: string; what: string }> = {
   },
 };
 
-const UNLOCKS = [
-  'The Overall Rating and Health Score on every stock',
-  'The Verdict and the five-pillar scorecard',
-  'The full screener — run and rank your whole universe',
-  'Downloadable interactive reports',
-];
+// Shared with StartTrialModal via lib/pricing — see PREMIUM_UNLOCKS for why the
+// two must not keep private copies.
+const UNLOCKS = PREMIUM_UNLOCKS;
 
 /**
  * One in-flight request per page, shared by every lock on it.

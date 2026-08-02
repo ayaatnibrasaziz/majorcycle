@@ -15,18 +15,13 @@ import {
   PRICE_TABLE,
   CURRENCY_SYMBOL,
   CURRENCY_CODE_LABEL,
+  PREMIUM_UNLOCKS,
   annualPerMonth,
   annualSavingPercent,
   type PlanPrices,
 } from '@/lib/pricing';
 
 type PlanKey = keyof PlanPrices; // 'monthly' | 'annual'
-
-const FEATURES = [
-  'Every ticker, chart, and Major Cycle analysis',
-  'Financial health, valuation, and overall rating',
-  'US, Australian, and Canadian equities',
-];
 
 /** Money with the currency's symbol; whole numbers stay whole, otherwise 2dp. */
 function money(amount: number, currency: BillingCurrency): string {
@@ -69,7 +64,7 @@ export function StartTrialModal({
 
   // The last feature line depends on whether a free week applies.
   const features = [
-    ...FEATURES,
+    ...PREMIUM_UNLOCKS,
     trialUsed
       ? 'Cancel anytime — your plan runs to the end of the paid period'
       : 'Cancel anytime — no charge until day 7',
