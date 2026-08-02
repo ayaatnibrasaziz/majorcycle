@@ -44,3 +44,10 @@ Thumbs.db
 # Claude Code local session data — except shared dev-server launch config
 .claude/*
 !.claude/launch.json
+
+# Owner's personal business/tax/banking notes. This repo is PUBLIC — these hold
+# ABN + CommBank + Stripe-payout strategy and address references, none of which
+# belong in a code repo anyone can read (or fork, or find in history later).
+# They live on the owner's machine only. See memory: project_business_setup.
+BUSINESS_SETUP_GUIDE.md
+SETUP_ONE_PAGER.md
