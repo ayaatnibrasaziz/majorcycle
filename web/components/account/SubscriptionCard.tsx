@@ -104,14 +104,11 @@ const NONE_META: StatusMeta = {
   detail: () => 'You don’t have an active subscription yet.',
 };
 
-// A dispute lock is orthogonal to the Stripe status and outranks it everywhere else
-// (hasAccess, accessDenialReason, /pricing). Without this the card told a locked-out
-// customer "ACTIVE — You're on the Monthly plan", which is both wrong and the single
-// most support-generating thing we could say to someone whose access just vanished.
-// `past_due` after the 3-day grace window has closed. The status is unchanged, so
-// STATUS_META.past_due alone told a locked-out customer to "keep access" they had
-// already lost — the same failure as the dispute badge below, one dimension short of
-// the truth. Entitlement is what separates the two, so the copy follows it.
+// `past_due` AFTER the 3-day grace window has closed. Stripe's status is still just
+// `past_due` — identical to a customer inside the window who can still use everything —
+// so STATUS_META.past_due alone told a locked-out customer to "update your card to keep
+// access" they had ALREADY lost. Status is one dimension short of the truth here;
+// entitlement is what separates the two cases, so the copy follows entitlement.
 const PAST_DUE_LAPSED_META: StatusMeta = {
   label: 'Access paused',
   tone: 'warn',
@@ -119,6 +116,10 @@ const PAST_DUE_LAPSED_META: StatusMeta = {
     'We couldn’t take your last payment, so access is paused for now. Update your card and it comes straight back — nothing has been lost.',
 };
 
+// A dispute lock is orthogonal to the Stripe status and outranks it everywhere else
+// (hasAccess, accessDenialReason, /pricing). Without this the card told a locked-out
+// customer "ACTIVE — You're on the Monthly plan", which is both wrong and the single
+// most support-generating thing we could say to someone whose access just vanished.
 const BLOCKED_META: StatusMeta = {
   label: 'On hold',
   tone: 'warn',

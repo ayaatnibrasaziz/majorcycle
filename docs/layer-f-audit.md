@@ -258,9 +258,50 @@ CI guards — the property is enforced by the toolchain rather than by rememberi
 as a strength, given this is precisely the surface where two real copy defects have already
 occurred.
 
-**Still open in F-A3:** `SubscriptionCard`'s seven rows across their real billing states,
-`/reactivate`, `StartTrialModal` (incl. the no-free-week repeat-email wording), `UpgradeDialog`,
-and keyboard/focus traversal on the dialogs.
+**`SubscriptionCard` — user-facing copy is correct in all seven states.** The precedence is
+right and, importantly, it follows **entitlement** rather than Stripe's status where the two
+diverge:
+
+| State | Badge | Says |
+|---|---|---|
+| `active` | Active | names the plan |
+| `trialing` | Trial active | names the trial end date |
+| `past_due` **inside** grace | Payment due | "update your card to keep access" — true, they still have it |
+| `past_due` **past** grace | **Access paused** | "access is paused… update your card and it comes straight back" — true, they've lost it |
+| `canceled` | Cancelled | plain statement |
+| none | No plan | plain statement |
+| `billing_blocked` (any status) | **On hold** | names the dispute; outranks everything |
+
+The two middle rows are the same Stripe status. Only entitlement separates them, which is
+exactly the defect fixed in live-check S1. `canStartTrial` correctly excludes both a
+dispute-locked and a lapsed `past_due` account.
+
+**`StartTrialModal` repeat-email copy — ✅ honest, and before payment.** A tombstoned email
+sees "Subscribe to MajorCycle" and *"Your subscription starts today and is billed immediately —
+your free trial has already been used."* No surprise charge, which was the Step 7 requirement.
+
+**Dialogs + `/reactivate` — ✅ pass.** `StartTrialModal`, `UpgradeDialog` and `MethodologyModal`
+all build on the shared Radix `DialogContent`, so focus trap, Esc-to-close and focus restoration
+come from the primitive rather than from hand-rolled handlers. `/reactivate` is reachable only
+in its own state: no session → `/login`, no `deletion_scheduled_at` → `/stocks`.
+
+### 🔧 F-A3-a — two constants misdocumented by a merged comment block (fixed)
+
+`SubscriptionCard.tsx` carried one comment where there should have been two. The block above
+`PAST_DUE_LAPSED_META` opened with four sentences explaining the **dispute** lock — including
+the "ACTIVE — You're on the Monthly plan" defect that `BLOCKED_META` exists to prevent — and then
+switched mid-block to the past-due case with a verbless fragment: *"`past_due` after the 3-day
+grace window has closed."* Meanwhile `BLOCKED_META` itself had **no rationale at all**.
+
+Not user-facing, and no behaviour was wrong. It matters because this is the single most
+edit-prone surface in Layer F — both of the layer's real copy defects happened here — and the
+reasoning that prevents their recurrence was filed against the wrong constant. Each block now
+sits above the constant it explains, and the past-due comment states the actual trap: Stripe's
+status is identical inside and outside the grace window, so status alone is one dimension short
+of the truth and the copy must follow entitlement.
+
+*Gates after the fix: typecheck, lint, entitlement guard (11). The e2e suite was **not** re-run —
+the change is comments only, and 105/105 passed on the immediately preceding commit.*
 
 ---
 
