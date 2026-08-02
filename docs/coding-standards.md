@@ -516,7 +516,11 @@ def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[
 
 9. `pnpm check:entitlement-gates` — 14 credential-free paywall tripwires (§ CLAUDE.md 11a/11b)
 10. `pnpm check:report-sections` — the downloadable report matches the 22-section detail page
-11. Playwright e2e — 102 tests, incl. the paywall behavioural matrix
+11. Playwright e2e — 105 tests, incl. the paywall behavioural matrix and the Stripe
+    **key-scope** probe (`e2e/stripe-key-scope.spec.ts`), the one Stripe test that reaches the
+    network: it asserts the key CI/dev is handed is a restricted `rk_`, that a permitted call
+    (`prices.list`) succeeds, and that `customers.list` is refused with `StripePermissionError`
+    specifically. Nothing else in the suite can tell a full key from a scoped one.
 
 CI is configured in `.github/workflows/ci.yml`. Bypassing CI to merge is forbidden.
 

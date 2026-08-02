@@ -926,6 +926,17 @@ GOOGLE_CLIENT_SECRET=
 # THE SANDBOX KEY CARRIES THE SAME 5 PERMISSIONS (2026-08-01). It was a full-access
 # sk_test_ until then, which made local dev more permissive than production — and local dev
 # is where nearly every real Stripe call gets exercised before release.
+#
+# ...AND SO DOES CI (2026-08-02). The GitHub Actions secret STRIPE_TEST_SECRET_KEY, which the
+# e2e job maps into STRIPE_SECRET_KEY, was still the full sk_test_ after the sandbox was
+# tightened — so the drift was closed in one place and left open in another. All three
+# environments now carry the same five.
+#
+# THE LIVE KEY WAS ROLLED 2026-08-02 (Stripe "Roll key" — replaces the token, keeps the name
+# and permissions; "Edit key" would have kept the value). Its predecessor had been read into a
+# chat transcript. Rolling requires the same order as any Vercel secret change: new value into
+# Production, then REDEPLOY WITHOUT BUILD CACHE, then verify — a variable added after a build
+# does nothing until the next one.
 STRIPE_SECRET_KEY=
 # Dev harness ONLY — full sk_test_ for test clocks, disputes, fake customers, and
 # `pnpm stripe:listen` (which needs GET /v1/account: 403 on the restricted key, 200 on this

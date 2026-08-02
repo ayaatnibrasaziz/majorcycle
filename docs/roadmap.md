@@ -541,7 +541,8 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       customer. **Contract tests** `web/e2e/stripe-webhook.spec.ts` (plan §14): 8/8 — sign events → POST → assert the
       `profiles` row + idempotency + bad-sig 400, no network to Stripe; run in the existing CI e2e job, self-skip until
       `STRIPE_TEST_SECRET_KEY`+`STRIPE_TEST_WEBHOOK_SECRET`+`SUPABASE_SERVICE_ROLE_KEY` secrets set.
-- **Owner setup done (2026-07-16):** GitHub Secret `STRIPE_TEST_SECRET_KEY` ✅; Vercel **Preview** env
+- **Owner setup done (2026-07-16):** GitHub Secret `STRIPE_TEST_SECRET_KEY` ✅ *(swapped to the
+      restricted `rk_test_` on 2026-08-02 — it had been a full `sk_test_`; see "Key hygiene" below)*; Vercel **Preview** env
       `STRIPE_SECRET_KEY`=`sk_test_…` ✅ (Sensitive, Preview-only). Stripe **test-mode** product + 2 prices built
       (mirror live, same lookup_keys).
 - [x] **Step 4 real end-to-end verified (2026-07-17) — via Stripe CLI, and it caught a real bug.** The preview URL is
@@ -1555,7 +1556,7 @@ running system from outside rather than reading the code.
 | C | `STRIPE_WEBHOOK_SECRET` | ✅ Set in Vercel **Production** only (Sensitive), production rebuilt **without build cache**. Unsigned `POST` → **400 "Missing signature"** — the only proof available, since Stripe cannot send a test event to a live endpoint |
 | D | `CYCLE_INTERNAL_SECRET` in Production **and identical in Preview** | ✅ **Stronger than asked:** it is a *single* variable scoped to "Production and Preview", so the two cannot differ — the risk is closed by construction, not by comparison. Independently confirmed on the wire: the documented value was accepted by production's `/api/cycle`, and the page's own fetch reads that same variable |
 | E | `/api/cycle` 200+payload → **401** for a stranger | ✅ anon **401** · wrong secret **401** · correct secret **200** with premium keys · `entitled=0` **200 with premium keys absent**. All four carry `private, no-store`. **Both halves**, per §2 |
-| F | **Roll the live restricted key** | 🟡 **Open, deliberately.** Its value entered a chat transcript when `SECRETS.local.md` was read to update it. Nothing exposed beyond the owner's account and no evidence of misuse, so it was not made a merge blocker. Do it at the next planned touch of that key. Stripe **Roll key** changes the value; **Edit key** preserves it |
+| F | **Roll the live restricted key** | ✅ **Closed 2026-08-02.** Rolled (Stripe *Roll key*, which replaces the token and preserves the permissions — *Edit key* would have kept the value). New value → Vercel Production → redeploy **without build cache** → proved on the wire. Permissions re-read from the Dashboard after the roll: the same five, **Customers = None** |
 
 **Product-level proof in production** (throwaway free account, asserted on raw HTML, account
 deleted afterwards): Stock Detail **200 / 3.12 MB with "Current Drawdown" present** — so the
@@ -1594,16 +1595,82 @@ above.
   because it remembers the last mode used. Pinning the account id in the URL and confirming
   `livemode: true` from the API is what caught it.
 
-**Still open after merge:** (F) roll the live restricted key — see the row above; and the
-two items the owner had already scheduled elsewhere — **375px mobile → Layer H**, and
-**Vercel Hobby → Pro at official launch** (Hobby forbids commercial use, so that is a
-*launch* blocker, not a merge blocker, and it is now the nearest thing to one).
+**Still open after merge:** nothing inside Layer F. Row F was closed on 2026-08-02 (see the
+section below), and with it the last Layer F item. What remains is the two things the owner
+had already scheduled elsewhere — **375px mobile → Layer H**, and **Vercel Hobby → Pro at
+official launch** (Hobby forbids commercial use, so that is a *launch* blocker, not a merge
+blocker, and it is now the nearest thing to one).
 
 **Accepted residual risks, recorded rather than fixed** (owner's decisions, not oversights):
 a Checkout Session created *before* a deletion can still be completed inside Stripe's 24-hour
 window (the owner considered and declined the handler — **do not re-propose**); 375px mobile
 overflow is triaged to Layer H; Vercel Hobby→Pro is scheduled for official launch, and Hobby
 forbids commercial use, so **that is a launch blocker, not a merge blocker**.
+
+---
+
+### 🔑 Key hygiene, 2026-08-02 — the last two Layer F items. **Layer F is now complete.**
+
+Two open keys closed the day after merge. Neither was a defect in shipped code; both were
+**a key holding more power, or more history, than it should**.
+
+**(1) The live restricted key was rolled** (go/no-go row F). Its previous value had been read
+into a chat transcript on 2026-08-01 while updating `SECRETS.local.md` — no exposure beyond
+the owner's own machine and no evidence of misuse, which is why it was deferred rather than
+made a merge blocker. Sequence, and the order matters: **roll → paste into Vercel Production →
+redeploy without build cache → prove**. Stripe's *Roll key* replaces the token and keeps the
+name and permissions; *Edit key* would have preserved the very value we were retiring.
+
+> **Proving a live key works is harder than it sounds, because the safe surfaces don't touch
+> Stripe.** `/pricing` renders from hard-coded constants in `lib/pricing.ts` and never calls
+> the API, so loading it proves nothing. `resolvePriceId` is reachable from exactly one place
+> — `/api/checkout` — so the *only* live Stripe call an authorised person can trigger without
+> moving money is creating a Checkout Session and abandoning it. That was the test: the hosted
+> page loaded at `checkout.stripe.com/c/pay/`**`cs_live_`**`…` showing **7 days free, then
+> A$19.00/month from 9 August 2026**, which proves `prices.list` **and**
+> `checkout.sessions.create` both succeeded on the new key. Abandoning costs nothing and does
+> not burn the trial: the tombstone is written on `checkout.session.completed`, not on session
+> creation ([api/checkout/route.ts:158](../web/app/api/checkout/route.ts)). Permissions were
+> then **re-read from the Dashboard** rather than assumed — the same five, Customers = None.
+
+**(2) The CI Stripe key was scoped like production.** The GitHub Actions secret
+`STRIPE_TEST_SECRET_KEY` was still a full-access `sk_test_` after Session 4 tightened local dev
+and production to a restricted 5-permission key — so **CI was more permissive than production**,
+the exact drift Session 4 set out to close, left half-closed. Now the restricted `rk_test_`.
+Justified before the change by enumerating every Stripe call in the repo (`prices.list`,
+`checkout.sessions.create`/`.retrieve`, `billingPortal.sessions.create`, `subscriptions.*`,
+`charges.retrieve` — and no `customers.*` anywhere), then proved after it: CI re-run **green,
+102/102, with the Stripe contract tests running rather than self-skipping** — worth checking
+explicitly, because those tests skip silently when their credentials are absent and a skipped
+suite is also a green one.
+
+**(3) …and then that pair's blind spot was closed, because "the owner says so" is not a control.**
+GitHub secrets are write-only and nothing in the app calls `customers.*`, so a full key and a
+restricted key were **indistinguishable from CI's output** — green showed nothing broke, not
+which key was installed. It is now a test: **`web/e2e/stripe-key-scope.spec.ts`**, three
+assertions, run by the very job that consumes the secret.
+
+| Assertion | What it catches |
+|---|---|
+| key starts with `rk_`, not `sk_` | the blunt mistake — a full key, or the `STRIPE_TEST_ADMIN_KEY` harness key, pasted where the app key belongs |
+| `prices.list` **succeeds** | the key being invalid or revoked. Without this the refusal below would pass for entirely the wrong reason |
+| `customers.list` **is refused, specifically with `StripePermissionError`** | the key being over-granted. The error *type* is the point: a broken key raises `StripeAuthenticationError` on this call too, which a naive "did it throw?" check would score as a pass |
+
+**Broken on purpose before being trusted, two ways.** (A) The real regression — a full-access
+`sk_test_` — gave *2 failed, 1 passed*: `expected a restricted key (rk_…), got a full sk_… key`
+and `customers.list SUCCEEDED — this key grants Customers, production does not`. (B) A
+syntactically valid but nonexistent `rk_test_` — *2 failed, 1 passed*, this time `Prices read was
+refused` and `expected StripePermissionError, got StripeAuthenticationError`.
+
+> **Note which test passed in (B): the prefix check.** A restricted key can be granted
+> everything, so the cheap check is necessary and nowhere near sufficient — the other two carry
+> the proof. And the first attempt at (B) "failed" on a dev-server timeout, which the break
+> harness happily reported as success: **a red run is not automatically red for your reason.**
+> It was re-run in isolation before being believed.
+
+This is the only Stripe test that reaches the network — unavoidable, because permissions exist
+only on Stripe's side, so the only way to learn them is to be refused. Suite is now **105**
+(was 102).
 
 **F1 — Public methodology + contact, CI e2e, Google One Tap polish (shipped 2026-07-07).**
 - [x] `/methodology` — public, pre-sign-up plain-English explainer (cycle position, financial
@@ -1830,9 +1897,9 @@ Order of priority TBD based on user feedback. Candidate features:
    ↓
 ✅ Phase 1 Layer E: Results Tab          (built + audited E1–E11 + live)
    ↓
-   Phase 1 Layer F: Static Pages + Subscription
+✅ Phase 1 Layer F: Static Pages + Subscription  (built + live-checked S1–S5 + live 2026-08-01)
    ↓
-   Phase 1 Layer G: SEO + Performance
+   Phase 1 Layer G: SEO + Performance             ← NOW
    ↓
    Phase 1 Layer H: Hardening (Phase 1.5)
    ↓
