@@ -1425,6 +1425,21 @@ reason. It sent none at all until 2026-08-01 (CLAUDE.md 11a, 4th instance).
   ONLY in-app entry to checkout — the public `/pricing` page is a marketing/SEO
   shop-window for signed-out visitors and **redirects a signed-in one to `/account`**
   (2026-07-29), so it never has to reason about anybody's billing state.
+- **`PREMIUM_UNLOCKS` (`web/lib/pricing.ts`) is the single list of what a subscription
+  buys**, rendered by both `StartTrialModal` and `UpgradeDialog`. Contract for every line:
+  it must name a field in `PREMIUM_FIELDS` (`lib/cycle.ts`) or the screener. Charts, the
+  drawdown cycle with its bands, the fundamentals/sentiment sections and all three markets
+  are **free**, so they may never appear in it. It exists because the two modals kept
+  private copies and the trial one — the last screen before payment — had drifted into
+  selling three free features while the other listed the correct four (F-A4-b, 2026-08-02).
+  `/pricing` keeps its own longer marketing wording, held to the same contract.
+- **Trial-used is a `trial_tombstones` row keyed by `sha256(lower(trim(email)))`**, not a
+  profile column — so it survives account deletion and re-signup, which is the point. Two
+  readers: `hasUsedTrial()` for the CTA copy, and `/api/checkout` for the actual grant.
+  `GET /api/billing-context` returns `trialUsed: false` **without looking** when the caller
+  already has a live plan (`hasSubscription ? false : …`) — deliberate, since the trial CTA
+  cannot render in that state and it saves an admin-client read. Do not read that `false`
+  as "this email never trialled".
 
 ### Returning from Checkout — `/account?checkout=…` (F3 Step 10, `b2d2343`)
 

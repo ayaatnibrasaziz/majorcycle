@@ -441,26 +441,53 @@ tier, 7-day trial, paid conversion, and the paywall that separates them.
   the live evidence is a `cs_live_` Checkout Session reaching the hosted payment page with the
   correct trial and price, then abandoned
 
-### Layer G: SEO + Performance (target: 3-4 days)
+### Layer G: SEO + Performance (target: 3-4 days) ⬅️ **NEXT BUILD LAYER**
 
 Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 
-- [ ] Dynamic `/sitemap.ts` — every ticker page included
+> **🔴 READ THIS BEFORE PLANNING G — the checklist below rests on an assumption that is false
+> today, verified against production on 2026-08-02.**
+>
+> 1. **Ticker pages are not crawlable at all.** `GET /stocks/us/AAPL` signed-out returns
+>    **`307 → /login?next=…`**, as does `/stocks`. A sitemap "with every ticker page included"
+>    would therefore publish ~863 URLs that all redirect to a login screen — worse than no
+>    sitemap, because Google reads that as a soft-404 farm. **Whether ticker pages become
+>    publicly crawlable is a product decision for the owner, not an implementation detail,
+>    and it is the first thing Layer G must settle.** The machinery to do it safely already
+>    exists — `stripPremium()` already produces the exact free-tier payload — but it touches
+>    the free-vs-premium contract (§7.1), the 25/day free-view fence, and decision #33.
+> 2. **`/robots.txt` and `/sitemap.xml` are themselves 307ing to `/login`.** They are not in
+>    `PUBLIC_PATHS`, so adding `app/robots.ts` and `app/sitemap.ts` is *necessary but not
+>    sufficient* — the proxy will redirect the crawler before Next ever renders them. Add both
+>    paths to `PUBLIC_PATHS` in the same change, and assert it on the wire (200 + correct
+>    `content-type`), not in the source.
+> 3. **Only `/stocks/[market]/[ticker]` has `generateMetadata`.** 19 files export static
+>    `metadata`; nothing else is dynamic. No `app/opengraph-image`, no OG image route.
+> 4. **The framework is Next 16.2.6 / React 19.2.4** (not 15, as this doc long claimed) — so
+>    Cache Components / `use cache` / PPR are available and are the right lever for the
+>    Lighthouse target. Confirm against current Vercel docs before designing around them.
+
+- [ ] **DECISION FIRST:** which pages are publicly crawlable? (owner call — see box above)
+- [ ] Dynamic `/sitemap.ts` — scoped to whatever the decision makes public
 - [ ] Dynamic `/robots.ts` — public pages allowed, private blocked
-- [ ] Per-page metadata (title, description, OG tags) — dynamic per ticker
+- [ ] **Add `/robots.txt` + `/sitemap.xml` to `PUBLIC_PATHS`** or they 307 to `/login`
+- [ ] Per-page metadata (title, description, OG tags) — dynamic where it earns its keep
 - [ ] JSON-LD structured data — `Article` + `FinancialProduct` schemas
 - [ ] Dynamic OG images via `@vercel/og` per ticker
-- [ ] Canonical URL tags
+- [ ] Canonical URL tags — **note the apex vs `www` split** (the live Stripe webhook needs `www`;
+      pick one canonical host and make the other redirect consistently)
 - [ ] Submit sitemap to Google Search Console
 - [ ] Image optimisation pass (next/image everywhere)
 - [ ] Bundle size audit — remove any unused deps
 - [ ] Lighthouse pass — score 90+ on at least 5 sample ticker pages
+- [ ] **Config review** (`web/next.config.ts`): CSP is still `Report-Only`; no `images`
+      config; `poweredByHeader` not disabled. Decide each deliberately.
 
 **Verification:**
 - Lighthouse CI runs in `.github/workflows/ci.yml`
 - Test URL via Google's Rich Results test
 - Test OG images via Twitter/LinkedIn debuggers
-- Sitemap accessible at `/sitemap.xml`
+- `curl` proves `/sitemap.xml` and `/robots.txt` answer **200 signed-out**, not 307
 
 ### Layer H: Pre-launch Hardening (Phase 1.5, target: 1 week)
 
@@ -601,7 +628,7 @@ Order of priority TBD based on user feedback. Candidate features:
 ✅ Phase 1 Layer E: Results Tab           (built + audited E1–E11 + live)
    ↓
 ✅ Phase 1 Layer F: Static Pages + Subscription  (built + merged PR #72 + live 2026-08-01)
-   🔍  └─ production-readiness audit F-A1…F-A5 IN PROGRESS → docs/layer-f-audit.md
+   ✅  └─ production-readiness audit F-A1…F-A6 COMPLETE 2026-08-02 → docs/layer-f-audit.md
    ↓
    Phase 1 Layer G: SEO + Performance      ← NOW (next build layer)
    ↓
@@ -612,10 +639,10 @@ Order of priority TBD based on user feedback. Candidate features:
 Phase 2: Smart Money UI + earnings calendar + watchlists + alerts + FMP
 ```
 
-**A through F are built and live.** Remaining build is **G and H**. Layer F's code is done; what
-is still open against it is its *audit*, tracked separately in `docs/layer-f-audit.md` — which is
-why it carries a ✅ above and not a `← NOW`. Exactly one `← NOW` marker should ever exist in this
-diagram; two were present on 2026-08-02 (Layer C's was stale) and that is what this section is for.
+**A through F are built, live and audited.** Remaining build is **G and H**. Layer F closed on
+2026-08-02 when its audit finished (F-A1…F-A6, nine findings, all fixed); nothing is open against
+it. Exactly one `← NOW` marker should ever exist in this diagram; two were present on 2026-08-02
+(Layer C's was stale) and that is what this section is for.
 
 ---
 

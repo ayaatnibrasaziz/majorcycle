@@ -447,18 +447,28 @@ CREATE INDEX idx_split_events_ticker  ON split_events (ticker);
 > `/account/update-password` — because both are for a signed-in user who simply shouldn't see
 > the app chrome. Reading the folder name instead of `PUBLIC_PATHS` is how you conclude a
 > page is public when it is not; it was queried twice during the F3 live checks.
+>
+> **`PUBLIC_PATHS` answers only "may a signed-OUT reader in?" — not "should a signed-IN one see
+> this?"** Those are different questions, and three pages answer the second one too:
+> `/login`, `/signup` and `/deletion-requested` bounce a signed-in reader to `/stocks` via
+> **`SIGNED_OUT_ONLY_PATHS`** in the same file. `/pricing` does the equivalent in its own page
+> (→ `/account`). The list exists because the rule used to be written twice with two different
+> memberships, and `/deletion-requested` opted out of it purely by not being in either — telling
+> any signed-in reader their account was scheduled for permanent deletion (Layer F audit, F-A4-c).
+> **Adding a page that is only true when signed out means adding it to that list.**
 
 **Public — no session needed** (each is in `PUBLIC_PATHS`; all verified 200 signed-out in
 live-check Session 1):
 
 | Page | Purpose | Note |
 |---|---|---|
-| `/login` · `/signup` · `/reset-password` | Sign in, create a free account, request a reset link | Signed-in users are bounced to `/stocks` by the proxy. Signup takes **no card** (§7.2) |
+| `/login` · `/signup` | Sign in, create a free account | Signed-in users are bounced to `/stocks` by the proxy (`SIGNED_OUT_ONLY_PATHS`). Signup takes **no card** (§7.2) |
+| `/reset-password` | Request a reset link | **Deliberately NOT bounced** for a signed-in reader — asking for a reset link is a legitimate thing to do while signed in (e.g. on a shared machine, or a Google-only account adding a password). Verified live 2026-08-02: it renders rather than redirecting. The doc previously grouped it with `/login`·`/signup` and was wrong |
 | `/pricing` | The signed-out shop window: both plans, local currency | A **signed-in** visitor is redirected to `/account` — they are a customer, not a shopper |
 | `/methodology` | Plain-English explainer, deliberately pre-signup so the product can be judged before an account exists | No formulas (decision #34) |
 | `/disclaimer` · `/terms` · `/privacy` | Legal | Reachable from every footer |
 | `/contact` | Contact form → Resend | Honeypot; `reply_to` = sender |
-| `/deletion-requested` | Post-deletion confirmation | **Must** be public: `requestAccountDeletion` ends with a global `signOut`, so the reader has no session at this moment. Gating it would bounce them to `/login` and they would never see the confirmation. Copy is entirely generic — no email, name or date |
+| `/deletion-requested` | Post-deletion confirmation | **Must** be public: `requestAccountDeletion` ends with a global `signOut`, so the reader has no session at this moment. Gating it would bounce them to `/login` and they would never see the confirmation. Copy is entirely generic — no email, name or date. **Also in `SIGNED_OUT_ONLY_PATHS`** — public, but *only* to the signed-out: it asserts "your account is now scheduled for permanent deletion" unconditionally, which is false for anyone with a session (F-A4-c) |
 
 **Gated — a session is required** (a signed-out caller gets `307 → /login?next=…`):
 

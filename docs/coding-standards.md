@@ -154,6 +154,8 @@ Authenticated pages under `web/app/(app)/` inherit chrome. Match it exactly:
 - **Two copies of a money derivation will drift — extract, don't duplicate.** When the checkout landing page needed to provision a subscription (closing the webhook race), the tempting move was a second small "apply the subscription to the profile" block next to the webhook's. That derivation decides *who has paid*; two of them silently disagreeing is a customer either charged without access or given access without paying. `syncSubscription()` and its helpers moved to `web/lib/billing/sync.ts` so the webhook and `reconcileCheckoutSession()` run the identical function (`b2d2343`). The webhook contract tests (21/21) are what proved the extraction was behaviour-preserving — extract *behind* a test suite, never in front of one.
 - **An unreachable surface is a liability, not dead weight — delete it.** The on-screen report preview page (`/stocks/[market]/[ticker]/report`) rendered the full scorecard server-side and nothing in the product had ever linked to it. It still had to be gated, cached correctly and kept in step with `ReportDocument` — three ongoing obligations for a page with no users, and one more place for the paywall to regress unnoticed. Removed 2026-07-29. Before deleting, check what *else* the file kept alive: the `.report-page` CSS looked orphaned but is the `<body>` class of the **downloaded** file, and `ReportDocument` is still mounted by the offline bundle.
 - **A conditional branch is only tested by a viewer who actually lands on it.** Paywalled UI multiplies branches by entitlement, and a pass done entirely as one persona verifies half the product. The analyst chip rendered correctly as "Analysts: Buy" for free readers while showing a bare, unattributed "Buy" to every *subscriber* — invisible to a free-tier visual sweep, caught only once a real trial was running (`7ff5abe`). Walk each surface at least twice: unentitled, and entitled.
+- 🔴 **Two lists of the same claims WILL drift, and the one further from the money drifts unnoticed.** `/pricing`, `UpgradeDialog` and `StartTrialModal` each kept a private array of "what a subscription includes". When `/pricing`'s was corrected (it had been advertising the free tier back to a prospective subscriber), the other two were untouched — and `StartTrialModal`, **the last screen a reader sees before paying**, still listed three things a free account already had, while the dialog one click earlier listed the right four. Found on the live site, Layer F audit F-A4-b. **Rule: user-facing claims about what is paid for live in ONE exported constant** (`PREMIUM_UNLOCKS` in `lib/pricing.ts`), imported by every surface. Rewriting the words alone would have fixed the symptom and left the mechanism. The constant's doc comment carries the test each line must pass: *it must name something in `PREMIUM_FIELDS` or the screener* — charts, the drawdown cycle, the fundamentals sections and all three markets are free, so they can never appear.
+- 🔴 **A page-level rule enforced in two places with two memberships is a rule any third page opts out of by omission.** "Signed-out readers only" lived in `proxy.ts` (for `/login`, `/signup`) and again in `pricing/page.tsx` — so `/deletion-requested`, in neither, told **any** signed-in reader that their account was scheduled for permanent deletion (F-A4-c; it said so to the owner, live). Being in `PUBLIC_PATHS` only exempts a page from the *login bounce*; it says nothing about who *should* see it. **Rule: one list, one place — `SIGNED_OUT_ONLY_PATHS`. When a page's copy is only true in one session state, membership of that list is part of writing the page.**
 
 ### Supabase from the client (learned the hard way — F3)
 
@@ -660,6 +662,27 @@ resulting DOM in a **separate** call (React re-renders on the next tick, so a sa
 Confirm the interaction really worked by asserting on DOM text/`getComputedStyle`, and cross-check with
 Playwright (**D**), whose real `getByRole` clicks are authoritative. Prefer `read_page`/`find` refs and
 `javascript_tool` state reads over pixel coordinates for anything the owner isn't watching in real time.
+
+**🔴 `fetch()` cannot see a redirect that Next emits during streaming — test redirects by NAVIGATING.**
+`redirect()` called from a **layout** (e.g. the `(app)` layout's deletion confinement) fires after the
+response headers are already flushed, so Next cannot answer 307. It embeds the redirect in the RSC
+payload for the **client router** to execute. `fetch()` never runs a client router, so it reports a
+plain **200** — and the probe concludes the guard is missing. This nearly became a false "deletion
+confinement is broken on production" finding (F-A6, 2026-08-02); a real navigation put every `(app)`
+page on `/reactivate`, exactly as designed. **Fingerprint:** a 200 whose HTML has a correct `<title>`
+but **no app shell and no headings** is a streamed redirect, not a rendered page. Route handlers
+(`route.ts`) are unaffected — they answer with a real status, so `fetch` is the right tool there.
+
+**A detector keyed to one variant of a UI reports the other variant as absent.** A lock-panel probe
+searching for "See what's included" reported `/run` as *open* for a `billing_blocked` account — whose
+lock panel deliberately shows **Contact support** instead, because offering a plan to someone whose
+payment was disputed is an offer we refuse at the till. Assert the **state** (is the real feature
+absent? is the pitch present?), never a single CTA string.
+
+**Any claim of ABSENCE needs a positive control in the same read.** "Zero premium keys in the HTML" is
+worthless if the read caught a loading state or the previous document. Assert `htmlLen` and a known
+marker (the ticker symbol) **alongside** the zeros — a JS read fired immediately after `navigate` runs
+against the *previous* page, and once returned an 8-character body that turned out to be `Loading…`.
 
 ---
 

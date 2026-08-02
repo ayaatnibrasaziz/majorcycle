@@ -34,7 +34,7 @@ When in doubt about any decision: **ask, don't guess.**
 
 | Layer | Tech | Why |
 |---|---|---|
-| Frontend framework | Next.js 15 (App Router) + TypeScript | SEO via SSR, MCP-controlled via Vercel, best Claude Code support |
+| Frontend framework | Next.js **16** (App Router) + TypeScript | SEO via SSR, MCP-controlled via Vercel, best Claude Code support. *Scaffolded on 15; the installed version is **16.2.6** with React 19.2.4 — check `web/package.json` before relying on any version-specific API.* |
 | Styling | Tailwind v4 + shadcn/ui | Standard pairing, components owned in-repo |
 | Charts | Lightweight Charts (candlesticks) + Recharts (everything else) | TradingView-grade rendering, free |
 | Backend (batch) | Python via GitHub Actions cron | Free, no always-on cost |
@@ -149,6 +149,8 @@ These rules cannot be bent. If a task seems to require breaking one, **stop and 
 
 11b. **Withhold paid data at the data layer, not in the JSX — a hidden value is still shipped.** React serialises the props of client components into the RSC payload embedded in the HTML, so `{entitled && <Score value={cycle.overallRating} />}` hides the number on screen while the whole `cycle` object remains readable in View Source. Seen live on 2026-07-28: the page rendered `🔒 Unlock` while the source carried `"overallRating":60,"financialHealthScore":81`. **Strip restricted fields from the object before it can reach a client component** (`stripPremium()` in `web/lib/cycle.ts`), and treat the conditional render as presentation only. Every paid surface must require **two** things — the viewer's entitlement *and* the data's presence — so no single control failing open can expose the product. This bug class survives visual review precisely because the UI looks right: assert against the raw HTML, never against what's on screen.
 
+11c. **One rule, one place. A rule written in two places drifts, and a third surface opts out of it by simply not being in either list.** Two instances, both found on the **live site** during the Layer F audit (2026-08-02) and both invisible to code review, because the defect is an omission rather than a wrong line. (i) `/pricing`, `UpgradeDialog` and `StartTrialModal` each kept a private list of "what a subscription includes"; when `/pricing`'s was corrected, the trial modal — **the last screen a reader sees before paying** — still sold three things a free account already had, while the dialog one click earlier listed the right four. Now one exported `PREMIUM_UNLOCKS` in `web/lib/pricing.ts`, and every line must name a field in `PREMIUM_FIELDS` or the screener. (ii) "Signed-out readers only" lived in `proxy.ts` (for `/login`, `/signup`) and again in `pricing/page.tsx`, so `/deletion-requested` — in neither — told **any** signed-in reader their account was scheduled for permanent deletion. Now one `SIGNED_OUT_ONLY_PATHS` list. **Being in `PUBLIC_PATHS` answers "may a signed-out reader in?", never "should a signed-in one see this?"** When you fix a claim on one surface, grep for every other surface making the same claim — and prefer extracting the constant over editing the words, or you have fixed the symptom and left the mechanism.
+
 ### Data & Compliance
 
 12. **All scores, labels, and ratings shown to users MUST be accompanied by disclaimers** on the page. Educational/informational only. Not financial advice. ASIC-compliant.
@@ -201,7 +203,7 @@ These were agreed during planning. Do not relitigate.
 
 | # | Decision | Value |
 |---|---|---|
-| 1 | Frontend framework | Next.js 15 App Router + TypeScript + Tailwind v4 + shadcn/ui |
+| 1 | Frontend framework | Next.js App Router + TypeScript + Tailwind v4 + shadcn/ui (scaffolded on 15, now on **16.2.6**) |
 | 2 | Charts | Lightweight Charts (candlesticks), Recharts (rest) |
 | 3 | Backend | Hybrid — Vercel Python serverless + GitHub Actions cron |
 | 4 | Database & Auth | Supabase free tier |
