@@ -1052,7 +1052,7 @@ never forge entitlement. Migration `20260523133635` + `20260711000000` +
 
 Migration `20260726010000_free_tier_view_counter`. An **anti-scraping fence**, not a
 revenue lever: premium fields are already stripped from every response a free viewer gets,
-so what is left worth protecting is the *bulk* (walking all ~866 tickers to rebuild the
+so what is left worth protecting is the *bulk* (walking the whole universe — 863 equities at 2026-08-03 — to rebuild the
 corpus). Subscribers are never counted — locked decision #18 promises them no usage limits.
 
 | Column | Type | Meaning |

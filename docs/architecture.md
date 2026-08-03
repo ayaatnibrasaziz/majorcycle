@@ -93,7 +93,7 @@ flowchart TB
    - **`/api/cycle` must bypass the auth *redirect* — but it is NOT public** (changed in F3 Step 10). It used to be listed in `PUBLIC_PATHS`, which made the whole analysis engine a free, unauthenticated, unthrottled API. It now has its own branch in `web/proxy.ts`: present the shared secret `x-mc-internal` and the request passes through; otherwise **401** — never a redirect, because a 307 to `/login` would hand our own SSR fetch HTML instead of JSON and `fetchCycleAnalysis` would return `null`, blanking every cycle section. `cycle.py` re-checks the same header and is the authority. See §7.1.
    - **The URL must use the production custom domain, not the `*.vercel.app` deployment URL.** `web/lib/cycle.ts` `baseUrl()` prefers `VERCEL_PROJECT_PRODUCTION_URL` (e.g. `majorcycle.com`) over `VERCEL_URL`, because **Vercel Deployment Protection walls every `*.vercel.app` URL with a 401 — even in production** (only assigned custom domains are exempt). Using `VERCEL_URL` made the self-fetch hit that 401. (This class of bug is invisible in `next dev`, which computes the cycle via a local Python CLI and skips the HTTP path entirely, and on preview deploys, which are also walled — it only reproduces on the production custom domain once the Next Data Cache is cleared by a fresh deploy.)
 3. Renders HTML with full data baked in (good for SEO). **The page streams:** only the stock row + sector medians are awaited up front (both fast); the slow cycle analysis and the benchmark series are not blocking. The cycle-dependent sections (rating badges, KPI strip, verdict, scorecard radar, drawdown overlay) and the relative-performance chart each render inside their own `<Suspense>` boundary, so the header, price chart, fundamentals, and sentiment paint immediately while the cycle streams in. Every cycle wrapper calls the same React-`cache()`d `fetchCycleAnalysis(ticker, preset)`, so there is still exactly one underlying compute shared across them.
-4. Vercel Edge caches the HTML for 24 hours (stale-while-revalidate). **`/api/cycle` itself returns `Cache-Control: private, no-store`** — it must never be shared-cached, because its content varies by entitlement while a shared cache keys on the URL alone (F3 Step 10, finding B1 — see §7.1). Its caching is done instead by Next's Data Cache (`revalidate: 3600`), which is server-side and only fillable by us.
+4. **Page HTML is NOT edge-cached — corrected 2026-08-04.** This step used to claim "Vercel Edge caches the HTML for 24 hours (stale-while-revalidate)". It does not, and never did in this app: `web/proxy.ts` runs on every matched route and pages read the session, so every page is dynamic. Measured on production: `/methodology` (a *public* page, the most cacheable case) answers `Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate` with `X-Vercel-Cache: MISS`. That is the **correct** posture under rule 11a — a page whose content varies by viewer must never carry a shared-cache directive — but the doc described a cache that isn't there, so don't plan performance work assuming it. What *is* cached is the data: the Next Data Cache entries below. **`/api/cycle` itself returns `Cache-Control: private, no-store`** — it must never be shared-cached, because its content varies by entitlement while a shared cache keys on the URL alone (F3 Step 10, finding B1 — see §7.1). Its caching is done instead by Next's Data Cache (`revalidate: 3600`), which is server-side and only fillable by us.
 
 **Why this works:** Warm pages load fast (cycle + benchmarks cached); cold pages stream — the shell paints in ~1.7s and the cycle sections fill in when the (now-parallel) compute returns. Googlebot sees rich content, not a loading spinner. No DB write churn.
 
@@ -128,7 +128,7 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 |---|---|---|---|
 | **1. requests_cache** | Inside Python (`requests_cache` package) | 6 hours | Prevents duplicate yfinance calls within a single batch run |
 | **2. Supabase tables** | `stocks.updated_at`, `price_bars.date` | 24 hours | Source of truth. 99% of page views hit only this. |
-| **3. Vercel Data Cache** | Edge CDN, set via `revalidate: 86400` | 24 hours | Caches rendered HTML and Supabase reads at every Vercel edge location worldwide. `/api/cycle` results cached here via `revalidate: 3600`. |
+| **3. Next.js Data Cache** | **Server-side, not the edge CDN** | Per call site | Caches **data**, not rendered HTML — `/api/cycle` results via `revalidate: 3600`, the universe index via `unstable_cache` (daily). *Corrected 2026-08-04: this row used to say "Edge CDN … caches rendered HTML at every Vercel edge location". No page HTML is shared-cached — see §2 Tier 2 step 4 for the measurement. Only the data layer is cached, and that is deliberate: a per-viewer page in a shared cache is rule 11a's exact failure mode.* |
 | **4. Browser HTTP cache** | User's browser | Per asset (1yr static, max-age=0 dynamic) | Standard cache headers |
 | **+. Benchmark module cache** | In-memory module scope (`benchmarks.server.ts`), reused across requests on a warm Fluid Compute instance | 24 hours | The full benchmark index series (~3MB, e.g. `^GSPC` ≈ 24.7k bars) is identical for every stock, so it's fetched once per instance. **Deliberately not Vercel Data Cache** — the ~3MB value exceeds that cache's 2MB entry limit (which previously threw an `unhandledRejection` on every render). A single shared in-flight promise dedupes concurrent first requests; an empty result is not cached. |
 
@@ -470,6 +470,17 @@ live-check Session 1):
 | `/contact` | Contact form → Resend | Honeypot; `reply_to` = sender |
 | `/deletion-requested` | Post-deletion confirmation | **Must** be public: `requestAccountDeletion` ends with a global `signOut`, so the reader has no session at this moment. Gating it would bounce them to `/login` and they would never see the confirmation. Copy is entirely generic — no email, name or date. **Also in `SIGNED_OUT_ONLY_PATHS`** — public, but *only* to the signed-out: it asserts "your account is now scheduled for permanent deletion" unconditionally, which is false for anyone with a session (F-A4-c) |
 
+> **Planned additions (Layer G — none of these exist yet).** `/` (a real landing page; today it
+> redirects to `/stocks` and so bounces a signed-out visitor to `/login`), `/about`, `/learn` +
+> `/learn/[slug]`, `/glossary` + `/glossary/[term]`, plus `/robots.txt` and `/sitemap.xml`. Each
+> must be added to `PUBLIC_PATHS`, and `/` must **also** go in `SIGNED_OUT_ONLY_PATHS` so a
+> signed-in visitor still lands on `/stocks`.
+>
+> ⚠️ Adding `'/'` to `PUBLIC_PATHS` *looks* like it opens the whole site and does not: the matcher
+> is `pathname === p || pathname.startsWith(p + '/')`, and `startsWith('//')` never matches a real
+> path. Layer G proves this with a test that walks every gated path signed out and asserts `307`,
+> run first *without* the change so the test is known to measure something.
+
 **Gated — a session is required** (a signed-out caller gets `307 → /login?next=…`):
 
 | Page | Shell | Free or premium | Purpose |
@@ -641,7 +652,7 @@ surface. See design-system "Locked (premium) states".
 function, migration `20260726020000`). A free account may open **25 distinct tickers per
 UTC day**. This is an *anti-scraping* measure, not a revenue lever — the premium fields
 are already stripped from every one of those 25 responses. What is left worth protecting
-is the bulk: someone walking all ~866 tickers to rebuild the corpus. Accordingly it
+is the bulk: someone walking the whole universe (863 equities at 2026-08-03) to rebuild the corpus. Accordingly it
 **fails OPEN** (a DB error lets the reader through), the deliberate opposite of the
 entitlement rule above.
 
@@ -834,7 +845,7 @@ by preference): custom domain (~US$10/mo), custom email domain (owner keeps the 
 
 **Schedule:** `cron: '0 23 * * *'` (daily at 23:00 UTC, 7 days a week)
 
-**Runtime:** ~20–30 minutes for ~720 tickers (S&P 500 + ASX 200 + TSX 60) in smart mode. On a night when many earnings have just passed the runtime extends proportionally — each enriched fetch takes ~30s per ticker vs ~2s for price-only.
+**Runtime:** ~20–30 minutes for the whole universe in smart mode (**863 equities + 4 benchmark indices as at 2026-08-03** — the universe auto-expands, so re-read `select count(*) from stocks` rather than trusting this number). On a night when many earnings have just passed the runtime extends proportionally — each enriched fetch takes ~30s per ticker vs ~2s for price-only.
 
 **Steps:**
 1. Checkout repo
@@ -987,25 +998,52 @@ NEXT_PUBLIC_SITE_URL=
 
 ## 11. SEO Architecture — **TARGET STATE (Layer G), NOT YET BUILT**
 
-> ⚠️ **Only the first bullet is true today.** Verified 2026-07-30: `web/app/sitemap.ts`,
-> `web/app/robots.ts` and any `opengraph-image` file **do not exist**, and no page emits
-> `application/ld+json`. This section had been written in the present tense, which read as
-> "already shipped". It is the **Layer G specification** — see `roadmap.md`. Nothing here is
-> a regression to investigate; it is work not yet started.
+> ⚠️ **Nothing in this section is built.** Verified 2026-08-04: `web/app/sitemap.ts`,
+> `web/app/robots.ts` and any `opengraph-image` file **do not exist**; no page emits
+> `application/ld+json`; and no page emits a `rel="canonical"` or any `og:` tag (checked against
+> the live HTML of `/methodology`, not the source). This is the **Layer G specification** — see
+> `roadmap.md`. It is written in the future tense on purpose: the earlier version of this section
+> was present-tense and read as "already shipped".
+>
+> 🔴 **This section was rewritten on 2026-08-04 because its whole premise was overturned.** It used
+> to describe indexing the ~863 ticker pages at the free tier. **The owner decided that everything
+> stays gated — no product data without signing up.** Do not re-propose public ticker pages.
 
-- ✅ **Per-ticker pages:** `/stocks/[market]/[ticker]` rendered server-side with full data baked into the HTML — **built, and the one piece of this list that is live**
-- ⛔ **Sitemap:** `/sitemap.ts` auto-generated from the `stocks` table — every ticker an entry, pinged to Search Console on each deploy
-- ⛔ **Structured data:** JSON-LD per ticker page (`@type: Article` + `FinancialProduct`)
-- ⛔ **OG images:** dynamic via `@vercel/og` — ticker, price, rating tier, sparkline
-- ⛔ **Robots:** `/robots.ts` allowing crawlers on `/stocks/*`, blocking `/account/*` and `/api/*`
-- ⛔ **Canonical URLs:** canonical tag on every page pointing at the market-prefixed URL
+**What is publicly reachable today** (each in `PUBLIC_PATHS` — see §6.5): `/login`, `/signup`,
+`/reset-password`, `/pricing`, `/methodology`, `/disclaimer`, `/terms`, `/privacy`, `/contact`,
+`/deletion-requested`. Everything else, **including `/` itself**, answers `307 → /login` signed out.
+So the indexable surface is currently about six pages, none of them a home page.
 
-**Note for whoever builds this:** the paywall changes what may be indexed. A crawler is an
-anonymous visitor, so it sees exactly the free tier — Stock Detail without the scores. That is
-the correct thing to index (it is real, useful content and the honest shop window), but the
-robots rules must keep `/run`, `/results`, `/account/*` and every `/api/*` path out, and the
-`/stocks/[market]/[ticker]/report` route must never appear in a sitemap.
-- **Methodology page:** `/methodology` is a long-form content page targeting "Major Cycle" + educational queries — topical authority anchor
+**The target state, therefore, is content-led rather than product-led:**
+
+| | Item | Note |
+|---|---|---|
+| ⛔ | **Landing page at `/`** | Does not exist; `/` redirects. The single largest gap — every brand search and every public-page logo click is a dead end today |
+| ⛔ | **`/about`** | Names a **role, not a person** (owner decision). Finance is a YMYL category judged heavily on who is behind the site |
+| ⛔ | **Footer link graph** | The public footer links only to `/disclaimer`, orphaning `/pricing`, `/methodology`, `/terms`, `/privacy`, `/contact` |
+| ⛔ | **`/learn` + `/glossary`** | One typed registry drives index pages, `generateStaticParams`, metadata, sitemap, RSS and JSON-LD. `docs/glossary.md` already holds 115 terms across 22 sections |
+| ⛔ | **Weekly market note** | Human-edited, bylined to *MajorCycle*. **Not** automated daily news — see the roadmap's Layer G note on Google's scaled-content-abuse policy |
+| ⛔ | **`robots.ts`** | Per-user-agent rules. **Allow** `OAI-SearchBot`, `Claude-SearchBot`, `PerplexityBot`; **block** `GPTBot`, `ClaudeBot`, `Google-Extended`. `Disallow` `/stocks`, `/run`, `/results`, `/account`, `/request`, `/reactivate`, `/api/`, `/auth/` |
+| ⛔ | **`sitemap.ts`** | Public content pages only, `lastModified` from real content dates — never build time. Excludes anything `noindex`. **Not** submitted by "ping": [Google retired that endpoint in 2023](https://developers.google.com/search/blog/2023/06/sitemaps-lastmod-ping) and it 404s — reference it in `robots.txt` and submit once in Search Console |
+| ⛔ | **Canonical URLs** | One `SITE_ORIGIN` constant. **`www` is canonical and must not move** — the live Stripe webhook is registered there and Stripe counts a 3xx as failed delivery |
+| ⛔ | **Structured data** | `Organization` + `WebSite` sitewide, `BreadcrumbList`, `Article` on `/learn/*`, `DefinedTerm` on the glossary. **No `FinancialProduct` and no rating markup** — that would assert an investment claim in machine-readable form, against posture #24. Ships **without `sameAs`** (social profiles are a deferred layer). JSON must be escaped: [`JSON.stringify` alone is an XSS hole](https://nextjs.org/docs/app/guides/json-ld) |
+| ⛔ | **OG images** | Via **`next/og`, which ships with the App Router** — the `@vercel/og` dependency this section used to name is not required. Static/templated for public pages only |
+| ✅ | **Per-ticker pages render server-side with full data in the HTML** | Built — but **deliberately not indexable**, and they carry the `noindex`-by-gating that the 307 already provides |
+
+**Two rules for whoever builds this:**
+
+1. **Adding `app/robots.ts` and `app/sitemap.ts` is necessary but not sufficient.** Both are Route
+   Handlers, the proxy matcher covers `.txt` and `.xml`, and neither path is in `PUBLIC_PATHS` — so
+   today they both `307 → /login`. They must be added to `PUBLIC_PATHS` in the same change, and
+   proven **on the wire** (200 + correct `content-type`), never in the source.
+2. **No per-ticker OG images.** An OG image route is public by nature (social crawlers cannot sign
+   in) and `ImageResponse` defaults to `public, immutable, max-age=31536000`. A card carrying a
+   rating would be a shared-cached, guessable-URL copy of paid output — CLAUDE.md 11a **and** 11b in
+   one file.
+
+**`/methodology`** remains the topical-authority anchor for "Major Cycle" and educational queries —
+though note it currently renders inside a 440px column (§6.5), which Layer G's shared public page
+frame will fix.
 
 ---
 

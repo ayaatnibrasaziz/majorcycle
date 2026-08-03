@@ -94,16 +94,32 @@ Goal: Daily refresh pipeline writes correct data to Supabase.
 - [x] Upgrade all GitHub Actions to v6 (Node.js 24 native, no deprecation warnings)
 - [x] Repo made public — unlimited GitHub Actions minutes
 
-**Verification:** ✅ *(re-read from the live DB 2026-08-02 — the original figures were from the
-seeding era and had drifted, because the universe auto-expands)*
+**Verification:** ✅ *(re-read from the live DB 2026-08-03 — figures drift, because the universe
+auto-expands and the cron runs nightly. Re-read them; don't copy them forward.)*
 - **867 rows in `stocks`** — 863 equities across S&P 500 / ASX 200 / S&P/TSX 60 plus 4 price-only
-  benchmark indices — with **6,566,762 price bars**. Latest bar **2026-07-31**, a Friday, so the
-  pipeline is current with no weekend gap
+  benchmark indices — with **6,574,856 price bars**. `listings` **9,081**, `index_membership`
+  **774**, `ticker_requests` **9**
 - `pytest analytics/` — **86 passed** (28 at Layer A; the rest added by later layers)
 - `mypy analytics/ --ignore-missing-imports --explicit-package-bases` — no issues
 - CI green on `main`
-- **Daily refresh has succeeded 10 consecutive days** (2026-07-24 → 2026-08-02), which also
-  satisfies the §3 launch-gate row asking for 7
+- **Daily refresh: 30 consecutive successes, 0 failures** (2026-07-05 → 2026-08-03, the full window
+  `gh run list` returned), comfortably satisfying the §3 launch-gate row asking for 7
+
+> ⚠️ **Open data finding (2026-08-03) — dates, not values.** The latest bar differs by market:
+> **US and CA = 2026-07-31 (Friday), AU and the benchmark indices = 2026-08-02 (a Sunday).** This is
+> not a gap; it is systematic. Day-of-week counts over 2021→2026 for BHP.AX/CBA.AX show **zero
+> Fridays and ~98 Sundays per year**, against ~50 Fridays and zero Sundays for AAPL/SHOP.TO — while
+> the bar *count* stays correct at ~254/year. **Every ASX Friday bar is stored with the following
+> Sunday's date**, and has been since the initial pull.
+>
+> Cycle math is almost certainly unaffected (it walks the ordered bar *sequence* and rolling
+> windows, and Sunday still sorts after Thursday), but anything **date**-joined can be: notably
+> `RelativePerformance`, which matches a stock against `^GSPC`/`^GSPTSE` by date — `^AXJO` carries
+> the same shift so AU-vs-ASX200 still aligns, but AU-vs-overseas will not on Fridays. Root cause is
+> most likely a timezone conversion in `analytics/providers/yfinance_provider.py`.
+> **Not a Layer G item** — tracked separately. The earlier wording here ("Latest bar 2026-07-31, a
+> Friday, so the pipeline is current with no weekend gap") reasoned from a single global `max(date)`
+> and would have hidden this; it has been removed rather than refreshed.
 
 ### Layer B: Frontend Foundation ✅ COMPLETE
 
@@ -441,57 +457,105 @@ tier, 7-day trial, paid conversion, and the paywall that separates them.
   the live evidence is a `cs_live_` Checkout Session reaching the hosted payment page with the
   correct trial and price, then abandoned
 
-### Layer G: SEO + Performance (target: 3-4 days) ⬅️ **NEXT BUILD LAYER**
+### Layer G: SEO + Content + Performance ⬅️ **NEXT BUILD LAYER** — planned, not started
 
-Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
+Goal: give the site something a search engine can actually reach, and hit Lighthouse 90+.
 
-> **🔴 READ THIS BEFORE PLANNING G — the checklist below rests on an assumption that is false
-> today, verified against production on 2026-08-02.**
->
-> 1. **Ticker pages are not crawlable at all.** `GET /stocks/us/AAPL` signed-out returns
->    **`307 → /login?next=…`**, as does `/stocks`. A sitemap "with every ticker page included"
->    would therefore publish ~863 URLs that all redirect to a login screen — worse than no
->    sitemap, because Google reads that as a soft-404 farm. **Whether ticker pages become
->    publicly crawlable is a product decision for the owner, not an implementation detail,
->    and it is the first thing Layer G must settle.** The machinery to do it safely already
->    exists — `stripPremium()` already produces the exact free-tier payload — but it touches
->    the free-vs-premium contract (§7.1), the 25/day free-view fence, and decision #33.
-> 2. **`/robots.txt` and `/sitemap.xml` are themselves 307ing to `/login`.** They are not in
->    `PUBLIC_PATHS`, so adding `app/robots.ts` and `app/sitemap.ts` is *necessary but not
->    sufficient* — the proxy will redirect the crawler before Next ever renders them. Add both
->    paths to `PUBLIC_PATHS` in the same change, and assert it on the wire (200 + correct
->    `content-type`), not in the source.
-> 3. **Only `/stocks/[market]/[ticker]` has `generateMetadata`.** 19 files export static
->    `metadata`; nothing else is dynamic. No `app/opengraph-image`, no OG image route.
-> 4. **The framework is Next 16.2.6 / React 19.2.4** (not 15, as this doc long claimed) — so
->    Cache Components / `use cache` / PPR are available and are the right lever for the
->    Lighthouse target. Confirm against current Vercel docs before designing around them.
+> **✅ PLAN APPROVED 2026-08-04.** Full plan: `~/.claude/plans/giggly-whistling-blanket.md` (the
+> superseded prompt file `NEXT_SESSION_LAYER_G.md` was deleted with it). **Nothing below is built
+> yet** — this section is the specification, written in the future tense on purpose. The previous
+> version of this section was a checklist resting on a premise that turned out to be false; the
+> owner decision that replaced it is recorded first.
 
-- [ ] **DECISION FIRST:** which pages are publicly crawlable? (owner call — see box above)
-- [ ] Dynamic `/sitemap.ts` — scoped to whatever the decision makes public
-- [ ] Dynamic `/robots.ts` — public pages allowed, private blocked
-- [ ] **Add `/robots.txt` + `/sitemap.xml` to `PUBLIC_PATHS`** or they 307 to `/login`
-- [ ] Per-page metadata (title, description, OG tags) — dynamic where it earns its keep
-- [ ] JSON-LD structured data — `Article` + `FinancialProduct` schemas
-- [ ] Dynamic OG images via `@vercel/og` per ticker
-- [ ] Canonical URL tags — **note the apex vs `www` split** (the live Stripe webhook needs `www`;
-      pick one canonical host and make the other redirect consistently)
-- [ ] Submit sitemap to Google Search Console
-- [ ] Image optimisation pass (next/image everywhere)
-- [ ] Bundle size audit — remove any unused deps
-- [ ] Lighthouse pass — score 90+ on at least 5 sample ticker pages
-- [ ] **Config review** (`web/next.config.ts`): CSP is still `Report-Only`; no `images`
-      config; `poweredByHeader` not disabled. Decide each deliberately.
+**🔴 The decision that reshaped the layer.** Verified against production 2026-08-02 and re-verified
+2026-08-04: signed out, `GET /stocks/us/AAPL` and `/stocks` return **`307 → /login`**, and so do
+**`/robots.txt`, `/sitemap.xml` and `/` itself**. A sitemap "with every ticker page included" would
+publish ~863 URLs that all redirect to a login screen — worse than no sitemap, because Google reads
+that as a soft-404 farm.
+
+**The owner decided (2026-08-04): everything stays gated. No product data without signing up.**
+Do not re-propose public ticker pages. The consequence is that Layer G's SEO must come from
+**content we author**, not from the product — a months-long compounding effort, *not* the
+"3-4 days" this section used to claim.
+
+**Owner decisions, all settled — do not relitigate:**
+
+| Decision | Note |
+|---|---|
+| Product stays **gated** | SEO comes from authored content |
+| **Weekly, human-edited** market note | Not automated daily news — an auto-generated daily wrap risks Google's *scaled content abuse* policy, which names "scraping feeds … to generate many pages (including through automated transformations)". **Never republish the third-party headlines in `stocks.news`** (copyright + duplicate content) |
+| **AI crawlers:** allow search, block training | Allow `OAI-SearchBot`, `Claude-SearchBot`, `PerplexityBot`; block `GPTBot`, `ClaudeBot`, `Google-Extended` |
+| `/about` names a **role, not a person** | No name, no photo. Weekly note bylined to *MajorCycle*; never invent an author |
+| Landing page uses **real screenshots + short silent feature videos** | Self-hosted MP4 + WebM, produced in-repo (see G3) |
+| **Email list** for the weekly note, with a confirmation click | Resend; Spam Act needs consent + working unsubscribe |
+| **No visitor analytics yet** | Owner: no users to measure against. Revisit later, likely GA4 |
+| **Social profiles: out of scope** | Its own future layer on social + promotion. So JSON-LD ships **without `sameAs`** |
+| Public pages designed in **Claude Design** first | Connected and verified on the owner's account |
+
+**Seven sessions, in dependency order.** Each ends with the standing gates *and* proof from a
+deployed preview, plus a visual check in a real browser at desktop **and 375px**.
+
+- [ ] **G1 — crawlability plumbing.** `app/robots.ts` + `app/sitemap.ts`; **add `/robots.txt` and
+      `/sitemap.xml` to `PUBLIC_PATHS`** — creating the files is *necessary but not sufficient*,
+      the proxy redirects the crawler first; one canonical origin constant (`www` — the live Stripe
+      webhook is registered there and Stripe counts a 3xx as failed delivery); per-page metadata and
+      canonicals; Search Console verification via Next's built-in `verification: { google }` field
+      (**so no Cloudflare and no DNS record is needed**); two SEO guards — a static one that cannot
+      go quiet plus browser assertions on rendered HTML. Open the PR at the end of this session.
+- [ ] **G2 — design foundations in Claude Design.** Push the existing system up, write a brief per
+      page, iterate to owner approval. No page code. Also extracts one shared public page frame —
+      today every public page is capped at `max-w-[440px]`, login-card width, including the
+      long-form `/methodology`.
+- [ ] **G3 — landing page at `/`, `/about`, real footer link graph**, product screenshots, and the
+      feature videos (Playwright frame capture with a synthetic cursor → ffmpeg → MP4 + WebM).
+- [ ] **G4 — `/learn` + `/glossary` machinery**, one typed content registry driving index pages,
+      `generateStaticParams`, metadata, sitemap, RSS and JSON-LD; OG images via **`next/og`**
+      (ships with the App Router — `@vercel/og` is *not* a required dependency); email subscription.
+- [ ] **G5 — the writing**, staged: first 4 articles + 10 glossary entries for owner review, then
+      the rest. First weekly market note with its branded header image.
+- [ ] **G6 — performance.** Fonts (naming individual weights forces **8 font files** where two
+      variable fonts would do, and all 8 preload on every page); the stock page's full-history
+      client payload (Layer C's deferred "#3 client-payload slimming"); the **384 KB** `logo.png`
+      behind a 34px render; `images` config; `poweredByHeader: false`; delete 5 dead scaffold
+      graphics; add a CSP violation collector (`Reporting-Endpoints` + `report-to`, `report-uri`
+      fallback) — **the CSP stays Report-Only; the flip to enforcing is Layer H, on evidence.**
+- [ ] **G7 — Lighthouse CI**, Search Console submission, IndexNow, live tail, `docs/layer-g-audit.md`,
+      then merge on owner approval.
+
+> **Rejected, with reasons — do not re-propose inside Layer G:**
+> **Cache Components / PPR.** The previous version of this section called it "the right lever". It
+> is a **global** Next 16 flag, not per-route: partial prerendering becomes the site-wide default,
+> every `dynamic`/`revalidate` export is replaced (there are 12+), `unstable_cache` becomes
+> `use cache` — whose entries, unlike the Data Cache, **do not survive a deploy or instance
+> teardown** — and navigation switches to React `<Activity>`, which preserves component state so
+> **dialogs stay open across navigations unless each is explicitly reset**. This app is built on
+> dialogs and takes real money. Its own project, after launch.
+> **Per-ticker OG images.** An OG image route is public by nature and `ImageResponse` defaults to
+> `public, immutable, max-age=31536000` — a card carrying a rating would be a shared-cached,
+> guessable-URL copy of paid output (CLAUDE.md 11a **and** 11b).
 
 **Verification:**
-- Lighthouse CI runs in `.github/workflows/ci.yml`
-- Test URL via Google's Rich Results test
-- Test OG images via Twitter/LinkedIn debuggers
-- `curl` proves `/sitemap.xml` and `/robots.txt` answer **200 signed-out**, not 307
+- `curl -sD -` proves `/robots.txt` (200 `text/plain`) and `/sitemap.xml` (200 `application/xml`)
+  answer **signed-out on production**, not 307
+- Lighthouse CI in `.github/workflows/ci.yml` — public pages anonymously, plus 5 ticker pages run
+  **signed in** via the existing Playwright login (decision #33 keeps its target; only the
+  instrument changes, because the pages are gated)
+- Google Rich Results test on a live URL
+- ⚠️ **Metadata verification trap:** since Next 15.2 `generateMetadata` output may be
+  [streamed into `<body>`](https://nextjs.org/docs/app/api-reference/functions/generate-metadata)
+  rather than `<head>` for JS-capable bots (Next auto-detects HTML-limited bots like Facebook and
+  LinkedIn and blocks for them). **"Not in `<head>`" is not evidence of a bug.**
+- ⚠️ **Google retired the sitemap ping endpoint in 2023** — it now 404s. Reference the sitemap in
+  `robots.txt` and submit once in Search Console; use IndexNow for Bing.
 
 ### Layer H: Pre-launch Hardening (Phase 1.5, target: 1 week)
 
 - [ ] Mobile responsive audit on every page
+  - **Scope split with Layer G (2026-08-04):** G verifies every **new public page** it builds at
+    375px *within G* — search traffic is mostly mobile and the landing page is the search entry
+    point, so shipping one that breaks on a phone would defeat that layer. What stays here is the
+    **signed-in app shell**, whose overflow is measured below. Layer G also *measures* Lighthouse
+    Accessibility but does not fix it; that is this layer's job.
   - **Measured 2026-07-28** (F3 Step 10 live check, deployed preview, real 375×812 viewport —
     the long-standing "can't test this locally" note was wrong). Signed-in app shell:
     `scrollWidth 505` vs `clientWidth 375` — **130px of horizontal overflow on every page
@@ -546,7 +610,7 @@ memory** — re-verified 2026-08-02. ✅ proven · 🟡 partly proven, with what
 | ✅ | Universe auto-expansion works for arbitrary US/AU/CA tickers | Live in production: `ticker_requests` = **8 `fetched`**, 1 `unsupported`. Real requests, drained by the nightly cron |
 | 🟡 | Signup → trial → paid flow works end-to-end with real cards | **Cannot be executed, by rule** — Stripe's ToS forbid testing in live mode. Evidence instead: the full trial→convert→renew→decline→grace→lock→recover lifecycle on Stripe **test clocks** (incl. 3DS), plus a live `cs_live_` Checkout Session reaching the hosted page at the correct trial and price. *Missing:* the first real customer, which is a launch event, not a test |
 | ✅ | Trial-end + payment-failure grace period works | Live-check S3 on a test clock: `invoice.payment_failed` → `past_due` + `grace_until` = +3d **still entitled**, then hard lock at +3d, then `invoice.paid` restores access |
-| ✅ | Daily cron has run successfully for 7 consecutive days | **10 consecutive successes**, 2026-07-24 → 2026-08-02 |
+| ✅ | Daily cron has run successfully for 7 consecutive days | **30 consecutive successes, 0 failures** (2026-07-05 → 2026-08-03, the full window `gh run list --workflow daily-refresh.yml` returned) |
 
 ### Quality
 | | Criterion | Evidence |
@@ -555,7 +619,7 @@ memory** — re-verified 2026-08-02. ✅ proven · 🟡 partly proven, with what
 | ✅ | Zero ESLint errors | `pnpm lint` clean |
 | ✅ | Zero Python type errors | `mypy analytics/` — no issues in **33 source files** |
 | ✅ | All tests passing in CI | Run on `ab11e18`: Python ✅ · Frontend ✅ · E2E **105/105** · `pytest` **86** |
-| ⬜ | Lighthouse Performance 90+, SEO 100, Accessibility 95+ on 5 sample ticker pages | **Layer G** — not started (no `sitemap.ts` / `robots.ts` yet) |
+| ⬜ | Lighthouse Performance 90+, SEO 100, Accessibility 95+ on 5 sample ticker pages | **Layer G** — planned, not started (no `sitemap.ts` / `robots.ts` yet). Two notes now that the pages are staying gated: the ticker-page runs must be driven **signed in** through the existing Playwright login, since a crawler can't reach them; and **Layer G measures Accessibility while Layer H fixes it** — otherwise G is blocked by a problem it isn't scoped to touch. Any *new* public page G builds must pass on its own merits, including at 375px |
 | ⬜ | Mobile responsive at 375px width | **Layer H** — already triaged and measured there: ~130px overflow, root-caused to the `(app)` shell sidebar, not to page components |
 
 ### Content

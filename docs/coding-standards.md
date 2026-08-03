@@ -503,6 +503,8 @@ def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[
 | A card "fill-to-N" fallback that asserts a metric claim | Can contradict the opposite card for the same ticker (e.g. Why-Attractive "accelerating 34%" vs Key-Risks "34% is modest") | Keep each metric's Attractive vs Risk thresholds **disjoint**; a fallback must be **gated** to the range that makes it true or a **tautological caveat** that can't be wrong. See design-system §9 "Statement engine — no contradictions". |
 | Forcing a fixed magnitude unit on a large quantity (`/1e9 … 'B'`, `/1e6 … 'M'`) or pre-dividing chart data by `1e9` | A small-cap's real values **collapse to a meaningless "0.0M"/"$0B"** (e.g. SEK.AX cash axis was all "$0B"); the user is shown no information | Use **`fmtCompact(value, currency?)`** (adaptive K/M/B/T, mantissa always ≥ 1) for off-axis quantities, and **`makeCompactAxisFormatter(axisMax, currency?)`** for chart axes (uniform unit + uniform decimals across all ticks). Plot **raw** values; let the formatter drive the axis. See design-system §9. |
 | A literal source space after a closing inline tag (`</strong> word`) when the next text **wraps to a new line** in JSX | Babel's JSX whitespace rule drops that leading space → the words run together ("trend.It blends", "data"(this") | Put an explicit `{' '}` after the closing tag (`</strong>{' '}word`) — never rely on a literal space across a line break. |
+| Concluding a metadata tag is missing because it isn't in `<head>` | Since Next 15.2, `generateMetadata` output is **[streamed and appended near the end of the document](https://nextjs.org/docs/app/api-reference/functions/generate-metadata)** for bots that execute JavaScript; only HTML-limited bots (Facebook, LinkedIn — Next detects them by User-Agent) get it blocking in `<head>`. So a title/canonical/OG tag can be present and correct while absent from `<head>`, which reads exactly like a shipped SEO regression. Same family as the `NEXT_REDIRECT`-inside-a-200 trap above: the framework moved the evidence, not the behaviour. | Assert on the **whole document**, not the `<head>` slice — and confirm with [Google's Rich Results test](https://search.google.com/test/rich-results) or a real crawler view rather than a substring search. If you genuinely need it blocking for every agent, that's the `htmlLimitedBots` config, not a bug fix. |
+| Assuming a **bundled** copy of a tool has the same capabilities as the real one | Playwright ships an `ffmpeg` (`ms-playwright/ffmpeg-1011/`), so "no new dependency needed" looked obviously true while planning Layer G's demo videos. Running `ffmpeg -encoders` on it showed it can encode **PNG and VP8 only — no H.264/MP4**. Shipping on that assumption would have meant WebM-only video and a browser-support gamble, discovered by a visitor rather than by us. | Ask the binary what it can do (`-encoders`, `--help`, `--version`) before designing around it. A vendored build is packaged for *its owner's* use case, not yours. |
 
 ---
 
@@ -517,7 +519,10 @@ def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[
 7. `pytest analytics/` — all Python tests pass
 8. `_engine` drift check — `web/_engine/<file>.py` matches `analytics/<file>.py` modulo the `from analytics.` → `from _engine.` rewrite
 
-9. `pnpm check:entitlement-gates` — 14 credential-free paywall tripwires (§ CLAUDE.md 11a/11b)
+9. `pnpm check:entitlement-gates` — credential-free paywall tripwires (§ CLAUDE.md 11a/11b).
+   **Don't hard-code the count here.** This line said "14" until 2026-08-04, while the script itself
+   reported **11**; the script now derives and prints its own count, so it is the source of truth —
+   run it. (Same failure as CLAUDE.md #29's section count, and the same fix.)
 10. `pnpm check:report-sections` — the downloadable report matches the 22-section detail page
 11. Playwright e2e — 105 tests, incl. the paywall behavioural matrix and the Stripe
     **key-scope** probe (`e2e/stripe-key-scope.spec.ts`), the one Stripe test that reaches the

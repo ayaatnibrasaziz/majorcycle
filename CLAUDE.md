@@ -231,7 +231,7 @@ These were agreed during planning. Do not relitigate.
 | 26 | Fonts | Sora (UI), JetBrains Mono (numbers/code) |
 | 27 | App name & logo | **MajorCycle** · domain `majorcycle.com` · logo = `reference/logo.png` (navy rounded-square "M" mark). Served as `web/public/logo.png` (in-app, via `next/image`) + favicon `web/app/icon.png` / `favicon.ico`. The asset copies are cropped tight to the icon; `reference/logo.png` is the pristine source — don't overwrite it. |
 | 28 | Mobile | Mobile-first responsive |
-| 29 | Phase 1 launch scope | All 14 Stock Detail sections from current HTML + 3 existing tabs + Methodology/Contact/Disclaimer/Terms + Auth |
+| 29 | Phase 1 launch scope | Every Stock Detail section from the reference HTML + 3 existing tabs + Methodology/Contact/Disclaimer/Terms + Auth. **Don't hard-code the section count here** — this cell read "14" and `roadmap.md` read "19" on the same day `pnpm check:report-sections` reported **22**. The guard is the source of truth; run it |
 | 30 | Phase 2 | Smart Money Activity, watchlists, alerts, sector heatmaps, FMP migration |
 | 31 | Repo structure | Monorepo: `/web` + `/analytics` + `/docs` + `/reference` |
 | 32 | Cron schedule | Daily 23:00 UTC (after all three markets close) |
