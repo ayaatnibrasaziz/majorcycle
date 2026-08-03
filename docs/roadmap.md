@@ -115,11 +115,23 @@ auto-expands and the cron runs nightly. Re-read them; don't copy them forward.)*
 > Cycle math is almost certainly unaffected (it walks the ordered bar *sequence* and rolling
 > windows, and Sunday still sorts after Thursday), but anything **date**-joined can be: notably
 > `RelativePerformance`, which matches a stock against `^GSPC`/`^GSPTSE` by date — `^AXJO` carries
-> the same shift so AU-vs-ASX200 still aligns, but AU-vs-overseas will not on Fridays. Root cause is
-> most likely a timezone conversion in `analytics/providers/yfinance_provider.py`.
-> **Not a Layer G item** — tracked separately. The earlier wording here ("Latest bar 2026-07-31, a
-> Friday, so the pipeline is current with no weekend gap") reasoned from a single global `max(date)`
-> and would have hidden this; it has been removed rather than refreshed.
+> the same shift so AU-vs-ASX200 still aligns, but AU-vs-overseas will not on Fridays.
+>
+> **Owner decision 2026-08-04: fix this BEFORE Layer G G1.** It is its own piece of work, not a
+> Layer G item.
+>
+> **The date is written in exactly one place** — `analytics/cron/daily_refresh.py:132`
+> (`"date": ts.strftime("%Y-%m-%d")`); `fetch_price_history` returns yfinance's frame untouched.
+> ⚠️ **A first hypothesis of "timezone conversion" was written here and is wrong** — a tz offset
+> shifts *every* day uniformly, whereas Mon–Thu are correct and only the fifth bar moves by +2 days.
+> Any explanation must account for **four right and one wrong** (a `resample('W')`-style right-edge
+> label lands on Sunday, which would fit — but prove it, don't assume it). The experiment that
+> settles it: fetch `BHP.AX` and print the **raw index with dtype and tzinfo before any conversion**,
+> beside `AAPL`. Full write-up in project memory.
+>
+> The earlier wording here ("Latest bar 2026-07-31, a Friday, so the pipeline is current with no
+> weekend gap") reasoned from a single global `max(date)` and would have hidden this; it has been
+> removed rather than refreshed.
 
 ### Layer B: Frontend Foundation ✅ COMPLETE
 
