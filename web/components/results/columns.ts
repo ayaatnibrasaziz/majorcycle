@@ -9,6 +9,7 @@
 // returned with each result (web/api/analyze.py `_screener_fundamentals`). The
 // Analyst column shows the Wall-Street consensus verbatim (third-party data, #17).
 
+import { tickerToUrlParts } from '@/lib/ticker';
 import type { Market, RunResult } from '@/lib/types';
 import {
   ZONE_DISPLAY,
@@ -45,10 +46,12 @@ export function buildRows(
   });
 }
 
+// Delegates to lib/ticker's suffix table rather than re-deriving the rule. The
+// private copy that used to live here classified TSX Venture (`.V`) as US,
+// because it only knew `.AX` and `.TO` — the exact "one rule, two places" drift
+// CLAUDE.md 11c warns about.
 function marketFromTicker(ticker: string): Market {
-  if (ticker.endsWith('.AX')) return 'au';
-  if (ticker.endsWith('.TO')) return 'ca';
-  return 'us';
+  return tickerToUrlParts(ticker).market;
 }
 
 export type BandKey =

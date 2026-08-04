@@ -114,11 +114,13 @@ _INDEX_CURRENCY: dict[str, str] = {
 
 
 def _infer_market(ticker: str) -> str:
+    # `.V` (TSX Venture) is Canadian, not US. See the note in
+    # providers/yfinance_provider._infer_market and web/lib/ticker.ts.
     if ticker.startswith("^"):
         return "index"
     if ticker.endswith(".AX"):
         return "au"
-    if ticker.endswith(".TO"):
+    if ticker.endswith(".TO") or ticker.endswith(".V"):
         return "ca"
     return "us"
 

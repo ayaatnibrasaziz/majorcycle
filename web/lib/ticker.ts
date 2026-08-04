@@ -3,16 +3,34 @@
 
 import type { Market } from '@/lib/types';
 
+/**
+ * Every exchange suffix we store, and the market it belongs to. THE list — a
+ * second copy of this rule is how `.V` came to be mis-filed as US (see below).
+ *
+ * `keepSuffix` is the subtlety. `.AX`/`.TO` are dropped from the URL because a
+ * market has exactly one of them, so `au` + `BHP` reconstructs `BHP.AX`
+ * unambiguously. Canada has TWO (`.TO` = TSX, `.V` = TSX Venture), so dropping
+ * `.V` would make `ABC.V` and `ABC.TO` collide on `/stocks/ca/ABC` and resolve
+ * to the WRONG COMPANY. Venture symbols therefore keep their suffix in the URL:
+ * `/stocks/ca/ABC.V`. That still satisfies locked decision #13
+ * (`/stocks/[market]/[ticker]`) — the exchange rides in the ticker, not a new
+ * path segment.
+ */
+const MARKET_SUFFIXES: readonly { suffix: string; market: Market; keepSuffix: boolean }[] = [
+  { suffix: '.AX', market: 'au', keepSuffix: false },
+  { suffix: '.TO', market: 'ca', keepSuffix: false },
+  { suffix: '.V', market: 'ca', keepSuffix: true },
+];
+
 /** Convert a storage-format ticker to URL path parts. */
 export function tickerToUrlParts(stored: string): {
   market: Market;
   symbol: string;
 } {
-  if (stored.endsWith('.AX')) {
-    return { market: 'au', symbol: stored.slice(0, -3) };
-  }
-  if (stored.endsWith('.TO')) {
-    return { market: 'ca', symbol: stored.slice(0, -3) };
+  for (const { suffix, market, keepSuffix } of MARKET_SUFFIXES) {
+    if (stored.endsWith(suffix)) {
+      return { market, symbol: keepSuffix ? stored : stored.slice(0, -suffix.length) };
+    }
   }
   return { market: 'us', symbol: stored };
 }
@@ -49,6 +67,11 @@ export function tickerDisplay(stored: string): string {
 /** Convert URL path parts to a storage-format ticker. */
 export function urlPartsToTicker(market: Market, symbol: string): string {
   const upper = symbol.toUpperCase();
+  // A kept suffix means the URL symbol IS already storage format — appending
+  // the market's default would build `ABC.V.TO`, a ticker that doesn't exist.
+  if (MARKET_SUFFIXES.some((s) => s.keepSuffix && upper.endsWith(s.suffix))) {
+    return upper;
+  }
   if (market === 'au') return `${upper}.AX`;
   if (market === 'ca') return `${upper}.TO`;
   return upper;
