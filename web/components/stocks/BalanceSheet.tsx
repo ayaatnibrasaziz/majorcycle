@@ -18,6 +18,7 @@ import {
   CHART_RIGHT_AXIS_WIDTH,
   fmtCompact,
   makeCompactAxisFormatter,
+  reportingCurrencyNote,
   statementCurrency,
 } from '@/lib/format';
 
@@ -97,6 +98,8 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
   // company's REPORTING currency — which for BHP.AX is USD while its shares
   // trade in AUD. Using the price currency here labelled US dollars as A$.
   const currency = statementCurrency(fundamentals);
+  // Non-null only when the two currencies differ — see reportingCurrencyNote.
+  const currencyNote = reportingCurrencyNote(fundamentals);
 
   // Banks & REITs structurally don't report Debt/Equity, Current Ratio or
   // Interest Coverage (no classified current assets/liabilities), so those pills
@@ -326,6 +329,11 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
           <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--text-muted)' }}>
             Some ratios show &ldquo;—&rdquo; because banks &amp; REITs don&apos;t
             report them in the usual way (no classified current assets/liabilities).
+          </div>
+        )}
+        {currencyNote && (
+          <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--text-muted)' }}>
+            {currencyNote}
           </div>
         )}
       </div>

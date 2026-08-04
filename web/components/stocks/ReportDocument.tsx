@@ -23,7 +23,7 @@ import { BadgeRow, StockHeader } from '@/components/stocks/StockHeader';
 import { TechnicalLevels } from '@/components/stocks/TechnicalLevels';
 import { ValuationHistory } from '@/components/stocks/ValuationHistory';
 import { VerdictCard } from '@/components/stocks/VerdictCard';
-import { statementCurrency } from '@/lib/format';
+import { reportingCurrencyNote, statementCurrency } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useScrollSpy } from '@/lib/useScrollSpy';
 import type { ReportData } from '@/lib/report-types';
@@ -294,6 +294,7 @@ export function ReportDocument({ data }: { data: ReportData }) {
             <EarningsHistory
               earningsHistory={stock.earningsHistory ?? []}
               currency={statementCurrency(stock.fundamentals)}
+              currencyNote={reportingCurrencyNote(stock.fundamentals)}
             />
           </ReportSection>
           <ReportSection>
@@ -303,6 +304,7 @@ export function ReportDocument({ data }: { data: ReportData }) {
               incomeStatementAnnual={stock.incomeStatementAnnual}
               cashflowAnnual={stock.cashflowAnnual}
               currency={statementCurrency(stock.fundamentals)}
+              currencyNote={reportingCurrencyNote(stock.fundamentals)}
             />
           </ReportSection>
           <ReportSection>

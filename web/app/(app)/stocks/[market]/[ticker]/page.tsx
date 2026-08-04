@@ -29,7 +29,7 @@ import { VerdictCard } from '@/components/stocks/VerdictCard';
 import { fetchBenchmarks } from '@/lib/benchmarks.server';
 import { fetchCycleAnalysis, type CycleSpec } from '@/lib/cycle';
 import { getViewerEntitlement } from '@/lib/entitlement.server';
-import { statementCurrency } from '@/lib/format';
+import { reportingCurrencyNote, statementCurrency } from '@/lib/format';
 import { recordFreeView } from '@/lib/freeViews';
 import { parseSpec, isValidMarket, horizonQuery, type RouteSearch } from '@/lib/horizon';
 import { fetchMetricMedians } from '@/lib/medians.server';
@@ -440,6 +440,7 @@ export default async function StockDetailPage({
           <EarningsHistory
             earningsHistory={stock.earningsHistory ?? []}
             currency={statementCurrency(stock.fundamentals)}
+            currencyNote={reportingCurrencyNote(stock.fundamentals)}
           />
           <QuarterlyFinancials
             incomeStatementQuarterly={stock.incomeStatementQuarterly}
@@ -447,6 +448,7 @@ export default async function StockDetailPage({
             incomeStatementAnnual={stock.incomeStatementAnnual}
             cashflowAnnual={stock.cashflowAnnual}
             currency={statementCurrency(stock.fundamentals)}
+            currencyNote={reportingCurrencyNote(stock.fundamentals)}
           />
           <ValuationHistory
             peHistory={stock.peHistory ?? []}

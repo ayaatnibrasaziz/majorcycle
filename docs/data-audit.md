@@ -208,6 +208,51 @@ wrong — the same "withhold, never fabricate" posture the scorer already takes.
 `fcf_margin_pct` is kept, because both its inputs come from the statements and
 therefore share a currency.
 
+**The whole universe is 7 reporting currencies**, and the symbol for each comes
+from `Intl` rather than a hand-written table, so a currency we have never held
+cannot arrive unhandled:
+
+| | stocks | renders as |
+|---|---|---|
+| USD | 595 | `$15.7B` |
+| AUD | 200 | `A$15.7B` |
+| CAD | 54 | `CA$15.7B` |
+| NZD | 10 | `NZ$15.7B` |
+| EUR | 2 | `€15.7B` |
+| TWD | 1 | `NT$15.7B` |
+| SGD | 1 | `SGD 15.7B` |
+
+Two things fell out of actually rendering that table:
+
+* SGD has no glyph in this locale and `Intl` falls back to the bare code, which
+  butted against the number as `SGD15.7B`. A space is added when the symbol ends
+  in a letter — matching what `Intl` itself does for a full amount.
+* **A symbol alone cannot carry this.** In `en-US` the US dollar is a bare `$`,
+  so BHP's corrected balance sheet reads `$15.7B` three inches below a share
+  price of `A$60.52`, and nothing tells the reader those are different dollars —
+  a gap of about A$8B on that one figure. `reportingCurrencyNote()` adds a line
+  of text to the statement cards, and only when the two currencies differ:
+
+  > Figures reported in US dollars (USD) — the company's reporting currency, not
+  > its share price currency (AUD).
+
+### ⚠️ The fix shipped inert, and only looking at the screen caught it
+
+`financial_currency` was added to the provider, the type, the spec and three
+components — and left at `null` on **all 863 rows**, because enrichment is
+staleness-driven and would have taken over a week to repopulate. `statementCurrency()`
+correctly falls back to the price currency when it is missing, so every page
+would have gone on showing `A$` while the code, the tests and the guards all
+said the bug was fixed.
+
+Reading the code could not show this. Rendering the page did, in one screenshot.
+The field is now backfilled for the whole universe (863 rows, 79 differing).
+
+**The lesson is narrower than "test more".** A guard that asserts *the code asks
+the right question* passes happily while *the data has no answer*. When a fix
+depends on a new field, the fix is not done until that field is populated —
+assert on the rendered figure, not on the function that produces it.
+
 ---
 
 ## D4 — The nightly pipeline installed whatever was newest ✅ FIXED
@@ -249,7 +294,7 @@ owner when a field's **cohort median** leaves its declared band. Verified live:
 
 ---
 
-## D5 — 52-week high/low are on a different price basis than the chart ⚠️ RECOMMENDATION
+## D5 — 52-week high/low are on a different price basis than the chart ✅ OWNER DECIDED: LEAVE AS IS
 
 `week52_high` / `week52_low` come from `info` as **raw traded prices**. Our
 `price_bars` are **dividend-adjusted** (`auto_adjust=True`), so every historical
@@ -264,14 +309,21 @@ bar sits below the price actually traded that day.
 Australia is worst because Australian yields are highest. For 99 ASX stocks the
 price chart **never reaches** the 52-week high shown next to it.
 
-The current price is unaffected (auto-adjustment leaves the latest bar alone),
-so the range gauge's marker is right; it is the endpoints that come from
-elsewhere.
+**The gauge itself is correct, and reading it settled the question.**
+`WeekRangeGauge` computes `off high` as `(current − week52High) / week52High`.
+Auto-adjustment leaves the *latest* bar untouched, so `current` is the real
+traded price and `week52High` is the real traded high — same basis, both raw.
+The percentage beside the bar is right.
 
-**Not fixed, because it is the owner's call.** Deriving both from our own bars
-makes the page self-consistent and always fresh — but it would then disagree
-with the number Yahoo and every broker shows. Consistency inside our page versus
-agreement with the outside world is a product decision, not a bug fix.
+The mismatch is confined to the *historical* chart line, which is
+dividend-adjusted so that returns are comparable across time. That is the
+correct thing for a chart to do, and it is why the drawn peak can sit a couple
+of percent under the printed 52-week high.
+
+**Owner decision, 2026-08-05: leave both exactly as they are.** Deriving our own
+52-week high from adjusted bars would make the page internally tidy at the cost
+of disagreeing with Yahoo, Google and every broker on a number readers routinely
+cross-check. Do not "fix" this in a later session.
 
 ---
 

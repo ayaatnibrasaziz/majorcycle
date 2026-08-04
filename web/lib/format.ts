@@ -17,6 +17,38 @@ export function statementCurrency(f: FundamentalsSnapshot): string {
   return f.financialCurrency ?? f.currency;
 }
 
+/** Full names for the currencies our universe actually reports in. */
+const CURRENCY_NAME: Record<string, string> = {
+  USD: 'US dollars',
+  AUD: 'Australian dollars',
+  CAD: 'Canadian dollars',
+  NZD: 'New Zealand dollars',
+  EUR: 'euros',
+  SGD: 'Singapore dollars',
+  TWD: 'Taiwan dollars',
+  GBP: 'pounds sterling',
+  JPY: 'Japanese yen',
+  HKD: 'Hong Kong dollars',
+};
+
+/**
+ * A caption for statement cards when the company reports in a different currency
+ * from the one its shares trade in — `null` when they agree, which is ~91% of
+ * the universe.
+ *
+ * A symbol alone cannot carry this. In `en-US` the US dollar is a bare `$`, so
+ * BHP's balance sheet would read "$15.7B" three inches below a share price of
+ * "A$60.52" and nothing on the page would say those are different dollars. The
+ * gap is real money — US$15.7B is about A$24B — and a beginner has no way to
+ * infer it. Annual reports solve this the same way, with a line of text.
+ */
+export function reportingCurrencyNote(f: FundamentalsSnapshot): string | null {
+  const code = statementCurrency(f);
+  if (code === f.currency) return null;
+  const name = CURRENCY_NAME[code] ?? code;
+  return `Figures reported in ${name} (${code}) — the company's reporting currency, not its share price currency (${f.currency}).`;
+}
+
 /**
  * Shared right-axis width (px) so EVERY chart's plot area ends at the same x and
  * the cards line up down the page. Used two ways, both keyed to this one value:
@@ -99,6 +131,12 @@ export function currencySymbol(code: string): string {
   } catch {
     symbol = '$'; // unknown/invalid code — never throw on a formatting path
   }
+  // Some currencies have no glyph in this locale and fall back to the bare code
+  // — Singapore dollars render as "SGD". Butted straight against the number that
+  // reads as one word ("SGD15.7B"), and `Intl` itself puts a space there when it
+  // formats a full amount ("SGD 60.52"), so match it. Glyph symbols ($, A$, €)
+  // stay tight, which is how every finance site sets them.
+  if (/[A-Za-z]$/.test(symbol)) symbol += ' ';
   symbolCache.set(code, symbol);
   return symbol;
 }
