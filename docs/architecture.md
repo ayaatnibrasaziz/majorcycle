@@ -28,7 +28,7 @@ flowchart TB
     end
 
     subgraph GHA["🐙 GitHub Actions — FREE"]
-        Cron["Daily Cron 23:00 UTC<br/>Refreshes data + ticker listings<br/>Drains the ticker-request queue<br/>Writes to Supabase"]
+        Cron["Daily Cron — AU 08:00 UTC · US+CA 22:30 UTC<br/>Each market after its OWN close<br/>Refreshes data + ticker listings<br/>Drains the ticker-request queue<br/>Writes to Supabase"]
     end
 
     subgraph External["External — FREE"]
@@ -59,7 +59,7 @@ flowchart TB
 
 ### Tier 1 — Batch (scheduled, free)
 
-**What:** A GitHub Actions workflow runs once per day at 23:00 UTC. It executes the Python pipeline in `analytics/cron/daily_refresh.py` in **smart mode** (the default), which:
+**What:** **Two** GitHub Actions workflows run daily — **AU at 08:00 UTC**, **US+CA at 22:30 UTC** — each executing `analytics/cron/daily_refresh.py` in **smart mode** (the default) scoped with `--markets`. (Corrected 2026-08-04: this said "once per day at 23:00 UTC". No single time can work — see §8 "Why the refresh is split".) Smart mode:
 
 1. Loads the universe from the **DB** (`_load_universe()` reads every ticker in `stocks`, the live auto-expanding universe) plus the benchmark indices (`^GSPC`, `^IXIC`, `^AXJO`, `^GSPTSE`, always included) — there are **no static universe CSVs**. Benchmark indices are stored as `market='index'` **price-only** rows, used by the Relative Performance chart and excluded from stock listings. A one-off run can be scoped with `--only TICKER[,TICKER…]`.
 2. Pre-fetches the current DB state for all tickers — specifically `enriched_updated_at` and `next_earnings_date` — in a single query
@@ -830,11 +830,41 @@ by preference): custom domain (~US$10/mo), custom email domain (owner keeps the 
 
 ## 8. Cron Job Specification
 
-### Daily smart refresh — `.github/workflows/daily-refresh.yml`
+### Daily smart refresh — `daily-refresh.yml` (US+CA) + `daily-refresh-au.yml` (AU)
 
-**Schedule:** `cron: '0 23 * * *'` (daily at 23:00 UTC, 7 days a week)
+**Schedule:** `'30 22 * * *'` for **US + CA**, `'0 8 * * *'` for **AU**, 7 days a week.
 
-**Runtime:** ~20–30 minutes for ~720 tickers (S&P 500 + ASX 200 + TSX 60) in smart mode. On a night when many earnings have just passed the runtime extends proportionally — each enriched fetch takes ~30s per ticker vs ~2s for price-only.
+#### Why the refresh is split (changed 2026-08-04)
+
+**No single UTC time is after every market's close**, so a one-shot run always
+catches one market mid-session:
+
+| Event | Southern summer | Southern winter |
+|---|---|---|
+| ASX closing auction prints (~16:11 Sydney) | 05:11 UTC | 06:11 UTC |
+| **ASX starts taking next-day orders (07:00 Sydney)** | **20:00 UTC** | **21:00 UTC** |
+| NYSE / TSX close (16:00 ET) | 21:00 UTC (EST) | 20:00 UTC (EDT) |
+
+The ASX reopens *before or exactly when* New York closes. The old single 23:00 UTC
+run landed at 09:00–10:00 Sydney — inside the ASX pre-open — and stored a bar for
+a session that hadn't started: **41 of 60 sampled AU tickers on 2026-08-04**.
+Harmless in the end (the 1-month upsert window overwrote it next run), but
+"today's price" for an AU stock could be a pre-open indication for up to a day.
+
+**Indices follow their home country**, via `_schedule_market` (not `_infer_market`,
+which returns `'index'` — right for the `stocks.market` column, useless for
+scheduling). `^AXJO` moves with the AU equities; otherwise Relative Performance
+compares an ASX-close series against a mid-session one.
+
+**Only the US+CA workflow runs `refresh_listings`, `refresh_index_membership` and
+`drain_requests`** — they must happen once a day, not twice.
+
+⚠️ **The split must partition the universe exactly.** A ticker matched by neither
+`--markets` filter silently stops updating — nothing errors, the data just ages.
+Guarded by `analytics/tests/test_market_inference.py`; re-verify against the live
+universe if a new suffix or index is added.
+
+**Runtime:** the universe is **867 tickers at 2026-08-04**, split **616 US+CA / 251 AU**, so each run is proportionally shorter than the ~20–30 min the combined run took. (Both keep `timeout-minutes: 60`; halving the work doesn't justify tightening a safety margin.) On a night when many earnings have just passed the runtime extends proportionally — each enriched fetch takes ~30s per ticker vs ~2s for price-only.
 
 **Steps:**
 1. Checkout repo
@@ -843,7 +873,7 @@ by preference): custom domain (~US$10/mo), custom email domain (owner keeps the 
 4. Run `python -m analytics.cron.refresh_listings` — refresh the `listings` "menu" from the free exchange symbol files (US/AU/CA), normalised to yfinance format. Fast (~seconds); failure is logged but does not abort the run (the cached `listings` table stays usable).
 5. Run `python -m analytics.cron.refresh_index_membership` — refresh the `index_membership` table (S&P 500 / ASX 200 / S&P/TSX 60) from official ETF holdings files (SPY/IOZ/XIU). Per-index sane-count + max-churn guards; failure logged, not fatal. **Any constituent not yet in `stocks` is fetched directly here** (via `daily_refresh.run`) and audited in `universe_log` as `added_by='index_membership'` — it does **not** use `ticker_requests` (that queue is user-facing only). The Run index baskets read this table at request time (no redeploy).
 6. Run `python -m analytics.cron.drain_requests` — fetch every `queued` row in `ticker_requests` (genuine user requests only) via the yfinance `DataProvider` (+ Stooq fallback), upsert into `stocks` + `price_bars`, log to `universe_log` (`added_by='user_request'`), and flip `status` to `fetched` / `unsupported` / `failed`.
-7. Run `python -m analytics.cron.daily_refresh` (smart mode by default) — refresh the analysed universe (loaded from the `stocks` table + benchmark indices).
+7. Run `python -m analytics.cron.daily_refresh --markets us,ca` (smart mode by default) — refresh the analysed universe (loaded from the `stocks` table + benchmark indices). The AU workflow runs step 1–3 then `--markets au` only; steps 4–6 are deliberately **not** duplicated there.
 8. On failure: email owner via Resend with a summary of failed tickers
 
 **Required GitHub Secrets:** unchanged — the exchange symbol files need **no API key**.
@@ -879,7 +909,7 @@ A **Vercel** cron (a Next.js route handler), distinct from the GitHub-Actions da
 - A data provider incident that left enriched data stale
 - Adding a large batch of new tickers to the universe
 
-**Runtime:** ~4–5 hours for 720 tickers. GitHub Actions `timeout-minutes: 360`.
+**Runtime:** ~4–5 hours for the full universe (867 at 2026-08-04). GitHub Actions `timeout-minutes: 360`. **Manual trigger only** — despite the "weekly" filename it has no `schedule:`, only `workflow_dispatch`.
 
 **Command:** `python -m analytics.cron.daily_refresh --mode full`
 

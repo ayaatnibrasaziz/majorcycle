@@ -85,7 +85,7 @@ Goal: Daily refresh pipeline writes correct data to Supabase.
 - [x] Create Supabase tables: `stocks`, `price_bars`, `profiles`, `analysis_runs`, `universe_log`
 - [x] Build enriched data pipeline — income statements (annual + quarterly), balance sheets, cashflow, earnings history, top institutional holders, insider transactions, analyst upgrades/downgrades, PE history, company overview
 - [x] Build smart refresh pipeline (`analytics/cron/daily_refresh.py`) with earnings-date-driven staleness logic — price+fundamentals daily, enriched data only after next earnings date passes (7-day fallback for tickers without calendar data)
-- [x] Set up daily GitHub Actions workflow `.github/workflows/daily-refresh.yml` — 23:00 UTC, smart mode, 60 min timeout
+- [x] Set up daily GitHub Actions workflow `.github/workflows/daily-refresh.yml` — smart mode, 60 min timeout. *(Shipped as one 23:00 UTC run; **split 2026-08-04** into AU 08:00 UTC + US+CA 22:30 UTC, because 23:00 UTC is inside the ASX pre-open — see `architecture.md` §8.)*
 - [x] Set up manual full-refresh workflow `.github/workflows/weekly-enriched-refresh.yml` — `workflow_dispatch` only, `--mode full`, 360 min timeout
 - [x] Add `next_earnings_date DATE` and `enriched_updated_at TIMESTAMPTZ` columns to `stocks` table
 - [x] Add cron failure email via Resend
