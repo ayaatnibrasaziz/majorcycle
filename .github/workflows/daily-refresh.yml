@@ -1,13 +1,22 @@
-name: Daily Data Refresh
+name: Daily Data Refresh (US + CA)
 
+# 22:30 UTC — after the NYSE/TSX 16:00 ET close in BOTH daylight regimes
+# (20:00 UTC on EDT, 21:00 UTC on EST), with an hour's margin for the closing
+# auction to print.
+#
+# Australia is NOT refreshed here; it has its own workflow at 08:00 UTC. There is
+# no single time that works for all three: the ASX starts accepting next-day
+# orders at 07:00 Sydney (20:00-21:00 UTC), which is before or exactly when New
+# York closes. One run therefore always caught the ASX mid-session and stored a
+# partial bar for a day that hadn't finished. See daily-refresh-au.yml.
 on:
   schedule:
-    - cron: '0 23 * * *'    # 23:00 UTC daily — after US, AU, CA markets close
+    - cron: '30 22 * * *'
   workflow_dispatch:        # allow manual trigger from Actions tab for testing
 
 jobs:
   refresh:
-    name: Run daily pipeline
+    name: Run daily pipeline (US + CA)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -70,10 +79,13 @@ jobs:
           OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
         run: python -m analytics.cron.drain_requests
 
-      - name: Run daily refresh
+      # US + CA only (their indices ride along: ^GSPC, ^IXIC, ^GSPTSE). ^AXJO is
+      # refreshed with the AU equities so the benchmark and the stocks it is
+      # compared against always come from the same completed session.
+      - name: Run daily refresh (US + CA)
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
           OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
-        run: python -m analytics.cron.daily_refresh
+        run: python -m analytics.cron.daily_refresh --markets us,ca

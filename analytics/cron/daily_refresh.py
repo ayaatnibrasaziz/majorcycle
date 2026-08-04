@@ -113,6 +113,31 @@ _INDEX_CURRENCY: dict[str, str] = {
 }
 
 
+# Which country's trading calendar each benchmark index follows. Separate from
+# `_infer_market`, which returns 'index' for these — correct for the `stocks.market`
+# column, useless for SCHEDULING. ^AXJO has to be refreshed on the ASX's clock, not
+# New York's, or the Relative Performance chart compares an ASX-close series against
+# a mid-session one.
+_INDEX_HOME_MARKET: dict[str, str] = {
+    "^GSPC": "us",
+    "^IXIC": "us",
+    "^AXJO": "au",
+    "^GSPTSE": "ca",
+}
+
+
+def _schedule_market(ticker: str) -> str:
+    """The market whose trading hours govern when this ticker should be fetched.
+
+    Equals `_infer_market` for equities; maps indices onto their home country.
+    An unknown `^INDEX` falls back to 'us' so it is still refreshed by *some*
+    run rather than silently dropped by every market filter.
+    """
+    if ticker.startswith("^"):
+        return _INDEX_HOME_MARKET.get(ticker, "us")
+    return _infer_market(ticker)
+
+
 def _infer_market(ticker: str) -> str:
     # `.V` (TSX Venture) is Canadian, not US. See the note in
     # providers/yfinance_provider._infer_market and web/lib/ticker.ts.
@@ -408,13 +433,43 @@ def _send_failure_email(subject: str, body: str) -> None:
 def run(
     mode: str = "smart",
     only: Optional[list[str]] = None,
+    markets: Optional[list[str]] = None,
     notify_on_failure: bool = True,
 ) -> None:
     started_at = datetime.now(timezone.utc)
     logger.info("Daily refresh started at %s (mode=%s)", started_at.isoformat(), mode)
 
+    # Validate the argument BEFORE opening a connection — a typo in a cron file
+    # should fail in a second with a clear message, not after loading the universe.
+    wanted_markets: set[str] = set()
+    if markets:
+        wanted_markets = {m.strip().lower() for m in markets if m.strip()}
+        unknown = wanted_markets - {"us", "au", "ca"}
+        if unknown:
+            raise ValueError(
+                f"Unknown market(s): {', '.join(sorted(unknown))}. Valid: us, au, ca."
+            )
+
     supabase = _get_supabase()
     universe = _load_universe(supabase)
+
+    # Market-scoped runs exist because no single UTC time is after every market's
+    # close: the ASX starts accepting next-day orders at 20:00-21:00 UTC, which is
+    # before or exactly when New York closes. So each market is refreshed on its own
+    # schedule and only its own tickers are touched. Applied BEFORE `only` so an
+    # explicit ticker list always wins.
+    if wanted_markets:
+        before = len(universe)
+        universe = [r for r in universe if _schedule_market(r["ticker"]) in wanted_markets]
+        logger.info(
+            "--markets %s: %d of %d tickers selected",
+            ",".join(sorted(wanted_markets)), len(universe), before,
+        )
+        if not universe:
+            raise ValueError(
+                f"No tickers matched --markets {','.join(sorted(wanted_markets))} — "
+                "refusing to report a vacuous success."
+            )
 
     # One-off runs: restrict to an explicit ticker list. Any requested ticker not
     # present in the universe is injected as an ad-hoc row (market inferred
@@ -688,6 +743,15 @@ if __name__ == "__main__":
         default=None,
         help="Comma-separated ticker(s) to refresh in isolation, e.g. --only AAPL or --only ^GSPC,^AXJO",
     )
+    parser.add_argument(
+        "--markets",
+        default=None,
+        help=(
+            "Comma-separated market(s) to refresh, e.g. --markets au or --markets us,ca. "
+            "Benchmark indices follow their home country (^AXJO with au). Omit for all."
+        ),
+    )
     args = parser.parse_args()
     only_list = args.only.split(",") if args.only else None
-    run(mode=args.mode, only=only_list)
+    markets_list = args.markets.split(",") if args.markets else None
+    run(mode=args.mode, only=only_list, markets=markets_list)
