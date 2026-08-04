@@ -182,10 +182,15 @@ def _fetch_tmx_exchange(exchange: str, *, venture: bool) -> list[ListingRow]:
 
 
 def fetch_ca() -> list[ListingRow]:
-    # TSX only for now. The app's ticker routing (web/lib/ticker.ts + URL decisions
-    # #13/#14) maps CA → `.TO`, so TSX Venture (`.V`) symbols would render an
-    # unreachable detail page. normalize_ca() already supports `.V` for when the URL
-    # scheme is extended to encode the exchange — then add `_fetch_tmx_exchange("tsxv", venture=True)`.
+    # TSX only. This is now a PRODUCT choice, not a technical block — the routing
+    # limitation this comment used to cite was fixed on 2026-08-04: `.V` classifies
+    # as `ca` in web/lib/ticker.ts, both `_infer_market`s, and the Results columns,
+    # and venture symbols keep their suffix in the URL (`/stocks/ca/ABC.V`) so they
+    # can't collide with `ABC.TO`.
+    #
+    # Turning venture on is one line — `_fetch_tmx_exchange("tsxv", venture=True)` —
+    # but it roughly doubles the CA request menu with micro-caps, so it needs an
+    # owner decision, not a quiet flip.
     rows = dedupe(_fetch_tmx_exchange("tsx", venture=False))
     logger.info("CA listings: %d symbols (TSX)", len(rows))
     return rows
