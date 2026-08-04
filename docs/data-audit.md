@@ -347,6 +347,33 @@ promised a chart that could never arrive.
 > worthless; only the our-value-vs-Yahoo's-value comparison, with a same-currency
 > control, actually discriminated.
 
+## D3c — "Fixed" in one runtime, still live in another ✅ FIXED
+
+Found by signing in as a **subscriber** and reading the report payload — the last
+verification step, after everything else was green.
+
+`normalise_fundamentals()` withholds `fcf_yield_pct` when the currencies differ.
+It runs in the provider (write) and in `web/api/cycle.py` + `analyze.py` (read).
+Both are **Python**. The Key Metrics table is rendered from `web/lib/stocks.ts`,
+which is **TypeScript** and does neither — so 73 stored rows still had a
+cross-currency FCF yield, and it was still on screen, after the fix was written,
+tested, guarded and merged into the branch.
+
+The instinct is to add the same normalisation in TypeScript. That is the wrong
+move: it makes the rule exist twice, in two languages, free to drift — the exact
+defect CLAUDE.md 11c was written about.
+
+**Assert the invariant on the DATA instead.** `check_invariants()` in
+`analytics/cron/check_field_units.py` now fails nightly if any stored row has
+
+* a margin of exactly `0.0` (the sentinel, worth four rating labels), or
+* an `fcf_yield_pct` where price and reporting currencies disagree,
+
+which covers **every** reader at once — Python, TypeScript, the report bundle and
+anything added later — rather than re-implementing the rule per language and
+hoping the copies agree. 73 rows cleared; live run: 39 fields + 2 invariants
+across 863 stocks, clean.
+
 ## D5 — 52-week high/low are on a different price basis than the chart ✅ OWNER DECIDED: LEAVE AS IS
 
 `week52_high` / `week52_low` come from `info` as **raw traded prices**. Our

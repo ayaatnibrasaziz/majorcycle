@@ -71,6 +71,49 @@ def _load_fundamentals(supabase: Client) -> list[dict[str, Any]]:
         start += _PAGE
 
 
+def check_invariants(rows: list[dict[str, Any]]) -> list[str]:
+    """Rules that must hold for EVERY stored row, checked against the data itself.
+
+    These exist because the same rule is applied in more than one runtime. The
+    provider normalises on write and the Python serverless functions normalise on
+    read — but the TypeScript reader that renders the Key Metrics table does
+    neither, so a stale row reached the screen with a cross-currency FCF yield
+    even after the "fix" was in. Asserting the invariant on the DATA covers every
+    reader at once, rather than re-implementing the rule in each language and
+    hoping the copies agree.
+    """
+    problems: list[str] = []
+
+    zero_margins: dict[str, list[str]] = {}
+    fcf_mixed: list[str] = []
+    for r in rows:
+        f = r.get("fundamentals") or {}
+        ticker = str(r.get("ticker", "?"))
+        for name in ("gross_margin", "operating_margin", "net_margin", "ebitda_margin"):
+            if f.get(name) == 0:
+                zero_margins.setdefault(name, []).append(ticker)
+        price_cur, fin_cur = f.get("currency"), f.get("financial_currency")
+        if (
+            price_cur and fin_cur and price_cur != fin_cur
+            and isinstance(f.get("fcf_yield_pct"), (int, float))
+        ):
+            fcf_mixed.append(ticker)
+
+    for name, tickers in sorted(zero_margins.items()):
+        problems.append(
+            f"{name}: {len(tickers)} row(s) store an exact 0.0, which is the "
+            f"provider's 'not reported' sentinel and scores as a real 0% "
+            f"(e.g. {', '.join(sorted(tickers)[:5])})"
+        )
+    if fcf_mixed:
+        problems.append(
+            f"fcf_yield_pct: {len(fcf_mixed)} row(s) mix currencies — cash flow is "
+            f"in the reporting currency and market cap in the price currency "
+            f"(e.g. {', '.join(sorted(fcf_mixed)[:5])})"
+        )
+    return problems
+
+
 def check(rows: list[dict[str, Any]]) -> tuple[list[str], list[str], int]:
     """Return (breaches, thin_fields, fields_checked)."""
     breaches: list[str] = []
@@ -149,9 +192,11 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     rows = _load_fundamentals(_get_supabase())
     breaches, thin, checked = check(rows)
+    invariants = check_invariants(rows)
 
     logger.info(
-        "check_field_units: %d field(s) checked across %d stocks", checked, len(rows)
+        "check_field_units: %d field(s) checked + %d invariant(s) across %d stocks",
+        checked, 2, len(rows),
     )
     for t in thin:
         logger.info("  thin sample, skipped — %s", t)
@@ -160,6 +205,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         logger.error("No field had a large enough sample — the check ran on nothing.")
         return 1
 
+    breaches = breaches + invariants
     if not breaches:
         logger.info("check_field_units: OK — every median is where it should be")
         return 0

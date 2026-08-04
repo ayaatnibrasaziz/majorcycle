@@ -6,7 +6,7 @@ stocks, no breaches.
 
 from typing import Any
 
-from analytics.cron.check_field_units import _MIN_SAMPLE, check
+from analytics.cron.check_field_units import _MIN_SAMPLE, check, check_invariants
 
 
 def _universe(**fields: float) -> list[dict[str, Any]]:
@@ -68,6 +68,46 @@ class TestCohortCheck:
         breaches, _thin, checked = check([])
         assert breaches == []
         assert checked == 0
+
+    def test_a_clean_universe_trips_no_invariant(self) -> None:
+        rows = [
+            {"ticker": "AAPL", "fundamentals": {
+                "currency": "USD", "financial_currency": "USD",
+                "gross_margin": 48.6, "fcf_yield_pct": 2.4,
+            }},
+            {"ticker": "BHP.AX", "fundamentals": {
+                "currency": "AUD", "financial_currency": "USD",
+                "gross_margin": 83.1, "fcf_yield_pct": None,
+            }},
+        ]
+        assert check_invariants(rows) == []
+
+    def test_a_stored_zero_margin_is_reported(self) -> None:
+        """The sentinel must never come back — it is worth four customer-facing
+        rating labels."""
+        rows = [{"ticker": "JPM", "fundamentals": {
+            "currency": "USD", "financial_currency": "USD", "gross_margin": 0,
+        }}]
+        problems = check_invariants(rows)
+        assert len(problems) == 1
+        assert "gross_margin" in problems[0] and "JPM" in problems[0]
+
+    def test_a_cross_currency_fcf_yield_is_reported(self) -> None:
+        """This one was live AFTER the fix: normalising on the Python read path
+        left the TypeScript reader — and so the Key Metrics table — untouched.
+        Checking the DATA covers every reader at once."""
+        rows = [{"ticker": "ABX.TO", "fundamentals": {
+            "currency": "CAD", "financial_currency": "USD", "fcf_yield_pct": 6.12,
+        }}]
+        problems = check_invariants(rows)
+        assert len(problems) == 1
+        assert "fcf_yield_pct" in problems[0] and "ABX.TO" in problems[0]
+
+    def test_a_same_currency_fcf_yield_is_fine(self) -> None:
+        rows = [{"ticker": "AAPL", "fundamentals": {
+            "currency": "USD", "financial_currency": "USD", "fcf_yield_pct": 2.4,
+        }}]
+        assert check_invariants(rows) == []
 
     def test_one_wild_outlier_does_not_trip_it(self) -> None:
         """A 35% dividend yield is real (we hold one). The tripwire watches the
