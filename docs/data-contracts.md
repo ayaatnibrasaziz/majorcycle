@@ -422,7 +422,25 @@ export interface CycleAnalysis extends CycleAnalysisFree {
 }
 
 export interface PriceBar {
-  date: string;               // ISO date 'YYYY-MM-DD'
+  /**
+   * The EXCHANGE'S OWN calendar date of the trading session — 'YYYY-MM-DD'.
+   * NOT a UTC date, and NOT an instant in time.
+   *
+   * A daily bar is a label for a whole session, not a moment. yfinance stamps it
+   * at midnight in the exchange's timezone, so the local date IS the trading date.
+   * Converting to UTC first (`tz_convert(None)`) is harmless for exchanges WEST of
+   * Greenwich and wrong for everything east — it shipped every ASX bar one day early
+   * from inception until 2026-08-04 (1,413,737 rows: 0 Fridays, 273,700 Sundays)
+   * while US/CA looked perfect. Use `tz_localize(None)`.
+   *
+   * This is also why the column is DATE and not TIMESTAMPTZ. A timestamp would
+   * imply a precision that doesn't exist (nothing happens at midnight; the ASX
+   * opens at 10:00), it would have to be converted back to exchange time to
+   * display correctly, and it would break the date JOIN that Relative Performance
+   * uses to line a stock up against its benchmarks — '31 July' in Sydney and in
+   * New York are different instants and would never match.
+   */
+  date: string;
   open: number;
   high: number;
   low: number;

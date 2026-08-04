@@ -62,9 +62,13 @@ def _safe_int(v: Any) -> Optional[int]:
 
 
 def _infer_market(ticker: str) -> Market:
+    # Canada has TWO suffixes: `.TO` (TSX) and `.V` (TSX Venture). Listing only
+    # `.TO` silently filed venture stocks under "us" — wrong country badge, wrong
+    # benchmark to compare against, wrong Browse filter. Kept in step with
+    # web/lib/ticker.ts MARKET_SUFFIXES and daily_refresh._infer_market.
     if ticker.endswith(".AX"):
         return "au"
-    if ticker.endswith(".TO"):
+    if ticker.endswith(".TO") or ticker.endswith(".V"):
         return "ca"
     return "us"
 

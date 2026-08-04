@@ -246,7 +246,7 @@
 
 **Serverless Function** — A Python file in `web/api/` that becomes one Vercel Function on deploy. Uses `BaseHTTPRequestHandler`, imports cycle math from the vendored `_engine` package (see Vendored Engine), reads from Supabase, never calls yfinance. See `coding-standards.md` §4 and `architecture.md` §7. Phase 1's only serverless function is `web/api/cycle.py` (`/api/cycle` endpoint); Layer D adds `/api/analyze`. (Universe expansion is a cron-drained queue — the **Request a Ticker** flow — not a serverless function; see `architecture.md` §8 Tier 4.)
 
-**Smart Refresh Pipeline** — The nightly cron logic in `analytics/cron/daily_refresh.py` (default mode: `smart`). Runs at 23:00 UTC daily. For every ticker it always refreshes price bars (5-day lookback for existing tickers, full history for new ones) and fundamentals. It only fetches Enriched Data when the staleness check returns true. Use `--mode full` to force enriched refresh for all tickers regardless. See `architecture.md` §8 for full specification.
+**Smart Refresh Pipeline** — The nightly cron logic in `analytics/cron/daily_refresh.py` (default mode: `smart`). Runs **twice** daily — AU at 08:00 UTC, US+CA at 22:30 UTC, each scoped with `--markets` so every market is fetched after its own close (no single time can be; see `architecture.md` §8). For every ticker it always refreshes price bars (5-day lookback for existing tickers, full history for new ones) and fundamentals. It only fetches Enriched Data when the staleness check returns true. Use `--mode full` to force enriched refresh for all tickers regardless. See `architecture.md` §8 for full specification.
 
 **Smart Retries (billing)** — Stripe's automatic re-attempts of a failed subscription payment (recommended default: 8 tries over 2 weeks). While it's on, our dunning email says "we'll automatically retry"; the constant `SMART_RETRIES_ENABLED` in `billingEmails.ts` gates that line so we never over-promise. Confirmed on in the Stripe dashboard (Part C).
 
@@ -276,7 +276,9 @@
 
 **Tier Badge** — The visual pill displaying a rating tier with its semantic colour. See `design-system.md` §9.
 
-**Ticker** — A stock's exchange symbol. We use yfinance native format internally (`AAPL`, `BHP.AX`, `SHOP.TO`).
+**Ticker** — A stock's exchange symbol. We use yfinance native format internally (`AAPL`, `BHP.AX`, `SHOP.TO`, `ABC.V`). The symbol→market rule lives in exactly one table, `MARKET_SUFFIXES` in `web/lib/ticker.ts` — see CLAUDE.md #14 for why `.V` keeps its suffix in the URL while `.AX`/`.TO` don't.
+
+**Trading date** — The date a price bar belongs to: **the exchange's own calendar date**, not a UTC date and not an instant. A daily bar labels a whole session, so "31 July" means 31 July *in Sydney* for an ASX stock and *in New York* for a US one — different instants, same label, which is what lets Relative Performance line them up by date. Stored as a Postgres `DATE`. Defined once in `data-contracts.md` (`PriceBar.date`); getting it from UTC instead is the defect that stored every ASX bar a day early until 2026-08-04.
 
 **Token-Hash Email Flow** — The branded auth-email link pattern that keeps every link on `majorcycle.com`. Templates use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…&next=…`; the route `web/app/auth/confirm/route.ts` calls `supabase.auth.verifyOtp({ type, token_hash })` and redirects to `next`. Replaces the default `{{ .ConfirmationURL }}` (a `supabase.co/auth/v1/verify` link). See `architecture.md` §7, `design-system.md` §17.
 
