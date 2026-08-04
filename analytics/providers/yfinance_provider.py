@@ -448,7 +448,7 @@ class YFinanceProvider(DataProvider):
                         if val is not None and val > 0:
                             ts = pd.Timestamp(col)
                             if ts.tz is not None:
-                                ts = ts.tz_convert(None)
+                                ts = ts.tz_localize(None)  # local date, not UTC
                             eps_timeline.append((ts, val))
 
             qis = self._safe_attr(ticker_obj, "quarterly_income_stmt")
@@ -468,7 +468,7 @@ class YFinanceProvider(DataProvider):
                         if ttm > 0:
                             ts = pd.Timestamp(q_dates[i])
                             if ts.tz is not None:
-                                ts = ts.tz_convert(None)
+                                ts = ts.tz_localize(None)  # local date, not UTC
                             eps_timeline.append((ts, ttm))
 
             if not eps_timeline:
@@ -485,7 +485,9 @@ class YFinanceProvider(DataProvider):
 
             p_idx = pd.DatetimeIndex(price_df.index)
             if p_idx.tz is not None:
-                p_idx = p_idx.tz_convert(None)
+                # Local date, not UTC — otherwise an ASX bar on the 1st of a month
+                # resamples into the previous month. Same defect as _download_yfinance.
+                p_idx = p_idx.tz_localize(None)
             close_series = pd.Series(price_df["Close"].values, index=p_idx, dtype=float)
             monthly = close_series.resample("ME").last().dropna()
 
@@ -524,7 +526,16 @@ class YFinanceProvider(DataProvider):
             df = pd.DataFrame(raw)
             df.index = pd.to_datetime(df.index)
             if df.index.tz is not None:
-                df.index = df.index.tz_convert(None)
+                # Keep the EXCHANGE'S OWN calendar date. yfinance stamps each daily
+                # bar at midnight in the exchange's timezone, so the local date IS
+                # the trading date. tz_convert(None) converts to UTC first, which is
+                # only harmless for exchanges west of Greenwich: NY/Toronto midnight
+                # is 04:00-05:00 UTC the SAME day, but Sydney midnight is 13:00-14:00
+                # UTC the day BEFORE. That shipped every ASX bar one day early for
+                # the whole history (0 Fridays and ~50 Sundays a year), while US/CA
+                # looked perfect — see the regression test in test_yfinance_provider.
+                # tz_localize(None) drops the zone and keeps the local wall time.
+                df.index = df.index.tz_localize(None)
             # Capture split events in this window from yfinance's actions calendar
             # (the authoritative "Stock Splits" column) BEFORE trimming to OHLCV. The
             # daily refresh uses this to trigger a full re-adjusted re-pull — a real
@@ -689,7 +700,9 @@ class YFinanceProvider(DataProvider):
                 divs_series = pd.Series(divs)
                 divs_series.index = pd.to_datetime(divs_series.index)
                 if divs_series.index.tz is not None:
-                    divs_series.index = divs_series.index.tz_convert(None)
+                    # Local date, not UTC — a 1-January ASX dividend would otherwise
+                    # be grouped into the previous year. Same defect as above.
+                    divs_series.index = divs_series.index.tz_localize(None)
                 by_year = divs_series.groupby(divs_series.index.year).sum()
                 dividend_history = [
                     {"year": int(yr), "amount": round(float(amt), 4)}  # type: ignore[call-overload]
