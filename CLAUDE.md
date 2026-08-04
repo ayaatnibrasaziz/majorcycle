@@ -234,7 +234,7 @@ These were agreed during planning. Do not relitigate.
 | 29 | Phase 1 launch scope | All 14 Stock Detail sections from current HTML + 3 existing tabs + Methodology/Contact/Disclaimer/Terms + Auth |
 | 30 | Phase 2 | Smart Money Activity, watchlists, alerts, sector heatmaps, FMP migration |
 | 31 | Repo structure | Monorepo: `/web` + `/analytics` + `/docs` + `/reference` |
-| 32 | Cron schedule | Daily 23:00 UTC (after all three markets close) |
+| 32 | Cron schedule | **Two daily runs — AU 08:00 UTC, US+CA 22:30 UTC.** This cell read "Daily 23:00 UTC (after all three markets close)" until 2026-08-04; the parenthetical was never achievable. The ASX starts taking next-day orders at 07:00 Sydney (20:00–21:00 UTC) and New York closes at 20:00–21:00 UTC, so **no single time is after every close** — the one run landed inside the ASX pre-open and stored partial bars. Owner-approved split; don't re-merge them |
 | 33 | Performance target | Lighthouse 90+ on per-ticker pages |
 | 34 | Methodology content | Generated post-build from Python logic, owner refines |
 
