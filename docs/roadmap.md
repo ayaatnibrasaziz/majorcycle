@@ -97,9 +97,16 @@ Goal: Daily refresh pipeline writes correct data to Supabase.
 **Verification:** ✅ *(re-read from the live DB 2026-08-02 — the original figures were from the
 seeding era and had drifted, because the universe auto-expands)*
 - **867 rows in `stocks`** — 863 equities across S&P 500 / ASX 200 / S&P/TSX 60 plus 4 price-only
-  benchmark indices — with **6,566,762 price bars**. Latest bar **2026-07-31**, a Friday, so the
-  pipeline is current with no weekend gap
-- `pytest analytics/` — **86 passed** (28 at Layer A; the rest added by later layers)
+  benchmark indices — with **6,575,807 price bars** and **0 weekend-dated bars** (2026-08-04)
+- ⚠️ **The old "latest bar is a Friday, so no weekend gap" line has been removed — it was unsound
+  and it actively hid a bug.** It reasoned from a single global `max(date)` across all markets, so
+  one healthy US ticker satisfied it while **every ASX bar sat on the wrong date**: 0 Fridays and
+  273,700 Sundays, from inception until 2026-08-04. Freshness must be checked **per market**
+  (`min(max(date))` grouped by market), never from one global maximum. Worked example on
+  2026-08-04: global max was `2026-08-04`, but per market the oldest was **CA at 2026-07-31** —
+  correct (the TSX was shut on 3 August for the civic holiday and the US+CA run hadn't fired yet),
+  and a check that can *explain* its laggard is worth more than one that only reports a maximum
+- `pytest analytics/` — **121 passed** (28 at Layer A; the rest added by later layers)
 - `mypy analytics/ --ignore-missing-imports --explicit-package-bases` — no issues
 - CI green on `main`
 - **Daily refresh has succeeded 10 consecutive days** (2026-07-24 → 2026-08-02), which also
@@ -441,7 +448,59 @@ tier, 7-day trial, paid conversion, and the paywall that separates them.
   the live evidence is a `cs_live_` Checkout Session reaching the hosted payment page with the
   correct trial and price, then abandoned
 
-### Layer G: SEO + Performance (target: 3-4 days) ⬅️ **NEXT BUILD LAYER**
+### Data-integrity fixes — 2026-08-04 ✅ SHIPPED (PRs #73, #74, #75)
+
+Unplanned, done before Layer G G1 at the owner's direction. All three merged and
+live-verified the same day.
+
+1. **ASX bars were stored one day early, from inception** (PR #73). `tz_convert(None)`
+   computes a date via **UTC**, which is only right for exchanges west of Greenwich —
+   Sydney midnight is 13:00–14:00 UTC the *previous* day. 1,413,737 rows across 251
+   tickers: **0 Fridays, 273,700 Sundays**, while US/CA looked perfect. Fixed to
+   `tz_localize(None)`; data corrected by a two-phase date shift (row count identical
+   before and after); verified against a fresh Yahoo pull at **offset 0**, with US/CA
+   as untouched controls. **Ratings were unaffected** — measured, not assumed: same
+   closes under both date sets, 3 tickers × 3 presets, only `as_of` differs.
+   Real impact was on **date-joined** surfaces: Relative Performance matched only
+   199/252 days against the S&P 500 (and matched the *wrong* days); now 248/252.
+2. **TSX Venture `.V` classified as US** (PR #74). The ticker→market rule lived in
+   four places; two knew only `.AX`/`.TO`. Consolidated to one `MARKET_SUFFIXES`
+   table. Latent only — venture listings are off by owner choice.
+3. **The nightly cron ran inside the ASX pre-open** (PR #75). No single UTC time is
+   after every close, so it is now two runs: **AU 08:00 UTC**, **US+CA 22:30 UTC**.
+   Proven by a manual run: 6/6 partial pre-open bars replaced with the real close
+   (Macquarie had been out by **$5.52/share**).
+
+Test suite: Python **86 → 121**, Playwright **105 → 115**. Every new guard broken on
+purpose first.
+
+### ⬅️ NEXT SESSION (before Layer G G1): Data-format & long-term-safety audit
+
+Owner-requested, after this session found three defects that had all been live for
+months and were all invisible to code review.
+
+**Goal:** confirm we store and manipulate provider data correctly *and* that expanding
+the product can't quietly reintroduce this class of bug.
+
+Scope:
+- **Audit the Supabase schema against the current yfinance docs/source** — every column
+  we persist: is the type right (DATE vs TIMESTAMPTZ, numeric precision), the unit right
+  (yfinance's `dividendYield` is already a percent — `_pct` would over-scale it 100×;
+  `debtToEquity` arrives ×100), and the semantics right (adjusted vs raw closes)?
+- **Audit the display path** — every transform between the DB and the screen
+  (`web/lib/format.ts`, the scoring modules, the chart components) for unit/scale/date
+  errors of the same family.
+- **Find the systemic gap, not just instances.** All three of today's bugs were
+  *omissions* that read as correct: a wrong-but-plausible line, a rule copied into four
+  files, a schedule whose comment claimed something impossible. Ask what guard would have
+  caught each *before* it shipped, and add the missing ones.
+- Deliverable: `docs/data-audit.md` in the Layer C–F audit format — findings, evidence,
+  fixes — plus any new CI guards, each broken on purpose before being trusted.
+
+Not in scope: new features, provider migration (FMP is Phase 2), re-litigating the 34
+locked decisions.
+
+### Layer G: SEO + Performance (target: 3-4 days)
 
 Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 

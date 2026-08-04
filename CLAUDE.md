@@ -157,7 +157,13 @@ These rules cannot be bent. If a task seems to require breaking one, **stop and 
 
 13. **Currency display:** Stock prices always shown in the stock's home currency (USD/AUD/CAD). Subscription pricing shown in user's local currency.
 
-14. **Ticker storage format:** Use yfinance native format internally (`AAPL`, `BHP.AX`, `SHOP.TO`). URL routing maps `/stocks/au/BHP` ↔ `BHP.AX`.
+14. **Ticker storage format:** Use yfinance native format internally (`AAPL`, `BHP.AX`, `SHOP.TO`, `ABC.V`). URL routing maps `/stocks/au/BHP` ↔ `BHP.AX`.
+
+    **One rule, one table — `MARKET_SUFFIXES` in `web/lib/ticker.ts`.** This rule lived in *four* places until 2026-08-04 and two of them knew only `.AX`/`.TO`, so TSX Venture (`.V`) silently classified as **US**. Nothing errored; the stock just claimed to be American. The Python side (`_infer_market`, twice) is cross-checked against itself by `analytics/tests/test_market_inference.py`.
+
+    ⚠️ **Canada has TWO suffixes, so `.V` KEEPS its suffix in the URL** (`/stocks/ca/ABC.V`). `.AX`/`.TO` are stripped because one market has exactly one suffix; strip `.V` the same way and `ABC.V` and `ABC.TO` collide on `/stocks/ca/ABC` and one resolves to **the other company's data**.
+
+14a. **A daily bar's `date` is the exchange's OWN calendar date — never UTC.** yfinance stamps each bar at midnight in the exchange's timezone, so `tz_localize(None)` (drop the zone, keep local time) is correct and `tz_convert(None)` (to UTC first) is not. The difference is invisible for every exchange **west** of Greenwich and wrong for everything east: it stored **every ASX bar one day early, from inception to 2026-08-04** — 1,413,737 rows with **0 Fridays and 273,700 Sundays**, while US and Canadian data looked flawless. Even London (+1 under BST) was wrong. Guarded by `analytics/tests/test_no_utc_date_conversion.py`; the reasoning is in `data-contracts.md` (`PriceBar.date`).
 
 15. **Pre-computation policy:** Store raw price history + fundamentals only. Cycle math runs on demand. Never store rating outputs in the DB — they're always derived.
 

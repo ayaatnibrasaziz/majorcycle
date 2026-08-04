@@ -276,7 +276,9 @@
 
 **Tier Badge** — The visual pill displaying a rating tier with its semantic colour. See `design-system.md` §9.
 
-**Ticker** — A stock's exchange symbol. We use yfinance native format internally (`AAPL`, `BHP.AX`, `SHOP.TO`).
+**Ticker** — A stock's exchange symbol. We use yfinance native format internally (`AAPL`, `BHP.AX`, `SHOP.TO`, `ABC.V`). The symbol→market rule lives in exactly one table, `MARKET_SUFFIXES` in `web/lib/ticker.ts` — see CLAUDE.md #14 for why `.V` keeps its suffix in the URL while `.AX`/`.TO` don't.
+
+**Trading date** — The date a price bar belongs to: **the exchange's own calendar date**, not a UTC date and not an instant. A daily bar labels a whole session, so "31 July" means 31 July *in Sydney* for an ASX stock and *in New York* for a US one — different instants, same label, which is what lets Relative Performance line them up by date. Stored as a Postgres `DATE`. Defined once in `data-contracts.md` (`PriceBar.date`); getting it from UTC instead is the defect that stored every ASX bar a day early until 2026-08-04.
 
 **Token-Hash Email Flow** — The branded auth-email link pattern that keeps every link on `majorcycle.com`. Templates use `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…&next=…`; the route `web/app/auth/confirm/route.ts` calls `supabase.auth.verifyOtp({ type, token_hash })` and redirects to `next`. Replaces the default `{{ .ConfirmationURL }}` (a `supabase.co/auth/v1/verify` link). See `architecture.md` §7, `design-system.md` §17.
 

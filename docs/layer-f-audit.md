@@ -58,7 +58,10 @@ Status key: ✅ pass · ⚠️ issue logged · ❌ fail · ⬜ not yet audited �
 - **Live tail** (F-A4) on `www.majorcycle.com` through the owner's own browser, for the things
   only a real deploy shows. Owner present for signed-in surfaces.
 - **Standing gates each session:** `pnpm typecheck`, `pnpm lint`, `pnpm check:entitlement-gates`,
-  `pnpm check:report-sections`, `pnpm e2e` (105), `pytest analytics/` (86).
+  `pnpm check:report-sections`, `pnpm e2e`, `pytest analytics/`. *(The counts at the time of this
+  audit were **105** and **86**; both suites grow — by 2026-08-04 they were **115** and **121**.
+  Read the number the run prints, never a number from a doc: the point of checking the count is
+  to catch a silently skipped suite, and a stale expectation defeats that.)*
 - Fresh browser tab before judging console state — `read_console_messages` retains history per
   tab and has produced three wrong conclusions before.
 

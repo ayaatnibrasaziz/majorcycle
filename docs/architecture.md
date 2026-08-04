@@ -157,6 +157,13 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 
 **Rule:** No code outside `analytics/providers/` may import `yfinance`. Phase 2 FMP migration must change ONE file.
 
+> ⚠️ **The provider owns one contract the interface can't express: a bar's `date` is the
+> exchange's OWN calendar date, never UTC.** Defined once in `data-contracts.md`
+> (`PriceBar.date`) and summarised in CLAUDE.md #14a — deliberately not restated here,
+> because a rule written in several places is exactly how this bug and the `.V` one
+> happened. **Any future provider (FMP included) must satisfy it**, and
+> `analytics/tests/test_no_utc_date_conversion.py` scans for the specific mistake.
+
 ```python
 # analytics/providers/base.py
 from abc import ABC, abstractmethod
