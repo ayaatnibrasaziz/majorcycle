@@ -195,7 +195,14 @@ class YFinanceProvider(DataProvider):
             analyst_ud = self._extract_upgrades_downgrades(
                 self._safe_attr(t, "upgrades_downgrades")
             )
-            pe_hist = self._compute_pe_history(t, ticker)
+            # Both currencies, so the P/E series can refuse to mix them.
+            fin_cur_raw = info.get("financialCurrency")
+            pe_hist = self._compute_pe_history(
+                t,
+                ticker,
+                price_currency=str(_infer_currency(info)),
+                financial_currency=str(fin_cur_raw) if fin_cur_raw else None,
+            )
             next_ed = self._extract_next_earnings_date(t)
 
             return EnrichedData(
@@ -427,7 +434,37 @@ class YFinanceProvider(DataProvider):
             logger.debug("_extract_upgrades_downgrades error: %s", e)
             return []
 
-    def _compute_pe_history(self, ticker_obj: Any, ticker: str) -> list[dict[str, Any]]:
+    def _compute_pe_history(
+        self,
+        ticker_obj: Any,
+        ticker: str,
+        price_currency: Optional[str] = None,
+        financial_currency: Optional[str] = None,
+    ) -> list[dict[str, Any]]:
+        # A P/E is a SHARE PRICE divided by EARNINGS PER SHARE, and this builds it
+        # from two different sources: prices come from the exchange (the trading
+        # currency) while the EPS row comes off the income statement (the
+        # reporting currency). For the 79 stocks where those differ, every point
+        # on the Valuation History chart is wrong by the exchange rate — Barrick
+        # read 19.2x on that chart while the Key Metrics table on the SAME PAGE
+        # said 10.1x, because Yahoo's own `trailingPE` is currency-corrected and
+        # ours was not.
+        #
+        # Withheld rather than converted. A single FX rate can't fix it (rates
+        # move 15-30% over the five years plotted, so the shape distorts too, not
+        # just the level), and converting properly needs a historical FX series —
+        # a real feature, not a patch. The card simply doesn't render, which is
+        # the same posture the scorer takes for a pillar it can't measure.
+        if (
+            price_currency
+            and financial_currency
+            and price_currency != financial_currency
+        ):
+            logger.debug(
+                "%s: skipping pe_history — prices in %s but earnings reported in %s",
+                ticker, price_currency, financial_currency,
+            )
+            return []
         try:
             def _find_eps_row(df: pd.DataFrame) -> Any:
                 for candidate in df.index:

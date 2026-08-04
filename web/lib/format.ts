@@ -42,6 +42,22 @@ const CURRENCY_NAME: Record<string, string> = {
  * gap is real money — US$15.7B is about A$24B — and a beginner has no way to
  * infer it. Annual reports solve this the same way, with a line of text.
  */
+/**
+ * Why the P/E-history chart is empty for this stock, or `null` if it isn't.
+ *
+ * The series is built from exchange prices divided by income-statement earnings.
+ * When those are in different currencies the quotient is meaningless — Barrick
+ * plotted at 19.2x while the Key Metrics table on the same page said 10.1x — so
+ * the series is withheld at the source. Without this the card falls back to
+ * "P/E history is building", which promises a chart that can never arrive.
+ */
+export function peHistoryUnavailableReason(f: FundamentalsSnapshot): string | null {
+  const code = statementCurrency(f);
+  if (code === f.currency) return null;
+  const name = CURRENCY_NAME[code] ?? code;
+  return `A P/E history isn't shown for this stock: its shares trade in ${CURRENCY_NAME[f.currency] ?? f.currency} while its earnings are reported in ${name}, so a price-to-earnings series would divide one currency by another.`;
+}
+
 export function reportingCurrencyNote(f: FundamentalsSnapshot): string | null {
   const code = statementCurrency(f);
   if (code === f.currency) return null;

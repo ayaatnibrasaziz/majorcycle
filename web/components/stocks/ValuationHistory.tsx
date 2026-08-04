@@ -17,6 +17,10 @@ import type { PeHistoryItem } from '@/lib/types';
 interface Props {
   peHistory: PeHistoryItem[];
   currentPe: number | null;
+  /** From `peHistoryUnavailableReason(fundamentals)`. Non-null only when the
+   *  series can never be built (the company reports in a different currency from
+   *  the one its shares trade in), so the empty state must not say "building". */
+  unavailableReason?: string | null;
 }
 
 function toMonthLabel(dateStr: string): string {
@@ -26,7 +30,7 @@ function toMonthLabel(dateStr: string): string {
   return `${mo} '${yr}`;
 }
 
-export function ValuationHistory({ peHistory, currentPe }: Props) {
+export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Props) {
   const hasEnoughHistory = peHistory.length >= 4;
 
   const allPe   = peHistory.map((p) => p.pe);
@@ -92,7 +96,8 @@ export function ValuationHistory({ peHistory, currentPe }: Props) {
             }}
           >
             <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 360, lineHeight: 1.55 }}>
-              P/E history is building — expanding as quarterly data accumulates over time.
+              {unavailableReason ??
+                'P/E history is building — expanding as quarterly data accumulates over time.'}
               {curr !== null && (
                 <span style={{ display: 'block', marginTop: 8, fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
                   Current P/E: {curr.toFixed(1)}x

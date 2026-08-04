@@ -294,6 +294,59 @@ owner when a field's **cohort median** leaves its declared band. Verified live:
 
 ---
 
+## D3b — The P/E-history chart divided one currency by another ✅ FIXED
+
+**Found by asking the right follow-up question**, not by the audit sweep: *if the
+currency changes, what else needs converting?*
+
+The answer for **scores** is reassuring, and it is a property of the design
+rather than luck. Financial Health is built almost entirely from **ratios**, and
+a ratio whose numerator and denominator both come off the statements is
+currency-free — the units cancel:
+
+| Pillar | Inputs | Safe? |
+|---|---|---|
+| Profitability | ROE, gross/operating/net margin | ✅ statement ÷ statement |
+| Balance sheet | debt/equity, current ratio, interest coverage | ✅ statement ÷ statement |
+| Growth | revenue & earnings growth | ✅ percent change within one currency |
+| Cash flow | `fcf_margin_pct` | ✅ statement ÷ statement |
+| Cash flow | **`fcf_yield_pct`** | ⚠️ **statement ÷ market cap** — the one mixed input, now withheld (D3) |
+| Shareholder | payout ratio, share-count change | ✅ ratio / not money |
+
+Cycle maths, the valuation zone and the Overall Rating are all percentages of a
+single stock's own price series, so nothing there mixes currencies either.
+
+**But `pe_history` did, and it was on screen.** `_compute_pe_history` divides
+prices from the exchange (trading currency) by an EPS row from the income
+statement (reporting currency). Yahoo's own `trailingPE` is currency-corrected;
+ours was not, so the same page contradicted itself:
+
+| | reports in | Key Metrics P/E | Valuation chart P/E | |
+|---|---|---|---|---|
+| **ABX.TO** Barrick | USD, trades CAD | 10.1x | **19.2x** | 1.90× |
+| **AEM.TO** Agnico | USD, trades CAD | 12.4x | **22.9x** | 1.85× |
+| **BHP.AX** | USD, trades AUD | 21.1x | **34.0x** | 1.61× |
+| **SHOP.TO** | USD, trades CAD | 114.8x | **160.4x** | 1.40× |
+| AAPL · JPM · CBA.AX | same currency | — | — | 1.01–1.17 *(annual-vs-TTM noise)* |
+
+Those same-currency controls matter: they set the noise floor, so 1.4–1.9× is
+demonstrably not timing.
+
+**Withheld, not converted** — 79 stocks, 0 charts remaining, 765 untouched. A
+single FX rate cannot fix it: rates move 15–30% across the five years plotted, so
+the *shape* distorts as well as the level. Doing it properly needs a historical
+FX series, which is a feature to decide on, not a patch to slip in. The empty
+state now says why, because the default message ("P/E history is building")
+promised a chart that could never arrive.
+
+> ⚠️ **A note on the instrument.** The first test written for this compared each
+> Yahoo ratio against the same ratio recomputed from raw parts, and reported
+> "Yahoo DID convert" for **AAPL** — a company that is US dollars throughout,
+> where there is nothing to convert. The gap was annual vs trailing-twelve-month
+> earnings. The test could not separate the two effects and its verdicts were
+> worthless; only the our-value-vs-Yahoo's-value comparison, with a same-currency
+> control, actually discriminated.
+
 ## D5 — 52-week high/low are on a different price basis than the chart ✅ OWNER DECIDED: LEAVE AS IS
 
 `week52_high` / `week52_low` come from `info` as **raw traded prices**. Our
