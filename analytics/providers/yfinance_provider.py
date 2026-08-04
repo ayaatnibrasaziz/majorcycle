@@ -20,6 +20,7 @@ from analytics.providers.base import (
     Market,
     NewsItem,
 )
+from analytics.providers.field_spec import normalise_fundamentals
 
 logger = logging.getLogger(__name__)
 
@@ -641,6 +642,11 @@ class YFinanceProvider(DataProvider):
 
         market = _infer_market(ticker)
         currency = _infer_currency(info)
+        # The statements' own currency, kept verbatim (it can be any currency,
+        # not just our three). Falls back to the price currency when yfinance
+        # doesn't say, which is the overwhelmingly common case.
+        fin_currency_raw = info.get("financialCurrency")
+        financial_currency = str(fin_currency_raw) if fin_currency_raw else currency
 
         market_cap = _safe(g("marketCap"))
         total_revenue = _safe(g("totalRevenue"))
@@ -721,13 +727,14 @@ class YFinanceProvider(DataProvider):
         exchange_val: Optional[str] = str(g("exchange") or "") or None
         rec_val: Optional[str] = str(g("recommendationKey") or "") or None
 
-        return FundamentalsSnapshot(
+        return normalise_fundamentals(FundamentalsSnapshot(
             ticker=ticker,
             name=name_val,
             sector=sector_val,
             industry=industry_val,
             market=market,
             currency=currency,
+            financial_currency=financial_currency,
             exchange=exchange_val,
             market_cap=market_cap,
             gross_margin=_pct(g("grossMargins")),
@@ -779,4 +786,4 @@ class YFinanceProvider(DataProvider):
             rel_strength_vs_sp500=rel_strength_vs_sp500,
             beta=_safe(g("beta")),
             dividend_history=dividend_history,
-        )
+        ))

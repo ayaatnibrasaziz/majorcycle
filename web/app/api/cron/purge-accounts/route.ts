@@ -61,11 +61,21 @@ export async function GET(request: NextRequest) {
   const admin = createAdminClient();
   const nowIso = new Date().toISOString();
 
+  // Explicitly one page, oldest first. Filtering by `deletion_scheduled_at`
+  // narrows the rows but does not bound them, and PostgREST caps a response at
+  // 1000 with no error — so without this the 1001st due account would simply
+  // never be read, and never purged. Paging is the wrong tool here because the
+  // rows are DELETED as they are handled, which shifts every later offset: a
+  // single bounded batch that self-drains on the next daily run is correct.
+  // Anything approaching the batch size means accounts are queueing up.
+  const PURGE_BATCH = 500;
   const { data: due, error } = await admin
     .from('profiles')
     .select('id, email, display_name, stripe_subscription_id, stripe_customer_id')
     .not('deletion_scheduled_at', 'is', null)
-    .lte('deletion_scheduled_at', nowIso);
+    .lte('deletion_scheduled_at', nowIso)
+    .order('deletion_scheduled_at', { ascending: true })
+    .range(0, PURGE_BATCH - 1);
 
   if (error) {
     console.error('purge-accounts: query failed', error);

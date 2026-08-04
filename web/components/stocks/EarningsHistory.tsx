@@ -18,7 +18,9 @@ import type { Currency, EarningsHistoryItem } from '@/lib/types';
 
 interface Props {
   earningsHistory: EarningsHistoryItem[];
-  currency: Currency;
+  /** EPS comes off the income statement, so it is in the REPORTING currency —
+   *  pass `statementCurrency(fundamentals)`, never `fundamentals.currency`. */
+  currency: Currency | string;
 }
 
 function toQtrLabel(dateStr: string): string {

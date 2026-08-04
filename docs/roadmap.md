@@ -474,31 +474,39 @@ live-verified the same day.
 Test suite: Python **86 → 121**, Playwright **105 → 115**. Every new guard broken on
 purpose first.
 
-### ⬅️ NEXT SESSION (before Layer G G1): Data-format & long-term-safety audit
+### Data-format & long-term-safety audit — 2026-08-05 ✅ DONE → `docs/data-audit.md`
 
-Owner-requested, after this session found three defects that had all been live for
-months and were all invisible to code review.
+Owner-requested before Layer G G1, after the previous session found three defects
+that had all been live for months and were all invisible to code review. The real
+question was not "find three more" but **why did those survive, and what would have
+caught them** — and that had the better answer.
 
-**Goal:** confirm we store and manipulate provider data correctly *and* that expanding
-the product can't quietly reintroduce this class of bug.
+**7 findings. 3 fixed, 4 documented. 4 new guards, each broken on purpose.**
 
-Scope:
-- **Audit the Supabase schema against the current yfinance docs/source** — every column
-  we persist: is the type right (DATE vs TIMESTAMPTZ, numeric precision), the unit right
-  (yfinance's `dividendYield` is already a percent — `_pct` would over-scale it 100×;
-  `debtToEquity` arrives ×100), and the semantics right (adjusted vs raw closes)?
-- **Audit the display path** — every transform between the DB and the screen
-  (`web/lib/format.ts`, the scoring modules, the chart components) for unit/scale/date
-  errors of the same family.
-- **Find the systemic gap, not just instances.** All three of today's bugs were
-  *omissions* that read as correct: a wrong-but-plausible line, a rule copied into four
-  files, a schedule whose comment claimed something impossible. Ask what guard would have
-  caught each *before* it shipped, and add the missing ones.
-- Deliverable: `docs/data-audit.md` in the Layer C–F audit format — findings, evidence,
-  fixes — plus any new CI guards, each broken on purpose before being trusted.
+1. **A bank's `0.0` gross margin was scored as a real 0%** — yfinance's
+   "not reported" sentinel. **71 stocks**, 36 changed rating, and **4 changed the
+   label a customer reads** (C, WFC, SYF Neutral→Constructive; EQB.TO
+   Cautious→Neutral). It also dragged the Financial Services peer median from
+   47.34% to 35.81%. Fixed at the data layer, on write *and* read; 72 rows
+   backfilled.
+2. **Five unbounded reads that silently truncate at 1000 rows** — including the
+   nightly refresh. `stocks` was 133 rows from the cliff on a table that grows by
+   design. `listings` is *already* truncated at 1000 of 8,964.
+3. **`financialCurrency` was never read** — statements rendered `A$` in front of
+   US dollars for **79 of 858** stocks (a third of the Canadian universe), and
+   `fcf_yield_pct` divided USD by AUD into the Health score.
+4. **The cron installed whatever yfinance was newest, every night** — an
+   unreviewed deploy of the thing that defines what our numbers mean. Now pinned,
+   with a nightly **cohort-median tripwire** that emails the owner if a field's
+   units move.
 
-Not in scope: new features, provider migration (FMP is Phase 2), re-litigating the 34
-locked decisions.
+Documented, not changed: 52-week high/low sit on a different price basis from the
+chart (owner's call — D5); 46 bars carry Yahoo's own impossible OHLC (D6);
+`rel_strength_vs_sp500` compares ASX stocks to the S&P 500 but is never rendered
+(D7).
+
+Test suite: Python **121 → 142**; new `pnpm check:data-integrity` (52 checks);
+`_engine` drift check now **derives** its file list instead of hardcoding six paths.
 
 ### Layer G: SEO + Performance (target: 3-4 days)
 

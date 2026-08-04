@@ -6,6 +6,10 @@ build-backend = "setuptools.build_meta"
 name = "analytics"
 version = "0.1.0"
 requires-python = ">=3.12"
+# Floors for local development. PRODUCTION installs the exact pins in
+# analytics/requirements-cron.txt — the nightly refresh must not silently pick up
+# a new provider release that changes what a number means. Keep the two in step
+# when you bump either.
 dependencies = [
     "yfinance>=0.2.40",
     "pandas>=2.2.0",

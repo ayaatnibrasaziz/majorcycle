@@ -20,7 +20,9 @@ interface Props {
   cashflowQuarterly?: FinancialStatement;
   incomeStatementAnnual?: FinancialStatement;
   cashflowAnnual?: FinancialStatement;
-  currency: Currency;
+  /** Revenue / net income / free cash flow are statement figures, so this is the
+   *  REPORTING currency — pass `statementCurrency(fundamentals)`. */
+  currency: Currency | string;
 }
 
 type Period = 'quarterly' | 'annual';

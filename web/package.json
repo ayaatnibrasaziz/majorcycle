@@ -8,6 +8,7 @@
     "build:report-bundle": "node scripts/build-report-bundle.mjs",
     "check:report-sections": "node scripts/check-report-sections.mjs",
     "check:entitlement-gates": "node scripts/check-entitlement-gates.mjs",
+    "check:data-integrity": "node scripts/check-data-integrity.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",

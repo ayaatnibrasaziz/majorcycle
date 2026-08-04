@@ -71,6 +71,33 @@ def _get_supabase() -> Client:
     return create_client(url, key)
 
 
+#: PostgREST returns at most this many rows per response — verified against the
+#: live database, not assumed. An unpaginated read of a bigger table comes back
+#: short with NO error, so the caller believes it has the whole table.
+_PAGE = 1000
+
+
+def _select_all(supabase: Client, table: str, columns: str) -> list[dict[str, Any]]:
+    """Read every row of a table, page by page.
+
+    `stocks` grows on its own — the universe auto-expands whenever a reader
+    requests a ticker — so any read of it that is not paginated has an expiry
+    date. This function is that rule in one place: `_load_universe` had its own
+    correct pagination loop while the enrichment-state read forty lines below it
+    did not, and nothing would have gone red on the night the universe passed
+    1000 stocks. The refresh would simply have stopped enriching the overflow.
+    """
+    rows: list[dict[str, Any]] = []
+    start = 0
+    while True:
+        res = supabase.table(table).select(columns).range(start, start + _PAGE - 1).execute()
+        batch = cast(list[dict[str, Any]], res.data or [])
+        rows.extend(batch)
+        if len(batch) < _PAGE:  # a short page is the only proof of the end
+            return rows
+        start += _PAGE
+
+
 def _load_universe(supabase: Client) -> list[dict[str, str]]:
     """The tickers to refresh = the live universe in `stocks` (auto-expanding via
     drain_requests + the nightly index-membership refresh) PLUS the benchmark
@@ -82,22 +109,9 @@ def _load_universe(supabase: Client) -> list[dict[str, str]]:
     page cap.
     """
     tickers: set[str] = set(_INDEX_CURRENCY)  # benchmark indices, guaranteed
-    page = 1000
-    start = 0
-    while True:
-        res = (
-            supabase.table("stocks")
-            .select("ticker")
-            .range(start, start + page - 1)
-            .execute()
-        )
-        batch = cast(list[dict[str, Any]], res.data or [])
-        for r in batch:
-            if r.get("ticker"):
-                tickers.add(str(r["ticker"]))
-        if len(batch) < page:
-            break
-        start += page
+    for r in _select_all(supabase, "stocks", "ticker"):
+        if r.get("ticker"):
+            tickers.add(str(r["ticker"]))
     rows = [{"ticker": t} for t in sorted(tickers)]
     logger.info("Universe loaded: %d tickers from stocks table (+benchmarks)", len(rows))
     return rows
@@ -486,10 +500,9 @@ def run(
     succeeded = 0
     enriched_count = 0
 
-    result = supabase.table("stocks").select(
-        "ticker,enriched_updated_at,next_earnings_date"
-    ).execute()
-    raw_states = cast(list[dict[str, Any]], result.data or [])
+    raw_states = _select_all(
+        supabase, "stocks", "ticker,enriched_updated_at,next_earnings_date"
+    )
     ticker_states: dict[str, dict[str, Any]] = {
         str(row["ticker"]): row for row in raw_states
     }

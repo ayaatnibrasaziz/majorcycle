@@ -52,6 +52,7 @@ from supabase import Client, create_client  # noqa: E402
 from _engine.major_cycle import CycleParams, analyze_ticker  # noqa: E402
 from _engine.presets import PRESETS  # noqa: E402
 from _engine.providers.base import FundamentalsSnapshot  # noqa: E402
+from _engine.providers.field_spec import normalise_fundamentals  # noqa: E402
 
 logger = logging.getLogger("api.cycle")
 logging.basicConfig(level=logging.INFO)
@@ -195,7 +196,11 @@ def _load_fundamentals(
         clean["currency"] = row["currency"]
 
     try:
-        snapshot = FundamentalsSnapshot(**clean)
+        # Normalise on READ as well as on write. The provider already applies the
+        # field spec before storing, but rows written before that existed still
+        # carry yfinance's "0.0 means not reported" margins, and a single bad
+        # write would otherwise feed a fabricated 0% straight into scoring.
+        snapshot = normalise_fundamentals(FundamentalsSnapshot(**clean))
     except TypeError as e:
         logger.warning("FundamentalsSnapshot reconstruction failed for %s: %s", ticker, e)
         snapshot = None

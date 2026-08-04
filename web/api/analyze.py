@@ -60,6 +60,7 @@ from supabase import Client, create_client  # noqa: E402
 from _engine.major_cycle import CycleParams, analyze_ticker  # noqa: E402
 from _engine.presets import PRESETS  # noqa: E402
 from _engine.providers.base import FundamentalsSnapshot  # noqa: E402
+from _engine.providers.field_spec import normalise_fundamentals  # noqa: E402
 
 logger = logging.getLogger("api.analyze")
 
@@ -254,7 +255,8 @@ def _load_fundamentals(
         clean["currency"] = row["currency"]
 
     try:
-        snapshot = FundamentalsSnapshot(**clean)
+        # Normalised on read too — same reason as web/api/cycle.py.
+        snapshot = normalise_fundamentals(FundamentalsSnapshot(**clean))
     except TypeError as e:
         logger.warning("FundamentalsSnapshot reconstruction failed for %s: %s", ticker, e)
         snapshot = None

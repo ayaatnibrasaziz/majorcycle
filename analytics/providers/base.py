@@ -29,6 +29,16 @@ class FundamentalsSnapshot:
     industry: Optional[str] = None
     market: Market = "us"
     currency: Currency = "USD"
+    # Currency of the SHARE PRICE (`currency`) and of the FINANCIAL STATEMENTS
+    # (`financial_currency`) are not the same thing, and for cross-listed
+    # reporters they differ: BHP.AX prices in AUD but reports in USD, SHOP.TO
+    # prices in CAD but reports in USD. `total_revenue`, `ebitda`, `total_debt`,
+    # `total_cash`, `free_cashflow`, `operating_cashflow` and every statement
+    # blob are in `financial_currency`; `market_cap`, the analyst targets and the
+    # 52-week range are in `currency`. Anything that mixes the two — or labels
+    # one with the other — is wrong by an exchange rate. Not a `Currency`
+    # literal: a company may report in any currency at all.
+    financial_currency: Optional[str] = None
     exchange: Optional[str] = None
     market_cap: Optional[float] = None
 

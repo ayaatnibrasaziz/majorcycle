@@ -16,6 +16,7 @@
 import { unstable_cache } from 'next/cache';
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { selectAll } from '@/lib/supabase/paginate';
 
 /** Metrics where a cross-peer median comparison is meaningful. */
 export type MetricKey =
@@ -122,13 +123,27 @@ function computeGroup(rows: Row[]): MetricMedians {
 
 async function _fetchMetricMedians(): Promise<MedianTables> {
   const supabase = createAdminClient();
-  // 719 non-index rows < PostgREST's 1000-row cap, so one select is enough.
-  const { data, error } = await supabase
-    .from('stocks')
-    .select('market,sector,industry,fundamentals')
-    .neq('market', 'index');
+  // Paginated, NOT one select. This used to read the table in a single request
+  // under a comment saying "719 non-index rows < PostgREST's 1000-row cap" — a
+  // true statement with an expiry date on it. The universe auto-expands whenever
+  // a reader requests a ticker, and at 1001 stocks PostgREST would have started
+  // returning an arbitrary 1000 of them with no error, so every "vs Sector"
+  // median on the site would have been computed from a silently truncated pool.
+  const data = await selectAll<{
+    market: string;
+    sector: string | null;
+    industry: string | null;
+    fundamentals: Record<string, unknown> | null;
+  }>((from, to) =>
+    supabase
+      .from('stocks')
+      .select('market,sector,industry,fundamentals')
+      .neq('market', 'index')
+      .order('ticker', { ascending: true })
+      .range(from, to),
+  );
 
-  if (error || !data) return { industry: {}, sector: {}, market: {} };
+  if (data.length === 0) return { industry: {}, sector: {}, market: {} };
 
   const byIndustry: Record<string, Row[]> = {};
   const bySector: Record<string, Row[]> = {};

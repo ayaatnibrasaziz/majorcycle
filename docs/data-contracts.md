@@ -60,7 +60,8 @@ class FundamentalsSnapshot:
     sector: Optional[str] = None
     industry: Optional[str] = None
     market: Market = "us"
-    currency: Currency = "USD"
+    currency: Currency = "USD"          # currency of the SHARE PRICE
+    financial_currency: Optional[str] = None  # currency of the STATEMENTS — see below
     exchange: Optional[str] = None
     market_cap: Optional[float] = None
 
@@ -129,8 +130,63 @@ class FundamentalsSnapshot:
 
     # Dividends history (per year)
     dividend_history: list[dict] = field(default_factory=list)  # [{year: 2024, amount: 0.92}, ...]
+```
 
+#### Units — declared once, in `analytics/providers/field_spec.py`
 
+**Every field above has a unit, and the unit is the part that breaks silently.**
+A mis-scaled number is still a plausible number, so a wrong scale survives code
+review and type checking alike. `FUNDAMENTALS_SPEC` states each field's unit —
+`percent` / `ratio` / `money` / `price` / `count` / `text` — in one table, and
+`analytics/tests/test_field_spec.py` fails the build if a `FundamentalsSnapshot`
+field is missing from it. Three of those units were learned from live defects:
+
+| Field | What yfinance sends | What we store |
+|---|---|---|
+| `dividendYield` | **already a percent** (3.20 = 3.20%) | `_safe`, no ×100 — `_pct` would make AAPL yield 35% |
+| `payoutRatio` | a fraction (0.12) | `_pct` → 12.04 |
+| `debtToEquity` | ×100 (78.445) | ÷100 → 0.7844, a plain multiple |
+
+⚠️ **`0.0` is not always zero.** yfinance sends `grossMargins`/`ebitdaMargins` of
+exactly `0.0` for every bank and every pre-revenue explorer, meaning *not
+reported*. `zero_means_na` in the spec turns those into `None` so the scorer
+omits the pillar input rather than reading a fabricated 0% — see
+`docs/data-audit.md` D1 for the 71 stocks and 4 changed labels this cost.
+It is deliberately **only the four margins**: a zero payout ratio, zero short
+interest and a debt-free balance sheet are all real zeros.
+
+`normalise_fundamentals()` applies the spec on **write** (in the provider) and
+again on **read** (`web/api/cycle.py`, `web/api/analyze.py`), so a single bad row
+cannot reach the scorer.
+
+Each field also declares a `median_band`: the range its **cohort median** should
+sit in across the universe. `analytics/cron/check_field_units.py` checks that
+nightly and emails the owner on a breach. It is the only instrument that catches
+a provider changing a field's units, because per-value validation cannot — a
+dividend yield of `0.024` is perfectly plausible for one stock and impossible as
+the median of 863.
+
+#### `financial_currency` vs `currency`
+
+**They are different, for 79 of 858 stocks** — a fifth of the ASX names and a
+third of the Canadian ones.
+
+| In `currency` (the SHARE PRICE) | In `financial_currency` (the STATEMENTS) |
+|---|---|
+| `market_cap`, `week52_high`/`_low`, the analyst target prices, `dividend_history`, every `price_bars` row | `total_revenue`, `ebitda`, `total_debt`, `total_cash`, `free_cashflow`, `operating_cashflow`, and all six statement blobs in `EnrichedData` |
+
+BHP.AX trades in AUD and reports in USD; A2M.AX reports in NZD; SHOP.TO trades
+in CAD and reports in USD. `financial_currency` is **not** a `Currency` literal —
+a company may report in anything, and we hold NZD, EUR, SGD and TWD reporters.
+
+Two rules follow. **Labelling:** the UI asks `statementCurrency(fundamentals)`
+(`web/lib/format.ts`), never `fundamentals.currency`; `pnpm check:data-integrity`
+fails the build otherwise. **Arithmetic:** any ratio mixing the two scales is
+wrong by an exchange rate, so `fcf_yield_pct` (free cash flow ÷ market cap) is
+**withheld** when they differ. `fcf_margin_pct` is safe — both its inputs are
+statement figures.
+
+```python
 @dataclass
 class EnrichedData:
     """
@@ -285,7 +341,8 @@ export interface FundamentalsSnapshot {
   sector: string | null;
   industry: string | null;
   market: Market;
-  currency: Currency;
+  currency: Currency;              // the SHARE PRICE currency
+  financialCurrency: string | null; // the STATEMENTS currency — differs for 79/858 stocks
   exchange: string | null;
   marketCap: number | null;
 

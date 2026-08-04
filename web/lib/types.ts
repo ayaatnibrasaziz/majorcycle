@@ -36,7 +36,22 @@ export interface FundamentalsSnapshot {
   sector: string | null;
   industry: string | null;
   market: Market;
+  /** Currency of the SHARE PRICE — always one of our three markets' currencies. */
   currency: Currency;
+  /**
+   * Currency of the FINANCIAL STATEMENTS, which is not always the price
+   * currency: 79 of 858 stocks report in a different one (a third of the
+   * Canadian universe, a fifth of the Australian). BHP.AX prices in AUD and
+   * reports in USD; A2M.AX prices in AUD and reports in NZD. Every figure drawn
+   * from the income statement, balance sheet or cash-flow statement — revenue,
+   * EBITDA, debt, cash, EPS — is denominated in THIS, so labelling it with
+   * `currency` puts an A$ in front of a US$ number.
+   *
+   * Not a `Currency`: a company may report in any currency at all (we hold NZD,
+   * EUR, SGD and TWD reporters). `null` on rows written before the field
+   * existed — treat that as "assume the price currency".
+   */
+  financialCurrency: string | null;
   exchange: string | null;
   marketCap: number | null;
 

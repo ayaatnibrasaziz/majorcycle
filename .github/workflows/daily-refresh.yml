@@ -29,19 +29,19 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-          cache-dependency-path: analytics/pyproject.toml
+          cache-dependency-path: analytics/requirements-cron.txt
 
+      # PINNED, not floors. `yfinance>=0.2.40` meant this job installed whatever
+      # was newest at 22:30 UTC — so an upstream release could change what our
+      # numbers MEAN overnight, with no commit, no review and nothing red. That
+      # is not hypothetical: yfinance changed `dividendYield` from a fraction to
+      # a percent in a routine release, and the only trace is a comment in the
+      # provider warning the next person not to multiply by 100.
+      #
+      # Upgrading is now a deliberate edit. After bumping, run
+      # `python -m analytics.cron.check_field_units` and read what it prints.
       - name: Install analytics dependencies
-        run: |
-          pip install \
-            "yfinance>=0.2.40" \
-            "pandas>=2.2.0" \
-            "numpy>=1.26.0" \
-            "requests>=2.31.0" \
-            "requests-cache>=1.2.0" \
-            "openpyxl>=3.1.0" \
-            "supabase>=2.4.0" \
-            "python-dotenv>=1.0.0"
+        run: pip install -r analytics/requirements-cron.txt
 
       # Refresh the "Request a Ticker" menu from free public exchange symbol files
       # (no API key). continue-on-error so a flaky source never blocks the price
@@ -89,3 +89,21 @@ jobs:
           RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
           OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
         run: python -m analytics.cron.daily_refresh --markets us,ca
+
+      # Units tripwire. Compares each fundamentals field's cohort median against
+      # the band declared beside its unit in providers/field_spec.py. A provider
+      # changing a field from a fraction to a percent (yfinance has done this)
+      # leaves every individual value looking perfectly ordinary and moves the
+      # median by 100x — this is the only thing that sees it.
+      #
+      # continue-on-error: it runs AFTER the data is written, so its job is to
+      # tell the owner something is wrong, not to fail a refresh that already
+      # happened. The email is the signal; the red step would just be noise.
+      - name: Check fundamentals field units
+        continue-on-error: true
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
+          OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
+        run: python -m analytics.cron.check_field_units --email

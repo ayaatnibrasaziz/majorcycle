@@ -1,4 +1,21 @@
-import type { AnalystRecommendation, Currency } from '@/lib/types';
+import type { AnalystRecommendation, Currency, FundamentalsSnapshot } from '@/lib/types';
+
+/**
+ * Which currency a figure taken from the FINANCIAL STATEMENTS is denominated in.
+ *
+ * One rule, one place. Revenue, EBITDA, debt, cash, EPS and every statement blob
+ * are in the company's reporting currency, which is not always the currency its
+ * shares trade in — 79 of 858 stocks in our universe differ, including a third
+ * of the Canadian names. Anything that labels a statement figure must ask this,
+ * never `fundamentals.currency`; `web/scripts/check-statement-currency.mjs`
+ * fails the build if a statement component is handed the price currency.
+ *
+ * Falls back to the price currency when unknown (rows written before the field
+ * existed), which is right for the ~91% of stocks that report in it anyway.
+ */
+export function statementCurrency(f: FundamentalsSnapshot): string {
+  return f.financialCurrency ?? f.currency;
+}
 
 /**
  * Shared right-axis width (px) so EVERY chart's plot area ends at the same x and
@@ -44,7 +61,7 @@ export function fmtPrice(n: number, currency: Currency): string {
  * conventionally shown to 2 dp regardless of size; this exists mainly to fix the
  * hardcoded "$" in EarningsHistory/DividendHistory so AUD/CAD render A$/CA$.
  */
-export function fmtPerShare(n: number, currency: Currency): string {
+export function fmtPerShare(n: number, currency: Currency | string): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
@@ -53,7 +70,38 @@ export function fmtPerShare(n: number, currency: Currency): string {
   }).format(n);
 }
 
-const CURRENCY_SYMBOL: Record<Currency, string> = { USD: '$', AUD: 'A$', CAD: 'CA$' };
+/**
+ * The symbol `Intl` itself would print for an ISO currency code — `$`, `A$`,
+ * `CA$`, `NZ$`, `€`, `NT$`…
+ *
+ * A hardcoded three-entry lookup was enough while every number on the page was
+ * in the stock's own market currency. It stopped being enough once the
+ * financial statements were labelled with THEIR currency (`financialCurrency`),
+ * because a company may report in anything: our universe holds NZD, EUR, SGD
+ * and TWD reporters. Falling back to a bare `$` for those would say "dollars"
+ * about euros.
+ */
+const symbolCache = new Map<string, string>();
+
+export function currencySymbol(code: string): string {
+  const cached = symbolCache.get(code);
+  if (cached !== undefined) return cached;
+  let symbol = '$';
+  try {
+    const part = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: code,
+      maximumFractionDigits: 0,
+    })
+      .formatToParts(1)
+      .find((p) => p.type === 'currency');
+    if (part) symbol = part.value;
+  } catch {
+    symbol = '$'; // unknown/invalid code — never throw on a formatting path
+  }
+  symbolCache.set(code, symbol);
+  return symbol;
+}
 
 /**
  * Adaptive compact number — picks K/M/B/T by magnitude so a real, non-zero value
@@ -65,9 +113,9 @@ const CURRENCY_SYMBOL: Record<Currency, string> = { USD: '$', AUD: 'A$', CAD: 'C
  * e.g. 30_000_000 → "30.0M" · 800_000 → "800K" · 12_500 → "12.5K" · 250 → "250"
  *      1.23e9 → "1.2B" · 2.5e12 → "2.5T"
  */
-export function fmtCompact(value: number, currency?: Currency): string {
+export function fmtCompact(value: number, currency?: Currency | string): string {
   if (!Number.isFinite(value)) return '—';
-  const prefix = currency ? (CURRENCY_SYMBOL[currency] ?? '$') : '';
+  const prefix = currency ? currencySymbol(currency) : '';
   const sign = value < 0 ? '−' : '';
   const abs = Math.abs(value);
   const m = (n: number) => (n >= 100 ? n.toFixed(0) : n.toFixed(1)); // mantissa ∈ [1,1000)
@@ -88,9 +136,9 @@ export function fmtCompact(value: number, currency?: Currency): string {
  */
 export function makeCompactAxisFormatter(
   axisMax: number,
-  currency?: Currency,
+  currency?: Currency | string,
 ): (v: number) => string {
-  const prefix = currency ? (CURRENCY_SYMBOL[currency] ?? '$') : '';
+  const prefix = currency ? currencySymbol(currency) : '';
   const m = Math.abs(axisMax);
   const [div, suffix] =
     m >= 1e12 ? [1e12, 'T'] :

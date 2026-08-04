@@ -1,0 +1,34 @@
+# Exact versions for the nightly GitHub Actions refresh.
+#
+# WHY PINNED. The workflows used to `pip install "yfinance>=0.2.40" …`, so every
+# run installed whatever was newest at the moment it started. For a data
+# pipeline that is not a convenience, it is an unreviewed deploy every night: an
+# upstream release can change what a number MEANS, and there is no commit, no
+# diff and nothing red to notice. yfinance has already done exactly that once —
+# `dividendYield` moved from a fraction to a percent, and the only record of it
+# is a warning comment in `providers/yfinance_provider.py` telling the next
+# person not to multiply by 100.
+#
+# It was also silently drifting apart from development: on 2026-08-05 the cron
+# was installing yfinance 1.5.2 while local work ran 1.3.0, and nothing anywhere
+# recorded either number.
+#
+# HOW TO UPGRADE. Deliberately, in a PR, one bump at a time:
+#   1. change the version here and install it locally
+#   2. `pytest analytics/` — the unit contract in test_field_spec.py must hold
+#   3. `python -m analytics.cron.check_field_units` against live data — it
+#      compares each field's cohort median with the band declared in
+#      `providers/field_spec.py`, which is what catches a units change that
+#      every individual value would hide
+#
+# analytics/pyproject.toml keeps floors for local development; THIS file is what
+# production installs.
+
+yfinance==1.5.2
+pandas==3.0.5
+numpy==2.5.1
+requests==2.34.2
+requests-cache==1.3.3
+openpyxl==3.1.5
+supabase==2.31.0
+python-dotenv==1.2.2

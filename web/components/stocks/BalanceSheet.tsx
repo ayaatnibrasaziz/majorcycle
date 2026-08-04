@@ -14,7 +14,12 @@ import {
 } from 'recharts';
 
 import type { FinancialStatement, FundamentalsSnapshot } from '@/lib/types';
-import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, makeCompactAxisFormatter } from '@/lib/format';
+import {
+  CHART_RIGHT_AXIS_WIDTH,
+  fmtCompact,
+  makeCompactAxisFormatter,
+  statementCurrency,
+} from '@/lib/format';
 
 interface Props {
   balanceSheetAnnual?: FinancialStatement;
@@ -88,7 +93,10 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
   const netCash   = totalCash !== null && totalDebt !== null ? totalCash - totalDebt : null;
   const isNetCash = netCash !== null ? netCash >= 0 : null;
   const { currentRatio, debtToEquity, interestCoverage } = fundamentals;
-  const currency = fundamentals.currency;
+  // Assets, cash and debt all come off the balance sheet, so they are in the
+  // company's REPORTING currency — which for BHP.AX is USD while its shares
+  // trade in AUD. Using the price currency here labelled US dollars as A$.
+  const currency = statementCurrency(fundamentals);
 
   // Banks & REITs structurally don't report Debt/Equity, Current Ratio or
   // Interest Coverage (no classified current assets/liabilities), so those pills
