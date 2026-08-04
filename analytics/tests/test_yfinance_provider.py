@@ -73,3 +73,67 @@ def test_real_split_still_recorded() -> None:
     ratios = [e["ratio"] for e in out.attrs["recent_split_events"]]
     assert ratios == [4.0]
     assert out.attrs["recent_splits"] == ["2026-07-01"]
+
+
+# --------------------------------------------------------------------------
+# Timezone: a daily bar must keep the EXCHANGE'S OWN calendar date.
+#
+# yfinance stamps each daily bar at midnight in the exchange's timezone, so the
+# local date IS the trading date. Converting to UTC first is silently harmless
+# for exchanges west of Greenwich and silently WRONG for Sydney, which is why
+# this shipped unnoticed: every ASX bar was stored one day early for the whole
+# history (0 Fridays and ~50 Sundays a year) while US/CA looked perfect.
+#
+# The US case is not padding — it is the control that proves the fix is a real
+# correction and not a blanket +1 applied to everybody.
+# --------------------------------------------------------------------------
+
+def _ohlcv(dates: list[str], tz: str) -> pd.DataFrame:
+    """OHLCV frame indexed at midnight LOCAL time, as yfinance returns it."""
+    idx = pd.to_datetime(dates).tz_localize(tz)
+    n = len(dates)
+    return pd.DataFrame(
+        {
+            "Open": [10.0] * n,
+            "High": [11.0] * n,
+            "Low": [9.0] * n,
+            "Close": [10.0] * n,
+            "Volume": [100] * n,
+            "Stock Splits": [0.0] * n,
+        },
+        index=idx,
+    )
+
+
+def test_asx_bars_keep_their_sydney_trading_date() -> None:
+    """Sydney midnight is 13:00-14:00 UTC the PREVIOUS day — the bug's mechanism."""
+    trading_days = ["2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03"]  # Wed-Fri, Mon
+    out, _ = _download(_ohlcv(trading_days, "Australia/Sydney"))
+    assert out is not None
+
+    stored = [ts.strftime("%Y-%m-%d") for ts in out.index]
+    assert stored == trading_days
+
+    # The symptom the live database showed: a weekend date, and no Fridays.
+    weekdays = {ts.strftime("%a") for ts in out.index}
+    assert "Sun" not in weekdays and "Sat" not in weekdays
+    assert "Fri" in weekdays
+
+
+def test_us_bars_are_unchanged_by_the_fix() -> None:
+    """Control: New York midnight is 04:00-05:00 UTC the SAME day, so US/CA data
+    was never wrong and must not move."""
+    trading_days = ["2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03"]
+    out, _ = _download(_ohlcv(trading_days, "America/New_York"))
+    assert out is not None
+    assert [ts.strftime("%Y-%m-%d") for ts in out.index] == trading_days
+
+
+def test_asx_split_dates_use_the_local_trading_date() -> None:
+    """Split dates are derived from the same index, so they shifted too — and a
+    wrong split date misaligns the re-adjustment window."""
+    df = _ohlcv(["2026-07-29", "2026-07-30", "2026-07-31"], "Australia/Sydney")
+    df["Stock Splits"] = [0.0, 0.0, 2.0]
+    out, _ = _download(df)
+    assert out is not None
+    assert out.attrs["recent_splits"] == ["2026-07-31"]
