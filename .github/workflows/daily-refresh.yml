@@ -127,4 +127,18 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
           OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
-        run: python -m analytics.cron.check_field_units --email
+        run: |
+          # 🔴 TEMPORARY — ALARM TEST, 2026-08-06. REVERT IMMEDIATELY AFTER.
+          # Runs the REAL check with one band bent to something impossible, so it
+          # reports a breach and exits non-zero. Done here rather than in
+          # field_spec.py because a unit test (correctly) pins the real band —
+          # this way CI stays honest and the production code is untouched.
+          python - <<'EOF'
+          import dataclasses, sys
+          from analytics.providers.field_spec import FUNDAMENTALS_SPEC
+          from analytics.cron import check_field_units as C
+          FUNDAMENTALS_SPEC["dividend_yield_pct"] = dataclasses.replace(
+              FUNDAMENTALS_SPEC["dividend_yield_pct"], median_band=(100.0, 200.0)
+          )
+          sys.exit(C.main(["--email"]))
+          EOF
