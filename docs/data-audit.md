@@ -775,6 +775,7 @@ audit should care about, which is *not* the order they were found:
 | **D9** | **The alarm that reports every other guard had never worked** — dead API key *and* code that cannot see a rejected send | ✅ fixed | **Break the notifier on purpose, not just the guard.** Silence was both the failure state and the healthy state |
 | **D10** | **Four S&P 500 companies missing every night** (`FDXF, HONA, Q, SNDK`) — a NaN crash, behind two silencers | ⚠️ **OPEN** | A dead alarm costs real defects, not just comfort |
 | **D8** | The `.csv` and the `.xlsx` of one run disagreed by a cent | ✅ fixed | When the duplicated rule is an *algorithm*, sharing a constant isn't enough — make one consume the other's output |
+| **D11** | **A partial refresh failure is silent** — needs a threshold, not "any failure is red" | 🔵 **OPEN DECISION** | An alarm that cries wolf nightly is ignored in a fortnight, and then *looks* like coverage |
 
 **Then re-run these three checks**, each of which found something this time:
 
@@ -1249,9 +1250,41 @@ exits non-zero. So:
 | **N tickers fail but the run completes** | logged, and **nothing else** ❌ |
 
 A handful failing is routine — measured across four nights: **2, 4, 5 and 7** of
-~863. So this cannot simply become "any failure is red", or the cron is red most
-nights and the alarm is ignored within a fortnight. It needs a threshold (a
-percentage, tuned against those numbers), which is an owner decision.
+~863, i.e. **0.2%–0.8%**. Delisted tickers and provider rate-limits account for
+it, and it is not worth waking anyone for.
+
+### 🔵 D11 — OPEN DECISION: what should make a partial failure loud?
+
+**Not decided as of 2026-08-06.** Recorded here in full so the next session does
+not have to re-measure or re-argue it.
+
+**Why "any failure is red" is the wrong answer.** It would redden the cron on
+essentially every night, and an alarm that cries wolf nightly is ignored inside a
+fortnight — at which point it is worse than no alarm, because it *looks* like
+coverage. This is the same reasoning that killed the daily "all clear" email.
+
+**Why the obvious alternative is also wrong.** Reviving the Resend failure email
+(by updating the stale key) would send mail on ~every night for the same reason —
+`if failed:` fires at 2 failures just as readily as at 200. That is precisely the
+noise the owner rejected, and it is probably *why nobody noticed the key was
+dead*: nothing was missed.
+
+**The shape of a fix.** Exit non-zero only past a threshold, so an ordinary night
+stays green and silent and a real outage goes red and emails:
+
+| Option | Behaviour | Note |
+|---|---|---|
+| **Percentage of attempted tickers** (recommended) | e.g. red above **5%** — ~43 of 863 | Survives the universe growing; the measured ceiling is 0.8%, so ~6× headroom before a false alarm |
+| Absolute count | e.g. red above 25 | Simpler to read, but needs revisiting every time the universe grows |
+| Per-market | red if any one market fails wholesale | Catches "the ASX feed is down" while the rest is fine — the failure that a whole-universe percentage can mask |
+
+⚠️ **Whichever is chosen, the threshold must be broken on purpose before it is
+trusted** (D9's lesson): force the failure count past it and confirm the run goes
+red, then confirm a normal night still passes. A threshold that is never
+exercised is a belief, exactly like the alarm was.
+
+⚠️ **Do this alongside D10, not separately.** D10 is a live example of the thing
+D11 is meant to catch, so the fix and its test case are the same piece of work.
 
 **And it was already hiding a live defect.** The *index-membership* step has failed
 on the same 4 tickers every single night — `FDXF, HONA, Q, SNDK` — with
