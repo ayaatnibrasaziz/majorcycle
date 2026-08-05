@@ -87,6 +87,18 @@ test.describe('downloaded report renders from disk', () => {
     await page.getByRole('button', { name: /^sign in$/i }).click();
     await expect(page).toHaveURL(/\/stocks/, { timeout: 30_000 });
 
+    // The download handler fetches these two at click time. They are produced by
+    // `prebuild`, which does NOT run for `next dev` — so without an explicit
+    // build step the click fetches a 404 and simply never fires a download,
+    // which surfaces as an inscrutable 2-minute timeout. Say so instead.
+    for (const asset of ['/report-bundle/report.js', '/report-bundle/report.css']) {
+      const res = await page.request.get(asset);
+      expect(
+        res.status(),
+        `${asset} is missing — run \`pnpm build:report-bundle\` first (next dev does not)`,
+      ).toBe(200);
+    }
+
     await page.goto('/stocks/us/AAPL');
     await expect(page.getByRole('button', { name: /download report/i })).toBeVisible({
       timeout: 30_000,
