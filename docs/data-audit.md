@@ -1000,6 +1000,69 @@ manage on your account yet."* — rather than erroring.
 | `pnpm typecheck` · `pnpm lint` | clean, 0 errors |
 | `check:entitlement-gates` · `check:data-integrity` · `check:report-sections` | 11 · 55 · 22 |
 
+## How the owner is told when the data breaks
+
+Settled 2026-08-06 after tracing the alert path end to end. **Design rule: no
+email on a good night; two independent signals on a bad one.**
+
+### What runs, and when
+
+| Cron | UTC | Sydney | Runs the units check? |
+|---|---|---|---|
+| `daily-refresh-au.yml` | 08:00 | 6:00pm | ❌ no |
+| `daily-refresh.yml` (US+CA) | 22:30 | 8:30am next day | ✅ yes |
+
+**One check is enough and this is why:** `check_field_units` does not inspect
+"what this run just wrote" — it reads the **whole universe**, all 863 stocks
+including every ASX name, via a paginated select. So Australian data *is*
+covered; it is simply checked in the evening run rather than immediately after
+the morning one. **Owner decision 2026-08-06: do not add a second copy to the AU
+workflow.** Verified from a real run:
+
+```
+check_field_units: 39 field(s) checked across 863 stocks;
+invariants: zero-margin sentinel, cross-currency fcf_yield_pct, financial_currency coverage
+check_field_units: OK — every median is where it should be
+```
+
+### The signals
+
+| Signal | Goes to | Verified? |
+|---|---|---|
+| **The workflow turns red** → GitHub's own "failed workflow" email | the GitHub account's notification address | ✅ **seen on screen** — `ayaatnibrasaziz@gmail.com`, already set to *"Failed workflows only"* |
+| A Resend email from `MajorCycle Cron <noreply@majorcycle.com>` naming the field | whatever `OWNER_EMAIL` holds | ⚠️ **never fired, and unverifiable** — see below |
+
+### ⚠️ Why the red X is the primary signal, not the email
+
+`continue-on-error: true` was removed from the check step. The old reasoning —
+*the step runs after the data is written, so a red X is noise* — had a hole:
+**it made silence ambiguous.** A green tick meant all three of "the data is
+fine", "a problem was found but the email failed", and "the step never ran".
+
+That is the D3d failure mode (*unmeasurable counted as clean*) moved up a layer,
+and three things made it worse:
+
+1. `_email()` swallows **every** exception, so a failed send is invisible.
+2. It **silently skips** if `RESEND_API_KEY` or `OWNER_EMAIL` is unset, logging
+   only a warning.
+3. **It has never actually been sent** — checked against the *complete* Resend
+   history (42 messages since July): not one cron alert, from either this check
+   or `daily_refresh`'s own failure mail. The path is unproven.
+
+**And `OWNER_EMAIL` cannot be verified by reading it.** GitHub secrets are
+write-only after creation — for the owner as much as for anyone else; the
+settings page shows a padlock, a name and a date, with only *overwrite* and
+*delete*. The only ways to confirm it are to fire it, or to overwrite it blind.
+
+So the primary signal is now the one whose destination is **visible**: the run
+goes red, GitHub emails the account address, free (Actions minutes are unlimited
+on a public repo). The Resend email stays as an independent second channel that
+names the offending field — belt-and-braces, no longer load-bearing.
+
+⚠️ **The check is the LAST step of the only job**, deliberately. Failing it
+cannot skip work, and the red means *"tonight's numbers are suspect"*, never
+*"the refresh didn't run"* — the data is already written and untouched.
+
 ## Live universe census, 2026-08-06
 
 Recorded so the next session can tell growth from breakage rather than guessing.
