@@ -559,10 +559,16 @@ list instead of hardcoding six paths.
 
 | # | Item | Why it matters |
 |---|---|---|
-| 1 | **Verify every surface as a FREE account** | Everything on 2026-08-05 was checked as a *subscriber*. The paywall and the data changes interact, and only one side has been seen. Highest-value gap. |
+> ✅ **1, 3 and 4 were closed on 2026-08-06** against production, and item 3
+> found a real defect (D8 — the CSV and the Excel of one run disagreed by a
+> cent). Item 2 is owner-deferred with a full design written up. Item 5 remains.
+> Details in `docs/data-audit.md` § *Follow-up session*; the owner's own
+> step-by-step re-check is `docs/live-verification-walkthrough.md`.
+
+| 1 | ~~**Verify every surface as a FREE account**~~ ✅ **DONE 2026-08-06** — 9 surfaces, zero premium fields in the HTML, plus an 11-state subscription matrix | Everything on 2026-08-05 was checked as a *subscriber*. The paywall and the data changes interact, and only one side has been seen. Highest-value gap. |
 | 2 | **Per-stock cross-check** — compare our figure against the provider's own independently-derived one (our P/E vs `trailingPE`, etc.) — ⏸ **DEFERRED by owner 2026-08-06 to after the remaining layers.** Full design written up in `docs/data-audit.md` § *Deferred — the per-stock number check* so it can be picked up cold | The cohort tripwire catches a unit change affecting **all** stocks and is blind to **one** stock being wrong. This is the check that exposed Barrick — but by hand, once, not nightly. Needs a tolerance tuned against live data (honest same-currency drift ran 1–17%; the real defect was 90%). |
-| 3 | **Open the exported `.xlsx` and read its cells** | Confirmed only as a valid file built from verified rows; its cells were never parsed. |
-| 4 | **Eyeball the remaining screens** — `/account`, `/request`, Sentiment tab, the other detail tabs | Untouched on 2026-08-05. |
+| 3 | ~~**Open the exported `.xlsx` and read its cells**~~ ✅ **DONE 2026-08-06 — found D8**, fixed, guarded, and re-verified on production with all 152 cells compared | Confirmed only as a valid file built from verified rows; its cells were never parsed. |
+| 4 | ~~**Eyeball the remaining screens**~~ ✅ **DONE 2026-08-06** — `/account` in every state, `/request`, the Sentiment section, all five detail sections. One item raised for the owner: the Results table shows a bare `$` for US, AU and CA prices alike | Untouched on 2026-08-05. |
 | 5 | **`ci.yml` still installs unpinned `yfinance>=…`** for the test job | Listed, not changed. A green CI therefore does not prove the *pinned* pipeline works, and an upstream release can redden untouched code. |
 
 > 🔴 **The reason this list exists.** Four defects on 2026-08-05 were invisible to
