@@ -33,6 +33,22 @@ async function buildJs() {
     jsx: 'automatic',
     tsconfig: 'tsconfig.json',
     define: { 'process.env.NODE_ENV': '"production"' },
+    // The downloaded .html runs from file:// with no bundler, no server and no
+    // Node — so a single bare `process` reference is a blank page, not a
+    // degraded one. `define` only rewrites the EXACT string it is given, so
+    // `process.env.NODE_ENV` above leaves every other `process.env.*` intact.
+    //
+    // That is not hypothetical. `KpiStrip` imports `PremiumLock` -> `UpgradeDialog`
+    // -> `next/link`, which drags Next's client router into this bundle, and its
+    // module scope evaluates `process.env.__NEXT_ROUTER_BASEPATH` at load. The
+    // report download produced a 4 MB file that rendered NOTHING from
+    // 2026-08-01 (when the paywall lock shipped) until 2026-08-05.
+    //
+    // A shim rather than more `define` entries on purpose: it fixes the whole
+    // class, so the next accidental Next/Node import degrades instead of
+    // blanking. `report-download.spec.ts` is what actually proves the file
+    // still mounts — this line only makes it possible.
+    banner: { js: 'globalThis.process=globalThis.process||{env:{}};' },
     legalComments: 'none',
     logLevel: 'error', // 'use client' directive notices are expected + harmless
   });
