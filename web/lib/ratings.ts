@@ -231,12 +231,44 @@ function csvField(value: string | number | null): string {
  */
 export type ExportFmt = 'int' | 'num2';
 
-/** Format one export value to a string per its column precision (CSV path). */
+/**
+ * Rounding for the exports — deliberately the SCREEN's rounding.
+ *
+ * `Intl.NumberFormat` is not decoration here: it is the same mechanism the results
+ * table and the Stock Detail page format with, so an exported figure can never
+ * disagree with the page it was exported from. Three rules were in play until
+ * 2026-08-06 and all three parted company on values carrying a third decimal:
+ *
+ *   value    screen (Intl)   .csv (toFixed)   .xlsx (Math.round)
+ *   65.755   65.76           65.75  ✗         65.76
+ *   1.005    1.01            1.00   ✗         1.00   ✗
+ *
+ * `toFixed` and `Math.round` both round the *binary double*, which sits a hair
+ * below a half-cent; `Intl` rounds the decimal the reader actually sees. Found on
+ * the LIVE site by downloading both files and reading the cells — Barrick's
+ * analyst target read CA$65.76 on the page and 65.75 in the .csv, same button,
+ * same run. `useGrouping: false` because a CSV field must not contain a comma and
+ * an Excel cell must stay parseable as a number.
+ */
+const EXPORT_FORMAT: Record<ExportFmt, Intl.NumberFormat> = {
+  int: new Intl.NumberFormat('en-US', { maximumFractionDigits: 0, useGrouping: false }),
+  num2: new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: false,
+  }),
+};
+
+/**
+ * Format one export value to a string per its column precision.
+ *
+ * This is the single rounding rule for BOTH files: the CSV writes this string, and
+ * `lib/xlsx.ts` parses its own cell number back out of it, so the two cannot drift.
+ */
 export function exportText(value: string | number | null, xf?: ExportFmt): string {
   if (value == null || value === '') return '';
   if (typeof value === 'number' && Number.isFinite(value)) {
-    if (xf === 'int') return String(Math.round(value));
-    if (xf === 'num2') return value.toFixed(2);
+    if (xf) return EXPORT_FORMAT[xf].format(value);
     return String(value);
   }
   return String(value);

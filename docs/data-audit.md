@@ -681,3 +681,72 @@ $0.30 to several hundred dollars across the universe, so a single median band
 would be meaningless rather than merely loose; the last is deliberately never
 displayed (D7). Their units are still declared in `field_spec.py` and still
 enforced by `test_field_spec.py`.
+
+---
+
+## ⏸ DEFERRED — the per-stock number check
+
+**Status: not built. Owner-scheduled 2026-08-06 to be picked up after the
+remaining layers.** Recorded here in full so the next session does not have to
+re-derive it.
+
+### What it is, in one sentence
+
+For each stock individually, take a number we publish, compute the same number
+a second time from a different starting point, and complain when the two
+disagree by more than a set tolerance.
+
+### Why the checks we already have cannot do this
+
+Three instruments exist and each one is blind to a *single* wrong stock:
+
+| Instrument | What it actually watches | Blind to |
+|---|---|---|
+| `field_spec.py` + `test_field_spec.py` | that every field **declares** a unit | whether the stored value obeys it |
+| `check_field_units.py` — the nightly cohort tripwire | the **median** of ~860 stocks staying inside a declared band | one stock being wrong; the median does not move |
+| `check_invariants()` | three **structural** rules (a `0.0` margin sentinel, a cross-currency FCF yield, `financial_currency` coverage) | a number that is structurally fine and numerically wrong |
+
+This was demonstrated rather than assumed: a synthetic universe with a single
+100×-wrong dividend yield produces **0 breaches**; the same error applied to
+all 40 rows is caught immediately. A wrong number is still a *plausible*
+number, which is exactly why neither review nor the type checker sees it.
+
+### The shape of the check
+
+The principle is **two independent derivations of the same quantity**. Each
+row below has a figure we compute or store and a figure the provider supplies
+having derived it its own way, so agreement is real evidence and disagreement
+names the stock:
+
+| Our figure | The independent one | Why they should agree |
+|---|---|---|
+| `pe_ratio` (Key Metrics) | `info['trailingPE']` | Yahoo's is currency-corrected; ours was not — **this exact comparison is what exposed D3b**, run by hand, once |
+| last close in `price_bars` | `info['currentPrice']` / `regularMarketPrice` | different endpoints; a stale or mis-dated bar shows up as a gap |
+| `market_cap` | `currentPrice × sharesOutstanding` | catches a price/shares unit mismatch |
+| `dividend_yield_pct` | trailing 12m dividends ÷ price, from the dividend history | the ×100 class of error, per stock |
+| `fcf_yield_pct` | free cash flow ÷ market cap, recomputed from the statements | the cross-currency class (D3), per stock |
+| `week52_high` / `week52_low` | max/min close over the trailing 252 bars | a basis mismatch — expect a **known ~2% gap** here by design (D5), so this row is a *report*, never a failure |
+
+### How it must be built, given what this audit learned
+
+1. **Tolerance in percent, not equality.** Rounding, adjusted vs unadjusted
+   closes and different as-of timestamps all produce small honest differences.
+   Start loose (say 5%), then tighten once the real spread is measured — a
+   check that cries wolf gets ignored, which is worse than no check.
+2. **Report the stock, not a count.** The whole point is naming which one. The
+   nightly log already prints invariant **names** rather than a total for the
+   same reason (D3d).
+3. **Assert coverage as well as agreement.** A stock missing the comparison
+   field must count as *unmeasured*, never as *passing* — D3d's guard reported
+   zero violations precisely when the universe was most broken, because the
+   field it read had disappeared.
+4. **Run it nightly beside `check_field_units.py`**, emailing the owner, and
+   **pin the provider** — an unpinned upgrade changes both sides at once.
+5. **Break it on purpose first.** Corrupt one stock's `pe_ratio` in a fixture
+   and confirm the check goes red naming that ticker, before trusting a green.
+
+### Rough size
+
+About half a session. `analytics/cron/check_field_units.py` already supplies
+the loading, the paginated read, the reporting shape and the email path, so
+this is a second module beside it rather than new machinery.
