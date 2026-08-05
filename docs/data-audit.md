@@ -765,6 +765,39 @@ whose entitlement state was set directly in `profiles` — which is exactly the
 input the rendering reads (`lib/entitlement.ts`). Every account was deleted in a
 `finally`. The shared E2E login was never touched.
 
+### 👉 START HERE NEXT TIME
+
+**Three more findings, D8–D10.** Two fixed, one open. Ordered by what a future
+audit should care about, which is *not* the order they were found:
+
+| | Finding | Status | The transferable lesson |
+|---|---|---|---|
+| **D9** | **The alarm that reports every other guard had never worked** — dead API key *and* code that cannot see a rejected send | ✅ fixed | **Break the notifier on purpose, not just the guard.** Silence was both the failure state and the healthy state |
+| **D10** | **Four S&P 500 companies missing every night** (`FDXF, HONA, Q, SNDK`) — a NaN crash, behind two silencers | ⚠️ **OPEN** | A dead alarm costs real defects, not just comfort |
+| **D8** | The `.csv` and the `.xlsx` of one run disagreed by a cent | ✅ fixed | When the duplicated rule is an *algorithm*, sharing a constant isn't enough — make one consume the other's output |
+
+**Then re-run these three checks**, each of which found something this time:
+
+1. **Fire the alarm deliberately** — the recipe is in D9. Do this *first*; if it's
+   dead again, nothing else you conclude can be trusted.
+2. **Ask the data how many cases exist** before believing you have covered them.
+   The previous audit checked four reporting currencies; there are **seven**. It
+   had counted the ones it happened to meet.
+3. **Open the finished artifact**, don't inspect the code that makes it — the
+   downloaded report, the `.xlsx` *cells*, the rendered page. Every defect on
+   2026-08-05 and D8 here were found that way and by nothing else.
+
+### ⚠️ Housekeeping left behind by D9 — decide, don't inherit
+
+Deliberately not done, because each is a decision rather than a cleanup:
+
+| Item | State | The choice |
+|---|---|---|
+| `RESEND_API_KEY` GitHub secret | **holds a deleted key** | Update it to the live key, or delete it. Leaving it is the option that looks like the other two |
+| `OWNER_EMAIL` GitHub secret | value unverifiable, now unused by the units check | Same |
+| `check_field_units._email()` + its `--email` flag | **unreachable** — nothing calls it | Delete (CLAUDE.md rule 11 forbids dead code) |
+| `daily_refresh._send_failure_email()` | **still called, still dead** — six workflow steps pass it the stale secret | Delete it, or make partial failures redden the run instead (below) |
+
 ## D8 — The `.csv` and the `.xlsx` of one run disagreed by a cent ✅ FIXED
 
 **This is the defect that opening the cells produced**, and it is the reason the
@@ -823,6 +856,132 @@ three ways before being trusted, each failing on the exact value:
 Same screener run, exports downloaded from production again: the CSV now reads
 `65.76`, and a **cell-by-cell comparison of all 152 cells against the CSV
 produced 0 mismatches.**
+
+---
+
+## D9 — The alarm that tells us any of this went wrong had never worked ✅ FIXED
+
+**Severity: the highest in this document, because it is the finding that hides
+every other finding.**
+
+Every guard in this audit ends the same way: *"…and it emails the owner."* On
+2026-08-06 that sentence was tested for the first time, by deliberately breaking
+both crons on `main`. Both went red with the correct message. **Resend recorded
+nothing** — no bounce, no rejection, no such message. It had never sent one in
+the project's life: 42 messages in the account since July, not one from a cron.
+
+### Two independent faults, and the design could report neither
+
+| # | Fault | Why nothing showed |
+|---|---|---|
+| 1 | **The API key does not exist.** Resend holds exactly one key, `supabase-smtp`, created **2026-07-02**. The `RESEND_API_KEY` GitHub secret was created **2026-05-24** — five weeks earlier, so it holds a key since deleted. | A 401 is a *response*, not an exception |
+| 2 | **`_email()` never inspects the response.** `requests.post` does not raise on 4xx, and the `except` clause catches only transport errors. | A rejected send returns normally, logs nothing, and is byte-for-byte indistinguishable from a delivered one |
+
+⚠️ **The app was never affected.** Vercel holds its own `RESEND_API_KEY`, updated
+when the domain was set up; billing and auth mail delivers normally. **Only the
+GitHub copy went stale** — which is precisely why it went unnoticed: the obvious
+sanity check ("is Resend working?") answers *yes*.
+
+### Why it was undetectable rather than merely undetected
+
+This is **D3d's lesson one layer up**, and worth stating in its own words:
+
+> The instrument read *nothing*. *Nothing* was also the expected reading on a
+> healthy night. So the failure state and the success state produced identical
+> evidence, and no amount of looking could separate them.
+>
+> **An untested alarm is a belief, not a safety net.** This project already
+> breaks every new *guard* on purpose before trusting it. It had never done that
+> to the *notifier*.
+
+### Fix
+
+The alert is now **GitHub's own failed-workflow email**, and nothing else:
+
+- `continue-on-error: true` removed from the units check in **both** crons, so a
+  data problem fails the run.
+- `--email` and the two Resend secrets removed from both check steps.
+- Destination is **visible** rather than sealed in a write-only secret —
+  GitHub Settings → Notifications shows `ayaatnibrasaziz@gmail.com` with Actions
+  set to *"Failed workflows only"*. **GitHub secrets cannot be read back after
+  creation, by anyone including the owner**, which is the structural reason a
+  visible channel beats a configured one.
+- Cost: **$0**. Actions minutes are unlimited on a public repo and notifications
+  are free on every plan.
+
+### 🔁 How to re-test it (do this in every future audit)
+
+The whole point is that this decays silently. Repeat it:
+
+1. Branch, and bend one band to something impossible **in the workflow command**,
+   not in `field_spec.py` — a unit test correctly pins the real band, so editing
+   the spec turns CI red for the wrong reason:
+   ```yaml
+   run: |
+     python - <<'EOF'
+     import dataclasses, sys
+     from analytics.providers.field_spec import FUNDAMENTALS_SPEC
+     from analytics.cron import check_field_units as C
+     FUNDAMENTALS_SPEC["dividend_yield_pct"] = dataclasses.replace(
+         FUNDAMENTALS_SPEC["dividend_yield_pct"], median_band=(100.0, 200.0))
+     sys.exit(C.main([]))
+     EOF
+   ```
+2. Merge it — `workflow_dispatch` runs the **default branch** (14g), so it cannot
+   be tested from a branch.
+3. `gh workflow run daily-refresh-au.yml --ref main` — the AU cron is the short
+   one, ~7 minutes. Confirm **failure**, and read the log to confirm it failed
+   for the *right reason*.
+4. **Confirm the email actually arrived.** This is the step that has no substitute.
+5. Revert, re-run clean, confirm **green** and `OK — every median is where it
+   should be`.
+
+Expected messages, for comparison next time:
+
+```
+BROKEN:  dividend_yield_pct: median 2.34 is outside the expected [100, 200] over 666 stocks
+           <-- looks like a FRACTION where a percent is expected (x100 missing)
+CLEAN:   39 field(s) checked across 864 stocks; invariants: zero-margin sentinel,
+         cross-currency fcf_yield_pct, financial_currency coverage
+         OK — every median is where it should be
+```
+
+---
+
+## D10 — Four S&P 500 companies have been missing every night ⚠️ OPEN
+
+**Found only because D9's alarm was being tested.** It is the concrete proof that
+a dead notifier costs real defects, not just peace of mind.
+
+The *Refresh index membership* step has failed on the **same four tickers every
+single night**:
+
+```
+ValueError: Out of range float values are not JSON compliant: nan
+Failed tickers (4): FDXF, HONA, Q, SNDK
+Constituent fetch complete — 0/4 landed in the universe
+```
+
+Confirmed against the live database:
+
+| | |
+|---|---|
+| Rows in `index_membership` (active) | **4** |
+| Rows in `stocks` | **0** |
+| Consequence | the screener's **S&P 500 basket resolves to 499 of 503**, and the four never appear in Browse |
+
+**Why it survived:** that step carries `continue-on-error: true` **and** the email
+that would have reported it was the dead one from D9. Two silencers on the same
+signal.
+
+**Likely cause** (to confirm when fixing): a pandas `NaN` surviving into the JSON
+payload when a **brand-new** ticker is inserted — existing tickers refresh fine,
+860+ of 863 nightly. The fix probably belongs in the provider's normalisation
+(`normalise_fundamentals()` in `field_spec.py`) so every writer inherits it,
+rather than at the call site. Needs a regression test with a NaN-bearing
+fundamentals dict, broken on purpose first.
+
+---
 
 ## The free tier, walked end to end ✅ NOTHING FOUND
 
@@ -999,6 +1158,11 @@ manage on your account yet."* — rather than erroring.
 | Playwright e2e | 116 → **121** (the count moved, so the new suite ran) |
 | `pnpm typecheck` · `pnpm lint` | clean, 0 errors |
 | `check:entitlement-gates` · `check:data-integrity` · `check:report-sections` | 11 · 55 · 22 |
+| **The nightly alarm itself** | 🆕 **broken on purpose and proven** — see D9. This is the only gate in the list that had never been exercised |
+
+> ⚠️ **A gate that has never fired is not evidence.** Every other row above has
+> been seen to fail at some point, so a pass means something. The alarm had only
+> ever been seen to *pass*, and D9 is what that was worth.
 
 ## How the owner is told when the data breaks
 
