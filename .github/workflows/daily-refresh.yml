@@ -96,11 +96,32 @@ jobs:
       # leaves every individual value looking perfectly ordinary and moves the
       # median by 100x — this is the only thing that sees it.
       #
-      # continue-on-error: it runs AFTER the data is written, so its job is to
-      # tell the owner something is wrong, not to fail a refresh that already
-      # happened. The email is the signal; the red step would just be noise.
+      # ⚠️ This step is DELIBERATELY ALLOWED TO FAIL THE RUN (owner decision,
+      # 2026-08-06). It carried `continue-on-error: true` until then, on the
+      # reasoning that it runs AFTER the data is written so failing a refresh
+      # that already happened would be noise, and the Resend email was the signal.
+      #
+      # That reasoning had a hole: it made SILENCE ambiguous. A green tick meant
+      # "the data is fine", "the check found a problem but the email failed", and
+      # "the step never ran" — three very different things that looked identical
+      # from the outside. `_email()` swallows every exception by design, so a
+      # broken send is invisible; and the alert had in fact NEVER been sent in the
+      # project's life (verified against the full Resend history, 42 messages),
+      # so the Resend path was an unproven single point of failure.
+      #
+      # Failing the run instead gives a signal we can SEE and have verified end to
+      # end: GitHub's own "failed workflow" notification, which goes to the address
+      # on the account (confirmed on screen: ayaatnibrasaziz@gmail.com) and is
+      # already set to "Failed workflows only". It costs nothing — Actions minutes
+      # are unlimited on a public repo — and it adds no mail on a good night, which
+      # is what the owner asked for: no email unless something is actually wrong.
+      #
+      # It is the LAST step on purpose, so failing it cannot skip any work. The
+      # data has already been written and is untouched by the red X — the red
+      # means "tonight's numbers are suspect", not "the refresh didn't happen".
+      # The Resend email is kept as a second, independent channel that names the
+      # offending field; it is now belt-and-braces rather than the only signal.
       - name: Check fundamentals field units
-        continue-on-error: true
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

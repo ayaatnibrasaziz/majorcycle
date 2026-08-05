@@ -52,3 +52,28 @@ jobs:
           RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
           OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
         run: python -m analytics.cron.daily_refresh --markets au
+
+      # The same units + invariants check the US+CA run does (owner decision,
+      # 2026-08-06 — it was US+CA only until then).
+      #
+      # It is NOT redundant, and it is NOT "the AU half" of the check: this reads
+      # the WHOLE 863-stock universe, exactly as the evening run does. Running it
+      # here as well simply means a problem introduced by the morning write is
+      # caught at 8am UTC instead of waiting ~14 hours for the 22:30 run. Cheap
+      # (a single paginated read, seconds) and it halves the worst-case blind
+      # window.
+      #
+      # ⚠️ NO `continue-on-error` — deliberate, same as the US+CA run. A green
+      # tick must never be able to mean "a problem was found but you weren't
+      # told". Failing the run is the signal: GitHub emails the account address
+      # on a failed workflow, which is a destination we have SEEN, unlike the
+      # Resend path whose recipient lives in a write-only secret and which had
+      # never fired once in the project's life. Last step of the job, so failing
+      # it skips no work and the AU data written above is untouched.
+      - name: Check fundamentals field units
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
+          OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
+        run: python -m analytics.cron.check_field_units --email
