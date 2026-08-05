@@ -103,6 +103,41 @@ class TestCohortCheck:
         assert len(problems) == 1
         assert "fcf_yield_pct" in problems[0] and "ABX.TO" in problems[0]
 
+    def test_a_wholesale_loss_of_financial_currency_is_reported(self) -> None:
+        """The failure that made this rule necessary.
+
+        On 2026-08-05 the nightly refresh ran pre-fix code and rewrote 608 of 863
+        rows, wiping `financial_currency`. The cross-currency test then reported
+        ZERO violations — not because there were none, but because the field it
+        reads was gone. An unmeasurable row must never count as a clean one.
+        """
+        rows = [
+            {"ticker": f"T{i}", "fundamentals": {"currency": "USD"}} for i in range(70)
+        ] + [
+            {"ticker": f"OK{i}", "fundamentals": {
+                "currency": "AUD", "financial_currency": "AUD",
+            }} for i in range(30)
+        ]
+        problems = check_invariants(rows)
+        assert len(problems) == 1
+        assert "financial_currency" in problems[0]
+        assert "70 of 100" in problems[0]
+
+    def test_a_few_genuinely_missing_do_not_cry_wolf(self) -> None:
+        """Some tickers legitimately have no `financialCurrency` upstream. A check
+        that fires on those gets ignored, and then it is not a check any more."""
+        rows = [
+            {"ticker": f"OK{i}", "fundamentals": {
+                "currency": "USD", "financial_currency": "USD",
+            }} for i in range(98)
+        ] + [
+            {"ticker": f"GAP{i}", "fundamentals": {"currency": "USD"}} for i in range(2)
+        ]
+        assert check_invariants(rows) == []
+
+    def test_no_invariant_divides_by_zero_on_an_empty_universe(self) -> None:
+        assert check_invariants([]) == []
+
     def test_a_same_currency_fcf_yield_is_fine(self) -> None:
         rows = [{"ticker": "AAPL", "fundamentals": {
             "currency": "USD", "financial_currency": "USD", "fcf_yield_pct": 2.4,

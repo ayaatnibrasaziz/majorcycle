@@ -45,6 +45,16 @@ _PAGE = 1000
 #: reported as "thin" rather than breached.
 _MIN_SAMPLE = 30
 
+#: What `check_invariants` covers. The nightly log prints these NAMES rather than
+#: a count: a count silently goes stale the moment a rule is added, which this
+#: repo has already paid for once (the entitlement guard printed "14 checks" over
+#: 11 sections). A missing name in the log is visible; a wrong number is not.
+INVARIANT_RULES = (
+    "zero-margin sentinel",
+    "cross-currency fcf_yield_pct",
+    "financial_currency coverage",
+)
+
 
 def _get_supabase() -> Client:
     return create_client(
@@ -86,9 +96,12 @@ def check_invariants(rows: list[dict[str, Any]]) -> list[str]:
 
     zero_margins: dict[str, list[str]] = {}
     fcf_mixed: list[str] = []
+    missing_fin_cur: list[str] = []
     for r in rows:
         f = r.get("fundamentals") or {}
         ticker = str(r.get("ticker", "?"))
+        if not f.get("financial_currency"):
+            missing_fin_cur.append(ticker)
         for name in ("gross_margin", "operating_margin", "net_margin", "ebitda_margin"):
             if f.get(name) == 0:
                 zero_margins.setdefault(name, []).append(ticker)
@@ -111,6 +124,29 @@ def check_invariants(rows: list[dict[str, Any]]) -> list[str]:
             f"in the reporting currency and market cap in the price currency "
             f"(e.g. {', '.join(sorted(fcf_mixed)[:5])})"
         )
+
+    # Coverage, checked LAST because it explains the two checks above.
+    #
+    # The cross-currency test needs `financial_currency` to do anything at all —
+    # so a row that lost the field is not clean, it is UNMEASURABLE, and it
+    # counts as a pass. That is not hypothetical: on 2026-08-05 this function
+    # reported "0 cross-currency FCF yields" over a universe where 608 of 863
+    # rows had been rewritten by a refresh running pre-fix code, wiping the very
+    # field the test reads. A silent instrument is worse than a red one.
+    #
+    # A proportion, not an absolute: a handful of tickers can genuinely lack
+    # `financialCurrency` upstream, and a check that cries wolf gets ignored.
+    # A wholesale revert shows up as most of the universe at once.
+    if rows:
+        share = len(missing_fin_cur) / len(rows)
+        if share > 0.05:
+            problems.append(
+                f"financial_currency: missing on {len(missing_fin_cur)} of {len(rows)} "
+                f"row(s) ({share:.0%}) — the cross-currency checks cannot run on those, "
+                f"so they PASS without being tested. This is what a refresh running "
+                f"code from before the reporting-currency fix looks like "
+                f"(e.g. {', '.join(sorted(missing_fin_cur)[:5])})"
+            )
     return problems
 
 
@@ -195,8 +231,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     invariants = check_invariants(rows)
 
     logger.info(
-        "check_field_units: %d field(s) checked + %d invariant(s) across %d stocks",
-        checked, 2, len(rows),
+        "check_field_units: %d field(s) checked across %d stocks; invariants: %s",
+        checked, len(rows), ", ".join(INVARIANT_RULES),
     )
     for t in thin:
         logger.info("  thin sample, skipped — %s", t)

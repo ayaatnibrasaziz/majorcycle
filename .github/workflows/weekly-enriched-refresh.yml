@@ -18,18 +18,17 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-          cache-dependency-path: analytics/pyproject.toml
+          cache-dependency-path: analytics/requirements-cron.txt
 
+      # Pinned — see analytics/requirements-cron.txt. This workflow kept the old
+      # unpinned floors for a day after the two daily refreshes were pinned,
+      # which is the drift trap in CLAUDE.md 11c: a rule fixed in two places and
+      # a third surface opting out by simply not being in either list. It matters
+      # MORE here than in the daily jobs, not less — `--mode full` rewrites the
+      # enriched data for every ticker, so an upstream units change lands on the
+      # whole universe in one run.
       - name: Install analytics dependencies
-        run: |
-          pip install \
-            "yfinance>=0.2.40" \
-            "pandas>=2.2.0" \
-            "numpy>=1.26.0" \
-            "requests>=2.31.0" \
-            "requests-cache>=1.2.0" \
-            "supabase>=2.4.0" \
-            "python-dotenv>=1.0.0"
+        run: pip install -r analytics/requirements-cron.txt
 
       - name: Run full refresh
         env:

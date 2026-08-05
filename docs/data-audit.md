@@ -371,8 +371,89 @@ defect CLAUDE.md 11c was written about.
 
 which covers **every** reader at once — Python, TypeScript, the report bundle and
 anything added later — rather than re-implementing the rule per language and
-hoping the copies agree. 73 rows cleared; live run: 39 fields + 2 invariants
-across 863 stocks, clean.
+hoping the copies agree. 73 rows cleared; live run at the time: 39 fields
++ invariants across 863 stocks, clean.
+
+## D3d — The database fixes do not survive the next cron run ✅ FIXED (guard), ⛔ NEEDS THE MERGE
+
+**Every data fix in this audit was applied twice: to the code, and to the 863
+stored rows. Only the first of those is durable.** The second was reverted
+14 hours later, by our own nightly job, and nothing said so.
+
+`daily_refresh.py:640` writes `"fundamentals": _jsonb(fund_dict)` — a **whole-object
+replace**, for every ticker, every night. Whatever the running code produces
+becomes the row. And `actions/checkout@v6` in a `schedule`-triggered workflow
+checks out the **default branch**, not the branch the fix lives on. So while
+PR #77 sits unmerged, each night's refresh rewrites the universe with pre-fix
+output.
+
+Measured on the live database at **2026-08-05 03:16 UTC**:
+
+| market | rows | `financial_currency` present | rows with a `0.0` margin | last written |
+|---|---:|---:|---:|---|
+| au | 250 | **250** | 0 | 2026-08-04 **12:00Z** ← the backfill |
+| ca | 79 | **0** | 8 | 2026-08-04 **23:xxZ** ← the cron |
+| us | 534 | **5** | 32 | 2026-08-04 **23:xxZ** ← the cron |
+
+The split is exactly the workflow boundary. The US+CA refresh (22:30 UTC, writing
+23:36–23:51) ran **after** the backfill and undid it for its 608 rows; the AU
+refresh (08:00 UTC) ran **before** and its 250 rows survived — until 08:00 UTC
+the next morning.
+
+Confirmed on screen, signed in as a subscriber against the fixed branch: JPM's
+Key Metrics table showed **Gross Margin 0.0%**, `−47.3pp` against its sector.
+Note what did *not* break — Overall Rating 63/100 and Health Score 93/100 were
+still correct, because `/api/cycle` normalises on read. **The scores are
+defended by code; the Key Metrics table is defended only by the data being
+clean.** That is D3c's asymmetry, seen from the other side.
+
+### The instrument was blind, which is worse than the bug
+
+Run against that same broken universe, `check_invariants()` reported **zero**
+cross-currency `fcf_yield_pct` violations. Not because there were none — because
+the field the test reads had been wiped, so every affected row was
+*unmeasurable* and unmeasurable counted as clean.
+
+A third invariant now covers it: `financial_currency` missing on more than **5%**
+of rows is itself a breach, named as "what a refresh running pre-fix code looks
+like". A proportion rather than an absolute, because a few tickers genuinely lack
+`financialCurrency` upstream and a check that cries wolf gets ignored. Broken on
+purpose both ways (threshold `0.0` → the cry-wolf test fails; `0.99` → the
+wholesale-loss test fails) before being trusted. Against the live data it fires:
+
+```
+financial_currency: missing on 608 of 863 row(s) (70%) — the cross-currency
+checks cannot run on those, so they PASS without being tested.
+```
+
+The nightly log now prints the invariant **names** rather than a count, because a
+count goes stale silently the moment a rule is added — this repo has already paid
+for that once, when the entitlement guard printed "14 checks" over 11 sections.
+
+### What this means operationally
+
+* **Merging is not cosmetic — it is what makes the data fixes permanent.** Until
+  then every night re-breaks 608–863 rows.
+* **No re-backfill is needed after the merge.** The refresh rewrites every row
+  from the provider anyway, so the first post-merge run repairs the universe as
+  a side effect. Backfilling before merging would just be undone again.
+* **Nothing a customer sees is wrong in a new way**: this is the pre-audit
+  behaviour, which is what the site has always shown.
+
+### D4 was fixed in two of three workflows
+
+Same session, same family: `analytics/requirements-cron.txt` was wired into
+`daily-refresh.yml` and `daily-refresh-au.yml`, but **`weekly-enriched-refresh.yml`
+kept the old unpinned `yfinance>=0.2.40` floors** — the CLAUDE.md 11c trap, a
+rule fixed in two places and a third surface opting out by not being in either
+list. It matters more there, not less: `--mode full` rewrites enriched data for
+the entire universe in one run. Now pinned.
+
+**Listed, not changed:** the CI job at `.github/workflows/ci.yml:168` installs the
+same unpinned floors. That is a test environment rather than a data-writing
+pipeline, so the blast radius is different — but it does mean a green CI does not
+prove the *pinned* pipeline works, and an upstream release can redden untouched
+code (which ruff has already done here once). Owner's call.
 
 ## D5 — 52-week high/low are on a different price basis than the chart ✅ OWNER DECIDED: LEAVE AS IS
 
