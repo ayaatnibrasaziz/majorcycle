@@ -773,7 +773,7 @@ audit should care about, which is *not* the order they were found:
 | | Finding | Status | The transferable lesson |
 |---|---|---|---|
 | **D9** | **The alarm that reports every other guard had never worked** — dead API key *and* code that cannot see a rejected send | ✅ fixed | **Break the notifier on purpose, not just the guard.** Silence was both the failure state and the healthy state |
-| **D10** | **Four S&P 500 companies missing every night** (`FDXF, HONA, Q, SNDK`) — a NaN crash, behind two silencers | ⚠️ **OPEN** | A dead alarm costs real defects, not just comfort |
+| **D10** | **SanDisk dropped nightly by a `NaN` on the way to the database**, behind two silencers — scheduled after Layer G | ⚠️ **OPEN** | A dead alarm costs real defects, not just comfort. ⚠️ Also: *"4 failed" was 1 defect + 3 companies not yet trading* — read the traceback, not the summary line |
 | **D8** | The `.csv` and the `.xlsx` of one run disagreed by a cent | ✅ fixed | When the duplicated rule is an *algorithm*, sharing a constant isn't enough — make one consume the other's output |
 | **D11** | **A partial refresh failure is silent** — needs a threshold, not "any failure is red" | 🔵 **OPEN DECISION** | An alarm that cries wolf nightly is ignored in a fortnight, and then *looks* like coverage |
 
@@ -963,38 +963,94 @@ CLEAN:   39 field(s) checked across 864 stocks; invariants: zero-margin sentinel
 
 ---
 
-## D10 — Four S&P 500 companies have been missing every night ⚠️ OPEN
+## D10 — SanDisk is dropped every night by a NaN on the way to the database ⚠️ OPEN
 
 **Found only because D9's alarm was being tested.** It is the concrete proof that
 a dead notifier costs real defects, not just peace of mind.
 
-The *Refresh index membership* step has failed on the **same four tickers every
-single night**:
+> ⚠️ **CORRECTED 2026-08-06.** This section first said *"four S&P 500 companies
+> missing, basket resolves to 499 of 503"*. That was written from the summary
+> line (`Failed tickers (4)`) without reading the traceback under it. **Reading
+> it showed two unrelated causes, and only one of them is ours.** The error is
+> recorded rather than quietly edited because it is the same mistake this whole
+> audit is about: a plausible number, taken at face value, not checked against
+> the thing it claims to describe.
+
+### Three of the four are NOT a defect
+
+`FDXF`, `HONA` and `Q` fail with *"all data sources failed"* — no traceback, no
+crash. Looked up in our own `listings` table, they are **announced spin-offs that
+have not started trading**:
+
+| Ticker | Company | Exchange |
+|---|---|---|
+| `FDXF` | FedEx Freight Holding Company, Inc. | NYSE |
+| `HONA` | Honeywell Aerospace Inc. | NASDAQ |
+| `Q` | Qnity Electronics, Inc. | NYSE |
+
+The S&P constituent list names upcoming members before they list, so the provider
+correctly has no price history. **The pipeline tried, found nothing, and invented
+nothing** — the right outcome. They will arrive by themselves once they trade.
+*(Worth remembering next time this list is read: "N failed" is not "N broken".)*
+
+### One of the four IS our defect — SanDisk
 
 ```
-ValueError: Out of range float values are not JSON compliant: nan
-Failed tickers (4): FDXF, HONA, Q, SNDK
-Constituent fetch complete — 0/4 landed in the universe
+SNDK | enriched | market=us | sector=Technology | bars=369
+SNDK: unexpected error: Out of range float values are not JSON compliant: nan
+  File "analytics/cron/daily_refresh.py", line 714, in run
+    supabase.table("stocks").upsert(stock_row, on_conflict="ticker").execute()
 ```
 
-Confirmed against the live database:
+Read those two lines together: **the fetch succeeded.** 369 bars, sector
+resolved, enrichment done — and then it died on the *write*. A `NaN` reached the
+HTTP layer, which refuses it (correctly: `NaN` is not valid JSON).
 
 | | |
 |---|---|
-| Rows in `index_membership` (active) | **4** |
-| Rows in `stocks` | **0** |
-| Consequence | the screener's **S&P 500 basket resolves to 499 of 503**, and the four never appear in Browse |
+| Real consequence | the screener's S&P 500 basket resolves to **502 of the 503 that exist**, and SanDisk never appears in Browse |
+| Why SanDisk | a recent spin-off has genuinely blank cells in its statement history, where an established company has numbers |
 
-**Why it survived:** that step carries `continue-on-error: true` **and** the email
-that would have reported it was the dead one from D9. Two silencers on the same
-signal.
+### Cause — the cleaner doesn't clean the one thing that breaks the write
 
-**Likely cause** (to confirm when fixing): a pandas `NaN` surviving into the JSON
-payload when a **brand-new** ticker is inserted — existing tickers refresh fine,
-860+ of 863 nightly. The fix probably belongs in the provider's normalisation
-(`normalise_fundamentals()` in `field_spec.py`) so every writer inherits it,
-rather than at the call site. Needs a regression test with a NaN-bearing
-fundamentals dict, broken on purpose first.
+```python
+def _jsonb(obj: Any) -> Any:
+    return json.loads(json.dumps(obj, default=str))
+```
+
+**`json.dumps` permits `NaN` by default** — it emits a bare `NaN` token, which is
+invalid JSON, and `json.loads` reads it straight back. So the round-trip is a
+**no-op for exactly the value that breaks the save**: the function looks like a
+sanitiser, and passes the problem through untouched until `httpx` rejects it and
+the whole stock is dropped.
+
+The provider *does* have a real cleaner — `_safe()` in `yfinance_provider.py`
+turns `NaN`/`inf` into `None` — but it is applied to individual scalar
+fundamentals, not to the statement blobs.
+
+### Fix (planned — **owner-scheduled for after Layer G**)
+
+**In `_jsonb`, not at the call site.** It is the single funnel every blob passes
+through — `fundamentals`, all six statement blobs, `news`, `earnings_history`,
+`top_holders`, `insider_transactions`, `analyst_upgrades_downgrades`. Teaching it
+to map `NaN`/`inf` → `None` fixes all of them at once and every future one, which
+is the same "one rule, one place" that D8 and 11c are about. Patching SanDisk's
+particular field would just move the crash to the next spin-off.
+
+⚠️ **While in there, check the sibling weakness:** `default=str` silently turns
+anything non-serialisable into a **string**, so a `numpy.int64` would be stored as
+`"123"` rather than `123`. Not observed causing harm, but it is the same shape —
+a fallback that converts a problem into a plausible-looking wrong value.
+
+Then, per this project's own rules:
+
+1. **Break it on purpose first** — a fixture blob carrying a `NaN`, red before the
+   fix and green after.
+2. **Re-run the cron and confirm SanDisk actually lands in `stocks`** — assert on
+   the row, not on the function (14d: a fix that ships inert still reads as done).
+3. Fold in **D11**, which is what would have reported this in the first place.
+
+Rough size: about an hour including the test.
 
 ---
 
@@ -1319,13 +1375,17 @@ exercised is a belief, exactly like the alarm was.
 ⚠️ **Do this alongside D10, not separately.** D10 is a live example of the thing
 D11 is meant to catch, so the fix and its test case are the same piece of work.
 
-**And it was already hiding a live defect.** The *index-membership* step has failed
-on the same 4 tickers every single night — `FDXF, HONA, Q, SNDK` — with
-`ValueError: Out of range float values are not JSON compliant: nan`. Confirmed in
-the live database: all four sit in `index_membership` with **no row in `stocks`**,
-so the screener's S&P 500 basket resolves to **499 of 503** and those companies
-never appear in Browse. It is invisible because that step is `continue-on-error`
-*and* the email that would have reported it was dead.
+**And it was already hiding a live defect.** The *index-membership* step has
+reported four failures every single night. Three are companies that have not
+started trading yet, which is fine; the fourth is **SanDisk**, dropped by a `NaN`
+on the way to the database (**D10**). It is invisible because that step is
+`continue-on-error` *and* the email that would have reported it was dead.
+
+> ⚠️ **And note how nearly it stayed hidden even after being found.** The
+> summary line reads `Failed tickers (4)`, and this document first recorded all
+> four as broken. Only the traceback distinguished one real defect from three
+> non-events. A count is not a diagnosis — the same lesson as reading the COUNT
+> of a test run rather than its colour, one level further in.
 
 ## Live universe census, 2026-08-06
 
