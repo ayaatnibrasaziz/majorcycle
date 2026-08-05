@@ -1,6 +1,8 @@
 // Lightweight universe index for the /stocks Browse & Search page.
 //
-// The Browse page lets a user search and filter the whole ~720-stock universe.
+// The Browse page lets a user search and filter the whole universe (863 equities
+// as of 2026-08-06 — it auto-expands, so treat that as a reading, not a bound;
+// the paging below is what makes the number irrelevant here).
 // To keep it fast (and never ship the heavy `fundamentals` JSONB to the client),
 // we load only the handful of columns the list needs — ticker, market, name,
 // sector, industry, currency, market_cap — for every non-index equity, cache it
