@@ -13,24 +13,34 @@
 import { unstable_cache } from 'next/cache';
 
 import { createAdminClient } from '@/lib/supabase/server';
+import { selectAll } from '@/lib/supabase/paginate';
 import type { IndexId, IndexMembership } from '@/lib/types';
 
 const EMPTY: IndexMembership = { sp500: [], asx200: [], tsx60: [] };
 
 async function _fetchIndexMembership(): Promise<IndexMembership> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from('index_membership')
-    .select('index_id,ticker')
-    .eq('is_active', true);
+  // 500 + 200 + 60 constituents is 765 active rows today — comfortably under
+  // PostgREST's 1000-row cap, and comfortably close enough to it that adding a
+  // fourth index would have dropped constituents out of the baskets with no
+  // error to notice. Paginated so the number stops mattering.
+  const data = await selectAll<{ index_id: IndexId; ticker: string }>((from, to) =>
+    supabase
+      .from('index_membership')
+      .select('index_id,ticker')
+      .eq('is_active', true)
+      .order('index_id', { ascending: true })
+      .order('ticker', { ascending: true })
+      .range(from, to),
+  );
 
   // Graceful: on error (or before the table/seed exists) the index baskets simply
   // resolve to empty — the Top/Sector/Industry/Mag7 baskets are unaffected — rather
   // than throwing and breaking the Run page.
-  if (error || !data) return EMPTY;
+  if (data.length === 0) return EMPTY;
 
   const out: IndexMembership = { sp500: [], asx200: [], tsx60: [] };
-  for (const row of data as { index_id: IndexId; ticker: string }[]) {
+  for (const row of data) {
     (out[row.index_id] ??= []).push(row.ticker);
   }
   return out;

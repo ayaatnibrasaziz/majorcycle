@@ -49,16 +49,32 @@ _SOURCES: list[tuple[str, Callable[[], list[str]], int, int]] = [
 # when there's no existing set (first run / freshly seeded with 0 rows).
 _MAX_CHURN = 0.15
 
+#: PostgREST's per-response row cap. A read that can exceed it must paginate;
+#: there is no error when it truncates. See analytics/cron/daily_refresh.py.
+_PAGE = 1000
+
 
 def _active_members(supabase: Any, index_id: str) -> set[str]:
+    # Paginated even though the biggest index we track is 500 names: this set is
+    # the denominator of the _MAX_CHURN safety check, so a silently short read
+    # would make a normal pull look like a catastrophic membership change and
+    # skip the write. Filtering by index_id narrows the rows; it does not bound
+    # them.
     res = (
         supabase.table("index_membership")
         .select("ticker")
         .eq("index_id", index_id)
         .eq("is_active", True)
+        .range(0, _PAGE - 1)
         .execute()
     )
-    return {r["ticker"] for r in cast(list[dict[str, Any]], res.data or [])}
+    rows = cast(list[dict[str, Any]], res.data or [])
+    if len(rows) == _PAGE:  # a full page means there may be more
+        logger.warning(
+            "%s active membership hit the %d-row page cap — churn check may be wrong",
+            index_id, _PAGE,
+        )
+    return {r["ticker"] for r in rows}
 
 
 def _write_index(supabase: Any, index_id: str, tickers: list[str], now: str) -> None:
@@ -94,12 +110,14 @@ def _fetch_missing(supabase: Any, members: set[str]) -> int:
     covered: set[str] = set()
     start = 0
     while True:
-        got = supabase.table("stocks").select("ticker").range(start, start + 999).execute()
+        got = (
+            supabase.table("stocks").select("ticker").range(start, start + _PAGE - 1).execute()
+        )
         batch = cast(list[dict[str, Any]], got.data or [])
         covered.update(r["ticker"] for r in batch)
-        if len(batch) < 1000:
+        if len(batch) < _PAGE:
             break
-        start += 1000
+        start += _PAGE
     missing = sorted(members - covered)
     if not missing:
         return 0

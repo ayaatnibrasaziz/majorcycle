@@ -29,6 +29,11 @@ import { VerdictCard } from '@/components/stocks/VerdictCard';
 import { fetchBenchmarks } from '@/lib/benchmarks.server';
 import { fetchCycleAnalysis, type CycleSpec } from '@/lib/cycle';
 import { getViewerEntitlement } from '@/lib/entitlement.server';
+import {
+  peHistoryUnavailableReason,
+  reportingCurrencyNote,
+  statementCurrency,
+} from '@/lib/format';
 import { recordFreeView } from '@/lib/freeViews';
 import { parseSpec, isValidMarket, horizonQuery, type RouteSearch } from '@/lib/horizon';
 import { fetchMetricMedians } from '@/lib/medians.server';
@@ -432,18 +437,25 @@ export default async function StockDetailPage({
         )}
         </section>
         <section id="sec-fundamentals" className="scroll-mt-[120px] space-y-[18px]">
+          {/* Statement figures are in the REPORTING currency, not the price
+              currency — see statementCurrency(). BHP.AX trades in AUD and
+              reports in USD, so `fundamentals.currency` here would print A$ in
+              front of US dollars. */}
           <EarningsHistory
             earningsHistory={stock.earningsHistory ?? []}
-            currency={stock.fundamentals.currency}
+            currency={statementCurrency(stock.fundamentals)}
+            currencyNote={reportingCurrencyNote(stock.fundamentals)}
           />
           <QuarterlyFinancials
             incomeStatementQuarterly={stock.incomeStatementQuarterly}
             cashflowQuarterly={stock.cashflowQuarterly}
             incomeStatementAnnual={stock.incomeStatementAnnual}
             cashflowAnnual={stock.cashflowAnnual}
-            currency={stock.fundamentals.currency}
+            currency={statementCurrency(stock.fundamentals)}
+            currencyNote={reportingCurrencyNote(stock.fundamentals)}
           />
           <ValuationHistory
+            unavailableReason={peHistoryUnavailableReason(stock.fundamentals)}
             peHistory={stock.peHistory ?? []}
             currentPe={stock.fundamentals.pe}
           />

@@ -17,6 +17,10 @@ import type { PeHistoryItem } from '@/lib/types';
 interface Props {
   peHistory: PeHistoryItem[];
   currentPe: number | null;
+  /** From `peHistoryUnavailableReason(fundamentals)`. Non-null only when the
+   *  series can never be built (the company reports in a different currency from
+   *  the one its shares trade in), so the empty state must not say "building". */
+  unavailableReason?: string | null;
 }
 
 function toMonthLabel(dateStr: string): string {
@@ -26,8 +30,16 @@ function toMonthLabel(dateStr: string): string {
   return `${mo} '${yr}`;
 }
 
-export function ValuationHistory({ peHistory, currentPe }: Props) {
-  const hasEnoughHistory = peHistory.length >= 4;
+export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Props) {
+  // `unavailableReason` OUTRANKS the stored series rather than merely captioning
+  // an empty one. Withholding at the source is a single control: it protects the
+  // chart only for as long as no cross-currency series is ever written, and a
+  // refresh running older code writes exactly that (the nightly job rewrites
+  // rows wholesale — CLAUDE.md 14g). A stale 5-year series would then render as
+  // a normal chart, because the reason is only consulted when the data runs out.
+  // Checking the currency HERE means the wrong series cannot be drawn even if it
+  // is present: two independent controls, as 11b requires of the paid surfaces.
+  const hasEnoughHistory = !unavailableReason && peHistory.length >= 4;
 
   const allPe   = peHistory.map((p) => p.pe);
   const curr    = currentPe ?? allPe[allPe.length - 1] ?? null;
@@ -92,7 +104,8 @@ export function ValuationHistory({ peHistory, currentPe }: Props) {
             }}
           >
             <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 360, lineHeight: 1.55 }}>
-              P/E history is building — expanding as quarterly data accumulates over time.
+              {unavailableReason ??
+                'P/E history is building — expanding as quarterly data accumulates over time.'}
               {curr !== null && (
                 <span style={{ display: 'block', marginTop: 8, fontFamily: "'JetBrains Mono', monospace", fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
                   Current P/E: {curr.toFixed(1)}x

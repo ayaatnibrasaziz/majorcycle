@@ -1,4 +1,69 @@
-import type { AnalystRecommendation, Currency } from '@/lib/types';
+import type { AnalystRecommendation, Currency, FundamentalsSnapshot } from '@/lib/types';
+
+/**
+ * Which currency a figure taken from the FINANCIAL STATEMENTS is denominated in.
+ *
+ * One rule, one place. Revenue, EBITDA, debt, cash, EPS and every statement blob
+ * are in the company's reporting currency, which is not always the currency its
+ * shares trade in — 79 of 858 stocks in our universe differ, including a third
+ * of the Canadian names. Anything that labels a statement figure must ask this,
+ * never `fundamentals.currency`; `web/scripts/check-statement-currency.mjs`
+ * fails the build if a statement component is handed the price currency.
+ *
+ * Falls back to the price currency when unknown (rows written before the field
+ * existed), which is right for the ~91% of stocks that report in it anyway.
+ */
+export function statementCurrency(f: FundamentalsSnapshot): string {
+  return f.financialCurrency ?? f.currency;
+}
+
+/** Full names for the currencies our universe actually reports in. */
+const CURRENCY_NAME: Record<string, string> = {
+  USD: 'US dollars',
+  AUD: 'Australian dollars',
+  CAD: 'Canadian dollars',
+  NZD: 'New Zealand dollars',
+  EUR: 'euros',
+  SGD: 'Singapore dollars',
+  TWD: 'Taiwan dollars',
+  GBP: 'pounds sterling',
+  JPY: 'Japanese yen',
+  HKD: 'Hong Kong dollars',
+};
+
+/**
+ * A caption for statement cards when the company reports in a different currency
+ * from the one its shares trade in — `null` when they agree, which is ~91% of
+ * the universe.
+ *
+ * A symbol alone cannot carry this. In `en-US` the US dollar is a bare `$`, so
+ * BHP's balance sheet would read "$15.7B" three inches below a share price of
+ * "A$60.52" and nothing on the page would say those are different dollars. The
+ * gap is real money — US$15.7B is about A$24B — and a beginner has no way to
+ * infer it. Annual reports solve this the same way, with a line of text.
+ */
+/**
+ * Why the P/E-history chart is empty for this stock, or `null` if it isn't.
+ *
+ * The series is built from exchange prices divided by income-statement earnings.
+ * When those are in different currencies the quotient is meaningless — Barrick
+ * plotted at 19.2x while the Key Metrics table on the same page said 10.1x — so
+ * the series is withheld at the source. Without this the card falls back to
+ * "P/E history is building", which promises a chart that can never arrive.
+ */
+export function peHistoryUnavailableReason(f: FundamentalsSnapshot): string | null {
+  const code = statementCurrency(f);
+  if (code === f.currency) return null;
+  const name = CURRENCY_NAME[code] ?? code;
+  return `A P/E history isn't shown for this stock: its shares trade in ${CURRENCY_NAME[f.currency] ?? f.currency} while its earnings are reported in ${name}, so a price-to-earnings series would divide one currency by another.`;
+}
+
+export function reportingCurrencyNote(f: FundamentalsSnapshot): string | null {
+  const code = statementCurrency(f);
+  if (code === f.currency) return null;
+  const name = CURRENCY_NAME[code] ?? code;
+  return `Figures reported in ${name} (${code}) — the company's reporting currency, not its share price currency (${f.currency}).`;
+}
 
 /**
  * Shared right-axis width (px) so EVERY chart's plot area ends at the same x and
@@ -44,7 +109,7 @@ export function fmtPrice(n: number, currency: Currency): string {
  * conventionally shown to 2 dp regardless of size; this exists mainly to fix the
  * hardcoded "$" in EarningsHistory/DividendHistory so AUD/CAD render A$/CA$.
  */
-export function fmtPerShare(n: number, currency: Currency): string {
+export function fmtPerShare(n: number, currency: Currency | string): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
@@ -53,7 +118,44 @@ export function fmtPerShare(n: number, currency: Currency): string {
   }).format(n);
 }
 
-const CURRENCY_SYMBOL: Record<Currency, string> = { USD: '$', AUD: 'A$', CAD: 'CA$' };
+/**
+ * The symbol `Intl` itself would print for an ISO currency code — `$`, `A$`,
+ * `CA$`, `NZ$`, `€`, `NT$`…
+ *
+ * A hardcoded three-entry lookup was enough while every number on the page was
+ * in the stock's own market currency. It stopped being enough once the
+ * financial statements were labelled with THEIR currency (`financialCurrency`),
+ * because a company may report in anything: our universe holds NZD, EUR, SGD
+ * and TWD reporters. Falling back to a bare `$` for those would say "dollars"
+ * about euros.
+ */
+const symbolCache = new Map<string, string>();
+
+export function currencySymbol(code: string): string {
+  const cached = symbolCache.get(code);
+  if (cached !== undefined) return cached;
+  let symbol = '$';
+  try {
+    const part = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: code,
+      maximumFractionDigits: 0,
+    })
+      .formatToParts(1)
+      .find((p) => p.type === 'currency');
+    if (part) symbol = part.value;
+  } catch {
+    symbol = '$'; // unknown/invalid code — never throw on a formatting path
+  }
+  // Some currencies have no glyph in this locale and fall back to the bare code
+  // — Singapore dollars render as "SGD". Butted straight against the number that
+  // reads as one word ("SGD15.7B"), and `Intl` itself puts a space there when it
+  // formats a full amount ("SGD 60.52"), so match it. Glyph symbols ($, A$, €)
+  // stay tight, which is how every finance site sets them.
+  if (/[A-Za-z]$/.test(symbol)) symbol += ' ';
+  symbolCache.set(code, symbol);
+  return symbol;
+}
 
 /**
  * Adaptive compact number — picks K/M/B/T by magnitude so a real, non-zero value
@@ -65,9 +167,9 @@ const CURRENCY_SYMBOL: Record<Currency, string> = { USD: '$', AUD: 'A$', CAD: 'C
  * e.g. 30_000_000 → "30.0M" · 800_000 → "800K" · 12_500 → "12.5K" · 250 → "250"
  *      1.23e9 → "1.2B" · 2.5e12 → "2.5T"
  */
-export function fmtCompact(value: number, currency?: Currency): string {
+export function fmtCompact(value: number, currency?: Currency | string): string {
   if (!Number.isFinite(value)) return '—';
-  const prefix = currency ? (CURRENCY_SYMBOL[currency] ?? '$') : '';
+  const prefix = currency ? currencySymbol(currency) : '';
   const sign = value < 0 ? '−' : '';
   const abs = Math.abs(value);
   const m = (n: number) => (n >= 100 ? n.toFixed(0) : n.toFixed(1)); // mantissa ∈ [1,1000)
@@ -88,9 +190,9 @@ export function fmtCompact(value: number, currency?: Currency): string {
  */
 export function makeCompactAxisFormatter(
   axisMax: number,
-  currency?: Currency,
+  currency?: Currency | string,
 ): (v: number) => string {
-  const prefix = currency ? (CURRENCY_SYMBOL[currency] ?? '$') : '';
+  const prefix = currency ? currencySymbol(currency) : '';
   const m = Math.abs(axisMax);
   const [div, suffix] =
     m >= 1e12 ? [1e12, 'T'] :

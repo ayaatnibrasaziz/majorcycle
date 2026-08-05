@@ -50,6 +50,16 @@ jobs:
         # columns become user-writable. See the script header.
         run: pnpm check:entitlement-gates
 
+      - name: Check data-integrity rules
+        # Two rules that no type checker can see, both from the 2026-08-05 data
+        # audit: (a) never read a growing table without bounding the query —
+        # PostgREST silently truncates at 1000 rows, and `stocks` grows on its
+        # own as readers request tickers; (b) never label a financial-statement
+        # figure with the SHARE PRICE currency — 79 of 858 stocks report in a
+        # different one. Static scan, no credentials, so it can never go quiet.
+        # It prints the number of checks it ran — read the count, not the colour.
+        run: pnpm check:data-integrity
+
       - name: Build
         run: pnpm build
 
@@ -192,8 +202,26 @@ jobs:
           # one without the other, this step fails.
           set -e
           fail=0
-          for f in major_cycle.py presets.py providers/base.py \
-                   scoring/financial_health.py scoring/overall.py scoring/valuation.py; do
+          # The list is DERIVED from what web/_engine/ actually contains, not
+          # hardcoded. A hardcoded list has the same defect as everything else
+          # this repo has been bitten by: adding a vendored file and forgetting
+          # to add it to the list leaves it silently unguarded, and nothing goes
+          # red. __init__.py files are the vendoring scaffolding itself and have
+          # no analytics/ counterpart.
+          files=$(cd web/_engine && find . -name '*.py' ! -name '__init__.py' \
+                    | sed 's|^\./||' | sort)
+          count=$(echo "$files" | grep -c . || true)
+          echo "Comparing $count vendored file(s) against analytics/"
+          if [ "$count" -lt 6 ]; then
+            echo "Only $count files found in web/_engine/ — the scan is broken, not clean"
+            exit 1
+          fi
+          for f in $files; do
+            if [ ! -f "analytics/$f" ]; then
+              echo "DRIFT: web/_engine/$f has no counterpart at analytics/$f"
+              fail=1
+              continue
+            fi
             if ! diff -u \
                 <(sed 's|from analytics\.|from _engine.|g' "analytics/$f") \
                 "web/_engine/$f"; then

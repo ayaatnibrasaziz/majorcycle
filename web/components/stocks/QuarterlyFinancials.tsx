@@ -20,7 +20,12 @@ interface Props {
   cashflowQuarterly?: FinancialStatement;
   incomeStatementAnnual?: FinancialStatement;
   cashflowAnnual?: FinancialStatement;
-  currency: Currency;
+  /** Revenue / net income / free cash flow are statement figures, so this is the
+   *  REPORTING currency — pass `statementCurrency(fundamentals)`. */
+  currency: Currency | string;
+  /** From `reportingCurrencyNote(fundamentals)` — non-null only when the company
+   *  reports in a currency other than the one its shares trade in. */
+  currencyNote?: string | null;
 }
 
 type Period = 'quarterly' | 'annual';
@@ -71,6 +76,7 @@ export function QuarterlyFinancials({
   incomeStatementAnnual,
   cashflowAnnual,
   currency,
+  currencyNote,
 }: Props) {
   const [mode, setMode]     = useState<Mode>('rev');
   const [period, setPeriod] = useState<Period>('quarterly');
@@ -280,6 +286,11 @@ export function QuarterlyFinancials({
             </BarChart>
           </ResponsiveContainer>
         </div>
+        )}
+        {currencyNote && (
+          <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--text-muted)' }}>
+            {currencyNote}
+          </div>
         )}
       </div>
     </div>

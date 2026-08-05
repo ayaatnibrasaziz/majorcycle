@@ -18,7 +18,12 @@ import type { Currency, EarningsHistoryItem } from '@/lib/types';
 
 interface Props {
   earningsHistory: EarningsHistoryItem[];
-  currency: Currency;
+  /** EPS comes off the income statement, so it is in the REPORTING currency —
+   *  pass `statementCurrency(fundamentals)`, never `fundamentals.currency`. */
+  currency: Currency | string;
+  /** From `reportingCurrencyNote(fundamentals)` — non-null only when the company
+   *  reports in a currency other than the one its shares trade in. */
+  currencyNote?: string | null;
 }
 
 function toQtrLabel(dateStr: string): string {
@@ -42,7 +47,7 @@ const TOOLTIP_DARK = {
   padding: '8px 12px',
 };
 
-export function EarningsHistory({ earningsHistory, currency }: Props) {
+export function EarningsHistory({ earningsHistory, currency, currencyNote }: Props) {
   const items = earningsHistory.slice(-8);
 
   // Clickable legend — toggles each series (est / act) on and off.
@@ -290,6 +295,11 @@ export function EarningsHistory({ earningsHistory, currency }: Props) {
             </div>
           )}
         </div>
+        {currencyNote && (
+          <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--text-muted)' }}>
+            {currencyNote}
+          </div>
+        )}
       </div>
     </div>
   );

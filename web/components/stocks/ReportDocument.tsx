@@ -23,6 +23,11 @@ import { BadgeRow, StockHeader } from '@/components/stocks/StockHeader';
 import { TechnicalLevels } from '@/components/stocks/TechnicalLevels';
 import { ValuationHistory } from '@/components/stocks/ValuationHistory';
 import { VerdictCard } from '@/components/stocks/VerdictCard';
+import {
+  peHistoryUnavailableReason,
+  reportingCurrencyNote,
+  statementCurrency,
+} from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useScrollSpy } from '@/lib/useScrollSpy';
 import type { ReportData } from '@/lib/report-types';
@@ -288,9 +293,12 @@ export function ReportDocument({ data }: { data: ReportData }) {
 
         <section id="sec-fundamentals" className="report-group">
           <ReportSection>
+            {/* Statement figures use the REPORTING currency — see
+                statementCurrency(). The on-page section does the same. */}
             <EarningsHistory
               earningsHistory={stock.earningsHistory ?? []}
-              currency={stock.fundamentals.currency}
+              currency={statementCurrency(stock.fundamentals)}
+              currencyNote={reportingCurrencyNote(stock.fundamentals)}
             />
           </ReportSection>
           <ReportSection>
@@ -299,11 +307,13 @@ export function ReportDocument({ data }: { data: ReportData }) {
               cashflowQuarterly={stock.cashflowQuarterly}
               incomeStatementAnnual={stock.incomeStatementAnnual}
               cashflowAnnual={stock.cashflowAnnual}
-              currency={stock.fundamentals.currency}
+              currency={statementCurrency(stock.fundamentals)}
+              currencyNote={reportingCurrencyNote(stock.fundamentals)}
             />
           </ReportSection>
           <ReportSection>
             <ValuationHistory
+              unavailableReason={peHistoryUnavailableReason(stock.fundamentals)}
               peHistory={stock.peHistory ?? []}
               currentPe={stock.fundamentals.pe}
             />
