@@ -664,12 +664,16 @@ artifact was opened and looked at — three by rendering pages, and the blank
 downloaded report **by the owner asking the right question**. The guards are
 good at holding *known* failures and poor at finding *new* ones.
 
+> ✅ **Four of these were closed on 2026-08-06** — see § *Follow-up session* at the
+> end of this file. The table below is left as written so the gap and its closure
+> can both be read; each closed row says so.
+
 | Not covered | Consequence |
 |---|---|
-| **Every surface as a FREE (unentitled) account** | All verification was done as a *subscriber*. The paywall and these data changes interact and only one side has been seen. **The largest remaining gap.** |
+| ~~**Every surface as a FREE (unentitled) account**~~ ✅ **CLOSED 2026-08-06** | All verification was done as a *subscriber*. The paywall and these data changes interact and only one side has been seen. **The largest remaining gap.** |
 | **A per-stock cross-check** of our figure against the provider's own independently-derived one | `check_field_units` watches **cohort medians**, so it catches a provider changing a field's units for *everyone* and is blind to *one* stock being wrong. Demonstrated, not assumed: a synthetic universe with a single 100×-wrong dividend yield produces **0 breaches**; the same error applied to all 40 is caught. This is the comparison that exposed D3b — run by hand, once. |
-| **The exported `.xlsx` cells** | Verified only as a well-formed file (correct MIME, `PK` zip magic, 8.6 KB) built from rows checked in the CSV. Never opened in a spreadsheet. |
-| **`/account`, `/request`, the Sentiment tab, the remaining detail tabs** | Untouched. |
+| ~~**The exported `.xlsx` cells**~~ ✅ **CLOSED 2026-08-06 — and it found a defect** | Verified only as a well-formed file (correct MIME, `PK` zip magic, 8.6 KB) built from rows checked in the CSV. Never opened in a spreadsheet. |
+| ~~**`/account`, `/request`, the Sentiment tab, the remaining detail tabs**~~ ✅ **CLOSED 2026-08-06** | Untouched. |
 | **375px / mobile** | Owner-deferred to Layer H. |
 | **859 of 863 stocks individually** | Four were checked by eye; the rest rest on the automated rules above. |
 | **`ci.yml` still installs unpinned `yfinance>=…`** for the test job | Listed, not changed (§ D4 fixed the three *data-writing* workflows). A green CI therefore does not prove the **pinned** pipeline works, and an upstream release can redden untouched code — which ruff has already done here once. |
@@ -750,3 +754,158 @@ names the stock:
 About half a session. `analytics/cron/check_field_units.py` already supplies
 the loading, the paginated read, the reporting shape and the email path, so
 this is a second module beside it rather than new machinery.
+
+---
+
+# Follow-up session — 2026-08-06
+
+Closing follow-ups **1, 3 and 4** from the list above. All work was done against
+**production** (`www.majorcycle.com`), never a preview, using throwaway accounts
+whose entitlement state was set directly in `profiles` — which is exactly the
+input the rendering reads (`lib/entitlement.ts`). Every account was deleted in a
+`finally`. The shared E2E login was never touched.
+
+## D8 — The `.csv` and the `.xlsx` of one run disagreed by a cent ✅ FIXED
+
+**This is the defect that opening the cells produced**, and it is the reason the
+follow-up existed: the file had been checked as a *file* (valid zip, right MIME,
+right size, built from rows verified in the CSV) and never as *cells*.
+
+Barrick's analyst target, one screener run, three surfaces:
+
+| Surface | Figure |
+|---|---|
+| the Stock Detail page | **CA$65.76** |
+| `Download Excel` | **65.76** |
+| `Download CSV` | **65.75** ✗ |
+
+### Cause
+
+One number, three rounding rules — the shape 11c warns about, with a third copy:
+
+| | rule | 65.755 | 1.005 |
+|---|---|---|---|
+| screen | `Intl.NumberFormat` | 65.76 | 1.01 |
+| `.csv` | `value.toFixed(2)` | 65.75 ✗ | 1.00 ✗ |
+| `.xlsx` | `Math.round(v * 100) / 100` | 65.76 | 1.00 ✗ |
+
+`toFixed` and `Math.round` both round the **binary double**, which sits a hair
+below a half-cent; `Intl` rounds the decimal the reader is actually shown. So the
+CSV parts company on one set of values and *both* exports part company from the
+page on another. Measured: **~4.3% of values carrying a third decimal**.
+
+Nothing was red, and `lib/ratings.ts` carried a comment asserting the two files
+"always show identical figures" — a documented invariant that had never been true.
+
+### Fix
+
+`exportText` now formats with the **screen's** `Intl` (`useGrouping: false`, so a
+CSV field carries no comma and an Excel cell stays parseable), and `lib/xlsx.ts`
+derives its cell **number** by parsing that same string rather than rounding a
+second time. One rule, one place; the workbook cannot drift from the CSV because
+it is downstream of it.
+
+### Guard
+
+`web/e2e/export-parity.spec.ts` — pure and credential-free, so it can never
+silently skip. It imports both real functions rather than re-implementing either
+(a fourth copy of the rule is the thing being guarded against). Broken on purpose
+three ways before being trusted, each failing on the exact value:
+
+| Break | Failure |
+|---|---|
+| CSV back to `toFixed(2)` | `value 65.755 vs the screen — Expected "65.76", Received "65.75"` |
+| workbook rounding independently again | `value 1.005 as num2 — Expected "1.00", Received "1.01"` |
+| `useGrouping: false` removed | `value 1234.565 — Expected "1234.57", Received "1,234.57"` |
+
+### Verified live after the merge
+
+Same screener run, exports downloaded from production again: the CSV now reads
+`65.76`, and a **cell-by-cell comparison of all 152 cells against the CSV
+produced 0 mismatches.**
+
+## The free tier, walked end to end ✅ NOTHING FOUND
+
+Nine surfaces as an account with no subscription. Every claim of absence carried
+a positive control in the same read (§15).
+
+| Surface | Result |
+|---|---|
+| `/stocks`, three Stock Details, `/run`, `/results`, `/account`, `/request` | 200, **zero** of the nine premium fields anywhere in the HTML |
+| `/pricing` | redirects a signed-in reader to `/account` — deliberate (F-A4-c) |
+| `GET …/report` | **402** `private, no-store`, `reason: no_subscription` |
+| `POST /api/analyze` | **402** `private, no-store` |
+| uncaught JS errors across the walk | none |
+
+The free reader keeps the price chart, drawdown with bands, technicals, analyst
+targets, relative performance, earnings, quarterly financials, valuation history,
+balance sheet, dividends, Key Metrics, insider activity, analyst rating changes,
+short interest and news — and sees `Unlock` in place of the Overall Rating and
+Health Score, with a short pitch where the Verdict and Scorecard would be. That
+is the F3 Step 10 rule rendering exactly as written.
+
+**The data-audit fixes render correctly for a free reader too** — which was the
+actual question, since the paywall strips fields and the currency work adds them.
+BHP and ABX both show the reporting-currency sentence, both withhold the P/E
+history with a plain-English reason, and both omit the FCF Yield row that AAPL
+shows. The withholding survives into the CSV and the workbook as blank cells.
+
+**The 25-stock daily fence** was driven to its limit: the 26th distinct stock
+shows an honest explanation naming the reset time and confirming already-opened
+stocks still work; a stock already counted today opens normally and writes nothing.
+
+## The subscription-state matrix on live ✅ NOTHING FOUND
+
+Eleven states × four surfaces. Entitled states show the real rating and carry all
+nine premium fields; unentitled states show `Unlock` and carry **zero**.
+
+| State | Badge | Rating | Screener | `…/report` |
+|---|---|---|---|---|
+| no subscription | NO PLAN | locked | locked | 402 `no_subscription` |
+| trialing | TRIAL ACTIVE | shown | open | 200 |
+| active | ACTIVE | shown | open | 200 |
+| active, cancelling at period end | ACTIVE | shown | open | 200 |
+| past_due inside grace | PAYMENT DUE | shown | open | 200 |
+| past_due, grace expired | ACCESS PAUSED | locked | locked | 402 `payment_failed` |
+| canceled | CANCELLED | locked | locked | 402 `canceled` |
+| `paused` (unreachable — see below) | NO PLAN | locked | locked | 402 `no_subscription` |
+| dispute lock on an ACTIVE sub | ON HOLD | locked | locked | 402 `billing_blocked` |
+| dispute LOST (cancelled + blocked) | ON HOLD | locked | locked | 402 `billing_blocked` |
+| deletion scheduled on an ACTIVE sub | — | confined | confined | 403 `account_deleting` |
+
+Every response — including every refusal — sends `private, no-store`. The two
+`billing_blocked` states offer **Contact support** rather than an upgrade, which
+is the right refusal: we do not sell to someone whose payment is being clawed
+back. Deletion confinement outranks entitlement, sending an *entitled* account to
+`/reactivate` from every `(app)` route.
+
+> **`paused` cannot occur.** `mapStripeStatus` translates Stripe's `paused` to
+> `null`, and the only production writers of `subscription_status` are that
+> function plus three literal `'canceled'`/`'active'`/`'past_due'` writes in the
+> webhook. Typing `paused` in by hand proves the half that matters: an
+> **unrecognised** status locks. Already pinned by `entitlement.spec.ts`.
+
+## ⚠️ Open, owner's decision — the Results table shows one `$` for three currencies
+
+`formatValue`'s `money2` / `money0` hardcode a bare `$` (`components/results/columns.ts`),
+so one screener run rendered `$309.38` (USD), `$62.54` (AUD) and `$53.74` (CAD) in
+the same sortable column. The `Close` and `Analyst Target` columns of both export
+files carry no currency column at all.
+
+Not incorrect — the values *are* in each stock's home currency, the `Market`
+column sits beside them, and the column tooltip says "in the stock's home
+currency". But it is the same shape as 14d: *a symbol alone is not enough.*
+Everywhere else is careful (`A$`, `CA$` throughout the detail pages).
+
+**Not changed** — it is a design decision about a deliberately-built table, and
+adding per-row symbols does not make a mixed-currency numeric sort meaningful
+either. Written up for the owner with three options in
+`docs/live-verification-walkthrough.md`.
+
+## Gates after this session
+
+| | |
+|---|---|
+| Playwright e2e | 116 → **121** (the count moved, so the new suite ran) |
+| `pnpm typecheck` · `pnpm lint` | clean, 0 errors |
+| `check:entitlement-gates` · `check:data-integrity` · `check:report-sections` | 11 · 55 · 22 |
