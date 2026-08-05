@@ -1025,43 +1025,77 @@ invariants: zero-margin sentinel, cross-currency fcf_yield_pct, financial_curren
 check_field_units: OK — every median is where it should be
 ```
 
-### The signals
+### The signal — one channel, and it was tested by breaking it
 
-| Signal | Goes to | Verified? |
-|---|---|---|
-| **The workflow turns red** → GitHub's own "failed workflow" email | the GitHub account's notification address | ✅ **seen on screen** — `ayaatnibrasaziz@gmail.com`, already set to *"Failed workflows only"* |
-| A Resend email from `MajorCycle Cron <noreply@majorcycle.com>` naming the field | whatever `OWNER_EMAIL` holds | ⚠️ **never fired, and unverifiable** — see below |
+**GitHub's failed-workflow email is the only alert.** Verified end to end on
+2026-08-06 rather than assumed:
 
-### ⚠️ Why the red X is the primary signal, not the email
+| Step | Result |
+|---|---|
+| Both crons deliberately broken on `main` (one band bent to an impossible range, in the workflow command so no unit test was falsified) | — |
+| AU run | **failed** — `dividend_yield_pct: median 2.34 is outside the expected [100, 200] over 666 stocks  <-- looks like a FRACTION where a percent is expected` |
+| US+CA run | **failed**, same message over 667 stocks |
+| Destination | GitHub Settings → Notifications: **`ayaatnibrasaziz@gmail.com`**, Actions set to *"Failed workflows only"* — **seen on screen** |
+| Cost | **$0** — Actions minutes are unlimited on a public repo, and GitHub notifications are free on every plan |
 
-`continue-on-error: true` was removed from the check step. The old reasoning —
-*the step runs after the data is written, so a red X is noise* — had a hole:
-**it made silence ambiguous.** A green tick meant all three of "the data is
-fine", "a problem was found but the email failed", and "the step never ran".
+The hint firing is the part that matters: that is the **exact** yfinance change
+that would otherwise put a 100×-wrong yield on every page overnight.
 
-That is the D3d failure mode (*unmeasurable counted as clean*) moved up a layer,
-and three things made it worse:
+### 🔴 The Resend alert was DEAD, and could not have told us so
 
-1. `_email()` swallows **every** exception, so a failed send is invisible.
-2. It **silently skips** if `RESEND_API_KEY` or `OWNER_EMAIL` is unset, logging
-   only a warning.
-3. **It has never actually been sent** — checked against the *complete* Resend
-   history (42 messages since July): not one cron alert, from either this check
-   or `daily_refresh`'s own failure mail. The path is unproven.
+The same test proved the thing it was meant to prove and one thing it wasn't:
+both runs called `_email()` with `--email`, both went red — and **Resend recorded
+nothing at all.** Not a bounce, not a rejection: no such message exists.
 
-**And `OWNER_EMAIL` cannot be verified by reading it.** GitHub secrets are
-write-only after creation — for the owner as much as for anyone else; the
-settings page shows a padlock, a name and a date, with only *overwrite* and
-*delete*. The only ways to confirm it are to fire it, or to overwrite it blind.
+**Two independent faults, and the design could not report either.**
 
-So the primary signal is now the one whose destination is **visible**: the run
-goes red, GitHub emails the account address, free (Actions minutes are unlimited
-on a public repo). The Resend email stays as an independent second channel that
-names the offending field — belt-and-braces, no longer load-bearing.
+1. **The key does not exist.** Resend holds exactly **one** API key, `supabase-smtp`,
+   created **2026-07-02**. The `RESEND_API_KEY` GitHub secret was created
+   **2026-05-24** — five weeks earlier. It holds a key that has since been deleted.
+   (The *app* is unaffected: Vercel has its own copy, and billing mail is
+   delivering normally. Only the GitHub copy went stale.)
+2. **A rejected send is indistinguishable from a delivered one.** `_email()` calls
+   `requests.post(...)` and never inspects the result. `requests` does not raise on
+   4xx, and the `except` clause only catches transport errors — so a `401` returns
+   normally, logs nothing, and looks exactly like success.
 
-⚠️ **The check is the LAST step of the only job**, deliberately. Failing it
-cannot skip work, and the red means *"tonight's numbers are suspect"*, never
-*"the refresh didn't run"* — the data is already written and untouched.
+So the alert this project believed it had **has never worked, in its entire life**
+— consistent with the Resend history: 42 messages since July, not one from a cron.
+
+> **The lesson, and it is 14g's again one layer up.** The instrument reported
+> nothing and nothing was the expected reading, so nothing looked like health.
+> *An untested alarm is not a safety net; it is a belief.* The only reason we know
+> is that the alarm was deliberately triggered — which is the same rule this
+> project already applies to every new guard, applied for once to the notifier
+> itself.
+
+**Owner decision 2026-08-06: remove the Resend email from both crons entirely.**
+`--email` and the two Resend secrets are gone from both check steps. One channel,
+whose destination is visible, beats two where one lies.
+
+### ⚠️ Still open — a PARTIAL refresh failure is silent
+
+Found while testing the above, not yet fixed. `daily_refresh.run()` logs
+`Failed tickers (N)`, calls the (dead) email, and **returns normally** — it never
+exits non-zero. So:
+
+| Failure | Signal today |
+|---|---|
+| The pipeline crashes outright | Python exits non-zero → red → GitHub email ✅ |
+| **N tickers fail but the run completes** | logged, and **nothing else** ❌ |
+
+A handful failing is routine — measured across four nights: **2, 4, 5 and 7** of
+~863. So this cannot simply become "any failure is red", or the cron is red most
+nights and the alarm is ignored within a fortnight. It needs a threshold (a
+percentage, tuned against those numbers), which is an owner decision.
+
+**And it was already hiding a live defect.** The *index-membership* step has failed
+on the same 4 tickers every single night — `FDXF, HONA, Q, SNDK` — with
+`ValueError: Out of range float values are not JSON compliant: nan`. Confirmed in
+the live database: all four sit in `index_membership` with **no row in `stocks`**,
+so the screener's S&P 500 basket resolves to **499 of 503** and those companies
+never appear in Browse. It is invisible because that step is `continue-on-error`
+*and* the email that would have reported it was dead.
 
 ## Live universe census, 2026-08-06
 
