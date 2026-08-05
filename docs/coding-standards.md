@@ -394,7 +394,31 @@ Phase 1 does NOT require 100% coverage. It DOES require these things tested:
 | Stripe webhook handler | Unit tests with fixture events | ✅ |
 | UI components | No tests required Phase 1 (visual reference is the spec) | — |
 
-Run via `pytest` (Python) and `vitest` (TS). Both must pass in CI.
+Run via `pytest` (Python) and **Playwright** (TS). Both must pass in CI.
+
+> ### 🔒 OWNER DECISION, 2026-08-06 — Playwright is the ONLY TypeScript test runner.
+>
+> **Do not add Vitest, Jest, or any second TS test framework.** Do not "restore"
+> one on the basis of an older doc. If a future need genuinely argues for one, it
+> is a decision to put to the owner, not an implementation detail.
+>
+> **How this arose.** This line, and item 3 of § 13, both required
+> `vitest` / `pnpm test` to pass — and **there has never been a `test` script or a
+> Vitest dependency in this project.** Nothing was broken by it, but it advertised
+> a layer of coverage that does not exist, and it read as an instruction to a
+> future session to install one.
+>
+> **Why one runner, in one sentence:** the project's rule for judging a CI run is
+> *check the COUNT, not the colour* — and that only works while there is **one**
+> count. Two runners means two numbers, and a suite that silently stops running
+> stays hidden behind the other one's green.
+>
+> **Where the "unit tests" live, then.** In `web/e2e/`, as **pure Playwright
+> specs** — no browser, no network, no credentials — so they run everywhere,
+> including a fork PR with no secrets configured, and can never self-skip.
+> `entitlement.spec.ts` (the paywall truth table) and `export-parity.spec.ts` (the
+> csv/xlsx rounding rule) are the reference examples to copy. They are also the
+> fastest tests in the suite: both finish in tens of milliseconds.
 
 ### Stripe webhooks — offline contract tests + a real end-to-end pass
 
@@ -510,10 +534,16 @@ def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[
 
 ## 13. Required CI Checks (Must Pass Before Merge)
 
+*This list is checked against `.github/workflows/ci.yml` — if they disagree, the
+workflow is right and this list is stale.* (It was: until 2026-08-06 item 3 read
+`pnpm test — all Vitest tests pass`, and there is no `test` script and no Vitest
+in the project. **Playwright is now the only TypeScript test runner by owner
+decision — see § 8.**)
+
 1. `pnpm typecheck` — zero TS errors
 2. `pnpm lint` — zero ESLint errors
-3. `pnpm test` — all Vitest tests pass
-4. `pnpm build` — Next.js production build succeeds
+3. `pnpm build` — Next.js production build succeeds (runs `build:report-bundle` first
+   via the `build` script, so the offline bundle is always rebuilt with the site)
 5. `ruff check analytics/` + `(cd web && ruff check _engine/ api/)` — zero Python lint errors
 6. `mypy analytics/` + `(cd web && mypy _engine/ api/)` — zero type errors (`--ignore-missing-imports --explicit-package-bases`)
 7. `pytest analytics/` — all Python tests pass
@@ -527,10 +557,12 @@ def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[
     statement figures labelled with the price currency (§ 14d), and the P/E chart's
     currency gate (§ 14e-2). Prints its own count and a per-root file floor, because its
     first version reported OK while silently covering a third less code.
-12. Playwright e2e — **116** tests, incl. the paywall behavioural matrix, the Stripe
-    **key-scope** probe (`e2e/stripe-key-scope.spec.ts`), and
+12. Playwright e2e — **121** tests, incl. the paywall behavioural matrix, the Stripe
+    **key-scope** probe (`e2e/stripe-key-scope.spec.ts`),
     **`e2e/report-download.spec.ts`**, which downloads the real offline report and opens it
-    over `file://` (§ CLAUDE.md 11d). The key-scope probe is the one Stripe test that reaches
+    over `file://` (§ CLAUDE.md 11d), and **`e2e/export-parity.spec.ts`**, which pins the
+    `.csv` and the `.xlsx` of one screener run to the same figures *and* to the screen's
+    (they disagreed by a cent until 2026-08-06). The key-scope probe is the one Stripe test that reaches
     the network: it asserts the key CI/dev is handed is a restricted `rk_`, that a permitted
     call (`prices.list`) succeeds, and that `customers.list` is refused with
     `StripePermissionError` specifically. Nothing else in the suite can tell a full key from
@@ -583,7 +615,7 @@ Every task ends with the relevant command(s) and shown output:
 | Task touched | Run | Expect |
 |---|---|---|
 | Any TS/React code | `pnpm typecheck && pnpm lint` | exit 0, no output |
-| New TS test | `pnpm test` | all pass |
+| New TS test | `pnpm e2e` — Playwright is the **only** TS runner (§ 8, owner decision) | all pass, **and the count went UP** |
 | Any Python code | `ruff check analytics/ && (cd web && ruff check _engine/ api/) && mypy analytics/ --ignore-missing-imports --explicit-package-bases && (cd web && mypy _engine/ api/ --ignore-missing-imports --explicit-package-bases)` | exit 0 |
 | Edit to cycle math / scoring | Mirror the edit in `web/_engine/<same_file>.py` (replace `from analytics.` with `from _engine.`); run the drift check from `.github/workflows/ci.yml` locally | drift check exits 0 |
 | Cycle math change | `pytest analytics/tests/test_major_cycle.py -v` | all pass |

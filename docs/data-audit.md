@@ -897,10 +897,100 @@ column sits beside them, and the column tooltip says "in the stock's home
 currency". But it is the same shape as 14d: *a symbol alone is not enough.*
 Everywhere else is careful (`A$`, `CA$` throughout the detail pages).
 
-**Not changed** — it is a design decision about a deliberately-built table, and
-adding per-row symbols does not make a mixed-currency numeric sort meaningful
-either. Written up for the owner with three options in
-`docs/live-verification-walkthrough.md`.
+> **It also breaks a rule we had already written down**, which is the part worth
+> noticing. `design-system.md` § *Price formatting* says, in bold: **"Never
+> hand-roll `Intl`/`currencySymbol`/hardcoded `$` in a component"** — and gives
+> the reason from the last time it happened: *"that drifted into `C$` vs `CA$`
+> and `$1.71` for AUD."* `formatValue` in `components/results/columns.ts` is
+> exactly a hand-rolled hardcoded `$`. So this is not an unconsidered design
+> choice, it is a **known-bad pattern that survived because nothing enforces the
+> rule** — the rule lives in prose in the design system and in no check. Whoever
+> picks this up should fix it by routing the money formats through
+> `web/lib/format.ts` (which is currency-aware) rather than by adding a symbol
+> lookup beside the existing one, and should consider whether
+> `check-data-integrity` can assert the prohibition so prose isn't the only
+> guard. Found 2026-08-06 while reconciling the docs against the code, *after*
+> the owner had already deferred the fix — the deferral stands, but it is now an
+> informed one.
+
+**⏸ OWNER DECISION 2026-08-06, taken with the table on screen: leave it, revisit
+later.** Not a bug to fix now. It is a design decision about a deliberately-built
+table, and adding per-row symbols does not make a mixed-currency numeric sort
+meaningful either. Three options when it is picked up:
+
+1. **A symbol per row** — `A$62.54`, `CA$53.74`. Easiest to read; does nothing
+   for the sort.
+2. **A Currency column**, in the table *and* both export files. Least pretty,
+   most honest, and the only one that survives leaving the website — a tooltip
+   does not travel into a spreadsheet. **Recommended.**
+3. **Leave it**, on the grounds that the `Market` column and the tooltip already
+   disclose it.
+
+Affected surfaces, so none is missed later: the Results table's `Close` and
+`Analyst Target` columns (`formatValue` in `components/results/columns.ts`), the
+mobile result cards (`CardStat label="Close"`), and the same two columns in the
+`.csv` and `.xlsx` exports, which carry no currency column at all.
+
+## The owner re-walked all of it, driving their own browser
+
+Same day, after the automated pass. Worth recording separately because it is a
+**different instrument**: the checks above were driven by a script against
+throwaway accounts, this was a person looking at a screen on their own signed-in
+account. Two things came out of it that the script had not produced.
+
+**(1) There are SEVEN reporting currencies, not the four the audit had seen.**
+The 2026-08-05 audit checked USD, AUD, CAD and NZD. Asked to cover "all the
+currencies", a census of the live universe returned **USD, AUD, CAD, NZD, EUR,
+TWD and SGD** across eleven price/report combinations (tabulated in
+`data-contracts.md`). **Four of them — EUR, TWD, SGD, and the AUD-priced/CAD-reporting
+pair — had never been looked at by anyone.** All were then opened on production
+and all were correct:
+
+| Stock | Prices in | Reports in | Note in words | P/E withheld | FCF Yield absent | Statement symbol |
+|---|---|---|---|---|---|---|
+| CBA.AX *(control)* | AUD | AUD | — none, correctly | no — **chart drawn** | n/a (a bank) | `A$` |
+| BHP.AX | AUD | USD | ✅ | ✅ | ✅ | `$` |
+| A2M.AX | AUD | NZD | ✅ | ✅ | ✅ | `NZ$` |
+| NXG.AX | AUD | CAD | ✅ | ✅ | ✅ | `CA$` |
+| TUA.AX | AUD | SGD | ✅ | ✅ | ✅ | `SGD` |
+| ASML | USD | EUR | ✅ | ✅ | ✅ | `€` |
+| TSM | USD | TWD | ✅ | ✅ | ✅ | `NT$` |
+
+The control matters as much as the seven: CBA has **no** note and **does** draw
+its P/E chart, so the rule is firing on the condition and not on everything.
+
+Two things that look wrong and are not. **`Intl` gives SGD no short symbol in
+`en-US`**, so Tuas reads `SGD 477M` rather than `S$477M` — unambiguous, and not
+to be "fixed" with a hand-rolled symbol table. **Tuas shows ANNUAL rather than
+QUARTERLY financial trends**, because it doesn't report quarterly and the card
+adapts. Owner accepted both.
+
+Also raised and dismissed with evidence: NexGen's financial-trend chart draws
+**revenue = 0** for several years. `total_revenue` is stored as **`null`**, not
+`0`, so the scorer excludes it — this is *not* the `zero_means_na` sentinel class
+(D1). The zeros come from the statement blobs, where a pre-revenue uranium
+developer genuinely earned nothing. Champion Iron (CIA.AX), the other
+AUD-priced/CAD-reporting stock, carries real revenue of ~$1.7bn, so the pipeline
+is not blanking that pair wholesale. **Owner decision: leave as is, it is the
+truth from the source.**
+
+**(2) All ten subscription states were re-confirmed by eye**, on the owner's own
+account, and the account was restored field-by-field afterwards against a
+snapshot taken before the first change. One additional detail surfaced that the
+script had not exercised: **the COUNTRY field on `/account` is locked while a
+subscription exists** and unlocks when it doesn't — correct, because country
+picks the billing currency (A$19 / US$15 / C$20), so an editable country during
+a subscription would let someone re-price their own bill. And **Manage billing on
+an account with no Stripe customer** refuses gracefully — *"There's no billing to
+manage on your account yet."* — rather than erroring.
+
+> **The general lesson, since it has now happened three times.** The 2026-08-05
+> session found four defects that no guard caught, all by looking at a finished
+> artifact. This session found a fifth class — *a whole dimension of the data we
+> had never enumerated* — by the owner asking "what about all the currencies?"
+> **Ask the data how many cases exist before deciding you have covered them.** The
+> audit checked four currencies because four were the ones it happened to meet,
+> not because it had counted.
 
 ## Gates after this session
 
@@ -909,3 +999,16 @@ either. Written up for the owner with three options in
 | Playwright e2e | 116 → **121** (the count moved, so the new suite ran) |
 | `pnpm typecheck` · `pnpm lint` | clean, 0 errors |
 | `check:entitlement-gates` · `check:data-integrity` · `check:report-sections` | 11 · 55 · 22 |
+
+## Live universe census, 2026-08-06
+
+Recorded so the next session can tell growth from breakage rather than guessing.
+
+| | |
+|---|---|
+| `stocks` rows | **867** — 863 equities + 4 index tickers |
+| Cross-currency stocks | **79** (9.2%) |
+| Distinct reporting currencies | **7** |
+| Rows with no `financial_currency` | **4** — exactly the index tickers, which have no statements |
+| `listings` rows | **9,090** — *already past PostgREST's silent 1000-row cap; must be read with `selectAll()` (§ D2)* |
+| `price_bars` rows | **6,576,669** |

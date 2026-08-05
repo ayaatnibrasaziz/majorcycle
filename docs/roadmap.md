@@ -168,7 +168,7 @@ Build order (each item = one PR):
 19. [x] **Synced crosshair** — crosshair on the Price chart mirrors onto the Drawdown overlay (both share the trading-day axis) via Lightweight Charts `subscribeCrosshairMove`/`setCrosshairPosition` with loop guards (`chartSync.ts`). Implemented + non-breaking (no freeze); the Recharts charts use incompatible axes so are intentionally out of scope. *(Shipped. The one thing never confirmed is **interactive mirror smoothness under a real hover on a deploy** — a pointer-device feel judgement, not a correctness question, so it now belongs to **Layer H**'s cross-browser pass rather than sitting here as a permanently half-ticked build item.)*
 20. [x] **Why Attractive / Key Risks** insight grid — Thesis-section card (reference has it; was missing from this list). `ThesisInsights.tsx`, ports `buildAttractive`/`buildRisks`/`riskInvalidation` with Strong/Severe tags + invalidation callout.
 21. [x] **Company Overview** — Thesis-section business-summary card. `CompanyOverview.tsx`.
-22. [x] **Browse & Search landing (`/stocks`)** — fixes the `/stocks` 404 (no landing route existed). Search by ticker + company name, market (US/ASX/TSX) + sector filters, market-cap-descending list over the ~720-stock universe; links to the detail pages. Loads a lightweight index (`web/lib/universe.server.ts`, `unstable_cache` daily) — never ships the `fundamentals` JSONB to the client. Hosts the **Cycle horizon selector** (Short/Medium/Long, default Medium, persisted; carried into the opened stock via `?preset=`). `StockBrowser.tsx` + `web/app/(app)/stocks/page.tsx`. Sidebar nav renamed `Stock Detail` → `Browse`. *(S4. Live-add of unknown tickers deferred; `Custom` horizon deferred to Layer D.)*
+22. [x] **Browse & Search landing (`/stocks`)** — fixes the `/stocks` 404 (no landing route existed). Search by ticker + company name, market (US/ASX/TSX) + sector filters, market-cap-descending list over the then-~720-stock universe (**863 as of 2026-08-06** — it auto-expands, so this figure is a snapshot of the build, not a spec); links to the detail pages. Loads a lightweight index (`web/lib/universe.server.ts`, `unstable_cache` daily) — never ships the `fundamentals` JSONB to the client. Hosts the **Cycle horizon selector** (Short/Medium/Long, default Medium, persisted; carried into the opened stock via `?preset=`). `StockBrowser.tsx` + `web/app/(app)/stocks/page.tsx`. Sidebar nav renamed `Stock Detail` → `Browse`. *(S4. Live-add of unknown tickers deferred; `Custom` horizon deferred to Layer D.)*
 23. [x] **Stock Detail performance** — the detail page **streams** (Suspense): the shell paints immediately, cycle sections fill in. `cycle.py`'s price-bar fetch is parallel. *(S4 follow-up; #3 client-payload slimming + #4 cache-warming deferred.)*
 24. [x] **Beginner help — InfoTip explainers** — a reusable, accessible **ⓘ** tooltip (`web/components/ui/InfoTip.tsx`; opens on hover/tap/focus, portalled + viewport-clamped) with plain-English explainers across every Stock Detail section + the rating/Valuation-Zone/analyst badge row. **Key Metrics softened** (per-metric ⓘ + worded legend). First-login onboarding modal already covered decision #23. `globals.css` `.info-tip-*`. *(S5. No engine/data change. First-visit hint declined by owner; explicit per-section heading lines deferred — section intent is carried by each card-title ⓘ.)*
 
@@ -494,7 +494,7 @@ first — and one, `check_field_units`, broken in *both* directions.**
    nightly refresh. `stocks` was 133 rows from the cliff on a table that grows by
    design. `listings` is *already* truncated at 1000 of 8,964.
 3. **`financialCurrency` was never read** — statements rendered `A$` in front of
-   US dollars for **79 of 858** stocks (a third of the Canadian universe), and
+   US dollars for **79 of 863** stocks (a third of the Canadian universe), and
    `fcf_yield_pct` divided USD by AUD into the Health score.
 4. **The cron installed whatever yfinance was newest, every night** — an
    unreviewed deploy of the thing that defines what our numbers mean. Now pinned,
@@ -562,8 +562,9 @@ list instead of hardcoding six paths.
 > ✅ **1, 3 and 4 were closed on 2026-08-06** against production, and item 3
 > found a real defect (D8 — the CSV and the Excel of one run disagreed by a
 > cent). Item 2 is owner-deferred with a full design written up. Item 5 remains.
-> Details in `docs/data-audit.md` § *Follow-up session*; the owner's own
-> step-by-step re-check is `docs/live-verification-walkthrough.md`.
+> Everything was then **re-walked with the owner driving their own browser** the
+> same day, including all **seven** reporting currencies and all ten subscription
+> states. Details in `docs/data-audit.md` § *Follow-up session*.
 
 | 1 | ~~**Verify every surface as a FREE account**~~ ✅ **DONE 2026-08-06** — 9 surfaces, zero premium fields in the HTML, plus an 11-state subscription matrix | Everything on 2026-08-05 was checked as a *subscriber*. The paywall and the data changes interact, and only one side has been seen. Highest-value gap. |
 | 2 | **Per-stock cross-check** — compare our figure against the provider's own independently-derived one (our P/E vs `trailingPE`, etc.) — ⏸ **DEFERRED by owner 2026-08-06 to after the remaining layers.** Full design written up in `docs/data-audit.md` § *Deferred — the per-stock number check* so it can be picked up cold | The cohort tripwire catches a unit change affecting **all** stocks and is blind to **one** stock being wrong. This is the check that exposed Barrick — but by hand, once, not nightly. Needs a tolerance tuned against live data (honest same-currency drift ran 1–17%; the real defect was 90%). |

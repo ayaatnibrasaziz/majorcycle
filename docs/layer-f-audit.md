@@ -202,7 +202,7 @@ space-swallowing fix is genuinely live; the global CSS defines `--brand-light-bo
 modals.
 
 **Paywall, live, on a real free account:** Stock Detail shows Current/Typical Drawdown and locks
-Overall Rating, Health Score and the Verdict; **all eight `PREMIUM_FIELDS` names appear 0× in the
+Overall Rating, Health Score and the Verdict; **all nine `PREMIUM_FIELDS` names appear 0× in the
 raw HTML**; `/run` and `/results` render the lock panel; `/stocks/us/AAPL/report` answers **402
 `private, no-store`** naming the caller's own reason (`no_subscription`) with zero premium leak.
 Trial modal prices in **AUD** (#13) — A$19/mo, A$159/yr = A$13.25/mo exactly, and "SAVE 30%" is
