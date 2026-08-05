@@ -199,6 +199,41 @@ if (!/export function statementCurrency[\s\S]{0,300}?financialCurrency\s*\?\?\s*
   fail('lib/format.ts: statementCurrency() must return financialCurrency ?? currency.');
 }
 
+// ── C. the P/E chart must refuse a cross-currency series, not just caption it ─
+
+// Withholding `pe_history` at the source is ONE control: it holds only while no
+// cross-currency series is ever written. The nightly refresh rewrites rows
+// wholesale from whatever code is running (CLAUDE.md 14g), so a stale series is
+// a live possibility, and the card consults `unavailableReason` only when the
+// data runs out — a 5-point stale series would render as an ordinary chart with
+// no warning. The currency check must therefore OUTRANK the point count.
+//
+// Proven in the browser on 2026-08-05 with both a cross-currency case and a
+// same-currency control: with the gate the series is refused, without it the
+// wrong chart draws and the explanation disappears.
+const valuationHistory = readFileSync(
+  path.join(webRoot, 'components', 'stocks', 'ValuationHistory.tsx'), 'utf8',
+);
+check();
+if (!/hasEnoughHistory\s*=\s*!unavailableReason\s*&&/.test(valuationHistory)) {
+  fail(
+    'components/stocks/ValuationHistory.tsx: the decision to draw the chart must ' +
+    'be gated on `!unavailableReason` as well as the point count. Otherwise a ' +
+    'stale cross-currency series renders as a normal chart — the exact defect ' +
+    'that had Barrick showing 19.2x beside a Key Metrics figure of 10.1x.',
+  );
+}
+
+// The reason must still be *derived* from the two currencies rather than
+// hardcoded, or the gate above would silently never fire.
+check();
+if (!/export function peHistoryUnavailableReason[\s\S]{0,400}?statementCurrency\s*\(/.test(format)) {
+  fail(
+    'lib/format.ts: peHistoryUnavailableReason() must derive the reporting ' +
+    'currency via statementCurrency(), so the gate reflects real data.',
+  );
+}
+
 // ── report ───────────────────────────────────────────────────────────────────
 
 console.log(

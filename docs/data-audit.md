@@ -440,6 +440,28 @@ for that once, when the entitlement guard printed "14 checks" over 11 sections.
 * **Nothing a customer sees is wrong in a new way**: this is the pre-audit
   behaviour, which is what the site has always shown.
 
+### The P/E chart now has two controls, not one
+
+Withholding `pe_history` at the source protected the chart only for as long as no
+cross-currency series was ever written — and 14g is precisely the mechanism that
+writes one. Worse, `ValuationHistory` consulted `unavailableReason` **only when
+the series ran out of points**, so a stale five-year series would have rendered
+as an ordinary chart with the explanation suppressed.
+
+The draw decision is now gated on `!unavailableReason` first. Proven in the
+browser against a fixture pair, because the scenario cannot be built from real
+data (every affected row is already empty):
+
+| fixture | stored series | result |
+|---|---|---|
+| cross-currency (CAD price / USD earnings) | 5 points | **refused**, reason shown |
+| same-currency control | the same 5 points | **chart drawn** |
+
+The control is what makes it evidence rather than a component that never draws.
+Removing the gate flipped the first case to a rendered chart with no warning —
+the failure mode itself, reproduced. Guarded in CI by section C of
+`check-data-integrity.mjs` (53 → **55 checks**), broken on purpose first.
+
 ### D4 was fixed in two of three workflows
 
 Same session, same family: `analytics/requirements-cron.txt` was wired into

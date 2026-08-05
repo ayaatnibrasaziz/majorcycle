@@ -31,7 +31,15 @@ function toMonthLabel(dateStr: string): string {
 }
 
 export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Props) {
-  const hasEnoughHistory = peHistory.length >= 4;
+  // `unavailableReason` OUTRANKS the stored series rather than merely captioning
+  // an empty one. Withholding at the source is a single control: it protects the
+  // chart only for as long as no cross-currency series is ever written, and a
+  // refresh running older code writes exactly that (the nightly job rewrites
+  // rows wholesale — CLAUDE.md 14g). A stale 5-year series would then render as
+  // a normal chart, because the reason is only consulted when the data runs out.
+  // Checking the currency HERE means the wrong series cannot be drawn even if it
+  // is present: two independent controls, as 11b requires of the paid surfaces.
+  const hasEnoughHistory = !unavailableReason && peHistory.length >= 4;
 
   const allPe   = peHistory.map((p) => p.pe);
   const curr    = currentPe ?? allPe[allPe.length - 1] ?? null;
