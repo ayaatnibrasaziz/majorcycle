@@ -49,8 +49,6 @@ jobs:
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
-          OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
         run: python -m analytics.cron.daily_refresh --markets au
 
       # The same units + invariants check the US+CA run does (owner decision,

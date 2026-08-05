@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Optional, cast
 
 from analytics.cron import daily_refresh
-from analytics.cron.daily_refresh import _get_supabase, _send_failure_email
+from analytics.cron.daily_refresh import _get_supabase
 from analytics.index_membership import sources
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -123,9 +123,10 @@ def _fetch_missing(supabase: Any, members: set[str]) -> int:
         return 0
     logger.info("Fetching %d uncovered constituent(s) into the universe: %s", len(missing), ", ".join(missing))
     # Full fetch (price + fundamentals + enriched) — same path as a seeded ticker,
-    # through the sacred DataProvider (#9). Don't email on per-ticker failures: a few
-    # genuinely data-less names are expected.
-    daily_refresh.run(only=missing, notify_on_failure=False)
+    # through the sacred DataProvider (#9). A few genuinely data-less names are
+    # expected here, so per-ticker failures are not escalated (see D11 — making
+    # partial failures visible without crying wolf is still an open decision).
+    daily_refresh.run(only=missing)
     # Reconcile: which of the missing names actually landed in `stocks`? Audit only
     # those, once, as index-membership additions.
     landed: set[str] = set()
@@ -193,16 +194,6 @@ def run(only: Optional[list[str]] = None) -> dict[str, object]:
         counts, refreshed, failed, fetched,
     )
 
-    # Only shout if everything failed (avoids noise from a single flaky source).
-    if sources_to_run and not refreshed:
-        _send_failure_email(
-            subject="MajorCycle index membership: all sources failed",
-            body=(
-                f"Index-membership refresh at {now} wrote no index.\n"
-                f"Counts: {counts}\nFailed: {failed}\n"
-                "Existing `index_membership` is unchanged; investigate the source URLs."
-            ),
-        )
 
     return {"counts": counts, "refreshed": refreshed, "failed": failed, "fetched_new": fetched}
 

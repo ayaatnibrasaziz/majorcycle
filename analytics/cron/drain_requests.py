@@ -51,7 +51,7 @@ def run() -> dict[str, int]:
 
     # Full fetch through the existing pipeline. Failures here are expected (some
     # requested symbols genuinely have no data), so don't email the owner.
-    daily_refresh.run(only=symbols, notify_on_failure=False)
+    daily_refresh.run(only=symbols)
 
     # Reconcile: which of the requested symbols are now in `stocks`?
     got = (

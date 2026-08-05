@@ -17,7 +17,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
-from analytics.cron.daily_refresh import _get_supabase, _send_failure_email
+from analytics.cron.daily_refresh import _get_supabase
 from analytics.listings import sources
 from analytics.listings.normalize import ListingRow
 
@@ -89,16 +89,6 @@ def run(only: Optional[list[str]] = None) -> dict[str, object]:
         counts, refreshed, failed,
     )
 
-    # Only shout if the whole thing failed (avoids noise from a single flaky source).
-    if markets and not refreshed:
-        _send_failure_email(
-            subject="MajorCycle listings: all sources failed",
-            body=(
-                f"Listings refresh at {now} produced no rows for any market.\n"
-                f"Counts: {counts}\nFailed: {failed}\n"
-                "The cached `listings` table is unchanged; investigate the source URLs."
-            ),
-        )
 
     return {"counts": counts, "refreshed": refreshed, "failed": failed, "total": len(payload)}
 
