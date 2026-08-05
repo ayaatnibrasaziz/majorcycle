@@ -18,7 +18,6 @@ The expected bands are declared once, beside the units themselves, in
 Run after the refresh:
 
     python -m analytics.cron.check_field_units          # report, exit 0/1
-    python -m analytics.cron.check_field_units --email  # also email the owner
 
 Deliberately advisory rather than blocking: it runs *after* the data is written,
 so it tells the owner something is wrong rather than silently discarding a
@@ -32,7 +31,6 @@ import statistics
 import sys
 from typing import Any, Optional, cast
 
-import requests
 from supabase import Client, create_client
 
 from analytics.providers.field_spec import FUNDAMENTALS_SPEC
@@ -194,35 +192,11 @@ def check(rows: list[dict[str, Any]]) -> tuple[list[str], list[str], int]:
     return breaches, thin, checked
 
 
-def _email(subject: str, body: str) -> None:
-    api_key = os.environ.get("RESEND_API_KEY", "")
-    owner = os.environ.get("OWNER_EMAIL", "")
-    if not api_key or not owner:
-        logger.warning("Email skipped — RESEND_API_KEY or OWNER_EMAIL not set")
-        return
-    try:
-        requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "from": "MajorCycle Cron <noreply@majorcycle.com>",
-                "to": [owner],
-                "subject": subject,
-                "text": body,
-            },
-            timeout=10,
-        )
-    except Exception as e:
-        logger.error("Failed to send email: %s", e)
-
-
 def main(argv: Optional[list[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--email", action="store_true", help="email the owner on a breach")
-    args = parser.parse_args(argv)
+    # No arguments: the exit code IS the signal. A non-zero exit fails the
+    # workflow step, which turns the run red and triggers GitHub's own
+    # failed-workflow email (owner decision, 2026-08-06 — see D9).
+    argparse.ArgumentParser(description=__doc__).parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
@@ -255,8 +229,6 @@ def main(argv: Optional[list[str]] = None) -> int:
         + f"\n\n{checked} field(s) checked across {len(rows)} stocks."
     )
     logger.error("check_field_units: %d breach(es)\n%s", len(breaches), body)
-    if args.email:
-        _email(f"MajorCycle: {len(breaches)} fundamentals field(s) look mis-scaled", body)
     return 1
 
 

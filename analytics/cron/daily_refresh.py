@@ -15,7 +15,6 @@ from datetime import datetime, timezone
 from typing import Any, Optional, cast
 
 import pandas as pd
-import requests
 from dotenv import load_dotenv
 from supabase import Client, create_client
 
@@ -419,36 +418,11 @@ def _should_fetch_enriched(
     return next_ed <= today_str and enrich_date < next_ed
 
 
-def _send_failure_email(subject: str, body: str) -> None:
-    api_key = os.environ.get("RESEND_API_KEY", "")
-    owner = os.environ.get("OWNER_EMAIL", "")
-    if not api_key or not owner:
-        logger.warning("Failure email skipped — RESEND_API_KEY or OWNER_EMAIL not set")
-        return
-    try:
-        requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "from": "MajorCycle Cron <noreply@majorcycle.com>",
-                "to": [owner],
-                "subject": subject,
-                "text": body,
-            },
-            timeout=10,
-        )
-    except Exception as e:
-        logger.error("Failed to send failure email: %s", e)
-
 
 def run(
     mode: str = "smart",
     only: Optional[list[str]] = None,
     markets: Optional[list[str]] = None,
-    notify_on_failure: bool = True,
 ) -> None:
     started_at = datetime.now(timezone.utc)
     logger.info("Daily refresh started at %s (mode=%s)", started_at.isoformat(), mode)
@@ -735,16 +709,6 @@ def run(
 
     if failed:
         logger.warning("Failed tickers (%d): %s", len(failed), ", ".join(failed))
-        if notify_on_failure:
-            _send_failure_email(
-                subject=f"MajorCycle cron: {len(failed)} tickers failed",
-                body=(
-                    f"Daily refresh finished at {finished_at.isoformat()}\n"
-                    f"Succeeded: {succeeded} ({enriched_count} enriched)\n"
-                    f"Failed: {len(failed)}\n\n"
-                    "Failed tickers:\n" + "\n".join(failed)
-                ),
-            )
 
 
 if __name__ == "__main__":

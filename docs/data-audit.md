@@ -792,12 +792,26 @@ audit should care about, which is *not* the order they were found:
 
 Deliberately not done, because each is a decision rather than a cleanup:
 
-| Item | State | The choice |
-|---|---|---|
-| `RESEND_API_KEY` GitHub secret | **holds a deleted key** | Update it to the live key, or delete it. Leaving it is the option that looks like the other two |
-| `OWNER_EMAIL` GitHub secret | value unverifiable, now unused by the units check | Same |
-| `check_field_units._email()` + its `--email` flag | **unreachable** — nothing calls it | Delete (CLAUDE.md rule 11 forbids dead code) |
-| `daily_refresh._send_failure_email()` | **still called, still dead** — six workflow steps pass it the stale secret | Delete it, or make partial failures redden the run instead (below) |
+✅ **All done the same day.**
+
+| Item | Outcome |
+|---|---|
+| `RESEND_API_KEY` · `OWNER_EMAIL` GitHub secrets | **Deleted by the owner.** Six secrets remain, none Resend-related — confirmed on the settings page |
+| `check_field_units._email()` + `--email` | **Deleted** |
+| `daily_refresh._send_failure_email()` | **Deleted**, with all **four** of its call sites |
+| `notify_on_failure` plumbing | **Deleted** — the parameter and both callers that passed it |
+| Env lines in the workflows | **Deleted** — 12 across three files |
+
+> ⚠️ **There were FOUR call sites, and the first pass removed one.**
+> `_send_failure_email` also lived in `refresh_index_membership` and
+> `refresh_listings`. An instruction applied to one surface and not its
+> siblings is **exactly rule 11c** — committed, as it happens, while writing the
+> document that explains rule 11c. The owner caught it.
+> **Grep for the function, not for the feature.**
+
+**Nothing changed operationally.** Every one of those paths was already dead: the
+key had not existed since 2026-07-02. Removing them stops the code *claiming* an
+alert that isn't there — it does not remove an alert that was working.
 
 ## D8 — The `.csv` and the `.xlsx` of one run disagreed by a cent ✅ FIXED
 
@@ -1253,7 +1267,26 @@ A handful failing is routine — measured across four nights: **2, 4, 5 and 7** 
 ~863, i.e. **0.2%–0.8%**. Delisted tickers and provider rate-limits account for
 it, and it is not worth waking anyone for.
 
-### 🔵 D11 — OPEN DECISION: what should make a partial failure loud?
+### 🔵 D11 — OPEN DECISION: what should make a failure loud?
+
+⚠️ **Widened 2026-08-06.** Clearing out the dead code made plain that **four**
+conditions carry no signal, not one. All four were *already* silent — the email
+nominally covering them had not worked since July — but they are now silent
+*visibly*, which is the honest state to decide from:
+
+| Condition | Reddens the run today? |
+|---|---|
+| The pipeline crashes outright | ✅ yes — non-zero exit |
+| A units / invariant breach | ✅ yes — since 2026-08-06 (D9) |
+| **N tickers fail, run completes** | ❌ no — `run()` returns normally |
+| **Listings: every source failed** | ❌ no — the step is `continue-on-error` |
+| **Index membership: every source failed** | ❌ no — same |
+
+The last two matter more than the first: *"every source failed"* is unambiguous,
+where a few failed tickers is routine. They are quiet only because
+`continue-on-error: true` exists so a flaky source cannot block the price
+refresh — a good reason for the **step** to continue, and no reason at all for
+the **run** to look healthy.
 
 **Not decided as of 2026-08-06.** Recorded here in full so the next session does
 not have to re-measure or re-argue it.

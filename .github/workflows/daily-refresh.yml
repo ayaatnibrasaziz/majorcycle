@@ -51,8 +51,6 @@ jobs:
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
-          OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
         run: python -m analytics.cron.refresh_listings
 
       # Refresh index membership (S&P 500 / ASX 200 / S&P/TSX 60) from official ETF
@@ -65,8 +63,6 @@ jobs:
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
-          OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
         run: python -m analytics.cron.refresh_index_membership
 
       # Drain the user-requested-ticker queue (fetch each into the universe).
@@ -75,8 +71,6 @@ jobs:
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
-          OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
         run: python -m analytics.cron.drain_requests
 
       # US + CA only (their indices ride along: ^GSPC, ^IXIC, ^GSPTSE). ^AXJO is
@@ -86,8 +80,6 @@ jobs:
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
-          OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
         run: python -m analytics.cron.daily_refresh --markets us,ca
 
       # Units tripwire. Compares each fundamentals field's cohort median against
