@@ -19,9 +19,26 @@ rows in `stocks`, 6,575,807 in `price_bars`) and live yfinance responses on
 **1.5.2** — the version the nightly cron actually installs, which is not the one
 this machine had.
 
-**Result:** 7 findings. **3 fixed** (two of them changing numbers a customer can
-see), 4 documented with a recommendation. **4 new guards**, each broken on
-purpose before being trusted. Python suite **121 → 142**.
+**Result:** 10 findings. **7 fixed** (three of them changing numbers a customer
+can see), 3 documented with a recommendation. **6 new guards**, each broken on
+purpose before being trusted. Python suite **121 → 153**, Playwright
+**115 → 116**.
+
+**Status: ✅ MERGED `e4237fa` (2026-08-05 04:00Z) and verified on production.**
+Both crons re-run afterwards via GitHub `workflow_dispatch` on `main` — see
+**D3d** for why running them locally or before the merge would have been worse
+than useless. Live result: **au 250/250 · ca 79/79 · us 534/534** carry
+`financial_currency`, **zero** rows store a `0.0` margin, all **79**
+cross-currency stocks withhold `pe_history`. The nightly tripwire's own
+production log: `39 field(s) checked across 863 stocks; invariants: zero-margin
+sentinel, cross-currency fcf_yield_pct, financial_currency coverage` — **OK**.
+
+> ⚠️ **A separate defect was found immediately afterwards, and not by any of
+> this.** The owner asked whether the *downloaded* report worked; it had been a
+> blank page for every stock since 2026-08-01. It is written up in
+> `docs/roadmap.md` and as **CLAUDE.md 11d**, not here, because its cause is a
+> bundling fault rather than a data one. It belongs in this document's
+> conclusions all the same — see **What this audit did NOT cover**.
 
 ---
 
@@ -581,9 +598,11 @@ Each was **broken on purpose** and the failure text read, not just the exit code
 | Guard | Catches | Broken how |
 |---|---|---|
 | `analytics/tests/test_field_spec.py` (14 tests) | a fundamentals field added with no declared unit; the margin sentinel being read as real; FCF yield published across a currency mismatch | 3 ways — each named the right test |
-| `analytics/tests/test_check_field_units.py` (7 tests) | the cohort tripwire failing to fire | drove the real `dividendYield` regression through it |
-| `web/scripts/check-data-integrity.mjs` (52 checks) | an unbounded read of a growing table; a statement figure labelled with the price currency | 4 ways |
-| `analytics/cron/check_field_units.py` | a provider changing a field's units, live | — runs nightly, emails the owner |
+| `analytics/tests/test_check_field_units.py` (14 tests) | the cohort tripwire failing to fire; a stored margin sentinel; a cross-currency FCF yield; **a wholesale loss of `financial_currency`** | drove the real `dividendYield` regression through it, and broke the coverage threshold **both** ways (`0.0` → the cry-wolf test fails; `0.99` → the wholesale-loss test fails) |
+| `analytics/tests/test_pe_history_currency.py` (4 tests) | a P/E series built across a currency mismatch | — |
+| `web/scripts/check-data-integrity.mjs` (**55 checks**) | an unbounded read of a growing table; a statement figure labelled with the price currency; **the P/E chart's currency gate being removed** | 5 ways, incl. a vacuous scan that passed while covering a third less code |
+| `analytics/cron/check_field_units.py` | a provider changing a field's units, live; three per-row invariants whose **names** it prints | — runs nightly, emails the owner; verified against the genuinely-broken universe of 2026-08-05 |
+| `web/e2e/report-download.spec.ts` | the **downloaded** report failing to render at all | removed the bundle shim → *"never mounted — the customer gets a blank page. Uncaught: ReferenceError: process is not defined"*; deleted the bundle → *"report.js is missing"* |
 
 Two of those breaks are worth keeping:
 
@@ -626,10 +645,108 @@ said so.
 
 | | Before | After |
 |---|---|---|
-| `pytest analytics/` | 121 | **142** |
-| `pnpm check:data-integrity` | — | **52 checks** |
-| `check_field_units` (live) | — | **39 fields / 863 stocks** |
+| `pytest analytics/` | 121 | **153** |
+| Playwright e2e | 115 | **116** |
+| `pnpm check:data-integrity` | — | **55 checks** |
+| `check_field_units` (live) | — | **39 fields + 3 named invariants / 863 stocks** |
 | `_engine` drift | 6 hardcoded | **7 derived** |
-| `pnpm typecheck` · `pnpm lint` | clean | clean |
+| `pnpm typecheck` · `pnpm lint` · `pnpm build` | clean | clean |
 
 Read the counts, not the colours.
+
+---
+
+## What this audit did NOT cover
+
+Recorded because the gap is the useful part, and because four defects on this
+day were invisible to every automated check and surfaced only when a finished
+artifact was opened and looked at — three by rendering pages, and the blank
+downloaded report **by the owner asking the right question**. The guards are
+good at holding *known* failures and poor at finding *new* ones.
+
+| Not covered | Consequence |
+|---|---|
+| **Every surface as a FREE (unentitled) account** | All verification was done as a *subscriber*. The paywall and these data changes interact and only one side has been seen. **The largest remaining gap.** |
+| **A per-stock cross-check** of our figure against the provider's own independently-derived one | `check_field_units` watches **cohort medians**, so it catches a provider changing a field's units for *everyone* and is blind to *one* stock being wrong. Demonstrated, not assumed: a synthetic universe with a single 100×-wrong dividend yield produces **0 breaches**; the same error applied to all 40 is caught. This is the comparison that exposed D3b — run by hand, once. |
+| **The exported `.xlsx` cells** | Verified only as a well-formed file (correct MIME, `PK` zip magic, 8.6 KB) built from rows checked in the CSV. Never opened in a spreadsheet. |
+| **`/account`, `/request`, the Sentiment tab, the remaining detail tabs** | Untouched. |
+| **375px / mobile** | Owner-deferred to Layer H. |
+| **859 of 863 stocks individually** | Four were checked by eye; the rest rest on the automated rules above. |
+| **`ci.yml` still installs unpinned `yfinance>=…`** for the test job | Listed, not changed (§ D4 fixed the three *data-writing* workflows). A green CI therefore does not prove the **pinned** pipeline works, and an upstream release can redden untouched code — which ruff has already done here once. |
+
+**Six fields have no median band at all** — `analyst_target_price`,
+`analyst_low_price`, `analyst_high_price`, `week52_high`, `week52_low`,
+`rel_strength_vs_sp500`. The first five are per-share prices spanning roughly
+$0.30 to several hundred dollars across the universe, so a single median band
+would be meaningless rather than merely loose; the last is deliberately never
+displayed (D7). Their units are still declared in `field_spec.py` and still
+enforced by `test_field_spec.py`.
+
+---
+
+## ⏸ DEFERRED — the per-stock number check
+
+**Status: not built. Owner-scheduled 2026-08-06 to be picked up after the
+remaining layers.** Recorded here in full so the next session does not have to
+re-derive it.
+
+### What it is, in one sentence
+
+For each stock individually, take a number we publish, compute the same number
+a second time from a different starting point, and complain when the two
+disagree by more than a set tolerance.
+
+### Why the checks we already have cannot do this
+
+Three instruments exist and each one is blind to a *single* wrong stock:
+
+| Instrument | What it actually watches | Blind to |
+|---|---|---|
+| `field_spec.py` + `test_field_spec.py` | that every field **declares** a unit | whether the stored value obeys it |
+| `check_field_units.py` — the nightly cohort tripwire | the **median** of ~860 stocks staying inside a declared band | one stock being wrong; the median does not move |
+| `check_invariants()` | three **structural** rules (a `0.0` margin sentinel, a cross-currency FCF yield, `financial_currency` coverage) | a number that is structurally fine and numerically wrong |
+
+This was demonstrated rather than assumed: a synthetic universe with a single
+100×-wrong dividend yield produces **0 breaches**; the same error applied to
+all 40 rows is caught immediately. A wrong number is still a *plausible*
+number, which is exactly why neither review nor the type checker sees it.
+
+### The shape of the check
+
+The principle is **two independent derivations of the same quantity**. Each
+row below has a figure we compute or store and a figure the provider supplies
+having derived it its own way, so agreement is real evidence and disagreement
+names the stock:
+
+| Our figure | The independent one | Why they should agree |
+|---|---|---|
+| `pe_ratio` (Key Metrics) | `info['trailingPE']` | Yahoo's is currency-corrected; ours was not — **this exact comparison is what exposed D3b**, run by hand, once |
+| last close in `price_bars` | `info['currentPrice']` / `regularMarketPrice` | different endpoints; a stale or mis-dated bar shows up as a gap |
+| `market_cap` | `currentPrice × sharesOutstanding` | catches a price/shares unit mismatch |
+| `dividend_yield_pct` | trailing 12m dividends ÷ price, from the dividend history | the ×100 class of error, per stock |
+| `fcf_yield_pct` | free cash flow ÷ market cap, recomputed from the statements | the cross-currency class (D3), per stock |
+| `week52_high` / `week52_low` | max/min close over the trailing 252 bars | a basis mismatch — expect a **known ~2% gap** here by design (D5), so this row is a *report*, never a failure |
+
+### How it must be built, given what this audit learned
+
+1. **Tolerance in percent, not equality.** Rounding, adjusted vs unadjusted
+   closes and different as-of timestamps all produce small honest differences.
+   Start loose (say 5%), then tighten once the real spread is measured — a
+   check that cries wolf gets ignored, which is worse than no check.
+2. **Report the stock, not a count.** The whole point is naming which one. The
+   nightly log already prints invariant **names** rather than a total for the
+   same reason (D3d).
+3. **Assert coverage as well as agreement.** A stock missing the comparison
+   field must count as *unmeasured*, never as *passing* — D3d's guard reported
+   zero violations precisely when the universe was most broken, because the
+   field it read had disappeared.
+4. **Run it nightly beside `check_field_units.py`**, emailing the owner, and
+   **pin the provider** — an unpinned upgrade changes both sides at once.
+5. **Break it on purpose first.** Corrupt one stock's `pe_ratio` in a fixture
+   and confirm the check goes red naming that ticker, before trusting a green.
+
+### Rough size
+
+About half a session. `analytics/cron/check_field_units.py` already supplies
+the loading, the paginated read, the reporting shape and the email path, so
+this is a second module beside it rather than new machinery.

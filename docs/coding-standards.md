@@ -519,13 +519,25 @@ def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[
 7. `pytest analytics/` — all Python tests pass
 8. `_engine` drift check — `web/_engine/<file>.py` matches `analytics/<file>.py` modulo the `from analytics.` → `from _engine.` rewrite
 
-9. `pnpm check:entitlement-gates` — 14 credential-free paywall tripwires (§ CLAUDE.md 11a/11b)
+9. `pnpm check:entitlement-gates` — credential-free paywall tripwires (§ CLAUDE.md 11a/11b).
+   **The script derives and prints its own count** — cite sections by NAME, never by number
+   (CLAUDE.md 11a records what happened when a hardcoded total drifted).
 10. `pnpm check:report-sections` — the downloadable report matches the 22-section detail page
-11. Playwright e2e — 105 tests, incl. the paywall behavioural matrix and the Stripe
-    **key-scope** probe (`e2e/stripe-key-scope.spec.ts`), the one Stripe test that reaches the
-    network: it asserts the key CI/dev is handed is a restricted `rk_`, that a permitted call
-    (`prices.list`) succeeds, and that `customers.list` is refused with `StripePermissionError`
-    specifically. Nothing else in the suite can tell a full key from a scoped one.
+11. `pnpm check:data-integrity` — 55 checks: unpaginated reads of growing tables (§ 14c),
+    statement figures labelled with the price currency (§ 14d), and the P/E chart's
+    currency gate (§ 14e-2). Prints its own count and a per-root file floor, because its
+    first version reported OK while silently covering a third less code.
+12. Playwright e2e — **116** tests, incl. the paywall behavioural matrix, the Stripe
+    **key-scope** probe (`e2e/stripe-key-scope.spec.ts`), and
+    **`e2e/report-download.spec.ts`**, which downloads the real offline report and opens it
+    over `file://` (§ CLAUDE.md 11d). The key-scope probe is the one Stripe test that reaches
+    the network: it asserts the key CI/dev is handed is a restricted `rk_`, that a permitted
+    call (`prices.list`) succeeds, and that `customers.list` is refused with
+    `StripePermissionError` specifically. Nothing else in the suite can tell a full key from
+    a scoped one.
+
+> ⚠️ **Check the COUNT, not the colour.** A suite that silently skipped is also green — which
+> is why the numbers above are worth reading off the run rather than trusting the badge.
 
 CI is configured in `.github/workflows/ci.yml`. Bypassing CI to merge is forbidden.
 
@@ -546,9 +558,21 @@ CI is configured in `.github/workflows/ci.yml`. Bypassing CI to merge is forbidd
 >    with every cycle section simply missing. Fixed with `setup-python` +
 >    `pip install -r requirements.txt`.
 >
-> **Open a PR early on any branch that will run long.** Both failures were environmental, so
-> a green local run said nothing about them — and #2 in particular shows the recurring
-> hazard: *graceful degradation converts a configuration fault into an empty page.*
+> 3. **The E2E job never built the offline report bundle** (2026-08-05). `public/report-bundle/`
+>    is produced by `prebuild`, which only runs for `pnpm build`; this job serves `next dev`.
+>    So `report.js` did not exist, "Download Report" fetched a 404, and no download ever
+>    fired — a new spec that passed locally failed twice in CI with an inscrutable two-minute
+>    `waiting for event "download"` timeout. It passed on my machine only because I had run
+>    `build:report-bundle` by hand.
+>
+>    **This is also the answer to why a blank downloaded report survived four days in
+>    production: the download had never been exercised in CI at all.** Fixed with an explicit
+>    build step, plus the spec asserting both bundle assets return 200 *before* it clicks — so
+>    a missing bundle now fails in seconds naming itself instead of timing out.
+>
+> **Open a PR early on any branch that will run long.** All three failures were environmental,
+> so a green local run said nothing about them — and #2 and #3 show the recurring hazard:
+> *graceful degradation converts a configuration fault into an empty page.*
 
 ---
 
@@ -624,6 +648,41 @@ session instead of weakening any gate:
    materialization") without explicit owner sign-off; after `signOut()` the access-token JWT stays
    valid for a short window then dies; a broad `preview_click` selector can hit the Sidebar **Sign
    out** button and end the session — click precisely.
+
+#### C2. Magic-link variant — no password, a throwaway subscriber, works against **production**
+
+Preferred over C when you need a *specific entitlement state* or are verifying the live site
+(used throughout the 2026-08-05 data audit):
+
+1. `admin.auth.admin.createUser()` a throwaway `@example.com` account, then upsert its
+   `profiles` row with `subscription_status: 'active'` and `acknowledged_disclaimer_at`
+   (skips the first-login modal). **Delete the user in a `finally`/`afterAll` — never flip the
+   shared E2E login's subscription.**
+2. `admin.auth.admin.generateLink({ type: 'magiclink' })`, then exchange
+   `link.properties.hashed_token` via `supabase.auth.verifyOtp({ token_hash, type })` inside a
+   `createServerClient` whose `setAll` records the cookies. That yields the **exact**
+   `@supabase/ssr` cookie — no password typed, no cookie format guessed.
+   ⚠️ The `token=` in the emailed URL is **not** the `token_hash`; using it returns
+   `otp_expired`.
+3. Inject with `document.cookie` on the target origin. ⚠️ The live origin is
+   **`www.majorcycle.com`** (the apex 307s), so the cookie must be set there.
+
+⚠️ **The Claude browser refuses to navigate to an external origin it hasn't been granted**
+(a Supabase `/auth/v1/verify` URL fails), which is *why* the exchange happens server-side.
+Node scripts must live in `web/` to resolve deps; use `node --env-file=.env.local`.
+
+#### C3. Verifying a **downloaded artifact** (the offline report)
+
+The downloaded `.html` is a *different product* from the route that feeds it (CLAUDE.md 11d),
+so it has to be opened, not inspected.
+
+- ⚠️ **Do not render it from a blob URL in an iframe.** A blob inherits the parent page's CSP,
+  which blocks the file's inline `<script>` — the page is blank for a reason that has nothing
+  to do with the bundle. An hour was lost to that false positive on 2026-08-05.
+- ✅ Use Playwright: real download → `download.saveAs(file)` → `page.goto('file:///' + file)`.
+  No CSP, exactly what the customer gets. Collect `pageerror` and assert it is empty.
+- Assert the **outcome** — mounts, throws nothing, sections present, charts drawn — not the
+  mechanism, so the test survives the next unrelated import breaking the bundle.
 
 ### D. Playwright — the **most robust + secure** way to verify authenticated interactions
 

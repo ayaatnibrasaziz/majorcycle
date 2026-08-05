@@ -20,14 +20,24 @@ type ExportColumn = { header: string; get: (r: ResultRow) => string | number | n
 // `0` = whole number, `0.00` = exactly two decimals (so 1 displays as "1.00").
 const NUM_FMT: Record<ExportFmt, string> = { int: '0', num2: '0.00' };
 
-// Coerce one export value to its Excel cell value — numbers stay numeric (rounded to
-// the column precision) so Excel can sort/sum; text passes through.
-function cellValue(value: string | number | null, xf?: ExportFmt): string | number {
+// Coerce one export value to its Excel cell value — numbers stay numeric (so Excel
+// can sort/sum) but are DERIVED from the string `exportText` already produced for
+// the CSV, rather than rounded a second time here. This file used to round with
+// `Math.round(v * 100) / 100`, which disagreed with the CSV's `toFixed(2)` by a cent
+// on half-cent values and with the on-screen `Intl` on others — three rules for one
+// number (CLAUDE.md 11c). Barrick's analyst target read CA$65.76 on the page and in
+// this workbook, and 65.75 in the .csv of the same run, live, on 2026-08-06.
+//
+// Exported so `e2e/export-parity.spec.ts` binds the REAL function, never a copy.
+export function cellValue(value: string | number | null, xf?: ExportFmt): string | number {
   if (value == null || value === '') return '';
   if (typeof value === 'number' && Number.isFinite(value)) {
-    if (xf === 'int') return Math.round(value);
-    if (xf === 'num2') return Math.round(value * 100) / 100;
-    return value;
+    const shown = exportText(value, xf);
+    // `useGrouping: false` keeps this parseable; a NaN could only mean exportText
+    // returned something non-numeric, in which case the raw number is safer than a
+    // blank cell.
+    const n = Number(shown);
+    return Number.isFinite(n) ? n : value;
   }
   return value;
 }

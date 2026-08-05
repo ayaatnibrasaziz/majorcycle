@@ -34,6 +34,8 @@
 
 **Cautious** — Rating tier 4 (score 35-49). Indicates elevated risk. Replaces the original "HOLD" label.
 
+**Cohort Tripwire** — `analytics/cron/check_field_units.py`, run nightly after the refresh. It compares each fundamentals field's **median across the whole universe** against the band declared beside its unit in `field_spec.py`, and emails the owner on a breach. It exists because a units change is invisible per value and obvious across 863: `0.024` is a fine dividend yield for one stock and impossible as the median. ⚠️ **It is deliberately blind to a single wrong stock** — a 35% yield is real and rejecting outliers would discard true data. Catching one bad stock needs a per-stock cross-check against the provider's own derived figure, which is **not built** (see `data-audit.md` "What this audit did NOT cover"). It also carries three per-row **invariants**, whose *names* it prints rather than a count.
+
 **Constructive** — Rating tier 2 (score 65-79). Indicates a favourable setup. Replaces the original "BUY" label.
 
 **Current Drawdown** — How far the current price has fallen from the peak inside the lookback window. Always a negative number (or zero). E.g. "-18%" means the stock is 18% below its recent high.
@@ -178,6 +180,8 @@
 
 **News Item** — A single news article entry: title, URL, publish date, source. Stored in `stocks.news` JSONB column. Sourced from yfinance in Phase 1; quality is mediocre.
 
+**Not-Reported Sentinel** — A provider value that *looks* like data but means "this doesn't apply". yfinance returns `grossMargins`/`ebitdaMargins` as exactly **`0.0`** for every bank and pre-revenue explorer. Scoring read those as a real, terrible 0% and marked **71 stocks** down — 36 changed rating and **4 changed the label a customer reads**. Declared via `zero_means_na` in `analytics/providers/field_spec.py` and applied on write *and* read. ⚠️ Deliberately narrow — only the four margins. A zero payout ratio, zero short interest and a debt-free balance sheet are all genuinely zero, and 198 stocks really do pay no dividend.
+
 **next_earnings_date** — The next scheduled earnings report date for a ticker, sourced from `yfinance.Ticker.calendar`. Stored in `stocks.next_earnings_date` (DATE column). Used by the smart refresh pipeline to know when enriched data is stale. Also the data source for the future Earnings Calendar UI. Returns `None` for many ASX stocks where yfinance doesn't publish calendar data.
 
 ---
@@ -185,6 +189,8 @@
 ## O
 
 **OHLCV** — Open, High, Low, Close, Volume. The five canonical fields of a daily price bar.
+
+**Offline Report Bundle** — `web/report-bundle/`, compiled by **esbuild** (not Next) in `prebuild` into `public/report-bundle/report.js` + `.css`. "Download Report" wraps those with one stock's JSON into a single self-contained `.html` that runs from `file://` with no network. **It is a second build of the same components, and therefore a second product**: source-reading checks (typecheck, lint, the paywall and report-section guards) can all be green while the downloaded file is blank — which it was, for every stock, from 2026-08-01 to 2026-08-05. Guarded by `e2e/report-download.spec.ts`, which downloads the real file and opens it over `file://`. See CLAUDE.md 11d.
 
 **On-Demand tier** — Tier 3 of the architecture. User-triggered analyses via `/api/analyze` endpoint. See `architecture.md` §2.
 
@@ -229,6 +235,8 @@
 **Rating Tier** — One of the five composite tiers: High Conviction, Constructive, Neutral, Cautious, Bearish. See `design-system.md` §4.
 
 **Reactivation** — When a member who scheduled account deletion signs back in and cancels it (`reactivateAccount` in `web/app/(app)/account/actions.ts`): clears `deletion_scheduled_at` and un-cancels a still-live subscription. Edge case handled: if they reactivate inside the last 3 days of a trial, it also sends the trial-ending reminder (Stripe's one-time signal already passed) so they aren't charged without warning.
+
+**Reporting Currency** — The currency a company keeps its books in (`info['financialCurrency']`), governing revenue, EBITDA, debt, cash, EPS and every statement blob. **Not the same as the Share-Price Currency** (`info['currency']`), which governs the price, market cap and analyst targets: **79 of 858** stocks differ — BHP.AX prices in AUD and reports in USD; A2M.AX reports NZD; a third of the Canadian universe differs. Ask `statementCurrency(fundamentals)`, never `fundamentals.currency`. Any ratio mixing the two is withheld rather than published wrong (see `fcf_yield_pct` and the P/E-history chart). `reportingCurrencyNote()` states the difference in words on statement cards, because in `en-US` the US dollar is a bare `$` and "$15.7B" under "A$60.52" is unreadable. See `data-contracts.md` and CLAUDE.md 14d.
 
 **Reward / Risk Ratio** — Typical Profit ÷ |Typical Drawdown|. Used in Cycle Payoff scoring. >1.5 = decent; 3.0 = max score.
 
