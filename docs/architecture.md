@@ -618,6 +618,19 @@ the same time, after an e2e test caught it — `private, no-store` on *every* br
 been sending no `Cache-Control` at all, leaving a full-scorecard payload's safety resting on
 Vercel happening not to cache it. Same rule as `/api/cycle` (CLAUDE.md 11a); now guarded.
 
+> 🔴 **The route is not the artifact, and covering one is not covering the other.** That
+> JSON route was healthy throughout 2026-08-01 → 08-05 while the `.html` a customer actually
+> received rendered **nothing** — a 4 MB file throwing `ReferenceError: process is not
+> defined` before it mounted. The offline bundle (`web/report-bundle/`, built by **esbuild**
+> in `prebuild`, not by Next) is a **second build of the same components**, so typecheck,
+> lint and every source-reading guard stayed green. The cause was three imports away from
+> any report file: `KpiStrip → PremiumLock → UpgradeDialog → next/link` drags Next's client
+> router in, and its module scope evaluates `process.env.__NEXT_ROUTER_BASEPATH`.
+> A `process` shim now sits in the bundle banner, and **`e2e/report-download.spec.ts`**
+> downloads the real file and opens it over `file://`. ⚠️ CI must run
+> `pnpm build:report-bundle` explicitly — `next dev` never runs `prebuild`, which is exactly
+> why the download had never been exercised in CI at all. Full write-up: CLAUDE.md **11d**.
+
 **`/pricing` is the signed-out shop-window and nothing else.** A signed-in visitor is
 redirected to `/account`, where their real state lives beside the actions that change it.
 That redirect is what lets the page be unconditional: it previously branched on `?reason=`,

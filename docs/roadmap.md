@@ -474,14 +474,15 @@ live-verified the same day.
 Test suite: Python **86 → 121**, Playwright **105 → 115**. Every new guard broken on
 purpose first.
 
-### Data-format & long-term-safety audit — 2026-08-05 ✅ DONE → `docs/data-audit.md`
+### Data-format & long-term-safety audit — 2026-08-05 ✅ MERGED + LIVE-VERIFIED (PR #77, `e4237fa`) → `docs/data-audit.md`
 
 Owner-requested before Layer G G1, after the previous session found three defects
 that had all been live for months and were all invisible to code review. The real
 question was not "find three more" but **why did those survive, and what would have
 caught them** — and that had the better answer.
 
-**7 findings. 3 fixed, 4 documented. 4 new guards, each broken on purpose.**
+**10 findings. 7 fixed, 3 documented-not-changed. 6 new guards, each broken on purpose
+first — and one, `check_field_units`, broken in *both* directions.**
 
 1. **A bank's `0.0` gross margin was scored as a real 0%** — yfinance's
    "not reported" sentinel. **71 stocks**, 36 changed rating, and **4 changed the
@@ -505,8 +506,70 @@ chart (owner's call — D5); 46 bars carry Yahoo's own impossible OHLC (D6);
 `rel_strength_vs_sp500` compares ASX stocks to the S&P 500 but is never rendered
 (D7).
 
-Test suite: Python **121 → 142**; new `pnpm check:data-integrity` (52 checks);
-`_engine` drift check now **derives** its file list instead of hardcoding six paths.
+**Three further findings came out of verifying the fix, not of reading code:**
+
+5. **D3c — a rule enforced in one runtime is not enforced.** `normalise_fundamentals()`
+   runs on write and on the Python read path; the Key Metrics table renders from
+   **TypeScript**, so 73 rows kept a cross-currency FCF yield *on screen* after the fix
+   was written, tested, guarded and pushed. Fixed by asserting the invariant **on the
+   data** (nightly), not by porting the rule into a second language — that is 11c's
+   drift trap.
+6. **D3d — the database fixes expire nightly until the code is merged.** The refresh
+   replaces the whole `fundamentals` object per ticker, and a `schedule`-triggered
+   `actions/checkout` takes the **default branch** — so **608 of 863 rows** were reverted
+   fourteen hours after being fixed. ⚠️ Worse, `check_invariants()` reported *zero*
+   violations over that broken universe, because the reverted rows had lost the field the
+   test reads: **unmeasurable counted as clean.** Third invariant added (>5% missing
+   `financial_currency` is itself a breach), and the nightly log now prints invariant
+   **names**, never a count.
+7. **The P/E chart needed a second control.** `ValuationHistory` consulted the
+   currency reason *only* when the series ran short, so a stale cross-currency series
+   would have drawn as an ordinary chart. Now gated on `!unavailableReason` first.
+
+**✅ MERGED `e4237fa` 2026-08-05 04:00Z.** Both crons then re-run via GitHub
+`workflow_dispatch` **on `main`** — never locally and never before the merge, since a
+scheduled workflow checks out the default branch. Live result: **au 250/250 · ca 79/79 ·
+us 534/534** carry `financial_currency`, **zero** 0.0-margin rows, all **79**
+cross-currency stocks withhold `pe_history`. Production tripwire logged
+`39 field(s) checked across 863 stocks; invariants: … — OK`. Verified signed-in on
+`www.majorcycle.com`: browse, stock detail (ABX/BHP/JPM/AAPL), report payload, screener,
+CSV (blank cells, not zeros) and Excel.
+
+### Downloaded report was blank — 2026-08-05 ✅ SHIPPED (PR #78, `5bf4a87`)
+
+Found because the **owner asked whether the downloaded report worked** — a different
+artifact from the report *route*, which returns JSON and was fine. `Download Report`
+produced a well-formed 4 MB `.html` that threw `ReferenceError: process is not defined`
+and rendered **nothing**, for every stock, from **2026-08-01 to 2026-08-05**.
+
+Cause (esbuild metafile, not guesswork): `KpiStrip → PremiumLock → UpgradeDialog →
+next/link` pulled Next's client router into the offline bundle, whose module scope reads
+`process.env.__NEXT_ROUTER_BASEPATH`. Fixed with a `process` shim in the bundle banner —
+a shim, not more `define` entries, so the next stray import degrades rather than blanks.
+Guarded by **`e2e/report-download.spec.ts`** (downloads the real file, opens it over
+`file://`, asserts it mounts and draws). ⚠️ CI also had to *build* the bundle: `next dev`
+never runs `prebuild`, which is why the download had never been exercised in CI at all.
+Recorded as **CLAUDE.md 11d**.
+
+Test suite: Python **121 → 153**; Playwright **115 → 116**;
+`pnpm check:data-integrity` **55 checks**; `_engine` drift check now **derives** its file
+list instead of hardcoding six paths.
+
+#### Open follow-ups from this audit (owner's call — none are emergencies)
+
+| # | Item | Why it matters |
+|---|---|---|
+| 1 | **Verify every surface as a FREE account** | Everything on 2026-08-05 was checked as a *subscriber*. The paywall and the data changes interact, and only one side has been seen. Highest-value gap. |
+| 2 | **Per-stock cross-check** — compare our figure against the provider's own independently-derived one (our P/E vs `trailingPE`, etc.) | The cohort tripwire catches a unit change affecting **all** stocks and is blind to **one** stock being wrong. This is the check that exposed Barrick — but by hand, once, not nightly. Needs a tolerance tuned against live data (honest same-currency drift ran 1–17%; the real defect was 90%). |
+| 3 | **Open the exported `.xlsx` and read its cells** | Confirmed only as a valid file built from verified rows; its cells were never parsed. |
+| 4 | **Eyeball the remaining screens** — `/account`, `/request`, Sentiment tab, the other detail tabs | Untouched on 2026-08-05. |
+| 5 | **`ci.yml` still installs unpinned `yfinance>=…`** for the test job | Listed, not changed. A green CI therefore does not prove the *pinned* pipeline works, and an upstream release can redden untouched code. |
+
+> 🔴 **The reason this list exists.** Four defects on 2026-08-05 were invisible to
+> typecheck, lint and every guard, and surfaced only when the finished thing was opened
+> and looked at — three by rendering pages, and the blank report **by the owner asking the
+> right question**. The automated checks are good at guarding *known* failures and poor at
+> finding *new* ones. Plan verification accordingly.
 
 ### Layer G: SEO + Performance (target: 3-4 days)
 
