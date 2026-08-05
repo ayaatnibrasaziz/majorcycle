@@ -1009,15 +1009,15 @@ email on a good night; two independent signals on a bad one.**
 
 | Cron | UTC | Sydney | Runs the units check? |
 |---|---|---|---|
-| `daily-refresh-au.yml` | 08:00 | 6:00pm | ❌ no |
+| `daily-refresh-au.yml` | 08:00 | 6:00pm | ✅ yes *(added 2026-08-06)* |
 | `daily-refresh.yml` (US+CA) | 22:30 | 8:30am next day | ✅ yes |
 
-**One check is enough and this is why:** `check_field_units` does not inspect
-"what this run just wrote" — it reads the **whole universe**, all 863 stocks
-including every ASX name, via a paginated select. So Australian data *is*
-covered; it is simply checked in the evening run rather than immediately after
-the morning one. **Owner decision 2026-08-06: do not add a second copy to the AU
-workflow.** Verified from a real run:
+**Both runs check the WHOLE universe, not "their half".** `check_field_units`
+does not inspect what the run just wrote — it reads all 863 stocks, ASX included,
+via a paginated select. One run was therefore already sufficient for *coverage*;
+adding the second (owner decision 2026-08-06, once the alert became a red run
+rather than an unproven email) simply **halves the worst-case blind window** from
+~14 hours to ~7, for the cost of one paginated read. Verified from a real run:
 
 ```
 check_field_units: 39 field(s) checked across 863 stocks;
