@@ -47,6 +47,7 @@ When in doubt about any decision: **ask, don't guess.**
 | Payments | Stripe (subscription, 7-day trial) | Standard SaaS, MCP-controlled |
 | Source | GitHub | Required for Actions + Vercel + Claude Code |
 | Domain/DNS | Cloudflare | At-cost registrar, MCP-controlled |
+| Testing (TypeScript) | **Playwright — the ONLY TS test runner** (owner decision, 2026-08-06) | One runner, one count. The rule for judging CI here is *check the COUNT, not the colour*, and that only works while there is **one** number — a second runner means a suite can silently stop running behind the other's green. Unit-level tests are written as **pure, credential-free Playwright specs** in `web/e2e/` (`entitlement.spec.ts`, `export-parity.spec.ts`): no browser, no network, so they run on a fork PR with no secrets and can never self-skip. **Do not add Vitest or Jest.** `coding-standards.md` required Vitest until 2026-08-06 and none was ever installed |
 | Error tracking (P2) | Sentry | Free tier sufficient |
 
 ---
