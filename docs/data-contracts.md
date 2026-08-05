@@ -168,16 +168,47 @@ the median of 863.
 
 #### `financial_currency` vs `currency`
 
-**They are different, for 79 of 858 stocks** — a fifth of the ASX names and a
+**They are different, for 79 of 863 stocks** — a fifth of the ASX names and a
 third of the Canadian ones.
 
 | In `currency` (the SHARE PRICE) | In `financial_currency` (the STATEMENTS) |
 |---|---|
 | `market_cap`, `week52_high`/`_low`, the analyst target prices, `dividend_history`, every `price_bars` row | `total_revenue`, `ebitda`, `total_debt`, `total_cash`, `free_cashflow`, `operating_cashflow`, and all six statement blobs in `EnrichedData` |
 
-BHP.AX trades in AUD and reports in USD; A2M.AX reports in NZD; SHOP.TO trades
-in CAD and reports in USD. `financial_currency` is **not** a `Currency` literal —
-a company may report in anything, and we hold NZD, EUR, SGD and TWD reporters.
+`financial_currency` is **not** a `Currency` literal — a company may report in
+anything. **The live census (2026-08-06), every combination that actually
+exists**, so a change here is visible rather than inferred:
+
+| Shares priced in | Accounts reported in | Stocks | Largest example |
+|---|---|---|---|
+| USD | USD | 532 | NVDA |
+| AUD | AUD | 200 | CBA.AX |
+| CAD | CAD | 52 | RY.TO |
+| **AUD** | **USD** | 36 | BHP.AX |
+| **CAD** | **USD** | 27 | AMD.TO, SHOP.TO |
+| **AUD** | **NZD** | 10 | FPH.AX, A2M.AX |
+| **AUD** | **CAD** | 2 | NXG.AX, CIA.AX |
+| **USD** | **TWD** | 1 | TSM |
+| **USD** | **EUR** | 1 | ASML |
+| **AUD** | **EUR** | 1 | VUL.AX |
+| **AUD** | **SGD** | 1 | TUA.AX |
+
+**Seven distinct reporting currencies — USD, AUD, CAD, NZD, EUR, TWD, SGD** —
+across 863 equities, 79 of them cross-currency. The four rows with a `null`
+`financial_currency` are the index tickers (`^GSPC` and friends), which carry no
+statements; that is why the nightly coverage invariant is a **proportion** (>5%
+missing) rather than a count.
+
+⚠️ **`CURRENCY_NAME` in `web/lib/format.ts` must hold an entry for every
+currency in that table**, because `reportingCurrencyNote()` names it in words.
+It currently covers those seven plus GBP, JPY and HKD, and falls back to the raw
+ISO code — so a new reporter degrades to *"Figures reported in THB (THB)"*
+rather than breaking. Readable, but add the name when one appears.
+
+⚠️ **Not every currency has a short symbol in `en-US`.** `Intl` renders SGD as
+`SGD 477M`, not `S$477M`, while TWD gives `NT$` and EUR gives `€`. Verified on
+the live site 2026-08-06 (TUA.AX). This is correct and unambiguous — do not
+hand-roll a symbol table to "fix" it.
 
 Two rules follow. **Labelling:** the UI asks `statementCurrency(fundamentals)`
 (`web/lib/format.ts`), never `fundamentals.currency`; `pnpm check:data-integrity`
@@ -342,7 +373,7 @@ export interface FundamentalsSnapshot {
   industry: string | null;
   market: Market;
   currency: Currency;              // the SHARE PRICE currency
-  financialCurrency: string | null; // the STATEMENTS currency — differs for 79/858 stocks
+  financialCurrency: string | null; // the STATEMENTS currency — differs for 79/863 stocks
   exchange: string | null;
   marketCap: number | null;
 
@@ -1127,7 +1158,7 @@ never forge entitlement. Migration `20260523133635` + `20260711000000` +
 
 Migration `20260726010000_free_tier_view_counter`. An **anti-scraping fence**, not a
 revenue lever: premium fields are already stripped from every response a free viewer gets,
-so what is left worth protecting is the *bulk* (walking all ~866 tickers to rebuild the
+so what is left worth protecting is the *bulk* (walking all ~863 tickers to rebuild the
 corpus). Subscribers are never counted — locked decision #18 promises them no usage limits.
 
 | Column | Type | Meaning |
@@ -1170,7 +1201,19 @@ paywall, so denying would be a lie with no security gain.
 `canceled→canceled`, `incomplete`/`incomplete_expired`/`paused→ null` (no active sub).
 `paused` is defensive only — we don't offer pause, and because the trial requires a card
 upfront (decision #19) Stripe won't emit it (that needs a trial ending with no payment
-method). **Cancel** has two paths, both handled: *cancel at period end* keeps the status
+method). Confirmed by grep 2026-08-06: the **only** production writers of this column are
+`mapStripeStatus` (via `lib/billing/sync.ts`) and three literal
+`'canceled'`/`'active'`/`'past_due'` writes in the webhook — so the string `paused` cannot
+reach the database.
+
+> ⚠️ **Test it anyway, and understand what you are testing.** Writing `paused` into the
+> column by hand does *not* rehearse a Stripe pause — it asks a better question: **what
+> does the site do with a status it has never heard of?** Stripe can add one, or rename
+> one, at any time. Driven on production 2026-08-06: `paused` renders **NO PLAN** and locks
+> everything, i.e. an unrecognised status is refused, which is the single rule the paywall
+> rests on. `hasAccess()` allow-lists `active`/`trialing` and denies everything else, so
+> the failure mode of a Stripe vocabulary change is **losing** access, never leaking it —
+> visible to the customer and recoverable, rather than silent and expensive. **Cancel** has two paths, both handled: *cancel at period end* keeps the status
 (`active`/`trialing`) until `subscription.deleted` fires at period end → `canceled`;
 *immediate cancel* fires `subscription.deleted` directly → `canceled`.
 > ⚠ **API-shape gotcha (found 2026-07-19, FIXED in Step 6):** in the pinned
