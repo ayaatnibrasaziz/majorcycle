@@ -119,26 +119,24 @@ jobs:
       # It is the LAST step on purpose, so failing it cannot skip any work. The
       # data has already been written and is untouched by the red X — the red
       # means "tonight's numbers are suspect", not "the refresh didn't happen".
-      # The Resend email is kept as a second, independent channel that names the
-      # offending field; it is now belt-and-braces rather than the only signal.
+      #
+      # ⚠️ NO Resend email here, deliberately (owner decision, 2026-08-06). It used
+      # to also send one via `--email`. Proven dead on 2026-08-06: both crons were
+      # broken on purpose, both went red with the correct message, and Resend
+      # recorded NOTHING. Cause — Resend holds exactly ONE api key, created
+      # 2026-07-02, while the `RESEND_API_KEY` GitHub secret dates from 2026-05-24,
+      # five weeks earlier. The secret holds a key that no longer exists.
+      #
+      # It failed SILENTLY because `_email()` calls `requests.post` and never looks
+      # at the response: `requests` does not raise on 4xx, so a rejected send
+      # returns normally, logs nothing, and is indistinguishable from a delivered
+      # one. Two independent faults, and the design could not report either.
+      #
+      # GitHub's failed-workflow email is the single alert channel now — its
+      # destination is visible (Settings > Notifications, ayaatnibrasaziz@gmail.com,
+      # "Failed workflows only") rather than sealed inside a write-only secret.
       - name: Check fundamentals field units
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          RESEND_API_KEY:            ${{ secrets.RESEND_API_KEY }}
-          OWNER_EMAIL:               ${{ secrets.OWNER_EMAIL }}
-        run: |
-          # 🔴 TEMPORARY — ALARM TEST, 2026-08-06. REVERT IMMEDIATELY AFTER.
-          # Runs the REAL check with one band bent to something impossible, so it
-          # reports a breach and exits non-zero. Done here rather than in
-          # field_spec.py because a unit test (correctly) pins the real band —
-          # this way CI stays honest and the production code is untouched.
-          python - <<'EOF'
-          import dataclasses, sys
-          from analytics.providers.field_spec import FUNDAMENTALS_SPEC
-          from analytics.cron import check_field_units as C
-          FUNDAMENTALS_SPEC["dividend_yield_pct"] = dataclasses.replace(
-              FUNDAMENTALS_SPEC["dividend_yield_pct"], median_band=(100.0, 200.0)
-          )
-          sys.exit(C.main(["--email"]))
-          EOF
+        run: python -m analytics.cron.check_field_units
