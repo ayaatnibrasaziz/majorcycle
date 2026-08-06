@@ -309,6 +309,52 @@ if (robots && pages) {
       fail(`app/robots.ts: ${must} must be in GATED. It is a paid or private surface and must not be crawlable.`);
     }
   }
+
+  // No bare `allow: '/'`. Correct parsers resolve Allow-vs-Disallow by longest path,
+  // so this was safe — but a naive first-match parser would read it and crawl the
+  // entire paid product. Omitting it loses nothing (unlisted = allowed) and makes the
+  // policy true by construction instead of by precedence rules.
+  // ⚠️ Comments stripped first. The first version tested the raw file and failed on
+  // the COMMENT explaining why the line is absent — a guard tripping over its own
+  // documentation. Same family as the `xdescription:` substring bug: matching text,
+  // not code.
+  const robotsCode = robots
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+  check();
+  if (/allow:\s*'\/'/.test(robotsCode)) {
+    fail("app/robots.ts: remove `allow: '/'`. Anything not disallowed is already allowed, and a bare Allow is the only rule that can conflict with a Disallow — a naive crawler taking the first match would crawl the whole paid product.");
+  }
+
+  // The AI policy is an owner decision (2026-08-04) and every token was verified
+  // against the vendor's own documentation. Pinned by name so a rename or a deletion
+  // is a deliberate edit rather than a silent drift.
+  //
+  // ⚠️ Groups do NOT inherit: a crawler matching a named group ignores `*` entirely.
+  // That is why the allowed agents are named at all — so tightening `*` later cannot
+  // silently cut them off — and it is why each must appear here.
+  const AI_ALLOWED = [
+    'OAI-SearchBot', 'Claude-SearchBot', 'PerplexityBot',
+    'ChatGPT-User', 'Claude-User', 'Perplexity-User',
+  ];
+  const AI_BLOCKED = ['GPTBot', 'ClaudeBot', 'Google-Extended'];
+
+  for (const bot of AI_ALLOWED) {
+    check();
+    if (!robots.includes(`'${bot}'`)) {
+      fail(`app/robots.ts: '${bot}' must stay in the allowed list. Search bots cite us and send readers back; the *-User agents fetch because a real person asked about the page — that is a potential customer, not a crawler.`);
+    }
+    check();
+    if (new RegExp(`AI_TRAINING_BLOCKED[^\\]]*'${bot}'`).test(robots)) {
+      fail(`app/robots.ts: '${bot}' is in the BLOCKED list but must be allowed.`);
+    }
+  }
+  for (const bot of AI_BLOCKED) {
+    check();
+    if (!new RegExp(`AI_TRAINING_BLOCKED[^\\]]*'${bot}'`).test(robots)) {
+      fail(`app/robots.ts: '${bot}' must stay in AI_TRAINING_BLOCKED — it copies the writing into a model and returns nothing.`);
+    }
+  }
 }
 
 // ── report ──────────────────────────────────────────────────────────────────

@@ -8,7 +8,13 @@ import { SITE_ORIGIN } from '@/lib/url';
  *   1. `proxy.ts`      — builds PUBLIC_PATHS from it, so a page cannot be listed
  *                        here as public while the middleware still bounces it.
  *   2. `app/sitemap.ts`— emits every `index: true` entry.
- *   3. `app/robots.ts` — nothing here is disallowed; everything else is.
+ *   3. `app/robots.ts` — cross-checks this list against its own GATED array and
+ *                        throws if any page appears in both. (It does NOT derive its
+ *                        disallow rules from here: robots.txt is a deny-list of app
+ *                        surfaces, so a new gated route inherits the block instead of
+ *                        needing to be remembered. An earlier version of this comment
+ *                        claimed "everything else is disallowed", which was wrong —
+ *                        `/` and `/.well-known` are neither listed here nor blocked.)
  *   4. `pageMetadata()`— canonical + Open Graph for each page.
  *
  * ⚠️ The `(public)` ROUTE GROUP is not the same set and never was. It also holds
@@ -27,21 +33,18 @@ export type PublicPage = {
   readonly path: string;
   /** Listed in sitemap.xml and indexable, or crawlable-but-noindex. */
   readonly index: boolean;
-  /** Sitemap hint. Only meaningful when `index` is true. */
-  readonly changeFrequency?: 'daily' | 'weekly' | 'monthly' | 'yearly';
-  /** Sitemap hint, 0-1. Relative to our OWN pages only; it says nothing to Google
-   *  about how we rank against anyone else. */
-  readonly priority?: number;
 };
 
 export const PUBLIC_PAGES: readonly PublicPage[] = [
   // ── Indexable: the pages we actually want a stranger to find ───────────────
-  { path: '/pricing', index: true, changeFrequency: 'monthly', priority: 0.9 },
-  { path: '/methodology', index: true, changeFrequency: 'monthly', priority: 0.8 },
-  { path: '/contact', index: true, changeFrequency: 'yearly', priority: 0.5 },
-  { path: '/disclaimer', index: true, changeFrequency: 'yearly', priority: 0.3 },
-  { path: '/terms', index: true, changeFrequency: 'yearly', priority: 0.3 },
-  { path: '/privacy', index: true, changeFrequency: 'yearly', priority: 0.3 },
+  // No `priority` / `changeFrequency` — Google ignores both, and a number that looks
+  // like a ranking dial but isn't one wastes a future session's time. See sitemap.ts.
+  { path: '/pricing', index: true },
+  { path: '/methodology', index: true },
+  { path: '/contact', index: true },
+  { path: '/disclaimer', index: true },
+  { path: '/terms', index: true },
+  { path: '/privacy', index: true },
 
   // ── Crawlable but NOT indexable ────────────────────────────────────────────
   // A sign-in form is not a search result. `/deletion-requested` additionally

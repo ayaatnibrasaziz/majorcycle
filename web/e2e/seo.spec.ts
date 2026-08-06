@@ -76,11 +76,22 @@ test.describe('robots.txt', () => {
   test('allows AI search engines and refuses AI training crawlers', async ({ request }) => {
     const body = await readOrFail(request, '/robots.txt');
 
-    // Split by what the bot DOES with the page, not by vendor: OpenAI and Anthropic
-    // each run one of each, and the two are treated differently on purpose.
-    for (const bot of ['OAI-SearchBot', 'Claude-SearchBot', 'PerplexityBot']) {
-      expect(body, `${bot} should be allowed — it cites us and sends readers back`)
-        .toContain(`User-Agent: ${bot}`);
+    // Split by what the agent DOES with the page, not by vendor: OpenAI, Anthropic
+    // and Perplexity each run several, and they are treated differently on purpose.
+    // Every name here was checked against that vendor's own bot documentation.
+    const allowed = [
+      // Indexes to cite us in AI answers.
+      'OAI-SearchBot', 'Claude-SearchBot', 'PerplexityBot',
+      // Fetches because a real person asked about the page — a potential customer.
+      'ChatGPT-User', 'Claude-User', 'Perplexity-User',
+    ];
+
+    for (const bot of allowed) {
+      // Present AND not totally blocked. Asserting only that the name appears would
+      // pass even if the stanza said `Disallow: /`, which is the opposite policy.
+      expect(body, `${bot} must have its own stanza`).toContain(`User-Agent: ${bot}`);
+      const stanza = new RegExp(`User-Agent: ${bot}\\n(?!Disallow: /\\n)`);
+      expect(body, `${bot} must NOT be blocked outright`).toMatch(stanza);
     }
 
     for (const bot of ['GPTBot', 'ClaudeBot', 'Google-Extended']) {
@@ -89,6 +100,20 @@ test.describe('robots.txt', () => {
       const stanza = new RegExp(`User-Agent: ${bot}\\s*\\nDisallow: /\\s*(\\n|$)`);
       expect(body, `${bot} must be blocked entirely`).toMatch(stanza);
     }
+  });
+
+  test('never says a bare "Allow: /" — it cannot conflict with a Disallow', async ({
+    request,
+  }) => {
+    const body = await readOrFail(request, '/robots.txt');
+
+    // Correct parsers resolve Allow-vs-Disallow by longest path (RFC 9309), so
+    // `Allow: /` alongside `Disallow: /stocks` was in fact safe. A naive parser that
+    // takes the first match instead would read `Allow: /` and crawl the whole paid
+    // product. Omitting the line removes the conflict entirely: anything not
+    // disallowed is already allowed, so the rule loses nothing and stops depending
+    // on a precedence subtlety.
+    expect(body).not.toMatch(/^Allow: \/$/m);
   });
 });
 

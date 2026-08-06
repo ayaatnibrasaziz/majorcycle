@@ -21,11 +21,17 @@ import { SITE_ORIGIN } from '@/lib/url';
  * to ignore the field entirely, which is worse than omitting it. An absent lastmod
  * is valid and simply means "unknown". When G4 adds articles they carry their real
  * publication dates, which is the only kind of date worth sending.
+ *
+ * NO `priority` and NO `changeFrequency` either. Both were emitted until the G1
+ * audit, and both are **ignored by Google** — its documentation says so outright,
+ * and Bing has said the same of `changefreq`. They are not harmful, they are inert,
+ * which is worse in one specific way: `priority: 0.9` reads like a ranking dial, so
+ * the next person to open this file could spend an afternoon tuning numbers that do
+ * nothing and conclude the SEO work is done. A `<loc>`-only sitemap is the complete,
+ * honest version. (Removing them is why `PublicPage` no longer carries those fields.)
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   return PUBLIC_PAGES.filter((page) => page.index).map((page) => ({
     url: `${SITE_ORIGIN}${page.path}`,
-    changeFrequency: page.changeFrequency,
-    priority: page.priority,
   }));
 }

@@ -21,7 +21,18 @@ import { SITE_ORIGIN } from '@/lib/url';
 
 /**
  * Gated surfaces. Prefix matches, so `/stocks` also covers `/stocks/us/AAPL`.
- * `/api` covers every route handler and Python function in one line.
+ * `/api/` covers every route handler and Python function in one line.
+ *
+ * ⚠️ These are PLAIN PREFIXES on purpose — deliberately NOT `/stocks$` + `/stocks/`,
+ * which would be the precise way to say "this page and its children, nothing else".
+ * RFC 9309 does define `$`, but a crawler that has not implemented it treats the `$`
+ * as a literal character, so `Disallow: /stocks$` matches no real URL and the whole
+ * paid product becomes crawlable. That is a FAIL-OPEN wildcard on a paywalled site.
+ *
+ * A plain prefix fails the other way: it also blocks a hypothetical future
+ * `/stocks-explained`, which is over-blocking — annoying, never harmful. For a gated
+ * product that is the correct direction to be wrong in, and the contradiction check
+ * below turns that over-blocking into a loud build error rather than a silent one.
  */
 const GATED = [
   '/api/',
@@ -46,7 +57,28 @@ const GATED = [
  * distribution. A training crawler copies the writing into a model, which returns
  * nothing and competes with the reason to visit.
  */
+
+/** Indexes pages to cite them in AI answers — free distribution, sends readers back. */
 const AI_SEARCH_ALLOWED = ['OAI-SearchBot', 'Claude-SearchBot', 'PerplexityBot'];
+
+/**
+ * Fetched because a REAL PERSON asked the assistant about this page. Not a crawler
+ * at all — closer to a visitor who happens to be reading through a tool. Someone
+ * asking "what is MajorCycle?" is a potential customer, so blocking these would be
+ * self-harm dressed up as caution.
+ *
+ * ⚠️ Named explicitly rather than left to `*`, and this is the whole reason why:
+ * user-agent groups do NOT inherit. If `*` is ever tightened, anything relying on it
+ * silently loses access. The original G1 file covered these only through `*`, which
+ * worked but would not have survived that edit — and the failure would have been
+ * invisible, because nobody watches what an assistant *can't* see.
+ *
+ * (OpenAI and Perplexity both document that these user-initiated fetches may ignore
+ * robots.txt anyway. Stating the permission costs nothing and removes the ambiguity.)
+ */
+const AI_USER_TRIGGERED_ALLOWED = ['ChatGPT-User', 'Claude-User', 'Perplexity-User'];
+
+/** Copies the writing into a model. Returns nothing, competes with the reason to visit. */
 const AI_TRAINING_BLOCKED = ['GPTBot', 'ClaudeBot', 'Google-Extended'];
 
 export default function robots(): MetadataRoute.Robots {
@@ -55,8 +87,17 @@ export default function robots(): MetadataRoute.Robots {
   // ever reading the noindex, leaving it free to index a bare URL from a stray link.
   // This is the single easiest way to get robots.txt wrong, so it is checked rather
   // than merely commented.
+  // ⚠️ `startsWith` with NO path-segment boundary, on purpose. This mirrors what a
+  // robots.txt parser actually does — plain octet-prefix matching — so the check and
+  // the emitted file agree exactly.
+  //
+  // It is therefore DIFFERENT from proxy.ts, which matches `p === path ||
+  // path.startsWith(p + '/')` because URL routing works in path segments. Do not
+  // "align" the two: they model different systems, and making this one segment-aware
+  // would let `/stocks-explained` pass the check while robots.txt still blocked it —
+  // reintroducing exactly the silent over-block this exists to surface.
   const contradictions = PUBLIC_PAGES.filter((p) =>
-    GATED.some((g) => p.path === g || p.path.startsWith(g)),
+    GATED.some((g) => p.path.startsWith(g)),
   );
   if (contradictions.length > 0) {
     throw new Error(
@@ -68,13 +109,30 @@ export default function robots(): MetadataRoute.Robots {
 
   return {
     rules: [
-      // Ordinary search engines: read the public pages, stay out of the app.
-      { userAgent: '*', allow: '/', disallow: GATED },
+      // ⚠️ NO `allow: '/'` on any of these groups, deliberately.
+      //
+      // It is redundant — under RFC 9309 and Google's own rules, anything not
+      // matched by a Disallow is already allowed. And it is the only line that could
+      // ever CONFLICT with a Disallow. Correctly implemented parsers resolve that by
+      // longest-path-wins (`/stocks`, 7 octets, beats `/`, 1 octet — verified against
+      // both Google's docs and RFC 9309, so `allow: '/'` was in fact safe here).
+      //
+      // But a naive crawler that takes the FIRST matching rule instead would read
+      // `Allow: /` and crawl the entire paid product. Removing the line means no
+      // parser, however sloppy, can reach that conclusion — the policy stops
+      // depending on a precedence subtlety and becomes true by construction.
+      //
+      // ⚠️ Groups do NOT inherit. A crawler uses only the most specific matching
+      // user-agent group and ignores `*` entirely, which is exactly why the three AI
+      // search bots repeat the full disallow list rather than relying on `*`. That
+      // repetition is GENERATED from the one GATED array, never hand-copied — if it
+      // were pasted, tightening `*` later would silently leave the named bots open.
+      { userAgent: '*', disallow: GATED },
 
-      // AI search — same access as any other search engine.
-      ...AI_SEARCH_ALLOWED.map((userAgent) => ({
+      // AI search, and assistants fetching on a person's behalf — same access as any
+      // other search engine. Public pages yes, the paid product no.
+      ...[...AI_SEARCH_ALLOWED, ...AI_USER_TRIGGERED_ALLOWED].map((userAgent) => ({
         userAgent,
-        allow: '/',
         disallow: GATED,
       })),
 
