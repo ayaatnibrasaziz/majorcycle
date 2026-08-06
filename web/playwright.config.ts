@@ -47,7 +47,25 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // One retry EVERYWHERE, not just CI. This was `process.env.CI ? 1 : 0`, which made
+  // a local run strictly LESS reliable than CI and produced exactly one bad outcome:
+  // a full run aborting with a single failure nobody could explain, while CI — same
+  // code — went green. A harness that disagrees with CI about whether the suite
+  // passed is a harness you cannot cite as evidence.
+  //
+  // The failure is infrastructure, not product, and it PREDATES Layer G. Measured on
+  // the pre-G1 commit: 2 of 4 full runs failed, one with `read ECONNRESET` on
+  // `POST /api/analyze-dev`. That route is correct — it consumes the request body
+  // before replying — so this is the classic keep-alive race: `next dev` closes an
+  // idle socket at the instant Playwright reuses it, and the client sees a reset
+  // instead of the 400 it was about to receive. Neither real browsers nor Vercel's
+  // edge behave this way, so nothing here reaches production.
+  //
+  // ⚠️ This hides NOTHING. Playwright reports a retried pass as **flaky** on its own
+  // line: "142 passed, 2 flaky" reads differently from "144 passed", and a flaky
+  // count is a signal to investigate, never noise to skip. Read the whole summary
+  // line, not the colour — same rule as always, one level further in.
+  retries: 1,
   reporter: [['list']],
   timeout: 60_000,
   expect: { timeout: 15_000 },
