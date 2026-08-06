@@ -1096,6 +1096,32 @@ It is a spare second verification method (Google recommends holding more than on
 active one. Empty means no tag is emitted at all — never an empty tag, which would read as a
 failed verification.
 
+### The G1 audit — five changes, checked against the specs not from memory
+
+Checked against Google's robots.txt documentation, **RFC 9309**, Next's sitemap
+reference, and each AI vendor's own bot docs.
+
+1. **No bare `Allow: /`.** Both Google and RFC 9309 resolve Allow-vs-Disallow by the
+   **longest matching path**, so `Disallow: /stocks` (7 octets) already beat `Allow: /`
+   (1) and the file was correct. It is removed anyway: the line is redundant — unlisted
+   is already allowed — and it was the only rule that could conflict, so a naive
+   crawler taking the *first* match would have crawled the whole paid product. The
+   policy is now true by construction rather than by a precedence subtlety.
+2. **`GATED` uses plain prefixes, never `/stocks$`.** RFC 9309 does define `$`, but a
+   crawler that has not implemented it treats it as a literal character, matches
+   nothing, and the paywall opens. Plain prefixes over-block instead (they would also
+   cover a future `/stocks-explained`) — for a gated product that is the correct
+   direction to be wrong in, and `robots.ts` turns it into a loud build error.
+3. **No `priority` / `changeFrequency`.** Google's docs say it ignores both. They are
+   inert, not harmful — but `priority: 0.9` reads like a ranking dial, so leaving them
+   invites a future session to tune numbers that do nothing.
+4. **`ChatGPT-User`, `Claude-User`, `Perplexity-User` named as allowed.** These fetch
+   because a *real person* asked an assistant about the page — a potential customer,
+   not a crawler. ⚠️ They were previously covered only by `*`, and **user-agent groups
+   do not inherit**: tightening `*` later would have cut them off silently.
+5. **`robots.ts` matches octet-prefixes; `proxy.ts` matches path segments.** Deliberate,
+   not drift — they model different systems. Do not "align" them.
+
 ### Two corrections to long-standing claims here
 
 - ❌ **"OG images need `@vercel/og`"** — Next ships `next/og` in the App Router. No dependency.

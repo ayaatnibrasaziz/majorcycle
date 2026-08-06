@@ -625,6 +625,29 @@ Every task ends with the relevant command(s) and shown output:
 
 Never report "done" without showing the relevant verification output.
 
+### ⚠️ Read the exit code, and make sure the harness is testing YOUR code
+
+Three ways a green (or red) result has lied in this repo, all found in one session:
+
+1. **`pnpm check:foo | tail -2` reports `tail`'s exit code, not the check's.** A `&&`
+   chain after it continues happily over a failing guard. I committed a red guard this
+   way. Run the command bare, or capture `$?` before piping.
+2. **A reused dev server answers from stale code.** `playwright.config.ts` had
+   `reuseExistingServer: !process.env.CI`, so a local run attached to whatever held
+   port 3100 — including a server started from a *different branch*. One report test
+   failed 8 of 8 against a reused server and passed 4 of 4 once it was killed, and a
+   "control" run on an older commit was silently served by the new branch's code, so
+   it measured nothing. **Now `reuseExistingServer: false`.** Never conclude "this
+   flake predates my change" from a run that reused a server.
+3. **A red run is not automatically red for your reason.** A new guard failed on the
+   *comment* that documented it, and a second matched `dis**allow**` while looking for
+   `allow`. Always read the failure message before believing the diagnosis — and when
+   a guard fires, confirm it fired for the thing you meant.
+
+Related, same family: a substring is not a token (`xdescription` contains
+`description`), and an assertion about what a file does *not* contain is vacuously
+true when the file is empty or unreachable — prove it arrived first.
+
 ---
 
 ## 15. Previewing & Verifying Authenticated Pages Locally
