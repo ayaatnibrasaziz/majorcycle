@@ -321,8 +321,17 @@ if (robots && pages) {
   const robotsCode = robots
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:])\/\/.*$/gm, '$1');
+  //
+  // ⚠️ `\ballow:` with a word boundary, NOT `allow:`. The word **dis**allow CONTAINS
+  // "allow", so the naive pattern matched `disallow: '/'` — the line that blocks the
+  // training crawlers, which must stay. The guard therefore reported a failure for
+  // entirely the wrong reason, and would have kept failing no matter what the code
+  // said. A red check is not automatically red for the reason you think.
+  //
+  // Third instance of this exact class in one session (`xdescription` contains
+  // `description`; a stray import satisfied `PUBLIC_PAGES`). Substring != token.
   check();
-  if (/allow:\s*'\/'/.test(robotsCode)) {
+  if (/\ballow:\s*'\/'/.test(robotsCode)) {
     fail("app/robots.ts: remove `allow: '/'`. Anything not disallowed is already allowed, and a bare Allow is the only rule that can conflict with a Disallow — a naive crawler taking the first match would crawl the whole paid product.");
   }
 
