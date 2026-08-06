@@ -77,6 +77,35 @@ if (indexable.length === 0) {
   fail('lib/seo.ts: no page is marked `index: true`, so sitemap.xml would be empty and nothing could ever rank.');
 }
 
+// ⚠️ Named pages, not just a count. A break that flipped /pricing to `index: false`
+// passed every other check here AND every e2e assertion — because both derive the
+// expected set from this same list, so the list and its test moved together. That
+// is the shape of an unfalsifiable test: it asserts the code agrees with itself.
+// These four are pinned independently, so dropping one has to be a deliberate edit
+// in two places rather than a one-character slip nobody sees.
+const MUST_BE_INDEXABLE = ['/pricing', '/methodology', '/terms', '/privacy'];
+for (const required of MUST_BE_INDEXABLE) {
+  check();
+  const page = (pages ?? []).find((p) => p.path === required);
+  if (!page) {
+    fail(`lib/seo.ts: ${required} has disappeared from PUBLIC_PAGES entirely.`);
+  } else if (!page.index) {
+    fail(`lib/seo.ts: ${required} must stay indexable. Flipping it to noindex drops it from the sitemap silently — the page keeps working, so nothing looks wrong, and it simply stops being findable.`);
+  }
+}
+
+// Conversely, the sign-in pages must NEVER become indexable. A sign-in form ranking
+// for the brand name is a bad first result, and /deletion-requested asserts
+// something true of exactly one reader at one moment.
+const MUST_BE_NOINDEX = ['/login', '/signup', '/reset-password', '/deletion-requested'];
+for (const required of MUST_BE_NOINDEX) {
+  check();
+  const page = (pages ?? []).find((p) => p.path === required);
+  if (page?.index) {
+    fail(`lib/seo.ts: ${required} must stay noindex.`);
+  }
+}
+
 // ── 1. robots.txt and sitemap.xml exist and DERIVE from the registry ─────────
 
 // ⚠️ Each rule below names the EXPRESSION, not just the identifier. The first
@@ -192,8 +221,13 @@ for (const page of pages ?? []) {
   }
   // A description is what a searcher reads under the blue link. Every page had a
   // title before G1; seven had no description at all.
+  //
+  // ⚠️ Anchored to the start of the line. The first version was `/description:/`,
+  // and a break that renamed the key to `xdescription:` passed — because the typo
+  // still CONTAINS the string being searched for. A substring match is not a field
+  // check.
   check();
-  if (!/description:\s*\n?\s*'/.test(src)) {
+  if (!/\n\s*description:\s*\n?\s*'/.test(src)) {
     fail(`${rel}: pageMetadata() needs a description — it is the sentence shown under the result.`);
   }
 }
