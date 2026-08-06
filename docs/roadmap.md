@@ -604,16 +604,29 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 >    Cache Components / `use cache` / PPR are available and are the right lever for the
 >    Lighthouse target. Confirm against current Vercel docs before designing around them.
 
-- [ ] **DECISION FIRST:** which pages are publicly crawlable? (owner call — see box above)
-- [ ] Dynamic `/sitemap.ts` — scoped to whatever the decision makes public
-- [ ] Dynamic `/robots.ts` — public pages allowed, private blocked
-- [ ] **Add `/robots.txt` + `/sitemap.xml` to `PUBLIC_PATHS`** or they 307 to `/login`
-- [ ] Per-page metadata (title, description, OG tags) — dynamic where it earns its keep
-- [ ] JSON-LD structured data — `Article` + `FinancialProduct` schemas
-- [ ] Dynamic OG images via `@vercel/og` per ticker
-- [ ] Canonical URL tags — **note the apex vs `www` split** (the live Stripe webhook needs `www`;
-      pick one canonical host and make the other redirect consistently)
-- [ ] Submit sitemap to Google Search Console
+- [x] **DECISION MADE 2026-08-04:** nothing the product sells is crawlable. Search traffic comes
+      from written content, not from ticker data. **Do not re-propose indexing stock pages.**
+- [x] `/sitemap.ts` — the 6 indexable public pages, derived from `PUBLIC_PAGES` (`lib/seo.ts`)
+- [x] `/robots.ts` — public pages allowed, every app surface explicitly disallowed, plus the
+      AI-crawler split (allow search bots that cite us; block training crawlers)
+- [x] **Added `/robots.txt` + `/sitemap.xml` to `PUBLIC_PATHS`** — they 307'd to `/login`
+      without it, which no amount of correctness inside either file would have fixed
+- [x] Per-page metadata — canonical + Open Graph on all 10 public pages via one helper;
+      `noindex` (but crawlable) on the four sign-in pages
+- [x] Canonical URL — **one `SITE_ORIGIN`**, `www`. The literal was in FIVE files and one
+      disagreed; it never fired because `NEXT_PUBLIC_SITE_URL` is set in production, which is
+      why nobody saw it. `check:seo` now fails the build on a sixth copy.
+- [x] **Google Search Console verified 2026-08-06** — Domain property (covers apex + `www`),
+      DNS TXT on the root. See `architecture.md` §11 for the record and the warning about it.
+- [ ] JSON-LD — `Organization`, `WebSite`, `Article`, `DefinedTerm`. **NOT `FinancialProduct`**
+      and no rating markup: that asserts an investment claim in machine-readable form,
+      against compliance posture #24.
+- [ ] OG images via **`next/og`** — ships with the App Router; `@vercel/og` is NOT a
+      dependency we need (this doc claimed otherwise for months). Waits on G2's design.
+- [ ] **Submit the sitemap in Search Console — AT MERGE, not before.** `/sitemap.xml` 404s on
+      production until Layer G is live, and submitting a 404 teaches Google to distrust it.
+      *(Google retired the "ping on deploy" endpoint in 2023; it now 404s. The mechanism is
+      the `Sitemap:` line in robots.txt plus one manual submission.)*
 - [ ] Image optimisation pass (next/image everywhere)
 - [ ] Bundle size audit — remove any unused deps
 - [ ] Lighthouse pass — score 90+ on at least 5 sample ticker pages

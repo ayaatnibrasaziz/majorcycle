@@ -1035,27 +1035,83 @@ NEXT_PUBLIC_SITE_URL=
 
 ---
 
-## 11. SEO Architecture — **TARGET STATE (Layer G), NOT YET BUILT**
+## 11. SEO Architecture
 
-> ⚠️ **Only the first bullet is true today.** Verified 2026-07-30: `web/app/sitemap.ts`,
-> `web/app/robots.ts` and any `opengraph-image` file **do not exist**, and no page emits
-> `application/ld+json`. This section had been written in the present tense, which read as
-> "already shipped". It is the **Layer G specification** — see `roadmap.md`. Nothing here is
-> a regression to investigate; it is work not yet started.
+> ⚠️ **This section was wrong twice, in opposite directions.** It was first written in the
+> present tense for things that did not exist ("already shipped"). It was then corrected to a
+> spec that had since been **overruled by the owner** — it described indexing every ticker
+> page, which the 2026-08-04 gating decision rules out entirely. Rewritten after G1 to
+> describe what is built and what was decided.
 
-- ✅ **Per-ticker pages:** `/stocks/[market]/[ticker]` rendered server-side with full data baked into the HTML — **built, and the one piece of this list that is live**
-- ⛔ **Sitemap:** `/sitemap.ts` auto-generated from the `stocks` table — every ticker an entry, pinged to Search Console on each deploy
-- ⛔ **Structured data:** JSON-LD per ticker page (`@type: Article` + `FinancialProduct`)
-- ⛔ **OG images:** dynamic via `@vercel/og` — ticker, price, rating tier, sparkline
-- ⛔ **Robots:** `/robots.ts` allowing crawlers on `/stocks/*`, blocking `/account/*` and `/api/*`
-- ⛔ **Canonical URLs:** canonical tag on every page pointing at the market-prefixed URL
+### The governing decision
 
-**Note for whoever builds this:** the paywall changes what may be indexed. A crawler is an
-anonymous visitor, so it sees exactly the free tier — Stock Detail without the scores. That is
-the correct thing to index (it is real, useful content and the honest shop window), but the
-robots rules must keep `/run`, `/results`, `/account/*` and every `/api/*` path out, and the
-`/stocks/[market]/[ticker]/report` route must never appear in a sitemap.
-- **Methodology page:** `/methodology` is a long-form content page targeting "Major Cycle" + educational queries — topical authority anchor
+**Nothing the product sells is crawlable** (owner, 2026-08-04). No ticker page, no screener
+route, no account page appears in the sitemap or is allowed by `robots.txt`. Search traffic
+comes from written content — the landing page, `/about`, `/learn`, `/glossary` and a weekly
+human-edited market note — not from the data.
+
+This reverses the earlier plan to index Stock Detail as a "free tier shop window". Do not
+re-propose it.
+
+### Built in G1
+
+| | |
+|---|---|
+| ✅ `web/app/robots.ts` | Per-crawler rules. Every app surface explicitly disallowed. |
+| ✅ `web/app/sitemap.ts` | Derived from `PUBLIC_PAGES`; the 6 indexable public pages only. |
+| ✅ `web/lib/seo.ts` | **The registry.** One list of public pages, four consumers. |
+| ✅ Canonical + Open Graph | On all 10 public pages, via `pageMetadata()`. |
+| ✅ `noindex` | `/login`, `/signup`, `/reset-password`, `/deletion-requested` — **crawlable**. |
+| ✅ Search Console | **Verified 2026-08-06** by DNS TXT (see below). |
+
+⚠️ **Creating `robots.ts` and `sitemap.ts` is NOT sufficient.** Both paths match the middleware
+matcher, so until they were added to `PUBLIC_ENDPOINTS` a crawler asking for `/robots.txt` got
+a **307 to `/login`** — verified on the live site. The file can be perfect and unreachable.
+
+⚠️ **Never `Disallow` and `noindex` the same URL.** A blocked page is never fetched, so Google
+never reads the `noindex`, and stays free to index a bare URL it found linked elsewhere. The
+four sign-in pages are `noindex` and deliberately still crawlable. `robots.ts` throws at build
+time if the two lists ever contradict, and both guards check it.
+
+### Search Console — verified by DNS, not by a meta tag
+
+Property type **Domain** (`sc-domain:majorcycle.com`), which covers the apex and `www`
+together — the right choice given the site uses both. Verified **2026-08-06** with a TXT
+record on the root:
+
+```
+google-site-verification=F2Mf57D4guIzAlEkhzXw7QW8eU4l8t7fdZZrQfGLA_A
+```
+
+⚠️ **Deleting that record un-verifies the property.** It sits alongside the SPF record on the
+same name — both are TXT on the root, and that is correct: a name may hold many TXT records.
+Editing the SPF one instead would break email deliverability.
+
+Google offered a one-click route that **authorises Google to manage the Cloudflare DNS
+account**. Declined deliberately — an ongoing third-party grant over DNS is a much larger
+permission than a single public record.
+
+`NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` is wired into the root layout and currently **unset**.
+It is a spare second verification method (Google recommends holding more than one), not the
+active one. Empty means no tag is emitted at all — never an empty tag, which would read as a
+failed verification.
+
+### Two corrections to long-standing claims here
+
+- ❌ **"OG images need `@vercel/og`"** — Next ships `next/og` in the App Router. No dependency.
+- ❌ **"the sitemap is pinged to Search Console on each deploy"** — Google **retired** that
+  endpoint in 2023 and it now 404s. The mechanism is the `Sitemap:` line in `robots.txt` plus
+  a one-time submission in Search Console.
+
+### Still to come (G4–G7)
+
+- Structured data: `Organization` + `WebSite` sitewide, `Article` on `/learn/*`,
+  `DefinedTerm` on the glossary. **No `FinancialProduct` and no rating markup** — that would
+  assert an investment claim in machine-readable form, against compliance posture #24.
+- OG images via `next/og`, once G2's design is approved. Until then `twitter:card` is
+  `summary`, not `summary_large_image` — claiming an image we don't ship renders broken.
+- **Submit the sitemap in Search Console at merge.** It 404s until Layer G is live.
+- `/methodology` is the topical-authority anchor for "Major Cycle" educational queries.
 
 ---
 
