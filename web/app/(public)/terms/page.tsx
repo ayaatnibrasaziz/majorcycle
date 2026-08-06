@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { LegalDoc } from '@/components/LegalDoc';
 
-export const metadata: Metadata = { title: 'Terms of Service' };
+export const metadata: Metadata = pageMetadata({
+  path: '/terms',
+  title: 'Terms of Service',
+  description:
+    'The terms governing your use of MajorCycle: accounts, the 7-day free trial, subscription billing and cancellation, acceptable use, and limitation of liability.',
+});
 
 // BASELINE CONTENT — owner to review/customise (and ideally have a professional
 // check) before wide launch. Reflects the locked pricing/trial/refund decisions.

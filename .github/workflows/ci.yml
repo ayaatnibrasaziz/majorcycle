@@ -60,6 +60,22 @@ jobs:
         # It prints the number of checks it ran — read the count, not the colour.
         run: pnpm check:data-integrity
 
+      - name: Check SEO plumbing
+        # The static half of a pair (the other is e2e/seo.spec.ts, which reads the
+        # real rendered HTML). Nothing here changes a pixel, so an SEO regression
+        # cannot be seen by looking at the site, and every defect in the class is a
+        # line that ISN'T there: a page with no canonical, a route missing from the
+        # sitemap, a public path the middleware still bounces.
+        #
+        # It also enforces ONE canonical origin. That literal was in five files
+        # before Layer G and one of them disagreed (apex vs www) — invisible because
+        # NEXT_PUBLIC_SITE_URL is set in production, so the wrong fallback never
+        # fired. `www` is load-bearing: the live Stripe webhook is registered on it
+        # and Stripe counts a 3xx as a failed delivery.
+        #
+        # Prints the number of checks it ran — read the count, not the colour.
+        run: pnpm check:seo
+
       - name: Build
         run: pnpm build
 

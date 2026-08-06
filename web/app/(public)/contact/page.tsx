@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { AuthCard } from '@/components/AuthCard';
 import { ContactForm } from './ContactForm';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: '/contact',
   title: 'Contact',
   description: 'Get in touch with the MajorCycle team.',
-};
+});
 
 export default function ContactPage() {
   return (

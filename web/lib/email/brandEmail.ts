@@ -17,7 +17,11 @@
  * markup (see `escapeHtml` in the contact action).
  */
 
-const SITE = 'https://www.majorcycle.com';
+import { SITE_ORIGIN } from '@/lib/url';
+
+// From lib/url.ts — the one home for the origin (rule 11c). Hard-coded here until
+// Layer G G1, which made this the FIFTH copy of the same literal.
+const SITE = SITE_ORIGIN;
 
 const FONT_STACK =
   "'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";

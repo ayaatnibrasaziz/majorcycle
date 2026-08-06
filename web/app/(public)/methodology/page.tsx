@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import Link from 'next/link';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: '/methodology',
   title: 'How MajorCycle Works',
   description:
     'A plain-English overview of the Major Cycle analysis: cycle position, financial health, valuation, and the overall rating — educational information only, not financial advice.',
-};
+});
 
 /** The five compliant rating tiers (design-system §4 / CLAUDE.md #16). */
 const TIERS = [

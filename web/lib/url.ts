@@ -1,16 +1,33 @@
 /**
+ * THE canonical origin. One constant, imported everywhere — never re-typed.
+ *
+ * ⚠️ `www` is load-bearing, not cosmetic. The LIVE Stripe webhook is registered at
+ * `https://www.majorcycle.com/api/stripe/webhook`, and Stripe counts a 3xx as a
+ * FAILED delivery — so the apex, which 307s to `www`, would silently break billing
+ * events. Do not "tidy" this to the shorter form.
+ *
+ * This value was spread across THREE files until Layer G G1, and one of them
+ * disagreed: `lib/url.ts` said the apex while `app/layout.tsx` (metadataBase) and
+ * `lib/email/format.ts` said `www`. Nothing was broken — `NEXT_PUBLIC_SITE_URL` is
+ * set in production, so the fallback never fired — which is exactly the problem:
+ * the disagreement was invisible precisely because it was unreachable, and it would
+ * have surfaced the first time the env var went missing, in whichever of the three
+ * happened to be asked. Rule 11c: one rule, one place.
+ */
+export const SITE_ORIGIN = 'https://www.majorcycle.com';
+
+/**
  * Canonical site origin for building auth redirect and email-link URLs.
  *
- * Prefers the explicit `NEXT_PUBLIC_SITE_URL` (always `https://majorcycle.com`)
- * so links never bake in a preview (`*.vercel.app`) or `localhost` origin.
- * Falls back to the live browser origin, then a hard-coded production default
- * for any server-side caller without the env set.
+ * Prefers the explicit `NEXT_PUBLIC_SITE_URL` so links never bake in a preview
+ * (`*.vercel.app`) or `localhost` origin. Falls back to the live browser origin,
+ * then to SITE_ORIGIN for any server-side caller without the env set.
  */
 export function getSiteURL(): string {
   const configured = process.env['NEXT_PUBLIC_SITE_URL'];
   if (configured) return configured.replace(/\/+$/, '');
   if (typeof window !== 'undefined') return window.location.origin;
-  return 'https://majorcycle.com';
+  return SITE_ORIGIN;
 }
 
 /**
