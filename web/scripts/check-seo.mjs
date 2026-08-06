@@ -363,20 +363,48 @@ if (robots && pages) {
   ];
   const AI_BLOCKED = ['GPTBot', 'ClaudeBot', 'Google-Extended'];
 
-  for (const bot of AI_ALLOWED) {
-    check();
-    if (!robots.includes(`'${bot}'`)) {
-      fail(`app/robots.ts: '${bot}' must stay in the allowed list. Search bots cite us and send readers back; the *-User agents fetch because a real person asked about the page — that is a potential customer, not a crawler.`);
+  /**
+   * Pull the string members of a named array literal.
+   *
+   * ⚠️ Membership of the RIGHT array, not "appears somewhere in the file". The first
+   * version asked `robots.includes("'Claude-User'")`, and a break-test that moved the
+   * name into an unrelated `const _unused = ['Claude-User']` sailed straight through
+   * — the guard was satisfied by a string with no effect on the output. Third time
+   * this session that matching text instead of structure produced a hollow check.
+   */
+  const arrayOf = (name) => {
+    const m = robots.match(new RegExp(`const ${name}\\s*=\\s*\\[([^\\]]*)\\]`));
+    return m ? [...m[1].matchAll(/'([^']+)'/g)].map((x) => x[1]) : null;
+  };
+
+  const searchAllowed = arrayOf('AI_SEARCH_ALLOWED');
+  const userAllowed = arrayOf('AI_USER_TRIGGERED_ALLOWED');
+  const trainingBlocked = arrayOf('AI_TRAINING_BLOCKED');
+
+  check();
+  if (!searchAllowed?.length || !userAllowed?.length || !trainingBlocked?.length) {
+    fail('app/robots.ts: could not parse the three AI agent arrays. Every check below would pass vacuously, so this is a failure in itself.');
+  } else {
+    const allowedInFile = [...searchAllowed, ...userAllowed];
+    for (const bot of AI_ALLOWED) {
+      check();
+      if (!allowedInFile.includes(bot)) {
+        fail(`app/robots.ts: '${bot}' must be a member of AI_SEARCH_ALLOWED or AI_USER_TRIGGERED_ALLOWED. Search bots cite us and send readers back; the *-User agents fetch because a real person asked about the page — a potential customer, not a crawler.`);
+      }
+      check();
+      if (trainingBlocked.includes(bot)) {
+        fail(`app/robots.ts: '${bot}' is in AI_TRAINING_BLOCKED but must be allowed.`);
+      }
     }
-    check();
-    if (new RegExp(`AI_TRAINING_BLOCKED[^\\]]*'${bot}'`).test(robots)) {
-      fail(`app/robots.ts: '${bot}' is in the BLOCKED list but must be allowed.`);
-    }
-  }
-  for (const bot of AI_BLOCKED) {
-    check();
-    if (!new RegExp(`AI_TRAINING_BLOCKED[^\\]]*'${bot}'`).test(robots)) {
-      fail(`app/robots.ts: '${bot}' must stay in AI_TRAINING_BLOCKED — it copies the writing into a model and returns nothing.`);
+    for (const bot of AI_BLOCKED) {
+      check();
+      if (!trainingBlocked.includes(bot)) {
+        fail(`app/robots.ts: '${bot}' must stay in AI_TRAINING_BLOCKED — it copies the writing into a model and returns nothing.`);
+      }
+      check();
+      if (allowedInFile.includes(bot)) {
+        fail(`app/robots.ts: '${bot}' is both allowed and blocked.`);
+      }
     }
   }
 }
