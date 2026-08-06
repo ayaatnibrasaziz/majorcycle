@@ -79,17 +79,46 @@ if (indexable.length === 0) {
 
 // ── 1. robots.txt and sitemap.xml exist and DERIVE from the registry ─────────
 
-for (const [file, label] of [['app/robots.ts', 'robots'], ['app/sitemap.ts', 'sitemap']]) {
+// ⚠️ Each rule below names the EXPRESSION, not just the identifier. The first
+// version of this check tested `/PUBLIC_PAGES/` against the whole file, and a
+// deliberate break that replaced the sitemap's `PUBLIC_PAGES.filter(...)` with
+// `[].filter(...)` — emitting an EMPTY sitemap — still passed, because the unused
+// `import { PUBLIC_PAGES }` line at the top satisfied the pattern. It was checking
+// the import, not the use. Found by breaking it on purpose; reading it would never
+// have shown this, and the guard would have sat there looking protective.
+const DERIVATION = [
+  [
+    'app/sitemap.ts',
+    /PUBLIC_PAGES\s*\.\s*filter\s*\(/,
+    'must build its entries from PUBLIC_PAGES.filter(...) (lib/seo.ts). A hand-written second list drifts (11c), and it fails in the worst direction — a sitemap entry that answers Google with a redirect to /login.',
+  ],
+  [
+    'app/robots.ts',
+    /PUBLIC_PAGES\s*\.\s*filter\s*\(/,
+    'must cross-check PUBLIC_PAGES against its own GATED list, so a public page can never also be disallowed. A blocked URL is never fetched, so its noindex is never read.',
+  ],
+];
+
+for (const [file, pattern, why] of DERIVATION) {
   const src = read(file);
   check();
   if (!src) {
-    fail(`${file} is missing — /${label === 'robots' ? 'robots.txt' : 'sitemap.xml'} is how a search engine is told this site exists.`);
+    fail(`${file} is missing — it is how a search engine is told this site exists.`);
     continue;
   }
   check();
-  if (!/PUBLIC_PAGES/.test(src)) {
-    fail(`${file}: must derive from PUBLIC_PAGES (lib/seo.ts). A second hand-written list is a second place for the rule to drift (11c), and the failure is silent in the worst direction — a sitemap entry that answers Google with a redirect.`);
+  if (!pattern.test(src)) {
+    fail(`${file}: ${why}`);
   }
+}
+
+// The sitemap must actually emit entries. An empty <urlset> is valid XML and a
+// completely silent failure: nothing errors, nothing looks wrong on the site, and
+// it is simply never crawled.
+const sitemapSrc = read('app/sitemap.ts');
+check();
+if (sitemapSrc && !/\.map\s*\(\s*\(\s*page\s*\)/.test(sitemapSrc)) {
+  fail('app/sitemap.ts: must map the filtered pages into entries. An empty urlset is valid XML and fails silently.');
 }
 
 // ── 2. the middleware actually lets them through ────────────────────────────
