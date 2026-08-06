@@ -150,6 +150,21 @@ if (sitemapSrc && !/\.map\s*\(\s*\(\s*page\s*\)/.test(sitemapSrc)) {
   fail('app/sitemap.ts: must map the filtered pages into entries. An empty urlset is valid XML and fails silently.');
 }
 
+// The most tempting wrong "improvement" in this file, guarded because it looks like
+// diligence rather than a mistake: `lastModified: new Date()` tells Google every page
+// changed on every deploy. A sitemap that cries wolf teaches it to ignore the field,
+// so it is worse than the omission it replaces. A REAL content date (G4's articles)
+// is fine — a BUILD-TIME date never is.
+if (sitemapSrc) {
+  const sitemapCode = sitemapSrc
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+  check();
+  if (/lastModified\s*:\s*new Date\(\s*\)/.test(sitemapCode)) {
+    fail('app/sitemap.ts: `lastModified: new Date()` claims every page changed on every deploy. Use a real content date or omit the field.');
+  }
+}
+
 // ── 2. the middleware actually lets them through ────────────────────────────
 // The single most important check in this file. Creating app/robots.ts is NOT
 // enough: /robots.txt matches the middleware matcher, so before Layer G the live
