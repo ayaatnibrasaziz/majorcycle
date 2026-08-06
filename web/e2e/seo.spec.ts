@@ -21,6 +21,35 @@ import { SITE_ORIGIN } from '@/lib/url';
 const INDEXABLE = PUBLIC_PAGES.filter((p) => p.index);
 const NOINDEX = PUBLIC_PAGES.filter((p) => !p.index);
 
+/**
+ * Fetch a generated file and PROVE it arrived before asserting anything about its
+ * contents.
+ *
+ * Every "must not contain" assertion below is vacuously true against an empty body,
+ * so without this an unreachable file reads as a perfect result. Not hypothetical:
+ * breaking robots.txt on purpose (dropping it from PUBLIC_ENDPOINTS so it answered
+ * 307) left FOUR of these tests green — 3 failed instead of 7. It is the same
+ * failure that had check_invariants() reporting zero cross-currency violations over
+ * a universe that had lost the very field it inspects: unmeasurable counted as
+ * clean. A negative assertion means nothing until you have proved you are looking
+ * at the real thing.
+ */
+async function readOrFail(
+  request: {
+    get: (u: string, o: object) => Promise<{ status: () => number; text: () => Promise<string> }>;
+  },
+  path: string,
+): Promise<string> {
+  const res = await request.get(path, { maxRedirects: 0 });
+  expect(
+    res.status(),
+    `${path} must be readable before any assertion about it means anything`,
+  ).toBe(200);
+  const body = await res.text();
+  expect(body.length, `${path} must not be empty`).toBeGreaterThan(50);
+  return body;
+}
+
 test.describe('robots.txt', () => {
   test('is served, not redirected to the login page', async ({ request }) => {
     // maxRedirects: 0 is the whole point. Following redirects would return the
@@ -33,7 +62,7 @@ test.describe('robots.txt', () => {
   });
 
   test('points at the sitemap and blocks every paid surface', async ({ request }) => {
-    const body = await (await request.get('/robots.txt', { maxRedirects: 0 })).text();
+    const body = await readOrFail(request, '/robots.txt');
 
     expect(body).toContain(`Sitemap: ${SITE_ORIGIN}/sitemap.xml`);
 
@@ -45,7 +74,7 @@ test.describe('robots.txt', () => {
   });
 
   test('allows AI search engines and refuses AI training crawlers', async ({ request }) => {
-    const body = await (await request.get('/robots.txt', { maxRedirects: 0 })).text();
+    const body = await readOrFail(request, '/robots.txt');
 
     // Split by what the bot DOES with the page, not by vendor: OpenAI and Anthropic
     // each run one of each, and the two are treated differently on purpose.
@@ -72,7 +101,7 @@ test.describe('sitemap.xml', () => {
   });
 
   test('lists every indexable page at the canonical www origin', async ({ request }) => {
-    const body = await (await request.get('/sitemap.xml', { maxRedirects: 0 })).text();
+    const body = await readOrFail(request, '/sitemap.xml');
 
     for (const page of INDEXABLE) {
       expect(body, `${page.path} is indexable and must be listed`)
@@ -81,7 +110,7 @@ test.describe('sitemap.xml', () => {
   });
 
   test('never lists a noindex page or a gated one', async ({ request }) => {
-    const body = await (await request.get('/sitemap.xml', { maxRedirects: 0 })).text();
+    const body = await readOrFail(request, '/sitemap.xml');
 
     // Telling Google to crawl a page and then telling it not to index the page is
     // a contradiction that wastes crawl budget and looks like a mistake.
@@ -95,7 +124,7 @@ test.describe('sitemap.xml', () => {
   });
 
   test('the apex origin never appears — the www form is load-bearing', async ({ request }) => {
-    const body = await (await request.get('/sitemap.xml', { maxRedirects: 0 })).text();
+    const body = await readOrFail(request, '/sitemap.xml');
 
     // https://majorcycle.com (no www) 307s. A sitemap full of redirects is a
     // sitemap Google distrusts, and the same origin constant feeds the Stripe
@@ -149,7 +178,7 @@ test.describe('noindex pages', () => {
       // The trap this guards: a Disallow would stop Google FETCHING the page, so it
       // would never read the noindex above, and could still index a bare URL found
       // linked elsewhere. Blocked and noindex are mutually exclusive, not additive.
-      const txt = await (await request.get('/robots.txt', { maxRedirects: 0 })).text();
+      const txt = await readOrFail(request, '/robots.txt');
       expect(
         txt,
         `${page.path} is noindex, so robots.txt must NOT also disallow it`,
