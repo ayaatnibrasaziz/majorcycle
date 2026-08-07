@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { isValidMarket, type RouteSearch } from '@/lib/horizon';
 import { getViewerEntitlement } from '@/lib/entitlement.server';
 import { buildReportData } from '@/lib/report-data';
+import { StockReadError } from '@/lib/stocks';
 
 type RouteParams = { market: string; ticker: string };
 
@@ -88,7 +89,27 @@ export async function GET(
     new URL(request.url).searchParams.entries(),
   ) as RouteSearch;
 
-  const data = await buildReportData(market, ticker, sp);
+  // A failed database read is NOT a missing stock. Until 2026-08-07 both arrived
+  // here as `null`, so a subscriber hitting a transient Supabase error was told
+  // their stock does not exist — a permanent answer to a temporary problem, on the
+  // one surface they have paid for. 503 + Retry-After says "come back", which is
+  // both true and actionable; 404 says "stop asking", which is neither.
+  //
+  // Caught rather than left to throw: an uncaught error in a route handler yields a
+  // 500 whose headers we do not set, and every response from this route carries a
+  // per-viewer reason and so must say `private, no-store` itself (CLAUDE.md 11a).
+  let data;
+  try {
+    data = await buildReportData(market, ticker, sp);
+  } catch (err) {
+    if (err instanceof StockReadError) {
+      return NextResponse.json(
+        { error: 'Temporarily unavailable', reason: 'read_failed' },
+        { status: 503, headers: { ...NO_STORE, 'Retry-After': '5' } },
+      );
+    }
+    throw err;
+  }
   if (!data) {
     return NextResponse.json(
       { error: 'Not found' },

@@ -38,6 +38,57 @@ function shallowCamel(row: Record<string, unknown>): Record<string, unknown> {
 type AdminClient = ReturnType<typeof createAdminClient>;
 
 /**
+ * A read against Supabase FAILED. This is emphatically not the same thing as
+ * "the ticker isn't in our universe", and conflating the two is the bug this
+ * class exists to prevent.
+ *
+ * Until 2026-08-07 every read error in this file was funnelled into the same
+ * `return null` that means "no such stock", so a database timeout reached a
+ * paying customer as **"Stock not found"** — a permanent-sounding answer to a
+ * transient problem, with nothing logged and nothing to retry. It also blinded
+ * us: the e2e suite's intermittent 404 on an *entitled* viewer's report looked
+ * like an entitlement bug for a whole session, because the real cause was being
+ * swallowed one layer down. Same family as `check_invariants()` reporting zero
+ * violations over a universe missing the field it reads (CLAUDE.md 14g):
+ * **an unreadable answer must never be reported as a clean one.**
+ *
+ * Thrown, not returned, so a caller cannot ignore it by accident — the failure
+ * has to be handled somewhere or it reaches an error boundary that says "try
+ * again". The originating PostgREST error is attached as `cause` so it lands in
+ * the Vercel logs intact.
+ */
+export class StockReadError extends Error {
+  constructor(ticker: string, stage: string, cause: unknown) {
+    super(`Failed to read ${stage} for ${ticker}`);
+    this.name = 'StockReadError';
+    this.cause = cause;
+  }
+}
+
+/**
+ * Read the canonical `stocks` row.
+ *
+ * `null` means the ticker is genuinely not in our universe — the ONE condition
+ * that should ever produce a 404. A failed read throws instead.
+ *
+ * Exported for the same reason as `loadPriceBars`: so the stub-client spec can
+ * prove the error path throws rather than reporting "no such stock".
+ */
+export async function readStockRow(
+  supabase: AdminClient,
+  ticker: string,
+): Promise<Record<string, unknown> | null> {
+  const { data, error } = await supabase
+    .from('stocks')
+    .select('*')
+    .eq('ticker', ticker)
+    .maybeSingle();
+
+  if (error) throw new StockReadError(ticker, 'stocks row', error);
+  return (data as Record<string, unknown> | null) ?? null;
+}
+
+/**
  * Load a ticker's full daily history.
  *
  * Fast path: ONE request via the `get_price_bars_json` RPC, which returns the
@@ -45,13 +96,19 @@ type AdminClient = ReturnType<typeof createAdminClient>;
  * so a long-history ticker no longer needs ~12 cross-region round-trips).
  *
  * Falls back to parallel paginated reads if the RPC isn't deployed yet or errors,
- * so this is safe to ship before/after the migration. Returns `null` only on a
- * hard read failure (lets the caller 404 / degrade).
+ * so this is safe to ship before/after the migration.
+ *
+ * Throws `StockReadError` if the fallback ALSO fails. A ticker with genuinely no
+ * bars returns `[]` — an empty history is a real answer, a failed read is not.
+ *
+ * Exported ONLY so `e2e/stock-read-errors.spec.ts` can drive the real function
+ * with a stub client and prove each failure throws. It takes its client as an
+ * argument precisely so that is possible without a network or a credential.
  */
-async function loadPriceBars(
+export async function loadPriceBars(
   supabase: AdminClient,
   ticker: string,
-): Promise<PriceBar[] | null> {
+): Promise<PriceBar[]> {
   const { data: rpcData, error: rpcErr } = await supabase.rpc('get_price_bars_json', {
     p_ticker: ticker,
   });
@@ -66,7 +123,7 @@ async function loadPriceBars(
     .from('price_bars')
     .select('date', { count: 'exact', head: true })
     .eq('ticker', ticker);
-  if (countErr) return null;
+  if (countErr) throw new StockReadError(ticker, 'price_bars count', countErr);
 
   const pageCount = Math.ceil((count ?? 0) / PAGE);
   const pages = await Promise.all(
@@ -83,7 +140,7 @@ async function loadPriceBars(
   // Pages are date-ordered slices concatenated in order → globally date-ordered.
   const priceBars: PriceBar[] = [];
   for (const { data: page, error: barsErr } of pages) {
-    if (barsErr) return null;
+    if (barsErr) throw new StockReadError(ticker, 'price_bars page', barsErr);
     if (page) priceBars.push(...(page as PriceBar[]));
   }
   return priceBars;
@@ -91,26 +148,24 @@ async function loadPriceBars(
 
 /**
  * Fetch a stock's full detail payload by storage-format ticker (e.g. `AAPL`,
- * `BHP.AX`, `SHOP.TO`). Returns `null` if the ticker isn't in our universe.
+ * `BHP.AX`, `SHOP.TO`).
+ *
+ * Returns `null` for EXACTLY ONE reason: the ticker isn't in our universe.
+ * Every read failure throws `StockReadError` instead — see that class for why
+ * the two must not share a return value.
  *
  * Cached per render so multiple components on the same page hit the DB once.
+ * React's `cache()` memoises a rejection as well as a value, so the page and its
+ * `generateMetadata` see one consistent outcome from one attempt.
  */
 export const fetchStockDetail = cache(
   async (ticker: string): Promise<StockDetail | null> => {
     const supabase = createAdminClient();
 
-    const { data: stockRow, error: stockErr } = await supabase
-      .from('stocks')
-      .select('*')
-      .eq('ticker', ticker)
-      .maybeSingle();
-
-    if (stockErr || !stockRow) {
-      return null;
-    }
+    const stockRow = await readStockRow(supabase, ticker);
+    if (!stockRow) return null;
 
     const priceBars = await loadPriceBars(supabase, ticker);
-    if (priceBars === null) return null;
 
     const camelRow = shallowCamel(stockRow as Record<string, unknown>);
 
