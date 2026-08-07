@@ -251,6 +251,36 @@ const PREMIUM_KEYS = [
       );
     }
   }
+  // The check above only proves the CONSTANT is still declared. It would pass while a
+  // newly added branch returned without it — which is exactly how `/api/portal` and
+  // `/api/checkout` came to send no Cache-Control at all (CLAUDE.md 11a, fourth time).
+  // So count instead, the same way the billing-endpoints section does: EVERY response
+  // this route can emit is per-viewer, so the number of responses carrying NO_STORE
+  // must EQUAL the number of responses, with no exceptions to argue about.
+  const reportCode = reportData
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('*') && !l.trim().startsWith('//') && !l.trim().startsWith('/*'))
+    .join('\n');
+  const responses = (reportCode.match(/NextResponse\.json\(/g) ?? []).length;
+  // Matches `headers: NO_STORE` and `headers: { ...NO_STORE, … }` alike.
+  const guarded = (reportCode.match(/headers:\s*(?:\{\s*\.\.\.)?NO_STORE/g) ?? []).length;
+  if (responses === 0 || guarded !== responses) {
+    fail(
+      `the report route has ${responses} responses but only ${guarded} carry NO_STORE`,
+      'One unguarded branch is the whole hole. Every response here varies by viewer —\n' +
+        '  the 200 is the scorecard, the 402/403/503 name this caller\'s own reason.',
+    );
+  }
+  // Added 2026-08-07. A failed database read used to arrive here as `null` and be
+  // answered 404 "Not found" — telling a paying subscriber their stock does not exist
+  // because Supabase timed out. Permanent answer, transient problem, nothing logged.
+  if (!/StockReadError/.test(reportCode) || !/status:\s*503/.test(reportCode)) {
+    fail(
+      'the report route no longer answers 503 on a failed read',
+      'A read failure is not a missing stock. 404 tells the customer to stop asking;\n' +
+        '  503 + Retry-After tells them to come back, which is the true answer.',
+    );
+  }
 }
 
 // ── 6. the entitlement rule must stay fail-closed ────────────────────────────
