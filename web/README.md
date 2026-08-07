@@ -1,6 +1,7 @@
 # MajorCycle — web app
 
-Next.js 15 (App Router) + TypeScript + Tailwind v4. This directory holds the frontend
+Next.js **16.2.6** (App Router) + React 19.2.4 + TypeScript + Tailwind v4. *(Scaffolded on 15 —
+check `package.json` before relying on any version-specific API.)* This directory holds the frontend
 **and** the Vercel Python serverless functions (`api/`).
 
 > Read `../CLAUDE.md` first — it is the master brief and overrides anything here.
@@ -47,10 +48,22 @@ pnpm lint                   # eslint — zero errors
 pnpm build                  # production build
 pnpm check:entitlement-gates # paywall can't silently regress (no credentials needed)
 pnpm check:report-sections   # downloaded report stays in step with Stock Detail
-pnpm e2e                     # Playwright; suites self-skip without credentials
+pnpm check:data-integrity    # unpaginated reads, currency labelling, the P/E currency gate
+pnpm check:seo               # robots/sitemap/canonical registry and its four consumers
+pnpm e2e                     # Playwright — the ONLY TS test runner. Do NOT add Vitest/Jest.
 ```
 
-`pnpm e2e` starts its own dev server, so stop `pnpm dev` first or it will refuse to boot.
+**Read the COUNT, not the colour** — a suite that silently skipped is also green. The
+credential-free specs (`entitlement`, `export-parity`, `stock-read-errors`, `seo`) are pure
+and *cannot* skip; only the Stripe/auth matrix needs credentials.
+
+`pnpm e2e` starts its **own** dev server on port **3100** (`E2E_PORT`), separate from
+`pnpm dev` on 3000, and writes to `.next-dev` rather than `.next`. ⚠️ **It never reuses a
+running server** (`reuseExistingServer: false`). That setting is load-bearing, not tidiness:
+it used to reuse whatever held 3100, so a server left alive across several `git checkout`s
+answered from **stale code** — one test failed 8 of 8 against it and passed 4 of 4 the moment
+it was killed, and a "control" run on an older commit measured nothing at all. Booting costs
+~30s; not being able to trust a green run costs far more. If 3100 is occupied, kill it.
 
 ## Local Stripe + auth
 

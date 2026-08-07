@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Next build layer: G (SEO + performance).**
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing) built and audited, PR #89 open and deliberately unmerged until the layer is done.**
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -618,6 +618,57 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
       why nobody saw it. `check:seo` now fails the build on a sixth copy.
 - [x] **Google Search Console verified 2026-08-06** — Domain property (covers apex + `www`),
       DNS TXT on the root. See `architecture.md` §11 for the record and the warning about it.
+
+> ### ✅ G1 COMPLETE — 2026-08-07. PR #89 open, deliberately unmerged for the whole layer.
+>
+> Audited twice at the owner's request, then re-checked against the primary sources
+> (RFC 9309, Google's robots/canonical/sitemap docs, the Next metadata reference, each
+> vendor's crawler docs). **No defects found in G1 itself.** 21 deliberate breaks all
+> caught; `check:seo` 287 checks; Playwright **152** green three consecutive local runs
+> and in CI.
+>
+> **Verified signed-out on a production BUILD** (`next start`, no cookies), calibrated
+> first against pages already confirmed on the Vercel preview: `/pricing` indexable with
+> a canonical; the four sign-in pages `noindex, follow`, all **200 and not disallowed**;
+> none of them in the sitemap; every canonical and `og:url` naming `www.majorcycle.com`.
+> Control: 7 gated paths all 307 → the reader does detect redirects, so those 200s are real.
+>
+> ⚠️ **A Vercel PREVIEW cannot show you the signed-out view.** Its access cookie and the
+> app session share one jar, so dropping one drops the other. Worse, a *signed-in* reading
+> silently measures a different page — `/pricing` bounces to `/account`, `/login` to
+> `/stocks` — which produced five clean-looking rows for pages nobody asked about. **Print
+> the landed URL beside every reading and never follow redirects when measuring.**
+>
+> Also fixed in this session, though not SEO: `fetchStockDetail` answering **"Stock not
+> found" on a failed database read** (CLAUDE.md 11e) — found *because* it was corrupting
+> the test suite's evidence.
+
+**Found during the G1 spec review (2026-08-07) — filed here, not silently changed:**
+
+- [ ] **`majorcycle.com` → `www` is a 307 TEMPORARY redirect.** Google consolidates ranking
+      onto one address only via a **permanent** redirect; temporary explicitly means "do not
+      consolidate". G1 just declared `www` canonical in ten places and the server contradicts
+      it. **Owner approval required; do it AT MERGE.** Zero billing risk — Stripe points at
+      `www` directly, and http→https is already correctly 308. *(Highest-value item in Layer G.)*
+- [ ] **No `og:image` anywhere** — every shared link renders a bare card. A single
+      `app/opengraph-image.png` + `opengraph-image.alt.txt` covers the whole site and Next
+      emits the url/type/width/height itself. **→ G2**, because it is branding and the owner
+      approves branding before it ships. Pair with `twitter:card: summary_large_image`.
+- [ ] **`llms.txt` — RECOMMEND DROPPING. Owner decision, to be re-asked when the content
+      sessions begin (plan session G4), not now.** The Layer G plan said "it costs twenty
+      minutes so I'll ship it". Checking the sources changed that advice: Google's John
+      Mueller confirmed **no Google Search system reads or acts on it**, and as of Q1 2026 no
+      major AI company — Google, OpenAI, Anthropic, Meta, Mistral — reads it in their search
+      or answer engines. Adoption is ~10% of domains. It is a **hand-maintained second index
+      of the site**: today it would list six legal pages (no value), and once `/learn` exists
+      it becomes a file that must be updated on every publish or it silently goes stale —
+      exactly the drift CLAUDE.md 11c is about, for a reader that may not exist. **Re-ask
+      then, when the trade is real**, i.e. when there is content worth listing.
+- [ ] **Every public page is `ƒ` (server-rendered per request)**, including pure-text legal
+      pages; only robots/sitemap/icon are prebuilt. Hurts TTFB and the 90+ target. **Cause not
+      yet identified** — `/terms` uses no dynamic API and has no `force-dynamic`. **→ G6.**
+- [ ] Four descriptions exceed ~155 chars (Disclaimer 176, Methodology 175, Terms 159,
+      Privacy 156). Google truncates the display; **no penalty**. Cosmetic. **→ G6.**
 - [ ] JSON-LD — `Organization`, `WebSite`, `Article`, `DefinedTerm`. **NOT `FinancialProduct`**
       and no rating markup: that asserts an investment claim in machine-readable form,
       against compliance posture #24.
@@ -705,7 +756,7 @@ memory** — re-verified 2026-08-02. ✅ proven · 🟡 partly proven, with what
 | ✅ | Zero ESLint errors | `pnpm lint` clean |
 | ✅ | Zero Python type errors | `mypy analytics/` — no issues in **33 source files** |
 | ✅ | All tests passing in CI | Run on `ab11e18`: Python ✅ · Frontend ✅ · E2E **105/105** · `pytest` **86** |
-| ⬜ | Lighthouse Performance 90+, SEO 100, Accessibility 95+ on 5 sample ticker pages | **Layer G** — not started (no `sitemap.ts` / `robots.ts` yet) |
+| ⬜ | Lighthouse Performance 90+, SEO 100, Accessibility 95+ on 5 sample ticker pages | **Layer G** — SEO plumbing **done** (G1: `robots.ts`, `sitemap.ts`, canonicals, Search Console). Lighthouse itself not yet measured; the instrument lands in the final Layer G session. Accessibility is **measured in G, fixed in Layer H** — otherwise G is blocked by work it isn't allowed to do. |
 | ⬜ | Mobile responsive at 375px width | **Layer H** — already triaged and measured there: ~130px overflow, root-caused to the `(app)` shell sidebar, not to page components |
 
 ### Content
@@ -780,7 +831,7 @@ Order of priority TBD based on user feedback. Candidate features:
 ✅ Phase 1 Layer F: Static Pages + Subscription  (built + merged PR #72 + live 2026-08-01)
    ✅  └─ production-readiness audit F-A1…F-A6 COMPLETE 2026-08-02 → docs/layer-f-audit.md
    ↓
-   Phase 1 Layer G: SEO + Performance      ← NOW (next build layer)
+🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1 done + audited; PR #89 open, unmerged)
    ↓
    Phase 1 Layer H: Hardening (Phase 1.5)  — owns 375px, a11y, cross-browser, Sentry
    ↓

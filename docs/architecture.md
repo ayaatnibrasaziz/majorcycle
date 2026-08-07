@@ -87,6 +87,8 @@ flowchart TB
 **What:** When a user lands on `/stocks/us/AAPL`, the Next.js Server Component:
 
 1. Reads stored data from Supabase (`fetchStockDetail`): the stock row + the **full** `price_bars` history. PostgREST caps each response at 1000 rows, so a long-history ticker pages (AAPL ≈ 11.5k bars ≈ 12 pages). **These pages are fetched in parallel** — count the rows once, then issue every `range()` page concurrently via `Promise.all` — so the whole history arrives in ~2 round-trips, not ~12 sequential ones (AAPL bar fetch ~7s → ~1.7s). Pages are date-ordered slices concatenated in order, so the result is identical to a sequential fetch. The benchmark loader (`benchmarks.server.ts`) uses the same parallel-paging pattern.
+
+   ⚠️ **`fetchStockDetail` returns `null` for EXACTLY ONE reason — the ticker is not in our universe.** Every read *failure* throws `StockReadError` (2026-08-07, CLAUDE.md 11e). Until then all four failure paths returned the same `null`, and the callers could only do what that value permits: `notFound()` here, `404 Not found` from the report route. A Supabase timeout therefore reached a paying subscriber as **"Stock not found"** — a permanent answer to a transient problem, with nothing logged. The originating PostgREST error rides along as `cause` so it reaches the Vercel logs. **On the page a throw is deliberately left to reach `app/(app)/error.tsx`**, which offers "Try again"; **in the report route handler it is caught** and answered 503, because an uncaught throw there yields a 500 whose headers we do not set and every response on that route must declare `private, no-store` (11a).
 2. Calls `/api/cycle?ticker=AAPL&preset=medium` — a Vercel Python serverless function (`web/api/cycle.py`) that reads the same Supabase data and computes the Major Cycle math via the vendored `_engine` package. The **preset** comes from the Stock Detail page's `?preset=` query param (set on the Browse page — see below); default is **Medium** (-5%/+5%/252 bars), with **Short** (-3%/+3%/63) and **Long** (-8%/+8%/756) also supported. The function never calls yfinance — that's the cron's job. Result is cached via Next's data cache (`revalidate: 3600`), keyed per **ticker AND preset**, so the cold compute only bites the first viewer of a (ticker, preset) per hour. `cycle.py`'s own price-bar fetch is **parallel** — it counts rows on the first page (`count=exact`) then pulls the rest concurrently via a `ThreadPoolExecutor` (same idea as `fetchStockDetail`).
 
    **This is a server-to-server self-fetch over HTTP, with no viewer cookies, so two things must hold or every cycle section renders blank:**
@@ -513,7 +515,7 @@ Two runtimes, two locations under `web/`:
 | `/api/stripe/webhook` | POST | TS | `web/app/api/stripe/webhook/route.ts` | **Public** (in `PUBLIC_PATHS`) — gated by the **Stripe signature** | **Built (F3 steps 4/7/8).** Verify → idempotency-claim (`stripe_events`, ON CONFLICT DO NOTHING) → service-role sync of the billing columns; a trialing `subscription.*` writes the email trial-tombstone (step 7). **Step 8:** sends the four branded billing emails via Resend — **trial-started welcome** (on `subscription.created` when the sub is `trialing`; one-shot + idempotency-keyed; skipped for a repeat/no-trial customer, who instead gets Stripe's payment receipt) / trial-ending / payment-failed / payment-recovered (the last two gated on the single-owner `grace_until` marker + idempotency key) and handles `charge.dispute.*` → `billing_blocked` (+ cancel-on-lost). **Payment receipts + invoice PDFs are NOT app code** — they're Stripe's built-in "Successful payments" Dashboard email (turned ON in Part C), sent on every real charge; the Customer Portal also lists past invoices. Disputes do the ONE live Stripe retrieve (charge→customer). **Order-safety guards (Stripe doesn't guarantee event order):** the failure (`invoice.payment_failed` **and `invoice.payment_action_required`** / 3-D Secure) + recovery paths only act on the sub currently on file, and `subscription.deleted` only lapses the account when its sub id matches — so a late/out-of-order event can't dun, recover, or cancel a *newer* or *already-cancelled* subscription. (LIVE endpoint event list = 13, incl. `invoice.payment_action_required`.) See data-contracts §10 for the event→DB map |
 | `/api/billing-context` | GET | TS | `web/app/api/billing-context/route.ts` | Required | **Built (F3 step 10).** Returns `{ currency, trialUsed, hasSubscription, billingBlocked, email, displayName }` so the upgrade dialog can label its CTA (`Start free trial` / `Subscribe` / `Manage your plan`) before the reader clicks. Fetched **on dialog open**, not per page render — a lock is clicked far less often than a page is drawn. **Explicitly NOT authoritative:** `/api/checkout` re-derives all three and still 409s an existing subscriber and still omits `trial_period_days` for a tombstoned email. Sends `private, no-store` (CLAUDE.md 11a) |
 | `/api/portal` | POST | TS | `web/app/api/portal/route.ts` | Required | **Built (F3 step 5).** Open the Stripe Customer Portal — create a `billingPortal` session for the user's `stripe_customer_id`, 303-redirect to it (`return_url` = `/account`); no customer → `?billing=none`, **`billing_blocked` → `?billing=blocked`**, error → `?billing=error`. The blocked branch matters because the portal is a *second* way to spend money (it switches monthly⇄annual, which prorates and charges, and can resume a cancelled sub) — `/account` no longer renders the button for a held user, but the endpoint must not rely on the UI hiding it. The `/account` "Manage billing" button is a plain form POST. All three redirect outcomes live-verified in live-check Session 2. **Live-check S3:** a **deletion-scheduled** account is sent to **/reactivate**, never into Stripe — the sharpest case of that same rule, and the one where the endpoint really was relying on the UI, since the portal can switch price (charging a proration) and resume a subscription scheduled to cancel. Every branch now sends `private, no-store`; the 303 Location is a live portal session, the most sensitive payload the app emits |
-| `/stocks/[market]/[ticker]/report` | GET | TS | `web/app/(app)/stocks/[market]/[ticker]/report/route.ts` | Required **+ entitlement (402) + deletion (403)** | The **report download's only surface** (its on-screen preview page was deleted 2026-07-29), and the most sensitive route we have — its 200 carries the entire scorecard. Route handlers are **not** wrapped by the `(app)` layout, so it gates itself: 401 signed out, 402 unentitled (naming the caller's own `reason`), 404 for a bad market/ticker, and (live-check S3) **403 `account_deleting`** for an account mid-deletion, checked before entitlement. **Every branch, refusals included, sends `private, no-store`** — it sent no `Cache-Control` at all until 2026-07-29 (CLAUDE.md 11a). |
+| `/stocks/[market]/[ticker]/report` | GET | TS | `web/app/(app)/stocks/[market]/[ticker]/report/route.ts` | Required **+ entitlement (402) + deletion (403)** | The **report download's only surface** (its on-screen preview page was deleted 2026-07-29), and the most sensitive route we have — its 200 carries the entire scorecard. Route handlers are **not** wrapped by the `(app)` layout, so it gates itself: 401 signed out, 402 unentitled (naming the caller's own `reason`), 404 for a bad market/ticker, (live-check S3) **403 `account_deleting`** for an account mid-deletion, checked before entitlement, and — added 2026-08-07 — **503 `read_failed` + `Retry-After`** when the database read fails, which was previously answered 404 (CLAUDE.md 11e). **Every branch, refusals included, sends `private, no-store`** — it sent no `Cache-Control` at all until 2026-07-29 (CLAUDE.md 11a), and the guard now asserts the NO_STORE count *equals* the response count rather than merely finding the constant. |
 | `/api/cron/purge-accounts` | GET | TS | `web/app/api/cron/purge-accounts/route.ts` | **`CRON_SECRET` Bearer** (path is in `PUBLIC_PATHS` so Vercel Cron's cookieless call isn't redirected; the route enforces the secret itself) | Daily purge of accounts past their 30-day deletion grace. Hard-cancels the live Stripe subscription (with a `stripe_customer_id` fallback) **before** `deleteUser`, so a purged account can never keep billing. See §8. |
 | `/auth/callback` | GET | TS | `web/app/auth/callback/route.ts` | **Public** | OAuth return leg — exchanges the provider code for a session, then `safeNextPath()` (open-redirect guard). Used by the redirect-based Google fallback; the primary Google path is `signInWithIdToken`, which never leaves the page. |
 | `/auth/confirm` | GET | TS | `web/app/auth/confirm/route.ts` | **Public** | Email-link landing (`?token_hash=…&type=…`) → `verifyOtp`. For `type=recovery` it also sets the httpOnly `mc_pw_recovery` marker that confines the session to `/account/update-password` (F0.5). |
@@ -1129,6 +1131,36 @@ reference, and each AI vendor's own bot docs.
   endpoint in 2023 and it now 404s. The mechanism is the `Sitemap:` line in `robots.txt` plus
   a one-time submission in Search Console.
 
+### How G1 was verified signed-out — and why a preview cannot do it
+
+⚠️ **A Vercel PREVIEW deployment cannot show you the anonymous view at all.** Its access
+cookie and the app's own session live in one jar, so `credentials: 'omit'` drops both and the
+request never reaches the app. Worse, reading tags *while signed in* silently measures a
+**different page**: `/pricing` bounces to `/account` and `/login` to `/stocks`, which produced
+five clean-looking rows for pages nobody had asked about. **Print the landed URL beside every
+reading, and never follow redirects when measuring** — that one line is what caught it.
+
+The working method, and the reusable part: serve a **production build** locally
+(`next start`) and fetch with no cookies — then **calibrate** it first against pages already
+confirmed on the preview. Five public pages read identically in both, so the instrument was
+trusted, and only then used on `/pricing` and the four `noindex` pages it could not otherwise
+reach. Plus a **control**: seven gated paths must all 307, which proves the reader detects
+redirects rather than quietly reporting a bounce as a page. This also satisfies CLAUDE.md 11d
+— it tests the built artifact, not the dev server.
+
+### Found in the G1 spec review (2026-08-07) — open, filed in the roadmap
+
+- ⚠️ **`majorcycle.com` → `www` is a 307 TEMPORARY redirect.** Google consolidates ranking
+  onto one address only via a **permanent** redirect; "temporary" explicitly means *do not
+  consolidate*. G1 declared `www` canonical in ten places and the server disagrees. Owner
+  approval required; do it at merge. Zero billing risk — Stripe targets `www` directly.
+- ⚠️ **No `og:image` anywhere.** Every shared link renders a bare card. One
+  `app/opengraph-image.png` + `opengraph-image.alt.txt` covers the whole site. → G2 (branding).
+- ⚠️ **Every public page is `ƒ`** — server-rendered per request, including static legal text.
+  Cause unidentified. → G6.
+- **`llms.txt`: recommend dropping.** No Google Search system reads it (John Mueller), and no
+  major AI company reads it in production. → owner decides when content work begins.
+
 ### Still to come (G4–G7)
 
 - Structured data: `Organization` + `WebSite` sitewide, `Article` on `/learn/*`,
@@ -1146,7 +1178,14 @@ reference, and each AI vendor's own bot docs.
 - **Vercel built-in logs:** for serverless function executions
 - **Supabase logs:** for query failures and auth events
 - **GitHub Actions logs:** for cron runs
-- **Email alerts on cron failure** via Resend (cheap and effective)
+- **Cron failure alerts: GitHub's own failed-workflow email**, to the account address.
+  ❌ **This line used to say "via Resend (cheap and effective)". It was never true.** The
+  `RESEND_API_KEY` secret held a key that no longer existed in Resend, and `_email()` ignored
+  the HTTP response, so a rejected send looked identical to a delivered one — the alarm had
+  **never once worked**, and that was only established by breaking both crons on purpose
+  (2026-08-06, PRs #82–#84). Failing the run *is* the signal now. ⚠️ **A PARTIAL refresh
+  failure is still silent** — owner decision pending — and that gap was already concealing a
+  live defect: the S&P 500 basket is **499 of 503**.
 - **Phase 2:** Sentry for client-side error capture, PostHog for product analytics
 
 ---
