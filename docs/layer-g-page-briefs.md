@@ -1,8 +1,44 @@
 # Layer G — Page Briefs
 
-> **Status: DRAFT, awaiting the owner's corrections. Nothing is designed or built from
-> these until they are approved.** This is deliberate — fixing a wrong *goal* in a
-> paragraph costs minutes; fixing it after six pages are built costs the session.
+> **Status: intent APPROVED by the owner 2026-08-07.** Four answers, now locked:
+> **(1) demonstrate the method first, name it second · (2) the landing page shows a
+> FIXED stock — Apple, not a rotating one · (3) the About trust list is sufficient
+> without a name · (4) Learn articles target the newcomer, not the paying buyer.**
+> **(5) The weekly note gets its OWN section, one permanent page per week**, with an
+> archive index — `/notes` + `/notes/2026-08-07`. Not one page rewritten weekly, and
+> not mixed into `/learn`. Rationale: each week is original content that can rank and
+> be linked to, so the writing compounds instead of being destroyed; and an explainer
+> (true for years) and a note (stale in days) do not belong in one list.
+>
+> Nothing is designed or built beyond this until the layout stage is approved too.
+> Fixing a wrong *goal* in a paragraph costs minutes; fixing it after six pages are
+> built costs the session.
+
+---
+
+## How many pages is this, actually?
+
+Worth stating plainly, because "six briefs" does not mean six pages. Three of these are
+**one-off pages**; two are **templates** — a single design that many pages are poured
+into; one is **recurring**.
+
+| Brief | Kind | Pages at launch | Grows to |
+|---|---|---|---|
+| Landing `/` | one-off | 1 | 1 |
+| About `/about` | one-off | 1 | 1 |
+| Learn index `/learn` | one-off | 1 | 1 |
+| **Learn article** `/learn/…` | **template** | 4 *(staged)* | ~12 |
+| **Glossary** `/glossary` | one page, many entries | 1 | 1 *(entries grow inside it)* |
+| Notes archive `/notes` | one-off | 1 | 1 |
+| **Weekly note** `/notes/…` | **template, recurring** | 1 | +1 every week |
+
+So: **six designs to approve**, about **nine pages** at launch, and one of them adds a
+new page every week forever.
+
+**"Template" means one design, many pages.** `/learn/what-a-drawdown-is` and
+`/learn/reading-a-pe-honestly` are two pages sharing one layout — approve it once and
+every future article inherits it. Same for the weekly note. This is why the count of
+*designs* is small while the count of *pages* keeps growing.
 >
 > Written 2026-08-07 (G2). Each brief states what the page is *for*, who is reading it,
 > and how we would know it worked. It does **not** describe layout — that comes after
@@ -186,7 +222,7 @@ click and return.
 
 ---
 
-## 6. Weekly market note
+## 6. Weekly market note — `/notes` (archive) + `/notes/[date]` (each week)
 
 **Purpose.** Give the site a reason to be visited again, and a reason to earn an email
 address.
@@ -204,18 +240,30 @@ sceptical about. A standing line explaining how it is produced.
 **Flow.** I draft → **the owner edits and approves** → publish. In a money topic that
 review is what makes it legitimate, so it is a step in the process, not a formality.
 
+**Home (owner, locked).** Its own section: `/notes` is the archive list, each week is a
+permanent page at `/notes/[date]`. Deliberately **not** `/learn` — an explainer stays
+true for years and a note is stale in days, so one list would bury the evergreen work
+under dated work. And deliberately **not** one page rewritten weekly, which would
+destroy 51 weeks of writing a year and leave Google a single page to find.
+
+⚠️ **Each note is dated and stays dated.** Never quietly refresh an old note's figures to
+make it look current — that is the "everything changed today" signal that teaches Google
+to distrust the whole site, and on a money topic it is also just dishonest.
+
 **Worked if:** a reader finishes it slightly better informed, and it never reads as a tip
 sheet.
 
 ---
 
-## What I need from the owner
+## Intent — settled 2026-08-07
 
-Correct the **intent**, not the wording — the words come later.
+| | Decision |
+|---|---|
+| Landing order | **Demonstrate the method first**, name it second |
+| Landing stock | **Fixed — Apple.** Not rotating: alive is not worth an unwatched awkward figure on the front page |
+| About | Trust list is **sufficient** without a name |
+| Learn articles | Target the **newcomer**, not the paying buyer |
+| Weekly note | **Own section**, one permanent page per week, with an archive |
 
-1. **Landing:** does the demonstrate-then-name order feel right, or should the product
-   itself lead?
-2. **Landing:** fixed stock or rotating? *(Recommend fixed.)*
-3. **About:** is the trust list enough, given no name appears?
-4. **Learn:** confirmed that articles target the newcomer, not the buyer?
-5. Anything above that is simply wrong about the business.
+**Still to approve: the layout stage.** These briefs fix *what each page is for*. What it
+looks like comes next, and is a separate approval.
