@@ -42,7 +42,17 @@ The new build's job is to **rebuild the same product on a modern foundation**, n
   --text-primary:   #0F1923;
   --text-secondary: #4A5568;
   --text-muted:     #8A97A8;
-  --text-white:     #FFFFFF;
+  /* NO `--text-white`. It was listed here until 2026-08-07 and has NEVER existed
+     in globals.css — a documented nickname for a colour nothing defines. Removed
+     because it is a landmine, not because anything was broken: `var(--text-white)`
+     appears in zero files, and white text (buttons, badges, checkmarks) uses
+     Tailwind's own `text-white` utility, which is unrelated and works.
+     ⚠️ Why it matters — an UNDEFINED custom property does not fall back, it voids
+     the whole declaration. `color: var(--text-white)` on a navy button yields
+     inherited colour, i.e. plausibly navy-on-navy: invisible text that reads as a
+     rendering glitch rather than a typo. Same mechanism cost an hour the same day,
+     when the design gallery rendered entirely in Times New Roman while labelled
+     Sora, because `--font-sans` sat in `@theme inline` rather than `:root`. */
 
   /* Borders */
   --border:        #E2E8F0;
