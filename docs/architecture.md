@@ -1168,6 +1168,11 @@ redirects rather than quietly reporting a bounce as a page. This also satisfies 
   assert an investment claim in machine-readable form, against compliance posture #24.
 - OG images via `next/og`, once G2's design is approved. Until then `twitter:card` is
   `summary`, not `summary_large_image` — claiming an image we don't ship renders broken.
+  **Decided in G2:** start with **one sitewide `app/opengraph-image.png`** (plus
+  `opengraph-image.alt.txt`), which Next applies to every route and whose url/type/width/
+  height it emits itself — not per-page images. Per-**stock** images stay forbidden: they
+  are public and cached for everyone, so a card carrying a rating would leak paid output
+  through a side door. Flip `twitter:card` to `summary_large_image` in the same change.
 - **Submit the sitemap in Search Console at merge.** It 404s until Layer G is live.
 - `/methodology` is the topical-authority anchor for "Major Cycle" educational queries.
 

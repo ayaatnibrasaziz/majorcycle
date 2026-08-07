@@ -78,6 +78,10 @@ When in doubt about any decision: **ask, don't guess.**
 │   │   └── scoring/{financial_health,valuation,overall}.py
 │   ├── components/                 ← React components
 │   ├── lib/                        ← utilities, DB client, types
+│   ├── scripts/                    ← build + guard scripts (check-*.mjs, build-*.mjs)
+│   │                                 `build-design-system.mjs` GENERATES the Claude Design
+│   │                                 gallery from globals.css → design-system-build/
+│   │                                 (gitignored — a rendering, never a source of truth)
 │   ├── public/                     ← static assets, favicons, OG images
 │   ├── requirements.txt            ← Python deps for the Vercel function bundle
 │   └── vercel.json                 ← functions config (includeFiles, memory, maxDuration)

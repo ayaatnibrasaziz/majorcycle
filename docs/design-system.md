@@ -125,6 +125,35 @@ theme: {
 
 **Rule:** Every numeric value uses JetBrains Mono. Every word uses Sora. No exceptions.
 
+### ⚠️ TWO scales, not one — the table above is the APP scale (added 2026-08-07)
+
+The sizes above are correct for the signed-in terminal: it is **scanned**, density is a
+feature, and 11–14px reads as professional in a data grid. They are wrong for a page that
+is **read**, and they have leaked onto the public pages.
+
+Measured on the live `/methodology` at 1440×900:
+
+| | Measured | Reading norm |
+|---|---|---|
+| Body text | **13px** | 16–18px |
+| Smallest text on the page | **8px** (×5 elements) | ≥12px |
+| Distinct font sizes on one page | **9** (8 · 9 · 10.5 · 11 · 11.5 · 12 · 13 · 14 · 24) | ~5–6 steps |
+| Diagrams explaining a visual idea | **0** | — |
+
+`/login` renders 8 distinct sizes and `/pricing` 11 — inside cards a few hundred pixels
+wide. ⚠️ **Sizes half a pixel apart do not read as hierarchy, they read as
+inconsistency**, because the eye cannot resolve 10.5 vs 11 as intent. Collapse
+near-duplicates rather than adding steps.
+
+**The fix is NOT to enlarge the app.** The terminal stays as it is. Layer G adds a second,
+generous **reading scale** used only by public/content pages — the same split Stripe and
+Linear run between their docs and their dashboards. A component that appears in both
+(buttons, badges) keeps one size per context, chosen by the frame it sits in, never by a
+one-off override.
+
+*Reading scale to be defined and approved in G2's type-scale step; it is the first thing
+built because everything else sits on it.*
+
 ---
 
 ## 4. Rating Tier Labels — THE Most Important Spec
@@ -796,6 +825,32 @@ Phase 1 minimums (not aspirations — requirements):
 
 - All interactive elements have `:focus-visible` ring (2px brand-bright outline)
 - Contrast ratio ≥ 4.5:1 for body text, ≥ 3:1 for large text
+
+> ### ⚠️ MEASURED 2026-08-07 — the contrast floor above is currently BREACHED
+>
+> Read off the live `/methodology` at 1440×900 with the WCAG relative-luminance formula
+> computed in-page (not estimated). **8 elements fail.** Two of them are material rather
+> than cosmetic:
+>
+> | Element | Ratio | Needs |
+> |---|---|---|
+> | **Rating tier badges** — white on `--c-tier-3` / `--c-tier-4` | **2.38 : 1** | 4.5 : 1 |
+> | **"Full disclaimer" link** (`--text-muted` on `--bg-page`) | **2.69 : 1** | 4.5 : 1 |
+> | "Financial Terminal" wordmark, 9px | 2.69 : 1 | 4.5 : 1 |
+>
+> The first is **§4 of this document — "THE Most Important Spec"**. The five tier labels
+> are the product's entire vocabulary and they are the hardest text on the page to read.
+> The second is **compliance-adjacent** (CLAUDE.md #4/#12): a legally material link must
+> not be the faintest thing on the page.
+>
+> **Scope, decided with the owner:** the Layer G plan puts accessibility fixes in Layer H,
+> and that still holds for the signed-in app. **These two are fixed inside Layer G**,
+> because they sit on pages G is redesigning anyway and "we rebuilt this page and left the
+> illegible badge" is not defensible. The remaining six go to H with the rest of the sweep.
+>
+> ⚠️ **`--text-muted` (#8A97A8) on `--bg-page` (#F0F4F8) is 2.69:1 wherever it appears** —
+> it is not a `/methodology` problem, it is a token problem. Before using it for anything a
+> reader must actually read, check the pairing. It is fine for genuinely decorative text.
 - All charts have a `aria-label` describing their data
 - All form inputs have a visible `<label>`
 - Keyboard navigable: Tab moves through everything in document order

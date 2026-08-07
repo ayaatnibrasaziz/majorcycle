@@ -50,6 +50,22 @@ pnpm check:entitlement-gates # paywall can't silently regress (no credentials ne
 pnpm check:report-sections   # downloaded report stays in step with Stock Detail
 pnpm check:data-integrity    # unpaginated reads, currency labelling, the P/E currency gate
 pnpm check:seo               # robots/sitemap/canonical registry and its four consumers
+```
+
+Not a check, but related — the design-system gallery:
+
+```bash
+pnpm build:design-system     # regenerate design-system-build/ from app/globals.css
+```
+
+It **parses the real stylesheet** rather than restating it, so a colour that is not
+shipped cannot appear in the gallery. The output is gitignored: it is a rendering, never
+a source of truth. ⚠️ Outside Next, `--font-sans`/`--font-mono` do **not** resolve —
+they live in `@theme inline`, not `:root`, and an unresolvable `var()` voids the whole
+declaration rather than falling back, which once rendered the entire gallery in Times
+New Roman while labelled Sora. The script pins them and loads the webfonts explicitly.
+
+```bash
 pnpm e2e                     # Playwright — the ONLY TS test runner. Do NOT add Vitest/Jest.
 ```
 

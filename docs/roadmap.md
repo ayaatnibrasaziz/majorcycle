@@ -643,6 +643,51 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > found" on a failed database read** (CLAUDE.md 11e) — found *because* it was corrupting
 > the test suite's evidence.
 
+> ### 🔨 G2 (design) — STARTED 2026-08-07, foundations done, layout pending
+>
+> Full briefs in **`docs/layer-g-page-briefs.md`**; measured gap analysis and the tool
+> decision in **`docs/layer-g-design-strategy.md`**. Both approved by the owner.
+>
+> **Done.** Claude Design project *"MajorCycle Design System"* created (the owner's
+> first) and the **foundations captured** — colour, typography, spacing, radius, shadow.
+> ⚠️ **Generated, never hand-written**: `pnpm build:design-system` parses the real
+> `web/app/globals.css`, so a colour that is not shipped cannot appear in the gallery.
+> Output `web/design-system-build/` is **gitignored** — a rendering, never a source of
+> truth. Components are captured as **screenshots of the running product** rather than
+> re-implemented, for the same reason. Real product screenshots taken on live across the
+> free *and* paid states (owner authorised flipping their own entitlement; recorded,
+> restored and verified — Stripe never touched).
+>
+> **Intent locked by the owner (5 decisions).** Demonstrate the method before naming it ·
+> the landing page shows a **fixed** stock (Apple), not a rotating one · the About trust
+> list is sufficient without a name · `/learn` articles target the **newcomer**, not the
+> paying buyer · the weekly note gets its **own `/notes` section**, one permanent page per
+> week with an archive. **Audience = both, served in LAYERS not averaged** — this
+> corrected the plan's "a complete beginner", which contradicted a $15/mo terminal.
+>
+> **Tool decision — spend $0, and specifically NO Figma.** A design file is a second
+> description of the design sitting beside the code: the exact drift shape 11c exists for,
+> which has already bitten this project four times. **The site is the design file**; the
+> owner reviews the real page on a preview. Stack is what is already owned (shadcn +
+> Tailwind + Lucide + locked tokens) plus Excalidraw for the cycle diagram, `next/og` for
+> the share image, Squoosh for image weight, and contrast measurement promoted into a
+> Playwright test. Tailwind Plus (~US$299 once) considered and **deferred**, to be
+> revisited only if the landing page stalls on layout rather than content.
+>
+> **Approved build order for the next session:** (1) reading type scale + the two material
+> contrast fixes, (2) page frame with narrow/prose/wide tiers, (3) the cycle diagram,
+> (4) the share image, (5) landing layout. ⚠️ **Owner's instruction: surprise them first** —
+> present a design without asking for inspiration; they will supply reference sites only
+> if the first attempt misses.
+
+- [ ] **Fix the two material contrast failures INSIDE Layer G** (not H): the rating tier
+      badges at **2.38:1** and the "Full disclaimer" link at **2.69:1** — see
+      `design-system.md` §14. Both sit on pages G is redesigning anyway. The remaining six
+      measured failures stay with the Layer H sweep.
+- [ ] **Define the reading type scale.** `/methodology` renders 13px body and 8px labels
+      with **9 distinct sizes**; `/pricing` has 11. The app scale is correct for the app
+      and wrong for reading pages — see `design-system.md` §3.
+
 **Found during the G1 spec review (2026-08-07) — filed here, not silently changed:**
 
 - [ ] **`majorcycle.com` → `www` is a 307 TEMPORARY redirect.** Google consolidates ranking
