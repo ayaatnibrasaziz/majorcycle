@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/seo';
 import Link from 'next/link';
 import { PageFrame } from '@/components/PageFrame';
+import { CycleDiagram } from '@/components/CycleDiagram';
 
 export const metadata: Metadata = pageMetadata({
   path: '/methodology',
@@ -70,11 +71,19 @@ export default function MethodologyPage() {
           </div>
 
           <div className="mt-11 flex flex-col gap-10">
+            {/* Demonstrate, then name. The picture comes BEFORE the paragraph
+                that introduces the term, so a reader meets the idea with no
+                vocabulary and then gets the word for what they just saw. */}
             <Section heading="The Major Cycle">
               <p>
                 Most established stocks don&apos;t move in a straight line — they fall
-                and recover in repeating patterns. MajorCycle measures how deep a
-                stock&apos;s current pullback is compared with its <em>own</em> typical
+                and recover in repeating patterns.
+              </p>
+              <CycleDiagram />
+              <p>
+                That repeating shape is what we call a stock&apos;s{' '}
+                <strong>Major Cycle</strong>. MajorCycle measures how deep the current
+                pullback is compared with the stock&apos;s <em>own</em> typical
                 historical drawdown, and how those dips have tended to recover.
               </p>
             </Section>
