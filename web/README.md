@@ -56,6 +56,7 @@ Not a check, but related — the design-system gallery:
 
 ```bash
 pnpm build:design-system     # regenerate design-system-build/ from app/globals.css
+pnpm build:og-image          # regenerate app/opengraph-image.png (the share card)
 ```
 
 It **parses the real stylesheet** rather than restating it, so a colour that is not
@@ -64,6 +65,23 @@ a source of truth. ⚠️ Outside Next, `--font-sans`/`--font-mono` do **not** r
 they live in `@theme inline`, not `:root`, and an unresolvable `var()` voids the whole
 declaration rather than falling back, which once rendered the entire gallery in Times
 New Roman while labelled Sora. The script pins them and loads the webfonts explicitly.
+
+`build:og-image` renders the card in a real browser (satori's variable-font support
+is unreliable and Sora is variable) and **refuses to write the file** unless
+`document.fonts.check()` confirms Sora rasterised, then reads the dimensions back
+out of the PNG. Its success line used to print "1200x630" as literal text — and
+printed it while writing an 800×418 card. The output is **committed**: it is what
+the site serves.
+
+⚠️ **There is exactly ONE share image, sitewide.** Never add a per-page or
+per-stock card: they are fetched by anonymous crawlers and cached publicly, so one
+carrying a rating would publish paid output on a CDN. `e2e/seo.spec.ts` asserts
+every indexable page declares exactly one, and that it is this one.
+
+The landing page's live figures come from `web/app/landing-snapshot.json`, rebuilt
+nightly by `analytics/cron/build_landing_snapshot.py` inside the US+CA refresh
+workflow. It emits free-tier fields only, and that is *structural*: it calls
+`calculate_cycle_metrics`, which cannot return a rating or a score.
 
 ```bash
 pnpm e2e                     # Playwright — the ONLY TS test runner. Do NOT add Vitest/Jest.
