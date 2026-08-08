@@ -70,18 +70,23 @@ export default function PublicLayout({
         </div>
       </div>
 
-      {/* Card area */}
-      <main className="relative z-10 flex-1 flex items-center justify-center px-5 pb-10">
-        <div className="w-full max-w-[440px]">
-          {children}
-        </div>
+      {/* Content area. The width lives with the PAGE, via <PageFrame> — this
+          used to be a hard-coded max-w-[440px], which put long-form prose down
+          a sign-in card. Chrome (above and below) is still defined once here,
+          so widening a page can never fork the header or the footer. */}
+      <main className="relative z-10 flex-1 flex flex-col px-5 pb-10">
+        {children}
       </main>
 
       {/* Footer */}
       <footer className="relative z-10 px-6 pb-6 text-center">
-        <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+        {/* --text-secondary, not --text-muted. Muted on --bg-page measures
+            2.69:1 (design-system §14) and this is the legally material line on
+            every public page — CLAUDE.md #4/#12. A disclaimer nobody can read
+            is not a disclaimer. --text-secondary on --bg-page is 6.8:1. */}
+        <p className="text-[length:var(--rd-small)] text-[var(--text-secondary)] leading-relaxed">
           Information only — not financial advice.{' '}
-          <Link href="/disclaimer" className="underline underline-offset-2 hover:text-[var(--brand-mid)] transition-colors">
+          <Link href="/disclaimer" className="underline underline-offset-2 decoration-[var(--border-strong)] hover:text-[var(--brand-mid)] hover:decoration-current transition-colors">
             Full disclaimer
           </Link>
           .

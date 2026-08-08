@@ -108,6 +108,36 @@
   --sidebar-w: 220px;
   --header-h: 58px;
   --font-hero: 26px;
+
+  /* ── Reading scale — the SECOND type scale (Layer G) ───────────────────
+     Everything above this line is the APP scale: 9–14px, correct for a
+     terminal that is *scanned*, where density is a feature. These are for
+     pages that are *read*. design-system.md §3 explains the split; it is
+     the same one Stripe and Linear run between their docs and dashboard.
+
+     Seven steps and no half-pixels. The live /methodology carried NINE
+     sizes including 10.5 and 11.5 — the eye cannot resolve half a pixel as
+     intent, so near-duplicates read as inconsistency, not hierarchy.
+
+     ⚠️ --rd-micro is a FLOOR, not a suggestion. Nothing on a reading page
+     goes below 12px; the leaked app scale put five 8px elements on
+     /methodology, and 8px uppercase is decoration wearing the costume of
+     information. Consumed only through `.reading` — never hand-typed as a
+     px value in a page, or this becomes a second copy (CLAUDE.md 11c). */
+  --rd-micro: 12px;
+  --rd-small: 14px;
+  --rd-body: 17px;
+  --rd-lead: 20px;
+  --rd-h2: 26px;
+  --rd-h1: 36px;
+  --rd-display: 48px;
+
+  /* Line lengths. --measure-prose holds ~68 characters at --rd-body, which
+     is the middle of the 45–75 band; --measure-narrow is the auth-card
+     width the public pages were ALL locked to before Layer G. */
+  --measure-narrow: 440px;
+  --measure-prose: 680px;
+  --measure-wide: 1120px;
 }
 
 /* Base layer — wraps resets/typography so Tailwind utility classes can override.
@@ -1683,4 +1713,160 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 /* Smooth scroll for the report nav (scopes to the report page/file only). */
 .report-page {
   scroll-behavior: smooth;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   READING SCOPE — public / content pages (Layer G)
+
+   Opt in by putting `.reading` on a container. Everything inside picks up
+   the reading scale; nothing outside it changes, so the signed-in terminal
+   is untouched by design (design-system.md §3: "the fix is NOT to enlarge
+   the app").
+
+   This is the ONE place the reading sizes are applied. A page that wants
+   bigger text asks for a bigger element, never a px override — the moment a
+   second copy of these numbers exists they drift (CLAUDE.md 11c).
+   ═════════════════════════════════════════════════════════════════════════ */
+/* In @layer base, so a Tailwind utility on the element still wins. Unlayered,
+   `.reading a { color: … }` (0,1,1) BEAT `.text-white` (0,1,0) and painted the
+   /methodology call-to-action brand-blue on a brand-blue button — 1.0:1,
+   invisible. Same mechanism as the @layer base note above the reset. */
+@layer base {
+  .reading {
+    font-size: var(--rd-body);
+    line-height: 1.7;
+    color: var(--text-secondary);
+    letter-spacing: -0.06px;
+  }
+
+  .reading h1,
+  .reading h2,
+  .reading h3 {
+    color: var(--text-primary);
+    font-weight: 700;
+    text-wrap: balance;
+  }
+  .reading h1 {
+    font-size: var(--rd-h1);
+    line-height: 1.15;
+    letter-spacing: -0.9px;
+  }
+  .reading h2 {
+    font-size: var(--rd-h2);
+    line-height: 1.25;
+    letter-spacing: -0.5px;
+  }
+  .reading h3 {
+    font-size: var(--rd-lead);
+    line-height: 1.35;
+    letter-spacing: -0.25px;
+    font-weight: 600;
+  }
+
+  /* Lead paragraph — same size as h3, separated by weight rather than by a
+     fourth size. Sizes are for hierarchy; weight is for role. */
+  .reading .lead {
+    font-size: var(--rd-lead);
+    line-height: 1.6;
+    letter-spacing: -0.2px;
+    color: var(--text-secondary);
+  }
+
+  .reading .small { font-size: var(--rd-small); line-height: 1.6; }
+  /* --rd-micro is for eyebrows and labels: uppercase, tracked, never a
+     sentence. If it needs reading, it is not micro. */
+  .reading .micro {
+    font-size: var(--rd-micro);
+    line-height: 1.5;
+    font-weight: 700;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+  }
+
+  .reading p + p { margin-top: 1.1em; }
+  .reading strong { color: var(--text-primary); font-weight: 600; }
+
+  .reading ul { margin: 1.1em 0 0; padding-left: 1.35em; list-style: disc; }
+  .reading ol { margin: 1.1em 0 0; padding-left: 1.35em; list-style: decimal; }
+  .reading li + li { margin-top: 0.5em; }
+  .reading li::marker { color: var(--text-muted); }
+
+  .reading a {
+    color: var(--brand-mid);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+    text-decoration-color: rgba(30, 92, 179, 0.35);
+    transition: color 0.15s, text-decoration-color 0.15s;
+  }
+  .reading a:hover {
+    color: var(--brand-bright);
+    text-decoration-color: currentColor;
+  }
+
+  /* Numbers keep JetBrains Mono even here (design-system §3, no exceptions),
+     but at reading sizes mono runs visually large beside Sora — hold it back
+     a touch so a figure inside a sentence doesn't shout. */
+  .reading .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.94em;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  /* Phones: the two display steps are the only ones that need to move. Body
+     text stays 17px at 375px — shrinking body copy on the device most people
+     read on is the opposite of the fix. */
+  @media (max-width: 640px) {
+    .reading h1 { font-size: 28px; letter-spacing: -0.6px; }
+    .reading h2 { font-size: 22px; letter-spacing: -0.4px; }
+    .reading h3,
+    .reading .lead { font-size: 18px; }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Tier legend — the five rating labels, shown to a reader who has not seen
+   the product yet.
+
+   ⚠️ This renders the REAL `.tier-badge--N` component, deliberately. The
+   earlier version painted white on the solid tier fill, which measured
+   2.38:1 on --c-tier-3 (design-system §14) — the product's entire
+   vocabulary set in its least readable text. It also taught the wrong
+   picture: nothing in the app looks like that. Tint-plus-ink is what a
+   reader will actually meet, and it clears 4.5:1 on all five tiers.
+   ───────────────────────────────────────────────────────────────────────── */
+.tier-legend {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.tier-legend-row {
+  display: grid;
+  grid-template-columns: 4px 84px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 16px 11px 0;
+  background: var(--bg-surface);
+}
+.tier-legend-row + .tier-legend-row { border-top: 1px solid var(--border); }
+.tier-legend-swatch { align-self: stretch; background: var(--tier); }
+.tier-legend-range {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--rd-small);
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+/* The legend sits inside `.reading`, where 11px badge text would be the
+   smallest thing on the page again. One size per context, chosen by the
+   frame — never a one-off override (design-system §3). */
+.tier-legend .tier-badge { font-size: var(--rd-small); padding: 5px 12px; }
+
+@media (max-width: 480px) {
+  .tier-legend-row { grid-template-columns: 4px 1fr; row-gap: 6px; padding-bottom: 12px; }
+  .tier-legend-range { grid-column: 2; }
+  .tier-legend .tier-badge { grid-column: 2; }
 }

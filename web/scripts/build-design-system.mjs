@@ -45,7 +45,7 @@ const isColour = (v) => /^#|^rgba?\(|^hsla?\(/i.test(v);
 const group = (prefixes) =>
   [...T].filter(([n]) => prefixes.some((p) => n.startsWith(p)));
 
-const page = (title, cardGroup, body, w = 960, h = 600) => `<!-- @dsCard group="${cardGroup}" -->
+const page = (title, cardGroup, body) => `<!-- @dsCard group="${cardGroup}" -->
 <!doctype html>
 <meta charset="utf-8">
 <title>${title}</title>
