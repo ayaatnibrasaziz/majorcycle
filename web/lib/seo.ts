@@ -2,6 +2,29 @@ import type { Metadata } from 'next';
 import { SITE_ORIGIN } from '@/lib/url';
 
 /**
+ * The ONE sitewide share card. Built by `pnpm build:og-image` into
+ * `app/opengraph-image.png`; Next serves it at this path.
+ *
+ * ⚠️ Stated here rather than left to Next's file convention. The convention DOES
+ * attach the image automatically — but only while a route does not export its
+ * own `openGraph`, and every public page here exports one via `pageMetadata()`,
+ * which replaces the inherited object wholesale. Measured on the wire: the file
+ * existed and served 200, `twitter:card` said `summary_large_image`, and there
+ * was **no `og:image` tag on any page** — a card that renders as broken rather
+ * than gracefully small, which is the exact failure this file already warned
+ * about in prose. Reading the source would not have shown it.
+ *
+ * Same reasoning as `og:title` below: a framework detail nobody re-checks is not
+ * a foundation for the most-shared surface we have.
+ */
+export const OG_IMAGE = {
+  url: `${SITE_ORIGIN}/opengraph-image.png`,
+  width: 1200,
+  height: 630,
+  alt: 'MajorCycle — every stock falls; some are further down than usual.',
+} as const;
+
+/**
  * THE list of pages a signed-out human may open, and what search engines may do
  * with each. One list, four consumers (rule 11c):
  *
@@ -94,10 +117,19 @@ const BY_PATH = new Map(PUBLIC_PAGES.map((p) => [p.path, p]));
  * without an explicit canonical the same page is reachable at two addresses and
  * Google has to guess which is the real one — and may split the credit between them.
  *
- * NOTE: no `og:image` yet. A share card needs a designed 1200x630 asset, and design
- * is approved by the owner in G2 before anything is built. Until then `twitter.card`
- * is `summary` (the small square form), NOT `summary_large_image` — claiming a large
- * image we don't ship renders as a broken card rather than a graceful small one.
+ * The share image is ONE sitewide asset (`app/opengraph-image.png`, built by
+ * `pnpm build:og-image`). Next's file convention emits its url/type/width/height
+ * automatically and applies it to every child route, so it is not restated here —
+ * one image, one declaration.
+ *
+ * ⚠️ There is deliberately no per-page or per-stock card. A share image is fetched
+ * by anonymous crawlers and cached publicly, so a card carrying a rating or a score
+ * would publish paid output on a CDN (CLAUDE.md 11a/11b) — a paywall bypass wearing
+ * the clothes of a marketing asset.
+ *
+ * `twitter.card` is now `summary_large_image`, which is only honest BECAUSE the
+ * image exists: claiming a large card without shipping one renders broken rather
+ * than gracefully small.
  */
 export function pageMetadata(opts: {
   path: string;
@@ -137,9 +169,11 @@ export function pageMetadata(opts: {
       description: opts.description,
       url,
       locale: 'en_AU',
+      images: [OG_IMAGE],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
+      images: [OG_IMAGE.url],
       title: fullTitle,
       description: opts.description,
     },

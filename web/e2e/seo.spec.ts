@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { PUBLIC_PAGES } from '@/lib/seo';
+import { OG_IMAGE, PUBLIC_PAGES } from '@/lib/seo';
 import { SITE_ORIGIN } from '@/lib/url';
 
 /**
@@ -182,11 +182,53 @@ test.describe('page metadata on the rendered HTML', () => {
         .getAttribute('content');
       expect(ogDesc?.length ?? 0).toBeGreaterThan(30);
 
+      // The share card must be NAMED on the page, not merely present on disk.
+      // Found on the wire 2026-08-08: app/opengraph-image.png existed and served
+      // 200, twitter:card claimed `summary_large_image`, and NOT ONE page carried
+      // an og:image — because a route exporting its own `openGraph` replaces the
+      // one Next's file convention would have inherited down. A large card with
+      // no image renders broken rather than gracefully small.
+      await expect(pw.locator('meta[property="og:image"]')).toHaveAttribute(
+        'content',
+        OG_IMAGE.url,
+      );
+      await expect(pw.locator('meta[name="twitter:card"]')).toHaveAttribute(
+        'content',
+        'summary_large_image',
+      );
+
       // An indexable page must NOT carry a noindex. This is the assertion that
       // catches the copy-paste error of pasting a sign-in page's metadata.
       await expect(pw.locator('meta[name="robots"]')).toHaveCount(0);
     });
   }
+
+  test('the share card itself is a real 1200x630 PNG, not a 404', async ({ request }) => {
+    // Naming the image proves nothing if the file is missing: every assertion
+    // above would still pass against a dead URL. Fetch the bytes.
+    const res = await request.get('/opengraph-image.png');
+    expect(res.status()).toBe(200);
+    expect(res.headers()['content-type']).toContain('image/png');
+    const body = await res.body();
+    expect(body.byteLength).toBeGreaterThan(20_000);
+    // PNG magic, then the IHDR width/height as big-endian uint32s. A card at the
+    // wrong dimensions is cropped by every platform that shows it.
+    expect(body.subarray(1, 4).toString('ascii')).toBe('PNG');
+    expect(body.readUInt32BE(16)).toBe(OG_IMAGE.width);
+    expect(body.readUInt32BE(20)).toBe(OG_IMAGE.height);
+  });
+
+  test('no page ships a SECOND, per-page share card', async ({ page: pw }) => {
+    // A per-stock or per-page card is fetched by anonymous crawlers and cached
+    // publicly, so one carrying a rating would publish paid output on a CDN
+    // (CLAUDE.md 11a/11b). One image sitewide, and this is what keeps it one.
+    for (const p of INDEXABLE) {
+      await pw.goto(p.path);
+      const urls = await pw.locator('meta[property="og:image"]').all();
+      expect(urls.length, `${p.path} declares ${urls.length} og:image tags`).toBe(1);
+      expect(await urls[0]!.getAttribute('content')).toBe(OG_IMAGE.url);
+    }
+  });
 });
 
 test.describe('noindex pages', () => {

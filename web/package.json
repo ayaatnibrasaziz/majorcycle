@@ -15,7 +15,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
-    "stripe:listen": "node scripts/stripe-listen.mjs"
+    "stripe:listen": "node scripts/stripe-listen.mjs",
+    "build:og-image": "node scripts/build-og-image.mjs"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
