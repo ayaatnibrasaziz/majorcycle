@@ -151,8 +151,35 @@ Linear run between their docs and their dashboards. A component that appears in 
 (buttons, badges) keeps one size per context, chosen by the frame it sits in, never by a
 one-off override.
 
-*Reading scale to be defined and approved in G2's type-scale step; it is the first thing
-built because everything else sits on it.*
+#### The reading scale — BUILT 2026-08-08 (G2 step 1)
+
+Seven steps, defined once as tokens in `web/app/globals.css` and applied once through
+`.reading`. **A page never types a px value**; it asks for an element or a class.
+
+| Token | Size | Use |
+|---|---|---|
+| `--rd-micro` | 12px | Eyebrows and labels — uppercase, tracked, never a sentence |
+| `--rd-small` | 14px | Captions, meta, footnotes |
+| `--rd-body` | 17px | Body copy |
+| `--rd-lead` | 20px | Lead paragraph and `h3` (separated by weight, not a fourth size) |
+| `--rd-h2` | 26px | Section heading |
+| `--rd-h1` | 36px | Page title |
+| `--rd-display` | 48px | Landing hero only |
+
+Line lengths are tokens too: `--measure-narrow` 440px (auth cards), `--measure-prose`
+680px (~68 characters at `--rd-body`), `--measure-wide` 1120px (landing). A page picks
+one via `<PageFrame width="narrow|prose|wide">`; the public layout owns the header and
+footer so widening a page cannot fork the chrome (11c).
+
+⚠️ **`--rd-micro` is a FLOOR.** Nothing on a reading page goes below 12px, and
+`e2e/contrast.spec.ts` fails the build if the `/methodology` article does. 8px uppercase
+is decoration wearing the costume of information.
+
+⚠️ **`.reading` lives in `@layer base`.** Unlayered, `.reading a { color }` (0,1,1) beat
+Tailwind's `.text-white` (0,1,0) and painted a call-to-action brand-blue on a brand-blue
+button — 1.0:1, invisible. Same mechanism as the note above the reset in `globals.css`.
+Any new scoped-typography rule goes in the same layer or it will outrank the utilities
+that are supposed to override it.
 
 ---
 
@@ -832,11 +859,21 @@ Phase 1 minimums (not aspirations — requirements):
 > computed in-page (not estimated). **8 elements fail.** Two of them are material rather
 > than cosmetic:
 >
-> | Element | Ratio | Needs |
-> |---|---|---|
-> | **Rating tier badges** — white on `--c-tier-3` / `--c-tier-4` | **2.38 : 1** | 4.5 : 1 |
-> | **"Full disclaimer" link** (`--text-muted` on `--bg-page`) | **2.69 : 1** | 4.5 : 1 |
-> | "Financial Terminal" wordmark, 9px | 2.69 : 1 | 4.5 : 1 |
+> | Element | Ratio | Needs | Status |
+> |---|---|---|---|
+> | **Rating tier badges** — white on `--c-tier-3` / `--c-tier-4` | **2.38 : 1** | 4.5 : 1 | ✅ **fixed 2026-08-08 — now 4.73 : 1 worst case** |
+> | **"Full disclaimer" link** (`--text-muted` on `--bg-page`) | **2.69 : 1** | 4.5 : 1 | ✅ **fixed 2026-08-08 — now 6.8 : 1** |
+> | "Financial Terminal" wordmark, 9px | 2.69 : 1 | 4.5 : 1 | ⏭️ Layer H (shared header) |
+>
+> **How the tier badges were fixed, and why it is not a colour change.** `/methodology`
+> painted white on the SOLID tier fill. The five `.tier-badge--N` classes the product
+> actually uses are tint-plus-ink and already cleared 4.5:1 — so the page now renders the
+> real component. It is both legible and pedagogically right: the reader learns the badge
+> they will actually meet. **No locked tier colour was touched** (decision #25).
+>
+> **Measured after: 8 failures → 1**, the deferred wordmark. `e2e/contrast.spec.ts` now
+> measures `/`, `/methodology`, `/disclaimer`, `/terms` and `/privacy` on every run, and
+> the exemption is listed BY TEXT so it cannot quietly widen to cover a second element.
 >
 > The first is **§4 of this document — "THE Most Important Spec"**. The five tier labels
 > are the product's entire vocabulary and they are the hardest text on the page to read.

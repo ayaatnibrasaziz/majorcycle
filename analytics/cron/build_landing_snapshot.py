@@ -32,7 +32,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 from supabase import Client, create_client
@@ -52,10 +52,12 @@ _PAGE = 1000  # PostgREST caps a request at 1000 rows and says nothing (14c).
 
 
 def _supabase() -> Client:
-    return create_client(
-        os.environ["NEXT_PUBLIC_SUPABASE_URL"],
-        os.environ["SUPABASE_SERVICE_ROLE_KEY"],
-    )
+    # SUPABASE_URL, matching every other cron script and the GitHub secret they
+    # all read. `NEXT_PUBLIC_SUPABASE_URL` is the web app's name for the same
+    # value; using it here would work locally off .env.local and then raise
+    # KeyError at 22:30 UTC in a workflow nobody is watching.
+    url = os.environ.get("SUPABASE_URL") or os.environ["NEXT_PUBLIC_SUPABASE_URL"]
+    return create_client(url, os.environ["SUPABASE_SERVICE_ROLE_KEY"])
 
 
 def _load_bars(supabase: Client, ticker: str) -> pd.DataFrame:
@@ -70,7 +72,9 @@ def _load_bars(supabase: Client, ticker: str) -> pd.DataFrame:
             .range(start, start + _PAGE - 1)
             .execute()
         )
-        batch = res.data or []
+        # `res.data` is typed as loose JSON by the supabase client; cast at the
+        # boundary exactly as _select_all() in daily_refresh.py does.
+        batch = cast(list[dict[str, Any]], res.data or [])
         rows.extend(batch)
         if len(batch) < _PAGE:
             break
@@ -93,7 +97,8 @@ def main() -> None:
     row = supabase.table("stocks").select("ticker,name,currency").eq("ticker", TICKER).execute()
     if not row.data:
         raise SystemExit(f"{TICKER} is not in the universe")
-    currency = row.data[0].get("currency") or "USD"
+    stock = cast(list[dict[str, Any]], row.data)[0]
+    currency = stock.get("currency") or "USD"
 
     df = _load_bars(supabase, TICKER)
     p = PRESETS[PRESET]

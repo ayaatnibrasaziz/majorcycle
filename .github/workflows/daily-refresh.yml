@@ -19,6 +19,10 @@ jobs:
     name: Run daily pipeline (US + CA)
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # `contents: write` so the landing snapshot can be committed back. Nothing
+    # else in this workflow writes to the repo.
+    permissions:
+      contents: write
     env:
       PYTHONPATH: .
 
@@ -132,3 +136,37 @@ jobs:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python -m analytics.cron.check_field_units
+
+      # ── The landing page's live figures ────────────────────────────────────
+      #
+      # `/` states Apple's real current drawdown against its own historical
+      # average. Those numbers are read from a committed JSON file, not queried
+      # per visit, so the front door has no database in its critical path — which
+      # means the file has to be regenerated and pushed here.
+      #
+      # It runs AFTER the refresh above, so it reads the bars this run just
+      # stored rather than yesterday's.
+      #
+      # ⚠️ The script emits FREE-tier fields only, and that is structural rather
+      # than remembered: it calls `calculate_cycle_metrics`, which cannot return a
+      # rating, a health score or a valuation (CLAUDE.md 11b).
+      - name: Rebuild the landing snapshot
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m analytics.cron.build_landing_snapshot
+
+      - name: Commit the landing snapshot if it moved
+        run: |
+          set -e
+          if git diff --quiet -- web/app/landing-snapshot.json; then
+            echo "landing snapshot unchanged — nothing to commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # ONLY this file. `git commit -a` here would sweep up anything else a
+          # future step happens to leave in the tree.
+          git add web/app/landing-snapshot.json
+          git commit -m "chore(landing): nightly snapshot [skip ci]"
+          git push
