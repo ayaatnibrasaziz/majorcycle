@@ -39,7 +39,7 @@ const PREMIUM_API_PATHS = ['/api/analyze', '/api/analyze-dev'];
  * caller is redirected to /stocks. See the guard near the end of `proxy` for why this
  * is a list rather than a condition per page.
  */
-const SIGNED_OUT_ONLY_PATHS = ['/login', '/signup', '/deletion-requested'];
+const SIGNED_OUT_ONLY_PATHS = ['/', '/login', '/signup', '/deletion-requested'];
 
 /**
  * Everything reachable without a session: the public PAGES plus the machine

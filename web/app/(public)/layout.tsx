@@ -7,6 +7,24 @@ const supabaseOrigin = process.env['NEXT_PUBLIC_SUPABASE_URL']
   ? new URL(process.env['NEXT_PUBLIC_SUPABASE_URL']).origin
   : null;
 
+/**
+ * The footer's links, in one place.
+ *
+ * Deliberately hand-ordered rather than derived from PUBLIC_PAGES: that list also
+ * holds `/login`, `/signup` and `/reset-password`, which belong in the header
+ * flow, not a footer nav. It is the reading order a stranger needs — what this is,
+ * then what it costs, then the legal shelf.
+ */
+const FOOTER_LINKS = [
+  { href: '/', label: 'Home' },
+  { href: '/methodology', label: 'How it works' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/contact', label: 'Contact' },
+  { href: '/disclaimer', label: 'Disclaimer' },
+  { href: '/terms', label: 'Terms' },
+  { href: '/privacy', label: 'Privacy' },
+] as const;
+
 export default function PublicLayout({
   children,
 }: {
@@ -78,18 +96,32 @@ export default function PublicLayout({
         {children}
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 px-6 pb-6 text-center">
+      {/* Footer — ONE definition for every public page (CLAUDE.md 11c).
+          Until now it linked only to /disclaimer, which left five public pages
+          with no inbound link from anywhere on the site: a reader could not reach
+          them, and neither could a crawler following links. */}
+      <footer className="relative z-10 mt-auto border-t border-[var(--border)] px-6 py-7">
+        <nav
+          aria-label="Site"
+          className="mx-auto flex max-w-[var(--measure-wide)] flex-wrap justify-center gap-x-6 gap-y-2.5"
+        >
+          {FOOTER_LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="text-[length:var(--rd-small)] font-medium text-[var(--text-secondary)] hover:text-[var(--brand-mid)] transition-colors"
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
         {/* --text-secondary, not --text-muted. Muted on --bg-page measures
             2.69:1 (design-system §14) and this is the legally material line on
             every public page — CLAUDE.md #4/#12. A disclaimer nobody can read
             is not a disclaimer. --text-secondary on --bg-page is 6.8:1. */}
-        <p className="text-[length:var(--rd-small)] text-[var(--text-secondary)] leading-relaxed">
-          Information only — not financial advice.{' '}
-          <Link href="/disclaimer" className="underline underline-offset-2 decoration-[var(--border-strong)] hover:text-[var(--brand-mid)] hover:decoration-current transition-colors">
-            Full disclaimer
-          </Link>
-          .
+        <p className="mx-auto mt-5 max-w-[var(--measure-wide)] text-center text-[length:var(--rd-small)] text-[var(--text-secondary)] leading-relaxed">
+          Information only — not financial advice. MajorCycle provides educational
+          analysis of US, Australian and Canadian equities.
         </p>
       </footer>
     </div>

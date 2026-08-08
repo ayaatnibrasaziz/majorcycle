@@ -201,6 +201,7 @@ if (!proxy) {
 // same way everywhere — and it throws at build time on an unregistered path.
 
 const PAGE_FILE = {
+  '/': 'app/(public)/page.tsx',
   '/pricing': 'app/(public)/pricing/page.tsx',
   '/methodology': 'app/(public)/methodology/page.tsx',
   '/contact': 'app/(public)/contact/page.tsx',

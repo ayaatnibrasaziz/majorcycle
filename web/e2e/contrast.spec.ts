@@ -25,7 +25,7 @@ import { expect, test } from '@playwright/test';
  */
 
 /** Pages whose text a reader is expected to actually read. */
-const READING_PAGES = ['/methodology', '/disclaimer', '/terms', '/privacy'];
+const READING_PAGES = ['/', '/methodology', '/disclaimer', '/terms', '/privacy'];
 
 /**
  * The one element still under the floor, and it is deliberate: the 9px

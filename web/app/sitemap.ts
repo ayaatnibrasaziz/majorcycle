@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { PUBLIC_PAGES } from '@/lib/seo';
-import { SITE_ORIGIN } from '@/lib/url';
+import { PUBLIC_PAGES, pageUrl } from '@/lib/seo';
 
 /**
  * /sitemap.xml — the map Google reads.
@@ -32,6 +31,6 @@ import { SITE_ORIGIN } from '@/lib/url';
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   return PUBLIC_PAGES.filter((page) => page.index).map((page) => ({
-    url: `${SITE_ORIGIN}${page.path}`,
+    url: pageUrl(page.path),
   }));
 }

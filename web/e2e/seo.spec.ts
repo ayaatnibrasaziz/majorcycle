@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { OG_IMAGE, PUBLIC_PAGES } from '@/lib/seo';
+import { OG_IMAGE, PUBLIC_PAGES, pageUrl } from '@/lib/seo';
 import { SITE_ORIGIN } from '@/lib/url';
 
 /**
@@ -130,7 +130,7 @@ test.describe('sitemap.xml', () => {
 
     for (const page of INDEXABLE) {
       expect(body, `${page.path} is indexable and must be listed`)
-        .toContain(`<loc>${SITE_ORIGIN}${page.path}</loc>`);
+        .toContain(`<loc>${pageUrl(page.path)}</loc>`);
     }
   });
 
@@ -141,7 +141,7 @@ test.describe('sitemap.xml', () => {
     // a contradiction that wastes crawl budget and looks like a mistake.
     for (const page of NOINDEX) {
       expect(body, `${page.path} is noindex and must NOT be in the sitemap`)
-        .not.toContain(`<loc>${SITE_ORIGIN}${page.path}</loc>`);
+        .not.toContain(`<loc>${pageUrl(page.path)}</loc>`);
     }
     for (const gated of ['/stocks', '/run', '/results', '/account']) {
       expect(body, `${gated} is gated and must never appear`).not.toContain(gated);
@@ -164,7 +164,7 @@ test.describe('page metadata on the rendered HTML', () => {
       await pw.goto(page.path);
 
       const canonical = pw.locator('link[rel="canonical"]');
-      await expect(canonical).toHaveAttribute('href', `${SITE_ORIGIN}${page.path}`);
+      await expect(canonical).toHaveAttribute('href', pageUrl(page.path));
 
       // og:title is stated explicitly by pageMetadata() rather than relying on the
       // root layout's title template reaching it — a framework detail that would
@@ -175,7 +175,7 @@ test.describe('page metadata on the rendered HTML', () => {
       );
       await expect(pw.locator('meta[property="og:url"]')).toHaveAttribute(
         'content',
-        `${SITE_ORIGIN}${page.path}`,
+        pageUrl(page.path),
       );
       const ogDesc = await pw
         .locator('meta[property="og:description"]')

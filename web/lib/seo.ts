@@ -17,6 +17,20 @@ import { SITE_ORIGIN } from '@/lib/url';
  * Same reasoning as `og:title` below: a framework detail nobody re-checks is not
  * a foundation for the most-shared surface we have.
  */
+/**
+ * The absolute URL for a public page — the ONE form of it.
+ *
+ * `${SITE_ORIGIN}${path}` is right for every path except the one that matters
+ * most: for '/' it yields a trailing slash, and Next normalises the canonical tag
+ * to drop it. That left the sitemap advertising `.../` while the page's own
+ * canonical said `...` with no slash — the two files whose whole job is to agree
+ * on one address, disagreeing about the homepage. Caught by e2e/seo.spec.ts.
+ *
+ * Both consumers call this, so there is nowhere for the two to drift apart (11c).
+ */
+export const pageUrl = (path: string): string =>
+  path === '/' ? SITE_ORIGIN : `${SITE_ORIGIN}${path}`;
+
 export const OG_IMAGE = {
   url: `${SITE_ORIGIN}/opengraph-image.png`,
   width: 1200,
@@ -62,6 +76,16 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   // ── Indexable: the pages we actually want a stranger to find ───────────────
   // No `priority` / `changeFrequency` — Google ignores both, and a number that looks
   // like a ranking dial but isn't one wastes a future session's time. See sitemap.ts.
+  //
+  // ⚠️ '/' looks like it opens the whole site, because PUBLIC_PATHS matches
+  // `pathname === p || pathname.startsWith(p + '/')`. It does not: for '/' the
+  // second arm is `startsWith('//')`, which no real path satisfies. Asserted by
+  // the "site is still gated" control in e2e/seo.spec.ts, which runs over every
+  // gated route signed out.
+  //
+  // '/' is ALSO in proxy.ts's SIGNED_OUT_ONLY_PATHS: a signed-in reader gets the
+  // app, not the sales pitch.
+  { path: '/', index: true },
   { path: '/pricing', index: true },
   { path: '/methodology', index: true },
   { path: '/contact', index: true },
@@ -147,7 +171,7 @@ export function pageMetadata(opts: {
     );
   }
 
-  const url = `${SITE_ORIGIN}${opts.path}`;
+  const url = pageUrl(opts.path);
 
   // The root layout's `'%s | MajorCycle'` template is applied to <title>. Whether it
   // also reaches og:title is a framework detail I am not willing to depend on — an
