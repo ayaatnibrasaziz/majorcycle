@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Next build layer: G (SEO + performance).**
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing) built and audited, PR #89 open and deliberately unmerged until the layer is done.**
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -604,16 +604,152 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 >    Cache Components / `use cache` / PPR are available and are the right lever for the
 >    Lighthouse target. Confirm against current Vercel docs before designing around them.
 
-- [ ] **DECISION FIRST:** which pages are publicly crawlable? (owner call — see box above)
-- [ ] Dynamic `/sitemap.ts` — scoped to whatever the decision makes public
-- [ ] Dynamic `/robots.ts` — public pages allowed, private blocked
-- [ ] **Add `/robots.txt` + `/sitemap.xml` to `PUBLIC_PATHS`** or they 307 to `/login`
-- [ ] Per-page metadata (title, description, OG tags) — dynamic where it earns its keep
-- [ ] JSON-LD structured data — `Article` + `FinancialProduct` schemas
-- [ ] Dynamic OG images via `@vercel/og` per ticker
-- [ ] Canonical URL tags — **note the apex vs `www` split** (the live Stripe webhook needs `www`;
-      pick one canonical host and make the other redirect consistently)
-- [ ] Submit sitemap to Google Search Console
+- [x] **DECISION MADE 2026-08-04:** nothing the product sells is crawlable. Search traffic comes
+      from written content, not from ticker data. **Do not re-propose indexing stock pages.**
+- [x] `/sitemap.ts` — the 6 indexable public pages, derived from `PUBLIC_PAGES` (`lib/seo.ts`)
+- [x] `/robots.ts` — public pages allowed, every app surface explicitly disallowed, plus the
+      AI-crawler split (allow search bots that cite us; block training crawlers)
+- [x] **Added `/robots.txt` + `/sitemap.xml` to `PUBLIC_PATHS`** — they 307'd to `/login`
+      without it, which no amount of correctness inside either file would have fixed
+- [x] Per-page metadata — canonical + Open Graph on all 10 public pages via one helper;
+      `noindex` (but crawlable) on the four sign-in pages
+- [x] Canonical URL — **one `SITE_ORIGIN`**, `www`. The literal was in FIVE files and one
+      disagreed; it never fired because `NEXT_PUBLIC_SITE_URL` is set in production, which is
+      why nobody saw it. `check:seo` now fails the build on a sixth copy.
+- [x] **Google Search Console verified 2026-08-06** — Domain property (covers apex + `www`),
+      DNS TXT on the root. See `architecture.md` §11 for the record and the warning about it.
+
+> ### ✅ G1 COMPLETE — 2026-08-07. PR #89 open, deliberately unmerged for the whole layer.
+>
+> Audited twice at the owner's request, then re-checked against the primary sources
+> (RFC 9309, Google's robots/canonical/sitemap docs, the Next metadata reference, each
+> vendor's crawler docs). **No defects found in G1 itself.** 21 deliberate breaks all
+> caught; `check:seo` 287 checks; Playwright **152** green three consecutive local runs
+> and in CI.
+>
+> **Verified signed-out on a production BUILD** (`next start`, no cookies), calibrated
+> first against pages already confirmed on the Vercel preview: `/pricing` indexable with
+> a canonical; the four sign-in pages `noindex, follow`, all **200 and not disallowed**;
+> none of them in the sitemap; every canonical and `og:url` naming `www.majorcycle.com`.
+> Control: 7 gated paths all 307 → the reader does detect redirects, so those 200s are real.
+>
+> ⚠️ **A Vercel PREVIEW cannot show you the signed-out view.** Its access cookie and the
+> app session share one jar, so dropping one drops the other. Worse, a *signed-in* reading
+> silently measures a different page — `/pricing` bounces to `/account`, `/login` to
+> `/stocks` — which produced five clean-looking rows for pages nobody asked about. **Print
+> the landed URL beside every reading and never follow redirects when measuring.**
+>
+> Also fixed in this session, though not SEO: `fetchStockDetail` answering **"Stock not
+> found" on a failed database read** (CLAUDE.md 11e) — found *because* it was corrupting
+> the test suite's evidence.
+
+> ### ✅ G2 (design) — COMPLETE 2026-08-08 (all five approved steps built and verified)
+>
+> Full briefs in **`docs/layer-g-page-briefs.md`**; measured gap analysis and the tool
+> decision in **`docs/layer-g-design-strategy.md`**. Both approved by the owner.
+>
+> **Done.** Claude Design project *"MajorCycle Design System"* created (the owner's
+> first) and the **foundations captured** — colour, typography, spacing, radius, shadow.
+> ⚠️ **Generated, never hand-written**: `pnpm build:design-system` parses the real
+> `web/app/globals.css`, so a colour that is not shipped cannot appear in the gallery.
+> Output `web/design-system-build/` is **gitignored** — a rendering, never a source of
+> truth. Components are captured as **screenshots of the running product** rather than
+> re-implemented, for the same reason. Real product screenshots taken on live across the
+> free *and* paid states (owner authorised flipping their own entitlement; recorded,
+> restored and verified — Stripe never touched).
+>
+> **Intent locked by the owner (5 decisions).** Demonstrate the method before naming it ·
+> the landing page shows a **fixed** stock (Apple), not a rotating one · the About trust
+> list is sufficient without a name · `/learn` articles target the **newcomer**, not the
+> paying buyer · the weekly note gets its **own `/notes` section**, one permanent page per
+> week with an archive. **Audience = both, served in LAYERS not averaged** — this
+> corrected the plan's "a complete beginner", which contradicted a $15/mo terminal.
+>
+> **Tool decision — spend $0, and specifically NO Figma.** A design file is a second
+> description of the design sitting beside the code: the exact drift shape 11c exists for,
+> which has already bitten this project four times. **The site is the design file**; the
+> owner reviews the real page on a preview. Stack is what is already owned (shadcn +
+> Tailwind + Lucide + locked tokens) plus Excalidraw for the cycle diagram, `next/og` for
+> the share image, Squoosh for image weight, and contrast measurement promoted into a
+> Playwright test. Tailwind Plus (~US$299 once) considered and **deferred**, to be
+> revisited only if the landing page stalls on layout rather than content.
+>
+> **All five approved steps BUILT 2026-08-08.** Deviation from the tool list, flagged
+> rather than silent: the cycle diagram is an **inline SVG built from the real tokens**,
+> not Excalidraw — a hand-drawn asset would be a second source of truth for the palette,
+> and it could not be responsive. The share image is a **committed PNG generated by a
+> script**, not runtime `next/og`: an ImageResponse puts a font fetch and a satori parse
+> between a social crawler and a card, and the owner cannot debug a serverless font
+> failure from outside.
+>
+> | Step | Built | Guard |
+> |---|---|---|
+> | 1. Reading type scale | 7 tokens + `.reading`, `PageFrame` widths | `contrast.spec.ts` 12px floor |
+> | 1. Two contrast fixes | tier badges **2.38 → 4.73:1**, disclaimer **2.69 → 6.8:1** | `contrast.spec.ts`, 5 pages |
+> | 2. Page frame | narrow / prose / wide; header+footer once | — |
+> | 3. Cycle diagram | inline SVG, HTML labels, 375–1440 | — |
+> | 4. Share image | one sitewide 1200×630 PNG | `seo.spec.ts` ×3 |
+> | 5. Landing at `/` | real Apple figures, nightly snapshot | `seo.spec.ts`, gated-route control |
+>
+> **Measured outcome on `/methodology`: 8 contrast failures → 1** (the 9px header
+> wordmark, deferred to H). Playwright **152 → 163**, all green in CI.
+>
+> **Three defects found by the guards, all written the same session** — the token
+> `--text-muted` reached for twice more (2.97:1 both times), `.reading a` outranking
+> `.text-white` on a brand-blue button (**1.0:1, invisible**), and the sitemap
+> advertising `.../` for the homepage while its own canonical said `...` with no slash.
+>
+> ⚠️ **And one the PR caught that no local run did**: 7 mypy errors in the new cron
+> script. Layer F's lesson held again — open the PR early.
+>
+> ⚠️ **A push created no workflow run at all.** GitHub did not fire the `pull_request`
+> event for `9ae0599`, so `gh pr checks` showed only Vercel and the newest verdict on
+> record was the previous commit's FAILURE. An empty commit forced it. **"No red" is not
+> "green" — check that a run exists for the SHA you are looking at.**
+
+- [x] **Fix the two material contrast failures INSIDE Layer G** (not H): the rating tier
+      badges **2.38 → 4.73:1** (the page now renders the REAL `.tier-badge`, so no locked
+      tier colour was touched) and the "Full disclaimer" link **2.69 → 6.8:1**. The
+      remaining six stay with the Layer H sweep. Guarded by `e2e/contrast.spec.ts`.
+- [x] **Define the reading type scale.** Seven tokens (`--rd-micro` … `--rd-display`),
+      applied once through `.reading`; three `--measure-*` widths behind `PageFrame`.
+      Table in `design-system.md` §3.
+
+**Found during the G1 spec review (2026-08-07) — filed here, not silently changed:**
+
+- [ ] **`majorcycle.com` → `www` is a 307 TEMPORARY redirect.** Google consolidates ranking
+      onto one address only via a **permanent** redirect; temporary explicitly means "do not
+      consolidate". G1 just declared `www` canonical in ten places and the server contradicts
+      it. **Owner approval required; do it AT MERGE.** Zero billing risk — Stripe points at
+      `www` directly, and http→https is already correctly 308. *(Highest-value item in Layer G.)*
+- [ ] **No `og:image` anywhere** — every shared link renders a bare card. A single
+      `app/opengraph-image.png` + `opengraph-image.alt.txt` covers the whole site and Next
+      emits the url/type/width/height itself. **→ G2**, because it is branding and the owner
+      approves branding before it ships. Pair with `twitter:card: summary_large_image`.
+- [ ] **`llms.txt` — RECOMMEND DROPPING. Owner decision, to be re-asked when the content
+      sessions begin (plan session G4), not now.** The Layer G plan said "it costs twenty
+      minutes so I'll ship it". Checking the sources changed that advice: Google's John
+      Mueller confirmed **no Google Search system reads or acts on it**, and as of Q1 2026 no
+      major AI company — Google, OpenAI, Anthropic, Meta, Mistral — reads it in their search
+      or answer engines. Adoption is ~10% of domains. It is a **hand-maintained second index
+      of the site**: today it would list six legal pages (no value), and once `/learn` exists
+      it becomes a file that must be updated on every publish or it silently goes stale —
+      exactly the drift CLAUDE.md 11c is about, for a reader that may not exist. **Re-ask
+      then, when the trade is real**, i.e. when there is content worth listing.
+- [ ] **Every public page is `ƒ` (server-rendered per request)**, including pure-text legal
+      pages; only robots/sitemap/icon are prebuilt. Hurts TTFB and the 90+ target. **Cause not
+      yet identified** — `/terms` uses no dynamic API and has no `force-dynamic`. **→ G6.**
+- [ ] Four descriptions exceed ~155 chars (Disclaimer 176, Methodology 175, Terms 159,
+      Privacy 156). Google truncates the display; **no penalty**. Cosmetic. **→ G6.**
+- [ ] JSON-LD — `Organization`, `WebSite`, `Article`, `DefinedTerm`. **NOT `FinancialProduct`**
+      and no rating markup: that asserts an investment claim in machine-readable form,
+      against compliance posture #24.
+- [ ] OG images via **`next/og`** — ships with the App Router; `@vercel/og` is NOT a
+      dependency we need (this doc claimed otherwise for months). Waits on G2's design.
+- [ ] **Submit the sitemap in Search Console — AT MERGE, not before.** `/sitemap.xml` 404s on
+      production until Layer G is live, and submitting a 404 teaches Google to distrust it.
+      *(Google retired the "ping on deploy" endpoint in 2023; it now 404s. The mechanism is
+      the `Sitemap:` line in robots.txt plus one manual submission.)*
 - [ ] Image optimisation pass (next/image everywhere)
 - [ ] Bundle size audit — remove any unused deps
 - [ ] Lighthouse pass — score 90+ on at least 5 sample ticker pages
@@ -692,7 +828,7 @@ memory** — re-verified 2026-08-02. ✅ proven · 🟡 partly proven, with what
 | ✅ | Zero ESLint errors | `pnpm lint` clean |
 | ✅ | Zero Python type errors | `mypy analytics/` — no issues in **33 source files** |
 | ✅ | All tests passing in CI | Run on `ab11e18`: Python ✅ · Frontend ✅ · E2E **105/105** · `pytest` **86** |
-| ⬜ | Lighthouse Performance 90+, SEO 100, Accessibility 95+ on 5 sample ticker pages | **Layer G** — not started (no `sitemap.ts` / `robots.ts` yet) |
+| ⬜ | Lighthouse Performance 90+, SEO 100, Accessibility 95+ on 5 sample ticker pages | **Layer G** — SEO plumbing **done** (G1: `robots.ts`, `sitemap.ts`, canonicals, Search Console). Lighthouse itself not yet measured; the instrument lands in the final Layer G session. Accessibility is **measured in G, fixed in Layer H** — otherwise G is blocked by work it isn't allowed to do. |
 | ⬜ | Mobile responsive at 375px width | **Layer H** — already triaged and measured there: ~130px overflow, root-caused to the `(app)` shell sidebar, not to page components |
 
 ### Content
@@ -767,7 +903,7 @@ Order of priority TBD based on user feedback. Candidate features:
 ✅ Phase 1 Layer F: Static Pages + Subscription  (built + merged PR #72 + live 2026-08-01)
    ✅  └─ production-readiness audit F-A1…F-A6 COMPLETE 2026-08-02 → docs/layer-f-audit.md
    ↓
-   Phase 1 Layer G: SEO + Performance      ← NOW (next build layer)
+🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1 done + audited; PR #89 open, unmerged)
    ↓
    Phase 1 Layer H: Hardening (Phase 1.5)  — owns 375px, a11y, cross-browser, Sentry
    ↓

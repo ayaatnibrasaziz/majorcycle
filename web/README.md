@@ -1,6 +1,7 @@
 # MajorCycle — web app
 
-Next.js 15 (App Router) + TypeScript + Tailwind v4. This directory holds the frontend
+Next.js **16.2.6** (App Router) + React 19.2.4 + TypeScript + Tailwind v4. *(Scaffolded on 15 —
+check `package.json` before relying on any version-specific API.)* This directory holds the frontend
 **and** the Vercel Python serverless functions (`api/`).
 
 > Read `../CLAUDE.md` first — it is the master brief and overrides anything here.
@@ -47,10 +48,56 @@ pnpm lint                   # eslint — zero errors
 pnpm build                  # production build
 pnpm check:entitlement-gates # paywall can't silently regress (no credentials needed)
 pnpm check:report-sections   # downloaded report stays in step with Stock Detail
-pnpm e2e                     # Playwright; suites self-skip without credentials
+pnpm check:data-integrity    # unpaginated reads, currency labelling, the P/E currency gate
+pnpm check:seo               # robots/sitemap/canonical registry and its four consumers
 ```
 
-`pnpm e2e` starts its own dev server, so stop `pnpm dev` first or it will refuse to boot.
+Not a check, but related — the design-system gallery:
+
+```bash
+pnpm build:design-system     # regenerate design-system-build/ from app/globals.css
+pnpm build:og-image          # regenerate app/opengraph-image.png (the share card)
+```
+
+It **parses the real stylesheet** rather than restating it, so a colour that is not
+shipped cannot appear in the gallery. The output is gitignored: it is a rendering, never
+a source of truth. ⚠️ Outside Next, `--font-sans`/`--font-mono` do **not** resolve —
+they live in `@theme inline`, not `:root`, and an unresolvable `var()` voids the whole
+declaration rather than falling back, which once rendered the entire gallery in Times
+New Roman while labelled Sora. The script pins them and loads the webfonts explicitly.
+
+`build:og-image` renders the card in a real browser (satori's variable-font support
+is unreliable and Sora is variable) and **refuses to write the file** unless
+`document.fonts.check()` confirms Sora rasterised, then reads the dimensions back
+out of the PNG. Its success line used to print "1200x630" as literal text — and
+printed it while writing an 800×418 card. The output is **committed**: it is what
+the site serves.
+
+⚠️ **There is exactly ONE share image, sitewide.** Never add a per-page or
+per-stock card: they are fetched by anonymous crawlers and cached publicly, so one
+carrying a rating would publish paid output on a CDN. `e2e/seo.spec.ts` asserts
+every indexable page declares exactly one, and that it is this one.
+
+The landing page's live figures come from `web/app/landing-snapshot.json`, rebuilt
+nightly by `analytics/cron/build_landing_snapshot.py` inside the US+CA refresh
+workflow. It emits free-tier fields only, and that is *structural*: it calls
+`calculate_cycle_metrics`, which cannot return a rating or a score.
+
+```bash
+pnpm e2e                     # Playwright — the ONLY TS test runner. Do NOT add Vitest/Jest.
+```
+
+**Read the COUNT, not the colour** — a suite that silently skipped is also green. The
+credential-free specs (`entitlement`, `export-parity`, `stock-read-errors`, `seo`) are pure
+and *cannot* skip; only the Stripe/auth matrix needs credentials.
+
+`pnpm e2e` starts its **own** dev server on port **3100** (`E2E_PORT`), separate from
+`pnpm dev` on 3000, and writes to `.next-dev` rather than `.next`. ⚠️ **It never reuses a
+running server** (`reuseExistingServer: false`). That setting is load-bearing, not tidiness:
+it used to reuse whatever held 3100, so a server left alive across several `git checkout`s
+answered from **stale code** — one test failed 8 of 8 against it and passed 4 of 4 the moment
+it was killed, and a "control" run on an older commit measured nothing at all. Booting costs
+~30s; not being able to trust a green run costs far more. If 3100 is occupied, kill it.
 
 ## Local Stripe + auth
 

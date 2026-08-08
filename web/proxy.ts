@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { PW_RECOVERY_COOKIE, PW_RECOVERY_ALLOWED_PATHS } from '@/lib/authRecovery';
 import { accessDenialReason, hasAccess } from '@/lib/entitlement';
 import { INTERNAL_HEADER, hasInternalSecret } from '@/lib/internalAuth';
+import { PUBLIC_ENDPOINTS, PUBLIC_PAGES } from '@/lib/seo';
 
 /** Internal-only analysis endpoint — secret-gated, never session-gated. */
 const CYCLE_PATH = '/api/cycle';
@@ -38,40 +39,30 @@ const PREMIUM_API_PATHS = ['/api/analyze', '/api/analyze-dev'];
  * caller is redirected to /stocks. See the guard near the end of `proxy` for why this
  * is a list rather than a condition per page.
  */
-const SIGNED_OUT_ONLY_PATHS = ['/login', '/signup', '/deletion-requested'];
+const SIGNED_OUT_ONLY_PATHS = ['/', '/login', '/signup', '/deletion-requested'];
 
+/**
+ * Everything reachable without a session: the public PAGES plus the machine
+ * endpoints, both from lib/seo.ts.
+ *
+ * DERIVED, not re-typed. The page half also drives sitemap.xml, robots.txt and each
+ * page's canonical tag, so a second copy here would be a fourth place for the same
+ * rule to drift (11c) — and the failure would be silent in the worst direction: a
+ * page listed in the sitemap that answers Google with a redirect to /login.
+ *
+ * ⚠️ Post-deletion confirmation `/deletion-requested` is public because the user has
+ * just been signed out — but it is ALSO in SIGNED_OUT_ONLY_PATHS below: reachable
+ * without a session, and *only* without one. (The reactivation page stays gated.)
+ *
+ * ⚠️ /api/cycle is deliberately absent. It used to be listed, which made the entire
+ * analysis engine a free, unauthenticated, unthrottled public API. It is now handled
+ * by its own branch below — exempt from the auth *redirect* (the internal fetch
+ * carries no cookies, so a redirect would blank every Stock Detail page) but
+ * requiring the internal shared secret instead. See CYCLE_PATH above.
+ */
 const PUBLIC_PATHS = [
-  '/login',
-  '/signup',
-  '/reset-password',
-  '/auth/callback',
-  '/auth/confirm',
-  '/methodology',
-  '/disclaimer',
-  '/terms',
-  '/privacy',
-  '/pricing',
-  '/contact',
-  // Post-deletion confirmation — the user has just been signed out, so it must be
-  // reachable without a session (the reactivation page /reactivate stays gated).
-  // Also in SIGNED_OUT_ONLY_PATHS: reachable without a session, but *only* without one.
-  '/deletion-requested',
-  // Well-known URIs (RFC 8615) — e.g. /.well-known/security.txt. Must be publicly
-  // reachable by security scanners/researchers without an auth redirect.
-  '/.well-known',
-  // NOTE: /api/cycle is deliberately NOT listed here. It used to be, which made the
-  // entire analysis engine a free, unauthenticated, unthrottled public API. It is now
-  // handled by its own branch below — exempt from the auth *redirect* (the internal
-  // fetch carries no cookies, so a redirect would blank every Stock Detail page) but
-  // requiring the internal shared secret instead. See CYCLE_PATH below.
-  // Cron endpoints run without a user session (Vercel Cron sends a Bearer secret,
-  // not cookies). They must bypass the auth redirect; each route enforces its own
-  // CRON_SECRET check, so opening them at the middleware is safe.
-  '/api/cron',
-  // Stripe posts webhook events server-to-server (no cookies). The route verifies
-  // every request with the Stripe signature secret, so opening it at the middleware
-  // is safe — an unsigned/forged POST is rejected 400 inside the handler.
-  '/api/stripe/webhook',
+  ...PUBLIC_PAGES.map((page) => page.path),
+  ...PUBLIC_ENDPOINTS,
 ];
 
 export async function proxy(request: NextRequest) {

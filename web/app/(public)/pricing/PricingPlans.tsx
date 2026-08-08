@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Check } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { PageFrame } from '@/components/PageFrame';
 import type { BillingCurrency } from '@/lib/stripe';
 import {
   PRICE_TABLE,
@@ -69,6 +70,9 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
   const saving = annualSavingPercent(currency);
 
   return (
+    // Frame stays narrow for now — /pricing is redesigned in G2's landing step.
+    // It needs an explicit frame because the public layout no longer imposes one.
+    <PageFrame width="narrow">
     <article className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[12px] shadow-[0_24px_60px_-12px_rgba(15,25,35,0.12),0_8px_24px_-8px_rgba(15,25,35,0.08)] overflow-hidden">
       <div className="px-7 py-8 sm:px-9 sm:py-10">
         <h1 className="text-[22px] sm:text-[24px] font-bold text-[var(--text-primary)] tracking-[-0.4px] leading-[1.2]">
@@ -194,5 +198,6 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
         </p>
       </div>
     </article>
+    </PageFrame>
   );
 }

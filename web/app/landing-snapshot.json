@@ -1,0 +1,11 @@
+{
+  "ticker": "AAPL",
+  "name": "Apple",
+  "currency": "USD",
+  "price": 313.33,
+  "currentDrawdownPct": -9.0664,
+  "typicalDrawdownPct": -24.685,
+  "pullbackEvents": 609,
+  "asOf": "2026-08-07",
+  "generatedAt": "2026-08-08T11:46:05+00:00"
+}

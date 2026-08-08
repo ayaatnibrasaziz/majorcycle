@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { LegalDoc } from '@/components/LegalDoc';
 
-export const metadata: Metadata = { title: 'Privacy Policy' };
+export const metadata: Metadata = pageMetadata({
+  path: '/privacy',
+  title: 'Privacy Policy',
+  description:
+    'What personal information MajorCycle collects, how it is used, which service providers process it, how long it is kept, and the choices and rights you have.',
+});
 
 // BASELINE CONTENT — owner to review/customise before wide launch. Describes the
 // data actually handled by the current stack (Supabase, Stripe, Resend, Vercel).

@@ -42,7 +42,17 @@ The new build's job is to **rebuild the same product on a modern foundation**, n
   --text-primary:   #0F1923;
   --text-secondary: #4A5568;
   --text-muted:     #8A97A8;
-  --text-white:     #FFFFFF;
+  /* NO `--text-white`. It was listed here until 2026-08-07 and has NEVER existed
+     in globals.css — a documented nickname for a colour nothing defines. Removed
+     because it is a landmine, not because anything was broken: `var(--text-white)`
+     appears in zero files, and white text (buttons, badges, checkmarks) uses
+     Tailwind's own `text-white` utility, which is unrelated and works.
+     ⚠️ Why it matters — an UNDEFINED custom property does not fall back, it voids
+     the whole declaration. `color: var(--text-white)` on a navy button yields
+     inherited colour, i.e. plausibly navy-on-navy: invisible text that reads as a
+     rendering glitch rather than a typo. Same mechanism cost an hour the same day,
+     when the design gallery rendered entirely in Times New Roman while labelled
+     Sora, because `--font-sans` sat in `@theme inline` rather than `:root`. */
 
   /* Borders */
   --border:        #E2E8F0;
@@ -114,6 +124,62 @@ theme: {
 | Body | Sora | 400 | 14px |
 
 **Rule:** Every numeric value uses JetBrains Mono. Every word uses Sora. No exceptions.
+
+### ⚠️ TWO scales, not one — the table above is the APP scale (added 2026-08-07)
+
+The sizes above are correct for the signed-in terminal: it is **scanned**, density is a
+feature, and 11–14px reads as professional in a data grid. They are wrong for a page that
+is **read**, and they have leaked onto the public pages.
+
+Measured on the live `/methodology` at 1440×900:
+
+| | Measured | Reading norm |
+|---|---|---|
+| Body text | **13px** | 16–18px |
+| Smallest text on the page | **8px** (×5 elements) | ≥12px |
+| Distinct font sizes on one page | **9** (8 · 9 · 10.5 · 11 · 11.5 · 12 · 13 · 14 · 24) | ~5–6 steps |
+| Diagrams explaining a visual idea | **0** | — |
+
+`/login` renders 8 distinct sizes and `/pricing` 11 — inside cards a few hundred pixels
+wide. ⚠️ **Sizes half a pixel apart do not read as hierarchy, they read as
+inconsistency**, because the eye cannot resolve 10.5 vs 11 as intent. Collapse
+near-duplicates rather than adding steps.
+
+**The fix is NOT to enlarge the app.** The terminal stays as it is. Layer G adds a second,
+generous **reading scale** used only by public/content pages — the same split Stripe and
+Linear run between their docs and their dashboards. A component that appears in both
+(buttons, badges) keeps one size per context, chosen by the frame it sits in, never by a
+one-off override.
+
+#### The reading scale — BUILT 2026-08-08 (G2 step 1)
+
+Seven steps, defined once as tokens in `web/app/globals.css` and applied once through
+`.reading`. **A page never types a px value**; it asks for an element or a class.
+
+| Token | Size | Use |
+|---|---|---|
+| `--rd-micro` | 12px | Eyebrows and labels — uppercase, tracked, never a sentence |
+| `--rd-small` | 14px | Captions, meta, footnotes |
+| `--rd-body` | 17px | Body copy |
+| `--rd-lead` | 20px | Lead paragraph and `h3` (separated by weight, not a fourth size) |
+| `--rd-h2` | 26px | Section heading |
+| `--rd-h1` | 36px | Page title |
+| `--rd-display` | 48px | Landing hero only |
+
+Line lengths are tokens too: `--measure-narrow` 440px (auth cards), `--measure-prose`
+680px (~68 characters at `--rd-body`), `--measure-wide` 1120px (landing). A page picks
+one via `<PageFrame width="narrow|prose|wide">`; the public layout owns the header and
+footer so widening a page cannot fork the chrome (11c).
+
+⚠️ **`--rd-micro` is a FLOOR.** Nothing on a reading page goes below 12px, and
+`e2e/contrast.spec.ts` fails the build if the `/methodology` article does. 8px uppercase
+is decoration wearing the costume of information.
+
+⚠️ **`.reading` lives in `@layer base`.** Unlayered, `.reading a { color }` (0,1,1) beat
+Tailwind's `.text-white` (0,1,0) and painted a call-to-action brand-blue on a brand-blue
+button — 1.0:1, invisible. Same mechanism as the note above the reset in `globals.css`.
+Any new scoped-typography rule goes in the same layer or it will outrank the utilities
+that are supposed to override it.
 
 ---
 
@@ -786,6 +852,42 @@ Phase 1 minimums (not aspirations — requirements):
 
 - All interactive elements have `:focus-visible` ring (2px brand-bright outline)
 - Contrast ratio ≥ 4.5:1 for body text, ≥ 3:1 for large text
+
+> ### ⚠️ MEASURED 2026-08-07 — the contrast floor above is currently BREACHED
+>
+> Read off the live `/methodology` at 1440×900 with the WCAG relative-luminance formula
+> computed in-page (not estimated). **8 elements fail.** Two of them are material rather
+> than cosmetic:
+>
+> | Element | Ratio | Needs | Status |
+> |---|---|---|---|
+> | **Rating tier badges** — white on `--c-tier-3` / `--c-tier-4` | **2.38 : 1** | 4.5 : 1 | ✅ **fixed 2026-08-08 — now 4.73 : 1 worst case** |
+> | **"Full disclaimer" link** (`--text-muted` on `--bg-page`) | **2.69 : 1** | 4.5 : 1 | ✅ **fixed 2026-08-08 — now 6.8 : 1** |
+> | "Financial Terminal" wordmark, 9px | 2.69 : 1 | 4.5 : 1 | ⏭️ Layer H (shared header) |
+>
+> **How the tier badges were fixed, and why it is not a colour change.** `/methodology`
+> painted white on the SOLID tier fill. The five `.tier-badge--N` classes the product
+> actually uses are tint-plus-ink and already cleared 4.5:1 — so the page now renders the
+> real component. It is both legible and pedagogically right: the reader learns the badge
+> they will actually meet. **No locked tier colour was touched** (decision #25).
+>
+> **Measured after: 8 failures → 1**, the deferred wordmark. `e2e/contrast.spec.ts` now
+> measures `/`, `/methodology`, `/disclaimer`, `/terms` and `/privacy` on every run, and
+> the exemption is listed BY TEXT so it cannot quietly widen to cover a second element.
+>
+> The first is **§4 of this document — "THE Most Important Spec"**. The five tier labels
+> are the product's entire vocabulary and they are the hardest text on the page to read.
+> The second is **compliance-adjacent** (CLAUDE.md #4/#12): a legally material link must
+> not be the faintest thing on the page.
+>
+> **Scope, decided with the owner:** the Layer G plan puts accessibility fixes in Layer H,
+> and that still holds for the signed-in app. **These two are fixed inside Layer G**,
+> because they sit on pages G is redesigning anyway and "we rebuilt this page and left the
+> illegible badge" is not defensible. The remaining six go to H with the rest of the sweep.
+>
+> ⚠️ **`--text-muted` (#8A97A8) on `--bg-page` (#F0F4F8) is 2.69:1 wherever it appears** —
+> it is not a `/methodology` problem, it is a token problem. Before using it for anything a
+> reader must actually read, check the pairing. It is fine for genuinely decorative text.
 - All charts have a `aria-label` describing their data
 - All form inputs have a visible `<label>`
 - Keyboard navigable: Tab moves through everything in document order

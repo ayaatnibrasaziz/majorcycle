@@ -1,10 +1,18 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import Link from 'next/link';
 
 import { AuthCard } from '@/components/AuthCard';
 import { Button } from '@/components/ui/button';
 
-export const metadata: Metadata = { title: 'Account deletion scheduled' };
+// noindex (crawlable) — see lib/seo.ts. This page asserts something true of exactly
+// one reader at one moment, so indexing it would be actively wrong, not just noise.
+export const metadata: Metadata = pageMetadata({
+  path: '/deletion-requested',
+  title: 'Account deletion scheduled',
+  description:
+    'Your MajorCycle account is scheduled for deletion after a 30-day grace period. You can cancel any time before then by signing back in.',
+});
 
 /**
  * Public confirmation shown right after a user schedules deletion (they've just

@@ -1,0 +1,205 @@
+import type { Metadata } from 'next';
+import { SITE_ORIGIN } from '@/lib/url';
+
+/**
+ * The ONE sitewide share card. Built by `pnpm build:og-image` into
+ * `app/opengraph-image.png`; Next serves it at this path.
+ *
+ * ⚠️ Stated here rather than left to Next's file convention. The convention DOES
+ * attach the image automatically — but only while a route does not export its
+ * own `openGraph`, and every public page here exports one via `pageMetadata()`,
+ * which replaces the inherited object wholesale. Measured on the wire: the file
+ * existed and served 200, `twitter:card` said `summary_large_image`, and there
+ * was **no `og:image` tag on any page** — a card that renders as broken rather
+ * than gracefully small, which is the exact failure this file already warned
+ * about in prose. Reading the source would not have shown it.
+ *
+ * Same reasoning as `og:title` below: a framework detail nobody re-checks is not
+ * a foundation for the most-shared surface we have.
+ */
+/**
+ * The absolute URL for a public page — the ONE form of it.
+ *
+ * `${SITE_ORIGIN}${path}` is right for every path except the one that matters
+ * most: for '/' it yields a trailing slash, and Next normalises the canonical tag
+ * to drop it. That left the sitemap advertising `.../` while the page's own
+ * canonical said `...` with no slash — the two files whose whole job is to agree
+ * on one address, disagreeing about the homepage. Caught by e2e/seo.spec.ts.
+ *
+ * Both consumers call this, so there is nowhere for the two to drift apart (11c).
+ */
+export const pageUrl = (path: string): string =>
+  path === '/' ? SITE_ORIGIN : `${SITE_ORIGIN}${path}`;
+
+export const OG_IMAGE = {
+  url: `${SITE_ORIGIN}/opengraph-image.png`,
+  width: 1200,
+  height: 630,
+  alt: 'MajorCycle — every stock falls; some are further down than usual.',
+} as const;
+
+/**
+ * THE list of pages a signed-out human may open, and what search engines may do
+ * with each. One list, four consumers (rule 11c):
+ *
+ *   1. `proxy.ts`      — builds PUBLIC_PATHS from it, so a page cannot be listed
+ *                        here as public while the middleware still bounces it.
+ *   2. `app/sitemap.ts`— emits every `index: true` entry.
+ *   3. `app/robots.ts` — cross-checks this list against its own GATED array and
+ *                        throws if any page appears in both. (It does NOT derive its
+ *                        disallow rules from here: robots.txt is a deny-list of app
+ *                        surfaces, so a new gated route inherits the block instead of
+ *                        needing to be remembered. An earlier version of this comment
+ *                        claimed "everything else is disallowed", which was wrong —
+ *                        `/` and `/.well-known` are neither listed here nor blocked.)
+ *   4. `pageMetadata()`— canonical + Open Graph for each page.
+ *
+ * ⚠️ The `(public)` ROUTE GROUP is not the same set and never was. It also holds
+ * `/reactivate` and `/account/update-password`, both of which require a session —
+ * the folder name describes the layout they share (the centred card), not their
+ * reachability. Judge public-ness by this list, never by the directory.
+ *
+ * ⚠️ `index: false` means "crawl it, but don't list it in results". It is NOT the
+ * same as blocking. Blocking a URL in robots.txt stops Google fetching it, so it
+ * never sees the noindex and can still index a bare URL it found linked elsewhere.
+ * The four sign-in pages therefore stay crawlable on purpose. Never add a path to
+ * both this list with `index: false` AND a robots `disallow`.
+ */
+export type PublicPage = {
+  /** Route path, exactly as the middleware will match it. */
+  readonly path: string;
+  /** Listed in sitemap.xml and indexable, or crawlable-but-noindex. */
+  readonly index: boolean;
+};
+
+export const PUBLIC_PAGES: readonly PublicPage[] = [
+  // ── Indexable: the pages we actually want a stranger to find ───────────────
+  // No `priority` / `changeFrequency` — Google ignores both, and a number that looks
+  // like a ranking dial but isn't one wastes a future session's time. See sitemap.ts.
+  //
+  // ⚠️ '/' looks like it opens the whole site, because PUBLIC_PATHS matches
+  // `pathname === p || pathname.startsWith(p + '/')`. It does not: for '/' the
+  // second arm is `startsWith('//')`, which no real path satisfies. Asserted by
+  // the "site is still gated" control in e2e/seo.spec.ts, which runs over every
+  // gated route signed out.
+  //
+  // '/' is ALSO in proxy.ts's SIGNED_OUT_ONLY_PATHS: a signed-in reader gets the
+  // app, not the sales pitch.
+  { path: '/', index: true },
+  { path: '/pricing', index: true },
+  { path: '/methodology', index: true },
+  { path: '/contact', index: true },
+  { path: '/disclaimer', index: true },
+  { path: '/terms', index: true },
+  { path: '/privacy', index: true },
+
+  // ── Crawlable but NOT indexable ────────────────────────────────────────────
+  // A sign-in form is not a search result. `/deletion-requested` additionally
+  // asserts something true of exactly one reader at one moment, so indexing it
+  // would be actively wrong.
+  { path: '/login', index: false },
+  { path: '/signup', index: false },
+  { path: '/reset-password', index: false },
+  { path: '/deletion-requested', index: false },
+] as const;
+
+/**
+ * Public paths that are NOT pages — machine endpoints that must bypass the auth
+ * redirect. Kept beside the page list so `proxy.ts` has one import, but separate
+ * from it because none of these belong in a sitemap or carry metadata.
+ */
+export const PUBLIC_ENDPOINTS: readonly string[] = [
+  '/auth/callback',
+  '/auth/confirm',
+  // Generated by app/robots.ts and app/sitemap.ts. Creating those files is NOT
+  // enough on its own: the middleware matcher covers both, so without this a
+  // crawler asking for /robots.txt gets a 307 to /login — which is what the live
+  // site did until Layer G G1 (verified 2026-08-06).
+  '/robots.txt',
+  '/sitemap.xml',
+  // Well-known URIs (RFC 8615) — e.g. /.well-known/security.txt.
+  '/.well-known',
+  // Cron endpoints run without a user session (Vercel Cron sends a Bearer secret,
+  // not cookies). Each route enforces its own CRON_SECRET check.
+  '/api/cron',
+  // Stripe posts webhook events server-to-server; the route verifies every request
+  // with the signature secret, so an unsigned POST is rejected 400 inside it.
+  '/api/stripe/webhook',
+] as const;
+
+/** Path → page, for the metadata helper and the guards. */
+const BY_PATH = new Map(PUBLIC_PAGES.map((p) => [p.path, p]));
+
+/**
+ * Canonical + Open Graph metadata for one public page.
+ *
+ * Every public page must call this rather than hand-rolling `alternates` or
+ * `openGraph`, so the canonical origin and the card shape are stated once. The
+ * static guard (`pnpm check:seo`) fails the build on any public page that doesn't.
+ *
+ * Why canonical matters here specifically: the apex domain redirects to `www`, so
+ * without an explicit canonical the same page is reachable at two addresses and
+ * Google has to guess which is the real one — and may split the credit between them.
+ *
+ * The share image is ONE sitewide asset (`app/opengraph-image.png`, built by
+ * `pnpm build:og-image`). Next's file convention emits its url/type/width/height
+ * automatically and applies it to every child route, so it is not restated here —
+ * one image, one declaration.
+ *
+ * ⚠️ There is deliberately no per-page or per-stock card. A share image is fetched
+ * by anonymous crawlers and cached publicly, so a card carrying a rating or a score
+ * would publish paid output on a CDN (CLAUDE.md 11a/11b) — a paywall bypass wearing
+ * the clothes of a marketing asset.
+ *
+ * `twitter.card` is now `summary_large_image`, which is only honest BECAUSE the
+ * image exists: claiming a large card without shipping one renders broken rather
+ * than gracefully small.
+ */
+export function pageMetadata(opts: {
+  path: string;
+  title: string;
+  description: string;
+}): Metadata {
+  const page = BY_PATH.get(opts.path);
+  if (!page) {
+    // A page calling this with a path that isn't registered is a bug: it would get
+    // a canonical URL but never appear in the sitemap or the middleware's allow
+    // list. Fail loudly at build time rather than ship a half-registered page.
+    throw new Error(
+      `pageMetadata: "${opts.path}" is not in PUBLIC_PAGES (web/lib/seo.ts). ` +
+        `Add it there first — that list also drives proxy.ts and the sitemap.`,
+    );
+  }
+
+  const url = pageUrl(opts.path);
+
+  // The root layout's `'%s | MajorCycle'` template is applied to <title>. Whether it
+  // also reaches og:title is a framework detail I am not willing to depend on — an
+  // untitled-looking share card is exactly the kind of thing nobody notices for
+  // months. Stated in full here, and asserted on the rendered HTML by e2e/seo.spec.ts.
+  const fullTitle = `${opts.title} | MajorCycle`;
+
+  return {
+    title: opts.title,
+    description: opts.description,
+    alternates: { canonical: url },
+    // Crawlable-but-noindex. Stated per page rather than via a robots.txt block,
+    // for the reason in the PublicPage doc comment above.
+    ...(page.index ? {} : { robots: { index: false, follow: true } }),
+    openGraph: {
+      type: 'website',
+      siteName: 'MajorCycle',
+      title: fullTitle,
+      description: opts.description,
+      url,
+      locale: 'en_AU',
+      images: [OG_IMAGE],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      images: [OG_IMAGE.url],
+      title: fullTitle,
+      description: opts.description,
+    },
+  };
+}

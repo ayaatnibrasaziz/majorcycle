@@ -627,6 +627,27 @@ export interface StockRecord {
 
 **Conversion rule:** Python uses `snake_case`, TypeScript uses `camelCase`. The Python script writes snake_case JSON to Supabase. The frontend has a small `web/lib/case.ts` utility that converts snake_case → camelCase on read. Never store camelCase keys in the DB.
 
+#### Reader contract — `fetchStockDetail(ticker): Promise<StockDetail | null>`
+
+`StockDetail = StockRecord & { priceBars: PriceBar[] }`, from `web/lib/stocks.ts`.
+
+⚠️ **`null` has exactly ONE meaning: the ticker is not in our universe.** Every read
+*failure* throws **`StockReadError`** instead, carrying the originating PostgREST error as
+`cause`. An empty history is `[]`, not `null` — "this stock has no bars" is a real answer;
+"I could not read the bars" is not.
+
+This was one return value until 2026-08-07, so a database timeout was indistinguishable from
+a missing stock and rendered as **"Stock not found"** to paying subscribers (CLAUDE.md 11e).
+Callers must keep the two apart: the Stock Detail page lets the throw reach
+`app/(app)/error.tsx` ("Try again"), while `/report` catches it and answers **503**.
+
+React `cache()` memoises the rejection as well as the value, so a page and its
+`generateMetadata` see one consistent outcome from a single attempt.
+
+`readStockRow` and `loadPriceBars` are exported **solely** so
+`web/e2e/stock-read-errors.spec.ts` can drive the real functions with a stub client; both
+take their client as an argument for that reason. Do not inline them.
+
 ---
 
 ## 5. API Request/Response Contracts
@@ -1259,12 +1280,24 @@ the internal secret). See `architecture.md` §7.1 for the full rule and the two 
 Report" fetches this JSON and wraps it with the prebuilt offline bundle into a single
 self-contained `.html`. It is the report's **only** surface (the on-screen preview page was
 removed on 2026-07-29 — nothing linked to it). Being a route handler it is *not* wrapped by
-the `(app)` layout, so it gates itself: **401** signed out, **402** unentitled (body names
-the `reason`), **404** unknown market/ticker, **200** + `ReportData` otherwise. Every branch
-sends `Cache-Control: private, no-store` — the 200 carries the full scorecard and even the
-402 names the caller's own denial reason, and a shared cache keys on the URL alone
-(CLAUDE.md 11a). It sent **no** `Cache-Control` at all until 2026-07-29; the gap was found
-by e2e, not by reading the code, and `check:entitlement-gates` now pins it.
+the `(app)` layout, so it gates itself: **401** signed out, **403** `account_deleting`,
+**402** unentitled (body names the `reason`), **404** unknown market/ticker, **503**
+`read_failed` when the database read fails, **200** + `ReportData` otherwise.
+
+⚠️ **404 and 503 are different answers and must stay different.** Until 2026-08-07 a failed
+Supabase read arrived here as `null`, indistinguishable from a ticker we genuinely do not
+carry, and was answered **404** — telling a subscriber their stock does not exist because
+the database timed out. `buildReportData` now propagates `StockReadError` and this route
+catches it, answering `503` with `Retry-After: 5`. 404 tells the caller to stop asking; 503
+tells them to come back. See CLAUDE.md 11e.
+
+Every branch sends `Cache-Control: private, no-store` — the 200 carries the full scorecard
+and even the 402 names the caller's own denial reason, and a shared cache keys on the URL
+alone (CLAUDE.md 11a). It sent **no** `Cache-Control` at all until 2026-07-29; the gap was
+found by e2e, not by reading the code. `check:entitlement-gates` now **counts**: the number
+of responses declaring `NO_STORE` must equal the number of `NextResponse` returns, because
+the earlier check only proved the constant was still *declared* and would have passed while
+the newly added 503 branch shipped without it.
 
 ### Supporting tables (server-only — RLS on, no policies)
 

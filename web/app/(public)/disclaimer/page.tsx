@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { LegalDoc } from '@/components/LegalDoc';
 
-export const metadata: Metadata = { title: 'Disclaimer' };
+export const metadata: Metadata = pageMetadata({
+  path: '/disclaimer',
+  title: 'Disclaimer',
+  description:
+    'MajorCycle is an educational and informational analysis tool, not financial advice. How our ratings, third-party data and warranties work, and what remains your responsibility.',
+});
 
 // BASELINE CONTENT — owner to review and, if needed, have checked against ASIC
 // guidance before wide launch. Educational/informational posture per CLAUDE.md #24.
