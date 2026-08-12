@@ -113,7 +113,13 @@ export function LegalDoc({ title, updated, intro, sections }: LegalDocProps) {
 
             {intro && <div className="mt-6">{intro}</div>}
 
-            <div className="mt-6 rounded-[var(--radius-sm)] border-l-2 border-[var(--brand-mid)] bg-[var(--bg-stripe)] px-4 py-3.5">
+            {/* A quiet hairline box, NOT a brand-blue left bar. The contents rail
+                already uses `border-l-2` in --brand-mid to mean "the clause you
+                are reading"; giving the notice the same device makes one mark
+                mean two things on a single screen, and position is the meaning
+                worth keeping. The stripe fill is enough to separate it, and it
+                matches the hairlines the masthead and the rail already use. */}
+            <div className="mt-6 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-stripe)] px-4 py-3.5">
               <p className="small">
                 <strong>Information only — not financial advice.</strong> MajorCycle
                 provides educational and informational analysis. It is not a licensed
