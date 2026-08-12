@@ -791,32 +791,47 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 >   assertion compared a pathname against the whole path string and had to be fixed to
 >   accept a query string; it was right to refuse rather than measure the wrong page.
 >
-> **Google sign-in, checked on the Vercel preview in the owner's own Chrome (2026-08-12).**
-> ✅ **The preview origin IS authorised for the Google client ID** — the standing
-> assumption that only production is has been wrong. The button renders **from an
-> accounts.google.com iframe**, `google.accounts.id` is live, and GSI logs **no**
-> `"The given origin is not allowed for the given client ID"`, which it emits loudly
-> otherwise. Client ID present in Preview; CSP allows `accounts.google.com` in
-> script/connect/frame.
+> **Google sign-in on a Vercel preview — `Error 400: origin_mismatch`. NOT a code defect;
+> the preview origin is not registered with Google (2026-08-12).**
 >
-> 🔴 **The click-through cannot be completed by tooling, permanently.** Google's chooser
-> opens as a **separate browser window outside the MCP tab group**, so it cannot be seen
-> or driven. Do not spend another session retrying this.
+> The owner clicked the button and Google answered *"Access blocked: Authorization Error …
+> register the JavaScript origin in the Google Cloud Console. Error 400:
+> origin_mismatch."* Google allows **no wildcards** in authorised JavaScript origins, and
+> every Vercel preview is its own origin, so no preview will ever work until its exact
+> origin is added by hand.
 >
-> 🔴 **One Tap is not diagnosable from the page.** `prompt()` returns
-> `{displayed:false, skipped:true, skippedReason:"unknown_reason"}` — under FedCM Chrome
-> deliberately withholds the reason, and the FedCM bubble is **browser chrome**, which a
-> tab screenshot cannot capture. Absence of a visible prompt is therefore NOT evidence of
-> a defect. (Profile confirmed signed into Google; clearing `g_state` changed nothing,
-> because FedCM keeps its own dismissal state.)
+> 🔴 **THE VERIFICATION LESSON, and it is the valuable part.** I had reported the opposite
+> an hour earlier — "the preview origin IS authorised" — on the evidence that the GSI
+> button rendered from an `accounts.google.com` iframe with **no console error**. That
+> inference is wrong: **`renderButton` never validates the origin.** It draws an iframe;
+> Google checks the origin only when the popup opens, server-side. So the button renders
+> perfectly on an unregistered origin and says nothing. **An absent error is not a
+> passing check** — the same shape as `check_invariants()` reporting zero violations over
+> a universe missing the field it reads (14g), and the reason this repo insists a guard be
+> broken on purpose before it is trusted.
 >
-> ✅ **The rigorous substitute.** Across the whole PR (`094f95a..HEAD`), every changed line
-> in `GoogleSignIn.tsx` is about **drawing the button** — `renderButton`, the width clamp,
-> the `ResizeObserver`. Not one touches `signInWithIdToken`, `initialize()`, the nonce, the
-> callback or `signInWithOAuth`. **The token exchange is byte-identical to production**, so
-> this PR cannot have broken a flow that works live today. That is the honest ceiling on
-> what can be proven pre-merge; the definitive check is one Google sign-in on production
-> after merge.
+> It also explains One Tap: `prompt()` reported `skipped / "unknown_reason"`, which is
+> FedCM masking what is almost certainly `unregistered_origin`. **Two symptoms, one
+> cause** — and I had written them up as two unrelated tooling limits.
+>
+> ✅ **Google auth itself demonstrably works.** The owner's own account carries
+> `app_metadata.providers: ["google"]`, i.e. it was created BY a Google sign-in — so the
+> client ID, the Supabase Google provider and the token exchange are all sound.
+>
+> ✅ **This PR cannot have broken it.** Across `094f95a..HEAD`, every changed line in
+> `GoogleSignIn.tsx` draws the **button** (`renderButton`, width clamp, `ResizeObserver`);
+> not one touches `signInWithIdToken`, `initialize()`, the nonce, the callback or
+> `signInWithOAuth`.
+>
+> 🔴 **Still genuinely unproven: whether `https://www.majorcycle.com` is a registered
+> origin.** The Google-created account does not settle it, because `signInWithOAuth`
+> (the redirect fallback) succeeds through Supabase's own callback origin, not ours. The
+> 20-second check is the owner clicking *Continue with Google* on the LIVE site while
+> signed out. **Do that before merge day**, not after.
+>
+> 🔴 **The click-through cannot be completed by tooling.** Google's chooser opens as a
+> separate browser window outside the MCP tab group — not visible, not drivable. The owner
+> has to click it. (Which is how this defect was found at all.)
 >
 > ⚠️ **OPEN, dated, needs the owner — Supabase legacy API keys expire END OF 2026.** The
 > docs now say the `anon` / `service_role` keys "will work until the end of 2026" and
