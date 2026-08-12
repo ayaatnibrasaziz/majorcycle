@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing) built and audited, PR #89 open and deliberately unmerged until the layer is done.**
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing), G2 (design foundations) and G3 (public chrome) built and audited; PR #89 open and deliberately unmerged until the layer is done. The legal pages are NOT yet accepted by the owner.**
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -707,6 +707,37 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > record was the previous commit's FAILURE. An empty commit forced it. **"No red" is not
 > "green" — check that a run exists for the SHA you are looking at.**
 
+> ### ✅ G3 (public chrome) — COMPLETE 2026-08-12. Still inside PR #89, still unmerged.
+>
+> The thirteen public routes wore two design languages: the landing had a nav, the other
+> twelve had a logo and a "Markets · Live" pill, so a reader on `/terms` could neither
+> reach pricing nor sign in. The card was a 12px radius over a 60px ambient blur,
+> hand-typed in four files.
+>
+> **Built.** One `PublicHeader` + one `PublicFooter`, both reading one list
+> (`lib/publicNav.ts`); `--shadow-lift` named as the third shadow role; `PricingPlans`
+> folded onto `AuthCard`; `not-found.tsx` restyled; the legal pages given
+> `/methodology`'s furniture plus a contents list and numbered clauses.
+>
+> **Contrast: 21 failures across the 11 public pages → 11**, all of which are the one
+> deferred 9px wordmark; **zero at 375px**. Six were real and pre-existing, on the
+> sign-in and payment path — see `design-system.md` §14.
+>
+> **Three defects found by measuring rather than looking**, all recorded in CLAUDE.md:
+> the footer that never got the rule its header had (11c-iv); `/deletion-requested`
+> readable by any stranger (11f); and `seo.spec.ts` about to go green against `/login`
+> because both pages are `noindex`.
+>
+> ⚠️ **Owner has NOT accepted the legal pages.** `/terms`, `/privacy` and `/disclaimer`
+> are functionally correct and measured clean, but read as a different product from the
+> auth pages. **Measured cause, 2026-08-12:** two deliberate type scales meeting with no
+> transition — h1 **24 → 36px**, body **13 → 17px**, column **440 → 680px** between
+> `/contact` and `/terms`. Wording, sizes and layout are the FIRST item of the next
+> session; do not treat these three pages as signed off.
+>
+> **Still to come in Layer G:** the approved landing page, removing `/methodology` (it
+> becomes the `#how-it-works` anchor), and `/learn`.
+
 - [x] **Fix the two material contrast failures INSIDE Layer G** (not H): the rating tier
       badges **2.38 → 4.73:1** (the page now renders the REAL `.tier-badge`, so no locked
       tier colour was touched) and the "Full disclaimer" link **2.69 → 6.8:1**. The
@@ -903,7 +934,7 @@ Order of priority TBD based on user feedback. Candidate features:
 ✅ Phase 1 Layer F: Static Pages + Subscription  (built + merged PR #72 + live 2026-08-01)
    ✅  └─ production-readiness audit F-A1…F-A6 COMPLETE 2026-08-02 → docs/layer-f-audit.md
    ↓
-🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1 done + audited; PR #89 open, unmerged)
+🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1+G2+G3 done; PR #89 open, unmerged)
    ↓
    Phase 1 Layer H: Hardening (Phase 1.5)  — owns 375px, a11y, cross-browser, Sentry
    ↓

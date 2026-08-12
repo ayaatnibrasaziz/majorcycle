@@ -307,14 +307,26 @@ Tailwind defaults work but the reference uses these specific values for cards an
 ## 8. Shadows
 
 ```css
---shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
---shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
---shadow-lg: 0 10px 30px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
+--shadow-sm:   0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+--shadow-md:   0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+--shadow-lift: 0 10px 30px rgba(15,25,35,.08), 0 3px 10px rgba(15,25,35,.05);  /* Layer G */
+--shadow-lg:   0 10px 30px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
 ```
 
-- `sm`: default for cards, sidebar
+- `sm`: default for cards in a stack, sidebar
 - `md`: hover state on cards, dropdowns
+- **`lift`**: a card **floating alone on the page ground** — the sign-in card, the
+  pricing card, the 404. Added in Layer G because there were three roles and only
+  two names: this step had been hand-typed as a 60px ambient blur in four separate
+  files (`AuthCard`, `LegalDoc`, `PricingPlans`, `/methodology`), which is why
+  signing in read as a different product from the terminal you were signing into.
+  Navy-tinted rather than neutral black, because it falls on `--bg-page`, which is
+  blue-grey.
 - `lg`: modals, popovers, tooltips
+
+⚠️ A long-form DOCUMENT takes `--shadow-sm`, not `--shadow-lift`, even though it
+also sits alone on the page: `/terms` is the page rather than an object on it, and
+a heavy ambient blur under 2,000 words looks like it is about to slide off.
 
 ---
 
@@ -737,6 +749,41 @@ the *output* of a screener run, so it is empty for a new or free account. The si
 point is `POST_AUTH_HOME` in `web/lib/url.ts`; every auth email inherits it via
 `safeNextPath()`, so no email template hard-codes a landing path.
 
+### Public chrome — the header and footer every public page wears (Layer G)
+
+Defined **once**, in `components/PublicHeader.tsx` and `components/PublicFooter.tsx`,
+both reading one list from `lib/publicNav.ts`. Before Layer G the landing page had a
+nav and the other twelve public pages had a logo and a "Markets · Live" pill — so a
+reader on `/terms` could not reach pricing and could not sign in.
+
+| Part | Spec |
+|---|---|
+| Header | `position: sticky; top: 0`, height `--header-h` (58px), `rgba(255,255,255,.9)` + `backdrop-blur(12px)`, 1px bottom border |
+| Lockup | 34px logo (8px radius) + "MajorCycle" 13px bold `--brand-deep` + "FINANCIAL TERMINAL" 9px `--text-muted` (hidden < 520px) |
+| Nav | `--rd-small`, `--text-secondary`; current page `--brand-mid` + 600 and `aria-current="page"`. Hidden < 900px — the footer carries the same links |
+| Actions | `Button variant="secondary"` (Sign in) + `variant="primary"` (Create free account), both `h-9` |
+| Footer | `--bg-surface`, 1px top border, centred link row at `--rd-small`, then the disclaimer and the copyright |
+
+**Three rules that are not cosmetic:**
+
+1. **The header is SESSION-UNAWARE.** It renders identical links for everyone and
+   never reads the session. A header that varies by viewer makes the whole page vary
+   by viewer (rule 11a), and reading the session in the public layout would put an
+   Auth round-trip on the sign-in path. The pages where "Sign in" would actually
+   mislead a signed-in reader (`/`, `/login`, `/signup`, `/deletion-requested`,
+   `/pricing`) all redirect them away in `proxy.ts` before the header renders.
+2. **The call-to-action matching the current page is hidden** — but on `/signup`,
+   where the primary is the hidden one, "Sign in" must NOT also collapse below
+   520px, or a 375px header offers no action at all.
+3. **Session-confined pages get the logo alone**, and the logo is not a link.
+   `/account/update-password` (a recovery session) and `/reactivate` (deletion
+   scheduled) are pinned there by `proxy.ts`, so every nav link and every footer
+   link bounces straight back. This is derived from `PUBLIC_PAGES`
+   (`showsFullChrome`), never listed again — the header and the footer must ask the
+   same function, which `e2e/public-chrome.spec.ts` asserts.
+
+**The disclaimer line is `--text-secondary`, never `--text-muted`** — see §14.
+
 ---
 
 ## 10. Responsive Breakpoints
@@ -885,9 +932,40 @@ Phase 1 minimums (not aspirations — requirements):
 > because they sit on pages G is redesigning anyway and "we rebuilt this page and left the
 > illegible badge" is not defensible. The remaining six go to H with the rest of the sweep.
 >
-> ⚠️ **`--text-muted` (#8A97A8) on `--bg-page` (#F0F4F8) is 2.69:1 wherever it appears** —
-> it is not a `/methodology` problem, it is a token problem. Before using it for anything a
-> reader must actually read, check the pairing. It is fine for genuinely decorative text.
+> ⚠️ **`--text-muted` (#8A97A8) is 2.69:1 on `--bg-page` and 2.97:1 on `--bg-surface`
+> wherever it appears** — it is not a `/methodology` problem, it is a token problem.
+> Before using it for anything a reader must actually read, check the pairing. It is
+> fine for genuinely decorative text.
+>
+> ### Layer G, commit group 1 (2026-08-12) — the guard was extended and found six more
+>
+> The measurement had only ever run on the five READING pages. Extending it to the six
+> form pages (`/login`, `/signup`, `/reset-password`, `/contact`, `/pricing`,
+> `/deletion-requested`) found six failures that had been there since those pages were
+> built, all `--text-muted` at **2.97:1**, all now `--text-secondary`:
+>
+> | Element | Where | Why it counts as material |
+> |---|---|---|
+> | Every form field label ("Email", "Password", "Name", "Message") | `ui/label.tsx` — one fix, ~20 labels app-wide | §14 lists "all form inputs have a visible label" as a Phase 1 floor; 2.97:1 is only nominally visible |
+> | "or continue with" | `AuthDivider` | The only thing saying the Google button is an alternative, not an extra step |
+> | "/month", "USD", "Billed monthly", "Already have an account?", "No refunds — cancel any time…" | `/pricing` | These are the TERMS OF THE DEAL on the page where somebody hands over a card |
+> | "Our ratings… nothing is charged until day 7" | `/signup` | The sentence that stops "free account" being read as "free trial, card required" |
+>
+> Scope is unchanged: the muted sweep is still Layer H **except on pages Layer G is
+> rebuilding**. These are on the sign-in and payment path, and every fix was a single
+> colour token — no size, weight or spacing moved.
+>
+> **State today, measured on every public page at 1280px and 375px:**
+> **zero failures at 375px**, and exactly **one at 1280px** — the 9px "Financial
+> Terminal" wordmark, still deferred to Layer H and still named by its text in
+> `KNOWN_DEFERRED` so the exemption cannot quietly widen.
+>
+> ⚠️ **A gradient button reports NO background colour.** `bg-gradient-to-br` paints via
+> `background-image`, leaving the computed `background-color` transparent — so any tool
+> asking the DOM what is behind a white label reads straight through to the page and
+> scores ~1:1. `Button`'s `primary` variant therefore also declares
+> `[background-color:var(--brand-mid)]`, the gradient's lighter stop, so the element
+> reports its own worst case (6.7:1). Visually a no-op; both stops are opaque.
 - All charts have a `aria-label` describing their data
 - All form inputs have a visible `<label>`
 - Keyboard navigable: Tab moves through everything in document order

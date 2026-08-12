@@ -420,6 +420,39 @@ Run via `pytest` (Python) and **Playwright** (TS). Both must pass in CI.
 > csv/xlsx rounding rule) are the reference examples to copy. They are also the
 > fastest tests in the suite: both finish in tens of milliseconds.
 
+### The three test shapes in `web/e2e/`, and when each is the right one
+
+Everything lives in one runner, but not everything is the same kind of test. Picking
+the wrong shape is how a feature ends up with a green suite and a broken half.
+
+| Shape | Needs | Use it for | Examples |
+|---|---|---|---|
+| **Pure** — no browser, no network | nothing | A rule you can state as a function | `entitlement.spec.ts`, `export-parity.spec.ts`, `public-chrome.spec.ts` |
+| **Credential-free browser** | the dev server | Anything you can reach signed out, incl. a state you can fake with a cookie | `auth.spec.ts`, `seo.spec.ts`, `contrast.spec.ts` |
+| **Throwaway account** | Supabase service key | A flow that must actually RUN, with side-effects too destructive for the shared login | `entitlement-routes.spec.ts`, `stripe-webhook.spec.ts`, `deletion-notice.spec.ts` |
+
+**The throwaway pattern** — `admin.auth.admin.createUser` in `beforeAll`,
+`admin.auth.admin.deleteUser` in `afterAll` (the `profiles` row follows via cascade),
+`@example.com` so no mail is deliverable, and `test.describe.configure({ mode: 'serial' })`
+because every test mutates one row. `afterAll` runs even when the test fails, so a
+deliberately-broken run leaves nothing behind — worth verifying once after any session
+that adds one.
+
+⚠️ **A gate and its setter are different failure modes, and one test rarely covers both.**
+The deletion-notice work is the case study: handing the browser a marker cookie proves the
+gate honours it, and says *nothing* about whether the Server Action ever sets one. If the
+setter broke, a person who really deleted their account would be bounced to `/login` with
+no confirmation, and every gate test would still be green. That is why
+`deletion-notice.spec.ts` presses the real button — and why both halves were broken on
+purpose before either was trusted.
+
+⚠️ **Prove the page stayed put before asserting anything about it.** A test that
+navigates somewhere gated can be silently redirected and then measure the wrong document.
+`/deletion-requested` now redirects to `/login` without its marker — and `/login` is ALSO
+`noindex`, so `seo.spec.ts`'s noindex assertion would have passed against the wrong page.
+Every navigating test asserts the landing pathname first, the same rule `measure()` in
+`contrast.spec.ts` already followed.
+
 ### Stripe webhooks — offline contract tests + a real end-to-end pass
 
 - **Contract tests** (`web/e2e/stripe-webhook.spec.ts`) sign events **offline** with the same secret the route verifies with (`generateTestHeaderString` ↔ `constructEvent`), so any consistent `whsec_…` works — no reachable endpoint or network to Stripe needed. They create their **own throwaway user** per run (never the shared login account) so they can run in parallel without contention.
