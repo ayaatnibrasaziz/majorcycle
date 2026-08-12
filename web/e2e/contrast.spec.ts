@@ -50,6 +50,20 @@ const FORM_PAGES = [
   '/contact',
   '/pricing',
   '/deletion-requested',
+  // ⚠️ The error banner on the auth forms had NEVER been measured, by any of the
+  // six entries above, because it does not exist in the DOM until something
+  // fails — and a page is only measured in the state it is loaded in. So the one
+  // element a reader is guaranteed to be squinting at, in the moment they are
+  // most stuck, was the one element with no contrast evidence. Its colours
+  // (--c-tier-5-ink on --tint-tier-5) are shared by all four auth forms plus
+  // /contact, so measuring it once here covers every one of them.
+  //
+  // This URL exists only because the link-failure notice renders on load. Before
+  // it, there was no way to put the banner on screen without driving a failed
+  // submission, which `measure()` cannot do. Worth remembering as a general
+  // move: if a state cannot be reached by navigation, it cannot be measured by
+  // anything that measures pages.
+  '/login?error=auth_confirm_failed',
 ];
 
 /**
@@ -170,7 +184,15 @@ async function measure(
   // Prove we are on the page we think we are. A public route that starts
   // redirecting to /login would otherwise be measured as a clean pass, which is
   // exactly how "unmeasurable counted as clean" has bitten this repo before.
-  expect(new URL(page.url()).pathname, `${path} did not stay put`).toBe(path);
+  //
+  // Compared pathname-to-pathname. This read `.toBe(path)` until a FORM_PAGES
+  // entry first carried a query string (`/login?error=…`, added to measure the
+  // error banner) — and then it could never match, so the entry failed with
+  // "did not stay put" while sitting on exactly the right page. The assertion
+  // was right to refuse rather than measure something else; it was simply
+  // comparing two different kinds of string.
+  const expected = new URL(path, 'http://localhost').pathname;
+  expect(new URL(page.url()).pathname, `${path} did not stay put`).toBe(expected);
 
   // ⚠️ WAIT FOR THE STYLESHEET, don't assume it. Without this the suite was
   // genuinely flaky: the same deliberate break reported "1 failed" on one run

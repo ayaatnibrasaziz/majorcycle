@@ -764,12 +764,49 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > `href`/`action` carries it; and a `signIn` helper that does not wait races LoginForm's
 > hard `window.location.assign`, so the caller's own `goto` is discarded.
 >
-> ⚠️ **OPEN, owner's decision — not built.** `/auth/callback` and `/auth/confirm` both
-> redirect to `/login?error=auth_callback_failed` on failure, and **`LoginForm` never
-> reads `?error=`**. So an expired or already-used confirmation link lands the reader on
-> a blank sign-in form with no explanation of what went wrong — the app produces the
-> diagnosis and discards it. Fixing it means new copy and a new banner on the sign-in
-> page, which is a design call, so it is recorded here rather than done.
+> **✅ The dead-link notice — owner approved and built, same day.** `/auth/callback` and
+> `/auth/confirm` had always redirected to `/login?error=…` and `LoginForm` had never
+> read it, so an expired or already-used link landed the reader on a blank sign-in form.
+> It now says: *"That link has expired or has already been used. Enter your email to get
+> a new one."*
+>
+> - **Allow-listed codes; the provider's own words are never echoed.** Anyone can send a
+>   target `…/login#error_description=Your+account+is+locked,+call+1-800-…`. React
+>   escapes the markup so it is not XSS — which is exactly what makes it dangerous: a
+>   stranger's sentence in our error styling on our sign-in page looks legitimate. Four
+>   known codes map to our one sentence; everything else renders nothing.
+> - **The HASH is read as well as the query string**, per Supabase's documented error
+>   handling — GoTrue returns failures as URL fragments, which never reach the server, so
+>   middleware and route handlers are structurally blind to them.
+> - **The end-to-end test is the one that matters.** Nine tests supply the URL by hand and
+>   all stayed green when `auth_confirm_failed` was renamed in the route; only the test
+>   that drives a forged token through the real redirect caught it. Two halves can each be
+>   perfect and never meet.
+> - **It also closed a contrast blind spot.** The auth error banner had never been
+>   measured by anything, because it does not exist in the DOM until something fails and a
+>   page is only measured in the state it loads in. `/login?error=auth_confirm_failed` is
+>   now in `contrast.spec.ts`'s FORM_PAGES — the first URL that renders the banner on load
+>   — and washing its text out to #c9c9c9 makes the guard name it at 1.4:1, so it is
+>   genuinely measured. Its real colours pass. ⚠️ `measure()`'s "did not stay put"
+>   assertion compared a pathname against the whole path string and had to be fixed to
+>   accept a query string; it was right to refuse rather than measure the wrong page.
+>
+> ⚠️ **OPEN, dated, needs the owner — Supabase legacy API keys expire END OF 2026.** The
+> docs now say the `anon` / `service_role` keys "will work until the end of 2026" and
+> strongly encourage moving to publishable (`sb_publishable_…`) and secret (`sb_secret_…`)
+> keys. We use the legacy pair (`NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+> `SUPABASE_SERVICE_ROLE_KEY`) in Vercel, GitHub Actions and `.env.local`. Roughly four
+> months of runway from 2026-08-12, and it is a dashboard + secrets rotation, not a code
+> change. Do it deliberately, not on the deadline.
+>
+> ✅ **Confirmed correct against the current docs, not assumed:** `proxy.ts` calls
+> `getClaims()`, which the Supabase Next.js guide now names as *the* method for protecting
+> pages (local WebCrypto + cached JWKS verification), with no code between
+> `createServerClient` and the call — which our file already states as a rule and obeys.
+> Every route that acts on a user or their money (`/api/checkout`, `/api/portal`,
+> `account/actions.ts`) uses `getUser()` instead, the live network check, which is the
+> stricter side of the documented split. The Layer G plan had recorded `getClaims` as a
+> deviation to justify; it is the recommendation.
 
 - [x] **Fix the two material contrast failures INSIDE Layer G** (not H): the rating tier
       badges **2.38 → 4.73:1** (the page now renders the REAL `.tier-badge`, so no locked

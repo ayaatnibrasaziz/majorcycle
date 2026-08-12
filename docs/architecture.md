@@ -898,6 +898,27 @@ full login), someone else's marker must NOT confine (or a stale cookie cages an 
 sign-in), and a marker with no session must not confine (F0.6). Each needs its own
 evidence; a test for one says nothing about the others.
 
+**(i) A dead link now says so (2026-08-12).** `/auth/callback` and `/auth/confirm` had
+always emitted `?error=auth_callback_failed` / `auth_confirm_failed`, and `LoginForm` had
+never read it — the app worked out the diagnosis and discarded it. It now renders one
+sentence for all four known codes.
+
+⚠️ **The codes are an ALLOW-LIST and the provider's own wording is never echoed.** Both
+the query string and the hash are attacker-supplied; `…/login#error_description=Your+account+is+locked,+call+1-800-…`
+is a link anyone can send. React escapes the markup, so this is not XSS — which is what
+makes it worse in the way that matters, because a stranger's sentence in our error styling
+on our sign-in page reads as ours.
+
+⚠️ **The HASH is read as well as the query string.** Supabase documents that GoTrue
+returns failures as URL *fragments*, which are never transmitted to the server — so
+middleware and route handlers are structurally incapable of seeing them, and only a client
+component can. Browsers also carry a fragment across a redirect, so both can land together.
+
+⚠️ **Two halves that can each be perfect and never meet.** The route emits a code; the page
+holds a list. Only `auth-forms.spec.ts`'s end-to-end case drives a forged token through the
+real redirect — proven by renaming the constant in the route, which left all nine
+hand-supplied-URL tests green and turned exactly that one red.
+
 ⚠️ **Two defects in `friendlyAuthError` found by pointing the test at the REAL upstream
 strings** rather than at the phrases the function was written against. `"…has already
 BEEN registered"` does not contain `"already registered"`, and the 60-second reset

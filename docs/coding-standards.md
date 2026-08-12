@@ -448,6 +448,17 @@ with opposite fixes. In default mode the same break reported 2 failed / 4 passed
 shape read off the summary line. For a reader who cannot debug, a failure that names its
 own direction is worth more than a short failure list.
 
+⚠️ **Scattered failures across specs you did not touch = check for ORPHANED PROCESSES
+before you debug a line of code.** Deliberately breaking things leaves Playwright browsers
+and `next dev` instances behind, and they accumulate. On 2026-08-12 a full run reported 6
+failures spread over `entitlement-routes`, `report-download`, `stripe-webhook`,
+`auth.spec` and `recovery-confinement` — nothing in common, and every one of them passed
+in isolation. There were **18 stray node/chrome processes**; after
+`Get-Process node,chrome | Stop-Process -Force` the same suite ran **259 passed, 0 flaky
+in 3.0m instead of 5.9m**. The tell is the shape, not the count: real breakage clusters
+around what changed, resource starvation scatters. Two earlier runs that session showed
+the same signature and cost time to chase.
+
 ⚠️ **Scope a `[role="alert"]` locator, always.** Next renders a route announcer —
 `<p id="__next-route-announcer__" role="alert">` — on every page, in dev *and* in
 production, and it is normally empty. A bare `page.locator('[role="alert"]')` therefore

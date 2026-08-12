@@ -342,6 +342,97 @@ test.describe('password reset — the edge cases', () => {
   });
 });
 
+test.describe('a dead link says so on the sign-in page', () => {
+  /**
+   * `/auth/callback` and `/auth/confirm` have always produced a diagnosis and
+   * always thrown it away — `LoginForm` read only `next`. These cover both the
+   * rendering and, crucially, that the two halves agree on the same string.
+   */
+  const COPY = /that link has expired or has already been used/i;
+
+  test('no notice on a plain /login — the control', async ({ page }) => {
+    // Without this, every assertion below could be satisfied by a banner that
+    // is simply always on.
+    await page.goto('/login');
+    await expect(alert(page)).toHaveCount(0);
+  });
+
+  for (const code of ['auth_callback_failed', 'auth_confirm_failed']) {
+    test(`?error=${code} explains what happened`, async ({ page }) => {
+      await page.goto(`/login?error=${code}`);
+      await expect(alert(page)).toHaveText(COPY);
+      // The form is still usable — this is a notice, not a dead end.
+      await expect(page.locator('input#email')).toBeEditable();
+      await expect(page.getByRole('link', { name: /forgot password/i })).toBeVisible();
+    });
+  }
+
+  test("Supabase's own failure arrives in the HASH and is read there too", async ({ page }) => {
+    // Documented behaviour: GoTrue returns errors as URL fragments, which are
+    // never sent to the server. If this is only ever read server-side, a
+    // provider-side failure shows nothing at all.
+    await page.goto('/login#error=access_denied&error_code=otp_expired');
+    await expect(alert(page)).toHaveText(COPY);
+  });
+
+  test('an unknown code renders nothing at all', async ({ page }) => {
+    await page.goto('/login?error=something_we_never_emit');
+    await expect(alert(page)).toHaveCount(0);
+  });
+
+  for (const [where, url] of [
+    ['query string', '/login?error=Your%20account%20is%20locked%2C%20call%201-800-555-0100'],
+    ['hash', '/login#error_description=Your%20account%20is%20locked%2C%20call%201-800-555-0100'],
+    ['hash error_code', '/login#error_code=Your%20account%20is%20locked%2C%20call%201-800-555-0100'],
+  ] as const) {
+    test(`attacker text in the ${where} never reaches the page`, async ({ page }) => {
+      // The reason the codes are an allow-list and the provider's own wording is
+      // never echoed. This is not XSS — React escapes it — which is precisely
+      // what makes it dangerous: a stranger's sentence in our error styling on
+      // our sign-in page looks entirely legitimate.
+      //
+      // ⚠️ Asserted against innerText, not page.content(): Next echoes the
+      // request URL into the RSC flight payload, so the raw string IS in the
+      // HTML source however well the guard works. What must not happen is that
+      // it is DISPLAYED.
+      await page.goto(url);
+      await expect(alert(page)).toHaveCount(0);
+      const shown = await page.locator('body').innerText();
+      expect(shown).not.toContain('1-800-555-0100');
+    });
+  }
+
+  test('a real sign-in failure replaces the link notice', async ({ page }) => {
+    // Once you have tried, what happened just now matters more than how you
+    // arrived — and two stacked alerts would leave the reader guessing which is
+    // current.
+    await page.goto('/login?error=auth_confirm_failed');
+    await expect(alert(page)).toHaveText(COPY);
+
+    await page.fill('input#email', `no-such-user-${Date.now()}@example.com`);
+    await page.fill('input#password', 'definitely-not-the-password');
+    await page.getByRole('button', { name: /^sign in$/i }).click();
+
+    await expect(alert(page)).toHaveText(/doesn't match our records/);
+    await expect(alert(page)).toHaveCount(1);
+  });
+
+  test('END TO END: a forged token really does produce a visible explanation', async ({ page }) => {
+    // The one that matters. Both halves could be perfect in isolation and still
+    // never meet: the route emits a code and the page holds an allow-list, and
+    // nothing but this makes them the SAME string. Rename the constant in one
+    // file and the reader silently gets a blank form again — every other test in
+    // this describe would stay green, because they all supply the URL by hand.
+    await page.goto('/auth/confirm?token_hash=forged&type=recovery');
+    await expect(page).toHaveURL(/\/login\?error=auth_confirm_failed/);
+    await expect(alert(page)).toHaveText(COPY);
+
+    await page.goto('/auth/callback?code=forged');
+    await expect(page).toHaveURL(/\/login\?error=auth_callback_failed/);
+    await expect(alert(page)).toHaveText(COPY);
+  });
+});
+
 test.describe('the auth exchange routes fail closed', () => {
   /**
    * `/auth/callback` (OAuth PKCE) and `/auth/confirm` (email token) are the only
