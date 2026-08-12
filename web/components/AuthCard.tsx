@@ -16,7 +16,12 @@ interface AuthCardProps {
 export function AuthCard({ title, subtitle, children }: AuthCardProps) {
   return (
     <PageFrame width="narrow">
-    <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[12px] shadow-[0_24px_60px_-12px_rgba(15,25,35,0.12),0_8px_24px_-8px_rgba(15,25,35,0.08)] overflow-hidden">
+    {/* One card language, the terminal's: `--radius` (10px) and a named shadow.
+        This was a hand-typed 12px radius over a 60px ambient blur, repeated in
+        four files — which is why signing in looked like a different product from
+        the thing you were signing into. Both values are tokens now, so the next
+        card cannot be a fifth opinion (CLAUDE.md 11c). */}
+    <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius)] shadow-[var(--shadow-lift)] overflow-hidden">
       <div className="px-7 py-8 sm:px-9 sm:py-10">
         {/* Heading */}
         <div className="mb-7">

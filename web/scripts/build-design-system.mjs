@@ -182,7 +182,7 @@ writeFileSync(
   page(
     'Spacing · Radius · Shadow',
     'Foundations',
-    `<p class="sub">The rhythm the reference design uses. Cards sit on <code>--shadow-sm</code>; only modals earn <code>--shadow-lg</code>.</p>
+    `<p class="sub">The rhythm the reference design uses. Cards in a stack sit on <code>--shadow-sm</code>; a card floating alone on the page ground takes <code>--shadow-lift</code>; only modals earn <code>--shadow-lg</code>.</p>
      <h2 style="font-size:13px;margin:0 0 10px">Stack spacing</h2>
      ${bar('--space-stack-tight · header strip', '8px')}
      ${bar('--space-stack-snug · paired cards', '14px')}

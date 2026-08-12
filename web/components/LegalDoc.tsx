@@ -30,7 +30,11 @@ interface LegalDocProps {
 export function LegalDoc({ title, updated, intro, sections }: LegalDocProps) {
   return (
     <PageFrame width="prose">
-      <article className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[12px] shadow-[0_24px_60px_-12px_rgba(15,25,35,0.12),0_8px_24px_-8px_rgba(15,25,35,0.08)] overflow-hidden">
+      {/* --shadow-sm, not --shadow-lift. The auth card is a small object floating
+          on the page and reads better lifted; a 2,000-word document IS the page,
+          and a heavy ambient blur under it just looks like it is about to slide
+          off. Same radius, same border, same surface — the two are one family. */}
+      <article className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius)] shadow-[var(--shadow-sm)] overflow-hidden">
         <div className="px-7 py-9 sm:px-12 sm:py-12">
           <h1>{title}</h1>
           <p className="micro mt-3">Last updated {updated}</p>

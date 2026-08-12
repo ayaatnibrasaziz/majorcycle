@@ -28,6 +28,31 @@ import { expect, test } from '@playwright/test';
 const READING_PAGES = ['/', '/methodology', '/disclaimer', '/terms', '/privacy'];
 
 /**
+ * The other six public pages — the ones a reader OPERATES rather than reads.
+ *
+ * They need their own list because they need their own sentinel, not because they
+ * deserve a lower bar: `measure()` waits for `.reading` to compute to 17px, and
+ * these pages never get `.reading` at all (AuthCard uses `PageFrame width="narrow"`,
+ * where `reading` defaults to false — the terminal type scale is deliberate for a
+ * form). Adding them to READING_PAGES would not have measured them; it would have
+ * hung for ten seconds and then failed for the wrong reason.
+ *
+ * Together with READING_PAGES this covers every entry in PUBLIC_PAGES. Adding the
+ * list found six real failures on the sign-in and payment path, all `--text-muted`
+ * at 2.97:1 and all now fixed: the four form field labels, "or continue with", and
+ * every term on /pricing including "No refunds". They had been there since the
+ * pages were built and nothing was measuring them.
+ */
+const FORM_PAGES = [
+  '/login',
+  '/signup',
+  '/reset-password',
+  '/contact',
+  '/pricing',
+  '/deletion-requested',
+];
+
+/**
  * The one element still under the floor, and it is deliberate: the 9px
  * "Financial Terminal" wordmark in the shared public header measures 2.69:1.
  * design-system.md §14 assigns it to Layer H with the rest of the sweep.
@@ -114,7 +139,31 @@ interface Probe {
   fails: Fail[];
 }
 
-async function measure(page: import('@playwright/test').Page, path: string): Promise<Probe> {
+/**
+ * Proof the stylesheet is live, expressed as something that can only be true once
+ * it is. Two of them because the two page families share no styled feature:
+ *
+ *  · `reading` — `.reading` computing to --rd-body (17px). Nothing else sets it.
+ *  · `chrome`  — the shared public header computing `position: sticky`. Every
+ *                element is `static` until a stylesheet says otherwise, so this
+ *                cannot pass on an unstyled page.
+ */
+const SENTINEL = {
+  reading: () => {
+    const el = document.querySelector('.reading');
+    return !!el && parseFloat(getComputedStyle(el).fontSize) === 17;
+  },
+  chrome: () => {
+    const el = document.querySelector('[data-public-header]');
+    return !!el && getComputedStyle(el).position === 'sticky';
+  },
+} as const;
+
+async function measure(
+  page: import('@playwright/test').Page,
+  path: string,
+  sentinel: keyof typeof SENTINEL = 'reading',
+): Promise<Probe> {
   await page.goto(path, { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
 
@@ -131,16 +180,8 @@ async function measure(page: import('@playwright/test').Page, path: string): Pro
   //
   // A contrast guard that reports clean when it cannot see is the same failure
   // mode as check_invariants() finding zero violations over a universe missing
-  // the field it inspects (CLAUDE.md 14g). The sentinel is a value that can only
-  // be true once `.reading` is live: --rd-body, which nothing else sets.
-  await page.waitForFunction(
-    () => {
-      const el = document.querySelector('.reading');
-      return !!el && parseFloat(getComputedStyle(el).fontSize) === 17;
-    },
-    undefined,
-    { timeout: 10_000 },
-  );
+  // the field it inspects (CLAUDE.md 14g). See SENTINEL above for the two proofs.
+  await page.waitForFunction(SENTINEL[sentinel], undefined, { timeout: 10_000 });
 
   return page.evaluate(PROBE) as Promise<Probe>;
 }
@@ -155,6 +196,21 @@ for (const path of READING_PAGES) {
     // The control. Negative assertions are vacuously true against an empty page,
     // so a blank render must not read as a perfect score.
     expect(probe.measured, `${path} rendered no text to measure`).toBeGreaterThan(20);
+
+    expect(
+      unexpected(probe),
+      `Contrast failures on ${path}:\n${JSON.stringify(unexpected(probe), null, 2)}`,
+    ).toEqual([]);
+  });
+}
+
+for (const path of FORM_PAGES) {
+  test(`${path} — every readable element clears the WCAG floor`, async ({ page }) => {
+    const probe = await measure(page, path, 'chrome');
+
+    // Same control as above, at a lower floor: these cards carry less text than an
+    // article, and /reset-password is the smallest at 21 measured elements.
+    expect(probe.measured, `${path} rendered no text to measure`).toBeGreaterThan(15);
 
     expect(
       unexpected(probe),

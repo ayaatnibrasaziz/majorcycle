@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 /**
@@ -23,26 +24,31 @@ export default async function NotFound() {
   const label = signedIn ? 'Back to Browse' : 'Back to sign in';
 
   return (
+    // Standalone chrome on purpose. This is the ROOT not-found, so it also catches
+    // unmatched paths inside the signed-in app — where a "Sign in / Create free
+    // account" header would be nonsense. It borrows the public pages' card
+    // language (same radius, border, surface and lift) without their nav.
     <div className="min-h-screen bg-[var(--bg-page)] flex items-center justify-center p-6">
-      <div className="text-center max-w-sm">
-        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--bg-stripe)] border border-[var(--border)] flex items-center justify-center">
+      <div className="w-full max-w-[var(--measure-narrow)] bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius)] shadow-[var(--shadow-lift)] px-7 py-10 sm:px-9 text-center">
+        <div className="w-12 h-12 mx-auto mb-5 rounded-full bg-[var(--bg-stripe)] border border-[var(--border)] flex items-center justify-center">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.35-4.35M11 8v3M11 14h.01" />
           </svg>
         </div>
-        <h1 className="text-[16px] font-bold text-[var(--text-primary)] mb-2">
+        <h1 className="text-[22px] font-bold text-[var(--text-primary)] tracking-[-0.4px] leading-[1.2]">
           Page not found
         </h1>
-        <p className="text-[12px] text-[var(--text-muted)] mb-5 leading-relaxed">
+        {/* --text-secondary, not --text-muted: muted is 2.9:1 on this surface and
+            this is the only sentence explaining what happened. */}
+        <p className="mt-2 mb-7 text-[13px] text-[var(--text-secondary)] leading-relaxed">
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
-        <Link
-          href={href}
-          className="inline-flex items-center gap-1.5 bg-gradient-to-br from-[var(--brand-mid)] to-[var(--brand-deep)] text-white text-[12px] font-semibold px-4 py-2 rounded-[var(--radius-sm)] shadow-[0_2px_8px_rgba(30,92,179,.25)] hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(30,92,179,.35)] transition-all"
-        >
-          {label}
-        </Link>
+        {/* href and label are UNCHANGED — e2e/auth.spec.ts asserts both the visible
+            name and the href for the signed-out case. */}
+        <Button asChild variant="primary" size="lg" className="w-full">
+          <Link href={href}>{label}</Link>
+        </Button>
       </div>
     </div>
   );

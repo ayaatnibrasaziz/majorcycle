@@ -10,9 +10,21 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Matches reference `.btn-run` — primary CTA gradient + lift on hover
+        // Matches reference `.btn-run` — primary CTA gradient + lift on hover.
+        //
+        // ⚠️ `[background-color:...]` is NOT decoration and NOT a fallback nobody
+        // sees: the gradient paints via `background-image`, which leaves the
+        // computed `background-color` transparent. Any tool that asks the DOM what
+        // is behind this white label — including e2e/contrast.spec.ts — then reads
+        // straight through to the page and scores white-on-near-white at ~1:1.
+        // Declaring the gradient's LIGHTER stop as the background colour makes the
+        // element report its own worst case (white on --brand-mid = 6.7:1), which
+        // is the honest answer. Visually a no-op: both stops are opaque, so the
+        // gradient covers it entirely. Written as an arbitrary PROPERTY rather
+        // than `bg-[var(--brand-mid)]` so tailwind-merge cannot treat it as a
+        // conflict with `bg-gradient-to-br` and drop one of the two.
         primary:
-          'bg-gradient-to-br from-[var(--brand-mid)] to-[var(--brand-deep)] text-white shadow-[0_2px_8px_rgba(30,92,179,0.25)] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(30,92,179,0.40)]',
+          'bg-gradient-to-br from-[var(--brand-mid)] to-[var(--brand-deep)] [background-color:var(--brand-mid)] text-white shadow-[0_2px_8px_rgba(30,92,179,0.25)] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(30,92,179,0.40)]',
         // Matches reference `.btn-export` — white bordered, color shift on hover
         secondary:
           'bg-[var(--bg-surface)] border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)]',

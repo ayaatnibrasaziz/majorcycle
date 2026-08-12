@@ -51,7 +51,8 @@ function Section({ heading, children }: { heading: string; children: React.React
 export default function MethodologyPage() {
   return (
     <PageFrame width="prose">
-      <article className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[12px] shadow-[0_24px_60px_-12px_rgba(15,25,35,0.12),0_8px_24px_-8px_rgba(15,25,35,0.08)] overflow-hidden">
+      {/* Same card language as LegalDoc — see the note there. */}
+      <article className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius)] shadow-[var(--shadow-sm)] overflow-hidden">
         <div className="px-7 py-9 sm:px-12 sm:py-12">
           <p className="micro text-[var(--brand-mid)]">The method</p>
           <h1 className="mt-3">How MajorCycle works</h1>

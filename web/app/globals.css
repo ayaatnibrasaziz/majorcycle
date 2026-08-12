@@ -103,6 +103,14 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.10), 0 4px 8px rgba(0, 0, 0, 0.06);
+  /* The FLOATING-card step, added in Layer G. Three roles, three shadows, and
+     the middle one had no name: a card sitting in a stack takes --shadow-sm, a
+     modal takes --shadow-lg, and a card that floats alone on the page ground —
+     the sign-in card, the pricing card — is neither. It was hand-typed as a
+     60px ambient blur in four separate files, which read as a different product
+     from the terminal you were signing in to. Navy-tinted rather than neutral
+     black, because it falls on --bg-page, which is blue-grey. */
+  --shadow-lift: 0 10px 30px rgba(15, 25, 35, 0.08), 0 3px 10px rgba(15, 25, 35, 0.05);
 
   /* Layout */
   --sidebar-w: 220px;

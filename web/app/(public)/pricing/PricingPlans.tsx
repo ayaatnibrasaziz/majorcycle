@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Check } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { PageFrame } from '@/components/PageFrame';
+import { AuthCard } from '@/components/AuthCard';
 import type { BillingCurrency } from '@/lib/stripe';
 import {
   PRICE_TABLE,
@@ -70,25 +70,21 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
   const saving = annualSavingPercent(currency);
 
   return (
-    // Frame stays narrow for now — /pricing is redesigned in G2's landing step.
-    // It needs an explicit frame because the public layout no longer imposes one.
-    <PageFrame width="narrow">
-    <article className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[12px] shadow-[0_24px_60px_-12px_rgba(15,25,35,0.12),0_8px_24px_-8px_rgba(15,25,35,0.08)] overflow-hidden">
-      <div className="px-7 py-8 sm:px-9 sm:py-10">
-        <h1 className="text-[22px] sm:text-[24px] font-bold text-[var(--text-primary)] tracking-[-0.4px] leading-[1.2]">
-          Start your 7-day free trial
-        </h1>
-        <p className="mt-2 text-[13px] text-[var(--text-secondary)] leading-relaxed">
-          Full access to MajorCycle for 7 days. Your card is required upfront and
-          isn&apos;t charged until the trial ends — cancel any time before then and you
-          pay nothing.
-        </p>
-
+    // The card, the frame, the heading and the sub-line all come from AuthCard now.
+    // This file used to carry its own hand-typed copy of that markup — a second
+    // opinion on the radius and the shadow that drifted from /login the moment
+    // either changed (CLAUDE.md 11c). Nothing about the PRICES, the toggle or the
+    // two links below moved with it.
+    <AuthCard
+      title="Start your 7-day free trial"
+      subtitle="Full access to MajorCycle for 7 days. Your card is required upfront and isn’t charged until the trial ends — cancel any time before then and you pay nothing."
+    >
+      <div>
         {/* Monthly / annual toggle — segmented control */}
         <div
           role="group"
           aria-label="Billing period"
-          className="mt-6 grid grid-cols-2 gap-1 rounded-[var(--radius-sm)] bg-[var(--bg-hover)] p-1"
+          className="grid grid-cols-2 gap-1 rounded-[var(--radius-sm)] bg-[var(--bg-hover)] p-1"
         >
           <button
             type="button"
@@ -124,14 +120,14 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
           <span className="font-mono text-[38px] font-bold leading-none tracking-[-1px] text-[var(--text-primary)]">
             {money(isAnnual ? prices.annual : prices.monthly, currency)}
           </span>
-          <span className="text-[13px] font-medium text-[var(--text-muted)]">
+          <span className="text-[13px] font-medium text-[var(--text-secondary)]">
             {isAnnual ? '/year' : '/month'}
           </span>
-          <span className="ml-1 text-[11px] font-semibold uppercase tracking-[0.4px] text-[var(--text-muted)]">
+          <span className="ml-1 text-[11px] font-semibold uppercase tracking-[0.4px] text-[var(--text-secondary)]">
             {CURRENCY_CODE_LABEL[currency]}
           </span>
         </div>
-        <p className="mt-1.5 h-4 text-[12px] text-[var(--text-muted)]">
+        <p className="mt-1.5 h-4 text-[12px] text-[var(--text-secondary)]">
           {isAnnual
             ? `Works out to ${money(annualPerMonth(currency), currency)}/month, billed once a year.`
             : 'Billed monthly.'}
@@ -179,7 +175,7 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
             Australian and Canadian equities.
           </p>
 
-          <p className="mt-3 text-center text-[12px] text-[var(--text-muted)]">
+          <p className="mt-3 text-center text-[12px] text-[var(--text-secondary)]">
             Already have an account?{' '}
             <Link
               href="/login"
@@ -190,14 +186,19 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
           </p>
         </div>
 
-        {/* Trust line */}
-        <p className="mt-6 border-t border-[var(--border)] pt-4 text-[11.5px] text-[var(--text-muted)] leading-relaxed">
+        {/* Trust line.
+            Every --text-muted on this page became --text-secondary in Layer G.
+            Muted is 2.97:1 on this card, and THIS page is where somebody decides
+            to hand over a card: "/month", "USD", "Billed monthly" and "No refunds"
+            are the terms of the deal, not decoration. Same standard design-system
+            §14 applied to the disclaimer link — a legally material line must not
+            be the faintest thing on the page (CLAUDE.md #4/#12). Colours only. */}
+        <p className="mt-6 border-t border-[var(--border)] pt-4 text-[11.5px] text-[var(--text-secondary)] leading-relaxed">
           Prices in {CURRENCY_CODE_LABEL[currency]}. No refunds — cancel any time and
           your plan runs to the end of the period you&apos;ve paid for. MajorCycle is
           educational analysis only, not financial advice.
         </p>
       </div>
-    </article>
-    </PageFrame>
+    </AuthCard>
   );
 }
