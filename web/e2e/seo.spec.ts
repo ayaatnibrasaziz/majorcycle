@@ -206,8 +206,23 @@ test.describe('page metadata on the rendered HTML', () => {
   test('the share card itself is a real 1200x630 PNG, not a 404', async ({ request }) => {
     // Naming the image proves nothing if the file is missing: every assertion
     // above would still pass against a dead URL. Fetch the bytes.
-    const res = await request.get('/opengraph-image.png');
-    expect(res.status()).toBe(200);
+    //
+    // ⚠️ Retried, because this asset is the one route in the suite that races the
+    // DEV SERVER rather than the product. Next compiles routes on demand under
+    // `next dev`, so the first request for a file-convention asset can be answered
+    // before it exists — observed in CI as a 67ms failure followed by a 72ms pass.
+    // In production it is prerendered (`○ /opengraph-image.png` in the build
+    // output), so the flake is the harness, not the site.
+    //
+    // This tolerates a cold compile and NOTHING else: a genuinely missing or
+    // wrong-sized card still fails, it just takes 10 seconds to say so. A retry
+    // that hid a real 404 would be worse than the flake.
+    let res!: Awaited<ReturnType<typeof request.get>>;
+    await expect(async () => {
+      res = await request.get('/opengraph-image.png');
+      expect(res.status()).toBe(200);
+    }).toPass({ timeout: 10_000 });
+
     expect(res.headers()['content-type']).toContain('image/png');
     const body = await res.body();
     expect(body.byteLength).toBeGreaterThan(20_000);
