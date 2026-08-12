@@ -25,7 +25,29 @@ import { useEffect, useRef, useState } from 'react';
 export function useScrollSpy(
   ids: readonly string[],
   getOffset: () => number,
+  opts: {
+    /**
+     * Hold an explicitly CLICKED section when the page is scrolled to its end,
+     * instead of letting the bottom-of-page rule below overwrite it.
+     *
+     * ⚠️ Opt-in, and off for the Stock Detail subnav and the report, so their
+     * behaviour is byte-identical to before. It exists because a SHORT document
+     * puts several anchors inside the bottomed-out zone, where no amount of
+     * scrolling can bring them to the offset line — and the bottom-of-page rule
+     * then reports the last section no matter which one the reader asked for.
+     *
+     * Measured on /terms at 1280×900 after the legal pages were re-set at 13px
+     * (which shortened the document to ~1.9 screens): clicking clauses 01–04
+     * marked 01–04 correctly, and clicking **05, 06, 07 or 08 all marked 08**.
+     * The reader clicks "Acceptable use" and the rail lights up "Contact".
+     *
+     * With this on, a click at the end of the page is simply believed: nothing
+     * further will scroll, so there is nothing to re-sync to.
+     */
+    keepClickedAtPageEnd?: boolean;
+  } = {},
 ): { active: string; setActive: (id: string) => void; lock: () => void } {
+  const keepClicked = opts.keepClickedAtPageEnd ?? false;
   const [active, setActive] = useState<string>(ids[0]!);
 
   // Keep the latest getOffset in a ref (updated in an effect, not during render)
@@ -72,6 +94,13 @@ export function useScrollSpy(
         if (settleRef.current) clearTimeout(settleRef.current);
         settleRef.current = setTimeout(() => {
           lockedRef.current = false;
+          // At the very end of the page a re-sync can only overwrite the
+          // reader's own click with whatever the offset rule happens to pick,
+          // and no further scrolling will ever correct it. See
+          // `keepClickedAtPageEnd`.
+          const se = document.scrollingElement || document.documentElement;
+          const atEnd = se.scrollTop + window.innerHeight >= se.scrollHeight - 4;
+          if (keepClicked && atEnd) return;
           compute();
         }, 160);
         return;
@@ -95,7 +124,7 @@ export function useScrollSpy(
       if (settleRef.current) clearTimeout(settleRef.current);
       if (safetyRef.current) clearTimeout(safetyRef.current);
     };
-  }, [ids]);
+  }, [ids, keepClicked]);
 
   return { active, setActive, lock };
 }

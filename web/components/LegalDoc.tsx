@@ -53,16 +53,24 @@ export const sectionId = (heading: string): string =>
  *
  * So it is now a DOCUMENT rather than a big card: a masthead closed by a rule,
  * clause numbers as a reference column, and the contents moved into the margin
- * as a sticky rail (≥1024px). Sizes come from `.doc-*` in globals.css, which
- * choose lower steps of the SAME seven-step reading scale — the title lands 2px
- * from /contact's, so the link between them is a step rather than a cliff, while
- * body copy stays at 17px.
+ * as a sticky rail (≥1024px).
+ *
+ * ── Sizes, revised 2026-08-13 on owner instruction ───────────────────────────
+ *
+ * The first rebuild kept 17px body and a 26px title — smaller than before, still
+ * larger than the rest of the site. The owner's call was to stop splitting the
+ * difference: *"amend the legal pages to match … no need to make it slightly
+ * bigger"*, scoped explicitly to **these three pages only**.
+ *
+ * So the document now runs at the sizes the public site already uses —
+ * 24 / 17 / 13 / 12, all four measured off live pages, defined once as `--doc-*`
+ * in globals.css. `/contact`'s title is 24px and its body is 13px, so crossing
+ * that footer link is now no change at all.
  *
  * ⚠️ The furniture this file used to carry was copied from /methodology, and its
  * comment said so as the justification. /methodology is deleted in the next
  * commit (it becomes the landing's `#how-it-works`), so that rationale had an
- * expiry date on it. These three pages are their own set now, and the rail's
- * "Other documents" group is what makes them one.
+ * expiry date on it. These three pages are their own set now.
  *
  * Unchanged and deliberate: the "Information only — not financial advice" notice
  * stays at the TOP, visible without scrolling on a multi-thousand-word document
@@ -137,10 +145,10 @@ export function LegalDoc({ title, updated, intro, sections }: LegalDocProps) {
               <ol className="mt-2.5 grid list-none gap-x-6 gap-y-1.5 pl-0 sm:grid-cols-2">
                 {toc.map((s, i) => (
                   <li key={s.id} className="mt-0 flex items-baseline gap-2.5">
-                    <span className="doc-num text-[length:var(--rd-micro)]" aria-hidden="true">
+                    <span className="doc-num text-[length:var(--doc-label)]" aria-hidden="true">
                       {String(i + 1).padStart(2, '0')}
                     </span>
-                    <a href={`#${s.id}`} className="text-[length:var(--rd-small)] no-underline">
+                    <a href={`#${s.id}`} className="text-[length:var(--doc-body)] no-underline">
                       {s.heading}
                     </a>
                   </li>

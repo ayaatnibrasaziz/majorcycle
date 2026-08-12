@@ -1,10 +1,7 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 
-import { LEGAL_DOCS } from '@/lib/publicNav';
 import { useScrollSpy } from '@/lib/useScrollSpy';
 
 /**
@@ -24,6 +21,13 @@ import { useScrollSpy } from '@/lib/useScrollSpy';
  * Its "last heading above the line" rule is what stops a short clause (and these
  * are all short) from failing to highlight at all, which is the exact defect the
  * IntersectionObserver version it replaced had.
+ *
+ * ⚠️ It lists THIS document's clauses and nothing else. It briefly also carried an
+ * "Other documents" group linking the other two policies, which the owner rightly
+ * called out: those links were already in the footer of the same page, so the rail
+ * made a third copy of a list that exists once. Cross-navigation between the three
+ * documents belongs in one place, and the footer is that place. **A rail is for
+ * where you are, not for where else you could be.**
  */
 export function LegalContentsRail({
   sections,
@@ -31,8 +35,6 @@ export function LegalContentsRail({
   /** `id` must match the `id` rendered on the matching <section>. */
   sections: readonly { id: string; heading: string }[];
 }) {
-  const pathname = usePathname() ?? '';
-
   // A fresh array each render would re-run the spy's effect every render. Keyed
   // on the joined string so the identity is stable while the content is, without
   // reaching for a lint suppression.
@@ -49,9 +51,12 @@ export function LegalContentsRail({
     return (parseFloat(raw) || 58) + 28;
   };
 
-  const { active, setActive, lock } = useScrollSpy(ids, offset);
-
-  const others = LEGAL_DOCS.filter((d) => d.href !== pathname);
+  // `keepClickedAtPageEnd`: this document is short enough that clauses 05-08 all
+  // sit in the bottomed-out zone, where the bottom-of-page rule would report the
+  // LAST clause whichever one the reader clicked. See the option in useScrollSpy.
+  const { active, setActive, lock } = useScrollSpy(ids, offset, {
+    keepClickedAtPageEnd: true,
+  });
 
   return (
     <nav
@@ -81,13 +86,20 @@ export function LegalContentsRail({
                   setActive(s.id);
                   lock();
                 }}
-                className={`flex items-baseline gap-2.5 border-l-2 py-1.5 pl-3 text-[length:var(--rd-small)] leading-snug no-underline transition-colors ${
+                className={`flex items-baseline gap-2.5 border-l-2 py-1.5 pl-3 text-[length:var(--doc-body)] leading-snug no-underline transition-colors ${
                   isActive
                     ? 'border-[var(--brand-mid)] font-semibold text-[var(--brand-mid)]'
                     : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--border)] hover:text-[var(--brand-mid)]'
                 }`}
               >
-                <span className="font-mono text-[length:var(--rd-micro)] tabular-nums" aria-hidden="true">
+                {/* Sora, like everything else on the line — see `.doc-num` in
+                    globals.css for why a clause ordinal is not a "number" in
+                    the design-system §3 sense. Deliberately NOT `.doc-num`
+                    itself: that class pins the colour to --brand-mid, which
+                    would light up all eight numerals here. In the rail the
+                    numeral has to inherit the link's colour so the active
+                    entry is the only thing marked. */}
+                <span className="text-[length:var(--doc-label)] tabular-nums" aria-hidden="true">
                   {String(i + 1).padStart(2, '0')}
                 </span>
                 <span>{s.heading}</span>
@@ -97,27 +109,6 @@ export function LegalContentsRail({
         })}
       </ol>
 
-      {/* The other two documents. A reader on /terms wanting to know what happens
-          to their email address is looking for /privacy, and the footer is a long
-          scroll away on a document this tall. Derived from LEGAL_DOCS — the same
-          array the footer spreads — so the shelf cannot differ between them. */}
-      {others.length > 0 && (
-        <div className="mt-8 border-t border-[var(--border)] pt-5">
-          <p className="micro text-[var(--text-secondary)]">Other documents</p>
-          <ul className="mt-3 flex list-none flex-col gap-2 pl-0">
-            {others.map((d) => (
-              <li key={d.href} className="mt-0">
-                <Link
-                  href={d.href}
-                  className="text-[length:var(--rd-small)] text-[var(--text-secondary)] no-underline hover:text-[var(--brand-mid)]"
-                >
-                  {d.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </nav>
   );
 }

@@ -140,6 +140,16 @@
   --rd-h1: 36px;
   --rd-display: 48px;
 
+  /* ── Document sizes — /disclaimer, /terms, /privacy ONLY ──────────────────
+     Not a third scale: every one of these is a size already rendered on a live
+     public page (24 and 13 from the auth cards, 17 and 12 from the reading
+     scale above). See the DOCUMENT ROLES block near `.reading` for why a legal
+     page is set at the site's ordinary sizes rather than the article sizes. */
+  --doc-title: 24px;
+  --doc-h: 17px;
+  --doc-body: 13px;
+  --doc-label: 12px;
+
   /* Line lengths. --measure-prose holds ~68 characters at --rd-body, which
      is the middle of the 45–75 band; --measure-narrow is the auth-card
      width the public pages were ALL locked to before Layer G. */
@@ -1841,52 +1851,74 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   /* ───────────────────────────────────────────────────────────────────────
      DOCUMENT ROLES — /disclaimer, /terms, /privacy.
 
-     Not a third scale. Every value below is one of the seven --rd-* steps
-     already declared above; these classes only choose a DIFFERENT step for
-     a document than an article uses, and they are the one place that choice
-     is made (CLAUDE.md 11c — a page still never types a px value).
+     ⚠️ Owner instruction, 2026-08-13: *"ensure the font sizes are consistent
+     throughout all the public pages and amend the legal pages to match. There
+     is no need to make it slightly bigger"*, then, when asked to scope it:
+     *"only change font sizes in the legal pages. Do not change anything on
+     other pages."*
 
-     Why a legal page is set smaller than an article:
+     So a legal document is now set at the sizes the rest of the public site
+     already uses. Nothing here is invented — every value is a size measured on
+     a live public page, which is the whole point:
 
-     1. Measured 2026-08-12, the reason the owner rejected these pages. The
-        reader arrives from an auth page — /contact is a 24px title over 13px
-        body in a 440px card — and met a 36px title over 17px body in a 680px
-        card. Same card, same site, twice the type: it read as a different
-        product. `--rd-h2` (26px) puts the document title 2px from the auth
-        title, so crossing that link is a step rather than a cliff. The BODY
-        stays at --rd-body (17px); shrinking the thing people actually read
-        would undo the entire point of the reading scale.
+        --doc-title  24px  the AuthCard h1, i.e. /contact's title exactly
+        --doc-h      17px  = --rd-body, already on / and /methodology
+        --doc-body   13px  the AuthCard body size, used across all six forms
+        --doc-label  12px  = --rd-micro, the floor
 
-     2. `h2` at --rd-h2 introduced clauses averaging 45 words — a heading half
-        again the size of the three lines beneath it, eight times down the
-        page. It read as a stack of headlines. --rd-lead (20px) over 17px body
-        is a ratio of 1.18, which is a heading doing its job.
+     Four sizes on the page, all of them already elsewhere on the site. The
+     ratio that matters — heading over body — is 17/13 = 1.31, which is a
+     heading doing its job. (The previous 26/17 was 1.53, which is why the
+     clauses read as a stack of headlines, and 20/13 would be 1.54 again.)
+
+     ⚠️ 13px and 24px are hard-coded in `AuthCard.tsx` rather than tokenised,
+     so these two tokens are a SECOND copy of those numbers — exactly the drift
+     CLAUDE.md 11c warns about. Left deliberately: unifying them means editing
+     the form pages, which this instruction explicitly forbids. **When the form
+     pages are next touched, AuthCard should consume these tokens and the
+     duplication should end there.**
 
      ⚠️ Specificity, deliberately: `.reading .doc-title` is (0,2,0) and beats
-     `.reading h1` (0,1,1), INCLUDING the ≤640px block above — media queries
-     add no specificity. That is intended (26px is right on a phone too), but
-     it means the mobile step-down does not apply here, so these sizes must be
-     legible at 375px without help. They are: 26/20/17.
+     `.reading h1` (0,1,1), INCLUDING the ≤640px block above — media queries add
+     no specificity. So the mobile step-down does not apply here and these sizes
+     must stand alone at 375px. They do: 24/17/13.
      ─────────────────────────────────────────────────────────────────────── */
+  /* The document's own body size. Scoped to `.legal-layout` so it overrides
+     `.reading`'s 17px (0,2,0 beats 0,1,0) without touching any other page that
+     opts into the reading scale. */
+  .reading .legal-layout { font-size: var(--doc-body); }
+  .reading .legal-layout .small { font-size: var(--doc-label); }
+  .reading .legal-layout .micro { font-size: var(--doc-label); }
   .reading .doc-title {
-    font-size: var(--rd-h2);
+    font-size: var(--doc-title);
     line-height: 1.2;
     letter-spacing: -0.5px;
   }
   .reading .doc-h {
-    font-size: var(--rd-lead);
+    font-size: var(--doc-h);
     line-height: 1.3;
     letter-spacing: -0.25px;
   }
-  /* The clause number. A reference document is cited by number ("clause 5"),
-     so this is content, not texture — --brand-mid on --bg-surface, never a
-     muted grey, and never below the --rd-micro floor. */
+  /* The clause number. A reference document is cited by number ("clause 5"), so
+     this is content, not texture — never a muted grey, never below the 12px floor.
+     ⚠️ SORA, not JetBrains Mono, and this is a deliberate exception to §3's
+     "every numeric value uses JetBrains Mono". That rule is about VALUES — a
+     price, a score, a percentage — where a monospace face aligns digits in a
+     column and signals "this is data". A clause ordinal is none of those: it
+     is part of the heading's own sentence, and setting two words of one line
+     in two different typefaces just looks like a mistake, which is exactly
+     how the owner read it. Size and weight inherit from the heading for the
+     same reason. */
+  /* ⚠️ No `color` at all, deliberately — it INHERITS. In a clause heading that
+     makes the numeral the same black as the words beside it (owner's call,
+     2026-08-13: a blue numeral read as a separate object rather than as part of
+     the heading). In the inline contents list the same class inherits the body
+     colour instead, which is right there for the same reason. One rule, correct
+     in both places, because it declines to have an opinion. */
   .reading .doc-num {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: var(--rd-small);
-    font-weight: 600;
-    color: var(--brand-mid);
-    letter-spacing: 0;
+    font-size: inherit;
+    font-weight: inherit;
+    font-variant-numeric: tabular-nums;
   }
 }
 

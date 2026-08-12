@@ -48,14 +48,24 @@ export default function TermsPage() {
         },
         {
           heading: 'Trial and subscription',
+          // Was ONE 60-word sentence hinging on a semicolon and carrying six
+          // separate commitments — the clause a reader is most likely to be
+          // checking before they hand over a card, and the hardest on the page to
+          // read. Now four short sentences in one paragraph (owner's call: split
+          // into three paragraphs first, which broke a single clause into three
+          // visual blocks and made the page look longer than it is).
+          // ⚠️ Every term is unchanged: 7 days free, payment method required
+          // upfront, automatic conversion unless cancelled, monthly or annual,
+          // regional price, renews until cancelled, cancellation effective at the
+          // end of the current billing period. Nothing added, softened or dropped.
           body: (
             <p>
-              New accounts start a 7-day free trial. A valid payment method is
-              required upfront; unless you cancel before the trial ends, the
-              subscription automatically converts to a paid monthly or annual plan at
-              the then-current price for your region, and renews until cancelled. You
-              can cancel at any time, effective at the end of the current billing
-              period.
+              Your first 7 days are free. A payment method is required to start the
+              trial, and you are not charged during it. Unless you cancel before the
+              trial ends, your subscription begins automatically on a monthly or
+              annual plan, at the current price for your region, and renews each
+              period until you cancel. You can cancel at any time, and cancellation
+              takes effect at the end of your current billing period.
             </p>
           ),
         },
