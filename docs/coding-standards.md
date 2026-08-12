@@ -428,7 +428,7 @@ the wrong shape is how a feature ends up with a green suite and a broken half.
 | Shape | Needs | Use it for | Examples |
 |---|---|---|---|
 | **Pure** — no browser, no network | nothing | A rule you can state as a function | `entitlement.spec.ts`, `export-parity.spec.ts`, `public-chrome.spec.ts`, `auth-contracts.spec.ts` |
-| **Credential-free browser** | the dev server | Anything you can reach signed out, incl. a state you can fake with a cookie | `auth.spec.ts`, `auth-forms.spec.ts`, `seo.spec.ts`, `contrast.spec.ts` |
+| **Credential-free browser** | the dev server | Anything you can reach signed out, incl. a state you can fake with a cookie | `auth.spec.ts`, `auth-forms.spec.ts`, `seo.spec.ts`, `contrast.spec.ts`, `legal-doc.spec.ts` |
 | **Throwaway account** | Supabase service key | A flow that must actually RUN, with side-effects too destructive for the shared login | `entitlement-routes.spec.ts`, `stripe-webhook.spec.ts`, `deletion-notice.spec.ts`, `recovery-confinement.spec.ts` |
 
 **The throwaway pattern** — `admin.auth.admin.createUser` in `beforeAll`,
@@ -760,6 +760,33 @@ just under the 58px header. When genuinely unstuck it measured **−317**: scrol
 off the top of the viewport, and comfortably ≤ 90. It sailed through. A single bound tests
 that the value is not too *large*, which was never how it could fail. Bound both sides, or
 assert the value, whenever "wrong" can mean "far away in either direction".
+
+**6. A FLAKY test is a finding. Trace the behaviour before you re-run it.** Same session,
+and it produced the only user-facing defect of the day. One rail test reported *flaky* —
+passed on retry, which is the most ignorable result a suite can give. Instead of re-running,
+I drove all eight clause links and printed what each one did:
+
+```
+click #payment-and-refunds     → marked #payment-and-refunds     top=78
+click #acceptable-use          → marked #contact                 top=131   ← wrong
+click #limitation-of-liability → marked #contact                 top=335   ← wrong
+click #changes-and-termination → marked #contact                 top=482   ← wrong
+```
+
+Clicking any of clauses 05–08 highlighted **"Contact"**. The cause was two changes meeting:
+the type had just been re-set 17px → 13px, which made the document short enough that those
+clauses sit where no scrolling reaches the scroll-spy's offset line, so its bottom-of-page
+rule won. **Nothing about the spy changed; the page got shorter.**
+
+Two habits from it. **A "flaky" result on a test you wrote this session is far more likely
+to be your defect than the harness's** — the retry is hiding a real state, not a race. And
+**a type-size change is a layout change**: expect second-order effects in anything that
+measures the page, including shared code several files away.
+
+⚠️ The fix was an **opt-in** option on the shared hook (`keepClickedAtPageEnd`), not a
+change to its default, so the two existing callers — the Stock Detail subnav and the
+offline report, both paid surfaces — stayed byte-identical. When a shared utility is wrong
+for a *new* caller, widen it for that caller rather than re-tuning it for everyone.
 
 ---
 

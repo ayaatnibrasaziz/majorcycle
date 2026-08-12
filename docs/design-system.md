@@ -181,6 +181,34 @@ button — 1.0:1, invisible. Same mechanism as the note above the reset in `glob
 Any new scoped-typography rule goes in the same layer or it will outrank the utilities
 that are supposed to override it.
 
+#### Document sizes — the legal pages only (added 2026-08-13)
+
+`/disclaimer`, `/terms` and `/privacy` do **not** use the reading sizes. Owner instruction:
+the legal pages must match the rest of the public site rather than sit a step above it.
+
+| Token | Size | Where that size already existed |
+|---|---|---|
+| `--doc-title` | 24px | The `AuthCard` h1 — `/contact`'s title exactly |
+| `--doc-h` | 17px | `= --rd-body`, already on `/` and `/methodology` |
+| `--doc-body` | 13px | The `AuthCard` body size, on all six form pages |
+| `--doc-label` | 12px | `= --rd-micro`, the floor |
+
+**This is not a third scale.** Every value is a size measured on a live public page; the
+tokens exist so the choice is made in one place rather than typed into three components.
+Four sizes on the page, heading-over-body ratio 17/13 = **1.31**. (Round 1's 26/17 was
+1.53, which is why the clauses read as headlines; 20/13 would have been 1.54 again.)
+
+⚠️ **`--doc-title` and `--doc-body` are a SECOND copy of numbers hard-coded in
+`AuthCard.tsx`** (`text-[24px]`, `text-[13px]`) — the drift 11c warns about. Left
+deliberately: unifying them means editing the form pages, which the instruction scoping
+this change to the legal pages forbids. **When the form pages are next touched, `AuthCard`
+should consume these tokens and the duplication should end there.**
+
+⚠️ **Specificity is load-bearing.** `.reading .doc-title` is (0,2,0) and beats
+`.reading h1` (0,1,1) *including* the ≤640px block, because media queries add no
+specificity. So the mobile step-down does not apply to a legal page and these sizes must
+stand alone at 375px. They do: 24/17/13.
+
 ---
 
 ## 4. Rating Tier Labels — THE Most Important Spec
@@ -791,46 +819,52 @@ reader on `/terms` could not reach pricing and could not sign in.
 One component, `components/LegalDoc.tsx`. These are **documents, not pages with a lot
 of text on them**, and the distinction is the whole design.
 
-**Why it was rebuilt.** The owner rejected the first version. It was contrast-clean and
-functionally correct, and it read as a different product from the page you arrived from.
-Measured on the production build at 1280px, crossing the footer link from `/contact`:
+**Rebuilt twice in one day, and the second round is the one that stuck.** Round 1 fixed
+the layout — it was a rounded, shadowed card **2,223px tall** using 53% of a viewport
+whose header spans all of it, with 600px empty beside it, and `h2` at 26px introducing
+clauses averaging 45 words so the page read as a stack of headlines. Round 2 fixed the
+sizes, after the owner looked at the result and said it still ran larger than the rest of
+the site.
 
-| | `/contact` | `/terms` (before) | `/terms` (now) |
+| | `/contact` | Round 1 | **Now** |
 |---|---|---|---|
-| Title | 24px | 36px | **26px** |
-| Section heading | — | 26px | **20px** |
-| Body | 13px | 17px | 17px |
+| Title | 24px | 26px | **24px** |
+| Clause heading | — | 20px | **17px** |
+| Body | 13px | 17px | **13px** |
+| Meta / labels | 11–13px | 12 / 14px | **12px** |
 | Column | 440px | 680px | 680px |
-| Card height | 320px | **2,223px** | — (no card) |
 
-Three findings that "make it look nicer" would not have reached:
+**The measurement that reframed the request.** Asked to make the public pages
+"consistent", I measured every one of them first. `/pricing` renders **nine** distinct
+text sizes in `<main>` (9.5 · 11 · 11.5 · 12 · 12.5 · 13 · 14 · 24 · 38) and `/signup`
+eight, with steps a quarter of a pixel apart — exactly what §3 warns reads as
+inconsistency rather than hierarchy. The legal pages were already the most disciplined
+pages on the site at five. **The inconsistency was never here.** The owner's instruction
+stood regardless and was scoped explicitly to these three pages, so that is what changed.
 
-1. **It was a card pretending to be a page.** A 2,223px-tall rounded, shadowed slab
-   using 53% of a viewport whose header spans all of it. A card is a container for
-   something small; `/contact`'s 320px card reads correctly as an object.
-2. **The headings were bigger than the sections** — 26px introducing clauses averaging
-   45 words, eight times down the page. It read as a stack of headlines.
-3. **Six pieces of furniture before the first clause** (eyebrow, title, date chip, lead,
-   notice, contents grid) on a document nobody reads top to bottom.
-
-**The spec now:**
+**The spec:**
 
 | Part | Spec |
 |---|---|
 | Frame | `PageFrame width="wide"` + `.legal-layout`. ≥1024px: `grid-template-columns: 200px var(--measure-prose)`, 48px gap, centred as a pair. Below: block flow |
 | Document | `--bg-surface`, 1px border, `--radius`, **no shadow**, capped at `--measure-prose` |
-| Masthead | `.doc-title` (26px) + "Last updated …" at `--rd-small` + a hairline rule. No eyebrow, no chip |
-| Clause heading | `.doc-h` (20px) with a `.doc-num` mono numeral in `--brand-mid` |
+| Type | `--doc-title` 24 · `--doc-h` 17 · `--doc-body` 13 · `--doc-label` 12 (see §3) |
+| Masthead | Title + "Last updated …" + a hairline rule. No eyebrow, no date pill |
+| Clause heading | `.doc-h` with a `.doc-num` numeral **in Sora, inheriting colour** |
 | Contents | Sticky rail ≥1024px (`LegalContentsRail`), inline two-column list below |
-| Notice | "Information only — not financial advice" at the top, `--bg-stripe` with a `--brand-mid` left border |
+| Notice | "Information only — not financial advice" at the top, `--bg-stripe` in a hairline box |
 
-⚠️ **`.doc-*` is not a third type scale.** Every value is one of the seven `--rd-*` steps;
-the classes only choose a *lower* step for a document than an article uses. The title
-lands 2px from `/contact`'s, so the link between them is a step rather than a cliff, while
-body copy stays at 17px — shrinking the thing people actually read would undo the reading
-scale entirely. Specificity is deliberate: `.reading .doc-title` (0,2,0) beats
-`.reading h1` (0,1,1) *including* the ≤640px block, so these sizes must stand alone on a
-phone. They do: 26/20/17.
+⚠️ **The clause numeral is Sora and sets no colour of its own.** It was JetBrains Mono in
+`--brand-mid`, on the reasoning that §3 says every number uses the mono face. That rule is
+about **values** — a price, a score, a percentage — where monospace aligns digits into a
+column and signals "this is data". A clause ordinal is part of the heading's own sentence,
+and two typefaces in one line reads as a mistake. Declaring no colour is what makes one
+rule correct in two places: black beside a heading, body-coloured in the contents list.
+
+⚠️ **The rail lists this document's clauses and nothing else.** It briefly carried an
+"Other documents" group linking the other two policies — which duplicated the footer of
+the same page, making a third copy of a list that exists once. **A rail is for where you
+are, not for where else you could be.**
 
 ⚠️ **What makes the rail stick is the rail's own `max-height`, not `align-items: start`.**
 A grid item stretches to the row height by default and a sticky element as tall as its
@@ -840,14 +874,28 @@ Either protection alone suffices; both are kept, because the clamp exists to sto
 list overflowing the viewport and someone removing it as redundant must not silently
 un-stick the rail. The first version of this note asserted the opposite.
 
-⚠️ **The old "← Back to sign in" link is gone.** It dated from before the public chrome
-existed, when sign-in was genuinely unreachable from these pages.
+⚠️ **Smaller type made the page shorter, which broke the rail — a second-order effect
+worth expecting.** At 13px the whole of `/terms` is ~1.9 screens, so clauses 05–08 sit
+where no scrolling can bring them to the offset line, and `useScrollSpy`'s bottom-of-page
+rule reported the **last** clause whichever one was clicked. Click "Acceptable use", the
+rail lights up "Contact". Fixed with an opt-in `keepClickedAtPageEnd` so the Stock Detail
+subnav and the offline report keep byte-identical behaviour.
 
-Guarded by `e2e/legal-doc.spec.ts` (13 tests): the measure at six widths, one contents
-list visible at a time, the notice above the fold at 375px, every rail entry resolving to
-a real section, the rail staying pinned, the click landing clear of the header, and the
-"other documents" shelf matching `LEGAL_DOCS`. All five mechanisms were broken on purpose
-first — see `coding-standards.md` for the two traps that surfaced while doing so.
+⚠️ **OPEN, owner's call: the column is now ~91 characters per line.** 13px across the
+608px text column, against a 45–75 band — the column was sized for 17px. Narrowing it is a
+layout change and the instruction was font sizes only, so it stands until the owner says.
+
+**Wording is presentation-only.** Four clauses that were single sentences carrying five and
+six semicolon-separated items are lists (Terms "Acceptable use"; Privacy "Information we
+collect", "How we use it", "Service providers"), with every item's wording unchanged. The
+trial clause is four short sentences in one paragraph, down from one 60-word sentence
+carrying six commitments. No obligation was added, removed or altered, and the disclaimer
+notice is untouched. **All three remain `BASELINE CONTENT` pending a professional review.**
+
+Guarded by `e2e/legal-doc.spec.ts` (**12** tests): the measure at six widths, one contents
+list visible at a time, the notice above the fold at 375px, every rail entry resolving to a
+real section, the rail staying pinned, and every clause click marking the clause it names.
+All broken on purpose — see `coding-standards.md` §14 for the three traps that surfaced.
 
 ---
 

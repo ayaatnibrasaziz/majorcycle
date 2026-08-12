@@ -939,26 +939,39 @@ got raw GoTrue English. The cooldown is the one a real person actually meets, by
 "Send reset link" twice. **A matcher written from memory of an API's wording is a guess;
 the test is where it stops being one.**
 
-**(j) The legal documents, rebuilt (Layer G, 2026-08-13) — 260 → 273 Playwright tests.**
+**(j) The legal documents, rebuilt (Layer G, 2026-08-13) — 260 → 272 Playwright tests.**
 `/disclaimer`, `/terms` and `/privacy` moved from a very tall card to a document layout
-with a sticky contents rail; the full design rationale and the measurements behind it are
-in `design-system.md` §9. Architecturally there are only three things worth recording:
+with a sticky contents rail, then were re-set at the site's own type sizes after owner
+feedback. The design rationale and both rounds of measurements are in `design-system.md`
+§9. Architecturally there are four things worth recording:
 
-- **`e2e/legal-doc.spec.ts` (credential-free browser, 13).** Guards the column measure at
+- **`e2e/legal-doc.spec.ts` (credential-free browser, 12).** Guards the column measure at
   six widths, one contents list visible at a time, the "not financial advice" notice above
   the fold at 375px (CLAUDE.md #4/#12), every rail entry resolving to a real section, the
-  rail staying pinned, and the "other documents" shelf matching `LEGAL_DOCS`.
+  rail staying pinned, and every clause click marking the clause it names.
 - **The scroll-spy is `lib/useScrollSpy.ts`** — the same one the Stock Detail subnav and
-  the offline report use, not a second implementation.
-- **`LEGAL_DOCS` in `lib/publicNav.ts`** is now the single source for the three documents;
-  `FOOTER_LINKS` spreads it, and the rail filters it. Two consumers, one list.
+  the offline report use, not a second implementation. It gained ONE opt-in option,
+  `keepClickedAtPageEnd`, defaulting off so both existing callers are byte-identical.
+- **`LEGAL_DOCS` in `lib/publicNav.ts`** is the single source for the three documents;
+  `FOOTER_LINKS` spreads it and `legal-doc.spec.ts` iterates it, so a fourth document is
+  covered by the guard the moment it exists.
+- **`--doc-*` in `globals.css`** is where a legal page's four sizes are chosen. Deliberate
+  known duplication: `--doc-title` (24px) and `--doc-body` (13px) restate values hard-coded
+  in `AuthCard.tsx`, because unifying them would mean editing the form pages, which the
+  owner's instruction scoped out. Close it when those pages are next touched.
 
-⚠️ **Two verification traps surfaced while breaking those guards on purpose**, both now in
-CLAUDE.md 11i and `coding-standards.md` §14: a CSS-only edit can be served **stale** on the
-first run after it (so a deliberate break that stays green must be re-run before the test
-is blamed), and an assertion bounded on **one side only** passed with the rail at −317px —
-scrolled clean off the top — because the bound tested the direction that was never the
-failure mode.
+⚠️ **A type change broke a shared hook three files away — the second-order effect is the
+lesson.** At 13px the whole of `/terms` is ~1.9 screens, so clauses 05–08 sit where no
+scrolling can bring them to the spy's offset line, and the bottom-of-page rule then
+reported the LAST clause whichever one the reader clicked. It surfaced as a single *flaky*
+test; tracing all eight clicks rather than re-running it is what turned "flaky" into a
+diagnosis.
+
+⚠️ **Three verification traps, all now in CLAUDE.md 11i and `coding-standards.md` §14:** a
+CSS-only edit served **stale** on the first run after it (so a deliberate break that stays
+green must be re-run before the test is blamed); an assertion bounded on **one side only**
+that passed with the rail at −317px, scrolled clean off the top; and a **flaky test that
+was a real defect**.
 
 **Auth branding (de-Supabase-ification, Layer F0):** the auth surface is skinned to read as `majorcycle.com`, not a Supabase project. Google sign-in uses **Google Identity Services + `supabase.auth.signInWithIdToken`** (`web/components/GoogleSignIn.tsx`) instead of the redirect-based `signInWithOAuth`, so Google returns the ID token directly to the page and the browser never routes through `*.supabase.co` (no address-bar flash); it falls back to the redirect flow when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is unset. Auth emails go through **Supabase Custom SMTP → Resend** (`noreply@majorcycle.com`) with branded templates that use the **token-hash** pattern (`{{ .SiteURL }}/auth/confirm?token_hash=…`) verified by `web/app/auth/confirm/route.ts` (mirrors `auth/callback`), so email links live on `majorcycle.com`. Redirect targets are pinned to the production origin via `getSiteURL()` (`web/lib/url.ts`). All six auth templates **plus the seven Supabase "security" notification emails** (password / email-address / phone-number changed, sign-in-method linked/removed, MFA method added/removed) are branded with the same slim header (transparent `email-icon.png` + Sora wordmark on a navy gradient) and a shared grey footer (`#f8fafc`) — see `design-system.md` §17. The notification emails are toggle-only in Supabase (no HTML editor in the list view; each is edited at its own `/auth/templates/<slug>` URL) and each carries a "didn't do this? — `security@majorcycle.com`" callout. The password-reset flow lands on the branded `web/app/(public)/account/update-password` page (moved out of the `(app)` shell in F0.5 — see Security posture above). **Free-plan caveat:** the anon Supabase URL is still visible in DevTools/Network (every DB/auth call uses `NEXT_PUBLIC_SUPABASE_URL`) and in the JWT `iss` claim — only the paid Supabase custom auth domain changes that; no user-facing surface exposes it. Full runbook: `plan-mode-auth-virtual-ladybug.md`.
 
