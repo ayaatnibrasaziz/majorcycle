@@ -939,6 +939,27 @@ got raw GoTrue English. The cooldown is the one a real person actually meets, by
 "Send reset link" twice. **A matcher written from memory of an API's wording is a guess;
 the test is where it stops being one.**
 
+**(j) The legal documents, rebuilt (Layer G, 2026-08-13) — 260 → 273 Playwright tests.**
+`/disclaimer`, `/terms` and `/privacy` moved from a very tall card to a document layout
+with a sticky contents rail; the full design rationale and the measurements behind it are
+in `design-system.md` §9. Architecturally there are only three things worth recording:
+
+- **`e2e/legal-doc.spec.ts` (credential-free browser, 13).** Guards the column measure at
+  six widths, one contents list visible at a time, the "not financial advice" notice above
+  the fold at 375px (CLAUDE.md #4/#12), every rail entry resolving to a real section, the
+  rail staying pinned, and the "other documents" shelf matching `LEGAL_DOCS`.
+- **The scroll-spy is `lib/useScrollSpy.ts`** — the same one the Stock Detail subnav and
+  the offline report use, not a second implementation.
+- **`LEGAL_DOCS` in `lib/publicNav.ts`** is now the single source for the three documents;
+  `FOOTER_LINKS` spreads it, and the rail filters it. Two consumers, one list.
+
+⚠️ **Two verification traps surfaced while breaking those guards on purpose**, both now in
+CLAUDE.md 11i and `coding-standards.md` §14: a CSS-only edit can be served **stale** on the
+first run after it (so a deliberate break that stays green must be re-run before the test
+is blamed), and an assertion bounded on **one side only** passed with the rail at −317px —
+scrolled clean off the top — because the bound tested the direction that was never the
+failure mode.
+
 **Auth branding (de-Supabase-ification, Layer F0):** the auth surface is skinned to read as `majorcycle.com`, not a Supabase project. Google sign-in uses **Google Identity Services + `supabase.auth.signInWithIdToken`** (`web/components/GoogleSignIn.tsx`) instead of the redirect-based `signInWithOAuth`, so Google returns the ID token directly to the page and the browser never routes through `*.supabase.co` (no address-bar flash); it falls back to the redirect flow when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is unset. Auth emails go through **Supabase Custom SMTP → Resend** (`noreply@majorcycle.com`) with branded templates that use the **token-hash** pattern (`{{ .SiteURL }}/auth/confirm?token_hash=…`) verified by `web/app/auth/confirm/route.ts` (mirrors `auth/callback`), so email links live on `majorcycle.com`. Redirect targets are pinned to the production origin via `getSiteURL()` (`web/lib/url.ts`). All six auth templates **plus the seven Supabase "security" notification emails** (password / email-address / phone-number changed, sign-in-method linked/removed, MFA method added/removed) are branded with the same slim header (transparent `email-icon.png` + Sora wordmark on a navy gradient) and a shared grey footer (`#f8fafc`) — see `design-system.md` §17. The notification emails are toggle-only in Supabase (no HTML editor in the list view; each is edited at its own `/auth/templates/<slug>` URL) and each carries a "didn't do this? — `security@majorcycle.com`" callout. The password-reset flow lands on the branded `web/app/(public)/account/update-password` page (moved out of the `(app)` shell in F0.5 — see Security posture above). **Free-plan caveat:** the anon Supabase URL is still visible in DevTools/Network (every DB/auth call uses `NEXT_PUBLIC_SUPABASE_URL`) and in the JWT `iss` claim — only the paid Supabase custom auth domain changes that; no user-facing surface exposes it. Full runbook: `plan-mode-auth-virtual-ladybug.md`.
 
 **⚠️ Google's AUTHORISED JAVASCRIPT ORIGINS admit no wildcards — so Google sign-in works on

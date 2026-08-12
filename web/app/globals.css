@@ -1797,6 +1797,12 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   .reading ul { margin: 1.1em 0 0; padding-left: 1.35em; list-style: disc; }
   .reading ol { margin: 1.1em 0 0; padding-left: 1.35em; list-style: decimal; }
   .reading li + li { margin-top: 0.5em; }
+  /* A paragraph AFTER a list. `p + p` covered prose that only ever alternated
+     paragraphs; the first clause written as "lead-in, list, then a closing
+     sentence" had that sentence sitting flush against the last bullet, reading
+     as a sixth item. Same 1.1em, so the rhythm is one value, not two. */
+  .reading ul + p,
+  .reading ol + p { margin-top: 1.1em; }
   .reading li::marker { color: var(--text-muted); }
 
   .reading a {
@@ -1830,6 +1836,104 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
     .reading h2 { font-size: 22px; letter-spacing: -0.4px; }
     .reading h3,
     .reading .lead { font-size: 18px; }
+  }
+
+  /* ───────────────────────────────────────────────────────────────────────
+     DOCUMENT ROLES — /disclaimer, /terms, /privacy.
+
+     Not a third scale. Every value below is one of the seven --rd-* steps
+     already declared above; these classes only choose a DIFFERENT step for
+     a document than an article uses, and they are the one place that choice
+     is made (CLAUDE.md 11c — a page still never types a px value).
+
+     Why a legal page is set smaller than an article:
+
+     1. Measured 2026-08-12, the reason the owner rejected these pages. The
+        reader arrives from an auth page — /contact is a 24px title over 13px
+        body in a 440px card — and met a 36px title over 17px body in a 680px
+        card. Same card, same site, twice the type: it read as a different
+        product. `--rd-h2` (26px) puts the document title 2px from the auth
+        title, so crossing that link is a step rather than a cliff. The BODY
+        stays at --rd-body (17px); shrinking the thing people actually read
+        would undo the entire point of the reading scale.
+
+     2. `h2` at --rd-h2 introduced clauses averaging 45 words — a heading half
+        again the size of the three lines beneath it, eight times down the
+        page. It read as a stack of headlines. --rd-lead (20px) over 17px body
+        is a ratio of 1.18, which is a heading doing its job.
+
+     ⚠️ Specificity, deliberately: `.reading .doc-title` is (0,2,0) and beats
+     `.reading h1` (0,1,1), INCLUDING the ≤640px block above — media queries
+     add no specificity. That is intended (26px is right on a phone too), but
+     it means the mobile step-down does not apply here, so these sizes must be
+     legible at 375px without help. They are: 26/20/17.
+     ─────────────────────────────────────────────────────────────────────── */
+  .reading .doc-title {
+    font-size: var(--rd-h2);
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+  }
+  .reading .doc-h {
+    font-size: var(--rd-lead);
+    line-height: 1.3;
+    letter-spacing: -0.25px;
+  }
+  /* The clause number. A reference document is cited by number ("clause 5"),
+     so this is content, not texture — --brand-mid on --bg-surface, never a
+     muted grey, and never below the --rd-micro floor. */
+  .reading .doc-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--rd-small);
+    font-weight: 600;
+    color: var(--brand-mid);
+    letter-spacing: 0;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Document layout — a contents rail beside the document (Layer G).
+
+   A legal page is NAVIGATED, not read top to bottom: most readers arrive
+   wanting one clause. Below 1024px that is the inline contents list the
+   document already carried. At 1024px and up the rail moves into the margin,
+   which on a 1280px screen was 600px of empty page beside a 680px column.
+
+   ⚠️ A grid item stretches to the row height by default, and a sticky element
+   as tall as its own scroll range has nowhere to travel — it simply never
+   moves. TWO separate things stop that here, and I only understood which after
+   breaking each one and measuring (rail top at scrollY 700, 1280×900):
+
+     align-items: start + the rail's max-height  →  425px tall, pinned at 82
+     stretch, max-height kept                    →  794px tall, pinned at 82
+     stretch, max-height removed                 →  1841px tall, top −765 ✗
+
+   So the load-bearing one is the rail's own `max-height` clamp, NOT this line —
+   the clamp holds the stretched item below the row height. `align-items: start`
+   is kept anyway, because the clamp exists to stop a long contents list
+   overflowing the viewport, not to make sticking work: someone shortening a
+   document and removing the clamp as redundant must not silently un-stick the
+   rail. Belt and braces, with the belt named.
+
+   ⚠️ I first wrote this comment asserting the opposite, and the guard I wrote to
+   defend it stayed GREEN when I removed this line. The test is right — it
+   asserts the rail is pinned, which is the outcome — and the comment was wrong.
+   A mechanism you have not broken is a mechanism you are guessing at.
+
+   ⚠️ No ancestor may set `overflow` (the public layout does not): a scrollable
+   ancestor silently becomes what `top:` is measured against, and the rail
+   sticks to the wrong thing with no error anywhere.
+
+   Two columns, centred as a pair, so the widths come from --measure-prose and
+   one gap rather than from fraction arithmetic that re-centres the document at
+   every breakpoint.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  .legal-layout {
+    display: grid;
+    grid-template-columns: 200px var(--measure-prose);
+    column-gap: 48px;
+    align-items: start;
+    justify-content: center;
   }
 }
 

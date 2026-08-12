@@ -90,7 +90,7 @@ export default function DisclaimerPage() {
           body: (
             <p>
               Questions about this disclaimer can be sent to{' '}
-              <a href="mailto:support@majorcycle.com" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">support@majorcycle.com</a>.
+              <a href="mailto:support@majorcycle.com">support@majorcycle.com</a>.
             </p>
           ),
         },

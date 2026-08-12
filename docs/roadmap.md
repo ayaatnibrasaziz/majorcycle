@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing), G2 (design foundations), G3 (public chrome) and G3.5 (the auth net — Playwright 180 → 248) built and audited; PR #89 open and deliberately unmerged until the layer is done. The legal pages are NOT yet accepted by the owner.**
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing), G2 (design foundations), G3 (public chrome), G3.5 (the auth net — Playwright 180 → 260) and G3.7 (the legal documents — 260 → **273**) built and audited; PR #89 open and deliberately unmerged until the layer is done. ⚠️ The legal pages were rebuilt on an owner-approved direction (document layout + sticky contents rail) but the OUTPUT has not yet been seen and signed off by the owner — and their text remains `BASELINE CONTENT` awaiting a professional review before wide launch.**
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -728,12 +728,10 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > readable by any stranger (11f); and `seo.spec.ts` about to go green against `/login`
 > because both pages are `noindex`.
 >
-> ⚠️ **Owner has NOT accepted the legal pages.** `/terms`, `/privacy` and `/disclaimer`
-> are functionally correct and measured clean, but read as a different product from the
-> auth pages. **Measured cause, 2026-08-12:** two deliberate type scales meeting with no
-> transition — h1 **24 → 36px**, body **13 → 17px**, column **440 → 680px** between
-> `/contact` and `/terms`. Wording, sizes and layout are the FIRST item of the next
-> session; do not treat these three pages as signed off.
+> ⚠️ **The legal pages were rejected here and rebuilt in G3.7 below** — see that block
+> rather than treating the description above as current. Measured cause, 2026-08-12: two
+> deliberate type scales meeting with no transition — h1 **24 → 36px**, body **13 → 17px**,
+> column **440 → 680px** between `/contact` and `/terms`.
 >
 > **Still to come in Layer G:** the approved landing page, removing `/methodology` (it
 > becomes the `#how-it-works` anchor), and `/learn`.
@@ -857,6 +855,58 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > `account/actions.ts`) uses `getUser()` instead, the live network check, which is the
 > stricter side of the documented split. The Layer G plan had recorded `getClaims` as a
 > deviation to justify; it is the recommendation.
+
+> ### ✅ G3.7 (the legal documents) — COMPLETE 2026-08-13. Still inside PR #89, still unmerged.
+>
+> The three pages G3 left unaccepted. Owner-approved direction: **document layout with a
+> sticky contents rail.** Full spec and the before/after table in `design-system.md` §9.
+>
+> **The diagnosis was measured, not eyeballed** — production build, 1280px, crossing the
+> footer link from `/contact`: title 24 → **36px**, body 13 → **17px**, column 440 →
+> **680px**. Three things the numbers said that "make it look nicer" would not have found:
+> the card was **2,223px tall** (a page pretending to be a card, using 53% of a viewport
+> whose header spans all of it, with 600px empty beside it); `h2` at **26px** introduced
+> clauses averaging **45 words**, so the page read as a stack of headlines; and **six
+> pieces of furniture** stood before the first clause.
+>
+> **Built.** Title → `--rd-h2` (26px, i.e. 2px from `/contact`'s, so the link between them
+> is a step not a cliff) · clause headings → `--rd-lead` (20px, ratio 1.18 over body) ·
+> body **stays 17px** · masthead closed by a rule, no eyebrow, no date pill · shadow gone ·
+> sticky contents rail ≥1024px reusing `lib/useScrollSpy.ts` · `LEGAL_DOCS` in
+> `publicNav.ts` now feeds both the footer and the rail's "other documents" shelf.
+> **Playwright 260 → 273**, `e2e/legal-doc.spec.ts`, all five mechanisms broken on purpose.
+>
+> ⚠️ **`.doc-*` is not a third type scale** — every value is one of the seven existing
+> `--rd-*` steps; the classes only pick a lower step for a document than an article uses.
+>
+> **Wording: presentation only, and deliberately so.** Four clauses that were single
+> sentences carrying five and six semicolon-separated items are now lists (Terms
+> "Acceptable use"; Privacy "Information we collect", "How we use it", "Service
+> providers"). **Every item keeps its exact wording**; the only new text is the lead-in
+> lines the grammar needs ("We collect:", "We use your information to:"). No obligation was
+> added, removed or altered, and the disclaimer notice is untouched — trimming a disclaimer
+> is not a design decision. ⚠️ **These three documents are still `BASELINE CONTENT` awaiting
+> a professional review before wide launch** (the comment at the top of each page); this
+> work did not change that.
+>
+> **One regression found by measuring, which review would not have caught.** The frame had
+> to become `wide` for the rail, and below 1024px `.legal-layout` is plain block flow — so
+> the document stretched to fill it: **973px at 1023px, 733px at 768px**, roughly 110
+> characters of 17px body per line. Capped at `--measure-prose` and guarded at six widths.
+>
+> 🔴 **Two verification traps, both now in CLAUDE.md 11i.** (i) A CSS-only edit was served
+> **stale** on the first run after it — I deleted the rule I thought made the rail stick,
+> the guard passed, and the honest-looking conclusion was "my guard is useless". The second
+> run compiled the change and failed correctly. **This is the one failure mode that makes a
+> working test look broken, so it invites you to delete it.** (ii) The assertion
+> `railTop ≤ 90` **passed at −317** — the rail scrolled clean off the top of the viewport —
+> because a one-sided bound tests the direction that was never the failure mode.
+>
+> 🔴 **And a claim of mine was wrong in the source comment.** I documented `align-items:
+> start` as the reason the rail sticks. Measured: `start` + clamp → pinned at 82 ·
+> `stretch` + clamp → **still** pinned · `stretch`, no clamp → −765. The rail's own
+> `max-height` is the load-bearing part; either alone suffices. Both kept, comment fixed.
+> **A mechanism you have not broken is a mechanism you are guessing at.**
 
 - [x] **Fix the two material contrast failures INSIDE Layer G** (not H): the rating tier
       badges **2.38 → 4.73:1** (the page now renders the REAL `.tier-badge`, so no locked

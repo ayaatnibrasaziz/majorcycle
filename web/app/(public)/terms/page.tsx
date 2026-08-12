@@ -30,7 +30,7 @@ export default function TermsPage() {
             <p>
               MajorCycle provides educational and informational analysis of listed
               equities. It is not financial advice (see our{' '}
-              <a href="/disclaimer" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">Disclaimer</a>).
+              <a href="/disclaimer">Disclaimer</a>).
               We may add, change, or remove features at any time.
             </p>
           ),
@@ -71,12 +71,20 @@ export default function TermsPage() {
         },
         {
           heading: 'Acceptable use',
+          // Set as a list, not rewritten: every prohibition below is the same
+          // text that was in the single sentence this replaces, with the commas
+          // turned into bullets. A reader checking whether one specific thing is
+          // allowed should not have to parse a four-clause sentence to find out.
           body: (
-            <p>
-              You may not resell, redistribute, scrape, or bulk-export the Service or
-              its data, attempt to circumvent access controls or usage limits,
-              reverse-engineer the Service, or use it to build a competing product.
-            </p>
+            <>
+              <p>You may not:</p>
+              <ul>
+                <li>resell, redistribute, scrape, or bulk-export the Service or its data;</li>
+                <li>attempt to circumvent access controls or usage limits;</li>
+                <li>reverse-engineer the Service; or</li>
+                <li>use it to build a competing product.</li>
+              </ul>
+            </>
           ),
         },
         {
@@ -106,7 +114,7 @@ export default function TermsPage() {
           body: (
             <p>
               Questions about these terms can be sent to{' '}
-              <a href="mailto:support@majorcycle.com" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">support@majorcycle.com</a>.
+              <a href="mailto:support@majorcycle.com">support@majorcycle.com</a>.
             </p>
           ),
         },

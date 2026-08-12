@@ -739,6 +739,28 @@ Related, same family: a substring is not a token (`xdescription` contains
 `description`), and an assertion about what a file does *not* contain is vacuously
 true when the file is empty or unreachable — prove it arrived first.
 
+**4. A CSS-only edit can be served STALE on the first run after it — which breaks the
+break-it-on-purpose habit itself.** Found 2026-08-13 building the legal-page rail. I
+deleted the rule I believed made the rail stick, re-ran the guard, and it passed. The
+honest conclusion would have been "my guard is useless"; the true one was that `next dev`
+served the previous CSS from `.next/cache` even though `reuseExistingServer: false` had
+booted a brand-new server process. The *second* run compiled the change and the guard
+failed correctly (`Expected <= 2, Received 500`).
+
+⚠️ The damage is specific and nasty: this is the one failure mode that makes a **working**
+guard look broken, so the instinct it provokes is to weaken or delete the test. **When a
+deliberate break stays green, re-run before you conclude anything** — and if the second
+run still passes, print what the browser actually computed (`getComputedStyle`,
+`getBoundingClientRect`) before touching the assertion. Doing that is what separated the
+stale cache from the two real findings below.
+
+**5. An assertion bounded on ONE side passes in the direction you never imagined.** The
+same rail guard asserted `expect(railTop).toBeLessThanOrEqual(90)` — the rail should sit
+just under the 58px header. When genuinely unstuck it measured **−317**: scrolled clean
+off the top of the viewport, and comfortably ≤ 90. It sailed through. A single bound tests
+that the value is not too *large*, which was never how it could fail. Bound both sides, or
+assert the value, whenever "wrong" can mean "far away in either direction".
+
 ---
 
 ## 15. Previewing & Verifying Authenticated Pages Locally

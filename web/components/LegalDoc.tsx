@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { LegalContentsRail } from './LegalContentsRail';
 import { PageFrame } from './PageFrame';
 
 export interface LegalSection {
@@ -17,8 +17,9 @@ interface LegalDocProps {
 /**
  * `#the-service`, from "The Service". Derived, never authored: an id typed by
  * hand beside a heading is a second copy of that heading, and the two drift the
- * first time the wording is edited (CLAUDE.md 11c). The contents list and the
- * section it points at both call this, so they cannot disagree.
+ * first time the wording is edited (CLAUDE.md 11c). The contents rail, the
+ * inline list and the section they point at all call this, so all three move
+ * together or not at all.
  */
 export const sectionId = (heading: string): string =>
   heading
@@ -27,140 +28,161 @@ export const sectionId = (heading: string): string =>
     .replace(/^-|-$/g, '');
 
 /**
- * Shared chrome for the static legal pages (/disclaimer, /terms, /privacy).
+ * The three legal documents: /disclaimer, /terms, /privacy.
  *
- * Reading frame, not the auth card: these are the documents a reader is most
- * likely to be sent to by someone else, and until Layer G they ran at 13px down
- * a 440px column. Sizes come from `.reading` (globals.css) — this file names no
- * pixel value of its own, so the legal pages and the rest of the content pages
- * cannot drift into two type scales (CLAUDE.md 11c).
+ * ── Why this was rebuilt, 2026-08-12 ─────────────────────────────────────────
  *
- * ⚠️ The furniture here is deliberately the SAME furniture as /methodology — the
- * brand-blue eyebrow, the lead, the bordered notice, the card. Those three pages
- * are one voice, and the owner's report was that they read as two: /methodology
- * had structure and the legal pages were an undifferentiated grey wall.
+ * The owner rejected the previous version: functionally correct, contrast-clean,
+ * and it read as a different product from the page you arrived from. Measured on
+ * the production build at 1280px, crossing the footer link from /contact:
  *
- * The one thing that is NOT copied is the heading accent. /methodology marks its
- * sections with a bar, because they are concepts. These are NUMBERED, because
- * they are clauses — a legal document is referred to by section number, so the
- * numeral carries information rather than decorating the page.
+ *     title 24px → 36px · body 13px → 17px · column 440px → 680px
  *
- * Every page carries the "not financial advice" line (CLAUDE.md #4/#12/#24) —
- * now at the TOP, in the notice, so it is visible without scrolling on a
- * multi-thousand-word document — and a "Back to sign in" link, the safe
- * destination for the logged-out visitor who followed a footer link here.
+ * Three findings, none of which "make it look nicer" would have reached:
+ *
+ * 1. **It was a card pretending to be a page.** /contact's card is 320px tall and
+ *    reads correctly as an object. /terms' was 2,223px — a rounded, shadowed slab
+ *    using 53% of a viewport whose header spans all of it. A card is a container
+ *    for something small. The remaining 600px was empty.
+ * 2. **The headings were bigger than the sections.** `h2` at 26px introduced
+ *    clauses averaging 45 words: a headline half again the size of the three
+ *    lines beneath it, eight times down the page.
+ * 3. **Six pieces of furniture before the first clause** — eyebrow, 36px title,
+ *    date chip, 20px lead, notice, contents grid — on a document nobody reads
+ *    top to bottom.
+ *
+ * So it is now a DOCUMENT rather than a big card: a masthead closed by a rule,
+ * clause numbers as a reference column, and the contents moved into the margin
+ * as a sticky rail (≥1024px). Sizes come from `.doc-*` in globals.css, which
+ * choose lower steps of the SAME seven-step reading scale — the title lands 2px
+ * from /contact's, so the link between them is a step rather than a cliff, while
+ * body copy stays at 17px.
+ *
+ * ⚠️ The furniture this file used to carry was copied from /methodology, and its
+ * comment said so as the justification. /methodology is deleted in the next
+ * commit (it becomes the landing's `#how-it-works`), so that rationale had an
+ * expiry date on it. These three pages are their own set now, and the rail's
+ * "Other documents" group is what makes them one.
+ *
+ * Unchanged and deliberate: the "Information only — not financial advice" notice
+ * stays at the TOP, visible without scrolling on a multi-thousand-word document
+ * (CLAUDE.md #4/#12/#24), and its wording is untouched — trimming a disclaimer is
+ * not a design decision.
  */
 export function LegalDoc({ title, updated, intro, sections }: LegalDocProps) {
+  const toc = sections.map((s) => ({ id: sectionId(s.heading), heading: s.heading }));
+
   return (
-    <PageFrame width="prose">
-      {/* --shadow-sm, not --shadow-lift. The auth card is a small object floating
-          on the page and reads better lifted; a 2,000-word document IS the page,
-          and a heavy ambient blur under it just looks like it is about to slide
-          off. Same radius, same border, same surface — the two are one family. */}
-      <article className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius)] shadow-[var(--shadow-sm)] overflow-hidden">
-        <div className="px-7 py-9 sm:px-12 sm:py-12">
-          <p className="micro text-[var(--brand-mid)]">Legal</p>
-          <h1 className="mt-3">{title}</h1>
+    <PageFrame width="wide">
+      <div className="legal-layout">
+        {/* Desktop only. Below 1024px `.legal-layout` is plain block flow and this
+            is `display: none`, with the inline list inside the document taking
+            over — the two cannot drift because both map the same `sections`.
+            They are not one component moved by CSS because the running order
+            differs by design: on a phone the notice must come before the
+            contents, and a sibling rail would land above both. */}
+        <LegalContentsRail sections={toc} />
 
-          {/* A chip, not a caption. "Last updated" is the first thing a reader
-              checks on a legal page — whether this is the version they were
-              shown — so it gets a shape instead of being the smallest, faintest
-              line on the page. */}
-          <p className="mt-4">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg-stripe)] px-3 py-1 text-[length:var(--rd-micro)] font-semibold uppercase tracking-[0.08em] text-[var(--text-secondary)]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand-mid)]" aria-hidden="true" />
-              Last updated {updated}
-            </span>
-          </p>
+        {/* ⚠️ `max-w-[var(--measure-prose)] mx-auto` is not belt-and-braces. Inside
+            the grid it is a no-op (the column IS --measure-prose), but the frame
+            is `wide` for the rail's sake, and below 1024px `.legal-layout` is
+            plain block flow — so without this the document stretched to the full
+            frame. Measured at 1023px before the fix: 973px, which is ~110
+            characters of 17px body copy per line against a 45–75 band. The
+            regression lives in exactly the window where the rail has gone and
+            nothing else is holding the measure. */}
+        <article className="mx-auto max-w-[var(--measure-prose)] overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)]">
+          {/* No shadow. `--shadow-lift` is for an object floating on the page and
+              `--shadow-sm` still reads as one; a document IS the page, and at
+              2,000px tall an ambient blur underneath just looks like it is about
+              to slide off. Border and radius are shared with the auth card, so
+              the two remain one family without pretending to be the same object. */}
+          <div className="px-6 py-8 sm:px-10 sm:py-10">
+            {/* ── Masthead. A title, when it was last changed, and a rule. The
+                "LEGAL" eyebrow and the pill around the date are both gone: the
+                rail, the footer and the title already say what this is, and on a
+                reference document the date is a fact, not a badge. */}
+            <header>
+              <h1 className="doc-title">{title}</h1>
+              <p className="small mt-2 text-[var(--text-secondary)]">
+                Last updated {updated}
+              </p>
+            </header>
 
-          {intro && <div className="lead mt-6">{intro}</div>}
+            <hr className="mt-6 border-0 border-t border-[var(--border)]" />
 
-          {/* Same notice as /methodology, same tokens. Moved up from the foot of
-              the page: on /terms it previously sat ~2,000 words below the fold,
-              which is the one place a "visible without scrolling" line must not
-              be (CLAUDE.md #4/#12/#24). */}
-          <div className="mt-7 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-stripe)] px-5 py-4">
-            <p className="small">
-              <strong>Information only — not financial advice.</strong> MajorCycle
-              provides educational and informational analysis. It is not a licensed
-              financial adviser, and nothing on this site is a recommendation to buy,
-              hold, or sell any security.
-            </p>
-          </div>
+            {intro && <div className="mt-6">{intro}</div>}
 
-          {/* Contents. Generated from `sections`, so it cannot list a section that
-              does not exist or miss one that does. Worth its space on a document
-              nobody reads top to bottom: most people arrive wanting one clause. */}
-          <nav aria-label="Contents" className="mt-8">
-            <p className="micro font-semibold uppercase tracking-[0.1em]">On this page</p>
-            {/* `list-none pl-0` and `mt-0` are not cosmetic tidying — they opt this
-                ONE list out of the `.reading` prose rules, which are meant for
-                lists inside the clauses and are wrong here. `.reading ol` adds a
-                1.35em indent and a decimal marker (we draw our own numeral), and
-                `.reading li + li` adds a top margin to every item EXCEPT the
-                first — which in a two-column grid pushed row 1's left item 8px
-                above its neighbour. Measured, not spotted: it reads as "slightly
-                off" and nothing else. The utilities win because the `.reading`
-                block lives in @layer base (see globals.css). */}
-            <ol className="mt-3 grid list-none gap-x-6 gap-y-2 pl-0 sm:grid-cols-2">
+            <div className="mt-6 rounded-[var(--radius-sm)] border-l-2 border-[var(--brand-mid)] bg-[var(--bg-stripe)] px-4 py-3.5">
+              <p className="small">
+                <strong>Information only — not financial advice.</strong> MajorCycle
+                provides educational and informational analysis. It is not a licensed
+                financial adviser, and nothing on this site is a recommendation to buy,
+                hold, or sell any security.
+              </p>
+            </div>
+
+            {/* The contents, for readers who never see the rail. Generated from
+                `sections`, so it cannot list a clause that does not exist or miss
+                one that does. `list-none pl-0` / `mt-0` opt it out of the
+                `.reading` prose list rules — see the same note in the rail. */}
+            <nav aria-label="Contents" className="mt-7 lg:hidden">
+              <p className="micro text-[var(--text-secondary)]">On this page</p>
+              <ol className="mt-2.5 grid list-none gap-x-6 gap-y-1.5 pl-0 sm:grid-cols-2">
+                {toc.map((s, i) => (
+                  <li key={s.id} className="mt-0 flex items-baseline gap-2.5">
+                    <span className="doc-num text-[length:var(--rd-micro)]" aria-hidden="true">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <a href={`#${s.id}`} className="text-[length:var(--rd-small)] no-underline">
+                      {s.heading}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+
+            <div className="mt-9 flex flex-col gap-8">
               {sections.map((s, i) => (
-                <li key={s.heading} className="mt-0 flex items-baseline gap-2.5">
-                  {/* --text-secondary. Muted measured 2.97:1 here — caught by the
-                      contrast guard added in this same layer, on work written
-                      twenty minutes after the guard. Numerals a reader may want
-                      to quote ("clause 5") are content, not texture. */}
-                  <span
-                    className="font-mono text-[length:var(--rd-micro)] font-semibold text-[var(--text-secondary)]"
-                    aria-hidden="true"
-                  >
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <a href={`#${sectionId(s.heading)}`} className="text-[length:var(--rd-small)] no-underline">
+                <section
+                  key={s.heading}
+                  id={toc[i]!.id}
+                  // Clears the sticky header when the contents jumps here. Without
+                  // it the heading lands underneath the bar and the reader sees the
+                  // clause after the one they asked for. The rail's scroll-spy
+                  // reads the same `--header-h` token, so the highlight and the
+                  // landing position cannot disagree.
+                  className="scroll-mt-[calc(var(--header-h)+20px)]"
+                >
+                  <h2 className="doc-h flex items-baseline gap-2.5">
+                    {/* The clause number, hanging beside the heading. A legal
+                        document is cited by number, so this is content — which is
+                        why it is --brand-mid text rather than the filled chip it
+                        used to be, and why it is never below the --rd-micro floor. */}
+                    <span className="doc-num flex-shrink-0" aria-hidden="true">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
                     {s.heading}
-                  </a>
-                </li>
+                  </h2>
+                  <div className="mt-2.5">{s.body}</div>
+                </section>
               ))}
-            </ol>
-          </nav>
+            </div>
 
-          <div className="mt-10 flex flex-col gap-10">
-            {sections.map((s, i) => (
-              <section
-                key={s.heading}
-                id={sectionId(s.heading)}
-                // Clears the sticky header when the contents list jumps here.
-                // Without it the heading lands underneath the bar and the reader
-                // sees the paragraph after the one they asked for.
-                className="scroll-mt-[calc(var(--header-h)+20px)]"
-              >
-                <h2 className="flex items-baseline gap-3">
-                  {/* The numeral is the accent. On --brand-light it measures
-                      5.95:1, so it stays a readable reference rather than a
-                      decorative watermark. */}
-                  <span
-                    className="inline-flex h-[26px] min-w-[26px] flex-shrink-0 translate-y-[2px] items-center justify-center rounded-[var(--radius-sm)] bg-[var(--brand-light)] px-1.5 font-mono text-[length:var(--rd-micro)] font-bold text-[var(--brand-mid)]"
-                    aria-hidden="true"
-                  >
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  {s.heading}
-                </h2>
-                <div className="mt-3">{s.body}</div>
-              </section>
-            ))}
+            {/* Nothing follows the last clause, deliberately.
+                - "← Back to sign in" dated from before Layer G, when these pages
+                  had no chrome and sign-in was genuinely unreachable. The header
+                  carries it on every page now, and a reader who arrived from the
+                  app was never "going back to sign in" anyway.
+                - "Questions about any of this? Contact us." sat immediately under
+                  a clause that already says where to send questions — all three
+                  documents end with one — so it read as the same offer twice.
+                  Where a route to the contact FORM genuinely helps (exercising a
+                  privacy right), the link belongs in that clause, not as page
+                  furniture; /privacy's "Your rights" carries it. */}
           </div>
-
-          <div className="mt-12 border-t border-[var(--border)] pt-7">
-            <p className="small">
-              Questions about any of this?{' '}
-              <Link href="/contact">Contact us</Link>.
-            </p>
-            <Link href="/login" className="mt-5 inline-block font-semibold no-underline">
-              ← Back to sign in
-            </Link>
-          </div>
-        </div>
-      </article>
+        </article>
+      </div>
     </PageFrame>
   );
 }

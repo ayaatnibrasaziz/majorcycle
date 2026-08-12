@@ -24,6 +24,25 @@ export const NAV_LINKS = [
 ] as const;
 
 /**
+ * The three legal documents, as a set.
+ *
+ * They are a set in the reader's head — somebody on `/terms` wanting to know what
+ * happens to their email is looking for `/privacy` — so each document's contents
+ * rail offers the other two. That makes this list a SECOND consumer, and a second
+ * consumer is exactly when a hand-typed copy starts to drift (CLAUDE.md 11c): the
+ * footer below spreads this array rather than repeating it, so a document can
+ * never appear in one place and not the other.
+ *
+ * Order is deliberate — disclaimer first. It is the one CLAUDE.md #4/#12 make
+ * legally material, and the only one of the three a reader may actually need.
+ */
+export const LEGAL_DOCS = [
+  { href: '/disclaimer', label: 'Disclaimer' },
+  { href: '/terms', label: 'Terms' },
+  { href: '/privacy', label: 'Privacy' },
+] as const;
+
+/**
  * The footer's links.
  *
  * Deliberately hand-ordered rather than derived from PUBLIC_PAGES: that list also
@@ -36,9 +55,7 @@ export const FOOTER_LINKS = [
   { href: HOW_IT_WORKS_HREF, label: 'How it works' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/contact', label: 'Contact' },
-  { href: '/disclaimer', label: 'Disclaimer' },
-  { href: '/terms', label: 'Terms' },
-  { href: '/privacy', label: 'Privacy' },
+  ...LEGAL_DOCS,
 ] as const;
 
 const OPEN_TO_STRANGERS = new Set(PUBLIC_PAGES.map((p) => p.path));
