@@ -127,6 +127,52 @@ test.describe('a recovery session is pinned to the password-set page', () => {
     path: '/',
   });
 
+  test('THE SETTER: a genuine recovery link mints the marker and confines for real', async ({
+    context,
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    /**
+     * Every other test in this file injects the marker and drives the GATE. That
+     * is half the control, and — per the deletion-notice lesson (CLAUDE.md 11f) —
+     * the half that fails loudly. If `auth/confirm` ever stopped SETTING the
+     * marker, a real reset link would silently become an unconfined full session:
+     * exactly the F0.5 HIGH-severity hole, with every gate test still green.
+     *
+     * `generateLink` mints a real, verifiable token server-side and returns it
+     * WITHOUT sending any email — so the whole chain (real token → verifyOtp →
+     * marker → confinement) runs with no inbox and no mail quota spent.
+     */
+    const { data, error } = await admin.auth.admin.generateLink({
+      type: 'recovery',
+      email: EMAIL,
+    });
+    if (error || !data?.properties?.hashed_token) {
+      throw new Error(`could not mint a recovery token: ${error?.message}`);
+    }
+
+    // `next` is deliberately hostile-ish: a recovery link must ignore it and go
+    // to the password-set page regardless. Honouring it would let a crafted
+    // reset link land a recovering session anywhere in the app.
+    await page.goto(
+      `/auth/confirm?token_hash=${data.properties.hashed_token}&type=recovery&next=/stocks`,
+    );
+    await expect(page).toHaveURL(/\/account\/update-password/);
+
+    const marker = (await context.cookies()).find((c) => c.name === PW_RECOVERY_COOKIE);
+    expect(marker, 'auth/confirm did not set the recovery marker').toBeTruthy();
+    expect(marker!.httpOnly, 'the marker must be httpOnly').toBe(true);
+    // Bound to THIS user, which is what stops a stale marker caging someone else.
+    expect(marker!.value, 'the marker must carry the recovering user id').toBe(userId);
+
+    // And the session it minted really is confined — asserted as an outcome
+    // rather than inferred from the cookie being present.
+    await page.goto('/stocks');
+    await expect(page, 'a real recovery session must not reach the app').toHaveURL(
+      /\/account\/update-password/,
+    );
+  });
+
   test('a MATCHING marker confines the session to the password-set page', async ({
     context,
     page,

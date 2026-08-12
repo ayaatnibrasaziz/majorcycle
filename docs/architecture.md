@@ -890,7 +890,18 @@ files close that, and two real defects fell out of writing them.
 |---|---|---|
 | `e2e/auth-contracts.spec.ts` | pure | `safeNextPath` — the open-redirect guard in (e) — and `friendlyAuthError`, neither of which any test had ever called. Plus both flow markers' cookie attributes, asserted side by side so a change to one that is not made to the other reads as a disagreement rather than as drift |
 | `e2e/auth-forms.spec.ts` | credential-free browser | The nine form edge cases (empty submit, malformed email, wrong password, long email, short password, the in-flight disabled state, the reset non-leak) and the FAILURE behaviour of `/auth/callback` + `/auth/confirm`, which are the only two auth endpoints open to a stranger |
-| `e2e/recovery-confinement.spec.ts` | throwaway account | Confinement (a) driven against a **live session**. Only the F0.6 leg — a stale marker with *no* session — had ever been tested, and that is the mildest of the rule's three outcomes |
+| `e2e/recovery-confinement.spec.ts` | throwaway account | Confinement (a) driven against a **live session**, plus the SETTER. Only the F0.6 leg — a stale marker with *no* session — had ever been tested, and that is the mildest of the rule's three outcomes |
+
+⚠️ **The GATE and the SETTER again (11f), and this one was found by asking what the
+browser check could NOT prove.** Six of those tests inject the marker and drive the gate.
+None of them could see `auth/confirm` failing to SET it — and that failure is the F0.5
+HIGH-severity hole itself: a real reset link becomes an unconfined full session, with
+every gate test still green. Closed by `admin.auth.admin.generateLink({ type: 'recovery' })`,
+which mints a genuine verifiable token **without sending mail**, so the whole chain (real
+token → `verifyOtp` → marker → confinement) runs with no inbox and no quota spent. It also
+asserts the link **ignores `next`** — honouring it would let a crafted reset link land a
+recovering session anywhere in the app. Proven by deleting the `cookies.set` line: **1
+failed (the setter), 6 passed (the gates)**.
 
 ⚠️ **The rule `recoveryMarker?.value === userId` has three outcomes and they fail in
 opposite directions**: a matching marker must confine (or a forwarded reset link is a
