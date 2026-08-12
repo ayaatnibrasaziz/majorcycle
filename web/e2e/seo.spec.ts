@@ -234,10 +234,25 @@ test.describe('page metadata on the rendered HTML', () => {
 test.describe('noindex pages', () => {
   for (const page of NOINDEX) {
     test(`${page.path} says noindex, and is NOT blocked in robots.txt`, async ({
+      context,
       page: pw,
       request,
     }) => {
+      // /deletion-requested is gated on the marker its own flow sets
+      // (lib/account.ts). Without it this navigates to /login — which is ALSO
+      // noindex, so the assertion below would pass against the wrong document.
+      // That is precisely the failure this file's header warns about, and it is
+      // why the "did not stay put" check underneath it is not optional.
+      if (page.path === '/deletion-requested') {
+        await context.addCookies([
+          { name: 'mc_deletion_notice', value: '1', domain: 'localhost', path: page.path },
+        ]);
+      }
       await pw.goto(page.path);
+      expect(
+        new URL(pw.url()).pathname,
+        `${page.path} redirected — every assertion below would be about another page`,
+      ).toBe(page.path);
 
       const robots = await pw.locator('meta[name="robots"]').getAttribute('content');
       expect(robots, `${page.path} must declare noindex`).toContain('noindex');

@@ -104,6 +104,68 @@ test.describe('auth-aware 404', () => {
   });
 });
 
+test.describe('the deletion confirmation is for one reader only', () => {
+  /**
+   * `/deletion-requested` says "your account is now scheduled for permanent
+   * deletion" — true of exactly one person at one moment. It is public (the
+   * deletion flow signs you out globally, so it cannot read a session) and until
+   * Layer G it had no gate at all: any stranger typing the URL was told their
+   * account was being deleted.
+   *
+   * The marker is set by `requestAccountDeletion` right before it redirects.
+   * These tests drive the GATE; the setter is exercised by the real flow.
+   */
+  const MARKER = {
+    name: 'mc_deletion_notice',
+    value: '1',
+    domain: 'localhost',
+    // Path-scoped exactly as the server sets it — a mismatch here would make the
+    // test pass against a cookie the real browser would never send.
+    path: '/deletion-requested',
+  };
+
+  test('a stranger with no marker is sent to /login', async ({ page }) => {
+    await page.goto('/deletion-requested');
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test('the browser that just deleted sees the confirmation', async ({ context, page }) => {
+    await context.addCookies([MARKER]);
+    const res = await page.goto('/deletion-requested');
+    expect(res?.status()).toBe(200);
+    await expect(page).toHaveURL(/\/deletion-requested/);
+    // The control: assert the PAGE, not just the status. A 200 on a redirected
+    // shell would otherwise read as a pass.
+    await expect(
+      page.getByRole('heading', { name: /account deletion scheduled/i }),
+    ).toBeVisible();
+  });
+
+  test('the marker survives a refresh — it is time-boxed, not one-shot', async ({
+    context,
+    page,
+  }) => {
+    // A one-shot marker would bounce anyone who simply refreshed the page they
+    // had just been sent to, which is worse than the problem it solves.
+    await context.addCookies([MARKER]);
+    await page.goto('/deletion-requested');
+    await page.reload();
+    await expect(page).toHaveURL(/\/deletion-requested/);
+  });
+
+  test('the marker is not a key to anything else', async ({ context, page }) => {
+    // It unlocks one static page and grants nothing. If it ever starts standing
+    // in for a session, this turns red.
+    await context.addCookies([{ ...MARKER, path: '/' }]);
+    for (const route of ['/stocks', '/account', '/results']) {
+      await page.goto(route);
+      await expect(page, `${route} must still require a session`).toHaveURL(
+        /\/login\?next=/,
+      );
+    }
+  });
+});
+
 test.describe('recovery-confinement invariants (F0.6)', () => {
   test('a stale recovery marker WITHOUT a session cannot confine — logged-out user still goes to /login, not update-password', async ({
     context,
@@ -195,6 +257,19 @@ test.describe('authenticated flows', () => {
         /\/stocks/
       );
     }
+
+    // Ordering, stated as a test rather than as a comment beside the code: the
+    // new deletion-marker gate sits AFTER the signed-out-only bounce, so holding
+    // the marker can never let a signed-in reader onto that page. If the two
+    // checks are ever reordered, this is what says so.
+    await page.context().addCookies([
+      { name: 'mc_deletion_notice', value: '1', domain: 'localhost', path: '/deletion-requested' },
+    ]);
+    await page.goto('/deletion-requested');
+    await expect(
+      page,
+      'a signed-in reader holding the marker must still go to /stocks',
+    ).toHaveURL(/\/stocks/);
 
     // Sign out now lives in the header account menu rather than at the foot of the
     // sidebar (F3 Step 10) — that keeps it ONE click, which matters most on a shared

@@ -205,7 +205,16 @@ for (const path of READING_PAGES) {
 }
 
 for (const path of FORM_PAGES) {
-  test(`${path} — every readable element clears the WCAG floor`, async ({ page }) => {
+  test(`${path} — every readable element clears the WCAG floor`, async ({ context, page }) => {
+    // /deletion-requested is gated on the marker the deletion flow sets (see
+    // lib/account.ts). Without it the page redirects to /login and `measure()`
+    // fails its "did not stay put" assertion — correctly, but for the wrong
+    // reason. Hand it the marker so it measures the page it is named after.
+    if (path === '/deletion-requested') {
+      await context.addCookies([
+        { name: 'mc_deletion_notice', value: '1', domain: 'localhost', path },
+      ]);
+    }
     const probe = await measure(page, path, 'chrome');
 
     // Same control as above, at a lower floor: these cards carry less text than an

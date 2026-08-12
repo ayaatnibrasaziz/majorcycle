@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { DELETION_NOTICE_COOKIE, DELETION_NOTICE_PATH } from '@/lib/account';
 import { PW_RECOVERY_COOKIE, PW_RECOVERY_ALLOWED_PATHS } from '@/lib/authRecovery';
 import { accessDenialReason, hasAccess } from '@/lib/entitlement';
 import { INTERNAL_HEADER, hasInternalSecret } from '@/lib/internalAuth';
@@ -226,6 +227,21 @@ export async function proxy(request: NextRequest) {
     // caller with a redirect and a signed-out one with the page. A shared cache keyed
     // on the URL alone could not tell them apart.
     return NextResponse.redirect(new URL('/stocks', request.url), { headers: NO_STORE });
+  }
+
+  // The deletion confirmation is for ONE reader: the person whose browser just
+  // completed the request. Being signed-out-only (above) answers "should a
+  // signed-in reader see this?", never "is this signed-out reader the right
+  // one?" — so until now any stranger typing the URL was told their account was
+  // scheduled for permanent deletion. `requestAccountDeletion` drops the marker
+  // (lib/account.ts) immediately before redirecting here.
+  //
+  // Deliberately placed AFTER the signed-out-only bounce, so a signed-in reader
+  // still goes to /stocks exactly as before and this can only ever narrow the
+  // signed-out case. /login is the right destination: the deletion flow has just
+  // signed them out globally, and it is where the page's own button points.
+  if (pathname === DELETION_NOTICE_PATH && !request.cookies.get(DELETION_NOTICE_COOKIE)) {
+    return NextResponse.redirect(new URL('/login', request.url), { headers: NO_STORE });
   }
 
   return response;
