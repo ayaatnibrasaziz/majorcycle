@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing), G2 (design foundations) and G3 (public chrome) built and audited; PR #89 open and deliberately unmerged until the layer is done. The legal pages are NOT yet accepted by the owner.**
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing), G2 (design foundations), G3 (public chrome) and G3.5 (the auth net — Playwright 180 → 248) built and audited; PR #89 open and deliberately unmerged until the layer is done. The legal pages are NOT yet accepted by the owner.**
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -738,6 +738,39 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > **Still to come in Layer G:** the approved landing page, removing `/methodology` (it
 > becomes the `#how-it-works` anchor), and `/learn`.
 
+> ### ✅ G3.5 (the auth net) — COMPLETE 2026-08-12. Owner-requested, still inside PR #89.
+>
+> G3's verification drove nine auth form edge cases **by hand** and reported them as
+> passing. The owner's instruction: *everything must be checked by the automatic tests.*
+> Correct — a manual pass expires with the next commit, and the plan they came from had
+> already claimed the suite covered them when it did not.
+>
+> **Playwright 180 → 248 (+68), 0 skipped, 0 flaky.** Three new files, all detailed in
+> `architecture.md` §12(h): `auth-contracts.spec.ts` (pure), `auth-forms.spec.ts`
+> (credential-free browser), `recovery-confinement.spec.ts` (throwaway account), plus 4
+> tests added to `auth.spec.ts`.
+>
+> **Two real defects fell out of writing them**, both in `friendlyAuthError`, both shown
+> to a real reader as raw Supabase English: `"…already BEEN registered"` does not contain
+> `"already registered"`, and the 60-second reset cooldown says neither "rate limit" nor
+> "too many". Fixed. **Every new guard was broken on purpose first** — the open-redirect
+> guard, the `httpOnly` flag, the disabled-button state, both request counters (each
+> observed returning 1, so `toBe(0)` is not vacuous) and the confinement itself.
+>
+> **Three of my own claims were wrong and corrected by running them:** a bare
+> `[role="alert"]` also matches Next's route announcer (so `toHaveCount(1)` was asserting
+> the announcer); asserting a rejected `?next=` is absent from `page.content()` is wrong
+> because Next echoes the URL into the RSC payload — the right assertion is that no
+> `href`/`action` carries it; and a `signIn` helper that does not wait races LoginForm's
+> hard `window.location.assign`, so the caller's own `goto` is discarded.
+>
+> ⚠️ **OPEN, owner's decision — not built.** `/auth/callback` and `/auth/confirm` both
+> redirect to `/login?error=auth_callback_failed` on failure, and **`LoginForm` never
+> reads `?error=`**. So an expired or already-used confirmation link lands the reader on
+> a blank sign-in form with no explanation of what went wrong — the app produces the
+> diagnosis and discards it. Fixing it means new copy and a new banner on the sign-in
+> page, which is a design call, so it is recorded here rather than done.
+
 - [x] **Fix the two material contrast failures INSIDE Layer G** (not H): the rating tier
       badges **2.38 → 4.73:1** (the page now renders the REAL `.tier-badge`, so no locked
       tier colour was touched) and the "Full disclaimer" link **2.69 → 6.8:1**. The
@@ -934,7 +967,7 @@ Order of priority TBD based on user feedback. Candidate features:
 ✅ Phase 1 Layer F: Static Pages + Subscription  (built + merged PR #72 + live 2026-08-01)
    ✅  └─ production-readiness audit F-A1…F-A6 COMPLETE 2026-08-02 → docs/layer-f-audit.md
    ↓
-🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1+G2+G3 done; PR #89 open, unmerged)
+🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1+G2+G3+G3.5 done; PR #89 open, unmerged)
    ↓
    Phase 1 Layer H: Hardening (Phase 1.5)  — owns 375px, a11y, cross-browser, Sentry
    ↓

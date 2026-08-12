@@ -882,6 +882,31 @@ deletion. Same mechanism as (a), opposite direction: `mc_pw_recovery` *restricts
 live session may go, this one *permits* one page to a reader who has no session at all.
 See §6.5 for the full rationale and the three gates that page needs.
 
+**(h) The auth net, completed (Layer G, 2026-08-12) — 180 → 248 Playwright tests.** Every
+control listed above existed; most of them had never been *executed by a test*. Three
+files close that, and two real defects fell out of writing them.
+
+| File | Shape | What had no coverage before |
+|---|---|---|
+| `e2e/auth-contracts.spec.ts` | pure | `safeNextPath` — the open-redirect guard in (e) — and `friendlyAuthError`, neither of which any test had ever called. Plus both flow markers' cookie attributes, asserted side by side so a change to one that is not made to the other reads as a disagreement rather than as drift |
+| `e2e/auth-forms.spec.ts` | credential-free browser | The nine form edge cases (empty submit, malformed email, wrong password, long email, short password, the in-flight disabled state, the reset non-leak) and the FAILURE behaviour of `/auth/callback` + `/auth/confirm`, which are the only two auth endpoints open to a stranger |
+| `e2e/recovery-confinement.spec.ts` | throwaway account | Confinement (a) driven against a **live session**. Only the F0.6 leg — a stale marker with *no* session — had ever been tested, and that is the mildest of the rule's three outcomes |
+
+⚠️ **The rule `recoveryMarker?.value === userId` has three outcomes and they fail in
+opposite directions**: a matching marker must confine (or a forwarded reset link is a
+full login), someone else's marker must NOT confine (or a stale cookie cages an innocent
+sign-in), and a marker with no session must not confine (F0.6). Each needs its own
+evidence; a test for one says nothing about the others.
+
+⚠️ **Two defects in `friendlyAuthError` found by pointing the test at the REAL upstream
+strings** rather than at the phrases the function was written against. `"…has already
+BEEN registered"` does not contain `"already registered"`, and the 60-second reset
+cooldown — *"For security purposes, you can only request this after 51 seconds"* — says
+neither "rate limit" nor "too many". Both fell through to the passthrough, so the reader
+got raw GoTrue English. The cooldown is the one a real person actually meets, by pressing
+"Send reset link" twice. **A matcher written from memory of an API's wording is a guess;
+the test is where it stops being one.**
+
 **Auth branding (de-Supabase-ification, Layer F0):** the auth surface is skinned to read as `majorcycle.com`, not a Supabase project. Google sign-in uses **Google Identity Services + `supabase.auth.signInWithIdToken`** (`web/components/GoogleSignIn.tsx`) instead of the redirect-based `signInWithOAuth`, so Google returns the ID token directly to the page and the browser never routes through `*.supabase.co` (no address-bar flash); it falls back to the redirect flow when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is unset. Auth emails go through **Supabase Custom SMTP → Resend** (`noreply@majorcycle.com`) with branded templates that use the **token-hash** pattern (`{{ .SiteURL }}/auth/confirm?token_hash=…`) verified by `web/app/auth/confirm/route.ts` (mirrors `auth/callback`), so email links live on `majorcycle.com`. Redirect targets are pinned to the production origin via `getSiteURL()` (`web/lib/url.ts`). All six auth templates **plus the seven Supabase "security" notification emails** (password / email-address / phone-number changed, sign-in-method linked/removed, MFA method added/removed) are branded with the same slim header (transparent `email-icon.png` + Sora wordmark on a navy gradient) and a shared grey footer (`#f8fafc`) — see `design-system.md` §17. The notification emails are toggle-only in Supabase (no HTML editor in the list view; each is edited at its own `/auth/templates/<slug>` URL) and each carries a "didn't do this? — `security@majorcycle.com`" callout. The password-reset flow lands on the branded `web/app/(public)/account/update-password` page (moved out of the `(app)` shell in F0.5 — see Security posture above). **Free-plan caveat:** the anon Supabase URL is still visible in DevTools/Network (every DB/auth call uses `NEXT_PUBLIC_SUPABASE_URL`) and in the JWT `iss` claim — only the paid Supabase custom auth domain changes that; no user-facing surface exposes it. Full runbook: `plan-mode-auth-virtual-ladybug.md`.
 
 **Email receive vs. send split.** Transactional/auth mail is **sent** via Resend (`noreply@majorcycle.com`; return-path on the `send.majorcycle.com` subdomain so SPF/DKIM/DMARC align). Inbound `security@majorcycle.com` is a **receive-only** inbox via **Cloudflare Email Routing** (root `majorcycle.com` MX → `route1/2/3.mx.cloudflare.net`, root SPF `include:_spf.mx.cloudflare.net`) that forwards to the owner's Gmail — the two coexist because sending lives on the `send.` subdomain and receiving on the root. Cloudflare Email Routing cannot *send*, so owner replies go out **as** `security@majorcycle.com` via a Gmail **"Send mail as"** identity that relays through **Resend SMTP** (`smtp.resend.com:465`, user `resend`, password = a Resend API key), with Gmail set to "reply from the same address the message was sent to." A branded reply/signature template (`reference/email-signature.html` + `web/public/signature-logo.png`) matches those replies to the transactional look. Anti-spoofing: **DMARC is `p=reject`** (strict alignment + `rua`/`ruf` reporting to `security@`) — legit mail passes via Resend's `d=majorcycle.com` DKIM signing.

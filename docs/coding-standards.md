@@ -427,16 +427,34 @@ the wrong shape is how a feature ends up with a green suite and a broken half.
 
 | Shape | Needs | Use it for | Examples |
 |---|---|---|---|
-| **Pure** — no browser, no network | nothing | A rule you can state as a function | `entitlement.spec.ts`, `export-parity.spec.ts`, `public-chrome.spec.ts` |
-| **Credential-free browser** | the dev server | Anything you can reach signed out, incl. a state you can fake with a cookie | `auth.spec.ts`, `seo.spec.ts`, `contrast.spec.ts` |
-| **Throwaway account** | Supabase service key | A flow that must actually RUN, with side-effects too destructive for the shared login | `entitlement-routes.spec.ts`, `stripe-webhook.spec.ts`, `deletion-notice.spec.ts` |
+| **Pure** — no browser, no network | nothing | A rule you can state as a function | `entitlement.spec.ts`, `export-parity.spec.ts`, `public-chrome.spec.ts`, `auth-contracts.spec.ts` |
+| **Credential-free browser** | the dev server | Anything you can reach signed out, incl. a state you can fake with a cookie | `auth.spec.ts`, `auth-forms.spec.ts`, `seo.spec.ts`, `contrast.spec.ts` |
+| **Throwaway account** | Supabase service key | A flow that must actually RUN, with side-effects too destructive for the shared login | `entitlement-routes.spec.ts`, `stripe-webhook.spec.ts`, `deletion-notice.spec.ts`, `recovery-confinement.spec.ts` |
 
 **The throwaway pattern** — `admin.auth.admin.createUser` in `beforeAll`,
 `admin.auth.admin.deleteUser` in `afterAll` (the `profiles` row follows via cascade),
-`@example.com` so no mail is deliverable, and `test.describe.configure({ mode: 'serial' })`
-because every test mutates one row. `afterAll` runs even when the test fails, so a
-deliberately-broken run leaves nothing behind — worth verifying once after any session
-that adds one.
+`@example.com` so no mail is deliverable, and usually
+`test.describe.configure({ mode: 'serial' })` because every test mutates one row.
+`afterAll` runs even when the test fails, so a deliberately-broken run leaves nothing
+behind — worth verifying once after any session that adds one.
+
+⚠️ **`mode: 'serial'` is for shared MUTABLE state, not for "these tests are related" —
+it SKIPS every remaining test after the first failure.** `recovery-confinement.spec.ts`
+shares only its fixture user, so it runs in default mode deliberately. The difference
+showed up while breaking the confinement on purpose: serial reported *one* failure and
+hid the two controls, and those controls are what say which DIRECTION it broke in —
+"confined when it shouldn't be" and "not confined when it should be" are opposite bugs
+with opposite fixes. In default mode the same break reported 2 failed / 4 passed and the
+shape read off the summary line. For a reader who cannot debug, a failure that names its
+own direction is worth more than a short failure list.
+
+⚠️ **Scope a `[role="alert"]` locator, always.** Next renders a route announcer —
+`<p id="__next-route-announcer__" role="alert">` — on every page, in dev *and* in
+production, and it is normally empty. A bare `page.locator('[role="alert"]')` therefore
+finds one element on a pristine form and two after a real error, so `toHaveCount(1)` was
+silently asserting the announcer. Use `form [role="alert"]`. Caught only because
+`auth-forms.spec.ts` carried a no-error control; a suite that only ever looks at the
+error state would never have noticed.
 
 ⚠️ **A gate and its setter are different failure modes, and one test rarely covers both.**
 The deletion-notice work is the case study: handing the browser a marker cookie proves the

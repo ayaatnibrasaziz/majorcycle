@@ -194,6 +194,104 @@ const PASSWORD = process.env.E2E_PASSWORD;
 test.describe('authenticated flows', () => {
   test.skip(!EMAIL || !PASSWORD, 'set E2E_EMAIL + E2E_PASSWORD to run');
 
+  /**
+   * Sign in and land wherever `next` says. Shared by the tests below.
+   *
+   * ⚠️ The wait is load-bearing, not tidiness. LoginForm finishes with a HARD
+   * `window.location.assign(next)` (deliberately — a client transition can race
+   * the freshly-set auth cookies). A caller that navigates straight afterwards
+   * is racing that assign, and the caller's own `goto` gets discarded: the first
+   * version of this helper returned immediately and the update-password test
+   * landed on /stocks looking for a heading that was never going to be there.
+   */
+  async function signIn(page: import('@playwright/test').Page, next?: string) {
+    await page.goto(next ? `/login?next=${encodeURIComponent(next)}` : '/login');
+    await page.fill('input#email', EMAIL!);
+    await page.fill('input#password', PASSWORD!);
+    await page.getByRole('button', { name: /^sign in$/i }).click();
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'));
+  }
+
+  test('a ?next= destination survives sign-in', async ({ page }) => {
+    // The trial funnel depends on this: /pricing sends a signed-out reader to
+    // /signup?next=/account and /login carries the same parameter, so a reader
+    // who bounced off a gated page must land back on it rather than on /stocks.
+    // Claimed as suite-covered by the Layer G plan; it was not.
+    await signIn(page, '/account');
+    await expect(page).toHaveURL(/\/account/);
+  });
+
+  test('an off-site ?next= cannot redirect a freshly authenticated session', async ({ page }) => {
+    // safeNextPath's rejection table is pinned in auth-contracts.spec.ts. This is
+    // the one that matters in practice: the guard runs on a value that is about
+    // to be handed to window.location.assign WITH a live session in the jar.
+    await signIn(page, 'https://evil.example/harvest');
+    await expect(page).toHaveURL(/\/stocks/);
+    expect(page.url()).not.toContain('evil.example');
+  });
+
+  test('a GET cannot sign you out, and cannot clear the recovery marker', async ({ page }) => {
+    // Both routes are POST-only precisely so a link, an <img>, or a speculative
+    // prefetch cannot fire them. Signed OUT the proxy answers first (covered in
+    // auth-forms.spec.ts); this is the half where there is a session to lose.
+    await signIn(page);
+    await expect(page).toHaveURL(/\/stocks/);
+
+    for (const route of ['/auth/signout', '/auth/recovery-done']) {
+      const res = await page.request.get(route, { maxRedirects: 0 });
+      expect(res.status(), `GET ${route} must not be handled`).toBe(405);
+    }
+
+    // The session is intact — asserting the outcome, not the status code alone.
+    await page.goto('/account');
+    await expect(page).toHaveURL(/\/account/);
+  });
+
+  test('the password-set form validates locally and never sends a bad update', async ({ page }) => {
+    // Both checks run BEFORE supabase.auth.updateUser, so this can be driven on
+    // the real test account without ever changing its password — which the
+    // request counter below proves rather than assumes.
+    await signIn(page);
+    await page.goto('/account/update-password');
+    await expect(page.getByRole('heading', { name: /set a new password/i })).toBeVisible();
+
+    // Count only WRITES to the user endpoint: aborting reads would break the
+    // session refresh and fail the test for an unrelated reason.
+    let writes = 0;
+    await page.route('**/auth/v1/user*', async (route) => {
+      if (route.request().method() === 'GET') return route.continue();
+      writes += 1;
+      await route.abort();
+    });
+
+    // Mismatch — the pair is checked, not just each field.
+    await page.fill('input#password', 'a-long-enough-password');
+    await page.fill('input#confirm', 'a-different-password');
+    await page.getByRole('button', { name: /update password/i }).click();
+    await expect(page.locator('form [role="alert"]')).toHaveText(/do not match/i);
+
+    // Too short, with the browser's own validation switched off so the JS check
+    // is the one under test. Set as a property, not by stripping React's
+    // minlength attribute — that would log a hydration mismatch and could be
+    // undone by the next render.
+    await page.locator('form').first().evaluate((f: HTMLFormElement) => {
+      f.noValidate = true;
+    });
+    await page.fill('input#password', 'short12');
+    await page.fill('input#confirm', 'short12');
+    await page.getByRole('button', { name: /update password/i }).click();
+    await expect(page.locator('form [role="alert"]')).toHaveText(/at least 8 characters/i);
+
+    expect(writes, 'no password change may have been attempted').toBe(0);
+
+    // The escape hatch is present and is a real POST to /auth/signout — a
+    // recovery-confined session has no other way off this page.
+    const escape = page.getByRole('button', { name: /cancel and return to sign in/i });
+    await expect(escape).toBeVisible();
+    const form = page.locator('form[action="/auth/signout"]');
+    await expect(form).toHaveAttribute('method', /post/i);
+  });
+
   test('email login → /stocks, sign-out → /login, re-gate works', async ({ page }) => {
     await page.goto('/login');
     await page.fill('input#email', EMAIL!);
