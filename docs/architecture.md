@@ -939,26 +939,30 @@ got raw GoTrue English. The cooldown is the one a real person actually meets, by
 "Send reset link" twice. **A matcher written from memory of an API's wording is a guess;
 the test is where it stops being one.**
 
-**(j) The legal documents, rebuilt (Layer G, 2026-08-13) — 260 → 272 Playwright tests.**
+**(j) The legal documents, rebuilt (Layer G, 2026-08-13) — 260 → 277 Playwright tests.**
 `/disclaimer`, `/terms` and `/privacy` moved from a very tall card to a document layout
 with a sticky contents rail, then were re-set at the site's own type sizes after owner
 feedback. The design rationale and both rounds of measurements are in `design-system.md`
 §9. Architecturally there are four things worth recording:
 
-- **`e2e/legal-doc.spec.ts` (credential-free browser, 12).** Guards the column measure at
-  six widths, one contents list visible at a time, the "not financial advice" notice above
-  the fold at 375px (CLAUDE.md #4/#12), every rail entry resolving to a real section, the
-  rail staying pinned, and every clause click marking the clause it names.
+- **`e2e/legal-doc.spec.ts` (credential-free browser, 17).** Guards the column at six
+  widths **and in characters per line** (45–75, walking a DOM Range to find the wrap), one
+  contents list visible at a time, the "not financial advice" notice above the fold at
+  375px (CLAUDE.md #4/#12), every rail entry resolving to a real section, the rail staying
+  pinned, every clause click marking the clause it names, and — measured in the browser at
+  1280 and 375 — that an auth card and a legal document render the SAME title and body
+  size, including `AuthCard`'s 22px phone step-down.
 - **The scroll-spy is `lib/useScrollSpy.ts`** — the same one the Stock Detail subnav and
   the offline report use, not a second implementation. It gained ONE opt-in option,
   `keepClickedAtPageEnd`, defaulting off so both existing callers are byte-identical.
 - **`LEGAL_DOCS` in `lib/publicNav.ts`** is the single source for the three documents;
   `FOOTER_LINKS` spreads it and `legal-doc.spec.ts` iterates it, so a fourth document is
   covered by the guard the moment it exists.
-- **`--doc-*` in `globals.css`** is where a legal page's four sizes are chosen. Deliberate
-  known duplication: `--doc-title` (24px) and `--doc-body` (13px) restate values hard-coded
-  in `AuthCard.tsx`, because unifying them would mean editing the form pages, which the
-  owner's instruction scoped out. Close it when those pages are next touched.
+- **`--pub-*` in `globals.css`** is the signed-out site's scale, read by BOTH `AuthCard`
+  (six form pages) and the legal documents, so 24px and 13px are written down once. Plus
+  `--measure-doc` (560px) for the legal column, which deliberately does **not** reuse
+  `--measure-prose` — that is 680px because it holds ~68 characters at 17px, and
+  `/methodology` still renders at 17px.
 
 ⚠️ **A type change broke a shared hook three files away — the second-order effect is the
 lesson.** At 13px the whole of `/terms` is ~1.9 screens, so clauses 05–08 sit where no

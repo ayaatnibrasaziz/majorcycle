@@ -140,15 +140,34 @@
   --rd-h1: 36px;
   --rd-display: 48px;
 
-  /* ── Document sizes — /disclaimer, /terms, /privacy ONLY ──────────────────
-     Not a third scale: every one of these is a size already rendered on a live
-     public page (24 and 13 from the auth cards, 17 and 12 from the reading
-     scale above). See the DOCUMENT ROLES block near `.reading` for why a legal
-     page is set at the site's ordinary sizes rather than the article sizes. */
-  --doc-title: 24px;
-  --doc-h: 17px;
-  --doc-body: 13px;
-  --doc-label: 12px;
+  /* ── PUBLIC-PAGE sizes — the signed-out site's own scale ─────────────────
+     Consumed by `AuthCard` (login, signup, contact, reset-password,
+     deletion-requested, pricing) AND by the three legal documents, so the two
+     cannot drift apart. Named --pub-* rather than --doc-*: they were introduced
+     for the legal pages, but a token called "doc" that the sign-in card reads
+     is the kind of misleading name this repo has been bitten by.
+
+     ⚠️ --pub-title-sm exists because AuthCard steps its title down on a phone
+     (22px below 640px, 24px above) and the legal masthead does not. Without it,
+     "consume the token" would have silently GROWN every form title on mobile —
+     a 2px change nobody would have reported and no test was watching.
+
+     Not a third scale: --pub-h and --pub-label are the same 17px and 12px as
+     --rd-body and --rd-micro above; --pub-title/--pub-body are the sizes the
+     auth cards have always rendered. `e2e/legal-doc.spec.ts` measures the auth
+     card and the legal document in the browser and fails if they disagree. */
+  --pub-title: 24px;
+  --pub-title-sm: 22px;
+  --pub-h: 17px;
+  --pub-body: 13px;
+  --pub-label: 12px;
+
+  /* The legal document's column. NOT --measure-prose (680px): that holds ~68
+     characters at --rd-body (17px) and /methodology still needs it. At
+     --pub-body (13px) the same 680px box fits ~91 characters, well past the
+     45-75 band, because smaller letters mean MORE of them per line. Measured,
+     then set. */
+  --measure-doc: 560px;
 
   /* Line lengths. --measure-prose holds ~68 characters at --rd-body, which
      is the middle of the 45–75 band; --measure-narrow is the auth-card
@@ -1861,10 +1880,10 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
      already uses. Nothing here is invented — every value is a size measured on
      a live public page, which is the whole point:
 
-        --doc-title  24px  the AuthCard h1, i.e. /contact's title exactly
-        --doc-h      17px  = --rd-body, already on / and /methodology
-        --doc-body   13px  the AuthCard body size, used across all six forms
-        --doc-label  12px  = --rd-micro, the floor
+        --pub-title  24px  the AuthCard h1 from 640px up (--pub-title-sm 22px below)
+        --pub-h      17px  = --rd-body, already on / and /methodology
+        --pub-body   13px  the AuthCard body size, used across all six forms
+        --pub-label  12px  = --rd-micro, the floor
 
      Four sizes on the page, all of them already elsewhere on the site. The
      ratio that matters — heading over body — is 17/13 = 1.31, which is a
@@ -1886,16 +1905,16 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   /* The document's own body size. Scoped to `.legal-layout` so it overrides
      `.reading`'s 17px (0,2,0 beats 0,1,0) without touching any other page that
      opts into the reading scale. */
-  .reading .legal-layout { font-size: var(--doc-body); }
-  .reading .legal-layout .small { font-size: var(--doc-label); }
-  .reading .legal-layout .micro { font-size: var(--doc-label); }
+  .reading .legal-layout { font-size: var(--pub-body); }
+  .reading .legal-layout .small { font-size: var(--pub-label); }
+  .reading .legal-layout .micro { font-size: var(--pub-label); }
   .reading .doc-title {
-    font-size: var(--doc-title);
+    font-size: var(--pub-title);
     line-height: 1.2;
     letter-spacing: -0.5px;
   }
   .reading .doc-h {
-    font-size: var(--doc-h);
+    font-size: var(--pub-h);
     line-height: 1.3;
     letter-spacing: -0.25px;
   }
@@ -1962,7 +1981,7 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 @media (min-width: 1024px) {
   .legal-layout {
     display: grid;
-    grid-template-columns: 200px var(--measure-prose);
+    grid-template-columns: 200px var(--measure-doc);
     column-gap: 48px;
     align-items: start;
     justify-content: center;

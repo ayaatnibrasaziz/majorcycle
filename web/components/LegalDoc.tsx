@@ -91,15 +91,15 @@ export function LegalDoc({ title, updated, intro, sections }: LegalDocProps) {
             contents, and a sibling rail would land above both. */}
         <LegalContentsRail sections={toc} />
 
-        {/* ⚠️ `max-w-[var(--measure-prose)] mx-auto` is not belt-and-braces. Inside
-            the grid it is a no-op (the column IS --measure-prose), but the frame
+        {/* ⚠️ `max-w-[var(--measure-doc)] mx-auto` is not belt-and-braces. Inside
+            the grid it is a no-op (the column IS --measure-doc), but the frame
             is `wide` for the rail's sake, and below 1024px `.legal-layout` is
             plain block flow — so without this the document stretched to the full
             frame. Measured at 1023px before the fix: 973px, which is ~110
             characters of 17px body copy per line against a 45–75 band. The
             regression lives in exactly the window where the rail has gone and
             nothing else is holding the measure. */}
-        <article className="mx-auto max-w-[var(--measure-prose)] overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)]">
+        <article className="mx-auto max-w-[var(--measure-doc)] overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)]">
           {/* No shadow. `--shadow-lift` is for an object floating on the page and
               `--shadow-sm` still reads as one; a document IS the page, and at
               2,000px tall an ambient blur underneath just looks like it is about
@@ -145,10 +145,10 @@ export function LegalDoc({ title, updated, intro, sections }: LegalDocProps) {
               <ol className="mt-2.5 grid list-none gap-x-6 gap-y-1.5 pl-0 sm:grid-cols-2">
                 {toc.map((s, i) => (
                   <li key={s.id} className="mt-0 flex items-baseline gap-2.5">
-                    <span className="doc-num text-[length:var(--doc-label)]" aria-hidden="true">
+                    <span className="doc-num text-[length:var(--pub-label)]" aria-hidden="true">
                       {String(i + 1).padStart(2, '0')}
                     </span>
-                    <a href={`#${s.id}`} className="text-[length:var(--doc-body)] no-underline">
+                    <a href={`#${s.id}`} className="text-[length:var(--pub-body)] no-underline">
                       {s.heading}
                     </a>
                   </li>

@@ -788,6 +788,24 @@ change to its default, so the two existing callers — the Stock Detail subnav a
 offline report, both paid surfaces — stayed byte-identical. When a shared utility is wrong
 for a *new* caller, widen it for that caller rather than re-tuning it for everyone.
 
+**7. Replacing a hand-typed value with a token? Check whether the value was RESPONSIVE
+first.** Deduplicating the public type scale meant pointing `AuthCard` at `--pub-title`
+(24px) instead of its own literal. Its literal was `text-[22px] sm:text-[24px]` — **two**
+values, not one. A straight swap would have grown every form title on a phone by 2px:
+invisible in review, unreported by any user, and watched by nothing. Hence
+`--pub-title-sm`, and hence a test that measures the phone breakpoint specifically. When
+that test was broken on purpose by deleting the step, the title fell to **14px** — a far
+worse outcome than the 2px the refactor would have caused, and a good illustration of how
+much a single missing class can move.
+
+**8. A measurement in the wrong UNIT is not a measurement.** The legal column was guarded
+as `width <= 680px` and passed while running **91 characters per line**, because the type
+had shrunk underneath it and nothing about the width had changed. Pixels were never the
+requirement; the readable band (45–75 characters) was. The guard now walks a DOM Range
+along a real paragraph to find where it wraps, and bounds it on **both** sides — an
+over-narrow column that breaks every few words satisfies a one-sided bound and is just as
+unreadable. **Assert the thing the reader experiences, in the unit they experience it in.**
+
 ---
 
 ## 15. Previewing & Verifying Authenticated Pages Locally

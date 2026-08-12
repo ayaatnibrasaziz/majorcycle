@@ -39,7 +39,7 @@ const DOC_PATHS = LEGAL_DOCS.map((d) => d.href);
 /** The rail (desktop) and the inline list (mobile) share this label. */
 const CONTENTS = 'nav[aria-label="Contents"]';
 
-/** The document's own body size (--doc-body) means the stylesheet has applied. */
+/** The document's own body size (--pub-body) means the stylesheet has applied. */
 async function ready(page: Page): Promise<void> {
   await expect
     .poll(async () =>
@@ -63,10 +63,58 @@ test.describe('the document layout', () => {
           scrollW: document.documentElement.scrollWidth,
           clientW: document.documentElement.clientWidth,
         }));
-        expect(artW, `${path} at ${width}px is ${artW}px wide`).toBeLessThanOrEqual(680);
+        // Against the TOKEN, not a literal — `--measure-doc` is where the column
+        // is chosen, so this cannot drift from it.
+        const measure = await page.evaluate(() =>
+          parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--measure-doc')),
+        );
+        expect(artW, `${path} at ${width}px is ${artW}px wide`).toBeLessThanOrEqual(measure);
         // CLAUDE.md #3 — no horizontal scroll on a phone.
         expect(scrollW, `${path} scrolls sideways at ${width}px`).toBeLessThanOrEqual(clientW);
       }
+    });
+
+    test(`${path} keeps its lines inside the readable band`, async ({ page }) => {
+      // ⚠️ The pixel width above is NOT this assertion. A column can be the right
+      // number of pixels and the wrong number of CHARACTERS, which is what the
+      // eye actually cares about — and that is exactly what happened here: the
+      // 680px column was correct at 17px body and became **91 characters** the
+      // moment the body dropped to 13px, because smaller letters mean more of
+      // them per line. Nothing about the width had changed.
+      //
+      // So measure the real thing: how many characters fit on the first visual
+      // line of a real paragraph. 45-75 is the long-established readable band.
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.goto(path);
+      await ready(page);
+
+      const cpl = await page.evaluate(() => {
+        const para = [...document.querySelectorAll('article section p')].find(
+          (e) => (e.textContent ?? '').trim().length > 110,
+        );
+        if (!para) return null;
+        const node = [...para.childNodes].find(
+          (n) => n.nodeType === 3 && (n.textContent ?? '').trim().length > 60,
+        );
+        if (!node) return null;
+        // Walk a Range one character at a time; the first index that produces a
+        // second client rect is the first index that wrapped.
+        const range = document.createRange();
+        let last = 0;
+        for (let i = 1; i <= (node.textContent ?? '').length; i++) {
+          range.setStart(node, 0);
+          range.setEnd(node, i);
+          if (range.getClientRects().length > 1) return i - 1;
+          last = i;
+        }
+        return last;
+      });
+
+      expect(cpl, `${path}: no paragraph long enough to measure`).not.toBeNull();
+      expect(cpl!, `${path} runs ${cpl} characters per line`).toBeLessThanOrEqual(75);
+      // The control: a column so narrow that it breaks every few words would
+      // satisfy the bound above, and is just as unreadable.
+      expect(cpl!, `${path} runs only ${cpl} characters per line`).toBeGreaterThanOrEqual(45);
     });
 
     test(`${path} shows exactly one contents list at a time`, async ({ page }) => {
@@ -102,6 +150,69 @@ test.describe('the document layout', () => {
       expect(box.y + box.height, `${path}: the notice ends below the fold`).toBeLessThanOrEqual(vh);
     });
   }
+});
+
+test.describe('the public pages share ONE set of sizes', () => {
+  /**
+   * ⚠️ This is the guard for a duplication, not for a look.
+   *
+   * `--pub-title` (24px) and `--pub-body` (13px) were hand-typed inside
+   * `AuthCard.tsx` while the legal documents declared the same two numbers as
+   * tokens. Both were correct, so nothing was visibly wrong — and that is the
+   * failure mode: the day somebody edits one, the sign-in card and the terms
+   * page quietly stop matching, each looking perfectly fine on its own. It is
+   * the same shape as every 11c incident in CLAUDE.md.
+   *
+   * `AuthCard` now consumes the tokens, and this measures BOTH surfaces in a
+   * real browser and fails if they disagree. Asserting the CSS variable alone
+   * would prove nothing: a stray utility, a typo'd `var(--pub-bdy)` silently
+   * resolving to nothing, or a specificity accident all leave the token correct
+   * and the pixels wrong.
+   */
+  const authTypes = (page: Page) =>
+    page.evaluate(() => {
+      const h1 = document.querySelector('main h1')!;
+      return {
+        title: getComputedStyle(h1).fontSize,
+        body: getComputedStyle(h1.parentElement!.querySelector('p')!).fontSize,
+      };
+    });
+
+  const docTypes = (page: Page) =>
+    page.evaluate(() => ({
+      title: getComputedStyle(document.querySelector('article h1')!).fontSize,
+      body: getComputedStyle(document.querySelector('article section p')!).fontSize,
+    }));
+
+  test('an auth card and a legal document agree on desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto('/contact');
+    const auth = await authTypes(page);
+    await page.goto('/terms');
+    await ready(page);
+    const doc = await docTypes(page);
+
+    expect(auth.title, 'the auth card title moved').toBe('24px');
+    expect(doc.title, 'the document title moved').toBe(auth.title);
+    expect(auth.body, 'the auth card body moved').toBe('13px');
+    expect(doc.body, 'the document body moved').toBe(auth.body);
+  });
+
+  test('the auth card keeps its 22px step on a phone, and the document does not', async ({
+    page,
+  }) => {
+    // The trap this exists for: `--pub-title` is 24px, and swapping AuthCard's
+    // `text-[22px] sm:text-[24px]` for the token in one step would have GROWN
+    // every form title on mobile by 2px. Nobody would have reported it and
+    // nothing was watching. Hence `--pub-title-sm`, and hence this test.
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/contact');
+    expect((await authTypes(page)).title, 'the phone step-down is gone').toBe('22px');
+
+    await page.goto('/terms');
+    await ready(page);
+    expect((await docTypes(page)).title, 'the document should not step down').toBe('24px');
+  });
 });
 
 test.describe('the contents rail', () => {

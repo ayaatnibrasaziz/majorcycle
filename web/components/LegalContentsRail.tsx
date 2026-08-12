@@ -86,7 +86,7 @@ export function LegalContentsRail({
                   setActive(s.id);
                   lock();
                 }}
-                className={`flex items-baseline gap-2.5 border-l-2 py-1.5 pl-3 text-[length:var(--doc-body)] leading-snug no-underline transition-colors ${
+                className={`flex items-baseline gap-2.5 border-l-2 py-1.5 pl-3 text-[length:var(--pub-body)] leading-snug no-underline transition-colors ${
                   isActive
                     ? 'border-[var(--brand-mid)] font-semibold text-[var(--brand-mid)]'
                     : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--border)] hover:text-[var(--brand-mid)]'
@@ -99,7 +99,7 @@ export function LegalContentsRail({
                     would light up all eight numerals here. In the rail the
                     numeral has to inherit the link's colour so the active
                     entry is the only thing marked. */}
-                <span className="text-[length:var(--doc-label)] tabular-nums" aria-hidden="true">
+                <span className="text-[length:var(--pub-label)] tabular-nums" aria-hidden="true">
                   {String(i + 1).padStart(2, '0')}
                 </span>
                 <span>{s.heading}</span>

@@ -25,11 +25,18 @@ export function AuthCard({ title, subtitle, children }: AuthCardProps) {
       <div className="px-7 py-8 sm:px-9 sm:py-10">
         {/* Heading */}
         <div className="mb-7">
-          <h1 className="text-[22px] sm:text-[24px] font-bold text-[var(--text-primary)] tracking-[-0.4px] leading-[1.2]">
+          {/* Sizes come from --pub-* (globals.css), the ONE place the public
+              site's scale is chosen. These were hand-typed 22/24/13 here while the
+              legal documents declared the same 24 and 13 as tokens — the same
+              number written down twice, which is how a pair of pages quietly
+              stops matching (CLAUDE.md 11c). The rendered pixels are unchanged,
+              including the 22px step on a phone, and e2e/legal-doc.spec.ts now
+              measures both surfaces and fails if they ever disagree. */}
+          <h1 className="text-[length:var(--pub-title-sm)] sm:text-[length:var(--pub-title)] font-bold text-[var(--text-primary)] tracking-[-0.4px] leading-[1.2]">
             {title}
           </h1>
           {subtitle && (
-            <p className="text-[13px] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+            <p className="text-[length:var(--pub-body)] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
               {subtitle}
             </p>
           )}

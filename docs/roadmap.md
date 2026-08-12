@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing), G2 (design foundations), G3 (public chrome), G3.5 (the auth net — Playwright 180 → 260) and G3.7 (the legal documents — 260 → **272**) built and audited; PR #89 open and deliberately unmerged until the layer is done. ✅ **The legal pages are accepted by the owner (2026-08-13) — "happy with all the legal pages now in terms of looks"** — after two rounds. ⚠️ Their TEXT remains `BASELINE CONTENT` awaiting a professional review before wide launch, and the ~91-characters-per-line column is an open owner decision (G3.7). The public header and footer were mocked up twice and the owner chose to **keep them as they are**, with further comments deferred until after commit group 2.**
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing), G2 (design foundations), G3 (public chrome), G3.5 (the auth net — Playwright 180 → 260) and G3.7 (the legal documents — 260 → **277**) built and audited; PR #89 open and deliberately unmerged until the layer is done. ✅ **The legal pages are accepted by the owner (2026-08-13) — "happy with all the legal pages now in terms of looks"** — after two rounds. ⚠️ Their TEXT remains `BASELINE CONTENT` awaiting a professional review before wide launch. The public header and footer were mocked up twice and the owner chose to **keep them as they are**, with further comments deferred until after commit group 2.**
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -887,16 +887,27 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > site at five. The inconsistency was never there — it is on the form pages, and it is
 > still there, because the instruction was explicitly scoped to the legal pages.
 >
-> ⚠️ **OPEN, owner's call:** 13px across the 608px column is **~91 characters per line**
-> against a 45–75 band. The column was sized for 17px. Narrowing it is a layout change and
-> the instruction was font sizes only.
+> ✅ **Both follow-ups CLOSED the same day, owner-approved.**
 >
-> ⚠️ **`--doc-title`/`--doc-body` duplicate numbers hard-coded in `AuthCard.tsx`** — 11c
-> drift, left deliberately because unifying them means editing the form pages. Close it the
-> next time those pages are touched.
+> 1. **The column was ~91 characters per line.** 13px body in a box sized for 17px — the
+>    width never changed, the letters got smaller. New `--measure-doc` (560px) brings it to
+>    **67–74**, measured on all three pages. It could not reuse `--measure-prose`: that is
+>    680px *because* it holds ~68 characters at 17px, and `/methodology` still needs it.
+> 2. **`AuthCard` now consumes the tokens**, so 24px and 13px are written down once. Tokens
+>    renamed `--doc-*` → **`--pub-*`**, because a token called "doc" that the sign-in card
+>    reads is the misleading name this repo keeps getting caught by.
 >
-> **Playwright 260 → 272** (`e2e/legal-doc.spec.ts`, 12 tests). Every guard broken on
-> purpose. CI green on `5a00b24`, and the count matches locally and on CI.
+> ⚠️ **The refactor had a trap and the guard is what found it.** `AuthCard` rendered
+> `text-[22px] sm:text-[24px]`; a straight swap to `--pub-title` (24px) would have **grown
+> every form title on a phone by 2px** — invisible, unreported, unwatched. Hence
+> `--pub-title-sm`. **When replacing a hand-typed value with a token, check first whether
+> the value was responsive.**
+>
+> **Playwright 260 → 277** (`e2e/legal-doc.spec.ts`, 17 tests). Every guard broken on
+> purpose, including all three new ones: widening the column back to 680 → *"runs 89
+> characters per line"*; a hand-typed 26px in `AuthCard` → *"the auth card title moved"*;
+> dropping the phone step-down → 22px became **14px**, which is how badly an unguarded
+> swap would have broken it.
 >
 > 🔴 **Three verification traps, all now in CLAUDE.md 11i and `coding-standards.md` §14.**
 > (i) A CSS-only edit was served **stale** on the first run after it — I deleted the rule I

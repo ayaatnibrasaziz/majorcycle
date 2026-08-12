@@ -181,28 +181,39 @@ button — 1.0:1, invisible. Same mechanism as the note above the reset in `glob
 Any new scoped-typography rule goes in the same layer or it will outrank the utilities
 that are supposed to override it.
 
-#### Document sizes — the legal pages only (added 2026-08-13)
+#### `--pub-*` — the signed-out site's own scale (added 2026-08-13)
 
-`/disclaimer`, `/terms` and `/privacy` do **not** use the reading sizes. Owner instruction:
-the legal pages must match the rest of the public site rather than sit a step above it.
+`/disclaimer`, `/terms` and `/privacy` do **not** use the reading sizes: owner instruction
+was that the legal pages match the rest of the public site rather than sit a step above it.
+`AuthCard` — login, signup, contact, reset-password, deletion-requested, pricing — reads
+the same tokens, so the two families cannot drift apart.
 
-| Token | Size | Where that size already existed |
+| Token | Size | What it is |
 |---|---|---|
-| `--doc-title` | 24px | The `AuthCard` h1 — `/contact`'s title exactly |
-| `--doc-h` | 17px | `= --rd-body`, already on `/` and `/methodology` |
-| `--doc-body` | 13px | The `AuthCard` body size, on all six form pages |
-| `--doc-label` | 12px | `= --rd-micro`, the floor |
+| `--pub-title` | 24px | Page title. `AuthCard` h1 from 640px up, legal masthead always |
+| `--pub-title-sm` | 22px | `AuthCard`'s phone step-down. The legal masthead does **not** step |
+| `--pub-h` | 17px | Legal clause heading (`= --rd-body`) |
+| `--pub-body` | 13px | Body text on every public page |
+| `--pub-label` | 12px | Labels and meta (`= --rd-micro`, the floor) |
 
-**This is not a third scale.** Every value is a size measured on a live public page; the
-tokens exist so the choice is made in one place rather than typed into three components.
-Four sizes on the page, heading-over-body ratio 17/13 = **1.31**. (Round 1's 26/17 was
-1.53, which is why the clauses read as headlines; 20/13 would have been 1.54 again.)
+**This is not a third scale.** Every value is a size that was already rendering on a live
+public page; the tokens exist so the choice is made in one place instead of being typed
+into each component. Heading-over-body on a legal page is 17/13 = **1.31**. (Round 1's
+26/17 was 1.53, which is why the clauses read as headlines; 20/13 would have been 1.54.)
 
-⚠️ **`--doc-title` and `--doc-body` are a SECOND copy of numbers hard-coded in
-`AuthCard.tsx`** (`text-[24px]`, `text-[13px]`) — the drift 11c warns about. Left
-deliberately: unifying them means editing the form pages, which the instruction scoping
-this change to the legal pages forbids. **When the form pages are next touched, `AuthCard`
-should consume these tokens and the duplication should end there.**
+⚠️ **Named `--pub-*`, not `--doc-*`.** They were introduced for the legal documents, but a
+token called "doc" that the sign-in card reads is precisely the misleading name this repo
+keeps getting caught by. If a seventh public surface appears, it reads these too.
+
+⚠️ **`--pub-title-sm` is not tidiness — it is the trap.** `AuthCard` rendered
+`text-[22px] sm:text-[24px]`; swapping that for `--pub-title` in one step would have
+**grown every form title on a phone by 2px**, invisibly, with nothing watching. Whenever a
+hand-typed value is replaced by a token, check whether the value was *responsive* first.
+
+⚠️ **Guarded by measurement, not by inspection.** `e2e/legal-doc.spec.ts` loads
+`/contact` and `/terms` in a real browser at 1280 and 375 and fails if their title or body
+sizes disagree. Asserting the CSS variable would prove nothing: a typo'd `var(--pub-bdy)`
+resolves to nothing and silently inherits, leaving the token correct and the pixels wrong.
 
 ⚠️ **Specificity is load-bearing.** `.reading .doc-title` is (0,2,0) and beats
 `.reading h1` (0,1,1) *including* the ≤640px block, because media queries add no
@@ -848,7 +859,7 @@ stood regardless and was scoped explicitly to these three pages, so that is what
 |---|---|
 | Frame | `PageFrame width="wide"` + `.legal-layout`. ≥1024px: `grid-template-columns: 200px var(--measure-prose)`, 48px gap, centred as a pair. Below: block flow |
 | Document | `--bg-surface`, 1px border, `--radius`, **no shadow**, capped at `--measure-prose` |
-| Type | `--doc-title` 24 · `--doc-h` 17 · `--doc-body` 13 · `--doc-label` 12 (see §3) |
+| Type | `--pub-title` 24 · `--pub-h` 17 · `--pub-body` 13 · `--pub-label` 12 (see §3) |
 | Masthead | Title + "Last updated …" + a hairline rule. No eyebrow, no date pill |
 | Clause heading | `.doc-h` with a `.doc-num` numeral **in Sora, inheriting colour** |
 | Contents | Sticky rail ≥1024px (`LegalContentsRail`), inline two-column list below |
@@ -881,9 +892,20 @@ rule reported the **last** clause whichever one was clicked. Click "Acceptable u
 rail lights up "Contact". Fixed with an opt-in `keepClickedAtPageEnd` so the Stock Detail
 subnav and the offline report keep byte-identical behaviour.
 
-⚠️ **OPEN, owner's call: the column is now ~91 characters per line.** 13px across the
-608px text column, against a 45–75 band — the column was sized for 17px. Narrowing it is a
-layout change and the instruction was font sizes only, so it stands until the owner says.
+✅ **The column was narrowed to suit the smaller type (owner-approved, same day).** At 13px
+the old 680px box ran **~91 characters per line** against the 45–75 band — the width had
+been chosen for 17px body, and smaller letters simply mean more of them per line. A new
+`--measure-doc` (**560px**) brings it to **67–74**, measured on all three pages.
+
+⚠️ **It could not reuse `--measure-prose`.** That token is 680px *because* it holds ~68
+characters at `--rd-body`, and `/methodology` still renders at 17px — narrowing the shared
+token would have fixed one page by breaking another.
+
+⚠️ **The guard counts CHARACTERS, not pixels.** A column can be the right width and the
+wrong measure; that is exactly what happened here, with no width having changed at all.
+`legal-doc.spec.ts` walks a DOM Range along a real paragraph to find where it wraps, and
+bounds it on **both** sides — an over-narrow column that breaks every few words is just as
+unreadable and would satisfy a one-sided bound.
 
 **Wording is presentation-only.** Four clauses that were single sentences carrying five and
 six semicolon-separated items are lists (Terms "Acceptable use"; Privacy "Information we
