@@ -83,7 +83,7 @@ checks 1–6 for that surface; the audit adds 7–11.
 | 9 | `/signup` | `app/(public)/signup/page.tsx` | F-A2 | S1 | ⬜ |
 | 10 | `/reset-password` | `app/(public)/reset-password/page.tsx` | F-A2 | S1 | ⬜ |
 | 11 | `/account/update-password` | `app/(public)/account/update-password/page.tsx` | F-A2 | S1 (recovery confinement) | ⬜ |
-| 12 | `GoogleSignIn` + One Tap | `components/GoogleSignIn.tsx` | F-A2 | F1 live-verify | ⬜ |
+| 12 | `GoogleSignIn` + One Tap | `components/GoogleSignIn.tsx` | F-A2 | F1 live-verify | ✅ live 2026-07-08, re-verified 2026-08-12 |
 | 13 | `auth/callback` `auth/confirm` `auth/recovery-done` `auth/signout` | `app/auth/*/route.ts` | F-A2 | S1 | ✅ S1 |
 | 14 | `/account` shell | `app/(app)/account/page.tsx` | F-A3 | S1 (9 states) | ⬜ |
 | 15 | `SubscriptionCard` (7 rows) | `components/account/SubscriptionCard.tsx` | F-A3 | S1 + S3 | ⬜ |
@@ -2008,6 +2008,12 @@ only on Stripe's side, so the only way to learn them is to be refused. Suite is 
       **Owner live-verified 2026-07-08:** email + Google sign-in fast, One Tap popup shows for a
       non-cooled-down session, console clean. (A "skipped" One Tap moment on the owner's device was
       Google's post-dismissal cooldown, not a defect — confirmed via the GIS moment API.)
+      **Re-verified live 2026-08-12** on the Layer G code: button *and* One Tap both complete
+      on `www.majorcycle.com`. ⚠️ Note for whoever reads this next — the cooldown finding on the
+      line above was re-derived from scratch in a Layer G session because nobody grepped this
+      file first. It also masked a real fault that day: One Tap and the button were failing
+      *together* on a Vercel preview, from ONE cause (`origin_mismatch` — an unregistered
+      JavaScript origin; Google allows no wildcards, so previews never work). See CLAUDE.md 11h.
 
 **Verification:**
 - Full signup → trial → paid conversion flow tested with Stripe test mode

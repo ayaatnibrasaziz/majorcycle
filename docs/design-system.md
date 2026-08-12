@@ -922,6 +922,18 @@ Phase 1 minimums (not aspirations — requirements):
 > measures `/`, `/methodology`, `/disclaimer`, `/terms` and `/privacy` on every run, and
 > the exemption is listed BY TEXT so it cannot quietly widen to cover a second element.
 >
+> ⚠️ **A state that cannot be REACHED cannot be MEASURED — the auth error banner
+> (2026-08-12).** The red `role="alert"` shared by all four auth forms and `/contact`
+> (`--c-tier-5-ink` on `--tint-tier-5`) had never been contrast-checked by anything,
+> because it does not exist in the DOM until something fails, and a page is only measured
+> in the state it is loaded in. So the one element a reader is guaranteed to be squinting
+> at, in the moment they are most stuck, was the one with no evidence. The dead-link notice
+> gave it a URL that renders it **on load**, so `/login?error=auth_confirm_failed` is now in
+> `FORM_PAGES` and the banner is measured every run. It passes; washing its text to
+> `#c9c9c9` makes the guard name it at **1.4:1**, which is how we know it is genuinely being
+> measured rather than silently absent. **Generalise this:** if a state can only be produced
+> by an interaction, give it a URL, or accept that no page-level guard will ever see it.
+>
 > The first is **§4 of this document — "THE Most Important Spec"**. The five tier labels
 > are the product's entire vocabulary and they are the hardest text on the page to read.
 > The second is **compliance-adjacent** (CLAUDE.md #4/#12): a legally material link must

@@ -448,6 +448,16 @@ with opposite fixes. In default mode the same break reported 2 failed / 4 passed
 shape read off the summary line. For a reader who cannot debug, a failure that names its
 own direction is worth more than a short failure list.
 
+⚠️ **You cannot test a third party's ACCEPTANCE by observing that its widget RENDERED.**
+The Google sign-in button draws from a real `accounts.google.com` iframe, with a clean
+console, **on an origin Google has never heard of** — `renderButton` validates nothing, and
+the origin is only checked server-side when the popup opens. A whole verification pass was
+written up backwards on exactly that evidence (2026-08-12); the owner clicking the button
+produced `Error 400: origin_mismatch` in one second. **Only the completed round-trip is the
+test.** Where the round-trip is not automatable — and this one is not, the popup opens
+outside the automation's reach — say so plainly and hand it to a human, rather than
+substituting a proxy signal that feels adjacent. See CLAUDE.md 11h.
+
 ⚠️ **Scattered failures across specs you did not touch = check for ORPHANED PROCESSES
 before you debug a line of code.** Deliberately breaking things leaves Playwright browsers
 and `next dev` instances behind, and they accumulate. On 2026-08-12 a full run reported 6
@@ -644,7 +654,7 @@ decision — see § 8.**)
     the network: it asserts the key CI/dev is handed is a restricted `rk_`, that a permitted
     call (`prices.list`) succeeds, and that `customers.list` is refused with
     `StripePermissionError` specifically. Nothing else in the suite can tell a full key from
-    a scoped one. Also **`e2e/seo.spec.ts`** (24 tests — robots/sitemap/canonical/`noindex`
+    a scoped one. Also **`e2e/seo.spec.ts`** (27 tests — robots/sitemap/canonical/`noindex`
     asserted on the real rendered response, signed out) and **`e2e/stock-read-errors.spec.ts`**
     (7 — a failed database read must throw, never masquerade as "not found"; § CLAUDE.md 11e),
     both credential-free and therefore unskippable.

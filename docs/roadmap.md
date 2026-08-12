@@ -745,10 +745,11 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > Correct — a manual pass expires with the next commit, and the plan they came from had
 > already claimed the suite covered them when it did not.
 >
-> **Playwright 180 → 248 (+68), 0 skipped, 0 flaky.** Three new files, all detailed in
-> `architecture.md` §12(h): `auth-contracts.spec.ts` (pure), `auth-forms.spec.ts`
-> (credential-free browser), `recovery-confinement.spec.ts` (throwaway account), plus 4
-> tests added to `auth.spec.ts`.
+> **Playwright 180 → 260 (+80), 0 skipped, 0 flaky, CI green on the exact SHA.** Three new
+> files, all detailed in `architecture.md` §12(h): `auth-contracts.spec.ts` (pure, **38**),
+> `auth-forms.spec.ts` (credential-free browser, **30**), `recovery-confinement.spec.ts`
+> (throwaway account, **7**), plus 4 tests added to `auth.spec.ts` (**29**) and one page to
+> `contrast.spec.ts` (**15**). Local and CI agree on the count.
 >
 > **Two real defects fell out of writing them**, both in `friendlyAuthError`, both shown
 > to a real reader as raw Supabase English: `"…already BEEN registered"` does not contain
@@ -823,15 +824,22 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > not one touches `signInWithIdToken`, `initialize()`, the nonce, the callback or
 > `signInWithOAuth`.
 >
-> 🔴 **Still genuinely unproven: whether `https://www.majorcycle.com` is a registered
-> origin.** The Google-created account does not settle it, because `signInWithOAuth`
-> (the redirect fallback) succeeds through Supabase's own callback origin, not ours. The
-> 20-second check is the owner clicking *Continue with Google* on the LIVE site while
-> signed out. **Do that before merge day**, not after.
+> ✅ **RESOLVED the same day — owner verified on the LIVE site: Google sign-in works, BOTH
+> the button AND One Tap.** So `https://www.majorcycle.com` IS a registered JavaScript
+> origin and the GSI `signInWithIdToken` path — not merely the redirect fallback —
+> completes end to end in production. The failure is confined to Vercel **preview** origins,
+> which are unregistered *by design*. Nothing to fix; optionally register a stable
+> branch-alias origin if previews ever need to exercise Google sign-in (one entry per
+> branch, and per-deployment URLs can never be covered).
 >
 > 🔴 **The click-through cannot be completed by tooling.** Google's chooser opens as a
 > separate browser window outside the MCP tab group — not visible, not drivable. The owner
-> has to click it. (Which is how this defect was found at all.)
+> has to click it, which is exactly how the wrong conclusion above got caught.
+>
+> ⚠️ **And the docs already knew half of it.** `layer-f-audit.md` recorded on **2026-07-08**
+> that a "skipped" One Tap moment on the owner's device was *Google's post-dismissal
+> cooldown, confirmed via the GIS moment API* — the same finding I re-derived from scratch
+> today via `g_state` and FedCM. **Grep the audit docs before re-deriving a diagnosis.**
 >
 > ⚠️ **OPEN, dated, needs the owner — Supabase legacy API keys expire END OF 2026.** The
 > docs now say the `anon` / `service_role` keys "will work until the end of 2026" and
