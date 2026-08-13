@@ -18,8 +18,9 @@ import { FOOTER_LINKS, NAV_LINKS, showsFullChrome } from '../lib/publicNav';
  *     rule is a pure function of the path, so drive the function.
  *  2. **Dead links in the chrome.** A header or footer entry pointing at a route
  *     that no longer exists renders perfectly and 404s (or worse, 307s to /login)
- *     only when someone clicks it. `/methodology` is folded into the landing page
- *     in the next commit, and both lists name it today.
+ *     only when someone clicks it. That is not hypothetical here: `/methodology`
+ *     was named by BOTH lists, and has since been folded into the landing page —
+ *     so both now point at the `#how-it-works` fragment instead.
  *
  * Pure and credential-free — no browser, no network, no secrets — so it runs on a
  * fork PR and can never self-skip (CLAUDE.md, testing row).
@@ -97,14 +98,47 @@ test.describe('no dead links in the chrome', () => {
     test(`every ${name} link points at a page that exists and is public`, () => {
       expect(links.length).toBeGreaterThan(0);
       for (const l of links) {
+        // ⚠️ Fragments. "How it works" is `/#how-it-works` — a place on a page, not
+        // a page — so the path and the fragment have to be judged separately. The
+        // first version of this guard predated that and would simply have failed;
+        // the interesting half is the SECOND assertion below.
+        const hash = l.href.indexOf('#');
+        const base = hash === -1 ? l.href : l.href.slice(0, hash);
+        const fragment = hash === -1 ? '' : l.href.slice(hash + 1);
+        const path = base === '' ? '/' : base;
+
         // A link to a gated route would render fine and then bounce the reader to
         // /login — a broken link that never 404s and so never gets reported.
-        expect(publicPaths.has(l.href), `${name} link ${l.href} is not in PUBLIC_PAGES`).toBe(
+        expect(publicPaths.has(path), `${name} link ${l.href} is not in PUBLIC_PAGES`).toBe(
           true,
         );
-        expect(existsSync(routeFile(l.href)), `${name} link ${l.href} has no page.tsx`).toBe(
+        expect(existsSync(routeFile(path)), `${name} link ${l.href} has no page.tsx`).toBe(
           true,
         );
+
+        if (fragment) {
+          // The failure a fragment link has that a path link does not: nothing
+          // 404s, nothing redirects, the page loads perfectly — and the reader
+          // simply stays at the top, having pressed a control that did nothing.
+          // There is no error anywhere to notice. This is the same shape as the
+          // footer that never got its rule (11c-iv): correct-looking, silent, and
+          // only visible if you actually go and look.
+          const src = readFileSync(routeFile(path), 'utf8');
+          expect(
+            src.includes(`id="${fragment}"`),
+            `${name} link ${l.href} points at #${fragment}, but nothing in ${path} declares that id — the link would load the page and go nowhere.`,
+          ).toBe(true);
+
+          // …and the target must be scroll-safe. The header is `position: sticky`,
+          // so an anchor with no scroll-margin puts the heading UNDERNEATH it: the
+          // reader lands on the right section and cannot see its title. Checked in
+          // source here and measured in the real browser by how-it-works.spec.ts —
+          // the static half can never skip, the browser half proves the pixels.
+          expect(
+            /scroll-mt-\[calc\(var\(--header-h\)/.test(src),
+            `${path} has #${fragment} but no scroll-mt offset for the sticky header — the reader arrives with the heading hidden behind it.`,
+          ).toBe(true);
+        }
       }
     });
   }

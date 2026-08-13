@@ -5,6 +5,43 @@ import { pageMetadata } from '@/lib/seo';
 import { PageFrame } from '@/components/PageFrame';
 import { CycleDiagram } from '@/components/CycleDiagram';
 import { LANDING, depth, price } from '@/lib/landing';
+import { HOW_IT_WORKS_HREF } from '@/lib/publicNav';
+
+/**
+ * The five compliant rating tiers (design-system §4 / CLAUDE.md #16).
+ *
+ * Moved here verbatim from `/methodology` when that page was folded into this
+ * one. `tier` is the badge modifier, so the legend renders the SAME component a
+ * reader meets inside the product — a re-coloured lookalike is how the white-on-
+ * tier-3 failure (2.38:1) survived review in the first place.
+ */
+const TIERS = [
+  { tier: 1, range: '80–100', label: 'High Conviction', color: 'var(--c-tier-1)' },
+  { tier: 2, range: '65–79', label: 'Constructive', color: 'var(--c-tier-2)' },
+  { tier: 3, range: '50–64', label: 'Neutral', color: 'var(--c-tier-3)' },
+  { tier: 4, range: '35–49', label: 'Cautious', color: 'var(--c-tier-4)' },
+  { tier: 5, range: '0–34', label: 'Bearish', color: 'var(--c-tier-5)' },
+] as const;
+
+/** The four derived measures, in the order the product presents them. */
+const MEASURES = [
+  {
+    h: 'Cycle Position',
+    p: 'Where today’s price sits against the stock’s usual drawdown, as a simple zone — Deep Value, Value, Fair or Stretched. A deeper-than-usual pullback lands in the value zones; a price near its highs lands in stretched. It describes position, not a prediction.',
+  },
+  {
+    h: 'Financial Health Score',
+    p: 'A 0–100 measure of the business itself, blended from five pillars: profitability, balance sheet, growth, cash flow and shareholder returns. Where a company’s accounts don’t provide enough to judge — some banks and REITs — we withhold the score rather than guess, and say so.',
+  },
+  {
+    h: 'Valuation',
+    p: 'Combines the cycle position with company quality, so a stock that is cheap because the business is weak cannot masquerade as a bargain. The zone label always reflects the real price position; the score behind the rating is quality-adjusted.',
+  },
+  {
+    h: 'Overall Rating',
+    p: 'A single 0–100 score blending financial health, valuation and Cycle Payoff — how reliable this stock’s historical cycle has been, and what it has paid off relative to the risk taken.',
+  },
+] as const;
 
 export const metadata: Metadata = pageMetadata({
   path: '/',
@@ -81,7 +118,9 @@ export default function LandingPage() {
               >
                 Create a free account →
               </Link>
-              <Link href="/methodology" className="font-semibold">
+              {/* The same constant the header and footer use, so the three can
+                  never point at different explanations of the same thing (11c). */}
+              <Link href={HOW_IT_WORKS_HREF} className="font-semibold">
                 See how it works
               </Link>
             </div>
@@ -138,9 +177,21 @@ export default function LandingPage() {
         </p>
       </section>
 
-      {/* ── Show the shape ───────────────────────────────────────────────── */}
-      <section className="border-t border-[var(--border)] py-14 sm:py-20">
-        <h2>A stock&apos;s falls have a shape of their own</h2>
+      {/* ── How it works ─────────────────────────────────────────────────────
+          This section IS the old `/methodology` page. That route is gone (308 →
+          `#how-it-works`), because a separate explainer meant the front door had
+          to sell the idea and then send the reader somewhere else to understand
+          it — and the two pages had already begun saying it differently.
+
+          `scroll-mt` is load-bearing, not decoration: the header is
+          `position: sticky`, so an anchor jump without it lands the heading
+          UNDERNEATH the header and the reader arrives at a section whose title
+          they cannot see. Asserted in e2e/how-it-works.spec.ts. */}
+      <section
+        id="how-it-works"
+        className="scroll-mt-[calc(var(--header-h)+24px)] border-t border-[var(--border)] py-14 sm:py-20"
+      >
+        <h2>How it works</h2>
         <p className="lead mt-4 max-w-[62ch]">
           Most established companies don&apos;t move in a straight line. They fall and
           recover, and the depth of those falls tends to repeat. Comparing today against
@@ -148,6 +199,56 @@ export default function LandingPage() {
           market.
         </p>
         <CycleDiagram />
+        <p className="mt-8 max-w-[62ch]">
+          That repeating shape is what we call a stock&apos;s{' '}
+          <strong>Major Cycle</strong>. From it, and from the company&apos;s own
+          filings, we derive four things.
+        </p>
+
+        <div className="mt-9 grid gap-8 sm:grid-cols-2">
+          {MEASURES.map((m) => (
+            <div key={m.h}>
+              <h3>{m.h}</h3>
+              <p className="mt-3">{m.p}</p>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-10 max-w-[62ch]">
+          The Overall Rating maps to one of five labels. We deliberately avoid
+          &ldquo;Buy&rdquo; and &ldquo;Sell&rdquo; language — where a Wall Street
+          analyst consensus appears in the product it is third-party data, shown
+          as-is, and not MajorCycle&apos;s view.
+        </p>
+
+        {/* The product's entire vocabulary, rendered with the REAL badge component
+            rather than a re-coloured copy — the same reason G2 fixed the contrast
+            here (2.38 → 4.73:1) by rendering the real thing. Guarded by name and
+            count in e2e/contrast.spec.ts, which followed this legend over from
+            /methodology. */}
+        <div className="tier-legend mt-6">
+          {TIERS.map((t) => (
+            <div
+              key={t.label}
+              className="tier-legend-row"
+              style={{ '--tier': t.color } as React.CSSProperties}
+            >
+              <span className="tier-legend-swatch" aria-hidden="true" />
+              <span className="tier-legend-range">{t.range}</span>
+              <span>
+                <span className={`tier-badge tier-badge--${t.tier}`}>{t.label}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <h3 className="mt-12">What MajorCycle is not</h3>
+        <p className="mt-3 max-w-[62ch]">
+          It is <strong>not financial advice</strong>, and it does not know your goals
+          or circumstances. Historical cycles are not a promise about the future — past
+          performance does not indicate future results. Treat every score as a starting
+          point for your own research, not a decision.
+        </p>
       </section>
 
       {/* ── The substance, for the reader who wants it ───────────────────── */}

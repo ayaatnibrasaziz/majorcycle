@@ -25,7 +25,7 @@ import { expect, test } from '@playwright/test';
  */
 
 /** Pages whose text a reader is expected to actually read. */
-const READING_PAGES = ['/', '/methodology', '/disclaimer', '/terms', '/privacy'];
+const READING_PAGES = ['/', '/disclaimer', '/terms', '/privacy'];
 
 /**
  * The other six public pages — the ones a reader OPERATES rather than reads.
@@ -250,10 +250,23 @@ for (const path of FORM_PAGES) {
   });
 }
 
-test('/methodology — the five tier labels are legible', async ({ page }) => {
+// ⚠️ The three tests below used to run against `/methodology`. That page is gone —
+// its content is the `#how-it-works` section of the landing page — so they FOLLOWED
+// THE CONTENT rather than being deleted with the route. Deleting a test along with
+// the page it happened to be written against is how a suite quietly loses the
+// coverage it was built for: the tier badges are still the product's whole
+// vocabulary, and they are still the thing that measured 2.38:1.
+//
+// The two destinations are different on purpose. The legend moved to `/`, because
+// that is where it now renders. The 12px floor moved to `/terms`, because it
+// measures `<article>` and the landing page has no article element — pointing it at
+// `/` would have made it pass vacuously against `null`, which is worse than
+// deleting it.
+
+test('/ — the five tier labels are legible', async ({ page }) => {
   // The specific regression this exists for. Asserting the page has no failures
   // would pass if the legend disappeared entirely, so name the five and count them.
-  await page.goto('/methodology', { waitUntil: 'networkidle' });
+  await page.goto('/', { waitUntil: 'networkidle' });
   const badges = page.locator('.tier-legend .tier-badge');
   await expect(badges).toHaveCount(5);
   await expect(badges).toHaveText([
@@ -266,10 +279,10 @@ test('/methodology — the five tier labels are legible', async ({ page }) => {
 });
 
 test('the reading scale holds its 12px floor on content pages', async ({ page }) => {
-  // The leaked app scale put five 8px elements on /methodology. The public header
-  // is shared chrome and still carries 9px / 10.5px (Layer H), so measure the
+  // The leaked app scale put five 8px elements on the old /methodology. The public
+  // header is shared chrome and still carries 9px / 10.5px (Layer H), so measure the
   // article only — the part Layer G actually rebuilt.
-  const probe = (await measure(page, '/methodology')) as Probe;
+  const probe = (await measure(page, '/terms')) as Probe;
   const inArticle = await page.evaluate(() => {
     const el = document.querySelector('article');
     if (!el) return null;
@@ -280,7 +293,7 @@ test('the reading scale holds its 12px floor on content pages', async ({ page })
     });
     return [...s].sort((a, b) => a - b);
   });
-  expect(inArticle, 'no <article> on /methodology').not.toBeNull();
+  expect(inArticle, 'no <article> on /terms').not.toBeNull();
   expect(Math.min(...inArticle!), `sizes found: ${inArticle}`).toBeGreaterThanOrEqual(12);
   // Seven steps exist; a page need not use all of them, but nine distinct sizes
   // on one article is the thing that read as inconsistency rather than hierarchy.
@@ -291,7 +304,7 @@ test('the reading scale holds its 12px floor on content pages', async ({ page })
 test('the deferred exemption is still real, not stale', async ({ page }) => {
   // If the header gets fixed early, KNOWN_DEFERRED must shrink with it. An
   // allow-list nobody re-checks silently widens into a blindfold.
-  const probe = await measure(page, '/methodology');
+  const probe = await measure(page, '/');
   const still = probe.fails.filter((f) => f.text.includes('Financial Terminal'));
   expect(
     still.length,

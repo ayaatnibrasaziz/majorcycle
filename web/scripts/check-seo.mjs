@@ -83,7 +83,10 @@ if (indexable.length === 0) {
 // is the shape of an unfalsifiable test: it asserts the code agrees with itself.
 // These four are pinned independently, so dropping one has to be a deliberate edit
 // in two places rather than a one-character slip nobody sees.
-const MUST_BE_INDEXABLE = ['/pricing', '/methodology', '/terms', '/privacy'];
+// ⚠️ '/' replaced '/methodology' here when that page was folded into the landing.
+// The slot was not left empty: this list is the independent half of the pair, so
+// shrinking it is how the guard quietly loses the coverage it was written for.
+const MUST_BE_INDEXABLE = ['/', '/pricing', '/terms', '/privacy'];
 for (const required of MUST_BE_INDEXABLE) {
   check();
   const page = (pages ?? []).find((p) => p.path === required);
@@ -203,7 +206,6 @@ if (!proxy) {
 const PAGE_FILE = {
   '/': 'app/(public)/page.tsx',
   '/pricing': 'app/(public)/pricing/page.tsx',
-  '/methodology': 'app/(public)/methodology/page.tsx',
   '/contact': 'app/(public)/contact/page.tsx',
   '/disclaimer': 'app/(public)/disclaimer/page.tsx',
   '/terms': 'app/(public)/terms/page.tsx',
@@ -248,6 +250,50 @@ for (const page of pages ?? []) {
   }
 }
 
+// ── 3b. a retired route still answers ───────────────────────────────────────
+// `/methodology` was a real, indexed page. It is now the `#how-it-works` section
+// of the landing page, and four things have to hold together for that to be true
+// for a reader. Any ONE of them failing is silent: the page still builds, nothing
+// throws, and the only symptom is a link that dead-ends — for a stranger arriving
+// from Google, or from a bookmark, months later.
+//
+//   (a) the redirect exists and is permanent;
+//   (b) the old path is NOT in PUBLIC_PAGES — the middleware matches before the
+//       redirect is reached, so leaving it listed would silently disable (a);
+//   (c) the route file is really gone, or the redirect shadows a live page;
+//   (d) nothing in the app still LINKS to the old path. A working 308 makes a
+//       stale internal link invisible — it resolves, so nobody notices we are
+//       sending our own readers through a redirect.
+
+const RETIRED = { from: '/methodology', to: '/#how-it-works' };
+const nextConfig = read('next.config.ts');
+
+check();
+if (!nextConfig) {
+  fail('next.config.ts is missing — it carries the redirect for every retired route.');
+} else {
+  const redirectRe = new RegExp(
+    `source:\\s*'${RETIRED.from}'[\\s\\S]{0,120}?destination:\\s*'${RETIRED.to.replace('#', '#')}'[\\s\\S]{0,80}?permanent:\\s*true`,
+  );
+  check();
+  if (!redirectRe.test(nextConfig)) {
+    fail(`next.config.ts: ${RETIRED.from} must redirect to '${RETIRED.to}' with permanent: true. Without it the path 404s for everyone Google already sent there, and the fragment is what puts them on the right section rather than the top of a long page.`);
+  }
+}
+
+check();
+if ((pages ?? []).some((p) => p.path === RETIRED.from)) {
+  fail(`lib/seo.ts: ${RETIRED.from} is retired and must NOT be in PUBLIC_PAGES. proxy.ts matches PUBLIC_PATHS before next.config's redirect is reached, so listing it here disables the redirect with nothing going red.`);
+}
+
+check();
+if (existsSync(path.join(webRoot, 'app/(public)/methodology/page.tsx'))) {
+  fail(`app/(public)/methodology/page.tsx still exists, but ${RETIRED.from} is registered as a redirect. One of the two is wrong, and a redirect that shadows a real page is the harder of the two to diagnose.`);
+}
+
+// (d) is checked below, once the file walk exists — see "no stale link to a
+// retired route", after FILE_FLOOR.
+
 // ── 4. one origin, one place ────────────────────────────────────────────────
 // The literal lived in three files and one of them disagreed (apex vs www). It was
 // unreachable because NEXT_PUBLIC_SITE_URL is set in production, which is exactly
@@ -282,6 +328,24 @@ const FILE_FLOOR = 150;
 check();
 if (tsFiles.length < FILE_FLOOR) {
   fail(`only ${tsFiles.length} TS files walked, expected >= ${FILE_FLOOR}. The scan stopped looking — treat every check below as unproven.`);
+}
+
+// ── 3b (d). no stale link to a retired route ────────────────────────────────
+// Deferred to here because it needs the walk above; the other three parts of this
+// check sit with the registry, where they read in context.
+//
+// Comments are stripped first. This file's own history is the argument: the
+// `xdescription:` substring bug and the `allow: '/'` guard that failed on the very
+// comment explaining why the line is absent. The prose describing a retirement
+// necessarily names the retired path.
+for (const file of tsFiles) {
+  const src = readFileSync(file, 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+  check();
+  if (new RegExp(`['"\`]${RETIRED.from}['"\`]`).test(src)) {
+    fail(`${path.relative(webRoot, file)}: still links to ${RETIRED.from}, which is retired. The 308 makes this WORK, which is why it would never be noticed — we would simply be sending our own readers through a redirect. Use HOW_IT_WORKS_HREF from lib/publicNav.ts.`);
+  }
 }
 
 // The origin may be written as a literal in exactly one place: lib/url.ts. Anywhere

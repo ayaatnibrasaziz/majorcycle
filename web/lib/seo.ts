@@ -85,9 +85,15 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   //
   // '/' is ALSO in proxy.ts's SIGNED_OUT_ONLY_PATHS: a signed-in reader gets the
   // app, not the sales pitch.
+  //
+  // ⚠️ `/methodology` was here until Layer G and is deliberately NOT replaced by
+  // an entry for `/#how-it-works`. A fragment is not a URL a crawler can fetch or
+  // a middleware can match — the section lives on `/`, which is already listed.
+  // The retired path answers 308 from `next.config.ts`; removing it from this list
+  // is what makes that redirect reachable, because a path left here would be
+  // matched by the middleware first.
   { path: '/', index: true },
   { path: '/pricing', index: true },
-  { path: '/methodology', index: true },
   { path: '/contact', index: true },
   { path: '/disclaimer', index: true },
   { path: '/terms', index: true },

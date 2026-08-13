@@ -57,10 +57,36 @@ const securityHeaders = [
 // Both paths are gitignored (`.next*` — see .gitignore).
 const distDir = process.env.NODE_ENV === 'development' ? '.next-dev' : '.next';
 
+// ── Retired routes ───────────────────────────────────────────────────────────
+// `/methodology` was a public page of its own until Layer G; its content is now
+// the `#how-it-works` section of the landing page. It is in the sitemap Google
+// has already fetched, and it was linked from the header, the footer and the
+// landing hero, so it cannot simply 404.
+//
+// 308 rather than 307: permanent, and it tells a search engine to transfer the
+// page's accumulated credit to the new address instead of holding both.
+//
+// ⚠️ The destination is a LITERAL. Never derive a redirect target from the
+// request (a query parameter, a header) — that is an open redirect.
+//
+// ⚠️ Ordering is the thing to prove, not assume. This has to fire BEFORE
+// `proxy.ts`, or a signed-out reader gets 307 → /login (the middleware bounces
+// anything not in PUBLIC_PATHS, and /methodology has just been removed from that
+// list). Measured on the wire by e2e/how-it-works.spec.ts, which asserts the
+// status is 308 and that the fragment survives into the Location header — the
+// fragment is the whole point, since without it the reader lands at the top of a
+// long page with no idea what they were sent to see.
+const retiredRoutes = [
+  { source: '/methodology', destination: '/#how-it-works', permanent: true },
+];
+
 const nextConfig: NextConfig = {
   distDir,
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
+  },
+  async redirects() {
+    return retiredRoutes;
   },
 };
 

@@ -11,11 +11,22 @@ import { PUBLIC_PAGES } from '@/lib/seo';
  */
 
 /**
- * Where "How it works" points. Named rather than inlined because it moves in the
- * next commit: `/methodology` is being folded into a `#how-it-works` section on
- * the landing page, and when it does, this is the one line that changes.
+ * Where "How it works" points.
+ *
+ * It USED to be `/methodology`, a page of its own. Naming the destination rather
+ * than inlining it is what made the move a one-line change when the explainer was
+ * folded into the landing page — header, footer and the landing's own hero button
+ * all followed it without being touched.
+ *
+ * ⚠️ A fragment, not a path, and three things depend on that:
+ *   • `/methodology` answers **308 → `/#how-it-works`** (`next.config.ts`), so old
+ *     links and anything Google already indexed still land on the content.
+ *   • The section carries `scroll-mt`, or the sticky header covers the heading a
+ *     reader was just sent to.
+ *   • `pathname === href` can never be true for this link, so it is never marked
+ *     `aria-current`. Correct — it is a place on a page, not a page.
  */
-export const HOW_IT_WORKS_HREF = '/methodology';
+export const HOW_IT_WORKS_HREF = '/#how-it-works';
 
 /** The header's links. Kept short on purpose — the footer carries the long tail. */
 export const NAV_LINKS = [

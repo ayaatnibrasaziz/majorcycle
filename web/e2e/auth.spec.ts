@@ -21,7 +21,6 @@ const BUILT_PUBLIC_PAGES = [
   '/disclaimer',
   '/terms',
   '/privacy',
-  '/methodology',
   '/contact',
 ];
 
