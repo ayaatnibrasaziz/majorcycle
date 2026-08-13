@@ -904,10 +904,25 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > the value was responsive.**
 >
 > **Playwright 260 → 277** (`e2e/legal-doc.spec.ts`, 17 tests). Every guard broken on
-> purpose, including all three new ones: widening the column back to 680 → *"runs 89
-> characters per line"*; a hand-typed 26px in `AuthCard` → *"the auth card title moved"*;
+> purpose, including all three new ones: widening the column back to 680 → *"runs 89 chars
+> in a 608px column"*; a hand-typed 26px in `AuthCard` → *"the auth card title moved"*;
 > dropping the phone step-down → 22px became **14px**, which is how badly an unguarded
 > swap would have broken it.
+>
+> 🔴 **CI caught a flaky test that four local runs did not, and the count is what exposed
+> it.** `13b2dee` came back **success** — local **277 passed**, CI **275 passed**. Two
+> apart, on a green run. The reconciliation is `275 + 2 flaky = 277`: Playwright prints
+> retried passes on their own line and I had read only the last `passed` line. The two were
+> the character-count guards, added that hour, reporting **430 characters** — the whole
+> paragraph on one line, i.e. the wrap search never found a wrap.
+>
+> **Cause:** the precondition was `ready()`, which polls until the article computes 13px.
+> That proves the stylesheet applied and says nothing about the column having taken its
+> width or the real webfont rendering — and font metrics are exactly what a character count
+> depends on. Local (8 cores, warm cache) never hit the window; CI (2 cores, cold compile)
+> hit it twice. Fixed with an explicit `laidOut()` gate: fonts ready **and** the article
+> clamped to `--measure-doc`. The assertion is unchanged and still reports 89 at 680px.
+> Full suite re-run cold and warm: **277 / 277, zero flaky.**
 >
 > 🔴 **Three verification traps, all now in CLAUDE.md 11i and `coding-standards.md` §14.**
 > (i) A CSS-only edit was served **stale** on the first run after it — I deleted the rule I

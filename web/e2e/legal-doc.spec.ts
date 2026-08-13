@@ -48,6 +48,40 @@ async function ready(page: Page): Promise<void> {
     .toBe('13px');
 }
 
+/**
+ * `ready()` is not enough to MEASURE TEXT. It proves the stylesheet applied; it
+ * proves nothing about the two things a character count actually depends on —
+ * that the column has taken its width, and that the real font is rendering.
+ *
+ * ⚠️ This exists because CI caught what four local runs did not. The character
+ * count came back **430** on `/disclaimer` and `/terms` — the whole paragraph on
+ * one line, i.e. the loop never found a wrap — and passed on retry. Green run, 2
+ * flaky, and by this repo's own rule that is a finding rather than noise. Local
+ * has 8 cores and a warm cache; CI has 2 and compiles cold, so the page was
+ * being measured a beat earlier than anything here reproduces.
+ *
+ * So the precondition is stated explicitly rather than hoped for: fonts loaded
+ * (metrics come from the real face, not the fallback) and the article actually
+ * clamped to `--measure-doc`. Neither weakens the assertion — the guard still
+ * reports 89 characters when the column is widened back to 680.
+ */
+async function laidOut(page: Page): Promise<void> {
+  await ready(page);
+  await page.evaluate(() => document.fonts.ready);
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const article = document.querySelector('article');
+        if (!article) return false;
+        const max = parseFloat(
+          getComputedStyle(document.documentElement).getPropertyValue('--measure-doc'),
+        );
+        return Math.round(article.getBoundingClientRect().width) <= max;
+      }),
+    )
+    .toBe(true);
+}
+
 test.describe('the document layout', () => {
   for (const path of DOC_PATHS) {
     test(`${path} keeps its measure at every width`, async ({ page }) => {
@@ -86,9 +120,9 @@ test.describe('the document layout', () => {
       // line of a real paragraph. 45-75 is the long-established readable band.
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.goto(path);
-      await ready(page);
+      await laidOut(page);
 
-      const cpl = await page.evaluate(() => {
+      const m = await page.evaluate(() => {
         const para = [...document.querySelectorAll('article section p')].find(
           (e) => (e.textContent ?? '').trim().length > 110,
         );
@@ -97,24 +131,36 @@ test.describe('the document layout', () => {
           (n) => n.nodeType === 3 && (n.textContent ?? '').trim().length > 60,
         );
         if (!node) return null;
+        const text = node.textContent ?? '';
         // Walk a Range one character at a time; the first index that produces a
         // second client rect is the first index that wrapped.
         const range = document.createRange();
-        let last = 0;
-        for (let i = 1; i <= (node.textContent ?? '').length; i++) {
+        for (let i = 1; i <= text.length; i++) {
           range.setStart(node, 0);
           range.setEnd(node, i);
-          if (range.getClientRects().length > 1) return i - 1;
-          last = i;
+          if (range.getClientRects().length > 1) {
+            return { cpl: i - 1, wrapped: true, width: Math.round(para.getBoundingClientRect().width) };
+          }
         }
-        return last;
+        // Reaching here means the paragraph never wrapped at all. Reported as
+        // its own fact rather than as "cpl = the whole paragraph": the two have
+        // completely different causes, and the number alone sent me looking for
+        // a column-width bug when the real answer was "measured too early".
+        return { cpl: text.length, wrapped: false, width: Math.round(para.getBoundingClientRect().width) };
       });
 
-      expect(cpl, `${path}: no paragraph long enough to measure`).not.toBeNull();
-      expect(cpl!, `${path} runs ${cpl} characters per line`).toBeLessThanOrEqual(75);
+      expect(m, `${path}: no paragraph long enough to measure`).not.toBeNull();
+      expect(
+        m!.wrapped,
+        `${path}: the paragraph never wrapped — ${m!.cpl} chars in a ${m!.width}px column, so it was measured before layout settled`,
+      ).toBe(true);
+      // The width is in the message on purpose. The first version reported only
+      // "runs 430 characters per line", which names the symptom and hides the
+      // cause; "430 chars in a 2000px column" would have been unambiguous.
+      expect(m!.cpl, `${path} runs ${m!.cpl} chars in a ${m!.width}px column`).toBeLessThanOrEqual(75);
       // The control: a column so narrow that it breaks every few words would
       // satisfy the bound above, and is just as unreadable.
-      expect(cpl!, `${path} runs only ${cpl} characters per line`).toBeGreaterThanOrEqual(45);
+      expect(m!.cpl, `${path} runs only ${m!.cpl} chars in a ${m!.width}px column`).toBeGreaterThanOrEqual(45);
     });
 
     test(`${path} shows exactly one contents list at a time`, async ({ page }) => {

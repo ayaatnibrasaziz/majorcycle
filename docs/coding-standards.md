@@ -798,6 +798,35 @@ that test was broken on purpose by deleting the step, the title fell to **14px**
 worse outcome than the 2px the refactor would have caused, and a good illustration of how
 much a single missing class can move.
 
+**7b. "Local green" and "CI green" are different claims — reconcile the COUNT, not the
+colour.** The commit that introduced the character-count guard came back **success** on
+CI, and I very nearly reported it as such. Local said **277 passed**; CI said **275
+passed**. Two apart, on a run whose conclusion was green.
+
+The reconciliation is `275 passed + 2 flaky = 277` — Playwright reports a retried pass on
+its own line, and I had grepped only the last line matching `passed`. **Read the whole
+summary block.** The two flaky tests were the ones added that same hour.
+
+⚠️ Diffing the CI log's test titles against `playwright test --list` is the reliable check:
+it distinguishes *skipped* (a title missing from CI) from *retried* (a title appearing
+twice, once with `(retry #1)`). Worth knowing that the first attempt at that diff produced
+**zero matches** because CI prints `e2e/legal-doc.spec.ts` and Windows prints
+`e2e\legal-doc.spec.ts` — a zero-row diff is not "no differences", it is a broken query,
+and the difference between those two readings is the entire finding.
+
+**Why it was flaky, and it is a general trap.** The count came back **430** — the whole
+paragraph on one line, meaning the wrap search never found a wrap. The precondition was
+`ready()`, which polls until the article computes 13px. That proves the *stylesheet*
+applied and nothing at all about the two things a character count actually depends on:
+that the column has taken its width, and that the real webfont is rendering rather than a
+fallback with different metrics. Local (8 cores, warm `.next`) never hit the window; CI (2
+cores, cold compile) hit it twice. **A precondition must cover everything the measurement
+depends on, not merely something that correlates with readiness.**
+
+Also: report the CAUSE alongside the symptom. `"runs 430 characters per line"` sent me
+hunting a column-width bug; `"430 chars in a 2000px column"`, or better an explicit *"the
+paragraph never wrapped"*, is unambiguous. Both are in the assertion messages now.
+
 **8. A measurement in the wrong UNIT is not a measurement.** The legal column was guarded
 as `width <= 680px` and passed while running **91 characters per line**, because the type
 had shrunk underneath it and nothing about the width had changed. Pixels were never the

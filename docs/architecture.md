@@ -971,11 +971,13 @@ reported the LAST clause whichever one the reader clicked. It surfaced as a sing
 test; tracing all eight clicks rather than re-running it is what turned "flaky" into a
 diagnosis.
 
-⚠️ **Three verification traps, all now in CLAUDE.md 11i and `coding-standards.md` §14:** a
+⚠️ **Four verification traps, all now in CLAUDE.md 11i and `coding-standards.md` §14:** a
 CSS-only edit served **stale** on the first run after it (so a deliberate break that stays
 green must be re-run before the test is blamed); an assertion bounded on **one side only**
-that passed with the rail at −317px, scrolled clean off the top; and a **flaky test that
-was a real defect**.
+that passed with the rail at −317px, scrolled clean off the top; a **flaky test that was a
+real defect**; and a **green CI run whose count was two short of local** (275 + 2 flaky =
+277) because a measurement's precondition proved the stylesheet had applied but not that
+the column had taken its width or the webfont had loaded.
 
 **Auth branding (de-Supabase-ification, Layer F0):** the auth surface is skinned to read as `majorcycle.com`, not a Supabase project. Google sign-in uses **Google Identity Services + `supabase.auth.signInWithIdToken`** (`web/components/GoogleSignIn.tsx`) instead of the redirect-based `signInWithOAuth`, so Google returns the ID token directly to the page and the browser never routes through `*.supabase.co` (no address-bar flash); it falls back to the redirect flow when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is unset. Auth emails go through **Supabase Custom SMTP → Resend** (`noreply@majorcycle.com`) with branded templates that use the **token-hash** pattern (`{{ .SiteURL }}/auth/confirm?token_hash=…`) verified by `web/app/auth/confirm/route.ts` (mirrors `auth/callback`), so email links live on `majorcycle.com`. Redirect targets are pinned to the production origin via `getSiteURL()` (`web/lib/url.ts`). All six auth templates **plus the seven Supabase "security" notification emails** (password / email-address / phone-number changed, sign-in-method linked/removed, MFA method added/removed) are branded with the same slim header (transparent `email-icon.png` + Sora wordmark on a navy gradient) and a shared grey footer (`#f8fafc`) — see `design-system.md` §17. The notification emails are toggle-only in Supabase (no HTML editor in the list view; each is edited at its own `/auth/templates/<slug>` URL) and each carries a "didn't do this? — `security@majorcycle.com`" callout. The password-reset flow lands on the branded `web/app/(public)/account/update-password` page (moved out of the `(app)` shell in F0.5 — see Security posture above). **Free-plan caveat:** the anon Supabase URL is still visible in DevTools/Network (every DB/auth call uses `NEXT_PUBLIC_SUPABASE_URL`) and in the JWT `iss` claim — only the paid Supabase custom auth domain changes that; no user-facing surface exposes it. Full runbook: `plan-mode-auth-virtual-ladybug.md`.
 
