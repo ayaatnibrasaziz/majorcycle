@@ -1,5 +1,20 @@
 # Layer G — Page Briefs
 
+> ## ⚠️ THIS FILE IS INTENT, NOT LAYOUT. The approved design is an ARTIFACT.
+>
+> Every brief below says what a page is *for*, who reads it, and how we would know it
+> worked. **None of them describes what is on the page** — that was deliberate (see the
+> note under the table) and it has since caused a real error.
+>
+> **The approved landing page is the storyboard artifact**, not brief §1. On 2026-08-13 I
+> assessed the built landing against §1, found two missing layers, and reported that. The
+> storyboard shows **twelve** missing sections. §1's five prose "layers" and the
+> storyboard's sixteen sections are not the same document and were never meant to be.
+>
+> **Before reporting on any page here, run `Artifact action:"list"` and read the artifact.**
+> Prose records *why*; the artifact records *what the owner said yes to*. When they
+> disagree, the artifact wins. Recorded as CLAUDE.md **11j**.
+
 > **Status: intent APPROVED by the owner 2026-08-07.** Four answers, now locked:
 > **(1) demonstrate the method first, name it second · (2) the landing page shows a
 > FIXED stock — Apple, not a rotating one · (3) the About trust list is sufficient

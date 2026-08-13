@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing), G2 (design foundations), G3 (public chrome), G3.5 (the auth net — Playwright 180 → 260) and G3.7 (the legal documents — 260 → **277**) built and audited; PR #89 open and deliberately unmerged until the layer is done. ✅ **The legal pages are accepted by the owner (2026-08-13) — "happy with all the legal pages now in terms of looks"** — after two rounds. ⚠️ Their TEXT remains `BASELINE CONTENT` awaiting a professional review before wide launch. The public header and footer were mocked up twice and the owner chose to **keep them as they are**, with further comments deferred until after commit group 2.**
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing), G2 (design foundations), G3 (public chrome), G3.5 (the auth net — Playwright 180 → 260) and G3.7 (the legal documents — 260 → **277**) built and audited; PR #89 open and deliberately unmerged until the layer is done. ✅ **The legal pages are accepted by the owner (2026-08-13) — "happy with all the legal pages now in terms of looks"** — after two rounds. ⚠️ Their TEXT remains `BASELINE CONTENT` awaiting a professional review before wide launch. The public header and footer were mocked up twice and the owner chose to **keep them as they are**, with further comments deferred until after commit group 2. **G3.8 in progress:** `/methodology` is folded into the landing (278 tests, 308 redirect proven on the wire), and the landing page itself is being rebuilt to the approved storyboard — **twelve sections that three separate docs recorded as complete** (CLAUDE.md 11j).**
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -734,7 +734,8 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > column **440 → 680px** between `/contact` and `/terms`.
 >
 > **Still to come in Layer G:** the approved landing page, removing `/methodology` (it
-> becomes the `#how-it-works` anchor), and `/learn`.
+> becomes the `#how-it-works` anchor), and `/learn`. *(`/methodology` done 2026-08-13 —
+> see G3.8 below. The landing page turned out to be far larger than this line implies.)*
 
 > ### ✅ G3.5 (the auth net) — COMPLETE 2026-08-12. Owner-requested, still inside PR #89.
 >
@@ -856,6 +857,52 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > stricter side of the documented split. The Layer G plan had recorded `getClaims` as a
 > deviation to justify; it is the recommendation.
 
+> ### 🔨 G3.8 (commit group 2) — `/methodology` DONE, the landing page IN PROGRESS. 2026-08-13.
+>
+> **Done — `/methodology` is folded into the landing page** (`7e6fb4a`). The route is
+> deleted and answers **308 → `/#how-it-works`**; its whole substance moved rather than
+> being summarised away (the four measures, the five-tier legend still rendered with the
+> real badge component, and "What MajorCycle is not"). Playwright **277 → 278**, reconciled
+> as +4 new −3 for the page that no longer exists.
+>
+> ⚠️ **The ordering question the plan flagged is now SETTLED BY MEASUREMENT**, not by
+> memory: Next's `redirects()` in `next.config.ts` fires **ahead of `proxy.ts`**. Proven on
+> the wire against the production build, signed out — `HTTP/1.1 308` with
+> `location: /#how-it-works`. Vercel's docs never state this plainly, and had it gone the
+> other way every reader arriving from Google would have met a sign-in form.
+>
+> New guards, each broken on purpose first: a **retired-route section** in `check-seo.mjs`
+> (6 breaks, 6 red — including "the old path is back in `PUBLIC_PAGES`", which would
+> silently disable the redirect because the middleware matches first, and "a source file
+> still links to it", which a working 308 makes *invisible*); **fragment awareness** in
+> `public-chrome.spec.ts` (3 breaks — base path public, id exists, target carries
+> `scroll-mt`); and `e2e/how-it-works.spec.ts` (4 tests, bounded on **both** sides per 11i).
+>
+> **In progress — the landing page, and it is much bigger than anyone had recorded.**
+> The owner said on 2026-08-13 that `/` "doesn't look like the one I approved". Correct.
+> ⚠️ **I first checked `layer-g-page-briefs.md` and reported a two-section gap; against the
+> actual approved artifact — the landing page storyboard — it is TWELVE sections.** See
+> CLAUDE.md **11j**: the roadmap's own G2 row said this was complete, and it was true about
+> what it measured (SEO tags, gated routes) and silent about everything else, because **a
+> missing section renders perfectly.**
+>
+> Missing: the real hero headline ("863 companies. Which ones are actually on sale?"), the
+> Analyst Briefing, the stats band, the three-step "How a scan works", the ranked results
+> table, both distribution bars, the fall-vs-deepest and recovery-vs-largest pairs, the
+> "what this run is telling you" commentary, the Opportunity Map, the rating weights, the
+> free-vs-paid columns, and the three "Before you use it" honesty blocks.
+>
+> **Owner decisions, 2026-08-13:** no screenshots — reuse the product's own components
+> (`ResultsTable`, `OpportunityMap`) so the landing looks consistent with the terminal ·
+> the run is **frozen and dated**, not nightly, because the page writes sentences *about*
+> it · landing first, **`/learn` after**.
+>
+> **Stage 1 (data) — half done.** Apple's snapshot now carries the recovery half
+> (`bca6592`); the four new figures match the storyboard to one decimal, which is the
+> evidence it is on the canonical path. The Mag 7 generator is **written but never run**
+> (`a04fc75`) — `mag7-snapshot.json` does not exist and nothing imports it. **Next session
+> starts by running it and reading the seven rows by eye.**
+>
 > ### ✅ G3.7 (the legal documents) — COMPLETE 2026-08-13. Still inside PR #89, still unmerged.
 >
 > The three pages G3 left unaccepted. **Rebuilt twice in one day**, and the second round is

@@ -1357,6 +1357,39 @@ redirects rather than quietly reporting a bounce as a page. This also satisfies 
 
   The stock is **fixed** (Apple), not rotating: a rotating example means the page a reader
   shares is not the page their friend opens.
+
+  **Widened 2026-08-13** to carry the recovery half as well as the fall: `deepestDrawdownPct`,
+  `currentProfitPct`, `typicalRecoveryPct`, `largestRecoveryPct`, `recoveryEvents`. The
+  approved storyboard draws two distribution bars — how far this stock falls, and how far
+  it climbs back — and only the falling half existed. **No new maths:**
+  `calculate_cycle_metrics` already returned all five (`lower_bound`, `typical_profit`,
+  `upper_bound`, `total_profit_events`); the allow-list simply never asked for them. The
+  structural guarantee above is unchanged, because every added figure is cycle *geometry*.
+
+- **The Mag 7 worked example — the ONE place paid output appears on a public page.**
+  `analytics/cron/build_mag7_snapshot.py` → `web/app/mag7-snapshot.json`. The approved
+  storyboard builds the landing page around a real screener run over seven well-known US
+  stocks, showing Overall Rating, tier, Health and Valuation — fields §7.1 makes premium
+  everywhere else. **Owner-approved, and deliberately bounded four ways:**
+
+  1. **Seven allow-listed tickers**, with no parameter, query string or route to widen
+     them. That is the line between publishing a worked example and publishing the product.
+  2. **An allow-list of KEYS**, so the file cannot ship whatever `CycleAnalysis` grows next.
+  3. **A static import** — the landing page never calls `/api/cycle` or `/api/analyze`,
+     both of which stay entitlement-gated. Nothing here weakens either.
+  4. **Frozen and dated, not nightly** (owner, 2026-08-13). The page states things *about*
+     this run — which stock fell furthest, that nothing reached the Opportunity Zone — and
+     a nightly rebuild would let those sentences quietly become false with nothing red.
+     Regenerate only on request, and re-read the surrounding copy when you do.
+
+  ⚠️ It calls `analyze_ticker`, the **same** function the screener runs, not the three
+  scoring functions recomposed. When the shared rule is an algorithm, a second
+  implementation agreeing with the spec is not enough (11c iii).
+
+  ⚠️ **Status 2026-08-13: written, never executed.** `mag7-snapshot.json` does not exist
+  yet and nothing imports the generator. ruff, mypy and pytest passing says the code is
+  well-formed and nothing about whether the numbers are right.
+
 - **Submit the sitemap in Search Console at merge.** It 404s until Layer G is live.
 - `/methodology` is the topical-authority anchor for "Major Cycle" educational queries.
 
