@@ -112,20 +112,47 @@ def main() -> None:
     )
 
     # An explicit allow-list, not a blocklist. A blocklist silently ships whatever
-    # field is added upstream next; this can only ever emit these seven keys.
+    # field is added upstream next; this can only ever emit these keys.
+    #
+    # ⚠️ Widened for the storyboard's two distribution bars — how far this stock
+    # falls, and how far it recovers. Every one of the added figures is cycle
+    # GEOMETRY, which is free-tier by the free/paid line: a drawdown is arithmetic
+    # on public prices, whereas a rating is our judgement. `calculate_cycle_metrics`
+    # still cannot return a rating, a health score or a valuation, so the guarantee
+    # in this file's docstring is unchanged — it is not "we remembered to strip the
+    # paid fields", it is "there is no code path to one".
     snapshot = {
         "ticker": TICKER,
         "name": DISPLAY_NAME,
         "currency": currency,
         "price": metrics["current_close"],
+        # ── how far it falls ──
         "currentDrawdownPct": metrics["current_drawdown_pct"],
         "typicalDrawdownPct": metrics["typical_drawdown"],
+        "deepestDrawdownPct": metrics["lower_bound"],
         "pullbackEvents": metrics["total_pullback_events"],
+        # ── how far it recovers ──
+        "currentProfitPct": metrics["current_profit_pct"],
+        "typicalRecoveryPct": metrics["typical_profit"],
+        "largestRecoveryPct": metrics["upper_bound"],
+        "recoveryEvents": metrics["total_profit_events"],
         "asOf": metrics["as_of"],
         "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
 
-    missing = [k for k in ("price", "currentDrawdownPct", "typicalDrawdownPct") if snapshot[k] is None]
+    # Every figure the page prints, not a sample of them. A None reaching the page
+    # renders as "null%" or an empty bar — plausible-looking and wrong — and the
+    # storyboard's copy states these numbers in words as well as in the chart.
+    required = (
+        "price",
+        "currentDrawdownPct",
+        "typicalDrawdownPct",
+        "deepestDrawdownPct",
+        "currentProfitPct",
+        "typicalRecoveryPct",
+        "largestRecoveryPct",
+    )
+    missing = [k for k in required if snapshot[k] is None]
     if missing:
         raise SystemExit(f"Refusing to write a snapshot missing {missing}")
 
