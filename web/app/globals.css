@@ -83,8 +83,10 @@
   --c-tier-2-ink: #0D5C0D;
   --c-tier-5-ink: #8B1414;
   --c-tier-3-ink: #8A6710;
-  /* Was a bare #B23A00 literal inside `.tier-badge--4`, the only tier whose ink
-     had no token. Named here so `scoreChipColor()` can reach it. */
+  /* Cautious was the only tier whose ink had no token — it lived as a bare
+     #B23A00 literal inside `.tier-badge--4`, where nothing else could reach it
+     and no one would think to keep it in step with its four siblings. Same
+     value, so this is a zero-pixel change. */
   --c-tier-4-ink: #B23A00;
 
   /* Tier tints */
@@ -242,7 +244,7 @@
 .tier-badge--1 { background: rgba(0,100,0,0.12);              color: var(--c-tier-1); }
 .tier-badge--2 { background: var(--tint-tier-2-strong);        color: var(--c-tier-2-ink); }
 .tier-badge--3 { background: var(--tint-tier-3-strong);        color: var(--c-tier-3-ink); }
-.tier-badge--4 { background: rgba(255,69,0,0.10);              color: #B23A00; }
+.tier-badge--4 { background: rgba(255,69,0,0.10);              color: var(--c-tier-4-ink); }
 .tier-badge--5 { background: var(--tint-tier-5-strong);        color: var(--c-tier-5-ink); }
 .tier-badge--analyst { background: rgba(74,85,104,0.12);       color: #4A5568; }
 
