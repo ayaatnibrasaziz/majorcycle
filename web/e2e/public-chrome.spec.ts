@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { PUBLIC_PAGES } from '../lib/seo';
@@ -134,9 +134,25 @@ test.describe('no dead links in the chrome', () => {
           // reader lands on the right section and cannot see its title. Checked in
           // source here and measured in the real browser by how-it-works.spec.ts —
           // the static half can never skip, the browser half proves the pixels.
+          //
+          // ⚠️ Look for the OFFSET, not for one spelling of it. This asserted the
+          // literal Tailwind class `scroll-mt-[calc(var(--header-h)…]` and went red
+          // when the landing page moved the identical rule into a co-located
+          // stylesheet as `scroll-margin-top: calc(var(--header-h) + 20px)` —
+          // nothing about the reader's experience had changed. A guard that names
+          // an implementation rather than a behaviour fails on refactors and
+          // teaches you to loosen it, which is how a real one gets weakened.
+          const stylesheets = readdirSync(dirname(routeFile(path)))
+            .filter((f) => f.endsWith('.css'))
+            .map((f) => readFileSync(join(dirname(routeFile(path)), f), 'utf8'));
+          const declaresOffset = [src, ...stylesheets].some(
+            (text) =>
+              /scroll-mt-\[calc\(var\(--header-h\)/.test(text) ||
+              /scroll-margin-top:\s*calc\(var\(--header-h\)/.test(text),
+          );
           expect(
-            /scroll-mt-\[calc\(var\(--header-h\)/.test(src),
-            `${path} has #${fragment} but no scroll-mt offset for the sticky header — the reader arrives with the heading hidden behind it.`,
+            declaresOffset,
+            `${path} has #${fragment} but no scroll offset for the sticky header — the reader arrives with the heading hidden behind it.`,
           ).toBe(true);
         }
       }

@@ -25,7 +25,22 @@ import { expect, test } from '@playwright/test';
  */
 
 /** Pages whose text a reader is expected to actually read. */
-const READING_PAGES = ['/', '/disclaimer', '/terms', '/privacy'];
+const READING_PAGES = ['/disclaimer', '/terms', '/privacy'];
+
+/**
+ * The landing page, measured to the same bar but on its own sentinel.
+ *
+ * It left READING_PAGES when it was rebuilt to the approved storyboard: that
+ * design is a laid-out page rather than a column of prose, so it carries its own
+ * 15px scale (app/(public)/landing.css) and never gets `.reading`. Leaving it in
+ * the list would not have measured it — `measure()` waits for `.reading` to
+ * compute to 17px, so it hung for ten seconds and failed for a reason that had
+ * nothing to do with contrast, which is worse than either outcome.
+ *
+ * Same probe, same floor, same KNOWN_DEFERRED. Only the proof-the-stylesheet-is-
+ * live sentinel differs, and the sticky header is a stronger one here anyway.
+ */
+const LAID_OUT_PAGES = ['/'];
 
 /**
  * The other six public pages — the ones a reader OPERATES rather than reads.
@@ -226,6 +241,22 @@ for (const path of READING_PAGES) {
   });
 }
 
+for (const path of LAID_OUT_PAGES) {
+  test(`${path} — every readable element clears the WCAG floor`, async ({ page }) => {
+    const probe = await measure(page, path, 'chrome');
+
+    // The control, at the landing page's own scale: it carries far MORE text than
+    // an article, so a low floor here would be meaningless. Eight sections, a
+    // ten-column table and two rulers put this well over 200 elements.
+    expect(probe.measured, `${path} rendered no text to measure`).toBeGreaterThan(120);
+
+    expect(
+      unexpected(probe),
+      `Contrast failures on ${path}:\n${JSON.stringify(unexpected(probe), null, 2)}`,
+    ).toEqual([]);
+  });
+}
+
 for (const path of FORM_PAGES) {
   test(`${path} — every readable element clears the WCAG floor`, async ({ context, page }) => {
     // /deletion-requested is gated on the marker the deletion flow sets (see
@@ -266,15 +297,22 @@ for (const path of FORM_PAGES) {
 test('/ — the five tier labels are legible', async ({ page }) => {
   // The specific regression this exists for. Asserting the page has no failures
   // would pass if the legend disappeared entirely, so name the five and count them.
+  //
+  // ⚠️ The MARKUP changed with the storyboard rebuild — the legend is now an inline
+  // row of badges rather than the bordered `.tier-legend` stack `/methodology`
+  // used, and each badge carries its score band. The badge COMPONENT is the same
+  // one the product renders, which is the whole point: G2 fixed this contrast from
+  // 2.38:1 to 4.73:1 by rendering the real badge instead of a re-coloured copy, and
+  // a guard pointed at a lookalike would go on passing while the real one broke.
   await page.goto('/', { waitUntil: 'networkidle' });
-  const badges = page.locator('.tier-legend .tier-badge');
+  const badges = page.locator('[data-tier-legend] .tier-badge');
   await expect(badges).toHaveCount(5);
   await expect(badges).toHaveText([
-    'High Conviction',
-    'Constructive',
-    'Neutral',
-    'Cautious',
-    'Bearish',
+    'High Conviction · 80+',
+    'Constructive · 65+',
+    'Neutral · 50+',
+    'Cautious · 35+',
+    'Bearish · below 35',
   ]);
 });
 
@@ -304,7 +342,7 @@ test('the reading scale holds its 12px floor on content pages', async ({ page })
 test('the deferred exemption is still real, not stale', async ({ page }) => {
   // If the header gets fixed early, KNOWN_DEFERRED must shrink with it. An
   // allow-list nobody re-checks silently widens into a blindfold.
-  const probe = await measure(page, '/');
+  const probe = await measure(page, '/', 'chrome');
   const still = probe.fails.filter((f) => f.text.includes('Financial Terminal'));
   expect(
     still.length,

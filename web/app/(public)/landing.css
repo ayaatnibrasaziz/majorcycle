@@ -1,0 +1,848 @@
+/*
+ * The landing page's own layout rules.
+ *
+ * Everything here is scoped under `.lp`, exactly as the approved artifact scopes
+ * it, and every colour, radius, shadow and size resolves to a token already in
+ * globals.css — the same values the terminal renders. That is the point: the
+ * front door and the product must not be two designs. Where the artifact used
+ * short aliases (`--t3`, `--tint-t2-strong`) this file uses OUR canonical names
+ * (`--c-tier-3`, `--tint-tier-2-strong`) rather than introducing a second set of
+ * names for one palette (CLAUDE.md 11c).
+ *
+ * Why a stylesheet at all, on a Tailwind project: this page draws two measuring
+ * rulers, a quadrant scatter plot and a ten-column table with a banded header.
+ * Expressed as arbitrary-value utilities those become unreadable strings that no
+ * one can check against the artifact. The card, table, badge and briefing chrome
+ * is NOT redefined here — it already exists in globals.css and the page uses the
+ * product's own classes.
+ */
+
+.lp {
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.65;
+}
+.lp :is(h1, h2, h3, p, ul, ol, figure) {
+  margin: 0;
+}
+
+/* Full-bleed: sections ⑤ and ⑦ carry a surface-coloured band and ⑧ is the dark
+   band, so they must run edge to edge while their CONTENT stays on the same
+   1120px measure as every other public page.
+   ⚠️ These values cancel the public layout's own `main` padding
+   (`pt-7 px-5 pb-10`) and are written in the SAME UNITS Tailwind emits — rem, not
+   px. Writing them as `-28px -20px -40px` looked obviously right and was wrong by
+   2.5px a side: this app sets a 14px root, so `px-5` (1.25rem) computes to
+   17.5px, and the band hung 2.5px off the left edge of the window. Measured, not
+   spotted — `getBoundingClientRect()` said `left: -2.5`. In rem the two track each
+   other whatever the root size becomes.
+   Still a coupling between two files, so it is not left to inspection either:
+   e2e/landing.spec.ts measures the dark band against the viewport. */
+.lp-bleed {
+  margin: -1.75rem -1.25rem -2.5rem;
+}
+
+/* The one thing a bleeding child must not do is widen its parent. `main` is a
+   flex column, so a full-width child is already constrained — but the negative
+   margin means any child that overflows now overflows the VIEWPORT rather than a
+   padded box, and CLAUDE.md #3 forbids horizontal scroll at 375px. The table is
+   the one element wider than a phone, and it scrolls inside its own wrapper. */
+.lp {
+  max-width: 100vw;
+  overflow-x: clip;
+}
+.lp-wrap {
+  width: min(var(--measure-wide), 100% - 40px);
+  margin-inline: auto;
+}
+.lp-prose {
+  width: min(var(--measure-prose), 100% - 40px);
+  margin-inline: auto;
+}
+@media (max-width: 640px) {
+  .lp-wrap,
+  .lp-prose {
+    width: calc(100% - 32px);
+  }
+}
+
+.lp section {
+  padding: clamp(56px, 8vh, 96px) 0;
+}
+.lp .sec-tight {
+  padding-top: clamp(28px, 4vh, 44px);
+}
+.lp .band {
+  background: var(--bg-surface);
+  border-block: 1px solid var(--border);
+}
+
+/* Anchor targets sit under a 58px sticky header; without this a reader who
+   clicks "How it works" arrives at a section whose heading is behind the bar.
+   On the TARGET rather than in a scroll handler, so keyboard focus and browser
+   Find honour it too. Guarded in e2e/how-it-works.spec.ts. */
+.lp :is(#how-it-works, #plans) {
+  scroll-margin-top: calc(var(--header-h) + 20px);
+}
+
+/* ── Type ──────────────────────────────────────────────────────────────── */
+.lp .eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-mid);
+}
+.lp h1 {
+  font-size: clamp(30px, 4.6vw, 50px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+.lp h2 {
+  font-size: clamp(24px, 3.2vw, 34px);
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: -0.018em;
+  text-wrap: balance;
+}
+.lp h3 {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.lp .lead {
+  font-size: clamp(16px, 1.5vw, 18px);
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+.lp .body {
+  color: var(--text-secondary);
+}
+.lp strong {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+.lp .num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Hero ──────────────────────────────────────────────────────────────── */
+.lp .hero {
+  padding-top: clamp(28px, 5vh, 56px);
+  padding-bottom: clamp(36px, 5vh, 56px);
+}
+.lp .hero-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: clamp(28px, 4vw, 56px);
+  align-items: center;
+}
+.lp .hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.lp .cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+/* The arrow leans into the direction of travel on hover. Honours reduced motion
+   via the block at the foot of this file. */
+.lp .arw {
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.lp a:hover .arw {
+  transform: translateX(3px);
+}
+@media (max-width: 900px) {
+  .lp .hero-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The disclaimer chip — required above the fold (CLAUDE.md #4 / #12 / #24). */
+.lp .disc {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12.5px;
+  /* --text-secondary, not --text-muted: this is the legally material line and
+     muted measures 2.69:1 on --bg-page. Same call as PublicFooter. */
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.lp .disc .tag {
+  flex: none;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-mid);
+  background: var(--brand-light);
+  border: 1px solid var(--brand-light-border);
+  border-radius: 999px;
+  padding: 3px 9px;
+  margin-top: 1px;
+}
+
+/* ── Proof strip ───────────────────────────────────────────────────────── */
+.lp .strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.lp .strip .cell {
+  padding: 18px 20px;
+  border-left: 1px solid var(--border);
+}
+.lp .strip .cell:first-child {
+  border-left: 0;
+}
+.lp .strip .v {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--brand-deep);
+  line-height: 1.1;
+}
+.lp .strip .k {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  margin-top: 5px;
+  line-height: 1.4;
+}
+@media (max-width: 760px) {
+  .lp .strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .lp .strip .cell:nth-child(odd) {
+    border-left: 0;
+  }
+  .lp .strip .cell:nth-child(n + 3) {
+    border-top: 1px solid var(--border);
+  }
+}
+
+/* ── Three-up card rows (steps, rating weights, plans) ─────────────────── */
+.lp .steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 860px) {
+  .lp .steps {
+    grid-template-columns: 1fr;
+  }
+}
+/* `.steps`, not `.step`: the three rating-weight cards share the grid but are not
+   numbered steps, and they carry `.idx` for the weight ("40% OF THE RATING"). */
+.lp .steps .idx {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  /* --brand-mid, not --brand-bright: bright measures 4.03:1 on white and this is
+     11px text. Same finding as the score chips — a colour picked to be seen, on
+     text small enough to need to be read. */
+  color: var(--brand-mid);
+  letter-spacing: 0.06em;
+}
+.lp .step h3 {
+  margin-top: 8px;
+}
+/* Covers the numbered steps AND the three rating-weight cards, which share the
+   grid but not the `.step` class. Scoped to `.steps` so it cannot reach the
+   plan-card lists or the callout. */
+.lp .steps p {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin-top: 9px;
+  line-height: 1.65;
+}
+.lp .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 13px;
+}
+/* Mirrors .basket-chip in globals.css — the real Run Analysis chips, which are
+   squircles at --radius-sm, not pills. */
+.lp .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-stripe);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.lp .chip.sel {
+  border-color: var(--brand-bright);
+  background: var(--brand-light);
+  color: var(--brand-mid);
+}
+
+/* ── The worked run's table ────────────────────────────────────────────── */
+/* Only what the landing adds on top of `.results-table` in globals.css: the
+   product's table is sortable and its cells are links, so it sets `cursor:
+   pointer` on every row. Here it is a still photograph. */
+.lp .results-table {
+  min-width: 820px;
+}
+.lp .results-table tbody tr {
+  cursor: default;
+}
+.lp .results-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.lp .results-table .name-cell {
+  font-family: 'Sora', sans-serif;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.lp .score-cell {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.lp .score-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 21px;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* ── The two rulers ────────────────────────────────────────────────────── */
+.lp .ruler + .ruler {
+  margin-top: 34px;
+}
+.lp .ruler-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  margin-bottom: 30px;
+}
+.lp .ruler-head b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.lp .ruler-track {
+  position: relative;
+  height: 52px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--bg-stripe), #e9eef6);
+}
+.lp .ruler-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 6px 0 0 6px;
+}
+.lp .mk {
+  position: absolute;
+  top: -7px;
+  bottom: -7px;
+  width: 2px;
+  transform: translateX(-1px);
+}
+.lp .mk::after {
+  content: attr(data-l);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: -25px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 7px;
+  line-height: 1.3;
+}
+.lp .mk.low::after {
+  top: auto;
+  bottom: -27px;
+}
+/* The end marker sits ON the track's right edge, so its label must hang inwards
+   or it leaves the card. */
+.lp .mk.end::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+/* The mirror image, and only where it bites: a centred label on a marker near the
+   left edge overhangs the card once the track is short enough.
+   ⚠️ Swept, because my first measurement was wrong. An approximate probe said
+   this overflowed by 8px at 375px; measuring the label from what the browser
+   actually computes says 375px clears by **1.1px** without this rule — inside,
+   but by a hair — while **360px overflows by 0.1px and 320px by 3.2px**. So the
+   rule is load-bearing on real Android widths below our 375px floor, and at 375px
+   it converts a 1.1px accident into 7px of deliberate clearance. Above 640px the
+   same marker has ten times the room, so the desktop layout the artifact was
+   approved at is untouched. The sweep is now e2e/landing.spec.ts, which tests
+   360px for exactly this reason — at 375px alone, removing this rule stays green. */
+@media (max-width: 640px) {
+  .lp .mk.near-start::after {
+    left: 0;
+    transform: none;
+  }
+}
+/* The stretch between "typical" and "worst ever" is most of the track and would
+   otherwise read as an empty chart. It isn't empty — it is the tail, and saying
+   so turns the biggest area of the picture into the risk lesson it represents. */
+.lp .tail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+  pointer-events: none;
+}
+.lp .tail span {
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 34ch;
+}
+@media (max-width: 620px) {
+  .lp .tail span {
+    font-size: 10px;
+  }
+}
+.lp .ruler-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 34px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.lp .ruler-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 7px;
+  vertical-align: -1px;
+}
+.lp .readout {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 22px;
+}
+@media (max-width: 640px) {
+  .lp .readout {
+    grid-template-columns: 1fr;
+  }
+}
+.lp .readout .k {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-secondary);
+}
+.lp .readout .v {
+  font-family: var(--font-mono);
+  font-size: 21px;
+  font-weight: 700;
+  margin-top: 3px;
+}
+.lp .readout .d {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  line-height: 1.45;
+}
+
+/* ── Opportunity map ───────────────────────────────────────────────────── */
+/* Rebuilt against OpportunityMap.tsx value for value: the 300px plot height
+   (--chart-h-lg), the four quadrant fills, the captions at their exact wording,
+   the dashed splits and the mono ticks. SPLIT is 65 on a 0–100 axis — the
+   Constructive threshold — never the midpoint, and it is published as --split so
+   the tinted quadrants, the dashed lines and the plotted points cannot disagree
+   about where it is.
+   ONE deliberate difference (owner decision): the terminal draws bare bubbles and
+   names them on hover, which a landing page cannot rely on, so each carries its
+   ticker beside it. */
+.lp .split-grid {
+  display: grid;
+  grid-template-columns: 1fr 0.92fr;
+  gap: clamp(28px, 4vw, 52px);
+  align-items: start;
+}
+@media (max-width: 960px) {
+  .lp .split-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.lp .map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5px 13px;
+  margin-bottom: 10px;
+}
+.lp .map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.lp .map-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+.lp .map-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+.lp .map {
+  position: relative;
+  height: var(--chart-h-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+.lp .quad {
+  position: absolute;
+}
+/* Single line, like the SVG text Recharts draws. A max-width here wrapped
+   "Healthy, fully priced" onto three lines, which grew the caption upward into
+   a bubble — the caption's HEIGHT was the collision, not its width. */
+.lp .quad .ql {
+  position: absolute;
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 7px 9px;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+.lp .q-tr {
+  right: 0;
+  top: 0;
+  width: calc(100% - var(--split));
+  height: calc(100% - var(--split));
+  background: rgba(0, 100, 0, 0.07);
+}
+.lp .q-tr .ql {
+  right: 0;
+  top: 0;
+  color: var(--c-tier-1);
+  font-size: 10px;
+  font-weight: 700;
+}
+.lp .q-br {
+  right: 0;
+  bottom: 0;
+  width: calc(100% - var(--split));
+  height: var(--split);
+  background: rgba(212, 160, 23, 0.06);
+}
+.lp .q-br .ql {
+  right: 0;
+  bottom: 0;
+  color: var(--c-tier-3-ink);
+  text-align: right;
+}
+.lp .q-tl {
+  left: 0;
+  top: 0;
+  width: var(--split);
+  height: calc(100% - var(--split));
+  background: rgba(30, 92, 179, 0.05);
+}
+.lp .q-tl .ql {
+  left: 0;
+  top: 0;
+  color: var(--brand-mid);
+}
+.lp .q-bl {
+  left: 0;
+  bottom: 0;
+  width: var(--split);
+  height: var(--split);
+  background: rgba(178, 34, 34, 0.06);
+}
+.lp .q-bl .ql {
+  left: 0;
+  bottom: 0;
+  color: var(--c-tier-5-ink);
+}
+.lp .split-v,
+.lp .split-h {
+  position: absolute;
+  border-color: rgba(138, 151, 168, 0.45);
+  border-style: dashed;
+}
+.lp .split-v {
+  left: var(--split);
+  top: 0;
+  bottom: 0;
+  border-left-width: 1px;
+}
+.lp .split-h {
+  top: calc(100% - var(--split));
+  left: 0;
+  right: 0;
+  border-top-width: 1px;
+}
+/* Ticks live in GUTTERS outside the plot rectangle, the way Recharts reserves an
+   axis margin. Drawn inside the plot they sit on top of the bubbles. */
+.lp .chart {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  grid-template-rows: 1fr 15px;
+  column-gap: 5px;
+}
+.lp .gut-y {
+  position: relative;
+}
+.lp .gut-x {
+  position: relative;
+  grid-column: 2;
+}
+.lp .tk {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+.lp .tk-x {
+  top: 2px;
+  transform: translateX(-50%);
+}
+.lp .tk-y {
+  right: 0;
+  transform: translateY(50%);
+}
+/* Sizing follows Recharts' ZAxis, where range=[18,200] is AREA in px² —
+   diameter 2·√(area/π), i.e. 12–15px, not the 32px discs a first pass drew. */
+.lp .dot {
+  position: absolute;
+  border-radius: 50%;
+  z-index: 2;
+  border: 1px solid;
+  transform: translate(-50%, 50%);
+}
+/* The ticker labels sit OUTSIDE their bubble — at 12–15px across there is no room
+   inside — with a white halo so they stay readable over any quadrant tint. */
+.lp .dlab {
+  position: absolute;
+  z-index: 3;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  color: var(--text-primary);
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+}
+.lp .axis-x,
+.lp .axis-y {
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+.lp .axis-x {
+  text-align: center;
+  margin-top: 7px;
+}
+.lp .axis-y {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  text-align: center;
+}
+/* Phone fallback. On a ~285px-wide plot, seven named points, four quadrant
+   captions and eleven axis ticks physically cannot coexist. So below 700px the
+   ticks and names come off and the four captions move BENEATH the chart, word
+   for word unchanged and in their own colours. The results table above already
+   lists all seven with every figure, so nothing is lost — only relocated. */
+.lp .quad-key,
+.lp .map-note {
+  display: none;
+}
+@media (max-width: 700px) {
+  .lp .quad .ql,
+  .lp .tk,
+  .lp .dlab {
+    display: none;
+  }
+  .lp .chart {
+    grid-template-columns: 0 1fr;
+    grid-template-rows: 1fr 0;
+    column-gap: 0;
+  }
+  .lp .quad-key {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 12px;
+    margin-top: 12px;
+  }
+  .lp .quad-key span {
+    font-size: 10.5px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .lp .quad-key i {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex: none;
+  }
+  .lp .map-note {
+    display: block;
+    margin-top: 10px;
+    font-size: 10.5px;
+    color: var(--text-secondary);
+  }
+}
+
+/* ── Callout ───────────────────────────────────────────────────────────── */
+.lp .callout {
+  border-left: 3px solid var(--c-tier-3);
+  background: #fdf9ef;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 16px 20px;
+}
+.lp .callout .h {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--c-tier-3-ink);
+}
+.lp .callout p {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin-top: 7px;
+  line-height: 1.65;
+}
+
+/* ── Free vs paid ──────────────────────────────────────────────────────── */
+.lp .plans {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 760px) {
+  .lp .plans {
+    grid-template-columns: 1fr;
+  }
+}
+.lp .plan ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lp .plan li {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 9px;
+}
+.lp .plan li::before {
+  content: '—';
+  color: var(--text-secondary);
+  flex: none;
+}
+.lp .plan--paid {
+  border-color: var(--brand-light-border);
+  box-shadow: var(--shadow-md);
+}
+.lp .plan--paid .card-header {
+  background: var(--brand-light);
+  border-bottom-color: var(--brand-light-border);
+}
+
+/* ── The dark honesty band ─────────────────────────────────────────────── */
+/* The gradient is the one in web/lib/email/brandEmail.ts, so the landing page,
+   the app sidebar and every transactional email wear one lockup. */
+.lp .dark {
+  /* ⚠️ `background-color` + `background-image`, NOT the `background` shorthand.
+     The shorthand resets background-color to transparent, so the gradient paints
+     the band while the DOM still reports "no background" — and anything asking
+     what is behind this white text reads straight through to the page ground and
+     scores it ~1.1:1. e2e/contrast.spec.ts reported every line in this band as a
+     failure for exactly that reason, on a band that is obviously navy.
+     Identical to the fix already carried by `.btn-primary` in components/ui/
+     button.tsx; the second time this repo has met it, hence the note here too. */
+  background-color: #04163e;
+  background-image: linear-gradient(120deg, #010f2c 0%, #04214f 58%, #063a80 100%);
+  border-top: 3px solid var(--brand-bright);
+  color: #e8eef9;
+}
+.lp .dark h2 {
+  color: #fff;
+}
+.lp .dark .eyebrow {
+  color: #7fb0f0;
+}
+.lp .dark .honest {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 32px;
+}
+.lp .dark .honest .h {
+  font-size: 16px;
+  font-weight: 650;
+  color: #fff;
+}
+.lp .dark .honest p {
+  font-size: 14.5px;
+  color: #b9cbe6;
+  line-height: 1.72;
+  margin-top: 7px;
+}
+.lp .dark .honest strong {
+  color: #fff;
+}
+.lp .dark .rule {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ── Motion ────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .lp .arw {
+    transition: none;
+  }
+  .lp a:hover .arw {
+    transform: none;
+  }
+}

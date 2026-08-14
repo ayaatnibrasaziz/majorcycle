@@ -74,12 +74,21 @@ test.describe('the #how-it-works anchor', () => {
     // Named content, not a count. "The section exists" would pass against an
     // empty <section id="how-it-works" />, which is precisely how a fold-one-page-
     // into-another loses its substance without anything going red.
+    //
+    // ⚠️ These names CHANGED when the landing was rebuilt to the approved
+    // storyboard (2026-08-15), and the change is deliberate rather than a
+    // relaxation. `/methodology` described four derived measures; the storyboard
+    // describes the rating's three weighted components and gives each its weight,
+    // which is the same explanation with the arithmetic shown. The anchor now
+    // spans both halves of the method — what a Major Cycle is, and why a falling
+    // price alone isn't enough — so the list below is longer, not shorter.
+    // "What MajorCycle is not" moved to the honesty band, where it is three
+    // headings rather than one; `e2e/landing.spec.ts` §⑧ owns it now.
     for (const heading of [
-      'Cycle Position',
-      'Financial Health Score',
+      'Financial Health',
       'Valuation',
-      'Overall Rating',
-      'What MajorCycle is not',
+      'Cycle Payoff',
+      'So what does that tell you about Apple today?',
     ]) {
       await expect(
         section.getByRole('heading', { name: heading, exact: true }),
