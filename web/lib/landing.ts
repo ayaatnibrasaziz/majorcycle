@@ -20,11 +20,22 @@ export interface LandingSnapshot {
   currency: string;
   /** Last close, in the stock's home currency (#13). */
   price: number;
+  // ── how far it falls ──
   /** Negative: how far below its rolling high the stock is now. */
   currentDrawdownPct: number;
   /** Negative: the average of this stock's own historical pullbacks. */
   typicalDrawdownPct: number;
+  /** Negative: the deepest fall in its whole record. */
+  deepestDrawdownPct: number;
   pullbackEvents: number;
+  // ── how far it recovers ──
+  /** Positive: how far it has risen since its last low. */
+  currentProfitPct: number;
+  /** Positive: the average of this stock's own past recoveries. */
+  typicalRecoveryPct: number;
+  /** Positive: the largest single recovery in its record. */
+  largestRecoveryPct: number;
+  recoveryEvents: number;
   /** Exchange calendar date of the last bar (14a) — not the build date. */
   asOf: string;
   generatedAt: string;
