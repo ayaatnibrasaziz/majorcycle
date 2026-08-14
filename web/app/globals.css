@@ -83,6 +83,9 @@
   --c-tier-2-ink: #0D5C0D;
   --c-tier-5-ink: #8B1414;
   --c-tier-3-ink: #8A6710;
+  /* Was a bare #B23A00 literal inside `.tier-badge--4`, the only tier whose ink
+     had no token. Named here so `scoreChipColor()` can reach it. */
+  --c-tier-4-ink: #B23A00;
 
   /* Tier tints */
   --tint-tier-2: rgba(34, 139, 34, 0.10);
@@ -1204,7 +1207,7 @@ td.num             { font-weight: 600; }
 }
 .briefing-ring-cap {
   font-family: 'Sora', sans-serif; font-size: 8.5px; font-weight: 600;
-  color: var(--text-muted); letter-spacing: .6px; text-transform: uppercase;
+  color: var(--text-secondary); letter-spacing: .6px; text-transform: uppercase;
 }
 .briefing-body { flex: 1; min-width: 0; }
 .briefing-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
@@ -1228,7 +1231,7 @@ td.num             { font-weight: 600; }
 }
 .b-pill:hover { border-color: var(--brand-bright); color: var(--brand-mid); }
 .b-pill .b-pill-n { font-family: var(--font-mono); font-weight: 700; }
-.briefing-disclaimer { margin-top: 10px; font-size: 10.5px; color: var(--text-muted); }
+.briefing-disclaimer { margin-top: 10px; font-size: 10.5px; color: var(--text-secondary); }
 
 /* Provenance bar */
 .provenance {
@@ -1409,7 +1412,7 @@ a.ticker-cell:hover { text-decoration: underline; }
 a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offset: 2px; border-radius: 3px; }
 
 /* Band header tints (reuse the reference palette) */
-.results-table .band-identity { background: var(--bg-stripe); color: var(--text-muted); }
+.results-table .band-identity { background: var(--bg-stripe); color: var(--text-secondary); }
 .results-table .band-verdict { background: #E8F0FB; color: var(--brand-deep); }
 .results-table .band-price { background: #E6F2EC; color: #0F5132; }
 .results-table .band-growth { background: #EDEAF6; color: #3C3489; }

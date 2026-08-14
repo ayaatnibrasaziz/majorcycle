@@ -44,10 +44,39 @@ export function tierColorVar(tier: 1 | 2 | 3 | 4 | 5): string {
   return `var(--c-tier-${tier})`;
 }
 
-/** Solid colour for a 0–100 score, via its tier. */
+/** Solid colour for a 0–100 score, via its tier. Use for TEXT and marks. */
 export function scoreColor(score: number | null): string {
   if (score == null) return 'var(--text-muted)';
   return tierColorVar(tierFromScore(score));
+}
+
+/**
+ * Fill for a score CHIP — a solid swatch carrying white numerals (`.score-num`).
+ *
+ * ⚠️ Not the same question as `scoreColor`, and that is the point. Those five
+ * tier colours were chosen to be read AS text on a light ground; three of them are
+ * far too light to sit BEHIND white text. Measured on the rendered page: Neutral
+ * (#D4A017) gives white-on-gold **2.38:1** and Constructive (#228B22) **4.39:1**,
+ * against a 4.5:1 floor. Cautious (#FF4500) is 3.6:1.
+ *
+ * 2.38:1 is the identical figure G2 fixed on the rating badges, reappearing in a
+ * different component — because a colour that fails as a background was being
+ * chosen by the function that answers "what colour is this score?". The two uses
+ * needed two answers.
+ *
+ * Found on the landing page, but it was never a landing page bug: `.score-num` is
+ * `color:#fff` in globals.css and the screener's ResultsTable has filled it with
+ * `scoreColor()` since it was built. It went unmeasured because the contrast guard
+ * only walks PUBLIC routes, and the screener is gated — the landing is simply the
+ * first measured page ever to draw one of these chips. Both call this now, so the
+ * two surfaces cannot drift (CLAUDE.md 11c).
+ */
+export function scoreChipColor(score: number | null): string {
+  if (score == null) return 'var(--text-secondary)';
+  const tier = tierFromScore(score);
+  // Tiers 1 and 5 are already dark enough to carry white text (8.9:1 and 5.9:1);
+  // the middle three take their ink token instead of their display colour.
+  return tier === 1 || tier === 5 ? tierColorVar(tier) : `var(--c-tier-${tier}-ink)`;
 }
 
 /**
