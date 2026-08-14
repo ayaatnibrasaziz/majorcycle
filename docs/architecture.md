@@ -1386,9 +1386,27 @@ redirects rather than quietly reporting a bounce as a page. This also satisfies 
   scoring functions recomposed. When the shared rule is an algorithm, a second
   implementation agreeing with the spec is not enough (11c iii).
 
-  ⚠️ **Status 2026-08-13: written, never executed.** `mag7-snapshot.json` does not exist
-  yet and nothing imports the generator. ruff, mypy and pytest passing says the code is
-  well-formed and nothing about whether the numbers are right.
+  ✅ **Status 2026-08-15: executed, and the landing page reads it.** `mag7-snapshot.json`
+  holds the seven rows as of the 13 Aug close.
+
+  ⚠️ **Running it invalidated the approved design's own copy, which is why this is
+  frozen rather than nightly.** The storyboard was drawn on the 7 Aug run and said
+  *"5 rate Constructive or better"* and Tesla *"still comes sixth"*. On the 13 Aug run
+  those are **four** and **seventh** — Nvidia dropped out of Constructive (65 → 62) and
+  Amazon passed it. Both sentences would have shipped as confident, specific, false
+  statements about real companies, and nothing would have gone red.
+
+  So every claim the page states in words is derived in `web/lib/mag7.ts`
+  (`mag7Facts()`) and asserted against the rows in `e2e/landing.spec.ts`. **Regenerating
+  this file is a content change, not a data refresh** — re-read the callout copy and
+  re-run that spec, which also re-checks the Opportunity Map's label placement (tuned to
+  one set of coordinates, and Amazon's label walked into Apple's the first time the run
+  was rebuilt).
+
+  ⚠️ **It shares Apple with `landing-snapshot.json`, and they must carry the same date.**
+  The first run left them a day apart, so section ⑤'s rulers said Apple was 12.2% below
+  its high while section ④'s table three screens up said 11.3%. Both real, one current.
+  Guarded — the spec fails if the two disagree on any shared field.
 
 - **Submit the sitemap in Search Console at merge.** It 404s until Layer G is live.
 - `/methodology` is the topical-authority anchor for "Major Cycle" educational queries.

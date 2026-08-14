@@ -897,11 +897,35 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > the run is **frozen and dated**, not nightly, because the page writes sentences *about*
 > it · landing first, **`/learn` after**.
 >
-> **Stage 1 (data) — half done.** Apple's snapshot now carries the recovery half
-> (`bca6592`); the four new figures match the storyboard to one decimal, which is the
-> evidence it is on the canonical path. The Mag 7 generator is **written but never run**
-> (`a04fc75`) — `mag7-snapshot.json` does not exist and nothing imports it. **Next session
-> starts by running it and reading the seven rows by eye.**
+> ### ✅ COMPLETE 2026-08-15 — `8a25971` → `b2ea65b` → `4fce6cf`. Playwright 278 → **297**.
+>
+> All eight sections built and measured. Chrome comes from the *newer* "one design
+> system" artifact (which settles the primary button as the navy gradient the site's
+> `<Button variant="primary">` already is); content from the storyboard.
+>
+> **The Mag 7 generator ran, and its output contradicted the approved copy.** Four rate
+> Constructive or better, not five; Tesla comes seventh, not sixth. Every figure the page
+> states in words is now derived in `lib/mag7.ts` and asserted against the rows. See
+> `architecture.md` §7.1 — regenerating that file is a **content** change.
+>
+> **Four defects found by measuring, none visible in review:** the bleed written in px
+> against a 14px root (band hung 2.5px off-screen); Amazon's map label colliding with
+> Apple's; the dark band reporting *every* line as a contrast failure because the
+> `background` shorthand zeroes `background-color` (the `button.tsx` bug, second sighting);
+> and the Neutral badge at 4.32:1 on `--bg-page` versus 4.73:1 on white.
+>
+> ⚠️ **And one the landing merely exposed: the SCREENER's score chips are white on
+> 2.38:1 gold** (`b2ea65b`). Not a landing bug — `.score-num` has been `color:#fff` since
+> it was written and the contrast guard only walks public routes, so a gated page's chips
+> had never been measured. `scoreChipColor()` now serves both. **This darkens Neutral and
+> Constructive chips on a paid surface — owner may veto.**
+>
+> ⚠️ **A deliberate break stayed green twice**, and the boring explanation was right the
+> first time and wrong the second: `next dev` served a stale stylesheet from `.next-dev`,
+> *and* the guard was genuinely weak. A width sweep settled it — removing the clamp leaves
+> 375px clearing by 1.1px (passes, proves nothing) while 360px overflows. The guard now
+> tests 360px and demands 2px clearance. The original "8px overflow at 375px" was an
+> artefact of an approximate probe: **the measurement was wrong, not the code.**
 >
 > ### ✅ G3.7 (the legal documents) — COMPLETE 2026-08-13. Still inside PR #89, still unmerged.
 >
