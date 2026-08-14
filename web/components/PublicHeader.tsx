@@ -112,7 +112,7 @@ export function PublicHeader() {
               {pathname !== '/login' && (
                 <Button
                   asChild
-                  variant="secondary"
+                  variant="outline"
                   className={`h-9 px-3.5 text-[12.5px] ${
                     pathname === '/signup' ? '' : 'hidden min-[520px]:inline-flex'
                   }`}

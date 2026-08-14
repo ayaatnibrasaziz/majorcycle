@@ -126,6 +126,14 @@ def _row(analysis: Any, name: str, currency: str) -> dict[str, Any]:
         "overallLabel": analysis.overall_label,
         "healthScore": analysis.financial_health_score,
         "valuationScore": analysis.valuation_score,
+        # The third weight in the Overall Rating. Needed because the landing page's
+        # table renders the SAME Overall cell the screener does, and that cell
+        # carries a composition micro-bar split 40/35/25 — which `ratingComposition()`
+        # computes from all three parts. Deriving payoff from the other two and the
+        # rounded total would be a second implementation of the weighting, free to
+        # disagree with the first (CLAUDE.md 11c iii). No new exposure category: it
+        # is one more component of a rating this file already publishes.
+        "cyclePayoffScore": analysis.cycle_payoff_score,
         "valuationZone": analysis.valuation_zone,
         "currentDrawdownPct": analysis.current_drawdown_pct,
         "typicalDrawdownPct": analysis.typical_drawdown,

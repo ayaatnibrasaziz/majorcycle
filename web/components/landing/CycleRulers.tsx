@@ -53,7 +53,16 @@ function Ruler({
         <span>{side}</span>
       </div>
       <div className="ruler-track">
-        <div className="ruler-fill" style={{ width: `${tail.from}%`, background: fill }} />
+        {/* The final width rides on a custom property rather than `width` itself.
+            An inline `width` would out-specify the armed rule in landing.css, so
+            the fill could never start at zero and the animation would silently do
+            nothing — visible only by watching, which is exactly how it was missed
+            the first time. */}
+        <div
+          className="ruler-fill"
+          data-fill
+          style={{ ['--w' as string]: `${tail.from}%`, background: fill }}
+        />
         <div className="tail" style={{ left: `${tail.from}%` }}>
           <span>{tail.text}</span>
         </div>

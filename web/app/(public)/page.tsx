@@ -3,11 +3,12 @@ import Link from 'next/link';
 
 import { pageMetadata } from '@/lib/seo';
 import { LANDING, depth, price } from '@/lib/landing';
-import { MAG7, mag7Facts, pct1 } from '@/lib/mag7';
+import { MAG7, cardinal, mag7Facts, pct1, shortName } from '@/lib/mag7';
 import { tierFromLabel } from '@/lib/ratings';
 import { Button } from '@/components/ui/button';
 import { CycleRulers } from '@/components/landing/CycleRulers';
 import { Mag7Table } from '@/components/landing/Mag7Table';
+import { LandingMotion } from '@/components/landing/LandingMotion';
 import { OpportunityMapStill } from '@/components/landing/OpportunityMapStill';
 
 import './landing.css';
@@ -87,7 +88,7 @@ export default function LandingPage() {
     // rather than the page quietly growing a 20px gutter.
     <div className="lp lp-bleed">
       {/* ── ① The hook ─────────────────────────────────────────────────── */}
-      <section className="hero">
+      <section className="hero" data-rise>
         <div className="lp-wrap hero-grid">
           <div className="hero-copy">
             <p className="eyebrow">US · Australia · Canada</p>
@@ -116,7 +117,7 @@ export default function LandingPage() {
                   Create a free account <span className="arw">→</span>
                 </Link>
               </Button>
-              <Button asChild variant="secondary" size="lg">
+              <Button asChild variant="outline" size="lg">
                 <Link href="#how-it-works">See how it works</Link>
               </Button>
             </div>
@@ -148,6 +149,8 @@ export default function LandingPage() {
                       r="23"
                       strokeDasharray={CIRC.toFixed(2)}
                       strokeDashoffset={filled.toFixed(2)}
+                      data-ring
+                      style={{ ['--circ' as string]: CIRC.toFixed(2) }}
                     />
                   </svg>
                   <div
@@ -197,7 +200,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── ② Proof strip ──────────────────────────────────────────────── */}
-      <section className="sec-tight" style={{ paddingBottom: 'clamp(40px,6vh,64px)' }}>
+      <section className="sec-tight" data-rise style={{ paddingBottom: 'clamp(40px,6vh,64px)' }}>
         <div className="lp-wrap">
           <div className="card strip">
             <div className="cell">
@@ -221,7 +224,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── ③ How a scan works ─────────────────────────────────────────── */}
-      <section style={{ paddingTop: 0 }}>
+      <section style={{ paddingTop: 0 }} data-rise>
         <div className="lp-wrap">
           <p className="eyebrow">How a scan works</p>
           <h2 style={{ marginTop: '10px', maxWidth: '18ch' }}>
@@ -280,7 +283,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── ④ The real run ─────────────────────────────────────────────── */}
-      <section style={{ paddingTop: 0 }}>
+      <section style={{ paddingTop: 0 }} data-rise>
         <div className="lp-wrap">
           <p className="card-note" style={{ marginBottom: '9px' }}>
             {runLabel}
@@ -298,8 +301,8 @@ export default function LandingPage() {
             Overall is Financial Health 40%, Valuation 35% and Cycle Payoff 25%.{' '}
             <strong>Current DD%</strong> is how far below its last high the stock sits today,{' '}
             <strong>Typical DD%</strong> is its average fall across every past one, and{' '}
-            <strong>Lower Bound%</strong> is the deepest fall in its record — the number to
-            sit with before you decide how much you can stomach. Information only — not
+            <strong>Lower Bound%</strong> is the deepest fall in its record — worth knowing
+            before you decide how much of a fall you could live with. Information only — not
             financial advice.
           </p>
         </div>
@@ -315,7 +318,7 @@ export default function LandingPage() {
           anchor jump without it lands the heading UNDERNEATH the bar and the
           reader arrives at a section whose title they cannot see. */}
       <div id="how-it-works">
-        <section className="band">
+        <section className="band" data-rise>
           <div className="lp-wrap">
             <div style={{ maxWidth: '62ch' }}>
               <p className="eyebrow">The idea</p>
@@ -362,7 +365,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section>
+        <section data-rise>
           <div className="lp-wrap">
             <div className="split-grid">
               <div>
@@ -381,13 +384,12 @@ export default function LandingPage() {
                   <div className="h">What this particular run is telling you</div>
                   <p>
                     <strong>
-                      {f.deepestFall.name} has fallen furthest of the {f.total} —{' '}
-                      {pct1(f.deepestFall.currentDrawdownPct)} — and still comes{' '}
-                      {f.deepestFallRank}.
+                      {shortName(f.deepestFall.name)} has fallen furthest of the{' '}
+                      {cardinal(f.total)} — {pct1(f.deepestFall.currentDrawdownPct)} — and
+                      still comes {f.deepestFallRank}.
                     </strong>{' '}
                     Its Financial Health is {f.weakest.healthScore.toFixed(1)} against{' '}
-                    {f.healthiest.name.replace(/[.,].*$/, '')}&rsquo;s{' '}
-                    {f.healthiest.healthScore.toFixed(1)}. That&rsquo;s exactly the trap the
+                    {shortName(f.healthiest.name)}&rsquo;s {f.healthiest.healthScore.toFixed(1)}. That&rsquo;s exactly the trap the
                     second question exists to catch: the biggest discount on the list belongs
                     to the weakest business on it.
                   </p>
@@ -499,7 +501,7 @@ export default function LandingPage() {
       </div>
 
       {/* ── ⑦ Free vs paid ─────────────────────────────────────────────── */}
-      <section id="plans" className="band">
+      <section id="plans" className="band" data-rise>
         <div className="lp-wrap">
           <div style={{ maxWidth: '56ch' }}>
             <p className="eyebrow">What you get</p>
@@ -548,7 +550,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── ⑧ Before you use it ────────────────────────────────────────── */}
-      <section className="dark">
+      <section className="dark" data-rise>
         <div className="lp-prose">
           <p className="eyebrow">Before you use it</p>
           <h2 style={{ marginTop: '10px' }}>What this is, and what it isn&rsquo;t.</h2>
@@ -592,6 +594,10 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Renders nothing. Arms and plays the three approved moments of motion;
+          without it the page is simply static, which is the correct fallback. */}
+      <LandingMotion />
     </div>
   );
 }

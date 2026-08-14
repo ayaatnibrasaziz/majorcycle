@@ -30,6 +30,14 @@ const buttonVariants = cva(
           'bg-[var(--bg-surface)] border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)]',
         ghost:
           'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]',
+        // The PUBLIC pages' second action — the approved design system's
+        // `.btn-ghost`. Distinct from `secondary` on exactly one property, its
+        // ink: this one is brand-blue because it is an OFFER sitting beside the
+        // primary offer ("See how it works", "Sign in"), while `secondary` is
+        // grey because it labels a utility (Export, Cancel, Continue with
+        // Google — which must stay neutral, so widening `secondary` was wrong).
+        outline:
+          'bg-[var(--bg-surface)] border border-[var(--border-strong)] text-[var(--brand-mid)] hover:bg-[var(--bg-hover)] hover:border-[var(--brand-bright)]',
         // Same lift-on-hover interaction as `primary` (shadow grows + 1px rise),
         // red-tinted to stay destructive.
         destructive:

@@ -13,7 +13,6 @@ import {
   healthRatingLabel,
   metricTintColor,
   ratingComposition,
-  scoreChipColor,
   scoreColor,
   tierFromLabel,
   valuationAppealLabel,
@@ -221,7 +220,7 @@ function renderCell(
 
 function ScoreNum({ value, color }: { value: number; color?: string }) {
   return (
-    <span className="score-num" style={{ background: color ?? scoreChipColor(value) }}>
+    <span className="score-num" style={{ background: color ?? scoreColor(value) }}>
       {Math.round(value)}
     </span>
   );

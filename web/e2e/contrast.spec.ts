@@ -150,7 +150,7 @@ const PROBE = `(() => {
     // WCAG "large text" = 24px, or 18.66px when bold.
     const need = fs >= 24 || (fs >= 18.66 && +cs.fontWeight >= 700) ? 3 : 4.5;
     out.measured++;
-    if (r < need) out.fails.push({ text: txt.slice(0, 60), fontSize: fs, ratio: +r.toFixed(2), need });
+    if (r < need) out.fails.push({ text: txt.slice(0, 60), fontSize: fs, ratio: +r.toFixed(2), need, legacy: !!el.closest('[data-legacy-contrast]') });
   });
   out.sizes = [...seen].sort((a, b) => a - b);
   return out;
@@ -161,6 +161,8 @@ interface Fail {
   fontSize: number;
   ratio: number;
   need: number;
+  /** Inside a subtree flagged as carrying the PRODUCT's palette — see below. */
+  legacy: boolean;
 }
 interface Probe {
   measured: number;
@@ -223,8 +225,23 @@ async function measure(
   return page.evaluate(PROBE) as Promise<Probe>;
 }
 
+/**
+ * ⚠️ Two kinds of exemption, and they are different claims.
+ *
+ * `KNOWN_DEFERRED` names ONE element by its text. `legacy` excludes a marked
+ * SUBTREE — today only the landing page's worked results table, every chip and tag
+ * in which is painted by the screener's own palette (white numerals on a tier
+ * fill, 9px tier-coloured tags, several at 2.38:1). The owner asked on 2026-08-15
+ * that the landing match the live product exactly, so correcting them here would
+ * put two different colours on one score. It is a product-wide fix on a paid
+ * surface — Layer H — not a landing-page one.
+ *
+ * The debt is COUNTED rather than waved through, by the test at the foot of this
+ * file. An exemption nobody re-checks is a blindfold (same reason KNOWN_DEFERRED
+ * is asserted to still be real).
+ */
 const unexpected = (p: Probe): Fail[] =>
-  p.fails.filter((f) => !KNOWN_DEFERRED.some((k) => f.text.includes(k)));
+  p.fails.filter((f) => !f.legacy && !KNOWN_DEFERRED.some((k) => f.text.includes(k)));
 
 for (const path of READING_PAGES) {
   test(`${path} — every readable element clears the WCAG floor`, async ({ page }) => {
@@ -348,4 +365,32 @@ test('the deferred exemption is still real, not stale', async ({ page }) => {
     still.length,
     'The 9px header wordmark now passes — delete it from KNOWN_DEFERRED.',
   ).toBe(1);
+});
+
+
+test('the deferred product palette stays inside the table, and does not grow', async ({ page }) => {
+  // The landing renders the screener's chips with the screener's colours (owner,
+  // 2026-08-15). That debt is real and bounded; this proves both halves.
+  await page.goto('/', { waitUntil: 'networkidle' });
+  await page.waitForFunction(SENTINEL.chrome, undefined, { timeout: 10_000 });
+  const probe = (await page.evaluate(PROBE)) as Probe;
+  const legacy = probe.fails.filter((f) => f.legacy);
+
+  // It exists — if this hits zero the marker is stale or the table is gone, and
+  // the exemption must come out rather than sit here excusing nothing (14g).
+  expect(legacy.length, 'nothing inside [data-legacy-contrast] fails — remove the marker').toBeGreaterThan(0);
+
+  // Every one of them really is in the results table, not somewhere the marker
+  // drifted onto.
+  const marked = await page.locator('[data-legacy-contrast]').count();
+  expect(marked, 'the legacy marker should sit on exactly one subtree').toBe(1);
+
+  // And it is bounded. 7 rows x (Overall chip + Health chip + Health tag +
+  // Valuation chip + Valuation tag + tinted DD) is the ceiling; a jump past it
+  // means new low-contrast text has been added, not inherited.
+  expect(
+    legacy.length,
+    `legacy contrast failures grew to ${legacy.length}:
+${JSON.stringify(legacy, null, 2)}`,
+  ).toBeLessThanOrEqual(42);
 });

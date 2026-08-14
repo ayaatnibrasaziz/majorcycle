@@ -493,6 +493,18 @@
   gap: clamp(28px, 4vw, 52px);
   align-items: start;
 }
+/* Drop the map to the reading line. The left column opens with an eyebrow and a
+   two-line heading before its first paragraph; a card flush to the top of the
+   right column starts level with the EYEBROW, which reads as two unrelated things
+   beginning at once. Aligning it with the body text instead makes the picture and
+   the argument about it start together (owner, 2026-08-15).
+   Only above the breakpoint — once the grid stacks, the map follows the prose and
+   any offset would just be a gap. */
+@media (min-width: 961px) {
+  .lp .split-grid > .card {
+    margin-top: clamp(56px, 7vw, 92px);
+  }
+}
 @media (max-width: 960px) {
   .lp .split-grid {
     grid-template-columns: 1fr;
@@ -653,6 +665,15 @@
   z-index: 2;
   border: 1px solid;
   transform: translate(-50%, 50%);
+}
+.lp .ruler-fill,
+.lp .dot,
+.lp .dlab,
+.lp [data-rise] {
+  transition:
+    opacity 0.7s var(--lp-ease),
+    transform 0.7s var(--lp-ease),
+    width 1.3s var(--lp-ease);
 }
 /* The ticker labels sit OUTSIDE their bubble — at 12–15px across there is no room
    inside — with a white halo so they stay readable over any quadrant tint. */
@@ -818,9 +839,14 @@
   gap: 24px;
   margin-top: 32px;
 }
+/* These are real <h3>s (they belong in the document outline, and a named heading
+   is something a guard can check has not gone missing) — so they inherit
+   `.lp h3`'s tight 1.35 leading, which is right for a card title and too tight
+   for a statement being read. Restored to the band's own 1.65. */
 .lp .dark .honest .h {
   font-size: 16px;
   font-weight: 650;
+  line-height: 1.65;
   color: #fff;
 }
 .lp .dark .honest p {
@@ -837,12 +863,60 @@
   background: rgba(255, 255, 255, 0.12);
 }
 
-/* ── Motion ────────────────────────────────────────────────────────────── */
+/* ── Motion: the three approved moments ────────────────────────────────── */
+/* ⚠️ Every armed state below is scoped to `[data-motion]`, which LandingMotion
+   sets on mount. The artifact put the hidden state in the stylesheet
+   unconditionally; on a real page that is a blank front door for anyone whose
+   JavaScript fails, and this is the one page that must never do that. Server
+   renders the final state; JS arms, then plays. */
+.lp {
+  --lp-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+.lp[data-motion] [data-rise]:not(.in) {
+  opacity: 0;
+  transform: translateY(16px);
+}
+/* Width comes from the inline --w; the armed rule holds it at zero until `.in`.
+   Both are class-level selectors, and this one carries an extra attribute + pseudo,
+   so it wins — which is only true because the component publishes --w rather than
+   width itself. */
+.lp .ruler-fill {
+  width: var(--w, 0);
+}
+.lp[data-motion] .ruler-fill:not(.in) {
+  width: 0;
+}
+.lp[data-motion] .briefing-ring-fg:not(.in) {
+  stroke-dashoffset: var(--circ);
+}
+.lp[data-motion] .dot:not(.in) {
+  opacity: 0;
+  transform: translate(-50%, 50%) scale(0.2);
+}
+.lp[data-motion] .dlab:not(.in) {
+  opacity: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .lp .arw {
+  .lp .arw,
+  .lp .ruler-fill,
+  .lp .dot,
+  .lp .dlab,
+  .lp [data-rise] {
     transition: none;
   }
   .lp a:hover .arw {
     transform: none;
+  }
+  /* Belt and braces: LandingMotion also reveals everything immediately under
+     reduced motion, so these only matter if that effect never runs. */
+  .lp[data-motion] [data-rise],
+  .lp[data-motion] .dot,
+  .lp[data-motion] .dlab {
+    opacity: 1;
+    transform: none;
+  }
+  .lp[data-motion] .dot {
+    transform: translate(-50%, 50%);
   }
 }

@@ -469,6 +469,22 @@
   font-size: 12px; font-weight: 700; color: var(--text-primary);
   letter-spacing: .2px; text-transform: uppercase; font-family: 'Sora', sans-serif;
 }
+/* The quiet counterpart to `.card-title` — the dated provenance line that sits on
+   the other end of a card header ("medium horizon · full price history to 13 Aug").
+   It had never been defined, so every use of it inherited its parent's size: on the
+   landing page that meant a 10px provenance note rendering at 15px in full-strength
+   ink, louder than the card title beside it. Nothing errored; it simply looked
+   wrong, and only a computed-style diff against the approved artifact found it.
+   ⚠️ 12px (`--rd-micro`), not the storyboard's 10px: --rd-micro is a FLOOR, and the
+   NEWER design-system artifact already sets .card-note to it. --text-secondary
+   rather than --text-muted for the usual reason (2.69:1). */
+.card-note {
+  font-size: var(--rd-micro);
+  color: var(--text-secondary);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
 .card-body { padding: 16px 18px; }
 .card-body--compact { padding: 12px 18px; }
 .card-body--chart { padding-bottom: 8px; }

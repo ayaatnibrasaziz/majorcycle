@@ -36,6 +36,8 @@ export interface Mag7Row {
   overallLabel: OverallLabel;
   healthScore: number;
   valuationScore: number;
+  /** The rating's third component. Feeds the Overall cell's composition bar. */
+  cyclePayoffScore: number;
   valuationZone: string;
   /** Negative: how far below its rolling high the stock sits on `asOf`. */
   currentDrawdownPct: number;
@@ -66,6 +68,25 @@ export const MAG7: Mag7Snapshot = snapshot as Mag7Snapshot;
  * target on one screener run (CLAUDE.md 11c iii).
  */
 export const strong = (score: number): boolean => tierFromScore(score) <= 2;
+
+/**
+ * A company's name as a person would say it mid-sentence.
+ *
+ * "Tesla, Inc. has fallen furthest" and "against NVIDIA Corporation's 92.5" are
+ * both correct and neither is how anyone speaks. The table keeps the full legal
+ * name — that is what a reader cross-checking against a broker needs — and the
+ * prose uses this.
+ */
+export const shortName = (name: string): string =>
+  name
+    .split(',')[0]!
+    .replace(/\s+(Inc|Incorporated|Corporation|Corp|Company|Co|Ltd|Limited|PLC|Holdings|Group|N\.V|S\.A)\.?$/i, '')
+    .replace(/\.com$/i, '')
+    .trim();
+
+/** Small cardinals, for prose. "of the seven", never "of the 7". */
+const CARDINALS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven'] as const;
+export const cardinal = (n: number): string => CARDINALS[n] ?? String(n);
 
 /** Ordinals, for prose. Only ever needs to reach seven. */
 const ORDINALS = [

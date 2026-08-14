@@ -51,3 +51,12 @@ Thumbs.db
 # They live on the owner's machine only. See memory: project_business_setup.
 BUSINESS_SETUP_GUIDE.md
 SETUP_ONE_PAGER.md
+
+# Design/AI tooling installed 2026-08-09 (taste-skill + impeccable).
+# Mine, not the product: ~470 files, 10 MB. .claude/* is already ignored above.
+.agents/
+.codex/
+skills-lock.json
+.github/agents/
+.github/hooks/
+.github/skills/
