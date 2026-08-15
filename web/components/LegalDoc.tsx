@@ -110,9 +110,13 @@ export function LegalDoc({ title, updated, intro, sections }: LegalDocProps) {
             was completely flat, so `/login` → `/terms` read as two products
             rather than two weights of one. `--shadow-sm` is the design system's
             value for a plain `.card` (the auth card's `.card--lift` is the
-            exception, not this). If the "sliding off" concern proves real at full
-            document height, the fix is to drop this class — not to weaken the
-            token, which four other surfaces read. */}
+            exception, not this).
+            ✅ SETTLED: the owner was shown the rendered result — the bottom edge
+            at the document's real height (1,502px on /terms) — and confirmed the
+            shadow stays. The old concern was aimed at `--shadow-lift`; at 1–3px
+            the edge reads as resting, not sliding. Don't relitigate this. If a
+            future document ever does look wrong, drop the class here — never
+            weaken `--shadow-sm`, which four other surfaces read. */}
         <article className="mx-auto max-w-[var(--measure-doc)] overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]">
           {/* ⚠️ Explicit px, not Tailwind steps. The root font-size is 14px, so
               the rem scale lands at 0.875× — `px-6 py-8 sm:p-10` was computing to
