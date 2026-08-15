@@ -172,8 +172,12 @@ one via `<PageFrame width="narrow|prose|wide">`; the public layout owns the head
 footer so widening a page cannot fork the chrome (11c).
 
 ⚠️ **`--rd-micro` is a FLOOR.** Nothing on a reading page goes below 12px, and
-`e2e/contrast.spec.ts` fails the build if the `/methodology` article does. 8px uppercase
-is decoration wearing the costume of information.
+`e2e/contrast.spec.ts` fails the build if one does. 8px uppercase is decoration wearing
+the costume of information. ❌ **That test used to name `/methodology`, which no longer
+exists** — it was folded into the landing as `#how-it-works` (2026-08-13). The floor check
+moved to `/terms` and the five-tier legibility check moved to `/`, because those are where
+those things now render. **When a page is deleted, its guards do not delete themselves;
+they either move to the surface that inherited the job or they quietly stop checking.**
 
 ⚠️ **`.reading` lives in `@layer base`.** Unlayered, `.reading a { color }` (0,1,1) beat
 Tailwind's `.text-white` (0,1,0) and painted a call-to-action brand-blue on a brand-blue
@@ -219,6 +223,31 @@ resolves to nothing and silently inherits, leaving the token correct and the pix
 `.reading h1` (0,1,1) *including* the ≤640px block, because media queries add no
 specificity. So the mobile step-down does not apply to a legal page and these sizes must
 stand alone at 375px. They do: 24/17/13.
+
+#### The landing page has its OWN sizes, in its own file — and that is deliberate
+
+`/` is not a reading page and not a form; it is a **composition**, closer to a chart than
+to an article. Its type lives in `web/app/(public)/landing.css`, every rule scoped under
+`.lp`, running from 9px on a ruler tick to `clamp(30px, 4.6vw, 50px)` on the hero. It does
+**not** read `--rd-*` or `--pub-*`.
+
+The reason is that those two scales exist to make *running text* consistent, and almost
+nothing here is running text: axis ticks, ruler labels, table cells, badge captions and a
+display headline all answer to the composition around them rather than to a shared step.
+Forcing them onto a seven-step scale would either coarsen the drawing or push a fourth set
+of tokens into `globals.css` that only one page ever reads.
+
+⚠️ **The bargain is that the scope must actually hold.** Everything is under `.lp`, so
+nothing here can reach another page — which `e2e/contrast.spec.ts` checks from the other
+direction by measuring `/` as a laid-out page in its own right. And the 12px floor does
+**not** apply: this page draws chart furniture, where 9px tick labels are the convention
+(§14 lists the equivalent app-side exemptions by name). Body copy on `/` is 15px.
+
+⚠️ **The root font-size is 14px, so `rem` and Tailwind's spacing scale do not agree with
+your intuition.** Tailwind `px-5` is `1.25rem` = **17.5px**, not 20. The landing's
+full-bleed band is written `margin: -1.75rem -1.25rem -2.5rem` in **rem for exactly this
+reason**; typed in px to match the numbers the layout "looked like" it used, the dark band
+hung 2.5px proud of the viewport edge and produced a horizontal scrollbar at 375px.
 
 ---
 
@@ -395,6 +424,30 @@ White surface, subtle border, slight shadow. Standard wrapper for any data secti
 }
 .card-body { padding: 14px 18px; }
 ```
+
+#### `.card-note` — the second line in a card header (added 2026-08-15)
+
+A provenance or scope line sitting beside `.card-title`: *"Medium preset · as at 13 Aug"*.
+
+```
+.card-note {
+  font-size: var(--rd-micro);      /* 12px — the floor */
+  color: var(--text-secondary);    /* NOT --text-muted, which is 2.69:1 */
+  font-weight: 400;
+  text-transform: none;            /* it is a sentence, not a label */
+  letter-spacing: normal;
+}
+```
+
+⚠️ **This class was USED before it was DEFINED, and nothing anywhere went red.** The
+landing page's markup asked for `.card-note` on every provenance line while `globals.css`
+had no such rule, so each one inherited its parent's 15px full-strength ink and read as a
+second title rather than a footnote. **An undefined class is not an error in CSS — it is
+silence**, and it renders as a perfectly plausible page. There is no console warning, no
+build failure and no visual "gap" to notice; the type is simply wrong. It was found by
+diffing *computed* styles against the design-system artifact, not by reading either file.
+`text-transform` and `letter-spacing` are reset explicitly for the same reason: the class
+sits inside a header whose sibling is uppercase and tracked.
 
 ### Stat Pill
 
@@ -800,7 +853,7 @@ reader on `/terms` could not reach pricing and could not sign in.
 | Header | `position: sticky; top: 0`, height `--header-h` (58px), `rgba(255,255,255,.9)` + `backdrop-blur(12px)`, 1px bottom border |
 | Lockup | 34px logo (8px radius) + "MajorCycle" 13px bold `--brand-deep` + "FINANCIAL TERMINAL" 9px `--text-muted` (hidden < 520px) |
 | Nav | `--rd-small`, `--text-secondary`; current page `--brand-mid` + 600 and `aria-current="page"`. Hidden < 900px — the footer carries the same links |
-| Actions | `Button variant="secondary"` (Sign in) + `variant="primary"` (Create free account), both `h-9` |
+| Actions | `Button variant="outline"` (Sign in) + `variant="primary"` (Create free account), both `h-9` |
 | Footer | `--bg-surface`, 1px top border, centred link row at `--rd-small`, then the disclaimer and the copyright |
 
 **Three rules that are not cosmetic:**
@@ -822,6 +875,21 @@ reader on `/terms` could not reach pricing and could not sign in.
    same function, which `e2e/public-chrome.spec.ts` asserts.
 
 **The disclaimer line is `--text-secondary`, never `--text-muted`** — see §14.
+
+#### Why `outline` is a fifth Button variant and not a tweak to `secondary` (2026-08-15)
+
+The two differ on **exactly one property, their ink**: `secondary` is
+`--text-secondary`, `outline` is `--brand-mid`. Everything else — surface, border, hover
+— is identical. The approved design system draws the public pages' second action in brand
+blue, because there it is an *offer* sitting beside another offer; `secondary` is grey
+because in the app it is the quieter of two things you might do.
+
+⚠️ **Widening `secondary` would have been one character and would have repainted five
+buttons nobody asked about**, `GoogleButton` among them — putting brand-blue ink beside
+Google's own multicoloured mark on the sign-in page. **When a shared component is wrong
+for a NEW caller, add a variant for that caller rather than re-tuning it for everyone**
+(the same rule that governed the scroll-spy's opt-in option — coding-standards §14).
+`secondary`'s four existing app call sites are byte-identical to before.
 
 ---
 
@@ -898,8 +966,9 @@ been chosen for 17px body, and smaller letters simply mean more of them per line
 `--measure-doc` (**560px**) brings it to **67–74**, measured on all three pages.
 
 ⚠️ **It could not reuse `--measure-prose`.** That token is 680px *because* it holds ~68
-characters at `--rd-body`, and `/methodology` still renders at 17px — narrowing the shared
-token would have fixed one page by breaking another.
+characters at `--rd-body` — narrowing the shared token would have fixed one page by
+breaking another. (The other page at the time was `/methodology`, retired 2026-08-13; the
+token is now held for `/learn`, so the reasoning stands and its example has moved.)
 
 ⚠️ **The guard counts CHARACTERS, not pixels.** A column can be the right width and the
 wrong measure; that is exactly what happened here, with no width having changed at all.
@@ -1009,6 +1078,49 @@ Subtle, fast, purposeful. No bouncy easings.
 
 Use `prefers-reduced-motion` to disable on user request.
 
+### Scroll-reveal on the landing page — BUILT 2026-08-15
+
+Three moments, all on `/`, all specified by the approved storyboard: the **ruler fills**
+grow from 0 to their real width, the **Opportunity Map bubbles** fade in, and the
+**briefing ring** sweeps to its arc. `components/landing/LandingMotion.tsx` (client) runs
+one `IntersectionObserver` at `rootMargin: '0px 0px -12% 0px'` and **only ever adds** the
+`.in` class — it never removes one, so nothing can re-hide as you scroll back up.
+
+⚠️ **The server renders the FINAL state; JavaScript arms the initial one.** `LandingMotion`
+sets `data-motion="on"` on the `.lp` root, and every "hidden" rule is scoped behind it:
+
+```css
+.lp .ruler-fill                          { width: var(--w, 0); }   /* final */
+.lp[data-motion] .ruler-fill:not(.in)    { width: 0; }             /* armed */
+```
+
+**Written the other way round — hide in CSS, reveal in JS — a hydration error or a stalled
+bundle strands the whole page, with no error anywhere.** Reduced motion reveals everything
+immediately rather than animating it fast.
+
+⚠️ **Do not over-claim what this buys, because measuring it turned up something else.**
+A reader with scripting fully **off** currently sees "Loading…" on `/` regardless, because
+`app/loading.tsx` wraps every route in a Suspense boundary and React defers any page whose
+HTML overruns the first flush — `/` and the three legal documents all do. That is an open,
+recorded finding (coding-standards §14 item 11), not something the motion design can fix.
+What this pattern *does* protect against is the far likelier case: JavaScript that loads
+and then fails — a hydration mismatch, a thrown effect, an observer that never fires. In
+all of those the CSS never arms, and the page stands.
+
+Guarded by `e2e/landing.spec.ts`: the server payload must contain every section and no
+`data-motion`, and stripping the flag in-browser must leave every section at `opacity: 1;
+transform: none`. ⚠️ `toBeVisible()` is **not** sufficient — Playwright counts an
+`opacity: 0` element as visible, and eight such assertions stayed green through a
+deliberate break.
+
+⚠️ **Publish an animated value as a CUSTOM PROPERTY, never as an inline `style`.** The
+fills first shipped as `style={{ width: '61%' }}`, which is (1,0,0,0) and out-specifies
+*any* class rule — so the armed `width: 0` never applied and each bar animated from its
+final value to its final value. It looked like the animation had simply not been wired
+up. `--w` carries the number and the stylesheet owns the property, so the cascade works
+normally. **A visibly absent animation is more often a specificity loss than a missing
+listener.**
+
 ---
 
 ## 13. Iconography
@@ -1053,9 +1165,13 @@ Phase 1 minimums (not aspirations — requirements):
 > real component. It is both legible and pedagogically right: the reader learns the badge
 > they will actually meet. **No locked tier colour was touched** (decision #25).
 >
-> **Measured after: 8 failures → 1**, the deferred wordmark. `e2e/contrast.spec.ts` now
-> measures `/`, `/methodology`, `/disclaimer`, `/terms` and `/privacy` on every run, and
-> the exemption is listed BY TEXT so it cannot quietly widen to cover a second element.
+> **Measured after: 8 failures → 1**, the deferred wordmark. `e2e/contrast.spec.ts`
+> measures every public page on every run, and the exemption is listed BY TEXT so it cannot
+> quietly widen to cover a second element. *(The list read `/`, `/methodology`,
+> `/disclaimer`, `/terms`, `/privacy` when this was written. `/methodology` retired, and
+> the spec now covers the three legal pages as `READING_PAGES`, `/` as a `LAID_OUT_PAGES`
+> entry with its own sentinel, and the four form pages as `FORM_PAGES` — together every
+> entry in `PUBLIC_PAGES`.)*
 >
 > ⚠️ **A state that cannot be REACHED cannot be MEASURED — the auth error banner
 > (2026-08-12).** The red `role="alert"` shared by all four auth forms and `/contact`
@@ -1107,6 +1223,35 @@ Phase 1 minimums (not aspirations — requirements):
 > Terminal" wordmark, still deferred to Layer H and still named by its text in
 > `KNOWN_DEFERRED` so the exemption cannot quietly widen.
 >
+> #### The second deferral — the product's score palette, on the landing page (2026-08-15)
+>
+> The landing's worked run draws the screener's `.score-num` chips with the screener's own
+> colours: **white numerals on `scoreColor()`**. Three of the five tier fills are far too
+> light to sit behind white — **Neutral measures 2.38:1**, the identical figure G2 fixed on
+> the tier *badges*. This had never been caught because the contrast guard walks **public**
+> routes and the screener is gated, so `/` was the first measured page ever to draw one.
+>
+> ⚠️ **It is deferred by owner decision, not by oversight.** The instruction was *"whatever
+> is present on the live site, the color should exactly match that"* — a landing page that
+> quietly repaints a paid surface is a scope breach, however real the defect. Fixing it is
+> a **product-wide Layer H** job. The debt is carried in the open instead:
+>
+> - `[data-legacy-contrast]` marks the one subtree (`Mag7Table`'s wrapper).
+> - Failures inside it are excluded from pass/fail but **counted**, bounded at **42** —
+>   7 rows × 6 low-contrast elements, so a jump past it means new text was *added*, not
+>   inherited.
+> - The marker must sit on **exactly one** subtree, and at least one failure must still be
+>   inside it. If it hits zero the exemption is excusing nothing and comes out (14g).
+>
+> **Record a defect you are not authorised to fix; do not fix it quietly and call it
+> tidying.** An exemption with no ceiling and no floor is a blindfold, not a decision.
+>
+> ⚠️ **Two more measurement lessons from the same sweep.** (i) The Neutral badge scores
+> 4.73:1 on white and **4.32:1** on `--bg-page` — the badge did not change, what sat behind
+> it did. Composited colours must be measured where they actually sit. (ii) The dark
+> honesty band reported *every* line failing at ~1.1:1, on a band that is obviously navy —
+> the gradient-shorthand bug below, one level up.
+>
 > ⚠️ **A gradient button reports NO background colour.** `bg-gradient-to-br` paints via
 > `background-image`, leaving the computed `background-color` transparent — so any tool
 > asking the DOM what is behind a white label reads straight through to the page and
@@ -1145,7 +1290,14 @@ Disclaimers are mandatory on any page showing a rating. Visual style:
 - **Footer (every page):** Full disclaimer block, 12px muted text, with link to `/disclaimer`.
 - **First-login modal:** Modal with full methodology + disclaimer summary, "I understand and acknowledge" checkbox required to proceed.
 - **Methodology modal (in-app):** The primary scoring explainer is a modal opened from the "Methodology" button in the Stock Detail subnav — visual parity with the reference methodology modal (`reference/original-design.html:794`), content corrected to the current engine, formula blocks included (it's behind sign-up). It carries its own footer disclaimer. See `web/components/stocks/MethodologyModal.tsx`.
-- **Methodology page (public, deferred):** A separate **high-level, no-formula** public page for first-time visitors (before sign-up) is a later Layer F item — distinct from the in-app modal; do not expose the full formula detail publicly.
+- **Public methodology — now `/#how-it-works`, not a page (2026-08-13).** The
+  **high-level, no-formula** explainer for first-time visitors lives in sections ⑤+⑥ of
+  the landing page. The standing rule is unchanged: **do not expose the full formula
+  detail publicly** — the formulas stay in the in-app modal, behind sign-up. ❌ This entry
+  used to describe a separate `/methodology` page as "a later Layer F item"; that page was
+  built, then folded into `/` and retired with a 308 carrying the fragment. The reason was
+  that the two competed for the same search intent while neither was the page we most want
+  to rank.
 
 Wording must include: "Information only", "Not financial advice", "Past performance does not indicate future results", "Conduct your own research".
 

@@ -917,8 +917,17 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > ⚠️ **And one the landing merely exposed: the SCREENER's score chips are white on
 > 2.38:1 gold** (`b2ea65b`). Not a landing bug — `.score-num` has been `color:#fff` since
 > it was written and the contrast guard only walks public routes, so a gated page's chips
-> had never been measured. `scoreChipColor()` now serves both. **This darkens Neutral and
-> Constructive chips on a paid surface — owner may veto.**
+> had never been measured.
+>
+> ❌ **This paragraph used to end "`scoreChipColor()` now serves both — owner may veto."
+> The owner DID veto it, and the reversal is the more useful record.** I had introduced
+> that function and applied it to the screener as well, repainting a paid surface, unasked,
+> inside a landing-page commit. The instruction was *"whatever is present on the live site,
+> the color should exactly match that."* Both surfaces are back on `scoreColor()`, the
+> function is deleted, and the debt is now carried in the open: a `[data-legacy-contrast]`
+> marker on the table, excluded from pass/fail but **counted** and bounded at 42, with the
+> marker required to sit on exactly one subtree. Fixing it properly is a product-wide
+> **Layer H** job. **A real defect does not entitle you to widen your scope.**
 >
 > ⚠️ **A deliberate break stayed green twice**, and the boring explanation was right the
 > first time and wrong the second: `next dev` served a stale stylesheet from `.next-dev`,
@@ -926,6 +935,48 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > 375px clearing by 1.1px (passes, proves nothing) while 360px overflows. The guard now
 > tests 360px and demands 2px clearance. The original "8px overflow at 375px" was an
 > artefact of an approximate probe: **the measurement was wrong, not the code.**
+>
+> ### ✅ G3.8b — the owner's review round, 2026-08-15. `0170d35` → `c9f0b4a` → docs. Playwright 298 → **300**.
+>
+> The owner read the built page against the artifact and raised six things. All six were
+> real; four were defects I had not seen, and one reversed a change I had made.
+>
+> 1. **Rating colours — reverted.** See the veto above. Both surfaces back on `scoreColor()`.
+> 2. **Overall and Rating Tier belong in ONE column**, because that is what the product
+>    does. That pulled three more mismatches out with it — Health was painted with
+>    `scoreColor` (five tiers) instead of `healthColor` (**three**), both score cells had
+>    lost their word (*Healthy*, *Reasonable*), and Current DD% was tinted red when the
+>    product tints it **green for a deeper dip**, contradicting the page's own argument.
+>    The table now reuses the product's real helpers, and the snapshot carries
+>    `cyclePayoffScore` so the composition bar is not a second implementation of the
+>    weighting. → **CLAUDE.md 11m**: the approved artifact was hand-drawn from a
+>    screenshot; **the product's source is the only authority on what the product looks
+>    like.**
+> 3. **"the number to sit with before you decide how much you can stomach"** — reworded.
+> 4. **Font sizes against the artifact.** Diffing *computed* styles turned up `.card-note`,
+>    a class the markup asked for on every provenance line and `globals.css` had never
+>    defined — so each one inherited 15px full-strength ink and read as a second title.
+>    **An undefined CSS class is silence, not an error.**
+> 5. **"The animations are not working."** They were wired correctly and losing a
+>    specificity fight: an inline `style={{ width }}` is (1,0,0,0) and out-specified the
+>    armed rule, so every ruler animated from its final value to its final value. Moving
+>    the number to a `--w` custom property gave the stylesheet the property back.
+> 6. **Opportunity Map alignment** — nudged down onto the body-text baseline.
+>
+> ⚠️ **Writing the guard for (5) cost more than the fix and found a separate open issue.**
+> `toBeVisible()` counts an `opacity: 0` element as visible, so eight assertions stayed
+> green through a deliberate break; and stripping the reveal class starts a *transition*
+> rather than arriving at a state, which made the test flaky and made the break report
+> `opacity 0.0155657` instead of `0`. Both fixed by measuring computed style with
+> transitions disabled. The first version used `javaScriptEnabled: false` and failed for an
+> unrelated reason that turned out to be real: **`/`, `/terms`, `/privacy` and
+> `/disclaimer` render only "Loading…" without JavaScript** — `app/loading.tsx` wraps every
+> route in a Suspense boundary and React defers any page whose HTML overruns the first
+> flush. Recorded, not fixed — coding-standards §14 item 11. **Owner's call.**
+>
+> **Gates:** Playwright **300 passed, 0 failed, 0 skipped, 0 flaky** · typecheck · lint ·
+> `check:entitlement-gates` (11) · `check:report-sections` (22) · `check:seo` (491) ·
+> `check:data-integrity` (59) · pytest **153**.
 >
 > ### ✅ G3.7 (the legal documents) — COMPLETE 2026-08-13. Still inside PR #89, still unmerged.
 >
@@ -1145,7 +1196,7 @@ memory** — re-verified 2026-08-02. ✅ proven · 🟡 partly proven, with what
 ### Content
 | | Criterion | Evidence |
 |---|---|---|
-| 🟡 | Methodology page complete and owner-approved | `/methodology` is live, public, formula-free, disclaimer above the fold. *Missing:* a recorded owner sign-off on the copy — folded into the Layer F audit's copy pass (F-A5) |
+| 🟡 | Methodology explainer complete and owner-approved | **No longer a page.** `/methodology` was retired 2026-08-13 and the explainer is now `/#how-it-works` (landing sections ⑤+⑥) — public, formula-free, disclaimer above the fold, old URL 308s with the fragment. *Missing:* a recorded owner sign-off on the copy — folded into the Layer F audit's copy pass (F-A5) |
 | ✅ | Disclaimers visible on every rating-displaying page | C-R5 live tail: the disclaimer is the first `<main>` child (top ≈ 79px) on every page and at 375px; re-confirmed for the paywalled states in live-check S2 |
 | 🟡 | Terms, Privacy, Disclaimer pages live and reviewed | All three live since F0.5. *Missing:* they are **baseline content the owner has not yet reviewed**, and §"Explicit Non-Goals" defers a lawyer review to the owner's judgement |
 | ✅ | Zero "BUY"/"SELL"/"AVOID" in our scoring outputs | Our labels are the five tiers only (`analytics/scoring/overall.py`, `web/lib/ratings.ts`). The Buy/Sell strings in `ratings.ts` are the **third-party analyst consensus map**, displayed verbatim by decision #17 — a different thing, and deliberate |

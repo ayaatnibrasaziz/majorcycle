@@ -55,6 +55,23 @@ const SECTIONS: { name: string; find: (p: import('@playwright/test').Page) => un
   },
 ];
 
+/**
+ * The same eight sections as literal substrings, for asserting against the raw
+ * server bytes rather than the hydrated DOM. Deliberately duplicated from
+ * SECTIONS rather than derived: a locator cannot be run against a string, and
+ * the point of this list is to be checkable before any JavaScript exists.
+ * Entities are how Next serialises them — `'` becomes `&#x27;`.
+ */
+const SERVER_MARKERS = [
+  'Which ones are actually on sale?',
+  'Three decisions, then a ranked list.',
+  'results-table',
+  'Shares don',
+  'A falling price is not the same as a bargain.',
+  'The data is free. Our judgement is the paid part.',
+  'What this is, and what it isn',
+];
+
 test.describe('the landing page has every approved section', () => {
   for (const s of SECTIONS) {
     test(`renders ${s.name}`, async ({ page }) => {
@@ -73,6 +90,118 @@ test.describe('the landing page has every approved section', () => {
     // silent loss one level down.
     await expect(page.locator('.lp .ruler')).toHaveCount(2);
     await expect(page.locator('.lp .map .dot')).toHaveCount(MAG7.rows.length);
+  });
+});
+
+/**
+ * The scroll-reveal motion must never be the thing that HIDES content.
+ *
+ * `LandingMotion` sets `data-motion` on the `.lp` root, and every "hidden" rule
+ * in landing.css is scoped behind that attribute. So the server's markup is the
+ * FINAL state and JavaScript only ever *arms* the starting one. Built the usual
+ * way — hidden in CSS, revealed by JS — any failure of the script strands the
+ * whole page, with nothing red on either side.
+ *
+ * ⚠️ **These tests do NOT use `javaScriptEnabled: false`, and the reason is a
+ * finding in its own right.** That was the first version, and it failed — but
+ * not for this reason. `app/loading.tsx` puts a Suspense boundary around every
+ * route, and React streams any page whose HTML overruns the first flush into a
+ * `<div hidden>` that an inline `$RC` script swaps into place. With scripting
+ * off that swap never happens, so `/` (108 KB), `/terms`, `/privacy` and
+ * `/disclaimer` (42–46 KB) all show the "Loading…" fallback forever, while the
+ * four AuthCard pages (25–28 KB) render normally. Measured on a production
+ * build, deterministic over three runs. That is a platform-level behaviour of
+ * OUR OWN root loading boundary, not a fault in this page's motion — and a
+ * no-JS assertion here would have blamed the motion for it forever.
+ *
+ * So these assert the CSS contract directly: with the flag ABSENT — which is
+ * exactly the state the server ships and the state a stalled script leaves
+ * behind — nothing on the page may be hidden.
+ */
+test.describe('the motion arms the page, it does not gate it', () => {
+  test('the server ships the final state — no armed flag in the payload', async ({ page }) => {
+    const res = await page.goto('/', { waitUntil: 'domcontentloaded' });
+    const html = (await res!.text()) as string;
+
+    // Every section is in the SERVER's bytes, not merely in the hydrated DOM.
+    for (const marker of SERVER_MARKERS) {
+      expect(html, `section marker missing from the server HTML: ${marker}`).toContain(marker);
+    }
+
+    // `data-motion` is added by the client on mount. If it ever ships from the
+    // server, every `:not(.in)` rule engages before there is anything to add
+    // the class, and the page arrives permanently armed.
+    expect(html, 'the server rendered data-motion — the page ships pre-hidden').not.toContain(
+      'data-motion',
+    );
+  });
+
+  test('with the flag stripped, every section is still visible at full size', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    // Reproduce the no-script CSS state: no flag, and no reveal classes to
+    // stand in for one. Anything the motion hides will collapse here.
+    //
+    // ⚠️ Transitions are killed FIRST, and that is not tidiness — it is what
+    // makes this measurable. Sections below the fold have not been revealed
+    // yet, so stripping the flag starts them TRANSITIONING toward the final
+    // state rather than arriving at it. Measured immediately, they return
+    // whatever value the animation happens to be passing through. That is
+    // exactly what made this test flaky — green alone, red in a full run — and
+    // it is why the deliberate break first reported `opacity 0.0155657`
+    // instead of a clean 0. We are asserting the STATIC end state the CSS
+    // computes, so the animation has to be out of the way.
+    await page.addStyleTag({
+      content: '.lp, .lp * { transition: none !important; animation: none !important; }',
+    });
+    await page.evaluate(() => {
+      const root = document.querySelector('.lp');
+      root?.removeAttribute('data-motion');
+      root?.querySelectorAll('.in').forEach((el) => el.classList.remove('in'));
+    });
+
+    for (const s of SECTIONS) {
+      await expect(
+        s.find(page) as ReturnType<typeof page.locator>,
+        `${s.name} disappears when the motion flag is absent — it is gating content, not animating it`,
+      ).toBeVisible();
+    }
+
+    // ⚠️ `toBeVisible()` alone CANNOT catch this, and proving that is why the
+    // break-on-purpose ran: Playwright treats `opacity: 0` as visible — it
+    // checks the box and `visibility`/`display`, nothing else. Unscoping the
+    // armed rule (`.lp[data-motion] [data-rise]` → `.lp [data-rise]`) hides
+    // every section behind `opacity: 0` and the eight assertions above stayed
+    // green twice. The armed state IS opacity and transform, so that is what
+    // has to be measured.
+    const armed = await page.evaluate(() =>
+      [...document.querySelectorAll('.lp [data-rise]')].map((el, i) => {
+        const s = getComputedStyle(el);
+        return { i, opacity: s.opacity, transform: s.transform };
+      }),
+    );
+    expect(armed.length, 'no [data-rise] sections found at all').toBeGreaterThan(0);
+    for (const a of armed) {
+      expect(
+        Number(a.opacity),
+        `section ${a.i} computes opacity ${a.opacity} with no motion flag — the reveal is gating content`,
+      ).toBe(1);
+      expect(
+        a.transform,
+        `section ${a.i} is still offset (${a.transform}) with no motion flag`,
+      ).toBe('none');
+    }
+
+    // Present-but-zero-width is the failure this page actually had: the ruler
+    // fills once animated from their final value to their final value because
+    // an inline `style` out-specified the armed rule. Assert real geometry.
+    const fills = page.locator('.lp .ruler-fill');
+    const n = await fills.count();
+    expect(n, 'no ruler fills found at all').toBeGreaterThan(0);
+    for (let i = 0; i < n; i += 1) {
+      const box = await fills.nth(i).boundingBox();
+      expect(box?.width ?? 0, `ruler fill ${i} is zero-width with the flag absent`).toBeGreaterThan(1);
+    }
   });
 });
 

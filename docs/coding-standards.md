@@ -835,6 +835,103 @@ along a real paragraph to find where it wraps, and bounds it on **both** sides �
 over-narrow column that breaks every few words satisfies a one-sided bound and is just as
 unreadable. **Assert the thing the reader experiences, in the unit they experience it in.**
 
+**9. Reveal-on-scroll: the SERVER renders the final state, and JavaScript arms the initial
+one.** The instinct is the other way round — hide it in CSS, add a class in JS to reveal —
+and that instinct costs you the whole page when JS never runs. A hydration error, a
+blocked bundle, a reader with scripting off: all of them get a blank marketing page, with
+no console error on the server and nothing red anywhere. The landing page's three motion
+moments are therefore scoped behind a flag the client sets:
+
+```css
+.lp .ruler-fill                       { width: var(--w, 0); }   /* the truth */
+.lp[data-motion] .ruler-fill:not(.in) { width: 0; }             /* armed, only if JS ran */
+```
+
+`LandingMotion.tsx` sets `data-motion` and thereafter **only ever adds** `.in` — never
+removes it, so nothing can re-hide on scroll-up. `e2e/landing.spec.ts` asserts the contract
+two ways: the **server payload** carries every section and no `data-motion`, and in the
+browser, **stripping the flag** leaves every section at `opacity: 1; transform: none`.
+
+⚠️ **Three things went wrong writing that guard, and each is the general lesson.**
+
+**(a) `toBeVisible()` cannot see `opacity: 0`.** Playwright checks the bounding box plus
+`visibility`/`display` and nothing else. Unscoping the armed rule on purpose hid all eight
+sections behind `opacity: 0` and eight `toBeVisible()` assertions stayed **green, twice**.
+The armed state *is* opacity and transform, so that is what has to be read out of
+`getComputedStyle`. **Assert the property the defect actually moves.**
+
+**(b) Stripping a class starts a TRANSITION, it does not arrive at a state.** Sections
+below the fold have not been revealed, so removing the flag sets them animating toward the
+final values. Measured immediately they return whatever the animation is passing through —
+which is why the deliberate break first reported `opacity 0.0155657` rather than a clean
+`0`, and why the test passed alone and failed in a full run. The fix is to inject
+`transition: none !important` **before** mutating, because the assertion is about the
+static end state. **A mid-animation reading is not a measurement**, and a test you wrote
+this session going flaky is your defect long before it is the harness's (§14 item 3).
+
+**(c) The first version used `javaScriptEnabled: false` — and it failed for an unrelated
+reason that turned out to be a real finding.** See item 11 below.
+
+⚠️ **And publish an animated value as a CUSTOM PROPERTY, never an inline `style`.** The
+fills first shipped as `style={{ width: '61%' }}`. An inline style is (1,0,0,0) and
+out-specifies any class rule, so the armed `width: 0` silently lost and each bar animated
+from its final value to its final value — indistinguishable from "the animation was never
+wired up", which is exactly how I read it. Moving the number to `--w` gives the stylesheet
+the property back. **When an animation appears to be missing, suspect a specificity loss
+before a missing listener**, and confirm with `getComputedStyle` rather than by reading the
+rule you meant to write.
+
+**10. An undefined CSS class is silence, not an error — so "the markup says `.card-note`"
+is not evidence that `.card-note` exists.** Every provenance line on the rebuilt landing
+page asked for a class `globals.css` had never defined. Each one inherited its parent's
+15px full-strength ink and read as a second title instead of a footnote. Nothing errored,
+nothing looked broken, and the page was perfectly plausible. It surfaced only from diffing
+**computed** styles against the design-system artifact element by element.
+
+This is the CSS instance of a shape this repo keeps meeting (11c iv, 11j): **the defect is
+an omission, and omissions render fine.** Two habits follow. When you add a class name to
+markup, grep the stylesheet for its definition in the same edit. And when comparing a build
+against an approved design, compare `getComputedStyle` output, not source — the source is
+what you *meant*, and the bug lives in the gap.
+
+**11. ⚠️ OPEN FINDING (2026-08-15) — four public pages render only "Loading…" with
+JavaScript disabled.** Found while trying to write the no-JS control in item 9, which
+failed and sent me looking for a motion bug that did not exist.
+
+**What was measured**, on a **production** build (`pnpm build` + `next start`), Chromium
+with `javaScriptEnabled: false`, deterministic over three runs:
+
+| Page | Server HTML | Without JS |
+|---|---|---|
+| `/` | 108 KB | **"Loading…" forever** |
+| `/terms` | 46 KB | **"Loading…" forever** |
+| `/privacy` | ~42 KB | **"Loading…" forever** |
+| `/disclaimer` | 42 KB | **"Loading…" forever** |
+| `/login`, `/signup`, `/pricing`, `/contact` | 25–29 KB | renders normally |
+
+**The mechanism.** `app/loading.tsx` puts a Suspense boundary around **every** route. When
+a page's HTML overruns React's first flush, the shell ships the fallback inline
+(`<!--$?--><template id="B:0">`) and the real content streams afterwards into a
+`<div hidden>`, which an inline `$RC(…)` script swaps into place. No script, no swap. The
+content **is** in the bytes — it is simply never unhidden. The split falls on page size,
+not on anything about the pages themselves, which is why it hits the landing page and the
+three legal documents and spares the four smaller auth cards.
+
+**Why it is recorded rather than fixed:** it is a platform-level consequence of our own
+root loading boundary, it affects every large page equally, and the remedy is an
+architectural choice (scope `loading.tsx` to the `(app)` group, or accept it) that belongs
+to the owner. **Severity is genuinely low** — Googlebot executes JavaScript, so indexing is
+unaffected, and the raw markup is present for any crawler that reads bytes. It matters for
+readers with scripting blocked and as a robustness floor.
+
+⚠️ **The general lesson is about the instrument, not the bug.** A no-JS assertion on the
+landing page would have gone red forever while pointing at the motion system — a guard
+that fails for a true reason and names the wrong culprit is worse than no guard, because
+the next person weakens the innocent code. When a new test fails, **confirm the mechanism
+before accepting the accusation**: comparing four page sizes against four others took
+minutes and moved the finding from "the motion hides content" to "our root loading
+boundary defers large pages."
+
 ---
 
 ## 15. Previewing & Verifying Authenticated Pages Locally

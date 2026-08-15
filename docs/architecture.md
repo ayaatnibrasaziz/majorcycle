@@ -474,7 +474,7 @@ live-check Session 1):
 | `/login` · `/signup` | Sign in, create a free account | Signed-in users are bounced to `/stocks` by the proxy (`SIGNED_OUT_ONLY_PATHS`). Signup takes **no card** (§7.2) |
 | `/reset-password` | Request a reset link | **Deliberately NOT bounced** for a signed-in reader — asking for a reset link is a legitimate thing to do while signed in (e.g. on a shared machine, or a Google-only account adding a password). Verified live 2026-08-02: it renders rather than redirecting. The doc previously grouped it with `/login`·`/signup` and was wrong |
 | `/pricing` | The signed-out shop window: both plans, local currency | A **signed-in** visitor is redirected to `/account` — they are a customer, not a shopper |
-| `/methodology` | Plain-English explainer, deliberately pre-signup so the product can be judged before an account exists | No formulas (decision #34) |
+| ~~`/methodology`~~ → `/#how-it-works` | **Retired 2026-08-13.** The plain-English explainer is now sections ⑤+⑥ of the landing page — still pre-signup, still no formulas (decision #34). The old URL answers **308** with the fragment, from `next.config.ts`'s `redirects()` | Config redirects fire **ahead of `proxy.ts`** — measured, not assumed |
 | `/disclaimer` · `/terms` · `/privacy` | Legal | Reachable from every footer |
 | `/contact` | Contact form → Resend | Honeypot; `reply_to` = sender |
 | `/deletion-requested` | Post-deletion confirmation | **Must** be session-free: `requestAccountDeletion` ends with a global `signOut`, so the reader has no session at this moment. Gating it on a session would bounce them to `/login` and they would never see the confirmation. Copy is entirely generic — no email, name or date. **Also in `SIGNED_OUT_ONLY_PATHS`** (F-A4-c) **and, since Layer G, gated on the `mc_deletion_notice` marker** — see below |
@@ -961,8 +961,15 @@ feedback. The design rationale and both rounds of measurements are in `design-sy
 - **`--pub-*` in `globals.css`** is the signed-out site's scale, read by BOTH `AuthCard`
   (six form pages) and the legal documents, so 24px and 13px are written down once. Plus
   `--measure-doc` (560px) for the legal column, which deliberately does **not** reuse
-  `--measure-prose` — that is 680px because it holds ~68 characters at 17px, and
-  `/methodology` still renders at 17px.
+  `--measure-prose` — that is 680px because it holds ~68 characters at 17px.
+
+  ⚠️ **Since `/methodology` retired (2026-08-13), NO shipped page renders the 17px reading
+  body.** `AuthCard` is `width="narrow"`, `LegalDoc` is `width="wide"` on the `--pub-*`
+  sizes, and the landing carries its own scale in `landing.css`. `--measure-prose` survives
+  as the arithmetic behind the legal page's two-column rail, and the reading scale is held
+  for `/learn`. **Recorded because it is easy to misread the tokens as live**: changing
+  `--rd-body` today moves nothing a reader can see, so a regression there would be silent
+  until `/learn` lands.
 
 ⚠️ **A type change broke a shared hook three files away — the second-order effect is the
 lesson.** At 13px the whole of `/terms` is ~1.9 screens, so clauses 05–08 sit where no
@@ -1387,7 +1394,17 @@ redirects rather than quietly reporting a bounce as a page. This also satisfies 
   implementation agreeing with the spec is not enough (11c iii).
 
   ✅ **Status 2026-08-15: executed, and the landing page reads it.** `mag7-snapshot.json`
-  holds the seven rows as of the 13 Aug close.
+  holds the seven rows as of the 13 Aug close. The key allow-list is thirteen fields:
+  `ticker`, `name`, `currency`, `overallRating`, `overallLabel`, `healthScore`,
+  `valuationScore`, `cyclePayoffScore`, `valuationZone`, `currentDrawdownPct`,
+  `typicalDrawdownPct`, `lowerBoundPct`, `pullbackEvents`.
+
+  ⚠️ **`cyclePayoffScore` is on that list because the table draws the product's
+  composition micro-bar**, which splits the Overall Rating 40/35/25 across Health,
+  Valuation and Cycle Payoff. The alternative — recovering the third part by algebra from
+  the rounded total — would be a second implementation of the weighting, free to disagree
+  with `ratingComposition` (11c iii). **Widening the allow-list to keep one definition is
+  the right trade**; widening it because a field "might be useful" is not.
 
   ⚠️ **Running it invalidated the approved design's own copy, which is why this is
   frozen rather than nightly.** The storyboard was drawn on the 7 Aug run and said
@@ -1409,7 +1426,13 @@ redirects rather than quietly reporting a bounce as a page. This also satisfies 
   Guarded — the spec fails if the two disagree on any shared field.
 
 - **Submit the sitemap in Search Console at merge.** It 404s until Layer G is live.
-- `/methodology` is the topical-authority anchor for "Major Cycle" educational queries.
+- ❌ **This line used to read "`/methodology` is the topical-authority anchor for 'Major
+  Cycle' educational queries."** That page no longer exists. It was folded into the
+  landing page as `#how-it-works` (2026-08-13), and `next.config.ts` answers the old URL
+  with a **308** carrying the fragment. The anchor for those queries is now `/` itself,
+  which is the stronger page to rank anyway. ⚠️ The redirect is a *config* redirect, and
+  it was measured on the wire rather than assumed: **config redirects fire ahead of
+  `proxy.ts`**, so `/methodology` answers 308 rather than 307-to-`/login`.
 
 ---
 

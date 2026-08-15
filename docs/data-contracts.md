@@ -1047,6 +1047,102 @@ PRESETS = {
 
 ---
 
+## 7a. The two committed landing snapshots (Layer G)
+
+Neither is a database table and neither is fetched at request time. Both are **JSON files
+committed to the repo and statically imported**, so the front door never touches Postgres
+and Lighthouse has nothing to wait on. Architecture §7.1 explains why the Mag 7 one is a
+deliberate, bounded exception to the paywall; this section is the shape.
+
+### `web/app/landing-snapshot.json` — one stock, rebuilt nightly
+
+Written by `analytics/cron/build_landing_snapshot.py` at the end of the US+CA refresh,
+committed back with `[skip ci]`. Read through `web/lib/landing.ts`.
+
+```typescript
+interface LandingSnapshot {
+  ticker: string;            // fixed — Apple. A rotating example means the page a reader
+  name: string;              // shares is not the page their friend opens.
+  currency: string;
+  price: number;
+
+  // The falling half of the cycle. All negative.
+  currentDrawdownPct: number;
+  typicalDrawdownPct: number;
+  deepestDrawdownPct: number;
+  pullbackEvents: number;
+
+  // The recovery half. All positive. Added 2026-08-13 for the storyboard's
+  // second distribution bar — no new maths, calculate_cycle_metrics already
+  // returned all four and the allow-list simply never asked.
+  currentProfitPct: number;
+  typicalRecoveryPct: number;
+  largestRecoveryPct: number;
+  recoveryEvents: number;
+
+  asOf: string;              // exchange calendar date of the last bar (14a)
+  generatedAt: string;       // ISO instant the file was written
+}
+```
+
+⚠️ **Every field is cycle GEOMETRY.** The generator calls `calculate_cycle_metrics`, which
+has no rating, health score or valuation to return — so there is no code path from this
+file to a premium field. That is structurally stronger than remembering to strip one (11b).
+
+### `web/app/mag7-snapshot.json` — seven stocks, FROZEN
+
+Written by `analytics/cron/build_mag7_snapshot.py`, which calls `analyze_ticker` — the
+**same** function the screener runs, not the three scoring functions recomposed. Read
+through `web/lib/mag7.ts`. Regenerated **only on request** (owner, 2026-08-13).
+
+```typescript
+interface Mag7Snapshot {
+  preset: string;            // "medium"
+  asOf: string;              // exchange calendar date — 2026-08-13
+  generatedAt: string;
+  rows: Mag7Row[];           // exactly 7, allow-listed tickers
+}
+
+interface Mag7Row {
+  ticker: string;
+  name: string;              // full legal name; lib/mag7.ts shortName() for prose
+  currency: string;
+
+  // ⚠️ PREMIUM everywhere else on the site. Bounded exception — architecture §7.1.
+  overallRating: number;     // 0–100
+  overallLabel: OverallLabel;
+  healthScore: number;
+  valuationScore: number;
+  cyclePayoffScore: number;  // the rating's third component, 25% of the weight
+  valuationZone: string;
+
+  currentDrawdownPct: number;   // negative
+  typicalDrawdownPct: number;   // negative
+  lowerBoundPct: number;        // negative — deepest in the record
+  pullbackEvents: number;
+}
+```
+
+⚠️ **`cyclePayoffScore` exists so the table can draw the product's composition micro-bar
+from the real 40/35/25 split.** Deriving it back out of the rounded total would be a
+second implementation of `ratingComposition` (11c iii). **The allow-list is a whitelist of
+keys, not a blacklist** — a field `CycleAnalysis` grows next does not appear here by
+default, which is the point.
+
+### The invariant BETWEEN them
+
+Apple appears in **both** files, so they must carry the **same `asOf`**. The first run left
+them a day apart and the landing page printed −12.2% in section ⑤'s rulers and −11.3% in
+section ④'s table, three screens up — both real, one current. `e2e/landing.spec.ts` fails
+if the two disagree on any shared field.
+
+⚠️ **Regenerating `mag7-snapshot.json` is a CONTENT change, not a data refresh.** The page
+states things *about* this run in prose. Every such claim is derived in `mag7Facts()` and
+asserted against the rows, and the Opportunity Map's label placement is tuned to one set
+of coordinates — re-run `e2e/landing.spec.ts` and re-read the callout copy. See 11k.
+
+---
+
 ## 8. Currency Display Rules
 
 **Stock prices:** always in the stock's home currency, identified by `fundamentals.currency`. Display the currency symbol or code.

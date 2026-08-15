@@ -3,6 +3,13 @@
 > Written 2026-08-07 (G2), **from measurements taken on the live site**, not from
 > impressions. Every number below was read off `www.majorcycle.com` in a browser at
 > 1440×900. Awaiting the owner's approval of the tool stack before any design work.
+>
+> ⚠️ **This is a dated SURVEY, kept as the record of what Layer G was answering. Do not
+> read it as current.** The page most of it measures, `/methodology`, was retired on
+> 2026-08-13 and folded into `/#how-it-works`; the reading scale, `PageFrame` and the
+> `--pub-*` tokens all landed in response to the findings below. For the state today see
+> `design-system.md` §3 and §9. The measurements are left exactly as taken — rewriting a
+> survey to match the fix destroys the evidence that the fix was needed.
 
 ---
 
