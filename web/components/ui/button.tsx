@@ -6,7 +6,18 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-sm)] font-semibold font-[var(--font-sans)] transition-all duration-200 cursor-pointer disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-bright)] active:translate-y-0',
+  // ⚠️ `[font-family:...]`, NOT `font-[var(--font-sans)]` — and this one is load
+  // bearing. `cn()` runs tailwind-merge, which files `font-semibold` and
+  // `font-[…]` in the SAME conflict group (it cannot tell an arbitrary font
+  // value's family from a weight), so the later class silently deleted the
+  // earlier one: `twMerge('font-semibold font-[var(--font-sans)]')` returns
+  // `font-[var(--font-sans)]` alone. EVERY button on the site therefore rendered
+  // at weight 400 while this file said 600, and the reference design
+  // (`.btn-run`, the locked source of truth) says 600 too. Nothing errored and
+  // the class list looked right in source — only the computed style showed it.
+  // Written as an arbitrary PROPERTY, the family lands in its own group and both
+  // survive. Same reasoning as `[background-color:…]` on `primary` below.
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-sm)] font-semibold [font-family:var(--font-sans)] transition-all duration-200 cursor-pointer disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-bright)] active:translate-y-0',
   {
     variants: {
       variant: {

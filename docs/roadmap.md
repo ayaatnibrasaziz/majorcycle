@@ -978,6 +978,21 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > `check:entitlement-gates` (11) · `check:report-sections` (22) · `check:seo` (491) ·
 > `check:data-integrity` (59) · pytest **153**.
 >
+> ### 📋 LAYER G AUDIT — the deferred list. Owner instruction 2026-08-15: revisit these **after** Layer G is built, not during.
+>
+> Both were surfaced this session, both are real, and neither is urgent. They are parked
+> here rather than fixed so that building does not keep stopping for them. **Do not action
+> either one mid-build.**
+>
+> | # | Item | Owner's steer |
+> |---|---|---|
+> | **GA-1** | **Four public pages render only "Loading…" with JavaScript disabled** — `/` (108 KB), `/terms` (46 KB), `/privacy`, `/disclaimer` (42 KB); the four AuthCard pages (25–29 KB) are fine. `app/loading.tsx` wraps every route in a Suspense boundary and React defers any page whose HTML overruns the first flush into a `<div hidden>` swapped in by an inline script. Measured on a production build, deterministic ×3. Full write-up: `coding-standards.md` §14 item 11 | **Fix later, at the audit.** Low severity — Googlebot runs JS and the markup is in the bytes. Candidate fix is scoping `loading.tsx` to the `(app)` group; it touches how every page loads, so it wants its own change and its own verification |
+> | **GA-3** | **An intermittent 404 on Stock Detail, seen locally.** `entitlement-routes.spec.ts` → *"a FREE viewer's Stock Detail HTML contains no scored value anywhere"* failed ~1 run in 3 against `/stocks/us/<TICKER>`, and the captured page was **"Page not found"** — i.e. `notFound()`, i.e. `fetchStockDetail` returned `null`. ⚠️ **Proved pre-existing, not caused by the Layer G polish**: stashing every change and re-running passed, then restoring them gave 1 fail / 2 passes, so the control's pass was luck and the defect is timing, not code. ⚠️ **This is the exact shape CLAUDE.md 11e is about** — `null` must mean "not in our universe" and read failures must throw so the route answers 503. An intermittent 404 says either a row really is intermittently absent, or some read path still folds a soft failure into `null` and 11e missed it | **Investigate at the audit.** Reproduce with the dev server's log captured, and confirm which of the two it is. Do **not** relax the test — an intermittent 404 reaching a paying customer as "Stock not found" is the original defect 11e was written for |
+> | **GA-2** | **Seven design-hook findings in `globals.css`**, all pre-existing product CSS on **paid** surfaces. Three `side-tab` (a 2px accent on `.insight-invalidation`, 3px on `.card-header--accent-buy/hold`) — assessed as **false positives**: the colour is semantic, and it comes from `reference/original-design.html`, which non-negotiable #1 makes the locked source of truth. Two `layout-transition` (`transition: width` on `.radar-axis-bar-fill` and `.progress-bar-fill`) — correct in principle, negligible at 6–8px, and `scaleX` would stretch the gradient fill | **Revisit at the audit.** Nothing changed and nothing suppressed — a hook finding is not permission to repaint a paid surface (see the colour reversal above). Decide then whether to persist a file-scoped `side-tab` exception |
+>
+> ⚠️ **Neither is a blocker for merging PR #89.** They are recorded so they cannot be
+> forgotten, and deliberately *not* fixed, because both would widen an in-flight change.
+>
 > ### ✅ G3.7 (the legal documents) — COMPLETE 2026-08-13. Still inside PR #89, still unmerged.
 >
 > The three pages G3 left unaccepted. **Rebuilt twice in one day**, and the second round is

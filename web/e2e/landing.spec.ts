@@ -139,6 +139,20 @@ test.describe('the motion arms the page, it does not gate it', () => {
   test('with the flag stripped, every section is still visible at full size', async ({ page }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
 
+    // ⚠️ Wait for the flag to APPEAR before stripping it. `networkidle` says the
+    // network went quiet, not that React hydrated and ran the effect — so a
+    // strip issued too early is simply undone a moment later when LandingMotion
+    // mounts, re-arms the root, and reveals only what is currently on screen.
+    // Everything below the fold then measures opacity 0 and the failure reads as
+    // a CSS defect. That is exactly what made this flaky: it passed alone on a
+    // warm build and failed in a full suite, and the first "fix" (killing
+    // transitions) was real but treated a second symptom of the same race.
+    // A precondition has to cover what the measurement depends on, not merely
+    // something that correlates with readiness (coding-standards §14 item 8).
+    await page.waitForFunction(() => document.querySelector('.lp')?.hasAttribute('data-motion'), undefined, {
+      timeout: 10_000,
+    });
+
     // Reproduce the no-script CSS state: no flag, and no reveal classes to
     // stand in for one. Anything the motion hides will collapse here.
     //

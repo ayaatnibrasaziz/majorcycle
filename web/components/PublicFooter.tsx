@@ -29,11 +29,11 @@ export function PublicFooter({ year }: { year: number }) {
   const pathname = usePathname() ?? '';
 
   return (
-    <footer className="relative z-10 mt-auto bg-[var(--bg-surface)] border-t border-[var(--border)] px-6 py-8">
+    <footer className="relative z-10 mt-auto bg-[var(--bg-surface)] border-t border-[var(--border)] px-[20px] pt-[30px] pb-[36px]">
       {showsFullChrome(pathname) && (
         <nav
           aria-label="Site"
-          className="mx-auto flex max-w-[var(--measure-wide)] flex-wrap justify-center gap-x-6 gap-y-2.5"
+          className="mx-auto flex max-w-[var(--measure-wide)] flex-wrap justify-center gap-x-[22px] gap-y-[8px]"
         >
           {FOOTER_LINKS.map((l) => (
             <Link
@@ -53,7 +53,7 @@ export function PublicFooter({ year }: { year: number }) {
           set this in `.micro` (12px, muted); that is the one place this
           implementation deliberately departs from it, and the contrast guard is
           what would have caught the alternative. */}
-      <p className="mx-auto mt-5 max-w-[68ch] text-center text-[length:var(--rd-small)] text-[var(--text-secondary)] leading-relaxed">
+      <p className="mx-auto mt-[16px] max-w-[74ch] text-center text-[length:var(--rd-small)] text-[var(--text-secondary)] leading-relaxed">
         Information only — not financial advice. MajorCycle provides educational
         analysis of US, Australian and Canadian equities. It does not take your
         objectives, financial situation or needs into account.

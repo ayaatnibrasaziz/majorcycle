@@ -159,3 +159,87 @@ test.describe('no dead links in the chrome', () => {
     });
   }
 });
+
+/**
+ * The chrome's GEOMETRY, measured in a real browser against the approved design
+ * system (artifact fd8cbcdc, "every public page, one design system").
+ *
+ * ⚠️ Why measured rather than read: every gap in this header was written as a
+ * Tailwind step, and this project's root font-size is **14px**, so the rem scale
+ * lands at 0.875× the number you expect. `gap-5` is 17.5px, not 20. `px-3 py-1.5`
+ * is 10.5/5.25, not 12/6. Read as source it all looked deliberate; measured, the
+ * whole bar was short on every axis at once. Numbers here are the artifact's.
+ */
+test.describe('the public chrome matches the approved design system', () => {
+  const GEOMETRY: [string, string, string, string][] = [
+    ['header height', 'header', 'height', '58px'],
+    ['header inner gap', 'header > div', 'gap', '22px'],
+    ['header side padding', 'header > div', 'padding-left', '20px'],
+    ['lockup gap', 'header a', 'gap', '10px'],
+    ['nav gap', 'header nav', 'gap', '2px'],
+    ['nav link padding', 'header nav a', 'padding', '7px 11px'],
+    ['footer padding', 'footer', 'padding', '30px 20px 36px'],
+  ];
+
+  for (const [name, selector, prop, expected] of GEOMETRY) {
+    test(`${name} is ${expected}`, async ({ page }) => {
+      await page.goto('/pricing', { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('[data-public-header]');
+      const got = await page.evaluate(
+        ([s, p]) => {
+          const el = document.querySelector(s!);
+          return el ? getComputedStyle(el).getPropertyValue(p!).trim() : 'NOT FOUND';
+        },
+        [selector, prop] as const,
+      );
+      expect(got, `${name}: the design system specifies ${expected}`).toBe(expected);
+    });
+  }
+
+  /**
+   * ⚠️ This one guards a defect class, not a number.
+   *
+   * `cn()` runs tailwind-merge, which files `font-semibold` and `font-[…]` in the
+   * SAME conflict group — it cannot tell an arbitrary font value's family from a
+   * weight. `Button` carried both, so the family silently deleted the weight and
+   * EVERY button on the site rendered at 400 while button.tsx said 600 and the
+   * reference design said 600. No error, no lint warning, and the class list in
+   * source looked correct; only the computed style disagreed.
+   *
+   * Asserting the computed weight is the only thing that can see it, and it will
+   * catch the next `font-*` class added to that component too.
+   */
+  test('buttons really render at the weight the component declares', async ({ page }) => {
+    await page.goto('/pricing', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('[data-public-header]');
+
+    // ⚠️ Matched on the Button component's own family class, NOT on a rounding
+    // utility. The first version of this test selected anything carrying
+    // `rounded-[var(--radius-sm)]` and caught the NAV LINKS, which are correctly
+    // weight 400 — the design system gives `.nav a` no weight and reserves 600
+    // for the current page. That failure was the test being wrong, not the page.
+    const weights = await page.evaluate(() =>
+      [...document.querySelectorAll('header a, main button, main a, footer a')]
+        .filter((el) => el.className.includes('[font-family:var(--font-sans)]'))
+        .map((el) => ({
+          text: (el.textContent ?? '').trim().slice(0, 28),
+          weight: getComputedStyle(el).fontWeight,
+          family: getComputedStyle(el).fontFamily.split(',')[0]!.replace(/["']/g, ''),
+        })),
+    );
+
+    // Non-zero is itself an assertion, not a sanity check: the selector keys on
+    // the exact class whose loss IS the defect, so "found none" means either the
+    // family class was renamed or it has been merged away again. Reverting the
+    // fix on purpose lands here rather than on the weight check below.
+    expect(
+      weights.length,
+      'no Button matched `[font-family:var(--font-sans)]` — the family class was renamed or tailwind-merge has eaten it again',
+    ).toBeGreaterThan(0);
+    for (const w of weights) {
+      expect(w.weight, `"${w.text}" renders at ${w.weight}; the component declares 600`).toBe('600');
+      // The family must survive the same merge — losing it is the mirror defect.
+      expect(w.family, `"${w.text}" lost its font family`).toBe('Sora');
+    }
+  });
+});

@@ -22,9 +22,9 @@ export function AuthCard({ title, subtitle, children }: AuthCardProps) {
         the thing you were signing into. Both values are tokens now, so the next
         card cannot be a fifth opinion (CLAUDE.md 11c). */}
     <div className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius)] shadow-[var(--shadow-lift)] overflow-hidden">
-      <div className="px-7 py-8 sm:px-9 sm:py-10">
+      <div className="px-[20px] py-[24px] sm:px-[32px] sm:py-[30px]">
         {/* Heading */}
-        <div className="mb-7">
+        <div className="mb-[24px]">
           {/* Sizes come from --pub-* (globals.css), the ONE place the public
               site's scale is chosen. These were hand-typed 22/24/13 here while the
               legal documents declared the same 24 and 13 as tokens — the same
@@ -36,7 +36,7 @@ export function AuthCard({ title, subtitle, children }: AuthCardProps) {
             {title}
           </h1>
           {subtitle && (
-            <p className="text-[length:var(--pub-body)] text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+            <p className="text-[length:var(--pub-body)] text-[var(--text-secondary)] mt-[6px] leading-relaxed">
               {subtitle}
             </p>
           )}
