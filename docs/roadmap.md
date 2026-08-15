@@ -978,31 +978,48 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > `check:entitlement-gates` (11) · `check:report-sections` (22) · `check:seo` (491) ·
 > `check:data-integrity` (59) · pytest **153**.
 >
-> ### ⏸️ AWAITING OWNER — Legal compliance audit, 2026-08-15. **`docs/legal-audit.md`**
+> ### ✅ DONE — Legal compliance audit, proposed **and applied**, 2026-08-15. **`docs/legal-audit.md`**
 >
 > Owner asked for the three legal pages to be audited against what the system
 > actually does, under the **Australian Privacy Act (APPs) + ASIC** standard they
 > chose. Verified against **live** Supabase, Stripe, Resend and Vercel over MCP,
-> plus the code — not read.
+> plus the code — not read. Delivered propose-only; the owner then instructed
+> **"apply all the 7 fixes"** in the same session's follow-up.
 >
 > **Seven findings, none a misrepresentation; all gaps between the machine and the
-> disclosures.** Two are material: `referrals` collects and emails a **non-user's**
+> disclosures.** Two were material: `referrals` collects and emails a **non-user's**
 > address (APP 5), and personal data lives in **`us-east-1`** with no cross-border
 > disclosure (APP 8). The rest: a hash that survives deletion, Google missing from
-> the recipients list, an unstated 25/day free cap the Terms nonetheless enforce, no
+> the recipients list, an unstated 25/day free cap the Terms nonetheless enforced, no
 > governing-law or tax clause, and an undocumented 3-day payment grace.
 >
-> ⚠️ **NOTHING APPLIED. The pages are untouched on disk.** The owner set strict
-> rules — propose only, approve first — and will decide in a later session. **Do
-> not action any finding without an instruction naming it.**
+> **Shipped:** `privacy/page.tsx` (1–4) and `terms/page.tsx` (5–7), both dated
+> **15 August 2026**. `/disclaimer` was audited, found accurate and left alone, so it
+> correctly still reads 5 July 2026. Every insertion carries a comment naming its
+> finding. **No existing wording was restyled or re-ordered** — the owner has said
+> repeatedly they are happy with the content.
 >
-> Three answers are needed first: which findings to apply · confirmation of the ABN
-> against a live registry · whether Cloudflare still does DNS and whether email
-> routing is genuinely in use (Resend reports *receiving disabled*).
+> **Two owner amendments, both recorded in the audit doc:**
+> - **No ABN and no entity type** in the governing-law clause — *"operated by a
+>   business based in Australia"*. An ABN on a public page is a live claim about a
+>   registry that has to be kept current, and nothing depends on it. Don't reinstate.
+> - **Cloudflare verified by hand in the signed-in dashboard** (it has no MCP
+>   server): DNS Setup **Full**, 12 records, **all DNS-only** — so Cloudflare is
+>   registrar + authoritative DNS and does *not* proxy site traffic — and Email
+>   Routing **Enabled** with two active rules forwarding `support@` and `security@`.
+>   The existing phrase *"DNS and email routing"* is accurate and was left unchanged.
+>   The Resend *"receiving disabled"* reading was a true fact about the wrong system.
+>
+> **New guard, and it is the point of the exercise.** Three of the new sentences are
+> promises about live constants (`FREE_VIEW_DAILY_LIMIT` 25, `ACCOUNT_DELETION_GRACE_DAYS`
+> 30, `GRACE_DAYS` 3). Change a constant and the published page becomes a **false
+> statement** with nothing going red — CLAUDE.md 11k on the worst possible surface.
+> `e2e/legal-doc.spec.ts` now builds each assertion *from* the constant and checks it
+> against the **rendered** page, each with an off-by-one control proving the match is
+> value-sensitive.
 >
 > The technical facts it established — data residency, the personal-data table
-> inventory, and what survives deletion — are recorded in `architecture.md` §6.6
-> and stand regardless of what the owner decides about the wording.
+> inventory, and what survives deletion — are in `architecture.md` §6.6.
 >
 > ### 📋 LAYER G AUDIT — the deferred list. Owner instruction 2026-08-15: revisit these **after** Layer G is built, not during.
 >
@@ -1015,6 +1032,7 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > | **GA-1** | **Four public pages render only "Loading…" with JavaScript disabled** — `/` (108 KB), `/terms` (46 KB), `/privacy`, `/disclaimer` (42 KB); the four AuthCard pages (25–29 KB) are fine. `app/loading.tsx` wraps every route in a Suspense boundary and React defers any page whose HTML overruns the first flush into a `<div hidden>` swapped in by an inline script. Measured on a production build, deterministic ×3. Full write-up: `coding-standards.md` §14 item 11 | **Fix later, at the audit.** Low severity — Googlebot runs JS and the markup is in the bytes. Candidate fix is scoping `loading.tsx` to the `(app)` group; it touches how every page loads, so it wants its own change and its own verification |
 > | **GA-4** | **`legal-doc.spec.ts` → "/privacy keeps its lines inside the readable band" is still flaky on CI** (retried, passed; run `31867667881`). This is the character-count guard whose precondition problem is written up in `coding-standards.md` §14 item 7b — it polls until the article computes 13px, which proves the stylesheet applied and nothing about the column having taken its width or the real webfont having rendered, and font metrics are exactly what a character count depends on. Local (8 cores, warm) never hits the window; CI (2 cores, cold compile) does | **Strengthen the precondition at the audit** — wait on the webfont via `document.fonts.ready` **and** a stable column width, not on a size that merely correlates with readiness. Do not simply raise the retry count: a flake that is tolerated stops being read |
 > | **GA-3** | **An intermittent 404 on Stock Detail, seen locally.** `entitlement-routes.spec.ts` → *"a FREE viewer's Stock Detail HTML contains no scored value anywhere"* failed ~1 run in 3 against `/stocks/us/<TICKER>`, and the captured page was **"Page not found"** — i.e. `notFound()`, i.e. `fetchStockDetail` returned `null`. ⚠️ **Proved pre-existing, not caused by the Layer G polish**: stashing every change and re-running passed, then restoring them gave 1 fail / 2 passes, so the control's pass was luck and the defect is timing, not code. ⚠️ **This is the exact shape CLAUDE.md 11e is about** — `null` must mean "not in our universe" and read failures must throw so the route answers 503. An intermittent 404 says either a row really is intermittently absent, or some read path still folds a soft failure into `null` and 11e missed it | **Investigate at the audit.** Reproduce with the dev server's log captured, and confirm which of the two it is. Do **not** relax the test — an intermittent 404 reaching a paying customer as "Stock not found" is the original defect 11e was written for |
+> | **GA-5** | **The line-band guard measures ONE paragraph per page and stops — and two paragraphs on `/privacy` run 76 characters, one over the 75 bound.** Surfaced 2026-08-15 while applying the legal audit: a probe printing every qualifying paragraph returned **72, 74, 76, 76**, and the guard only ever looked at the first (74, green). One of the two 76s is pre-existing content, not new. ⚠️ Same family as 11j — a check that samples one instance is *silent* about the rest, not clean | **Decide at the audit, and note the fix is a DESIGN change, not a test change.** Getting 76 → ≤75 means moving `--measure-doc` or the doc type size, which four other surfaces read (`legal-doc.spec.ts` asserts the auth card and the document agree). **Not fixed now on purpose** — CLAUDE.md 11l: a real finding is not permission to widen scope inside somebody else's commit. Widening the guard to all paragraphs would take `/privacy` red on content nobody asked to change |
 > | **GA-2** | **Seven design-hook findings in `globals.css`**, all pre-existing product CSS on **paid** surfaces. Three `side-tab` (a 2px accent on `.insight-invalidation`, 3px on `.card-header--accent-buy/hold`) — assessed as **false positives**: the colour is semantic, and it comes from `reference/original-design.html`, which non-negotiable #1 makes the locked source of truth. Two `layout-transition` (`transition: width` on `.radar-axis-bar-fill` and `.progress-bar-fill`) — correct in principle, negligible at 6–8px, and `scaleX` would stretch the gradient fill | **Revisit at the audit.** Nothing changed and nothing suppressed — a hook finding is not permission to repaint a paid surface (see the colour reversal above). Decide then whether to persist a file-scoped `side-tab` exception |
 >
 > ⚠️ **Neither is a blocker for merging PR #89.** They are recorded so they cannot be

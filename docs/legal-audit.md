@@ -1,13 +1,28 @@
 # Legal Compliance Audit — the legal pages vs. what the system actually does
 
-> ## ⚠️ STATUS: PROPOSED. **NOTHING IN THIS FILE HAS BEEN APPLIED.**
+> ## ✅ STATUS: APPLIED — all seven findings, 2026-08-15, on owner instruction.
 >
-> The owner asked for an audit under strict rules: *do not change any code, do not
-> modify any files, write the suggestions down, get approval first.* This document
-> IS that deliverable. The three legal pages are **unchanged** on disk.
+> The audit was originally delivered under strict propose-only rules (*do not change
+> any code, write the suggestions down, get approval first*), and sat unapplied for
+> one session. The owner then instructed: **"apply all the 7 fixes"**, with two
+> amendments, both recorded below.
 >
-> **Owner will read this and decide in a later session.** Do not action any finding
-> below without an explicit instruction naming it.
+> **What changed on disk:** `app/(public)/privacy/page.tsx` (findings 1–4) and
+> `app/(public)/terms/page.tsx` (findings 5–7). Both `updated` dates moved
+> **5 July 2026 → 15 August 2026**. `/disclaimer` is untouched — it was audited and
+> found accurate, so its date correctly still reads 5 July 2026.
+>
+> **Amendment 1 — finding 6 carries no ABN and no entity type.** Owner's
+> instruction: *"do not provide ABN or say sole trader. Make it general like
+> business in Australia."* The clause now opens *"MajorCycle is operated by a
+> business based in Australia."* Open question 2 (verify the ABN) is therefore
+> **closed as no longer applicable** — nothing published depends on it.
+>
+> **Amendment 2 — open question 3 is answered, and the existing wording was right.**
+> Checked in the live Cloudflare dashboard, signed in, on 2026-08-15. See below.
+>
+> Everything under "Findings" is preserved as written, as the record of *why* each
+> edit exists. The wording that shipped matches it, except finding 6 per above.
 
 **Audited 2026-08-15.** Standard applied — **Australian Privacy Act 1988 (APPs) +
 ASIC posture**, chosen by the owner. GDPR/CCPA noted only where they would bite.
@@ -30,8 +45,24 @@ a factual claim about a running machine and the machine is the authority.
 | **Vercel MCP** (live) | Project `majorcycle`, team `team_AIgUMMMzMtI9la7rj1x32TZZ` |
 | **Codebase** | `lib/trialGuard.ts`, `lib/freeViews.ts`, `lib/account.ts`, `app/api/cron/purge-accounts/route.ts`, `app/api/stripe/webhook/route.ts`, `app/(app)/account/actions.ts`, `components/GoogleSignIn.tsx`, `package.json` |
 
-⚠️ **Cloudflare has no MCP connection** and could not be verified. See the open
-questions at the end.
+✅ **Cloudflare — verified 2026-08-15 in the signed-in dashboard** (it has no MCP
+server, so it was checked by hand in the browser). It was the one unverified claim
+on the page, and **both halves of "DNS and email routing" are true**:
+
+| Checked | Found |
+|---|---|
+| Zone `majorcycle.com` | **DNS Setup: Full** — Cloudflare is the authoritative nameserver. 12 records |
+| Proxy status | **DNS only on every record.** Cloudflare is registrar + DNS, and does **not** proxy site traffic — no visitor request passes through it |
+| Apex `A` / `www` `CNAME` | `76.76.21.21` / `cname.vercel-dns.com` — traffic goes straight to Vercel |
+| Email Routing | **Enabled.** 3 `MX` → `route1/2/3.mx.cloudflare.net`, SPF `include:_spf.mx.cloudflare.net`, DNS records locked |
+| Routing rules | **2 active** — `support@majorcycle.com` and `security@majorcycle.com` both forward to the owner's personal inbox. Catch-all is **Disabled (Drop)** |
+| `send.majorcycle.com` | `MX` → `feedback-smtp.**us-east-1**.amazonses.com` + Resend DKIM — independent confirmation of finding 2's US residency, from DNS rather than from Resend's own API |
+
+⚠️ **One factual correction to this document's own earlier text.** The open question
+below asserted that Search Console was verified *"by meta tag specifically so no
+Cloudflare DNS record was needed"*. There **is** a `google-site-verification` TXT
+record in the zone. The claim was wrong; it changed nothing legally, but it is the
+kind of remembered-not-checked detail this audit exists to catch.
 
 ---
 
@@ -138,6 +169,12 @@ between what the system does and what the disclosures cover.
 - **Proposed** (new clause **"Governing law"**):
   > "MajorCycle is operated from Australia by a sole trader registered with ABN 60 469 571 324. These terms are governed by the laws of Australia, and you and we submit to the non-exclusive jurisdiction of its courts. Nothing in this clause limits any right you have to bring proceedings in your own country of residence where the law gives you that right. Prices are shown inclusive of any taxes that apply; if tax obligations change, we will tell you before the change affects your next payment."
 - ⚠️ **ABN taken from project notes, NOT a live registry lookup. Owner must confirm before publishing.**
+- ✅ **SHIPPED DIFFERENTLY — owner instruction, 2026-08-15.** No ABN, no entity
+  type. The first sentence reads **"MajorCycle is operated by a business based in
+  Australia."**; the rest is verbatim as proposed. This is the better call on its
+  own merits as well as the owner's: an ABN on a public page is a live claim about
+  a real registry that must be verified and kept current, and nothing on the page
+  depends on it. **Do not reinstate either without being asked.**
 
 ### 🟡 7 — The payment-failure grace is given but not promised
 
@@ -172,30 +209,77 @@ Recorded so a later pass does not re-litigate them.
 
 ---
 
-## Open questions — owner must answer before anything is applied
+## Open questions — ALL THREE NOW CLOSED
 
-1. **Which findings to apply?** All seven · only 1–4 (privacy) · a chosen subset ·
-   or revise the wording first.
-2. **Confirm the ABN** `60 469 571 324` against a live registry.
-3. **Cloudflare** — still doing DNS? Is email routing actually in use? Resend
-   reports **receiving disabled**, and `app/layout.tsx` records that Search Console
-   was verified by meta tag *specifically so no Cloudflare DNS record was needed*.
-   The current phrase "DNS and email routing" may be overstated.
+1. ~~**Which findings to apply?**~~ ✅ **All seven**, owner instruction 2026-08-15.
+2. ~~**Confirm the ABN.**~~ ✅ **No longer applicable** — the ABN and the entity type
+   were removed from the clause on owner instruction, so nothing published depends
+   on the number. It stays out of the repo's public surface entirely.
+3. ~~**Cloudflare.**~~ ✅ **Verified in the live dashboard** — see the table under
+   "How this was verified". DNS is authoritative (Full setup, DNS-only, no
+   proxying) and Email Routing is genuinely Enabled with two active forwarding
+   rules. **"Cloudflare — DNS and email routing" is accurate and was left
+   unchanged.** The Resend *"receiving disabled"* reading was a true fact about the
+   wrong system: inbound mail was never Resend's job, it is Cloudflare's.
 
 ---
 
-## Notes for whoever applies this
+## What applying it actually cost — one guard defect, found by the change
+
+Nothing in the legal pages broke. **The test measuring them did**, and it is worth
+recording because the failure looked exactly like a content problem:
+
+    /privacy runs only 39 chars in a 494px column
+
+`e2e/legal-doc.spec.ts` counts characters on the first visual line of a real
+paragraph, to catch a column that is the right number of *pixels* and the wrong
+number of *characters*. Finding 2's clause opens with a bold lead-in —
+`<p><strong>Where your information is stored.</strong> These …</p>` — and the guard
+took the first text node over 60 characters, which is the run **after** the
+`</strong>`, beginning **221px into the paragraph**. It then counted to the wrap
+from there: not a line, but what was left of one.
+
+Measured on the real page before touching anything (CLAUDE.md 11i — *print what the
+browser computed before editing the assertion*): every paragraph that genuinely
+starts at the left edge measured **72, 74, 76, 76**. The column was never wrong.
+
+Fixed by stating the precondition the guard had left implicit — **a
+characters-per-line count is only valid measured from the start of a line** — and
+checking it, rather than loosening the bound. Candidates beginning mid-line are
+skipped, and if a page ever offers nothing else the assertion says so instead of
+reporting a bogus number. Proven not to be a no-op afterwards: narrowing
+`--measure-doc` 560 → 280px took all three documents red (24, 20, 24 chars in a
+214px column), then reverted.
+
+⚠️ **A second observation, recorded and deliberately NOT fixed.** Two paragraphs on
+`/privacy` measure **76** characters, one over the 75 band — including one that
+predates this session. The guard never saw it because it measures **one** paragraph
+per page and stops. Widening it to every paragraph would take `/privacy` red on
+pre-existing content, and the only fixes are the document measure or the type
+size — a design change nobody asked for (CLAUDE.md 11l). Logged as a Layer G audit
+item instead.
+
+---
+
+## Notes for whoever touches these pages next
 
 - The legal pages are `app/(public)/{terms,privacy,disclaimer}/page.tsx`, rendered
   through `components/LegalDoc.tsx`. Content is a `sections` array — adding a
   clause means adding an entry, and the contents rail derives from it automatically.
-- **Bump the `updated` prop** on any page whose content changes. It currently reads
-  `5 July 2026` on all three.
-- `e2e/legal-doc.spec.ts` measures the rendered type and line band; adding prose
-  will not break it, but re-run it.
-- ⚠️ **The owner has said repeatedly they are happy with the CONTENT.** These are
-  additions for accuracy and completeness, not a rewrite. Do not restyle, re-order
-  or "improve" the existing wording while inserting them.
+  Every insertion made here carries a comment naming its finding number.
+- **Bump the `updated` prop** on any page whose content changes. `/terms` and
+  `/privacy` now read `15 August 2026`; `/disclaimer` correctly still reads
+  `5 July 2026`, because its content was audited and left alone.
+- ⚠️ **The owner has said repeatedly they are happy with the CONTENT.** These were
+  additions for accuracy and completeness, not a rewrite. Nothing existing was
+  restyled, re-ordered or "improved" — the one edit to a pre-existing sentence is
+  finding 2's `"…to us."` → `"…to us, under contract."`, and the one to a list item
+  is moving `and` from the analysis-activity bullet to the technical-data bullet so
+  the new sixth item reads grammatically.
+- **These clauses describe live behaviour, so they expire like any other measured
+  number (CLAUDE.md 11k).** If `FREE_VIEW_DAILY_LIMIT` (25/day),
+  `ACCOUNT_DELETION_GRACE_DAYS` (30) or `GRACE_DAYS` (3) ever change, the Terms and
+  the Privacy Policy become **wrong**, not merely stale — and nothing will go red.
 
 ---
 

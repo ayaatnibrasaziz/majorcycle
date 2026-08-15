@@ -15,7 +15,7 @@ export default function TermsPage() {
   return (
     <LegalDoc
       title="Terms of Service"
-      updated="5 July 2026"
+      updated="15 August 2026"
       intro={
         <p>
           These terms govern your use of MajorCycle (the &ldquo;Service&rdquo;). By
@@ -47,6 +47,25 @@ export default function TermsPage() {
           ),
         },
         {
+          // Added 2026-08-15 (legal audit, finding 5). "Acceptable use" below
+          // forbids circumventing "usage limits" — a term we ENFORCE
+          // (FREE_VIEW_DAILY_LIMIT = 25 in lib/freeViews.ts) and had never
+          // stated. The Terms did not mention that a free account exists at all.
+          // The free/premium split itself is the owner-agreed F3 Step 10 rule in
+          // lib/entitlement.ts: the DATA is free, our ANALYSIS is paid.
+          heading: 'Free accounts',
+          body: (
+            <p>
+              A free account requires no payment method and gives you the price chart,
+              the drawdown cycle overlay, and company fundamentals. Our own analysis —
+              the Overall Rating, Health Score, the Verdict and scorecard, downloadable
+              reports, and the screener — requires a subscription. Free accounts may
+              open up to 25 new stocks per day. We may change these limits, and will
+              not reduce them without notice.
+            </p>
+          ),
+        },
+        {
           heading: 'Trial and subscription',
           // Was ONE 60-word sentence hinging on a semicolon and carrying six
           // separate commitments — the clause a reader is most likely to be
@@ -71,11 +90,19 @@ export default function TermsPage() {
         },
         {
           heading: 'Payment and refunds',
+          // Grace sentence added 2026-08-15 (legal audit, finding 7). GRACE_DAYS = 3
+          // in the Stripe webhook: a failed payment keeps access open for three days
+          // with an email, then hard-locks. A real benefit that was undocumented —
+          // and stating it also sets the expectation that access DOES end after.
           body: (
             <p>
               Subscription fees are billed in advance through our payment processor
               (Stripe). Except where required by law, fees are non-refundable and we
-              do not provide partial refunds for unused time.
+              do not provide partial refunds for unused time. If a payment fails we
+              will email you and keep your access open for 3 days while you update
+              your payment method; after that, paid features are paused until payment
+              succeeds. Nothing here limits your rights under the Australian Consumer
+              Law.
             </p>
           ),
         },
@@ -105,6 +132,33 @@ export default function TermsPage() {
               loss arising from your use of, or reliance on, the Service, including
               investment losses. Nothing in these terms excludes rights you may have
               under applicable consumer law that cannot lawfully be excluded.
+            </p>
+          ),
+        },
+        {
+          // Added 2026-08-15 (legal audit, finding 6). There was no governing-law
+          // or jurisdiction clause at all, on a product sold to US and Canadian
+          // customers — only the Disclaimer said "operated from Australia". The
+          // tax sentence exists because the live Stripe prices carry
+          // `tax_behavior: "unspecified"`, which matters at the A$75,000 GST
+          // registration threshold.
+          //
+          // ⚠️ OWNER INSTRUCTION, 2026-08-15: no ABN and no entity type here. The
+          // audit's draft named both ("a sole trader registered with ABN …"); the
+          // owner's call was to keep it general — a business in Australia. Do not
+          // reinstate either without being asked. An ABN printed on a public page
+          // is a fact about a real registry that has to be verified and kept
+          // current, and nothing on this page depends on it.
+          heading: 'Governing law',
+          body: (
+            <p>
+              MajorCycle is operated by a business based in Australia. These terms are
+              governed by the laws of Australia, and you and we submit to the
+              non-exclusive jurisdiction of its courts. Nothing in this clause limits
+              any right you have to bring proceedings in your own country of residence
+              where the law gives you that right. Prices are shown inclusive of any
+              taxes that apply; if tax obligations change, we will tell you before the
+              change affects your next payment.
             </p>
           ),
         },

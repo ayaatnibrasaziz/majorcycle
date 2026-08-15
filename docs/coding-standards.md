@@ -934,6 +934,63 @@ boundary defers large pages."
 
 ---
 
+### 12. Three ways a guard lied, all found in one sitting (2026-08-15, applying the legal audit)
+
+Adding prose to `/terms` and `/privacy` should have been the least eventful change of the
+layer. It broke three things, none of them the pages, and each is a different failure mode
+worth naming. The common thread: **every one of them was found by running something, and
+none of them by reading it.**
+
+**(a) An `import` in an e2e spec took down the ENTIRE suite — while typecheck and lint
+stayed green.** The new guard needed `FREE_VIEW_DAILY_LIMIT`, so it did the obvious thing:
+
+```ts
+import { FREE_VIEW_DAILY_LIMIT } from '../lib/freeViews';   // ← do not do this
+```
+
+`freeViews.ts` starts with `import 'server-only'`, which resolves under Next and **not**
+under plain Node, so Playwright died at collection with `Cannot find module 'server-only'`
+and reported **zero** tests — not one failure, no run at all. `tsc` was perfectly happy,
+because the types resolve fine. The specs in `web/e2e/` are required to be pure and
+credential-free so they run on a fork PR with no secrets; **importing app code reaches
+straight past that guarantee.** Read the constant out of its source file instead.
+
+**(b) A deliberate break stayed GREEN because the pattern matched a SUBSTRING.** The
+replacement read constants with `new RegExp(`${name} = (\\d+)`)`. Renaming
+`GRACE_DAYS` → `DUNNING_GRACE_DAYS` — exactly the change the guard exists to catch —
+passed, because `GRACE_DAYS = 3` is a substring of `DUNNING_GRACE_DAYS = 3`. In the same
+codebase `ACCOUNT_DELETION_GRACE_DAYS` would have collided identically had it shared a
+file. Fixed with a `(?<![A-Za-z0-9_])` lookbehind. **Any guard that matches an identifier
+by name must anchor it, and the only way you find out is to rename the thing and watch.**
+
+**(c) A guard failed on the new content, and the CONTENT was fine — the measurement had
+started mid-line.** `legal-doc.spec.ts` counts characters on the first visual line of a
+paragraph. Finding 2's clause opens with a bold lead-in:
+
+```tsx
+<p><strong>Where your information is stored.</strong> These providers host …</p>
+```
+
+The guard took the first text node over 60 characters — the run *after* the `</strong>`,
+which begins **221px into the paragraph** — and counted to the wrap from there. It
+reported `39 chars in a 494px column` and failed the lower bound. Per §14 item 4, the
+computed geometry was printed before touching the assertion, and every paragraph that
+genuinely starts at the left edge measured **72, 74, 76, 76**. Fixed by stating the
+precondition the guard had left implicit — **a characters-per-line count is only valid
+measured from the start of a line** — and checking it, rather than loosening the bound.
+Then proven not to be a no-op: narrowing `--measure-doc` 560 → 280px took all three
+documents red (24, 20, 24 chars in a 214px column).
+
+⚠️ **And the observation that came free: the guard measures ONE paragraph per page and
+stops.** Two paragraphs on `/privacy` sit at 76, one over the band, including one that
+predates the change. It was never caught because the first qualifying paragraph measured
+74 and the loop returned. **A check that samples one instance is silent about the rest,
+not clean** (§14 item 8, CLAUDE.md 14g). Recorded as roadmap item GA-5 rather than fixed,
+because the only remedies are the document measure or the type size — a design change
+nobody asked for.
+
+---
+
 ## 15. Previewing & Verifying Authenticated Pages Locally
 
 Pages under `app/(app)/` are gated twice: the Edge middleware (`web/proxy.ts`) redirects an

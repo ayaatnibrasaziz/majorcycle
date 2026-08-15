@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { expect, test, type Page } from '@playwright/test';
 
 import { LEGAL_DOCS } from '../lib/publicNav';
@@ -123,33 +126,77 @@ test.describe('the document layout', () => {
       await laidOut(page);
 
       const m = await page.evaluate(() => {
-        const para = [...document.querySelectorAll('article section p')].find(
-          (e) => (e.textContent ?? '').trim().length > 110,
-        );
-        if (!para) return null;
-        const node = [...para.childNodes].find(
-          (n) => n.nodeType === 3 && (n.textContent ?? '').trim().length > 60,
-        );
-        if (!node) return null;
-        const text = node.textContent ?? '';
-        // Walk a Range one character at a time; the first index that produces a
-        // second client rect is the first index that wrapped.
         const range = document.createRange();
-        for (let i = 1; i <= text.length; i++) {
+
+        // ⚠️ THE MEASURED NODE MUST START A LINE. This is the precondition the
+        // first version left implicit, and /privacy broke it on 2026-08-15 the
+        // moment a clause opened with a bold lead-in:
+        //
+        //     <p><strong>Where your information is stored.</strong> These …</p>
+        //
+        // The old code took the first child text node over 60 characters — here
+        // the run AFTER the </strong>, which begins **221px into** the paragraph.
+        // Counting to the wrap from there measures what was left of line one, not
+        // the line: it reported **39 characters in a 494px column** and failed the
+        // lower bound. The column was never wrong. Every paragraph on that page
+        // that does start at the left edge measured 72-76.
+        //
+        // So the requirement is stated and checked rather than assumed: a
+        // characters-per-line count is only valid measured from a line start.
+        // Candidates that begin mid-line are skipped, not measured — and if a
+        // page ever offers nothing else, `startsLine` comes back false and the
+        // assertion below names that instead of reporting a bogus number.
+        const startsLine = (para: Element, node: ChildNode): boolean => {
           range.setStart(node, 0);
-          range.setEnd(node, i);
-          if (range.getClientRects().length > 1) {
-            return { cpl: i - 1, wrapped: true, width: Math.round(para.getBoundingClientRect().width) };
+          range.setEnd(node, 1);
+          const first = range.getBoundingClientRect();
+          // The content-box left edge. `getBoundingClientRect()` on the <p>
+          // includes padding, which is 0 here, but read the computed value
+          // rather than relying on that staying true.
+          const box = para.getBoundingClientRect();
+          const padLeft = parseFloat(getComputedStyle(para).paddingLeft) || 0;
+          return Math.abs(first.left - (box.left + padLeft)) <= 1;
+        };
+
+        let skippedMidLine = 0;
+
+        for (const para of document.querySelectorAll('article section p')) {
+          if ((para.textContent ?? '').trim().length <= 110) continue;
+
+          for (const node of para.childNodes) {
+            if (node.nodeType !== 3) continue;
+            const text = node.textContent ?? '';
+            if (text.trim().length <= 60) continue;
+            if (!startsLine(para, node)) {
+              skippedMidLine += 1;
+              continue;
+            }
+
+            const width = Math.round(para.getBoundingClientRect().width);
+            // Walk a Range one character at a time; the first index that produces
+            // a second client rect is the first index that wrapped.
+            for (let i = 1; i <= text.length; i++) {
+              range.setStart(node, 0);
+              range.setEnd(node, i);
+              if (range.getClientRects().length > 1) {
+                return { cpl: i - 1, wrapped: true, width, skippedMidLine };
+              }
+            }
+            // Reaching here means the paragraph never wrapped at all. Reported as
+            // its own fact rather than as "cpl = the whole paragraph": the two
+            // have completely different causes, and the number alone sent me
+            // looking for a column-width bug when the real answer was "measured
+            // too early".
+            return { cpl: text.length, wrapped: false, width, skippedMidLine };
           }
         }
-        // Reaching here means the paragraph never wrapped at all. Reported as
-        // its own fact rather than as "cpl = the whole paragraph": the two have
-        // completely different causes, and the number alone sent me looking for
-        // a column-width bug when the real answer was "measured too early".
-        return { cpl: text.length, wrapped: false, width: Math.round(para.getBoundingClientRect().width) };
+        return null;
       });
 
-      expect(m, `${path}: no paragraph long enough to measure`).not.toBeNull();
+      expect(
+        m,
+        `${path}: no paragraph both long enough AND starting at the column's left edge`,
+      ).not.toBeNull();
       expect(
         m!.wrapped,
         `${path}: the paragraph never wrapped — ${m!.cpl} chars in a ${m!.width}px column, so it was measured before layout settled`,
@@ -258,6 +305,120 @@ test.describe('the public pages share ONE set of sizes', () => {
     await page.goto('/terms');
     await ready(page);
     expect((await docTypes(page)).title, 'the document should not step down').toBe('24px');
+  });
+});
+
+test.describe('the promises in the legal pages match the running code', () => {
+  /**
+   * ⚠️ These three numbers are LEGAL CLAIMS, and each of them now lives in two
+   * places: a constant the product enforces, and a sentence a customer relies on.
+   *
+   *   FREE_VIEW_DAILY_LIMIT      25  → Terms, "Free accounts"
+   *   ACCOUNT_DELETION_GRACE_DAYS 30 → Privacy, "Data retention"
+   *   GRACE_DAYS                  3  → Terms, "Payment and refunds"
+   *
+   * They were written into the pages on 2026-08-15 (legal audit, findings 5, 3
+   * and 7) precisely BECAUSE we were enforcing terms we had never stated. The
+   * failure mode from here is the mirror image: someone tunes a constant, ships
+   * it, and the published page becomes a false statement about what we do. No
+   * test fails, no page errors, nothing looks wrong — the sentence is still
+   * fluent and specific and simply no longer true. That is CLAUDE.md 11k, and a
+   * legal page is the worst surface on the site to have it happen on.
+   *
+   * So the assertion is built FROM the constant and checked against the RENDERED
+   * page — not against the source, which 14d taught us can be correct while the
+   * screen is wrong.
+   *
+   * ⚠️ **Each constant is READ OUT OF ITS SOURCE FILE, never imported**, and that
+   * is not laziness. The first version of this block did `import
+   * { FREE_VIEW_DAILY_LIMIT } from '../lib/freeViews'`, which typechecked and
+   * linted clean and then **took the whole suite down** — not this test, the
+   * entire run — with `Cannot find module 'server-only'`, because `freeViews.ts`
+   * is a server module and Playwright is plain Node:
+   *
+   *     Error: Cannot find module 'server-only'
+   *     Require stack: … lib\freeViews.ts ← e2e\legal-doc.spec.ts
+   *
+   * These specs are required to be pure and credential-free so they run on a fork
+   * PR (see the file header), and importing app code reaches straight past that.
+   * `GRACE_DAYS` could not have been imported in any case — it is module-local
+   * inside the Stripe webhook route.
+   *
+   * The cost of reading source text is that a rename becomes a silent no-match, so
+   * every extraction asserts it actually matched. A guard that quietly stops
+   * finding anything is worse than no guard (14g).
+   */
+  const constantFrom = (relPath: string, name: string): number => {
+    const src = readFileSync(join(__dirname, '..', relPath), 'utf8');
+    // ⚠️ The lookbehind is load-bearing, and it is here because breaking this on
+    // purpose caught it. Renaming `GRACE_DAYS` → `DUNNING_GRACE_DAYS` should have
+    // gone red and did NOT: a bare `GRACE_DAYS = (\d+)` is a **substring** of
+    // `DUNNING_GRACE_DAYS = 3`, so the guard cheerfully matched the renamed
+    // constant and reported success. `ACCOUNT_DELETION_GRACE_DAYS` would have
+    // collided the same way had it lived in the same file.
+    const m = new RegExp(`(?<![A-Za-z0-9_])${name} = (\\d+)`).exec(src);
+    expect(m, `${name} was renamed or moved in ${relPath} — this guard is now blind`).not.toBeNull();
+    return Number(m![1]);
+  };
+
+  const freeViewDailyLimit = () => constantFrom('lib/freeViews.ts', 'FREE_VIEW_DAILY_LIMIT');
+  const deletionGraceDays = () => constantFrom('lib/account.ts', 'ACCOUNT_DELETION_GRACE_DAYS');
+  const dunningGraceDays = () => constantFrom('app/api/stripe/webhook/route.ts', 'GRACE_DAYS');
+
+  const bodyText = async (page: Page, path: string): Promise<string> => {
+    await page.goto(path);
+    await ready(page);
+    return (await page.locator('article').innerText()).replace(/\s+/g, ' ');
+  };
+
+  test('the Terms state the free daily cap the product enforces', async ({ page }) => {
+    const cap = freeViewDailyLimit();
+    const text = await bodyText(page, '/terms');
+    expect(text, `Terms do not state FREE_VIEW_DAILY_LIMIT = ${cap}`).toContain(
+      `up to ${cap} new stocks per day`,
+    );
+    // The control. Without it a page that happened to contain any number would
+    // look fine; this proves the match is sensitive to the VALUE, which is the
+    // only part that can drift.
+    expect(text, 'the cap sentence is not keyed to the constant').not.toContain(
+      `up to ${cap + 1} new stocks per day`,
+    );
+  });
+
+  test('the Terms state the payment-failure grace the webhook grants', async ({ page }) => {
+    const days = dunningGraceDays();
+    const text = await bodyText(page, '/terms');
+    expect(text, `Terms do not state GRACE_DAYS = ${days}`).toContain(
+      `keep your access open for ${days} days`,
+    );
+    expect(text, 'the grace sentence is not keyed to the constant').not.toContain(
+      `keep your access open for ${days + 1} days`,
+    );
+  });
+
+  test('the Privacy Policy states the deletion window the purge cron uses', async ({ page }) => {
+    const days = deletionGraceDays();
+    const text = await bodyText(page, '/privacy');
+    expect(text, `Privacy does not state ACCOUNT_DELETION_GRACE_DAYS = ${days}`).toContain(
+      `permanently delete it after ${days} days`,
+    );
+    expect(text, 'the deletion window is not keyed to the constant').not.toContain(
+      `permanently delete it after ${days + 1} days`,
+    );
+  });
+
+  test('the Privacy Policy discloses the third party whose email we collect', async ({ page }) => {
+    // Finding 1. Not a number, but the same class of silent failure: delete this
+    // bullet and nothing breaks — APP 5 is simply no longer discharged, on the
+    // only personal information we hold about someone who never visited the site.
+    const text = await bodyText(page, '/privacy');
+    expect(text, 'the refer-a-friend collection disclosure is gone').toContain(
+      'when you refer a friend',
+    );
+    // Finding 2 — APP 8. The single most likely point of a privacy complaint.
+    expect(text, 'the cross-border storage disclosure is gone').toContain(
+      'Where your information is stored',
+    );
   });
 });
 
