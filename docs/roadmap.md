@@ -1068,6 +1068,38 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > so the template is proven against real prose rather than a placeholder; the rest of
 > the library waits on the owner's steer.
 >
+> #### The index design — chosen from three, 2026-08-15
+>
+> The first index (a plain themed list, no pictures) was **rejected by the owner**.
+> Three directions were then drawn in the design artifact and the owner chose **A —
+> theme bands**: one illustration per TOPIC, alternating left and right, with the
+> article titles listed beside it. Heading is the owner's: **"Before you buy
+> anything"**. The artifact now contains **only** the chosen direction — B and C were
+> removed rather than kept "for reference", because a future session must not find
+> three candidates and guess (11j).
+>
+> ⚠️ **Direction B — a picture per ARTICLE — is the better browsing experience and was
+> deliberately deferred, not rejected.** A card grid needs ~9 articles before it stops
+> looking abandoned; the library has one. Direction A never looks half-built. Revisit B
+> at roughly a dozen articles — the data shape already supports it.
+>
+> **The index is `wide`, the articles are `prose`.** A browse page is not a reading
+> page: at the 680px reading column the bands gave a 325px image, at `wide` they give
+> 532px, and the pictures are the point of the design. The prose inside is still held
+> to a 720px column — the frame is wide for the layout, not for the words.
+>
+> 🔶 **OUTSTANDING BEFORE MERGE — three Canva images**, one per topic, 1200 × 750
+> (16:10). Owner decision: these are **content, not brand furniture** — they illustrate
+> the topic and are not bound by the design system. Until they exist, `LEARN_THEMES[].image`
+> is unset and each band **renders as a full-width text block that looks entirely
+> intentional**. That is deliberate: a dashed "image goes here" box is exactly the kind
+> of placeholder that reaches production because everyone assumed somebody else would
+> spot it — on the one page whose job is to make strangers trust us.
+>
+> ⚠️ **The live page currently shows ONE band**, because only one article is written and
+> topics with no articles are filtered out. That is the design working, not a defect —
+> but it means the page is not ready to be seen by strangers until the library fills up.
+>
 > ### 📋 LAYER G AUDIT — the deferred list. Owner instruction 2026-08-15: revisit these **after** Layer G is built, not during.
 >
 > Both were surfaced this session, both are real, and neither is urgent. They are parked

@@ -37,25 +37,45 @@
  */
 export type LearnTheme = 'cycles' | 'quality' | 'using-it';
 
-export const LEARN_THEMES: readonly {
+export interface LearnThemeMeta {
   readonly id: LearnTheme;
   readonly label: string;
   readonly blurb: string;
-}[] = [
+  /**
+   * The topic's illustration — a Canva image, drawn to explain the idea.
+   *
+   * ⚠️ **OPTIONAL ON PURPOSE, and the page degrades rather than breaks.** With an
+   * image the band is the approved two-column layout; without one it renders as a
+   * single full-width text block that looks entirely deliberate. That matters
+   * because the alternative — a dashed "image goes here" box — is the kind of
+   * placeholder that ships to production because everyone assumed somebody else
+   * would notice it.
+   *
+   * Intended crop **1200 × 750 (16:10)**. Stated here rather than on the page:
+   * a public page should not print production notes at its readers.
+   *
+   * Owner decision (2026-08-15): these are CONTENT, not brand furniture. They are
+   * not bound by the design system and do not need to match the palette — they
+   * need to look good and explain the topic.
+   */
+  readonly image?: { readonly src: string; readonly alt: string };
+}
+
+export const LEARN_THEMES: readonly LearnThemeMeta[] = [
   {
     id: 'cycles',
     label: 'Falls and recoveries',
-    blurb: 'What a drawdown is, why the same stock tends to fall by similar amounts, and what that can and cannot tell you.',
+    blurb: 'What a fall actually is, why the same share tends to fall by similar amounts, and what that can and cannot tell you.',
   },
   {
     id: 'quality',
     label: 'Judging the business',
-    blurb: 'Why a falling price is not the same as a bargain, and what the accounts underneath are being asked.',
+    blurb: 'A falling price is not the same as a bargain. What the accounts underneath are being asked, in plain words.',
   },
   {
     id: 'using-it',
     label: 'Using MajorCycle',
-    blurb: 'How to read a rating, what the numbers on a stock page mean, and what the tool deliberately does not do.',
+    blurb: 'How to read a rating, what the five tiers mean, and what the tool deliberately does not try to do.',
   },
 ] as const;
 
@@ -88,6 +108,20 @@ export interface LearnArticle {
   readonly theme: LearnTheme;
   /** ISO date. Real, and shown — an undated explainer about money reads as abandoned. */
   readonly published: string;
+  /**
+   * Reading time, in whole minutes, shown beside the title on the index.
+   *
+   * ⚠️ A second copy of a fact about the body (CLAUDE.md 11c/11k) — the body is
+   * the truth and this is a claim about it, so it can drift the moment anyone
+   * edits the prose, silently and while still looking plausible. It is a field
+   * rather than a computed value because the bodies are React components, not
+   * text, so there is nothing to count at build time without rendering them.
+   *
+   * `e2e/learn.spec.ts` therefore counts the words on the RENDERED page and fails
+   * if this is more than 2 minutes out — which is the only place the two can be
+   * compared, and it closes the drift the field opens.
+   */
+  readonly minutes: number;
   /**
    * ISO date this was last checked against the running product.
    *
@@ -123,6 +157,7 @@ export const LEARN_ARTICLES = [
     theme: 'cycles',
     published: '2026-08-15',
     reviewed: '2026-08-15',
+    minutes: 4,
   },
 ] as const satisfies readonly LearnArticle[];
 

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { LEARN_ARTICLES, LEARN_INDEX_PATH, learnPath } from '../lib/learn';
+import { LEARN_ARTICLES, LEARN_INDEX_PATH, LEARN_THEMES, learnPath } from '../lib/learn';
 
 /**
  * The Learn library — `/learn` and `/learn/[slug]`.
@@ -56,6 +56,73 @@ test.describe('the Learn library', () => {
     // ARTICLE_PATHS, so an empty registry would make all of them pass vacuously —
     // the shape of "unmeasurable counted as clean" (CLAUDE.md 14g).
     expect(LEARN_ARTICLES.length, 'no articles registered — every loop below is vacuous').toBeGreaterThan(0);
+  });
+
+  test('the index renders one band per NON-EMPTY topic, and names it', async ({ page }) => {
+    // ⚠️ Named topics, not a count. This is the 11j failure mode: a band that
+    // simply stops rendering leaves a page that looks entirely deliberate —
+    // there is no gap, no error, nothing to notice. Only enumerating what
+    // SHOULD be there can see it.
+    //
+    // The expectation is derived the same way the page derives it (topics with
+    // at least one article), because an empty topic is filtered out ON PURPOSE:
+    // a heading with nothing beneath it is a reader's first impression of an
+    // abandoned site.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(LEARN_INDEX_PATH);
+    await ready(page);
+
+    const expected = LEARN_THEMES.filter((t) =>
+      LEARN_ARTICLES.some((a) => a.theme === t.id),
+    );
+    const empty = LEARN_THEMES.filter((t) => !LEARN_ARTICLES.some((a) => a.theme === t.id));
+
+    for (const theme of expected) {
+      await expect(
+        page.getByRole('heading', { name: theme.label, level: 2 }),
+        `the "${theme.label}" band is missing`,
+      ).toBeVisible();
+    }
+    for (const theme of empty) {
+      await expect(
+        page.getByRole('heading', { name: theme.label, level: 2 }),
+        `"${theme.label}" has no articles and must not render an empty band`,
+      ).toHaveCount(0);
+    }
+
+    // The control: without it, a page rendering NO bands would satisfy every
+    // "must not be present" assertion above and pass.
+    expect(expected.length, 'no topic has any article — the loop above is vacuous').toBeGreaterThan(0);
+  });
+
+  test('the reading time on the index matches the article that was written', async ({ page }) => {
+    /**
+     * ⚠️ `minutes` is a second copy of a fact about the body (CLAUDE.md 11k).
+     * Edit the prose and the number stays put — still plausible, still specific,
+     * quietly wrong, and nothing goes red. This is the only place the claim and
+     * the thing it describes can be compared, because the bodies are React
+     * components and there is no text to count until a browser renders them.
+     *
+     * ±2 minutes at 200 words per minute. Loose on purpose: reading speed is an
+     * estimate and a tight bound would just teach the next person to edit the
+     * assertion. What it catches is a body that doubled in length or was gutted.
+     */
+    for (const article of LEARN_ARTICLES) {
+      await page.goto(learnPath(article.slug));
+      await ready(page);
+
+      const words = await page.evaluate(() => {
+        const body = document.querySelector('[data-article-body]') as HTMLElement | null;
+        return body ? body.innerText.trim().split(/\s+/).length : 0;
+      });
+
+      expect(words, `${article.slug}: no body text to measure`).toBeGreaterThan(0);
+      const measured = Math.max(1, Math.round(words / 200));
+      expect(
+        Math.abs(measured - article.minutes),
+        `${article.slug}: the index says ${article.minutes} min, the body measures ~${measured} min (${words} words)`,
+      ).toBeLessThanOrEqual(2);
+    }
   });
 
   test('the index links to every registered article, and nothing else', async ({ page }) => {
