@@ -1425,6 +1425,25 @@ the newly added 503 branch shipped without it.
   **dropped as dead** (`20260720120000_drop_trial_tombstones_card_fingerprint`; never written or
   read, and the index was flagged unused by the Supabase performance advisor).
 
+  ⚠️ **PRIVACY CONSEQUENCE, added 2026-08-15.** "Must survive account deletion" is written
+  above as an anti-abuse requirement, and it is also a **retention** decision: something
+  derived from a deleted account's email address is kept indefinitely. The hash is one-way
+  and strongly pseudonymised, so this is defensible — but the published privacy policy says
+  data is "deleted or anonymised", which does not describe it. See `docs/legal-audit.md`
+  finding 3 (proposed, not applied).
+
+- **`referrals`** (`id`, `referrer_id` → `auth.users` **ON DELETE CASCADE**, `friend_email text`,
+  `message text`, `created_at`) — Refer-a-Friend (F2). Written by `sendReferral` in
+  `app/(app)/account/actions.ts` **after** `sendReferralEmail` succeeds, and rate-limited per
+  referrer with a duplicate check on `(referrer_id, friend_email)`.
+
+  ⚠️ **This is the ONLY table holding personal information about someone who is not a user.**
+  `friend_email` belongs to a third party who never visited the site and never agreed to
+  anything, and we **send them an email**. Under APP 5 that collection has to be disclosed;
+  the privacy policy currently does not mention the feature at all. `message` is free text a
+  user typed, so treat it as unvalidated personal data. See `docs/legal-audit.md` finding 1
+  (proposed, not applied) and `architecture.md` §6.6.
+
 ### Webhook events handled (`/api/stripe/webhook`) — BUILT (F3 step 4, `ec0b441`)
 
 Verified (`constructEvent(rawBody via req.text(), sig, secret)`; bad signature → 400),

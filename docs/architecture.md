@@ -532,6 +532,55 @@ live-check Session 1):
 **Local only, never deployed:** `/dev-fixtures` (gitignored null/edge-case render gallery) and
 the `/api/analyze-dev` shim below, which returns 404 when `NODE_ENV === 'production'`.
 
+---
+
+## 6.6 Personal data — where it lives, and what survives deletion
+
+Established 2026-08-15 by auditing the legal pages against the live systems. Every
+row below was verified against Supabase, Stripe and Resend over MCP, not inferred.
+
+⚠️ **`us-east-1` was already documented twice in this file — both times as a
+LATENCY fact.** §2 explains the Vercel/Supabase co-location in milliseconds; §5
+records the tier. Nobody had connected the same fact to its second meaning: an
+Australian business storing personal information in the **United States** has a
+cross-border disclosure obligation under **APP 8**. *A fact can be written down
+correctly and still be missing, because it was filed under the wrong question.*
+
+**Residency.** Supabase `us-east-1` · Vercel functions `iad1` · Resend `us-east-1`
+· Stripe US. No personal data is stored in Australia.
+
+**Tables carrying personal information**, and what happens when the auth user is
+deleted (FK delete rules read live from `information_schema`):
+
+| Table | Personal data | On user delete |
+|---|---|---|
+| `profiles` | email, display_name, country, Stripe customer/subscription ids, billing state, `free_views_date` / `free_views_tickers` | **CASCADE** |
+| `analysis_runs` | user_id, the tickers screened and the full `results` blob | **CASCADE** |
+| `referrals` | `referrer_id`, **`friend_email`**, **`message`** | **CASCADE** |
+| `ticker_requests` | `requested_by` | SET NULL |
+| `universe_log` | `added_by_user` | SET NULL |
+| `stripe_events` | user_id, customer/subscription ids | SET NULL |
+| `trial_tombstones` | **SHA-256 hash of the email** | ⚠️ **SURVIVES — no FK, by design** |
+
+⚠️ **Two of these are the audit's headline findings.** `referrals` holds a
+**non-user's** email address and a free-text message, and `sendReferralEmail`
+actually emails that person — personal information collected from someone other
+than the individual (APP 5). And `trial_tombstones` is deliberately not a foreign
+key so a purged user cannot farm a second free trial, which means something
+derived from a deleted account's email is kept forever.
+
+**Deletion is a 30-day scheduled purge**, not immediate (`ACCOUNT_DELETION_GRACE_DAYS`).
+`/api/cron/purge-accounts` cancels Stripe first, then deletes the auth user and
+lets the cascades run.
+
+**No analytics, advertising or tracking stack exists** — nothing in `package.json`,
+and Resend has open- and click-tracking both off. The privacy page's "we do not
+build advertising profiles" is comfortably true, which is worth knowing before
+anyone proposes adding a tag manager.
+
+📄 **The gaps this exposed in the published pages, with proposed wording, are in
+`docs/legal-audit.md` — PROPOSED, not applied, awaiting the owner.**
+
 ## 7. API Surface
 
 Two runtimes, two locations under `web/`:

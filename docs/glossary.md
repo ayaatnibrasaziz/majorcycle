@@ -336,6 +336,10 @@
 
 ## U
 
+**Data residency** — Where personal information physically sits. All of it is in the **United States**: Supabase `us-east-1`, Vercel functions `iad1`, Resend `us-east-1`, Stripe US. None is stored in Australia. ⚠️ This was documented for **years as a latency fact** (`architecture.md` §2 and §5 explain the co-location in milliseconds) before anyone connected it to its second meaning — an Australian business disclosing personal information overseas has obligations under **APP 8**. *A fact can be recorded correctly and still be missing, because it was filed under the wrong question.* See `architecture.md` §6.6 and `docs/legal-audit.md` finding 2.
+
+**Referral (Refer-a-Friend)** — `/account` lets a member send an invitation to a friend's email address, with an optional message; both are stored in the `referrals` table and the friend is emailed once. ⚠️ **The only place we hold personal information about a non-user** — someone who never visited the site and agreed to nothing. That makes it the one feature where **APP 5** (notice when collecting from a third party) applies. See `data-contracts.md` §10 and `docs/legal-audit.md` finding 1.
+
 **Universe** — The set of tickers we have data for. Pre-seeded with S&P 500, ASX 200, S&P/TSX 60. Auto-expands when users upload new tickers.
 
 **Upper Bound** — The strongest **confirmed** profit-recovery event in the stock's history (`max` of the pivot-high profits, over the full history). The mirror of Lower Bound: a still-forming rally can sit *above* it until it confirms. **Display-only** — it feeds no score (not even Cycle Payoff).

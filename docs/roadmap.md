@@ -978,6 +978,32 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > `check:entitlement-gates` (11) · `check:report-sections` (22) · `check:seo` (491) ·
 > `check:data-integrity` (59) · pytest **153**.
 >
+> ### ⏸️ AWAITING OWNER — Legal compliance audit, 2026-08-15. **`docs/legal-audit.md`**
+>
+> Owner asked for the three legal pages to be audited against what the system
+> actually does, under the **Australian Privacy Act (APPs) + ASIC** standard they
+> chose. Verified against **live** Supabase, Stripe, Resend and Vercel over MCP,
+> plus the code — not read.
+>
+> **Seven findings, none a misrepresentation; all gaps between the machine and the
+> disclosures.** Two are material: `referrals` collects and emails a **non-user's**
+> address (APP 5), and personal data lives in **`us-east-1`** with no cross-border
+> disclosure (APP 8). The rest: a hash that survives deletion, Google missing from
+> the recipients list, an unstated 25/day free cap the Terms nonetheless enforce, no
+> governing-law or tax clause, and an undocumented 3-day payment grace.
+>
+> ⚠️ **NOTHING APPLIED. The pages are untouched on disk.** The owner set strict
+> rules — propose only, approve first — and will decide in a later session. **Do
+> not action any finding without an instruction naming it.**
+>
+> Three answers are needed first: which findings to apply · confirmation of the ABN
+> against a live registry · whether Cloudflare still does DNS and whether email
+> routing is genuinely in use (Resend reports *receiving disabled*).
+>
+> The technical facts it established — data residency, the personal-data table
+> inventory, and what survives deletion — are recorded in `architecture.md` §6.6
+> and stand regardless of what the owner decides about the wording.
+>
 > ### 📋 LAYER G AUDIT — the deferred list. Owner instruction 2026-08-15: revisit these **after** Layer G is built, not during.
 >
 > Both were surfaced this session, both are real, and neither is urgent. They are parked
