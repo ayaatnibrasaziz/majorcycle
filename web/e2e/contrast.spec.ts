@@ -25,7 +25,12 @@ import { expect, test } from '@playwright/test';
  */
 
 /** Pages whose text a reader is expected to actually read. */
-const READING_PAGES = ['/disclaimer', '/terms', '/privacy'];
+// ⚠️ `/learn` and one article added 2026-08-15. A new public page that nothing
+// measures is not "passing" — it is unmeasured, and the difference is invisible
+// (CLAUDE.md 14g). The article is the first public surface to render `.lead`
+// inside a brand-ruled block and `<time>` in --text-secondary, neither of which
+// any existing page put in front of the contrast probe.
+const READING_PAGES = ['/disclaimer', '/terms', '/privacy', '/learn', '/learn/what-is-a-drawdown'];
 
 /**
  * The landing page, measured to the same bar but on its own sentinel.

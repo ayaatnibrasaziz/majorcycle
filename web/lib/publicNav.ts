@@ -31,6 +31,7 @@ export const HOW_IT_WORKS_HREF = '/#how-it-works';
 /** The header's links. Kept short on purpose — the footer carries the long tail. */
 export const NAV_LINKS = [
   { href: HOW_IT_WORKS_HREF, label: 'How it works' },
+  { href: '/learn', label: 'Learn' },
   { href: '/pricing', label: 'Pricing' },
 ] as const;
 
@@ -64,6 +65,7 @@ export const LEGAL_DOCS = [
 export const FOOTER_LINKS = [
   { href: '/', label: 'Home' },
   { href: HOW_IT_WORKS_HREF, label: 'How it works' },
+  { href: '/learn', label: 'Learn' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/contact', label: 'Contact' },
   ...LEGAL_DOCS,

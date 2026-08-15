@@ -934,6 +934,53 @@ boundary defers large pages."
 
 ---
 
+### 13. Building `/learn`: five deliberate breaks, two of which broke the guards (2026-08-15)
+
+Every new rule in `check-seo.mjs` was broken on purpose before being trusted. Three
+caught it. **Two did not**, and both failed the same way this file keeps recording:
+
+**(a) The guard matched the line somebody had just commented out.** The rule requiring
+`PUBLIC_PAGES` to spread the Learn registry was tested by commenting the spread with
+`//` — which is exactly how a person disables it — and `check:seo` reported **OK**.
+Meanwhile the app threw at request time, so the thing the check exists to catch *early*
+was caught late by something else.
+
+**(b) The guard matched its own documentation.** The rule requiring the dynamic article
+route to call `notFound()` passed with **every real call deleted**, because the route's
+doc comment explains that an unknown slug must call `notFound()`.
+
+Both fixed by stripping comments first, which is now a shared `stripComments()` helper
+in that file. That makes **five** instances of this class recorded here (`allow: '/'`
+tripping on its own comment · `xdescription` containing `description` · an unused import
+satisfying `PUBLIC_PAGES` · the two above). The rule has earned a one-line form:
+**a guard that reads a file as text is testing the prose unless you strip it first.**
+
+**(c) A missing space that only the DOM could see.** The article body interleaves prose
+with `{…}` figures, and one rendered as **"81.4%is not a company"** — while the source
+unambiguously contained a space, confirmed with `od -c` before anything was changed. JSX
+drops whitespace between an expression and following text in some arrangements, and the
+*identical* construction two lines above survived, so it is arrangement-sensitive and
+reading the source proves nothing. Fixed with an explicit `{' '}` and guarded by a scan
+for digit-against-letter run-ons in `e2e/learn.spec.ts`.
+
+⚠️ **And that guard's first version was wrong in the instrument, not the page**: it read
+`textContent`, which concatenates block elements with no separator, so the date line ran
+into the answer — "…15 August 2026A drawdown is…" — and it reported three run-ons no
+reader could ever see. `innerText` inserts the breaks layout actually produces. Same
+lesson as §14 item 12(c): **the assertion was right and the selector was pointing at the
+wrong thing.**
+
+**(d) Reconciling a test count across a `git stash` — a trap worth naming.** The suite
+went 314 → 328 passed, which looked like +14 against an expected +15. The missing test
+was not missing: Playwright prints **flaky** on its own line (328 + 1 flaky = 329), and
+the "before" baseline taken with `git stash` was wrong in the other direction because
+**`git stash` without `-u` leaves untracked files in place** — the new spec was still
+present in the "before" listing. Diffing test *titles* showed nothing removed, which is
+the check that actually matters. Both halves of the arithmetic were wrong and they
+nearly cancelled.
+
+---
+
 ### 12. Three ways a guard lied, all found in one sitting (2026-08-15, applying the legal audit)
 
 Adding prose to `/terms` and `/privacy` should have been the least eventful change of the

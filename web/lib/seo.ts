@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { LEARN_ARTICLES, learnPath } from '@/lib/learn';
 import { SITE_ORIGIN } from '@/lib/url';
 
 /**
@@ -95,9 +96,32 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   { path: '/', index: true },
   { path: '/pricing', index: true },
   { path: '/contact', index: true },
+  { path: '/learn', index: true },
   { path: '/disclaimer', index: true },
   { path: '/terms', index: true },
   { path: '/privacy', index: true },
+
+  // ── Every Learn article, DERIVED from the registry ─────────────────────────
+  //
+  // ⚠️ Spread, never typed out. These are the pages whose entire purpose is to
+  // be found by a stranger, so an article missing from this list fails in the
+  // one way nobody would ever notice: it renders perfectly, it is reachable if
+  // you know the URL, and it is absent from the sitemap, absent from the
+  // middleware allow-list, and rejected by `pageMetadata()` at build time.
+  //
+  // Four things ride on this one line — the sitemap entry, the canonical tag,
+  // the middleware letting a signed-out reader through, and `showsFullChrome()`
+  // giving the article the full header rather than the logo-only confinement
+  // chrome (that helper asks `OPEN_TO_STRANGERS.has(pathname)`, an exact match,
+  // so a derived entry is what makes an article page look like a public page).
+  //
+  // ⚠️ `check:seo` parses this block STATICALLY with a regex and therefore
+  // cannot see these entries at all. That is deliberate and it is why
+  // `e2e/learn.spec.ts` asserts the rendered outcome instead — every registered
+  // article answering 200, carrying its own canonical, and appearing in the real
+  // sitemap.xml. A static guard that cannot see the thing it guards is worse
+  // than none, because it reports success (CLAUDE.md 14g).
+  ...LEARN_ARTICLES.map((a) => ({ path: learnPath(a.slug), index: true })),
 
   // ── Crawlable but NOT indexable ────────────────────────────────────────────
   // A sign-in form is not a search result. `/deletion-requested` additionally

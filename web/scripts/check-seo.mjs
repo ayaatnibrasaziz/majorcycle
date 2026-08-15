@@ -207,6 +207,7 @@ const PAGE_FILE = {
   '/': 'app/(public)/page.tsx',
   '/pricing': 'app/(public)/pricing/page.tsx',
   '/contact': 'app/(public)/contact/page.tsx',
+  '/learn': 'app/(public)/learn/page.tsx',
   '/disclaimer': 'app/(public)/disclaimer/page.tsx',
   '/terms': 'app/(public)/terms/page.tsx',
   '/privacy': 'app/(public)/privacy/page.tsx',
@@ -248,6 +249,90 @@ for (const page of pages ?? []) {
   if (!/\n\s*description:\s*\n?\s*'/.test(src)) {
     fail(`${rel}: pageMetadata() needs a description — it is the sentence shown under the result.`);
   }
+}
+
+// ── 3a. the DYNAMIC public route, which every check above is blind to ───────
+//
+// `/learn/[slug]` is the first public page whose path is not a literal. Two
+// consequences, and both are the kind that report success:
+//
+//  • `parsePublicPages()` reads the PUBLIC_PAGES block as TEXT, so the spread
+//    `...LEARN_ARTICLES.map(...)` is invisible to it. The loop above therefore
+//    never reaches an article, and would happily pass with the route deleted.
+//  • The `export const metadata: Metadata = pageMetadata({` pattern cannot match
+//    a route that must use `generateMetadata` — the path is only known per
+//    request.
+//
+// So the route is named here explicitly. The e2e suite covers the rendered
+// outcome (canonical, sitemap membership, 404 on an unknown slug); this catches
+// the same thing one step earlier, at build time, where the owner can see it.
+// ⚠️ Read COMMENT-STRIPPED. Both rules below were broken on purpose and the
+// `notFound()` one passed with every real call deleted — because the route's own
+// doc comment explains that an unknown slug must call `notFound()`, and the guard
+// was reading the explanation instead of the code. That is the same defect as the
+// `allow: '/'` check tripping over the comment describing its own absence, and the
+// `PUBLIC_PAGES` spread matching the line somebody had just commented out.
+// **A guard that reads prose is testing the documentation.**
+const stripComments = (src) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+const LEARN_ROUTE = 'app/(public)/learn/[slug]/page.tsx';
+const learnRouteRaw = read(LEARN_ROUTE);
+const learnRoute = learnRouteRaw ? stripComments(learnRouteRaw) : learnRouteRaw;
+check();
+if (!learnRoute) {
+  fail(`${LEARN_ROUTE} is missing, but lib/learn.ts registers articles that derive their public paths from it.`);
+} else {
+  check();
+  if (!/pageMetadata\(\{/.test(learnRoute)) {
+    fail(`${LEARN_ROUTE}: metadata must come from pageMetadata() like every other public page, or articles ship with no canonical and no Open Graph — on the pages whose entire job is to be found.`);
+  }
+  check();
+  if (!/generateStaticParams/.test(learnRoute)) {
+    fail(`${LEARN_ROUTE}: must export generateStaticParams so every registered article is pre-rendered rather than built on first request.`);
+  }
+  // The soft-404 guard. A dynamic route that answers 200 with an empty shell for
+  // any URL typed at it is read far more harshly by Google than an honest 404,
+  // and it is completely silent — the page looks fine, it just says nothing.
+  check();
+  if (!/notFound\(\)/.test(learnRoute)) {
+    fail(`${LEARN_ROUTE}: an unregistered slug must call notFound(). A dynamic route that renders a blank page for any URL is a soft-404 farm.`);
+  }
+}
+
+// The registry itself must stay free of React, because lib/seo.ts imports it and
+// proxy.ts imports lib/seo.ts — so anything pulled in here is pulled into the
+// MIDDLEWARE bundle, which runs on every request to the site.
+const learnLibRaw = read('lib/learn.ts');
+const learnLib = learnLibRaw ? stripComments(learnLibRaw) : learnLibRaw;
+check();
+if (!learnLib) {
+  fail('lib/learn.ts is missing — it is the source PUBLIC_PAGES derives every article path from.');
+} else {
+  check();
+  if (/from\s+'react'|\.tsx'|next\/link/.test(learnLib)) {
+    fail('lib/learn.ts must stay free of React and component imports. lib/seo.ts imports it and proxy.ts imports lib/seo.ts, so a component here joins the middleware bundle that runs on every request.');
+  }
+  // `satisfies`, not an annotation — an explicit `: readonly LearnArticle[]`
+  // widens every slug to `string`, which silently destroys the compile-time
+  // check that every registered article has a body in content.tsx.
+  check();
+  if (!/\]\s*as const satisfies readonly LearnArticle\[\]/.test(learnLib)) {
+    fail('lib/learn.ts: LEARN_ARTICLES must end `] as const satisfies readonly LearnArticle[]`. An explicit type annotation widens slug to `string`, and the Record<LearnSlug, …> body map then stops requiring a body per article — the guard evaporates and the first symptom is a blank page.');
+  }
+}
+
+// ⚠️ COMMENTS STRIPPED FIRST, and this is the fourth time in this file that the
+// omission produced a hollow check. Breaking it on purpose is what caught it: I
+// commented the spread out with `//`, which is precisely how somebody disables it
+// in real life, and the guard reported **OK** — it was matching the disabled line.
+// Meanwhile `pageMetadata()` threw at request time, so the app failed loudly and
+// the check that exists to catch it earlier said nothing.
+const seoCode = stripComments(seo);
+
+check();
+if (!/\.\.\.LEARN_ARTICLES\.map\(/.test(seoCode)) {
+  fail('lib/seo.ts: PUBLIC_PAGES must spread the Learn registry. Typed out by hand, an article can be live and absent from the sitemap, absent from the middleware allow-list, and rejected by pageMetadata() — while rendering perfectly.');
 }
 
 // ── 3b. a retired route still answers ───────────────────────────────────────

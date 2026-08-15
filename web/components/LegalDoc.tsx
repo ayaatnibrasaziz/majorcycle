@@ -1,4 +1,5 @@
 import { LegalContentsRail } from './LegalContentsRail';
+import { LegalNotice } from './LegalNotice';
 import { PageFrame } from './PageFrame';
 
 export interface LegalSection {
@@ -140,20 +141,13 @@ export function LegalDoc({ title, updated, intro, sections }: LegalDocProps) {
 
             {intro && <div className="mt-6">{intro}</div>}
 
-            {/* A quiet hairline box, NOT a brand-blue left bar. The contents rail
-                already uses `border-l-2` in --brand-mid to mean "the clause you
-                are reading"; giving the notice the same device makes one mark
-                mean two things on a single screen, and position is the meaning
-                worth keeping. The stripe fill is enough to separate it, and it
-                matches the hairlines the masthead and the rail already use. */}
-            <div className="mt-6 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-stripe)] px-4 py-3.5">
-              <p className="small">
-                <strong>Information only — not financial advice.</strong> MajorCycle
-                provides educational and informational analysis. It is not a licensed
-                financial adviser, and nothing on this site is a recommendation to buy,
-                hold, or sell any security.
-              </p>
-            </div>
+            {/* ⚠️ The notice used to be written out here. It now lives in
+                `LegalNotice.tsx`, because the Learn article template needs the
+                identical sentence and a second hand-typed copy of a COMPLIANCE
+                control is the worst possible instance of 11c — two disclaimers
+                do not diverge loudly, one just gets edited. The box styling and
+                the reasoning for it moved with the words. */}
+            <LegalNotice className="mt-6" />
 
             {/* The contents, for readers who never see the rail. Generated from
                 `sections`, so it cannot list a clause that does not exist or miss

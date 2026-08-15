@@ -1021,6 +1021,53 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > The technical facts it established — data residency, the personal-data table
 > inventory, and what survives deletion — are in `architecture.md` §6.6.
 >
+> ### ✅ G4 (the Learn library) — `/learn` + `/learn/[slug]` BUILT 2026-08-15. Still inside PR #89.
+>
+> The last item in commit group 2. **Machinery complete; the library ships with one
+> article and grows by adding registry entries.**
+>
+> **One registry is the source of everything.** `lib/learn.ts` holds the article
+> metadata, and `PUBLIC_PAGES` **derives** its `/learn/<slug>` entries from it — so a
+> single spread gives each article its sitemap entry, its canonical tag, the
+> middleware allow-list, and the full public header (`showsFullChrome()` asks
+> `OPEN_TO_STRANGERS.has(pathname)`, an exact match, which is why an article without
+> the derivation silently renders the *confinement* chrome — 11c-iv's defect again).
+> `seo.spec.ts` picked up canonical + sitemap coverage for the articles for free,
+> because it already loops over the indexable entries of that list.
+>
+> **Three structural decisions worth not relitigating:**
+> - **`lib/learn.ts` contains no React**, and `check:seo` enforces it. `lib/seo.ts`
+>   imports it and `proxy.ts` imports `lib/seo.ts`, so a component here would join
+>   the **middleware** bundle that runs on every request to the site.
+> - **Bodies are `Record<LearnSlug, …>` in `content.tsx`**, so registering an article
+>   without writing it is a **compile error**, not a blank page (11j). This depends on
+>   `LEARN_ARTICLES` ending `as const satisfies readonly LearnArticle[]` — an explicit
+>   type annotation widens `slug` to `string` and the check evaporates. Guarded.
+> - **The answer is a required FIELD, not the first paragraph of the body.** The brief
+>   asks for a direct answer before any prose; making it structural means an article
+>   cannot be published without one, and it is capped at 320 characters — because the
+>   disclaimer sits directly beneath it and an over-long answer is the only thing that
+>   can push it below a 375px fold. An editorial rule enforced by a test.
+>
+> **Articles use the 17px reading scale, deliberately NOT the legal pages' 13px** —
+> that was an owner instruction scoped explicitly to those three documents.
+>
+> **The disclaimer sentence is now ONE component** (`LegalNotice.tsx`), consumed by
+> the legal documents and by the article template. It was about to be typed a second
+> time, which for a compliance control is the worst instance of 11c there is: two
+> disclaimers do not diverge loudly, one simply gets edited.
+>
+> **Numbers come from the nightly snapshot, never hand-typed** (11k) — the worked
+> example reads the same `LANDING` file the landing page uses.
+>
+> **Playwright 314 → 329**, 0 failed, 0 skipped; `check:seo` 491 → **517**.
+> **Five deliberate breaks, and two of them exposed defects in the guards themselves**
+> — see `coding-standards.md` §14 item 13.
+>
+> ⚠️ **Content is the owner's, not mine.** One article shipped as the worked reference
+> so the template is proven against real prose rather than a placeholder; the rest of
+> the library waits on the owner's steer.
+>
 > ### 📋 LAYER G AUDIT — the deferred list. Owner instruction 2026-08-15: revisit these **after** Layer G is built, not during.
 >
 > Both were surfaced this session, both are real, and neither is urgent. They are parked
@@ -1029,6 +1076,7 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 >
 > | # | Item | Owner's steer |
 > |---|---|---|
+> | **GA-1b** | 🔴 **ESCALATION — the same root cause makes EVERY `notFound()` on the site answer 200.** Found 2026-08-15 building `/learn`, and established by control experiment on a **production build**, not inferred: with `app/loading.tsx` present `/learn/does-not-exist` → **200**; with the file temporarily moved aside, same build otherwise → **404**. The control that makes it a finding rather than a guess: `/.well-known/nothing-here` returns a true 404 on the same server, so 404s do survive the middleware — it is the streaming, not the proxy. **Mechanism:** the root Suspense boundary flushes the shell before the page resolves, and once bytes are on the wire the status is already committed, so Next swaps the not-found content in afterwards. **This is a soft-404**, which Google treats far more harshly than an honest 404 — on the layer whose entire purpose is SEO. It applies sitewide, not just to Learn | **Raises GA-1's severity. It was filed low because Googlebot runs JS, so "Loading…" does not affect indexing — this does.** Same single remedy as GA-1 (scope `loading.tsx` to the `(app)` group), which would close both. Recorded in the suite as a `test.fail()` in `e2e/learn.spec.ts`, so it stays visible, keeps the run green, and turns **red the moment somebody fixes it** — at which point delete the annotation |
 > | **GA-1** | **Four public pages render only "Loading…" with JavaScript disabled** — `/` (108 KB), `/terms` (46 KB), `/privacy`, `/disclaimer` (42 KB); the four AuthCard pages (25–29 KB) are fine. `app/loading.tsx` wraps every route in a Suspense boundary and React defers any page whose HTML overruns the first flush into a `<div hidden>` swapped in by an inline script. Measured on a production build, deterministic ×3. Full write-up: `coding-standards.md` §14 item 11 | **Fix later, at the audit.** Low severity — Googlebot runs JS and the markup is in the bytes. Candidate fix is scoping `loading.tsx` to the `(app)` group; it touches how every page loads, so it wants its own change and its own verification |
 > | **GA-4** | **`legal-doc.spec.ts` → "/privacy keeps its lines inside the readable band" is still flaky on CI** (retried, passed; run `31867667881`). This is the character-count guard whose precondition problem is written up in `coding-standards.md` §14 item 7b — it polls until the article computes 13px, which proves the stylesheet applied and nothing about the column having taken its width or the real webfont having rendered, and font metrics are exactly what a character count depends on. Local (8 cores, warm) never hits the window; CI (2 cores, cold compile) does | **Strengthen the precondition at the audit** — wait on the webfont via `document.fonts.ready` **and** a stable column width, not on a size that merely correlates with readiness. Do not simply raise the retry count: a flake that is tolerated stops being read |
 > | **GA-3** | **An intermittent 404 on Stock Detail, seen locally.** `entitlement-routes.spec.ts` → *"a FREE viewer's Stock Detail HTML contains no scored value anywhere"* failed ~1 run in 3 against `/stocks/us/<TICKER>`, and the captured page was **"Page not found"** — i.e. `notFound()`, i.e. `fetchStockDetail` returned `null`. ⚠️ **Proved pre-existing, not caused by the Layer G polish**: stashing every change and re-running passed, then restoring them gave 1 fail / 2 passes, so the control's pass was luck and the defect is timing, not code. ⚠️ **This is the exact shape CLAUDE.md 11e is about** — `null` must mean "not in our universe" and read failures must throw so the route answers 503. An intermittent 404 says either a row really is intermittently absent, or some read path still folds a soft failure into `null` and 11e missed it | **Investigate at the audit.** Reproduce with the dev server's log captured, and confirm which of the two it is. Do **not** relax the test — an intermittent 404 reaching a paying customer as "Stock not found" is the original defect 11e was written for |
