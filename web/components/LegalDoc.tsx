@@ -99,13 +99,28 @@ export function LegalDoc({ title, updated, intro, sections }: LegalDocProps) {
             characters of 17px body copy per line against a 45–75 band. The
             regression lives in exactly the window where the rail has gone and
             nothing else is holding the measure. */}
-        <article className="mx-auto max-w-[var(--measure-doc)] overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)]">
-          {/* No shadow. `--shadow-lift` is for an object floating on the page and
-              `--shadow-sm` still reads as one; a document IS the page, and at
-              2,000px tall an ambient blur underneath just looks like it is about
-              to slide off. Border and radius are shared with the auth card, so
-              the two remain one family without pretending to be the same object. */}
-          <div className="px-6 py-8 sm:px-10 sm:py-10">
+        {/* ⚠️ `--shadow-sm` — and this REPLACED a deliberate "no shadow at all",
+            on the owner's instruction (2026-08-15), so the old reasoning is worth
+            keeping rather than deleting. It ran: `--shadow-lift` is for an object
+            floating on the page and `--shadow-sm` still reads as one; a document
+            IS the page, and at 2,000px tall an ambient blur underneath looks like
+            it is about to slide off.
+            What changed the answer is that the card families had drifted apart on
+            more than intent: the auth card floats on `--shadow-lift` and this one
+            was completely flat, so `/login` → `/terms` read as two products
+            rather than two weights of one. `--shadow-sm` is the design system's
+            value for a plain `.card` (the auth card's `.card--lift` is the
+            exception, not this). If the "sliding off" concern proves real at full
+            document height, the fix is to drop this class — not to weaken the
+            token, which four other surfaces read. */}
+        <article className="mx-auto max-w-[var(--measure-doc)] overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]">
+          {/* ⚠️ Explicit px, not Tailwind steps. The root font-size is 14px, so
+              the rem scale lands at 0.875× — `px-6 py-8 sm:p-10` was computing to
+              21/28 then 35/35, where the design system specifies 30/32 desktop and
+              24/20 mobile. The auth card was corrected to those numbers first, so
+              this card was left disagreeing with the one a reader meets one click
+              earlier. Same trap as the header gaps and the landing's bleed. */}
+          <div className="px-[20px] py-[24px] sm:px-[32px] sm:py-[30px]">
             {/* ── Masthead. A title, when it was last changed, and a rule. The
                 "LEGAL" eyebrow and the pill around the date are both gone: the
                 rail, the footer and the title already say what this is, and on a

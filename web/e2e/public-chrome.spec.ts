@@ -243,3 +243,67 @@ test.describe('the public chrome matches the approved design system', () => {
     }
   });
 });
+
+/**
+ * The two card families must agree on the geometry they share.
+ *
+ * ⚠️ Written as a COMPARISON, not as two copies of "30px 32px". A pair of
+ * hard-coded numbers is two facts free to be edited apart — the same shape as
+ * the three roundings of one analyst target (CLAUDE.md 11c iii). What actually
+ * matters to a reader is that `/login` and `/terms` feel like one product, so
+ * that is what is asserted: whatever the auth card's padding is, the legal
+ * document's must equal it.
+ *
+ * This drifted for real. The auth card was corrected to the design system's
+ * 30/32 and 24/20 while the legal document stayed on Tailwind steps computing to
+ * 35/35 and 28/21 against the 14px root — so one click moved you between two
+ * subtly different boxes, and nothing was red.
+ *
+ * Shadows are deliberately NOT compared: the auth card floats (`--shadow-lift`)
+ * and the document rests (`--shadow-sm`). Two weights of one system.
+ */
+test.describe('the auth card and the legal document are one family', () => {
+  for (const width of [1280, 375]) {
+    test(`padding and radius agree at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+
+      const read = async (path: string, kind: 'auth' | 'legal') => {
+        await page.goto(path, { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('[data-public-header]');
+        // The stylesheet must be live before anything is measured — an unstyled
+        // page reports plausible defaults and would pass this by accident.
+        await page.waitForFunction(() =>
+          getComputedStyle(document.body).fontFamily.includes('Sora'),
+        );
+        return page.evaluate((k) => {
+          const el =
+            k === 'auth'
+              ? [...document.querySelectorAll('main div')].find(
+                  (d) => getComputedStyle(d).borderRadius === '10px',
+                )
+              : document.querySelector('article');
+          if (!el) return null;
+          const inner = el.querySelector('div');
+          return {
+            padding: inner ? getComputedStyle(inner).padding : 'NO INNER',
+            radius: getComputedStyle(el).borderRadius,
+          };
+        }, kind);
+      };
+
+      const auth = await read('/login', 'auth');
+      const legal = await read('/terms', 'legal');
+
+      expect(auth, 'no auth card found on /login').not.toBeNull();
+      expect(legal, 'no document card found on /terms').not.toBeNull();
+      // Guards the guard: if the selector ever stops finding a padded element,
+      // 'NO INNER' === 'NO INNER' would satisfy the comparison below.
+      expect(auth!.padding).toMatch(/^\d/);
+
+      expect(legal!.padding, `/terms padding must match /login's (${auth!.padding})`).toBe(
+        auth!.padding,
+      );
+      expect(legal!.radius, 'both card families share one corner radius').toBe(auth!.radius);
+    });
+  }
+});

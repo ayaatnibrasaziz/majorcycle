@@ -396,6 +396,19 @@ Tailwind defaults work but the reference uses these specific values for cards an
 also sits alone on the page: `/terms` is the page rather than an object on it, and
 a heavy ambient blur under 2,000 words looks like it is about to slide off.
 
+❌ **This rule was written down and the code did something else** — `LegalDoc`
+carried **no shadow at all**, with a comment arguing that `--shadow-sm` "still
+reads as" a floating object. So the auth card floated and the document was
+perfectly flat, and one click between them read as two products rather than two
+weights of one. Corrected 2026-08-15 on the owner's instruction, after the gap
+was found by measuring both cards side by side rather than by reading either.
+The original concern was reasonable and turned out not to apply: `--shadow-sm` is
+1–3px, and at the document's real height (1,502px on `/terms`) the bottom edge
+reads as resting, not sliding. **Note the shape — a doc and its code disagreeing,
+with the doc right and no test in between.** Both card families' padding and
+radius are now compared to each other in `e2e/public-chrome.spec.ts`; the shadows
+are deliberately *not* compared, because differing is the point.
+
 ---
 
 ## 9. Component Vocabulary
@@ -925,8 +938,8 @@ stood regardless and was scoped explicitly to these three pages, so that is what
 
 | Part | Spec |
 |---|---|
-| Frame | `PageFrame width="wide"` + `.legal-layout`. ≥1024px: `grid-template-columns: 200px var(--measure-prose)`, 48px gap, centred as a pair. Below: block flow |
-| Document | `--bg-surface`, 1px border, `--radius`, **no shadow**, capped at `--measure-prose` |
+| Frame | `PageFrame width="wide"` + `.legal-layout`. ≥1024px: `grid-template-columns: 200px var(--measure-doc)`, 48px gap, centred as a pair (measured: `200px 560px`, total 1120 = `--measure-wide`). Below: block flow |
+| Document | `--bg-surface`, 1px border, `--radius` 10px, **`--shadow-sm`**, capped at `--measure-doc` (560px), padding **30px 32px** desktop / **24px 20px** ≤640px |
 | Type | `--pub-title` 24 · `--pub-h` 17 · `--pub-body` 13 · `--pub-label` 12 (see §3) |
 | Masthead | Title + "Last updated …" + a hairline rule. No eyebrow, no date pill |
 | Clause heading | `.doc-h` with a `.doc-num` numeral **in Sora, inheriting colour** |
