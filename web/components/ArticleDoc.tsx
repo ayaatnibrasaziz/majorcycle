@@ -13,16 +13,29 @@ import { PageFrame } from './PageFrame';
 /**
  * One Learn article.
  *
- * ── Which type scale, and why it is NOT the legal pages' ─────────────────────
+ * ── Which type scale, and why it IS the legal pages' ─────────────────────────
  *
- * `PageFrame width="prose"` turns `.reading` on: 17px body in a 680px column,
- * about 68 characters a line. The three legal documents deliberately run at the
- * small site scale (13px / 560px) instead — and that was an explicit owner
- * instruction *"scoped explicitly to these three pages only"*, recorded in
- * `LegalDoc.tsx`. An article is the one thing on this site somebody actually
- * reads top to bottom after arriving from a search result, so it gets the scale
- * built for reading. Copying the legal sizes here would be inheriting a decision
- * that was made about a different problem.
+ * `doc-scale` — 24 / 17 / 13 / 12, the sizes every non-landing public page
+ * already uses.
+ *
+ * ⚠️ **This reverses my first decision, and the reversal was settled by
+ * measuring.** The first version left `.reading`'s own scale on, arguing that an
+ * article is read top to bottom while a legal page is scanned for a clause. That
+ * argument is sound in the abstract and it produced, in practice, a **fourth
+ * type scale on the public site** — 36/26/20 against 24/17/13 everywhere else
+ * and 50/34 on the landing. Crossing from `/contact` into `/learn` was a 50%
+ * jump in heading size for no reason a reader could perceive.
+ *
+ * The owner's instruction on the legal pages (recorded in globals.css) was about
+ * the whole site, not those three files: *"throughout all the public pages …
+ * There is no need to make it slightly bigger."*
+ *
+ * ⚠️ **Stated because it is a real trade-off, not a free win:** 13px is small
+ * for 900 words of newcomer prose, and I would argue for lifting the document
+ * scale a step. That is a change to `--pub-*`, which the legal pages, the auth
+ * cards and this page all read — one decision, applied everywhere at once. It
+ * is not something an article page gets to opt out of on its own, which is
+ * exactly how the fourth scale appeared.
  *
  * ── The card ─────────────────────────────────────────────────────────────────
  *
@@ -54,7 +67,7 @@ export function ArticleDoc({
 
   return (
     <PageFrame width="prose">
-      <article className="overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]">
+      <article className="doc-scale overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]">
         {/* Explicit px, not Tailwind steps — the root font-size is 14px, so the
             rem scale lands at 0.875× and `sm:p-10` computes to 35px where the
             design system specifies 32/30. Same trap as the auth card, the legal

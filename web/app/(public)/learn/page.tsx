@@ -58,7 +58,11 @@ export default function LearnIndexPage() {
 
   return (
     <PageFrame width="wide">
-      <div className="px-[20px] py-[24px] sm:px-0 sm:py-[8px]">
+      {/* `doc-scale` — the public site's 24/17/13/12. Without it this page took
+          `.reading`'s 36/26/20 and became a fourth type scale: a 50% jump in
+          heading size crossing from /contact or /terms, for no reason a reader
+          could perceive. See globals.css. */}
+      <div className="doc-scale px-[20px] py-[24px] sm:px-0 sm:py-[8px]">
         {/* The words stay in a column even though the frame is wide — 1120px of
             17px lead copy is about 130 characters a line, twice the readable
             band. Same reasoning as the legal documents' own measure. */}
@@ -99,12 +103,23 @@ export default function LearnIndexPage() {
                     {String(i + 1).padStart(2, '0')}
                   </span>
                   <h2 className="min-w-0 flex-auto">{theme.label}</h2>
-                  <span className="inline-flex items-center rounded-full border border-[var(--brand-light-border)] bg-[var(--brand-light)] px-[10px] py-[4px] text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--brand-mid)]">
+                  {/* --pub-label (12px), not the 11px this first carried.
+                      `--rd-micro` is a FLOOR on a reading page, not a
+                      suggestion — and `contrast.spec.ts` enforces it, so 11px
+                      would have failed the build rather than merely looking
+                      small. */}
+                  <span className="inline-flex items-center rounded-full border border-[var(--brand-light-border)] bg-[var(--brand-light)] px-[10px] py-[3px] text-[length:var(--pub-label)] font-bold uppercase tracking-[0.08em] text-[var(--brand-mid)]">
                     {articles.length} {articles.length === 1 ? 'article' : 'articles'}
                   </span>
                 </div>
 
-                <p className="small mt-[8px] max-w-[60ch] text-[var(--text-secondary)]">
+                {/* NOT `.small`. Under `doc-scale` that maps to --pub-label
+                    (12px), which is the FLOOR — right for a date stamp or a
+                    label, wrong for a sentence somebody is expected to read to
+                    decide whether a topic is for them. Body size, separated
+                    from the article titles above it by weight and colour rather
+                    than by size. */}
+                <p className="mt-[8px] max-w-[60ch] text-[var(--text-secondary)]">
                   {theme.blurb}
                 </p>
 
@@ -120,12 +135,18 @@ export default function LearnIndexPage() {
                       {/* The title is the only link in the row. A second "read
                           more" would give a screen-reader user two links to the
                           same place, one of which says nothing. */}
+                      {/* Title and blurb are both --pub-body (13px); WEIGHT and
+                          COLOUR separate them, not size. A half-step up to 14px
+                          would be a fifth value on a page that has just been
+                          brought down to four, to buy 1px of difference the eye
+                          cannot read anyway. Same device the legal contents rail
+                          uses for its links. */}
                       <Link
                         href={learnPath(article.slug)}
-                        className="flex items-baseline gap-[12px] py-[9px] text-[14px] font-medium leading-[1.4] no-underline"
+                        className="flex items-baseline gap-[12px] py-[9px] font-semibold leading-[1.45] no-underline"
                       >
                         <span className="flex-auto">{article.title}</span>
-                        <span className="flex-none font-mono text-[11px] text-[var(--text-secondary)]">
+                        <span className="flex-none font-mono text-[length:var(--pub-label)] font-normal text-[var(--text-secondary)]">
                           {article.minutes} min
                         </span>
                       </Link>

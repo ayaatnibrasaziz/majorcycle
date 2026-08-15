@@ -83,7 +83,11 @@ export function LegalDoc({ title, updated, intro, sections }: LegalDocProps) {
 
   return (
     <PageFrame width="wide">
-      <div className="legal-layout">
+      {/* `doc-scale` carries the 24/17/13/12 sizes; `legal-layout` carries the
+          contents-rail grid. They used to be one class, which is why the Learn
+          pages — which need the scale and not the grid — silently came out at
+          `.reading`'s 36/26/20 instead. Two names, two jobs. */}
+      <div className="legal-layout doc-scale">
         {/* Desktop only. Below 1024px `.legal-layout` is plain block flow and this
             is `display: none`, with the inline list inside the document taking
             over — the two cannot drift because both map the same `sections`.

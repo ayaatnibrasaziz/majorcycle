@@ -300,31 +300,72 @@ test.describe('the Learn library', () => {
     }
   });
 
-  test('an article reads at the reading scale, not the legal documents’ scale', async ({ page }) => {
-    // A comparison, not two hard-coded numbers. Both pages are documents in a
-    // card, so an article silently inheriting 13px would look entirely plausible
-    // — the point is that these two surfaces made DIFFERENT decisions on purpose,
-    // and the legal one was explicitly scoped to those three pages only.
+  test('the Learn pages share ONE type scale with every other public page', async ({ page }) => {
+    /**
+     * ⚠️ **This assertion is the REVERSE of the one it replaces, and the reversal
+     * is the finding.** The first version asserted that an article uses
+     * `.reading`'s 17px body while the legal documents stay at 13px — arguing an
+     * article is read top to bottom and a legal page is scanned. Sound in the
+     * abstract; measured on the built pages it had produced a **fourth type
+     * scale** on the public site:
+     *
+     *     /learn, /learn/[slug]   h1 36  h2 26  lead 20
+     *     /terms                  h1 24  h2 17  body 13
+     *     /contact, /pricing      h1 24
+     *     /                       h1 50  h2 34   ← marketing, deliberate
+     *
+     * Crossing from `/contact` into `/learn` was a 50% jump in heading size for
+     * no reason a reader could perceive. Both Learn surfaces now wear
+     * `doc-scale`, the class the legal documents use.
+     *
+     * Compared page-to-page rather than against hard-coded numbers: the point is
+     * that these surfaces AGREE, so the test must fail if any one of them moves,
+     * not merely if it stops matching a literal typed here.
+     */
     await page.setViewportSize({ width: 1280, height: 900 });
+
+    const h1 = () => page.evaluate(() => getComputedStyle(document.querySelector('main h1')!).fontSize);
+
+    await page.goto('/terms');
+    await ready(page);
+    const legal = {
+      h1: await h1(),
+      h2: await page.evaluate(() => getComputedStyle(document.querySelector('article section h2')!).fontSize),
+      body: await page.evaluate(() => getComputedStyle(document.querySelector('article section p')!).fontSize),
+    };
+
+    await page.goto(LEARN_INDEX_PATH);
+    await ready(page);
+    const index = {
+      h1: await h1(),
+      h2: await page.evaluate(() => getComputedStyle(document.querySelector('main h2')!).fontSize),
+    };
 
     await page.goto(ARTICLE_PATHS[0]!);
     await ready(page);
-    // ⚠️ `[data-article-body]`, not `article p`. The first version asked for the
-    // latter and measured the "Published … Last reviewed" line — `.small`, 14px,
-    // by design — then reported that the article was not using the reading scale.
-    // The page was right and the selector was pointing at furniture.
-    const articleBody = await page.evaluate(
-      () => getComputedStyle(document.querySelector('[data-article-body] p')!).fontSize,
-    );
+    const article = {
+      h1: await h1(),
+      h2: await page.evaluate(() => getComputedStyle(document.querySelector('[data-article-body] h2')!).fontSize),
+      body: await page.evaluate(() => getComputedStyle(document.querySelector('[data-article-body] p')!).fontSize),
+    };
 
-    await page.goto('/terms');
-    const legalBody = await page.evaluate(
-      () => getComputedStyle(document.querySelector('article section p')!).fontSize,
-    );
+    await page.goto('/contact');
+    const form = { h1: await h1() };
 
-    expect(articleBody, 'a Learn article must use the 17px reading scale').toBe('17px');
-    expect(legalBody, 'the legal documents must stay at the 13px site scale').toBe('13px');
-    expect(articleBody, 'the two scales have collapsed into one').not.toBe(legalBody);
+    expect(index.h1, 'the Learn index heading has drifted from /terms').toBe(legal.h1);
+    expect(article.h1, 'the article heading has drifted from /terms').toBe(legal.h1);
+    expect(form.h1, 'the auth card heading has drifted from /terms').toBe(legal.h1);
+    expect(index.h2, 'the Learn index section heading has drifted').toBe(legal.h2);
+    expect(article.h2, 'the article section heading has drifted').toBe(legal.h2);
+    expect(article.body, 'the article body has drifted from /terms').toBe(legal.body);
+
+    // The control. Four surfaces agreeing proves nothing if they agree because
+    // the stylesheet never loaded and everything is the 16px UA default — the
+    // exact "unmeasurable counted as clean" failure in CLAUDE.md 14g. These are
+    // the real values, so a page rendering unstyled fails here rather than
+    // sailing through a chain of equalities.
+    expect(legal.h1, 'nothing is styled — every comparison above is vacuous').toBe('24px');
+    expect(legal.body, 'nothing is styled — every comparison above is vacuous').toBe('13px');
   });
 
   test('Learn pages get the full public header, not the confinement chrome', async ({ page }) => {
