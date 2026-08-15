@@ -194,7 +194,7 @@ the same tokens, so the two families cannot drift apart.
 
 | Token | Size | What it is |
 |---|---|---|
-| `--pub-title` | 24px | Page title. `AuthCard` h1 from 640px up, legal masthead always |
+| `--pub-title` | 24px | Page title. `AuthCard` h1 from 640px up; the legal masthead, the Learn index and Learn articles always (via `.doc-scale`) |
 | `--pub-title-sm` | 22px | `AuthCard`'s phone step-down. The legal masthead does **not** step |
 | `--pub-h` | 17px | Legal clause heading (`= --rd-body`) |
 | `--pub-body` | 13px | Body text on every public page |
@@ -938,9 +938,9 @@ stood regardless and was scoped explicitly to these three pages, so that is what
 
 | Part | Spec |
 |---|---|
-| Frame | `PageFrame width="wide"` + `.legal-layout`. ≥1024px: `grid-template-columns: 200px var(--measure-doc)`, 48px gap, centred as a pair (measured: `200px 560px`, total 1120 = `--measure-wide`). Below: block flow |
+| Frame | `PageFrame width="wide"` + `.legal-layout doc-scale`. ≥1024px: `grid-template-columns: 200px var(--measure-doc)`, 48px gap, centred as a pair (measured: `200px 560px`, total 1120 = `--measure-wide`). Below: block flow |
 | Document | `--bg-surface`, 1px border, `--radius` 10px, **`--shadow-sm`**, capped at `--measure-doc` (560px), padding **30px 32px** desktop / **24px 20px** ≤640px |
-| Type | `--pub-title` 24 · `--pub-h` 17 · `--pub-body` 13 · `--pub-label` 12 (see §3) |
+| Type | **`.doc-scale`** — `--pub-title` 24 · `--pub-h` 17 · `--pub-body` 13 · `--pub-label` 12 (see §3). Since 2026-08-15 this is a class in its own right, not a rule welded to `.legal-layout`, so the Learn pages get the same scale without the contents-rail grid |
 | Masthead | Title + "Last updated …" + a hairline rule. No eyebrow, no date pill |
 | Clause heading | `.doc-h` with a `.doc-num` numeral **in Sora, inheriting colour** |
 | Contents | Sticky rail ≥1024px (`LegalContentsRail`), inline two-column list below |
@@ -1076,6 +1076,77 @@ consistent, honest pattern. The rules:
 Pattern: red-tint card + 16px title + body explanation + CTA to retry or contact support.
 
 ---
+
+### The Learn library — BUILT 2026-08-15 (`/learn`, `/learn/[slug]`)
+
+**Chosen from three directions drawn in the design artifact.** The owner rejected a plain
+themed list and chose **theme bands**: one illustration per topic, alternating left and
+right, with the article titles listed beside it. Heading is the owner's — *"Before you buy
+anything"*.
+
+⚠️ **Direction B — a picture per ARTICLE — is the better browsing experience and was
+deliberately DEFERRED, not rejected.** A card grid needs roughly nine articles before it
+stops reading as abandoned, and the library has one. Bands never look half-built: another
+article makes a list one line longer. Revisit at ~12 articles; the data shape supports it.
+
+| Part | Spec |
+|---|---|
+| Index frame | `PageFrame width="wide"` + `.doc-scale`. Prose held to `max-w-[720px]` — the frame is wide for the pictures, not for the words |
+| Article frame | `PageFrame width="prose"` (680px) + `.doc-scale`, in the same card as a legal document (`--radius`, 1px border, `--shadow-sm`, 30/32 desktop · 24/20 phone) |
+| Type | **Identical to the legal documents** — 24 / 17 / 13 / 12 |
+| Band | 2-col grid ≥1024px (`minmax(0,1fr) minmax(0,1.05fr)`, 30px gap), alternating via `lg:order-first` on odd bands. Single column below, **picture always first** |
+| Topic image | **1200 × 750 (16:10)**, Canva. `LEARN_THEMES[].image` is **optional**: with no image the band renders as a full-width text block that looks intentional. See the warning below |
+| Article row | Title `--pub-body` semibold; reading time `--pub-label` in JetBrains Mono, `--text-secondary`. Title and blurb are the SAME size — weight and colour separate them, not a 1px step |
+| Count pill | `--pub-label`, `--brand-light` fill, `--brand-light-border` |
+| Article answer | `.lead` (17px) in a `border-l-2 --brand-mid` block, directly under the h1 and **above** the disclaimer |
+| Disclaimer | `LegalNotice` — the same component the legal pages use, so the sentence exists once |
+
+⚠️ **No placeholder boxes for the missing images, deliberately.** A dashed "1200 × 750 goes
+here" panel is exactly the kind of thing that reaches production because everyone assumed
+somebody else would spot it — on the page whose job is to make a stranger trust us. The
+band degrades to text instead.
+
+⚠️ **Two of the first values broke the 12px floor** (`--rd-micro` is a FLOOR on a reading
+page, not a suggestion): the count pill and the reading time were 11px. `contrast.spec.ts`
+enforces it, so these fail the build rather than merely looking small. A third value —
+the topic blurb — had landed exactly ON the floor via `.small`, which under `.doc-scale`
+maps to `--pub-label`. Right for a date stamp, wrong for a sentence somebody reads to
+decide whether a topic is for them.
+
+> #### The fourth type scale, and how it got there (2026-08-15)
+>
+> The owner said the Learn pages "looked inconsistent". Measured at 1280px on the built
+> pages, they were right, and it was structural rather than cosmetic:
+>
+> | Page | h1 | h2 | lead | body |
+> |---|---|---|---|---|
+> | `/learn`, `/learn/[slug]` | **36** | **26** | **20** | — |
+> | `/terms` | 24 | 17 | — | 13 |
+> | `/contact`, `/pricing` | 24 | — | — | 13 |
+> | `/` | 50 | 34 | 18 | 12.5 |
+>
+> Crossing from `/contact` into `/learn` was a **50% jump in heading size** for no reason a
+> reader could perceive.
+>
+> **Cause: the scale was welded to `.legal-layout`**, the class that also builds the legal
+> contents-rail grid. A document wanting the scale without the grid could not have it, so
+> the Learn pages fell back to `.reading`'s own 36/26/20. Nobody wrote anything wrong —
+> `.reading` is the correct default for a long page, and the legal pages had opted out
+> through a class the new pages had no reason to wear. **CLAUDE.md 11c-iv: the rule existed
+> and one of its consumers never received it.**
+>
+> Fixed by extracting **`.doc-scale`**. It uses element selectors as well as the `.doc-*`
+> helpers, because an article body is authored as plain `<h2>` — prose in a content file
+> should not have to know the design system's class names.
+>
+> ⚠️ **This reversed an earlier decision of mine**, which had argued an article is read top
+> to bottom while a legal page is scanned, so it should keep 17px. Sound in the abstract;
+> what it produced was the table above.
+>
+> ⚠️ **Open, and the owner's to decide: 13px is small for 900 words of newcomer prose.** The
+> fix is to lift `--pub-*` one step, which moves the legal pages, the auth cards and the
+> articles **together**. An article page does not get to opt out on its own — that is
+> exactly how the fourth scale appeared.
 
 ## 12. Animations
 

@@ -590,7 +590,7 @@ def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[
 | Assuming a stale `web/.next` can still break the dev server | **Fixed at the root on 2026-07-30** — `next.config.ts` now sets `distDir` to `.next-dev` under `NODE_ENV=development`, so `next dev` (and `pnpm e2e`, which spawns its own) can no longer be poisoned by a production build. Two follow-ons this required: `.next-dev/**` had to be added to `eslint.config.mjs`'s ignores (eslint-config-next only knows `.next`, so lint started reporting generated Turbopack chunks as our errors), and both `.gitignore`s. | Nothing to remember day to day. **One residue:** `tsconfig.json` includes `.next/types`, so after **renaming or deleting a route** a stale production build makes `pnpm typecheck` fail naming the old module path — `rm -rf web/.next` and re-run. That failure is loud and names the file, which is the acceptable trade; the silent 404s below were not. |
 | Running `pnpm build` while the dev/preview server is up | Poisons the shared `web/.next` cache. Two symptoms seen: **stale `globals.css`** (new JS but old CSS), and — 2026-07-30 — a **route handler that 404s as if it didn't exist**. The second is the dangerous one, because a paywalled route answering 404 instead of 402 reads exactly like a broken gate. Tell them apart by the body: our refusals are **JSON + `private, no-store`**; a routing miss is **HTML + `no-cache, must-revalidate`** (Next's own not-found), and the dev log still shows application-code time because the not-found boundary rendered. | After a prod build, `rm -rf web/.next` (or at least `.next/types`) and restart the dev/preview server before verifying anything. Confirmed: `/report` returned HTML 404 twice, then **402 `payment_failed` + `private, no-store`** immediately after a clean restart — the code was never wrong. |
 | Trusting a **dev-server** reading of CSS after editing `globals.css` | Next HMRs the TSX but does **not** always recompile `globals.css`, so the browser gets NEW markup against OLD styles. Seen 2026-08-02 (Layer F audit F-A4): after tokenising a colour, `getComputedStyle` reported the new custom property as **empty** with **0** elements using it, while the HTML already referenced `var(--brand-light-border)` — which reads exactly like a shipped visual regression (a colourless border). The served stylesheet still held the pre-edit hexes. | **A CSS change is not verified until a build says so.** `pnpm build` and grep the emitted stylesheet in `.next/static/chunks/*.css` for both the token definition and its `var()` consumers. Do not file a styling regression from a dev-server reading alone. |
-| Reading an HTTP **status alone** to decide whether a page guard fired | A server-component `redirect()` cannot send a 3xx once the streaming shell has flushed, so Next puts the redirect **inside a 200** as a `NEXT_REDIRECT` payload. 2026-07-30: `/run` and `/stocks` answered **200** for a deletion-scheduled account, which reads as confinement broken — it wasn't; both bodies redirected to `/reactivate`. A guard that *is* working looks identical to one that isn't. | Assert on the **body**: grep for `NEXT_REDIRECT` (and the target) as well as the status. Route handlers *do* return real 3xx/402 — the streaming caveat is pages only. Byte size is a useful second signal: the redirect shell is a fraction of the real page (29 KB vs 225 KB for `/run`). |
+| Reading an HTTP **status alone** to decide whether a page guard fired | A server-component `redirect()` cannot send a 3xx once the streaming shell has flushed, so Next puts the redirect **inside a 200** as a `NEXT_REDIRECT` payload. 2026-07-30: `/run` and `/stocks` answered **200** for a deletion-scheduled account, which reads as confinement broken — it wasn't; both bodies redirected to `/reactivate`. A guard that *is* working looks identical to one that isn't. | Assert on the **body**: grep for `NEXT_REDIRECT` (and the target) as well as the status. Route handlers *do* return real 3xx/402 — the streaming caveat is pages only. Byte size is a useful second signal: the redirect shell is a fraction of the real page (29 KB vs 225 KB for `/run`). ⚠️ **`notFound()` has the SAME problem and it is worse, found 2026-08-15.** Once the shell has flushed the status is committed, so an unknown URL renders "Page not found" inside a **200** — a soft-404, which Google penalises harder than an honest 404, sitewide. Proved by control on a production build: with `app/loading.tsx` present `/learn/x` → 200; with it moved aside, same build → **404**. Control that makes it a finding rather than a guess: `/.well-known/nothing-here` returns a true 404 on the same server, so 404s do survive the middleware. Recorded as roadmap **GA-1b**. ⬆️ **This row already described the mechanism for `redirect()` and I re-derived it from scratch** — grep the docs first. |
 | Grepping SSR HTML for a marker that isn't unique to the state | Two markers in one session nearly produced false findings: `"reactivate"` and `"Run Analysis"` appear in **every** page's nav, so both matched everywhere and proved nothing. Worse, a **client-rendered** element is absent from SSR HTML entirely — the onboarding modal grep said "not present" while the modal was in fact blocking the whole page. | Grep for copy unique to that one state (the per-reason denial titles from `PremiumLockPage`, e.g. "We couldn't take your last payment"). Anything client-rendered must be confirmed in a **real browser**, not in the HTML. And verify the selector/marker discriminates *before* calling a defect — the same lesson as the `select[name="country"]` false alarm. |
 | Trusting a `preview_start` that suddenly **fails every detail page** | Next lets a pre-existing `process.env` (a stale Supabase URL/key in the launching shell) **override `web/.env.local`**, so SSR reads the wrong/old project (looks like a code bug; it isn't). ⚠️ **The symptom changed on 2026-08-07** and the difference is now diagnostic: a *bad credential* errors, so `fetchStockDetail` throws `StockReadError` → the "Something went wrong" boundary; a *valid credential on the wrong/empty project* returns no row → `notFound()`. Before 11e both looked identical — a 404 — which is precisely why a broken environment was indistinguishable from a missing ticker. | Confirm the creds reach the data (a quick REST/Node check), then `preview_stop` + `preview_start` **fresh** to pick up the right env. A clean restart fixed it (2026-06-27). **Read which of the two failures you got** — the error boundary means credentials, a 404 means the wrong project. |
 | Rendering a raw yfinance metric as a headline | Near-zero denominators give absurd values (P/E 3,500×, ROE 8,457%, payout 18,210%) that look broken | Cap the display via `MetricDef.cap` (show `>+cap`, true value in tooltip) + mirror in `medians.server.ts` `OUTLIER_BOUND`. Where a high value is *bad* (distress dividend yield), show it but recolour amber + ⚠, don't cap. See design-system §9 "Numeric display". |
@@ -638,12 +638,12 @@ decision — see § 8.**)
     statement figures labelled with the price currency (§ 14d), and the P/E chart's
     currency gate (§ 14e-2). Prints its own count and a per-root file floor, because its
     first version reported OK while silently covering a third less code.
-12. `pnpm check:seo` — **287** checks over the 10 public pages (6 indexable) and every TS
+12. `pnpm check:seo` — **517** checks over the 11 public pages (7 indexable) and every TS
     file: the `PUBLIC_PAGES` registry and its four consumers, one `SITE_ORIGIN` (the literal
     was in **five** files and one disagreed), the indexable set pinned **by name** (deriving
     it from the same list made the test unfalsifiable), and the `Disallow`-vs-`noindex`
     contradiction. CI reports **286** — one fewer file, because `dev-fixtures` is gitignored.
-13. Playwright e2e — **152** tests *(was 121; this line went stale, in the section that tells
+13. Playwright e2e — **332** tests *(was 121; this line went stale, in the section that tells
     you to read the count — a doc figure is not a measurement, so take it from the run)*,
     incl. the paywall behavioural matrix, the Stripe
     **key-scope** probe (`e2e/stripe-key-scope.spec.ts`),
@@ -931,6 +931,40 @@ the next person weakens the innocent code. When a new test fails, **confirm the 
 before accepting the accusation**: comparing four page sizes against four others took
 minutes and moved the finding from "the motion hides content" to "our root loading
 boundary defers large pages."
+
+---
+
+### 14. A rule welded to the wrong class — the fourth type scale (2026-08-15)
+
+The owner said the Learn pages "looked inconsistent". Measuring the built pages at 1280px
+turned a vague feeling into a structural defect: `/learn` was running **36/26/20** while
+every other non-landing public page ran **24/17/13**. A 50% jump in heading size crossing
+one link.
+
+**Nobody had written anything wrong.** `.reading` is the correct default for a long page.
+The legal documents had opted out of it — but through `.reading .legal-layout`, and
+`.legal-layout` is the class that builds the contents-rail **grid**. So the scale was only
+available to a document that also wanted a two-column rail. The Learn pages wanted the
+scale and not the grid, so they got neither and fell back to the default.
+
+**The generalisable rule: a shared decision must not be reachable only through an
+unrelated class.** If the scale is a decision about documents, it is a class about
+documents — `.doc-scale` — and the layout is a separate one. This is CLAUDE.md 11c-iv
+(*"the rule existed and one of its consumers never received it"*) in CSS rather than in a
+component: extracting the constant is half the job, and the other half is that every
+consumer can actually reach it.
+
+⚠️ **Three second-order findings fell out of the same measurement**, all invisible to
+review: two values below the 12px reading-page floor (`contrast.spec.ts` enforces it, so
+they were build failures waiting to happen, not merely small), and a descriptive sentence
+sitting exactly ON the floor because `.small` maps to `--pub-label` inside the document
+scale — correct for a date stamp, wrong for a sentence somebody reads to make a decision.
+
+⚠️ **And it reversed an earlier decision of mine**, which had argued from first principles
+that an article is read while a legal page is scanned, so it deserved the larger scale. The
+argument was fine and the outcome was a fourth scale. **When a local decision is defensible
+on its own terms, check what it does to the set** — the question is never "is 17px right
+for an article?", it is "how many scales does the site have after this?"
 
 ---
 

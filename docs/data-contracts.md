@@ -1143,6 +1143,51 @@ of coordinates — re-run `e2e/landing.spec.ts` and re-read the callout copy. Se
 
 ---
 
+## 7b. The Learn registry (`web/lib/learn.ts`) — Layer G
+
+Not a database table. It is a **compile-time registry**, and it belongs here because five
+other things derive from it and none of them may be written by hand.
+
+```ts
+export interface LearnThemeMeta {
+  readonly id: 'cycles' | 'quality' | 'using-it';
+  readonly label: string;
+  readonly blurb: string;
+  /** Canva illustration, 1200 × 750. OPTIONAL — the band renders as text without it. */
+  readonly image?: { readonly src: string; readonly alt: string };
+}
+
+export interface LearnArticle {
+  readonly slug: string;      // never changed once published — a changed slug is a dead link
+  readonly title: string;
+  readonly question: string;  // the question a real person types, in their words
+  readonly answer: string;    // ≤320 chars, rendered above the disclaimer (see below)
+  readonly summary: string;   // index list + meta description
+  readonly theme: LearnTheme;
+  readonly published: string; // ISO
+  readonly reviewed: string;  // ISO — when it was last checked against the running product
+  readonly minutes: number;   // reading time
+}
+```
+
+**Three fields carry rules that are enforced rather than documented:**
+
+| Field | Rule | Why, and what enforces it |
+|---|---|---|
+| `answer` | **80–320 characters** | It renders directly above the "not financial advice" notice, so an over-long answer is the only thing that can push a legally-required disclaimer below a 375px fold. The lower bound stops a one-liner that restates the title. `e2e/learn.spec.ts` |
+| `minutes` | within **±2** of the rendered body at 200 wpm | A second copy of a fact about the body (11k) — edit the prose and it stays put, plausible and quietly wrong. The bodies are React components so there is nothing to count at build time; the test counts words on the **rendered** page |
+| `slug` | must have a body in `ARTICLE_BODIES` | `Record<LearnSlug, …>` makes a missing body a **compile error** rather than a blank page (11j). Depends on `LEARN_ARTICLES` ending `as const satisfies readonly LearnArticle[]` — an explicit annotation widens `slug` to `string` and the check silently evaporates. Guarded by `check:seo` |
+
+⚠️ **No React in this file.** `lib/seo.ts` imports it and `proxy.ts` imports `lib/seo.ts`,
+so a component here joins the **middleware** bundle that runs on every request to the site.
+Bodies live in `app/(public)/learn/content.tsx`. Guarded by `check:seo`.
+
+⚠️ **Worked examples read the nightly landing snapshot (§7a), never hard-coded numbers**
+(11k). "Apple has fallen 11.3%" typed into prose is a sentence that is true today, fluent
+forever, and wrong from tomorrow, with nothing going red.
+
+---
+
 ## 8. Currency Display Rules
 
 **Stock prices:** always in the stock's home currency, identified by `fundamentals.currency`. Display the currency symbol or code.

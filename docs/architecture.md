@@ -475,9 +475,45 @@ live-check Session 1):
 | `/reset-password` | Request a reset link | **Deliberately NOT bounced** for a signed-in reader — asking for a reset link is a legitimate thing to do while signed in (e.g. on a shared machine, or a Google-only account adding a password). Verified live 2026-08-02: it renders rather than redirecting. The doc previously grouped it with `/login`·`/signup` and was wrong |
 | `/pricing` | The signed-out shop window: both plans, local currency | A **signed-in** visitor is redirected to `/account` — they are a customer, not a shopper |
 | ~~`/methodology`~~ → `/#how-it-works` | **Retired 2026-08-13.** The plain-English explainer is now sections ⑤+⑥ of the landing page — still pre-signup, still no formulas (decision #34). The old URL answers **308** with the fragment, from `next.config.ts`'s `redirects()` | Config redirects fire **ahead of `proxy.ts`** — measured, not assumed |
+| `/learn` | The Learn index — explainers grouped by topic | **Built 2026-08-15.** One illustration per topic, article titles listed beside it. Topics with no articles are **filtered out of the markup**, so the page grows rather than showing empty headings |
+| `/learn/[slug]` | One article | The **only** dynamic public route. Every path comes from the `lib/learn.ts` registry, which `PUBLIC_PAGES` spreads — see below |
 | `/disclaimer` · `/terms` · `/privacy` | Legal | Reachable from every footer |
 | `/contact` | Contact form → Resend | Honeypot; `reply_to` = sender |
 | `/deletion-requested` | Post-deletion confirmation | **Must** be session-free: `requestAccountDeletion` ends with a global `signOut`, so the reader has no session at this moment. Gating it on a session would bounce them to `/login` and they would never see the confirmation. Copy is entirely generic — no email, name or date. **Also in `SIGNED_OUT_ONLY_PATHS`** (F-A4-c) **and, since Layer G, gated on the `mc_deletion_notice` marker** — see below |
+
+> ### The Learn library — one registry, five things derived from it (2026-08-15)
+>
+> `web/lib/learn.ts` holds the article metadata and **is the only place an article
+> exists**. `PUBLIC_PAGES` in `lib/seo.ts` spreads it:
+>
+> ```ts
+> ...LEARN_ARTICLES.map((a) => ({ path: learnPath(a.slug), index: true })),
+> ```
+>
+> That single line gives every article, at once: its **sitemap** entry, its **canonical**
+> tag, the **middleware** allow-list (`proxy.ts` builds `PUBLIC_PATHS` from the same
+> registry), acceptance by **`pageMetadata()`** (which throws at build time on an
+> unregistered path), and the **full public header** — `showsFullChrome()` asks
+> `OPEN_TO_STRANGERS.has(pathname)`, an exact match, so an article missing from the
+> registry would silently render the logo-only *confinement* chrome used for
+> `/account/update-password` and `/reactivate`. That is 11c-iv's defect exactly.
+>
+> **Three constraints that are not obvious and are enforced:**
+>
+> | Constraint | Why | Enforced by |
+> |---|---|---|
+> | `lib/learn.ts` contains **no React** | `lib/seo.ts` imports it and `proxy.ts` imports `lib/seo.ts`, so a component here joins the **middleware** bundle that runs on every request to the site | `check:seo` |
+> | `LEARN_ARTICLES` ends `as const satisfies readonly LearnArticle[]` | An explicit type annotation widens `slug` to `string`, and the `Record<LearnSlug, …>` body map then stops requiring a body per article — the compile-time completeness check evaporates and the first symptom is a **blank article page** | `check:seo` + `tsc` |
+> | The article route calls `notFound()` on an unknown slug | A dynamic route answering 200 with an empty shell is a soft-404 farm | `check:seo` |
+>
+> ⚠️ **`check:seo` parses `PUBLIC_PAGES` as TEXT with a regex, so the spread is invisible
+> to it** — the loop that checks every registered page has a file never reaches an article.
+> The dynamic route is therefore named explicitly in `check-seo.mjs`, and `e2e/learn.spec.ts`
+> asserts the rendered outcome. A static guard blind to the thing it guards reports success.
+>
+> ⚠️ **Every `notFound()` on the site answers 200, not 404** — see roadmap GA-1b. Found
+> here, caused by the root `app/loading.tsx` Suspense boundary flushing the shell before
+> the page resolves. Sitewide, not a Learn defect.
 
 > ### `/deletion-requested` needs THREE gates, and had one (fixed 2026-08-12)
 >
@@ -1012,13 +1048,30 @@ feedback. The design rationale and both rounds of measurements are in `design-sy
   `--measure-doc` (560px) for the legal column, which deliberately does **not** reuse
   `--measure-prose` — that is 680px because it holds ~68 characters at 17px.
 
-  ⚠️ **Since `/methodology` retired (2026-08-13), NO shipped page renders the 17px reading
-  body.** `AuthCard` is `width="narrow"`, `LegalDoc` is `width="wide"` on the `--pub-*`
-  sizes, and the landing carries its own scale in `landing.css`. `--measure-prose` survives
-  as the arithmetic behind the legal page's two-column rail, and the reading scale is held
-  for `/learn`. **Recorded because it is easy to misread the tokens as live**: changing
-  `--rd-body` today moves nothing a reader can see, so a regression there would be silent
-  until `/learn` lands.
+  ⚠️ **UPDATED 2026-08-15 — `/learn` landed and did NOT take the reading scale.** This
+  paragraph used to say the 17px reading body was "held for `/learn`". It was held, the
+  Learn pages took it, and the result was a **fourth type scale on the public site**:
+  36/26/20 against 24/17/13 everywhere else and 50/34 on the landing. The owner spotted it
+  by eye; measuring the built pages confirmed a 50% jump in heading size crossing from
+  `/contact` into `/learn`.
+
+  **So no shipped page renders the 17px reading body, and now none is expected to.** The
+  four public surfaces — auth cards, legal documents, Learn index, Learn article — all sit
+  on `--pub-*` via **`.doc-scale`** (below); the landing carries its own scale in
+  `landing.css`. `--measure-prose` (680px) survives as the article column and as the
+  arithmetic behind the legal rail.
+
+  **`--rd-body` and friends are therefore still tokens nothing renders.** Recorded because
+  it is easy to misread them as live: changing `--rd-body` today moves nothing a reader can
+  see. `.reading`'s prose rules (paragraph rhythm, list indents, link colour) ARE live —
+  it is only its type SIZES that every consumer now overrides.
+
+- **`.doc-scale` in `globals.css`** — the public site's document scale (24/17/13/12), as a
+  class in its own right. It was previously `.reading .legal-layout`, i.e. welded to the
+  class that also builds the legal contents-rail grid, so a document wanting the scale
+  without the grid could not have it and silently fell back to `.reading`. Worn by
+  `LegalDoc`, `ArticleDoc` and the Learn index; `legal-doc.spec.ts` and `learn.spec.ts`
+  compare all four surfaces page-to-page, so any one drifting fails.
 
 ⚠️ **A type change broke a shared hook three files away — the second-order effect is the
 lesson.** At 13px the whole of `/terms` is ~1.9 screens, so clauses 05–08 sit where no
@@ -1275,9 +1328,9 @@ re-propose it.
 | | |
 |---|---|
 | ✅ `web/app/robots.ts` | Per-crawler rules. Every app surface explicitly disallowed. |
-| ✅ `web/app/sitemap.ts` | Derived from `PUBLIC_PAGES`; the 6 indexable public pages only. |
+| ✅ `web/app/sitemap.ts` | Derived from `PUBLIC_PAGES`; the **7** indexable public pages plus **every Learn article**, whose paths are spread into that registry from `lib/learn.ts`. |
 | ✅ `web/lib/seo.ts` | **The registry.** One list of public pages, four consumers. |
-| ✅ Canonical + Open Graph | On all 10 public pages, via `pageMetadata()`. |
+| ✅ Canonical + Open Graph | On all **11** public pages plus every Learn article, via `pageMetadata()`. The article route uses `generateMetadata` (its path is per-request) and is therefore invisible to the static guard — `check-seo.mjs` names it explicitly, and `e2e/learn.spec.ts` asserts the rendered tag. |
 | ✅ `noindex` | `/login`, `/signup`, `/reset-password` — **crawlable**, so Google can actually read the tag. `/deletion-requested` is also `noindex` but since Layer G answers a crawler with **307 → `/login`** (no `mc_deletion_notice` marker); that is the intended outcome — it is in no sitemap and linked from nowhere, so the only way to reach it is to type it. |
 | ✅ Search Console | **Verified 2026-08-06** by DNS TXT (see below). |
 

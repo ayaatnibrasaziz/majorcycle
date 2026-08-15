@@ -1100,6 +1100,27 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > topics with no articles are filtered out. That is the design working, not a defect —
 > but it means the page is not ready to be seen by strangers until the library fills up.
 >
+> #### The fourth type scale — found by the owner, fixed 2026-08-15
+>
+> The owner said the Learn pages looked inconsistent and asked for an audit against the
+> other public pages. Measured at 1280px on the built pages, they were right and it was
+> structural: `/learn` and `/learn/[slug]` ran **36/26/20** against **24/17/13** on every
+> other non-landing public page — a **50% jump in heading size** crossing one link.
+>
+> Cause: the document scale was welded to `.legal-layout`, the class that also builds the
+> legal contents-rail grid, so a document wanting the scale without the grid could not have
+> it. Extracted as **`.doc-scale`**, now worn by `LegalDoc`, `ArticleDoc` and the Learn
+> index. Full write-up: `design-system.md` §11 and `coding-standards.md` §14 item 14.
+>
+> ⚠️ **This reversed an earlier decision of mine** (that an article should keep the 17px
+> reading scale because it is read rather than scanned). Defensible on its own terms;
+> what it produced was a fourth scale.
+>
+> 🔶 **OPEN, owner's call: 13px is small for 900 words of newcomer prose.** Lifting it means
+> changing `--pub-*`, which moves the legal pages, the auth cards and the articles together
+> — one decision applied everywhere at once. An article page does not get to opt out on its
+> own; that is exactly how the fourth scale appeared.
+>
 > ### 📋 LAYER G AUDIT — the deferred list. Owner instruction 2026-08-15: revisit these **after** Layer G is built, not during.
 >
 > Both were surfaced this session, both are real, and neither is urgent. They are parked

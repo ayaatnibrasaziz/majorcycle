@@ -66,6 +66,9 @@
 
 ## D
 
+**Document scale (`.doc-scale`)** — The public site's type scale: **24 / 17 / 13 / 12** (`--pub-title` / `--pub-h` / `--pub-body` / `--pub-label`). Worn by the legal documents, the Learn index and Learn articles. Every value was measured off a live page rather than invented — the point is that the signed-out site has ONE scale. The landing page is the single deliberate exception (50/34/18), because it is a marketing page. ⚠️ Not the same as the **reading scale** (`.reading`, 36/26/20/17), whose type sizes nothing renders today — only its prose rules (paragraph rhythm, lists, link colour) are live. See `design-system.md` §11.
+
+
 **Data Provider** — Abstract interface in `analytics/providers/base.py` that defines the contract for any data source. Phase 1 implements `YFinanceProvider`. Phase 2 adds `FMPProvider`. No code outside `analytics/providers/` may bypass this.
 
 **DataFrame** — A pandas DataFrame. Used internally in Python for OHLCV time series. Never crosses an API boundary — always serialised to plain JSON first.
@@ -166,6 +169,8 @@
 
 ## L
 
+**Learn library** — The public explainers at `/learn` and `/learn/[slug]`, written for a **newcomer** who arrived from a search engine and has never heard of us (owner decision, G2). Grouped by topic rather than dated, because an explainer does not expire. Not to be confused with the weekly market note, which is the opposite — dated, and gets its own `/notes` section. Every article exists in exactly one place, the registry in `web/lib/learn.ts`; see `data-contracts.md` §7b.
+
 **Lookback Bars** — The number of daily price bars used to compute "current" drawdown and profit. One of the three Cycle Params. 63 = ~3 months, 252 = ~1 year, 756 = ~3 years.
 
 **Lower Bound** — The deepest **confirmed** pullback event in the stock's history (`min` of the pivot-low drawdowns, computed over the *full* history — see the warmup note under Pivot). It is the deepest dip we've *confirmed*, not necessarily the deepest price ever touched: a sharp one-day spike that never satisfied the pivot confirmation, or the **current still-forming dip** (no right-side bars yet), can run *below* this line. That's why the live drawdown curve can pierce below the Lower Bound — intended behaviour. Feeds scoring only via Valuation's "drawdown ≤ Lower Bound → score 100" rule; it does **not** feed Cycle Payoff.
@@ -254,7 +259,7 @@
 
 ⚠️ **The visible boundary this entry used to flag has been closed** (2026-08-13). It read: *"walking from `/contact` to `/terms` jumps the heading 24 → 36px, the body 13 → 17px and the column 440 → 680px … reconciling the two is the first item of the next Layer G session."* It was, and the owner's decision was that the legal pages should **match the rest of the public site** rather than sit a step above it — so they moved onto the `--pub-*` tokens (24 / 17 / 13 / 12px), which `AuthCard` also reads. See **`--pub-*`** below.
 
-⚠️ **Consequence worth knowing: no shipped page renders the 17px reading body today.** `/methodology` is gone, the legal pages are on `--pub-*`, and the landing carries its own scale in `landing.css`. The reading scale is held for `/learn` — so changing `--rd-body` right now moves nothing a reader can see.
+⚠️ **Consequence worth knowing: no shipped page renders the 17px reading body, and none is expected to.** `/methodology` is gone; the legal pages, the Learn index and Learn articles are all on `--pub-*` via `.doc-scale`; the landing carries its own scale in `landing.css`. This line used to say the reading scale was "held for `/learn`" — it was, `/learn` took it in August 2026, and the result was a **fourth type scale** on the public site, corrected the same week. Changing `--rd-body` today still moves nothing a reader can see. `.reading`'s PROSE rules (paragraph rhythm, list indents, link colour) remain live — only its type sizes are universally overridden.
 
 **Public chrome** — The one header and one footer every public page wears, defined in `components/PublicHeader.tsx` and `components/PublicFooter.tsx` and driven by a single list in `lib/publicNav.ts`. Both are **session-unaware** on purpose: a header that varies by viewer makes the page vary by viewer (CLAUDE.md 11a), and reading the session in the public layout would put an Auth round-trip on the sign-in path. The two **session-confined** pages (`/account/update-password`, `/reactivate`) get the logo alone and no links at all, because every link there bounces the reader straight back — decided by `showsFullChrome()`, which both components must call (CLAUDE.md 11c-iv). See `design-system.md` §9.
 
