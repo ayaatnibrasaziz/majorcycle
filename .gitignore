@@ -60,3 +60,17 @@ skills-lock.json
 .github/agents/
 .github/hooks/
 .github/skills/
+
+# The 4K masters behind the three /learn illustrations (2026-08-16). ~47 MB of
+# lossless PNG, too heavy for git, and the site ships the 1600x1000 crops in
+# web/public/learn/ instead.
+#
+# ⚠️ IRREPLACEABLE, and that is the whole reason they are kept at all. These are
+# generated images and generation is NOT reproducible: the prompts are stored
+# beside them and re-running one returns a DIFFERENT picture, not this one. So
+# if this folder is lost, the only remaining copies of these exact images are
+# the cropped, colour-corrected 1600x1000 versions that are committed — fine for
+# the Learn bands, useless for a hero, a share card, a reframe or print.
+#
+# Ignored, not deleted. Back it up with the owner's own files, not with git.
+reference/learn-masters/

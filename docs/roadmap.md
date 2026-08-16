@@ -1089,11 +1089,15 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > to a 720px column — the frame is wide for the layout, not for the words.
 >
 > ✅ **The three topic images landed 2026-08-16 at 1600 × 1000 (16:10)** — see G4.1 below.
-> They were expected to come from Canva and did not: neither Canva's generator nor an image
-> model could hold the geometry, so they are hand-authored SVG rasterised to PNG. The
-> owner's decision that they are **content rather than brand furniture** still stands; what
-> changed is that the set turned out to need two hard rules of its own (teal = price, navy =
-> company; no green, no red) to avoid contradicting the product. Spec: `design-system.md` §11.
+> They were **built twice on the same day.** First as hand-authored SVG, because neither
+> Canva's generator nor any image model could hold the geometry. Then **regenerated on
+> Gemini "Nano Banana Pro" at 4K**, because the owner wanted the register of their own
+> reference image — populated, atmospheric, human — and precise geometry is exactly what
+> that is not. The SVG set was accurate and lifeless. Masters (5056 × 3392) live in
+> `reference/learn-masters/`, gitignored and irreplaceable. The owner's decision that these
+> are **content rather than brand furniture** still stands; what changed is that the set
+> turned out to need hard rules of its own (teal = price, navy = company; no green, no red,
+> no arrows) to avoid contradicting the product. Spec: `design-system.md` §11.
 >
 > **No dashed placeholder was ever shipped**, deliberately — that is the kind of thing that
 > reaches production because everyone assumed somebody else would spot it, on the one page
@@ -1131,9 +1135,10 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > `055295e` → `f955125` → `e468113` → `3aa91b0`. The page now shows its whole shape: three
 > illustrated bands, twelve titles, one of them readable.
 >
-> **The pictures are hand-authored SVG, rasterised through the Playwright Chromium already
-> in the repo.** Full visual spec in `design-system.md` §11. Two things were tried first and
-> neither could do it:
+> ⚠️ **SUPERSEDED THE SAME DAY by G4.2 below — the pictures described here are gone.** They
+> were hand-authored SVG, and the record of *why* is kept because it is the reason the
+> replacements were briefed the way they were. Full current spec in `design-system.md` §11.
+> Two things were tried before the SVG set and neither could do it:
 >
 > - **Canva's generator arranges layouts and cannot be handed geometry.** Four candidates
 >   came back from a prompt carrying the exact hexes, the exact shape and "no text" four
@@ -1172,19 +1177,59 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > serves a compiled snapshot, and theirs was built the previous night. Nothing was broken.
 > **`:3000` for reviewing work in progress; `:3200` only after an explicit rebuild.**
 >
-> 🔶 **Image 3 (`Using MajorCycle`, the five-tier dial) is NOT owner-approved.** Built so the
-> assembled page could be seen whole, at the owner's request. Finalising it is the first
-> item of the next session.
->
 > 🔶 **`reference/Image 2 - Judging a Business.png` is untracked and untouched** — the
-> owner's generated reference. Keep it as a record or remove it; their call, not to be
-> deleted without asking.
+> owner's generated reference, and the composition image 2 still follows. Keep it as a
+> record or remove it; their call, not to be deleted without asking.
 >
 > **Gates:** typecheck · lint · all four build guards (`check:seo` **517**) · Playwright
 > **335 passed, 0 failed, 0 skipped, 0 flaky** (`learn.spec.ts` 13 → **16**).
 >
-> **Next session, owner's plan:** finalise image 3, then **audit the whole `/learn` page**
-> before any articles are written.
+> #### ✅ G4.2 — the illustrations regenerated at 4K. 2026-08-16, same day, still inside PR #89.
+>
+> `e7b1400` (all three) → `2f9ce9c` (image 3's colour). **The SVG set of G4.1 is gone.** The
+> owner's brief was the register of their own reference image — populated, atmospheric,
+> human — and precise hand-drawn geometry is the opposite of that. The SVGs were accurate
+> and lifeless.
+>
+> **Route: Vercel AI Gateway.** One key, provider list price with **no markup** (their docs
+> say so in as many words), pay-as-you-go with a spend cap. Drafts on
+> `gemini-3.1-flash-image-lite` (**$0.034**, ~4s); finals on `gemini-3-pro-image` at **4K**
+> (**$0.24**). Whole set, 15 drafts and 4 finals: **$1.58**. Masters are **5056 × 3392
+> lossless PNG** in `reference/learn-masters/` — gitignored, ~47 MB, with the prompts beside
+> them and a README saying why they must not be deleted.
+>
+> ⚠️ **Two dead ends, both worth not repeating.** The **built-in Hugging Face connector sets
+> `gradio=none`**, which disables all generation while everything else works — fixed with a
+> custom connector to `https://huggingface.co/mcp?login`, but its free ZeroGPU quota is about
+> **one image per day**. And **Gemini's API has no free image tier at all** (`limit: 0` on
+> every image model) even though the *website* generates free; a text model on the same key
+> answering normally is what proved the key was fine.
+>
+> ⚠️ **Every claim these pictures make was measured, and three defects were caught that way.**
+> Image 1's falls are **26.8 / 47.4 / 19.4%** of frame height (the topic is that falls vary).
+> Image 2's two lines fall **810px each** (the topic is that they fell the *same*). Image 3
+> has no seam: **Δ0.59** against a 0.25 baseline. Caught: Pro reframing image 2 so both lines
+> ran off the top edge; a seam test that scored the seamless image 1 at 14.6 because it was
+> finding skyline towers; a teal test that "confirmed" matched falls while matching the hills.
+> **A pass means nothing until the test has been seen to fail** — each was re-run against a
+> control.
+>
+> ⚠️ **Image 3's pale side was corrected, not regenerated** (`2f9ce9c`). At RGB distance
+> **16–21** from `--bg-page` it read as a panel on the page; images 1 and 2 sit at 4–6 and
+> 11–13. A lightness-weighted shift took the right edge to **1** while leaving navy and teal
+> byte-identical. Re-rolling would have destroyed an approved, unreproducible composition to
+> fix arithmetic.
+>
+> 🔶 **Image 2 ships with a stepped plinth under the towers** — the brief asked for both
+> "flat and plain, no steps" *and* "stepped bands", and the model built stairs. Owner has
+> seen it and called it fine.
+>
+> **Gates:** typecheck · lint · `learn.spec.ts` **16/16** · all three confirmed loading in
+> the browser at 1280px and 375px, no horizontal scroll.
+>
+> **Next session, owner's plan:** **audit the whole `/learn` page** — polish images 1 and 2
+> the way image 3 was polished if they need it, check the UI — and *then* start writing the
+> articles.
 >
 > ### 📋 LAYER G AUDIT — the deferred list. Owner instruction 2026-08-15: revisit these **after** Layer G is built, not during.
 >

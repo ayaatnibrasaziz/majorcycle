@@ -1153,8 +1153,13 @@ export interface LearnThemeMeta {
   readonly id: 'cycles' | 'quality' | 'using-it';
   readonly label: string;
   readonly blurb: string;
-  /** Topic illustration, 1600 × 1000 (16:10). OPTIONAL — without it the band
-   *  drops its second column and holds the header's 720px measure. */
+  /** Topic illustration, 1600 × 1000 (16:10), cropped from a 4K master kept
+   *  outside git in reference/learn-masters/. OPTIONAL — without it the band
+   *  drops its second column and holds the header's 720px measure.
+   *  ⚠️ `alt` describes THIS picture. Replacing the artwork without rewriting
+   *  the alt leaves a description of a different image, which is worse for a
+   *  screen-reader user than no description at all — it happened on all three
+   *  when the set was regenerated on 2026-08-16. */
   readonly image?: { readonly src: string; readonly alt: string };
   /** Announced-but-unwritten titles, rendered as inert "Coming soon" rows. */
   readonly upcoming?: readonly string[];

@@ -1112,6 +1112,64 @@ not clean** (§14 item 8, CLAUDE.md 14g). Recorded as roadmap item GA-5 rather t
 because the only remedies are the document measure or the type size — a design change
 nobody asked for.
 
+### 16. A test that has never failed is not a test — three in one afternoon (2026-08-16)
+
+Regenerating the `/learn` illustrations, every claim the pictures make was checked with a
+purpose-built probe. **Three of those probes were wrong**, and each was caught the same way:
+by running it against a case whose answer was already known.
+
+- **The seam detector scored image 1 — which has no seam — at Δ14.6.** It was measuring the
+  vertical edges of skyline towers. Rewritten to sample only empty sky *above* the buildings,
+  where a sharp vertical change can only be a seam. Image 1 then measured **0.25**, and the
+  image under test **3.23**.
+- **The teal-line check "confirmed" image 2's two falls were identical** — over a sample that
+  included the pale blue hills, reporting teal 90% of the way down a frame whose lines live in
+  the top third. A contaminated sample that yields a confident number is **worse than no
+  number**: it looks like evidence. Tightened, then re-run against image 1 (one continuous
+  curve, not two matched lines), which scored 87% different and failed as it should.
+- **The dimension reader** was proven on four files of known size, including a square one, so
+  it could be seen distinguishing sizes rather than echoing a constant — *before* being
+  trusted on a paid 4K render where "asked for 4K, silently got 1K" is invisible.
+
+⚠️ **The generalisation is about controls, not about images.** A probe you wrote five minutes
+ago has never been observed failing, so a pass from it carries no information. Give it the
+case that must fail — the picture with no seam, the image with one line, the file whose
+dimensions you already know — and only then believe the case you care about.
+
+⚠️ **And the same afternoon, an instrument disagreed with reality in the other direction.**
+Checking the new images had reached the browser, `img.naturalWidth` reported `0` and
+`loaded: false` for all three, while the network panel showed **200 OK** and a screenshot
+showed them plainly on screen. The probe was reading elements mid-way through `srcset`
+resolution. **Fetching the URL and decoding the bytes** gave the real answer (1600 × 1000,
+187 KB). When two instruments disagree, the one that reads the artifact wins over the one
+that asks the DOM how it feels.
+
+### 17. Some assets cannot be regenerated — treat them like source, not output (2026-08-16)
+
+The three `/learn` illustrations are generated images, and **generation is not reproducible**:
+the same prompt returns a different picture — different skyline, different valley shapes, a
+differently posed figure. That single fact changes three ordinary decisions:
+
+- **Render at the maximum size you will ever want**, not the size you need today. 4K cost
+  $0.24 against $0.13 for 2K. There is no going back for a bigger copy later, and no 8K
+  exists anywhere on the Gateway to escape to.
+- **Keep the master outside the shipped crop.** `reference/learn-masters/` is gitignored
+  (~47 MB), carries the prompt that made each file, and has a README saying why deleting it
+  is irreversible. The prompts document *intent*; they are not a recipe for recovery.
+- **Fix flaws in the FILE, not by re-rolling.** Image 3's pale background sat 16–21 (RGB
+  distance) from `--bg-page` and read as a panel on the page. A lightness-weighted shift of
+  `(+16, +4, −3)` took it to 1 while leaving navy and teal byte-identical — asserted, by
+  printing all three before and after. Re-rolling would have destroyed an approved
+  composition to fix arithmetic.
+
+⚠️ **A composition approved on a cheap model is not guaranteed by the expensive one.** Drafts
+ran on Nano Banana 2 Lite ($0.034); finals on Pro ($0.24). Pro **reframed image 2** and ran
+both price lines off the top edge — two teal pipes hanging from the sky, the fall invisible,
+the picture's entire argument gone. It looked deliberate. Re-verify every measurement on the
+final artifact; the draft settles the idea and nothing else. *(And check the uncropped master
+before blaming your own crop — that was ruled out first, and it mattered, because the crop was
+the more likely-looking culprit.)*
+
 ---
 
 ## 15. Previewing & Verifying Authenticated Pages Locally

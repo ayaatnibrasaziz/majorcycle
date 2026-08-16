@@ -1161,45 +1161,86 @@ decide whether a topic is for them.
 > articles **together**. An article page does not get to opt out on its own — that is
 > exactly how the fourth scale appeared.
 
-### The Learn illustrations — BUILT 2026-08-16
+### The Learn illustrations — REGENERATED 2026-08-16
 
-Three topic pictures, one per band. **Hand-authored SVG, rasterised to PNG through the
-Playwright Chromium already in the repo** — no new dependency, exact output, and the vector
-source is kept beside the artwork so any of them can be re-cut at another size.
+Three topic pictures, one per band. **Generated on `google/gemini-3-pro-image` ("Nano Banana
+Pro") at 4K via Vercel AI Gateway**, then cropped to the shipping size.
+
+⚠️ **This replaced a hand-authored SVG set built earlier the same day.** The owner's brief
+was a picture in the register of a reference image they had generated themselves —
+populated, atmospheric, human — which is not what hand-drawn geometry produces. The SVG set
+was accurate and lifeless; the section below used to describe it, and every value in it was
+correct and is now historical.
 
 | Rule | Value |
 |---|---|
-| Crop | **1600 × 1000 (16:10)**, identical on all three. The binding constraint — three bands stack down one page, and one odd shape makes a different band height |
-| Ground | `#F8FAFC → #F1F7F8` gradient **plus four stepped bands** of `#1A3A6E` at y 430/510/590/670, opacity `.035 / .065 / .105 / .145` |
-| Structure | `#1A3A6E` navy, and lighter tints of it (`#66799E` for a failing company) |
-| Accent | `#0E7C8B` teal, 15px round-capped stroke |
+| Master | **5056 × 3392 lossless PNG** in `reference/learn-masters/` — gitignored, ~47 MB, **irreplaceable** |
+| Shipped crop | **1600 × 1000 (16:10)**, identical on all three. Three bands stack down one page; one odd shape makes a different band height |
+| Ground | Deep navy mass carrying **stepped horizontal strata** — flat contour bands, crisp straight edges, each a step lighter than the one below |
+| Accent | `#0E7C8B` teal — **every share-price line, always** |
+| Warmth | Gold, **lit windows only**. Never a teal window |
+| Figure | A small navy-suited person **seen from behind**, in all three. The recurring human anchor |
 | Words | **None.** Text in an image is unreadable at 335px, invisible to a screen reader, and stale the moment a heading is reworded |
-| Density | Each drawing fills a comparable share of its frame — measured, not judged |
 
 **Two semantic rules hold the set together.** *Teal is always the share price; navy is
 always the company.* And **no green, no red anywhere** — the product tints a **deeper**
 price fall *green*, because deeper is more cyclically favourable, so a picture using the
 conventional green-up/red-down would contradict the tool one click away. It is also the one
-colour pair a colour-blind reader cannot separate.
+colour pair a colour-blind reader cannot separate. **No arrows**, either: an arrowhead is
+the visual grammar of a forecast, and this product does not forecast.
 
-⚠️ **The ground is COPIED into three files, and there is no shared source for it.** SVGs
-cannot import a background from one another. Change image 1's ground and the other two go
-quietly out of step, each still looking fine alone — the drift trap of CLAUDE.md 11c, in a
-format none of our guards can read. Whoever edits one edits all three.
+⚠️ **THE MASTERS CANNOT BE RECREATED, and that governs every decision about them.** The same
+prompt returns a *different* picture — different skyline, different valley shapes, a
+differently posed figure. The prompts are stored beside the masters and document *intent*;
+they are not a recipe for getting these images back. Two consequences that have already
+bitten: **render at the maximum size you will ever need** (4K is the Gateway's ceiling — no
+model there offers 8K), and **fix colour by correcting the file, never by re-rolling.**
 
-⚠️ **"Density" is the property that has to match, not size.** All three frames are the same
-1600 × 1000; what made them stop reading as a set was image 1's line running nearly edge to
-edge while the other two floated in the middle of an identical frame. Fixed by scaling the
-artwork — not the canvas — about its own centre, and verified by measuring the bounding box
-of non-background pixels in each rendered file (99.9% / 85.8% / 77.9% wide).
+⚠️ **FOUR PROMPT INSTRUCTIONS ARE LOAD-BEARING.** Each was learned from a roll that failed
+without it, and each fails *silently* — the picture comes back plausible and wrong:
 
-⚠️ **Neither Canva nor an image generator could produce these.** Both were tried. Canva's
-generator arranges layouts and cannot be handed geometry; four candidates came back with no
-share price falling in any of them. A generated attempt from the owner had the right
-*composition* — and doors and windows, which is what turned a stack of slabs into a
-building — but shipped green/red arrows, embedded text, and "PROFIT INCREASE" beside piles
-of coins, which is a compliance problem for a not-financial-advice product (decision #24)
-rather than a matter of taste. **The composition was adopted; the execution was rebuilt.**
+1. **"SOLID FILLED SHAPES … absolutely NOT line art, no thin stroke outlines."** Without it
+   the model returns white boxes with teal outlines — a visibly different illustrator from
+   the rest of the set.
+2. **"PLAIN LINES with blunt flat ends — no arrowheads, no pointed tips, no triangles."**
+   Saying *"no arrows"* is **not enough**; it drew arrowheads anyway. The prohibition needs
+   a positive description of what the ending *is*.
+3. **"at least three times taller than it is wide"** for towers. *"Tall office building"*
+   yields squat six-storey blocks.
+4. **"the ground surface is completely plain — no plazas, no steps, no trapezoids"**, stated
+   **separately** from the strata. ⚠️ And do not then also say *"stepped bands"* in the same
+   paragraph: image 2 shipped with a physical stepped plinth because the brief asked for
+   both, and the model resolved the contradiction by building stairs.
+
+⚠️ **Describe the SCENE, not the LAYOUT.** Image 3 kept coming back with a hard vertical
+seam at exactly 50% because the brief said *"left side … right side"*. Told there are two
+sides, the model draws the border between them. Rewritten as **one continuous landscape in
+thickening fog**, never naming a region, the seam fell from Δ3.23 to Δ0.51 against a 0.25
+baseline.
+
+⚠️ **Match the pale areas to `--bg-page` `#F0F4F8`, and measure it.** Image 3 is the only one
+with a large flat pale area meeting the page, and at RGB distance **16–21** it read as a
+panel sitting *on* the background rather than part of it — where images 1 and 2 sit at 4–6
+and 11–13. Corrected with a **lightness-weighted** shift of `(+16, +4, −3)`: full strength on
+the background, zero below L=0.72, so the navy and teal came out byte-identical (asserted,
+not assumed). Right edge now measures **1**.
+
+⚠️ **A composition approved on the cheap model is not guaranteed by the expensive one.**
+Drafts ran on `gemini-3.1-flash-image-lite` ($0.034, ~4s); finals on Pro ($0.24 at 4K).
+Pro **reframed image 2** and ran both price lines off the top edge — two teal pipes hanging
+from the sky, the fall invisible, the picture's whole argument gone. Always re-verify the
+finals; the draft only settles the idea. *(And check the uncropped master before blaming
+your own crop — that was the first thing ruled out.)*
+
+⚠️ **Neither Canva nor an image generator could produce the ORIGINAL geometric set**, which
+is why it was hand-drawn: Canva's generator arranges layouts and cannot be handed geometry,
+and four candidates came back with no share price falling in any of them. The owner's own
+generated attempt had the right *composition* — and doors and windows, which is what turns a
+stack of slabs into a building — but shipped green/red arrows, embedded text, and "PROFIT
+INCREASE" beside piles of coins: a compliance problem for a not-financial-advice product
+(decision #24) rather than a matter of taste. **The composition was adopted; the execution
+was rebuilt** — first as SVG, then, with the house style above pinning the palette and the
+bans, as generated artwork that keeps the compliance posture intact.
 
 ## 12. Animations
 
