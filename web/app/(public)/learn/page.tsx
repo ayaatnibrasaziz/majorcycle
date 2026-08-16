@@ -83,20 +83,41 @@ export default function LearnIndexPage() {
               key={theme.id}
               className={[
                 'grid items-start gap-[30px] border-t border-[var(--border)] py-[34px]',
-                'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]',
+                // ⚠️ CONDITIONAL, and it was not until 2026-08-16. The two-column
+                // track was declared unconditionally, so a topic with no image
+                // still got both columns and its text sat in the FIRST one —
+                // measured at 1280px: a 532px column with 588px of empty page
+                // beside it. `learn.ts` documented the opposite ("renders as a
+                // single full-width text block that looks entirely deliberate"),
+                // which is what happens only once the track is dropped as well
+                // as the picture. Nothing errored and typecheck was green: an
+                // absent grid child is not a fault, it is just a hole.
+                theme.image ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]' : '',
                 // The first band opens the page; a rule above it would read as a
                 // divider from the disclaimer rather than between two topics.
                 'first:border-t-0 first:pt-[6px]',
-              ].join(' ')}
+              ]
+                .filter(Boolean)
+                .join(' ')}
             >
               <ThemeImage theme={theme} />
 
               <div
-                // Alternating sides. `order` only applies once the grid exists
-                // at ≥1024px; below that the layout is a single column and the
-                // picture must always come first, or every other topic would
-                // start with a wall of text.
-                className={i % 2 === 1 ? 'lg:order-first' : undefined}
+                className={
+                  theme.image
+                    ? // Alternating sides. `order` only applies once the grid
+                      // exists at ≥1024px; below that the layout is a single
+                      // column and the picture must always come first, or every
+                      // other topic would start with a wall of text.
+                      i % 2 === 1
+                      ? 'lg:order-first'
+                      : undefined
+                    : // No picture: hold the header's own 720px measure rather
+                      // than letting the band sprawl to the full 1120px frame,
+                      // which would strand each article's "4 min" a thousand
+                      // pixels from the title it belongs to.
+                      'max-w-[720px]'
+                }
               >
                 <div className="flex flex-wrap items-center gap-[12px]">
                   <span className="font-mono text-[length:var(--pub-label)] font-semibold text-[var(--brand-mid)] opacity-70">

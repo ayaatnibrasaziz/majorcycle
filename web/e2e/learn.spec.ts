@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { expect, test, type Page } from '@playwright/test';
 
 import { LEARN_ARTICLES, LEARN_INDEX_PATH, LEARN_THEMES, learnPath } from '../lib/learn';
@@ -93,6 +96,96 @@ test.describe('the Learn library', () => {
     // The control: without it, a page rendering NO bands would satisfy every
     // "must not be present" assertion above and pass.
     expect(expected.length, 'no topic has any article — the loop above is vacuous').toBeGreaterThan(0);
+  });
+
+  test('a band without a picture takes the whole column back', async ({ page }) => {
+    /**
+     * ⚠️ Found on 2026-08-16 by opening the page, after `learn.ts` had claimed
+     * the opposite in a comment since the file was written.
+     *
+     * `image` is optional, and the intent is that a topic without one degrades
+     * to a plain text block. It did not. The band declared its two-column track
+     * unconditionally, so an imageless topic still got both columns and its text
+     * landed in the FIRST: measured at 1280px, a 532px column with **588px of
+     * empty page** beside it. Nothing errored, typecheck was green, and at any
+     * width below 1024px it looked perfect — an absent grid child is not a
+     * fault, it is a hole, and a hole renders.
+     *
+     * ⚠️ Note what this test can and cannot reach today, because pretending
+     * otherwise is 14g. The defect needs a topic that has articles AND no
+     * picture, and no such topic is currently rendered — so the measured half
+     * below exercises only the WITH-picture case. The structural half is
+     * therefore not decoration: it is the only thing standing between the fix
+     * and a silent revert, until the second topic gets both its articles and its
+     * artwork. Delete it then, not before.
+     */
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(LEARN_INDEX_PATH);
+    await ready(page);
+
+    const bands = await page.evaluate(() =>
+      [...document.querySelectorAll('section.grid')].map((s) => {
+        const heading = s.querySelector('h2')?.textContent?.trim() ?? '(unnamed)';
+        const band = s.getBoundingClientRect();
+        const text = [...s.children].find((c) => c.querySelector('h2'))?.getBoundingClientRect();
+        return {
+          heading,
+          hasImage: !!s.querySelector('img'),
+          bandWidth: Math.round(band.width),
+          textWidth: text ? Math.round(text.width) : 0,
+          gapToRight: text ? Math.round(band.right - text.right) : 0,
+        };
+      }),
+    );
+
+    expect(bands.length, 'no bands rendered — every assertion below is vacuous').toBeGreaterThan(0);
+
+    for (const b of bands) {
+      if (b.hasImage) {
+        // Two columns: the text is roughly half the band and the picture holds
+        // the rest, so a gap on the right is correct here.
+        expect(
+          b.textWidth / b.bandWidth,
+          `"${b.heading}" has a picture but its text is not sharing the band`,
+        ).toBeLessThan(0.75);
+      } else {
+        // One column, held to the header's own 720px measure. The bound is the
+        // measure plus slack, and the real assertion is the second one: an
+        // imageless band must not strand half the page.
+        expect(
+          b.textWidth,
+          `"${b.heading}" has no picture and should hold the 720px measure`,
+        ).toBeLessThanOrEqual(760);
+        expect(
+          b.gapToRight,
+          `"${b.heading}" has no picture but left ${b.gapToRight}px of empty column beside its text`,
+        ).toBeLessThanOrEqual(b.bandWidth - b.textWidth - 340);
+      }
+    }
+  });
+
+  test('the two-column track is conditional on the picture, in the source', async () => {
+    // The structural half of the test above, and the only half that can see the
+    // defect while no imageless band is rendered. Comments are STRIPPED first:
+    // the paragraph documenting this fix names the class it is about, and a
+    // guard that passes on its own explanation guards nothing (CLAUDE.md 11c-iv).
+    const src = readFileSync(join(__dirname, '..', 'app', '(public)', 'learn', 'page.tsx'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+
+    const uses = [...src.matchAll(/lg:grid-cols-/g)];
+    expect(uses.length, 'the band no longer declares a multi-column track at all').toBeGreaterThan(0);
+
+    for (const m of uses) {
+      // Look back over the enclosing expression rather than matching an exact
+      // shape — the rule is "the track is governed by the picture", and a guard
+      // that names one spelling of it just breaks on the next refactor (11i-b).
+      const before = src.slice(Math.max(0, m.index - 200), m.index);
+      expect(
+        before,
+        'the two-column track is declared unconditionally — an imageless topic will keep the empty second column',
+      ).toMatch(/theme\.image/);
+    }
   });
 
   test('the reading time on the index matches the article that was written', async ({ page }) => {

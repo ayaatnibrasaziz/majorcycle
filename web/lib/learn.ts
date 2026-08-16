@@ -46,10 +46,19 @@ export interface LearnThemeMeta {
    *
    * ⚠️ **OPTIONAL ON PURPOSE, and the page degrades rather than breaks.** With an
    * image the band is the approved two-column layout; without one it renders as a
-   * single full-width text block that looks entirely deliberate. That matters
-   * because the alternative — a dashed "image goes here" box — is the kind of
-   * placeholder that ships to production because everyone assumed somebody else
-   * would notice it.
+   * single text block held to the header's 720px measure. That matters because
+   * the alternative — a dashed "image goes here" box — is the kind of placeholder
+   * that ships to production because everyone assumed somebody else would notice it.
+   *
+   * ⚠️ That second sentence was FALSE from this file's creation until 2026-08-16,
+   * and it is worth keeping the correction visible. The band declared its
+   * two-column track unconditionally, so an imageless topic kept both columns and
+   * put its text in the first: 532px of content and 588px of nothing beside it, at
+   * every desktop width. The sentence described the intent; nobody had opened the
+   * page at ≥1024px to check. **Graceful degradation is a claim about rendered
+   * output, so it is only ever established by rendering it** — see
+   * `learn.spec.ts`, which now measures the imageless band instead of trusting
+   * this comment.
    *
    * Intended crop **1200 × 750 (16:10)**. Stated here rather than on the page:
    * a public page should not print production notes at its readers.
@@ -66,6 +75,10 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
     id: 'cycles',
     label: 'Falls and recoveries',
     blurb: 'What a fall actually is, why the same share tends to fall by similar amounts, and what that can and cannot tell you.',
+    image: {
+      src: '/learn/falls-and-recoveries.png',
+      alt: 'A share price rising and falling four times, each fall a different depth, with shaded bands marking how far each one reached and a marker showing a recovery still in progress.',
+    },
   },
   {
     id: 'quality',
