@@ -224,12 +224,14 @@ export default function LearnIndexPage() {
 /**
  * The topic illustration, or nothing at all.
  *
- * ⚠️ Returning `null` is the whole design decision. Until the Canva images
- * exist, the band collapses to a single full-width text block that looks
- * completely intentional. The alternative — a dashed "1200 × 750 goes here" box
- * — is exactly the kind of placeholder that reaches production because everybody
- * assumed somebody else would spot it, and it would be visible on the one page
- * whose job is to make strangers trust us.
+ * ⚠️ Returning `null` is the whole design decision. Without a picture the band
+ * collapses to a single full-width text block that looks completely intentional.
+ * The alternative — a dashed "1600 × 1000 goes here" box — is exactly the kind of
+ * placeholder that reaches production because everybody assumed somebody else
+ * would spot it, and it would be visible on the one page whose job is to make
+ * strangers trust us. All three topics carry an image today, so this branch is
+ * currently unreachable in production; `learn.spec.ts` measures it anyway,
+ * because the last time this comment described untested behaviour it was wrong.
  *
  * `sizes` is stated because the band is half a 1120px frame on desktop and full
  * width on a phone; without it Next serves the largest candidate to everyone.
@@ -242,8 +244,8 @@ function ThemeImage({ theme }: { theme: LearnThemeMeta }) {
       <Image
         src={theme.image.src}
         alt={theme.image.alt}
-        width={1200}
-        height={750}
+        width={1600}
+        height={1000}
         sizes="(min-width: 1024px) 532px, 100vw"
         className="h-auto w-full"
       />

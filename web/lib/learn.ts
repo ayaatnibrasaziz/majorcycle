@@ -42,7 +42,15 @@ export interface LearnThemeMeta {
   readonly label: string;
   readonly blurb: string;
   /**
-   * The topic's illustration — a Canva image, drawn to explain the idea.
+   * The topic's illustration.
+   *
+   * Generated 2026-08-16 on Gemini "Nano Banana Pro" at 4K (5056 × 3392 lossless
+   * PNG), then cropped to the size below. ⚠️ **The masters are not reproducible**
+   * — the same prompt returns a different picture every time — so the 4K files
+   * are the only copies that will ever exist of these exact images. The prompts,
+   * the house style they encode, and the four instructions that turned out to be
+   * load-bearing are recorded outside the repo; the *reason* they matter is that
+   * re-running them will not recreate what is committed here.
    *
    * ⚠️ **OPTIONAL ON PURPOSE, and the page degrades rather than breaks.** With an
    * image the band is the approved two-column layout; without one it renders as a
@@ -60,12 +68,17 @@ export interface LearnThemeMeta {
    * `learn.spec.ts`, which now measures the imageless band instead of trusting
    * this comment.
    *
-   * Intended crop **1200 × 750 (16:10)**. Stated here rather than on the page:
-   * a public page should not print production notes at its readers.
+   * Crop **1600 × 1000 (16:10)**. The band renders ~588px wide, so this is still
+   * well past what a retina screen needs — the headroom is deliberate, for a
+   * wider layout later. Stated here rather than on the page: a public page should
+   * not print production notes at its readers.
    *
    * Owner decision (2026-08-15): these are CONTENT, not brand furniture. They are
    * not bound by the design system and do not need to match the palette — they
-   * need to look good and explain the topic.
+   * need to look good and explain the topic. ⚠️ In practice they DID converge on
+   * a house style (navy ground with stepped strata, teal price lines, gold
+   * windows, a navy-suited figure seen from behind, and no green, red or arrows),
+   * because three pictures that do not share a vocabulary do not read as a set.
    */
   readonly image?: { readonly src: string; readonly alt: string };
   /**
@@ -96,7 +109,7 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
     blurb: 'What a fall actually is, why the same share tends to fall by similar amounts, and what that can and cannot tell you.',
     image: {
       src: '/learn/falls-and-recoveries.png',
-      alt: 'A share price rising and falling four times, each fall a different depth, with shaded bands marking how far each one reached and a marker showing a recovery still in progress.',
+      alt: 'A share price traced along the top edge of a dark navy landscape, rising and falling three times by clearly different amounts. A small figure stands at the bottom of the deepest fall, looking up the slope ahead, with a misty city skyline behind.',
     },
     upcoming: [
       'Why shares fall by the same amount, over and over',
@@ -111,7 +124,7 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
     blurb: 'A falling price is not the same as a bargain. What the accounts underneath are being asked, in plain words.',
     image: {
       src: '/learn/judging-the-business.png',
-      alt: 'Two office buildings under identical falling share prices. One stands square and solid; the other’s floors have slipped out of line and its top floor is toppling away.',
+      alt: 'Two office towers of the same height under identical falling share prices. One stands square with warmly lit windows and an open doorway; the other leans, cracked from top to bottom, its windows dark and its highest floor sliding away. A small figure stands between them, looking up.',
     },
     upcoming: [
       'Is a falling share price a bargain or a warning?',
@@ -126,7 +139,7 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
     blurb: 'How to read a rating, what the five tiers mean, and what the tool deliberately does not try to do.',
     image: {
       src: '/learn/using-majorcycle.png',
-      alt: 'A dial divided into five bands, pale on the left through to deep navy on the right, with a single marker resting on the middle band.',
+      alt: 'A share price falling through five stepped depth bands to a marker at the bottom of a valley. A small figure stands at the point where the drawn landscape fades away into empty mist, looking out at nothing.',
     },
     upcoming: [
       'How to read a MajorCycle rating',
