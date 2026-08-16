@@ -1088,17 +1088,22 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > 532px, and the pictures are the point of the design. The prose inside is still held
 > to a 720px column — the frame is wide for the layout, not for the words.
 >
-> 🔶 **OUTSTANDING BEFORE MERGE — three Canva images**, one per topic, 1200 × 750
-> (16:10). Owner decision: these are **content, not brand furniture** — they illustrate
-> the topic and are not bound by the design system. Until they exist, `LEARN_THEMES[].image`
-> is unset and each band **renders as a full-width text block that looks entirely
-> intentional**. That is deliberate: a dashed "image goes here" box is exactly the kind
-> of placeholder that reaches production because everyone assumed somebody else would
-> spot it — on the one page whose job is to make strangers trust us.
+> ✅ **The three topic images landed 2026-08-16 at 1600 × 1000 (16:10)** — see G4.1 below.
+> They were expected to come from Canva and did not: neither Canva's generator nor an image
+> model could hold the geometry, so they are hand-authored SVG rasterised to PNG. The
+> owner's decision that they are **content rather than brand furniture** still stands; what
+> changed is that the set turned out to need two hard rules of its own (teal = price, navy =
+> company; no green, no red) to avoid contradicting the product. Spec: `design-system.md` §11.
 >
-> ⚠️ **The live page currently shows ONE band**, because only one article is written and
-> topics with no articles are filtered out. That is the design working, not a defect —
-> but it means the page is not ready to be seen by strangers until the library fills up.
+> **No dashed placeholder was ever shipped**, deliberately — that is the kind of thing that
+> reaches production because everyone assumed somebody else would spot it, on the one page
+> whose job is to make strangers trust us. ⚠️ The intended graceful degradation was
+> nevertheless **broken from the day it was written**: see G4.1.
+>
+> ⚠️ **The page showed ONE band until 2026-08-16**, because only one article is written and
+> topics with no articles were filtered out. It now shows three, because an announced title
+> earns a band too. **The library is still 1 written / 11 announced** — a merge decision,
+> not a design one.
 >
 > #### The fourth type scale — found by the owner, fixed 2026-08-15
 >
@@ -1120,6 +1125,66 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > changing `--pub-*`, which moves the legal pages, the auth cards and the articles together
 > — one decision applied everywhere at once. An article page does not get to opt out on its
 > own; that is exactly how the fourth scale appeared.
+>
+> #### ✅ G4.1 — the three topic illustrations + "Coming soon". 2026-08-16, still inside PR #89.
+>
+> `055295e` → `f955125` → `e468113` → `3aa91b0`. The page now shows its whole shape: three
+> illustrated bands, twelve titles, one of them readable.
+>
+> **The pictures are hand-authored SVG, rasterised through the Playwright Chromium already
+> in the repo.** Full visual spec in `design-system.md` §11. Two things were tried first and
+> neither could do it:
+>
+> - **Canva's generator arranges layouts and cannot be handed geometry.** Four candidates
+>   came back from a prompt carrying the exact hexes, the exact shape and "no text" four
+>   times: two rising hills, a stacked area chart, and a stock photo of a laptop captioned
+>   UNDERSTANDING FINANCE FOR A BETTER FUTURE. **None of the four showed a share price
+>   falling** — the entire meaning of the picture.
+> - **The owner generated image 2 with Google's image model and it beat mine**, because it
+>   had **doors and windows** — which is what makes a shape a building rather than a stack
+>   of slabs. The composition was adopted; the file could not ship (green-up/red-down
+>   contradicts our own drawdown tinting and fails colour-blind readers; embedded text;
+>   "PROFIT INCREASE" beside piles of coins, which is decision #24 rather than taste).
+>
+> ⚠️ **`upcoming` — announced titles are STRINGS, never registry entries.** A `LearnArticle`
+> gains a URL, a sitemap row, a middleware allow-list entry and a canonical tag the moment
+> it exists. A promise about a future article must cost none of that. Contract in
+> `data-contracts.md` §7b; the count pill states what is **readable**, never what is promised.
+>
+> ⚠️ **The imageless band was half a page, for the life of the branch.** The two-column track
+> was declared unconditionally, so a topic with no picture kept both columns and its text
+> landed in the first — 532px of content beside 588px of empty page, at every desktop width,
+> while `learn.ts` documented the opposite. Fixed and guarded twice; write-up in
+> `design-system.md` §11 and `coding-standards.md` §14.
+>
+> ⚠️ **Two verification lessons, both from reporting something wrong first.** I told the
+> owner a scaling change "had not applied", from eyeballing a downscaled screenshot; the ink
+> bounding box measured 60.8% against 77.9% on disk, and 60.8/77.9 is exactly 1/1.28 — the
+> scale I had applied. **The browser really was serving stale bytes**, for two reasons worth
+> keeping: my own `rm -rf` targeted `.next-dev/cache/images`, a path that has never existed
+> (the dev cache is `.next-dev/dev/cache/images`) and deleting nothing reports success; and
+> Next's optimiser **keys its cache on the Accept header**, so a curl check receives PNG
+> while every real viewer receives WebP from a separate entry. Order that works: kill the
+> process, confirm the port is free, delete, confirm the directory is gone, then start.
+>
+> ⚠️ **`:3000` and `:3200` are different servers and only one updates itself.** The owner
+> checked `localhost:3200/learn` and saw none of the work — correctly, because `web-prod`
+> serves a compiled snapshot, and theirs was built the previous night. Nothing was broken.
+> **`:3000` for reviewing work in progress; `:3200` only after an explicit rebuild.**
+>
+> 🔶 **Image 3 (`Using MajorCycle`, the five-tier dial) is NOT owner-approved.** Built so the
+> assembled page could be seen whole, at the owner's request. Finalising it is the first
+> item of the next session.
+>
+> 🔶 **`reference/Image 2 - Judging a Business.png` is untracked and untouched** — the
+> owner's generated reference. Keep it as a record or remove it; their call, not to be
+> deleted without asking.
+>
+> **Gates:** typecheck · lint · all four build guards (`check:seo` **517**) · Playwright
+> **335 passed, 0 failed, 0 skipped, 0 flaky** (`learn.spec.ts` 13 → **16**).
+>
+> **Next session, owner's plan:** finalise image 3, then **audit the whole `/learn` page**
+> before any articles are written.
 >
 > ### 📋 LAYER G AUDIT — the deferred list. Owner instruction 2026-08-15: revisit these **after** Layer G is built, not during.
 >

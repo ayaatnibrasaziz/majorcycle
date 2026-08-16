@@ -1094,17 +1094,30 @@ article makes a list one line longer. Revisit at ~12 articles; the data shape su
 | Index frame | `PageFrame width="wide"` + `.doc-scale`. Prose held to `max-w-[720px]` — the frame is wide for the pictures, not for the words |
 | Article frame | `PageFrame width="prose"` (680px) + `.doc-scale`, in the same card as a legal document (`--radius`, 1px border, `--shadow-sm`, 30/32 desktop · 24/20 phone) |
 | Type | **Identical to the legal documents** — 24 / 17 / 13 / 12 |
-| Band | 2-col grid ≥1024px (`minmax(0,1fr) minmax(0,1.05fr)`, 30px gap), alternating via `lg:order-first` on odd bands. Single column below, **picture always first** |
-| Topic image | **1200 × 750 (16:10)**, Canva. `LEARN_THEMES[].image` is **optional**: with no image the band renders as a full-width text block that looks intentional. See the warning below |
+| Band | 2-col grid ≥1024px (`minmax(0,1fr) minmax(0,1.05fr)`, 30px gap), alternating via `lg:order-first` on odd bands. Single column below, **picture always first**. ⚠️ The grid track is **conditional on `theme.image`** — see the warning below |
+| Topic image | **1600 × 1000 (16:10)** PNG in `public/learn/`, rendered from hand-authored SVG. `LEARN_THEMES[].image` is **optional**; a topic without one drops the second column and holds the header's 720px measure |
 | Article row | Title `--pub-body` semibold; reading time `--pub-label` in JetBrains Mono, `--text-secondary`. Title and blurb are the SAME size — weight and colour separate them, not a 1px step |
-| Count pill | `--pub-label`, `--brand-light` fill, `--brand-light-border` |
+| "Coming soon" row | Same row shape, `--text-secondary` at 70% opacity, **no `<a>` anywhere in it**. Announced titles live in `LEARN_THEMES[].upcoming` as plain strings — see `data-contracts.md` §7b |
+| Count pill | `--pub-label`, `--brand-light` fill, `--brand-light-border`. States what is **readable** — "1 article", or "Coming soon" when nothing in the topic is written yet. Never counts promises |
 | Article answer | `.lead` (17px) in a `border-l-2 --brand-mid` block, directly under the h1 and **above** the disclaimer |
 | Disclaimer | `LegalNotice` — the same component the legal pages use, so the sentence exists once |
 
-⚠️ **No placeholder boxes for the missing images, deliberately.** A dashed "1200 × 750 goes
+⚠️ **No placeholder boxes for a missing image, deliberately.** A dashed "1600 × 1000 goes
 here" panel is exactly the kind of thing that reaches production because everyone assumed
 somebody else would spot it — on the page whose job is to make a stranger trust us. The
 band degrades to text instead.
+
+⚠️ **And that degradation did not work for the first day it existed (fixed 2026-08-16).**
+The two-column track was declared **unconditionally**, so a topic with no picture kept both
+columns and its text landed in the first: measured at 1280px, **532px of content beside
+588px of empty page**, on every band. `lib/learn.ts` had documented the opposite from the
+day it was written. Nothing errored, typecheck was green, and below 1024px it looked
+perfect because there is only ever one column there. **An absent grid child is not a fault
+— it is a hole, and a hole renders.** Graceful degradation is a claim about rendered
+output, so it is only ever established by rendering it. Guarded twice in `learn.spec.ts`:
+one test measures every rendered band, and one asserts in the source that the track is
+governed by `theme.image` — the second is not decoration, because no topic without a
+picture is currently rendered, so it is the only half that can see a revert.
 
 ⚠️ **Two of the first values broke the 12px floor** (`--rd-micro` is a FLOOR on a reading
 page, not a suggestion): the count pill and the reading time were 11px. `contrast.spec.ts`
@@ -1147,6 +1160,46 @@ decide whether a topic is for them.
 > fix is to lift `--pub-*` one step, which moves the legal pages, the auth cards and the
 > articles **together**. An article page does not get to opt out on its own — that is
 > exactly how the fourth scale appeared.
+
+### The Learn illustrations — BUILT 2026-08-16
+
+Three topic pictures, one per band. **Hand-authored SVG, rasterised to PNG through the
+Playwright Chromium already in the repo** — no new dependency, exact output, and the vector
+source is kept beside the artwork so any of them can be re-cut at another size.
+
+| Rule | Value |
+|---|---|
+| Crop | **1600 × 1000 (16:10)**, identical on all three. The binding constraint — three bands stack down one page, and one odd shape makes a different band height |
+| Ground | `#F8FAFC → #F1F7F8` gradient **plus four stepped bands** of `#1A3A6E` at y 430/510/590/670, opacity `.035 / .065 / .105 / .145` |
+| Structure | `#1A3A6E` navy, and lighter tints of it (`#66799E` for a failing company) |
+| Accent | `#0E7C8B` teal, 15px round-capped stroke |
+| Words | **None.** Text in an image is unreadable at 335px, invisible to a screen reader, and stale the moment a heading is reworded |
+| Density | Each drawing fills a comparable share of its frame — measured, not judged |
+
+**Two semantic rules hold the set together.** *Teal is always the share price; navy is
+always the company.* And **no green, no red anywhere** — the product tints a **deeper**
+price fall *green*, because deeper is more cyclically favourable, so a picture using the
+conventional green-up/red-down would contradict the tool one click away. It is also the one
+colour pair a colour-blind reader cannot separate.
+
+⚠️ **The ground is COPIED into three files, and there is no shared source for it.** SVGs
+cannot import a background from one another. Change image 1's ground and the other two go
+quietly out of step, each still looking fine alone — the drift trap of CLAUDE.md 11c, in a
+format none of our guards can read. Whoever edits one edits all three.
+
+⚠️ **"Density" is the property that has to match, not size.** All three frames are the same
+1600 × 1000; what made them stop reading as a set was image 1's line running nearly edge to
+edge while the other two floated in the middle of an identical frame. Fixed by scaling the
+artwork — not the canvas — about its own centre, and verified by measuring the bounding box
+of non-background pixels in each rendered file (99.9% / 85.8% / 77.9% wide).
+
+⚠️ **Neither Canva nor an image generator could produce these.** Both were tried. Canva's
+generator arranges layouts and cannot be handed geometry; four candidates came back with no
+share price falling in any of them. A generated attempt from the owner had the right
+*composition* — and doors and windows, which is what turned a stack of slabs into a
+building — but shipped green/red arrows, embedded text, and "PROFIT INCREASE" beside piles
+of coins, which is a compliance problem for a not-financial-advice product (decision #24)
+rather than a matter of taste. **The composition was adopted; the execution was rebuilt.**
 
 ## 12. Animations
 

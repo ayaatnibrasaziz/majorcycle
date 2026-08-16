@@ -643,8 +643,9 @@ decision — see § 8.**)
     was in **five** files and one disagreed), the indexable set pinned **by name** (deriving
     it from the same list made the test unfalsifiable), and the `Disallow`-vs-`noindex`
     contradiction. CI reports **286** — one fewer file, because `dev-fixtures` is gitignored.
-13. Playwright e2e — **332** tests *(was 121; this line went stale, in the section that tells
-    you to read the count — a doc figure is not a measurement, so take it from the run)*,
+13. Playwright e2e — **335** tests *(was 121, then 332; this line keeps going stale, in the
+    section that tells you to read the count — a doc figure is not a measurement, so take it
+    from the run)*,
     incl. the paywall behavioural matrix, the Stripe
     **key-scope** probe (`e2e/stripe-key-scope.spec.ts`),
     **`e2e/report-download.spec.ts`**, which downloads the real offline report and opens it
@@ -931,6 +932,47 @@ the next person weakens the innocent code. When a new test fails, **confirm the 
 before accepting the accusation**: comparing four page sizes against four others took
 minutes and moved the finding from "the motion hides content" to "our root loading
 boundary defers large pages."
+
+---
+
+### 15. "It didn't apply" was my eyes — and a cache that hides behind two doors (2026-08-16)
+
+Scaling two `/learn` illustrations up to match the third, I told the owner the change "had
+not applied", from **eyeballing a downscaled screenshot**. Wrong instrument, and it sent me
+chasing the wrong thing for several rounds.
+
+Measuring settled it in one command. The bounding box of non-background pixels was **77.9%
+of the frame on disk and 60.8% in the browser**, and 60.8/77.9 is exactly **1/1.28** — the
+scale factor I had applied. So the change was real and the browser was serving old bytes.
+
+**Two causes, and the first is the one to remember.**
+
+**(a) `rm -rf` on a path that has never existed reports success.** I cleared
+`.next-dev/cache/images`. The dev image cache is at **`.next-dev/dev/cache/images`**
+(production: `.next/cache/images`). Deleting nothing and deleting something are
+indistinguishable at the shell — the same shape as CLAUDE.md 14g, one layer down. Every
+cache clear in this repo now **counts the files before and after and asserts the directory
+is gone**, because "the command succeeded" is not evidence.
+
+**(b) Next's image optimiser keys its cache on the `Accept` header.** curl asks for and
+receives **PNG**; a browser receives **WebP** from a *separate* cache entry. So a hand check
+with curl can return the new image while every real viewer still gets the old one —
+`X-Nextjs-Cache: HIT`, `Content-Type: image/webp`. **Verifying an optimised image with curl
+verifies a variant nobody looks at.** Ask the browser what it loaded, or fetch with the
+browser's own `Accept`.
+
+⚠️ **And a third, which cost the owner a confused message rather than me a wrong report:**
+`:3000` (`next dev`) recompiles on save; **`:3200` (`next start`) serves a compiled snapshot
+and never updates itself.** The owner looked at `localhost:3200/learn`, saw none of the
+day's work, and reasonably asked why. Nothing was broken — the build was from the previous
+night. **Neither the page nor the URL tells you which you are looking at**, so say which
+server a result came from whenever both are running.
+
+⚠️ **The ordering trap that caught me twice after I knew all of the above:** clearing the
+cache while the server is *running* achieves nothing, because it re-persists from memory —
+and `preview_start` answered `reused: true` and started nothing, so a "restart" wasn't one.
+Order: **kill the process → confirm the port is free → delete → confirm the directory is
+gone → start.** A delete is not a state; the state is what the next request returns.
 
 ---
 

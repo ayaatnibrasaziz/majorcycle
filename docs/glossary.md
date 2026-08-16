@@ -52,6 +52,8 @@
 
 **Cycle** — In Major Cycle terminology, one complete drawdown-and-recovery loop: peak → trough → next peak.
 
+**Coming soon (Learn)** — An article title announced on `/learn` but not written. Held in `LEARN_THEMES[].upcoming` as a plain **string**, deliberately not a `LearnArticle`: a registry entry would immediately gain a URL, a sitemap row, a middleware allow-list entry and a canonical tag, inviting Google to index a page with nothing on it. The row renders inert — no link, nothing focusable — and the topic's count pill states only what is **readable**. See `data-contracts.md` §7b.
+
 **Cycle Analysis** — The full output of `major_cycle.py` for a given ticker + params. See `CycleAnalysis` dataclass in `data-contracts.md`.
 
 **Cycle Endpoint** — `/api/cycle?ticker=X&preset=medium` — the Vercel Python serverless function at `web/api/cycle.py` that computes one ticker's Major Cycle on demand. Reads from Supabase (never yfinance), runs the cycle math via the vendored `web/_engine/` package, returns `CycleAnalysis` JSON. Called by every Stock Detail page render.
@@ -170,6 +172,8 @@
 ## L
 
 **Learn library** — The public explainers at `/learn` and `/learn/[slug]`, written for a **newcomer** who arrived from a search engine and has never heard of us (owner decision, G2). Grouped by topic rather than dated, because an explainer does not expire. Not to be confused with the weekly market note, which is the opposite — dated, and gets its own `/notes` section. Every article exists in exactly one place, the registry in `web/lib/learn.ts`; see `data-contracts.md` §7b.
+
+**Learn illustration** — One of the three wordless topic pictures on `/learn`, at 1600 × 1000 (16:10). Hand-authored SVG rasterised to PNG; neither Canva nor an image generator could hold the geometry (see `design-system.md` §11). Two rules make them a set: **teal is always the share price, navy is always the company**, and **no green or red anywhere** — the product tints a *deeper* fall green, so the conventional green-up/red-down would contradict the tool one click away.
 
 **Lookback Bars** — The number of daily price bars used to compute "current" drawdown and profit. One of the three Cycle Params. 63 = ~3 months, 252 = ~1 year, 756 = ~3 years.
 

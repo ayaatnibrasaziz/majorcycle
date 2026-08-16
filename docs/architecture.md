@@ -475,7 +475,7 @@ live-check Session 1):
 | `/reset-password` | Request a reset link | **Deliberately NOT bounced** for a signed-in reader — asking for a reset link is a legitimate thing to do while signed in (e.g. on a shared machine, or a Google-only account adding a password). Verified live 2026-08-02: it renders rather than redirecting. The doc previously grouped it with `/login`·`/signup` and was wrong |
 | `/pricing` | The signed-out shop window: both plans, local currency | A **signed-in** visitor is redirected to `/account` — they are a customer, not a shopper |
 | ~~`/methodology`~~ → `/#how-it-works` | **Retired 2026-08-13.** The plain-English explainer is now sections ⑤+⑥ of the landing page — still pre-signup, still no formulas (decision #34). The old URL answers **308** with the fragment, from `next.config.ts`'s `redirects()` | Config redirects fire **ahead of `proxy.ts`** — measured, not assumed |
-| `/learn` | The Learn index — explainers grouped by topic | **Built 2026-08-15.** One illustration per topic, article titles listed beside it. Topics with no articles are **filtered out of the markup**, so the page grows rather than showing empty headings |
+| `/learn` | The Learn index — explainers grouped by topic | **Built 2026-08-15, illustrated 2026-08-16.** One picture per topic, article titles listed beside it. A topic earns a band if it has a written article **or** an announced one; a topic with neither is filtered out of the markup, so the page never shows an empty heading |
 | `/learn/[slug]` | One article | The **only** dynamic public route. Every path comes from the `lib/learn.ts` registry, which `PUBLIC_PAGES` spreads — see below |
 | `/disclaimer` · `/terms` · `/privacy` | Legal | Reachable from every footer |
 | `/contact` | Contact form → Resend | Honeypot; `reply_to` = sender |
@@ -514,6 +514,13 @@ live-check Session 1):
 > ⚠️ **Every `notFound()` on the site answers 200, not 404** — see roadmap GA-1b. Found
 > here, caused by the root `app/loading.tsx` Suspense boundary flushing the shell before
 > the page resolves. Sitewide, not a Learn defect.
+>
+> ⚠️ **An announced title is deliberately NOT in this registry (2026-08-16).**
+> `LEARN_THEMES[].upcoming` holds "Coming soon" titles as plain **strings**. Promote one to
+> a `LearnArticle` and it immediately gains a URL, a sitemap row, a middleware allow-list
+> entry and a canonical tag — a page Google would be invited to index before a word of it
+> exists. Keeping them as strings makes that impossible rather than merely discouraged, and
+> `learn.spec.ts` asserts none of them is reachable as a link.
 
 > ### `/deletion-requested` needs THREE gates, and had one (fixed 2026-08-12)
 >

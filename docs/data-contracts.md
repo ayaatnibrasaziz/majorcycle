@@ -1153,8 +1153,11 @@ export interface LearnThemeMeta {
   readonly id: 'cycles' | 'quality' | 'using-it';
   readonly label: string;
   readonly blurb: string;
-  /** Canva illustration, 1200 × 750. OPTIONAL — the band renders as text without it. */
+  /** Topic illustration, 1600 × 1000 (16:10). OPTIONAL — without it the band
+   *  drops its second column and holds the header's 720px measure. */
   readonly image?: { readonly src: string; readonly alt: string };
+  /** Announced-but-unwritten titles, rendered as inert "Coming soon" rows. */
+  readonly upcoming?: readonly string[];
 }
 
 export interface LearnArticle {
@@ -1177,6 +1180,16 @@ export interface LearnArticle {
 | `answer` | **80–320 characters** | It renders directly above the "not financial advice" notice, so an over-long answer is the only thing that can push a legally-required disclaimer below a 375px fold. The lower bound stops a one-liner that restates the title. `e2e/learn.spec.ts` |
 | `minutes` | within **±2** of the rendered body at 200 wpm | A second copy of a fact about the body (11k) — edit the prose and it stays put, plausible and quietly wrong. The bodies are React components so there is nothing to count at build time; the test counts words on the **rendered** page |
 | `slug` | must have a body in `ARTICLE_BODIES` | `Record<LearnSlug, …>` makes a missing body a **compile error** rather than a blank page (11j). Depends on `LEARN_ARTICLES` ending `as const satisfies readonly LearnArticle[]` — an explicit annotation widens `slug` to `string` and the check silently evaporates. Guarded by `check:seo` |
+| `upcoming` | plain **strings**, never `LearnArticle`s | A registry entry acquires a URL, a sitemap row, a middleware allow-list entry, a canonical tag, and a compile error until a body exists. A promise about a future article must cost none of that — so an announced title is a string, and there is nothing there that *can* become a link. `learn.spec.ts` asserts each is named on the page, is **not** reachable as a link, and is absent from `LEARN_ARTICLES`, with the count asserted first so an empty list cannot pass vacuously (14g) |
+
+⚠️ **The count pill states what is READABLE, never what is promised.** "1 article" above
+four Coming soon rows — not "5 articles". A pill counting promises is a lie a reader checks
+in one glance, on the page whose whole job is being trusted by a stranger. A topic with
+articles shows its count; a topic with only announcements shows "Coming soon".
+
+⚠️ **The ratio is a merge decision, not a design one.** One written piece beside eleven
+promises reads as a shell rather than a growing library. Nothing is public — this sits
+inside the unmerged PR #89 — but it is the thing to weigh before Layer G merges.
 
 ⚠️ **No React in this file.** `lib/seo.ts` imports it and `proxy.ts` imports `lib/seo.ts`,
 so a component here joins the **middleware** bundle that runs on every request to the site.
