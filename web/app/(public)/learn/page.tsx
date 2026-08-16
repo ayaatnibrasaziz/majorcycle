@@ -47,14 +47,19 @@ export const metadata: Metadata = pageMetadata({
  * is wide for the layout, not for the words.
  */
 export default function LearnIndexPage() {
-  // Topics with nothing in them are not rendered. The library grows one article
-  // at a time, and an empty "Judging the business" heading with nothing beneath
-  // it would be a reader's first impression of an abandoned site. Filtered out
+  // Topics with nothing in them are not rendered — an empty heading with nothing
+  // beneath it is a reader's first impression of an abandoned site. Filtered out
   // of the markup rather than hidden with CSS, so a crawler cannot see it either.
+  //
+  // "Nothing in them" now counts announced titles as well as written ones: a
+  // topic listing four pieces that are coming is not empty, it is a plan. That
+  // is a different thing from a bare heading, and the owner asked to see the
+  // library assembled rather than growing one band at a time.
   const groups = LEARN_THEMES.map((theme) => ({
     theme,
     articles: articlesByTheme(theme.id),
-  })).filter((g) => g.articles.length > 0);
+    upcoming: theme.upcoming ?? [],
+  })).filter((g) => g.articles.length + g.upcoming.length > 0);
 
   return (
     <PageFrame width="wide">
@@ -78,7 +83,7 @@ export default function LearnIndexPage() {
         <LegalNotice className="mt-7 max-w-[720px]" />
 
         <div className="mt-10 flex flex-col">
-          {groups.map(({ theme, articles }, i) => (
+          {groups.map(({ theme, articles, upcoming }, i) => (
             <section
               key={theme.id}
               className={[
@@ -129,8 +134,14 @@ export default function LearnIndexPage() {
                       suggestion — and `contrast.spec.ts` enforces it, so 11px
                       would have failed the build rather than merely looking
                       small. */}
+                  {/* Counts what is READABLE, never what is promised. A pill
+                      reading "5 articles" over four "Coming soon" rows would be
+                      a lie a reader can check in one glance, and this page's
+                      entire job is being trusted by a stranger. */}
                   <span className="inline-flex items-center rounded-full border border-[var(--brand-light-border)] bg-[var(--brand-light)] px-[10px] py-[3px] text-[length:var(--pub-label)] font-bold uppercase tracking-[0.08em] text-[var(--brand-mid)]">
-                    {articles.length} {articles.length === 1 ? 'article' : 'articles'}
+                    {articles.length === 0
+                      ? 'Coming soon'
+                      : `${articles.length} ${articles.length === 1 ? 'article' : 'articles'}`}
                   </span>
                 </div>
 
@@ -171,6 +182,28 @@ export default function LearnIndexPage() {
                           {article.minutes} min
                         </span>
                       </Link>
+                    </li>
+                  ))}
+
+                  {/* Announced but not written. A plain <li> with no <a> inside
+                      — the whole row is inert, which is the point: a title with
+                      no article behind it must not be clickable, must not be
+                      focusable, and must not appear in the sitemap. Being a
+                      string in `theme.upcoming` rather than a registry entry is
+                      what makes all three true by construction rather than by
+                      remembering. `aria-disabled` is deliberately NOT used: it
+                      describes a control, and this is a sentence. */}
+                  {upcoming.map((title) => (
+                    <li
+                      key={title}
+                      className="mt-0 border-t border-[var(--border)] first:border-t-0"
+                    >
+                      <div className="flex items-baseline gap-[12px] py-[9px] font-semibold leading-[1.45] text-[var(--text-secondary)] opacity-70">
+                        <span className="flex-auto">{title}</span>
+                        <span className="flex-none font-mono text-[length:var(--pub-label)] font-normal">
+                          Coming soon
+                        </span>
+                      </div>
                     </li>
                   ))}
                 </ul>

@@ -75,10 +75,12 @@ test.describe('the Learn library', () => {
     await page.goto(LEARN_INDEX_PATH);
     await ready(page);
 
-    const expected = LEARN_THEMES.filter((t) =>
-      LEARN_ARTICLES.some((a) => a.theme === t.id),
-    );
-    const empty = LEARN_THEMES.filter((t) => !LEARN_ARTICLES.some((a) => a.theme === t.id));
+    // A topic earns a band if it has something to show — a written article OR an
+    // announced one. Only a topic with neither is suppressed.
+    const has = (t: (typeof LEARN_THEMES)[number]) =>
+      LEARN_ARTICLES.some((a) => a.theme === t.id) || (t.upcoming?.length ?? 0) > 0;
+    const expected = LEARN_THEMES.filter(has);
+    const empty = LEARN_THEMES.filter((t) => !has(t));
 
     for (const theme of expected) {
       await expect(
@@ -96,6 +98,58 @@ test.describe('the Learn library', () => {
     // The control: without it, a page rendering NO bands would satisfy every
     // "must not be present" assertion above and pass.
     expect(expected.length, 'no topic has any article — the loop above is vacuous').toBeGreaterThan(0);
+  });
+
+  test('an announced article is named, but is not a link and has no page', async ({ page }) => {
+    /**
+     * "Coming soon" rows are a promise to a stranger, and the failure mode is
+     * that a promise quietly becomes a URL. If one of these titles ever gains a
+     * link — by being promoted into the registry, or by somebody wrapping the
+     * row in an <a> to make it "consistent" — the reader gets a dead end, and
+     * `robots`/`sitemap` get an entry for a page with nothing on it.
+     *
+     * ⚠️ The control matters as much as the assertion. `upcoming` being empty
+     * would satisfy every "must not be a link" check in this test while proving
+     * nothing at all (CLAUDE.md 14g), so the count is asserted first.
+     */
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(LEARN_INDEX_PATH);
+    await ready(page);
+
+    const announced = LEARN_THEMES.flatMap((t) => t.upcoming ?? []);
+    expect(announced.length, 'nothing is announced — every check below is vacuous').toBeGreaterThan(0);
+
+    for (const title of announced) {
+      // Named on the page, so the promise is actually being made…
+      await expect(
+        page.getByText(title, { exact: true }),
+        `announced title "${title}" is not on the page`,
+      ).toBeVisible();
+
+      // …and inert. `getByRole('link')` finds it only if it is genuinely
+      // reachable as a link, which is the thing that must never be true.
+      await expect(
+        page.getByRole('link', { name: title, exact: true }),
+        `"${title}" has become a link, but no article exists behind it`,
+      ).toHaveCount(0);
+
+      // And it must not have leaked into the registry, which is what would give
+      // it a route, a canonical tag and a sitemap row.
+      expect(
+        LEARN_ARTICLES.some((a) => a.title === title),
+        `"${title}" is both announced and registered — it can only be one`,
+      ).toBe(false);
+    }
+
+    // The count pill must never advertise more than a reader can actually read.
+    for (const theme of LEARN_THEMES) {
+      const written = LEARN_ARTICLES.filter((a) => a.theme === theme.id).length;
+      if (written === 0) continue;
+      await expect(
+        page.getByText(`${written} ${written === 1 ? 'article' : 'articles'}`, { exact: true }).first(),
+        `the "${theme.label}" pill does not state its ${written} readable article(s)`,
+      ).toBeVisible();
+    }
   });
 
   test('a band without a picture takes the whole column back', async ({ page }) => {

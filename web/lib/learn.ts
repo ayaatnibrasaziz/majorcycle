@@ -68,6 +68,25 @@ export interface LearnThemeMeta {
    * need to look good and explain the topic.
    */
   readonly image?: { readonly src: string; readonly alt: string };
+  /**
+   * Titles that are planned but not written — rendered under the topic as
+   * "Coming soon", greyed and NOT linked.
+   *
+   * ⚠️ **Titles only, and deliberately not `LearnArticle`s.** The moment one of
+   * these becomes a registry entry it acquires a URL, a sitemap row, a
+   * middleware allow-list entry and a canonical tag — and `content.tsx` would
+   * have to hold a body for it, because `Record<LearnSlug, …>` refuses to
+   * compile without one. A promise about a future article must cost none of
+   * that. These are strings; there is nothing here that can become a link by
+   * accident, and `learn.spec.ts` asserts none of them ever does.
+   *
+   * ⚠️ **A "coming soon" row is a promise to a stranger, and the ratio is the
+   * message.** One written article beside eleven promises does not read as a
+   * growing library, it reads as a shell. Owner asked to see the whole page
+   * assembled (2026-08-16) and this is inside the unmerged PR #89, so nothing
+   * is public — but the count is a merge decision, not a design one.
+   */
+  readonly upcoming?: readonly string[];
 }
 
 export const LEARN_THEMES: readonly LearnThemeMeta[] = [
@@ -79,16 +98,41 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
       src: '/learn/falls-and-recoveries.png',
       alt: 'A share price rising and falling four times, each fall a different depth, with shaded bands marking how far each one reached and a marker showing a recovery still in progress.',
     },
+    upcoming: [
+      'Why shares fall by the same amount, over and over',
+      'Dip, correction, crash — what’s the difference?',
+      'How long do recoveries actually take?',
+      'What a 52-week high really tells you',
+    ],
   },
   {
     id: 'quality',
     label: 'Judging the business',
     blurb: 'A falling price is not the same as a bargain. What the accounts underneath are being asked, in plain words.',
+    image: {
+      src: '/learn/judging-the-business.png',
+      alt: 'Two office buildings under identical falling share prices. One stands square and solid; the other’s floors have slipped out of line and its top floor is toppling away.',
+    },
+    upcoming: [
+      'Is a falling share price a bargain or a warning?',
+      'How to check if a company is financially healthy',
+      'What a P/E ratio does and doesn’t tell you',
+      'How to read an analyst price target',
+    ],
   },
   {
     id: 'using-it',
     label: 'Using MajorCycle',
     blurb: 'How to read a rating, what the five tiers mean, and what the tool deliberately does not try to do.',
+    image: {
+      src: '/learn/using-majorcycle.png',
+      alt: 'A dial divided into five bands, pale on the left through to deep navy on the right, with a single marker resting on the middle band.',
+    },
+    upcoming: [
+      'How to read a MajorCycle rating',
+      'What the five tiers mean',
+      'What MajorCycle deliberately doesn’t do',
+    ],
   },
 ] as const;
 
