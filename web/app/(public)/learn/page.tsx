@@ -134,7 +134,13 @@ export default function LearnIndexPage() {
                       (Owner asked whether these should be black: no — they are
                       signposts, and in black they compete with the topic title
                       beside them.) */}
-                  <span className="font-mono text-[length:var(--pub-label)] font-semibold text-[var(--brand-mid)]">
+                  {/* ⚠️ `--pub-h`, the SAME size as the heading beside it
+                      (owner, 2026-08-17). It was `--pub-label` (12px) against a
+                      17px title, which read as a superscript rather than as
+                      part of the line — the number is half of "01 Falls and
+                      recoveries", not an annotation on it. Mono is kept: it is a
+                      value, and design-system §3 sets values in JetBrains Mono. */}
+                  <span className="font-mono text-[length:var(--pub-h)] font-semibold text-[var(--brand-mid)]">
                     {String(i + 1).padStart(2, '0')}
                   </span>
                   {/* `heading-flush` — this heading sits in a flex ROW beside

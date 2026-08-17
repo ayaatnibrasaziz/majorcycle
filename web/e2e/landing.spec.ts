@@ -437,3 +437,45 @@ test.describe('the landing page publishes only what it is allowed to', () => {
     }
   });
 });
+
+/**
+ * GA-1: the public pages render WITHOUT JavaScript.
+ *
+ * ⚠️ These four used to show the word "Loading…" and nothing else with scripting
+ * off. The cause was the root `app/loading.tsx`: it wrapped every route in a
+ * Suspense boundary, and React streams any page whose HTML overruns the first
+ * flush into a `<div hidden>` that an inline `$RC` script swaps into place. No
+ * script, no swap — so `/` (108 KB) and the three legal pages (42–46 KB) stalled
+ * on the fallback forever, while the smaller AuthCard pages (25–28 KB) were fine.
+ * Size-dependent, which is why it looked arbitrary.
+ *
+ * Deleting that file (owner approved 2026-08-18) fixed it and the soft-404 in one
+ * move. This is the half that proves the reader-facing symptom is gone; the
+ * status-code half lives in `learn.spec.ts`.
+ *
+ * ⚠️ A no-JS test needs its own browser context — `javaScriptEnabled` is a
+ * context option, not something a page can be told after the fact.
+ */
+test.describe('the public pages survive without JavaScript', () => {
+  for (const path of ['/', '/terms', '/privacy', '/disclaimer', '/learn']) {
+    test(`${path} renders real content with scripting off`, async ({ browser }) => {
+      const context = await browser.newContext({ javaScriptEnabled: false });
+      const page = await context.newPage();
+      await page.goto(path, { waitUntil: 'domcontentloaded' });
+
+      const text = (await page.locator('body').innerText()).replace(/\s+/g, ' ').trim();
+
+      // The symptom, named exactly: the page must not BE the fallback.
+      expect(text, `${path} is still showing only the loading fallback`).not.toMatch(
+        /^Loading[….]*$/,
+      );
+      // And it must carry a real page's worth of words, so "not exactly
+      // 'Loading…'" cannot be satisfied by some other near-empty render.
+      expect(text.length, `${path} rendered almost nothing without JS`).toBeGreaterThan(400);
+      // The heading is the positive signal — content, not just bytes.
+      await expect(page.locator('h1')).toBeVisible();
+
+      await context.close();
+    });
+  }
+});

@@ -392,41 +392,39 @@ test.describe('the Learn library', () => {
 
   test('an unregistered slug answers 404, not 200', async ({ page }) => {
     /**
-     * ⚠️ **EXPECTED TO FAIL TODAY — this is a recorded defect, not a broken test.**
+     * ⚠️ **This was `test.fail()` — a recorded soft-404 — until 2026-08-18.**
      *
-     * `notFound()` runs, the not-found page renders, and the response is still
-     * **200**. That is a soft-404: Google treats a 200 carrying "Page not found"
-     * far more harshly than an honest 404, and on the layer whose entire purpose
-     * is SEO it is the wrong way round.
+     * `notFound()` ran, the not-found page rendered, and the response was still
+     * **200**: Google treats a 200 carrying "Page not found" far more harshly
+     * than an honest 404, and on the layer whose entire purpose is SEO that was
+     * the wrong way round. It applied to EVERY `notFound()` on the site, not
+     * only to Learn.
      *
-     * **Cause, established by control experiment on a production build
-     * (2026-08-15) rather than guessed.** The root `app/loading.tsx` wraps every
-     * route in a Suspense boundary, so the shell is flushed before the page
-     * finishes — and once bytes are on the wire the status is already committed,
-     * leaving Next to swap the not-found content in afterwards. Measured:
+     * The cause was established by control experiment on a production build
+     * rather than guessed. The root `app/loading.tsx` wrapped every route in a
+     * Suspense boundary, so the shell was flushed before the page finished —
+     * and once bytes are on the wire the status is already committed:
      *
      *     with    app/loading.tsx  → /learn/does-not-exist  200
-     *     without app/loading.tsx  → /learn/does-not-exist  404   ← same build otherwise
+     *     without app/loading.tsx  → /learn/does-not-exist  404
      *
-     * The control that makes it a real finding rather than a guess:
-     * `/.well-known/nothing-here` returns a true **404** on the same server, so
-     * 404s do survive the middleware. It is the streaming, not the proxy.
+     * The control that made it a finding rather than a guess:
+     * `/.well-known/nothing-here` returned a true 404 on the same server, so
+     * 404s did survive the middleware. It was the streaming, not the proxy.
      *
-     * ⚠️ **This is GA-1's second symptom, and it is worse than the first.** GA-1
-     * was filed as low severity because Googlebot executes JavaScript, so the
-     * "Loading…" problem does not affect indexing. This one does: it applies to
-     * EVERY `notFound()` on the site, not only to Learn.
-     *
-     * **Left failing on purpose.** The fix — scoping `loading.tsx` to the `(app)`
-     * group — changes how every page on the site loads, which GA-1 already
-     * records as the owner's architectural call. Deleting this test would bury
-     * the finding; asserting 200 would bless it. `test.fail()` keeps the real
-     * expectation in the suite, keeps the run green, and turns RED the moment
-     * somebody fixes it — at which point delete this annotation.
+     * Fixed by deleting that file (owner approved 2026-08-18). The `(app)`
+     * group keeps its own `loading.tsx`, so the signed-in terminal still gets
+     * its skeleton; the public pages now stream without a route-level fallback,
+     * which is also what Vercel's own guidance describes — Suspense belongs
+     * around the dynamic part INSIDE a page, not wrapped around every route.
      */
-    test.fail();
     const res = await page.goto('/learn/this-article-does-not-exist');
     expect(res?.status(), 'an unknown slug must 404, not answer 200 with an empty shell').toBe(404);
+
+    // The control: a real page on the same server must still answer 200, or
+    // "everything 404s" would satisfy the line above just as well.
+    const ok = await page.goto(ARTICLE_PATHS[0]!);
+    expect(ok?.status(), 'a real article must still answer 200').toBe(200);
   });
 
   test('the answer stays short enough to be an answer', async () => {
