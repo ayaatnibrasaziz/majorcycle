@@ -806,7 +806,47 @@ entitlement rule above.
 - Counted only after `notFound()` (a bad ticker costs nothing) and never for a subscriber
   — locked decision #18 promises them no usage limits.
 
-### 7.2 Signed-out trial flow, and why signup comes first
+### 7.2 Rendering: no root `loading.tsx`, and why two pages are `force-dynamic`
+
+**There is deliberately no `web/app/loading.tsx`.** It existed until 2026-08-18 and
+wrapped **every route on the site** in a Suspense boundary, which caused two defects
+that looked unrelated and shared one cause:
+
+| Symptom | Mechanism |
+|---|---|
+| Every `notFound()` answered **200**, sitewide | The shell was flushed before the page finished. Once bytes are on the wire the status is committed, so Next swapped the not-found content in afterwards. A **soft-404** — Google treats a 200 carrying "Page not found" far more harshly than an honest 404 |
+| `/`, `/terms`, `/privacy`, `/disclaimer` showed only "Loading…" without JavaScript | React streams any page whose HTML overruns the first flush into a `<div hidden>` that an inline script swaps in. No script, no swap. Size-dependent, which is why the smaller auth pages were unaffected and it looked arbitrary |
+
+`web/app/(app)/loading.tsx` **remains** — the signed-in terminal keeps its skeleton.
+Only the public pages lost a route-level fallback, which is also what Vercel's own
+guidance describes: a Suspense boundary belongs around the dynamic part *inside* a
+page, not wrapped around every route.
+
+> ⚠️ **`/login` and `/signup` are `export const dynamic = 'force-dynamic'`, and it is
+> load-bearing.** Both call `useSearchParams()` (for `?next=` and `?error=`), and Next
+> refuses to STATICALLY prerender a page that does. The deleted `loading.tsx` had been
+> satisfying that requirement **by accident, for the whole site** — nothing said so, and
+> the build failed the moment it went.
+>
+> Next's documented fix is to wrap them in `<Suspense>`. **That is the wrong fix here:**
+> a boundary renders its fallback on the server and fills in on the client, so a visitor
+> without JavaScript would get the fallback and never the form — on the two pages that
+> must work for everyone. `force-dynamic` resolves the params server-side, so the real
+> form ships in the HTML. No caching concern: these are per-viewer responses already
+> sending `private, no-store` (CLAUDE.md 11a).
+
+**Verified on the production build**, because the soft-404 was measured there and dev
+streams differently: `/learn/does-not-exist` → **404**, real pages → 200,
+`/.well-known/nothing-here` → 404 (the control proving 404s always survived the proxy).
+Raw HTML: `/login` 25,240 bytes **carrying its email and password fields**, `/signup`
+28,114 the same, every page with an `<h1>`, and **zero** pages mentioning "Loading".
+
+Guarded by five no-JS tests in `e2e/landing.spec.ts` (each with a length floor, so
+"not exactly `Loading…`" cannot be satisfied by another near-empty render) and by the
+404 assertion in `e2e/learn.spec.ts`, which carries a "a real article still answers
+200" control.
+
+### 7.2b Signed-out trial flow, and why signup comes first
 
 Checkout needs a session (the webhook maps Stripe → our user by an id in the subscription
 metadata), and a new account needs email confirmation before one exists. So an account

@@ -941,6 +941,8 @@ stood regardless and was scoped explicitly to these three pages, so that is what
 | Frame | `PageFrame width="wide"` + `.legal-layout doc-scale`. ≥1024px: `grid-template-columns: 200px var(--measure-doc)`, 48px gap, centred as a pair (measured: `200px 560px`, total 1120 = `--measure-wide`). Below: block flow |
 | Document | `--bg-surface`, 1px border, `--radius` 10px, **`--shadow-sm`**, capped at `--measure-doc` (560px), padding **30px 32px** desktop / **24px 20px** ≤640px |
 | Type | **`.doc-scale`** — `--pub-title` 24 · `--pub-h` 17 · `--pub-body` 13 · `--pub-label` 12 (see §3). Since 2026-08-15 this is a class in its own right, not a rule welded to `.legal-layout`, so the Learn pages get the same scale without the contents-rail grid |
+| Heading rhythm | **`.reading h2:not(:first-child) { margin-top: 1.75em }` + `margin-bottom: 0.5em`, shared by the legal documents and the Learn articles** (owner: they should be the same). Added 2026-08-17 — `.reading` had described the space between paragraphs, around lists and after a list, and **never around a heading**, because no `.reading` prose had ever contained one: LegalDoc marks its own headings up as `.doc-h` and positions them with the section's flex gap. An article body is authored as bare `<h2>`, so it was the first prose to need it, and it got **0px above and below** — less room than two ordinary paragraphs (14.3px). ⚠️ `:not(:first-child)` is what keeps this ONE rule: every LegalDoc section OPENS with its heading inside a `gap-8` flex column, and in a flex container a child's margin ADDS to the gap, so a blanket margin-top would silently double-space all three legal pages. The 0.5em below sits just under LegalDoc's own `mt-2.5` (8.5 vs 8.75px), so adjacent margins collapse to the larger and the legal pages keep the exact gap they had — **verified by measuring, and by a control at 3em proving the rule does reach them** |
+| `.heading-flush` | The opt-out, for a heading that is a **label rather than prose** — today the Learn index's topic titles, which sit in a flex row beside a number and a pill that the ROW positions. ⚠️ Not hypothetical: applying the rule above without it pushed each band down 29.75px and threw the "01" **10.6px** off its heading's centre, because `items-center` centres the MARGIN box. Written `.reading h2.heading-flush` at (0,2,1) — the obvious `.reading .heading-flush` is (0,2,0) and **loses to `.reading h2:not(:first-child)`**, since `:not()` contributes its argument's specificity. The first attempt made the misalignment *worse* (10.6 → 14.9px) for exactly that reason. Guarded by `learn.spec.ts` |
 | Masthead | Title + "Last updated …" + a hairline rule. No eyebrow, no date pill |
 | Clause heading | `.doc-h` with a `.doc-num` numeral **in Sora, inheriting colour** |
 | Contents | Sticky rail ≥1024px (`LegalContentsRail`), inline two-column list below |
@@ -1095,9 +1097,12 @@ article makes a list one line longer. Revisit at ~12 articles; the data shape su
 | Article frame | `PageFrame width="prose"` (680px) + `.doc-scale`, in the same card as a legal document (`--radius`, 1px border, `--shadow-sm`, 30/32 desktop · 24/20 phone) |
 | Type | **Identical to the legal documents** — 24 / 17 / 13 / 12 |
 | Band | 2-col grid ≥1024px (`minmax(0,1fr) minmax(0,1.05fr)`, 30px gap), alternating via `lg:order-first` on odd bands. Single column below, **picture always first**. ⚠️ The grid track is **conditional on `theme.image`** — see the warning below |
-| Topic image | **1600 × 1000 (16:10)** PNG in `public/learn/`, rendered from hand-authored SVG. `LEARN_THEMES[].image` is **optional**; a topic without one drops the second column and holds the header's 720px measure |
+| Topic image | **1600 × 1000 (16:10)** PNG in `public/learn/`, cropped from a 4K generated master (§11 above; the masters are outside git and cannot be regenerated). `LEARN_THEMES[].image` is **optional**; a topic without one drops the second column and holds the header's 720px measure. ⚠️ `sizes` states **560px**, not 532 — the grid is `1fr / 1.05fr`, so the columns measure 531.7 and 558.3 and the bands alternate. `sizes` is a promise about the LARGEST box, so it takes the wider one; claiming 532 handed a 532px file to a 558px box (a ~5% upscale, soft on non-retina) |
 | Article row | Title `--pub-body` semibold; reading time `--pub-label` in JetBrains Mono, `--text-secondary`. Title and blurb are the SAME size — weight and colour separate them, not a 1px step |
-| "Coming soon" row | Same row shape, `--text-secondary` at 70% opacity, **no `<a>` anywhere in it**. Announced titles live in `LEARN_THEMES[].upcoming` as plain strings — see `data-contracts.md` §7b |
+| "Coming soon" row | Same row shape, `--text-secondary` at **full strength and normal weight**, **no `<a>` anywhere in it**. Announced titles live in `LEARN_THEMES[].upcoming` as plain strings — see `data-contracts.md` §7b. ⚠️ It was `--text-secondary` at **70% opacity** until 2026-08-17, which rendered at **3.38:1** against a 4.5 floor — and the contrast guard scored it 6.81, because it could not see `opacity` at all (CLAUDE.md 11q). **Recede with weight and colour, never with transparency:** a token can be measured, an opacity could not |
+| Topic number (`01`/`02`/`03`) | `--pub-h` — the **same size as the heading beside it** (owner, 2026-08-17). It was `--pub-label` against a 17px title and read as a superscript rather than as part of "01 Falls and recoveries". JetBrains Mono (it is a value), `--brand-mid` at full strength — **not black**, which would compete with the title. Carries `.heading-flush` on the `<h2>`; see the heading-rhythm note below |
+| Topic pill | `--pub-label` **12px, which is a FLOOR and not a preference** — `contrast.spec.ts` enforces it and this element was already raised from 11px once. Asked to make it smaller (2026-08-17), the answer is that it cannot be; it was made *quieter* instead — semibold rather than bold, `px-[8px] py-[2px]` rather than 10/3 — and reads smaller anyway now the number beside it is 17px |
+| Article answer block | Tinted panel: `--bg-stripe`, 1px border, `border-left: 3px var(--brand-mid)`, `--radius-sm`, 14/12 padding, text at **body size** in `--text-primary`. ⚠️ It was a bare 2px rule around `.lead` (17px) and the owner's note was that it "reads too big". The instinct to reach for a size between 17 and 13 must be refused — the public site has exactly FOUR sizes and inventing a fifth is how the stray scale appeared (11c-vi). **The emphasis moved off the type and onto the container.** Deliberately the same device the Methodology modal uses on Stock Detail, so a reader meets one pattern, not two |
 | Count pill | `--pub-label`, `--brand-light` fill, `--brand-light-border`. States what is **readable** — "1 article", or "Coming soon" when nothing in the topic is written yet. Never counts promises |
 | Article answer | `.lead` (17px) in a `border-l-2 --brand-mid` block, directly under the h1 and **above** the disclaimer |
 | Disclaimer | `LegalNotice` — the same component the legal pages use, so the sentence exists once |
@@ -1278,7 +1283,8 @@ immediately rather than animating it fast.
 
 ⚠️ **Do not over-claim what this buys, because measuring it turned up something else.**
 A reader with scripting fully **off** currently sees "Loading…" on `/` regardless, because
-`app/loading.tsx` wraps every route in a Suspense boundary and React defers any page whose
+⚠️ **RESOLVED 2026-08-18 — `app/loading.tsx` was deleted; this paragraph is the history.**
+It *used to* wrap every route in a Suspense boundary, and React defers any page whose
 HTML overruns the first flush — `/` and the three legal documents all do. That is an open,
 recorded finding (coding-standards §14 item 11), not something the motion design can fix.
 What this pattern *does* protect against is the far likelier case: JavaScript that loads
@@ -1336,6 +1342,38 @@ Phase 1 minimums (not aspirations — requirements):
 > | **Rating tier badges** — white on `--c-tier-3` / `--c-tier-4` | **2.38 : 1** | 4.5 : 1 | ✅ **fixed 2026-08-08 — now 4.73 : 1 worst case** |
 > | **"Full disclaimer" link** (`--text-muted` on `--bg-page`) | **2.69 : 1** | 4.5 : 1 | ✅ **fixed 2026-08-08 — now 6.8 : 1** |
 > | "Financial Terminal" wordmark, 9px | 2.69 : 1 | 4.5 : 1 | ⏭️ Layer H (shared header) |
+
+### The brand lockup is ONE component
+
+`components/BrandLockup.tsx` — the mark, the wordmark and the "Financial Terminal"
+subtitle. Rendered by **both** the public header and the signed-in sidebar.
+
+It was two hand-maintained copies until 2026-08-18, and they had drifted on three
+things nobody lists when comparing two files:
+
+| | Sidebar | Public header |
+|---|---|---|
+| `leading-none` | on the **wordmark** | on the **wrapper** — inherited, so it crushed the subtitle's line box too |
+| logo `flex-shrink-0` | yes | no |
+| lockup gap | `gap-[10px]` | `gap-[10px]` when linked, **`gap-2.5` = 8.75px** on the two confinement pages |
+
+⚠️ **None of those is a wrong line.** Each file is internally coherent and reads
+correctly on its own; the defect existed only in the COMPARISON, which is why review
+never caught it and the owner putting two screens side by side did. That is CLAUDE.md
+11c — extracting the shared piece is the fix, and "I'll just make the second one match"
+is how you get a third copy later.
+
+The **gap lives inside the component**, not on the callers' containers: a shared
+component whose spacing is still supplied by two different parents has only moved the
+drift somewhere less visible.
+
+> ⚠️ **Do not "fix" the 9px subtitle here.** It is the named `KNOWN_DEFERRED` exemption
+> in `contrast.spec.ts`, assigned to the Layer H sweep so the whole site moves at once.
+>
+> ⚠️ The guard that asserts the 10px gap now measures the **rendered distance** between
+> the mark and the wordmark, not `gap` on a named element. The old form went red on this
+> refactor while nothing on screen had changed by a pixel — a guard that names an
+> IMPLEMENTATION breaks on refactors and teaches you to loosen it (CLAUDE.md 11i-b).
 >
 > **How the tier badges were fixed, and why it is not a colour change.** `/methodology`
 > painted white on the SOLID tier fill. The five `.tier-badge--N` classes the product

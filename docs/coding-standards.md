@@ -590,7 +590,7 @@ def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[
 | Assuming a stale `web/.next` can still break the dev server | **Fixed at the root on 2026-07-30** — `next.config.ts` now sets `distDir` to `.next-dev` under `NODE_ENV=development`, so `next dev` (and `pnpm e2e`, which spawns its own) can no longer be poisoned by a production build. Two follow-ons this required: `.next-dev/**` had to be added to `eslint.config.mjs`'s ignores (eslint-config-next only knows `.next`, so lint started reporting generated Turbopack chunks as our errors), and both `.gitignore`s. | Nothing to remember day to day. **One residue:** `tsconfig.json` includes `.next/types`, so after **renaming or deleting a route** a stale production build makes `pnpm typecheck` fail naming the old module path — `rm -rf web/.next` and re-run. That failure is loud and names the file, which is the acceptable trade; the silent 404s below were not. |
 | Running `pnpm build` while the dev/preview server is up | Poisons the shared `web/.next` cache. Two symptoms seen: **stale `globals.css`** (new JS but old CSS), and — 2026-07-30 — a **route handler that 404s as if it didn't exist**. The second is the dangerous one, because a paywalled route answering 404 instead of 402 reads exactly like a broken gate. Tell them apart by the body: our refusals are **JSON + `private, no-store`**; a routing miss is **HTML + `no-cache, must-revalidate`** (Next's own not-found), and the dev log still shows application-code time because the not-found boundary rendered. | After a prod build, `rm -rf web/.next` (or at least `.next/types`) and restart the dev/preview server before verifying anything. Confirmed: `/report` returned HTML 404 twice, then **402 `payment_failed` + `private, no-store`** immediately after a clean restart — the code was never wrong. |
 | Trusting a **dev-server** reading of CSS after editing `globals.css` | Next HMRs the TSX but does **not** always recompile `globals.css`, so the browser gets NEW markup against OLD styles. Seen 2026-08-02 (Layer F audit F-A4): after tokenising a colour, `getComputedStyle` reported the new custom property as **empty** with **0** elements using it, while the HTML already referenced `var(--brand-light-border)` — which reads exactly like a shipped visual regression (a colourless border). The served stylesheet still held the pre-edit hexes. | **A CSS change is not verified until a build says so.** `pnpm build` and grep the emitted stylesheet in `.next/static/chunks/*.css` for both the token definition and its `var()` consumers. Do not file a styling regression from a dev-server reading alone. |
-| Reading an HTTP **status alone** to decide whether a page guard fired | A server-component `redirect()` cannot send a 3xx once the streaming shell has flushed, so Next puts the redirect **inside a 200** as a `NEXT_REDIRECT` payload. 2026-07-30: `/run` and `/stocks` answered **200** for a deletion-scheduled account, which reads as confinement broken — it wasn't; both bodies redirected to `/reactivate`. A guard that *is* working looks identical to one that isn't. | Assert on the **body**: grep for `NEXT_REDIRECT` (and the target) as well as the status. Route handlers *do* return real 3xx/402 — the streaming caveat is pages only. Byte size is a useful second signal: the redirect shell is a fraction of the real page (29 KB vs 225 KB for `/run`). ⚠️ **`notFound()` has the SAME problem and it is worse, found 2026-08-15.** Once the shell has flushed the status is committed, so an unknown URL renders "Page not found" inside a **200** — a soft-404, which Google penalises harder than an honest 404, sitewide. Proved by control on a production build: with `app/loading.tsx` present `/learn/x` → 200; with it moved aside, same build → **404**. Control that makes it a finding rather than a guess: `/.well-known/nothing-here` returns a true 404 on the same server, so 404s do survive the middleware. Recorded as roadmap **GA-1b**. ⬆️ **This row already described the mechanism for `redirect()` and I re-derived it from scratch** — grep the docs first. |
+| Reading an HTTP **status alone** to decide whether a page guard fired | A server-component `redirect()` cannot send a 3xx once the streaming shell has flushed, so Next puts the redirect **inside a 200** as a `NEXT_REDIRECT` payload. 2026-07-30: `/run` and `/stocks` answered **200** for a deletion-scheduled account, which reads as confinement broken — it wasn't; both bodies redirected to `/reactivate`. A guard that *is* working looks identical to one that isn't. | Assert on the **body**: grep for `NEXT_REDIRECT` (and the target) as well as the status. Route handlers *do* return real 3xx/402 — the streaming caveat is pages only. Byte size is a useful second signal: the redirect shell is a fraction of the real page (29 KB vs 225 KB for `/run`). ⚠️ **`notFound()` has the SAME problem and it is worse, found 2026-08-15.** Once the shell has flushed the status is committed, so an unknown URL renders "Page not found" inside a **200** — a soft-404, which Google penalises harder than an honest 404, sitewide. Proved by control on a production build: with `app/loading.tsx` present `/learn/x` → 200; with it moved aside, same build → **404**. Control that makes it a finding rather than a guess: `/.well-known/nothing-here` returns a true 404 on the same server, so 404s do survive the middleware. Recorded as roadmap **GA-1b**, and ✅ **fixed 2026-08-18** by deleting that file — every `notFound()` now answers a real 404. ⬆️ **This row already described the mechanism for `redirect()` and I re-derived it from scratch** — grep the docs first. |
 | Grepping SSR HTML for a marker that isn't unique to the state | Two markers in one session nearly produced false findings: `"reactivate"` and `"Run Analysis"` appear in **every** page's nav, so both matched everywhere and proved nothing. Worse, a **client-rendered** element is absent from SSR HTML entirely — the onboarding modal grep said "not present" while the modal was in fact blocking the whole page. | Grep for copy unique to that one state (the per-reason denial titles from `PremiumLockPage`, e.g. "We couldn't take your last payment"). Anything client-rendered must be confirmed in a **real browser**, not in the HTML. And verify the selector/marker discriminates *before* calling a defect — the same lesson as the `select[name="country"]` false alarm. |
 | Trusting a `preview_start` that suddenly **fails every detail page** | Next lets a pre-existing `process.env` (a stale Supabase URL/key in the launching shell) **override `web/.env.local`**, so SSR reads the wrong/old project (looks like a code bug; it isn't). ⚠️ **The symptom changed on 2026-08-07** and the difference is now diagnostic: a *bad credential* errors, so `fetchStockDetail` throws `StockReadError` → the "Something went wrong" boundary; a *valid credential on the wrong/empty project* returns no row → `notFound()`. Before 11e both looked identical — a 404 — which is precisely why a broken environment was indistinguishable from a missing ticker. | Confirm the creds reach the data (a quick REST/Node check), then `preview_stop` + `preview_start` **fresh** to pick up the right env. A clean restart fixed it (2026-06-27). **Read which of the two failures you got** — the error boundary means credentials, a 404 means the wrong project. |
 | Rendering a raw yfinance metric as a headline | Near-zero denominators give absurd values (P/E 3,500×, ROE 8,457%, payout 18,210%) that look broken | Cap the display via `MetricDef.cap` (show `>+cap`, true value in tooltip) + mirror in `medians.server.ts` `OUTLIER_BOUND`. Where a high value is *bad* (distress dividend yield), show it but recolour amber + ⚠, don't cap. See design-system §9 "Numeric display". |
@@ -910,7 +910,7 @@ with `javaScriptEnabled: false`, deterministic over three runs:
 | `/disclaimer` | 42 KB | **"Loading…" forever** |
 | `/login`, `/signup`, `/pricing`, `/contact` | 25–29 KB | renders normally |
 
-**The mechanism.** `app/loading.tsx` puts a Suspense boundary around **every** route. When
+**The mechanism** (⚠️ **fixed 2026-08-18 — the file was deleted; see item 20 and `architecture.md` §7.2**). `app/loading.tsx` *used to* put a Suspense boundary around **every** route. When
 a page's HTML overruns React's first flush, the shell ships the fallback inline
 (`<!--$?--><template id="B:0">`) and the real content streams afterwards into a
 `<div hidden>`, which an inline `$RC(…)` script swaps into place. No script, no swap. The
@@ -1355,6 +1355,88 @@ absolute and unambiguous. Only the *display* is localised. Rules by surface:
 **Anti-pattern:** deriving a display timezone from `profiles.country` (a country-representative
 zone is still a guess — the US/CA/AU each span several zones — and it conflates the
 currency signal with the display signal). We tried it briefly on 2026-07-15 and replaced it.
+
+### 18. When a measurement is wrong, instrument the MEASURING (2026-08-18)
+
+The contrast probe scored text at **6.81** that a reader was seeing at **3.38** — it
+composited a colour's own alpha and never `opacity`. Teaching it to see `opacity` then
+broke it the other way: the landing's scroll-reveals rest at `opacity: 0`, so 244
+elements were *correctly* skipped as invisible and the guard measured **47 of 291**.
+
+**Three diagnoses were wrong first**, and each produced a plausible fix for a problem
+that did not exist — a wait for the loading fallback, a wait for the element count to
+settle, a wait for the animations. What settled it in one run was a **skip tally**:
+counting *why* elements were dropped, rather than theorising about timing. The
+contradiction that made it obvious was two numbers side by side —
+`bodyEls=581` beside `measured=47`. The DOM was full.
+
+- **When a measurement disagrees with the screen, the instrument is the suspect.** Add
+  counters to the probe before adding waits to the harness.
+- **A plateau is not a finish.** "Two consecutive equal readings" looks like settling
+  and is not: a dev server serves a shell, pauses while it compiles, then streams, and
+  two equal samples across that pause satisfy "stable" perfectly. Wait for a **positive**
+  signal — ideally the one the assertion itself demands, so the two cannot disagree
+  (`MIN_MEASURED` is now both the wait and the floor).
+- **Reproduce the resting state deterministically rather than racing it.** The fix was
+  to remove `data-motion` — the component's *own* no-JS path — after waiting for it to
+  be set, because removing it on arrival simply lost the race against a mount effect
+  (291 / 47 / 47 / 291 across four identical runs is the signature of a race, not of a
+  page that renders differently).
+- **A precondition can fail CLOSED and still be wrong.** `document.fonts.check()` with
+  the computed `font-family` returns **false forever** — `next/font` renders it as
+  `Sora, "Sora Fallback", Sora, sans-serif`, which is not a parseable font shorthand.
+  Safe direction, wrong question. Probe the probe: full string false, first family true,
+  `fonts.status` "loaded" throughout.
+
+### 19. A sample of one is silent about the rest — and pick the right STATISTIC (2026-08-18)
+
+The line-length guard measured the **first** qualifying paragraph per page and returned.
+Widened to all of them it immediately found `/terms` running **81** characters —
+worse than the `/privacy` 76 that was the only thing on record.
+
+⚠️ **But the fix is not "assert the maximum".** Characters-per-line is not a property of
+the column alone: a word-dense paragraph legitimately fits more. Asserting the max makes
+the guard hostage to the unluckiest sentence, and the only way to satisfy it is to narrow
+the column until the *typical* line falls below the readable band — making the page worse
+to satisfy a statistic. So: **median ≤ 75** (the band describes a typical line) plus
+**max ≤ 85** to catch a genuinely blown column. The original defect measured 91 (110
+before), so both bounds still fail it, and no pixel of the approved design changed.
+
+**Ask what the rule is actually about before choosing what to assert.**
+
+### 20. A file can exist for a reason nobody wrote down (2026-08-18)
+
+`app/loading.tsx` was deleted to fix a sitewide soft-404 and a no-JS failure. **The
+deletion broke the build**, which is how its real job surfaced: `/login` and `/signup`
+call `useSearchParams()`, and Next refuses to statically prerender a page that does —
+that boundary had been satisfying the requirement **by accident, for the whole site**.
+Reading the file could never have told you; only removing it did.
+
+⚠️ **And the framework's documented fix was the wrong one here.** Next says wrap in
+`<Suspense>`; a boundary renders its fallback on the server and fills in on the client,
+so a no-JS visitor gets the fallback and never the form — on the two pages that must
+work for everyone. `force-dynamic` was correct instead. **A documented fix is advice
+about the common case; check it against your constraint before taking it.**
+
+### 21. A measurement can disprove your hypothesis backwards (2026-08-18)
+
+Investigating a slow Stock Detail page, the theory was that the `get_price_bars_json`
+RPC "fast path" was failing silently and every request was falling back. Measured on the
+real database, four runs, AAPL = 11,510 bars:
+
+    RPC                        1682-3317ms   error=none   fast path IS taken
+    count + 12 parallel pages  1141-1454ms   same 11,510 rows
+
+Not failing — and **~50% slower than the fallback it was written to replace.** The
+justification in the code is that it avoids "~12 cross-region round-trips", but those
+twelve run in **parallel** and finish in ~0.9s, while serialising 11,510 rows to one
+jsonb takes ~1.7s.
+
+**Not changed**, deliberately: it is a real trade-off (1 request vs 12, which may still
+be right under rate limits), and flipping the data-loading strategy of every stock page
+on one machine's numbers — from Australia, against a us-east-1 database — is not a
+decision a measurement taken here can support. **Measuring hard enough to disprove your
+own hypothesis is the win; shipping a change you cannot justify is not.**
 
 ---
 
