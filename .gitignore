@@ -61,6 +61,12 @@ skills-lock.json
 .github/hooks/
 .github/skills/
 
+# The impeccable detector's own config + cache. Same reasoning as .agents/ above:
+# the tool is mine, not the product. The DECISIONS it records (which findings are
+# accepted and why) live in docs/roadmap.md GA-2, which is committed — so the
+# reasoning survives even though the machine-readable file does not.
+.impeccable/
+
 # The 4K masters behind the three /learn illustrations (2026-08-16). ~47 MB of
 # lossless PNG, too heavy for git, and the site ships the 1600x1000 crops in
 # web/public/learn/ instead.
