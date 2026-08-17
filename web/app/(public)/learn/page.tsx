@@ -125,10 +125,25 @@ export default function LearnIndexPage() {
                 }
               >
                 <div className="flex flex-wrap items-center gap-[12px]">
-                  <span className="font-mono text-[length:var(--pub-label)] font-semibold text-[var(--brand-mid)] opacity-70">
+                  {/* ⚠️ NO `opacity`. This carried `opacity-70` until 2026-08-17,
+                      which rendered it at 3.22:1 — under the 4.5 floor — while
+                      the contrast guard computed 5.87 and passed, because it
+                      read the colour's own alpha and never the `opacity`
+                      dimming it. Recede with a COLOUR, never with transparency:
+                      a token can be measured and an opacity could not.
+                      (Owner asked whether these should be black: no — they are
+                      signposts, and in black they compete with the topic title
+                      beside them.) */}
+                  <span className="font-mono text-[length:var(--pub-label)] font-semibold text-[var(--brand-mid)]">
                     {String(i + 1).padStart(2, '0')}
                   </span>
-                  <h2 className="min-w-0 flex-auto">{theme.label}</h2>
+                  {/* `heading-flush` — this heading sits in a flex ROW beside
+                      the number and the pill, so the row positions it and the
+                      shared prose margins on `.reading h2` must not apply. Left
+                      on, they pushed the band down by 29.75px and, because the
+                      row is `items-center`, threw the "01" 10.6px off the
+                      heading's centre. See globals.css. */}
+                  <h2 className="heading-flush min-w-0 flex-auto">{theme.label}</h2>
                   {/* --pub-label (12px), not the 11px this first carried.
                       `--rd-micro` is a FLOOR on a reading page, not a
                       suggestion — and `contrast.spec.ts` enforces it, so 11px
@@ -138,7 +153,13 @@ export default function LearnIndexPage() {
                       reading "5 articles" over four "Coming soon" rows would be
                       a lie a reader can check in one glance, and this page's
                       entire job is being trusted by a stranger. */}
-                  <span className="inline-flex items-center rounded-full border border-[var(--brand-light-border)] bg-[var(--brand-light)] px-[10px] py-[3px] text-[length:var(--pub-label)] font-bold uppercase tracking-[0.08em] text-[var(--brand-mid)]">
+                  {/* Quieter than it was, WITHOUT going smaller (owner, 2026-08-17).
+                      12px is a floor here, not a preference — `--pub-label` is
+                      the smallest size `contrast.spec.ts` permits on a reading
+                      page, and this very element was raised from 11px for that
+                      reason. So the weight and the padding do the work instead:
+                      semibold rather than bold, and a tighter pill. */}
+                  <span className="inline-flex items-center rounded-full border border-[var(--brand-light-border)] bg-[var(--brand-light)] px-[8px] py-[2px] text-[length:var(--pub-label)] font-semibold uppercase tracking-[0.08em] text-[var(--brand-mid)]">
                     {articles.length === 0
                       ? 'Coming soon'
                       : `${articles.length} ${articles.length === 1 ? 'article' : 'articles'}`}
@@ -198,9 +219,20 @@ export default function LearnIndexPage() {
                       key={title}
                       className="mt-0 border-t border-[var(--border)] first:border-t-0"
                     >
-                      <div className="flex items-baseline gap-[12px] py-[9px] font-semibold leading-[1.45] text-[var(--text-secondary)] opacity-70">
+                      {/* ⚠️ WEIGHT and COLOUR, never `opacity` — the same device
+                          the rest of this page already uses. This row was
+                          `font-semibold … opacity-70`, i.e. a written article's
+                          exact weight, dimmed back down to look secondary. That
+                          rendered at 3.38:1, below the 4.5 floor, and the
+                          contrast guard scored it 6.81 because it cannot see
+                          `opacity` at all — so the page failed a compliance
+                          rule with every check green (CLAUDE.md 14g).
+                          Now it recedes honestly: normal weight against the
+                          link's semibold, grey against the link's blue. Both
+                          survive a screenshot AND a measurement. */}
+                      <div className="flex items-baseline gap-[12px] py-[9px] leading-[1.45] text-[var(--text-secondary)]">
                         <span className="flex-auto">{title}</span>
-                        <span className="flex-none font-mono text-[length:var(--pub-label)] font-normal">
+                        <span className="flex-none font-mono text-[length:var(--pub-label)]">
                           Coming soon
                         </span>
                       </div>
@@ -235,6 +267,13 @@ export default function LearnIndexPage() {
  *
  * `sizes` is stated because the band is half a 1120px frame on desktop and full
  * width on a phone; without it Next serves the largest candidate to everyone.
+ *
+ * ⚠️ **560px, not 532px.** The grid is `1fr / 1.05fr`, so the two columns are
+ * NOT the same width — measured at 1280px they are 531.7px and 558.3px, and the
+ * bands alternate, so every second picture sits in the wider one. Claiming 532
+ * had Next hand that image a 532px file to fill 558px: a ~5% upscale, invisible
+ * on a retina screen and slightly soft on an ordinary one. `sizes` is a promise
+ * about the LARGEST box the image can occupy, so it takes the wider column.
  */
 function ThemeImage({ theme }: { theme: LearnThemeMeta }) {
   if (!theme.image) return null;
@@ -246,7 +285,7 @@ function ThemeImage({ theme }: { theme: LearnThemeMeta }) {
         alt={theme.image.alt}
         width={1600}
         height={1000}
-        sizes="(min-width: 1024px) 532px, 100vw"
+        sizes="(min-width: 1024px) 560px, 100vw"
         className="h-auto w-full"
       />
     </div>

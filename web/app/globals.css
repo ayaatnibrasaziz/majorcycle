@@ -1842,6 +1842,77 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   }
 
   .reading p + p { margin-top: 1.1em; }
+
+  /* ── Room around a HEADING ────────────────────────────────────────────────
+     Missing entirely until 2026-08-17, and the gap was invisible for the usual
+     reason: it renders perfectly. `.reading` described the space between two
+     paragraphs, around a list, and after a list — every adjacency prose had
+     actually met — but never the space around a heading, because no `.reading`
+     prose had ever CONTAINED one. The legal pages mark their own headings up as
+     `.doc-h` and position them with the section's flex gap, so they never asked.
+
+     An article body is authored as bare `<h2>` (a content file should not have
+     to know the design system's class names), which made it the first prose to
+     need this. It got 0px: measured on /learn/what-is-a-drawdown, a heading sat
+     flush against the paragraph above AND below it, while two ordinary
+     paragraphs got 14.3px between them — the strongest structural signal in the
+     document with the weakest spacing. Note this shipped in the same commit
+     that gave `.doc-scale` headings their SIZE; size was ported and rhythm was
+     not (CLAUDE.md 11c-iv).
+
+     ⚠️ `:not(:first-child)` is what keeps this ONE rule rather than two.
+     Every LegalDoc section OPENS with its own `.doc-h` inside a
+     `flex flex-col gap-8`, and in a flex container a child's margin ADDS to the
+     gap — so a blanket `margin-top` would silently double-space all three legal
+     pages while fixing the articles. A heading that opens its container is
+     already positioned by that container; a heading that FOLLOWS prose is the
+     one that needs air. Same adjacency logic as `p + p` above.
+
+     ⚠️ `em`, not px: the margin resolves against the heading's OWN size, so it
+     stays proportional across `.doc-scale`'s 17px h2 and `.reading`'s larger
+     one, instead of looking generous on one page and mean on the other.
+
+     ⚠️ The 0.5em BELOW is deliberately just under LegalDoc's own `mt-2.5`
+     (8.5px vs 8.75px at a 17px heading). Adjacent margins collapse to the
+     larger, so the legal pages keep the exact gap they already had — verified
+     by measuring, not assumed — while an article body gains one where it had
+     nothing. A heading binds to the text it introduces, so the space above it
+     should be several times the space below. */
+  .reading h2:not(:first-child),
+  .reading h3:not(:first-child) { margin-top: 1.75em; }
+  .reading h2,
+  .reading h3 { margin-bottom: 0.5em; }
+
+  /* ── The opt-out, for a heading that is a LABEL rather than prose ──────────
+     Some headings are not in prose flow at all: the Learn index sets each topic
+     title in a flex row beside its number and its article-count pill, and the
+     ROW positions it. Prose margins there do two wrong things at once — they
+     add to the band's own padding, and, because the row is `items-center`,
+     flex centres the MARGIN box, so the heading's text slides away from the
+     number beside it.
+
+     ⚠️ Measured, not guessed: applying the rule above without this moved the
+     "01" to 10.6px off the heading's centre on all three bands, which is
+     plainly visible and was introduced by a change whose entire purpose was to
+     improve typography. I checked the legal pages and the article body before
+     shipping that rule and did not check the Learn INDEX — the same "a shared
+     rule reached a consumer nobody checked" shape as CLAUDE.md 11c-iv, made
+     while fixing an instance of it.
+
+     ⚠️ SPECIFICITY, and the first attempt got it wrong in a way worth keeping.
+     `.reading .heading-flush` is (0,2,0) and beats `.reading h2` (0,1,1) — but
+     NOT `.reading h2:not(:first-child)`, because `:not()` contributes the
+     specificity of its argument, making that selector (0,2,1). So the
+     margin-bottom was cleared and the margin-top was not, and the misalignment
+     got WORSE (10.6px → 14.9px, exactly half of the 29.75px that survived).
+     Naming the element here lifts this to (0,2,1) and source order settles the
+     tie. A "no !important" win is only a win if you check which rule actually
+     applied — `getComputedStyle` said 29.75px while the stylesheet said 0.
+     Guarded by `learn.spec.ts`, which asserts the number stays centred on its
+     heading rather than asserting any particular margin. */
+  .reading h2.heading-flush,
+  .reading h3.heading-flush { margin-top: 0; margin-bottom: 0; }
+
   .reading strong { color: var(--text-primary); font-weight: 600; }
 
   .reading ul { margin: 1.1em 0 0; padding-left: 1.35em; list-style: disc; }

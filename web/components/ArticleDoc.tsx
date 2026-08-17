@@ -103,11 +103,29 @@ export function ArticleDoc({
 
           {/* THE ANSWER. Directly under the heading, before any prose, because
               that is the shape a search engine quotes and the shape a reader in
-              a hurry needs. The brand rule on the left edge is doing real work
-              here — it marks this as the answer rather than as the first
-              paragraph, and nothing else on an article page uses that device. */}
-          <div className="mt-6 border-l-2 border-[var(--brand-mid)] pl-4">
-            <p className="lead">{article.answer}</p>
+              a hurry needs.
+
+              ⚠️ **A PANEL, and at body size — owner decision, 2026-08-17.** It
+              was a bare 2px rule around `.lead` (17px), and the owner's note was
+              that it "reads too big". The instinct to reach for a size between
+              17 and 13 has to be refused: the public site has exactly FOUR sizes
+              (24/17/13/12), and inventing a fifth is precisely how a stray type
+              scale appeared once already (CLAUDE.md 11c-vi). So the EMPHASIS
+              moves off the type and onto the container — tinted ground, a 3px
+              brand rule, a full border — and the text drops to ordinary body
+              size in `--text-primary`.
+
+              The device is deliberately not new: it is the one the Methodology
+              modal already uses on the Stock Detail page
+              (`components/stocks/MethodologyModal.tsx`), which is where the
+              owner pointed. A reader who meets it in an article and again
+              inside the product should recognise it as the same thing.
+
+              Explicit px, not Tailwind steps — the root font-size is 14px, so
+              `px-3.5` computes to 12.25px rather than the 14 the design system
+              means. Same trap the card padding above documents. */}
+          <div className="mt-6 rounded-[var(--radius-sm)] border border-[var(--border)] border-l-[3px] border-l-[var(--brand-mid)] bg-[var(--bg-stripe)] px-[14px] py-[12px]">
+            <p className="text-[var(--text-primary)]">{article.answer}</p>
           </div>
 
           <LegalNotice className="mt-6" />

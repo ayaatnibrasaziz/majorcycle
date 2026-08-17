@@ -1409,6 +1409,21 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
     the fix is scoped to the `(app)` layout + `Sidebar` + `Header`, not a site-wide sweep.
   - Likely shape: a `md:` breakpoint that collapses the sidebar behind a hamburger and drops
     the header's left offset below it. Re-measure with the same probe afterwards.
+  - **Deferred here by the owner on 2026-08-17, from the `/learn` audit.** Measured, not
+    guessed, and none of it is overflow — every public page still clears 375px cleanly:
+    - **The public site has NO navigation between 375px and 900px.** `PublicHeader`'s nav is
+      `hidden min-[900px]:flex` and "Sign in" is `hidden min-[520px]:inline-flex`, so on a
+      phone *and on a tablet* the footer is the only route to Learn or Pricing. There is no
+      hamburger. Deliberate at the time; it is the gap this pass should close.
+    - **`/learn` band rhythm at 768–1023px.** Above 1024 the bands are two columns; below it
+      they stack, and each illustration then renders ~455px tall, so a tablet reader gets a
+      page that is roughly 45% picture. The images are fine; the breakpoint is doing nothing
+      between 768 and 1023.
+    - **Article rows are 37px tall** on the Learn index (`py-[9px]` on a 13px line), under the
+      44px touch guidance.
+  - ⚠️ **Owner decisions from that audit — do NOT re-propose:** the Learn index ships with one
+    written article against eleven "Coming soon" rows, and the public document type size stays
+    as it is. Both were raised, both were considered, both were settled.
 - [ ] Accessibility audit (axe-core)
 - [ ] Cross-browser test (Chrome, Safari, Firefox, mobile Safari)
 - [ ] Disclaimer copy review (ideally by AU fintech lawyer — owner's decision)

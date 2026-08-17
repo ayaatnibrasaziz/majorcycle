@@ -532,3 +532,95 @@ test.describe('the Learn library', () => {
     }
   });
 });
+
+/**
+ * Vertical rhythm, and the ONE lockup.
+ *
+ * Both suites here exist because of defects introduced on 2026-08-17 while
+ * IMPROVING the typography — which is the argument for them. A missing gap and a
+ * ten-pixel misalignment both render perfectly, throw nothing and look
+ * deliberate, so only something that measures the relationship can see them.
+ */
+test.describe('Learn typography and chrome', () => {
+  test('a section heading gets more room above it than two paragraphs get', async ({ page }) => {
+    await page.goto(ARTICLE_PATHS[0]!);
+    await ready(page);
+
+    const m = await page.evaluate(() => {
+      const scope = document.querySelector('[data-article-body]')!;
+      const kids = [...scope.querySelectorAll('h2, p')];
+      const gap = (a: Element, b: Element) =>
+        b.getBoundingClientRect().top - a.getBoundingClientRect().bottom;
+
+      let paragraphGap: number | null = null;
+      const headingGaps: number[] = [];
+      for (let i = 1; i < kids.length; i++) {
+        const prev = kids[i - 1]!;
+        const cur = kids[i]!;
+        if (cur.previousElementSibling !== prev) continue;
+        if (cur.tagName === 'H2') headingGaps.push(gap(prev, cur));
+        else if (prev.tagName === 'P' && paragraphGap === null) paragraphGap = gap(prev, cur);
+      }
+      return { paragraphGap, headingGaps };
+    });
+
+    // The control: if paragraphs are not spaced either, the stylesheet never
+    // loaded and every comparison below would be vacuous.
+    expect(m.paragraphGap, 'paragraphs are not spaced — nothing is styled').toBeGreaterThan(5);
+    expect(m.headingGaps.length, 'no heading followed prose — nothing was measured').toBeGreaterThan(0);
+
+    // A RELATIONSHIP, not a literal: this survives a type-scale change, which a
+    // hard-coded 29.75px would not. Before the fix every one of these was 0 —
+    // a heading had LESS room than two ordinary paragraphs.
+    for (const g of m.headingGaps) {
+      expect(g, `a heading has ${g}px above it vs ${m.paragraphGap}px between paragraphs`).toBeGreaterThan(
+        m.paragraphGap! * 1.5,
+      );
+    }
+  });
+
+  test('each topic number stays centred on its heading', async ({ page }) => {
+    await page.goto(LEARN_INDEX_PATH);
+    await ready(page);
+
+    const offsets = await page.evaluate(() =>
+      [...document.querySelectorAll('section h2')].map((h) => {
+        const num = h.parentElement!.firstElementChild!;
+        const mid = (e: Element) => {
+          const r = e.getBoundingClientRect();
+          return (r.top + r.bottom) / 2;
+        };
+        return +(mid(num) - mid(h)).toFixed(1);
+      }),
+    );
+
+    expect(offsets.length, 'no topic bands were measured').toBeGreaterThan(0);
+    // Adding prose margins to `.reading h2` threw this to 10.6px, then 14.9px
+    // when the opt-out lost a specificity contest to `:not(:first-child)`.
+    // 2px of tolerance for sub-pixel layout; the real values are 0.
+    for (const o of offsets) {
+      expect(Math.abs(o), `the topic number sits ${o}px off its heading's centre`).toBeLessThanOrEqual(2);
+    }
+  });
+
+  test('the brand lockup is ONE component, not two copies', async ({ page }) => {
+    // CLAUDE.md 11c-iv: extracting the shared piece is only half the job — the
+    // other half is that every consumer actually consumes it. The public header
+    // and the signed-in sidebar drifted on `leading-none`, `flex-shrink-0` and
+    // the gap precisely because each held its own copy.
+    for (const file of ['components/PublicHeader.tsx', 'components/Sidebar.tsx']) {
+      const src = readFileSync(join(__dirname, '..', file), 'utf8');
+      expect(src, `${file} should render <BrandLockup />`).toContain('BrandLockup');
+      expect(
+        src,
+        `${file} still hard-codes the wordmark — it must come from BrandLockup`,
+      ).not.toContain('Financial Terminal');
+    }
+
+    // And it really renders, on a real page — a source check alone would pass
+    // against a component that throws.
+    await page.goto(LEARN_INDEX_PATH);
+    await ready(page);
+    await expect(page.locator('[data-public-header] img[alt="MajorCycle logo"]')).toBeVisible();
+  });
+});

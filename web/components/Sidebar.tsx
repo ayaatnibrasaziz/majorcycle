@@ -1,11 +1,11 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { BarChart3, Compass, ListPlus, Lock, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { BrandLockup } from '@/components/BrandLockup';
 import { UpgradeDialog } from '@/components/UpgradeDialog';
 
 interface NavItem {
@@ -163,24 +163,14 @@ export function Sidebar({
       className="fixed top-0 left-0 w-[var(--sidebar-w)] h-screen bg-[var(--bg-sidebar)] border-r border-[var(--border)] flex flex-col z-[100] shadow-[var(--shadow-sm)]"
       aria-label="Main navigation"
     >
-      {/* Logo */}
-      <div className="flex items-center gap-[10px] px-[18px] h-[var(--header-h)] border-b border-[var(--border)] flex-shrink-0">
-        <Image
-          src="/logo.png"
-          alt="MajorCycle logo"
-          width={34}
-          height={34}
-          priority
-          className="w-[34px] h-[34px] rounded-[8px] flex-shrink-0 shadow-[0_2px_8px_rgba(30,92,179,.3)]"
-        />
-        <div>
-          <div className="text-[13px] font-bold text-[var(--brand-deep)] tracking-[-0.3px] leading-none">
-            MajorCycle
-          </div>
-          <div className="text-[9px] font-medium text-[var(--text-muted)] tracking-[0.8px] uppercase mt-[2px]">
-            Financial Terminal
-          </div>
-        </div>
+      {/* Logo — `BrandLockup`, the same component the public header renders.
+          It used to be this markup written out again, and the two copies drifted
+          on `leading-none`, `flex-shrink-0` and the gap, so the wordmark sat
+          differently inside the terminal than on the public site (owner,
+          2026-08-17). The mark's own flex row and 10px gap now live in the
+          component; this container keeps only the sidebar's chrome. */}
+      <div className="flex items-center px-[18px] h-[var(--header-h)] border-b border-[var(--border)] flex-shrink-0">
+        <BrandLockup />
       </div>
 
       {/* Nav: Analysis */}

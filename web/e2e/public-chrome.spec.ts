@@ -175,7 +175,6 @@ test.describe('the public chrome matches the approved design system', () => {
     ['header height', 'header', 'height', '58px'],
     ['header inner gap', 'header > div', 'gap', '22px'],
     ['header side padding', 'header > div', 'padding-left', '20px'],
-    ['lockup gap', 'header a', 'gap', '10px'],
     ['nav gap', 'header nav', 'gap', '2px'],
     ['nav link padding', 'header nav a', 'padding', '7px 11px'],
     ['footer padding', 'footer', 'padding', '30px 20px 36px'],
@@ -195,6 +194,33 @@ test.describe('the public chrome matches the approved design system', () => {
       expect(got, `${name}: the design system specifies ${expected}`).toBe(expected);
     });
   }
+
+  /**
+   * The lockup's 10px gap, measured as a DISTANCE rather than as a property on a
+   * named element.
+   *
+   * ⚠️ It used to be `['lockup gap', 'header a', 'gap', '10px']` in the table
+   * above, and it went red the day the lockup was extracted into `BrandLockup`
+   * — the gap moved from the <a> onto the component's own row and not one pixel
+   * changed on screen. That is the failure mode CLAUDE.md 11i-b names: a guard
+   * that asserts an IMPLEMENTATION breaks on refactors and quietly teaches you
+   * to loosen it. The design system specifies the SPACE BETWEEN THE MARK AND THE
+   * WORDMARK, so that is what this measures, and it now holds whichever element
+   * happens to carry the property.
+   */
+  test('the gap between the mark and the wordmark is 10px', async ({ page }) => {
+    await page.goto('/pricing', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('[data-public-header]');
+    const gap = await page.evaluate(() => {
+      const header = document.querySelector('[data-public-header]')!;
+      const logo = header.querySelector('img[alt="MajorCycle logo"]')!;
+      const word = [...header.querySelectorAll('span')].find(
+        (e) => e.textContent?.trim() === 'MajorCycle',
+      )!;
+      return +(word.getBoundingClientRect().left - logo.getBoundingClientRect().right).toFixed(2);
+    });
+    expect(gap, 'the design system specifies 10px between the mark and the wordmark').toBe(10);
+  });
 
   /**
    * ⚠️ This one guards a defect class, not a number.

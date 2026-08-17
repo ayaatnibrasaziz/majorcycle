@@ -1,7 +1,8 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
+
+import { BrandLockup } from './BrandLockup';
 import { usePathname } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -46,32 +47,13 @@ export function PublicHeader() {
   const pathname = usePathname() ?? '';
   const full = showsFullChrome(pathname);
 
-  const lockup = (
-    <>
-      <Image
-        src="/logo.png"
-        alt="MajorCycle logo"
-        width={34}
-        height={34}
-        priority
-        className="w-[34px] h-[34px] rounded-[8px] shadow-[0_2px_8px_rgba(30,92,179,0.3)] transition-transform group-hover:scale-[1.04]"
-      />
-      <span className="leading-none">
-        <span className="block text-[13px] font-bold text-[var(--brand-deep)] tracking-[-0.3px]">
-          MajorCycle
-        </span>
-        {/* 9px / --text-muted measures 2.69:1 and is a KNOWN deferred exemption in
-            e2e/contrast.spec.ts (design-system.md §14 assigns it to Layer H with
-            the rest of the sweep). Named there by its text, so it cannot quietly
-            cover a second element — do not add another 9px muted label here. */}
-        {/* No `font-mono`: the approved system and the app's own Sidebar both set
-            this in the UI face. It had picked up the mono family here alone. */}
-        <span className="hidden min-[520px]:block text-[9px] font-medium uppercase tracking-[0.8px] text-[var(--text-muted)] mt-[2px]">
-          Financial Terminal
-        </span>
-      </span>
-    </>
-  );
+  // ⚠️ The lockup is `BrandLockup`, shared with the signed-in Sidebar, and it is
+  // shared because a hand-maintained copy of it drifted: `leading-none` sat on
+  // the wrapper here and on the wordmark there, so the public site's two lines
+  // were tighter than the terminal's. Read either file alone and both look
+  // right — the defect existed only in the comparison, which is why the owner
+  // found it and review did not. Do not re-inline it "just to tweak one thing".
+  const lockup = <BrandLockup hideSubtitleOnNarrow interactive />;
 
   return (
     <header
@@ -92,7 +74,7 @@ export function PublicHeader() {
           trap that hung the landing's dark band 2.5px off-screen. */}
       <div className="h-full w-full max-w-[var(--measure-wide)] mx-auto px-[20px] flex items-center gap-[22px]">
         {full ? (
-          <Link href="/" className="flex items-center gap-[10px] group flex-none">
+          <Link href="/" className="group flex-none">
             {lockup}
           </Link>
         ) : (
@@ -100,7 +82,7 @@ export function PublicHeader() {
           // back by proxy.ts, and a control that visibly does nothing is worse
           // than no control — especially on the two pages a distressed reader
           // sees (a password reset in flight, an account being deleted).
-          <div className="flex items-center gap-2.5 flex-none">{lockup}</div>
+          <div className="flex-none">{lockup}</div>
         )}
 
         {full && (
