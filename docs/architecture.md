@@ -846,6 +846,52 @@ Guarded by five no-JS tests in `e2e/landing.spec.ts` (each with a length floor, 
 404 assertion in `e2e/learn.spec.ts`, which carries a "a real article still answers
 200" control.
 
+
+**And it cost nothing to remove — it paid.** The obvious worry after deleting a loading
+placeholder is that navigation now *feels* slower, so the two states were measured
+against each other on the production build under Chrome's own Slow 3G and Fast 3G
+profiles (`400 kbps / 2,000 ms` and `1.6 Mbps / 562 ms`), walking `/ → /learn → /pricing`
+and hard-loading four public pages. The result was the opposite of the worry:
+
+| Slow 3G — time to REAL content on a first load | without (now) | with the placeholder |
+|---|---|---|
+| `/` | **2.15s** | 6.24s |
+| `/learn` | **2.13s** | 6.01s |
+| `/terms` | **2.15s** | 6.02s |
+| `/pricing` | 2.14s | 2.14s |
+
+Removing the boundary made a first load reach real content **~3× sooner** on a slow
+connection (and 2.0s → 0.7s on Fast 3G). The mechanism is the same one that caused the
+no-JS defect: with the boundary, the page a reader wants arrives in a *second* chunk that
+only appears once the JavaScript has downloaded and executed — which is precisely what a
+slow connection is slow at. Without it, the real content is in the first HTML response.
+
+⚠️ **`/pricing` is the internal control, and it is the reason the comparison can be
+trusted.** It is identical in both builds — because it never suspended, so it never
+rendered the fallback. Same probe, same network, same run: only the pages that actually
+showed the placeholder got slower, which rules out "the second build was just slower".
+
+**Clicking a link inside the site is unchanged**, and this is the part that surprises:
+`/ → /learn` took 2.31s without the placeholder and 2.36s with it; `/learn → /pricing`
+4.32s versus 4.31s (Fast 3G: 0.72/0.71 and 1.26/1.24). In **neither** build did any
+busy indicator appear — the fallback never rendered on a client-side navigation at all.
+That was verified rather than assumed: a control drove a hard load with the placeholder
+restored and the same detector **found** it on screen at 2.1s, where it sat for 3.5
+seconds before the real content arrived. So the detector works, and its silence during
+clicks is a finding.
+
+> **The residual, stated plainly: on a genuinely slow connection a reader who clicks a
+> nav link sees nothing happen for 2–4 seconds.** No spinner, no URL change — React
+> holds the current page until the next one is ready. This is **pre-existing** and was
+> not introduced by the deletion (the numbers above are within noise of each other), so
+> it is a separate improvement, not a regression to repair. If it is ever worth closing,
+> the fix is `useLinkStatus()` from `next/link` (available in the installed 16.2.6) to
+> show pending state **on the link itself**: it is client-only progressive enhancement
+> and creates no Suspense boundary, so it cannot bring back either defect above.
+> ⚠️ **A `loading.tsx` scoped to `app/(public)/` is NOT an option** — `/learn/[slug]`
+> calls `notFound()` and all four no-JS pages live under that group, so it would
+> reintroduce both defects on exactly the routes where they were found.
+
 ### 7.2b Signed-out trial flow, and why signup comes first
 
 Checkout needs a session (the webhook maps Stripe → our user by an id in the subscription
