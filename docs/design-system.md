@@ -1261,6 +1261,39 @@ Subtle, fast, purposeful. No bouncy easings.
 
 Use `prefers-reduced-motion` to disable on user request.
 
+### The three Learn skies must match — RE-TINTED 2026-08-18
+
+All three illustrations share one sky family: a cool blue-white. The measurement
+that defines it is the **blue cast**, `B − R` on the sky band, and the distance of
+that sky from `--bg-page` (`#F0F4F8`):
+
+| Image | Sky | Blue cast | Distance from page bg |
+|---|---|---|---|
+| 1 · Falls and recoveries | `#ECF5F9` | +13 | 4 |
+| 2 · Judging the business | `#E6F0F9` | +19 | 11 |
+| 3 · Using MajorCycle | `#ECF5F9` | +13 | 4 |
+
+⚠️ **Image 3 was grey for two days and no check could see it.** The 2026-08-16 edit
+that pulled its background toward `--bg-page` (to stop it reading as a panel) also
+stripped the blue: it went to `#F1F0F3`, a cast of **+2** against its siblings' +13
+and +19 — effectively neutral. Nothing errored, no guard covers image colour, and
+each picture looks fine **on its own**. The owner found it by comparing the three,
+which is the only way it is visible at all. Same shape as the brand-lockup drift:
+*the defect existed only in the comparison.*
+
+**The fix, and why it is not a trade-off.** Image 1 proves a sky can be both properly
+blue **and** the closest of the three to the page background — so image 3 was
+re-tinted to image 1's exact sky rather than reverted to its own original
+(`#E1EBF6`, cast +21, distance **18**, which is what made it read as a panel).
+Applied as a lightness-ramped shift (no effect below L 0.55, full above 0.90), so
+**400,975 navy and teal pixels came out byte-identical** — asserted, not assumed.
+Verified in the browser by decoding the URL the page actually loaded, not by
+reading the file on disk (Next caches optimised images per `Accept` header).
+
+⚠️ **Regenerating or re-editing any of these is a CONTENT change.** Re-measure all
+three skies afterwards and compare them to each other — a single image that looks
+right in isolation is exactly what this defect looked like.
+
 ### Scroll-reveal on the landing page — BUILT 2026-08-15
 
 Three moments, all on `/`, all specified by the approved storyboard: the **ruler fills**
@@ -1524,33 +1557,6 @@ Wording must include: "Information only", "Not financial advice", "Past performa
 The reference HTML uses old labels (STRONG BUY etc.). The new build uses the labels defined in section 4. **Everything else** in the reference is canonical: layouts, sizes, colours, spacing, tooltips, hover behaviour.
 
 If you find another conflict during build, surface it. Don't silently choose.
-
-### The link pending hint — BUILT 2026-08-18 (`.link-hint`)
-
-A 5px dot in `currentColor`, 6px after the label, inside **every** public link: the
-three header nav links, both header call-to-action buttons, and all eight footer
-links. It marks the link a reader just clicked while the next page is being fetched.
-
-| Property | Value | Why |
-|---|---|---|
-| Size | `5px` circle, `margin-left: 6px` | Small enough to read as punctuation, not a control |
-| Colour | `currentColor` | Inherits the link's own colour, so it works on the navy primary button and on `--text-secondary` nav links without a second token |
-| Resting state | `opacity: 0; visibility: hidden` | **Always rendered.** Reserving the space means a click never reflows the nav — the one moment the reader is looking straight at it |
-| Appears after | `120ms` | The debounce. A navigation that resolves sooner shows nothing at all; a spinner that flashes on a fast click reads as jank |
-| Visible opacity | `0.75`, pulsing to `0.3` at 1s | Present without competing with the label |
-
-Measured on the production build: visible **190-235ms** after the click, against page
-arrivals of 667ms to 5,711ms.
-
-⚠️ **The `prefers-reduced-motion` rule is written out, not inherited.** `globals.css`
-forces `animation-duration: 0.01ms !important` globally, which would run this hint's
-*infinite* pulse at 0.01ms per cycle. Under that query the pulse is dropped and the dot
-simply becomes visible; the debounce survives as `transition-delay`, a property the
-global rule does not override. A reader who asks for less motion still gets the
-feedback.
-
-Behaviour, the guard, and why a route-level `loading.tsx` is the wrong tool here:
-`architecture.md` §7.2 and `components/LinkPending.tsx`.
 
 ### Run Analysis tab — intentional layout deviation (Layer D, owner-approved)
 

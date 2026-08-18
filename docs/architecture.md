@@ -893,48 +893,41 @@ clicks is a finding.
 > reintroduce both defects on exactly the routes where they were found.
 
 
-**What replaced it: feedback on the LINK, not a fallback on the route.** Removing the
-placeholder left one real gap — a reader on a slow connection who clicks a nav link
-sees the page sit unchanged for 2-4s, and Next's own documentation names that exact
-case: *"When navigating to a dynamic route, the client must wait for the server
-response before showing the result. This can give the users the impression that the
-app is not responding."* `components/LinkPending.tsx` closes it with `useLinkStatus()`
-(from `next/link`, available since 15.3; we are on 16.2.6), rendered inside every
-header nav link, both header call-to-action buttons and every footer link.
+**A link-level pending dot was built and then REMOVED — owner decision, 2026-08-18.**
+Removing the placeholder left one gap: a reader on a slow connection who clicks a nav
+link sees the page sit unchanged for 2-4s, and Next's own docs name that exact case.
+The documented answer is `useLinkStatus()` from `next/link`, so `LinkPending` was built:
+a 5px dot inside each public link, measured visible **190-235ms** after a click.
 
-Why this and not the obvious thing:
+**The owner rejected it on sight — "doesn't look nice when it appears beside the text"
+— and they were right twice over.** ⚠️ **It also had a real defect they spotted as a
+layout problem, not a behavioural one:** the hint carried its own `margin-left: 6px`
+*on top of* `Button`'s existing `gap: 7px`, so both header call-to-action buttons grew
+by **18px each** (Sign in 87→105, Create free account 178→196). What the owner saw was
+"a lot of space on the right hand side" of the buttons; what it was, was my margin
+stacked on somebody else's flex gap. **When adding a child to a flex container, the
+container may already be spacing it** — measure the parent before reaching for a
+margin.
 
-| | `loading.tsx` (removed) | `useLinkStatus` (now) |
-|---|---|---|
-| Feedback on click | none, measured — it never rendered on a client-side navigation at all | dot visible **~200ms** after the click |
-| Soft-404 | every `notFound()` answered 200 | untouched — creates no Suspense boundary |
-| Without JavaScript | four pages showed only "Loading…" | untouched — the hint is inert decoration |
-| First load, Slow 3G | 6.2s to real content | 2.2s |
+⚠️ **And the reason the dot was barely needed anymore is §7.2c below:** prerendering
+the public pages took the same click from 674ms to **77ms**, which is under the dot's
+own 120ms debounce — it would have stayed invisible on any decent connection. The
+honest ordering is that the speed fix removed most of the need for the feedback fix.
 
-Measured after the change, production build: the pending class is set **39-112ms**
-after the click and the dot reaches a visible opacity at **190-235ms**, against page
-arrivals of 667ms (Fast 3G) to 5,711ms (Slow 3G, "Create free account" — the slowest
-link on the site, because `/login` and `/signup` are `force-dynamic` and therefore
-never prefetched).
+The knowledge is worth keeping even though the code is gone:
 
-⚠️ **It fails silently, and that is the whole reason `e2e/link-pending.spec.ts`
-exists.** `useLinkStatus()` reads context that `<Link>` provides; called anywhere that
-is not a **descendant** of a Link it returns `{ pending: false }` for ever — no error,
-no warning, and visually indistinguishable from "that navigation was just fast".
-Proven by breaking it on purpose: moving `<LinkPending />` from inside the Link to
-immediately outside it still compiled, still typechecked, still navigated in 702ms,
-and the dot never appeared (peak opacity 0.000). The guard therefore asserts both the
-structure (the hint is a descendant of each link) and the behaviour (on a throttled
-click the computed opacity really rises), plus a control that at rest every hint is
-opacity 0 — without which "visible" could be satisfied by a permanent smudge.
+- `useLinkStatus()` **fails silently** — it returns `{ pending: false }` for ever
+  unless called from a **descendant** of its `<Link>`. No error, no warning, and
+  indistinguishable from a fast navigation. Proven by breaking it: still compiled,
+  still typechecked, navigated in 702ms, dot never appeared (peak opacity 0.000).
+- `globals.css` forces `animation-duration: 0.01ms !important` under
+  `prefers-reduced-motion`. Harmless for a fade, pathological for an **infinite**
+  pulse — so any such indicator must write its own reduce-motion rule rather than
+  inherit that one.
 
-⚠️ **The reduce-motion path is written out explicitly rather than inherited.**
-`globals.css` forces `animation-duration: 0.01ms !important` on everything under
-`prefers-reduced-motion`, which is harmless for the fade but pathological for a pulse
-with an *infinite* iteration count. Under that query the pulse is dropped and the dot
-simply becomes visible; the 120ms debounce survives as `transition-delay`, which the
-global rule does not touch because it overrides `transition-duration`, a different
-property.
+**If click feedback is ever wanted again, do not put it inside the link.** A thin
+progress bar across the top of the viewport is the pattern that does not touch the
+control's own box, and therefore cannot repeat the 18px defect.
 
 ### 7.2b Signed-out trial flow, and why signup comes first
 

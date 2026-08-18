@@ -1660,69 +1660,6 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 .skipped-pill--muted { background: var(--bg-stripe); color: var(--text-muted); }
 
 
-/* ── Link pending hint (components/LinkPending.tsx) ───────────────────────────
-   A dot inside the link a reader just clicked, shown while the next page is
-   fetched. Public routes are dynamic with no loading.tsx, so a click on a slow
-   connection can leave the page unchanged for seconds; this is the feedback that
-   says "yes, that worked". Full reasoning in LinkPending.tsx.
-
-   ⚠️ ALWAYS RENDERED, never conditionally mounted, and the space is reserved with
-   `visibility` rather than `display`. An indicator that appears by being inserted
-   reflows the nav on every click — the one moment a reader is looking straight at
-   it. Nothing here changes layout; only paint. */
-.link-hint {
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  margin-left: 6px;
-  border-radius: 9999px;
-  background: currentColor;
-  vertical-align: middle;
-  flex: none;
-  opacity: 0;
-  visibility: hidden;
-}
-
-/* ⚠️ The 120ms DELAY is the whole design, not a detail. A navigation that
-   completes quickly must never flash a spinner — that reads as jank, and the
-   fast case is the common one. The dot starts invisible and the animation only
-   begins after 120ms, so a click that resolves sooner shows nothing at all. */
-.link-hint.is-pending {
-  visibility: visible;
-  animation-name: linkHintIn, linkHintPulse;
-  animation-duration: 180ms, 1000ms;
-  animation-delay: 120ms, 120ms;
-  animation-timing-function: ease, ease-in-out;
-  animation-iteration-count: 1, infinite;
-  animation-fill-mode: forwards, none;
-}
-
-@keyframes linkHintIn {
-  to { opacity: 0.75; }
-}
-@keyframes linkHintPulse {
-  50% { opacity: 0.3; }
-}
-
-/* ⚠️ This block is REQUIRED, and inheriting the global reduce-motion rule would
-   have been a real bug rather than a style nit. That rule forces
-   `animation-duration: 0.01ms !important` on everything — which is fine for the
-   fade (fill-mode: forwards still lands on the final opacity) but pathological
-   for the pulse, an INFINITE iteration count running at 0.01ms per cycle. So the
-   pulse is dropped and the dot simply becomes visible.
-
-   The debounce survives as `transition-delay`, which the global rule does not
-   touch — it overrides `transition-duration`, a different property. A reader who
-   asks for less motion still gets the feedback; they just get it without the
-   throb. */
-@media (prefers-reduced-motion: reduce) {
-  .link-hint.is-pending {
-    animation: none;
-    opacity: 0.75;
-    transition: opacity 150ms;
-    transition-delay: 120ms;
-  }
-}
 
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {

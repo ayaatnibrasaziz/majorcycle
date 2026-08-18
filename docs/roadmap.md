@@ -1421,23 +1421,24 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
       between 768 and 1023.
     - **Article rows are 37px tall** on the Learn index (`py-[9px]` on a 13px line), under the
       44px touch guidance.
-  - ✅ **Click feedback on public links — CLOSED 2026-08-18, not deferred.** Raised here
+  - ✅ **Public-link navigation speed — CLOSED 2026-08-18, not deferred.** Raised here
     as a Layer H item and then fixed the same day, because the owner's framing was that
     a reader staring at an unchanged screen assumes the site is broken and leaves.
-    Two complementary changes, both measured on the production build:
-    - **`LinkPending` (`useLinkStatus`)** puts a pulsing dot in the clicked link:
-      visible **190-235ms** after the click, against page arrivals of 667ms to 5,711ms.
-      Guarded by `e2e/link-pending.spec.ts` (structure + behaviour + a resting control),
-      broken on purpose first — the hook returns a permanent `false` when misused, with
-      no error at all.
+    Two attempts, one kept, both measured on the production build:
+    - ⛔ **A pulsing dot inside each link was built and REMOVED the same day** — the
+      owner rejected the look, and it had also inflated both header buttons by 18px
+      (its own margin stacked on `Button`'s existing flex gap). Full account, and what
+      to do instead if feedback is ever wanted, in `architecture.md` §7.2.
     - **The public pages are now prerendered**, which is the actual speed fix: a click
       on `Learn` fell from **674ms to 77ms** on Fast 3G once the route could be fully
       prefetched. Cause was one session read in `app/not-found.tsx`; see
       `architecture.md` §7.2c for the security review and the four pages that must
       stay dynamic. Guarded by `pnpm check:render-modes`.
-    - ⚠️ Still true on a genuinely bad connection (Slow 3G, ~50 KB/s): the click costs
-      ~2.4s, because the destination's JavaScript has not arrived yet. That is what the
-      dot is for, and it is the residual — it is a network floor, not a code defect.
+    - ⚠️ **Residual, accepted:** on a genuinely bad connection (Slow 3G, ~50 KB/s) the
+      click still costs ~2.4s, because the destination's JavaScript has not arrived
+      yet, and there is now no indicator during that wait. That is a network floor
+      rather than a code defect, and the owner has seen the alternative and declined
+      it. If it is ever revisited, use a top progress bar, not anything inside the link.
   - ⚠️ **Owner decisions from that audit — do NOT re-propose:** the Learn index ships with one
     written article against eleven "Coming soon" rows, and the public document type size stays
     as it is. Both were raised, both were considered, both were settled.
