@@ -1659,8 +1659,6 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 .skipped-pill--bad { background: color-mix(in srgb, var(--c-tier-5) 12%, transparent); color: var(--c-tier-5); }
 .skipped-pill--muted { background: var(--bg-stripe); color: var(--text-muted); }
 
-
-
 /* Reduce motion */
 @media (prefers-reduced-motion: reduce) {
   *,

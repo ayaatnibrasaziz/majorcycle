@@ -343,7 +343,9 @@ These were agreed during planning. Do not relitigate.
 - Where personal data lives, and what survives account deletion → `architecture.md` §6.6
 - The ONE brand lockup (mark + wordmark + subtitle), shared by the public header and the signed-in sidebar → `components/BrandLockup.tsx`
 - Heading rhythm in prose, and the `.heading-flush` opt-out for a heading used as a label → `design-system.md` §11 + `globals.css` (`.reading h2`)
-- Why there is no root `loading.tsx`, why `/login` + `/signup` are `force-dynamic`, and what replaced the placeholder (`LinkPending` + `useLinkStatus`) → `architecture.md` §7.2
+- Why there is no root `loading.tsx`, why `/login` + `/signup` are `force-dynamic`, and why a link-level pending dot was built and rolled back → `architecture.md` §7.2
+- Why every public page is PRERENDERED, which four must never be, and the `s-maxage` finding that came with it → `architecture.md` §7.2c + `pnpm check:render-modes`
+- The three Learn skies, and why image 3 is the untouched original → `design-system.md`
 
 ---
 

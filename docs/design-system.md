@@ -1261,38 +1261,47 @@ Subtle, fast, purposeful. No bouncy easings.
 
 Use `prefers-reduced-motion` to disable on user request.
 
-### The three Learn skies must match — RE-TINTED 2026-08-18
+### The three Learn skies — and why image 3 is the UNTOUCHED original (2026-08-18)
 
-All three illustrations share one sky family: a cool blue-white. The measurement
-that defines it is the **blue cast**, `B − R` on the sky band, and the distance of
-that sky from `--bg-page` (`#F0F4F8`):
+All three illustrations share one sky family: a cool blue-white. The measurement is
+the **blue cast**, `B − R` on the sky band, plus that sky's distance from
+`--bg-page` (`#F0F4F8`):
 
-| Image | Sky | Blue cast | Distance from page bg |
-|---|---|---|---|
-| 1 · Falls and recoveries | `#ECF5F9` | +13 | 4 |
-| 2 · Judging the business | `#E6F0F9` | +19 | 11 |
-| 3 · Using MajorCycle | `#ECF5F9` | +13 | 4 |
+| Image | Sky | Blue cast | Distance from page bg | Provenance |
+|---|---|---|---|---|
+| 1 · Falls and recoveries | `#ECF5F9` | +13 | 4 | untouched |
+| 2 · Judging the business | `#E6F0F9` | +19 | 11 | untouched |
+| 3 · Using MajorCycle | `#E2ECF6` | +20 | 16 | **untouched** |
 
-⚠️ **Image 3 was grey for two days and no check could see it.** The 2026-08-16 edit
-that pulled its background toward `--bg-page` (to stop it reading as a panel) also
-stripped the blue: it went to `#F1F0F3`, a cast of **+2** against its siblings' +13
-and +19 — effectively neutral. Nothing errored, no guard covers image colour, and
-each picture looks fine **on its own**. The owner found it by comparing the three,
-which is the only way it is visible at all. Same shape as the brand-lockup drift:
-*the defect existed only in the comparison.*
+**All three are now the raw generated images. No colour editing survives on any of
+them, and that is the point.**
 
-**The fix, and why it is not a trade-off.** Image 1 proves a sky can be both properly
-blue **and** the closest of the three to the page background — so image 3 was
-re-tinted to image 1's exact sky rather than reverted to its own original
-(`#E1EBF6`, cast +21, distance **18**, which is what made it read as a panel).
-Applied as a lightness-ramped shift (no effect below L 0.55, full above 0.90), so
-**400,975 navy and teal pixels came out byte-identical** — asserted, not assumed.
-Verified in the browser by decoding the URL the page actually loaded, not by
-reading the file on disk (Next caches optimised images per `Accept` header).
+⚠️ **The history is worth keeping, because two edits were made and both were wrong.**
+On 2026-08-16 image 3's background was shifted toward `--bg-page` because it read as
+a visible panel on the page. That shift also **stripped its blue** — it went to
+`#F1F0F3`, a cast of **+2** against its siblings' +13 and +19, i.e. grey. No guard
+covers image colour, and each picture looks fine *on its own*; the owner found it only
+by comparing the three. On 2026-08-18 it was re-tinted to image 1's exact sky, which
+fixed the colour and cost a little fidelity (193 of 31,717 distinct colours, 0.6%) for
+a defect that was mine to begin with.
 
-⚠️ **Regenerating or re-editing any of these is a CONTENT change.** Re-measure all
-three skies afterwards and compare them to each other — a single image that looks
-right in isolation is exactly what this defect looked like.
+**The owner's call, and it was the right one: put the original back.** The shipped
+crop is recoverable from the master exactly — `extract({ left: 0, top: 116, width:
+5056, height: 3160 })` then `resize(1600, 1000)`, established by scoring three
+candidate crops against the shipped file on dark pixels only (centred **0.83** mean
+absolute difference out of 255, against 23.5 top-aligned and 12.8 bottom-aligned). So
+image 3 is now regenerated straight from `reference/learn-masters/`, never
+colour-edited and never re-encoded from an edited file. At +20 it sits **closer to
+image 2 (+19) than any edited version ever did.**
+
+⚠️ **The residual, accepted knowingly:** image 3's sky is 16 from `--bg-page` against
+image 2's 11, so it has slightly more edge against the page than its siblings. That is
+the thing the 2026-08-16 edit set out to remove, and two attempts at removing it cost
+more than it did. **Fidelity beat blending.**
+
+⚠️ **If any of these is ever regenerated or re-edited, re-measure all three skies and
+compare them TO EACH OTHER.** A single image that looks right in isolation is exactly
+what this defect looked like for two days.
 
 ### Scroll-reveal on the landing page — BUILT 2026-08-15
 

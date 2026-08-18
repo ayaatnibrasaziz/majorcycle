@@ -884,10 +884,8 @@ clicks is a finding.
 > nav link sees nothing happen for 2–4 seconds.** No spinner, no URL change — React
 > holds the current page until the next one is ready. This is **pre-existing** and was
 > not introduced by the deletion (the numbers above are within noise of each other), so
-> it is a separate improvement, not a regression to repair. If it is ever worth closing,
-> the fix is `useLinkStatus()` from `next/link` (available in the installed 16.2.6) to
-> show pending state **on the link itself**: it is client-only progressive enhancement
-> and creates no Suspense boundary, so it cannot bring back either defect above.
+> it is a separate improvement, not a regression to repair. **It was attempted and
+> rolled back the same day — see the next section before proposing it again.**
 > ⚠️ **A `loading.tsx` scoped to `app/(public)/` is NOT an option** — `/learn/[slug]`
 > calls `notFound()` and all four no-JS pages live under that group, so it would
 > reintroduce both defects on exactly the routes where they were found.
