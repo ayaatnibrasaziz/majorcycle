@@ -892,6 +892,65 @@ clicks is a finding.
 > calls `notFound()` and all four no-JS pages live under that group, so it would
 > reintroduce both defects on exactly the routes where they were found.
 
+
+**What replaced it: feedback on the LINK, not a fallback on the route.** Removing the
+placeholder left one real gap — a reader on a slow connection who clicks a nav link
+sees the page sit unchanged for 2-4s, and Next's own documentation names that exact
+case: *"When navigating to a dynamic route, the client must wait for the server
+response before showing the result. This can give the users the impression that the
+app is not responding."* `components/LinkPending.tsx` closes it with `useLinkStatus()`
+(from `next/link`, available since 15.3; we are on 16.2.6), rendered inside every
+header nav link, both header call-to-action buttons and every footer link.
+
+Why this and not the obvious thing:
+
+| | `loading.tsx` (removed) | `useLinkStatus` (now) |
+|---|---|---|
+| Feedback on click | none, measured — it never rendered on a client-side navigation at all | dot visible **~200ms** after the click |
+| Soft-404 | every `notFound()` answered 200 | untouched — creates no Suspense boundary |
+| Without JavaScript | four pages showed only "Loading…" | untouched — the hint is inert decoration |
+| First load, Slow 3G | 6.2s to real content | 2.2s |
+
+Measured after the change, production build: the pending class is set **39-112ms**
+after the click and the dot reaches a visible opacity at **190-235ms**, against page
+arrivals of 667ms (Fast 3G) to 5,711ms (Slow 3G, "Create free account" — the slowest
+link on the site, because `/login` and `/signup` are `force-dynamic` and therefore
+never prefetched).
+
+⚠️ **It fails silently, and that is the whole reason `e2e/link-pending.spec.ts`
+exists.** `useLinkStatus()` reads context that `<Link>` provides; called anywhere that
+is not a **descendant** of a Link it returns `{ pending: false }` for ever — no error,
+no warning, and visually indistinguishable from "that navigation was just fast".
+Proven by breaking it on purpose: moving `<LinkPending />` from inside the Link to
+immediately outside it still compiled, still typechecked, still navigated in 702ms,
+and the dot never appeared (peak opacity 0.000). The guard therefore asserts both the
+structure (the hint is a descendant of each link) and the behaviour (on a throttled
+click the computed opacity really rises), plus a control that at rest every hint is
+opacity 0 — without which "visible" could be satisfied by a permanent smudge.
+
+⚠️ **The reduce-motion path is written out explicitly rather than inherited.**
+`globals.css` forces `animation-duration: 0.01ms !important` on everything under
+`prefers-reduced-motion`, which is harmless for the fade but pathological for a pulse
+with an *infinite* iteration count. Under that query the pulse is dropped and the dot
+simply becomes visible; the 120ms debounce survives as `transition-delay`, which the
+global rule does not touch because it overrides `transition-duration`, a different
+property.
+
+> **The larger speed finding, NOT applied — owner's call.** Every public page is
+> server-rendered on demand (`ƒ`), and the cause is `app/not-found.tsx`: it is an async
+> component calling `supabase.auth.getUser()`, and the root not-found boundary sits in
+> every route's tree. Proven by experiment — swapping in a static not-found makes `/`,
+> `/contact`, `/disclaimer`, `/learn`, `/privacy` and `/terms` all build as `○`
+> prerendered. It matters because of how prefetching works: *"Static Route: the full
+> route is prefetched. Dynamic Route: prefetching is skipped."* Measured on our own
+> pages, the prefetch payload for `/learn` is **210 bytes dynamic against 667 static**,
+> and the resulting click costs **674ms against 109ms** on Fast 3G. The cost of taking
+> it is that a signed-in reader hitting a bad URL would get the same 404 as everybody
+> else, which is a deliberate feature today (`auth.spec.ts` guards it). Worth doing,
+> but it trades a product behaviour for speed and changes public pages into
+> shared-cached responses — the CLAUDE.md 11a family — so it is not a change to make
+> quietly.
+
 ### 7.2b Signed-out trial flow, and why signup comes first
 
 Checkout needs a session (the webhook maps Stripe → our user by an id in the subscription

@@ -43,6 +43,33 @@ const iso = (offsetMs: number) => new Date(Date.now() + offsetMs).toISOString();
 const TICKER = 'AAPL';
 const DETAIL = `/stocks/us/${TICKER}`;
 
+/**
+ * ⚠️ Every `page.goto(DETAIL)` here uses `waitUntil: 'domcontentloaded'`, and that
+ * is a MEASURED decision, not a way of making a slow test pass.
+ *
+ * These tests were flaky roughly 1 run in 3, timing out at the 45s
+ * `navigationTimeout` (GA-3). The cause was found by timing the pieces rather
+ * than by adjusting the limit:
+ *
+ *   • the page's BLOCKING work — stock row, sector medians, entitlement — is ~2s;
+ *   • the cycle sections stream in behind `<Suspense>`, and under `next dev` that
+ *     means SPAWNING PYTHON as a CLI (`lib/cycle.ts`, dev-only): measured at
+ *     **13.4s, 17.6s and 20.0s** across three runs, of which 4.6s is interpreter
+ *     start plus the pandas/numpy imports, the rest being two Supabase round trips
+ *     made from Australia to a us-east-1 database.
+ *
+ * `waitUntil: 'load'` waits for that whole stream, which is how a page whose real
+ * work finishes in 2s produced runs of 17.4 / 20.7 / 21.0 / 21.3s and, once, 37.7s
+ * against a 45s ceiling. **None of it exists in production**, where `/api/cycle` is
+ * a warm serverless function sitting ~10-20ms from the database.
+ *
+ * This is not a weaker wait. `Current Drawdown` is rendered by `KpiStrip` INSIDE
+ * the Suspense boundary, so every assertion below still blocks until the streamed
+ * cycle content has actually arrived — a POSITIVE signal naming the thing the test
+ * depends on, rather than `load`'s blanket wait on resources it never inspects
+ * (CLAUDE.md 11q). The decisive `page.content()` check runs after all of them.
+ */
+
 let admin: SupabaseClient;
 let userId: string;
 /**
@@ -309,7 +336,7 @@ test.describe('entitlement enforcement across subscription states', () => {
   }) => {
     test.setTimeout(180_000);
     await setState({ subscription_status: null });
-    await page.goto(DETAIL);
+    await page.goto(DETAIL, { waitUntil: 'domcontentloaded' });
 
     // The free half is present — this is a real page, not a wall.
     await expect(page.getByText('Current Drawdown').first()).toBeVisible({ timeout: 60_000 });
@@ -347,7 +374,7 @@ test.describe('entitlement enforcement across subscription states', () => {
   test('an ACTIVE subscriber sees the scored values on the same page', async ({ page }) => {
     test.setTimeout(180_000);
     await setState({ subscription_status: 'active' });
-    await page.goto(DETAIL);
+    await page.goto(DETAIL, { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByText('Current Drawdown').first()).toBeVisible({ timeout: 60_000 });
     // The counterpart of the assertion above — proves the free render was a real gate
@@ -591,7 +618,7 @@ test.describe('entitlement enforcement across subscription states', () => {
       free_views_date: today,
       free_views_tickers: full,
     });
-    await page.goto(DETAIL);
+    await page.goto(DETAIL, { waitUntil: 'domcontentloaded' });
     await expect(page.getByText(/daily browsing limit reached/i)).toBeVisible();
 
     // The same ticker, now already in today's set → still opens. This is what makes
@@ -601,7 +628,7 @@ test.describe('entitlement enforcement across subscription states', () => {
       free_views_date: today,
       free_views_tickers: [...full, TICKER],
     });
-    await page.goto(DETAIL);
+    await page.goto(DETAIL, { waitUntil: 'domcontentloaded' });
     await expect(page.getByText(/daily browsing limit reached/i)).toHaveCount(0);
     await expect(page.getByText('Current Drawdown').first()).toBeVisible({ timeout: 60_000 });
   });
@@ -615,7 +642,7 @@ test.describe('entitlement enforcement across subscription states', () => {
       free_views_date: new Date().toISOString().slice(0, 10),
       free_views_tickers: Array.from({ length: 99 }, (_, i) => `FILLER${i}`),
     });
-    await page.goto(DETAIL);
+    await page.goto(DETAIL, { waitUntil: 'domcontentloaded' });
     await expect(page.getByText(/daily browsing limit reached/i)).toHaveCount(0);
     await expect(page.getByText('Current Drawdown').first()).toBeVisible({ timeout: 60_000 });
   });

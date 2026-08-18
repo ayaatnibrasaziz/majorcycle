@@ -3,6 +3,7 @@
 import Link from 'next/link';
 
 import { BrandLockup } from './BrandLockup';
+import { LinkPending } from './LinkPending';
 import { usePathname } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -102,6 +103,10 @@ export function PublicHeader() {
                     }`}
                   >
                     {l.label}
+                    {/* Descendant of the Link, never a sibling — the hook reads
+                        the Link's own context and returns a permanent `false`
+                        anywhere else, with no error to tell you. */}
+                    <LinkPending />
                   </Link>
                 );
               })}
@@ -122,12 +127,23 @@ export function PublicHeader() {
                     pathname === '/signup' ? '' : 'hidden min-[520px]:inline-flex'
                   }`}
                 >
-                  <Link href="/login">Sign in</Link>
+                  <Link href="/login">
+                    Sign in
+                    <LinkPending />
+                  </Link>
                 </Button>
               )}
               {pathname !== '/signup' && (
+                // ⚠️ The two CTAs matter MORE than the nav links here, not less:
+                // /login and /signup are `force-dynamic`, so they are never
+                // prefetched and every click pays a full server round trip. A
+                // reader pressing "Create free account" on a poor connection and
+                // seeing nothing happen is a lost signup, not a cosmetic gap.
                 <Button asChild variant="primary" className={HEADER_BTN}>
-                  <Link href="/signup">Create free account</Link>
+                  <Link href="/signup">
+                    Create free account
+                    <LinkPending />
+                  </Link>
                 </Button>
               )}
             </div>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { LinkPending } from './LinkPending';
 import { FOOTER_LINKS, showsFullChrome } from '@/lib/publicNav';
 
 /**
@@ -42,6 +43,12 @@ export function PublicFooter({ year }: { year: number }) {
               className="text-[length:var(--rd-small)] font-medium text-[var(--text-secondary)] hover:text-[var(--brand-mid)] transition-colors"
             >
               {l.label}
+              {/* The footer gets the same affordance as the header on purpose.
+                  Giving a shared behaviour to one of its two consumers and not
+                  the other is the exact defect CLAUDE.md 11c (iv) records — the
+                  footer was the component that missed `showsFullChrome`, on this
+                  very file. Same links, same waiting, same feedback. */}
+              <LinkPending />
             </Link>
           ))}
         </nav>

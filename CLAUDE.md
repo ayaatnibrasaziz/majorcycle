@@ -341,7 +341,7 @@ These were agreed during planning. Do not relitigate.
 - Where personal data lives, and what survives account deletion → `architecture.md` §6.6
 - The ONE brand lockup (mark + wordmark + subtitle), shared by the public header and the signed-in sidebar → `components/BrandLockup.tsx`
 - Heading rhythm in prose, and the `.heading-flush` opt-out for a heading used as a label → `design-system.md` §11 + `globals.css` (`.reading h2`)
-- Why there is no root `loading.tsx`, and why `/login` + `/signup` are `force-dynamic` → `architecture.md` §7.2
+- Why there is no root `loading.tsx`, why `/login` + `/signup` are `force-dynamic`, and what replaced the placeholder (`LinkPending` + `useLinkStatus`) → `architecture.md` §7.2
 
 ---
 

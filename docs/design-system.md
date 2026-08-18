@@ -1525,6 +1525,33 @@ The reference HTML uses old labels (STRONG BUY etc.). The new build uses the lab
 
 If you find another conflict during build, surface it. Don't silently choose.
 
+### The link pending hint — BUILT 2026-08-18 (`.link-hint`)
+
+A 5px dot in `currentColor`, 6px after the label, inside **every** public link: the
+three header nav links, both header call-to-action buttons, and all eight footer
+links. It marks the link a reader just clicked while the next page is being fetched.
+
+| Property | Value | Why |
+|---|---|---|
+| Size | `5px` circle, `margin-left: 6px` | Small enough to read as punctuation, not a control |
+| Colour | `currentColor` | Inherits the link's own colour, so it works on the navy primary button and on `--text-secondary` nav links without a second token |
+| Resting state | `opacity: 0; visibility: hidden` | **Always rendered.** Reserving the space means a click never reflows the nav — the one moment the reader is looking straight at it |
+| Appears after | `120ms` | The debounce. A navigation that resolves sooner shows nothing at all; a spinner that flashes on a fast click reads as jank |
+| Visible opacity | `0.75`, pulsing to `0.3` at 1s | Present without competing with the label |
+
+Measured on the production build: visible **190-235ms** after the click, against page
+arrivals of 667ms to 5,711ms.
+
+⚠️ **The `prefers-reduced-motion` rule is written out, not inherited.** `globals.css`
+forces `animation-duration: 0.01ms !important` globally, which would run this hint's
+*infinite* pulse at 0.01ms per cycle. Under that query the pulse is dropped and the dot
+simply becomes visible; the debounce survives as `transition-delay`, a property the
+global rule does not override. A reader who asks for less motion still gets the
+feedback.
+
+Behaviour, the guard, and why a route-level `loading.tsx` is the wrong tool here:
+`architecture.md` §7.2 and `components/LinkPending.tsx`.
+
 ### Run Analysis tab — intentional layout deviation (Layer D, owner-approved)
 
 The reference Run tab (two co-equal cards: a large **CSV upload** drop-zone + a
