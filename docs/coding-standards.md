@@ -1439,5 +1439,83 @@ decision a measurement taken here can support. **Measuring hard enough to dispro
 own hypothesis is the win; shipping a change you cannot justify is not.**
 
 ---
+### 22. A margin on a flex child may be the SECOND thing spacing it (2026-08-18)
+
+The owner reported "a lot of space in the right hand side" of the header's Sign in and
+Create free account buttons, and separately asked for a newly-added loading dot to be
+removed. Measuring joined the two reports into one defect: the dot carried its own
+`margin-left: 6px`, and `Button` is `display:flex` with `gap: 7px`. Both applied.
+
+    Sign in              87px -> 105px
+    Create free account 178px -> 196px
+
+18px of dead space inside the one control the page most wants pressed, and it read as
+a layout problem rather than as the dot's fault — which is why the owner filed it twice.
+
+**Before giving a flex child a margin, ask what the container is already doing.**
+`gap` and a child margin compose silently; nothing errors, and the number you get is
+the sum of two decisions made in different files.
+
+### 23. A verification pattern can be blind to the very thing it certifies (2026-08-18)
+
+After removing that dot, the claim was "the header, footer and stylesheet are
+byte-identical to before it existed", checked with:
+
+    git diff <ref> -- <files> | grep -E "^[+-][^+-]"
+
+Empty output, claim made. **The pattern cannot match a blank-line-only diff** — `^[+-]`
+followed by `[^+-]` requires a character after the marker, and an added blank line is
+just `+`. Two stray blank lines had in fact been left in `globals.css`, and they
+survived a commit.
+
+**For an identity claim use `git diff --quiet <ref> -- <file>` and read its exit code.**
+A grep that filters diff lines decides for itself what counts as a difference — which
+is precisely the judgement you were trying to avoid making. Same family as §18: the
+instrument was the thing that was wrong.
+
+### 24. Clearing the server's cache does not clear the client's (2026-08-18)
+
+Swapping a Learn illustration, the server-side caches were cleared properly — counted
+before, deleted, confirmed gone, server restarted (the discipline from §16). The page
+still showed the **old** picture, and the numbers said so: sky blue-cast +13 where the
+file on disk measured +20.
+
+Diagnosed rather than re-cleared:
+
+    fetch(url)                      -> blue cast +13   (the browser's HTTP cache)
+    fetch(url, {cache: 'reload'})   -> blue cast +22   (what the server actually holds)
+
+Next's own headers were fine — `max-age=14400, must-revalidate`, with an ETag that
+changes with content, so real visitors pick up a changed image within four hours. The
+stale copy was entirely client-side.
+
+**When verifying that an asset changed, force the network** (`cache: 'reload'`), or you
+are measuring your own browser's memory of the old file. And note the shape: three
+different caches (Next's optimiser, the CDN, the browser) can each hold a stale copy,
+and clearing one proves nothing about the other two.
+
+### 25. Retrying is honest only when the failure had no ANSWER (2026-08-18)
+
+One run in five, `POST /api/analyze-dev` died with `read ECONNRESET` — no status code,
+just a dead socket, passing on retry. Three hypotheses were tested and **all three were
+wrong**: an early middleware response that never drains the request body (22 B → 1 MB,
+25 attempts each: zero resets), a keep-alive reuse race against Node's 5s
+`keepAliveTimeout` (idle gaps 0–6s: zero), and something specific to `next dev` (60 more
+requests: zero). It could not be reproduced in isolation.
+
+So it was made survivable rather than explained — but only under a rule that keeps the
+test honest: **retry a dropped CONNECTION, never an HTTP RESPONSE.** `transportRetry` in
+`e2e/entitlement-routes.spec.ts` re-issues the request when the socket dies and hands
+back any resolved response untouched, so a 500, or a 200 where 402 was due, still fails
+its assertion exactly as before. Two drops in a row throw with both messages, because
+that is no longer the known flake.
+
+⚠️ **The distinction is the whole thing.** A retry that can absorb a wrong *answer*
+turns a suite into scenery. The helper therefore carries four pure tests of its own —
+including two controls proving an assertion failure is rethrown untouched and a
+resolved 500 is passed straight through — because a leniency you cannot see the edges
+of will be widened by the next person who meets a red build.
+
+---
 
 **End of coding-standards.md.**

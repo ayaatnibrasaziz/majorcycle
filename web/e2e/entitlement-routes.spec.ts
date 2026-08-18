@@ -70,6 +70,56 @@ const DETAIL = `/stocks/us/${TICKER}`;
  * (CLAUDE.md 11q). The decisive `page.content()` check runs after all of them.
  */
 
+/**
+ * Retry a request that died at the TRANSPORT level — and nothing else.
+ *
+ * ⚠️ Read this before widening it. On 2026-08-18 one run of
+ * *"past_due PAST the grace window → POST /api/analyze answers 402"* failed with
+ * `apiRequestContext.post: read ECONNRESET` — the socket died, so there was no
+ * status code at all, and it passed on Playwright's own retry. Once in five full
+ * suite runs, on a machine simultaneously running production builds and the
+ * Python spawns that `/api/analyze-dev` and the cycle sections trigger.
+ *
+ * **Three hypotheses were tested and all three are WRONG**, recorded so nobody
+ * re-derives them:
+ *   • *An early middleware response that never drains the request body.* The 402
+ *     is returned by `proxy.ts` without reading the body, which is the classic
+ *     shape — but POSTing 22 B, 1 KB, 64 KB and **1 MB**, 25 times each, gave
+ *     **zero** resets.
+ *   • *A keep-alive reuse race against Node's 5s `keepAliveTimeout`.* Idle gaps of
+ *     0 / 4.5 / 5.0 / 5.2 / 6.0s through a real `APIRequestContext`: zero resets.
+ *   • *Something specific to `next dev`.* Same probe against the dev server, 60
+ *     more requests: zero resets.
+ *
+ * So it is a transport failure under heavy concurrent load that could not be
+ * reproduced in isolation — and, decisively, **it has never once produced a WRONG
+ * STATUS.** That is what makes retrying honest here rather than a cover-up.
+ *
+ * ⚠️ **This retries a dropped connection. It does NOT retry an HTTP response.**
+ * A 500, a 200 where 402 was due, or any other wrong answer is returned to the
+ * caller untouched and fails its assertion exactly as before. If the second
+ * attempt also dies, the error is rethrown naming both attempts — a genuinely
+ * broken endpoint still goes red, it just needs to break twice.
+ */
+async function transportRetry<T>(what: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    const msg = String((err as Error)?.message ?? err);
+    if (!/ECONNRESET|socket hang up|EPIPE|ECONNABORTED/i.test(msg)) throw err;
+    await new Promise((r) => setTimeout(r, 500));
+    try {
+      return await fn();
+    } catch (again) {
+      throw new Error(
+        `${what}: the connection dropped TWICE (first: ${msg}; second: ${
+          String((again as Error)?.message ?? again)
+        }). Two transport failures in a row is not the known flake — treat it as real.`,
+      );
+    }
+  }
+}
+
 let admin: SupabaseClient;
 let userId: string;
 /**
@@ -169,6 +219,62 @@ const STATES: StateCase[] = [
     reason: 'billing_blocked',
   },
 ];
+
+/**
+ * `transportRetry` is the one piece of leniency in this file, so it gets its own
+ * proof. Pure — no browser, no network, no credentials — so it runs everywhere and
+ * can never self-skip.
+ *
+ * The risk being pinned is not "does it retry?" but "does it retry ONLY the thing
+ * it promises?" A helper that quietly swallowed a wrong status would turn this
+ * whole suite into scenery.
+ */
+test.describe('transportRetry only ever absorbs a dropped connection', () => {
+  test('retries once after ECONNRESET and returns the second answer', async () => {
+    let calls = 0;
+    const result = await transportRetry('probe', async () => {
+      calls++;
+      if (calls === 1) throw new Error('apiRequestContext.post: read ECONNRESET');
+      return 'second-attempt';
+    });
+    expect(calls, 'should have tried exactly twice').toBe(2);
+    expect(result).toBe('second-attempt');
+  });
+
+  test('CONTROL — a normal rejection is NOT retried, it is rethrown as-is', async () => {
+    let calls = 0;
+    await expect(
+      transportRetry('probe', async () => {
+        calls++;
+        throw new Error('expect(received).toBe(402)');
+      }),
+    ).rejects.toThrow(/toBe\(402\)/);
+    expect(calls, 'an assertion failure must NEVER be retried').toBe(1);
+  });
+
+  test('CONTROL — a resolved response is returned untouched, whatever it says', async () => {
+    let calls = 0;
+    // The helper must not inspect, judge or re-request an HTTP answer. A 500 is
+    // handed straight back so the caller's assertion fails, exactly as before.
+    const res = await transportRetry('probe', async () => {
+      calls++;
+      return { status: () => 500 };
+    });
+    expect(calls).toBe(1);
+    expect(res.status()).toBe(500);
+  });
+
+  test('two drops in a row is a real failure, and says so', async () => {
+    let calls = 0;
+    await expect(
+      transportRetry('probe', async () => {
+        calls++;
+        throw new Error('socket hang up');
+      }),
+    ).rejects.toThrow(/dropped TWICE/);
+    expect(calls, 'exactly two attempts, never a third').toBe(2);
+  });
+});
 
 test.describe.configure({ mode: 'serial' });
 
@@ -278,10 +384,14 @@ test.describe('entitlement enforcement across subscription states', () => {
       // Under `next dev` the screener is the /api/analyze-dev shim (Vercel Python
       // functions don't run locally) — the proxy gates BOTH paths identically, which is
       // the point: dev must not be quietly more permissive than production.
-      const res = await page.request.post('/api/analyze-dev', {
-        headers: { 'content-type': 'application/json' },
-        data: 'deliberately-not-json',
-      });
+      // transportRetry absorbs a DROPPED CONNECTION and nothing else — every
+      // status below is asserted exactly as before. See its definition.
+      const res = await transportRetry(`${state.name} → POST /api/analyze-dev`, () =>
+        page.request.post('/api/analyze-dev', {
+          headers: { 'content-type': 'application/json' },
+          data: 'deliberately-not-json',
+        }),
+      );
 
       if (state.entitled) {
         // The payload is deliberately junk, so the route will reject it — with what
@@ -516,10 +626,12 @@ test.describe('entitlement enforcement across subscription states', () => {
     expect((await report.json()).reason).toBe('account_deleting');
     expect(report.headers()['cache-control']).toContain('no-store');
 
-    const analyze = await page.request.post('/api/analyze-dev', {
-      data: { tickers: [TICKER], preset: 'medium' },
-      maxRedirects: 0,
-    });
+    const analyze = await transportRetry('deleting account → POST /api/analyze-dev', () =>
+      page.request.post('/api/analyze-dev', {
+        data: { tickers: [TICKER], preset: 'medium' },
+        maxRedirects: 0,
+      }),
+    );
     expect(analyze.status(), 'the screener payload must not be served').toBe(403);
     expect((await analyze.json()).reason).toBe('account_deleting');
 
@@ -552,9 +664,11 @@ test.describe('entitlement enforcement across subscription states', () => {
     ).toBe(200);
     expect(
       (
-        await page.request.post('/api/analyze-dev', {
-          data: { tickers: [TICKER], preset: 'medium' },
-        })
+        await transportRetry('reactivated account → POST /api/analyze-dev', () =>
+          page.request.post('/api/analyze-dev', {
+            data: { tickers: [TICKER], preset: 'medium' },
+          }),
+        )
       ).status(),
     ).toBe(200);
 

@@ -1156,6 +1156,15 @@ export interface LearnThemeMeta {
   /** Topic illustration, 1600 × 1000 (16:10), cropped from a 4K master kept
    *  outside git in reference/learn-masters/. OPTIONAL — without it the band
    *  drops its second column and holds the header's 720px measure.
+   *  ⚠️ The crop is EXACT and was recovered on 2026-08-18 by scoring candidates
+   *  against the shipped file on dark pixels: from the 5056 × 3392 master,
+   *  `extract({ left: 0, top: 116, width: 5056, height: 3160 })` then
+   *  `resize(1600, 1000)` — centred, mean abs difference 0.83/255 against
+   *  23.50 top-aligned and 12.78 bottom-aligned. Regenerate a shipped image
+   *  with those numbers and it lands on the same pixels.
+   *  ⚠️ All three ship as the RAW generated crop — no colour editing survives on
+   *  any of them. Two attempts at tinting image 3 to blend with `--bg-page` are
+   *  recorded in design-system.md; both were reverted. Fidelity beat blending.
    *  ⚠️ `alt` describes THIS picture. Replacing the artwork without rewriting
    *  the alt leaves a description of a different image, which is worse for a
    *  screen-reader user than no description at all — it happened on all three
