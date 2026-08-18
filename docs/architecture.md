@@ -936,21 +936,6 @@ simply becomes visible; the 120ms debounce survives as `transition-delay`, which
 global rule does not touch because it overrides `transition-duration`, a different
 property.
 
-> **The larger speed finding, NOT applied — owner's call.** Every public page is
-> server-rendered on demand (`ƒ`), and the cause is `app/not-found.tsx`: it is an async
-> component calling `supabase.auth.getUser()`, and the root not-found boundary sits in
-> every route's tree. Proven by experiment — swapping in a static not-found makes `/`,
-> `/contact`, `/disclaimer`, `/learn`, `/privacy` and `/terms` all build as `○`
-> prerendered. It matters because of how prefetching works: *"Static Route: the full
-> route is prefetched. Dynamic Route: prefetching is skipped."* Measured on our own
-> pages, the prefetch payload for `/learn` is **210 bytes dynamic against 667 static**,
-> and the resulting click costs **674ms against 109ms** on Fast 3G. The cost of taking
-> it is that a signed-in reader hitting a bad URL would get the same 404 as everybody
-> else, which is a deliberate feature today (`auth.spec.ts` guards it). Worth doing,
-> but it trades a product behaviour for speed and changes public pages into
-> shared-cached responses — the CLAUDE.md 11a family — so it is not a change to make
-> quietly.
-
 ### 7.2b Signed-out trial flow, and why signup comes first
 
 Checkout needs a session (the webhook maps Stripe → our user by an id in the subscription
@@ -1004,6 +989,71 @@ Both providers carry it: email/password via `emailRedirectTo`, Google One Tap vi
 switches to "First, create your account / Step 1 of 2" when `next` points at a
 `?start=` pricing URL, and must **not** say "once you confirm your email" — Google has no
 confirmation step.
+
+### 7.2c The public pages are PRERENDERED, and which ones must never be
+
+**Applied 2026-08-18, owner-approved.** Every page on this site used to render on
+demand (`ƒ`), and the cause was one line nobody would connect to it: `app/not-found.tsx`
+was an async component calling `supabase.auth.getUser()` so it could offer "Back to
+Browse" to a signed-in reader. **The root not-found boundary sits in every route's
+tree**, so that single session read made the whole site dynamic. Established by
+experiment, not inference: swapping in a session-unaware version turned six public
+pages into prerendered files.
+
+It matters because of how Next prefetches — *"Static Route: the full route is
+prefetched. Dynamic Route: prefetching is skipped."* Measured on our own pages:
+
+| | dynamic (before) | static (now) |
+|---|---|---|
+| Prefetch payload for `/learn` | 210 bytes (skipped) | **667 bytes** (the real route) |
+| Click `/` → `/learn`, Fast 3G | 674ms | **109ms** |
+
+**No feature was lost.** The 404's escape hatch is now a single link to `/`, which is
+already in `SIGNED_OUT_ONLY_PATHS` — so a signed-in reader is redirected to `/stocks`,
+exactly where "Back to Browse" sent them, and a signed-out one gets the landing page
+with its "Sign in" and "Create free account" buttons. The question *"is this reader
+signed in?"* is answered once, in the middleware, instead of twice (CLAUDE.md 11c).
+
+**What is prerendered, and what is deliberately not:**
+
+| Prerendered (`○`/`●`) | Must stay `force-dynamic` (`ƒ`) |
+|---|---|
+| `/`, `/learn`, `/learn/[slug]`, `/terms`, `/privacy`, `/disclaimer`, `/contact` | `/deletion-requested`, `/account/update-password`, `/reset-password`, `/dev-fixtures`, `/pricing`, `/login`, `/signup` |
+
+⚠️ **The second column is a security boundary, and it was found by measuring rather
+than reasoning.** When the site first started prerendering, four pages came along by
+accident — and `/deletion-requested`, the page that tells one person their account is
+scheduled for deletion, was measured on the wire sending
+`Cache-Control: s-maxage=31536000`: a **shared** cache directive with a one-year life,
+where it had been sending `private, no-cache, no-store`. Nothing was exposed —
+`proxy.ts` gates it on an httpOnly marker and runs before the cache, so a stranger is
+redirected and never reaches the cached copy. **That is exactly the problem.** This
+codebase has four times been safe because of somebody else's default rather than
+because it said so, which is the whole of CLAUDE.md 11a. All four now state their own
+caching. `/dev-fixtures` is in the list for a different reason: its `notFound()` runs
+in the component body, and prerendering would move that check from request time to
+build time.
+
+**Verified on the wire, signed out, against the production build:** the seven public
+pages send `s-maxage` and carry no visitor-specific bytes (every prerendered `.html`
+scanned for tokens, session cookies and addresses — the only hit was the contact
+form's own `you@example.com` placeholder); the seven dynamic pages send `private,
+no-store`; every gated route still answers **307 → /login** with its `next=` intact;
+`/learn/does-not-exist` still answers a real **404** with a real article at 200 as the
+control; `/deletion-requested` still refuses a reader with no marker **and** still
+serves the one who has it; and `/account/update-password` still refuses a bare marker
+with no session, which is the control from 11f that a marker must never stand in for a
+session.
+
+**Guarded by `pnpm check:render-modes`** (`scripts/check-render-modes.mjs`), which runs
+in CI immediately after `pnpm build` and reads the **build output** rather than the
+source — a page can declare `force-dynamic` and still be wrong about what the build
+did (11d). It asserts both columns, because the regression is silent in both
+directions, and it prints its own count. Broken on purpose three ways before being
+trusted: a missing static page, a dynamic page that became static, and — the real
+scenario — reintroducing the session read in `not-found.tsx`, which took it to **7 of
+14 routes wrong** while every page still rendered perfectly.
+
 
 ### 7.3 Onboarding is a gate, not an overlay
 

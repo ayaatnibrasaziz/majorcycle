@@ -1,27 +1,39 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 /**
- * Auth-aware 404. A logged-out visitor who hits a bad/unbuilt URL is sent back to
- * sign-in (the old hard-coded "Back to Results" bounced them straight into a
- * /login redirect); a logged-in user still gets "Back to Results". Server
- * component so it can read the session.
+ * The 404 — SESSION-UNAWARE, and that is what makes the public site fast.
+ *
+ * This used to be an async server component calling `supabase.auth.getUser()` so
+ * it could offer "Back to Browse" to a signed-in reader and "Back to sign in" to
+ * everyone else. It worked, and it cost more than it was worth: the root
+ * not-found boundary sits in **every route's tree**, so one session read here
+ * made the ENTIRE site render on demand. Proven by experiment 2026-08-18 —
+ * swapping in a session-unaware version turns `/`, `/contact`, `/disclaimer`,
+ * `/learn`, `/privacy` and `/terms` from `ƒ` into `○` prerendered.
+ *
+ * That matters because of how Next prefetches: *"Static Route: the full route is
+ * prefetched. Dynamic Route: prefetching is skipped."* Measured on our own pages,
+ * the prefetch payload for `/learn` is **210 bytes dynamic against 667 static**,
+ * and the click that follows costs **674ms against 109ms** on Fast 3G.
+ *
+ * ⚠️ **No feature was lost, because the destination already knows.** `/` is in
+ * `SIGNED_OUT_ONLY_PATHS` (proxy.ts), so a signed-in reader who lands there is
+ * redirected to `/stocks` — exactly where "Back to Browse" sent them. The rule
+ * lives in ONE place (the middleware) instead of being asked again here, which is
+ * CLAUDE.md 11c: a second copy of "is this reader signed in?" is a second copy
+ * that can drift. A signed-out reader gets the landing page, which carries "Sign
+ * in" and "Create free account" in its header.
+ *
+ * ⚠️ **Do not reintroduce a session read here to personalise a label.** It is not
+ * a local change: it silently un-statics every public page on the site, and
+ * nothing goes red when it happens.
  */
-export default async function NotFound() {
-  let signedIn = false;
-  try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    signedIn = !!user;
-  } catch {
-    signedIn = false;
-  }
-
-  const href = signedIn ? '/stocks' : '/login';
-  const label = signedIn ? 'Back to Browse' : 'Back to sign in';
+export default function NotFound() {
+  // One destination, correct for both readers — resolved by the middleware, not
+  // by a second session lookup. See the note above before changing it.
+  const href = '/';
+  const label = 'Back to MajorCycle';
 
   return (
     // Standalone chrome on purpose. This is the ROOT not-found, so it also catches
@@ -44,8 +56,10 @@ export default async function NotFound() {
         <p className="mt-2 mb-7 text-[13px] text-[var(--text-secondary)] leading-relaxed">
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
-        {/* href and label are UNCHANGED — e2e/auth.spec.ts asserts both the visible
-            name and the href for the signed-out case. */}
+        {/* href and label are asserted by e2e/auth.spec.ts, for BOTH readers — a
+            signed-out one lands on the landing page, a signed-in one is bounced
+            on to /stocks by the middleware. Changing either without that test is
+            how the redirect silently stops being checked. */}
         <Button asChild variant="primary" size="lg" className="w-full">
           <Link href={href}>{label}</Link>
         </Button>

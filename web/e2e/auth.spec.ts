@@ -90,17 +90,36 @@ test.describe('auth-aware 404', () => {
     await expect(page).toHaveURL(/\/login\?next=/);
   });
 
-  test('a bad URL under a PUBLIC prefix renders the auth-aware 404 with "Back to sign in"', async ({
-    page,
-  }) => {
+  test('a bad URL under a PUBLIC prefix renders the 404 with one way out', async ({ page }) => {
     // `/login/...` is treated as public, so middleware lets it through and Next
-    // renders the auth-aware not-found — which, logged-out, must offer sign-in.
+    // renders the not-found.
+    //
+    // ⚠️ The page is deliberately SESSION-UNAWARE as of 2026-08-18. It used to
+    // read the session so it could say "Back to Browse" or "Back to sign in", and
+    // that one read made every public page on the site render on demand — the root
+    // not-found boundary is in every route's tree. The escape hatch is now a single
+    // link to `/`, which is correct for both readers because the middleware already
+    // owns that decision (see the next test).
     await page.goto('/login/__no_such_page__');
-    await expect(page.getByRole('link', { name: /back to sign in/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /back to sign in/i })).toHaveAttribute(
-      'href',
-      '/login'
-    );
+    const out = page.getByRole('link', { name: /back to majorcycle/i });
+    await expect(out).toBeVisible();
+    await expect(out).toHaveAttribute('href', '/');
+    // CONTROL: the session-reading version is gone for good. If someone
+    // reintroduces it to personalise the label, the public site quietly stops
+    // being prerendered and nothing else goes red.
+    await expect(page.getByRole('link', { name: /back to browse/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /back to sign in/i })).toHaveCount(0);
+  });
+
+  test('and that one link still lands a signed-out reader somewhere useful', async ({ page }) => {
+    // The half that makes the single link safe: `/` must actually serve the
+    // landing page to a reader with no session, rather than bouncing them. (The
+    // signed-in half — `/` → /stocks via SIGNED_OUT_ONLY_PATHS — is covered by
+    // the signed-in redirect tests, which have a real session to do it with.)
+    await page.goto('/login/__no_such_page__');
+    await page.getByRole('link', { name: /back to majorcycle/i }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator('header a[href="/signup"]')).toBeVisible();
   });
 });
 

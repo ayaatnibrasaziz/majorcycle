@@ -1421,20 +1421,23 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
       between 768 and 1023.
     - **Article rows are 37px tall** on the Learn index (`py-[9px]` on a 13px line), under the
       44px touch guidance.
-  - **No feedback when a public nav link is clicked on a slow connection — measured
-    2026-08-18, and it is NOT a regression.** With the production build throttled to
-    Chrome's Slow 3G, clicking `Learn` then `Pricing` leaves the page visibly unchanged
-    for **2.3s and 4.3s**: no spinner, no URL change, nothing. React holds the current
-    page until the next one is ready. ⚠️ **The deleted `app/loading.tsx` did not help
-    this** — the same walk on a build with it restored gave 2.36s and 4.31s and showed no
-    indicator either, verified with a control proving the detector *can* see that
-    fallback (it caught it on a hard load, on screen for 3.5s). So this is pre-existing
-    and independent of GA-1. **If closed, use `useLinkStatus()` from `next/link`** (in
-    the installed 16.2.6) to put pending state on the link itself: client-only
-    progressive enhancement, no Suspense boundary, so it cannot bring back the soft-404
-    or the no-JS defect. ⚠️ **A `loading.tsx` scoped to `app/(public)/` is not an
-    option** — `/learn/[slug]` calls `notFound()` and all four no-JS pages live in that
-    group. Numbers and mechanism: `architecture.md` §7.2.
+  - ✅ **Click feedback on public links — CLOSED 2026-08-18, not deferred.** Raised here
+    as a Layer H item and then fixed the same day, because the owner's framing was that
+    a reader staring at an unchanged screen assumes the site is broken and leaves.
+    Two complementary changes, both measured on the production build:
+    - **`LinkPending` (`useLinkStatus`)** puts a pulsing dot in the clicked link:
+      visible **190-235ms** after the click, against page arrivals of 667ms to 5,711ms.
+      Guarded by `e2e/link-pending.spec.ts` (structure + behaviour + a resting control),
+      broken on purpose first — the hook returns a permanent `false` when misused, with
+      no error at all.
+    - **The public pages are now prerendered**, which is the actual speed fix: a click
+      on `Learn` fell from **674ms to 77ms** on Fast 3G once the route could be fully
+      prefetched. Cause was one session read in `app/not-found.tsx`; see
+      `architecture.md` §7.2c for the security review and the four pages that must
+      stay dynamic. Guarded by `pnpm check:render-modes`.
+    - ⚠️ Still true on a genuinely bad connection (Slow 3G, ~50 KB/s): the click costs
+      ~2.4s, because the destination's JavaScript has not arrived yet. That is what the
+      dot is for, and it is the residual — it is a network floor, not a code defect.
   - ⚠️ **Owner decisions from that audit — do NOT re-propose:** the Learn index ships with one
     written article against eleven "Coming soon" rows, and the public document type size stays
     as it is. Both were raised, both were considered, both were settled.

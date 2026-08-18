@@ -43,3 +43,19 @@ export default function DeletionRequestedPage() {
     </AuthCard>
   );
 }
+
+/**
+ * ⚠️ NEVER STATIC. Making `app/not-found.tsx` session-unaware turned most public
+ * pages into prerendered files (a real speed win), and this page came with them
+ * by accident — measured on the wire sending `Cache-Control: s-maxage=31536000`,
+ * i.e. a SHARED cache directive with a one-year life, where it had previously
+ * sent `private, no-cache, no-store`.
+ *
+ * Nothing was exposed: `proxy.ts` gates this page on an httpOnly marker and runs
+ * before the cache, so a stranger is redirected and never reaches the cached
+ * copy. That is precisely the problem. CLAUDE.md 11a exists because this codebase
+ * has four times been safe "because of someone else's default" rather than
+ * because it said so — and this page asserts something true of exactly one reader
+ * at one moment (11f). It states its own caching.
+ */
+export const dynamic = 'force-dynamic';

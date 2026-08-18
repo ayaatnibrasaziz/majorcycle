@@ -12,3 +12,13 @@ export const metadata: Metadata = pageMetadata({
 export default function ResetPasswordPage() {
   return <ResetPasswordForm />;
 }
+
+/**
+ * ⚠️ NEVER STATIC — parity with `/login` and `/signup`, which are `force-dynamic`
+ * for their own reasons and send `private, no-cache, no-store`. This page holds
+ * nothing per-viewer, so prerendering it would not have exposed anything; it
+ * simply became shared-cacheable for a year the moment the site started
+ * prerendering, and an auth surface should not quietly change its caching as a
+ * side effect of an unrelated change. Stated, not inherited (CLAUDE.md 11a).
+ */
+export const dynamic = 'force-dynamic';

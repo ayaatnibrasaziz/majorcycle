@@ -79,6 +79,15 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Reads the BUILD OUTPUT, so it has to follow the build. Asserts which
+      # public pages are prerendered and — just as important — which must never
+      # be. Both regressions are silent: a stray session read in the shared tree
+      # un-statics the whole public site with nothing going red, and a page that
+      # becomes static starts sending `s-maxage` where it used to send
+      # `private, no-store` (CLAUDE.md 11a). Prints its own count.
+      - name: Render modes (which pages are prerendered)
+        run: pnpm check:render-modes
+
   e2e:
     name: E2E (Playwright — auth + Stripe webhook + entitlement)
     runs-on: ubuntu-latest
