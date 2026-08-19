@@ -177,6 +177,12 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         switching horizons is often the fastest way to see the shape of what has
         actually happened.
       </p>
+      <p>
+        The one-year figure is the one you will meet most often, because it is the
+        number brokers quote as the 52-week high — and it is not measured quite the
+        way you would expect. That is covered in{' '}
+        <Link href="/learn/52-week-high">What a 52-week high really tells you</Link>.
+      </p>
 
       <WindowChoiceFigure />
 
@@ -243,6 +249,13 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
       <p>
         The answer is that normal is different for every company, and the only
         sensible comparison is against that company&rsquo;s own record.
+      </p>
+      <p>
+        It is also why the usual vocabulary does not help here. If you have wondered
+        where the familiar thresholds come from, that is covered in{' '}
+        <Link href="/learn/dip-correction-crash">
+          Dip, correction, crash — what&rsquo;s the difference?
+        </Link>
       </p>
 
       <h3>Why the market&rsquo;s average tells you nothing about your company</h3>
@@ -491,13 +504,17 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
       <h3>Why a {mag(CRASH_PCT)}{' '}
           fall in one share isn&rsquo;t a crash</h3>
       <p>
-        Individual shares are far more volatile than the index they sit in, and they
-        differ enormously from one another.
+        An index is a crowd, and a crowd moves slowly because its members disagree.
+        One company&rsquo;s disaster is a competitor&rsquo;s windfall; a bad quarter
+        here is offset by a good one there. Averaging cancels most of it out, which
+        is precisely why a fall big enough to show up in the average is worth a name.
       </p>
       <p>
-        Some companies fall 30% as a matter of routine — twice a year, for no reason
-        more dramatic than an ordinary earnings miss. Others have rarely dropped more
-        than 12% in their entire listed history.
+        Nothing cancels inside a single company. A {mag(CRASH_PCT)}{' '}
+        move in an index needs most of the market to agree. A {mag(CRASH_PCT)}{' '}
+        move in one share needs one earnings call, one regulator, or one contract
+        lost — which is why it happens so much more often, and means so much less
+        when it does.
       </p>
       <p>
         Apply &ldquo;{mag(CRASH_PCT)}{' '}
@@ -581,6 +598,11 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         before, not whether anything is actually wrong.
       </p>
       <p>
+        It is also worth knowing that the number being quoted is not measured the way
+        most people assume — see{' '}
+        <Link href="/learn/52-week-high">What a 52-week high really tells you</Link>.
+      </p>
+      <p>
         A more useful sentence has the company&rsquo;s own history in it:{' '}
         <em>
           it is down {mag(TODAY_PCT)}, it usually falls about{' '}
@@ -593,30 +615,32 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
 
       <h2>What none of these words tell you</h2>
       <p>
-        Whichever label you land on, it is still one measurement of price. It stays
-        silent on the things that decide whether a fall matters.
+        Whichever label you land on, it is a name for how far an index fell. Four
+        things it leaves out, all of which change what you should make of it.
       </p>
       <ul>
         <li>
-          <strong>Why the price fell.</strong>{' '}
-          A market-wide panic and a failing
-          business can produce the same percentage and call for opposite responses.
+          <strong>Which companies actually fell.</strong>{' '}
+          An index down 10% is an average. Inside it some shares are down 40%, and a
+          few are up. The label describes the crowd, never anyone in it.
         </li>
         <li>
-          <strong>Whether the company is any good.</strong>{' '}
-          That is answered by the
-          accounts — profitability, debt, cash flow — not by the size of the fall.
+          <strong>Whether the fall has finished.</strong>{' '}
+          These words name the depth reached, never the depth remaining. A
+          &ldquo;correction&rdquo; is only ever called one after the fact, which is
+          why nobody can tell you at the time whether it is one.
         </li>
         <li>
-          <strong>Whether it recovers.</strong>{' '}
-          Every past recovery in a
-          company&rsquo;s record happened. That is not a promise about the next one.
+          <strong>How fast it happened.</strong>{' '}
+          The same {mag(CRASH_PCT)} gets called a crash or a bear market. One arrives
+          in days and the other over months, and only one of them can be watched
+          coming — a difference the percentage hides completely.
         </li>
         <li>
-          <strong>How long recovery would take.</strong>{' '}
-          Two shares can fall equally
-          far and take wildly different lengths of time to climb back, and time is a
-          real cost.
+          <strong>What it means for you.</strong>{' '}
+          The same fall is an inconvenience to someone with twenty years and a
+          serious problem to someone who needs the money next year. No label knows
+          your circumstances.
         </li>
       </ul>
       <p>
@@ -808,8 +832,10 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         </li>
         <li>
           <strong>Whether the year was representative.</strong>{' '}
-          Pick a window starting just after a crash and everything looks strong. That
-          is the window flattering the company, not the company earning it.
+          Pick a window starting just after a{' '}
+          <Link href="/learn/dip-correction-crash">crash</Link> and everything looks
+          strong. That is the window flattering the company, not the company earning
+          it.
         </li>
       </ul>
       <p>It is a useful piece of context, and a poor conclusion.</p>

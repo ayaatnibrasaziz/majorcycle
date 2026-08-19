@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { LEARN_ARTICLES, learnPath } from '../lib/learn';
+
 /**
  * ── How the landing nearly became unmeasurable, and what fixed it ─────────────
  *
@@ -60,12 +62,30 @@ import { expect, test } from '@playwright/test';
  */
 
 /** Pages whose text a reader is expected to actually read. */
-// ⚠️ `/learn` and one article added 2026-08-15. A new public page that nothing
-// measures is not "passing" — it is unmeasured, and the difference is invisible
-// (CLAUDE.md 14g). The article is the first public surface to render `.lead`
-// inside a brand-ruled block and `<time>` in --text-secondary, neither of which
-// any existing page put in front of the contrast probe.
-const READING_PAGES = ['/disclaimer', '/terms', '/privacy', '/learn', '/learn/what-is-a-drawdown'];
+/**
+ * ⚠️ **The articles are DERIVED from the registry, not listed here — and that is a
+ * finding, not a tidy-up.** This was a hand-written list ending in
+ * `'/learn/what-is-a-drawdown'`, and it stayed that way while two more articles
+ * were published: on 2026-08-19 an audit found **1 of 3 articles measured**, with
+ * the comment below still asserting the list "covers every entry in PUBLIC_PAGES".
+ * Both new pages rendered perfectly and neither had ever been in front of the
+ * contrast probe.
+ *
+ * That is CLAUDE.md 11c-iv — a rule that existed and that a new consumer simply
+ * never received — wearing 14g's clothes: unmeasured is indistinguishable from
+ * clean, and the comment claiming completeness is what made it invisible. A list
+ * that has to be edited whenever content is added will eventually not be.
+ *
+ * Deriving it means the NEXT article is covered before anyone remembers to think
+ * about it, which is the only version of this that keeps working.
+ */
+const READING_PAGES = [
+  '/disclaimer',
+  '/terms',
+  '/privacy',
+  '/learn',
+  ...LEARN_ARTICLES.map((a) => learnPath(a.slug)),
+];
 
 /**
  * The landing page, measured to the same bar but on its own sentinel.
@@ -92,7 +112,8 @@ const LAID_OUT_PAGES = ['/'];
  * form). Adding them to READING_PAGES would not have measured them; it would have
  * hung for ten seconds and then failed for the wrong reason.
  *
- * Together with READING_PAGES this covers every entry in PUBLIC_PAGES. Adding the
+ * Together with READING_PAGES (which now derives its articles from the registry,
+ * so it cannot fall behind again) this covers every entry in PUBLIC_PAGES. Adding the
  * list found six real failures on the sign-in and payment path, all `--text-muted`
  * at 2.97:1 and all now fixed: the four form field labels, "or continue with", and
  * every term on /pricing including "No refunds". They had been there since the

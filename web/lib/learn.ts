@@ -225,7 +225,10 @@ export const LEARN_ARTICLES = [
     theme: 'cycles',
     published: '2026-08-15',
     reviewed: '2026-08-19',
-    minutes: 8,
+    // 2,073 words with its three figure captions — measured, not estimated. It
+    // said 8 until the 2026-08-19 audit: inside the guard's ±2 tolerance by
+    // exactly zero margin, and a 25% understatement to the reader.
+    minutes: 10,
   },
   {
     slug: 'dip-correction-crash',

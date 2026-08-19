@@ -1719,6 +1719,75 @@ assertion passes happily on `all866 companies`.
 
 ---
 
+### 34. A hand-written page list falls behind the content it is supposed to cover (2026-08-19)
+
+Auditing the three Learn articles found the contrast guard measuring **one of them**.
+`READING_PAGES` in `contrast.spec.ts` ended in a literal `'/learn/what-is-a-drawdown'`,
+written when there was one article, and two more were published without anyone touching
+it. Both new pages rendered perfectly and neither had ever been in front of the probe.
+
+⚠️ **The comment underneath made it invisible.** It said the list "covers every entry in
+PUBLIC_PAGES" — true when written, quietly false afterwards, and reassuring enough that
+nobody re-checked. This is 11c-iv (a rule a new consumer never received) wearing 14g's
+clothes (unmeasured is indistinguishable from clean).
+
+The list now derives its articles from `LEARN_ARTICLES`, so the next article is covered
+before anyone remembers to think about it. **A list that must be edited whenever content
+is added will eventually not be** — and the failure is silent by construction.
+
+Both previously-unmeasured articles passed once measured. That is the good outcome and it
+is not the point: they were not passing, they were unexamined.
+
+---
+
+### 35. Rewording is not rewriting, and an exact-match check cannot see the difference (2026-08-19)
+
+The same audit found `dip-correction-crash` closing with a four-bullet "what it cannot
+tell you" list that was `what-is-a-drawdown`'s list with a thesaurus run over it — same
+bullets, same order, "a collapsing business" → "a failing business", "the same
+percentage" → "a similar-looking number". A second instance sat mid-article: "Individual
+shares are far more volatile than that average, and they differ enormously from one
+another. Some fall 30%… Others have rarely dropped more than 12%…" appeared in both,
+near enough word for word.
+
+Both read fine alone. Read together they are one passage written twice — the pattern
+search engines discount, and a reader meets as filler on the second article they open.
+
+⚠️ **An exact-sentence comparison found ZERO overlap between all three pairs** and would
+have passed happily. The rewording defeated it completely. **Word-shingles (8-grams)
+caught it**, because "take wildly different lengths of time to climb back, and time is a
+real cost" survived the paraphrase intact.
+
+⚠️ **The guard took three attempts, and each wrong version failed on CORRECT behaviour.**
+First it flagged the internal links (a link's text is necessarily the sibling's title).
+Then the mandatory disclaimer, which is identical by law. Then figure legends and the
+closing call to action, which are deliberately consistent. **A guard that fires on the
+thing you want people to do teaches them to delete it** (§14 item 27). It now strips
+links, figures, the disclaimer and the final CTA section, and compares only the argument.
+
+⚠️ **And the break found a defect the fix had not covered.** Restoring one reworded
+bullet went red naming a *different* passage — the "differ enormously" paragraph, which I
+had read past twice. **The purpose of breaking a guard is to learn what it sees, and
+sometimes it sees more than you did.**
+
+---
+
+### 36. A break the guard cannot see is not a break (2026-08-19)
+
+Testing the new "every article links to a sibling" guard, I removed one of the pillar's
+two outbound links and the guard passed. The instinct in that moment is to distrust the
+guard. It was correct: the assertion is *at least one* sibling link, and one remained.
+
+Then the second attempt broke the file's syntax, so the run went red for a parse error —
+red, and meaningless. Only the third attempt (repointing both links away, leaving valid
+JSX) produced the real failure: `the cluster dead-ends there: what-is-a-drawdown`.
+
+Three outcomes from one guard: a pass that proved nothing, a failure that proved nothing,
+and finally the evidence. **Check that the break actually removes the property being
+asserted, and that the run failed for the reason you intended** (§14 items 26 and 29).
+
+---
+
 ---
 
 **End of coding-standards.md.**

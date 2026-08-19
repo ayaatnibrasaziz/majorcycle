@@ -1416,3 +1416,140 @@ test.describe('the 52-week-high figure', () => {
     expect(body, 'the prose never states the low gap').toContain(`${LOW_GAP_PCT.toFixed(1)}%`);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The cluster as a whole — added after the 2026-08-19 audit of all three
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe('the Learn cluster holds together', () => {
+  /** Body text of every published article, fetched once. */
+  async function bodies(page: Page): Promise<Record<string, string>> {
+    const out: Record<string, string> = {};
+    for (const a of LEARN_ARTICLES) {
+      await page.goto(learnPath(a.slug));
+      await ready(page);
+      /**
+       * ⚠️ **Anchor text and the disclaimer are REMOVED before comparing, and
+       * that is the difference between a guard and a nuisance.** The first
+       * version compared raw body text and went red immediately — on the
+       * cross-links added by the test above it. A link to a sibling article
+       * necessarily contains that article's title, so cross-linking the cluster
+       * (good, required) looked identical to copying prose (bad). The
+       * not-financial-advice notice is the same in every article by law and by
+       * design, and it is long.
+       *
+       * A guard that fires on the correct behaviour teaches people to delete it.
+       * Strip what the articles are SUPPOSED to share; compare what is left.
+       */
+      out[a.slug] = (
+        await page.locator('[data-article-body]').evaluate((root) => {
+          const clone = root.cloneNode(true) as HTMLElement;
+          // Links: their text is a sibling's title by construction.
+          clone.querySelectorAll('a').forEach((a) => a.remove());
+          // Figures: captions and legends are chart furniture, and the figures
+          // deliberately share a visual vocabulary.
+          clone.querySelectorAll('figure').forEach((f) => f.remove());
+          // The disclaimer: identical in every article by law and by design.
+          clone.querySelectorAll('*').forEach((el) => {
+            if (/not financial advice/i.test(el.textContent ?? '') && el.children.length === 0) {
+              el.remove();
+            }
+          });
+          // The closing call to action: the LAST section of every article, and
+          // deliberately the same offer each time.
+          const kids = [...clone.children];
+          const lastH2 = kids.map((el) => el.tagName).lastIndexOf('H2');
+          if (lastH2 !== -1) kids.slice(lastH2).forEach((el) => el.remove());
+          return clone.textContent ?? '';
+        })
+      )
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
+    }
+    return out;
+  }
+
+  test('every article links to at least one other article', async ({ page }) => {
+    /**
+     * ⚠️ **Found by the audit: the PILLAR linked to nothing.** Both newer articles
+     * linked back to `what-is-a-drawdown`, and it linked to neither of them — so
+     * the cluster was a dead end at exactly the page most likely to be landed on.
+     *
+     * Nothing could have gone red for that. Every page rendered, every link that
+     * existed worked, and the missing ones are an absence rather than an error
+     * (CLAUDE.md 11j). Only something that enumerates what SHOULD be there sees it.
+     *
+     * Skipped while there is only one article, because a lone article has nothing
+     * to link to and a vacuous pass would be worse than no test.
+     */
+    test.skip(LEARN_ARTICLES.length < 2, 'needs at least two published articles');
+
+    const orphans: string[] = [];
+    for (const a of LEARN_ARTICLES) {
+      await page.goto(learnPath(a.slug));
+      await ready(page);
+      const hrefs = await page
+        .locator('[data-article-body] a')
+        .evaluateAll((els) => els.map((e) => e.getAttribute('href') ?? ''));
+      const others = LEARN_ARTICLES.filter((o) => o.slug !== a.slug).map((o) => learnPath(o.slug));
+      if (!hrefs.some((h) => others.includes(h))) orphans.push(a.slug);
+    }
+    expect(
+      orphans,
+      `these articles link to no sibling, so the cluster dead-ends there: ${orphans.join(', ')}`,
+    ).toEqual([]);
+  });
+
+  test('no two articles reuse the same long run of words', async ({ page }) => {
+    /**
+     * ⚠️ **Found by the audit, and the worst kind of defect to ship on an SEO
+     * page.** `dip-correction-crash` ended with a four-bullet "what it cannot tell
+     * you" list that was `what-is-a-drawdown`'s list with a thesaurus run over it
+     * — same bullets, same order, a few words swapped. Both read fine in
+     * isolation. Read together they are obviously one paragraph written twice,
+     * which is exactly the pattern search engines discount and a reader notices
+     * as filler.
+     *
+     * ⚠️ **An exact-sentence check found ZERO overlap** and would have passed
+     * happily: the rewording defeated it completely. Shingles catch it, because
+     * "take wildly different lengths of time to climb back, and time is a real
+     * cost" survived the paraphrase intact.
+     *
+     * The bound is deliberately loose. Shared vocabulary is fine and expected —
+     * these articles are about one subject and repeat phrases like "not financial
+     * advice" and "its own record" on purpose. What is not fine is a whole
+     * passage carried across.
+     */
+    test.skip(LEARN_ARTICLES.length < 2, 'needs at least two published articles');
+
+    const N = 8; // words per shingle
+    const MAX_SHARED = 6;
+
+    const text = await bodies(page);
+    const shingles = (s: string): Set<string> => {
+      const w = s.replace(/[^a-z0-9% ]/g, ' ').split(/\s+/).filter(Boolean);
+      const out = new Set<string>();
+      for (let i = 0; i + N <= w.length; i += 1) out.add(w.slice(i, i + N).join(' '));
+      return out;
+    };
+
+    const slugs = LEARN_ARTICLES.map((a) => a.slug);
+    const problems: string[] = [];
+    for (let i = 0; i < slugs.length; i += 1) {
+      for (let j = i + 1; j < slugs.length; j += 1) {
+        const a = shingles(text[slugs[i]!]!);
+        const b = shingles(text[slugs[j]!]!);
+        const shared = [...a].filter((x) => b.has(x));
+        if (shared.length > MAX_SHARED) {
+          problems.push(
+            `${slugs[i]} vs ${slugs[j]}: ${shared.length} shared ${N}-word runs, e.g. "${shared[0]}"`,
+          );
+        }
+      }
+    }
+    expect(
+      problems,
+      `one article repeats long passages of another — rewrite rather than reword:\n${problems.join('\n')}`,
+    ).toEqual([]);
+  });
+});
