@@ -221,13 +221,13 @@ export const LEARN_ARTICLES = [
     title: 'What is a drawdown?',
     question: 'What does “drawdown” mean for a stock?',
     answer:
-      'A drawdown is how far a share price has fallen from its most recent peak, as a percentage. If a stock hit $100 and now trades at $80, it is in a 20% drawdown. It is a measure of distance from the top — not of whether the company is in trouble.',
+      'A drawdown is how far a share price has fallen from a recent peak, written as a percentage. If a stock reached $100 and now trades at $80, it is in a 20% drawdown. It measures distance from the top — not whether the company is in trouble.',
     summary:
-      'The plain meaning of drawdown, why it is measured from the peak rather than from what you paid, and what a big number does and does not tell you.',
+      'What a drawdown is, which peak it is measured from, and what counts as a normal drawdown for a stock — judged against that company’s own record.',
     theme: 'cycles',
     published: '2026-08-15',
-    reviewed: '2026-08-15',
-    minutes: 4,
+    reviewed: '2026-08-19',
+    minutes: 8,
   },
 ] as const satisfies readonly LearnArticle[];
 

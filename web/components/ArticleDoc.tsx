@@ -167,7 +167,7 @@ export function ArticleDoc({
                 offer is here because it would be strange to hide it, not because
                 the article is bait. */}
             <p className={`small text-[var(--text-secondary)]${related.length > 0 ? ' mt-6' : ''}`}>
-              MajorCycle runs this analysis over 863 companies in the US,
+              MajorCycle runs this analysis on listed companies across the US,
               Australia and Canada. <Link href="/">See how it works</Link>, or{' '}
               <Link href={LEARN_INDEX_PATH}>browse the rest of the library</Link>.
             </p>

@@ -1166,6 +1166,131 @@ decide whether a topic is for them.
 > articles **together**. An article page does not get to opt out on its own — that is
 > exactly how the fourth scale appeared.
 
+### h3 in the document scale — FIXED 2026-08-19
+
+The document scale is **24 / 17 / 13 / 12**, and until this date `.doc-scale` set **both**
+h2 and h3 to `--pub-h` (17px). The base `.reading` scale never did that — there h2 takes
+`--rd-h2` and h3 the smaller `--rd-lead` — so the document scale was the anomaly.
+
+⚠️ **It went unnoticed because no `.doc-scale` page had ever used an h3.** All three legal
+pages are h2-only (verified: zero `<h3>` in `terms`, `privacy`, `disclaimer`). The first
+Learn article to need subsections became the first consumer of a rule written for documents
+that never had any — CLAUDE.md 11c-iv again.
+
+**The symptom was the invisible kind.** Eight h2s and four h3s rendered at the same size,
+the same colour and the same 29.75px above, separated only by 700 vs 600 weight. Every size
+was still on the scale, so the type-scale guard passed and an audit of *sizes* reported the
+page clean. The owner read it and said the sizes looked wrong; only comparing headings
+against each other showed why.
+
+| | Was | Now |
+|---|---|---|
+| h2 | 17px / 700 / mt 29.75 | unchanged |
+| h3 | **17px / 600 / mt 29.75** | **13px / 700 / mt 20.8** |
+
+⚠️ **No fifth size** (11c-vi). h3 takes `--pub-body`, which the body already uses, and earns
+its heading role from weight 700 and from being a block — `strong` is 600 and inline, so the
+two cannot be confused. The step is 17 → 13, the same direction the base scale steps.
+
+⚠️ **The margin steps too, and that is half the fix.** A subsection belongs to the section
+above it and should sit nearer to it than a new section does. Spacing carries hierarchy at
+least as much as size.
+
+⚠️ **The legal pages are byte-identical after the change** — measured, not assumed: `/terms`
+reports the same 24×1 / 17×20 / 13×37 / 12×25 before and after. Guarded by
+`learn.spec.ts`, which asserts the *relationship* (h3 smaller than h2, and tucked closer)
+rather than either number, so it survives a future retune of the scale. Broken on purpose:
+reverting h3 to 17px fails with *"subsection headings render at 17px and section headings at
+17px."*
+
+### Figures inside an article — `components/Figure.tsx` (2026-08-19)
+
+> ⚠️ **Owner redirection, same day, and it improved the work.** The first pass drew
+> these as price-line schematics of my own invention. The owner's note was *"can't you
+> draw a similar graph shown in the stock detail page for this? this will be more clear
+> that way"* — and it is, for a reason worth keeping: **the article teaches a term the
+> reader will next meet inside the product, so the picture that teaches it should be the
+> picture they will see.** That is CLAUDE.md 11m applied to an explainer rather than to a
+> marketing page. The two schematics are now drawn in `DrawdownOverlay.tsx`'s idiom — the
+> fall hangs BELOW a 0% line, `#1E5CB3` curve, the same red tint, a gold `Avg` rule and a
+> firebrick `Low` rule — and the rolling-peak maths is a port of that component's own
+> `computeDrawdown`.
+>
+> ⚠️ **Ported, not imported, and the cost is named.** The real overlay is `'use client'`
+> on `lightweight-charts` and eats `PriceBar[]`. Importing it would put a charting library
+> and a hydration cost on a prerendered public page and leave a no-JS reader with nothing.
+> So the formula is duplicated and `learn.spec.ts` pins the copy to the independently
+> derived percentages, which is the 11c-iii discipline: where you must duplicate, make a
+> test hold the two together.
+>
+> ⚠️ **It also fixed a real defect.** The owner's other note — *"negative should be down
+> not up"* — was correct. The price line was oriented properly, but each percentage sat on
+> a rule at the PEAK, so a negative number floated at the top of the chart while the fall
+> ran downwards. In drawdown space the direction stops being something to remember: zero is
+> the top of the box and a fall has nowhere to go but down. **Measured, not assumed:** all
+> four drawn curves have zero points above their zero line, with a control confirming the
+> probe catches a forced violation.
+>
+> ⚠️ **And the schematic's own history had to get richer.** The product overlays "Avg" and
+> "Low", and those say nothing when a stock's falls are all the same depth — the first path
+> gave Avg −31.0% against Low −32.0%, two rules a millimetre apart. The stretch before the
+> zoom window now carries several falls of different depths (Avg −28.7%, Low −35.6%), while
+> everything from the zoom boundary onwards is byte-identical so the prose example
+> ($100 / $90 / $80) still matches the picture.
+
+The drawdown article needed three diagrams, and the decision worth recording is that
+they are **hand-authored SVG and HTML, not generated pictures**. Three reasons, each
+learned here rather than assumed:
+
+1. **Generated images cannot draw exact geometry.** §11 already records that four
+   candidates came back *with no share price falling in any of them*. Every figure this
+   article needs is precise — a specific path, specific peaks, measured distances.
+2. **Generated attempts produced a compliance problem** — green/red arrows, embedded
+   text and "PROFIT INCREASE" beside coins, on a not-financial-advice product (#24).
+3. **A picture per ARTICLE is a deliberate deferral** ("revisit at ~12 articles"), and
+   commissioning one now would reverse an owner-level decision by the back door.
+
+Cost: **$0**, reproducible, editable in seconds, and testable — none of which is true of
+an irreproducible 4K master.
+
+| Rule | Why |
+|---|---|
+| `Figure` owns the shell — framed panel, optional legend, caption | `CycleDiagram` invented this shell and three more figures needed it. Four copies of "what a figure looks like" is 11c waiting: one gets improved, the others quietly do not, and every figure still renders |
+| `caption` is a **required prop** | A diagram with no caption is the accessibility failure that looks perfect in review — sighted readers infer the point, everyone else gets nothing |
+| Legend **below** the drawing, never inside | In-chart captions cleared the price line at one aspect ratio and collided at another; keeping them legible meant hand-tuning per breakpoint, i.e. a second copy of the layout |
+| **Server components. No interactivity** | A toggle would ship JS and a hydration cost on a page whose speed was bought by prerendering, and a no-JS reader would lose the figure entirely. These are schematics — there is nothing to explore |
+| Schematic, never a plausible chart | No ticks, no dates, no dollar axis (#24). A realistic line reads as a real security's history and implies a claim we do not make |
+| Labels are **HTML**, never SVG `<text>` | SVG text scales with the viewBox: a 12px label in a 680-wide drawing is ~6px on a 375px phone. Same reason the "today" marker is an HTML dot — `preserveAspectRatio="none"` distorts shape, and `vector-effect` rescues stroke width only |
+| On-chart labels **hide below `sm`**; the legend carries them | Measured: at 375px both schematics correctly show zero labels and the legend carries 2 and 3 percentages respectively. Progressive disclosure, not a second diagram |
+| One `INSET` constant governs SVG geometry **and** the HTML overlay | Otherwise the marker sits a few pixels off the line it marks — which reads as a rendering glitch rather than a bug and survives review indefinitely |
+
+⚠️ **The two schematics are ONE path, and the second is DERIVED from the first**
+(`drawdownGeometry.ts`). The article shows the same imaginary stock zoomed in and pulled
+back, and the argument depends on those being the same stock. Two hand-tuned paths would
+make that a promise nobody checks — nudge one, the other stays put, both still render,
+and the figures quietly describe different companies (11c-iii). **Every percentage is
+computed from the path too**, so a label cannot contradict the line beside it.
+
+⚠️ **The module hands components NAMED LANDMARKS, not an array to index into.** The first
+version reached for `ZOOMED[3]` to find the last local top — correct until somebody adds
+a vertex, then silently the wrong point, with no error and a plausible picture.
+`recentView()` finds it by what it *is* (the highest price after the trough).
+
+⚠️ **A colour that draws a LINE is not automatically a colour you can WRITE in.** WCAG
+asks **3:1** of a graphical object and **4.5:1** of text, so `--brand-bright` is fine as a
+1.5px dashed rule and fails as a 12px label — measured at **3.85:1** on `--bg-stripe`,
+caught by `contrast.spec.ts` on the first full run, not by looking at it. Each horizon
+therefore carries two colours: `color` strokes the line, `ink` writes the label one shade
+darker. This is CLAUDE.md 11l from the other side — there, one function could not answer
+both "what colour is this?" and "what can sit behind white text?"; here one colour has to
+identify a line *and* be read as a word, and only one of those clears 4.5.
+
+⚠️ **A figure drawing REAL data reads it, never types it.** Figure 3's three values come
+from the nightly snapshot, and its bar widths derive from the same values as its labels —
+measured at 375px, `fill/track` equals `pct/deepest` to three decimals on all three rows,
+so the caption's "the bars share one scale" is verifiably true rather than merely
+claimed.
+
 ### The Learn illustrations — REGENERATED 2026-08-16
 
 Three topic pictures, one per band. **Generated on `google/gemini-3-pro-image` ("Nano Banana

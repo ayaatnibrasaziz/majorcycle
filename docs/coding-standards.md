@@ -1516,6 +1516,200 @@ including two controls proving an assertion failure is rethrown untouched and a
 resolved 500 is passed straight through — because a leniency you cannot see the edges
 of will be widened by the next person who meets a red build.
 
+### 26. A deliberate break must be one the guard CAN see (2026-08-19)
+
+This repo breaks a guard on purpose before trusting it. Building the drawdown article's
+data-bound figure, I did exactly that — replaced `LANDING.currentDrawdownPct` with the
+literal `-11.3` — and the guard **stayed green**. The tempting reading is "my guard is
+useless", and the instinct that follows is to weaken or rewrite a test that was working.
+
+The truth was that **the break was not a break.** `depth()` renders both `-11.332` and
+`-11.3` as `"11.3%"`, so the page's output was genuinely identical. A guard comparing
+rendered output to the snapshot cannot fail when the two agree. Re-breaking with `-22.2`
+went red immediately, naming both values — so the guard was value-sensitive all along.
+
+⚠️ **But the bad break exposed a real gap, which is why it was worth doing.** A
+rendered-output guard catches a typed number only *after* the data moves — a day late. So
+it now has a **source-level partner** that reads `DrawdownFigures.tsx` with comments
+stripped and fails on any `pct:` bound to a literal. Proven with the same `-11.3` break
+that fooled the first one: rendered guard passes, source guard fails naming the literal.
+
+**Two habits.** Choose a break that changes the OBSERVABLE the guard reads, or the
+experiment answers nothing. And when a break legitimately cannot be seen, that is a
+finding about coverage — add the guard that can see it, rather than concluding the
+existing one is broken.
+
+### 27. A guard that measures more than it OWNS fails for someone else's reason (2026-08-19)
+
+The figure guard originally asserted that `/learn/what-is-a-drawdown` does not scroll
+sideways, measuring `document.documentElement`. It went red at 320px by 18px.
+
+The figures were innocent: measuring every node showed the two offending elements were
+the **public header's CTA pair** (`Create free account` / `Sign in`, `whitespace-nowrap`,
+177.9px against a 320px viewport). The article's own content contributed **0px** at 375,
+360 and 320.
+
+⚠️ **The dangerous reflex here is to loosen the bound until it passes** — which would
+also have blinded the guard to a real figure overflow, the only thing it exists to catch.
+The fix is to measure the thing under test (`[data-article-body]`) at every width, keep a
+separate document-level assertion at the supported 375px floor, and **record the header
+defect** in the roadmap's deferred list rather than fixing a component this work does not
+own (11l) or silently dropping the width that revealed it.
+
+**The rule: scope a guard to what its change is responsible for.** A guard that fails for
+someone else's defect will be loosened, and a loosened guard is worse than a narrow one.
+
+### 28. Compare the RUNTIME, not only the pass count (2026-08-19)
+
+A full-file run came back **14 failed, 11 passed** — including tests that had passed
+twenty minutes earlier and that my change could not plausibly affect. The same file,
+unchanged, re-run: **25 passed**.
+
+What separated the two was not in the code. The failing run took **7.1 minutes**; the
+clean one took **29.6 seconds**. A 14× wall-clock blowout with broad, unrelated failures
+is an *environment* symptom — a dev server thrashing or recompiling — not a code one.
+
+⚠️ **And I nearly reported the failing run as a pass.** Reading its tail showed a list of
+test names ending in `11 passed`, which reads as a success summary; the `14 failed`
+header was above the fold of what I looked at, and the wrapper exited **0**. This is
+§14's "reconcile the count" in a new costume. **Read the whole summary block, and treat a
+large unexplained runtime change as evidence in its own right.**
+
+### 29. A guard the FIX makes structurally true is no longer evidence (2026-08-19)
+
+The owner spotted that a marker on the drawdown figure looked wrong. It was: the curve was
+computed from a **rescaled** path priced with the **original** calibration, so it ended at
+−31.8% while the marker beside it — derived correctly, by a different route — said −20%.
+The dot floated 11.8 points off its own line and the axis bottomed at −48% instead of −30%.
+Nothing errored. Both numbers were individually plausible. It looked like a chart.
+
+The fix was right: place the marker by reading its value **off the curve** it marks. Then I
+wrote the obvious guard — *the marker must sit on the curve* — broke the code on purpose,
+and it stayed **green**.
+
+⚠️ **Because the fix had made that invariant structural.** Once the marker's position is
+derived from the curve, the two move together and the assertion can never fail for this
+cause. It still guards something real (a marker positioned from an independent number), but
+it is worthless as evidence *about the bug it was written for*.
+
+**The rule: after fixing a bug, ask what the fix made impossible, and check that your new
+guard is not asserting exactly that.** If it is, the guard is proving the shape of your
+implementation, not the correctness of the output.
+
+The guard that does catch it compares the **picture against the prose** — the curve is a
+rolling-peak series, the sentence comes from `drawdownFromPeakY`, and a miscalibration
+moves one and not the other. Broken on purpose: *"a chart marks the fall as 32% while the
+article's prose says 20%."*
+
+⚠️ **And that guard was wrong on its first run, in a way worth keeping.** It matched "every
+span that looks like a percentage" and swept up the **axis ticks**, failing with
+*"marks the fall as 15% while the prose says 20%"* — where 15 was simply the midpoint label
+on the scale. The message was specific, confident and about the wrong element. **A probe
+that cannot tell a marker from an axis is measuring the wrong thing however plausible its
+error reads**; the markers now carry `data-fall-marker`, the same naming discipline as
+`data-record-row` and `data-article-body`.
+
+### 30. A path and the function that prices it are ONE unit (2026-08-19)
+
+The root cause above generalises past charts. `drawdownSeries(path, span)` defaulted to
+`priceAt` — the calibration belonging to the *original* path. `recentView()` returns a path
+whose y coordinates have been **re-fitted to its own range**, so pricing it with `priceAt`
+read its peak as $125.7 instead of $100.4.
+
+**Two things that must agree were separable, and nothing made the caller state which space
+it was in.** The parameter is now required, so a caller has to name the mapping —
+`recentView().priceOf` for a zoomed path, `priceAt` for the full one. A default that is
+correct for one caller and silently wrong for another is worse than no default: it works
+until someone adds the second caller, and then it produces plausible numbers.
+
+### 31. "I cannot screenshot" was wrong, and the cost was two invisible defects (2026-08-19)
+
+I told the owner three times that I could not see the figures I had built, because the
+Browser pane would not composite frames. That was true of **one** tool and false of the
+session: **Playwright had been running all afternoon and takes element screenshots.** The
+owner asked "why can't you do it?" and the honest answer was that I had stopped at the
+first tool that failed.
+
+Ten minutes of looking then found two defects that every measurement had passed:
+
+1. **The y-axis rendered as a ~6px pale band instead of a hairline.** `vector-effect` is
+   **not an inherited SVG property**, so putting it on a wrapping `<g>` does nothing for the
+   child lines — and under `preserveAspectRatio="none"` the vertical rule was scaled by the
+   *horizontal* factor (6.14×) while the horizontal rule stayed thin. Two lines, one
+   attribute, two different weights. It looked like a deliberate design element.
+2. **A label jammed into its marker.** The geometric probe reported "no overlap" — correctly,
+   the boxes were 4.5px apart — while the rendered text ran into the dot and the curve passed
+   straight through the digits. **Bounding boxes not touching is a much weaker claim than
+   legibility**, and only the picture carries the difference.
+
+Both are in the class this repo keeps meeting: *renders perfectly, measures clean, looks
+wrong.* Geometry tells you elements do not collide; it cannot tell you a figure reads well.
+
+**Two habits.** When one instrument cannot see something, ask which other instrument in the
+session already can — the test harness is a browser. And **look at visual work before
+reporting it**, in addition to measuring it: a zoomed crop of one corner found a defect that
+a full-page capture would also have hidden.
+
+### 32. A guard written for ONE shape of a defect is silent about the others (2026-08-19)
+
+The owner read the drawdown article and found **"How far does this company normally
+fall?Its average"** — a space swallowed after `</strong>`. There has been a guard for
+exactly this class of bug on this page since it was built, named *"has no words run
+together by a lost JSX space"*, and it was **green the whole time**.
+
+It was green because it was written from the instance that prompted it. That one was
+`81.4%is not a company` — an interpolated *number* — so the regex is
+`/[0-9%](?=[A-Za-z])|[a-z](?=[0-9])/`: a digit against a letter. A **letter** against a
+letter matches nothing. The guard was never wrong; it was answering a narrower question
+than its name claimed, and the name is what everyone reads.
+
+⚠️ **The source proves nothing here, which is why this has to be caught at render.**
+`od -c` showed a genuine `U+0020` after `</strong>` in the broken item, and the
+*identical* construction in the sibling list item eight lines above rendered its space
+correctly. Two byte-identical arrangements, two different outputs. Whatever the
+compiler is doing, reading the file cannot tell you — only the DOM can.
+
+**The fix generalises the guard by scanning the boundary instead of the text.** For
+every inline element (`strong,em,a,code,b,i,abbr`) look at the text node either side and
+flag a join that no punctuation explains. That holds whatever characters happen to sit
+across the seam, so it covers the number case, the letter case, and the ones nobody has
+hit yet. Broken on purpose by restoring the exact original arrangement: red, naming the
+join — `s company normally fall?❘Its average` — and, tellingly, **the old regex
+assertion stayed silent on the same run**, which is the evidence that it had been blind
+rather than lucky.
+
+**The habit:** when a guard catches a defect, ask what the defect is an *instance of*
+before writing the assertion. If the assertion encodes the instance, the guard's name
+starts writing cheques the code cannot cash — and a green run on a page a stranger
+judges you by is the most expensive kind of silence.
+
+---
+
+### 33. Prose numbers have a shelf life too, and a sentence is the worst place to keep one (2026-08-19)
+
+Same review: every article footer read *"MajorCycle runs this analysis over 863
+companies."* Nothing was wrong with it on the day. But the universe **auto-expands on
+every reader's ticker request** (CLAUDE.md #16), so that sentence is a literal that the
+product is actively working to falsify, sitting on the pages we most want strangers to
+trust. The owner's instruction was blunt and right: *"do not write numbers as it will
+change eventually."*
+
+This is CLAUDE.md **11c (v)** — prose is a copy of a constant — with the copy-detection
+problem removed by simply **not making the claim**. The footer now says *"on listed
+companies across the US, Australia and Canada"*: true at 863, true at 1,200, true after
+the next reader adds a ticker.
+
+**The rule of thumb:** in evergreen copy, only state a number when it is either (a)
+derived from the constant at render time and guarded, or (b) genuinely fixed (the
+25/day cap, the 30-day window). A count of things that grow is neither.
+
+⚠️ Still outstanding and **the owner's call**, deliberately not changed here: the
+landing page states `863` in five places. It is part of an approved storyboard with its
+own snapshot mechanism, so correcting it is a design decision rather than a typo fix —
+recorded in the roadmap rather than done unilaterally (11l).
+
+---
+
 ---
 
 **End of coding-standards.md.**

@@ -2,6 +2,12 @@ import Link from 'next/link';
 
 import { LANDING, depth } from '@/lib/landing';
 import type { LearnSlug } from '@/lib/learn';
+import { CUSTOM_PARAM_BOUNDS, PRESETS, PRESET_HORIZONS, PRESET_LABELS } from '@/lib/presets';
+import {
+  OwnRecordFigure,
+  PeakChoiceFigure,
+  WindowChoiceFigure,
+} from '@/components/learn/DrawdownFigures';
 
 /**
  * Article bodies, keyed by slug.
@@ -24,97 +30,354 @@ import type { LearnSlug } from '@/lib/learn';
  * no path from it to a rating or a health score. Hard-coding "Apple has fallen
  * 11.3%" would be a sentence that is true today, fluent forever, and wrong from
  * tomorrow, with nothing going red.
+ *
+ * ⚠️ **And the same rule applies to the PRODUCT's own settings** (CLAUDE.md
+ * 11c-v). Where this article states a horizon length, a threshold or a bound, it
+ * renders `PRESETS` / `CUSTOM_PARAM_BOUNDS` rather than repeating the figure in
+ * prose. A sentence that states a constant IS a copy of that constant, and prose
+ * is where copies go to drift unnoticed: retune a preset and the article would
+ * not error, would not look stale and would not stop rendering — it would simply
+ * become a confident, fluent, false statement about what the product does.
+ *
+ * ⚠️ **No `<table>` in a body.** `.reading` styles paragraphs, headings and
+ * lists; it has no table rules at all, so a table renders as unstyled browser
+ * default in the middle of a designed page. An undefined class is silence, not
+ * an error.
  */
+
+/** Trading days in the reader's units. Derived, so a changed bound restates itself. */
+function tradingDaysInWords(bars: number): string {
+  if (bars < 252) {
+    const months = Math.max(1, Math.round(bars / 21));
+    return months === 1 ? 'about a month' : `about ${months} months`;
+  }
+  const years = Math.round(bars / 252);
+  return years === 1 ? 'about a year' : `about ${years} years`;
+}
+
+const HORIZON_KEYS = ['short', 'medium', 'long'] as const;
+const MEDIUM_FALL = Math.abs(PRESETS.medium.pullbackThreshold);
+const MIN_BARS = CUSTOM_PARAM_BOUNDS.lookbackBars.min;
+const MAX_BARS = CUSTOM_PARAM_BOUNDS.lookbackBars.max;
+const MIN_FALL = Math.abs(CUSTOM_PARAM_BOUNDS.pullbackThreshold.max);
+const MAX_FALL = Math.abs(CUSTOM_PARAM_BOUNDS.pullbackThreshold.min);
+
+const asOfWords = new Date(`${LANDING.asOf}T00:00:00Z`).toLocaleDateString('en-AU', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
 export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
   'what-is-a-drawdown': () => (
     <>
       <h2>Measured from the peak, not from what you paid</h2>
       <p>
-        This is the part that catches people out. A drawdown is always measured
-        from the share price&rsquo;s own most recent high — not from the price you
-        bought at, and not from the start of the year. Two people who bought the
-        same company at different times are sitting on different losses, but the
-        stock has exactly one drawdown, and it is the same number for both of them.
+        This is the part that catches people out. A drawdown is measured from the
+        share price&rsquo;s own high, not from the price you bought at and not
+        from the start of the year.
+      </p>
+      <p>
+        Two people who bought the same company at different times are sitting on
+        very different losses. But the stock has exactly one drawdown, and it is
+        the same number for both of them.
       </p>
       <p>
         That is what makes it useful for comparison. &ldquo;Down 20%&rdquo; means
         the same thing for every company on every exchange, so you can line two
         businesses up beside each other without knowing anything about who owns
-        them.
+        them or when they bought.
       </p>
 
-      <h2>A big drawdown is not automatically a big problem</h2>
+      <h3>Which peak, though? The part most explanations skip</h3>
       <p>
-        Some companies fall a long way as a matter of routine. Others almost never
-        do. A 25% fall in a share that habitually swings by that much is ordinary
-        weather; the same 25% in something that has rarely dropped more than 10% is
-        a genuinely unusual event. The number on its own cannot tell you which of
-        those you are looking at — you need the company&rsquo;s own history for that.
+        Almost every guide tells you a drawdown is measured &ldquo;from the
+        peak&rdquo; and then moves on. That leaves the most important question
+        unanswered: <strong>which</strong> peak?
       </p>
       <p>
-        Take {LANDING.name}, using its full price history to{' '}
-        {new Date(`${LANDING.asOf}T00:00:00Z`).toLocaleDateString('en-AU', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric',
-          timeZone: 'UTC',
-        })}
-        . It is currently <strong>{depth(LANDING.currentDrawdownPct)}</strong>{' '}
-        below its last high. On its own that sounds like a lot. But across{' '}
-        {LANDING.pullbackEvents.toLocaleString('en-AU')} separate falls in its
-        record, the <em>typical</em> one has run to{' '}
-        <strong>{depth(LANDING.typicalDrawdownPct)}</strong> — and its worst ever
-        reached <strong>{depth(LANDING.deepestDrawdownPct)}</strong>. Against its
-        own history, today&rsquo;s fall is unremarkable.
+        There are three answers in common use, and they produce genuinely
+        different numbers.
+      </p>
+      <p>
+        <strong>The textbook definition.</strong> In academic and fund-management
+        writing, the peak is the highest value the investment has ever reached
+        since records began — what mathematicians call the running maximum. Most
+        finance textbooks define it this way. It is precise, and for a company
+        with a long history it can produce a number that says more about the
+        distant past than about today.
+      </p>
+      <p>
+        <strong>The last local top.</strong> Many investors mean something looser:
+        the most recent point at which the price stopped rising and turned down.
+        This is intuitive but slippery, because a share can have dozens of small
+        tops and no two people will pick the same one.
+      </p>
+      <p>
+        <strong>How MajorCycle measures it.</strong> We use the highest price
+        reached inside a fixed recent window, and that window is a setting you
+        control.
+      </p>
+      <p>
+        Why a window rather than the all-time high? Because a share that peaked
+        twenty years ago and has traded in a completely different range ever since
+        is not usefully described as being &ldquo;in a drawdown&rdquo; from that
+        ancient number. A window keeps the comparison recent enough to mean
+        something.
+      </p>
+
+      <PeakChoiceFigure />
+
+      <p>
+        Three ready-made horizons cover most needs, and each one looks back a
+        fixed number of trading days:
+      </p>
+      <ul>
+        {HORIZON_KEYS.map((k) => (
+          <li key={k}>
+            <strong>{PRESET_LABELS[k]}</strong> — {PRESETS[k].lookbackBars} trading
+            days, {PRESET_HORIZONS[k].replace('~', 'roughly ')}
+            {k === 'medium' ? ' (the default)' : ''}
+          </li>
+        ))}
+      </ul>
+      <p>
+        <strong>
+          This means one stock has more than one drawdown, and all of them are
+          correct.
+        </strong>{' '}
+        A share that has been falling for two years might be down only slightly
+        against its three-month high, and down heavily against its three-year
+        high. Neither figure is wrong. They answer different questions, and
+        switching horizons is often the fastest way to see the shape of what has
+        actually happened.
+      </p>
+
+      <WindowChoiceFigure />
+
+      <h3>Setting your own window</h3>
+      <p>
+        You are not limited to those three. A fourth option, <strong>Custom</strong>,
+        hands you the dial directly.
+      </p>
+      <p>
+        With Custom you set the window yourself, anywhere from {MIN_BARS} trading
+        days to {MAX_BARS.toLocaleString('en-AU')} — {tradingDaysInWords(MIN_BARS)}{' '}
+        at the short end, {tradingDaysInWords(MAX_BARS)} at the long end. You can
+        also change what counts as a fall worth recording, anywhere from {MIN_FALL}%
+        to {MAX_FALL}%, and the same for what counts as a recovery. Switching to
+        Custom starts you on the {PRESET_LABELS.medium} settings, so you begin
+        somewhere sensible and adjust from there.
+      </p>
+      <p>
+        The reason to bother is that the right window is a question about{' '}
+        <strong>you</strong>, not about the company. If you expect to hold a share
+        for a decade, judging today&rsquo;s price against a three-month high tells
+        you almost nothing useful. If you are looking at a company that listed four
+        years ago, a three-year window is most of its entire life. Matching the
+        window to how you actually invest is the difference between a number that
+        means something and a number that merely exists.
+      </p>
+      <p>
+        One honest warning about the dial. Make the window short enough and almost
+        every share looks close to its high, because it has not had time to fall far
+        from it. Make it long enough and almost everything looks deeply fallen,
+        because you are reaching back to a peak from a different era. Neither view is
+        false, and neither is the truth on its own —{' '}
+        <strong>
+          the window changes the question you are asking, not the company you are
+          asking about.
+        </strong>{' '}
+        Pick it deliberately, then leave it alone while you compare one business
+        against another.
+      </p>
+
+      <h2>A drawdown is not a loss</h2>
+      <p>
+        These get used interchangeably and they are not the same thing.
+      </p>
+      <p>
+        A drawdown is a fall from a peak. It exists whether or not you own the
+        share, and it reverses on its own if the price recovers. A loss is what
+        happens when you sell for less than you paid. Until you sell, a drawdown is
+        a description of the price; it is not money that has gone anywhere.
+      </p>
+      <p>
+        The practical consequence is that you can hold a share that is deep in a
+        drawdown and still be well ahead on your own purchase, if you bought early
+        enough. And you can be down on your purchase while the stock&rsquo;s
+        drawdown is small, if you bought near the top.
+      </p>
+
+      <h2>What counts as a normal drawdown for a stock?</h2>
+      <p>
+        Here is where most explanations stop being useful. They tell you what a
+        drawdown is, then advise you to &ldquo;check the stock&rsquo;s
+        history&rdquo; without showing you how or what to look for.
+      </p>
+      <p>
+        The answer is that normal is different for every company, and the only
+        sensible comparison is against that company&rsquo;s own record.
+      </p>
+
+      <h3>Why the market&rsquo;s average tells you nothing about your company</h3>
+      <p>
+        You will find plenty of statistics about how often the market as a whole
+        falls: a 10% drop roughly six years in ten, a 20% drop around once every
+        four years. These describe an index of hundreds of companies averaged
+        together.
+      </p>
+      <p>
+        Individual shares are far more volatile than that average, and they differ
+        enormously from one another. Some fall 30% as a matter of routine. Others
+        have rarely dropped more than 12% in their entire history. A 25% fall is
+        ordinary weather for the first kind and a genuinely unusual event for the
+        second — and the market&rsquo;s average cannot tell you which one you are
+        holding.
+      </p>
+      <p>
+        So the question worth asking is not &ldquo;is 25% a big fall?&rdquo; It is
+        &ldquo;is 25% a big fall <strong>for this company</strong>?&rdquo;
+      </p>
+
+      <h3>A worked example, using real figures</h3>
+      <p>
+        Take {LANDING.name}, using its full price record to {asOfWords}, on the{' '}
+        {PRESET_LABELS.medium.toLowerCase()} horizon.
+      </p>
+      <p>
+        It was recently <strong>{depth(LANDING.currentDrawdownPct)}</strong> below
+        its one-year high. On its own, that sounds like a meaningful drop.
+      </p>
+      <p>
+        Set against its own history, it is unremarkable. Across{' '}
+        {LANDING.pullbackEvents.toLocaleString('en-AU')} separate falls of more
+        than {MEDIUM_FALL}% in its record, the average one ran to{' '}
+        <strong>{depth(LANDING.typicalDrawdownPct)}</strong>. Today&rsquo;s fall is
+        under half of that. And at its worst, the share has fallen{' '}
+        <strong>{depth(LANDING.deepestDrawdownPct)}</strong> from a high.
+      </p>
+
+      <OwnRecordFigure />
+
+      <p>
+        That last number is the one worth sitting with — and it carries a caveat
+        that matters. A record long enough to contain a fall of{' '}
+        {depth(LANDING.deepestDrawdownPct)} spans eras when the business, its
+        products and its finances looked nothing like they do now. The figure is
+        real, and it is not a forecast.
+      </p>
+
+      <h2>Current drawdown and maximum drawdown</h2>
+      <p>
+        Two terms that sound similar and answer opposite questions.
+      </p>
+      <p>
+        <strong>Current drawdown</strong> is where the price sits right now
+        relative to its recent peak. It changes every day, and it goes to zero the
+        moment the share sets a new high.
+      </p>
+      <p>
+        <strong>Maximum drawdown</strong> is the deepest fall in the record — the
+        worst it has ever been, historically. It does not change from day to day,
+        and it is the standard measure of how painful holding something has been at
+        its worst.
+      </p>
+      <p>
+        The distinction matters because a stock sitting in a 15% current drawdown
+        has not necessarily finished falling. The current figure describes a
+        situation that is still unfolding; the maximum describes one that has
+        already played out.
       </p>
 
       <h2>Why the deepest number is worth knowing before you buy</h2>
       <p>
-        The typical fall tells you what usually happens. The deepest one tells you
-        what has actually happened at its worst, at least once, to this exact
-        company. Those are two different questions, and the second is the one that
-        decides whether you could sit through it.
+        The average fall tells you what usually happens. The deepest fall tells you
+        what has actually happened, at least once, to this exact company.
       </p>
       <p>
-        {/* ⚠️ `{' '}` after the expression, not a plain space. JSX drops the
-            whitespace between an expression and the text that follows it in
-            several arrangements, and it did here: the rendered DOM read
-            "81.4%is not a company" while the source clearly had a space (checked
-            with od -c before touching anything). The identical construction two
-            lines up survived, which is what makes this worth an explicit
-            marker rather than a reformat — the rule is arrangement-sensitive,
-            so "it looks fine in the source" proves nothing. Guarded by the
-            run-together scan in e2e/learn.spec.ts. */}
-        A company that normally dips {depth(LANDING.typicalDrawdownPct)} and has
+        Those are different questions, and the second one is more useful, because
+        it is the one that decides whether you could have held on.
+      </p>
+      <p>
+        A company that typically dips {depth(LANDING.typicalDrawdownPct)} and has
         once fallen {depth(LANDING.deepestDrawdownPct)}{' '}
-        is not a company where
-        &ldquo;it can&rsquo;t drop much further&rdquo; is supported by the record.
-        Knowing that in advance is worth more than any rating.
+        is not a company where &ldquo;it can&rsquo;t drop much further&rdquo; is
+        supported by its own record. Knowing that in advance is worth more than any
+        rating, because it is the number that tells you what you would need to be
+        able to sit through.
       </p>
 
       <h2>What a drawdown cannot tell you</h2>
+      <p>
+        A drawdown is one measurement. It is silent on four things that matter at
+        least as much.
+      </p>
       <ul>
         <li>
           <strong>Why the price fell.</strong> A market-wide panic and a collapsing
-          business produce the same-looking number and call for opposite decisions.
+          business produce a similar-looking number and call for opposite responses.
         </li>
         <li>
-          <strong>Whether the company is any good.</strong> That question is
-          answered by the accounts — profitability, debt, cash flow — not by the
-          price chart.
+          <strong>Whether the company is any good.</strong> That is answered by the
+          accounts — profitability, debt, cash flow — not by the price chart.
         </li>
         <li>
           <strong>Whether it will recover.</strong> Every past recovery in the
-          record happened; that is not a promise about the next one. A share that
+          record happened. That is not a promise about the next one. A share that
           has fallen {depth(LANDING.typicalDrawdownPct)} nine times can fall 60% on
           the tenth.
         </li>
+        <li>
+          <strong>How long a recovery would take.</strong> Two shares can fall by
+          the same amount and take wildly different lengths of time to climb back,
+          and time is a real cost.
+        </li>
       </ul>
       <p>
-        This is why MajorCycle never ranks on the fall alone. Where a stock sits in
-        its own cycle is one input; how healthy the business underneath it is
-        counts for more. You can read how the two are combined on the{' '}
-        <Link href="/">home page</Link>.
+        This is why MajorCycle never ranks a stock on the fall alone. Where a share
+        sits in its own cycle is one input; how healthy the business underneath it
+        is counts for more.
+      </p>
+
+      <h2>Four questions to ask before buying a share that has fallen</h2>
+      <ol>
+        <li>
+          <strong>How far is it down now?</strong>{' '}
+          The current drawdown, on a window you have chosen deliberately.
+        </li>
+        <li>
+          <strong>How far does this company normally fall?</strong>{' '}
+          Its average, from its own record — not the market&rsquo;s.
+        </li>
+        <li>
+          <strong>What is the worst it has ever done?</strong>{' '}
+          The maximum drawdown.
+        </li>
+        <li>
+          <strong>Could you have held through question 3?</strong>{' '}
+          If the honest answer is no, the first three numbers do not matter.
+        </li>
+      </ol>
+      <p>
+        Question four is the one people skip, and it is the one that does the work.
+        It changes the subject from <em>is this cheap?</em> to{' '}
+        <em>could I survive being wrong about the timing?</em> Nobody can answer the
+        first in advance. You can answer the second honestly, today.
+      </p>
+
+      <h2>See the numbers for any stock, free</h2>
+      <p>
+        Everything in this article — the current fall, the average fall across a
+        company&rsquo;s whole record, the deepest fall it has ever had, on any
+        window from {tradingDaysInWords(MIN_BARS)} to {tradingDaysInWords(MAX_BARS)}{' '}
+        — is available on a free MajorCycle account.
+      </p>
+      <p>
+        <strong>No card required.</strong>{' '}
+        <Link href="/signup">Create a free account</Link> and look up any company on
+        the US, Australian or Canadian markets.
       </p>
     </>
   ),

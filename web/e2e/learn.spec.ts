@@ -350,6 +350,49 @@ test.describe('the Learn library', () => {
       });
 
       expect(runOns, `${path}: words run together — ${runOns.join(' | ')}`).toEqual([]);
+
+      /**
+       * ⚠️ The regex above only knows the shape it was written for — a digit or
+       * `%` butted against a letter, which is what a swallowed space around an
+       * interpolated NUMBER looks like. On 2026-08-19 the owner found
+       * **"normally fall?Its average"** on this page: a letter against a letter,
+       * from a lost space after `</strong>`, and the guard was green the whole
+       * time. Silent, not clean (CLAUDE.md 14g).
+       *
+       * So scan the boundary itself rather than guessing at the text. For every
+       * inline element, look at the text node on each side and flag a join that
+       * no punctuation explains — which is exactly what a dropped JSX space is,
+       * and it holds whatever characters happen to sit either side of it.
+       *
+       * Note the source proves nothing here: `od -c` showed a real space, and
+       * the *identical* construction in the sibling list item rendered fine.
+       * Only the DOM can answer this.
+       */
+      const joined = await page.evaluate(() => {
+        const root =
+          document.querySelector('[data-article-body]') ?? document.querySelector('article');
+        if (!root) return ['no article body found'];
+        // Characters that may legitimately hug the element on either side.
+        const okAfter = /^[\s.,;:!?)\]’”%–—/-]/;
+        const okBefore = /[\s(\[‘“$£€/-]$/;
+        const out: string[] = [];
+        for (const el of root.querySelectorAll('strong,em,a,code,b,i,abbr')) {
+          const next = el.nextSibling;
+          const prev = el.previousSibling;
+          if (next?.nodeType === 3 && next.textContent && !okAfter.test(next.textContent)) {
+            out.push(`${el.textContent?.slice(-24)}❘${next.textContent.slice(0, 24)}`);
+          }
+          if (prev?.nodeType === 3 && prev.textContent && !okBefore.test(prev.textContent)) {
+            out.push(`${prev.textContent.slice(-24)}❘${el.textContent?.slice(0, 24)}`);
+          }
+        }
+        return out;
+      });
+
+      expect(
+        joined,
+        `${path}: an inline element is joined to its neighbour with no space — ${joined.join(' | ')}`,
+      ).toEqual([]);
     });
 
     test(`${path} keeps the not-financial-advice notice above the fold`, async ({ page }) => {
@@ -620,5 +663,461 @@ test.describe('Learn typography and chrome', () => {
     await page.goto(LEARN_INDEX_PATH);
     await ready(page);
     await expect(page.locator('[data-public-header] img[alt="MajorCycle logo"]')).toBeVisible();
+  });
+});
+
+/**
+ * The drawdown article's three figures.
+ *
+ * ⚠️ **A missing figure renders as nothing at all.** No error, no gap, no failing
+ * assertion — the prose simply runs on and the page looks completely deliberate.
+ * That is CLAUDE.md 11j, and the only thing that can see it is a test that names
+ * what SHOULD be there. So these enumerate rather than count.
+ *
+ * ⚠️ **Contrast is NOT re-checked here.** `/learn/what-is-a-drawdown` is already
+ * in `contrast.spec.ts`'s READING_PAGES, so every caption, legend and label these
+ * figures add is measured there automatically. A second copy of that check could
+ * only ever agree with itself.
+ */
+test.describe('the drawdown article figures', () => {
+  const ARTICLE = learnPath('what-is-a-drawdown');
+
+  /** What the article promises. Named, because a count cannot tell you WHICH one went. */
+  const FIGURE_MARKERS = [
+    { what: 'the price-and-drawdown schematic', needle: 'drawn the way MajorCycle draws it' },
+    { what: 'the one-year drawdown chart', needle: 'the chart MajorCycle draws for every company' },
+    { what: 'the real-record bars', needle: 'the honest shape of the' },
+  ];
+
+  test('all three figures render, each with a caption', async ({ page }) => {
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    const body = page.locator('[data-article-body]');
+    await expect(body.locator('figure')).toHaveCount(FIGURE_MARKERS.length);
+
+    // Every figure carries a figcaption, and none of them is empty. A caption is
+    // how a reader who cannot see the drawing learns what it showed, so an empty
+    // one is the accessibility failure that looks perfect in review.
+    const captions = await body.locator('figure figcaption').allInnerTexts();
+    expect(captions).toHaveLength(FIGURE_MARKERS.length);
+    for (const c of captions) expect(c.trim().length).toBeGreaterThan(40);
+
+    const text = (await body.innerText()).replace(/\s+/g, ' ');
+    for (const f of FIGURE_MARKERS) {
+      expect(text, `${f.what} is missing from the article`).toContain(f.needle);
+    }
+  });
+
+  test('the two schematics carry accessible descriptions, not just pictures', async ({ page }) => {
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    // role="img" + aria-label. Without these an SVG is announced as nothing, and
+    // the figure's whole argument is unavailable to a screen-reader user.
+    //
+    // ⚠️ THREE panels, not three figures. The first figure stacks a price panel
+    // above a drawdown panel — the product's own layout — so it draws two, and
+    // the third figure is HTML bars with no SVG at all. Naming the number here
+    // rather than counting figures is deliberate: a panel that silently stopped
+    // rendering would still leave three <figure> elements on the page.
+    const PANELS = 3;
+    const described = page.locator('[data-article-body] svg[role="img"]');
+    await expect(described).toHaveCount(PANELS);
+
+    for (let i = 0; i < PANELS; i += 1) {
+      // Length, not a regex. The first version of this assertion used
+      // `/\S{80,}/`, which asks for eighty consecutive NON-space characters —
+      // something no English sentence contains, so it could only ever fail. A
+      // guard that cannot pass is as useless as one that cannot fail.
+      const label = (await described.nth(i).getAttribute('aria-label')) ?? '';
+      expect(label.length, `schematic ${i + 1} has no usable aria-label`).toBeGreaterThan(80);
+    }
+  });
+
+  test('the record figure prints the SNAPSHOT figures, not typed ones', async ({ page }) => {
+    /**
+     * ⚠️ CLAUDE.md 11k. These are real numbers about a real company, and the
+     * failure mode is a hard-coded "11.3%" that stays fluent, specific and wrong
+     * from the next nightly run. The expectation is BUILT FROM the snapshot file
+     * rather than written here, so this test cannot drift with the data.
+     *
+     * It reads the JSON directly while the page reaches it through
+     * `lib/landing.ts` — two different routes to the same fact, so a bug in the
+     * module between them is visible rather than shared.
+     */
+    const snapshot = JSON.parse(
+      readFileSync(join(__dirname, '..', 'app', 'landing-snapshot.json'), 'utf8'),
+    ) as Record<string, number>;
+
+    const expected = {
+      today: snapshot.currentDrawdownPct,
+      average: snapshot.typicalDrawdownPct,
+      deepest: snapshot.deepestDrawdownPct,
+    };
+
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    for (const [id, pct] of Object.entries(expected)) {
+      const cell = page.locator(`[data-record-row="${id}"]`);
+      await expect(cell, `the ${id} row is missing from the record figure`).toHaveCount(1);
+
+      const shown = (await cell.innerText()).trim();
+      const want = `${Math.abs(pct as number).toFixed(1)}%`;
+      expect(shown, `the ${id} row shows ${shown}, snapshot says ${want}`).toBe(want);
+
+      // CONTROL: the same assertion against a deliberately wrong value must FAIL.
+      // Without this, a cell rendering some constant string would satisfy the
+      // check above if that constant happened to match — and, more importantly,
+      // this proves the comparison is value-sensitive rather than merely finding
+      // a percent sign (CLAUDE.md 11c-v).
+      const offByOne = `${(Math.abs(pct as number) + 0.1).toFixed(1)}%`;
+      expect(shown, `the ${id} control is not value-sensitive`).not.toBe(offByOne);
+    }
+  });
+
+  test('realistic detail cannot move a landmark', async () => {
+    /**
+     * The two schematics are drawn with small movement so they read as price
+     * series rather than zigzags. ⚠️ **That detail is a RENDERING concern and must
+     * never become a source of truth** — every percentage the captions quote is
+     * computed from the plain landmark path, and added wiggle that invented a new
+     * high would silently change what the figure claims while still looking
+     * completely plausible.
+     *
+     * `detailed()` clamps each inserted point inside its own segment and tapers
+     * the amplitude to zero at both ends, so no vertex moves and no segment can
+     * overshoot. This asserts that rather than trusting the comment saying so —
+     * a pure check, no browser needed.
+     */
+    const { FULL_PATH, detailed, recentView, WINDOW_START } = await import(
+      '../components/learn/drawdownGeometry'
+    );
+
+    for (const [name, base] of [
+      ['the three-year path', FULL_PATH],
+      ['the zoomed path', recentView(WINDOW_START.medium).path],
+    ] as const) {
+      const dense = detailed(base);
+
+      expect(dense.length, `${name}: no detail was added at all`).toBeGreaterThan(base.length * 3);
+
+      const ys = (p: readonly (readonly [number, number])[]) => p.map((q) => q[1]);
+      expect(Math.min(...ys(dense)), `${name}: detail invented a NEW HIGH`).toBeGreaterThanOrEqual(
+        Math.min(...ys(base)) - 1e-9,
+      );
+      expect(Math.max(...ys(dense)), `${name}: detail invented a NEW LOW`).toBeLessThanOrEqual(
+        Math.max(...ys(base)) + 1e-9,
+      );
+
+      // Every landmark vertex must survive untouched — the peaks and the trough
+      // ARE the argument, so a smoothed-away vertex is a changed claim.
+      for (const [x, y] of base) {
+        const kept = dense.some((q) => Math.abs(q[0] - x) < 1e-9 && Math.abs(q[1] - y) < 1e-9);
+        expect(kept, `${name}: landmark (${x}, ${y}) was smoothed away`).toBe(true);
+      }
+    }
+
+    // Deterministic: a figure that redraws differently per build is a diff nobody
+    // can review and a test nobody can pin. Seeded LCG, never Math.random().
+    expect(detailed(FULL_PATH)).toEqual(detailed(FULL_PATH));
+  });
+
+  test('every marker sits ON the curve it marks', async ({ page }) => {
+    /**
+     * ⚠️ **The defect this exists for shipped, and the owner found it by looking.**
+     * Figure 1's drawdown marker was placed from `drawdownFromPeakY(...)` — a
+     * correct number, reached by a route that had nothing to do with the drawn
+     * line — while the curve itself was computed from a rescaled path priced with
+     * the WRONG calibration. The two disagreed by 11.8 percentage points: the dot
+     * floated well off its own curve and the axis bottomed at −48% where it should
+     * have said −30%.
+     *
+     * Nothing errored. Both numbers were plausible. It looked like a chart.
+     *
+     * So the check is geometric rather than arithmetic: whatever the maths says,
+     * the dot must land on the line. That is the only assertion that would have
+     * caught it, because each number was individually defensible.
+     */
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    const findings = await page.evaluate(() => {
+      const out: { figure: number; gap: number; dotY: number; curveY: number }[] = [];
+      const figs = [...document.querySelectorAll('[data-article-body] figure')];
+
+      figs.forEach((fig, fi) => {
+        fig.querySelectorAll('svg').forEach((svg) => {
+          const curve = svg.querySelector('polyline');
+          const box = svg.getBoundingClientRect();
+          if (!curve || box.height === 0) return;
+
+          // Where the curve ends, in page pixels.
+          const pts = (curve.getAttribute('points') ?? '').trim().split(/\s+/);
+          const last = pts[pts.length - 1]?.split(',').map(Number);
+          if (!last || last.length < 2) return;
+          const curveY = box.top + (last[1]! / 100) * box.height;
+
+          // The round marker inside the same panel, if there is one.
+          const dot = [...(svg.parentElement?.querySelectorAll('span[style]') ?? [])].find(
+            (s) => getComputedStyle(s).borderRadius.includes('9999px')
+              || parseFloat(getComputedStyle(s).borderRadius) > 5,
+          );
+          if (!dot) return;
+          const r = dot.getBoundingClientRect();
+          const dotY = r.top + r.height / 2;
+
+          out.push({ figure: fi, gap: Math.abs(dotY - curveY), dotY, curveY });
+        });
+      });
+      return out;
+    });
+
+    expect(findings.length, 'no marker/curve pairs were found — the probe is blind').toBeGreaterThan(0);
+
+    for (const f of findings) {
+      expect(
+        f.gap,
+        `figure ${f.figure}: the marker sits ${f.gap.toFixed(1)}px off the end of its own curve ` +
+          `(marker ${f.dotY.toFixed(0)}, curve ${f.curveY.toFixed(0)}). It is being positioned ` +
+          'from a number derived separately from the line it marks.',
+      ).toBeLessThanOrEqual(3);
+    }
+  });
+
+  test('the drawn curve reports the same fall the prose does', async ({ page }) => {
+    /**
+     * ⚠️ **The arithmetic half, and it exists because the geometric half could not
+     * see this.** The shipped defect was a drawdown curve computed from a rescaled
+     * path priced with the WRONG calibration: it ended at −31.8% while the
+     * article's prose said −20%, and its axis bottomed at −48% instead of −30%.
+     *
+     * The marker-on-curve test above cannot catch that. Once the marker is
+     * positioned by reading its value OFF the curve — which is the right fix — the
+     * two move together, so the invariant holds perfectly while both are wrong.
+     * **A guard made structurally true by a fix stops being evidence about that
+     * fix.** Proven, not assumed: reintroducing the exact bug left it green.
+     *
+     * So this compares the PICTURE against the TEXT. They are produced by
+     * genuinely different routes — the curve by a rolling-peak series, the prose
+     * by `drawdownFromPeakY` — and a miscalibration moves one and not the other.
+     */
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    const body = await page.locator('[data-article-body]').innerText();
+
+    // What the article says in words, taken from the article itself.
+    const prose = body.match(/(\d+(?:\.\d+)?)% under its high for the year/);
+    expect(prose, 'the prose no longer states the one-year fall — update this guard').not.toBeNull();
+    const stated = Math.round(Number(prose?.[1]));
+
+    // What the two charts print beside their own curves.
+    // ⚠️ `[data-fall-marker]`, not "every span that looks like a percentage". The
+    // first version matched on text and swept up the AXIS TICKS — it failed
+    // reporting 15% against 20%, where 15 was simply the midpoint label on the
+    // scale. A probe that cannot tell a marker from an axis is measuring the
+    // wrong thing, however plausible its error message reads.
+    const drawn = await page
+      .locator('[data-article-body] [data-fall-marker]')
+      .evaluateAll((els) =>
+        els.map((e) => Math.abs(Number((e.textContent ?? '').replace('%', '').trim()))),
+      );
+
+    expect(drawn.length, 'no percentage markers were found on either chart').toBeGreaterThan(0);
+
+    for (const value of drawn) {
+      expect(
+        value,
+        `a chart marks the fall as ${value}% while the article's prose says ${stated}%. ` +
+          'The curve and the sentence are derived by different routes, so they disagree ' +
+          'only when one of them is computed in the wrong coordinate space.',
+      ).toBe(stated);
+    }
+  });
+
+  test('a subsection heading is visibly smaller than a section heading', async ({ page }) => {
+    /**
+     * ⚠️ **The document scale collapsed h2 and h3 onto one size, and no test could
+     * see it.** Both rendered at 17px with the same colour and the same 29.75px
+     * above, separated only by 700 vs 600 weight — so eight sections and four
+     * subsections read as one flat list. Every size was still on the 24/17/13/12
+     * scale, so the type-scale guard passed; the page simply had no hierarchy.
+     * The owner read it and said the sizes looked wrong.
+     *
+     * It survived because **no `.doc-scale` page had ever used an h3** — all three
+     * legal pages are h2-only — so the article was the first consumer of a rule
+     * written for a document that never had subsections (CLAUDE.md 11c-iv).
+     *
+     * This asserts the RELATIONSHIP rather than either number, so it keeps working
+     * if the scale is ever retuned, and it checks the rhythm as well as the size:
+     * a subsection should sit nearer the section it divides than a new section does.
+     */
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    const heads = await page.evaluate(() =>
+      [...document.querySelectorAll('[data-article-body] h2, [data-article-body] h3')].map((h) => {
+        const cs = getComputedStyle(h);
+        return {
+          tag: h.tagName.toLowerCase(),
+          size: parseFloat(cs.fontSize),
+          marginTop: parseFloat(cs.marginTop),
+          text: (h.textContent ?? '').slice(0, 40),
+        };
+      }),
+    );
+
+    const h2s = heads.filter((h) => h.tag === 'h2');
+    const h3s = heads.filter((h) => h.tag === 'h3');
+
+    // Controls: the assertion below is vacuous if either level is absent.
+    expect(h2s.length, 'the article has no h2 — this guard would pass vacuously').toBeGreaterThan(0);
+    expect(h3s.length, 'the article has no h3 — this guard would pass vacuously').toBeGreaterThan(0);
+
+    const smallestH2 = Math.min(...h2s.map((h) => h.size));
+    const largestH3 = Math.max(...h3s.map((h) => h.size));
+    expect(
+      largestH3,
+      `subsection headings render at ${largestH3}px and section headings at ${smallestH2}px. ` +
+        'They must differ, or a reader cannot tell a subsection from a new section — ' +
+        'weight alone is not enough to carry document structure.',
+    ).toBeLessThan(smallestH2);
+
+    // And the spacing must step the same way.
+    const h2Gap = Math.max(...h2s.filter((h) => h.marginTop > 0).map((h) => h.marginTop));
+    const h3Gap = Math.max(...h3s.map((h) => h.marginTop));
+    expect(
+      h3Gap,
+      `a subsection opens with ${h3Gap}px above it and a section with ${h2Gap}px. ` +
+        'A subsection belongs to the section above it and should sit closer to it.',
+    ).toBeLessThan(h2Gap);
+  });
+
+  test('the record figure READS its numbers, in the source', async () => {
+    /**
+     * ⚠️ **The structural half, and it exists because the rendered half has a
+     * blind spot I found by breaking it.** The test above compares what the page
+     * prints against the snapshot file — which cannot fail while a hard-coded
+     * number happens to equal today's value. Proven, not assumed: replacing
+     * `LANDING.currentDrawdownPct` with the literal `-11.3` left that test GREEN,
+     * because `depth()` rounds both to "11.3%". Only when the literal was changed
+     * to `-22.2` did it go red.
+     *
+     * That is the whole defect this pair guards: a typed number is correct on the
+     * day it is typed and silently wrong from the next nightly run (CLAUDE.md
+     * 11k). The rendered test catches it a day late; this one catches it now.
+     *
+     * Comments are STRIPPED first — the paragraph above names the very field it
+     * asserts, and a guard that passes on its own explanation guards nothing
+     * (CLAUDE.md 11c-iv).
+     */
+    const src = readFileSync(
+      join(__dirname, '..', 'components', 'learn', 'DrawdownFigures.tsx'),
+      'utf8',
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+
+    const rows = [...src.matchAll(/pct:[ 	]*(.*)/g)].map((m) =>
+      (m[1] ?? '').trim().replace(/,$/, ''),
+    );
+    expect(rows.length, 'no `pct:` rows found — the figure was restructured').toBeGreaterThanOrEqual(3);
+
+    const literals = rows.filter((v) => /^-?\d/.test(v));
+    expect(
+      literals,
+      `these figures are typed rather than read: ${literals.join(', ')} — every real ` +
+        'number must come from the snapshot, or it is right today and wrong tomorrow',
+    ).toEqual([]);
+
+    // The control: the three record rows must actually name the snapshot fields.
+    // Without this, deleting the rows entirely would satisfy the check above (14g).
+    for (const field of ['currentDrawdownPct', 'typicalDrawdownPct', 'deepestDrawdownPct']) {
+      expect(src, `the record figure no longer reads LANDING.${field}`).toContain(`LANDING.${field}`);
+    }
+  });
+
+  test('both schematics agree about the one-year fall', async ({ page }) => {
+    /**
+     * The two figures are drawn from ONE path, and the second is derived from the
+     * first — so the one-year number must be identical in both. Typing it twice
+     * is exactly the drift CLAUDE.md 11c-iii describes: two captions that share a
+     * spec and quietly stop agreeing, both still perfectly readable.
+     */
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    const captions = await page.locator('[data-article-body] figure figcaption').allInnerTexts();
+    const [whichPeak, windows] = captions;
+
+    const pct = /(\d+)%/g;
+    const inFirst = [...(whichPeak ?? '').matchAll(pct)].map((m) => m[1]);
+    const inSecond = [...(windows ?? '').matchAll(pct)].map((m) => m[1]);
+
+    expect(inFirst.length, 'the which-peak caption quotes no percentages').toBeGreaterThan(0);
+    const shared = inFirst.filter((v) => inSecond.includes(v));
+    expect(
+      shared.length,
+      `no percentage is shared between the two captions (${inFirst} vs ${inSecond}) — ` +
+        'the figures are drawn from one path and must agree on the one-year fall',
+    ).toBeGreaterThan(0);
+  });
+
+  test('the article body does not scroll sideways on a phone', async ({ page }) => {
+    /**
+     * ⚠️ **Scoped to the ARTICLE BODY, and that is a finding rather than a
+     * convenience.** The first version measured the whole document and failed at
+     * 320px by 18px — which turned out to be the public header's two CTA buttons
+     * (`Create free account` / `Sign in`), not anything in this article. The
+     * figures contribute **0px** of overflow at 375, 360 and 320.
+     *
+     * Measuring the document here would make this test go red for a pre-existing
+     * defect in a component it does not own, and the usual response to that is to
+     * loosen the bound until it passes — which would also stop it seeing a real
+     * figure overflow. So it measures the thing under test, at every width, and
+     * the header defect is recorded in the roadmap's deferred list instead
+     * (CLAUDE.md 11l: record a defect you are not authorised to fix).
+     *
+     * ⚠️ A MARGIN, not a boundary (CLAUDE.md 11i-b). `<= 0` scores a 1px accident
+     * as a pass; the design clears this by the full width, so a real regression
+     * breaks it and a rounding artefact does not.
+     *
+     * Swept rather than checked at one width, because the stated 375px floor was
+     * once the single width at which a real overflow happened to clear.
+     */
+    for (const width of [375, 360, 320]) {
+      await page.setViewportSize({ width, height: 812 });
+      await page.goto(ARTICLE);
+      await ready(page);
+
+      const over = await page.evaluate(() => {
+        const el = document.querySelector('[data-article-body]');
+        return el ? el.scrollWidth - el.clientWidth : -1;
+      });
+      expect(over, 'the article body was not found').toBeGreaterThanOrEqual(0);
+      expect(
+        over,
+        `the article body overflows horizontally by ${over}px at ${width}px`,
+      ).toBeLessThanOrEqual(2);
+    }
+  });
+
+  test('the page itself does not scroll sideways at the supported floor', async ({ page }) => {
+    /**
+     * The document-level contract, asserted at the width the project actually
+     * supports (375px — decision #3 / non-negotiable #3). Kept separate from the
+     * test above so that if this one ever fails it names a PAGE problem rather
+     * than being read as a figure problem.
+     */
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    const over = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(over, `${ARTICLE} overflows horizontally by ${over}px at 375px`).toBeLessThanOrEqual(2);
   });
 });

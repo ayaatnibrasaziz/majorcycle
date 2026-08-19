@@ -1305,6 +1305,81 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 >
 > **Owner-approved deletions:** the two early reference pictures (above). The 4K masters
 > were explicitly kept, and earned it the same day.
+>
+> ### 📋 2026-08-19 — the post-Layer-G list. Owner instruction: **list, do not fix.**
+>
+> Surfaced while starting the Learn articles. Neither item touches the article work, and
+> both are parked here by owner instruction so building does not keep stopping. **Do not
+> action either one before Layer G is done.**
+>
+> **1 · GA-2 re-fired, and the product is not the reason.** The design hook reported the
+> same seven `globals.css` findings that GA-2 closed on 2026-08-18. The exception is
+> **intact and correct** — `.impeccable/config.json` still carries both file-scoped
+> wildcard entries with their reasoning. What is stale is the hook's own cache:
+> `hook.cache.json` was written at **00:01:57** and the config at **00:46:14**, so the
+> cache predates the exception by 45 minutes and is replaying findings recorded before it
+> existed (`"cleanAcked":true` is already set on the entry). ⚠️ **Nothing in the product
+> changed** — `git status` was clean when it fired, and the turn that triggered it made no
+> code edits at all. This is CLAUDE.md 11i one layer out: a stale cache producing a result
+> that looks like a regression. The fix, when we get to it, is to invalidate the cache
+> rather than to touch any CSS.
+>
+> ⚠️ **The cache did earn its keep once: it named the two findings the hook truncated.**
+> The message showed five and said "and 2 more"; the cache holds the full seven, so they
+> can be listed without re-running anything:
+>
+> | # | Rule | Selector | Surface |
+> |---|---|---|---|
+> | 1 | `side-tab` | `.insight-invalidation` (2px gold) | paid — thesis insights |
+> | 2 | `side-tab` | `.card-header--accent-buy` (3px green) | paid |
+> | 3 | `side-tab` | `.card-header--accent-hold` (3px gold) | paid |
+> | 4 | `side-tab` | `.kpi-card::before` (3px top bar) | paid |
+> | 5 | `side-tab` | `.card--verdict::before` (5px left bar) | paid |
+> | 6 | `layout-transition` | `.radar-axis-bar-fill` — `transition: width .6s` | paid |
+> | 7 | `layout-transition` | `.progress-bar-fill` — `transition: width .4s` | paid |
+>
+> All seven are on **gated** surfaces and all seven are already covered by the two
+> wildcard entries. The assessments in the GA-2 row stand unchanged.
+>
+> **2 · NEW — two CSS class names use forbidden rating vocabulary.**
+> `.card-header--accent-buy` and `.card-header--accent-hold` (`globals.css` 541–544) use
+> **"buy"** and **"hold"**, which non-negotiable #2 forbids in our scoring outputs — the
+> five tiers are High Conviction / Constructive / Neutral / Cautious / Bearish. ⚠️ **Not a
+> compliance breach**, and that distinction is the whole reason this is parked rather than
+> fixed: these are internal class names, never rendered, so no reader ever sees the words.
+> The risk is second-order — a name is what the next person reaches for, and vocabulary
+> that contradicts the tier list is how a forbidden word eventually reaches a label. Rename
+> to `--accent-positive` / `--accent-caution` whenever that area is next opened, in the
+> same commit as the markup that consumes it. Found by reading the file for an unrelated
+> reason, which is the only way a naming smell is ever found.
+>
+> **3 · NEW — the public header overflows by 18px at 320px.** Measured 2026-08-19 while
+> guarding the drawdown article's figures. At **375px and 360px the page is clean (0px)**;
+> at **320px the document scrolls sideways by 18px**, and the two offending nodes are the
+> header's CTA pair — `div.ml-auto flex items-center gap-[10px]` and the `Create free
+> account` anchor inside it, which is `whitespace-nowrap` and measures 177.9px against a
+> 320px viewport. ⚠️ **Below the stated floor**, so this is not a broken promise: #3 and
+> decision #28 commit to 375px and the roadmap already defers the responsive pass to
+> Layer H. It is recorded because it was measured, not because it is due. ⚠️ **How it
+> surfaced is the reusable part:** the figure guard originally measured the whole
+> document and went red for a component it does not own — and the reflex in that
+> situation is to loosen the bound until it passes, which would also have blinded it to a
+> real figure overflow. The guard was scoped to `[data-article-body]` instead and the
+> finding written down here. Fold into the Layer H 375px sweep.
+>
+> **4 · NEW — the landing page states `863` in five places.** Surfaced 2026-08-19 when the
+> owner read the drawdown article and instructed: *"do not write numbers as it will change
+> eventually."* The article footer was fixed on the spot (it now says *"on listed companies
+> across the US, Australia and Canada"*). The landing was **deliberately left alone**:
+> `app/(public)/page.tsx` carries the figure in the metadata description, the hero, the
+> stats band, the free-tier list and the closing block, and it is part of an **approved
+> storyboard** with its own snapshot mechanism. ⚠️ Rewriting five lines of approved
+> marketing copy is a design decision, not a typo fix — and CLAUDE.md **11l** records what
+> happens when a real defect is treated as a licence to widen scope. The exposure is real
+> though: the universe **auto-expands on every reader's ticker request** (#16), so this is
+> a number the product is actively working to falsify, on the page most strangers see
+> first. Owner's call: leave as a dated snapshot, derive it from the snapshot file, or drop
+> the count the way the article now does.
 
 >
 > ### ✅ G3.7 (the legal documents) — COMPLETE 2026-08-13. Still inside PR #89, still unmerged.
