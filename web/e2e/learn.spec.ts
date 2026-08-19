@@ -373,7 +373,15 @@ test.describe('the Learn library', () => {
           document.querySelector('[data-article-body]') ?? document.querySelector('article');
         if (!root) return ['no article body found'];
         // Characters that may legitimately hug the element on either side.
-        const okAfter = /^[\s.,;:!?)\]’”%–—/-]/;
+        // ⚠️ An em or en DASH is not in this list, and that is a finding. It was,
+        // as "punctuation may legitimately hug" — and on 2026-08-19 the owner's
+        // screenshot showed **"an index— the S&P 500"**, a space dropped after
+        // `</strong>` that this guard had explicitly permitted. In this house
+        // style a dash is always spaced, so a dash against a word is exactly the
+        // defect, never the intent. A guard's allow-list is a claim about the
+        // design system, and this one was inherited from generic punctuation
+        // rules rather than from ours.
+        const okAfter = /^[\s.,;:!?)\]’”%/-]/;
         const okBefore = /[\s(\[‘“$£€/-]$/;
         const out: string[] = [];
         for (const el of root.querySelectorAll('strong,em,a,code,b,i,abbr')) {

@@ -474,11 +474,12 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         The {mag(CORRECTION_PCT)}{' '}
           and {mag(CRASH_PCT)}{' '}
           figures describe an{' '}
-        <strong>index</strong> — the S&amp;P 500, the ASX 200, the S&amp;P/TSX 60. An
+        <strong>index</strong>{' '}
+        — the S&amp;P 500, the ASX 200, the S&amp;P/TSX 60. An
         index is hundreds of companies averaged together, and averaging is exactly
         what makes those thresholds meaningful. For a whole market to fall{' '}
-        {mag(CORRECTION_PCT)}, a great many things have to go wrong at once. That is
-        a rare, informative event.
+        {mag(CORRECTION_PCT)}, hundreds of companies have to fall at once. That is a
+        rare, informative event.
       </p>
       <p>
         An individual company is not an average of anything. It is one business, and
