@@ -1121,3 +1121,131 @@ test.describe('the drawdown article figures', () => {
     expect(over, `${ARTICLE} overflows horizontally by ${over}px at 375px`).toBeLessThanOrEqual(2);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// "Dip, correction, crash" — its two figures
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe('the dip/correction/crash figures', () => {
+  const ARTICLE = learnPath('dip-correction-crash');
+
+  test('both figures render, each with a caption', async ({ page }) => {
+    /**
+     * CLAUDE.md 11j: a missing section renders perfectly. Nothing errors, nothing
+     * looks blank — the page simply stops earlier than it should and reads as
+     * deliberate. Only something that names what SHOULD be there can see it.
+     */
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    const figures = page.locator('[data-article-body] figure');
+    await expect(figures).toHaveCount(2);
+    for (let i = 0; i < 2; i += 1) {
+      await expect(figures.nth(i).locator('figcaption')).not.toBeEmpty();
+    }
+    // Named, not counted — two of the wrong figure would satisfy a count.
+    await expect(page.locator('[data-record-panel="routine"]')).toBeVisible();
+    await expect(page.locator('[data-record-panel="quiet"]')).toBeVisible();
+  });
+
+  test('both panels mark the SAME depth, on one shared scale', async ({ page }) => {
+    /**
+     * ⚠️ **This is the whole figure.** The article's claim is that one percentage
+     * means opposite things in two records, which only works if the two markers
+     * are at the same depth. Give each panel its own y-scale — the obvious thing
+     * to do, and what "make each chart fill its box" would produce — and the dots
+     * land at different heights, the reader sees two unrelated charts, and the
+     * argument silently evaporates while both panels still render beautifully.
+     *
+     * ⚠️ Measured on the DOT, never the printed label: the label is positioned
+     * differently below `sm`, and an element that is `display:none` reports a
+     * zero-sized rect at the origin — a confident number about nothing.
+     */
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    const depths = await page.evaluate(() =>
+      [...document.querySelectorAll('[data-record-panel]')].map((p) => {
+        const box = p.getBoundingClientRect();
+        const dot = p.querySelector('[data-today-dot]')?.getBoundingClientRect();
+        const label = p.querySelector('[data-panel-today]');
+        return {
+          id: p.getAttribute('data-record-panel'),
+          depth: dot ? dot.top + dot.height / 2 - box.top : NaN,
+          text: label?.textContent?.trim() ?? '',
+        };
+      }),
+    );
+
+    expect(depths, 'expected exactly two record panels').toHaveLength(2);
+    const [a, b] = depths;
+    expect(Number.isNaN(a!.depth), `${a!.id}: no today dot to measure`).toBe(false);
+    expect(Number.isNaN(b!.depth), `${b!.id}: no today dot to measure`).toBe(false);
+
+    expect(
+      Math.abs(a!.depth - b!.depth),
+      `the two panels mark today at different depths (${a!.id} ${a!.depth.toFixed(1)}px vs ` +
+        `${b!.id} ${b!.depth.toFixed(1)}px) — they are not on one shared scale, so the ` +
+        'figure no longer shows the same fall in two records',
+    ).toBeLessThanOrEqual(1);
+
+    // And the printed values agree with each other.
+    expect(a!.text, 'the two markers print different numbers').toBe(b!.text);
+    expect(a!.text, 'the marker prints no percentage').toMatch(/-?\d+%/);
+  });
+
+  test('each panel agrees with the number the caption states', async ({ page }) => {
+    /**
+     * Picture versus prose. The version of this guard that only checked the
+     * marker sat on its own curve went green on a reintroduced calibration bug,
+     * because the fix had made that relationship structurally true — a guard the
+     * fix guarantees is no guard (coding-standards §14 item 29). So this compares
+     * two things that are computed by different routes and could disagree: the
+     * depth the panels DRAW, and the depth the caption SAYS.
+     */
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    const marker = (await page.locator('[data-panel-today]').first().textContent()) ?? '';
+    const drawn = Math.abs(parseInt(marker.replace(/[^\d-]/g, ''), 10));
+    expect(Number.isNaN(drawn), `could not read a number from the marker "${marker}"`).toBe(false);
+
+    const caption = (await page.locator('[data-article-body] figure figcaption').nth(1).innerText()) ?? '';
+    expect(
+      caption,
+      `the panels draw a fall of ${drawn}% but the caption beside them does not mention it: ${caption}`,
+    ).toContain(`${drawn}%`);
+
+    // The body makes the same claim in words, three paragraphs earlier.
+    const body = await page.locator('[data-article-body]').innerText();
+    expect(
+      body,
+      `the article's prose never states the ${drawn}% both panels are drawn at`,
+    ).toContain(`${drawn}%`);
+  });
+
+  test('the market figure rules sit where the prose says they do', async ({ page }) => {
+    /**
+     * The two conventional thresholds are the only literals in this article's
+     * figures — they are journalistic convention, not a constant the product
+     * owns, so there is nothing to derive them from. That makes them exactly the
+     * kind of number that can be edited in one place and not the other.
+     */
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    const axis = await page
+      .locator('[data-article-body] figure')
+      .first()
+      .locator('span')
+      .allInnerTexts();
+    const levels = axis.filter((t) => /^-?\d+%$/.test(t.trim()));
+
+    for (const wanted of ['0%', '-10%', '-20%']) {
+      expect(
+        levels.map((t) => t.trim()),
+        `the market figure's axis does not label ${wanted} — the article's prose does`,
+      ).toContain(wanted);
+    }
+  });
+});

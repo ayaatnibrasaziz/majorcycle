@@ -112,8 +112,7 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
       alt: 'A share price traced along the top edge of a dark navy landscape, rising and falling three times by clearly different amounts. A small figure stands at the bottom of the deepest fall, looking up the slope ahead, with a misty city skyline behind.',
     },
     upcoming: [
-      'Why shares fall by the same amount, over and over',
-      'Dip, correction, crash — what’s the difference?',
+      'Why your company’s own history beats the market’s average',
       'How long do recoveries actually take?',
       'What a 52-week high really tells you',
     ],
@@ -228,6 +227,19 @@ export const LEARN_ARTICLES = [
     published: '2026-08-15',
     reviewed: '2026-08-19',
     minutes: 8,
+  },
+  {
+    slug: 'dip-correction-crash',
+    title: 'Dip, correction, crash — what’s the difference?',
+    question: 'What is the difference between a dip, a correction and a crash?',
+    answer:
+      'A dip is a fall of less than 10%, a correction is 10% or more, and a crash is a fall that is sudden as well as deep. They are conventions rather than rules, and they were built to describe the whole market — not a single company.',
+    summary:
+      'The three words explained, where their round numbers actually came from, and why a threshold built for an index tells you almost nothing about one company.',
+    theme: 'cycles',
+    published: '2026-08-19',
+    reviewed: '2026-08-19',
+    minutes: 6,
   },
 ] as const satisfies readonly LearnArticle[];
 

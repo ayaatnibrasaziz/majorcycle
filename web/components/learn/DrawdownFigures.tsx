@@ -1,6 +1,20 @@
 import { LANDING, depth } from '@/lib/landing';
 import { Figure, LegendItem } from '@/components/Figure';
 import {
+  AVG_LINE,
+  AxisFrame,
+  AxisLabels,
+  DD_FILL,
+  DD_LINE,
+  LOW_LINE,
+  PLOT_L,
+  Swatch,
+  TimeNote,
+  TodayDot,
+  ddArea,
+  rx,
+} from './chartPrimitives';
+import {
   FULL_PATH,
   WINDOW_SPAN,
   WINDOW_START,
@@ -46,103 +60,6 @@ import {
  * real security's history and imply a claim we do not make.
  */
 
-/** The plot area, in viewBox units. The gutters are where axis labels live. */
-const PLOT_L = 15;
-const PLOT_R = 96;
-const rx = (x: number): number => PLOT_L + (x / 100) * (PLOT_R - PLOT_L);
-
-/** The product's own drawdown palette (`DrawdownOverlay.tsx`). */
-const DD_LINE = '#1E5CB3'; // --brand-mid
-const DD_FILL = 'rgba(178,34,34,.15)';
-const AVG_LINE = '#D4A017';
-const LOW_LINE = '#B22222';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared drawing pieces
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * ⚠️ **`vectorEffect` sits on each LINE, never on a wrapping `<g>`.** It is not an
- * inherited SVG property, so a `<g>` carrying it does nothing for its children —
- * and under `preserveAspectRatio="none"` a 1-unit stroke is then scaled by the
- * axis it runs against. The vertical rule was stretched by the horizontal factor
- * (6.14× at this size) and rendered as a **~6px pale band** rather than a hairline,
- * while the horizontal one stayed thin. Two lines, one attribute, two completely
- * different weights — and it looked like a deliberate design element, which is why
- * only a zoomed crop caught it.
- */
-function AxisFrame({ floorY }: { floorY: number }) {
-  return (
-    <>
-      <line
-        x1={PLOT_L}
-        y1="4"
-        x2={PLOT_L}
-        y2={floorY}
-        stroke="var(--border)"
-        strokeWidth="1"
-        vectorEffect="non-scaling-stroke"
-      />
-      <line
-        x1={PLOT_L}
-        y1={floorY}
-        x2="100"
-        y2={floorY}
-        stroke="var(--border)"
-        strokeWidth="1"
-        vectorEffect="non-scaling-stroke"
-      />
-    </>
-  );
-}
-
-/** Axis numbers live in HTML so they stay 12px at every width. */
-function AxisLabels({
-  ticks,
-  format,
-}: {
-  ticks: readonly { y: number; value: number }[];
-  format: (v: number) => string;
-}) {
-  return (
-    <>
-      {ticks.map((t) => (
-        <span
-          key={`${t.y}-${t.value}`}
-          className="absolute left-0 -translate-y-1/2 font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)]"
-          style={{ top: `${t.y}%` }}
-        >
-          {format(t.value)}
-        </span>
-      ))}
-    </>
-  );
-}
-
-function TimeNote({ children }: { children: React.ReactNode }) {
-  return <p className="mt-1 text-right text-[12px] text-[var(--text-secondary)]">{children}</p>;
-}
-
-/** The "today" dot — HTML, so it stays circular under a distorting viewBox. */
-function TodayDot({ y, color = 'var(--brand-bright)' }: { y: number; color?: string }) {
-  return (
-    <span
-      className="absolute block h-[13px] w-[13px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] bg-[var(--bg-surface)]"
-      style={{ left: `${rx(100)}%`, top: `${y}%`, borderColor: color }}
-      aria-hidden="true"
-    />
-  );
-}
-
-function Swatch({ color, dashed = true }: { color: string; dashed?: boolean }) {
-  return (
-    <span
-      className={`block h-0 w-6 border-t-[2px] ${dashed ? 'border-dashed' : ''}`}
-      style={{ borderTopColor: color }}
-    />
-  );
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // FIGURE 1 — the same moment, as a price and as a drawdown
 // ─────────────────────────────────────────────────────────────────────────────
@@ -173,14 +90,6 @@ const DD1_TICKS = [0, RECENT_DD_MIN / 2, RECENT_DD_MIN].map((v) => ({
   y: dd1Y(v),
   value: Math.round(v),
 }));
-
-function ddArea(
-  series: readonly { readonly x: number; readonly pct: number }[],
-  toY: (pct: number) => number,
-): string {
-  const line = series.map((p) => `${rx(p.x).toFixed(2)},${toY(p.pct).toFixed(2)}`).join(' ');
-  return `${rx(0).toFixed(2)},${toY(0).toFixed(2)} ${line} ${rx(100).toFixed(2)},${toY(0).toFixed(2)}`;
-}
 
 export function PeakChoiceFigure() {
   /**

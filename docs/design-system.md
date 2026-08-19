@@ -1291,6 +1291,44 @@ measured at 375px, `fill/track` equals `pct/deepest` to three decimals on all th
 so the caption's "the bars share one scale" is verifiably true rather than merely
 claimed.
 
+### The shared chart furniture — `components/learn/chartPrimitives.tsx` (2026-08-19)
+
+Extracted when the second article ("Dip, correction, crash") needed the same axis frame,
+palette, zero line, dashed level rules and "today" dot. Copying them would have been the
+cheapest thing to type and exactly the defect 11c names: two sets of chart furniture
+drifting apart, so the pictures teaching a reader what our product looks like slowly stop
+agreeing with each other, with every version still rendering perfectly.
+
+⚠️ **`TodayDot` takes an optional `id`, and that is not decoration — it makes the dot
+MEASURABLE.** A guard that measures the printed label instead is measuring something that
+is `display:none` below `sm`, and a hidden element reports a zero-sized rect at the
+document origin: a confident number about an element nobody can see (14g in miniature).
+
+### Two panels, ONE scale — the comparison figure (2026-08-19)
+
+`TwoRecordsFigure` shows two imaginary companies **at the identical depth** so their own
+records can disagree about what that depth means. Three things make that claim true rather
+than merely drawn:
+
+1. **Today's fall is constructed, not tuned.** `endingAt()` solves the final vertex against
+   the trailing-year peak, so both panels land on `TODAY_PCT` by arithmetic.
+   ⚠️ Its first version took the peak from `peakYFrom` (which walks path *vertices*) while
+   the curve is built by *sampling* — the high at x=68 fell between samples at 67.5 and
+   68.33, so one panel drew **−23.5% under a label reading −25%** beside a panel at exactly
+   −25%. A comparison figure whose halves are not comparable, and nothing errored. The
+   target is now solved against the same function that draws the curve (11c-iii).
+2. **One vertical scale across both panels.** Given its own axis each panel would fill its
+   own box, the markers would land at different heights, and the argument would evaporate
+   while both panels still looked beautiful. Guarded by measuring the two dots.
+3. **Every other number is derived** — each company's average fall and deepest-before-today
+   come from `seriesStats` over its own curve, and the article's prose renders those same
+   values, so reshaping a path restates the sentence instead of contradicting the picture.
+
+⚠️ **The markers show on phones here, unlike the drawdown article's** (`hidden sm:block`
+there). The number *is* the argument in this figure, and hiding it left a phone reader with
+two dots and no way to see they match. It shifts to the left of the dot below `sm`, because
+centred it overhangs a 269px panel by ~6px.
+
 ### The Learn illustrations — REGENERATED 2026-08-16
 
 Three topic pictures, one per band. **Generated on `google/gemini-3-pro-image` ("Nano Banana

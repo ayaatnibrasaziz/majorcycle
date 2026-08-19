@@ -8,6 +8,8 @@ import {
   PeakChoiceFigure,
   WindowChoiceFigure,
 } from '@/components/learn/DrawdownFigures';
+import { MarketWordsFigure, TwoRecordsFigure } from '@/components/learn/CorrectionFigures';
+import { MARKET_LEVELS, QUIET, ROUTINE, TODAY_PCT } from '@/components/learn/correctionGeometry';
 
 /**
  * Article bodies, keyed by slug.
@@ -54,6 +56,26 @@ function tradingDaysInWords(bars: number): string {
   const years = Math.round(bars / 252);
   return years === 1 ? 'about a year' : `about ${years} years`;
 }
+
+/**
+ * A negative percentage as the positive magnitude a reader says out loud.
+ *
+ * ⚠️ The figures store falls negative because a fall IS negative, and the prose
+ * says "a fall of 10%", never "a fall of −10%". Converting at the point of
+ * display keeps the sign convention honest in the data — the same reasoning as
+ * `depth()` in `lib/landing.ts`.
+ */
+const mag = (v: number): string => `${Math.abs(Math.round(v))}%`;
+
+/**
+ * The two conventional thresholds, looked up by NAME rather than by position.
+ *
+ * `MARKET_LEVELS[0]` would be correct today and silently wrong the moment
+ * anyone reorders the array — the exact defect `recentView()` was rewritten to
+ * avoid in `drawdownGeometry.ts`.
+ */
+const CORRECTION_PCT = MARKET_LEVELS.find((l) => l.label === 'Correction')?.pct ?? -10;
+const CRASH_PCT = MARKET_LEVELS.find((l) => l.label.startsWith('Crash'))?.pct ?? -20;
 
 const HORIZON_KEYS = ['short', 'medium', 'long'] as const;
 const MEDIUM_FALL = Math.abs(PRESETS.medium.pullbackThreshold);
@@ -378,6 +400,237 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         <strong>No card required.</strong>{' '}
         <Link href="/signup">Create a free account</Link> and look up any company on
         the US, Australian or Canadian markets.
+      </p>
+    </>
+  ),
+
+  'dip-correction-crash': () => (
+    <>
+      <h2>The three words, and the numbers behind them</h2>
+      <p>Here they are, plainly, because that is what you came for.</p>
+      <ul>
+        <li>
+          <strong>Dip</strong>{' '}
+          — a fall of less than {mag(CORRECTION_PCT)}{' '}
+          from a recent high. Common,
+          usually brief, and often over before it has a name.
+        </li>
+        <li>
+          <strong>Correction</strong>{' '}
+          — a fall of {mag(CORRECTION_PCT)}{' '}
+          or more. Ordinary enough that the market
+          has one every year or two.
+        </li>
+        <li>
+          <strong>Crash</strong>{' '}
+          — a fall that is severe <em>and fast</em>. There is no agreed percentage.
+          What makes a crash is the speed.
+        </li>
+      </ul>
+
+      <h3>The fourth word people usually mean</h3>
+      <p>
+        Most explanations stop at three and quietly get the last one wrong. When
+        someone says &ldquo;a {mag(CRASH_PCT)}{' '}
+          crash&rdquo;, they almost always mean
+        a <strong>bear market</strong> — a fall of {mag(CRASH_PCT)}{' '}
+          or more that
+        unfolds over months.
+      </p>
+      <p>
+        The difference is time, and it matters more than the label. A bear market is
+        a long grind, and you can watch one arrive. A crash is measured in days, and
+        you cannot. Two very different experiences to sit through, frequently given
+        the same name.
+      </p>
+
+      <MarketWordsFigure />
+
+      <h2>Where those numbers came from</h2>
+      <h3>Nobody voted on this</h3>
+      <p>
+        There is no committee. No regulator sets the threshold, no exchange enforces
+        it, and no textbook derived {mag(CORRECTION_PCT)}{' '}
+          from anything.
+      </p>
+      <p>
+        They are round numbers. They stuck because financial journalists needed a
+        consistent way to say &ldquo;this one is bigger than usual&rdquo;, and a
+        round figure is easy to write and easy to remember. That is the whole origin
+        story.
+      </p>
+      <p>
+        This is not a criticism. Shared shorthand is genuinely useful — it means two
+        people can discuss the same event without defining terms first. It is only a
+        problem when a convenient label gets treated as a measurement.
+      </p>
+
+      <h2>They were built for the index, not for your company</h2>
+      <p>
+        This is the part that almost every explanation skips, and it is the one that
+        changes what you do with the words.
+      </p>
+      <p>
+        The {mag(CORRECTION_PCT)}{' '}
+          and {mag(CRASH_PCT)}{' '}
+          figures describe an{' '}
+        <strong>index</strong> — the S&amp;P 500, the ASX 200, the S&amp;P/TSX 60. An
+        index is hundreds of companies averaged together, and averaging is exactly
+        what makes those thresholds meaningful. For a whole market to fall{' '}
+        {mag(CORRECTION_PCT)}, a great many things have to go wrong at once. That is
+        a rare, informative event.
+      </p>
+      <p>
+        An individual company is not an average of anything. It is one business, and
+        it moves on its own news.
+      </p>
+
+      <h3>Why a {mag(CRASH_PCT)}{' '}
+          fall in one share isn&rsquo;t a crash</h3>
+      <p>
+        Individual shares are far more volatile than the index they sit in, and they
+        differ enormously from one another.
+      </p>
+      <p>
+        Some companies fall 30% as a matter of routine — twice a year, for no reason
+        more dramatic than an ordinary earnings miss. Others have rarely dropped more
+        than 12% in their entire listed history.
+      </p>
+      <p>
+        Apply &ldquo;{mag(CRASH_PCT)}{' '}
+          equals crash&rdquo; to both and you get the
+        same word for two completely different situations: one entirely
+        unremarkable, one genuinely unprecedented.
+      </p>
+
+      <h3>The same number, two different events</h3>
+      <p>
+        Picture two companies, both down {mag(TODAY_PCT)}{' '}
+          from their highs today.
+      </p>
+      <p>
+        The first falls a long way as a matter of course. Its average fall is{' '}
+        {mag(ROUTINE.stats.typical ?? 0)}, and it has been{' '}
+        {mag(ROUTINE.stats.lowest ?? 0)}{' '}
+          down before now. Today&rsquo;s{' '}
+        {mag(TODAY_PCT)}{' '}
+          is <strong>shallower than one of its ordinary years</strong>.
+      </p>
+      <p>
+        The second has traded quietly for as long as anyone has watched it. It
+        normally falls {mag(QUIET.stats.typical ?? 0)}, and the worst in its whole
+        record was {mag(QUIET.stats.lowest ?? 0)}. Today&rsquo;s {mag(TODAY_PCT)}{' '}
+          is{' '}
+        <strong>deeper than anything that has ever happened to it</strong> — something
+        is going on that has not gone on before.
+      </p>
+
+
+      <TwoRecordsFigure />
+
+      <p>
+        <strong>Same number. Opposite meanings.</strong>{' '}
+          And dip, correction and
+        crash cannot tell them apart, because they were never designed to. That is
+        not a flaw in the words; it is a flaw in using them for a job they were not
+        built for.
+      </p>
+
+      <h2>What MajorCycle does instead</h2>
+      <p>
+        We do not have a fixed threshold for &ldquo;a fall worth counting&rdquo;,
+        because we do not think a fixed threshold can be right for every company.
+      </p>
+      <p>
+        Instead it is a setting you control. Each of the three ready-made horizons
+        carries its own figure — the shortest counts a fall of{' '}
+        {Math.abs(PRESETS.short.pullbackThreshold)}%, the medium{' '}
+        {Math.abs(PRESETS.medium.pullbackThreshold)}%, the longest{' '}
+        {Math.abs(PRESETS.long.pullbackThreshold)}% — because a three-month window and
+        a three-year window are not looking for the same size of event. On{' '}
+        <strong>Custom</strong>, you set it yourself, anywhere from {MIN_FALL}% to{' '}
+        {MAX_FALL}%.
+      </p>
+      <p>
+        Then, rather than telling you whether a fall crosses some universal line, we
+        compare it with <strong>that company&rsquo;s own record</strong>: how far it
+        typically falls, and the deepest it has ever fallen. Those two numbers do the
+        job that &ldquo;correction&rdquo; and &ldquo;crash&rdquo; cannot, because
+        they are specific to the business you are actually looking at.
+      </p>
+      <p>
+        If you want the mechanics of how a fall is measured in the first place, that
+        is covered in{' '}
+        <Link href="/learn/what-is-a-drawdown">What is a drawdown?</Link>
+      </p>
+
+      <h2>So which word should you use?</h2>
+      <p>
+        For the market as a whole, the conventional words are fine. If the index is
+        down 12%, &ldquo;correction&rdquo; is accurate, widely understood, and saves
+        everyone a paragraph.
+      </p>
+      <p>
+        For a single company, they are close to useless. &ldquo;This share is in a
+        correction&rdquo; tells you it has fallen {mag(CORRECTION_PCT)}{' '}
+          and nothing
+        else — not whether that is normal for it, not whether it has been much worse
+        before, not whether anything is actually wrong.
+      </p>
+      <p>
+        A more useful sentence has the company&rsquo;s own history in it:{' '}
+        <em>
+          it is down {mag(TODAY_PCT)}, it usually falls about{' '}
+          {mag(ROUTINE.stats.typical ?? 0)}, and its worst ever was{' '}
+          {mag(ROUTINE.stats.lowest ?? 0)}
+        </em>
+        . That is three facts instead of one label, and it is the difference between
+        naming a situation and understanding it.
+      </p>
+
+      <h2>What none of these words tell you</h2>
+      <p>
+        Whichever label you land on, it is still one measurement of price. It stays
+        silent on the things that decide whether a fall matters.
+      </p>
+      <ul>
+        <li>
+          <strong>Why the price fell.</strong>{' '}
+          A market-wide panic and a failing
+          business can produce the same percentage and call for opposite responses.
+        </li>
+        <li>
+          <strong>Whether the company is any good.</strong>{' '}
+          That is answered by the
+          accounts — profitability, debt, cash flow — not by the size of the fall.
+        </li>
+        <li>
+          <strong>Whether it recovers.</strong>{' '}
+          Every past recovery in a
+          company&rsquo;s record happened. That is not a promise about the next one.
+        </li>
+        <li>
+          <strong>How long recovery would take.</strong>{' '}
+          Two shares can fall equally
+          far and take wildly different lengths of time to climb back, and time is a
+          real cost.
+        </li>
+      </ul>
+      <p>
+        A word for how far something fell is a description, not a diagnosis. It is a
+        reasonable place to start looking, and a poor place to stop.
+      </p>
+
+      <h2>See it for any stock, free</h2>
+      <p>
+        Where a share sits against its own record — today&rsquo;s fall, its average
+        fall, and the deepest in its history — is available on a free MajorCycle
+        account, across the US, Australian and Canadian markets.
+      </p>
+      <p>
+        <strong>No card required.</strong>{' '}
+        <Link href="/signup">Create a free account</Link> and look up any company you
+        are thinking about.
       </p>
     </>
   ),
