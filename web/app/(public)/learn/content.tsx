@@ -10,6 +10,7 @@ import {
 } from '@/components/learn/DrawdownFigures';
 import { MarketWordsFigure, TwoRecordsFigure } from '@/components/learn/CorrectionFigures';
 import { BargainFigure } from '@/components/learn/BargainFigure';
+import { PeFigure } from '@/components/learn/PeFigure';
 import { FALL_PCT } from '@/components/learn/bargainGeometry';
 import { MARKET_LEVELS, QUIET, ROUTINE, TODAY_PCT } from '@/components/learn/correctionGeometry';
 import { WeekHighFigure } from '@/components/learn/WeekHighFigure';
@@ -1006,7 +1007,9 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
       </p>
       <p>
         The reason is simple. Those yardsticks compare today&rsquo;s price against{' '}
-        <strong>past</strong> earnings. If the earnings are on their way down, the
+        <strong>past</strong> earnings — the{' '}
+        <Link href="/learn/pe-ratio">P/E ratio</Link>{' '}
+        being the one everybody quotes. If the earnings are on their way down, the
         comparison flatters the company — and it flatters it more with every fall.
         The share never looks expensive again, and the business never recovers.
       </p>
@@ -1099,6 +1102,204 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         How far a share has fallen against its own history — and the accounts of the
         company behind it — are available on a free MajorCycle account, across the
         US, Australian and Canadian markets.
+      </p>
+      <p>
+        <strong>No card required.</strong>{' '}
+        <Link href="/signup">Create a free account</Link> and look up any company you
+        are curious about.
+      </p>
+    </>
+  ),
+
+  'pe-ratio': () => (
+    <>
+      <h2>What it actually is</h2>
+      <p>
+        P/E stands for <strong>price to earnings</strong>. It is one number divided
+        by another: the share price, divided by the profit per share over the last
+        year.
+      </p>
+      <p>
+        A company earning $5 per share, trading at $100, has a P/E of 20.
+      </p>
+      <p>
+        The useful way to read that:{' '}
+        <strong>you are paying $20 for every $1 the company earns in a year.</strong>{' '}
+        Or, put another way, at today&rsquo;s rate of profit it would take 20 years
+        of earnings to add up to what you paid.
+      </p>
+      <p>
+        That is the whole calculation. Everything difficult about the P/E is in the
+        interpretation.
+      </p>
+
+      <h2>There is no &ldquo;good&rdquo; P/E</h2>
+      <p>
+        This is the part most people want a number for, and there isn&rsquo;t one.
+      </p>
+      <p>
+        A P/E of 12 is unremarkable for a bank and remarkable for a fast-growing
+        software company. A P/E of 40 is alarming for a supermarket and ordinary for
+        a business doubling in size every two years. The ratio on its own says
+        nothing at all.
+      </p>
+      <p>It only becomes useful as a comparison, and there are two worth making:</p>
+      <ul>
+        <li>
+          <strong>Against the company&rsquo;s own history.</strong>{' '}
+          Is this business more expensive than it usually is, or less?
+        </li>
+        <li>
+          <strong>Against similar companies.</strong>{' '}
+          Is it more expensive than its direct competitors, and if so, why?
+        </li>
+      </ul>
+      <p>
+        Both of those have an answer. &ldquo;Is 18 a good P/E?&rdquo; does not.
+      </p>
+
+      <h2>Why you cannot compare across industries</h2>
+      <p>
+        A high P/E means investors expect earnings to grow. A low one means they
+        don&rsquo;t. That expectation is built into every industry differently.
+      </p>
+      <p>
+        Software companies sell the same product repeatedly at almost no extra cost,
+        so profits can grow quickly — and investors pay in advance for that growth.
+        Banks, utilities and miners are shaped by things that move slowly: capital,
+        regulation, commodity prices. Their earnings rarely surprise anyone, and the
+        price reflects that.
+      </p>
+      <p>
+        Comparing a P/E across two industries is comparing two different
+        expectations, not two prices. That is why any sensible comparison is against
+        a <strong>peer group</strong>, and why a screen for &ldquo;P/E under
+        10&rdquo; mostly returns industries that always trade under 10.
+      </p>
+
+      <h2>The three ways it misleads</h2>
+
+      <h3>1. Earnings are falling</h3>
+      <p>
+        This is the big one, and it is exactly the{' '}
+        <Link href="/learn/falling-price-bargain-or-warning">value trap</Link> at
+        work.
+      </p>
+      <p>
+        The &ldquo;E&rdquo; in P/E is the <strong>last twelve months</strong> of
+        profit — history. If profits are shrinking, that history is better than the
+        present, and the ratio flatters the company. Worse, it keeps flattering it:
+        as the price falls, the ratio falls too, so the share looks cheaper at every
+        stage of its decline.
+      </p>
+      <p>
+        A company can look cheap on this measure for years while the business quietly
+        disappears. The ratio never warns you, because a falling price and falling
+        earnings move it in the same direction.
+      </p>
+
+      <PeFigure />
+
+      <h3>2. A one-off event inflated the earnings</h3>
+      <p>
+        A company sells a building, wins a lawsuit, or books a tax benefit. Profit
+        jumps for one year. Divide the price by that inflated figure and the P/E
+        collapses to something that looks like a bargain.
+      </p>
+      <p>
+        Next year the one-off is gone, earnings return to normal, and the ratio
+        doubles without the share price moving at all.
+      </p>
+
+      <h3>3. There are no earnings</h3>
+      <p>
+        If a company loses money, there is no meaningful P/E. The number is either
+        negative or simply absent — you will see a blank or a dash.
+      </p>
+      <p>
+        That is not a data problem. A loss-making company cannot be valued this way,
+        and any ratio printed for one should be ignored rather than interpreted.
+      </p>
+
+      <h2>Trailing and forward: one is history, one is a guess</h2>
+      <p>You will see two versions quoted.</p>
+      <p>
+        <strong>Trailing P/E</strong>{' '}
+        uses the profits the company actually reported over the last twelve months.
+        It is a fact. It is also, by definition, out of date.
+      </p>
+      <p>
+        <strong>Forward P/E</strong>{' '}
+        uses what analysts <em>expect</em> the company to earn next year. It is more
+        current in intent and entirely a forecast.
+      </p>
+      <p>
+        Forward P/E is almost always the lower of the two, because forecasts usually
+        assume growth. That makes every share look cheaper on a forward basis, which
+        is worth remembering when a number is quoted at you without saying which one
+        it is.
+      </p>
+      <p>
+        Neither is better. They answer different questions, and it is worth knowing
+        which one you are reading.
+      </p>
+
+      <h2>What a P/E can never tell you</h2>
+      <ul>
+        <li>
+          <strong>Whether the company is any good.</strong>{' '}
+          It says nothing about debt, cash generation, or whether the profits are
+          durable.
+        </li>
+        <li>
+          <strong>Whether the earnings are real.</strong>{' '}
+          Profit is an accounting figure. The ratio treats a solid one and a
+          flattered one identically.
+        </li>
+        <li>
+          <strong>Whether the price will rise.</strong>{' '}
+          Cheap shares can stay cheap indefinitely, and expensive ones have made
+          money for decades.
+        </li>
+        <li>
+          <strong>What the right price is.</strong>{' '}
+          It measures what you are paying against what the company earns. It has no
+          opinion on whether that is sensible.
+        </li>
+      </ul>
+      <p>
+        A P/E is one number in a much longer conversation about whether a business is
+        worth owning.
+      </p>
+
+      <h2>How MajorCycle shows it</h2>
+      <p>
+        We show the trailing and forward P/E on every stock page, alongside the other
+        key figures.
+      </p>
+      <p>
+        We also chart the <strong>P/E over the last five years</strong>, which is the
+        comparison that actually helps: not whether 18 is a good number, but whether
+        this company is more expensive today than it has usually been. A share on a
+        P/E of 18 that has averaged 25 is telling you something. The number 18 on its
+        own is not.
+      </p>
+      <p>
+        One thing worth separating: our <strong>Valuation</strong>{' '}
+        reading is a different measure entirely. It describes where today&rsquo;s price sits
+        inside the company&rsquo;s own history of falls and recoveries — the cycle
+        question covered in{' '}
+        <Link href="/learn/what-is-a-drawdown">What is a drawdown?</Link> It is not a
+        P/E judgement, and the two can disagree. A share can be cheap against its own
+        price history and expensive against its earnings at the same time, and
+        knowing that is more useful than having one number that hides it.
+      </p>
+
+      <h2>See any company&rsquo;s P/E history, free</h2>
+      <p>
+        The trailing and forward P/E, the five-year P/E chart, and the full set of
+        financial figures behind them are available on a free MajorCycle account,
+        across the US, Australian and Canadian markets.
       </p>
       <p>
         <strong>No card required.</strong>{' '}

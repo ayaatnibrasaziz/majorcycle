@@ -126,7 +126,6 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
     },
     upcoming: [
       'How to check if a company is financially healthy',
-      'What a P/E ratio does and doesn’t tell you',
       'How to read an analyst price target',
     ],
   },
@@ -263,6 +262,19 @@ export const LEARN_ARTICLES = [
       'A falling price tells you what the market did, not what the company is worth. The same 30% fall can be a bargain or a warning, and the chart looks identical either way. The difference is in the accounts underneath.',
     summary:
       'Why a lower price is not the same as good value, the two things that cause a fall, and the five checks that tell a bad year apart from a business getting worse.',
+    theme: 'quality',
+    published: '2026-08-20',
+    reviewed: '2026-08-20',
+    minutes: 6,
+  },
+  {
+    slug: 'pe-ratio',
+    title: 'What a P/E ratio does and doesn’t tell you',
+    question: 'What is a good P/E ratio?',
+    answer:
+      'A P/E ratio tells you how much you are paying for each dollar the company earns. It is a price tag, not a verdict. There is no “good” number — and a low one is as often a warning as a bargain.',
+    summary:
+      'What the ratio measures, why no single number is good or bad, the three ways it misleads, and the difference between the trailing and forward versions.',
     theme: 'quality',
     published: '2026-08-20',
     reviewed: '2026-08-20',

@@ -1514,6 +1514,92 @@ test.describe('the bargain-or-warning figure', () => {
   });
 });
 
+test.describe('the P/E figure', () => {
+  const ARTICLE = learnPath('pe-ratio');
+
+  test('the price line is genuinely earnings × ratio', async () => {
+    /**
+     * ⚠️ **The figure draws two series and states a third in its caption.** If the
+     * price fall were an independently chosen number it could contradict the two
+     * lines it is supposedly derived from, and nothing would look wrong — the
+     * caption would simply assert arithmetic the picture does not support
+     * (CLAUDE.md 11c-iii). Pure: no browser, no network.
+     */
+    const { SERIES, QUARTERS, PRICE_FALL_PCT, EPS_FALL_PCT } = await import(
+      '../components/learn/peGeometry'
+    );
+
+    expect(SERIES).toHaveLength(QUARTERS);
+    for (const p of SERIES) {
+      expect(p.price, `quarter ${p.quarter}: price is not eps × pe`).toBeCloseTo(
+        p.eps * p.pe,
+        9,
+      );
+    }
+
+    const first = SERIES[0]!;
+    const last = SERIES[SERIES.length - 1]!;
+    expect(EPS_FALL_PCT).toBeCloseTo((last.eps / first.eps - 1) * 100, 9);
+    expect(PRICE_FALL_PCT).toBeCloseTo((last.price / first.price - 1) * 100, 9);
+  });
+
+  test('the ratio stays CHEAP while the business falls apart', async () => {
+    /**
+     * ⚠️ **The whole argument, asserted on the data.** The article says the ratio
+     * never leaves bargain territory while earnings collapse. Retune the series so
+     * the ratio climbs out of the band, or so earnings barely move, and the figure
+     * still renders perfectly while demonstrating the opposite — 11j exactly.
+     *
+     * Margins rather than boundaries (11i-b): "most quarters" and "earnings fell
+     * somewhat" would both be satisfied by a picture nobody could read.
+     */
+    const { CHEAP_SHARE_PCT, EPS_FALL_PCT, PRICE_FALL_PCT, PE_START, PE_END, CHEAP_LOW, CHEAP_HIGH } =
+      await import('../components/learn/peGeometry');
+
+    expect(
+      CHEAP_SHARE_PCT,
+      `the ratio only looks cheap for ${CHEAP_SHARE_PCT.toFixed(0)}% of the period`,
+    ).toBeGreaterThanOrEqual(75);
+
+    expect(EPS_FALL_PCT, 'earnings barely fall — there is no decline to miss').toBeLessThan(-40);
+    expect(PRICE_FALL_PCT, 'the price barely falls').toBeLessThan(-40);
+
+    // It must START outside the band, or there is no "marked down once" to show.
+    expect(PE_START, 'the ratio begins inside the cheap band').toBeGreaterThan(CHEAP_HIGH);
+    expect(PE_END).toBeGreaterThanOrEqual(CHEAP_LOW);
+    expect(PE_END).toBeLessThanOrEqual(CHEAP_HIGH);
+  });
+
+  test('both panels render, and the caption states what the series produce', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    await expect(page.locator('[data-article-body] figure')).toHaveCount(1);
+    const paths = await page
+      .locator('[data-pe-path]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute('points') ?? ''));
+    expect(paths, 'expected a ratio panel and an earnings panel').toHaveLength(2);
+    // ⚠️ The two panels must NOT be identical — this figure's point is the
+    // opposite of the bargain figure's, and a copy-paste error would produce a
+    // perfectly plausible picture of the wrong thing.
+    expect(paths[0], 'both panels draw the same line').not.toBe(paths[1]);
+    for (const p of paths) expect(p.length).toBeGreaterThan(50);
+
+    const { EPS_FALL_PCT, PRICE_FALL_PCT, CHEAP_SHARE_PCT } = await import(
+      '../components/learn/peGeometry'
+    );
+    const caption = await page.locator('[data-article-body] figure figcaption').innerText();
+    for (const v of [
+      `${Math.abs(EPS_FALL_PCT).toFixed(0)}%`,
+      `${Math.abs(PRICE_FALL_PCT).toFixed(0)}%`,
+      `${CHEAP_SHARE_PCT.toFixed(0)}%`,
+    ]) {
+      expect(caption, `the caption omits ${v}`).toContain(v);
+    }
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The cluster as a whole — added after the 2026-08-19 audit of all three
 // ─────────────────────────────────────────────────────────────────────────────
