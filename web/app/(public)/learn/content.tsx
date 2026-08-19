@@ -687,34 +687,49 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         session and never revisited.
       </p>
 
-      <h2>Why the chart&rsquo;s peak never quite reaches the quoted high</h2>
+      <h2>Why a chart&rsquo;s peak often sits below the quoted high</h2>
       <p>
         Here is something almost nobody explains, and it puzzles people who look
         closely enough to notice it.
       </p>
       <p>
-        Pull up a company&rsquo;s price chart and find the highest point on the line.
-        Then look at the 52-week high quoted beside it.{' '}
-        <strong>They will not match.</strong> The quoted number is higher — usually
+        Pull up a company&rsquo;s price chart, find its highest point, and compare it
+        with the 52-week high quoted beside it. On most charts{' '}
+        <strong>they will not match.</strong> The quoted number is higher — usually
         by a percent or two, sometimes more.
       </p>
       <p>Nothing is broken. They are two different measurements.</p>
 
-      <h3>The quoted high is a moment; the chart line is a day</h3>
-      <p>
-        Almost every price chart is drawn from <strong>closing</strong> prices: one
-        price per day, the one the market settled at. That is what turns a year of
-        trading into a line you can read.
-      </p>
+      <h3>The quoted high is a moment; a closing price is a whole day</h3>
       <p>
         The quoted 52-week high is an <strong>intraday</strong> extreme: the highest
         price anyone paid at any instant, including a spike that lasted seconds and
         was gone by the close.
       </p>
       <p>
-        A line made of closing prices can never reach a price that no close ever
-        touched. The gap between them is the size of the year&rsquo;s biggest
-        intraday spike.
+        Most charts you meet — in a news story, on a broker&rsquo;s summary page, in a
+        search result — are <strong>lines drawn through closing prices</strong>: one
+        price per day, the one the market settled at. A line made of closes can never
+        reach a price that no close ever touched, so its peak stops short. The gap is
+        the size of the year&rsquo;s biggest intraday spike.
+      </p>
+
+      <h3>A candlestick chart draws both, which is why we use one</h3>
+      <p>
+        A candlestick chart records more per day. The solid body still spans the open
+        and the close, but the thin line through it — the wick — marks the full range
+        traded. So the quoted high <em>is</em> on the chart: it is the tip of the
+        tallest wick, not the top of the tallest body.
+      </p>
+      <p>
+        That is why the answer depends on what you compare. Against the closes, the
+        quoted high sits above the chart. Against the wicks, it matches.{' '}
+        <strong>
+          MajorCycle draws candlesticks, so on our own price chart the quoted
+          52-week high is the tip of the tallest wick you can see.
+        </strong>{' '}
+        If you are comparing against a line chart somewhere else, expect the
+        disagreement — and now you know which of the two numbers moved.
       </p>
 
       <WeekHighFigure />
@@ -731,15 +746,17 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
       <h3>Charts usually adjust for dividends too</h3>
       <p>
         There is a second, smaller effect. Most historical charts are{' '}
-        <strong>dividend-adjusted</strong>: past prices are shifted down slightly so
-        the line reflects what an investor actually earned, dividends included,
-        rather than the raw price on the day.
+        <strong>dividend-adjusted</strong>, ours included: past prices are shifted
+        down slightly so the chart reflects what an investor actually earned,
+        dividends included, rather than the raw price on the day.
       </p>
       <p>
         That makes returns comparable over time, which is the right choice. It also
         nudges historical peaks a little lower than the prices really quoted at the
-        time. Over a single year this is the smaller of the two effects for most
-        companies — the intraday-versus-closing difference does most of the work.
+        time — which is why our own tallest wick can sit a whisker below the quoted
+        high rather than exactly on it. Over a single year this is much the smaller
+        of the two effects for most companies; the intraday-versus-closing difference
+        does the bulk of the work.
       </p>
 
       <h3>Which number to use for what</h3>
@@ -751,8 +768,8 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         </li>
         <li>
           <strong>Reading a chart, or comparing returns over time.</strong>{' '}
-          Use the chart&rsquo;s own line. It is internally consistent, which is what
-          a comparison needs.
+          Use the chart&rsquo;s own figures. They are internally consistent, which is
+          what a comparison needs.
         </li>
       </ul>
       <p>
@@ -788,20 +805,38 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
 
       <h2>How MajorCycle uses it</h2>
       <p>
-        Our default horizon looks back {PRESETS.medium.lookbackBars} trading days —
-        about a year — so the high it measures from is, in effect, the 52-week high.
-        That is deliberate: it is the window most people already have in their heads.
+        Two different numbers sit on the same page, and knowing which is which saves
+        a lot of confusion.
       </p>
       <p>
-        Two things we do differently. We show you{' '}
-        <strong>where today sits inside the range</strong>, not just the two
-        endpoints, so &ldquo;near the high&rdquo; is something you can see rather
-        than calculate. And we do not stop at one year: the same stock measured over{' '}
-        {PRESET_HORIZONS.short.replace('~', 'roughly ')} or{' '}
-        {PRESET_HORIZONS.long.replace('~', 'roughly ')} produces a different high, a
-        different distance, and often a different impression. The window is a setting
-        you control, because which year matters depends on how long you intend to
-        hold — not on a convention.
+        <strong>The 52-week range is fixed.</strong>{' '}
+        We show it in the header of every stock page as a gauge: the low at one end,
+        the high at the other, and a marker where today&rsquo;s price sits between
+        them — so &ldquo;near the high&rdquo; is something you can see rather than
+        calculate. It is the standard figure, taken straight from market data, and it
+        is <em>always</em> 52 weeks. No setting moves it. That is the point of it:
+        it is the number you can check against any broker or screener and get the
+        same answer.
+      </p>
+      <p>
+        <strong>The Major Cycle window is yours to choose.</strong>{' '}
+        That is our own measurement, and it is a different question — not
+        &ldquo;where does today sit in the last year?&rdquo; but &ldquo;how far is
+        today below the highest price of the period I care about?&rdquo; You pick the
+        period on Browse before opening a stock:{' '}
+        {PRESET_LABELS.short} ({PRESET_HORIZONS.short.replace('~', 'roughly ')}),{' '}
+        {PRESET_LABELS.medium} ({PRESET_HORIZONS.medium.replace('~', 'roughly ')}) or{' '}
+        {PRESET_LABELS.long} ({PRESET_HORIZONS.long.replace('~', 'roughly ')}).
+      </p>
+      <p>
+        At the default {PRESET_LABELS.medium} setting that window is{' '}
+        {PRESETS.medium.lookbackBars} trading days — about a year — so the peak it
+        measures from is the 52-week high, give or take a rounding difference. Widen
+        it to {PRESET_LABELS.long} and the peak becomes the highest price in{' '}
+        {PRESET_HORIZONS.long.replace('~', 'roughly ')}, the distance grows, and the
+        impression often changes with it. The gauge is a convention; the window is a
+        choice — because which peak matters depends on how long you intend to hold,
+        and the 52-week range was never designed to answer that.
       </p>
       <p>
         If you want the mechanics of how distance from a high is measured, that is
@@ -842,9 +877,9 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
 
       <h2>See where any stock sits, free</h2>
       <p>
-        Where a share sits between its 52-week low and high — and how that changes
-        when you widen or narrow the window — is available on a free MajorCycle
-        account, across the US, Australian and Canadian markets.
+        Where a share sits between its 52-week low and high — and how far it stands
+        below the peak of whatever period you choose — is available on a free
+        MajorCycle account, across the US, Australian and Canadian markets.
       </p>
       <p>
         <strong>No card required.</strong>{' '}

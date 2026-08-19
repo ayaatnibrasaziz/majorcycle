@@ -135,8 +135,8 @@ export function WeekHighFigure() {
           — the 52-week high is the top of the tallest one and the 52-week low the
           bottom of the lowest, and neither was ever a closing price. Here the high
           sits {GAP_PCT.toFixed(1)}% above the best close of the year, and the low{' '}
-          {LOW_GAP_PCT.toFixed(1)}% below the worst. That is why a chart&rsquo;s line
-          never quite touches the numbers quoted beside it.
+          {LOW_GAP_PCT.toFixed(1)}% below the worst. That is why a chart drawn as a
+          line through the closes never quite touches the numbers quoted beside it.
         </>
       }
     >

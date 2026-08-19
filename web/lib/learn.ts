@@ -250,11 +250,11 @@ export const LEARN_ARTICLES = [
     answer:
       'A 52-week high is the highest price a share has touched in the past year, and it moves every day. It is an intraday figure, so a chart drawn from closing prices will show a lower peak — the same company, two correct numbers.',
     summary:
-      'What the number is, why the peak on a chart never quite reaches the high everyone quotes, and why it describes one year of prices rather than a company.',
+      'What the number is, why the peak on a closing-price chart never quite reaches the high everyone quotes, and why it describes one year of prices rather than a company.',
     theme: 'cycles',
     published: '2026-08-19',
     reviewed: '2026-08-19',
-    minutes: 5,
+    minutes: 8,
   },
 ] as const satisfies readonly LearnArticle[];
 
