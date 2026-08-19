@@ -11,6 +11,9 @@ import {
 import { MarketWordsFigure, TwoRecordsFigure } from '@/components/learn/CorrectionFigures';
 import { BargainFigure } from '@/components/learn/BargainFigure';
 import { PeFigure } from '@/components/learn/PeFigure';
+import { HealthShapeFigure } from '@/components/learn/HealthShapeFigure';
+import { AnalystTargetFigure } from '@/components/learn/AnalystTargetFigure';
+import { RatingFigure } from '@/components/learn/RatingFigure';
 import { FALL_PCT } from '@/components/learn/bargainGeometry';
 import { MARKET_LEVELS, QUIET, ROUTINE, TODAY_PCT } from '@/components/learn/correctionGeometry';
 import { WeekHighFigure } from '@/components/learn/WeekHighFigure';
@@ -1274,8 +1277,8 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
 
       <h2>How MajorCycle shows it</h2>
       <p>
-        We show the trailing and forward P/E on every stock page, alongside the other
-        key figures.
+        We show the trailing P/E on every stock page, alongside the other key
+        figures — the reported one, not a forecast.
       </p>
       <p>
         We also chart the <strong>P/E over the last five years</strong>, which is the
@@ -1297,12 +1300,561 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
 
       <h2>See any company&rsquo;s P/E history, free</h2>
       <p>
-        The trailing and forward P/E, the five-year P/E chart, and the full set of
-        financial figures behind them are available on a free MajorCycle account,
-        across the US, Australian and Canadian markets.
+        The trailing P/E, the five-year P/E chart, and the full set of financial
+        figures behind them are available on a free MajorCycle account, across the
+        US, Australian and Canadian markets.
       </p>
       <p>
         <strong>No card required.</strong>{' '}
+        <Link href="/signup">Create a free account</Link> and look up any company you
+        are curious about.
+      </p>
+    </>
+  ),
+
+  'is-a-company-financially-healthy': () => (
+    <>
+      <h2>What &ldquo;healthy&rdquo; actually means</h2>
+      <p>
+        A healthy company can do two things: survive a bad year without asking
+        anyone&rsquo;s permission, and turn a good year into more of itself.
+      </p>
+      <p>
+        Those are separate abilities, and companies often have one without the
+        other. A business can be growing fast and be one bad quarter from breaching
+        a loan covenant. Another can be utterly safe and going nowhere.
+      </p>
+      <p>
+        Five questions cover it. They are the same five we score, and this article
+        is about how to answer each one from figures you can look up.
+      </p>
+
+      <h2>1. Does it make money, and keep making it?</h2>
+      <p>
+        Three margins tell you most of what you need, and each one is a slice of
+        every dollar of sales.
+      </p>
+      <ul>
+        <li>
+          <strong>Gross margin</strong>{' '}— what is left after the direct cost of
+          making the product. High and stable means pricing power.
+        </li>
+        <li>
+          <strong>Operating margin</strong>{' '}— what is left after running the
+          business. This is where bloated companies show up.
+        </li>
+        <li>
+          <strong>Net margin</strong>{' '}— what is left after everything, including
+          interest and tax.
+        </li>
+      </ul>
+      <p>
+        Alongside them, <strong>return on equity</strong>{' '}asks a different question:
+        for every dollar shareholders have tied up, how much profit comes back each
+        year? A consistently high figure is the mark of a genuinely good business.
+      </p>
+      <p>
+        <strong>What to look for:</strong>{' '}the direction, over several years, more
+        than the level. Margins that are drifting down while sales grow mean the
+        company is buying its growth.
+      </p>
+
+      <h2>2. Can it survive a bad year?</h2>
+      <p>This is the balance sheet, and three figures do the work.</p>
+      <ul>
+        <li>
+          <strong>Debt to equity</strong>{' '}— how much it has borrowed against what
+          the owners have put in. Low is safe; very high leaves no room for error.
+        </li>
+        <li>
+          <strong>Current ratio</strong>{' '}— whether what it owns in the short term
+          covers what it owes in the short term. Under 1 means it does not, which is
+          survivable but worth understanding.
+        </li>
+        <li>
+          <strong>Interest cover</strong>{' '}— how many times over its operating profit
+          could pay the interest on its debt. This is the one that decides whether a
+          downturn is uncomfortable or fatal.
+        </li>
+      </ul>
+      <p>
+        Of the three, interest cover is the one to check first. A heavily indebted
+        company with enormous interest cover is fine. A modestly indebted one that
+        can barely cover its interest is not.
+      </p>
+
+      <h2>3. Is it growing?</h2>
+      <p>
+        Revenue growth and earnings growth, over several years rather than one. One
+        weak year happens to everyone; a pattern is a different thing.
+      </p>
+      <p>
+        Watch for the two moving apart. Revenue growing while earnings shrink means
+        the growth is costing more than it brings in — worth knowing before deciding
+        the company is expanding.
+      </p>
+
+      <h2>4. Does the profit turn into cash?</h2>
+      <p>
+        Profit is an accounting figure and involves judgement. Cash is what pays
+        wages, interest and dividends, and involves none.
+      </p>
+      <p>
+        <strong>Free cash flow</strong>{' '}is what is left after the company has paid
+        for the equipment and investment it needs to keep running. Two ways to read
+        it:
+      </p>
+      <ul>
+        <li>
+          <strong>As a margin</strong>{' '}— free cash flow as a share of sales. How much
+          of each dollar of revenue ends up as spendable cash.
+        </li>
+        <li>
+          <strong>As a yield</strong>{' '}— free cash flow against the company&rsquo;s
+          market value. What the business generates relative to what it costs to buy.
+        </li>
+      </ul>
+      <p>
+        A company reporting healthy profits and thin cash flow, year after year, is
+        the single most useful warning sign on this list.
+      </p>
+
+      <h2>5. What does it return to owners?</h2>
+      <p>
+        The <strong>payout ratio</strong>{' '}is the share of earnings paid out as
+        dividends. Comfortably covered is a sign of confidence. A payout above
+        earnings is a promise being funded from somewhere else, and it usually ends
+        with a cut.
+      </p>
+      <p>
+        <strong>Share count</strong>{' '}matters too, and almost nobody looks. A company
+        steadily buying back its own shares is concentrating your stake. One steadily
+        issuing them is diluting it — your slice of the same business gets smaller
+        each year, which does not show up in the share price at all.
+      </p>
+      <p>
+        Paying no dividend is not a negative. A company reinvesting everything into
+        growth is making a legitimate choice, and it should be read as that rather
+        than as a missing figure.
+      </p>
+
+      <h2>Why the thresholds are not universal</h2>
+      <p>
+        Every number above depends on the industry, and applying one rule across all
+        of them produces confident nonsense.
+      </p>
+      <ul>
+        <li>
+          <strong>Banks</strong>{' '}are built on debt — it is their raw material. Debt
+          ratios that would be alarming anywhere else are simply how a bank works.
+        </li>
+        <li>
+          <strong>Utilities and infrastructure</strong>{' '}borrow heavily against very
+          predictable income. High debt with high interest cover is the normal shape.
+        </li>
+        <li>
+          <strong>Young or fast-growing companies</strong>{' '}often have negative cash
+          flow on purpose, because they are spending to build something.
+        </li>
+        <li>
+          <strong>Miners and energy</strong>{' '}swing with commodity prices, so a single
+          year&rsquo;s margins can be the best or worst in a decade.
+        </li>
+      </ul>
+      <p>
+        The useful comparison is always the same company over time, and companies
+        doing the same thing as each other.
+      </p>
+
+      <h2>One score, two very different companies</h2>
+      <p>
+        This is the limitation worth understanding before you lean on any health
+        score, ours included.
+      </p>
+
+      <HealthShapeFigure />
+
+      <p>
+        A single number is an average, and an average hides its own shape. Two
+        businesses can arrive at the same total from opposite directions, and the
+        risk you would be taking on is entirely different in each case. The score is
+        a place to start, not a substitute for looking.
+      </p>
+
+      <h2>What financial health cannot tell you</h2>
+      <ul>
+        <li>
+          <strong>Whether the price is sensible.</strong>{' '}
+          A superb business bought at the wrong price is still a poor investment.
+          That is the question in{' '}
+          <Link href="/learn/pe-ratio">What a P/E ratio does and doesn&rsquo;t tell you</Link>.
+        </li>
+        <li>
+          <strong>What happens next.</strong>{' '}
+          These are figures about the past. A healthy company can lose a court case,
+          a licence, or its main customer.
+        </li>
+        <li>
+          <strong>Whether management is honest.</strong>{' '}
+          Every figure here comes from accounts the company prepared itself.
+        </li>
+        <li>
+          <strong>Whether the industry has a future.</strong>{' '}
+          A company can be the healthiest business in a shrinking market.
+        </li>
+      </ul>
+
+      <h2>How MajorCycle scores it</h2>
+      <p>
+        We roll the five into one Health Score out of 100, weighted in the order
+        above: profitability counts most, then the balance sheet, then growth, cash
+        flow and shareholder returns.
+      </p>
+      <p>
+        Two things about how we handle missing data, because they matter more than
+        the weighting.
+      </p>
+      <p>
+        <strong>We withhold rather than invent.</strong>{' '}
+        If a check has no usable figures, it is left out and the remaining weights
+        are rescaled — it is not quietly scored as average. And if too few checks
+        have data to be meaningful, we publish no score at all rather than a
+        confident-looking number resting on nothing.
+      </p>
+      <p>
+        <strong>The underlying figures are free.</strong>{' '}
+        Margins, return on equity, debt, interest cover, growth, free cash flow and
+        payout ratios are all on the stock page for anyone with an account. The
+        Health Score itself — our judgement of how they combine — is the paid part.
+      </p>
+      <p>
+        A falling price with intact health is a different situation from a falling
+        price with deteriorating health, which is the question in{' '}
+        <Link href="/learn/falling-price-bargain-or-warning">
+          Is a falling share price a bargain or a warning?
+        </Link>
+      </p>
+
+      <h2>Check any company&rsquo;s figures, free</h2>
+      <p>
+        Margins, debt, interest cover, growth, cash flow and payout ratios are on
+        every stock page on a free MajorCycle account, across the US, Australian and
+        Canadian markets.
+      </p>
+      <p>
+        <strong>No card required.</strong>{' '}
+        <Link href="/signup">Create a free account</Link> and look up any company you
+        are curious about.
+      </p>
+    </>
+  ),
+
+  'analyst-price-target': () => (
+    <>
+      <h2>Where the number comes from</h2>
+      <p>
+        A professional analyst covers a handful of companies full time. They build a
+        model of the business, forecast its earnings, and publish a{' '}
+        <strong>price target</strong>: what they think the share should be worth in
+        roughly twelve months.
+      </p>
+      <p>
+        The number you see quoted is almost never one person&rsquo;s. It is the{' '}
+        <strong>average</strong>{' '}of everyone covering that company — sometimes thirty
+        analysts, sometimes two.
+      </p>
+      <p>
+        That averaging is where most of the meaning goes missing.
+      </p>
+
+      <h2>The spread matters more than the average</h2>
+      <p>
+        An average of 30% upside can mean two completely different things. Every
+        analyst agrees the share is worth about 30% more — or half of them expect it
+        to halve and the other half expect it to double.
+      </p>
+      <p>
+        Those are opposite situations, and the headline figure is identical.
+      </p>
+
+      <AnalystTargetFigure />
+
+      <p>
+        A wide spread is not a flaw in the data. It is the most honest thing on the
+        page: it tells you the outcome genuinely depends on something nobody yet
+        knows, and that anyone claiming confidence is overstating their case. A
+        narrow spread means the professionals agree, which is worth knowing but is
+        not the same as being right — the whole group has been wrong together many
+        times.
+      </p>
+      <p>
+        Check how many analysts the average is built from. Two analysts averaging
+        each other is a very different figure from twenty.
+      </p>
+
+      <h2>Targets follow the price more than they lead it</h2>
+      <p>
+        This is the part that surprises people, and it is worth sitting with.
+      </p>
+      <p>
+        When a share falls hard, targets tend to come down afterwards. When it runs
+        up, targets are raised. The forecast moves to stay within a defensible
+        distance of the price rather than the price moving toward the forecast.
+      </p>
+      <p>
+        There are ordinary reasons. A large price move often reflects real news that
+        genuinely changes the forecast. And a target far from the current price is
+        professionally uncomfortable — being wrong alongside everyone else costs an
+        analyst much less than being wrong alone.
+      </p>
+      <p>
+        The practical consequence:{' '}
+        <strong>
+          a target that has just been cut is telling you what already happened
+        </strong>
+        , not what happens next.
+      </p>
+
+      <h2>They lean optimistic, structurally</h2>
+      <p>
+        Across the market, targets sit above the current price far more often than
+        below it, and by more.
+      </p>
+      <p>
+        Part of this is honest: analysts tend to cover companies they find
+        interesting, and a share expected to go nowhere attracts little coverage.
+        Part of it is structural. Negative research is harder to publish, harder to
+        maintain a relationship around, and reaches an audience mostly made up of
+        people who own the share and would like reassurance.
+      </p>
+      <p>
+        None of that makes the numbers useless. It means the baseline is not zero:
+        &ldquo;analysts see upside&rdquo; is close to the resting state, so it is
+        only interesting when it is unusually large, unusually small, or negative.
+      </p>
+
+      <h2>Upgrades and downgrades</h2>
+      <p>
+        Alongside targets, analysts publish a recommendation — the familiar ladder
+        from strong buy down to sell. Two things are worth knowing.
+      </p>
+      <p>
+        <strong>The scale is compressed.</strong>{' '}
+        Outright sell recommendations are rare across the whole market. In practice
+        the meaningful signal is often a downgrade to &ldquo;hold&rdquo;, which reads
+        as neutral and frequently is not.
+      </p>
+      <p>
+        <strong>The change carries more than the level.</strong>{' '}
+        A company that has been rated buy for three years tells you less than one
+        downgraded last week. The direction of revision is the information.
+      </p>
+
+      <h2>What a price target cannot tell you</h2>
+      <ul>
+        <li>
+          <strong>What the share will actually do.</strong>{' '}
+          It is a forecast about an uncertain future, published by people who are
+          wrong regularly and know it.
+        </li>
+        <li>
+          <strong>Over what period.</strong>{' '}
+          Twelve months is the convention, not a promise, and nothing resets when the
+          twelve months pass.
+        </li>
+        <li>
+          <strong>Whether the assumptions hold.</strong>{' '}
+          Every target rests on forecasts of revenue, margins and multiples. Those
+          are visible in the research and almost never in the number.
+        </li>
+        <li>
+          <strong>Whether it suits you.</strong>{' '}
+          A target says nothing about how much of a fall you could tolerate on the
+          way to being right.
+        </li>
+      </ul>
+
+      <h2>How MajorCycle shows it</h2>
+      <p>
+        We show the consensus target, the lowest and highest individual targets, and
+        how many analysts the figures come from — because the spread and the count
+        are the parts that get dropped everywhere else.
+      </p>
+      <p>
+        We also show the recommendation{' '}
+        <strong>exactly as the analysts word it</strong>. Those are their labels, not
+        ours, and we do not translate them into our own scale. Our own ratings never
+        use buy-and-sell language at all, and keeping the two visibly separate is
+        deliberate: third-party opinion and our analysis should never be mistaken for
+        each other.
+      </p>
+      <p>
+        Analyst targets sit alongside, and independent of, our own reading — which is
+        built from a company&rsquo;s own history of falls and the health of the
+        business behind it, described in{' '}
+        <Link href="/learn/how-to-read-a-majorcycle-rating">
+          How to read a MajorCycle rating
+        </Link>
+        .
+      </p>
+
+      <h2>See the full target range, free</h2>
+      <p>
+        The consensus target, the high and low, the analyst count and the current
+        recommendation are on every stock page on a free MajorCycle account, across
+        the US, Australian and Canadian markets.
+      </p>
+      <p>
+        <strong>No card required.</strong>{' '}
+        <Link href="/signup">Create a free account</Link> and look up any company you
+        are curious about.
+      </p>
+    </>
+  ),
+
+  'how-to-read-a-majorcycle-rating': () => (
+    <>
+      <h2>One number, three questions</h2>
+      <p>
+        A MajorCycle rating is a score out of 100. It exists to answer one question:{' '}
+        <em>
+          given what this company is and where its price sits in its own history, how
+          interesting is this right now?
+        </em>
+      </p>
+      <p>
+        It is built from three separate readings, each asking something different.
+      </p>
+
+      <RatingFigure />
+
+      <h3>Financial Health — is the business sound?</h3>
+      <p>
+        Profitability, debt, growth, cash generation and what the company returns to
+        its owners, rolled into a score out of 100. This is the largest single
+        contribution, because a cheap price attached to a deteriorating business is
+        not an opportunity. The detail is in{' '}
+        <Link href="/learn/is-a-company-financially-healthy">
+          How to check if a company is financially healthy
+        </Link>
+        .
+      </p>
+
+      <h3>Valuation — where is the price in this company&rsquo;s own cycle?</h3>
+      <p>
+        Not a P/E judgement. This asks how far today&rsquo;s price sits below the
+        peak of the chosen window, and — crucially — how that compares with{' '}
+        <strong>this company&rsquo;s own typical fall</strong>. A share down 15% when
+        it usually falls 40% is in a different position from one down 15% that has
+        never fallen more than 18%. The mechanics are in{' '}
+        <Link href="/learn/what-is-a-drawdown">What is a drawdown?</Link>
+      </p>
+
+      <h3>Cycle Payoff — has that history been worth anything?</h3>
+      <p>
+        Two things at once. How many complete falls and recoveries the company&rsquo;s
+        record actually contains — a company with a handful of cycles gives a more
+        reliable read than one with two. And how its typical recovery has compared
+        with its typical fall.
+      </p>
+      <p>
+        Despite the name, there is nothing about price momentum in it. It measures
+        whether the pattern is well-established and whether it has historically been
+        rewarded.
+      </p>
+
+      <h2>What the five labels mean</h2>
+      <p>
+        The score maps to one of five labels, shown in the figure above with the
+        exact bands.
+      </p>
+      <ul>
+        <li>
+          <strong>High Conviction</strong>{' '}— all three readings are strong at once.
+          Rare, and it should be.
+        </li>
+        <li>
+          <strong>Constructive</strong>{' '}— the case holds together, usually with one
+          part weaker than the others.
+        </li>
+        <li>
+          <strong>Neutral</strong>{' '}— genuinely balanced, or a mix of strengths and
+          weaknesses that cancel out. Worth opening rather than dismissing.
+        </li>
+        <li>
+          <strong>Cautious</strong>{' '}— something material is working against it.
+        </li>
+        <li>
+          <strong>Bearish</strong>{' '}— the readings are poor across the board.
+        </li>
+      </ul>
+      <p>
+        You will notice these are not buy and sell. That is deliberate and it is not
+        a legal formality: we do not know your circumstances, your timeframe or what
+        else you own, and those decide whether any share suits you far more than our
+        score does. The labels describe{' '}
+        <strong>what the numbers say</strong>, and stop there.
+      </p>
+
+      <h2>Read the parts, not just the total</h2>
+      <p>
+        The most common mistake is treating the headline as the answer. It is an
+        average, and averages hide their shape.
+      </p>
+      <p>
+        A rating of 60 built from a strong business at a stretched price is a
+        completely different proposition from a 60 built from a weak business at a
+        bargain price. Same number, opposite situations, and only the three parts
+        tell them apart. The score is the summary; the reading is underneath it.
+      </p>
+
+      <h2>When part of the picture is missing</h2>
+      <p>
+        Some companies do not have the fundamentals we need — recent listings,
+        unusual structures, or gaps in the data.
+      </p>
+      <p>
+        In that case we do not fabricate a Financial Health score or quietly treat it
+        as average. It is left out, and the rating is computed from the price cycle
+        alone with the remaining weights rescaled. A rating built on two readings
+        instead of three is a narrower judgement, and worth treating as one.
+      </p>
+
+      <h2>What the rating deliberately will not do</h2>
+      <ul>
+        <li>
+          <strong>Predict the price.</strong>{' '}
+          Nothing in it forecasts. Every input describes what has already happened.
+        </li>
+        <li>
+          <strong>Tell you when.</strong>{' '}
+          A share can sit at a strong reading for a year, or fall much further first.
+        </li>
+        <li>
+          <strong>Account for what is coming.</strong>{' '}
+          A pending lawsuit, a regulatory change, a takeover — none of it is in the
+          numbers.
+        </li>
+        <li>
+          <strong>Know anything about you.</strong>{' '}
+          Your timeframe and what you already own matter more than any score, and we
+          have no view on either.
+        </li>
+      </ul>
+      <p>
+        It is a way of reading a company&rsquo;s own record quickly and consistently
+        across hundreds of them. That is genuinely useful, and it is all it is.
+      </p>
+
+      <h2>See a rating for any stock</h2>
+      <p>
+        Signing up is free and takes no card. A free account includes the price
+        chart, the drawdown overlay and every fundamentals section; the Overall
+        Rating, Health Score and the full scorecard come with a subscription, which
+        starts with a 7-day trial.
+      </p>
+      <p>
+        <strong>No card required to sign up.</strong>{' '}
         <Link href="/signup">Create a free account</Link> and look up any company you
         are curious about.
       </p>

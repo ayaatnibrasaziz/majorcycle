@@ -299,12 +299,24 @@ export function downloadCsv(filename: string, csv: string): void {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * The engine's Overall Rating weights, as percentages.
+ *
+ * ⚠️ Mirrors `_RATING_WEIGHTS` in `analytics/scoring/overall.py`, and is the ONE
+ * place the TypeScript side spells them. They were written as bare `0.4 / 0.35 /
+ * 0.25` inside `ratingComposition` until 2026-08-20, when the Learn article
+ * explaining the rating needed the same three numbers — which would have made a
+ * third copy, in prose, of a constant that already existed twice (CLAUDE.md
+ * 11c-v). Anything that states the weights now reads them from here.
+ */
+export const RATING_WEIGHTS = { health: 40, valuation: 35, payoff: 25 } as const;
+
 /** Convenience: the OverallRating composition (engine weights 40/35/25). */
 export function ratingComposition(r: CycleAnalysis): { health: number; valuation: number; payoff: number } {
   return {
-    health: (r.financialHealthScore ?? 0) * 0.4,
-    valuation: r.valuationScore * 0.35,
-    payoff: r.cyclePayoffScore * 0.25,
+    health: (r.financialHealthScore ?? 0) * (RATING_WEIGHTS.health / 100),
+    valuation: r.valuationScore * (RATING_WEIGHTS.valuation / 100),
+    payoff: r.cyclePayoffScore * (RATING_WEIGHTS.payoff / 100),
   };
 }
 

@@ -124,10 +124,7 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
       src: '/learn/judging-the-business.png',
       alt: 'Two office towers of the same height under identical falling share prices. One stands square with warmly lit windows and an open doorway; the other leans, cracked from top to bottom, its windows dark and its highest floor sliding away. A small figure stands between them, looking up.',
     },
-    upcoming: [
-      'How to check if a company is financially healthy',
-      'How to read an analyst price target',
-    ],
+    upcoming: ['Is a dividend safe, and how would you know?'],
   },
   {
     id: 'using-it',
@@ -137,11 +134,12 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
       src: '/learn/using-majorcycle.png',
       alt: 'A share price falling through five stepped depth bands to a marker at the bottom of a valley. A small figure stands at the point where the drawn landscape fades away into empty mist, looking out at nothing.',
     },
-    upcoming: [
-      'How to read a MajorCycle rating',
-      'What the five tiers mean',
-      'What MajorCycle deliberately doesn’t do',
-    ],
+    // ⚠️ "What the five tiers mean" was announced here and has been FOLDED into
+    // "How to read a MajorCycle rating" rather than written separately. Two
+    // articles about one rating would compete for the same search and repeat
+    // each other — the duplicate-content shape `learn.spec.ts` now polices
+    // between articles. Recorded rather than silently dropped.
+    upcoming: ['What MajorCycle deliberately doesn’t do'],
   },
 ] as const;
 
@@ -279,6 +277,45 @@ export const LEARN_ARTICLES = [
     published: '2026-08-20',
     reviewed: '2026-08-20',
     minutes: 6,
+  },
+  {
+    slug: 'is-a-company-financially-healthy',
+    title: 'How to check if a company is financially healthy',
+    question: 'How do I know if a company is financially healthy?',
+    answer:
+      'Financial health is whether a business can survive a bad year and still compound in a good one. It comes down to five things: whether it makes money, whether it owes too much, whether it is growing, whether the profit turns into cash, and what it returns to owners.',
+    summary:
+      'The numbers behind each of the five checks, what good looks like, why the thresholds differ by industry, and why one healthy-looking score can hide very different risks.',
+    theme: 'quality',
+    published: '2026-08-20',
+    reviewed: '2026-08-20',
+    minutes: 7,
+  },
+  {
+    slug: 'analyst-price-target',
+    title: 'How to read an analyst price target',
+    question: 'What is an analyst price target and should I trust it?',
+    answer:
+      'A price target is one analyst’s estimate of where a share should trade in about twelve months. The figure usually quoted is an average of many such estimates, and the disagreement between them is almost always more informative than the average itself.',
+    summary:
+      'Where the number comes from, why the spread matters more than the consensus, why targets follow the price rather than lead it, and what they cannot tell you.',
+    theme: 'quality',
+    published: '2026-08-20',
+    reviewed: '2026-08-20',
+    minutes: 5,
+  },
+  {
+    slug: 'how-to-read-a-majorcycle-rating',
+    title: 'How to read a MajorCycle rating',
+    question: 'What does a MajorCycle rating mean?',
+    answer:
+      'A MajorCycle rating is a score out of 100 built from three parts: the financial health of the business, where today’s price sits inside that company’s own history of falls, and how reliably that history has paid off. The score maps to one of five labels.',
+    summary:
+      'What the three parts measure, how they are weighted, what the five labels mean, and the questions the rating deliberately refuses to answer.',
+    theme: 'using-it',
+    published: '2026-08-20',
+    reviewed: '2026-08-20',
+    minutes: 4,
   },
 ] as const satisfies readonly LearnArticle[];
 

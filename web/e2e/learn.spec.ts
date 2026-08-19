@@ -1600,6 +1600,251 @@ test.describe('the P/E figure', () => {
   });
 });
 
+test.describe('the health-shape figure', () => {
+  test('both companies score EXACTLY the same, from different pillars', async () => {
+    /**
+     * ⚠️ **The figure's entire claim.** "Roughly the same score" would let a
+     * reader explain the difference away as rounding, and the point — that one
+     * number hides two risks — would evaporate while the picture still rendered
+     * perfectly (CLAUDE.md 11j).
+     */
+    const { GEARED, SOLID, GEARED_HEALTH, SOLID_HEALTH, BIGGEST_PILLAR_GAP, CHECKS } =
+      await import('../components/learn/healthShapeGeometry');
+
+    expect(GEARED_HEALTH, 'the two totals are not identical').toBeCloseTo(SOLID_HEALTH, 9);
+
+    // …and they must differ SHARPLY somewhere, or the figure shows two similar
+    // companies with the same score, which is unremarkable.
+    expect(
+      BIGGEST_PILLAR_GAP,
+      `the widest pillar gap is only ${BIGGEST_PILLAR_GAP} points`,
+    ).toBeGreaterThanOrEqual(40);
+
+    // The two must be opposite in SHAPE, not merely different: each should win
+    // some pillars and lose others.
+    const gearedWins = CHECKS.filter((c) => GEARED.scores[c.key] > SOLID.scores[c.key]).length;
+    expect(gearedWins, 'one company beats the other on every check').toBeGreaterThan(0);
+    expect(gearedWins, 'one company beats the other on every check').toBeLessThan(CHECKS.length);
+  });
+
+  test('the figure renders both shapes and states the shared score', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(learnPath('is-a-company-financially-healthy'));
+    await ready(page);
+
+    await expect(page.locator('[data-article-body] figure')).toHaveCount(1);
+    expect(await page.locator('[data-shape] li').count()).toBe(10);
+
+    const totals = await page
+      .locator('[data-health-total]')
+      .evaluateAll((els) => els.map((e) => e.textContent?.trim() ?? ''));
+    expect(totals).toHaveLength(2);
+    // Rendered, not computed here: the two panels must PRINT the same number.
+    expect(totals[0], 'the two panels print different totals').toBe(totals[1]);
+
+    const { GEARED_HEALTH } = await import('../components/learn/healthShapeGeometry');
+    const caption = await page.locator('[data-article-body] figure figcaption').innerText();
+    expect(caption).toContain(GEARED_HEALTH.toFixed(0));
+  });
+});
+
+test.describe('the analyst-target figure', () => {
+  test('the spread is wider than the upside the average implies', async () => {
+    /**
+     * ⚠️ The article's thesis, asserted on the numbers: the disagreement between
+     * analysts is the larger fact, and the consensus is a point inside it. Tune
+     * the figure so the range is narrow and the picture argues the opposite while
+     * looking exactly the same.
+     */
+    const { SPREAD_PCT, MEAN_UPSIDE_PCT, LOW_MOVE_PCT, HIGH_MOVE_PCT, TARGET_LOW, TARGET_MEAN, TARGET_HIGH, PRICE_TODAY } =
+      await import('../components/learn/analystGeometry');
+
+    expect(TARGET_LOW).toBeLessThan(TARGET_MEAN);
+    expect(TARGET_MEAN).toBeLessThan(TARGET_HIGH);
+    // ⚠️ A MARGIN, not a boundary (CLAUDE.md 11i-b). This read `* 2` until it was
+    // broken on purpose: narrowing the high target from 178 to 132 — which halves
+    // the spread and guts the picture — still cleared 2× by two points and
+    // PASSED. The design clears 4×, so the bound is 3×: far enough from the real
+    // figure to be quiet, close enough that a gutted range goes red.
+    expect(SPREAD_PCT, 'the spread is not visibly wider than the consensus upside').toBeGreaterThan(
+      MEAN_UPSIDE_PCT * 3,
+    );
+    // The low target must sit BELOW today, or "analysts disagree about direction"
+    // is not what the picture shows.
+    expect(TARGET_LOW).toBeLessThan(PRICE_TODAY);
+    expect(LOW_MOVE_PCT).toBeLessThan(0);
+    expect(HIGH_MOVE_PCT).toBeGreaterThan(0);
+  });
+
+  test('all four markers render inside the panel and do not collide, at every width', async ({
+    page,
+  }) => {
+    /**
+     * ⚠️ **This test measured 1280px only, and shipped a broken figure.** At
+     * 414px and below, "Today" and "Average target" — the two labels above the
+     * bar, ~20% of the plot apart — overlapped into an unreadable smudge. The
+     * guard was green the whole time because it looked at the one width where
+     * the labels have room (CLAUDE.md 11i-b: run the guard where the defect
+     * actually appears).
+     *
+     * It now sweeps down past the stated 375px floor to 360px, and every width
+     * is asserted rather than the first failure ending the run — so the report
+     * says which widths break, not merely that one does.
+     */
+    await page.goto(learnPath('analyst-price-target'));
+
+    const failures: string[] = [];
+    for (const width of [1280, 1024, 768, 414, 375, 360]) {
+      await page.setViewportSize({ width, height: 900 });
+      await ready(page);
+      const g = await measureMarkers(page);
+      if (g.count !== 4) failures.push(`${width}px: ${g.count} markers, expected 4`);
+      if (g.overlaps.length) failures.push(`${width}px: labels overlap — ${g.overlaps.join(', ')}`);
+      for (const b of g.boxes) {
+        if (b.insideLeft < -2) failures.push(`${width}px: ${b.id} spills off the left`);
+        if (b.insideRight < -2) failures.push(`${width}px: ${b.id} spills off the right`);
+      }
+    }
+    expect(failures, `the analyst figure breaks at:\n${failures.join('\n')}`).toEqual([]);
+  });
+
+  /** Every marker's box, plus any pair that overlaps. */
+  async function measureMarkers(page: Page) {
+    return page.evaluate(() => {
+      const marks = [...document.querySelectorAll('[data-marker-label]')];
+      const panel = document.querySelector('[data-analyst-range]')?.parentElement;
+      const pb = panel?.getBoundingClientRect();
+      return {
+        count: marks.length,
+        boxes: marks.map((m) => {
+          const r = m.getBoundingClientRect();
+          return {
+            id: m.getAttribute('data-marker-label'),
+            left: r.left,
+            right: r.right,
+            top: r.top,
+            bottom: r.bottom,
+            insideLeft: pb ? r.left - pb.left : -1,
+            insideRight: pb ? pb.right - r.right : -1,
+          };
+        }),
+      };
+    })
+      .then((g) => {
+        // ⚠️ EVERY pair, not just the pair I expected to collide. The first
+        // version of this checked only "today vs mean" — which happened to be
+        // the right pair, and would have said nothing at all had the defect
+        // been anywhere else in the figure.
+        const overlaps: string[] = [];
+        for (let i = 0; i < g.boxes.length; i += 1) {
+          for (let j = i + 1; j < g.boxes.length; j += 1) {
+            const a = g.boxes[i]!;
+            const b = g.boxes[j]!;
+            if (
+              Math.min(a.right, b.right) > Math.max(a.left, b.left) &&
+              Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top)
+            ) {
+              overlaps.push(`${a.id}+${b.id}`);
+            }
+          }
+        }
+        return { ...g, overlaps };
+      });
+  }
+});
+
+test.describe('the rating figure', () => {
+  test('the bands are the PRODUCT’s bands, and the worked total is real', async () => {
+    /**
+     * ⚠️ The bands are discovered by walking the real `tierFromScore`, so this
+     * asserts against the engine rather than against a second copy of four
+     * literals. If a threshold moves, the figure moves and this still passes —
+     * which is the point (CLAUDE.md 11c-v).
+     */
+    const { TIER_BANDS, EXAMPLE, EXAMPLE_TOTAL, EXAMPLE_LABEL, RATING_WEIGHTS, WEIGHT_TOTAL } =
+      await import('../components/learn/ratingGeometry');
+    const { tierFromScore, OVERALL_LABELS } = await import('../lib/ratings');
+
+    expect(WEIGHT_TOTAL, 'the three rating weights no longer sum to 100').toBe(100);
+    expect(TIER_BANDS, 'there should be exactly five labels').toHaveLength(5);
+    expect(TIER_BANDS.map((b) => b.label)).toEqual([...OVERALL_LABELS]);
+
+    // Every band edge must agree with the real function, at both ends.
+    for (const band of TIER_BANDS) {
+      expect(tierFromScore(band.from), `${band.label} starts in the wrong tier`).toBe(band.tier);
+      expect(tierFromScore(band.to), `${band.label} ends in the wrong tier`).toBe(band.tier);
+      if (band.from > 0) {
+        expect(
+          tierFromScore(band.from - 1),
+          `${band.label} does not actually begin at ${band.from}`,
+        ).not.toBe(band.tier);
+      }
+    }
+    // The bands must tile 0–100 with no gap and no overlap.
+    const sorted = [...TIER_BANDS].sort((x, y) => x.from - y.from);
+    expect(sorted[0]!.from).toBe(0);
+    expect(sorted[sorted.length - 1]!.to).toBe(100);
+    for (let i = 1; i < sorted.length; i += 1) {
+      expect(sorted[i]!.from, 'the tier bands do not tile').toBe(sorted[i - 1]!.to + 1);
+    }
+
+    // The worked example is a real weighted average, and its label is earned.
+    const byHand =
+      (EXAMPLE.health * RATING_WEIGHTS.health +
+        EXAMPLE.valuation * RATING_WEIGHTS.valuation +
+        EXAMPLE.payoff * RATING_WEIGHTS.payoff) /
+      100;
+    expect(EXAMPLE_TOTAL).toBeCloseTo(byHand, 9);
+    expect(EXAMPLE_LABEL).toBe(OVERALL_LABELS[tierFromScore(Math.round(EXAMPLE_TOTAL)) - 1]);
+  });
+
+  test('the article never uses buy/sell language for OUR rating', async ({ page }) => {
+    /**
+     * ⚠️ CLAUDE.md #2 is a compliance rule, and this is the one article whose
+     * whole subject is our labels — the single most likely place for "buy" to
+     * slip into a sentence about our own scoring.
+     *
+     * The article legitimately DISCUSSES analysts' buy/sell ladder in one place,
+     * so a blanket word ban would be wrong. This checks the five real labels are
+     * all present and that no banned word appears as OUR verdict.
+     */
+    await page.goto(learnPath('how-to-read-a-majorcycle-rating'));
+    await ready(page);
+    const body = (await page.locator('[data-article-body]').innerText()).toLowerCase();
+
+    const { OVERALL_LABELS } = await import('../lib/ratings');
+    for (const label of OVERALL_LABELS) {
+      expect(body, `the article never names the "${label}" tier`).toContain(label.toLowerCase());
+    }
+
+    for (const banned of ['strong buy', 'a buy', 'a sell', 'avoid']) {
+      expect(body, `"${banned}" appears in the article about our own rating`).not.toContain(banned);
+    }
+  });
+
+  test('the figure prints all five bands and the three weights', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(learnPath('how-to-read-a-majorcycle-rating'));
+    await ready(page);
+
+    await expect(page.locator('[data-article-body] figure')).toHaveCount(1);
+    expect(await page.locator('[data-tier-bands] li').count()).toBe(5);
+    expect(await page.locator('[data-rating-parts] > li').count()).toBe(3);
+
+    const { TIER_BANDS, EXAMPLE_LABEL, EXAMPLE_TOTAL } = await import(
+      '../components/learn/ratingGeometry'
+    );
+    const figure = await page.locator('[data-article-body] figure').innerText();
+    for (const band of TIER_BANDS) {
+      expect(figure, `the figure omits the ${band.label} band`).toContain(
+        `${band.from}–${band.to}`,
+      );
+    }
+    expect(figure).toContain(String(Math.round(EXAMPLE_TOTAL)));
+    expect(await page.locator('[data-example-label]').innerText()).toBe(EXAMPLE_LABEL);
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The cluster as a whole — added after the 2026-08-19 audit of all three
 // ─────────────────────────────────────────────────────────────────────────────
