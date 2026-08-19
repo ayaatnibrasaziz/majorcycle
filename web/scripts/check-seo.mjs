@@ -245,8 +245,15 @@ for (const page of pages ?? []) {
   // and a break that renamed the key to `xdescription:` passed — because the typo
   // still CONTAINS the string being searched for. A substring match is not a field
   // check.
+  //
+  // ⚠️ Accepts a template literal as well as a quoted string. On 2026-08-19 the
+  // landing's description became `…${UNIVERSE_COUNT}…` so the company count is read
+  // from the database rather than typed, and this guard went red on a page whose
+  // description was **present and correct** — it was reading the source for one
+  // spelling of a value the build resolves either way (11d). A guard that only knows
+  // the syntax it was written against blocks the fix rather than the bug.
   check();
-  if (!/\n\s*description:\s*\n?\s*'/.test(src)) {
+  if (!/\n\s*description:\s*\n?\s*['`]/.test(src)) {
     fail(`${rel}: pageMetadata() needs a description — it is the sentence shown under the result.`);
   }
 }

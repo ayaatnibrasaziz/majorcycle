@@ -1660,6 +1660,22 @@ redirects rather than quietly reporting a bounce as a page. This also satisfies 
   The stock is **fixed** (Apple), not rotating: a rotating example means the page a reader
   shares is not the page their friend opens.
 
+  **Widened 2026-08-19 to carry `universeCount`** — how many companies the site covers,
+  which the landing states in five places (metadata description, hero headline, stats
+  band, free-tier list, honesty block) via `UNIVERSE_COUNT` in `lib/landing.ts`. It was
+  five typed literals reading **863** while the database held **866**; the universe
+  auto-expands on every reader's ticker request (#16), so a literal there is a claim the
+  product actively works to falsify, and it drifts with no commit and nothing red
+  (CLAUDE.md 11c-v). Putting it in the nightly snapshot keeps the page **statically
+  prerendered** — the alternative, a request-time query, would make `/` dynamic and give
+  back the 674ms→77ms click win (§7.2c).
+
+  ⚠️ Counted with PostgREST's `count="exact"`, **not** `len(rows)`. An unbounded select
+  caps at 1000 rows silently (14c), which would have printed the right figure today,
+  quietly stale figures as we grew, and **1000 forever** thereafter. The exclusion is
+  `market != 'index'` — benchmarks (^GSPC etc.) are not companies a reader can browse —
+  matching `fetchUniverseIndex` and `check_field_units.py`.
+
   **Widened 2026-08-13** to carry the recovery half as well as the fall: `deepestDrawdownPct`,
   `currentProfitPct`, `typicalRecoveryPct`, `largestRecoveryPct`, `recoveryEvents`. The
   approved storyboard draws two distribution bars — how far this stock falls, and how far

@@ -1367,19 +1367,26 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > real figure overflow. The guard was scoped to `[data-article-body]` instead and the
 > finding written down here. Fold into the Layer H 375px sweep.
 >
-> **4 · NEW — the landing page states `863` in five places.** Surfaced 2026-08-19 when the
-> owner read the drawdown article and instructed: *"do not write numbers as it will change
-> eventually."* The article footer was fixed on the spot (it now says *"on listed companies
-> across the US, Australia and Canada"*). The landing was **deliberately left alone**:
-> `app/(public)/page.tsx` carries the figure in the metadata description, the hero, the
-> stats band, the free-tier list and the closing block, and it is part of an **approved
-> storyboard** with its own snapshot mechanism. ⚠️ Rewriting five lines of approved
-> marketing copy is a design decision, not a typo fix — and CLAUDE.md **11l** records what
-> happens when a real defect is treated as a licence to widen scope. The exposure is real
-> though: the universe **auto-expands on every reader's ticker request** (#16), so this is
-> a number the product is actively working to falsify, on the page most strangers see
-> first. Owner's call: leave as a dated snapshot, derive it from the snapshot file, or drop
-> the count the way the article now does.
+> **4 · ✅ RESOLVED same day — the landing's five `863` literals now come from the
+> database.** Owner instruction: *"please automatically fetch the number from the
+> database."* ⚠️ **They were already wrong when this was written**: the page said
+> **863** while the database held **866**. The universe auto-expands on every reader's
+> ticker request (#16), so the drift needs no commit and nothing goes red — a stale
+> count is still a fluent, specific, plausible sentence.
+>
+> `build_landing_snapshot.py` now counts `stocks` where `market != 'index'` and writes
+> `universeCount` into `landing-snapshot.json`, which the nightly workflow already
+> commits back to the repo. The page renders `UNIVERSE_COUNT` from that file in all
+> five places, so **the landing stays statically prerendered** — no database in the
+> front door's critical path, and none of the 674ms→77ms click win from 11s is spent.
+>
+> ⚠️ Counted with `count="exact"`, not `len(rows)`: PostgREST caps a request at 1000
+> rows silently (14c), so counting rows would be right today, drift as we grew, and
+> then freeze at 1000 forever on the most public page we own. Guarded in
+> `landing.spec.ts` against the snapshot with an off-by-one control, asserting whole
+> phrases so a swallowed JSX space fails too. Broken on purpose two ways — a re-typed
+> literal, and a deleted space — since bumping the snapshot alone *cannot* fail once
+> the page derives from it (coding-standards §14 item 29).
 
 >
 > ### ✅ G3.7 (the legal documents) — COMPLETE 2026-08-13. Still inside PR #89, still unmerged.

@@ -18,6 +18,8 @@ export interface LandingSnapshot {
   ticker: string;
   name: string;
   currency: string;
+  /** How many companies the site covers — counted in the database nightly. */
+  universeCount: number;
   /** Last close, in the stock's home currency (#13). */
   price: number;
   // ── how far it falls ──
@@ -51,6 +53,23 @@ export const LANDING: LandingSnapshot = snapshot;
  * display keeps the sign convention honest in the data.
  */
 export const depth = (pct: number): string => `${Math.abs(pct).toFixed(1)}%`;
+
+/**
+ * How many companies the site covers, formatted for prose.
+ *
+ * ⚠️ Counted in the database every night, never typed into the copy. The
+ * universe **auto-expands on every reader's ticker request** (CLAUDE.md #16), so
+ * a literal here is a number the product is actively working to falsify — and it
+ * already had: the landing page said **863** in five places on 2026-08-19 while
+ * the database held **866**. Nothing errored, nothing looked stale, and the
+ * sentences stayed fluent and specific. That is 11c-v exactly: a sentence that
+ * states a constant IS a copy of that constant, and prose is where copies go to
+ * drift unnoticed.
+ *
+ * `toLocaleString`, not the bare number, so the day we pass a thousand the page
+ * reads "1,204 companies" rather than "1204 companies".
+ */
+export const UNIVERSE_COUNT: string = LANDING.universeCount.toLocaleString('en-AU');
 
 /**
  * Price in the stock's home currency (#13).

@@ -2,6 +2,7 @@
   "ticker": "AAPL",
   "name": "Apple",
   "currency": "USD",
+  "universeCount": 866,
   "price": 305.26,
   "currentDrawdownPct": -11.332,
   "typicalDrawdownPct": -24.6641,

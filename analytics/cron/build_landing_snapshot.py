@@ -35,6 +35,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import pandas as pd
+from postgrest.types import CountMethod
 from supabase import Client, create_client
 
 from analytics.major_cycle import CycleParams, calculate_cycle_metrics
@@ -58,6 +59,35 @@ def _supabase() -> Client:
     # KeyError at 22:30 UTC in a workflow nobody is watching.
     url = os.environ.get("SUPABASE_URL") or os.environ["NEXT_PUBLIC_SUPABASE_URL"]
     return create_client(url, os.environ["SUPABASE_SERVICE_ROLE_KEY"])
+
+
+def _universe_count(supabase: Client) -> int:
+    """How many companies the site covers, for the landing page's headline.
+
+    ⚠️ `count=CountMethod.exact` with `limit(1)`, NOT `len(res.data)`. PostgREST caps a
+    request at 1000 rows and says nothing about it (14c), so counting the rows
+    would be correct right up to the day we passed a thousand and then read
+    “1,000 companies” forever — on the most public page we own, with nothing going
+    red. The count comes back in the Content-Range header instead, so it is
+    structurally immune to that cap rather than merely under it today.
+
+    `market='index'` rows are benchmarks (^GSPC etc.), not companies a reader can
+    browse — the same exclusion `fetchUniverseIndex` applies for /stocks and
+    `check_field_units.py` applies nightly.
+    """
+    res = (
+        supabase.table("stocks")
+        .select("ticker", count=CountMethod.exact)
+        .neq("market", "index")
+        .limit(1)
+        .execute()
+    )
+    count = res.count
+    # A count that failed to arrive must never reach the page. "0 companies." and
+    # "null companies." are both fluent, both wrong, and neither raises.
+    if count is None or count < 50:
+        raise SystemExit(f"Refusing to write a snapshot with universeCount={count!r}")
+    return int(count)
 
 
 def _load_bars(supabase: Client, ticker: str) -> pd.DataFrame:
@@ -100,6 +130,7 @@ def main() -> None:
     stock = cast(list[dict[str, Any]], row.data)[0]
     currency = stock.get("currency") or "USD"
 
+    universe_count = _universe_count(supabase)
     df = _load_bars(supabase, TICKER)
     p = PRESETS[PRESET]
     metrics = calculate_cycle_metrics(
@@ -125,6 +156,11 @@ def main() -> None:
         "ticker": TICKER,
         "name": DISPLAY_NAME,
         "currency": currency,
+        # How many companies we cover. Read from the DB every night rather than
+        # typed into the copy, because the universe auto-expands on every reader's
+        # ticker request (#16) — a literal here is a number the product actively
+        # works to falsify (11c-v).
+        "universeCount": universe_count,
         "price": metrics["current_close"],
         # ── how far it falls ──
         "currentDrawdownPct": metrics["current_drawdown_pct"],
@@ -144,6 +180,7 @@ def main() -> None:
     # renders as "null%" or an empty bar — plausible-looking and wrong — and the
     # storyboard's copy states these numbers in words as well as in the chart.
     required = (
+        "universeCount",
         "price",
         "currentDrawdownPct",
         "typicalDrawdownPct",
@@ -158,6 +195,7 @@ def main() -> None:
 
     OUT.write_text(json.dumps(snapshot, indent=2) + "\n", encoding="utf-8")
     print(
+        f"{OUT.name}: {snapshot['universeCount']} companies · "
         f"{OUT.name}: {TICKER} {currency} {snapshot['price']:.2f} · "
         f"now {snapshot['currentDrawdownPct']:.1f}% · "
         f"usually {snapshot['typicalDrawdownPct']:.1f}% "

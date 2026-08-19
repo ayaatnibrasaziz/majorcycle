@@ -1703,10 +1703,19 @@ the next reader adds a ticker.
 derived from the constant at render time and guarded, or (b) genuinely fixed (the
 25/day cap, the 30-day window). A count of things that grow is neither.
 
-⚠️ Still outstanding and **the owner's call**, deliberately not changed here: the
-landing page states `863` in five places. It is part of an approved storyboard with its
-own snapshot mechanism, so correcting it is a design decision rather than a typo fix —
-recorded in the roadmap rather than done unilaterally (11l).
+⚠️ **The landing's five copies were the same defect, and they had already drifted.**
+Flagged rather than fixed in the first pass, because approved storyboard copy is a
+design decision rather than a typo fix (11l) — the owner then asked for it, and the
+count turned out to be **866 in the database against 863 on the page**. It now comes
+from `landing-snapshot.json`, written nightly by the cron that already commits that
+file, so the page keeps its static prerender and the number keeps itself honest.
+
+⚠️ Two details worth carrying forward. **Count with `count="exact"`, never
+`len(rows)`** — PostgREST's silent 1000-row cap (14c) would have made the figure
+correct today, quietly stale as we grew, and permanently frozen at 1000. And **assert
+the whole phrase, not the number**: all five sites are `text {EXPR} text`, the exact
+arrangement that swallowed a space in the article on the same day, and a number-only
+assertion passes happily on `all866 companies`.
 
 ---
 

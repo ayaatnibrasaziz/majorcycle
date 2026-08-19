@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { pageMetadata } from '@/lib/seo';
-import { LANDING, depth, price } from '@/lib/landing';
+import { LANDING, UNIVERSE_COUNT, depth, price } from '@/lib/landing';
 import { MAG7, cardinal, mag7Facts, pct1, shortName } from '@/lib/mag7';
 import { tierFromLabel } from '@/lib/ratings';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ export const metadata: Metadata = pageMetadata({
   path: '/',
   title: 'Where a stock sits in its own cycle',
   description:
-    'MajorCycle ranks 863 US, Australian and Canadian companies by how far they have fallen against how far they usually fall — then asks whether the business underneath is any good. Educational analysis, not financial advice.',
+    `MajorCycle ranks ${UNIVERSE_COUNT} US, Australian and Canadian companies by how far they have fallen against how far they usually fall — then asks whether the business underneath is any good. Educational analysis, not financial advice.`,
 });
 
 /** The five compliant rating tiers (design-system §4 / CLAUDE.md #16). */
@@ -93,7 +93,7 @@ export default function LandingPage() {
           <div className="hero-copy">
             <p className="eyebrow">US · Australia · Canada</p>
             <h1>
-              863 companies.
+              {UNIVERSE_COUNT} companies.
               <br />
               Which ones are actually on sale?
             </h1>
@@ -204,7 +204,7 @@ export default function LandingPage() {
         <div className="lp-wrap">
           <div className="card strip">
             <div className="cell">
-              <div className="v">863</div>
+              <div className="v">{UNIVERSE_COUNT}</div>
               <div className="k">companies covered</div>
             </div>
             <div className="cell">
@@ -517,7 +517,7 @@ export default function LandingPage() {
               </div>
               <div className="card-body">
                 <ul>
-                  <li>Browse all 863 companies across three markets</li>
+                  <li>Browse all {UNIVERSE_COUNT} companies across three markets</li>
                   <li>Price chart and full price history</li>
                   <li>The drawdown overlay, with its cycle bands</li>
                   <li>Every fundamentals and sentiment section</li>
@@ -572,7 +572,8 @@ export default function LandingPage() {
             <div>
               <h3 className="h">A ranking is where research starts, not where it ends.</h3>
               <p>
-                MajorCycle narrows 863 companies down to a handful worth your attention. What
+                MajorCycle narrows {UNIVERSE_COUNT} companies down to a handful worth your
+                attention. What
                 it cannot know is <strong>why</strong> a company fell, what management is
                 doing about it, what happens at the next earnings date, or anything at all
                 about your own circumstances. Treat a high rating as a reason to go and read

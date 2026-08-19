@@ -282,6 +282,56 @@ test.describe('the landing page tells the truth about its own run', () => {
     // twice; they were allowed to disagree in the artifact.
     await expect(briefing.locator('.briefing-ring-num')).toHaveText(String(f.constructiveOrBetter));
   });
+
+  /**
+   * How many companies we cover, in five places, from the database.
+   *
+   * ⚠️ This was FIVE TYPED LITERALS until 2026-08-19, and they were already
+   * wrong: the page said **863** while the database held **866**. The universe
+   * auto-expands on every reader's ticker request (CLAUDE.md #16), so the copy
+   * was a claim the product actively works to falsify — and it drifts silently,
+   * because a stale count is still a fluent, specific, plausible sentence.
+   *
+   * The assertion is built FROM the snapshot rather than from a number typed
+   * here, or this test would be a sixth copy to drift (11c-v). The control
+   * below proves it is value-sensitive rather than merely finding some digits.
+   *
+   * ⚠️ And it asserts whole PHRASES, spaces included, on purpose. All five
+   * sites are `text {EXPR} text` — the exact arrangement that silently swallowed
+   * a space in the drawdown article on this same day. A number-only assertion
+   * would pass on "all866 companies".
+   */
+  test('every companies-covered figure comes from the snapshot, spaces and all', async ({
+    page,
+  }) => {
+    await page.goto('/', { waitUntil: 'networkidle' });
+
+    const n = landingSnapshot.universeCount;
+    const shown = n.toLocaleString('en-AU');
+    const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+
+    // The hero, the free-tier list and the honesty block — each as a full phrase.
+    expect(body, 'the hero headline').toContain(`${shown} companies.`);
+    expect(body, 'the free-tier list').toContain(`Browse all ${shown} companies across three markets`);
+    expect(body, 'the honesty block').toContain(`narrows ${shown} companies down to`);
+
+    // The stats band renders the bare figure in its own cell.
+    await expect(page.locator('.strip .cell', { hasText: 'companies covered' }).locator('.v')).toHaveText(
+      shown,
+    );
+
+    // And the meta description, which no reader sees and every search engine does.
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      'content',
+      new RegExp(`ranks ${shown} US, Australian and Canadian companies`),
+    );
+
+    // CONTROL — an off-by-one must NOT be found, or the assertions above would
+    // pass on any page that happens to contain the digits somewhere.
+    expect(body, 'a neighbouring value also matches — the check is not value-sensitive').not.toContain(
+      `${(n + 1).toLocaleString('en-AU')} companies`,
+    );
+  });
 });
 
 test.describe('the landing page’s layout holds', () => {
