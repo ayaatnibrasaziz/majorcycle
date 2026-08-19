@@ -1417,6 +1417,103 @@ test.describe('the 52-week-high figure', () => {
   });
 });
 
+test.describe('the bargain-or-warning figure', () => {
+  const ARTICLE = learnPath('falling-price-bargain-or-warning');
+
+  test('each headline score is the weighted average of its own bars', async () => {
+    /**
+     * ⚠️ **The figure prints a total beside the bars that produce it, so the two
+     * must be one calculation rather than two.** A typed total is CLAUDE.md
+     * 11c-iii exactly: a number that looks right, sits next to its own evidence,
+     * and drifts silently the moment a bar is retuned.
+     *
+     * The weights are the engine's (`_FH_WEIGHTS` in
+     * `analytics/scoring/financial_health.py`). Pure — no browser, no network.
+     */
+    const { CHECKS, STEADY, STRAINED, STEADY_HEALTH, STRAINED_HEALTH, WEIGHT_TOTAL, healthOf } =
+      await import('../components/learn/bargainGeometry');
+
+    // A silent 99 here would rescale every score on the figure by ~1%.
+    expect(WEIGHT_TOTAL, 'the five weights no longer sum to 100').toBe(100);
+    expect(CHECKS).toHaveLength(5);
+
+    // Re-derived here from the parts, so this fails if `healthOf` is changed to
+    // something that is not a weighted average.
+    for (const c of [STEADY, STRAINED]) {
+      const byHand =
+        CHECKS.reduce((sum, chk) => sum + c.scores[chk.key] * chk.weight, 0) / WEIGHT_TOTAL;
+      expect(healthOf(c), `${c.name}'s score is not its bars' weighted average`).toBeCloseTo(
+        byHand,
+        6,
+      );
+    }
+    expect(STEADY_HEALTH).toBeCloseTo(healthOf(STEADY), 6);
+    expect(STRAINED_HEALTH).toBeCloseTo(healthOf(STRAINED), 6);
+  });
+
+  test('the two companies land in DIFFERENT health tiers', async () => {
+    /**
+     * ⚠️ The figure's entire job is to show two identical falls over opposite
+     * businesses. If both scores fell in the same tier the picture would render
+     * perfectly and demonstrate nothing — the failure mode that looks deliberate
+     * (11j). Asserted against the product's real thresholds, not repeated ones.
+     */
+    const { STEADY_HEALTH, STRAINED_HEALTH } = await import(
+      '../components/learn/bargainGeometry'
+    );
+    const { healthRatingLabel } = await import('../lib/ratings');
+
+    expect(healthRatingLabel(STEADY_HEALTH)).toBe('Healthy');
+    expect(healthRatingLabel(STRAINED_HEALTH)).toBe('At Risk');
+    // A margin, not a boundary (11i-b): two scores either side of 60 by a point
+    // would satisfy the labels above and be indistinguishable on screen.
+    expect(
+      STEADY_HEALTH - STRAINED_HEALTH,
+      'the two businesses are too close to tell apart',
+    ).toBeGreaterThan(30);
+  });
+
+  test('both panels draw the SAME fall, from the same numbers', async ({ page }) => {
+    /**
+     * ⚠️ **This is the article's claim, asserted on the drawing.** The prose says
+     * "on a price chart these look exactly the same"; if the two polylines
+     * differed at all — a stray wobble, a re-seeded generator — the picture would
+     * contradict the sentence directly above it, and only a reader looking
+     * closely would ever notice.
+     */
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    await expect(page.locator('[data-article-body] figure')).toHaveCount(1);
+
+    const paths = await page
+      .locator('[data-fall-path]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute('points') ?? ''));
+    expect(paths, 'expected exactly two price lines').toHaveLength(2);
+    expect(paths[0]!.length, 'the price line is empty').toBeGreaterThan(50);
+    expect(paths[0], 'the two panels draw DIFFERENT falls — the figure argues against itself')
+      .toBe(paths[1]);
+
+    // Five checks per company, both panels drawn.
+    const bars = await page.locator('[data-checks] li').count();
+    expect(bars, 'expected five checks in each of the two panels').toBe(10);
+  });
+
+  test('the caption states the scores the geometry actually produces', async ({ page }) => {
+    const { STEADY_HEALTH, STRAINED_HEALTH } = await import(
+      '../components/learn/bargainGeometry'
+    );
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    const caption = await page.locator('[data-article-body] figure figcaption').innerText();
+    for (const v of [STEADY_HEALTH, STRAINED_HEALTH]) {
+      expect(caption, `the caption omits ${v.toFixed(0)}`).toContain(v.toFixed(0));
+    }
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The cluster as a whole — added after the 2026-08-19 audit of all three
 // ─────────────────────────────────────────────────────────────────────────────

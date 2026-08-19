@@ -125,7 +125,6 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
       alt: 'Two office towers of the same height under identical falling share prices. One stands square with warmly lit windows and an open doorway; the other leans, cracked from top to bottom, its windows dark and its highest floor sliding away. A small figure stands between them, looking up.',
     },
     upcoming: [
-      'Is a falling share price a bargain or a warning?',
       'How to check if a company is financially healthy',
       'What a P/E ratio does and doesn’t tell you',
       'How to read an analyst price target',
@@ -255,6 +254,19 @@ export const LEARN_ARTICLES = [
     published: '2026-08-19',
     reviewed: '2026-08-19',
     minutes: 8,
+  },
+  {
+    slug: 'falling-price-bargain-or-warning',
+    title: 'Is a falling share price a bargain or a warning?',
+    question: 'Is a falling stock a good time to buy?',
+    answer:
+      'A falling price tells you what the market did, not what the company is worth. The same 30% fall can be a bargain or a warning, and the chart looks identical either way. The difference is in the accounts underneath.',
+    summary:
+      'Why a lower price is not the same as good value, the two things that cause a fall, and the five checks that tell a bad year apart from a business getting worse.',
+    theme: 'quality',
+    published: '2026-08-20',
+    reviewed: '2026-08-20',
+    minutes: 6,
   },
 ] as const satisfies readonly LearnArticle[];
 

@@ -9,6 +9,8 @@ import {
   WindowChoiceFigure,
 } from '@/components/learn/DrawdownFigures';
 import { MarketWordsFigure, TwoRecordsFigure } from '@/components/learn/CorrectionFigures';
+import { BargainFigure } from '@/components/learn/BargainFigure';
+import { FALL_PCT } from '@/components/learn/bargainGeometry';
 import { MARKET_LEVELS, QUIET, ROUTINE, TODAY_PCT } from '@/components/learn/correctionGeometry';
 import { WeekHighFigure } from '@/components/learn/WeekHighFigure';
 import { LOW_GAP_PCT } from '@/components/learn/weekHighGeometry';
@@ -402,6 +404,13 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         It changes the subject from <em>is this cheap?</em> to{' '}
         <em>could I survive being wrong about the timing?</em> Nobody can answer the
         first in advance. You can answer the second honestly, today.
+      </p>
+      <p>
+        And a fall on its own does not answer the first question either — that
+        depends on the business behind it, which is covered in{' '}
+        <Link href="/learn/falling-price-bargain-or-warning">
+          Is a falling share price a bargain or a warning?
+        </Link>
       </p>
 
       <h2>See the numbers for any stock, free</h2>
@@ -880,6 +889,216 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         Where a share sits between its 52-week low and high — and how far it stands
         below the peak of whatever period you choose — is available on a free
         MajorCycle account, across the US, Australian and Canadian markets.
+      </p>
+      <p>
+        <strong>No card required.</strong>{' '}
+        <Link href="/signup">Create a free account</Link> and look up any company you
+        are curious about.
+      </p>
+    </>
+  ),
+
+  'falling-price-bargain-or-warning': () => (
+    <>
+      <h2>&ldquo;Cheap&rdquo; is not the same as &ldquo;cheaper&rdquo;</h2>
+      <p>
+        A share that was $100 and is now $70 is <strong>cheaper</strong>. Whether it
+        is <strong>cheap</strong> is a different question entirely, and the price
+        alone cannot answer it.
+      </p>
+      <p>
+        Cheaper compares today&rsquo;s price with yesterday&rsquo;s. Cheap compares
+        today&rsquo;s price with what the business is actually worth. Those are two
+        different comparisons, and only one of them is about the company.
+      </p>
+      <p>
+        This sounds obvious written down. It is remarkably easy to forget while
+        looking at a chart, because a falling line is doing such a good impression of
+        an answer.
+      </p>
+
+      <h2>A fall means one of two things</h2>
+      <p>
+        Every large fall comes down to one of two causes, and telling them apart is
+        most of the work.
+      </p>
+      <p>
+        <strong>The mood changed.</strong>{' '}
+        Interest rates moved, the sector fell out of favour, a bigger market panic
+        dragged everything down with it, or the company simply got less exciting than
+        it was last year. Nothing about the business is different. The same products
+        are sold to the same customers at the same margins.
+      </p>
+      <p>
+        <strong>The business changed.</strong>{' '}
+        Sales are shrinking. Margins are being squeezed. Debt that was comfortable is
+        now expensive. A key product failed, a licence was lost, or a competitor
+        arrived and is winning.
+      </p>
+      <p>
+        The first kind of fall creates opportunities. The second kind is the market
+        telling you something true, and often telling you early.
+      </p>
+      <p>
+        Here is the difficulty:{' '}
+        <strong>on a price chart these look exactly the same.</strong> A{' '}
+        {Math.abs(FALL_PCT)}% fall is a {Math.abs(FALL_PCT)}% fall. There is no line
+        on the chart that separates a company having a bad year from a company in
+        real trouble.
+      </p>
+
+      <BargainFigure />
+
+      <h2>What to check before calling it a bargain</h2>
+      <p>
+        If the chart cannot answer the question, the accounts have to. Five things
+        are worth checking, and they are the same five we score.
+      </p>
+
+      <h3>1. Is it profitable, and is it staying profitable?</h3>
+      <p>
+        Not just &ldquo;does it make money&rdquo; but whether the margin — the slice
+        of each dollar of sales it keeps — is holding up. A company whose sales are
+        flat but whose margins are quietly shrinking is a business getting worse,
+        slowly.
+      </p>
+
+      <h3>2. Can it survive a bad year?</h3>
+      <p>
+        This is the balance sheet: what it owns against what it owes. A company with
+        modest debt and cash in the bank can absorb a rough patch. A heavily indebted
+        one has no room, and its lenders get paid before its shareholders do.
+      </p>
+
+      <h3>3. Is it growing?</h3>
+      <p>
+        Revenue and earnings, over several years rather than one. A single weak year
+        happens to everyone. A pattern of decline is a different story, and price
+        falls tend to follow it rather than lead it.
+      </p>
+
+      <h3>4. Does the profit turn into actual cash?</h3>
+      <p>
+        Reported profit is an accounting figure. Cash is what pays wages, interest
+        and dividends. When profits look healthy but cash does not follow, that gap
+        is worth understanding before anything else.
+      </p>
+
+      <h3>5. What does it return to shareholders?</h3>
+      <p>
+        Dividends and buybacks. A dividend that is comfortably covered by earnings is
+        a sign of confidence. One that is not covered is a promise on borrowed time —
+        and cutting it usually costs the share price more than keeping it ever did.
+      </p>
+      <p>
+        None of these is decisive alone. Together they answer the question the chart
+        cannot: is this a good business having a bad year, or a business getting
+        worse?
+      </p>
+
+      <h2>The value trap</h2>
+      <p>This is the specific trap the question walks into.</p>
+      <p>
+        A <strong>value trap</strong> is a share that looks cheap on every measure,
+        gets cheaper, and keeps looking cheap all the way down. Buyers arrive at each
+        new low convinced they have found a bargain, because by the usual yardsticks
+        it genuinely is one.
+      </p>
+      <p>
+        The reason is simple. Those yardsticks compare today&rsquo;s price against{' '}
+        <strong>past</strong> earnings. If the earnings are on their way down, the
+        comparison flatters the company — and it flatters it more with every fall.
+        The share never looks expensive again, and the business never recovers.
+      </p>
+      <p>
+        Falling shares in structural decline are where value traps live. That is
+        precisely where &ldquo;it&rsquo;s down 40%, it must be cheap&rdquo; leads
+        people.
+      </p>
+
+      <h2>When a fall genuinely is an opportunity</h2>
+      <p>Set against that, the honest version of the case:</p>
+      <ul>
+        <li>
+          The <strong>business</strong> is intact — profits, debt and cash all look
+          much as they did before the fall
+        </li>
+        <li>
+          The reason for the fall is <strong>outside</strong> the company, or is
+          something temporary and identifiable
+        </li>
+        <li>
+          The company has fallen <strong>this far before</strong> and traded through
+          it
+        </li>
+        <li>Nothing in the accounts has changed direction, only the price has</li>
+      </ul>
+      <p>
+        That last point is worth its own sentence.{' '}
+        <strong>A fall is more interesting when the accounts have not moved with it.</strong>{' '}
+        When the price drops and the business drops with it, the market is simply
+        keeping up. When the price drops and the business does not, there is at least
+        a question worth asking.
+      </p>
+
+      <h2>What a falling price can never tell you</h2>
+      <ul>
+        <li>
+          <strong>Whether the company is worth more than it costs.</strong>{' '}
+          That is a question about the business, and the price is not evidence about
+          itself.
+        </li>
+        <li>
+          <strong>Whether the fall is over.</strong>{' '}
+          Nothing in a fall says how much further it goes. Shares that have fallen 50%
+          can fall 50% again.
+        </li>
+        <li>
+          <strong>Why it fell.</strong>{' '}
+          A market-wide panic and a failed product leave the same mark on the chart.
+        </li>
+        <li>
+          <strong>How long recovery takes.</strong>{' '}
+          Some falls are recovered in weeks and some are never recovered at all.
+        </li>
+      </ul>
+      <p>
+        A falling price is the beginning of the question, not the answer to it.
+      </p>
+
+      <h2>How MajorCycle helps</h2>
+      <p>We split the question into its two halves, deliberately.</p>
+      <p>
+        <strong>How far has it fallen, and is that unusual for this company?</strong>{' '}
+        That is the cycle side, and it is covered in{' '}
+        <Link href="/learn/what-is-a-drawdown">What is a drawdown?</Link> and{' '}
+        <Link href="/learn/dip-correction-crash">Dip, correction, crash</Link>. The
+        useful comparison is a company against its own history, not against a round
+        number.
+      </p>
+      <p>
+        <strong>Is the business behind it healthy?</strong>{' '}
+        That is the five checks above. Every figure they are built from — profits,
+        debt, growth, cash flow, dividends — is on the stock page for free, so you
+        can read the accounts yourself whether or not you ever pay us.
+      </p>
+      <p>
+        Our <strong>Health Score</strong> rolls those five into a single number,
+        weighted the way we think they deserve, and that part is a paid feature. It
+        is a shortcut, not a secret: the data is free, our judgement of it is what
+        you would be paying for.
+      </p>
+      <p>
+        Neither number is a recommendation. A strong business can be a poor
+        investment at the wrong price, and both halves of the question have to be
+        asked.
+      </p>
+
+      <h2>See both halves for any stock, free</h2>
+      <p>
+        How far a share has fallen against its own history — and the accounts of the
+        company behind it — are available on a free MajorCycle account, across the
+        US, Australian and Canadian markets.
       </p>
       <p>
         <strong>No card required.</strong>{' '}
