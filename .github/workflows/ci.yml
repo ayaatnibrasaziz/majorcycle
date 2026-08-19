@@ -168,7 +168,25 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        # ⚠️ NO `--with-deps`, and the reason is measured rather than assumed.
+        # That flag runs `apt-get`, and on 2026-08-19 apt hung TWICE against
+        # Ubuntu's mirrors — the log shows `Ign:` on azure.archive.ubuntu.com,
+        # a fallback to archive.ubuntu.com, then 41 minutes of complete silence
+        # before the run was killed. Four steps before any test ran.
+        #
+        # What it bought us, read off the one run that got through: every
+        # Chromium shared library was already "the newest version" on the runner
+        # image, and the ONLY 9 packages it installed were fonts —
+        # fonts-ipafont-gothic, fonts-wqy-zenhei, xfonts-cyrillic and friends,
+        # i.e. Japanese, Chinese, Thai and Cyrillic glyphs. This site is English
+        # and ships its own webfonts (Sora + JetBrains Mono), so it renders no
+        # script those fonts serve. The flag was ~2.5 of the step's 2.9 minutes,
+        # all of the hang risk, and none of the benefit.
+        #
+        # If a genuine library ever does go missing from the image, Chromium
+        # fails to launch and the suite goes RED with a clear message — a loud
+        # failure, not a silent one, and re-adding the flag is a one-line undo.
+        run: pnpm exec playwright install chromium
 
       # The E2E server is `next dev`, which computes a stock's cycle by SPAWNING
       # web/api/cycle.py as a CLI (lib/cycle.ts) rather than over HTTP. Without a Python
