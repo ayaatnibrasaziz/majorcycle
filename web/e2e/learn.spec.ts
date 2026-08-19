@@ -1257,3 +1257,162 @@ test.describe('the dip/correction/crash figures', () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// "What a 52-week high really tells you" — its figure
+// ─────────────────────────────────────────────────────────────────────────────
+
+test.describe('the 52-week-high figure', () => {
+  const ARTICLE = learnPath('52-week-high');
+
+  test('every candle contains its own body', async () => {
+    /**
+     * ⚠️ **The invariant the picture rests on.** A body poking out of its own
+     * wick would draw a price nobody paid — indistinguishable from ordinary
+     * chart noise, and a false statement about how markets work.
+     *
+     * Pure: no browser, no network, so it runs on a fork PR with no secrets and
+     * can never self-skip. It drives the real module rather than re-deriving the
+     * candles here, which would guard a copy instead of the thing that ships.
+     */
+    const { CANDLES, WEEKS } = await import('../components/learn/weekHighGeometry');
+
+    expect(CANDLES).toHaveLength(WEEKS);
+    const broken: string[] = [];
+    CANDLES.forEach((c, i) => {
+      if (c.high < Math.max(c.open, c.close) || c.low > Math.min(c.open, c.close)) {
+        broken.push(`week ${i}: o${c.open} h${c.high} l${c.low} c${c.close}`);
+      }
+    });
+    expect(broken, `a candle body escapes its wick on ${broken.length} week(s)`).toEqual([]);
+  });
+
+  test('both quoted extremes are set by a WICK, never by a close', async () => {
+    /**
+     * The article's claim, asserted on the data that draws the figure. If either
+     * extreme were also a closing price the picture would silently argue the
+     * opposite of the prose, and it would still render as an ordinary chart.
+     */
+    const { HIGH_52, LOW_52, CHART_PEAK, CHART_TROUGH, GAP_PCT, LOW_GAP_PCT } = await import(
+      '../components/learn/weekHighGeometry'
+    );
+
+    expect(
+      HIGH_52.price,
+      'the 52-week high is not above the highest close — the figure contradicts the article',
+    ).toBeGreaterThan(CHART_PEAK.price);
+    expect(LOW_52.price, 'the 52-week low is not below the lowest close').toBeLessThan(
+      CHART_TROUGH.price,
+    );
+
+    // ⚠️ The extreme must be MADE by an extreme. The low once landed on an
+    // ordinary week's wick, which still produced a 52-week low and demonstrated
+    // nothing — the figure was correct and taught the reader nothing.
+    expect(HIGH_52.week, 'the high and the best close fall in the same week').not.toBe(
+      CHART_PEAK.week,
+    );
+    expect(LOW_52.week, 'the low and the worst close fall in the same week').not.toBe(
+      CHART_TROUGH.week,
+    );
+
+    // A MARGIN, not a boundary (CLAUDE.md 11i-b). 0.1% is technically "above"
+    // and invisible on screen; the first build of this figure produced 0.78% and
+    // had to be retuned before it showed anything at all.
+    const gaps: readonly (readonly [string, number])[] = [
+      ['high', GAP_PCT],
+      ['low', LOW_GAP_PCT],
+    ];
+    for (const [name, gap] of gaps) {
+      expect(gap, `the ${name} gap is ${gap.toFixed(2)}% — too small to see`).toBeGreaterThan(1);
+      expect(gap, `the ${name} gap is ${gap.toFixed(2)}% — implausible for one year`).toBeLessThan(
+        8,
+      );
+    }
+  });
+
+  test('the figure renders, and both rules are labelled without colliding', async ({ page }) => {
+    /**
+     * ⚠️ Measured at an EXPLICIT width. An earlier pass measured this panel at
+     * 165×103px and concluded the two markers were 4.9px apart — the browser was
+     * at a narrow viewport and I had not checked, so I was reading the mobile
+     * layout while believing it was the desktop one.
+     */
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    await expect(page.locator('[data-article-body] figure')).toHaveCount(1);
+    await expect(page.locator('[data-article-body] figure figcaption')).not.toBeEmpty();
+
+    const geo = await page.evaluate(() => {
+      const panel = document.querySelector('[data-point-dot]')?.parentElement;
+      const pb = panel?.getBoundingClientRect();
+      const dots = [...document.querySelectorAll('[data-point-dot]')].map((d) => ({
+        id: d.getAttribute('data-point-dot'),
+        top: d.getBoundingClientRect().top,
+      }));
+      const labels = [...document.querySelectorAll('[data-fig-label]')].map((l) => {
+        const r = l.getBoundingClientRect();
+        return {
+          id: l.getAttribute('data-fig-label'),
+          insideLeft: pb ? r.left - pb.left : -1,
+          insideRight: pb ? pb.right - r.right : -1,
+          top: r.top,
+          bottom: r.bottom,
+          left: r.left,
+          right: r.right,
+        };
+      });
+      let overlap = false;
+      if (labels.length === 2) {
+        const a = labels[0]!;
+        const b = labels[1]!;
+        overlap =
+          Math.min(a.right, b.right) > Math.max(a.left, b.left) &&
+          Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top);
+      }
+      const bodies = document.querySelectorAll('[data-article-body] figure svg rect').length;
+      return { dots, labels, overlap, bodies };
+    });
+
+    // 52 weeks means 52 bodies. A count guards against the loop silently
+    // rendering nothing, which an empty panel would not otherwise report.
+    expect(geo.bodies, 'the candles did not draw').toBeGreaterThanOrEqual(52);
+
+    const hi = geo.dots.find((d) => d.id === 'high52');
+    const lo = geo.dots.find((d) => d.id === 'low52');
+    expect(hi, 'no 52-week-high marker').toBeTruthy();
+    expect(lo, 'no 52-week-low marker').toBeTruthy();
+    expect(lo!.top - hi!.top, 'the low marker is not below the high marker').toBeGreaterThan(20);
+
+    expect(geo.labels.length, 'both rules must be labelled').toBe(2);
+    expect(geo.overlap, 'the two figure labels overlap').toBe(false);
+    for (const l of geo.labels) {
+      expect(l.insideLeft, `${l.id} label spills off the left of the panel`).toBeGreaterThan(0);
+      expect(l.insideRight, `${l.id} label spills off the right of the panel`).toBeGreaterThan(0);
+    }
+  });
+
+  test('the caption states the gaps the geometry actually produces', async ({ page }) => {
+    /**
+     * Picture versus prose — the check that caught a real defect on the previous
+     * article. Both percentages are rendered from the module, so this fails the
+     * moment somebody types a number over either one.
+     */
+    const { GAP_PCT, LOW_GAP_PCT } = await import('../components/learn/weekHighGeometry');
+    await page.goto(ARTICLE);
+    await ready(page);
+
+    const caption = await page.locator('[data-article-body] figure figcaption').innerText();
+    expect(caption, `the high gap is ${GAP_PCT.toFixed(1)}% but the caption omits it`).toContain(
+      `${GAP_PCT.toFixed(1)}%`,
+    );
+    expect(caption, `the low gap is ${LOW_GAP_PCT.toFixed(1)}% but the caption omits it`).toContain(
+      `${LOW_GAP_PCT.toFixed(1)}%`,
+    );
+
+    // And the body states the low gap in words, right beside the figure.
+    const body = await page.locator('[data-article-body]').innerText();
+    expect(body, 'the prose never states the low gap').toContain(`${LOW_GAP_PCT.toFixed(1)}%`);
+  });
+});

@@ -42,7 +42,24 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
       className="flex flex-col gap-[3px] mt-auto pt-[10px] border-t border-dotted border-[var(--border)] text-left cursor-help"
       role="img"
       aria-label={`52-week range: low ${fmtPrice(low, currency)}, high ${fmtPrice(high, currency)}; current price is in the ${zone.toLowerCase()}, ${offText}.`}
-      title="52-Week Range Position — Shows where the current price sits between the lowest and highest closing prices over the past 52 weeks. Near the left edge (low) = potentially undervalued or beaten down. Near the right edge (high) = approaching resistance or extended."
+      /*
+       * ⚠️ "prices TRADED", not "closing prices" — corrected 2026-08-19 after
+       * measuring it. `week52_high` / `week52_low` come straight from the
+       * provider's `fiftyTwoWeekHigh` / `fiftyTwoWeekLow`, which are INTRADAY
+       * extremes: the highest and lowest anyone paid at any instant. They are not
+       * derived from our own bars and they are not closes.
+       *
+       * Proven on the live database across all three markets rather than argued:
+       * for AAPL, MSFT, JNJ, KO, BHP.AX, CBA.AX, ENB.TO and BNS.TO the quoted
+       * high sat **above** our highest close of the year every time, by 0.5% to
+       * 2.8% — and a closing-price high cannot exceed the highest close. Against
+       * our highest intraday HIGH the same figures agreed to within 0.6%, which
+       * is what separates the two explanations.
+       *
+       * A tooltip is where a reader goes when they want to know exactly what a
+       * number means, so it is the worst place to be approximately right.
+       */
+      title="52-Week Range Position — Shows where the current price sits between the lowest and highest prices traded over the past 52 weeks. Near the left edge (low) = potentially undervalued or beaten down. Near the right edge (high) = approaching resistance or extended."
     >
       <div className="flex items-center gap-[6px] w-full">
         <span className="text-[9px] font-bold tracking-[1.2px] uppercase text-[var(--text-muted)] whitespace-nowrap flex-shrink-0 leading-none">

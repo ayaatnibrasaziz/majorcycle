@@ -1329,6 +1329,35 @@ there). The number *is* the argument in this figure, and hiding it left a phone 
 two dots and no way to see they match. It shifts to the left of the dot below `sm`, because
 centred it overhangs a 269px panel by ~6px.
 
+### Candlesticks in a Learn figure — 52 weekly candles (2026-08-19)
+
+`WeekHighFigure` is the only Learn schematic drawn as candlesticks, at the owner's
+direction, and it is the better picture: a candle draws the article's whole distinction
+by itself. The **body** is open-to-close, the **wick** is everything traded, and the
+quoted 52-week high and low are the tips of two wicks that no close ever reached. A line
+chart could only assert that in a caption.
+
+**The palette is the product's**, lifted from `components/stocks/PriceChart.tsx` rather
+than chosen here — `#228B22` up, `#B22222` down, `#006400` / `#8B0000` for wicks and
+borders — because a reader who signs up meets that chart (11m).
+
+⚠️ **Weekly, not daily, and the granularity IS the readability.** 260 daily candles in a
+570px panel is ~2px each and ~1px on a phone: a smear. One candle per week gives exactly
+52 of them, which is literally the window the article is about — measured at **11px per
+candle at 1280px and 2.5px at 375px**, with wicks visible at both.
+
+⚠️ **Two tuning faults, both found by measuring rather than looking.** (i) The first
+version put the up-spike where an ordinary week already held the high, so both extremes
+landed in the same week and the gap collapsed to **0.78%** — about two pixels, with the
+markers overlapping. (ii) The down-wick was first placed mid-range, where an *ordinary*
+week's wick still set the 52-week low: the figure was correct and demonstrated nothing.
+**An extreme has to be made by an extreme**, which is now asserted rather than eyeballed.
+
+⚠️ **Labels anchor to their RULE, not to their marker.** The two extremes fall at opposite
+ends of the plot, so a label pinned to each marker puts one hard against the right edge at
+narrow widths. Anchored to the rule, both stay inside the panel at every width and the
+rule carries the eye across to the wick that set it.
+
 ### The Learn illustrations — REGENERATED 2026-08-16
 
 Three topic pictures, one per band. **Generated on `google/gemini-3-pro-image` ("Nano Banana

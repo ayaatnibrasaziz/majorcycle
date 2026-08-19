@@ -10,6 +10,8 @@ import {
 } from '@/components/learn/DrawdownFigures';
 import { MarketWordsFigure, TwoRecordsFigure } from '@/components/learn/CorrectionFigures';
 import { MARKET_LEVELS, QUIET, ROUTINE, TODAY_PCT } from '@/components/learn/correctionGeometry';
+import { WeekHighFigure } from '@/components/learn/WeekHighFigure';
+import { LOW_GAP_PCT } from '@/components/learn/weekHighGeometry';
 
 /**
  * Article bodies, keyed by slug.
@@ -632,6 +634,196 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         <strong>No card required.</strong>{' '}
         <Link href="/signup">Create a free account</Link> and look up any company you
         are thinking about.
+      </p>
+    </>
+  ),
+
+  '52-week-high': () => (
+    <>
+      <h2>What the number actually is</h2>
+      <p>
+        The 52-week high is the highest price a share has traded at during the last
+        52 weeks. Its twin, the 52-week low, is the lowest.
+      </p>
+      <p>
+        Two things about it are worth knowing straight away, and neither is usually
+        said.
+      </p>
+      <p>
+        <strong>It moves every day.</strong>{' '}
+        It is not a fixed landmark. The window slides forward each session, so a high
+        set thirteen months ago silently drops out and the number falls — with
+        nothing at all happening to the company. A share can be further from its
+        52-week high on Tuesday than it was on Monday because{' '}
+        <em>last year&rsquo;s Monday</em> left the window.
+      </p>
+      <p>
+        <strong>It is a single moment, not a period.</strong>{' '}
+        One trade, on one day, at one price. It can be set in the first minute of a
+        session and never revisited.
+      </p>
+
+      <h2>Why the chart&rsquo;s peak never quite reaches the quoted high</h2>
+      <p>
+        Here is something almost nobody explains, and it puzzles people who look
+        closely enough to notice it.
+      </p>
+      <p>
+        Pull up a company&rsquo;s price chart and find the highest point on the line.
+        Then look at the 52-week high quoted beside it.{' '}
+        <strong>They will not match.</strong> The quoted number is higher — usually
+        by a percent or two, sometimes more.
+      </p>
+      <p>Nothing is broken. They are two different measurements.</p>
+
+      <h3>The quoted high is a moment; the chart line is a day</h3>
+      <p>
+        Almost every price chart is drawn from <strong>closing</strong> prices: one
+        price per day, the one the market settled at. That is what turns a year of
+        trading into a line you can read.
+      </p>
+      <p>
+        The quoted 52-week high is an <strong>intraday</strong> extreme: the highest
+        price anyone paid at any instant, including a spike that lasted seconds and
+        was gone by the close.
+      </p>
+      <p>
+        A line made of closing prices can never reach a price that no close ever
+        touched. The gap between them is the size of the year&rsquo;s biggest
+        intraday spike.
+      </p>
+
+      <WeekHighFigure />
+
+      <p>
+        <strong>The 52-week low works the same way, in reverse.</strong>{' '}
+        It is the bottom of the lowest wick — a moment of panic selling that was
+        bought back before the bell. In the chart above, the low sits{' '}
+        {LOW_GAP_PCT.toFixed(1)}% below the year&rsquo;s worst close, so anyone
+        comparing &ldquo;how far above its low&rdquo; against a chart meets the same
+        disagreement at the other end.
+      </p>
+
+      <h3>Charts usually adjust for dividends too</h3>
+      <p>
+        There is a second, smaller effect. Most historical charts are{' '}
+        <strong>dividend-adjusted</strong>: past prices are shifted down slightly so
+        the line reflects what an investor actually earned, dividends included,
+        rather than the raw price on the day.
+      </p>
+      <p>
+        That makes returns comparable over time, which is the right choice. It also
+        nudges historical peaks a little lower than the prices really quoted at the
+        time. Over a single year this is the smaller of the two effects for most
+        companies — the intraday-versus-closing difference does most of the work.
+      </p>
+
+      <h3>Which number to use for what</h3>
+      <ul>
+        <li>
+          <strong>Comparing against what brokers, screeners and news quote.</strong>{' '}
+          Use the 52-week high. It is the standard, and using anything else means
+          quietly disagreeing with every source your reader can check.
+        </li>
+        <li>
+          <strong>Reading a chart, or comparing returns over time.</strong>{' '}
+          Use the chart&rsquo;s own line. It is internally consistent, which is what
+          a comparison needs.
+        </li>
+      </ul>
+      <p>
+        The mistake is not choosing one. It is expecting them to agree, and assuming
+        something is broken when they do not.
+      </p>
+
+      <h2>A 52-week high is a fact about a window, not about a company</h2>
+      <p>This is where the number gets over-read.</p>
+      <p>
+        &ldquo;At its 52-week high&rdquo; sounds like a statement about a business.
+        It is a statement about <strong>one year of prices</strong>. Change the
+        window and the meaning changes with it:
+      </p>
+      <ul>
+        <li>
+          A share can sit at a 52-week high and remain far below its all-time high.
+          It is recovering, not thriving.
+        </li>
+        <li>
+          A share can be well below its 52-week high and still be up substantially
+          over five years.
+        </li>
+        <li>
+          A company that listed ten months ago has a 52-week high covering almost
+          its entire life. The same phrase means something quite different there.
+        </li>
+      </ul>
+      <p>
+        The number tells you where today sits inside one particular year. It says
+        nothing about whether that year was a sensible one to measure against.
+      </p>
+
+      <h2>How MajorCycle uses it</h2>
+      <p>
+        Our default horizon looks back {PRESETS.medium.lookbackBars} trading days —
+        about a year — so the high it measures from is, in effect, the 52-week high.
+        That is deliberate: it is the window most people already have in their heads.
+      </p>
+      <p>
+        Two things we do differently. We show you{' '}
+        <strong>where today sits inside the range</strong>, not just the two
+        endpoints, so &ldquo;near the high&rdquo; is something you can see rather
+        than calculate. And we do not stop at one year: the same stock measured over{' '}
+        {PRESET_HORIZONS.short.replace('~', 'roughly ')} or{' '}
+        {PRESET_HORIZONS.long.replace('~', 'roughly ')} produces a different high, a
+        different distance, and often a different impression. The window is a setting
+        you control, because which year matters depends on how long you intend to
+        hold — not on a convention.
+      </p>
+      <p>
+        If you want the mechanics of how distance from a high is measured, that is
+        covered in{' '}
+        <Link href="/learn/what-is-a-drawdown">What is a drawdown?</Link>
+      </p>
+
+      <h2>What it cannot tell you</h2>
+      <p>
+        A 52-week high is one price, from one moment, in one window. It is silent on
+        everything that decides whether it matters.
+      </p>
+      <ul>
+        <li>
+          <strong>Whether the price is high or low relative to the business.</strong>{' '}
+          That is a question about earnings, debt and cash flow, not about last
+          year&rsquo;s trading range.
+        </li>
+        <li>
+          <strong>Why the high was set.</strong>{' '}
+          A steady climb and a one-day spike on takeover speculation leave the same
+          mark.
+        </li>
+        <li>
+          <strong>What happens next.</strong>{' '}
+          Sitting at a 52-week high is equally consistent with a long advance
+          continuing and with it ending. The number does not distinguish them.
+        </li>
+        <li>
+          <strong>Whether the year was representative.</strong>{' '}
+          Pick a window starting just after a crash and everything looks strong. That
+          is the window flattering the company, not the company earning it.
+        </li>
+      </ul>
+      <p>It is a useful piece of context, and a poor conclusion.</p>
+
+      <h2>See where any stock sits, free</h2>
+      <p>
+        Where a share sits between its 52-week low and high — and how that changes
+        when you widen or narrow the window — is available on a free MajorCycle
+        account, across the US, Australian and Canadian markets.
+      </p>
+      <p>
+        <strong>No card required.</strong>{' '}
+        <Link href="/signup">Create a free account</Link> and look up any company you
+        are curious about.
       </p>
     </>
   ),

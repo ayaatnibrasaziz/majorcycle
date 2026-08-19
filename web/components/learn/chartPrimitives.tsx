@@ -109,6 +109,34 @@ export function TodayDot({
   );
 }
 
+/**
+ * A dot at an arbitrary point on the plot, not pinned to "today".
+ *
+ * Same HTML-not-SVG reasoning as `TodayDot`: under `preserveAspectRatio="none"`
+ * an SVG circle is drawn as an ellipse, stretched by whatever the horizontal
+ * scale factor happens to be at that width.
+ */
+export function PointDot({
+  x,
+  y,
+  color,
+  id,
+}: {
+  x: number;
+  y: number;
+  color: string;
+  id?: string;
+}) {
+  return (
+    <span
+      data-point-dot={id}
+      className="absolute block h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] bg-[var(--bg-surface)]"
+      style={{ left: `${rx(x)}%`, top: `${y}%`, borderColor: color }}
+      aria-hidden="true"
+    />
+  );
+}
+
 export function Swatch({ color, dashed = true }: { color: string; dashed?: boolean }) {
   return (
     <span

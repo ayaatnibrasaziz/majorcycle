@@ -121,6 +121,15 @@ class FundamentalsSnapshot:
     num_analyst_opinions: Optional[int] = None
 
     # Price / Technicals
+    # ⚠️ INTRADAY extremes, NOT closing prices, and NOT derived from our own bars.
+    # Straight from the provider's fiftyTwoWeekHigh / fiftyTwoWeekLow: the highest
+    # and lowest anyone paid at any instant. So a chart line drawn from CLOSES can
+    # never reach week52_high — measured 2026-08-19 across all three markets, the
+    # quoted high sat 0.5%–2.8% above our own highest close for 8 of 8 tickers,
+    # while agreeing with our highest intraday HIGH to within 0.6%. That gap is the
+    # year's biggest intraday spike, not an error, and 14f is why we do not
+    # "correct" it. The range gauge's tooltip said "closing prices" until this was
+    # measured; it now says "prices traded".
     week52_high: Optional[float] = None
     week52_low: Optional[float] = None
     week52_change_pct: Optional[float] = None
