@@ -1,5 +1,5 @@
 import { Figure, LegendItem } from '@/components/Figure';
-import { AxisFrame, AxisLabels, Swatch, rx } from './chartPrimitives';
+import { AxisFrame, AxisLabels, PointDot, Swatch, rx, yearTick } from './chartPrimitives';
 import {
   CUT_PCT,
   CUT_Q,
@@ -48,6 +48,8 @@ function Panel({
   limitY,
   ariaLabel,
   id,
+  markCut,
+  markCross,
 }: {
   title: string;
   points: string;
@@ -57,6 +59,10 @@ function Panel({
   limitY?: number;
   ariaLabel: string;
   id: string;
+  /** Name the vertical rule. Once, on the top panel — both share one x. */
+  markCut?: boolean;
+  /** Mark the quarter the payout ratio first passed the line it is read against. */
+  markCross?: boolean;
 }) {
   return (
     <div>
@@ -106,6 +112,44 @@ function Panel({
           />
         </svg>
         <AxisLabels ticks={ticks} format={format} />
+
+        {/* ⚠️ The rule was unlabelled until 2026-08-20, so the one event the whole
+            figure turns on was a faint dotted line a reader had to find in the
+            caption. Right-anchored: it sits at 79% of the plot and a centred
+            label would hang off the panel. */}
+        {/* ⚠️ The caption's headline is "6 quarters earlier", and that is a
+            DISTANCE — it only means anything if both ends of it are on the chart.
+            The cut was marked and its cause was not. */}
+        {markCross && (
+          <>
+            <PointDot
+              x={qx(FIRST_OVER_LIMIT.q)}
+              y={payoutY(FIRST_OVER_LIMIT.payoutPct)}
+              color={LIMIT_LINE}
+              id="crossed"
+            />
+            <span
+              data-cross-label=""
+              className="absolute whitespace-nowrap text-[12px] font-semibold text-[var(--text-primary)]"
+              style={{
+                left: `${rx(qx(FIRST_OVER_LIMIT.q))}%`,
+                top: `${payoutY(FIRST_OVER_LIMIT.payoutPct)}%`,
+                transform: 'translate(-100%, -22px)',
+              }}
+            >
+              more than it earns&nbsp;
+            </span>
+          </>
+        )}
+        {markCut && (
+          <span
+            data-cut-label=""
+            className="absolute whitespace-nowrap text-[12px] font-semibold text-[var(--text-primary)]"
+            style={{ left: `${rx(qx(CUT_Q))}%`, top: 0, transform: 'translate(-100%, -2px)' }}
+          >
+            dividend cut&nbsp;
+          </span>
+        )}
       </div>
     </div>
   );
@@ -157,6 +201,7 @@ export function DividendFigure() {
           color={YIELD_LINE}
           ticks={YIELD_TICKS.map((v) => ({ y: yieldY(v), value: v }))}
           format={(v) => `${v}%`}
+          markCut
           ariaLabel={`A yield rising steadily from ${START_YIELD.yieldPct.toFixed(1)} percent to ${PEAK_YIELD.yieldPct.toFixed(1)} percent, then dropping to ${POST_CUT_YIELD.yieldPct.toFixed(1)} percent when the dividend is cut.`}
         />
         <Panel
@@ -167,6 +212,7 @@ export function DividendFigure() {
           ticks={PAYOUT_TICKS.map((v) => ({ y: payoutY(v), value: v }))}
           format={(v) => `${v}%`}
           limitY={payoutY(PAYOUT_LIMIT)}
+          markCross
           ariaLabel={`A payout ratio climbing past ${PAYOUT_LIMIT} percent in quarter ${FIRST_OVER_LIMIT.q} and staying above it until the dividend is cut in quarter ${CUT_Q}.`}
         />
 
@@ -177,10 +223,10 @@ export function DividendFigure() {
             <span
               key={t.year}
               data-year-tick="dividend"
-              className="absolute -translate-x-1/2 font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)]"
+              className="absolute -translate-x-1/2 whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)]"
               style={{ left: `${rx(qx(t.q))}%` }}
             >
-              {t.year === 0 ? 'start' : `${t.year} yrs`}
+              {yearTick(t.year)}
             </span>
           ))}
         </div>

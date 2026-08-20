@@ -73,7 +73,7 @@ export const SPANS: readonly Span[] = [
     from: 0,
     to: TARGET_HORIZON_YEARS,
     ours: false,
-    note: 'other people’s estimates, shown as they were given',
+    note: 'other people’s estimates for the next twelve months, shown as given',
   },
 ];
 
@@ -103,4 +103,28 @@ export const FORWARD = SPANS.filter((s) => s.to > 0);
  * indistinguishable from the defect. Spelling it `3 yrs ago` keeps the guard
  * able to do its job instead of teaching the next person to widen it.
  */
+/**
+ * Two ticks, and the forward one is deliberately absent.
+ *
+ * ⚠️ It was added on 2026-08-20 and taken straight back out: "1 yr ahead" is 60px
+ * of text pinned 19% of the plot from "today", which overlapped it by 2px at
+ * 375px and 5px at 360px — measured, not guessed, and invisible above 414px. The
+ * horizon belongs in the analyst row's own note, where there is room for words,
+ * rather than crammed onto an axis. Shortening the label instead would have kept
+ * a collision class alive for the sake of a mark nothing needs.
+ */
 export const YEAR_TICKS: readonly number[] = [-Math.round(LOOKBACK_YEARS), 0];
+
+/**
+ * A marker's words, with the direction in them.
+ *
+ * ⚠️ Never `3y` — a digit butted against a letter is the shape of a lost JSX
+ * space, and the run-on guard cannot tell one from an axis label. Singular at
+ * one, for the same reason `yearTick` in `chartPrimitives` is.
+ */
+export function edgeLabel(years: number): string {
+  if (years === 0) return 'today';
+  const n = Math.abs(years);
+  const unit = n === 1 ? 'yr' : 'yrs';
+  return years < 0 ? `${n} ${unit} ago` : `${n} ${unit} ahead`;
+}

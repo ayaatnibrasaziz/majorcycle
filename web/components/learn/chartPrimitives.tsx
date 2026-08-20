@@ -78,6 +78,23 @@ export function AxisLabels({
   );
 }
 
+/**
+ * A year marker's words. One spelling, used by every timed axis.
+ *
+ * ⚠️ **Never `3y`.** A digit butted against a letter is exactly the shape of a
+ * swallowed JSX space around an interpolated number, and the run-on guard in
+ * `learn.spec.ts` cannot tell a real one from an axis label — so a tick spelled
+ * that way would force the guard to be loosened.
+ *
+ * ⚠️ And it is singular at one. Three figures grew a year axis within a week and
+ * the second one printed "1 yrs"; the fix belongs here rather than in each
+ * caller, or the fourth figure will print it again (CLAUDE.md 11c).
+ */
+export function yearTick(n: number, zero = 'start'): string {
+  if (n === 0) return zero;
+  return `${n} ${Math.abs(n) === 1 ? 'yr' : 'yrs'}`;
+}
+
 export function TimeNote({ children }: { children: React.ReactNode }) {
   return <p className="mt-1 text-right text-[12px] text-[var(--text-secondary)]">{children}</p>;
 }
@@ -134,6 +151,49 @@ export function PointDot({
       style={{ left: `${rx(x)}%`, top: `${y}%`, borderColor: color }}
       aria-hidden="true"
     />
+  );
+}
+
+/**
+ * A short label pinned to a point on the plot.
+ *
+ * ⚠️ **The anchor is chosen from the position, never passed in.** A centred label
+ * near the right-hand edge hangs off the panel, and a per-call-site `align` prop
+ * is a decision that goes stale the moment the point it describes moves. Written
+ * once here because two figures grew their own copy within a day (CLAUDE.md 11c).
+ *
+ * `dy` is the vertical offset in pixels — positive puts the label below the point.
+ */
+export function PinnedLabel({
+  x,
+  y,
+  text,
+  dy = 6,
+  strong = false,
+  id,
+}: {
+  x: number;
+  y: number;
+  text: string;
+  dy?: number;
+  strong?: boolean;
+  id: string;
+}) {
+  const anchorRight = x > 70;
+  return (
+    <span
+      data-pinned-label={id}
+      className={`absolute whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] ${
+        strong ? 'font-semibold text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
+      }`}
+      style={{
+        left: `${rx(x)}%`,
+        top: `${y}%`,
+        transform: `translate(${anchorRight ? '-100%' : '-50%'}, ${dy}px)`,
+      }}
+    >
+      {text}
+    </span>
   );
 }
 

@@ -1,6 +1,6 @@
 import { Figure, LegendItem } from '@/components/Figure';
 
-import { BACKWARD, FORWARD, SPANS, TODAY_X, YEAR_TICKS, xOf } from './limitsGeometry';
+import { BACKWARD, FORWARD, SPANS, TODAY_X, YEAR_TICKS, edgeLabel, xOf } from './limitsGeometry';
 
 /**
  * The one figure for "What MajorCycle deliberately doesn't do".
@@ -102,14 +102,14 @@ export function LimitsFigure() {
             <span
               key={y}
               data-year-tick="limits"
-              className={`absolute -translate-x-1/2 pt-1 text-[12px] ${
+              className={`absolute -translate-x-1/2 whitespace-nowrap pt-1 text-[12px] ${
                 y === 0
                   ? 'font-semibold text-[var(--text-primary)]'
                   : 'font-[family-name:var(--font-mono)] text-[var(--text-secondary)]'
               }`}
               style={{ left: `${xOf(y)}%` }}
             >
-              {y === 0 ? 'today' : `${Math.abs(y)} yrs ago`}
+              {edgeLabel(y)}
             </span>
           ))}
         </div>

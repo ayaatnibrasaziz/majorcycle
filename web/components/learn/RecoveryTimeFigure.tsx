@@ -1,5 +1,5 @@
-import { Figure, LegendItem } from '@/components/Figure';
-import { AxisFrame, AxisLabels, Swatch, rx } from './chartPrimitives';
+import { Figure } from '@/components/Figure';
+import { AxisFrame, AxisLabels, PinnedLabel, PointDot, rx, yearTick } from './chartPrimitives';
 import {
   DD_TICKS,
   FASTEST,
@@ -9,6 +9,7 @@ import {
   TROUGH_PCT,
   WAIT_RATIO,
   YEAR_TICKS,
+  recoveryX,
   yOf,
   waitFromTrough,
 } from './recoveryGeometry';
@@ -34,11 +35,6 @@ const pathOf = (dd: readonly { x: number; pct: number }[]): string =>
 export function RecoveryTimeFigure() {
   return (
     <Figure
-      legend={RECOVERIES.map((r) => (
-        <LegendItem key={r.id} swatch={<Swatch color={r.color} dashed={false} />}>
-          Back to its old peak in {r.label}
-        </LegendItem>
-      ))}
       caption={
         <>
           Three illustrative falls, all exactly{' '}
@@ -79,16 +75,38 @@ export function RecoveryTimeFigure() {
           ticks={DD_TICKS.map((v) => ({ y: yOf(v), value: v }))}
           format={(v) => `${v}%`}
         />
+
+        {/* Where each one gets back to its old peak.
+            ⚠️ On the chart, not in a legend. Three legend rows all reading "back
+            to its old peak in …" put the figure's only variable in a list beside
+            the drawing, so the reader had to match colours to find the thing the
+            horizontal axis was already showing them. */}
+        {RECOVERIES.map((r, i) => (
+          <span key={r.id}>
+            <PointDot x={recoveryX(r)} y={yOf(0)} color={r.color} id={r.id} />
+            {/* ⚠️ Staggered rows. The first two recoveries finish 20% of the plot
+                apart, which is 69px at 375px and less than two 12px mono labels
+                need — they overlapped by 13px at 360px, measured. Alternating the
+                offset keeps the words rather than abbreviating them. */}
+            <PinnedLabel
+              id={r.id}
+              x={recoveryX(r)}
+              y={yOf(0)}
+              text={r.label}
+              dy={9 + (i % 2) * 26}
+            />
+          </span>
+        ))}
         {/* Year markers, in HTML so they stay 12px at every width. */}
         <div className="absolute inset-x-0 top-full">
           {YEAR_TICKS.map((y) => (
             <span
               key={y}
               data-year-tick="recovery"
-              className="absolute -translate-x-1/2 pt-1 font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)]"
+              className="absolute -translate-x-1/2 whitespace-nowrap pt-1 font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)]"
               style={{ left: `${rx((y / SPAN_YEARS) * 100)}%` }}
             >
-              {y === 0 ? 'peak' : `${y} yrs`}
+              {yearTick(y, 'peak')}
             </span>
           ))}
         </div>

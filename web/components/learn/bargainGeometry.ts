@@ -113,7 +113,16 @@ export const FALL: readonly PricePoint[] = buildFall();
 /** Plot bounds, with headroom so the wobble never touches the frame. */
 export const PRICE_TOP = 106;
 export const PRICE_BOTTOM = 62;
-export const PLOT_FLOOR_Y = 76;
+/**
+ * Where the x-axis sits in the 0–100 viewBox.
+ *
+ * ⚠️ Was 76, which left **24% of the chart box empty below the axis** — about
+ * 43px of nothing between the price line and the five check bars, reading as a
+ * break between two unrelated things rather than one company described twice.
+ * Nothing was wrong with any line; the box was simply taller than its contents
+ * and only a screenshot could say so.
+ */
+export const PLOT_FLOOR_Y = 92;
 
 /** Price → y, in viewBox units, over the price plot only (not the bars below). */
 export const yOf = (pct: number): number =>

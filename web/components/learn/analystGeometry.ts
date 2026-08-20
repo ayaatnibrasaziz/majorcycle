@@ -45,3 +45,79 @@ export const xOf = (price: number): number =>
   ((price - AXIS_MIN) / (AXIS_MAX - AXIS_MIN)) * 100;
 
 export const AXIS_TICKS = [80, 110, 140, 170] as const;
+
+/**
+ * How far a lifted marker label sits from the bar, in pixels.
+ *
+ * ⚠️ Exported because the AXIS has to clear it, and the two were separate
+ * numbers until 2026-08-20: the lowered "Lowest $82" label landed on the "$80"
+ * tick and overlapped it by 12px **at every width, including 1280** — for as
+ * long as the figure has existed. The collision guard written for this figure
+ * compared marker labels with each other and never with the axis, so it was
+ * green the whole time (CLAUDE.md 14g: a guard is silent, not clean, about what
+ * it does not measure).
+ *
+ * The axis offset is now derived from this, so moving one moves the other.
+ */
+export const MARKER_LIFT_PX = 52;
+
+/** Where a label sits when it is not lifted clear of a neighbour. */
+export const MARKER_BASE_GAP = 6;
+
+/** A two-line 12px label, plus breathing room before the axis rule. */
+export const MARKER_LABEL_H = 36;
+
+export interface Marker {
+  readonly id: string;
+  readonly price: number;
+  readonly label: string;
+  /** Above the bar, or below it. */
+  readonly above: boolean;
+  /**
+   * Push this label clear of its neighbour's row. The DOT never moves.
+   *
+   * ⚠️ Only where two labels on the SAME side of the bar are close enough to
+   * collide. "Lowest" carried a lift until 2026-08-20 and never needed one — its
+   * only same-side neighbour is "Highest", 80% of the plot away — so it hung 52px
+   * below the bar for no reason, dropped onto the axis ticks, and pushed the
+   * whole axis down to make room. A lift that guards nothing still costs layout.
+   */
+  readonly lift: boolean;
+}
+
+export const MARKERS: readonly Marker[] = [
+  { id: 'today', price: PRICE_TODAY, label: 'Today', above: true, lift: true },
+  { id: 'mean', price: TARGET_MEAN, label: 'Average target', above: true, lift: false },
+  { id: 'low', price: TARGET_LOW, label: 'Lowest', above: false, lift: false },
+  { id: 'high', price: TARGET_HIGH, label: 'Highest', above: false, lift: false },
+];
+
+export const markerGap = (m: Marker): number => (m.lift ? MARKER_LIFT_PX : MARKER_BASE_GAP);
+
+/**
+ * How far the axis has to sit below the bar.
+ *
+ * ⚠️ **Derived from the markers that are actually below it.** It was a hand-typed
+ * `mt-24` until 2026-08-20, and the lowered "Lowest $82" label landed straight on
+ * the "$80" tick — a 12px overlap at every width including 1280, for the life of
+ * the figure, while the collision guard written for this very figure compared
+ * marker labels only with each other (CLAUDE.md 14g).
+ */
+export const AXIS_TOP_PX =
+  Math.max(...MARKERS.filter((m) => !m.above).map(markerGap)) + MARKER_LABEL_H + 20;
+
+/** Room above the bar for the tallest label that sits there. */
+export const PAD_TOP_PX =
+  Math.max(...MARKERS.filter((m) => m.above).map(markerGap)) + MARKER_LABEL_H + 8;
+
+/**
+ * Breathing room UNDER the tick row.
+ *
+ * ⚠️ Small, and that is the point. The first attempt set this to
+ * `AXIS_TOP_PX + 16 + 10` — which double-counts, because the axis is pushed down
+ * by its own `marginTop` INSIDE this box and the padding is added after it. The
+ * panel grew ~90px of empty space that looked like a deliberate margin. The
+ * labels above the bar are absolutely positioned and escape the flow, so the top
+ * genuinely does need the full clearance; the bottom does not.
+ */
+export const PAD_BOTTOM_PX = 14;

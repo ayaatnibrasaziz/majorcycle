@@ -31,7 +31,11 @@ export interface Quarter {
   readonly payoutPct: number;
 }
 
-const N_Q = 24;
+// ⚠️ 25, not 24. The caption says "six years" and 24 quarters spans 5.75, which
+// filtered the 6-year tick off the axis — a chart that stopped at "4 yrs" under a
+// sentence promising six. An off-by-one in a span is invisible until something
+// reads the axis (CLAUDE.md 11c-v: prose is a copy of a constant).
+const N_Q = 25;
 
 /** The quarter the dividend is cut. Everything about the story hangs off this. */
 export const CUT_Q = 19;

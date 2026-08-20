@@ -1669,6 +1669,13 @@ test.describe('the analyst-target figure', () => {
      * It now sweeps down past the stated 375px floor to 360px, and every width
      * is asserted rather than the first failure ending the run — so the report
      * says which widths break, not merely that one does.
+     *
+     * ⚠️ **The overlap half of this moved out**, to "no two labels overlap, in
+     * any figure" at the end of this file. It was still too narrow even after the
+     * sweep: it compared marker labels only with each other, and the label that
+     * was actually broken — "Lowest $82" — sat on the "$80" AXIS TICK, which this
+     * test does not select. What is left here is the thing only this figure can
+     * check: that a marker stays inside its own panel.
      */
     await page.goto(learnPath('analyst-price-target'));
 
@@ -1678,7 +1685,6 @@ test.describe('the analyst-target figure', () => {
       await ready(page);
       const g = await measureMarkers(page);
       if (g.count !== 4) failures.push(`${width}px: ${g.count} markers, expected 4`);
-      if (g.overlaps.length) failures.push(`${width}px: labels overlap — ${g.overlaps.join(', ')}`);
       for (const b of g.boxes) {
         if (b.insideLeft < -2) failures.push(`${width}px: ${b.id} spills off the left`);
         if (b.insideRight < -2) failures.push(`${width}px: ${b.id} spills off the right`);
@@ -1708,27 +1714,7 @@ test.describe('the analyst-target figure', () => {
           };
         }),
       };
-    })
-      .then((g) => {
-        // ⚠️ EVERY pair, not just the pair I expected to collide. The first
-        // version of this checked only "today vs mean" — which happened to be
-        // the right pair, and would have said nothing at all had the defect
-        // been anywhere else in the figure.
-        const overlaps: string[] = [];
-        for (let i = 0; i < g.boxes.length; i += 1) {
-          for (let j = i + 1; j < g.boxes.length; j += 1) {
-            const a = g.boxes[i]!;
-            const b = g.boxes[j]!;
-            if (
-              Math.min(a.right, b.right) > Math.max(a.left, b.left) &&
-              Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top)
-            ) {
-              overlaps.push(`${a.id}+${b.id}`);
-            }
-          }
-        }
-        return { ...g, overlaps };
-      });
+    });
   }
 });
 
@@ -2228,7 +2214,7 @@ test.describe('the limits figure', () => {
     expect(prices.to, 'the price-history row must stop at today').toBe(0);
   });
 
-  test('every row renders, and nothing overlaps at any width', async ({ page }) => {
+  test('every row renders a bar of real width, at any width', async ({ page }) => {
     const { SPANS, TODAY_X } = await import('../components/learn/limitsGeometry');
 
     await page.goto(PATH);
@@ -2236,30 +2222,21 @@ test.describe('the limits figure', () => {
     await expect(page.locator('[data-span-bar]')).toHaveCount(SPANS.length);
     await expect(page.locator('[data-today-rule]')).toHaveCount(1);
 
+    // ⚠️ Label collisions are checked for EVERY figure at the end of this file;
+    // what only this test can say is that each row actually drew a bar. A span
+    // whose two ends round to the same position renders as nothing at all, which
+    // looks exactly like a row that was never meant to be there (CLAUDE.md 11j).
     const failures: string[] = [];
     for (const width of [1280, 1024, 768, 414, 375, 360]) {
       await page.setViewportSize({ width, height: 900 });
       const state = await page.evaluate(() => {
         const bars = [...document.querySelectorAll('[data-span-bar]')] as HTMLElement[];
-        const boxes = ([...document.querySelectorAll('[data-year-tick]')] as HTMLElement[]).map(
-          (el) => ({ t: el.textContent ?? '', r: el.getBoundingClientRect() }),
-        );
-        const bad: string[] = [];
-        for (let i = 0; i < boxes.length; i += 1) {
-          for (let j = i + 1; j < boxes.length; j += 1) {
-            const a = boxes[i]!.r;
-            const b = boxes[j]!.r;
-            if (a.right > b.left && b.right > a.left) bad.push(`${boxes[i]!.t}/${boxes[j]!.t}`);
-          }
-        }
         return {
-          bad,
-          ticks: boxes.length,
+          ticks: document.querySelectorAll('[data-year-tick]').length,
           zeroWidth: bars.filter((b) => b.getBoundingClientRect().width < 4).length,
         };
       });
       expect(state.ticks, `${width}px: no axis labels found`).toBeGreaterThan(1);
-      if (state.bad.length) failures.push(`${width}px: labels overlap — ${state.bad.join(', ')}`);
       if (state.zeroWidth) failures.push(`${width}px: ${state.zeroWidth} row(s) drew no bar`);
     }
     expect(failures, `the limits figure breaks at:\n${failures.join('\n')}`).toEqual([]);
@@ -2329,61 +2306,14 @@ test.describe('every article, at the supported floor', () => {
    * figure's axis is covered the day it is written rather than the day somebody
    * remembers to copy this test.
    */
-  test('no two axis labels overlap, on any article, at any width', async ({ page }) => {
-    /**
-     * ⚠️ **One test over the whole registry, NOT one per article — because most
-     * articles have no timed axis and `test.skip` would have produced nine green
-     * skips.** A skip reads as a pass in every summary this project checks, and
-     * the count is how a silently-stopped suite is caught here. So the vacuity is
-     * asserted instead: at least three articles must actually carry an axis, or
-     * this test is measuring nothing and says so (CLAUDE.md 14g).
-     */
-    const withAxis: string[] = [];
-    const failures: string[] = [];
-
-    for (const article of LEARN_ARTICLES) {
-      const path = learnPath(article.slug);
-      await page.setViewportSize({ width: 1280, height: 900 });
-      await page.goto(path);
-      await ready(page);
-
-      const total = await page.locator('[data-year-tick]').count();
-      if (total === 0) continue;
-      withAxis.push(path);
-
-      for (const width of [1280, 1024, 768, 414, 375, 360]) {
-        await page.setViewportSize({ width, height: 900 });
-        const state = await page.evaluate(() => {
-          const boxes = ([...document.querySelectorAll('[data-year-tick]')] as HTMLElement[]).map(
-            (el) => ({ t: el.textContent ?? '', r: el.getBoundingClientRect() }),
-          );
-          const bad: string[] = [];
-          for (let i = 0; i < boxes.length; i += 1) {
-            for (let j = i + 1; j < boxes.length; j += 1) {
-              const a = boxes[i]!.r;
-              const b = boxes[j]!.r;
-              // Same row only: two panels may legitimately share an x position.
-              const sameRow = Math.abs(a.y - b.y) < 4;
-              if (sameRow && a.right > b.left && b.right > a.left) {
-                bad.push(`${boxes[i]!.t}/${boxes[j]!.t}`);
-              }
-            }
-          }
-          return { bad, count: boxes.length };
-        });
-        if (state.count !== total) {
-          failures.push(`${path} @ ${width}px: ${total} labels became ${state.count}`);
-        }
-        if (state.bad.length) failures.push(`${path} @ ${width}px: ${state.bad.join(', ')}`);
-      }
-    }
-
-    expect(
-      withAxis.length,
-      'no article carries a timed axis, so this test measured nothing',
-    ).toBeGreaterThanOrEqual(3);
-    expect(failures, `axis labels collide: ${failures.join(' | ')}`).toEqual([]);
-  });
+  /**
+   * ⚠️ **The axis-label sweep that lived here has been folded into "no two labels
+   * overlap, in any figure" at the end of this file.** It compared `[data-year-tick]`
+   * elements with each other, which meant a tick could sit squarely on a marker
+   * label and it would report a clean page — which is exactly what happened on
+   * the analyst figure. A guard scoped to one KIND of label is as narrow as one
+   * scoped to one page.
+   */
 
   for (const article of LEARN_ARTICLES) {
     const path = learnPath(article.slug);
@@ -2431,4 +2361,95 @@ test.describe('every article, at the supported floor', () => {
       }
     });
   }
+});
+
+test.describe('nothing in a figure is drawn on top of anything else', () => {
+  /**
+   * ⚠️ **This replaces three separate collision checks, and it exists because all
+   * three were blind to the same defect.** The analyst figure had its own guard
+   * comparing marker labels with each other; the limits and recovery figures had
+   * one comparing axis ticks with each other. Meanwhile "Lowest $82" sat directly
+   * on the "$80" axis tick — a 12px overlap **at every width including 1280, for
+   * the life of the figure** — because no guard compared a marker with a tick.
+   *
+   * Each guard measured the category it was written for and was silent, not
+   * clean, about every other pair (CLAUDE.md 14g). So this one takes every piece
+   * of text in every figure's DRAWING and compares all of them, on every article,
+   * at six widths — which is the only version that cannot be defeated by adding a
+   * new kind of label.
+   *
+   * ⚠️ **Scoped to the drawing, never the caption or legend.** Those are prose:
+   * an inline `<strong>` that wraps across two lines reports a union rectangle
+   * that legitimately overlaps its neighbours, and including them would make this
+   * fire on correct behaviour — which is how a guard gets deleted.
+   */
+  test('no two labels overlap, in any figure, on any article, at any width', async ({ page }) => {
+    test.setTimeout(600_000);
+
+    const measured: string[] = [];
+    const failures: string[] = [];
+
+    for (const article of LEARN_ARTICLES) {
+      const path = learnPath(article.slug);
+      for (const width of [1280, 1024, 768, 414, 375, 360]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(path);
+        await ready(page);
+
+        const found = await page.evaluate(() => {
+          const hits: string[] = [];
+          let labels = 0;
+          document.querySelectorAll('figure').forEach((fig, fi) => {
+            const panel = fig.querySelector(':scope > div');
+            if (!panel) return;
+            const leaves = ([...panel.querySelectorAll('*')] as HTMLElement[]).filter((el) => {
+              if (el.children.length > 0) return false;
+              if (!(el.textContent ?? '').trim()) return false;
+              if (el.closest('figcaption')) return false;
+              const cs = getComputedStyle(el);
+              if (cs.visibility === 'hidden' || cs.display === 'none') return false;
+              if (parseFloat(cs.opacity) === 0) return false;
+              const r = el.getBoundingClientRect();
+              return r.width > 0 && r.height > 0;
+            });
+            labels += leaves.length;
+            for (let i = 0; i < leaves.length; i += 1) {
+              for (let j = i + 1; j < leaves.length; j += 1) {
+                const a = leaves[i]!.getBoundingClientRect();
+                const b = leaves[j]!.getBoundingClientRect();
+                const ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+                const oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+                if (ox > 1 && oy > 1) {
+                  hits.push(
+                    `fig${fi + 1} "${(leaves[i]!.textContent ?? '').trim().slice(0, 24)}" over "${(
+                      leaves[j]!.textContent ?? ''
+                    )
+                      .trim()
+                      .slice(0, 24)}" by ${Math.round(ox)}x${Math.round(oy)}px`,
+                  );
+                }
+              }
+            }
+          });
+          return { hits, labels };
+        });
+
+        if (found.labels > 0) measured.push(`${article.slug}@${width}`);
+        for (const h of found.hits) failures.push(`${path} @${width}px: ${h}`);
+      }
+    }
+
+    /**
+     * ⚠️ The control. A selector that matched nothing would report zero overlaps
+     * for ever, which is exactly what a clean run looks like — so the count of
+     * labels actually compared is asserted first. Ten of the twelve articles
+     * carry a figure with text in it.
+     */
+    expect(
+      measured.length,
+      'no figure labels were measured at all — this test would pass on an empty page',
+    ).toBeGreaterThan(30);
+
+    expect(failures, `figure labels collide:\n${failures.join('\n')}`).toEqual([]);
+  });
 });

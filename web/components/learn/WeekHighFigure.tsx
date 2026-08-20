@@ -177,7 +177,7 @@ export function WeekHighFigure() {
         */}
         <span
           data-fig-label="high52"
-          className="absolute left-[16.5%] -translate-y-[16px] whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] font-semibold text-[var(--text-secondary)]"
+          className="absolute left-[16.5%] -translate-y-[20px] whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] font-semibold text-[var(--text-secondary)]"
           style={{ top: `${highY}%` }}
         >
           52-week high

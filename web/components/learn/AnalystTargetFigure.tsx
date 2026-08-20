@@ -3,14 +3,18 @@ import { Swatch } from './chartPrimitives';
 import {
   ANALYST_COUNT,
   AXIS_TICKS,
+  AXIS_TOP_PX,
+  MARKERS,
+  PAD_BOTTOM_PX,
+  PAD_TOP_PX,
+  markerGap,
+  type Marker as MarkerSpec,
   HIGH_MOVE_PCT,
   LOW_MOVE_PCT,
   MEAN_UPSIDE_PCT,
-  PRICE_TODAY,
   SPREAD_PCT,
   TARGET_HIGH,
   TARGET_LOW,
-  TARGET_MEAN,
   xOf,
 } from './analystGeometry';
 
@@ -45,45 +49,32 @@ const MEAN = 'var(--brand-deep)';
  * on different rows: `lift` raises one clear of the other, so they cannot
  * collide at any width. The guard now sweeps 1280 → 360.
  */
-function Marker({
-  price,
-  color,
-  label,
-  sub,
-  id,
-  above,
-  lift,
-}: {
-  price: number;
-  color: string;
-  label: string;
-  sub: string;
-  id: string;
-  above?: boolean;
-  /** Push the LABEL clear of its neighbour's. The dot never moves. */
-  lift?: boolean;
-}) {
+function Marker({ spec, color, sub }: { spec: MarkerSpec; color: string; sub: string }) {
   // ⚠️ The difference between the two gaps must exceed a label's own height
   // (two 12px lines ≈ 32px), or the rows still intersect. 30 vs 6 left an 8px
   // overlap that looked deliberate and was measured, not eyeballed.
-  const gap = lift ? 52 : 6;
+  const gap = markerGap(spec);
   return (
     <div
       className="absolute -translate-x-1/2 -translate-y-1/2"
-      style={{ left: `${xOf(price)}%`, top: '50%' }}
-      data-analyst-marker={id}
+      style={{ left: `${xOf(spec.price)}%`, top: '50%' }}
+      data-analyst-marker={spec.id}
     >
       <span
         className="block h-[13px] w-[13px] rounded-full border-[3px] bg-[var(--bg-surface)]"
         style={{ borderColor: color }}
       />
       <span
-        data-marker-label={id}
+        data-marker-label={spec.id}
         className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center"
-        style={above ? { bottom: `calc(100% + ${gap}px)` } : { top: `calc(100% + ${gap}px)` }}
+        style={
+          spec.above
+            ? { bottom: `calc(100% + ${gap}px)` }
+            : { top: `calc(100% + ${gap}px)` }
+        }
       >
         <span className="whitespace-nowrap text-center text-[12px] font-semibold text-[var(--text-primary)]">
-          {label}
+          {spec.label}
         </span>
         <span className="whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)]">
           {sub}
@@ -127,7 +118,10 @@ export function AnalystTargetFigure() {
         </>
       }
     >
-      <div className="relative w-full pt-28 pb-28">
+      <div
+        className="relative w-full"
+        style={{ paddingTop: `${PAD_TOP_PX}px`, paddingBottom: `${PAD_BOTTOM_PX}px` }}
+      >
         {/* The range bar */}
         <div className="relative h-[10px] w-full">
           <div className="absolute inset-y-0 w-full rounded-full bg-[var(--border)]" />
@@ -141,42 +135,23 @@ export function AnalystTargetFigure() {
             data-analyst-range=""
           />
 
-          <Marker
-            price={PRICE_TODAY}
-            color={TODAY}
-            label="Today"
-            sub={money(PRICE_TODAY)}
-            id="today"
-            above
-            lift
-          />
-          <Marker
-            price={TARGET_LOW}
-            color={RANGE}
-            label="Lowest"
-            sub={money(TARGET_LOW)}
-            id="low"
-            lift
-          />
-          <Marker
-            price={TARGET_MEAN}
-            color={MEAN}
-            label="Average target"
-            sub={money(TARGET_MEAN)}
-            id="mean"
-            above
-          />
-          <Marker
-            price={TARGET_HIGH}
-            color={RANGE}
-            label="Highest"
-            sub={money(TARGET_HIGH)}
-            id="high"
-          />
+          {MARKERS.map((m) => (
+            <Marker
+              key={m.id}
+              spec={m}
+              color={m.id === 'today' ? TODAY : m.id === 'mean' ? MEAN : RANGE}
+              sub={money(m.price)}
+            />
+          ))}
         </div>
 
-        {/* Axis ticks, below everything. */}
-        <div className="relative mt-24 h-4 w-full border-t border-[var(--border)]">
+        {/* Axis ticks, below everything — offset DERIVED from the marker lift, so
+            the axis cannot drift into a lowered label the way it did until
+            2026-08-20 (see `AXIS_TOP_PX`). */}
+        <div
+          className="relative h-4 w-full border-t border-[var(--border)]"
+          style={{ marginTop: `${AXIS_TOP_PX}px` }}
+        >
           {AXIS_TICKS.map((t) => (
             <span
               key={t}

@@ -115,3 +115,26 @@ export const DD_FLOOR = Math.floor((deepest([...MEMBERS.flatMap((m) => m.dd)]) -
 export const yOf = (pct: number): number => (pct / DD_FLOOR) * 88;
 
 export const DD_TICKS = [0, -20, -40] as const;
+
+/**
+ * The window the schematic covers. Three years, so the falls can visibly land in
+ * different ones — which is the mechanism the figure exists to show and was
+ * completely invisible while there was no time axis at all.
+ */
+export const SPAN_YEARS = 3;
+
+/** ⚠️ `1 yr`, never `1y`: a digit butted against a letter is the shape of a lost
+ *  JSX space, and the run-on guard cannot tell a real one from an axis label. */
+export const YEAR_TICKS: readonly { year: number; x: number }[] = [0, 1, 2, 3].map((year) => ({
+  year,
+  x: (year / SPAN_YEARS) * 100,
+}));
+
+/** The deepest point of a curve, as {x, pct} — where a trough label is pinned. */
+export function trough(dd: readonly DdPoint[]): DdPoint {
+  return dd.reduce((lo, p) => (p.pct < lo.pct ? p : lo), dd[0]!);
+}
+
+/** Each company's own worst moment, and the index's — the four points labelled. */
+export const MEMBER_TROUGHS = MEMBERS.map((m) => ({ name: m.name, ...trough(m.dd) }));
+export const INDEX_TROUGH = trough(INDEX_DD);

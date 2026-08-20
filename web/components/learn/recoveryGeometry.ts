@@ -103,6 +103,15 @@ export const RECOVERIES: readonly Recovery[] = [
 /** Years of waiting, measured from the trough rather than from the peak. */
 export const waitFromTrough = (r: Recovery): number => r.years - TROUGH_YEAR;
 
+/**
+ * Where a curve first gets back to its old peak, as an x on the plot.
+ *
+ * Read off the drawn series rather than computed from `years`, so the marker
+ * cannot sit anywhere the line does not actually reach zero.
+ */
+export const recoveryX = (r: Recovery): number =>
+  r.series.find((p, i) => i > 2 && p.pct === 0)?.x ?? 100;
+
 export const FASTEST = RECOVERIES[0]!;
 export const SLOWEST = RECOVERIES[RECOVERIES.length - 1]!;
 

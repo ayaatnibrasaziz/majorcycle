@@ -1601,6 +1601,52 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > behaviour and rendered text unchanged. `learn.spec.ts` builds its assertion from the constants and
 > carries an off-by-one control.
 
+> #### ✅ G4.4 — the visual audit of all twelve articles. 2026-08-20, still inside PR #89.
+>
+> Owner asked for every Learn page to be looked at rather than tested. **Sixteen figures
+> screenshotted at 1280px and 375px and read as pictures**, then every measurable claim
+> re-derived. Six defects and four improvements; Playwright **464 → 464** (three narrow
+> guards folded into one broader one).
+>
+> **Defects, all invisible to the suite as it stood:**
+>
+> - 🔴 **The analyst figure's "Lowest $82" sat on the "$80" axis tick** — 12px of overlap at
+>   **every width including 1280**, for the life of the figure. Three collision guards existed
+>   and none compared a marker with a tick. Replaced by one guard that compares **every** piece
+>   of text in every figure's drawing, on every article, at six widths, with a vacuity control.
+>   The axis offset is now derived from the marker lift rather than hand-typed.
+> - 🔴 **A lift that guarded nothing.** "Lowest" was pushed 52px below the bar to clear a
+>   neighbour it could never collide with (80% of the plot away), which is what dropped it onto
+>   the axis and forced ~90px of empty panel. Removed; the panel padding is derived too.
+> - 🔴 **`8 yrs` wrapped to two lines** on the recovery axis, and `1 yrs` was about to print on
+>   the next figure. One `yearTick()` now spells every year marker.
+> - 🔴 **The dividend axis stopped at "4 yrs" under a caption promising six years** — 24 quarters
+>   spans 5.75, so the 6-year tick was filtered off. Now 25.
+> - 🔴 **24% of the bargain figure's chart box was empty**, reading as a break between the price
+>   line and the five checks rather than one company described twice.
+> - 🔴 **`1 yr ahead` was added to the limits axis and taken straight back out** — 2px of overlap
+>   with "today" at 375px, 5px at 360px. The horizon moved into the analyst row's own note, which
+>   has room for words. Shortening the label would have kept a collision class alive for a mark
+>   nothing needed.
+>
+> **Improvements, where the picture was correct and did not explain itself:**
+>
+> - **The index-vs-average figure was four tangled lines.** Its caption asserted three depths and
+>   that they happened in different years; the drawing showed neither. It now has a time axis, a
+>   dot on each trough and its depth beside it — all read off the curves.
+> - **The recovery figure's durations moved onto the chart** (dot at each return to peak), and its
+>   three-row legend — every row reading "back to its old peak in …" — is gone.
+> - **The dividend figure names its two events**: "dividend cut" on the upright, and a dot marking
+>   where the payout ratio first passed the line. The caption's headline is "6 quarters earlier",
+>   which is a DISTANCE, and only one end of it was on the chart.
+> - **The correction/crash lines are labelled.** On the one page whose subject is which word goes
+>   where, the figure drew two unnamed dashed rules.
+>
+> ⚠️ **One reported defect was my own measurement error, and it is the reason for the rule.** I
+> read a downscaled 1× screenshot as showing the "$100" axis label struck through by a rule and
+> was about to fix it; a 4× capture showed a clean gutter and a tick mark. **Derive the finding
+> from a number, not from a picture of a picture** (11o) — the probe had said "none" and was right.
+
 ### Layer H: Pre-launch Hardening (Phase 1.5, target: 1 week)
 
 - [ ] Mobile responsive audit on every page

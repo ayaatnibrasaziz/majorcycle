@@ -94,6 +94,27 @@ export function MarketWordsFigure() {
         </svg>
 
         <AxisLabels ticks={MKT_TICKS} format={(v) => `${v}%`} />
+
+        {/* ⚠️ The three words the article is ABOUT, on the lines that separate
+            them. Until 2026-08-20 the figure drew two unlabelled dashed rules and
+            left the reader to map them onto the caption — on the one page whose
+            entire subject is which word goes where. The names come from
+            `MARKET_LEVELS`, so the picture cannot disagree with the prose that
+            reads the same list.
+
+            Left of centre on purpose: the curve is still near zero over the first
+            third, so this band of the plot is empty and nothing has to be nudged
+            around a line that might move. */}
+        {MARKET_LEVELS.map((l) => (
+          <span
+            key={l.pct}
+            data-zone-label={l.label}
+            className="absolute whitespace-nowrap text-[12px] font-semibold text-[var(--text-primary)]"
+            style={{ left: `${rx(4)}%`, top: `${mktY(l.pct)}%`, transform: 'translate(0, -18px)' }}
+          >
+            {l.label}
+          </span>
+        ))}
       </div>
       <TimeNote>Time →</TimeNote>
     </Figure>
