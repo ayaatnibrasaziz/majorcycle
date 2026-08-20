@@ -111,10 +111,10 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
       src: '/learn/falls-and-recoveries.png',
       alt: 'A share price traced along the top edge of a dark navy landscape, rising and falling three times by clearly different amounts. A small figure stands at the bottom of the deepest fall, looking up the slope ahead, with a misty city skyline behind.',
     },
-    upcoming: [
-      'Why your company’s own history beats the market’s average',
-      'How long do recoveries actually take?',
-    ],
+    // Both titles announced here are now written and live above. Kept as a note
+    // rather than an empty array: `upcoming: []` and a missing field render
+    // identically, so the empty array would be a silent claim that the list was
+    // considered when it might just as easily have been forgotten.
   },
   {
     id: 'quality',
@@ -124,7 +124,7 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
       src: '/learn/judging-the-business.png',
       alt: 'Two office towers of the same height under identical falling share prices. One stands square with warmly lit windows and an open doorway; the other leans, cracked from top to bottom, its windows dark and its highest floor sliding away. A small figure stands between them, looking up.',
     },
-    upcoming: ['Is a dividend safe, and how would you know?'],
+    // Announced and now written — see 'is-a-dividend-safe' below.
   },
   {
     id: 'using-it',
@@ -139,7 +139,9 @@ export const LEARN_THEMES: readonly LearnThemeMeta[] = [
     // articles about one rating would compete for the same search and repeat
     // each other — the duplicate-content shape `learn.spec.ts` now polices
     // between articles. Recorded rather than silently dropped.
-    upcoming: ['What MajorCycle deliberately doesn’t do'],
+    // Announced and now written — see 'what-majorcycle-doesnt-do' below. Every
+    // theme's "Coming soon" list is now empty, which is the state the field was
+    // built for: a promise costs nothing to keep once it is kept.
   },
 ] as const;
 
@@ -221,10 +223,16 @@ export const LEARN_ARTICLES = [
     theme: 'cycles',
     published: '2026-08-15',
     reviewed: '2026-08-19',
-    // 2,073 words with its three figure captions — measured, not estimated. It
-    // said 8 until the 2026-08-19 audit: inside the guard's ±2 tolerance by
-    // exactly zero margin, and a 25% understatement to the reader.
-    minutes: 10,
+    // 2,187 words with its three figure captions — measured, not estimated.
+    //
+    // ⚠️ Every reading time in this file was re-measured on 2026-08-20 and FOUR
+    // of the eight then-published articles were wrong by a minute. All four were
+    // inside the guard's ±2 tolerance, so nothing had gone red, and none of them
+    // had been edited since the last count — the drift came from re-reading a
+    // number that had been rounded once and then treated as settled. A loose
+    // tolerance stops a body from being gutted; it does not keep a claim true.
+    // Re-measure rather than re-estimate whenever the prose is touched.
+    minutes: 11,
   },
   {
     slug: 'dip-correction-crash',
@@ -237,7 +245,7 @@ export const LEARN_ARTICLES = [
     theme: 'cycles',
     published: '2026-08-19',
     reviewed: '2026-08-19',
-    minutes: 6,
+    minutes: 7,
   },
   {
     slug: '52-week-high',
@@ -250,7 +258,33 @@ export const LEARN_ARTICLES = [
     theme: 'cycles',
     published: '2026-08-19',
     reviewed: '2026-08-19',
-    minutes: 8,
+    minutes: 7,
+  },
+  {
+    slug: 'own-history-vs-market-average',
+    title: 'Why your company’s own history beats the market’s average',
+    question: 'How much does a stock usually fall?',
+    answer:
+      'There is no general answer. Market-wide figures describe an index, and an index falls far less than the companies inside it — because they do not all fall at the same time. The only useful benchmark for one share is what that share has done before.',
+    summary:
+      'Why an index falls less than its own members, what a typical fall means for one company, and when a company’s own record is the wrong record to read.',
+    theme: 'cycles',
+    published: '2026-08-20',
+    reviewed: '2026-08-20',
+    minutes: 4,
+  },
+  {
+    slug: 'how-long-do-recoveries-take',
+    title: 'How long do recoveries actually take?',
+    question: 'How long does it take a stock to recover?',
+    answer:
+      'Nobody can tell you in advance. Falls of exactly the same depth have taken months, and they have taken the better part of a decade. MajorCycle measures how far a share has fallen and how far it has recovered, and says nothing about how long.',
+    summary:
+      'Why depth and duration are barely related, why the averages you will find quoted do not help, and what we measure instead of time.',
+    theme: 'cycles',
+    published: '2026-08-20',
+    reviewed: '2026-08-20',
+    minutes: 4,
   },
   {
     slug: 'falling-price-bargain-or-warning',
@@ -263,7 +297,7 @@ export const LEARN_ARTICLES = [
     theme: 'quality',
     published: '2026-08-20',
     reviewed: '2026-08-20',
-    minutes: 6,
+    minutes: 7,
   },
   {
     slug: 'pe-ratio',
@@ -305,6 +339,19 @@ export const LEARN_ARTICLES = [
     minutes: 5,
   },
   {
+    slug: 'is-a-dividend-safe',
+    title: 'Is a dividend safe, and how would you know?',
+    question: 'How do I know if a dividend is safe?',
+    answer:
+      'A dividend is safe when the company can comfortably afford it — profit and cash cover the payment with room to spare, and the debt does not need the money more. An unusually high yield is usually the market saying it doubts the payment will last.',
+    summary:
+      'Why a rising yield is often a warning, the four things that decide whether a payment lasts, and what the stock page shows you about each.',
+    theme: 'quality',
+    published: '2026-08-20',
+    reviewed: '2026-08-20',
+    minutes: 4,
+  },
+  {
     slug: 'how-to-read-a-majorcycle-rating',
     title: 'How to read a MajorCycle rating',
     question: 'What does a MajorCycle rating mean?',
@@ -312,6 +359,19 @@ export const LEARN_ARTICLES = [
       'A MajorCycle rating is a score out of 100 built from three parts: the financial health of the business, where today’s price sits inside that company’s own history of falls, and how reliably that history has paid off. The score maps to one of five labels.',
     summary:
       'What the three parts measure, how they are weighted, what the five labels mean, and the questions the rating deliberately refuses to answer.',
+    theme: 'using-it',
+    published: '2026-08-20',
+    reviewed: '2026-08-20',
+    minutes: 4,
+  },
+  {
+    slug: 'what-majorcycle-doesnt-do',
+    title: 'What MajorCycle deliberately doesn’t do',
+    question: 'What can’t MajorCycle tell me?',
+    answer:
+      'It does not forecast prices, tell you when to act, or know anything about your circumstances. It reads a company’s own record of falls and the health of the business behind it, the same way for every company, and stops there.',
+    summary:
+      'The limits that are design decisions rather than gaps: no forecasts, no timing, nothing that is not a number, and why leaving them in place is the point.',
     theme: 'using-it',
     published: '2026-08-20',
     reviewed: '2026-08-20',

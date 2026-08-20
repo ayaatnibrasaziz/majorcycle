@@ -1557,6 +1557,50 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 - Test OG images via Twitter/LinkedIn debuggers
 - `curl` proves `/sitemap.xml` and `/robots.txt` answer **200 signed-out**, not 307
 
+> #### ✅ G4.3 — the library is written. 2026-08-20, still inside PR #89.
+>
+> **Twelve articles, zero "Coming soon" rows.** The eleven titles announced under the three
+> topics have all been written, so the field that carried them is empty on every theme and a
+> reader meets no promises. That closes the ratio question raised in G4.1 (one article beside
+> eleven announcements) by writing them rather than by trimming the list.
+>
+> Four articles landed in this batch — `own-history-vs-market-average`,
+> `how-long-do-recoveries-take`, `is-a-dividend-safe`, `what-majorcycle-doesnt-do` — each with
+> its own figure built from derived geometry, and each figure guarded. Playwright **419 → 464**.
+>
+> ⚠️ **`How long do recoveries actually take?` was written as an honest "we don't know".** The
+> engine holds magnitudes only — `typicalDrawdown`, `typicalProfit`, the event counts — and no
+> durations anywhere. Rather than retitle away from a question people actually type, the article
+> answers it truthfully and explains what is measured instead. Its figure is labelled
+> illustrative in words, because a chart drawn in our house style otherwise implies it is a chart
+> of our data.
+>
+> ⚠️ **`What the five tiers mean` was FOLDED into `how-to-read-a-majorcycle-rating`** rather than
+> written separately — two articles about one rating would compete for the same search and repeat
+> each other, which is the shape `learn.spec.ts` already polices between articles. Recorded in
+> `lib/learn.ts` rather than silently dropped, and the rating article's own "will not do" list was
+> trimmed to a link so the limits live in one place (11c).
+>
+> **Three findings from the audit, all fixed:**
+>
+> - **`.reading ul` was insetting every figure list by 17.55px** — see CLAUDE.md 11c (vii). The
+>   limits figure's "today" rule missed the bar it marks by 17px and looked deliberate. Fixed with
+>   a `.figure-list` opt-out; the other four figures had the same latent inset.
+> - **Four of the eight published reading times were a minute out**, all inside the guard's ±2
+>   tolerance, none of them edited since the last count. Every one of the twelve is now measured
+>   and exact.
+> - **The overflow guard existed for ONE article**, and the axis-collision guard for one figure.
+>   Both now walk the registry. Proving the first cost a break: widening a figure to 420px on a
+>   375px screen left `documentElement.scrollWidth` unchanged, because an ancestor clips — the
+>   reader loses the right of the chart with no scrollbar to say so. The article body's own
+>   `scrollWidth` sees it.
+>
+> ⚠️ **`lib/dividends.ts` is new, and it touched a paid surface.** The payout bands (60/80) and the
+> 20% distress-yield flag were literals inside `components/stocks/DividendHistory.tsx`; the article
+> states them, which makes the prose a second copy (11c-v). Extracted so both read one constant —
+> behaviour and rendered text unchanged. `learn.spec.ts` builds its assertion from the constants and
+> carries an off-by-one control.
+
 ### Layer H: Pre-launch Hardening (Phase 1.5, target: 1 week)
 
 - [ ] Mobile responsive audit on every page
@@ -1604,6 +1648,22 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
   - ⚠️ **Owner decisions from that audit — do NOT re-propose:** the Learn index ships with one
     written article against eleven "Coming soon" rows, and the public document type size stays
     as it is. Both were raised, both were considered, both were settled.
+- [ ] **Three fundamentals we store, score with, and never show.** Found 2026-08-20 while
+      auditing the Learn articles against the running product — two drafts described figures
+      the reader cannot actually find, because I had trusted `FundamentalsSnapshot` rather
+      than the components. All three exist on every row and are rendered by **no** surface:
+    - **`forwardPe`** — the market's expected P/E on next year's earnings. `pe` (trailing) is
+      on the Key Metrics table; its sibling is not, on the page or in the report.
+    - **`fcfMarginPct`** — free cash flow as a share of revenue. `fcfYieldPct` is shown; the
+      margin, which is the one that says whether profit becomes cash, is not.
+    - **`sharesChangeYoyPct`** — share count year on year, i.e. buybacks versus dilution. It
+      **feeds the shareholder pillar of the Financial Health score**, so a customer can see
+      the pillar move and cannot see what moved it.
+      ⚠️ Note the shape: nothing is broken and nothing is red. The fields are populated, typed
+      and scored — they simply have no JSX anywhere. That is CLAUDE.md 11j (an omission renders
+      perfectly), and it was found only because the articles had to state what a reader would
+      see. **Owner's call whether to surface them** — adding a row to a paid surface is a
+      product change, not tidying (11l), so the articles were corrected around it instead.
 - [ ] Accessibility audit (axe-core)
 - [ ] Cross-browser test (Chrome, Safari, Firefox, mobile Safari)
 - [ ] Disclaimer copy review (ideally by AU fintech lawyer — owner's decision)

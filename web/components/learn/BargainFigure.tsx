@@ -75,7 +75,7 @@ function PricePanel({ company, health }: { company: Company; health: number }) {
 
       {/* The five checks. HTML rather than SVG so the bars keep their corner
           radius and the labels stay 12px at every width. */}
-      <ul className="mt-4 flex flex-col gap-[7px]" data-checks={company.name}>
+      <ul className="figure-list mt-4 flex flex-col gap-[7px]" data-checks={company.name}>
         {CHECKS.map((chk) => {
           const value = company.scores[chk.key];
           return (

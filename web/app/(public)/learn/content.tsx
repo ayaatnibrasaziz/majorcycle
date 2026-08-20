@@ -14,6 +14,15 @@ import { PeFigure } from '@/components/learn/PeFigure';
 import { HealthShapeFigure } from '@/components/learn/HealthShapeFigure';
 import { AnalystTargetFigure } from '@/components/learn/AnalystTargetFigure';
 import { RatingFigure } from '@/components/learn/RatingFigure';
+import { IndexAverageFigure } from '@/components/learn/IndexAverageFigure';
+import { RecoveryTimeFigure } from '@/components/learn/RecoveryTimeFigure';
+import { DividendFigure } from '@/components/learn/DividendFigure';
+import { LimitsFigure } from '@/components/learn/LimitsFigure';
+import {
+  DISTRESS_YIELD_PCT,
+  PAYOUT_COMFORTABLE_MAX,
+  PAYOUT_STRAINED_MAX,
+} from '@/lib/dividends';
 import { FALL_PCT } from '@/components/learn/bargainGeometry';
 import { MARKET_LEVELS, QUIET, ROUTINE, TODAY_PCT } from '@/components/learn/correctionGeometry';
 import { WeekHighFigure } from '@/components/learn/WeekHighFigure';
@@ -1821,26 +1830,15 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
       </p>
 
       <h2>What the rating deliberately will not do</h2>
-      <ul>
-        <li>
-          <strong>Predict the price.</strong>{' '}
-          Nothing in it forecasts. Every input describes what has already happened.
-        </li>
-        <li>
-          <strong>Tell you when.</strong>{' '}
-          A share can sit at a strong reading for a year, or fall much further first.
-        </li>
-        <li>
-          <strong>Account for what is coming.</strong>{' '}
-          A pending lawsuit, a regulatory change, a takeover — none of it is in the
-          numbers.
-        </li>
-        <li>
-          <strong>Know anything about you.</strong>{' '}
-          Your timeframe and what you already own matter more than any score, and we
-          have no view on either.
-        </li>
-      </ul>
+      <p>
+        Nothing in it forecasts a price, nothing in it tells you when, and nothing in
+        it knows the first thing about your circumstances. Those are design decisions
+        rather than gaps, and each one has a reason:{' '}
+        <Link href="/learn/what-majorcycle-doesnt-do">
+          What MajorCycle deliberately doesn&rsquo;t do
+        </Link>{' '}
+        sets them out in full.
+      </p>
       <p>
         It is a way of reading a company&rsquo;s own record quickly and consistently
         across hundreds of them. That is genuinely useful, and it is all it is.
@@ -1857,6 +1855,510 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         <strong>No card required to sign up.</strong>{' '}
         <Link href="/signup">Create a free account</Link> and look up any company you
         are curious about.
+      </p>
+    </>
+  ),
+
+  'own-history-vs-market-average': () => (
+    <>
+      <h2>The average belongs to something you cannot own</h2>
+      <p>
+        When a headline says the market fell 10%, it is talking about an index — one
+        number made by adding hundreds of companies together and dividing.
+      </p>
+      <p>
+        An index falls far less than the businesses inside it, and the reason is
+        arithmetic rather than safety. Companies run into trouble at different
+        moments. One is collapsing in the same month another is having its best year,
+        and in an average those two partly cancel each other out.
+      </p>
+
+      <IndexAverageFigure />
+
+      <p>
+        So the flat line is not a calmer investment. It is three separate bad years
+        blended into one mild-looking one. Every company on that chart lived through
+        something much worse than the index it belongs to.
+      </p>
+
+      <h2>Same index, two completely different normals</h2>
+      <p>
+        Now put two real kinds of business side by side. A regulated water utility
+        sells the same thing to the same customers at a price a regulator sets. A
+        copper miner sells into a price it does not control, set by demand on the
+        other side of the world.
+      </p>
+      <p>
+        Over twenty years the utility might never once have fallen 25%. The miner may
+        have fallen 40% or more, several times, and recovered every time. Both can sit
+        in the same index. The index&rsquo;s number describes neither of them.
+      </p>
+      <p>
+        This is why the same headline percentage means two different things depending
+        on whose chart it appears on — the point{' '}
+        <Link href="/learn/dip-correction-crash">
+          Dip, correction, crash — what&rsquo;s the difference?
+        </Link>{' '}
+        makes about the words themselves.
+      </p>
+
+      <h2>What &ldquo;normal&rdquo; means for one company</h2>
+      <p>
+        Instead of a market-wide rule, MajorCycle reads each company&rsquo;s own
+        record. Over the window you choose it finds every fall the company has
+        actually completed — each time the price dropped further below its running
+        high than the threshold you set, bottomed out, and turned back up — and works
+        out two things from them.
+      </p>
+      <ul>
+        <li>
+          <strong>Avg</strong>{' '}— the size of a typical fall for this company. The
+          depth it keeps coming back to.
+        </li>
+        <li>
+          <strong>Low</strong>{' '}— the deepest it has been in that window. The worst
+          the record contains.
+        </li>
+      </ul>
+      <p>
+        Both are drawn as horizontal lines across the drawdown chart, with today&rsquo;s
+        fall plotted against them. A share sitting at its Avg line is doing something
+        ordinary for itself. A share below its Low line is somewhere its own history
+        has never been, which is a genuinely different statement — and neither one can
+        be read off a market-wide figure.{' '}
+        <Link href="/learn/what-is-a-drawdown">What is a drawdown?</Link>{' '}
+        covers how those falls are measured.
+      </p>
+
+      <h2>How many falls is enough to mean anything</h2>
+      <p>
+        A company&rsquo;s own record only helps if there is enough of it. Two falls
+        make an average; they do not make a pattern.
+      </p>
+      <p>
+        This is why the number of completed cycles matters as much as their size, and
+        why the chart puts it on screen as <strong>Events</strong>{' '}rather than
+        quietly averaging whatever is there. Fewer events is not a reason to ignore a
+        company — it is a reason to hold the reading more loosely, and it feeds
+        directly into how much weight the analysis gives that history.
+      </p>
+
+      <h2>When the record is the wrong record</h2>
+      <p>
+        There are companies whose past genuinely does not describe their present.
+      </p>
+      <ul>
+        <li>
+          <strong>Recent listings.</strong>{' '}A company two years public has no
+          history to speak of, and the little it has was all in one market mood.
+        </li>
+        <li>
+          <strong>Businesses that changed.</strong>{' '}A retailer that sold its stores
+          and became a software company is a different business wearing an old ticker.
+        </li>
+        <li>
+          <strong>Something that has never happened before.</strong>{' '}A record of
+          falls contains no fall bigger than the biggest one in it. That is a limit of
+          the method, not a prediction about the future.
+        </li>
+      </ul>
+      <p>
+        The honest position is that a company&rsquo;s own record is the best available
+        benchmark, and it is still a description of the past. It narrows the question
+        from &ldquo;is this a lot?&rdquo; to &ldquo;is this a lot{' '}
+        <em>for this company</em>?&rdquo;, which is a much better question. It does
+        not answer it for you.
+      </p>
+
+      <h2>See any company against its own record</h2>
+      <p>
+        The drawdown chart, the Avg and Low lines and today&rsquo;s position on them
+        are on every stock page with a free MajorCycle account — US, Australian and
+        Canadian listings.
+      </p>
+      <p>
+        <strong>No card required.</strong>{' '}
+        <Link href="/signup">Create a free account</Link> and look up a company you
+        already follow.
+      </p>
+    </>
+  ),
+
+  'how-long-do-recoveries-take': () => (
+    <>
+      <h2>Three identical falls, three very different waits</h2>
+      <p>
+        Depth and duration feel like they should be related. A big fall ought to take
+        longer to climb out of than a small one, and a small one ought to be over
+        quickly.
+      </p>
+      <p>
+        They are barely related at all. Here are three falls of exactly the same size.
+      </p>
+
+      <RecoveryTimeFigure />
+
+      <p>
+        Every chart you have ever seen puts price on the vertical axis, and that is
+        the axis your eye reads. The horizontal one is where the answer to this
+        question lives, and it is the one nobody looks at.
+      </p>
+
+      <h2>Why the numbers you will find quoted do not help</h2>
+      <p>
+        Search this question and you will get an average — something like &ldquo;the
+        market has historically recovered in about two years.&rdquo; There are three
+        problems with using that.
+      </p>
+      <ul>
+        <li>
+          <strong>It is about an index again.</strong>{' '}An index recovers when
+          enough of its members do, and its own falls are shallower than theirs to
+          begin with. That is covered in{' '}
+          <Link href="/learn/own-history-vs-market-average">
+            Why your company&rsquo;s own history beats the market&rsquo;s average
+          </Link>
+          .
+        </li>
+        <li>
+          <strong>The companies that never came back are missing.</strong>{' '}A study
+          of recoveries can only include things that recovered. Businesses that were
+          taken over at a low price, delisted or went under simply leave the sample,
+          and the average quietly improves as a result.
+        </li>
+        <li>
+          <strong>An average of wildly different things is not a forecast.</strong>{' '}
+          If the honest range runs from months to most of a decade, the midpoint is a
+          number rather than an expectation.
+        </li>
+      </ul>
+
+      <h2>What would have to be knowable</h2>
+      <p>
+        To say how long a particular recovery will take, you would need to know when
+        the company&rsquo;s earnings turn back up, when other buyers change their
+        minds about it, and whether the thing that caused the fall is temporary or
+        permanent.
+      </p>
+      <p>
+        The first is a forecast, the second is a forecast about other people, and the
+        third is usually only settled in hindsight. Nobody has those three, and a
+        product that implied otherwise would be selling confidence rather than
+        information.
+      </p>
+
+      <h2>The waiting is the part that costs you</h2>
+      <p>
+        None of this makes duration unimportant. It is arguably the part that decides
+        whether an investment suits you at all.
+      </p>
+      <p>
+        Money committed to a share that spends six years getting back to where it
+        started has done nothing for six years, and it was not available for anything
+        else. Two people can buy the same company at the same price and have
+        completely different experiences, purely because of how long they had to sit
+        there. One of them may not have been able to.
+      </p>
+      <p>
+        That is a question about your own circumstances — how long you can leave money
+        alone, and what else you would have done with it. It is not a question about
+        the company, and no analysis of the company can answer it.
+      </p>
+
+      <h2>What MajorCycle measures instead</h2>
+      <p>
+        Our analysis is built on magnitudes and says nothing at all about time.
+      </p>
+      <ul>
+        <li>
+          <strong>How far this company usually falls</strong>{' '}before it turns, and
+          how far today&rsquo;s fall is against that.
+        </li>
+        <li>
+          <strong>How far it usually rises</strong>{' '}afterwards — the size of the
+          recovery, not its speed.
+        </li>
+        <li>
+          <strong>How many separate falls</strong>{' '}its record contains, which is
+          how much any of it should be trusted.
+        </li>
+      </ul>
+      <p>
+        Nothing in the analysis holds a number of days, months or years anywhere, and
+        that is a decision rather than an omission. Depth can be measured
+        today, from prices that already exist. Duration can only ever be measured
+        after it is over, which is exactly when nobody needs it.{' '}
+        <Link href="/learn/how-to-read-a-majorcycle-rating">
+          How to read a MajorCycle rating
+        </Link>{' '}
+        sets out what the three readings do cover.
+      </p>
+
+      <h2>See where a company sits in its own cycle</h2>
+      <p>
+        The price chart, the drawdown overlay and this company&rsquo;s own history of
+        falls and recoveries are free on every stock page, across the US, Australian
+        and Canadian markets.
+      </p>
+      <p>
+        <strong>No card required.</strong>{' '}
+        <Link href="/signup">Create a free account</Link> and see how deep a fall has
+        actually been.
+      </p>
+    </>
+  ),
+
+  'is-a-dividend-safe': () => (
+    <>
+      <h2>A yield is a fraction, and the bottom half moves</h2>
+      <p>
+        The dividend yield is the payment divided by the share price. Most people read
+        it as a property of the company — a generous one, a stingy one. Half of it is
+        a property of the price.
+      </p>
+      <p>
+        Which means a yield can double without the company handing over a single extra
+        cent. It just needs the share price to halve.
+      </p>
+
+      <DividendFigure />
+
+      <p>
+        That is the trap, and it is the opposite of how it feels. The screen that
+        sorts by highest yield is, quite reliably, a list of companies other people
+        have decided are in trouble.
+      </p>
+
+      <h2>The four questions that decide whether a payment lasts</h2>
+
+      <h3>1. Is it covered by profit?</h3>
+      <p>
+        The payout ratio is the share of a company&rsquo;s profit that goes out as
+        dividends. Below{' '}
+        <strong>{PAYOUT_COMFORTABLE_MAX}%</strong>{' '}there is room to keep paying
+        through a bad year and room to raise it. Between{' '}
+        {PAYOUT_COMFORTABLE_MAX}% and {PAYOUT_STRAINED_MAX}% it is being funded with
+        little left over. Above{' '}
+        <strong>{PAYOUT_STRAINED_MAX}%</strong>{' '}almost everything earned is being
+        handed back, and above 100% the company is paying out more than it earns,
+        which it can only do for so long.
+      </p>
+
+      <h3>2. Is it covered by cash?</h3>
+      <p>
+        Dividends are paid in cash, and profit is an accounting figure that does not
+        always arrive as cash. A company can report a healthy profit and still be
+        funding its dividend by borrowing or by selling something.
+      </p>
+      <p>
+        Free cash flow — what is left after the business has paid for its own upkeep —
+        is the number that actually has to cover the payment. When profit and cash
+        disagree for more than a year or two, cash is usually the one telling the
+        truth.
+      </p>
+
+      <h3>3. Does the debt need the money more?</h3>
+      <p>
+        A dividend and an interest payment come out of the same pot, and the lender
+        does not have to ask politely. A company with heavy borrowings and thin
+        interest cover has already decided who gets paid first in a bad year, whether
+        or not it has said so.
+      </p>
+
+      <h3>4. What has it actually done before?</h3>
+      <p>
+        A company that has raised its dividend every year for a decade has told you
+        something about how seriously its board takes it. One that has cut before will
+        cut again more easily. The record is the cheapest evidence available and the
+        least used.
+      </p>
+
+      <h2>What the stock page shows you</h2>
+      <p>
+        The Dividend History section gives you the payment per share for each year as
+        a bar chart — increases in green, cuts in red — plus the current yield, the
+        latest annual dividend, how many consecutive years it has grown, and the
+        payout ratio coloured against the bands above.
+      </p>
+      <p>
+        There is one extra guard. A trailing yield above{' '}
+        <strong>{DISTRESS_YIELD_PCT}%</strong>{' '}is flagged rather than coloured
+        reassuringly, because at that level the number is almost always describing a
+        collapsed price rather than reliable income. We still show the real figure; we
+        just decline to make it look like good news.
+      </p>
+      <p>
+        Everything in that section is free, and none of it requires a card. It is
+        third-party data and history, not our judgement — the same principle as{' '}
+        <Link href="/learn/analyst-price-target">
+          How to read an analyst price target
+        </Link>
+        .
+      </p>
+
+      <h2>Where dividends sit in our scoring</h2>
+      <p>
+        The payout ratio is one input to the smallest of the five pillars behind a
+        Financial Health score, and deliberately a small one. A generous dividend is
+        not evidence of a good business, and paying none is not a fault — a company
+        reinvesting everything it earns is treated as a reasonable choice rather than
+        marked down for it.{' '}
+        <Link href="/learn/is-a-company-financially-healthy">
+          How to check if a company is financially healthy
+        </Link>{' '}
+        walks through the other four.
+      </p>
+
+      <h2>What none of this can tell you</h2>
+      <ul>
+        <li>
+          <strong>A board can cut whenever it likes.</strong>{' '}Cover, history and
+          cash flow describe capacity, not intention.
+        </li>
+        <li>
+          <strong>Tax is not in the figures.</strong>{' '}Yields are shown before any
+          tax treatment — Australian franking credits and cross-border withholding
+          both change what actually reaches you, and neither is something we model.
+        </li>
+        <li>
+          <strong>One-off payments distort the picture.</strong>{' '}A special dividend
+          inflates a year in the history and the yield with it, and it was never
+          meant to repeat.
+        </li>
+      </ul>
+
+      <h2>Look up a dividend for yourself</h2>
+      <p>
+        The full dividend history, current yield and payout ratio are on every stock
+        page on a free account, across the US, Australian and Canadian markets.
+      </p>
+      <p>
+        <strong>No card required.</strong>{' '}
+        <Link href="/signup">Create a free account</Link> and check a company you hold
+        for income.
+      </p>
+    </>
+  ),
+
+  'what-majorcycle-doesnt-do': () => (
+    <>
+      <h2>Almost everything it reads has already happened</h2>
+      <p>
+        This is the shape of the whole product, and it is easier to see than to
+        describe.
+      </p>
+
+      <LimitsFigure />
+
+      <p>
+        There is no forecast anywhere in it. Not a hidden one, not a conservative one
+        — none. Every input is a record of something that has already occurred, and
+        the analysis is a way of reading that record quickly and the same way for
+        every company.
+      </p>
+
+      <h2>It has no opinion about you</h2>
+      <p>
+        We do not know how long you can leave money alone, what you already own, what
+        you earn, what tax you pay or how you would feel watching a holding halve.
+      </p>
+      <p>
+        Those things decide whether any particular share suits a particular person far
+        more than any score does. Two people can look at the same company, read the
+        same reading and be right to do opposite things. That is not a gap we intend
+        to close — it is the reason the labels describe companies rather than
+        instructing readers.
+      </p>
+
+      <h2>It cannot see anything that is not a number</h2>
+      <p>
+        The analysis is built from prices and filed accounts. A great deal of what
+        determines a company&rsquo;s future never appears in either.
+      </p>
+      <ul>
+        <li>Whether the people running it are any good.</li>
+        <li>A lawsuit, a regulator, or a licence about to be reviewed.</li>
+        <li>A competitor whose product is better and whose revenue has not shown it yet.</li>
+        <li>A takeover approach, a strike, a fire, an election.</li>
+      </ul>
+      <p>
+        Some of that eventually turns into numbers. By then it is history, which is
+        the only form we can read it in.
+      </p>
+
+      <h2>It will not tell you when</h2>
+      <p>
+        A reading describes a position, not a moment. A share can sit deep in its own
+        cycle for a year and go lower first, and nothing in the analysis is a signal
+        that the turn has arrived.
+      </p>
+      <p>
+        This is the same limit as{' '}
+        <Link href="/learn/how-long-do-recoveries-take">
+          How long do recoveries actually take?
+        </Link>{' '}
+        seen from the other side: we measure how far, and timing is a question about
+        the future that we have no instrument for.
+      </p>
+
+      <h2>It does not cover everything, and the data can be wrong</h2>
+      <ul>
+        <li>
+          <strong>Listed shares in three markets only.</strong>{' '}The United States,
+          Australia and Canada. No funds, no bonds, no currencies, no crypto, no
+          private companies.
+        </li>
+        <li>
+          <strong>Daily prices, refreshed overnight.</strong>{' '}Nothing here is live,
+          and nothing is intended for trading within a day.
+        </li>
+        <li>
+          <strong>One data provider.</strong>{' '}Figures come from a third party and
+          are occasionally missing, late or plain wrong. Where a number is missing we
+          leave it out rather than estimate it, which is why a score is sometimes
+          withheld instead of shown.
+        </li>
+      </ul>
+
+      <h2>And it is not advice</h2>
+      <p>
+        That sentence appears at the top of every page here and it is not a formality
+        bolted on by a lawyer. Advice means a recommendation made with knowledge of
+        your circumstances. We have none of that knowledge, so we do not make
+        recommendations — which is also why our labels are{' '}
+        <em>High Conviction</em>{' '}through <em>Bearish</em> rather than buy and sell.
+      </p>
+
+      <h2>Why the limits are the point</h2>
+      <p>
+        Every one of these could be papered over. We could publish an expected
+        recovery time, a target price of our own, a verdict that sounded like an
+        instruction. All of it would be guesswork wearing the same typeface as the
+        parts that are measured, and a reader would have no way to tell which was
+        which.
+      </p>
+      <p>
+        What is left when you take the guesswork out is genuinely useful: a
+        company&rsquo;s own record of falls and recoveries, the health of the business
+        underneath, and a consistent way of reading both across hundreds of companies
+        instead of the handful you would get through by hand. That is what{' '}
+        <Link href="/learn/how-to-read-a-majorcycle-rating">
+          How to read a MajorCycle rating
+        </Link>{' '}
+        describes, and it is all we claim.
+      </p>
+
+      <h2>See exactly what it does do</h2>
+      <p>
+        Signing up is free and takes no card. A free account includes the price chart,
+        the drawdown overlay with this company&rsquo;s own cycle bands, and every
+        fundamentals section; our judgement — the Overall Rating, the Health Score and
+        the full scorecard — comes with a subscription that starts with a 7-day trial.
+      </p>
+      <p>
+        <strong>No card required to sign up.</strong>{' '}
+        <Link href="/signup">Create a free account</Link> and decide for yourself
+        whether the rest is worth paying for.
       </p>
     </>
   ),

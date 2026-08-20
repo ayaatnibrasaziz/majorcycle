@@ -1926,6 +1926,27 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   .reading ol + p { margin-top: 1.1em; }
   .reading li::marker { color: var(--text-muted); }
 
+  /* A list inside a FIGURE is a layout, not prose — and it must share the
+     figure's own left edge, because other things in the drawing are positioned
+     against that edge.
+
+     ⚠️ Found 2026-08-20 on the limits figure. `.reading ul`'s `padding-left:
+     1.35em` inset the list by **17.55px**, so every bar inside it started 17px
+     right of where its own percentage said, while the dashed "today" rule — a
+     sibling one level up, outside the list — kept the full width. The one line
+     the figure exists to draw therefore sat 17px away from the bar it marks.
+     Nothing errored, the width sweep found no overlap, and a 17px offset reads
+     as a deliberate gap rather than a bug. Every other figure's list had the
+     same inset and got away with it only because nothing was aligned to them.
+
+     Same shape as `.heading-flush` above: naming the element lifts this to
+     (0,2,1) so it beats `.reading ul` at (0,1,1) without `!important`. The
+     bullets were already suppressed by `display:flex` blockifying the items —
+     `list-style: none` is stated anyway, so a future non-flex figure list does
+     not sprout discs. */
+  .reading ul.figure-list,
+  .reading ol.figure-list { margin: 0; padding-left: 0; list-style: none; }
+
   .reading a {
     color: var(--brand-mid);
     text-decoration: underline;

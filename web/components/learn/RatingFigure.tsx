@@ -42,7 +42,7 @@ export function RatingFigure() {
       <p className="text-[13px] font-semibold text-[var(--text-primary)]">
         What the rating is made of
       </p>
-      <ul className="mt-3 flex flex-col gap-3" data-rating-parts>
+      <ul className="figure-list mt-3 flex flex-col gap-3" data-rating-parts>
         {RATING_PARTS.map((part) => {
           const score = EXAMPLE[part.key];
           return (
@@ -85,7 +85,7 @@ export function RatingFigure() {
       <p className="mt-6 text-[13px] font-semibold text-[var(--text-primary)]">
         What the number is called
       </p>
-      <ul className="mt-2 flex flex-col gap-1.5" data-tier-bands>
+      <ul className="figure-list mt-2 flex flex-col gap-1.5" data-tier-bands>
         {TIER_BANDS.map((band) => (
           <li key={band.label} className="flex items-center gap-3">
             <span

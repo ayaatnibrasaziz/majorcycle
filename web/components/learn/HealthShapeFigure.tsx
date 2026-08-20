@@ -41,7 +41,7 @@ function Panel({ company, health }: { company: Company; health: number }) {
         </span>
       </div>
 
-      <ul className="mt-3 flex flex-col gap-[7px]" data-shape={company.name}>
+      <ul className="figure-list mt-3 flex flex-col gap-[7px]" data-shape={company.name}>
         {CHECKS.map((chk) => {
           const value = company.scores[chk.key];
           return (

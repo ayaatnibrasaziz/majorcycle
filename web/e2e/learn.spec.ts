@@ -117,7 +117,27 @@ test.describe('the Learn library', () => {
     await ready(page);
 
     const announced = LEARN_THEMES.flatMap((t) => t.upcoming ?? []);
-    expect(announced.length, 'nothing is announced — every check below is vacuous').toBeGreaterThan(0);
+
+    /**
+     * ⚠️ **This was `expect(announced.length).toBeGreaterThan(0)` until
+     * 2026-08-20, and it went red the day the last promise was kept.** The
+     * assertion was right about the risk it named — an empty `upcoming` satisfies
+     * every "must not be a link" check below while proving nothing (14g) — and
+     * wrong to treat "nothing announced" as impossible, because finishing the
+     * library is a state the field was built to reach.
+     *
+     * So the vacuity is closed by CHECKING THE OTHER STATE rather than by
+     * skipping: with nothing announced, the page must carry no "Coming soon"
+     * affordance at all. A stray row surviving an emptied list is exactly the
+     * kind of leftover that renders perfectly (11j), and now it fails here
+     * instead of sitting on the index promising an article nobody is writing.
+     */
+    if (announced.length === 0) {
+      await expect(
+        page.getByText('Coming soon', { exact: true }),
+        'nothing is announced, but the index still shows a "Coming soon" row',
+      ).toHaveCount(0);
+    }
 
     for (const title of announced) {
       // Named on the page, so the promise is actually being made…
@@ -1073,61 +1093,20 @@ test.describe('the drawdown article figures', () => {
     ).toBeGreaterThan(0);
   });
 
-  test('the article body does not scroll sideways on a phone', async ({ page }) => {
-    /**
-     * ⚠️ **Scoped to the ARTICLE BODY, and that is a finding rather than a
-     * convenience.** The first version measured the whole document and failed at
-     * 320px by 18px — which turned out to be the public header's two CTA buttons
-     * (`Create free account` / `Sign in`), not anything in this article. The
-     * figures contribute **0px** of overflow at 375, 360 and 320.
-     *
-     * Measuring the document here would make this test go red for a pre-existing
-     * defect in a component it does not own, and the usual response to that is to
-     * loosen the bound until it passes — which would also stop it seeing a real
-     * figure overflow. So it measures the thing under test, at every width, and
-     * the header defect is recorded in the roadmap's deferred list instead
-     * (CLAUDE.md 11l: record a defect you are not authorised to fix).
-     *
-     * ⚠️ A MARGIN, not a boundary (CLAUDE.md 11i-b). `<= 0` scores a 1px accident
-     * as a pass; the design clears this by the full width, so a real regression
-     * breaks it and a rounding artefact does not.
-     *
-     * Swept rather than checked at one width, because the stated 375px floor was
-     * once the single width at which a real overflow happened to clear.
-     */
-    for (const width of [375, 360, 320]) {
-      await page.setViewportSize({ width, height: 812 });
-      await page.goto(ARTICLE);
-      await ready(page);
-
-      const over = await page.evaluate(() => {
-        const el = document.querySelector('[data-article-body]');
-        return el ? el.scrollWidth - el.clientWidth : -1;
-      });
-      expect(over, 'the article body was not found').toBeGreaterThanOrEqual(0);
-      expect(
-        over,
-        `the article body overflows horizontally by ${over}px at ${width}px`,
-      ).toBeLessThanOrEqual(2);
-    }
-  });
-
-  test('the page itself does not scroll sideways at the supported floor', async ({ page }) => {
-    /**
-     * The document-level contract, asserted at the width the project actually
-     * supports (375px — decision #3 / non-negotiable #3). Kept separate from the
-     * test above so that if this one ever fails it names a PAGE problem rather
-     * than being read as a figure problem.
-     */
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto(ARTICLE);
-    await ready(page);
-
-    const over = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(over, `${ARTICLE} overflows horizontally by ${over}px at 375px`).toBeLessThanOrEqual(2);
-  });
+  /**
+   * ⚠️ **The two horizontal-overflow tests that lived here now run over the
+   * WHOLE registry** — see "every article, at the supported floor" at the end of
+   * this file. They were written for this article, correctly, and then seven
+   * more articles arrived with their own figures and were never measured at any
+   * phone width at all. Scoping a check to the page that prompted it is how a
+   * guard quietly stops covering the thing it was written to cover.
+   *
+   * Their findings are kept there rather than lost: measuring the document
+   * failed at 320px on the public header's CTA buttons, not on anything in an
+   * article, so the assertion is scoped to `[data-article-body]`; and the bound
+   * is a margin rather than a boundary, because `<= 0` scores a 1px accident as
+   * a pass (CLAUDE.md 11l, 11i-b).
+   */
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1980,4 +1959,476 @@ test.describe('the Learn cluster holds together', () => {
       `one article repeats long passages of another — rewrite rather than reword:\n${problems.join('\n')}`,
     ).toEqual([]);
   });
+});
+
+test.describe('the index-average figure', () => {
+  const PATH = learnPath('own-history-vs-market-average');
+
+  test('the index is genuinely the average of the three companies', async () => {
+    /**
+     * ⚠️ **This is the article's argument, not a detail of the drawing.** The
+     * claim is that an index falls less than its members *because it is an
+     * average of falls that do not coincide* — so the fourth curve has to BE the
+     * average rather than a shallower line drawn to look like one. A hand-shaped
+     * index would render identically and would be an illustration of the claim
+     * instead of an instance of it (CLAUDE.md 11c-iii).
+     */
+    const { INDEX_PRICES, MEMBERS } = await import('../components/learn/indexGeometry');
+
+    expect(MEMBERS.length, 'the figure needs more than one member to average').toBeGreaterThan(1);
+    expect(INDEX_PRICES.length).toBe(MEMBERS[0]!.prices.length);
+
+    for (let i = 0; i < INDEX_PRICES.length; i += 1) {
+      const mean = MEMBERS.reduce((sum, m) => sum + m.prices[i]!.price, 0) / MEMBERS.length;
+      expect(
+        INDEX_PRICES[i]!.price,
+        `sample ${i}: the index is ${INDEX_PRICES[i]!.price}, the members average ${mean}`,
+      ).toBeCloseTo(mean, 6);
+    }
+  });
+
+  test('the index never falls as far as any of its members', async () => {
+    const { INDEX_WORST, MEMBERS, DEPTH_RATIO } = await import(
+      '../components/learn/indexGeometry'
+    );
+
+    for (const m of MEMBERS) {
+      expect(
+        m.worst,
+        `${m.name} falls ${m.worst.toFixed(1)}%, the index falls ${INDEX_WORST.toFixed(1)}% — the index must be shallower than every member`,
+      ).toBeLessThan(INDEX_WORST);
+    }
+
+    /**
+     * ⚠️ **The control.** Three members that all fell at the same moment would
+     * produce an index exactly as deep as they are, and the loop above would
+     * still pass for any single member trivially. The gap has to be worth
+     * drawing, and the caption states the ratio — so bound it rather than only
+     * checking a direction (CLAUDE.md 11i-b).
+     */
+    expect(
+      DEPTH_RATIO,
+      `the deepest member is only ${DEPTH_RATIO.toFixed(2)}x the index's fall — too close for the figure to make its point`,
+    ).toBeGreaterThan(2);
+
+    // …and the members must genuinely differ from each other, or "each company
+    // has its own normal" is being asserted over three identical companies.
+    const depths = MEMBERS.map((m) => Math.round(m.worst));
+    expect(new Set(depths).size, 'the three members fall by the same amount').toBe(depths.length);
+  });
+
+  test('the figure draws one curve per member plus the index, and the caption matches', async ({
+    page,
+  }) => {
+    const { INDEX_WORST, MEMBERS, DEEPEST_MEMBER, DEPTH_RATIO } = await import(
+      '../components/learn/indexGeometry'
+    );
+
+    await page.goto(PATH);
+    await ready(page);
+
+    await expect(page.locator('[data-member-path]')).toHaveCount(MEMBERS.length);
+    await expect(page.locator('[data-index-path]')).toHaveCount(1);
+
+    const caption = (await page.locator('figure figcaption').first().innerText()).replace(
+      /\s+/g,
+      ' ',
+    );
+    expect(caption).toContain(`${Math.abs(DEEPEST_MEMBER.worst).toFixed(0)}%`);
+    expect(caption).toContain(`${Math.abs(INDEX_WORST).toFixed(0)}%`);
+    expect(caption).toContain(DEPTH_RATIO.toFixed(1));
+  });
+});
+
+test.describe('the recovery-time figure', () => {
+  const PATH = learnPath('how-long-do-recoveries-take');
+
+  test('all three falls are exactly the same depth, and only the wait differs', async () => {
+    /**
+     * ⚠️ **Equal depths are the entire figure.** Three curves that bottom out at
+     * −38.1%, −38.7% and −39.5% look identical on screen and quietly destroy the
+     * comparison — which is what an evenly-sampled time grid produced on the
+     * first attempt, because it never landed on the trough. Assert the number,
+     * not the appearance.
+     */
+    const { RECOVERIES, TROUGH_PCT, WAIT_RATIO, waitFromTrough } = await import(
+      '../components/learn/recoveryGeometry'
+    );
+
+    expect(RECOVERIES.length).toBeGreaterThan(2);
+
+    for (const r of RECOVERIES) {
+      const low = r.series.reduce((a, p) => Math.min(a, p.pct), 0);
+      expect(low, `${r.id} bottoms at ${low.toFixed(2)}%, not ${TROUGH_PCT}%`).toBeCloseTo(
+        TROUGH_PCT,
+        6,
+      );
+      // …and it must actually come back, or "recovery" names nothing.
+      expect(r.series[r.series.length - 1]!.pct, `${r.id} never returns to its peak`).toBe(0);
+    }
+
+    // The control: identical depths are only interesting if the waits are not.
+    const waits = RECOVERIES.map((r) => waitFromTrough(r));
+    expect(new Set(waits.map((w) => w.toFixed(2))).size).toBe(waits.length);
+    expect(
+      WAIT_RATIO,
+      `the slowest recovery is only ${WAIT_RATIO.toFixed(1)}x the fastest — not a difference worth a figure`,
+    ).toBeGreaterThan(4);
+  });
+
+  test('the figure renders every path', async ({ page }) => {
+    /**
+     * ⚠️ The axis-label collision check that used to live here now sweeps EVERY
+     * article — see "no two axis labels overlap" below. It was written for this
+     * figure and the very next figure added its own year axis, which this test
+     * could never have seen. A guard scoped to the page that prompted it stops
+     * covering the thing it was written to cover the moment there are two of them.
+     */
+    const { RECOVERIES } = await import('../components/learn/recoveryGeometry');
+
+    await page.goto(PATH);
+    await ready(page);
+    await expect(page.locator('[data-recovery-path]')).toHaveCount(RECOVERIES.length);
+  });
+});
+
+test.describe('the dividend figure', () => {
+  const PATH = learnPath('is-a-dividend-safe');
+
+  test('the yield really is the dividend divided by the price', async () => {
+    /**
+     * ⚠️ The article's first sentence is that a yield is a fraction whose bottom
+     * half moves. Recomputing it here from the two inputs is the only thing that
+     * makes the top panel evidence for that rather than a drawing of it.
+     */
+    const { QUARTERS } = await import('../components/learn/dividendGeometry');
+
+    for (const q of QUARTERS) {
+      expect(q.yieldPct, `quarter ${q.q}`).toBeCloseTo(((q.dps * 4) / q.price) * 100, 9);
+      expect(q.payoutPct, `quarter ${q.q}`).toBeCloseTo((q.dps / q.eps) * 100, 9);
+    }
+  });
+
+  test('the yield rises the whole way down, then collapses when the payment is cut', async () => {
+    const { CUT_Q, PEAK_YIELD, POST_CUT_YIELD, QUARTERS, START_YIELD } = await import(
+      '../components/learn/dividendGeometry'
+    );
+
+    // The trap: the yield looks better and better while the price is falling.
+    expect(PEAK_YIELD.yieldPct).toBeGreaterThan(START_YIELD.yieldPct * 2);
+    expect(PEAK_YIELD.q, 'the yield must peak before the cut, not after').toBeLessThan(CUT_Q);
+    // …and the dividend never grew, so the whole rise came from the denominator.
+    expect(QUARTERS[PEAK_YIELD.q]!.dps).toBe(QUARTERS[0]!.dps);
+    expect(QUARTERS[PEAK_YIELD.q]!.price).toBeLessThan(QUARTERS[0]!.price);
+
+    // And afterwards it is back near where it started, which is the whole point.
+    expect(POST_CUT_YIELD.yieldPct).toBeLessThan(PEAK_YIELD.yieldPct / 2);
+  });
+
+  test('the payout ratio crosses the line well before the cut', async () => {
+    const { CUT_Q, FIRST_OVER_LIMIT, PAYOUT_LIMIT, QUARTERS, WARNING_QUARTERS } = await import(
+      '../components/learn/dividendGeometry'
+    );
+
+    expect(FIRST_OVER_LIMIT.q, 'the warning must arrive before the cut').toBeLessThan(CUT_Q);
+    expect(
+      WARNING_QUARTERS,
+      'a warning of one quarter is not a warning worth writing about',
+    ).toBeGreaterThanOrEqual(4);
+
+    // The control. "Crosses before the cut" would also be satisfied by a single
+    // spike that fell straight back — the article says it stayed above.
+    for (let q = FIRST_OVER_LIMIT.q; q < CUT_Q; q += 1) {
+      expect(QUARTERS[q]!.payoutPct, `quarter ${q} dropped back under the line`).toBeGreaterThan(
+        PAYOUT_LIMIT,
+      );
+    }
+  });
+
+  test('both panels mark the cut at the same place, and the caption states the real figures', async ({
+    page,
+  }) => {
+    const { CUT_PCT, PEAK_YIELD, POST_CUT_YIELD, WARNING_QUARTERS } = await import(
+      '../components/learn/dividendGeometry'
+    );
+
+    await page.goto(PATH);
+    await ready(page);
+
+    const rules = await page
+      .locator('[data-cut-rule]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute('x1')));
+    expect(rules.length, 'both panels must carry the cut marker').toBe(2);
+    expect(new Set(rules).size, `the two cut markers sit at ${rules.join(' and ')}`).toBe(1);
+
+    const caption = (await page.locator('figure figcaption').first().innerText()).replace(
+      /\s+/g,
+      ' ',
+    );
+    expect(caption).toContain(`${CUT_PCT.toFixed(0)}%`);
+    expect(caption).toContain(`${PEAK_YIELD.yieldPct.toFixed(1)}%`);
+    expect(caption).toContain(`${POST_CUT_YIELD.yieldPct.toFixed(1)}%`);
+    expect(caption).toContain(`${WARNING_QUARTERS} quarters`);
+  });
+
+  test('the article states the PRODUCT’s payout bands, not its own', async ({ page }) => {
+    /**
+     * ⚠️ CLAUDE.md 11c-v — a sentence that states a constant IS a copy of that
+     * constant. The bands live in `lib/dividends.ts` and the Dividend History
+     * card reads them; this asserts the RENDERED article agrees, with an
+     * off-by-one control so the match is value-sensitive rather than merely
+     * finding a digit somewhere on a long page.
+     */
+    const { DISTRESS_YIELD_PCT, PAYOUT_COMFORTABLE_MAX, PAYOUT_STRAINED_MAX } = await import(
+      '../lib/dividends'
+    );
+
+    await page.goto(PATH);
+    await ready(page);
+    const body = (await page.locator('[data-article-body]').innerText()).replace(/\s+/g, ' ');
+
+    for (const v of [PAYOUT_COMFORTABLE_MAX, PAYOUT_STRAINED_MAX, DISTRESS_YIELD_PCT]) {
+      expect(body, `the article never states ${v}%`).toContain(`${v}%`);
+    }
+    expect(
+      body,
+      `the article states ${PAYOUT_COMFORTABLE_MAX + 1}% — the control value, so this check cannot tell a real match from a coincidence`,
+    ).not.toContain(`${PAYOUT_COMFORTABLE_MAX + 1}%`);
+  });
+});
+
+test.describe('the limits figure', () => {
+  const PATH = learnPath('what-majorcycle-doesnt-do');
+
+  test('exactly one row reaches past today, and it is the one that is not ours', async () => {
+    /**
+     * ⚠️ **"One forward bar" is the whole figure.** Add a second and the page
+     * silently starts claiming we forecast — with no error, no visual break, and
+     * a caption that still counts correctly because it counts the same array.
+     * Both halves are asserted: how many cross today, and whose it is.
+     */
+    const { BACKWARD, FORWARD, SPANS } = await import('../components/learn/limitsGeometry');
+
+    expect(FORWARD.length, 'more than one row extends past today').toBe(1);
+    expect(FORWARD[0]!.ours, 'a row of OURS extends past today — we do not forecast').toBe(false);
+    expect(BACKWARD.length + FORWARD.length).toBe(SPANS.length);
+    expect(
+      BACKWARD.every((s) => s.ours),
+      'a third-party row is being drawn as ours',
+    ).toBe(true);
+  });
+
+  test('the price-history row is the PRODUCT’s own longest window', async () => {
+    const { PRESETS } = await import('../lib/presets');
+    const { LOOKBACK_YEARS, SPANS } = await import('../components/learn/limitsGeometry');
+
+    const prices = SPANS.find((s) => s.id === 'prices')!;
+    expect(LOOKBACK_YEARS).toBeCloseTo(PRESETS.long.lookbackBars / 252, 6);
+    expect(prices.from).toBeCloseTo(-LOOKBACK_YEARS, 6);
+    expect(prices.to, 'the price-history row must stop at today').toBe(0);
+  });
+
+  test('every row renders, and nothing overlaps at any width', async ({ page }) => {
+    const { SPANS, TODAY_X } = await import('../components/learn/limitsGeometry');
+
+    await page.goto(PATH);
+    await ready(page);
+    await expect(page.locator('[data-span-bar]')).toHaveCount(SPANS.length);
+    await expect(page.locator('[data-today-rule]')).toHaveCount(1);
+
+    const failures: string[] = [];
+    for (const width of [1280, 1024, 768, 414, 375, 360]) {
+      await page.setViewportSize({ width, height: 900 });
+      const state = await page.evaluate(() => {
+        const bars = [...document.querySelectorAll('[data-span-bar]')] as HTMLElement[];
+        const boxes = ([...document.querySelectorAll('[data-year-tick]')] as HTMLElement[]).map(
+          (el) => ({ t: el.textContent ?? '', r: el.getBoundingClientRect() }),
+        );
+        const bad: string[] = [];
+        for (let i = 0; i < boxes.length; i += 1) {
+          for (let j = i + 1; j < boxes.length; j += 1) {
+            const a = boxes[i]!.r;
+            const b = boxes[j]!.r;
+            if (a.right > b.left && b.right > a.left) bad.push(`${boxes[i]!.t}/${boxes[j]!.t}`);
+          }
+        }
+        return {
+          bad,
+          ticks: boxes.length,
+          zeroWidth: bars.filter((b) => b.getBoundingClientRect().width < 4).length,
+        };
+      });
+      expect(state.ticks, `${width}px: no axis labels found`).toBeGreaterThan(1);
+      if (state.bad.length) failures.push(`${width}px: labels overlap — ${state.bad.join(', ')}`);
+      if (state.zeroWidth) failures.push(`${width}px: ${state.zeroWidth} row(s) drew no bar`);
+    }
+    expect(failures, `the limits figure breaks at:\n${failures.join('\n')}`).toEqual([]);
+    expect(TODAY_X, 'today must sit inside the plot, not on its edge').toBeGreaterThan(50);
+    expect(TODAY_X).toBeLessThan(90);
+  });
+});
+
+test.describe('the limits figure lines up with its own axis', () => {
+  test('the “today” rule meets the rows that start and end there', async ({ page }) => {
+    /**
+     * ⚠️ **Found by measuring, on a figure every other check called clean.**
+     * `.reading ul` gives a list `padding-left: 1.35em`, so the bars — which live
+     * inside a `<ul>` — started **17.55px** right of where their own percentage
+     * said, while the dashed today rule sat outside the list at the full width.
+     * The one line this figure exists to draw was 17px away from the bar it
+     * marks. The width sweep found no overlap, nothing errored, and the offset
+     * read as a deliberate gap rather than a defect.
+     *
+     * Both edges are asserted, not one: the price row must END on the rule and
+     * the analyst row must START on it, or an indent that shifted everything by
+     * the same amount would satisfy half of this happily. The list padding is
+     * asserted directly as well, because that is the cause and it is the thing a
+     * future stylesheet change would reintroduce.
+     */
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(learnPath('what-majorcycle-doesnt-do'));
+    await ready(page);
+
+    const geom = await page.evaluate(() => {
+      const r = (sel: string) => document.querySelector(sel)?.getBoundingClientRect();
+      const today = r('[data-today-rule]');
+      const targets = r('[data-span-bar="targets"]');
+      const prices = r('[data-span-bar="prices"]');
+      return {
+        todayX: today?.x ?? null,
+        startsAtToday: targets?.x ?? null,
+        endsAtToday: prices ? prices.x + prices.width : null,
+        listPad: parseFloat(
+          getComputedStyle(document.querySelector('figure ul') as HTMLElement).paddingLeft,
+        ),
+      };
+    });
+
+    expect(geom.todayX, 'no today rule to measure against').not.toBeNull();
+    expect(
+      geom.listPad,
+      `the figure's list still carries ${geom.listPad}px of prose indent, which shifts every bar off the scale`,
+    ).toBe(0);
+    expect(
+      Math.abs(geom.startsAtToday! - geom.todayX!),
+      `the analyst row starts ${(geom.startsAtToday! - geom.todayX!).toFixed(1)}px from the today rule`,
+    ).toBeLessThan(2);
+    expect(
+      Math.abs(geom.endsAtToday! - geom.todayX!),
+      `the price-history row ends ${(geom.endsAtToday! - geom.todayX!).toFixed(1)}px from the today rule`,
+    ).toBeLessThan(2);
+  });
+});
+
+test.describe('every article, at the supported floor', () => {
+  /**
+   * ⚠️ **Axis labels are text on a narrow axis, and they collide long before the
+   * page does.** The analyst figure passed its own collision check at 1280px
+   * while overlapping from 414px down (CLAUDE.md 11i-b), and the stated 375px
+   * floor was not the worst width there. Sweeping every article means the next
+   * figure's axis is covered the day it is written rather than the day somebody
+   * remembers to copy this test.
+   */
+  test('no two axis labels overlap, on any article, at any width', async ({ page }) => {
+    /**
+     * ⚠️ **One test over the whole registry, NOT one per article — because most
+     * articles have no timed axis and `test.skip` would have produced nine green
+     * skips.** A skip reads as a pass in every summary this project checks, and
+     * the count is how a silently-stopped suite is caught here. So the vacuity is
+     * asserted instead: at least three articles must actually carry an axis, or
+     * this test is measuring nothing and says so (CLAUDE.md 14g).
+     */
+    const withAxis: string[] = [];
+    const failures: string[] = [];
+
+    for (const article of LEARN_ARTICLES) {
+      const path = learnPath(article.slug);
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await page.goto(path);
+      await ready(page);
+
+      const total = await page.locator('[data-year-tick]').count();
+      if (total === 0) continue;
+      withAxis.push(path);
+
+      for (const width of [1280, 1024, 768, 414, 375, 360]) {
+        await page.setViewportSize({ width, height: 900 });
+        const state = await page.evaluate(() => {
+          const boxes = ([...document.querySelectorAll('[data-year-tick]')] as HTMLElement[]).map(
+            (el) => ({ t: el.textContent ?? '', r: el.getBoundingClientRect() }),
+          );
+          const bad: string[] = [];
+          for (let i = 0; i < boxes.length; i += 1) {
+            for (let j = i + 1; j < boxes.length; j += 1) {
+              const a = boxes[i]!.r;
+              const b = boxes[j]!.r;
+              // Same row only: two panels may legitimately share an x position.
+              const sameRow = Math.abs(a.y - b.y) < 4;
+              if (sameRow && a.right > b.left && b.right > a.left) {
+                bad.push(`${boxes[i]!.t}/${boxes[j]!.t}`);
+              }
+            }
+          }
+          return { bad, count: boxes.length };
+        });
+        if (state.count !== total) {
+          failures.push(`${path} @ ${width}px: ${total} labels became ${state.count}`);
+        }
+        if (state.bad.length) failures.push(`${path} @ ${width}px: ${state.bad.join(', ')}`);
+      }
+    }
+
+    expect(
+      withAxis.length,
+      'no article carries a timed axis, so this test measured nothing',
+    ).toBeGreaterThanOrEqual(3);
+    expect(failures, `axis labels collide: ${failures.join(' | ')}`).toEqual([]);
+  });
+
+  for (const article of LEARN_ARTICLES) {
+    const path = learnPath(article.slug);
+
+    test(`${path} does not scroll sideways at 375px`, async ({ page }) => {
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.goto(path);
+      await ready(page);
+
+      const doc = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(doc, `${path}: the PAGE scrolls sideways by ${doc}px at 375px`).toBeLessThanOrEqual(2);
+
+      /**
+       * ⚠️ **`documentElement` is not enough, and proving that cost a break.** A
+       * figure was widened to 420px on a 375px screen and this test PASSED: an
+       * ancestor clips, so the document never grows and the reader simply loses
+       * the right-hand side of the chart — silently, with no scrollbar to say so.
+       * The article body's own `scrollWidth` sees it. Clipping and scrolling are
+       * two symptoms of one defect and only one of them moves the document.
+       */
+      for (const width of [375, 360, 320]) {
+        await page.setViewportSize({ width, height: 812 });
+        await page.goto(path);
+        await ready(page);
+
+        const over = await page.evaluate(() => {
+          const el = document.querySelector('[data-article-body]');
+          if (!el) return { over: -1, widest: [] as { tag: string; w: number }[] };
+          // Name the offender. "8px of overflow" sends you hunting; "an SVG
+          // 420px wide inside a 343px column" is a fix.
+          const widest = [...el.querySelectorAll('*')]
+            .map((n) => ({ tag: n.tagName, w: Math.round(n.getBoundingClientRect().width) }))
+            .filter((x) => x.w > el.clientWidth + 1)
+            .slice(0, 4);
+          return { over: el.scrollWidth - el.clientWidth, widest };
+        });
+
+        expect(over.over, `${path}: the article body was not found`).toBeGreaterThanOrEqual(0);
+        expect(
+          over.over,
+          `${path}: the body overflows by ${over.over}px at ${width}px — widest: ${JSON.stringify(over.widest)}`,
+        ).toBeLessThanOrEqual(2);
+      }
+    });
+  }
 });

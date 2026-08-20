@@ -1205,16 +1205,18 @@ export interface LearnArticle {
 
 ⚠️ **Figure captions and legends count toward `minutes`.** They are inside `[data-article-body]`, which is what the test measures, so adding a diagram to an article raises its reading time — the drawdown article's three figures contribute roughly 150 words. This is correct rather than a quirk: a caption is read. But it means `minutes` has to be re-checked when a figure is added, not only when prose is.
 | `slug` | must have a body in `ARTICLE_BODIES` | `Record<LearnSlug, …>` makes a missing body a **compile error** rather than a blank page (11j). Depends on `LEARN_ARTICLES` ending `as const satisfies readonly LearnArticle[]` — an explicit annotation widens `slug` to `string` and the check silently evaporates. Guarded by `check:seo` |
-| `upcoming` | plain **strings**, never `LearnArticle`s | A registry entry acquires a URL, a sitemap row, a middleware allow-list entry, a canonical tag, and a compile error until a body exists. A promise about a future article must cost none of that — so an announced title is a string, and there is nothing there that *can* become a link. `learn.spec.ts` asserts each is named on the page, is **not** reachable as a link, and is absent from `LEARN_ARTICLES`, with the count asserted first so an empty list cannot pass vacuously (14g) |
+| `upcoming` | plain **strings**, never `LearnArticle`s | A registry entry acquires a URL, a sitemap row, a middleware allow-list entry, a canonical tag, and a compile error until a body exists. A promise about a future article must cost none of that — so an announced title is a string, and there is nothing there that *can* become a link. `learn.spec.ts` asserts each is named on the page, is **not** reachable as a link, and is absent from `LEARN_ARTICLES`. ⚠️ **Every list is now empty** (2026-08-20 — all twelve announced titles are written), so the guard's old vacuity assertion `announced.length > 0` went red on the day the last promise was kept. It was right about the risk and wrong to treat "nothing announced" as impossible. It now checks the OTHER state instead of skipping: with nothing announced, the index must carry no "Coming soon" row at all — a leftover row surviving an emptied list is exactly the kind of thing that renders perfectly (11j) |
 
 ⚠️ **The count pill states what is READABLE, never what is promised.** "1 article" above
 four Coming soon rows — not "5 articles". A pill counting promises is a lie a reader checks
 in one glance, on the page whose whole job is being trusted by a stranger. A topic with
 articles shows its count; a topic with only announcements shows "Coming soon".
 
-⚠️ **The ratio is a merge decision, not a design one.** One written piece beside eleven
-promises reads as a shell rather than a growing library. Nothing is public — this sits
-inside the unmerged PR #89 — but it is the thing to weigh before Layer G merges.
+⚠️ **The ratio was a merge decision, and it is now settled.** One written piece beside
+eleven promises reads as a shell rather than a growing library; that was the open question
+while the library was being built. **Resolved 2026-08-20 by writing all eleven** — the
+library ships as twelve articles and zero promises, so no reader meets a "Coming soon" row.
+The mechanism stays in the type for the next time a title is announced ahead of its body.
 
 ⚠️ **No React in this file.** `lib/seo.ts` imports it and `proxy.ts` imports `lib/seo.ts`,
 so a component here joins the **middleware** bundle that runs on every request to the site.
