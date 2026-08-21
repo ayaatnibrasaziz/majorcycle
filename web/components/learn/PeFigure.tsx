@@ -1,5 +1,13 @@
 import { Figure, LegendItem } from '@/components/Figure';
-import { AxisFrame, AxisLabels, PLOT_L, Swatch, TimeNote, rx } from './chartPrimitives';
+import {
+  AxisFrame,
+  AxisLabels,
+  PLOT_L,
+  Plot,
+  Swatch,
+  TimeNote,
+  rx,
+} from './chartPrimitives';
 import {
   CHEAP_HIGH,
   CHEAP_LOW,
@@ -56,7 +64,7 @@ function Panel({
   return (
     <div>
       <p className="text-[13px] font-semibold text-[var(--text-primary)]">{label}</p>
-      <div className="relative mt-1.5 w-full aspect-[16/7]">
+      <Plot box="aspect-[16/7]" className="mt-1.5">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -85,7 +93,7 @@ function Panel({
           />
         </svg>
         <AxisLabels ticks={ticks} format={format} />
-      </div>
+      </Plot>
     </div>
   );
 }

@@ -1,6 +1,12 @@
 import { Figure, LegendItem } from '@/components/Figure';
 import { healthColor, healthRatingLabel } from '@/lib/ratings';
-import { AxisFrame, AxisLabels, Swatch, rx } from './chartPrimitives';
+import {
+  AxisFrame,
+  AxisLabels,
+  Plot,
+  Swatch,
+  rx,
+} from './chartPrimitives';
 import {
   CHECKS,
   FALL,
@@ -51,7 +57,7 @@ function PricePanel({ company, health }: { company: Company; health: number }) {
         </span>
       </div>
 
-      <div className="relative mt-2 w-full aspect-[16/11]">
+      <Plot box="aspect-[16/11]" className="mt-2">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -71,7 +77,7 @@ function PricePanel({ company, health }: { company: Company; health: number }) {
           />
         </svg>
         <AxisLabels ticks={PRICE_TICKS} format={(v) => `$${v}`} />
-      </div>
+      </Plot>
 
       {/* The five checks. HTML rather than SVG so the bars keep their corner
           radius and the labels stay 12px at every width. */}

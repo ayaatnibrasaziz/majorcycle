@@ -1,5 +1,13 @@
 import { Figure, LegendItem } from '@/components/Figure';
-import { AxisFrame, AxisLabels, PLOT_L, PointDot, TimeNote, rx } from './chartPrimitives';
+import {
+  AxisFrame,
+  AxisLabels,
+  PLOT_L,
+  Plot,
+  PointDot,
+  TimeNote,
+  rx,
+} from './chartPrimitives';
 import {
   CANDLES,
   GAP_PCT,
@@ -140,7 +148,7 @@ export function WeekHighFigure() {
         </>
       }
     >
-      <div className="relative w-full aspect-[16/10] sm:aspect-[16/7]">
+      <Plot box="aspect-[16/10] sm:aspect-[16/7]">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -189,7 +197,7 @@ export function WeekHighFigure() {
         >
           52-week low
         </span>
-      </div>
+      </Plot>
       <TimeNote>Time → (52 weeks)</TimeNote>
     </Figure>
   );

@@ -66,6 +66,13 @@ function Marker({ spec, color, sub }: { spec: MarkerSpec; color: string; sub: st
       />
       <span
         data-marker-label={spec.id}
+        /* ⚠️ One label on two lines, not two labels. The overlap guard compares
+           every piece of text in a drawing with every other, and once it started
+           demanding 2px of daylight it flagged a name sitting directly on its own
+           price — which is what a stacked label IS. Marking the wrapper is what
+           lets the guard tell "these two touch by design" from "these two
+           collided", without softening the rule for everything else. */
+        data-label-group=""
         className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center"
         style={
           spec.above

@@ -1689,6 +1689,41 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > deleted is recorded in `indexGeometry.ts`: it worked, and it swapped one collision for a worse
 > one, and the dull fix (a halo, and more height) was right.
 
+> #### ✅ G4.6 — owner's second pass on topic 01. 2026-08-21, still inside PR #89.
+>
+> Four items, one of them a red CI. Playwright **465**, pytest 153, all five guards green.
+>
+> - **CI was red** on `no two labels overlap`: at 360px the dividend figure's `100%` axis
+>   label sat **2px** over a chart label. It passed on Windows and failed on Linux, because
+>   the same font renders a hair wider there — and the guard only failed *after* an overlap
+>   existed. It now demands **2px of daylight** (11i-b); the library clears that by at least
+>   3px everywhere, measured. Two lines of one label touch by design, so `data-label-group`
+>   marks them as one — without it the stricter rule flags correct behaviour, which is how a
+>   guard gets deleted.
+> - **The y-axis gutter is now 44 PIXELS, not 15% of the panel.** See `design-system.md`. It
+>   held a 29px number in 172px of margin at 1280px, so every chart on the site started a
+>   sixth of the way in from its own card. Every drawing now sits in a `Plot` wrapper.
+>   ⚠️ Which immediately produced 11c-iv for the fifth time: the dividend figure's shared
+>   time axis is a *sibling* of its two panels, so it stayed at the card edge while they moved,
+>   and every year marker pointed 44px left of the data it labels — rendering perfectly.
+> - **The halo is gone and the labels moved instead**, at the owner's instruction, and they
+>   were right: painting the panel's ground behind a label interrupts the curve, so
+>   `dip-correction-crash` lost a length of the dashed rule the figure exists to explain. The
+>   three companies in the index figure were **reshaped** so they fall at clearly separated
+>   times and the deepest one owns the index's low — then nothing passes under any trough and
+>   no placement rule is needed at all. Depths are now exactly −20 / −50 / −30 because every
+>   keyframe x joins the sample grid; before that they were −49.4 and −30.5, printing numbers
+>   nobody chose in a figure whose subject is comparing depths.
+> - **Article 5's prose rewritten again.** Too many italics (5, against 0–3 everywhere else —
+>   now 0) and it read as machine-written. The `answer` also assumed the reader had seen our
+>   stock page; it now describes the idea, not our UI.
+> - `RecoveryTimeFigure` + `recoveryGeometry` deleted at the owner's word.
+>
+> ⚠️ **Method note.** A test of "all labels below, taller mobile panel" came back with
+> *every* axis label overlapping — not the experiment failing, but `aspect-[16/16]` not
+> existing as a Tailwind class, collapsing the panel to zero height. **An undefined CSS class
+> is silence, and silence looked like a result.**
+
 ### Layer H: Pre-launch Hardening (Phase 1.5, target: 1 week)
 
 - [ ] Mobile responsive audit on every page

@@ -3,6 +3,7 @@ import {
   AxisFrame,
   AxisLabels,
   PinnedLabel,
+  Plot,
   PointDot,
   Swatch,
   XTickRow,
@@ -84,7 +85,7 @@ export function IndexAverageFigure() {
           the crowding is vertical, and shrinking the type is not available (12px
           is the reading floor). Giving the plot more height is the only move that
           buys rows without abbreviating the words. */}
-      <div className="relative w-full aspect-[16/12] sm:aspect-[16/9]">
+      <Plot box="aspect-[16/12] sm:aspect-[16/9]">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -141,6 +142,7 @@ export function IndexAverageFigure() {
               x={t.x}
               y={yOf(t.pct)}
               text={`${t.name} ${t.pct.toFixed(0)}%`}
+              short={`${t.name.replace('Company ', '')} ${t.pct.toFixed(0)}%`}
             />
           </span>
         ))}
@@ -156,6 +158,12 @@ export function IndexAverageFigure() {
           x={INDEX_TROUGH.x}
           y={yOf(INDEX_TROUGH.pct)}
           text={`index ${INDEX_TROUGH.pct.toFixed(0)}%`}
+          /* On a phone the number goes and the name stays. The label is centred
+             on the index's low, which is the same moment as the deepest member's
+             — so its left half lies over that member's descent, and the wider the
+             label the further into it. The caption states the figure one line
+             below; nothing else on the drawing says which curve is the index. */
+          short="index"
           strong
         />
 
@@ -166,7 +174,7 @@ export function IndexAverageFigure() {
           floorY={FLOOR_Y}
           ticks={YEAR_TICKS.map((t) => ({ key: t.year, x: t.x, label: yearTick(t.year) }))}
         />
-      </div>
+      </Plot>
       <div className="h-6" />
     </Figure>
   );

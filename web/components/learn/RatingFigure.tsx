@@ -46,7 +46,10 @@ export function RatingFigure() {
         {RATING_PARTS.map((part) => {
           const score = EXAMPLE[part.key];
           return (
-            <li key={part.key}>
+            /* One row is one label: a name, its weighting, the question it asks
+               and its bar all describe the same pillar and are stacked by
+               design. See `[data-label-group]` in `learn.spec.ts`. */
+            <li key={part.key} data-label-group="">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-[13px] font-semibold text-[var(--text-primary)]">
                   {part.label}

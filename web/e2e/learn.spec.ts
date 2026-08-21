@@ -2473,6 +2473,9 @@ test.describe('nothing in a figure is drawn on top of anything else', () => {
   test('no two labels overlap, in any figure, on any article, at any width', async ({ page }) => {
     test.setTimeout(600_000);
 
+    /** Pixels of daylight two labels must leave each other. See below. */
+    const CLEAR_PX = 2;
+
     const measured: string[] = [];
     const failures: string[] = [];
 
@@ -2483,7 +2486,9 @@ test.describe('nothing in a figure is drawn on top of anything else', () => {
         await page.goto(path);
         await ready(page);
 
-        const found = await page.evaluate(() => {
+        // ⚠️ `CLEAR_PX` is passed IN, not closed over: the callback is serialised
+        // and runs in the browser, where a Node-side constant does not exist.
+        const found = await page.evaluate((clearPx: number) => {
           const hits: string[] = [];
           let labels = 0;
           document.querySelectorAll('figure').forEach((fig, fi) => {
@@ -2502,24 +2507,34 @@ test.describe('nothing in a figure is drawn on top of anything else', () => {
             labels += leaves.length;
             for (let i = 0; i < leaves.length; i += 1) {
               for (let j = i + 1; j < leaves.length; j += 1) {
+                // Two lines of ONE label touch on purpose — see `[data-label-group]`.
+                const groupA = leaves[i]!.closest('[data-label-group]');
+                if (groupA && groupA === leaves[j]!.closest('[data-label-group]')) continue;
                 const a = leaves[i]!.getBoundingClientRect();
                 const b = leaves[j]!.getBoundingClientRect();
                 const ox = Math.min(a.right, b.right) - Math.max(a.left, b.left);
                 const oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
-                if (ox > 1 && oy > 1) {
+                // ⚠️ **A MARGIN, not a boundary** (CLAUDE.md 11i-b). Overlap is
+                // negative clearance, so `> 1` passed anything that merely failed
+                // to touch — and this suite went green on Windows while CI failed
+                // by **2px**, because Linux gives the same font slightly wider
+                // glyphs. A figure whose labels clear each other by half a pixel
+                // is not correct, it is lucky. Two pixels of daylight is the bar;
+                // the whole library clears it by at least 3px, measured.
+                if (ox > -clearPx && oy > -clearPx) {
                   hits.push(
                     `fig${fi + 1} "${(leaves[i]!.textContent ?? '').trim().slice(0, 24)}" over "${(
                       leaves[j]!.textContent ?? ''
                     )
                       .trim()
-                      .slice(0, 24)}" by ${Math.round(ox)}x${Math.round(oy)}px`,
+                      .slice(0, 24)}" — clearance ${Math.round(-ox)}x${Math.round(-oy)}px, needs ${clearPx}`,
                   );
                 }
               }
             }
           });
           return { hits, labels };
-        });
+        }, CLEAR_PX);
 
         if (found.labels > 0) measured.push(`${article.slug}@${width}`);
         for (const h of found.hits) failures.push(`${path} @${width}px: ${h}`);

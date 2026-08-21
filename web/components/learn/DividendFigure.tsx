@@ -1,5 +1,13 @@
 import { Figure, LegendItem } from '@/components/Figure';
-import { AxisFrame, AxisLabels, PointDot, Swatch, rx, yearTick } from './chartPrimitives';
+import {
+  AxisFrame,
+  AxisLabels,
+  Plot,
+  PointDot,
+  Swatch,
+  rx,
+  yearTick,
+} from './chartPrimitives';
 import {
   CUT_PCT,
   CUT_Q,
@@ -67,7 +75,7 @@ function Panel({
   return (
     <div>
       <p className="text-[13px] font-semibold text-[var(--text-primary)]">{title}</p>
-      <div className="relative mt-2 w-full aspect-[16/7]">
+      <Plot box="aspect-[16/7]" className="mt-2">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -150,7 +158,7 @@ function Panel({
             dividend cut&nbsp;
           </span>
         )}
-      </div>
+      </Plot>
     </div>
   );
 }
@@ -217,8 +225,14 @@ export function DividendFigure() {
         />
 
         {/* One time axis for both panels — they share an x scale, so two would be
-            two claims about the same thing (CLAUDE.md 11c). */}
-        <div className="relative h-4 w-full">
+            two claims about the same thing (CLAUDE.md 11c).
+
+            ⚠️ It wears the same gutter as the panels. It is their sibling, not
+            their child, so when the plots moved inside a fixed-width axis gutter
+            this row stayed at the card edge and every year marker slid 44px left
+            of the data it labels. Nothing errored and the row still rendered;
+            "start" simply pointed at the wrong place. */}
+        <Plot box="h-4">
           {YEAR_TICKS.map((t) => (
             <span
               key={t.year}
@@ -229,7 +243,7 @@ export function DividendFigure() {
               {yearTick(t.year)}
             </span>
           ))}
-        </div>
+        </Plot>
       </div>
     </Figure>
   );

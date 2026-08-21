@@ -278,7 +278,7 @@ export const LEARN_ARTICLES = [
     title: 'How long do recoveries actually take?',
     question: 'How long does it take a stock to recover?',
     answer:
-      'Nobody can forecast it — but you can measure how long this company’s past recoveries took. On a stock page the drawdown curve leaves zero when the price passes a high and touches zero again when it gets back, so the width of that shaded stretch is the length of that recovery.',
+      'Nobody can tell you in advance. But most companies have been through this before, and each of those past falls took a specific amount of time to climb out of. Reading a few of them off the company’s own chart gives you a realistic range, which is the closest thing to an answer that exists.',
     summary:
       'How to read the length of a company’s past recoveries straight off its own chart, why a fall’s depth does not predict its duration, and why we do not average it into one number.',
     theme: 'cycles',

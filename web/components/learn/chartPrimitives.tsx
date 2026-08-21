@@ -9,10 +9,61 @@
  * still renders perfectly.
  */
 
-/** The plot area, in viewBox units. The gutters are where axis labels live. */
-export const PLOT_L = 15;
+/**
+ * The gutter the y-axis labels live in, in PIXELS.
+ *
+ * ⚠️ **Pixels, because the labels are pixels.** It was 15 viewBox units — 15% of
+ * whatever the panel happened to measure — which is the right amount of room at
+ * 375px and a wasteland at 1280px: **172px of empty margin** to hold a 29px
+ * number, so every chart on the site began a sixth of the way in from its own
+ * card. A gutter exists to fit a label, and a label does not get wider when the
+ * screen does. Sized from the widest one actually rendered anywhere in the
+ * library (29px) plus the 8px gap, plus room for the wider glyphs Linux gives
+ * the same font — which is not a theoretical worry: a 2px difference between
+ * Windows and CI is what turned this guard red.
+ */
+export const AXIS_GUTTER_PX = 44;
+
+/**
+ * The plot area, in viewBox units — now the whole box, because the gutter is
+ * outside it (see `Plot`). `PLOT_L` is 1 rather than 0 only so the axis rule is
+ * not half-clipped by the viewBox edge.
+ */
+export const PLOT_L = 1;
 export const PLOT_R = 96;
 export const rx = (x: number): number => PLOT_L + (x / 100) * (PLOT_R - PLOT_L);
+
+/**
+ * A plot and its axis gutter.
+ *
+ * Two boxes on purpose. The outer one carries the gutter as padding; the inner
+ * one is the drawing, and every absolutely-positioned thing inside — the SVG,
+ * the dots, the labels — measures against it. That is what lets `rx()` treat the
+ * plot as the full 0–100 while the labels sit outside it in a fixed-width strip.
+ *
+ * ⚠️ One box will not do: an absolutely-positioned child is laid out against
+ * its ancestor's PADDING box, so `inset-0` would span the gutter too and the
+ * drawing would start at the card edge again.
+ */
+export function Plot({
+  box,
+  className = '',
+  children,
+}: {
+  /**
+   * Tailwind sizing for the drawing itself — usually an aspect ratio
+   * (`aspect-[16/9]`), but a plain height for a bare axis row.
+   */
+  box: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`relative w-full ${className}`} style={{ paddingLeft: AXIS_GUTTER_PX }}>
+      <div className={`relative w-full ${box}`}>{children}</div>
+    </div>
+  );
+}
 
 /** The product's own drawdown palette (`components/stocks/DrawdownOverlay.tsx`). */
 export const DD_LINE = '#1E5CB3'; // --brand-mid
@@ -77,29 +128,43 @@ export const AXIS_LABEL_GAP_PX = 8;
 export function AxisLabels({
   ticks,
   format,
+  stub = false,
 }: {
   ticks: readonly { y: number; value: number }[];
   format: (v: number) => string;
+  /** Draw a short rule from each label to the axis. */
+  stub?: boolean;
 }) {
   return (
     <>
       {ticks.map((t) => (
-        <span
-          key={`${t.y}-${t.value}`}
-          data-axis-label=""
-          className="absolute -translate-y-1/2 whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)]"
-          style={{
-            top: `${t.y}%`,
-            right: `${100 - PLOT_L}%`,
-            // ⚠️ MARGIN, never padding. Padding keeps the gap inside the box, so
-            // the element's own rect still ends flush against the axis — and every
-            // instrument that asks the DOM where a label is (this repo's overlap
-            // guards included) then reads a label touching the plot. It cost a
-            // round of chasing a collision that was 8px of empty padding.
-            marginRight: `${AXIS_LABEL_GAP_PX}px`,
-          }}
-        >
-          {format(t.value)}
+        <span key={`${t.y}-${t.value}`}>
+          <span
+            data-axis-label=""
+            className="absolute -translate-y-1/2 whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)]"
+            style={{
+              top: `${t.y}%`,
+              right: '100%',
+              // ⚠️ MARGIN, never padding. Padding keeps the gap inside the box, so
+              // the element's own rect still ends flush against the axis — and every
+              // instrument that asks the DOM where a label is (this repo's overlap
+              // guards included) then reads a label touching the plot. It cost a
+              // round of chasing a collision that was 8px of empty padding.
+              marginRight: `${AXIS_LABEL_GAP_PX}px`,
+            }}
+          >
+            {format(t.value)}
+          </span>
+          {stub && (
+            /* The tick mark. HTML rather than a `<line>` at `PLOT_L - 2`, which
+               is off the viewBox now the plot starts at its own left edge — and
+               would have been silently clipped rather than drawn short. */
+            <span
+              aria-hidden="true"
+              className="absolute h-px w-[5px] bg-[var(--border)]"
+              style={{ top: `${t.y}%`, right: '100%' }}
+            />
+          )}
         </span>
       ))}
     </>
@@ -221,23 +286,6 @@ export function PointDot({
 }
 
 /**
- * The halo every label drawn INSIDE a plot wears.
- *
- * ⚠️ **A plot label sits on top of the data, so something has to give.** Four
- * curves in one box leaves no position that is empty at every width — the index
- * figure's trough labels had a company's recovery running straight through the
- * words at 1280px and two more at 375px, and it read as a deliberate crossing
- * rather than as a defect. Nudging each label is a per-figure decision that goes
- * stale the moment a path is reshaped (CLAUDE.md 11k); interrupting the line
- * behind the text is a rule, and it holds at every width for ever.
- *
- * The colour is the panel's own ground, so the halo is invisible except where it
- * is doing its job.
- */
-export const PLOT_LABEL_HALO =
-  'rounded-[2px] bg-[var(--bg-stripe)] px-[2px]';
-
-/**
  * A short label pinned to a point on the plot.
  *
  * ⚠️ **The anchor is chosen from the position, never passed in.** A centred label
@@ -247,16 +295,20 @@ export const PLOT_LABEL_HALO =
  *
  * `dy` is the vertical offset in pixels — positive puts the label below the point.
  *
- * ⚠️ **There is no `above` option, deliberately.** One was written and removed
- * the same day: choosing a side per label is a per-figure decision that goes
- * stale the next time a path moves, and it swapped one collision for another.
- * The halo below plus a taller plot on narrow screens fixes the underlying
- * problem — a label with something behind it — without anyone having to choose.
+ * ⚠️ **A label never has anything behind it, and that is a constraint on the
+ * DRAWING rather than on the label.** A halo — the panel's ground painted behind
+ * the text — was tried and rejected by the owner on sight: it interrupts the very
+ * curve the figure is about, so a chart with a label over a line looks broken
+ * rather than crowded. The fix belongs upstream: shape the paths so the troughs
+ * are separated, and put the words in space that is genuinely empty. If a label
+ * has nowhere to go, the figure is too busy — that is information, not a styling
+ * problem.
  */
 export function PinnedLabel({
   x,
   y,
   text,
+  short,
   dy = 6,
   strong = false,
   id,
@@ -264,6 +316,16 @@ export function PinnedLabel({
   x: number;
   y: number;
   text: string;
+  /**
+   * A narrow-screen form, shown below `sm`.
+   *
+   * ⚠️ Not a nicety. "Company A −20%" is 106px however wide the screen is, and at
+   * 375px the plot is 299px — so a third of the drawing is under one label and it
+   * crosses whatever is there. Below `sm` the same label is 45px and clears
+   * everything, measured. The caption names the companies in full directly
+   * underneath, so the letter is never the only place the name appears.
+   */
+  short?: string;
   dy?: number;
   strong?: boolean;
   id: string;
@@ -272,7 +334,7 @@ export function PinnedLabel({
   return (
     <span
       data-pinned-label={id}
-      className={`absolute whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] ${PLOT_LABEL_HALO} ${
+      className={`absolute whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] ${
         strong ? 'font-semibold text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
       }`}
       style={{
@@ -281,7 +343,14 @@ export function PinnedLabel({
         transform: `translate(${anchorRight ? '-100%' : '-50%'}, ${dy}px)`,
       }}
     >
-      {text}
+      {short ? (
+        <>
+          <span className="sm:hidden">{short}</span>
+          <span className="hidden sm:inline">{text}</span>
+        </>
+      ) : (
+        text
+      )}
     </span>
   );
 }

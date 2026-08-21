@@ -8,6 +8,7 @@ import {
   DD_LINE,
   LOW_LINE,
   PLOT_L,
+  Plot,
   Swatch,
   TimeNote,
   TodayDot,
@@ -127,7 +128,7 @@ export function PeakChoiceFigure() {
       }
     >
       {/* ── price ─────────────────────────────────────────────────────────── */}
-      <div className="relative w-full aspect-[16/7] sm:aspect-[16/5]">
+      <Plot box="aspect-[16/7] sm:aspect-[16/5]">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -141,18 +142,6 @@ export function PeakChoiceFigure() {
           }
         >
           <AxisFrame floorY={PRICE_FLOOR} />
-          {PRICE_TICKS.map((t) => (
-            <line
-              key={t.y}
-              x1={PLOT_L - 2}
-              y1={t.y}
-              x2={PLOT_L}
-              y2={t.y}
-              stroke="var(--border)"
-              strokeWidth="1"
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
 
           {/* The two highs a reader is being asked to tell apart. */}
           <line
@@ -186,12 +175,12 @@ export function PeakChoiceFigure() {
             vectorEffect="non-scaling-stroke"
           />
         </svg>
-        <AxisLabels ticks={PRICE_TICKS} format={(v) => `$${v}`} />
+        <AxisLabels ticks={PRICE_TICKS} format={(v) => `$${v}`} stub />
         <TodayDot y={RECENT.todayY} />
-      </div>
+      </Plot>
 
       {/* ── the same year, as a drawdown ──────────────────────────────────── */}
-      <div className="relative mt-2 w-full aspect-[16/6] sm:aspect-[16/4]">
+      <Plot box="aspect-[16/6] sm:aspect-[16/4]" className="mt-2">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -253,7 +242,7 @@ export function PeakChoiceFigure() {
           {Math.round(RECENT_DD_TODAY)}%
         </span>
         <TodayDot y={todayDdY} color={DD_LINE} />
-      </div>
+      </Plot>
       <TimeNote>Time → (about a year)</TimeNote>
     </Figure>
   );
@@ -326,7 +315,7 @@ export function WindowChoiceFigure() {
         </>
       }
     >
-      <div className="relative w-full aspect-[16/10] sm:aspect-[16/6]">
+      <Plot box="aspect-[16/10] sm:aspect-[16/6]">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -404,7 +393,7 @@ export function WindowChoiceFigure() {
           {Math.round(MEDIUM_TODAY)}%
         </span>
         <TodayDot y={todayY} color={DD_LINE} />
-      </div>
+      </Plot>
       <TimeNote>Time → (three years)</TimeNote>
     </Figure>
   );

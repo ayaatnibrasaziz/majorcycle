@@ -1986,217 +1986,217 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
 
   'how-long-do-recoveries-take': () => (
     <>
-      <h2>Nobody can forecast it. You can read the record.</h2>
+      <h2>The honest answer, and the useful one</h2>
       <p>
-        There is no honest answer to how long a recovery will take, and anyone
-        offering one is guessing. But that is not the end of the question, because
-        a company&rsquo;s past falls all have a length, and those lengths are
-        sitting on its chart waiting to be measured.
+        The honest answer is that nobody knows. Anyone who gives you a number for
+        how long a particular share will take to get back is guessing, however
+        confident they sound.
       </p>
       <p>
-        That is what this article is about: not a forecast, but a way of looking.
+        The useful answer is that this company has probably done it before, more
+        than once, and each of those recoveries took a specific amount of time. You
+        can look them up. That will not tell you what happens next, but it will tell
+        you what kind of wait this business has asked of people in the past, which
+        is a great deal better than nothing.
       </p>
 
-      <h2>Where the time is, on the page</h2>
+      <h2>Where the time is hiding on a price chart</h2>
       <p>
-        Every stock page draws the price along the top and, underneath it, the same
-        years expressed as a <strong>drawdown</strong> — how far under its own high
-        the price was on each day. Both panels share one horizontal axis, which is
-        time.
+        Look at any share price chart and your eye goes up and down. Prices are on
+        the vertical axis, so that is where the drama is. The horizontal axis is
+        just dates, and most people never read it.
       </p>
       <p>
-        The drawdown curve starts at zero, dives when the price falls, and comes
-        back to zero at the exact moment the price gets back to the high it fell
-        from. So the shaded stretch below zero is not just a picture of a fall. It
-        is the fall <em>and</em> the wait, drawn to scale, and its width is how long
-        the wait lasted.
+        But the length of a recovery is a horizontal measurement. It is the distance
+        between the day a price left a high behind and the day it climbed back to
+        it. On an ordinary price chart that distance is hard to see, because you
+        have to remember where the old high was while your eye travels sideways.
+      </p>
+      <p>
+        A drawdown chart fixes that. It shows the same days, but instead of the
+        price it plots how far below its own recent high the price is. It starts at
+        zero, dips whenever the price falls, and comes back to zero on the day the
+        price reaches its old high again. Every dip below the line is one complete
+        round trip, drawn to scale.
+      </p>
+      <p>
+        So the shaded shape is not just a picture of a fall. Its depth is how far
+        the price dropped, and its <strong>width is how long the wait lasted</strong>.
       </p>
 
       <PriceRecoveryFigure />
 
-      <h3>How to read one off the chart</h3>
+      <h3>Reading one off the chart</h3>
       <ol>
         <li>
-          <strong>Find where the curve leaves zero.</strong>{' '}That is the day the
+          <strong>Find where the line leaves zero.</strong>{' '}That is the day the
           price passed a high it would not see again for a while.
         </li>
         <li>
-          <strong>Follow it right until it touches zero again.</strong>{' '}That is the
-          day it got back.
+          <strong>Follow it right until it touches zero again.</strong>{' '}That is
+          the day it got back.
         </li>
         <li>
-          <strong>Read the gap off the axis underneath.</strong>{' '}That is how long
-          that particular recovery took.
+          <strong>Read the gap off the dates underneath.</strong>{' '}That is how long
+          that recovery took.
         </li>
       </ol>
       <p>
-        Do it for every dip in the record and you have something far more useful
-        than an average: this company&rsquo;s own range. Some businesses climb out
-        of everything within a year. Others have spent half a decade underwater more
-        than once. The chart tells you which kind you are looking at, and it takes
-        about thirty seconds.
-      </p>
-
-      <h3>The Profit view is the same chart from the bottom</h3>
-      <p>
-        The panel has a second setting, <strong>Profit Recovery</strong>, which
-        measures the opposite distance: how far the price has climbed{' '}
-        <em>above</em> its recent low rather than how far it sits below its recent
-        high. Same days, same axis, measured from the other end.
+        Do that for each dip and you have something better than an average. You have
+        this company&rsquo;s own range. Some businesses climb out of everything
+        inside a year. Others have spent half a decade below an old high, more than
+        once. Thirty seconds with the chart tells you which sort you are looking at.
       </p>
       <p>
-        It is the more useful of the two once a fall has already happened and you
-        are watching the climb. Drawdown answers <em>how much further to go</em>;
-        Profit answers <em>how much of it is already done</em>. Both carry the same
-        two reference lines — this company&rsquo;s typical move and the most extreme
-        one in its record — so you can see whether the current one is ordinary or
-        unusual for it.
+        MajorCycle draws this chart on every stock page, under the price, with a
+        matching set of dates. There is also a second view of the same thing that
+        measures upwards from the lowest point instead of downwards from the high,
+        which is the more natural way to watch a recovery you are already in. Both
+        mark the size of a typical move for that company and the most extreme one in
+        its record, so you can see whether the current episode is ordinary for it.
       </p>
 
       <h2>What the record can and cannot tell you</h2>
       <p>
-        Reading past durations off a chart is genuinely informative. It is still
-        history, and it is worth being precise about what that does and does not
-        buy you.
+        Past recoveries are real evidence. They are also history, and it is worth
+        being clear about the limits before you lean on them.
       </p>
       <ul>
         <li>
-          <strong>Depth does not predict duration.</strong>{' '}This is the part most
-          people get wrong. A shallow fall can grind on for years and a brutal one
-          can be over in months — the two are barely related, which is why the width
-          of a stretch has to be read rather than inferred from its depth.
+          <strong>A deeper fall is not a longer one.</strong>{' '}This trips almost
+          everybody up. A modest 15% slide can grind on for years while a brutal 45%
+          drop is over in eight months. The two things barely track each other, so
+          the width has to be read rather than guessed from the depth.
         </li>
         <li>
-          <strong>A handful of falls is a small sample.</strong>{' '}Most companies
-          have a few in their record, not hundreds. Three past recoveries tell you
-          something about the character of the business; they do not make a
-          distribution.
+          <strong>Three or four falls is not a lot to go on.</strong>{' '}Most
+          companies have a handful in their whole listed life. That is enough to
+          show you the character of the business. It is not enough to be an average
+          of anything.
         </li>
         <li>
-          <strong>The company may not be the same company.</strong>{' '}A recovery
-          from fifteen years ago happened under different management, a different
-          balance sheet and often a different business. The chart remembers; the
+          <strong>The company may have changed.</strong>{' '}A recovery from fifteen
+          years ago happened under different management, with a different balance
+          sheet, often in a different business. The chart remembers all of it. The
           company has moved on.
         </li>
         <li>
-          <strong>The current fall is unfinished by definition.</strong>{' '}Its width
-          is still growing while you look at it. Every completed stretch on the
-          chart looked exactly like that once.
+          <strong>Whatever is happening now has no width yet.</strong>{' '}The current
+          dip is still getting wider while you look at it. Every finished stretch on
+          the chart looked exactly like that once.
         </li>
       </ul>
 
-      <h2>Why the averages you will find quoted do not help</h2>
+      <h2>Why the figure you will find online does not help</h2>
       <p>
-        Search this question and you will get a single number — something like
-        &ldquo;the market has historically recovered in about two years.&rdquo;
-        There are three problems with leaning on that.
+        Search this question and you will get a single tidy number, usually
+        something like &ldquo;markets have historically recovered in about two
+        years.&rdquo; Three things are wrong with leaning on it.
       </p>
       <ul>
         <li>
-          <strong>It is about an index.</strong>{' '}An index recovers when enough of
-          its members do, and its own falls are shallower than theirs to begin with.
-          That is covered in{' '}
+          <strong>It describes an index.</strong>{' '}An index recovers once enough of
+          its members do, and its falls are shallower than theirs to start with.
+          More on that in{' '}
           <Link href="/learn/own-history-vs-market-average">
             Why your company&rsquo;s own history beats the market&rsquo;s average
           </Link>
           .
         </li>
         <li>
-          <strong>The companies that never came back are missing.</strong>{' '}A study
-          of recoveries can only include things that recovered. Businesses taken over
-          at a low price, delisted, or wound up simply leave the sample, and the
-          average quietly improves as a result.
+          <strong>The ones that never came back are missing.</strong>{' '}A study of
+          recoveries can only count things that recovered. Companies taken over
+          cheaply, delisted or wound up drop out of the sample, and the average
+          quietly improves because they left.
         </li>
         <li>
-          <strong>An average of wildly different things is not a forecast.</strong>{' '}
-          If the honest range runs from months to most of a decade, the midpoint is a
-          number rather than an expectation.
+          <strong>Averaging things that disagree does not produce a forecast.</strong>{' '}
+          When the real range runs from eight months to eight years, the midpoint is
+          a number, not an expectation.
         </li>
       </ul>
       <p>
-        One company&rsquo;s own three or four stretches, read off its own chart, are
-        worth more than a market-wide average — precisely because you can see how
-        much they disagree with each other.
+        One company&rsquo;s own three or four stretches beat a market-wide average,
+        precisely because you can see how much they disagree with each other.
       </p>
 
-      <h2>What would have to be knowable</h2>
+      <h2>What anyone would have to know to answer this</h2>
       <p>
-        To say how long <em>this</em>{' '}
-        recovery will take, you would need to know when
-        the company&rsquo;s earnings turn back up, when other buyers change their
-        minds about it, and whether the thing that caused the fall is temporary or
-        permanent.
+        To say how long the current fall will last, you would need to know when the
+        company&rsquo;s earnings turn back up, when enough other investors change
+        their minds about it, and whether the thing that caused the fall is
+        temporary or permanent.
       </p>
       <p>
-        The first is a forecast, the second is a forecast about other people, and the
-        third is usually only settled in hindsight. Nobody has those three, and a
-        product that implied otherwise would be selling confidence rather than
+        The first is a forecast. The second is a forecast about other people. The
+        third is usually only settled with hindsight. Nobody has all three, and a
+        product that pretended otherwise would be selling confidence rather than
         information.
       </p>
 
       <h2>The waiting is the part that costs you</h2>
       <p>
-        None of this makes duration unimportant. It is arguably the part that decides
+        None of this makes duration unimportant. It may be the thing that decides
         whether an investment suits you at all.
       </p>
       <p>
-        Money committed to a share that spends six years getting back to where it
-        started has done nothing for six years, and it was not available for anything
-        else. Two people can buy the same company at the same price and have
+        Money in a share that spends six years getting back to where it started has
+        done nothing for six years, and it was not available for anything else in
+        the meantime. Two people can buy the same company at the same price and have
         completely different experiences, purely because of how long they had to sit
         there. One of them may not have been able to.
       </p>
       <p>
-        That is a question about your own circumstances — how long you can leave money
-        alone, and what else you would have done with it. It is not a question about
-        the company, and no analysis of the company can answer it. What the chart can
-        do is show you how long this business has asked people to wait before.
+        That is a question about your circumstances, not about the company, and no
+        analysis of the company can answer it. What the chart can do is show you how
+        long this business has asked people to wait before.
       </p>
 
       <h2>What MajorCycle measures, and what it leaves to you</h2>
       <p>
-        The numbers we compute are all <strong>magnitudes</strong>. Nothing in the
-        analysis holds a number of days, months or years anywhere.
+        Everything we calculate is a size. There is no number of days, months or
+        years anywhere in the analysis.
       </p>
       <ul>
         <li>
           <strong>How far this company usually falls</strong>{' '}before it turns, and
-          how far today&rsquo;s fall is against that.
+          how today&rsquo;s fall compares.
         </li>
         <li>
-          <strong>How far it usually rises</strong>{' '}afterwards — the size of the
+          <strong>How far it usually rises</strong>{' '}afterwards. The size of the
           recovery, not its speed.
         </li>
         <li>
           <strong>How many separate falls</strong>{' '}its record contains, which is
-          how much any of it should be trusted.
+          how much weight any of it deserves.
         </li>
       </ul>
       <p>
-        That is a decision rather than an omission. We could publish an average
-        recovery time per stock, and it would be a tidy number built on three or four
-        events that disagreed with each other — precision we have not got, printed in
-        a font that suggests we have. Drawing the falls against time instead hands you
-        the same information without pretending it is a single figure.{' '}
+        We could publish an average recovery time per company. It would be a neat
+        figure built on three or four events that disagreed with each other, and it
+        would look far more certain than it was. Drawing the falls against time
+        instead gives you the same information without dressing it up as a single
+        answer.{' '}
         <Link href="/learn/how-to-read-a-majorcycle-rating">
           How to read a MajorCycle rating
         </Link>{' '}
-        sets out what the three readings do cover.
+        covers what the three readings do tell you.
       </p>
 
       <h2>See it for any stock, free</h2>
       <p>
-        The price chart, the drawdown and profit views, and this company&rsquo;s own
-        history of falls and recoveries are free on every stock page, across the US,
-        Australian and Canadian markets.
+        The price chart, the drawdown and recovery views, and this company&rsquo;s
+        own record of falls are free on every stock page, across the US, Australian
+        and Canadian markets.
       </p>
       <p>
         <strong>No card required.</strong>{' '}
-        <Link href="/signup">Create a free account</Link> and measure a few
-        recoveries for yourself.
+        <Link href="/signup">Create a free account</Link> and time a few recoveries
+        for yourself.
       </p>
     </>
   ),
+
 
   'is-a-dividend-safe': () => (
     <>

@@ -42,9 +42,20 @@ const N = 121;
  * reader to read something into wiggles that carry no information.
  */
 function path(keys: readonly (readonly [number, number])[]): readonly Sample[] {
+  /**
+   * ⚠️ **Every keyframe x joins the sample grid.** Sampling evenly across 0–100
+   * lands NEAR a vertex and not on it, so a fall drawn to exactly −50% bottoms
+   * out at −49.4% and the label under it reads "−49%" — a figure whose whole
+   * subject is comparing depths, quietly printing numbers nobody chose. It looks
+   * completely fine, which is the problem. Same defect, same fix as the recovery
+   * figure that used to live in this folder.
+   *
+   * The grid is SHARED by all three companies (every keyframe x from every path),
+   * because the index is their average sample-by-sample: three curves sampled at
+   * three different sets of x cannot be averaged pointwise at all.
+   */
   const out: Sample[] = [];
-  for (let i = 0; i < N; i += 1) {
-    const x = (i / (N - 1)) * 100;
+  for (const x of GRID) {
     let k = 0;
     while (k < keys.length - 2 && x > keys[k + 1]![0]) k += 1;
     const [x0, p0] = keys[k]!;
@@ -82,10 +93,37 @@ export interface Member {
  * that separation IS the mechanism the article is explaining.
  */
 const PATHS: readonly (readonly [string, readonly (readonly [number, number])[]])[] = [
-  ['Company A', [[0, 100], [10, 103], [22, 82], [40, 105], [70, 109], [100, 112]]],
-  ['Company B', [[0, 100], [30, 118], [58, 59], [78, 74], [100, 88]]],
-  ['Company C', [[0, 100], [20, 104], [45, 108], [70, 112], [88, 78], [100, 84]]],
+  ['Company A', [[0, 100], [8, 105], [20, 84], [35, 104], [60, 110], [100, 116]]],
+  ['Company B', [[0, 100], [26, 120], [52, 60], [70, 96], [84, 110], [100, 118]]],
+  ['Company C', [[0, 100], [30, 106], [60, 112], [70, 120], [84, 84], [100, 98]]],
 ];
+
+/** Every x any path turns at, plus an even fill — see `path()`. */
+const GRID: readonly number[] = [
+  ...new Set([
+    ...Array.from({ length: N }, (_, i) => (i / (N - 1)) * 100),
+    ...PATHS.flatMap(([, keys]) => keys.map(([x]) => x)),
+  ]),
+].sort((a, b) => a - b);
+
+/**
+ * ⚠️ **These were reshaped on 2026-08-21 so the LABELS have somewhere to go**,
+ * which is a legitimate reason to move a schematic's keyframes and worth saying
+ * out loud, because it looks like fiddling.
+ *
+ * In the first version Company C bottomed out at the moment Company B's recovery
+ * was passing through, so a label under C's trough had a line across it — and the
+ * index's own low landed on top of C's, putting two labels on one row at every
+ * width below 414px. Two fixes were tried and both were worse: computing which
+ * side of each point had free space (right today, stale the next time a path
+ * moves), and painting the panel's ground behind the words, which interrupts the
+ * curve so the chart reads as broken rather than busy — rejected on sight.
+ *
+ * What works is upstream of all of it: **fall at three clearly separated times,
+ * and let the deepest member own the index's low.** Nothing then passes under any
+ * trough, the four labels get four rows, and no drawing rule is needed at all.
+ * The claim the figure makes is unchanged, and still computed rather than drawn.
+ */
 
 export const MEMBERS: readonly Member[] = PATHS.map(([name, keys]) => {
   const prices = path(keys);
@@ -145,20 +183,8 @@ export function trough(dd: readonly DdPoint[]): DdPoint {
 /**
  * Each company's own worst moment, and the index's — the four points labelled.
  *
- * ⚠️ **All four labels sit BELOW their point, and getting there took a wrong
- * turn worth recording.** The first fix for "a curve runs through these words"
- * was to compute which side of each point had clear space — which works, and
- * then has to keep working as paths move, and produced its own defect: on a
- * phone the index label landed on top of the index line and the halo punched a
- * visible gap in it, so the chart looked broken instead of crowded.
- *
- * The rule that actually holds is two much duller things. Give the labels a halo
- * (`PLOT_LABEL_HALO`), so a line behind one is interrupted rather than drawn
- * through it. And give the plot more HEIGHT on a phone, because the crowding was
- * vertical — four 22px labels in a 211px box — and 12px is the reading floor, so
- * the type cannot give. With both, one fixed side is clean at every width from
- * 360px to 1280px, measured. **A cleverer rule was solving a problem that more
- * room did not have.**
+ * All four sit BELOW their point, with nothing underneath any of them — which is
+ * a property of the PATHS (see the note beside them), not of a placement rule.
  */
 export const MEMBER_TROUGHS = MEMBERS.map((m) => ({ name: m.name, ...trough(m.dd) }));
 export const INDEX_TROUGH = trough(INDEX_DD);

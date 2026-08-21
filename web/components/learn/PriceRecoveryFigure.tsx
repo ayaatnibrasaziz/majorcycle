@@ -6,7 +6,7 @@ import {
   DD_FILL,
   DD_LINE,
   PLOT_L,
-  PLOT_LABEL_HALO,
+  Plot,
   PointDot,
   Swatch,
   XTickRow,
@@ -68,7 +68,7 @@ export function PriceRecoveryFigure() {
             The same years as a drawdown — how far under its own high it was
           </LegendItem>
           <LegendItem swatch={<Swatch color="var(--text-primary)" dashed={false} />}>
-            Time spent below a previous high — the measurement, not the data
+            How long it stayed below that high
           </LegendItem>
         </>
       }
@@ -87,7 +87,7 @@ export function PriceRecoveryFigure() {
       }
     >
       {/* ── the price ─────────────────────────────────────────────────────── */}
-      <div className="relative w-full aspect-[16/7] sm:aspect-[16/5]">
+      <Plot box="aspect-[16/7] sm:aspect-[16/5]">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -100,18 +100,6 @@ export function PriceRecoveryFigure() {
           }
         >
           <AxisFrame floorY={PRICE_FLOOR_Y} />
-          {PRICE_TICKS.map((t) => (
-            <line
-              key={t.value}
-              x1={PLOT_L - 2}
-              y1={t.y}
-              x2={PLOT_L}
-              y2={t.y}
-              stroke="var(--border)"
-              strokeWidth="1"
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
 
           {/* The high each fall is measured against — the level the price has to
               get back to before its drawdown returns to zero. */}
@@ -139,11 +127,16 @@ export function PriceRecoveryFigure() {
             vectorEffect="non-scaling-stroke"
           />
         </svg>
-        <AxisLabels ticks={PRICE_TICKS} format={(v) => `$${v}`} />
-      </div>
+        <AxisLabels ticks={PRICE_TICKS} format={(v) => `$${v}`} stub />
+      </Plot>
 
       {/* ── the same years, as a drawdown ─────────────────────────────────── */}
-      <div className="relative mt-2 w-full aspect-[16/6] sm:aspect-[16/4]">
+      {/* ⚠️ 16/9 on a phone, not 16/6. Three axis labels in a 94px panel leave
+          them touching — measured at 360px as **0.x px** of vertical clearance,
+          which no overlap guard would call a collision and which the next font
+          that renders a hair taller turns into one. Height is the only variable
+          available: 12px is the reading floor and the panel cannot narrow. */}
+      <Plot box="aspect-[16/9] sm:aspect-[16/4]" className="mt-2">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -251,7 +244,7 @@ export function PriceRecoveryFigure() {
             <span
               key={u.id}
               data-underwater-label={u.id}
-              className={`hidden sm:block absolute whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] font-semibold text-[var(--text-primary)] ${PLOT_LABEL_HALO}`}
+              className="hidden sm:block absolute whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] font-semibold text-[var(--text-primary)]"
               style={{
                 left: `${rx(mid)}%`,
                 top: `${ddY(0)}%`,
@@ -268,7 +261,7 @@ export function PriceRecoveryFigure() {
           floorY={DD_FLOOR_Y}
           ticks={YEAR_TICKS.map((y) => ({ key: y, x: yearX(y), label: yearTick(y) }))}
         />
-      </div>
+      </Plot>
       <div className="h-6" />
 
       {/* The same three numbers, for the width where they cannot sit on the

@@ -8,7 +8,7 @@ import {
   DdCurve,
   LOW_LINE,
   LevelRule,
-  PLOT_LABEL_HALO,
+  Plot,
   Swatch,
   TimeNote,
   TodayDot,
@@ -77,7 +77,7 @@ export function MarketWordsFigure() {
           (12px is the reading floor) and cannot move sideways (it names a
           horizontal rule), so the plot has to give. Same fix as the index
           figure. */}
-      <div className="relative w-full aspect-[16/13] sm:aspect-[16/6]">
+      <Plot box="aspect-[16/13] sm:aspect-[16/6]">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -109,20 +109,25 @@ export function MarketWordsFigure() {
             `MARKET_LEVELS`, so the picture cannot disagree with the prose that
             reads the same list.
 
-            Left of centre on purpose: the curve is still near zero over the first
-            third, so this band of the plot is empty and nothing has to be nudged
-            around a line that might move. */}
+            ⚠️ **Below its rule, inside the band it names** — which is both the
+            correct reading (a correction is the zone BETWEEN the two lines, not
+            the line itself) and the only placement with room. Above the rule the
+            words sat in the dip zone, where the curve still is over the first
+            third of the plot; at 375px the panel is short enough that the curve
+            ran through "Correction". Painting the panel's ground behind the text
+            hid a length of the dashed rule instead, which is worse: the figure is
+            about those two lines. */}
         {MARKET_LEVELS.map((l) => (
           <span
             key={l.pct}
             data-zone-label={l.label}
-            className={`absolute whitespace-nowrap text-[12px] font-semibold text-[var(--text-primary)] ${PLOT_LABEL_HALO}`}
-            style={{ left: `${rx(4)}%`, top: `${mktY(l.pct)}%`, transform: 'translate(0, -18px)' }}
+            className="absolute whitespace-nowrap text-[12px] font-semibold text-[var(--text-primary)]"
+            style={{ left: `${rx(3)}%`, top: `${mktY(l.pct)}%`, transform: 'translate(0, 7px)' }}
           >
             {l.label}
           </span>
         ))}
-      </div>
+      </Plot>
       <TimeNote>Time →</TimeNote>
     </Figure>
   );
@@ -161,7 +166,7 @@ function RecordPanel({ company, title, id }: { company: Company; title: string; 
   return (
     <div data-record-panel={id}>
       <p className="mb-1.5 text-[13px] font-bold text-[var(--text-primary)]">{title}</p>
-      <div className="relative w-full aspect-[16/11]">
+      <Plot box="aspect-[16/11]">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -207,7 +212,7 @@ function RecordPanel({ company, title, id }: { company: Company; title: string; 
           {pct(company.today)}
         </span>
         <TodayDot y={todayY} color={DD_LINE} id={id} />
-      </div>
+      </Plot>
     </div>
   );
 }
