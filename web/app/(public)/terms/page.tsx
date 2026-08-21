@@ -6,7 +6,7 @@ export const metadata: Metadata = pageMetadata({
   path: '/terms',
   title: 'Terms of Service',
   description:
-    'The terms governing your use of MajorCycle: accounts, the 7-day free trial, subscription billing and cancellation, acceptable use, and limitation of liability.',
+    'The terms governing your use of MajorCycle: accounts, the 7-day trial, billing and cancellation, acceptable use, and limitation of liability.',
 });
 
 // BASELINE CONTENT — owner to review/customise (and ideally have a professional

@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     template: '%s | MajorCycle',
   },
   description:
-    'Discover where US, Australian, and Canadian stocks sit relative to their historical Major Cycle. Fundamental health scores, valuation positioning, and analyst data — all in one place.',
+    'Where US, Australian and Canadian shares sit against their own history of falls, with financial health scores and analyst data. Educational, not advice.',
   // SITE_ORIGIN, not a re-typed literal — it disagreed with lib/url.ts until G1.
   metadataBase: new URL(process.env['NEXT_PUBLIC_SITE_URL'] ?? SITE_ORIGIN),
   ...(googleSiteVerification

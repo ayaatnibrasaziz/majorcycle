@@ -298,3 +298,55 @@ test.describe('the site is still gated — control', () => {
     });
   }
 });
+
+test.describe('every public page carries a usable search snippet', () => {
+  /**
+   * ⚠️ **A meta description is the only sentence most people read before
+   * deciding whether to click**, and both ways of getting it wrong are silent:
+   * too long and Google cuts it mid-clause, too short and the result looks
+   * abandoned. Neither errors, neither shows up on the page, and nothing else in
+   * this repo could see it — which is why ten pages had drifted over the limit
+   * and `/contact` sat at 38 characters, found only by measuring the built HTML.
+   *
+   * ⚠️ **Measured on the RENDERED page, not on the source literal** (CLAUDE.md
+   * 11d). The landing's description is a template string with a live count
+   * interpolated into it, the article descriptions come from the registry, and
+   * the four sign-in pages inherit the root layout's fallback — three different
+   * routes to one tag, and only the wire sees all of them.
+   */
+  const MAX = 155;
+  const MIN = 70;
+
+  for (const page_ of PUBLIC_PAGES) {
+    test(`${page_.path} has a description between ${MIN} and ${MAX} characters`, async ({
+      page,
+    }) => {
+      await page.goto(page_.path);
+      const content = await page
+        .locator('meta[name="description"]')
+        .first()
+        .getAttribute('content');
+
+      expect(content, `${page_.path} has no meta description at all`).toBeTruthy();
+      const n = (content ?? '').length;
+      expect(
+        n,
+        `${page_.path}: ${n} chars — Google truncates near ${MAX}: "${content}"`,
+      ).toBeLessThanOrEqual(MAX);
+
+      /* ⚠️ The FLOOR applies only where a snippet is actually shown. The four
+         sign-in pages are `noindex, follow`, so Google never renders a snippet
+         for them and a 35-character description costs nothing — demanding 70
+         there would be inventing work to satisfy a rule that does not reach
+         them. The ceiling still applies everywhere, because a description that
+         is too long is a defect wherever it renders. The tag must exist on all
+         of them regardless: a missing one is a different bug from a short one. */
+      if (page_.index) {
+        expect(
+          n,
+          `${page_.path}: only ${n} chars — too thin to earn a click: "${content}"`,
+        ).toBeGreaterThanOrEqual(MIN);
+      }
+    });
+  }
+});

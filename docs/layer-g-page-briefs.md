@@ -29,6 +29,22 @@
 > Fixing a wrong *goal* in a paragraph costs minutes; fixing it after six pages are
 > built costs the session.
 
+
+> ## ⛔ SCOPE CHANGE, 2026-08-22 — two of the six page types are cancelled
+>
+> The owner cut the list. **`/about` is dropped** (may return later, not now) and
+> **`/glossary` is dropped permanently.** Briefs §2 and §5 below are kept as a record of
+> what was intended, not as work to do — do not build from them.
+>
+> `llms.txt` was dropped the same day.
+>
+> **What actually shipped from this file:** §1 the landing page (rebuilt to the storyboard
+> artifact, not to §1's prose), §3 the Learn index, §4 the Learn article template — twelve
+> articles, all read through and approved by the owner on 2026-08-21 and 2026-08-22.
+>
+> **What is still owed: §6, the weekly market note** — `/notes` + `/notes/[date]`. It is the
+> last page type in Layer G.
+
 ---
 
 ## How many pages is this, actually?

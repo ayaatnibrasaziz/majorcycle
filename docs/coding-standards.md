@@ -31,7 +31,7 @@ The owner is non-coder. Future-Claude reading this six months from now is the au
 | Utility | camelCase, descriptive | `lib/ticker.ts`, `lib/case.ts` |
 | Constants | `UPPER_SNAKE_CASE` exports from a regular `.ts` file | `lib/presets.ts` |
 | Type | PascalCase, lives in `lib/types.ts` or co-located | `interface StockRecord` |
-| Test | `*.test.ts` or `*.test.tsx` next to source | `lib/ticker.test.ts` |
+| Test | **`*.spec.ts` in `web/e2e/`**, never next to source | `e2e/entitlement.spec.ts` |
 
 ### Backend (`/analytics`, `/web/_engine`, `/web/api`)
 
@@ -48,6 +48,10 @@ The owner is non-coder. Future-Claude reading this six months from now is the au
 
 - No spaces or special chars in filenames
 - No `index.tsx` files except where Next.js requires it
+- ⚠️ **The test row said `*.test.ts` next to source until 2026-08-22** — a leftover from the
+  Vitest era that contradicted both § 8 (Playwright is the only TS runner, owner decision)
+  and the actual layout. There has never been a `*.test.ts` file in this project, and a
+  convention table is exactly where a future session goes to learn what to create.
 - No `utils.ts` catch-all dumping grounds — name files by their actual purpose
 
 ---
@@ -587,7 +591,7 @@ def compute_overall_rating(fh: float, val: float, cycle_payoff: float) -> tuple[
 | Adding dependencies casually | Bundle bloat, supply chain risk | Justify every new dep in PR |
 | Rewriting whole files | High blast radius | Targeted edits |
 | Mock data left in production code | Will ship if forgotten | Use feature flags or test-only paths |
-| Assuming a stale `web/.next` can still break the dev server | **Fixed at the root on 2026-07-30** — `next.config.ts` now sets `distDir` to `.next-dev` under `NODE_ENV=development`, so `next dev` (and `pnpm e2e`, which spawns its own) can no longer be poisoned by a production build. Two follow-ons this required: `.next-dev/**` had to be added to `eslint.config.mjs`'s ignores (eslint-config-next only knows `.next`, so lint started reporting generated Turbopack chunks as our errors), and both `.gitignore`s. | Nothing to remember day to day. **One residue:** `tsconfig.json` includes `.next/types`, so after **renaming or deleting a route** a stale production build makes `pnpm typecheck` fail naming the old module path — `rm -rf web/.next` and re-run. That failure is loud and names the file, which is the acceptable trade; the silent 404s below were not. |
+| Assuming a stale `web/.next` can still break the dev server | **Fixed at the root on 2026-07-30** — `next.config.ts` now sets `distDir` to `.next-dev` under `NODE_ENV=development`, so `next dev` (and `pnpm e2e`, which spawns its own) can no longer be poisoned by a production build. Two follow-ons this required: `.next-dev/**` had to be added to `eslint.config.mjs`'s ignores (eslint-config-next only knows `.next`, so lint started reporting generated Turbopack chunks as our errors), and both `.gitignore`s. | Nothing to remember day to day. **One residue:** `tsconfig.json` includes `.next/types`, so after **renaming or deleting a route** a stale production build makes `pnpm typecheck` fail naming the old module path — `rm -rf web/.next` and re-run. That failure is loud and names the file, which is the acceptable trade; the silent 404s below were not. **A second residue was worse and is now fixed: `tsconfig.json` also included `.next-dev/**/types`, so `pnpm build` type-checked files the DEV SERVER owns and rewrites.** Twice on 2026-08-22 the production build failed on a truncated `.next-dev/dev/types/routes.d.ts` — `Type error: Unexpected keyword or identifier` pointing at `dlerRoute extends`, a file cut off mid-write when a dev server was killed. Nothing was wrong with the code. **A production build's success must not depend on another process's scratch directory**, so `.next-dev` is now in `exclude`. |
 | Running `pnpm build` while the dev/preview server is up | Poisons the shared `web/.next` cache. Two symptoms seen: **stale `globals.css`** (new JS but old CSS), and — 2026-07-30 — a **route handler that 404s as if it didn't exist**. The second is the dangerous one, because a paywalled route answering 404 instead of 402 reads exactly like a broken gate. Tell them apart by the body: our refusals are **JSON + `private, no-store`**; a routing miss is **HTML + `no-cache, must-revalidate`** (Next's own not-found), and the dev log still shows application-code time because the not-found boundary rendered. | After a prod build, `rm -rf web/.next` (or at least `.next/types`) and restart the dev/preview server before verifying anything. Confirmed: `/report` returned HTML 404 twice, then **402 `payment_failed` + `private, no-store`** immediately after a clean restart — the code was never wrong. |
 | Trusting a **dev-server** reading of CSS after editing `globals.css` | Next HMRs the TSX but does **not** always recompile `globals.css`, so the browser gets NEW markup against OLD styles. Seen 2026-08-02 (Layer F audit F-A4): after tokenising a colour, `getComputedStyle` reported the new custom property as **empty** with **0** elements using it, while the HTML already referenced `var(--brand-light-border)` — which reads exactly like a shipped visual regression (a colourless border). The served stylesheet still held the pre-edit hexes. | **A CSS change is not verified until a build says so.** `pnpm build` and grep the emitted stylesheet in `.next/static/chunks/*.css` for both the token definition and its `var()` consumers. Do not file a styling regression from a dev-server reading alone. |
 | Reading an HTTP **status alone** to decide whether a page guard fired | A server-component `redirect()` cannot send a 3xx once the streaming shell has flushed, so Next puts the redirect **inside a 200** as a `NEXT_REDIRECT` payload. 2026-07-30: `/run` and `/stocks` answered **200** for a deletion-scheduled account, which reads as confinement broken — it wasn't; both bodies redirected to `/reactivate`. A guard that *is* working looks identical to one that isn't. | Assert on the **body**: grep for `NEXT_REDIRECT` (and the target) as well as the status. Route handlers *do* return real 3xx/402 — the streaming caveat is pages only. Byte size is a useful second signal: the redirect shell is a fraction of the real page (29 KB vs 225 KB for `/run`). ⚠️ **`notFound()` has the SAME problem and it is worse, found 2026-08-15.** Once the shell has flushed the status is committed, so an unknown URL renders "Page not found" inside a **200** — a soft-404, which Google penalises harder than an honest 404, sitewide. Proved by control on a production build: with `app/loading.tsx` present `/learn/x` → 200; with it moved aside, same build → **404**. Control that makes it a finding rather than a guess: `/.well-known/nothing-here` returns a true 404 on the same server, so 404s do survive the middleware. Recorded as roadmap **GA-1b**, and ✅ **fixed 2026-08-18** by deleting that file — every `notFound()` now answers a real 404. ⬆️ **This row already described the mechanism for `redirect()` and I re-derived it from scratch** — grep the docs first. |
@@ -634,19 +638,28 @@ decision — see § 8.**)
    **The script derives and prints its own count** — cite sections by NAME, never by number
    (CLAUDE.md 11a records what happened when a hardcoded total drifted).
 10. `pnpm check:report-sections` — the downloadable report matches the 22-section detail page
-11. `pnpm check:data-integrity` — 55 checks: unpaginated reads of growing tables (§ 14c),
-    statement figures labelled with the price currency (§ 14d), and the P/E chart's
-    currency gate (§ 14e-2). Prints its own count and a per-root file floor, because its
-    first version reported OK while silently covering a third less code.
-12. `pnpm check:seo` — **517** checks over the 11 public pages (7 indexable) and every TS
-    file: the `PUBLIC_PAGES` registry and its four consumers, one `SITE_ORIGIN` (the literal
-    was in **five** files and one disagreed), the indexable set pinned **by name** (deriving
-    it from the same list made the test unfalsifiable), and the `Disallow`-vs-`noindex`
-    contradiction. CI reports **286** — one fewer file, because `dev-fixtures` is gitignored.
-13. Playwright e2e — **335** tests *(was 121, then 332; this line keeps going stale, in the
-    section that tells you to read the count — a doc figure is not a measurement, so take it
-    from the run)*,
-    incl. the paywall behavioural matrix, the Stripe
+11. `pnpm check:data-integrity` — unpaginated reads of growing tables (§ 14c), statement
+    figures labelled with the price currency (§ 14d), and the P/E chart's currency gate
+    (§ 14e-2). **It prints its own count and a per-root file floor** — its first version
+    reported OK while silently covering a third less code.
+    ⚠️ The count used to be restated here as "55 checks" and had drifted to 60 by
+    2026-08-22. A number in prose is a copy of a number in code (CLAUDE.md 11c-v), and this
+    is the one section of the docs that tells you to read counts off the run. **Read it off
+    the run.**
+12. `pnpm check:seo` — the `PUBLIC_PAGES` registry and its four consumers, one
+    `SITE_ORIGIN` (the literal was in **five** files and one disagreed), the indexable set
+    pinned **by name** (deriving it from the same list made the test unfalsifiable), and the
+    `Disallow`-vs-`noindex` contradiction. It prints its own totals — pages, indexable pages
+    and TS files scanned. CI's file count is one lower than a local run, because
+    `dev-fixtures` is gitignored.
+14. `pnpm check:render-modes` — reads `.next/server/app/*.html`, the files Next actually
+    emits, and asserts **both** columns: which routes are prerendered and which must never
+    be. A missing static page and an extra one fail in opposite directions, and the extra
+    one is the security case (§ CLAUDE.md 11s). Runs after `pnpm build`, because it guards
+    the artifact rather than the source.
+13. Playwright e2e — *(no count here on purpose. It has read 121, 332 and 335, each stale
+    within days, in the very section that tells you to read the count off the run. A doc
+    figure is not a measurement.)* Includes the paywall behavioural matrix, the Stripe
     **key-scope** probe (`e2e/stripe-key-scope.spec.ts`),
     **`e2e/report-download.spec.ts`**, which downloads the real offline report and opens it
     over `file://` (§ CLAUDE.md 11d), and **`e2e/export-parity.spec.ts`**, which pins the
@@ -658,7 +671,11 @@ decision — see § 8.**)
     a scoped one. Also **`e2e/seo.spec.ts`** (27 tests — robots/sitemap/canonical/`noindex`
     asserted on the real rendered response, signed out) and **`e2e/stock-read-errors.spec.ts`**
     (7 — a failed database read must throw, never masquerade as "not found"; § CLAUDE.md 11e),
-    both credential-free and therefore unskippable.
+    both credential-free and therefore unskippable. Added 2026-08-22:
+    **`e2e/a11y.spec.ts`** (axe-core inside Playwright — never a second runner — over every
+    public page and all twelve articles, with the one `[data-legacy-contrast]` exemption
+    bounded by a test that scans *without* it), and the meta-description bounds inside
+    `seo.spec.ts`, asserted on the rendered tag because three different routes produce it.
 
 > ⚠️ **Check the COUNT, not the colour.** A suite that silently skipped is also green — which
 > is why the numbers above are worth reading off the run rather than trusting the badge.
@@ -714,6 +731,14 @@ Every task ends with the relevant command(s) and shown output:
 | New API route | `pnpm build` then test in Vercel preview | route returns expected shape |
 | UI change | Screenshot before/after | visual match with reference |
 | Schema change | Apply migration locally + run app | no broken queries |
+| Public-page markup, CSS or a new page | `pnpm e2e e2e/a11y.spec.ts` | 0 axe violations outside `[data-legacy-contrast]` |
+| Anything that could change page weight | `pnpm lighthouse` (needs `next start` on **:3200**) | public pages 100; ticker page not below its recorded median |
+
+⚠️ **`pnpm lighthouse` refuses to run against `:3000`.** A dev-server score is meaningless —
+unminified bundles, no prerender, a compile inside the first request — and the number looks
+just as authoritative. It takes the **median of 3** runs because the same unchanged page
+scored 85, 81, 76, 63 and 62 on five consecutive runs here, and it prints the URL it LANDED
+on beside every row so a redirect can never pass for a measurement.
 
 Never report "done" without showing the relevant verification output.
 

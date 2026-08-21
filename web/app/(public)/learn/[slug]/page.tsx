@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { ArticleDoc } from '@/components/ArticleDoc';
 import { LEARN_ARTICLES, articlesByTheme, findArticle, learnPath } from '@/lib/learn';
 import { pageMetadata } from '@/lib/seo';
+import { articleJsonLd, jsonLdScript } from '@/lib/jsonld';
+import { JsonLd } from '@/components/JsonLd';
 import { ARTICLE_BODIES } from '../content';
 
 /**
@@ -80,8 +82,17 @@ export default async function LearnArticlePage({
   const related = articlesByTheme(article.theme).filter((a) => a.slug !== article.slug);
 
   return (
-    <ArticleDoc article={article} related={related}>
-      <Body />
-    </ArticleDoc>
+    <>
+      {/* ⚠️ OUTSIDE `ArticleDoc`, deliberately. Placed inside, this landed within
+          `[data-article-body]` — and `learn.spec.ts` reads that container's text
+          to check no two articles repeat each other's prose, so every article
+          suddenly shared 20+ eight-word runs reading "context https schema org
+          graph type article headline". A `<script>` is invisible on screen and
+          very much visible to anything that reads text out of the DOM. */}
+      <JsonLd json={jsonLdScript([articleJsonLd(article)])} />
+      <ArticleDoc article={article} related={related}>
+        <Body />
+      </ArticleDoc>
+    </>
   );
 }

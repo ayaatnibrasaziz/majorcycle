@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { pageMetadata } from '@/lib/seo';
+import { jsonLdScript, organizationJsonLd, websiteJsonLd } from '@/lib/jsonld';
+import { JsonLd } from '@/components/JsonLd';
 import { LANDING, UNIVERSE_COUNT, depth, price } from '@/lib/landing';
 import { MAG7, cardinal, mag7Facts, pct1, shortName } from '@/lib/mag7';
 import { tierFromLabel } from '@/lib/ratings';
@@ -17,7 +19,7 @@ export const metadata: Metadata = pageMetadata({
   path: '/',
   title: 'Where a stock sits in its own cycle',
   description:
-    `MajorCycle ranks ${UNIVERSE_COUNT} US, Australian and Canadian companies by how far they have fallen against how far they usually fall — then asks whether the business underneath is any good. Educational analysis, not financial advice.`,
+    `MajorCycle ranks ${UNIVERSE_COUNT} US, Australian and Canadian companies by how far they have fallen against how far they usually fall. Educational analysis, not advice.`,
 });
 
 /** The five compliant rating tiers (design-system §4 / CLAUDE.md #16). */
@@ -87,6 +89,9 @@ export default function LandingPage() {
     // against the viewport — if the layout's padding ever changes, that goes red
     // rather than the page quietly growing a 20px gutter.
     <div className="lp lp-bleed">
+      {/* Who publishes this site, stated once, on the page Google treats as its
+          root. Nothing here describes a security — see lib/jsonld.ts. */}
+      <JsonLd json={jsonLdScript([organizationJsonLd(), websiteJsonLd()])} />
       {/* ── ① The hook ─────────────────────────────────────────────────── */}
       <section className="hero" data-rise>
         <div className="lp-wrap hero-grid">

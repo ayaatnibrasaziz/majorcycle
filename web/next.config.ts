@@ -27,7 +27,13 @@ const csp = [
   "frame-ancestors 'none'",
   "form-action 'self'",
   "script-src 'self' https://accounts.google.com https://apis.google.com",
-  "style-src 'self' 'unsafe-inline'",
+  // ⚠️ `accounts.google.com` belongs here, and its absence was a real defect —
+  // measured on the production build 2026-08-22, `/login` and `/signup` each
+  // reported `style-src-elem :: https://accounts.google.com/gsi/style`. Nothing
+  // broke, because the policy is Report-Only; the day it is enforced, the Google
+  // sign-in button would lose its stylesheet. **A Report-Only policy that is
+  // wrong is not harmless — it is a trap primed for the person who flips it.**
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com",
   "img-src 'self' data: https://www.majorcycle.com",
   "font-src 'self'",
   `connect-src 'self' ${supabaseOrigin} https://accounts.google.com`,
@@ -82,6 +88,35 @@ const retiredRoutes = [
 
 const nextConfig: NextConfig = {
   distDir,
+
+  // ── Config review, Layer G, 2026-08-22 ─────────────────────────────────────
+  // Three settings the roadmap flagged as "never consciously decided". Each is
+  // now decided, and the two that stay at their defaults say so, because
+  // "nobody chose this" and "we chose the default" look identical from outside
+  // and this repo has been bitten four times by the difference (CLAUDE.md 11a).
+  //
+  // ⚠️ **1. `poweredByHeader: false`.** Next sends `X-Powered-By: Next.js` on
+  // every response — verified on the wire, not assumed. It tells an attacker
+  // which framework's advisories to read and buys us nothing.
+  poweredByHeader: false,
+  //
+  // ⚠️ **2. No `images` block, deliberately.** Every image on the site is local
+  // (`/logo.png`, the three `/learn` illustrations). Leaving `remotePatterns`
+  // unset is not an omission — it is the setting that stops our own image
+  // optimiser being used as an open proxy for arbitrary URLs. Adding a pattern
+  // is a security decision, not a convenience one.
+  //
+  // ⚠️ **3. The CSP stays REPORT-ONLY, and here is exactly what blocks it.**
+  // Measured on the production build (not dev, where Turbopack's `eval` produces
+  // violations that will never ship): every page reports `script-src-elem ::
+  // inline`, 14 on `/terms` and 28 on the landing, scaling with page complexity.
+  // These are Next's own hydration bootstraps. Enforcing today would break the
+  // entire site, and the only correct fix is a per-request nonce threaded from
+  // `proxy.ts` through every response — real work, with the failure mode "the
+  // site loads but nothing is interactive", on pages including sign-in. That is
+  // a Layer H job with its own verification, not a flag flip at the end of G.
+  // The `style-src` gap above was the other blocker and is now closed, so the
+  // policy is at least TRUE about what the site does.
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

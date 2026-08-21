@@ -47,7 +47,8 @@ When in doubt about any decision: **ask, don't guess.**
 | Payments | Stripe (subscription, 7-day trial) | Standard SaaS, MCP-controlled |
 | Source | GitHub | Required for Actions + Vercel + Claude Code |
 | Domain/DNS | Cloudflare | At-cost registrar, MCP-controlled |
-| Testing (TypeScript) | **Playwright — the ONLY TS test runner** (owner decision, 2026-08-06) | One runner, one count. The rule for judging CI here is *check the COUNT, not the colour*, and that only works while there is **one** number — a second runner means a suite can silently stop running behind the other's green. Unit-level tests are written as **pure, credential-free Playwright specs** in `web/e2e/` (`entitlement.spec.ts`, `export-parity.spec.ts`, `stock-read-errors.spec.ts` — the last drives the real DB readers with a stub client — and `auth-contracts.spec.ts`, which drives `safeNextPath` and `friendlyAuthError`): no browser, no network, so they run on a fork PR with no secrets and can never self-skip. **Do not add Vitest or Jest.** `coding-standards.md` required Vitest until 2026-08-06 and none was ever installed |
+| Testing (TypeScript) | **Playwright — the ONLY TS test runner** (owner decision, 2026-08-06) | One runner, one count. The rule for judging CI here is *check the COUNT, not the colour*, and that only works while there is **one** number — a second runner means a suite can silently stop running behind the other's green. Unit-level tests are written as **pure, credential-free Playwright specs** in `web/e2e/` (`entitlement.spec.ts`, `export-parity.spec.ts`, `stock-read-errors.spec.ts` — the last drives the real DB readers with a stub client — and `auth-contracts.spec.ts`, which drives `safeNextPath` and `friendlyAuthError`): no browser, no network, so they run on a fork PR with no secrets and can never self-skip. **Do not add Vitest or Jest.** `coding-standards.md` required Vitest until 2026-08-06 and none was ever installed. ⚠️ **A LIBRARY used inside a Playwright spec is not a second runner** — `@axe-core/playwright` (added 2026-08-22, `e2e/a11y.spec.ts`) runs as ordinary Playwright tests and appears in the one count. That is the test the rule allows; a `vitest`/`jest` binary with its own count is the thing it forbids |
+| Performance measurement | **Lighthouse** via `pnpm lighthouse` (dev dependency, `scripts/lighthouse.mjs`) | Decision #33 sets a 90+ target and nothing measured it until 2026-08-22. Drives the **production** build on `:3200`, signs in for the gated routes, takes the **median of 3** (one run is not a number — the same page scored 85→62 across five), and prints the URL it LANDED on so a redirect cannot pass for a reading |
 | Error tracking (P2) | Sentry | Free tier sufficient |
 
 ---
@@ -79,6 +80,8 @@ When in doubt about any decision: **ask, don't guess.**
 │   ├── components/                 ← React components
 │   ├── lib/                        ← utilities, DB client, types
 │   ├── scripts/                    ← build + guard scripts (check-*.mjs, build-*.mjs)
+│   │                                 `lighthouse.mjs` MEASURES the production build on :3200
+│   │                                 (never :3000) → lighthouse-report/ (gitignored)
 │   │                                 `build-design-system.mjs` GENERATES the Claude Design
 │   │                                 gallery from globals.css → design-system-build/
 │   │                                 (gitignored — a rendering, never a source of truth)
@@ -364,6 +367,10 @@ These were agreed during planning. Do not relitigate.
 - Why there is no root `loading.tsx`, why `/login` + `/signup` are `force-dynamic`, and why a link-level pending dot was built and rolled back → `architecture.md` §7.2
 - Why every public page is PRERENDERED, which four must never be, and the `s-maxage` finding that came with it → `architecture.md` §7.2c + `pnpm check:render-modes`
 - The three Learn skies, and why image 3 is the untouched original → `design-system.md`
+- Lighthouse: how to run it, why never against `:3000`, the median-of-3 rule, and the 588 KB every reader was paying → `architecture.md` §7.2d + `pnpm lighthouse`
+- Accessibility: axe-core inside Playwright, why it scans under reduced motion, and the ONE bounded exemption → `architecture.md` §7.2e + `e2e/a11y.spec.ts`
+- Structured data (JSON-LD): what we publish and the four schema types we must never use → `architecture.md` §11 + `lib/jsonld.ts`
+- Security headers, `poweredByHeader`, why there is no `images` config, and exactly what blocks the CSP flip → `architecture.md` §7 (F0.5 posture) + `next.config.ts`
 
 ---
 

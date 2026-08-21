@@ -59,3 +59,4 @@ app/dev-fixtures/
 
 # Generated design-system gallery (rendering of globals.css, never a source of truth)
 design-system-build/
+lighthouse-report/

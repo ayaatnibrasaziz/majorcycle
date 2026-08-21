@@ -6,7 +6,7 @@ export const metadata: Metadata = pageMetadata({
   path: '/privacy',
   title: 'Privacy Policy',
   description:
-    'What personal information MajorCycle collects, how it is used, which service providers process it, how long it is kept, and the choices and rights you have.',
+    'What personal information MajorCycle collects, how it is used, who processes it, how long it is kept, and the rights and choices you have.',
 });
 
 // BASELINE CONTENT — owner to review/customise before wide launch. Describes the

@@ -1188,7 +1188,7 @@ export interface LearnArticle {
   readonly title: string;
   readonly question: string;  // the question a real person types, in their words
   readonly answer: string;    // ≤320 chars, rendered above the disclaimer (see below)
-  readonly summary: string;   // index list + meta description
+  readonly summary: string;   // meta description + JSON-LD only — NEVER rendered on screen
   readonly theme: LearnTheme;
   readonly published: string; // ISO
   readonly reviewed: string;  // ISO — when it was last checked against the running product
@@ -1196,10 +1196,11 @@ export interface LearnArticle {
 }
 ```
 
-**Three fields carry rules that are enforced rather than documented:**
+**Five fields carry rules that are enforced rather than documented:**
 
 | Field | Rule | Why, and what enforces it |
 |---|---|---|
+| `summary` | **70–155 characters**, and it appears **nowhere on the page** | Two consumers, both invisible: the `<meta name="description">` and the JSON-LD `description`. Checked 2026-08-22 — the Learn index renders only `title` and `minutes`, so editing `summary` changes what Google shows and nothing a reader sees on the site. That is why five of them could be trimmed without touching approved copy. The bounds are Google's display window: past ~155 it is truncated mid-clause, under ~70 the result looks abandoned. `e2e/seo.spec.ts` asserts it on the **rendered** tag, because the landing interpolates a live count, articles come from this registry and the sign-in pages inherit the root layout — three routes to one tag, and only the wire sees all three. The floor applies to indexable pages only: a `noindex` page never gets a snippet |
 | `answer` | **80–320 characters** | It renders directly above the "not financial advice" notice, so an over-long answer is the only thing that can push a legally-required disclaimer below a 375px fold. The lower bound stops a one-liner that restates the title. `e2e/learn.spec.ts` |
 | `minutes` | within **±2** of the rendered body at 200 wpm | A second copy of a fact about the body (11k) — edit the prose and it stays put, plausible and quietly wrong. The bodies are React components so there is nothing to count at build time; the test counts words on the **rendered** page |
 

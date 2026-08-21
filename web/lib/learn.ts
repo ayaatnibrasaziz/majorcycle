@@ -254,7 +254,7 @@ export const LEARN_ARTICLES = [
     answer:
       'A 52-week high is the highest price a share has touched in the past year, and it moves every day. It is an intraday figure, so a chart drawn from closing prices will show a lower peak — the same company, two correct numbers.',
     summary:
-      'What the number is, why the peak on a closing-price chart never quite reaches the high everyone quotes, and why it describes one year of prices rather than a company.',
+      'What the number is, why a closing-price chart never quite reaches the high everyone quotes, and why it describes one year of prices rather than a company.',
     theme: 'cycles',
     published: '2026-08-19',
     reviewed: '2026-08-19',
@@ -280,7 +280,7 @@ export const LEARN_ARTICLES = [
     answer:
       'Nobody can tell you in advance. But most companies have been through this before, and each of those past falls took a specific amount of time to climb out of. Reading a few of them off the company’s own chart gives you a realistic range, which is the closest thing to an answer that exists.',
     summary:
-      'How to read the length of a company’s past recoveries straight off its own chart, why a fall’s depth does not predict its duration, and why we do not average it into one number.',
+      'Reading the length of a company’s past recoveries off its own chart, why a fall’s depth does not predict how long it lasts, and why we publish no average.',
     theme: 'cycles',
     published: '2026-08-20',
     reviewed: '2026-08-21',
@@ -295,7 +295,7 @@ export const LEARN_ARTICLES = [
     answer:
       'A falling price tells you what the market did, not what the company is worth. The same 30% fall can be a bargain or a warning, and the chart looks identical either way. The difference is in the accounts underneath.',
     summary:
-      'Why a lower price is not the same as good value, the two things that cause a fall, and the five checks that tell a bad year apart from a business getting worse.',
+      'Why a lower price is not the same as good value, and the five checks that tell a bad year apart from a business that is genuinely getting worse.',
     theme: 'quality',
     published: '2026-08-20',
     reviewed: '2026-08-20',
@@ -321,7 +321,7 @@ export const LEARN_ARTICLES = [
     answer:
       'Financial health is whether a business can survive a bad year and still compound in a good one. It comes down to five things: whether it makes money, whether it owes too much, whether it is growing, whether the profit turns into cash, and what it returns to owners.',
     summary:
-      'The numbers behind each of the five checks, what good looks like, why the thresholds differ by industry, and why one healthy-looking score can hide very different risks.',
+      'The numbers behind each of the five checks, what good looks like, and why one healthy-looking score can hide two completely different risks.',
     theme: 'quality',
     published: '2026-08-20',
     reviewed: '2026-08-22',
@@ -334,7 +334,7 @@ export const LEARN_ARTICLES = [
     answer:
       'A price target is one analyst’s estimate of where a share should trade in about twelve months. The figure usually quoted is an average of many such estimates, and the disagreement between them is almost always more informative than the average itself.',
     summary:
-      'Where the number comes from, why the spread matters more than the consensus, why targets follow the price rather than lead it, and what they cannot tell you.',
+      'Where the number comes from, why the spread matters more than the consensus, and why targets follow the price rather than lead it.',
     theme: 'quality',
     published: '2026-08-20',
     reviewed: '2026-08-22',

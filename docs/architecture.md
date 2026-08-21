@@ -78,7 +78,7 @@ flowchart TB
 
 **Modes:**
 - `smart` (default) — staleness-driven as described above
-- `full` — forces enriched refresh for every ticker regardless of staleness; used for the initial data population or after a data incident. Triggered manually via the `manual-full-refresh.yml` workflow in GitHub Actions.
+- `full` — forces enriched refresh for every ticker regardless of staleness; used for the initial data population or after a data incident. Triggered manually via the `weekly-enriched-refresh.yml` workflow in GitHub Actions (the name is a leftover — it has no schedule).
 
 **Cost:** ~25 Actions minutes/day = ~750/month, well within the 2,000 free monthly minutes (private repo limit).
 
@@ -458,9 +458,11 @@ CREATE INDEX idx_split_events_ticker  ON split_events (ticker);
 > page is public when it is not; it was queried twice during the F3 live checks.
 >
 > **`PUBLIC_PATHS` answers only "may a signed-OUT reader in?" — not "should a signed-IN one see
-> this?"** Those are different questions, and three pages answer the second one too:
-> `/login`, `/signup` and `/deletion-requested` bounce a signed-in reader to `/stocks` via
-> **`SIGNED_OUT_ONLY_PATHS`** in the same file. `/pricing` does the equivalent in its own page
+> this?"** Those are different questions, and **four** pages answer the second one too:
+> `/`, `/login`, `/signup` and `/deletion-requested` bounce a signed-in reader to `/stocks`
+> via **`SIGNED_OUT_ONLY_PATHS`** in the same file. ⚠️ This said "three" and omitted the
+> landing page until 2026-08-22, when it was counted in `proxy.ts` rather than re-read. **A
+> list in prose is a copy of a list in code** (11c-v). `/pricing` does the equivalent in its own page
 > (→ `/account`). The list exists because the rule used to be written twice with two different
 > memberships, and `/deletion-requested` opted out of it purely by not being in either — telling
 > any signed-in reader their account was scheduled for permanent deletion (Layer F audit, F-A4-c).
@@ -471,6 +473,8 @@ live-check Session 1):
 
 | Page | Purpose | Note |
 |---|---|---|
+| `/` | The landing page — the argument, a worked screener run, and how it works | ⚠️ **This table listed every public page except the front door until 2026-08-22** — an omission that renders perfectly (11j). Rebuilt to the approved storyboard in G3.8, eight sections. It is in **`SIGNED_OUT_ONLY_PATHS`**: a signed-in reader goes to `/stocks`. Its figures come from `web/app/landing-snapshot.json` + `mag7-snapshot.json`, committed files rebuilt nightly, so no DB read sits in the front door's critical path. Lighthouse **100/100/96/100** |
+| `/notes` · `/notes/[date]` | The weekly, human-edited market note + its archive | ⛔ **NOT BUILT.** The last page type Layer G still owes. One permanent page per week, deliberately not part of `/learn` — an explainer is durable, a note is dated |
 | `/login` · `/signup` | Sign in, create a free account | Signed-in users are bounced to `/stocks` by the proxy (`SIGNED_OUT_ONLY_PATHS`). Signup takes **no card** (§7.2) |
 | `/reset-password` | Request a reset link | **Deliberately NOT bounced** for a signed-in reader — asking for a reset link is a legitimate thing to do while signed in (e.g. on a shared machine, or a Google-only account adding a password). Verified live 2026-08-02: it renders rather than redirecting. The doc previously grouped it with `/login`·`/signup` and was wrong |
 | `/pricing` | The signed-out shop window: both plans, local currency | A **signed-in** visitor is redirected to `/account` — they are a customer, not a shopper |
@@ -1046,6 +1050,85 @@ scenario — reintroducing the session read in `not-found.tsx`, which took it to
 14 routes wrong** while every page still rendered perfectly.
 
 
+### 7.2d Lighthouse — what is measured, and the 588 KB every reader was paying
+
+**Measured for the first time 2026-08-22** (`pnpm lighthouse`). Decision #33 sets the
+target at 90+ on per-ticker pages; nobody had ever run the instrument.
+
+| | performance | accessibility | best practices | SEO |
+|---|---|---|---|---|
+| `/`, `/learn`, an article, `/pricing`, `/terms` | **100** | **100** | 96 | **100** |
+| `/stocks` | 100 | 96 | 96 | n/a |
+| `/stocks/us/AAPL` | **84** (was 61) | 92 | 96 | n/a |
+
+⚠️ **SEO is not scored on the two gated routes.** They are `Disallow`ed on purpose
+(2026-08-04 decision), so Lighthouse fails `is-crawlable` and hands them 58–66. Reporting
+that as the site's worst score would flag correct behaviour as a defect, which is how a
+number stops being read. Their performance and accessibility do count.
+
+**The defect it found.** `prefetchReportBundle()` ran on mount for **every viewer**, pulling
+the 588 KB offline report bundle (`report.js` + `report.css`) into the critical window of
+every ticker page — including free accounts, who see a lock where that button is and whose
+`/report` request would only ever answer 402. Note the shape: the sibling `warmReportData()`
+has always checked `entitled`. **The rule existed and one of its two consumers never
+received it** (CLAUDE.md 11c-iv). It is now gated on entitlement *and* deferred to
+`requestIdleCallback` — prefetching is a courtesy to the next click and must never compete
+with the page the reader is waiting on. Hovering the button still warms it immediately, so a
+customer who goes straight for Download waits no longer than before.
+
+Measured, median of 5 runs each: performance **61 → 76**, total blocking time **534ms →
+286ms**, time to interactive **3.4s → 1.5s**, and the exact non-noisy fact — **588 KB on
+every load → 0 KB on every load**.
+
+⚠️ **One run is not a number.** The same unchanged page scored 85, 81, 76, 63, 62 across
+five consecutive runs, drifting downward as the machine warms. The spread is wider than most
+improvements you would try to detect. `scripts/lighthouse.mjs` therefore takes the **median
+of 3** and prints the raw scores beside it, and it refuses to run against `:3000` at all —
+a dev-server score is meaningless (unminified bundles, no prerender, a compile inside the
+first request).
+
+⚠️ **The gated routes are driven with a real signed-in session**, and every row prints the
+URL it **landed on**, because G1 already lost time to measuring `/login` while believing it
+had measured `/pricing`.
+
+**What is left, and it is owner's call.** 84 against a target of 90. The remaining drag is
+the page's own weight: a 655 KB document (the full price history inline in the RSC payload),
+~114 KB of unused JavaScript, and the chart libraries booting. Closing it means
+code-splitting the charts and deferring below-fold sections — real architectural work on a
+**paid** surface, which is not something to do unasked (11l).
+
+### 7.2e Accessibility — measured in G, fixed in H
+
+`web/e2e/a11y.spec.ts` runs **axe-core inside Playwright** (never a second test runner —
+that rule is absolute), WCAG 2.1 A + AA, over every public page and all twelve articles,
+credential-free. **Everything passes** except the one subtree already carrying
+`[data-legacy-contrast]` — the landing's worked screener run, which draws the product's real
+score chips, three of whose five tier colours are too light to sit white text on. That is a
+product-wide repaint and Layer G is not authorised to make it (11l, where exactly that was
+tried and reversed by the owner).
+
+The exemption is **bounded**: a second test scans with no exclusion at all and requires every
+violating node to be inside that marker, and at least one to exist — so it can neither grow
+nor sit there excusing nothing (14g).
+
+⚠️ **Scanned under `prefers-reduced-motion: reduce`, and that is a correctness decision.**
+Axe composites `opacity`, and the landing's below-fold sections rest at `opacity: 0` until an
+IntersectionObserver reveals them — so a naive scan read the whole page as ~1.0:1 and
+reported 175 "serious" contrast violations on a page whose colours are fine. No reader ever
+meets that state. Reduced motion is a real reader state, it is the accessible one, and the
+landing already honours it by forcing every reveal open — so it is deterministic.
+
+⚠️ **`test.use({ reducedMotion })` silently did nothing** (`matchMedia` still reported
+`false`); `page.emulateMedia()` works. The control therefore asserts the media query is
+really on **and** that the reveals are opaque, because the failure mode of that setting is a
+scan reporting a clean page it never looked at.
+
+⚠️ **`networkidle` is not "the page is finished".** The first version went flaky on two
+article tests: figures are positioned from the reading type scale, so a scan landing before
+the stylesheet computes measures labels at coordinates they will not keep. It now waits on
+the same `.reading` 17px sentinel `learn.spec.ts` uses — a positive signal the measurement
+itself depends on (11q).
+
 ### 7.3 Onboarding is a gate, not an overlay
 
 When `acknowledged_disclaimer_at` is null, `app/(app)/layout.tsx` returns the disclaimer
@@ -1152,6 +1235,32 @@ by preference): custom domain (~US$10/mo), custom email domain (owner keeps the 
 **Auth pattern:** `web/proxy.ts` (middleware) and `(app)/layout.tsx` check that a `user` session exists and refresh it. **Subscription gating is enforced on top of that as of F3 Step 10 — see §7.1 above** (merged to `main` and live in production 2026-08-01, PR #72, merge commit `cd6b014`): checkout + the webhook populate the client-immutable entitlement columns on `profiles`, and `lib/entitlement.ts` is the single rule that reads them, enforced at the page, the proxy and the Python functions. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
 
 **Security posture (F0.5 hardening — shipped 2026-07-05, PR #61):** a full code + platform audit hardened the auth surface. (a) **Recovery-session confinement:** a password-reset link mints a full session, so `auth/confirm` sets an httpOnly `mc_pw_recovery` marker and `proxy.ts` restricts that session to `/account/update-password` (+ `/auth/recovery-done`, `/auth/signout`) until the password is changed — a leaked/forwarded reset link can no longer roam the app (live-verified). The page now lives under the `(public)` shell (no sidebar). (b) **Sign-out:** POST `/auth/signout` + a sidebar `SignOutButton`. (c) **`profiles` billing-column lockdown:** table-level `UPDATE` revoked; a column `GRANT` allows only `display_name`/`country`/`acknowledged_disclaimer_at`, so `subscription_*`/`trial_ends_at`/`stripe_*` are client-immutable (cron/webhooks write them via the service-role key) — migration `20260705032433`. (d) **Security headers** in `web/next.config.ts` (X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, CSP report-only). (e) **Open-redirect guard** `safeNextPath()`. (f) **DMARC** tightened to `p=reject` (strict) — safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Deferred: leaked-password protection (Supabase Pro-only), CSP flip to enforcing.
+
+> **Header review, Layer G, 2026-08-22 — the three settings nobody had consciously chosen.**
+>
+> - **`poweredByHeader: false`.** Next was sending `X-Powered-By: Next.js` on every response
+>   — read off the wire, not assumed — and it is now verified gone the same way. It tells an
+>   attacker which framework's advisories to read and buys us nothing.
+> - **No `images` block in `next.config.ts`, deliberately.** Every image on the site is
+>   local. An unset `remotePatterns` is not an omission: it is the setting that stops our own
+>   image optimiser being used as an open proxy for arbitrary URLs. Adding a pattern is a
+>   security decision.
+> - **CSP stays `Report-Only`, and here is exactly what blocks the flip.** Measured on the
+>   **production build** (dev is useless for this — Turbopack's `eval` produces violations
+>   that never ship): every page reports `script-src-elem :: inline`, 14 on `/terms` and 28
+>   on the landing, scaling with page complexity. They are Next's own hydration bootstraps.
+>   Enforcing needs a per-request nonce threaded from `proxy.ts` through every response,
+>   whose failure mode is "the page renders but nothing is interactive" — on pages including
+>   sign-in, which the owner cannot debug from outside. **→ Layer H, with its own
+>   verification.**
+>
+> ⚠️ **The other blocker was a real bug in the policy, and it is fixed.** `style-src` was
+> missing `https://accounts.google.com`, so `/login` and `/signup` each reported
+> `style-src-elem :: https://accounts.google.com/gsi/style`. Nothing broke, because the
+> policy reports rather than blocks — **which is exactly the danger. A Report-Only policy
+> that is wrong is not harmless; it is a trap primed for whoever eventually flips it**, and
+> the thing it would have broken is the Google sign-in button. Verified fixed on the wire:
+> that violation is gone, the inline-script ones remain.
 
 **(g) Deletion-notice confinement (Layer G, 2026-08-12).** A second httpOnly marker,
 `mc_deletion_notice`, set by `requestAccountDeletion` and enforced in `proxy.ts`, so the
@@ -1383,7 +1492,7 @@ A **Vercel** cron (a Next.js route handler), distinct from the GitHub-Actions da
 
 **Why this works:** The heavy fetch stays in the trusted cron environment behind the sacred `DataProvider` interface (#9); the web tier only ever reads/writes two small Postgres tables. Free end-to-end — no third-party API key anywhere.
 
-### Manual full refresh — `.github/workflows/manual-full-refresh.yml`
+### Manual full refresh — `.github/workflows/weekly-enriched-refresh.yml`
 
 **Schedule:** None — `workflow_dispatch` only (triggered manually from the GitHub Actions tab)
 
@@ -1392,7 +1501,7 @@ A **Vercel** cron (a Next.js route handler), distinct from the GitHub-Actions da
 - A data provider incident that left enriched data stale
 - Adding a large batch of new tickers to the universe
 
-**Runtime:** ~4–5 hours for the full universe (867 at 2026-08-04). GitHub Actions `timeout-minutes: 360`. **Manual trigger only** — despite the "weekly" filename it has no `schedule:`, only `workflow_dispatch`.
+**Runtime:** ~4–5 hours for the full universe (867 at 2026-08-04). GitHub Actions `timeout-minutes: 360`. **Manual trigger only** — despite the "weekly" filename it has no `schedule:`, only `workflow_dispatch`. ⚠️ This section called the file `manual-full-refresh.yml` until 2026-08-22; **no such workflow has ever existed.** The four real ones are `ci.yml`, `daily-refresh.yml`, `daily-refresh-au.yml` and `weekly-enriched-refresh.yml`.
 
 **Command:** `python -m analytics.cron.daily_refresh --mode full`
 
@@ -1510,8 +1619,15 @@ NEXT_PUBLIC_SITE_URL=
 
 **Nothing the product sells is crawlable** (owner, 2026-08-04). No ticker page, no screener
 route, no account page appears in the sitemap or is allowed by `robots.txt`. Search traffic
-comes from written content — the landing page, `/about`, `/learn`, `/glossary` and a weekly
-human-edited market note — not from the data.
+comes from written content — not from the data.
+
+⚠️ **The content list shrank, and the record should say so rather than quietly stop
+mentioning pages.** The plan named the landing page, `/about`, `/learn`, `/glossary` and a
+weekly human-edited market note. **`/about` and `/glossary` are dropped** (owner,
+2026-08-22): About *may* return later, the glossary is **permanently** cancelled. What
+remains is the landing page, the twelve-article `/learn` library (complete and
+owner-approved), and the weekly note at `/notes`, which is the last page type Layer G still
+has to build.
 
 This reverses the earlier plan to index Stock Detail as a "free tier shop window". Do not
 re-propose it.
@@ -1615,18 +1731,42 @@ redirects rather than quietly reporting a bounce as a page. This also satisfies 
   onto one address only via a **permanent** redirect; "temporary" explicitly means *do not
   consolidate*. G1 declared `www` canonical in ten places and the server disagrees. Owner
   approval required; do it at merge. Zero billing risk — Stripe targets `www` directly.
-- ⚠️ **No `og:image` anywhere.** Every shared link renders a bare card. One
-  `app/opengraph-image.png` + `opengraph-image.alt.txt` covers the whole site. → G2 (branding).
-- ⚠️ **Every public page is `ƒ`** — server-rendered per request, including static legal text.
-  Cause unidentified. → G6.
-- **`llms.txt`: recommend dropping.** No Google Search system reads it (John Mueller), and no
-  major AI company reads it in production. → owner decides when content work begins.
+- ✅ **`og:image`** — one sitewide `app/opengraph-image.png`, built in G2. Detail below.
+- ✅ **Every public page is `ƒ`** — FIXED. The cause was a session read in
+  `app/not-found.tsx`, which sits in every route's tree; see §7.2c. 7 routes now prerendered,
+  6 correctly dynamic, guarded by `pnpm check:render-modes`.
+- ✅ **`llms.txt` — DROPPED** (owner, 2026-08-22). No Google Search system reads it (John
+  Mueller), and no major AI company reads it in production. It would be a hand-maintained
+  second index of the site that goes stale on every publish — the drift 11c is about, for a
+  reader that may not exist.
+- ✅ **Meta descriptions** — ten were over Google's ~155-character display limit and
+  `/contact` was 38 characters. All rewritten 2026-08-22 and guarded on the **rendered** tag
+  by `e2e/seo.spec.ts`; the 70-character floor applies only to indexable pages, since a
+  `noindex` page never gets a snippet.
 
-### Still to come (G4–G7)
+### Built after G1 — the record of what actually shipped
 
-- Structured data: `Organization` + `WebSite` sitewide, `Article` on `/learn/*`,
-  `DefinedTerm` on the glossary. **No `FinancialProduct` and no rating markup** — that would
-  assert an investment claim in machine-readable form, against compliance posture #24.
+- **Structured data — BUILT 2026-08-22** (`web/lib/jsonld.ts`, rendered by
+  `components/JsonLd.tsx`). `Organization` + `WebSite` on the landing, `Article` on each of
+  the twelve Learn pages. `DefinedTerm` is moot: the glossary page was cancelled.
+
+  ⚠️ **No `FinancialProduct`, no `Rating`, no `Review`, no `AggregateRating`.** Those types
+  state an investment claim in a form a machine repeats *without the page around it* — the
+  disclaimer, the "information only" framing, the explanation of what a score is. A rich
+  result reading "MajorCycle rates AAPL 72/100" is the single most damaging sentence this
+  site could emit, and rating markup is how it gets emitted by accident (posture #24).
+
+  ⚠️ **No `SearchAction` on `WebSite`** — the conventional addition, and we have no public
+  search endpoint. Declaring one describes a feature that does not exist.
+
+  ⚠️ Every value is derived from `SITE_ORIGIN`, `OG_IMAGE` and the article registry, so the
+  block cannot drift from the page it describes (11c). `jsonLdScript()` escapes every `<` to
+  `<`: a literal `</script` closes the block early and the rest is parsed as HTML.
+
+  ⚠️ **`application/ld+json` costs zero CSP violations** — verified by injecting one into a
+  live page and counting (14 before, 14 after), not assumed from the spec. And the block is
+  rendered **outside** `[data-article-body]`: placed inside, `learn.spec.ts` read its text as
+  prose and reported every article as repeating every other one.
 - **Share card — BUILT 2026-08-08.** One sitewide `app/opengraph-image.png` (1200×630),
   and `twitter:card` is now `summary_large_image`, which is only honest because the image
   exists. Per-**stock** cards stay forbidden: they are public and cached for everyone, so

@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited (C, D, E and now F — `docs/layer-f-audit.md`). Layer G in progress: G1 (SEO plumbing), G2 (design foundations), G3 (public chrome), G3.5 (the auth net — Playwright 180 → 260) and G3.7 (the legal documents — 260 → **277**) built and audited; PR #89 open and deliberately unmerged until the layer is done. ✅ **The legal pages are accepted by the owner (2026-08-13) — "happy with all the legal pages now in terms of looks"** — after two rounds. ⚠️ Their TEXT remains `BASELINE CONTENT` awaiting a professional review before wide launch. The public header and footer were mocked up twice and the owner chose to **keep them as they are**, with further comments deferred until after commit group 2. **G3.8 in progress:** `/methodology` is folded into the landing (278 tests, 308 redirect proven on the wire), and the landing page itself is being rebuilt to the approved storyboard — **twelve sections that three separate docs recorded as complete** (CLAUDE.md 11j).**
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited. Layer G is in its last stretch, all of it inside PR #89, deliberately unmerged until the layer is finished.** Done: **G1** SEO plumbing · **G2** design foundations · **G3** public chrome · **G3.5** the auth net · **G3.7** the legal documents (owner-accepted 2026-08-13; their TEXT is still `BASELINE CONTENT` awaiting professional review before wide launch) · the **legal compliance audit**, all 7 findings applied · **G3.8** the landing page rebuilt to the approved storyboard and `/methodology` folded into it · **G3.9** the render-mode fix (every public page now prerendered) · **G4** the twelve-article `/learn` library, **all three topics read through and approved by the owner** (2026-08-21/22) · **G5** Lighthouse, accessibility, structured data and the config review. **Remaining in Layer G: the weekly market note (`/notes` + `/notes/[date]`)**, then a full Layer G audit before merge. ⛔ `/about` and `/glossary` are **dropped** (owner, 2026-08-22) — About may return later, the glossary is permanently cancelled; `llms.txt` dropped on the same day.
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -1531,25 +1531,68 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
       it becomes a file that must be updated on every publish or it silently goes stale —
       exactly the drift CLAUDE.md 11c is about, for a reader that may not exist. **Re-ask
       then, when the trade is real**, i.e. when there is content worth listing.
-- [ ] **Every public page is `ƒ` (server-rendered per request)**, including pure-text legal
-      pages; only robots/sitemap/icon are prebuilt. Hurts TTFB and the 90+ target. **Cause not
-      yet identified** — `/terms` uses no dynamic API and has no `force-dynamic`. **→ G6.**
-- [ ] Four descriptions exceed ~155 chars (Disclaimer 176, Methodology 175, Terms 159,
-      Privacy 156). Google truncates the display; **no penalty**. Cosmetic. **→ G6.**
-- [ ] JSON-LD — `Organization`, `WebSite`, `Article`, `DefinedTerm`. **NOT `FinancialProduct`**
-      and no rating markup: that asserts an investment claim in machine-readable form,
-      against compliance posture #24.
-- [ ] OG images via **`next/og`** — ships with the App Router; `@vercel/og` is NOT a
-      dependency we need (this doc claimed otherwise for months). Waits on G2's design.
+- [x] **Every public page is `ƒ`** — FIXED before this list was next read. The cause was one
+      session read in `app/not-found.tsx`, which sits in every route's tree; see G3.9 /
+      `architecture.md` §7.2c. 7 routes prerendered, 6 correctly dynamic, guarded by
+      `pnpm check:render-modes`.
+- [x] **Meta descriptions — ten were over, not four, and one was far too short.** Re-measured
+      on the built HTML 2026-08-22: landing 221, root fallback 183, five Learn summaries
+      157–177, Disclaimer 176, Terms 159, Privacy 156 — while `/contact` sat at **38**. All
+      rewritten. Guarded by `e2e/seo.spec.ts`, which reads the RENDERED tag (the landing
+      interpolates a live count, articles come from the registry, the sign-in pages inherit the
+      root layout — three routes to one tag, and only the wire sees all three). The 70-char
+      floor applies to indexable pages only: a `noindex` page never gets a snippet, so
+      demanding one there would be inventing work.
+- [x] **JSON-LD — `Organization` + `WebSite` on the landing, `Article` on each of the twelve
+      Learn pages** (`lib/jsonld.ts`). No `FinancialProduct`, no `Rating`, no `AggregateRating`
+      — a rich result reading "MajorCycle rates AAPL 72/100" is the single most damaging
+      sentence this site could emit, and rating markup is how it happens by accident. No
+      `SearchAction` either: we have no public search, and declaring one describes a feature
+      that does not exist. `DefinedTerm` is moot — `/glossary` was dropped. Every value is
+      derived from `SITE_ORIGIN`, `OG_IMAGE` and the article registry, so the block cannot
+      drift from the page. ⚠️ Verified on the wire that `application/ld+json` costs **zero**
+      CSP violations (injected one and counted: 14 before, 14 after) rather than assuming it.
+- [x] **OG image — superseded and already shipped.** One sitewide committed PNG built by
+      `scripts/build-og-image.mjs`, not runtime `next/og`: an ImageResponse puts a font fetch
+      and a satori parse between a social crawler and a card, and the owner cannot debug a
+      serverless font failure from outside. Done in G2 step 4.
 - [ ] **Submit the sitemap in Search Console — AT MERGE, not before.** `/sitemap.xml` 404s on
       production until Layer G is live, and submitting a 404 teaches Google to distrust it.
       *(Google retired the "ping on deploy" endpoint in 2023; it now 404s. The mechanism is
       the `Sitemap:` line in robots.txt plus one manual submission.)*
-- [ ] Image optimisation pass (next/image everywhere)
+- [x] **Image optimisation** — every image on the public site is local and served through
+      `next/image`; the one raw `<img>` left is inside the offline report bundle, where
+      `next/image` cannot run (it is an esbuild artifact opened over `file://`, CLAUDE.md 11d).
+      Public pages score **100 on Lighthouse performance**, so there is nothing here to chase.
 - [ ] Bundle size audit — remove any unused deps
-- [ ] Lighthouse pass — score 90+ on at least 5 sample ticker pages
-- [ ] **Config review** (`web/next.config.ts`): CSP is still `Report-Only`; no `images`
-      config; `poweredByHeader` not disabled. Decide each deliberately.
+- [~] **Lighthouse — MEASURED for the first time (2026-08-22), and it found real work.**
+      `pnpm lighthouse` drives the PRODUCTION build on :3200 (never dev), signs in with real
+      cookies for the gated routes, and prints the URL it LANDED on beside every reading so a
+      redirect cannot pass for a measurement. **Public pages: 100 / 100 / 96 / 100.** The
+      ticker page decision #33 actually names came in at a median of **61**, now **84** — the
+      remaining 6 points are recorded below and are owner's call.
+      ⚠️ **One run is not a number.** The same unchanged page scored 85, 81, 76, 63, 62 across
+      five consecutive runs and drifts downward as the machine warms, so the tool now takes the
+      MEDIAN of 3 and prints the raw scores beside it. I reported a 26-point gain from a single
+      reading that was really 15.
+      ⚠️ **SEO is not scored on the two gated routes.** They are `Disallow`ed on purpose, so
+      Lighthouse hands them 58–66 for `is-crawlable`; reporting that as the site's worst score
+      would be flagging correct behaviour as a defect.
+- [x] **Config review — all three decided, and two of them stay at the default ON PURPOSE**,
+      which is now written down: "nobody chose this" and "we chose the default" look identical
+      from outside, and this repo has been bitten four times by the difference (11a).
+      **(i)** `poweredByHeader: false` — `X-Powered-By: Next.js` was going out on every
+      response, verified on the wire and now verified gone. **(ii)** No `images` block: every
+      image is local, and an unset `remotePatterns` is precisely what stops our optimiser being
+      an open proxy. **(iii)** CSP **stays Report-Only** — measured on the production build,
+      every page reports `script-src-elem :: inline` (14 on `/terms`, 28 on the landing,
+      scaling with page complexity: Next's own hydration bootstraps). Enforcing needs a
+      per-request nonce threaded from `proxy.ts`, whose failure mode is "the page loads but
+      nothing works", on pages including sign-in. **→ Layer H, with its own verification.**
+      ⚠️ **The other blocker was a real policy bug and is now fixed:** `style-src` was missing
+      `https://accounts.google.com`, so `/login` and `/signup` each reported
+      `style-src-elem :: .../gsi/style`. Harmless only because the policy reports rather than
+      blocks — **a Report-Only policy that is wrong is a trap primed for whoever flips it.**
 
 **Verification:**
 - Lighthouse CI runs in `.github/workflows/ci.yml`
@@ -1741,6 +1784,83 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > existing as a Tailwind class, collapsing the panel to zero height. **An undefined CSS class
 > is silence, and silence looked like a result.**
 
+> #### ✅ G5 — Lighthouse, accessibility, structured data, config. 2026-08-22, still inside PR #89.
+>
+> The four measurement-and-plumbing items the owner asked for before the weekly note.
+> Playwright **503** tests, pytest 153, five guards green, build clean.
+>
+> ⚠️ **Two tests fail LOCALLY in a long run and pass in isolation** — `/report` answering
+> **404 where 402 is expected**, and the report download therefore never firing. They are the
+> same pair the owner asked about, and the earlier hypothesis (a 52-week tooltip changed on
+> the page but not in the report) is ruled out by evidence: that string exists in exactly one
+> file, the report imports the same `StockHeader` that renders it, `check:report-sections`
+> matches 22 sections, and neither test mentions the gauge. Not reproduced in isolation
+> (46/46), and **CI is the authority** — it has run this suite green every time. Recorded
+> here rather than explained away: a 404 from that route means `readStockRow` returned no
+> row for AAPL with no error, which no code path in `stocks.ts` explains, so the cause is
+> environmental to this machine rather than understood.
+>
+> **The one real defect, and it was costing every reader half a megabyte.**
+> `prefetchReportBundle()` ran on mount for **every viewer**, pulling the 588 KB offline
+> report bundle into the critical window of every ticker page — including free accounts,
+> who see a lock where that button is and whose `/report` request would only ever answer
+> 402. Note the shape: the sibling `warmReportData()` has always checked `entitled`. **The
+> rule existed and one of its two consumers never received it** (CLAUDE.md 11c-iv, sixth
+> instance). Now gated on entitlement *and* deferred to `requestIdleCallback`, because
+> prefetching is a courtesy to the next click and must never compete with the page the
+> reader is waiting on. Hover still warms it instantly, so a customer who goes straight for
+> Download waits no longer. Measured, median of 5 runs each: performance **61 → 76**,
+> blocking time **534ms → 286ms**, and the exact non-noisy fact — **588 KB on every load →
+> 0 KB on every load**.
+>
+> **What is left on that page, and it is owner's call.** The median is **84** against
+> decision #33's 90. The remaining drag is the page's own weight: a 655 KB document (the
+> full price history inline), ~114 KB of unused JavaScript, and the chart libraries booting.
+> Closing it means code-splitting the charts and deferring below-fold sections — real
+> architectural work on a **paid** surface, which is not something to do unasked (11l).
+>
+> **Accessibility — `e2e/a11y.spec.ts`, axe-core inside the existing Playwright runner** (no
+> second test runner, ever). Every public page, WCAG 2.1 A + AA, credential-free. **All
+> clean** except the one subtree already carrying `[data-legacy-contrast]`, which is
+> excluded *and bounded*: a second test scans with no exclusion and requires every violating
+> node to be inside that marker, and at least one to exist — so the exemption can neither
+> grow nor sit there excusing nothing (14g).
+>
+> ⚠️ **Three instrument failures in a row, and each one nearly became a finding.**
+> **(i)** Axe composites `opacity`, so it read the landing's un-revealed scroll blocks as
+> `#eaeff6 on #f1f4f8` — 175 "serious" contrast violations on a page whose colours are fine.
+> That is CLAUDE.md 11q from the other side: our own probe once could not see opacity and
+> scored invisible text as passing. The fix is to measure a state a reader is actually in —
+> `reducedMotion: 'reduce'`, which the landing already honours by forcing every reveal open.
+> **(ii)** `test.use({ reducedMotion })` **silently did nothing** — `matchMedia` still said
+> `false` — so the scan kept failing and I spent a round believing the page was broken.
+> `page.emulateMedia()` works. The control now asserts the media query is really on, because
+> the failure mode of that setting is a scan that reports a clean page it never looked at.
+> **(iii)** The first version went **flaky** on two article tests: `networkidle` is not "the
+> page is finished", and an article's figures are positioned from the reading type scale. It
+> now waits on the same `.reading` 17px sentinel `learn.spec.ts` uses — a positive signal the
+> measurement depends on, not a proxy for readiness.
+>
+> ⚠️ **And a measurement error of my own, which is the one worth remembering.** `pkill -f
+> "next start"` **silently failed**; the new server died with `EADDRINUSE` and the process
+> still answering on :3200 was the OLD one, serving route modules from memory while the
+> static chunks on disk had been overwritten by a rebuild. The result was a Frankenstein page
+> — a 500 on a chunk that exists in no build — which I chased as a real defect, and a "58 →
+> 84" improvement that was partly an artifact of a component whose JavaScript had failed to
+> load. **A command that succeeded is not a state that is true** (11o). Kill by PID, confirm
+> the port is free, then start. The honest numbers are the medians above.
+>
+> **Structured data** and the **config review**: see the two ticked items in the G list above.
+> The short version — `Organization`/`WebSite`/`Article` only, nothing that asserts anything
+> about a security; `poweredByHeader` off; no `images` block on purpose; CSP stays
+> Report-Only with the reason and the remaining blocker written down, and the one genuine
+> policy bug in it (`style-src` missing `accounts.google.com`) fixed.
+>
+> ⚠️ **`tsconfig.json` no longer type-checks `.next-dev`.** `pnpm build` failed twice in this
+> session on a truncated `.next-dev/dev/types/routes.d.ts` — a file the *dev server* owns and
+> was rewriting. The production build's success must not depend on another process's scratch
+> directory; `.next-dev` is now excluded.
+
 > #### ✅ G4.7 — owner's read-through, topics 02 and 03. 2026-08-22, still inside PR #89.
 >
 > Playwright **466**, pytest 153, all five guards green, `pnpm build` clean.
@@ -1912,7 +2032,7 @@ memory** — re-verified 2026-08-02. ✅ proven · 🟡 partly proven, with what
 | ✅ | Zero ESLint errors | `pnpm lint` clean |
 | ✅ | Zero Python type errors | `mypy analytics/` — no issues in **33 source files** |
 | ✅ | All tests passing in CI | Run on `ab11e18`: Python ✅ · Frontend ✅ · E2E **105/105** · `pytest` **86** |
-| ⬜ | Lighthouse Performance 90+, SEO 100, Accessibility 95+ on 5 sample ticker pages | **Layer G** — SEO plumbing **done** (G1: `robots.ts`, `sitemap.ts`, canonicals, Search Console). Lighthouse itself not yet measured; the instrument lands in the final Layer G session. Accessibility is **measured in G, fixed in Layer H** — otherwise G is blocked by work it isn't allowed to do. |
+| 🟡 | Lighthouse Performance 90+, SEO 100, Accessibility 95+ | **MEASURED 2026-08-22** (`pnpm lighthouse`, median of 3, production build). **Public pages: 100 / 100 / 96 / 100.** The per-ticker page decision #33 names went **61 → 84** after the 588 KB report-bundle prefetch was gated and deferred (§ architecture 7.2d). ⚠️ SEO is not scored on the two gated routes — they are `Disallow`ed on purpose, so Lighthouse fails `is-crawlable` and scoring that would flag correct behaviour as a defect. **The last 6 points are owner's call**: a 655 KB document, ~114 KB unused JS and the chart libraries booting — code-splitting a **paid** surface, not something to do unasked. Accessibility is **measured in G, fixed in Layer H**; `e2e/a11y.spec.ts` now runs axe over every public page with one bounded exemption. |
 | ⬜ | Mobile responsive at 375px width | **Layer H** — already triaged and measured there: ~130px overflow, root-caused to the `(app)` shell sidebar, not to page components |
 
 ### Content
@@ -1930,7 +2050,7 @@ memory** — re-verified 2026-08-02. ✅ proven · 🟡 partly proven, with what
 | ✅ | Domain DNS verified, SSL cert active | `https://www.majorcycle.com` serving on a valid certificate; the apex 307s to `www` |
 | ✅ | Index-membership seed present in repo migration | `supabase/migrations/20260624000000_index_membership.sql`; **774 rows** live, refreshed nightly from SPY/IOZ/XIU holdings. Universe recoverable from `stocks` + that refresh |
 | ✅ | Stripe in live mode with real prices | Two multi-currency prices resolved by `lookup_key`; today's live Checkout Session priced **A$19.00/month after a 7-day trial** |
-| ⬜ | Cron monitoring alert tested (force a failure, confirm email received) | The alert is **built** (Resend on cron failure) but has **never been fired on purpose**. Untested alerting is indistinguishable from no alerting — worth doing before launch |
+| ✅ | Cron monitoring alert tested (force a failure, confirm email received) | **Done 2026-08-06, and the test is the reason the channel changed.** ⚠️ This row read "built but never fired on purpose" until 2026-08-22, long after that stopped being true. Both crons were broken on purpose; both went red with the correct message; **Resend recorded nothing.** Two independent faults: the `RESEND_API_KEY` secret held a key that no longer existed, and `_email()` never looked at the HTTP response, so `requests` returned normally on a rejected send. **The alert had never worked in the project's life** (verified against all 42 messages in the Resend history) and could not report either fault. Resend is gone from the crons; **GitHub's own failed-workflow email is the single channel**, to ayaatnibrasaziz@gmail.com, verified end to end. ⚠️ Still open and owner's call: a **partial** refresh failure is silent — see `project_cron_alerting_2026_08_06` |
 
 ---
 
@@ -1987,7 +2107,8 @@ Order of priority TBD based on user feedback. Candidate features:
 ✅ Phase 1 Layer F: Static Pages + Subscription  (built + merged PR #72 + live 2026-08-01)
    ✅  └─ production-readiness audit F-A1…F-A6 COMPLETE 2026-08-02 → docs/layer-f-audit.md
    ↓
-🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1+G2+G3+G3.5 done; PR #89 open, unmerged)
+🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1–G5 done; only the weekly note + the
+                                              layer audit remain; PR #89 open, unmerged)
    ↓
    Phase 1 Layer H: Hardening (Phase 1.5)  — owns 375px, a11y, cross-browser, Sentry
    ↓

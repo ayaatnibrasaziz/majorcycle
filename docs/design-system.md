@@ -91,7 +91,7 @@ The new build's job is to **rebuild the same product on a modern foundation**, n
 > palette moves every panel's background and leaves thirteen borders on the old blue. **If you
 > introduce a colour that pairs with an existing token, tokenise it in the same commit.**
 
-These are exposed as Tailwind v4 theme tokens in `tailwind.config.ts`:
+These are exposed as Tailwind v4 theme tokens in the **`@theme inline` block at the top of `web/app/globals.css`** — Tailwind v4 is CSS-first and this project has **no `tailwind.config.ts`** (the doc named one until 2026-08-22; nobody had gone looking for it):
 
 ```ts
 theme: {

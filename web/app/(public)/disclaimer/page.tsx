@@ -6,7 +6,7 @@ export const metadata: Metadata = pageMetadata({
   path: '/disclaimer',
   title: 'Disclaimer',
   description:
-    'MajorCycle is an educational and informational analysis tool, not financial advice. How our ratings, third-party data and warranties work, and what remains your responsibility.',
+    'MajorCycle is an educational analysis tool, not financial advice. How our ratings and third-party data work, and what remains your own responsibility.',
 });
 
 // BASELINE CONTENT — owner to review and, if needed, have checked against ASIC
