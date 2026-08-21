@@ -108,8 +108,15 @@ export const DEEPEST_MEMBER = MEMBERS.reduce((a, b) => (a.worst < b.worst ? a : 
 /** How many times deeper the worst member's fall was than the index's. */
 export const DEPTH_RATIO = DEEPEST_MEMBER.worst / INDEX_WORST;
 
-/** Plot bounds, with headroom below the deepest line. */
-export const DD_FLOOR = Math.floor((deepest([...MEMBERS.flatMap((m) => m.dd)]) - 4) / 5) * 5;
+/**
+ * Plot bounds, with headroom below the deepest line.
+ *
+ * ⚠️ The headroom is 8 points rather than 4 because the deepest trough carries
+ * a LABEL under it, and at 4 the words landed on the axis rule itself — the
+ * halo then punched a visible gap in the axis. Space for a mark has to include
+ * space for whatever is written on it.
+ */
+export const DD_FLOOR = Math.floor((deepest([...MEMBERS.flatMap((m) => m.dd)]) - 8) / 5) * 5;
 
 /** Drawdown percent → vertical position, 0–100 down the plot. */
 export const yOf = (pct: number): number => (pct / DD_FLOOR) * 88;
@@ -135,6 +142,23 @@ export function trough(dd: readonly DdPoint[]): DdPoint {
   return dd.reduce((lo, p) => (p.pct < lo.pct ? p : lo), dd[0]!);
 }
 
-/** Each company's own worst moment, and the index's — the four points labelled. */
+/**
+ * Each company's own worst moment, and the index's — the four points labelled.
+ *
+ * ⚠️ **All four labels sit BELOW their point, and getting there took a wrong
+ * turn worth recording.** The first fix for "a curve runs through these words"
+ * was to compute which side of each point had clear space — which works, and
+ * then has to keep working as paths move, and produced its own defect: on a
+ * phone the index label landed on top of the index line and the halo punched a
+ * visible gap in it, so the chart looked broken instead of crowded.
+ *
+ * The rule that actually holds is two much duller things. Give the labels a halo
+ * (`PLOT_LABEL_HALO`), so a line behind one is interrupted rather than drawn
+ * through it. And give the plot more HEIGHT on a phone, because the crowding was
+ * vertical — four 22px labels in a 211px box — and 12px is the reading floor, so
+ * the type cannot give. With both, one fixed side is clean at every width from
+ * 360px to 1280px, measured. **A cleverer rule was solving a problem that more
+ * room did not have.**
+ */
 export const MEMBER_TROUGHS = MEMBERS.map((m) => ({ name: m.name, ...trough(m.dd) }));
 export const INDEX_TROUGH = trough(INDEX_DD);

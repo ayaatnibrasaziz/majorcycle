@@ -278,13 +278,15 @@ export const LEARN_ARTICLES = [
     title: 'How long do recoveries actually take?',
     question: 'How long does it take a stock to recover?',
     answer:
-      'Nobody can tell you in advance. Falls of exactly the same depth have taken months, and they have taken the better part of a decade. MajorCycle measures how far a share has fallen and how far it has recovered, and says nothing about how long.',
+      'Nobody can forecast it — but you can measure how long this company’s past recoveries took. On a stock page the drawdown curve leaves zero when the price passes a high and touches zero again when it gets back, so the width of that shaded stretch is the length of that recovery.',
     summary:
-      'Why depth and duration are barely related, why the averages you will find quoted do not help, and what we measure instead of time.',
+      'How to read the length of a company’s past recoveries straight off its own chart, why a fall’s depth does not predict its duration, and why we do not average it into one number.',
     theme: 'cycles',
     published: '2026-08-20',
-    reviewed: '2026-08-20',
-    minutes: 4,
+    reviewed: '2026-08-21',
+    // 1,392 words — measured on the rendered page, not estimated. Was 4 before
+    // the article gained its worked example; the rewrite roughly doubled it.
+    minutes: 7,
   },
   {
     slug: 'falling-price-bargain-or-warning',

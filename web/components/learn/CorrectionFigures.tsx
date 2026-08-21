@@ -8,6 +8,7 @@ import {
   DdCurve,
   LOW_LINE,
   LevelRule,
+  PLOT_LABEL_HALO,
   Swatch,
   TimeNote,
   TodayDot,
@@ -70,7 +71,13 @@ export function MarketWordsFigure() {
         </>
       }
     >
-      <div className="relative w-full aspect-[16/10] sm:aspect-[16/6]">
+      {/* ⚠️ Taller on a phone. The two zone labels sit just above the rules they
+          name, and at 16/10 the plot is 214px — short enough that the curve's
+          first dip runs through the word "Correction". The label cannot shrink
+          (12px is the reading floor) and cannot move sideways (it names a
+          horizontal rule), so the plot has to give. Same fix as the index
+          figure. */}
+      <div className="relative w-full aspect-[16/13] sm:aspect-[16/6]">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
@@ -109,7 +116,7 @@ export function MarketWordsFigure() {
           <span
             key={l.pct}
             data-zone-label={l.label}
-            className="absolute whitespace-nowrap text-[12px] font-semibold text-[var(--text-primary)]"
+            className={`absolute whitespace-nowrap text-[12px] font-semibold text-[var(--text-primary)] ${PLOT_LABEL_HALO}`}
             style={{ left: `${rx(4)}%`, top: `${mktY(l.pct)}%`, transform: 'translate(0, -18px)' }}
           >
             {l.label}

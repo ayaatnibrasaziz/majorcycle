@@ -2026,57 +2026,144 @@ test.describe('the index-average figure', () => {
   });
 });
 
-test.describe('the recovery-time figure', () => {
+test.describe('the price-and-recovery figure', () => {
   const PATH = learnPath('how-long-do-recoveries-take');
 
-  test('all three falls are exactly the same depth, and only the wait differs', async () => {
+  test('every underwater stretch is FOUND on the curve, not declared beside it', async () => {
     /**
-     * ⚠️ **Equal depths are the entire figure.** Three curves that bottom out at
-     * −38.1%, −38.7% and −39.5% look identical on screen and quietly destroy the
-     * comparison — which is what an evenly-sampled time grid produced on the
-     * first attempt, because it never landed on the trough. Assert the number,
-     * not the appearance.
+     * ⚠️ **The article teaches a reading method, so the figure has to perform it.**
+     * The instruction is: find where the drawdown curve leaves zero, follow it
+     * until it touches zero again, read the gap off the axis. If the durations
+     * were typed next to the paths, the picture would be an illustration of the
+     * method rather than an instance of it — and the first reshaped keyframe
+     * would make the caption's "19 months" a fluent, specific falsehood
+     * (CLAUDE.md 11k).
+     *
+     * So this re-derives each stretch from the drawdown series independently of
+     * the scanner that produced it, and checks the two agree.
      */
-    const { RECOVERIES, TROUGH_PCT, WAIT_RATIO, waitFromTrough } = await import(
-      '../components/learn/recoveryGeometry'
+    const { DRAWDOWN, UNDERWATER, SPAN_YEARS, PRICES } = await import(
+      '../components/learn/priceRecoveryGeometry'
     );
 
-    expect(RECOVERIES.length).toBeGreaterThan(2);
+    expect(UNDERWATER.length, 'a figure about three falls needs three falls').toBe(3);
 
-    for (const r of RECOVERIES) {
-      const low = r.series.reduce((a, p) => Math.min(a, p.pct), 0);
-      expect(low, `${r.id} bottoms at ${low.toFixed(2)}%, not ${TROUGH_PCT}%`).toBeCloseTo(
-        TROUGH_PCT,
+    for (const u of UNDERWATER) {
+      // It must genuinely be below zero throughout, and at zero at each end.
+      const inside = DRAWDOWN.filter((p) => p.x > u.fromX + 0.2 && p.x < u.toX - 0.2);
+      expect(inside.length, `${u.id} has no samples inside it`).toBeGreaterThan(4);
+      expect(
+        Math.max(...inside.map((p) => p.pct)),
+        `${u.id} rises above its own peak partway through, so it is not one stretch`,
+      ).toBeLessThan(0);
+
+      const at = (x: number) =>
+        DRAWDOWN.reduce((b, q) => (Math.abs(q.x - x) < Math.abs(b.x - x) ? q : b), DRAWDOWN[0]!);
+      expect(at(u.fromX).pct, `${u.id} does not start at a peak`).toBeCloseTo(0, 6);
+      if (u.recovered) {
+        expect(at(u.toX).pct, `${u.id} is marked recovered but never returns to zero`).toBeCloseTo(
+          0,
+          6,
+        );
+      }
+
+      // The width really is the number printed under it.
+      expect(u.years, `${u.id}'s length disagrees with its own endpoints`).toBeCloseTo(
+        ((u.toX - u.fromX) / 100) * SPAN_YEARS,
         6,
       );
-      // …and it must actually come back, or "recovery" names nothing.
-      expect(r.series[r.series.length - 1]!.pct, `${r.id} never returns to its peak`).toBe(0);
+      // And the trough is the deepest point in it, not merely a low one.
+      expect(u.troughPct, `${u.id}'s marked low is not its lowest`).toBeCloseTo(
+        Math.min(...inside.map((p) => p.pct)),
+        1,
+      );
     }
 
-    // The control: identical depths are only interesting if the waits are not.
-    const waits = RECOVERIES.map((r) => waitFromTrough(r));
-    expect(new Set(waits.map((w) => w.toFixed(2))).size).toBe(waits.length);
+    /**
+     * ⚠️ **The controls.** Three stretches of the same length would satisfy
+     * everything above and say nothing — the article's claim is that the waits
+     * differ — and one that never ends is what makes "still underwater" honest.
+     */
+    const lengths = UNDERWATER.map((u) => u.years.toFixed(2));
+    expect(new Set(lengths).size, 'the three waits are not actually different').toBe(3);
     expect(
-      WAIT_RATIO,
-      `the slowest recovery is only ${WAIT_RATIO.toFixed(1)}x the fastest — not a difference worth a figure`,
-    ).toBeGreaterThan(4);
+      UNDERWATER.filter((u) => !u.recovered).length,
+      'nothing on the chart is still underwater, so the unfinished case is undrawn',
+    ).toBe(1);
+
+    // The drawdown is computed from the price, not drawn alongside it.
+    let peak = -Infinity;
+    PRICES.forEach((s, i) => {
+      peak = Math.max(peak, s.price);
+      expect(DRAWDOWN[i]!.pct).toBeCloseTo((s.price / peak - 1) * 100, 6);
+    });
   });
 
-  test('the figure renders every path', async ({ page }) => {
-    /**
-     * ⚠️ The axis-label collision check that used to live here now sweeps EVERY
-     * article — see "no two axis labels overlap" below. It was written for this
-     * figure and the very next figure added its own year axis, which this test
-     * could never have seen. A guard scoped to the page that prompted it stops
-     * covering the thing it was written to cover the moment there are two of them.
-     */
-    const { RECOVERIES } = await import('../components/learn/recoveryGeometry');
+  test('the figure draws a span for every stretch, and labels each one', async ({ page }) => {
+    const { UNDERWATER, yearsInWords } = await import(
+      '../components/learn/priceRecoveryGeometry'
+    );
 
+    await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(PATH);
     await ready(page);
-    await expect(page.locator('[data-recovery-path]')).toHaveCount(RECOVERIES.length);
+
+    await expect(page.locator('[data-underwater-span]')).toHaveCount(UNDERWATER.length);
+    await expect(page.locator('[data-underwater-label]')).toHaveCount(UNDERWATER.length);
+
+    /**
+     * ⚠️ The words on the drawing must be the words the caption uses, or the
+     * reader is told one number and shown another. Read from the page rather
+     * than compared to a literal, so retuning a keyframe cannot leave this
+     * green while the two drift.
+     */
+    const shown = await page.locator('[data-underwater-label]').allInnerTexts();
+    for (const u of UNDERWATER) {
+      expect(shown.some((s) => s.includes(yearsInWords(u.years)))).toBe(true);
+    }
+    const caption = (await page.locator('figure figcaption').first().innerText()).replace(
+      /\s+/g,
+      ' ',
+    );
+    for (const u of UNDERWATER.filter((x) => x.recovered)) {
+      expect(
+        caption,
+        `the caption never states ${yearsInWords(u.years)}, which the chart prints`,
+      ).toContain(yearsInWords(u.years));
+    }
+  });
+
+  test('the durations survive the width where they cannot sit on the chart', async ({ page }) => {
+    /**
+     * ⚠️ **The in-chart labels are hidden below `sm`, so something has to carry
+     * them.** A `hidden sm:block` that nobody replaced would silently drop the
+     * figure's only quantitative content on a phone — which renders perfectly
+     * and looks deliberate (CLAUDE.md 11j). Both halves are asserted: the words
+     * are gone from the plot AND present underneath it.
+     */
+    const { UNDERWATER, yearsInWords } = await import(
+      '../components/learn/priceRecoveryGeometry'
+    );
+
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(PATH);
+    await ready(page);
+
+    await expect(page.locator('[data-underwater-label]').first()).toBeHidden();
+    const list = await page.locator('[data-underwater-list]').innerText();
+    for (const u of UNDERWATER) {
+      expect(list, `the phone fallback never states ${yearsInWords(u.years)}`).toContain(
+        yearsInWords(u.years),
+      );
+    }
+
+    // …and the control: on a wide screen it is the chart that speaks.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect(page.locator('[data-underwater-list]')).toBeHidden();
+    await expect(page.locator('[data-underwater-label]').first()).toBeVisible();
   });
 });
+
 
 test.describe('the dividend figure', () => {
   const PATH = learnPath('is-a-dividend-safe');

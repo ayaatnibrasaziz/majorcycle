@@ -55,7 +55,25 @@ export function AxisFrame({ floorY }: { floorY: number }) {
   );
 }
 
-/** Axis numbers live in HTML so they stay 12px at every width. */
+/**
+ * The gap between an axis label and the axis it belongs to, in pixels. One
+ * constant, so every figure on the site sits the same distance off its own axis.
+ */
+export const AXIS_LABEL_GAP_PX = 8;
+
+/**
+ * Axis numbers live in HTML so they stay 12px at every width.
+ *
+ * ⚠️ **Anchored to the AXIS, not to the left edge of the panel.** These were
+ * `left: 0` until 2026-08-21, which pins the label's *start* and lets its end
+ * land wherever the text happens to run out — so the distance to the axis was a
+ * side effect of how many characters the number had. Measured across the
+ * library: a **57px** gap on nine figures against **12px** on two, i.e. the
+ * labels looked both too far away and inconsistently far away, and the same
+ * figure would have shifted again the day a tick went from `-40%` to `-100%`.
+ * Right-anchoring makes the gap the thing that is specified and the label width
+ * the thing that varies, which is the way round a reader actually perceives it.
+ */
 export function AxisLabels({
   ticks,
   format,
@@ -68,13 +86,61 @@ export function AxisLabels({
       {ticks.map((t) => (
         <span
           key={`${t.y}-${t.value}`}
-          className="absolute left-0 -translate-y-1/2 font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)]"
-          style={{ top: `${t.y}%` }}
+          data-axis-label=""
+          className="absolute -translate-y-1/2 whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)]"
+          style={{
+            top: `${t.y}%`,
+            right: `${100 - PLOT_L}%`,
+            // ⚠️ MARGIN, never padding. Padding keeps the gap inside the box, so
+            // the element's own rect still ends flush against the axis — and every
+            // instrument that asks the DOM where a label is (this repo's overlap
+            // guards included) then reads a label touching the plot. It cost a
+            // round of chasing a collision that was 8px of empty padding.
+            marginRight: `${AXIS_LABEL_GAP_PX}px`,
+          }}
         >
           {format(t.value)}
         </span>
       ))}
     </>
+  );
+}
+
+/**
+ * The row of markers under a time axis.
+ *
+ * ⚠️ **`top` is the floor line, not the bottom of the panel.** Two figures
+ * hung this off `top-full` — the bottom of a 16:9 box whose axis line sits at 86–
+ * 88% of it — which left the year markers floating **38–40px** below the axis
+ * they label, measured. The offset has to come from where the line actually is,
+ * so it is passed in from the same constant that draws the line.
+ */
+export function XTickRow({
+  id,
+  floorY,
+  ticks,
+}: {
+  id: string;
+  floorY: number;
+  ticks: readonly { key: string | number; x: number; label: string; strong?: boolean }[];
+}) {
+  return (
+    <div className="absolute inset-x-0" style={{ top: `${floorY}%` }}>
+      {ticks.map((t) => (
+        <span
+          key={t.key}
+          data-year-tick={id}
+          className={`absolute -translate-x-1/2 whitespace-nowrap text-[12px] ${
+            t.strong
+              ? 'font-semibold text-[var(--text-primary)]'
+              : 'font-[family-name:var(--font-mono)] text-[var(--text-secondary)]'
+          }`}
+          style={{ left: `${rx(t.x)}%`, marginTop: `${AXIS_LABEL_GAP_PX}px` }}
+        >
+          {t.label}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -155,6 +221,23 @@ export function PointDot({
 }
 
 /**
+ * The halo every label drawn INSIDE a plot wears.
+ *
+ * ⚠️ **A plot label sits on top of the data, so something has to give.** Four
+ * curves in one box leaves no position that is empty at every width — the index
+ * figure's trough labels had a company's recovery running straight through the
+ * words at 1280px and two more at 375px, and it read as a deliberate crossing
+ * rather than as a defect. Nudging each label is a per-figure decision that goes
+ * stale the moment a path is reshaped (CLAUDE.md 11k); interrupting the line
+ * behind the text is a rule, and it holds at every width for ever.
+ *
+ * The colour is the panel's own ground, so the halo is invisible except where it
+ * is doing its job.
+ */
+export const PLOT_LABEL_HALO =
+  'rounded-[2px] bg-[var(--bg-stripe)] px-[2px]';
+
+/**
  * A short label pinned to a point on the plot.
  *
  * ⚠️ **The anchor is chosen from the position, never passed in.** A centred label
@@ -163,6 +246,12 @@ export function PointDot({
  * once here because two figures grew their own copy within a day (CLAUDE.md 11c).
  *
  * `dy` is the vertical offset in pixels — positive puts the label below the point.
+ *
+ * ⚠️ **There is no `above` option, deliberately.** One was written and removed
+ * the same day: choosing a side per label is a per-figure decision that goes
+ * stale the next time a path moves, and it swapped one collision for another.
+ * The halo below plus a taller plot on narrow screens fixes the underlying
+ * problem — a label with something behind it — without anyone having to choose.
  */
 export function PinnedLabel({
   x,
@@ -183,7 +272,7 @@ export function PinnedLabel({
   return (
     <span
       data-pinned-label={id}
-      className={`absolute whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] ${
+      className={`absolute whitespace-nowrap font-[family-name:var(--font-mono)] text-[12px] ${PLOT_LABEL_HALO} ${
         strong ? 'font-semibold text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'
       }`}
       style={{

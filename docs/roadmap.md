@@ -1647,6 +1647,48 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > was about to fix it; a 4× capture showed a clean gutter and a tick mark. **Derive the finding
 > from a number, not from a picture of a picture** (11o) — the probe had said "none" and was right.
 
+> #### ✅ G4.5 — owner's read-through, topic 01. 2026-08-21, still inside PR #89.
+>
+> Owner read the five "Falls and recoveries" articles and approved 1, 2 (after one edit) and 3.
+> Playwright **464 → 465**; all five guards, `pnpm build` and pytest 153 green.
+>
+> - **Article 2** — the 52-week-high cross-reference moved to close the section, after "A more
+>   useful sentence has the company's own history in it", rather than splitting that pair from
+>   the "close to useless" paragraph it answers.
+> - **Article 4** — the three curves are labelled **Company A / B / C** on the drawing. They were
+>   already named A/B/C in the geometry and in two other articles' figures; only the trough
+>   labels had dropped the name, so the caption asserted three depths with nothing on the picture
+>   to attach them to. Names and depths both read off the curves.
+> - **Article 5 — REWRITTEN, and the old version was answering the wrong question.** It said
+>   "nobody can tell you, and we measure magnitudes only", which is true and stops one step short:
+>   the stock page draws the price and the drawdown on **one shared time axis**, so a reader can
+>   measure how long each of that company's past recoveries took. The article now teaches that
+>   reading — the curve leaves zero when the price passes a high and touches zero when it gets
+>   back, so the **width** of the shaded stretch is the duration — and covers the Profit Recovery
+>   view as the same chart measured from the low. The honesty is kept where it belongs: depth does
+>   not predict duration, three past falls is not a distribution, the company may not be the same
+>   company, and the current stretch is unfinished by definition.
+>   - New `PriceRecoveryFigure` + `priceRecoveryGeometry`: one price path, the drawdown **computed**
+>     from its running peak, and every underwater stretch **found by scanning that curve** rather
+>     than declared beside it — so the durations in the caption are readings off the drawing
+>     (11c-iii). Three stretches, two finished and one still running.
+>   - `RecoveryTimeFigure` + `recoveryGeometry` are now unreferenced. **Left in place pending the
+>     owner's word** — nothing is deleted here without asking.
+> - **Axis labels, every figure** — see `design-system.md`. The gap was 57px on nine figures and
+>   12px on two; it is 8px on all of them, and the x-tick rows hang off the floor line rather than
+>   the bottom of the box.
+>
+> ⚠️ **Three method notes from this round.** (i) A probe reported the "$100" axis label as
+> struck through at 1280px — the same false positive as G4.4 — and this time the cause was found:
+> `getBoundingClientRect()` includes **padding**, so an 8px gap held as padding reads as a label
+> flush against the plot. The gap is now a margin, which makes the box honest for every future
+> guard. (ii) A test of "all labels below, taller mobile panel" came back with *every* axis label
+> overlapping — which was not the experiment failing but `aspect-[16/16]` not existing as a
+> Tailwind class, collapsing the panel to zero height. **An undefined CSS class is silence, and
+> silence looked like a result.** (iii) The label-side rule that got written, verified and then
+> deleted is recorded in `indexGeometry.ts`: it worked, and it swapped one collision for a worse
+> one, and the dull fix (a halo, and more height) was right.
+
 ### Layer H: Pre-launch Hardening (Phase 1.5, target: 1 week)
 
 - [ ] Mobile responsive audit on every page

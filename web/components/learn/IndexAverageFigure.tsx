@@ -1,5 +1,14 @@
 import { Figure, LegendItem } from '@/components/Figure';
-import { AxisFrame, AxisLabels, PinnedLabel, PointDot, Swatch, rx, yearTick } from './chartPrimitives';
+import {
+  AxisFrame,
+  AxisLabels,
+  PinnedLabel,
+  PointDot,
+  Swatch,
+  XTickRow,
+  rx,
+  yearTick,
+} from './chartPrimitives';
 import {
   DD_TICKS,
   DEPTH_RATIO,
@@ -60,7 +69,8 @@ export function IndexAverageFigure() {
       caption={
         <>
           Three imaginary companies and the index built from them. Each hits its own
-          worst in a different year — {MEMBER_TROUGHS.map((t) => `${Math.abs(t.pct).toFixed(0)}%`).join(', ')} — and
+          worst in a different year —{' '}
+          {MEMBER_TROUGHS.map((t) => `${t.name} ${Math.abs(t.pct).toFixed(0)}%`).join(', ')} — and
           because those years do not line up, the average of the three never falls
           past <strong>{Math.abs(INDEX_WORST).toFixed(0)}%</strong>. That is{' '}
           {DEPTH_RATIO.toFixed(1)} times shallower than the worst of them, and it is
@@ -69,15 +79,20 @@ export function IndexAverageFigure() {
         </>
       }
     >
-      <div className="relative w-full aspect-[16/9]">
+      {/* ⚠️ Taller on a phone, not merely narrower. Four labelled points in a
+          16:9 box have 211px of height at 375px and the labels are 22px each — so
+          the crowding is vertical, and shrinking the type is not available (12px
+          is the reading floor). Giving the plot more height is the only move that
+          buys rows without abbreviating the words. */}
+      <div className="relative w-full aspect-[16/12] sm:aspect-[16/9]">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
           role="img"
-          aria-label={`Four falling-and-recovering curves on one axis over three years. The three company curves reach ${MEMBER_TROUGHS.map(
-            (t) => `${Math.abs(t.pct).toFixed(0)} percent`,
-          ).join(', ')} below their own peaks, each in a different year, while the index curve built from them never falls below ${Math.abs(
+          aria-label={`Four falling-and-recovering curves on one axis over three years. ${MEMBER_TROUGHS.map(
+            (t) => `${t.name} reaches ${Math.abs(t.pct).toFixed(0)} percent`,
+          ).join(', ')} below its own peak, each in a different year, while the index curve built from them never falls below ${Math.abs(
             INDEX_WORST,
           ).toFixed(0)} percent.`}
         >
@@ -121,7 +136,12 @@ export function IndexAverageFigure() {
         {MEMBER_TROUGHS.map((t) => (
           <span key={t.name}>
             <PointDot x={t.x} y={yOf(t.pct)} color={MEMBER_LINE} id={t.name} />
-            <PinnedLabel id={t.name} x={t.x} y={yOf(t.pct)} text={`${t.pct.toFixed(0)}%`} />
+            <PinnedLabel
+              id={t.name}
+              x={t.x}
+              y={yOf(t.pct)}
+              text={`${t.name} ${t.pct.toFixed(0)}%`}
+            />
           </span>
         ))}
         {/* …and the index's, which is the whole comparison. */}
@@ -139,19 +159,13 @@ export function IndexAverageFigure() {
           strong
         />
 
-        {/* The years, in HTML so they stay 12px at every width. */}
-        <div className="absolute inset-x-0 top-full">
-          {YEAR_TICKS.map((t) => (
-            <span
-              key={t.year}
-              data-year-tick="index"
-              className="absolute -translate-x-1/2 whitespace-nowrap pt-1 font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)]"
-              style={{ left: `${rx(t.x)}%` }}
-            >
-              {yearTick(t.year)}
-            </span>
-          ))}
-        </div>
+        {/* The years, in HTML so they stay 12px at every width, hung off the
+            floor line rather than the bottom of the box. */}
+        <XTickRow
+          id="index"
+          floorY={FLOOR_Y}
+          ticks={YEAR_TICKS.map((t) => ({ key: t.year, x: t.x, label: yearTick(t.year) }))}
+        />
       </div>
       <div className="h-6" />
     </Figure>
