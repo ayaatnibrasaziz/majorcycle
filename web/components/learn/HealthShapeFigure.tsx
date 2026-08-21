@@ -85,9 +85,9 @@ export function HealthShapeFigure() {
         <>
           Two imaginary companies with{' '}
           <strong>exactly the same score — {GEARED_HEALTH.toFixed(0)} out of 100</strong>{' '}
-          — and nothing else in common. Company C earns well but is carrying real
+          — and nothing else in common. Company A earns well but is carrying real
           debt; its weakest check is {GEARED_WEAKEST.label.toLowerCase()}, at{' '}
-          {GEARED_WEAKEST.value}. Company D is dull and almost unbreakable; its
+          {GEARED_WEAKEST.value}. Company B is dull and almost unbreakable; its
           weakest is {SOLID_WEAKEST.label.toLowerCase()}, at {SOLID_WEAKEST.value}.
           On one check they are {BIGGEST_PILLAR_GAP} points apart. The headline
           number is honest and still does not tell you which risk you would be

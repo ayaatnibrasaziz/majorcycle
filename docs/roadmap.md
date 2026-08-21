@@ -1741,6 +1741,62 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > existing as a Tailwind class, collapsing the panel to zero height. **An undefined CSS class
 > is silence, and silence looked like a result.**
 
+> #### ✅ G4.7 — owner's read-through, topics 02 and 03. 2026-08-22, still inside PR #89.
+>
+> Playwright **466**, pytest 153, all five guards green, `pnpm build` clean.
+>
+> - **Articles 6, 7, 10 and 11 approved as written.** Article 8 renamed its two companies
+>   C/D → **A/B** (there was no A or B in that article; the lettering had simply continued
+>   from article 6's figure, which is a different article).
+> - **Article 9's two above-bar labels now share one row**, at the owner's request. ⚠️ The
+>   obvious fix was wrong and a guard caught it: widening the gap by raising the consensus
+>   target 124 → 136 changed what the picture *claims* — consensus upside 24% → 36% against
+>   an unchanged 96% spread, so it argued 2.7× where the prose argues 4×, and the spread
+>   test (bounded at 3×, deliberately a margin) went red. **The room had to come from the
+>   label, not the data**: "Average target" → "Average", 91px → 52px. Clearance is 80px at
+>   1280 and **14px at 375**, measured.
+> - **Article 9 contradicted the product** and the owner spotted it: it said we show the
+>   consensus, the low, the high and the count, which reads as the complete list. Smart Money
+>   Activity also plots **individual rating changes** against the price — firm, from-grade,
+>   to-grade, date — and derives a consensus label from them. Two paragraphs added; the free
+>   -tier closing line now matches.
+> - **Article 12's figure was wrong about our own engine**, in the way that is hardest to see:
+>   plausibly. The price-history bar was drawn from `PRESETS.long.lookbackBars` — 3 years —
+>   and the owner corrected it twice over. **(i)** Custom runs reach
+>   `CUSTOM_PARAM_BOUNDS.lookbackBars.max` = 5040 bars, **20 years**. **(ii)** More
+>   fundamentally, the lookback is not "how far back we look" at all: in
+>   `calculate_cycle_metrics` it is the width of the *rolling* window that defines a high,
+>   while `pullback_list` — what `typical_drawdown` and `lower_bound` are built from, and
+>   therefore what the valuation score rests on — is collected across the **whole** dataframe,
+>   which the provider loads with `period="max"`. The bar now runs **off the left edge with no
+>   end**, and the past tick sits well inside it so it cannot read as a beginning.
+>   ⚠️ **A test was guarding the false claim**: it asserted the bar matched the long preset
+>   exactly, and passed for the figure's whole life. Replaced by one asserting the *absence*
+>   of an end, with both old values as controls.
+> - **The dashed "today" rule no longer crosses text**, and each row's heading now sits with
+>   its own note above the bar rather than split by it. Both owner calls, both right. The rule
+>   is segmented per bar track — which creates a failure a single line could not have, so the
+>   guard asserts the segments share one x *and* that none lands on a text rectangle. Broken
+>   on purpose four ways; each named the real defect.
+> - **The "verdict" paragraph was factually wrong.** It offered "a verdict that sounded like
+>   an instruction" as something we could have built — but there *is* a Verdict card on every
+>   stock page. Rewritten to say what it actually is: measured cycle position and price levels
+>   back-solved from measured history, and nothing past that.
+> - **Answered, not built:** forward P/E. It is collected and typed, and rendered nowhere —
+>   and **no P/E of any kind feeds any score** (`analytics/scoring/` mentions none of
+>   trailing, forward or PEG). Surfacing it is presentation-only. Still owner's call, still
+>   Layer H.
+>
+> ⚠️ **The two tests reported failing did not fail here.** 46/46 in isolation, then 466/466 in
+> the full run, and pytest 153. The owner's hypothesis — a 52-week tooltip changed on the page
+> but not in the report — is ruled out by evidence rather than inference: that string exists in
+> exactly one file, the report imports the same `StockHeader` that renders it, `check:report
+> -sections` matches 22 sections, and **neither test mentions the gauge at all**. What they are
+> is the two heaviest tests in the suite — the only ones that load a full stock page and wait
+> on the local Python cycle spawn — and they previously failed together at the tail of an
+> 11-minute single-worker run that then aborted (21 tests "did not run"). Not reproduced in
+> three runs today.
+
 ### Layer H: Pre-launch Hardening (Phase 1.5, target: 1 week)
 
 - [ ] Mobile responsive audit on every page

@@ -7,7 +7,7 @@ import {
   MARKERS,
   PAD_BOTTOM_PX,
   PAD_TOP_PX,
-  markerGap,
+  MARKER_GAP_PX,
   type Marker as MarkerSpec,
   HIGH_MOVE_PCT,
   LOW_MOVE_PCT,
@@ -38,22 +38,22 @@ const RANGE = 'var(--c-tier-3)';
 const MEAN = 'var(--brand-deep)';
 
 /**
- * ⚠️ `lift` exists because of a defect a guard did not catch.
+ * ⚠️ **Nothing stacks. The four labels are kept apart by DISTANCE ALONG THE
+ * AXIS, and by nothing else.**
  *
- * "Today" and "Average target" both sit above the bar and are only ~20% of the
- * plot apart. At 1280px their labels clear each other comfortably; at **414px
- * and below they overlapped**, on a site whose stated floor is 375px. The guard
- * measured one width — the one where the bug is invisible (CLAUDE.md 11i-b).
+ * "Today" and "Average target" both sit above the bar. They used to be on two
+ * different rows, because at 414px and below their labels overlapped and
+ * raising one was the cheapest fix. Owner feedback (2026-08-22) was that the
+ * two read as one line or not at all, and that the prices could move to make
+ * room — so `TARGET_MEAN` moved until they clear at 360px, and the second row
+ * is gone.
  *
- * Rather than shrink the type or hide a label on small screens, the two are put
- * on different rows: `lift` raises one clear of the other, so they cannot
- * collide at any width. The guard now sweeps 1280 → 360.
+ * That removes the safety net: a label is now only ever as safe as the gap
+ * between two prices, which is why `learn.spec.ts` sweeps 1280 → 360 and demands
+ * 2px of daylight rather than merely "no overlap" (CLAUDE.md 11i-b — a bound
+ * that passes by 1px proves nothing).
  */
 function Marker({ spec, color, sub }: { spec: MarkerSpec; color: string; sub: string }) {
-  // ⚠️ The difference between the two gaps must exceed a label's own height
-  // (two 12px lines ≈ 32px), or the rows still intersect. 30 vs 6 left an 8px
-  // overlap that looked deliberate and was measured, not eyeballed.
-  const gap = markerGap(spec);
   return (
     <div
       className="absolute -translate-x-1/2 -translate-y-1/2"
@@ -76,8 +76,8 @@ function Marker({ spec, color, sub }: { spec: MarkerSpec; color: string; sub: st
         className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center"
         style={
           spec.above
-            ? { bottom: `calc(100% + ${gap}px)` }
-            : { top: `calc(100% + ${gap}px)` }
+            ? { bottom: `calc(100% + ${MARKER_GAP_PX}px)` }
+            : { top: `calc(100% + ${MARKER_GAP_PX}px)` }
         }
       >
         <span className="whitespace-nowrap text-center text-[12px] font-semibold text-[var(--text-primary)]">

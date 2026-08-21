@@ -324,7 +324,7 @@ export const LEARN_ARTICLES = [
       'The numbers behind each of the five checks, what good looks like, why the thresholds differ by industry, and why one healthy-looking score can hide very different risks.',
     theme: 'quality',
     published: '2026-08-20',
-    reviewed: '2026-08-20',
+    reviewed: '2026-08-22',
     minutes: 7,
   },
   {
@@ -337,7 +337,7 @@ export const LEARN_ARTICLES = [
       'Where the number comes from, why the spread matters more than the consensus, why targets follow the price rather than lead it, and what they cannot tell you.',
     theme: 'quality',
     published: '2026-08-20',
-    reviewed: '2026-08-20',
+    reviewed: '2026-08-22',
     minutes: 5,
   },
   {
@@ -376,7 +376,7 @@ export const LEARN_ARTICLES = [
       'The limits that are design decisions rather than gaps: no forecasts, no timing, nothing that is not a number, and why leaving them in place is the point.',
     theme: 'using-it',
     published: '2026-08-20',
-    reviewed: '2026-08-20',
+    reviewed: '2026-08-22',
     minutes: 4,
   },
 ] as const satisfies readonly LearnArticle[];

@@ -21,7 +21,7 @@ export { CHECKS, WEIGHT_TOTAL };
  * excellent until it has to refinance.
  */
 export const GEARED: Company = {
-  name: 'Company C',
+  name: 'Company A',
   scores: { profitability: 88, balance: 35, growth: 70, cashflow: 80, shareholder: 60 },
 };
 
@@ -33,7 +33,7 @@ export const GEARED: Company = {
  * is exactly the escape hatch the figure exists to close.
  */
 export const SOLID: Company = {
-  name: 'Company D',
+  name: 'Company B',
   scores: { profitability: 55, balance: 95, growth: 40, cashflow: 72, shareholder: 81 },
 };
 

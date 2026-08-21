@@ -1578,9 +1578,10 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
 
       <h2>The spread matters more than the average</h2>
       <p>
-        An average of 30% upside can mean two completely different things. Every
-        analyst agrees the share is worth about 30% more — or half of them expect it
-        to halve and the other half expect it to double.
+        An average promising healthy upside can mean two completely different
+        things. Every analyst might agree the share is worth about that much more
+        &mdash; or half of them expect it to halve while the other half expect it to
+        double.
       </p>
       <p>
         Those are opposite situations, and the headline figure is identical.
@@ -1690,6 +1691,14 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         are the parts that get dropped everywhere else.
       </p>
       <p>
+        Further down the same page, Smart Money Activity plots the individual rating
+        changes against the price itself: which firm moved, what they moved from and
+        to, and the day they did it. That is the other half of the story. The same
+        consensus figure means one thing when the last few firms to move were raising
+        their view, and something quite different when they were cutting it &mdash; and
+        neither the average nor its range tells you which of those happened.
+      </p>
+      <p>
         We also show the recommendation{' '}
         <strong>exactly as the analysts word it</strong>. Those are their labels, not
         ours, and we do not translate them into our own scale. Our own ratings never
@@ -1709,9 +1718,10 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
 
       <h2>See the full target range, free</h2>
       <p>
-        The consensus target, the high and low, the analyst count and the current
-        recommendation are on every stock page on a free MajorCycle account, across
-        the US, Australian and Canadian markets.
+        The consensus target, the high and low, the analyst count, the current
+        recommendation and the record of individual rating changes are on every stock
+        page on a free MajorCycle account, across the US, Australian and Canadian
+        markets.
       </p>
       <p>
         <strong>No card required.</strong>{' '}
@@ -2422,10 +2432,21 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
       <h2>Why the limits are the point</h2>
       <p>
         Every one of these could be papered over. We could publish an expected
-        recovery time, a target price of our own, a verdict that sounded like an
-        instruction. All of it would be guesswork wearing the same typeface as the
-        parts that are measured, and a reader would have no way to tell which was
-        which.
+        recovery time, or a price target of our own. Both would be guesswork wearing
+        the same typeface as the parts that are measured, and a reader would have no
+        way to tell which was which.
+      </p>
+      <p>
+        There is a Verdict on every stock page, and it is worth being exact about
+        what it is. It states where the price sits against this company&rsquo;s own
+        history of falls, how many past cycles that reading rests on, and the price
+        levels those cycles work out to. Every figure in it is back-solved from
+        measured history.
+      </p>
+      <p>
+        And it stops there. It does not tell you to buy, it does not tell you when,
+        and it never turns into an instruction &mdash; because the moment it did, the
+        measured half of the page and the invented half would look identical.
       </p>
       <p>
         What is left when you take the guesswork out is genuinely useful: a

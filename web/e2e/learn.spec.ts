@@ -2291,14 +2291,58 @@ test.describe('the limits figure', () => {
     ).toBe(true);
   });
 
-  test('the price-history row is the PRODUCT’s own longest window', async () => {
-    const { PRESETS } = await import('../lib/presets');
-    const { LOOKBACK_YEARS, SPANS } = await import('../components/learn/limitsGeometry');
+  test('the price-history row has NO left end, and no tick pretends otherwise', async () => {
+    /**
+     * ⚠️ **This test replaces one that asserted the defect.** Until 2026-08-22 the
+     * price row was drawn from `PRESETS.long.lookbackBars` — 3 years — and this
+     * spot held a test proving it matched that constant exactly. It passed for
+     * the life of the figure and guarded a false claim, which is the most
+     * expensive thing a green test can do.
+     *
+     * Two things were wrong. The longest window a reader can choose is
+     * `CUSTOM_PARAM_BOUNDS.lookbackBars.max` — 5040 bars, **20 years** — not the
+     * long preset. And the lookback is not "how far back we look" at all: it is
+     * the width of the rolling window that defines a high, while the falls the
+     * valuation score is built from are collected across the entire dataframe,
+     * which the provider loads with `period="max"`.
+     *
+     * So the row is open-ended, and what is asserted now is the ABSENCE of an
+     * end: the bar starts at the plot edge, is marked open, and the one past
+     * tick sits well inside it rather than at its edge — a tick on the edge
+     * would read as the beginning and reintroduce the claim in a subtler form.
+     */
+    const { PRESETS, CUSTOM_PARAM_BOUNDS } = await import('../lib/presets');
+    const { PAST_YEARS, SPANS, YEAR_TICKS, xOf } = await import(
+      '../components/learn/limitsGeometry'
+    );
 
     const prices = SPANS.find((s) => s.id === 'prices')!;
-    expect(LOOKBACK_YEARS).toBeCloseTo(PRESETS.long.lookbackBars / 252, 6);
-    expect(prices.from).toBeCloseTo(-LOOKBACK_YEARS, 6);
+    expect(prices.openEnded, 'the price row must be drawn as open-ended').toBe(true);
+    expect(prices.from, 'the price row must reach the plot edge, not start inside it').toBe(
+      -PAST_YEARS,
+    );
     expect(prices.to, 'the price-history row must stop at today').toBe(0);
+    expect(
+      SPANS.filter((s) => s.openEnded).length,
+      'only the price row is open-ended',
+    ).toBe(1);
+
+    // The controls. The old figure would fail all three.
+    expect(
+      PAST_YEARS,
+      'the window must not equal the long preset, which is what it wrongly showed',
+    ).not.toBeCloseTo(PRESETS.long.lookbackBars / 252, 6);
+    expect(
+      CUSTOM_PARAM_BOUNDS.lookbackBars.max / 252,
+      'a custom run reaches 20 years, so no single-preset number can bound this row',
+    ).toBeGreaterThan(PRESETS.long.lookbackBars / 252);
+
+    const pastTicks = YEAR_TICKS.filter((y) => y < 0);
+    expect(pastTicks.length, 'exactly one past tick anchors the scale').toBe(1);
+    expect(
+      xOf(pastTicks[0]!),
+      'the past tick sits on the plot edge, so it reads as where the record begins',
+    ).toBeGreaterThan(8);
   });
 
   test('every row renders a bar of real width, at any width', async ({ page }) => {
@@ -2307,7 +2351,10 @@ test.describe('the limits figure', () => {
     await page.goto(PATH);
     await ready(page);
     await expect(page.locator('[data-span-bar]')).toHaveCount(SPANS.length);
-    await expect(page.locator('[data-today-rule]')).toHaveCount(1);
+    // ⚠️ One segment per track, not one line down the figure. The single rule
+    // struck through every row heading and note (owner, 2026-08-22); segments
+    // only read as one line if they genuinely align, which is asserted below.
+    await expect(page.locator('[data-today-rule]')).toHaveCount(SPANS.length);
 
     // ⚠️ Label collisions are checked for EVERY figure at the end of this file;
     // what only this test can say is that each row actually drew a bar. A span
@@ -2355,6 +2402,14 @@ test.describe('the limits figure lines up with its own axis', () => {
 
     const geom = await page.evaluate(() => {
       const r = (sel: string) => document.querySelector(sel)?.getBoundingClientRect();
+      const segs = [...document.querySelectorAll('[data-today-rule]')].map((n) =>
+        n.getBoundingClientRect(),
+      );
+      // Every piece of text inside the drawing, so the rule can be proved to
+      // cross none of it.
+      const texts = [...document.querySelectorAll('figure li span, figure li p')]
+        .filter((n) => (n.textContent ?? '').trim().length > 0)
+        .map((n) => ({ t: (n.textContent ?? '').trim().slice(0, 28), b: n.getBoundingClientRect() }));
       const today = r('[data-today-rule]');
       const targets = r('[data-span-bar="targets"]');
       const prices = r('[data-span-bar="prices"]');
@@ -2365,6 +2420,12 @@ test.describe('the limits figure lines up with its own axis', () => {
         listPad: parseFloat(
           getComputedStyle(document.querySelector('figure ul') as HTMLElement).paddingLeft,
         ),
+        ruleXs: segs.map((b) => b.x),
+        struck: texts
+          .filter(({ b }) =>
+            segs.some((s) => s.x > b.left && s.x < b.right && s.bottom > b.top && s.top < b.bottom),
+          )
+          .map(({ t }) => t),
       };
     });
 
@@ -2381,6 +2442,25 @@ test.describe('the limits figure lines up with its own axis', () => {
       Math.abs(geom.endsAtToday! - geom.todayX!),
       `the price-history row ends ${(geom.endsAtToday! - geom.todayX!).toFixed(1)}px from the today rule`,
     ).toBeLessThan(2);
+
+    /**
+     * ⚠️ **The rule is segmented so it cannot cross prose, and segmenting it
+     * created a new way to be wrong.** One line down the figure could not
+     * misalign with itself; three separate ones can, and three dashes at three
+     * different x positions do not read as "today" at all — they read as noise,
+     * while every other assertion here still passes. So both halves are checked:
+     * the segments agree with each other, and none of them lands on text.
+     */
+    expect(geom.ruleXs.length, 'one today segment per row').toBe(3);
+    const spread = Math.max(...geom.ruleXs) - Math.min(...geom.ruleXs);
+    expect(
+      spread,
+      `the today segments are ${spread.toFixed(1)}px apart, so they do not read as one line`,
+    ).toBeLessThan(0.5);
+    expect(
+      geom.struck,
+      `the today rule is drawn through text: ${geom.struck.join(' | ')}`,
+    ).toEqual([]);
   });
 });
 

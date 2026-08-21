@@ -14,7 +14,28 @@
 
 export const PRICE_TODAY = 100;
 export const TARGET_LOW = 82;
-export const TARGET_MEAN = 124;
+/**
+ * ⚠️ **This value is set by the LAYOUT as well as by the argument.**
+ *
+ * "Today" and "Average" share one row (owner, 2026-08-22), so the only thing
+ * keeping their labels apart is the distance between these two prices. At 360px
+ * the plot is 253px and 124 put them 20% apart — an overlap of 13px.
+ *
+ * ⚠️ **The obvious fix was the wrong one, and a guard caught it.** Raising this
+ * to 136 bought the room and quietly gutted the article: the consensus upside
+ * went 24% → 36% against an unchanged 96% spread, so the picture argued the
+ * average was 2.7× narrower than the disagreement where the prose says 4×. The
+ * spread test bounds that ratio at 3× and went red. **Widening a gap by
+ * inflating one of its endpoints changes what the figure claims.**
+ *
+ * So the room came from the LABEL instead — "Average target" (91px) became
+ * "Average" (~52px), which also makes it the third one-word position name
+ * beside "Lowest" and "Highest" — and this moved only as far as 126, which
+ * holds the ratio at 3.7×.
+ *
+ * Moving it is a layout change AND a content change: re-measure both.
+ */
+export const TARGET_MEAN = 126;
 export const TARGET_HIGH = 178;
 
 /** How many analysts the average is made of — the number most people never look at. */
@@ -47,7 +68,7 @@ export const xOf = (price: number): number =>
 export const AXIS_TICKS = [80, 110, 140, 170] as const;
 
 /**
- * How far a lifted marker label sits from the bar, in pixels.
+ * How far a marker label sits from the bar, in pixels.
  *
  * ⚠️ Exported because the AXIS has to clear it, and the two were separate
  * numbers until 2026-08-20: the lowered "Lowest $82" label landed on the "$80"
@@ -59,10 +80,7 @@ export const AXIS_TICKS = [80, 110, 140, 170] as const;
  *
  * The axis offset is now derived from this, so moving one moves the other.
  */
-export const MARKER_LIFT_PX = 52;
-
-/** Where a label sits when it is not lifted clear of a neighbour. */
-export const MARKER_BASE_GAP = 6;
+export const MARKER_GAP_PX = 6;
 
 /** A two-line 12px label, plus breathing room before the axis rule. */
 export const MARKER_LABEL_H = 36;
@@ -73,26 +91,27 @@ export interface Marker {
   readonly label: string;
   /** Above the bar, or below it. */
   readonly above: boolean;
-  /**
-   * Push this label clear of its neighbour's row. The DOT never moves.
-   *
-   * ⚠️ Only where two labels on the SAME side of the bar are close enough to
-   * collide. "Lowest" carried a lift until 2026-08-20 and never needed one — its
-   * only same-side neighbour is "Highest", 80% of the plot away — so it hung 52px
-   * below the bar for no reason, dropped onto the axis ticks, and pushed the
-   * whole axis down to make room. A lift that guards nothing still costs layout.
-   */
-  readonly lift: boolean;
 }
 
+/**
+ * ⚠️ **All four labels sit on one row per side, and the separation is
+ * HORIZONTAL.** "Today" was raised 52px clear of "Average target" until
+ * 2026-08-22, because at 414px and below the two overlapped — the guard had
+ * measured one width, the one where the collision is invisible (11i-b). Owner
+ * feedback was that the two belong on the same line, and that the prices could
+ * move to make room.
+ *
+ * So they do: `TARGET_MEAN` was raised until the labels clear each other at
+ * 360px, the narrowest width the sweep drives. That is the only thing keeping
+ * them apart now — there is no second row to fall back on — so the clearance is
+ * asserted at every width rather than assumed at one.
+ */
 export const MARKERS: readonly Marker[] = [
-  { id: 'today', price: PRICE_TODAY, label: 'Today', above: true, lift: true },
-  { id: 'mean', price: TARGET_MEAN, label: 'Average target', above: true, lift: false },
-  { id: 'low', price: TARGET_LOW, label: 'Lowest', above: false, lift: false },
-  { id: 'high', price: TARGET_HIGH, label: 'Highest', above: false, lift: false },
+  { id: 'today', price: PRICE_TODAY, label: 'Today', above: true },
+  { id: 'mean', price: TARGET_MEAN, label: 'Average', above: true },
+  { id: 'low', price: TARGET_LOW, label: 'Lowest', above: false },
+  { id: 'high', price: TARGET_HIGH, label: 'Highest', above: false },
 ];
-
-export const markerGap = (m: Marker): number => (m.lift ? MARKER_LIFT_PX : MARKER_BASE_GAP);
 
 /**
  * How far the axis has to sit below the bar.
@@ -103,12 +122,10 @@ export const markerGap = (m: Marker): number => (m.lift ? MARKER_LIFT_PX : MARKE
  * the figure, while the collision guard written for this very figure compared
  * marker labels only with each other (CLAUDE.md 14g).
  */
-export const AXIS_TOP_PX =
-  Math.max(...MARKERS.filter((m) => !m.above).map(markerGap)) + MARKER_LABEL_H + 20;
+export const AXIS_TOP_PX = MARKER_GAP_PX + MARKER_LABEL_H + 20;
 
 /** Room above the bar for the tallest label that sits there. */
-export const PAD_TOP_PX =
-  Math.max(...MARKERS.filter((m) => m.above).map(markerGap)) + MARKER_LABEL_H + 8;
+export const PAD_TOP_PX = MARKER_GAP_PX + MARKER_LABEL_H + 8;
 
 /**
  * Breathing room UNDER the tick row.
