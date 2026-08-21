@@ -2450,6 +2450,98 @@ test.describe('every article, at the supported floor', () => {
   }
 });
 
+test.describe('every label stays inside the drawing it belongs to', () => {
+  /**
+   * ⚠️ **This is the guard the overlap check could not be.** The dividend
+   * figure's "more than it earns" is anchored to a dot a third of the way across
+   * the plot and spends its width leftwards, so on a narrow screen it ran out of
+   * the drawing entirely and into the axis gutter, where it landed on "100%".
+   * The overlap check DID find it — on CI, at 360px, after the fact, and only
+   * because Linux renders the same font wide enough to turn a near-miss into a
+   * 3px collision. On this machine it measured clear and shipped twice.
+   *
+   * A label leaving its own plot is wrong at any font size, so that is the thing
+   * to assert. It is also cheap to satisfy: nothing legitimately hangs outside a
+   * drawing except the axis furniture, which lives in the gutter by design and is
+   * excluded by name.
+   *
+   * ⚠️ **1px of tolerance, not 4.** The first version allowed 4px so that a
+   * "today" label centred on the last point could overhang, and 4px is exactly
+   * what let the real defect through: the dividend label escaped by **3px** here
+   * and CI still failed. The overhang was itself a bug of the same family — a
+   * right margin measured as a percentage of the panel — so it was fixed at the
+   * source (`PLOT_RIGHT_PAD_PX`) rather than tolerated here. A guard's slack is
+   * where its defects live.
+   */
+  test('no chart label hangs outside its own plot, at any width', async ({ page }) => {
+    test.setTimeout(600_000);
+
+    const failures: string[] = [];
+    let measured = 0;
+
+    for (const article of LEARN_ARTICLES) {
+      const path = learnPath(article.slug);
+      for (const width of [1280, 768, 414, 375, 360]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(path);
+        await ready(page);
+
+        const found = await page.evaluate(() => {
+          const hits: string[] = [];
+          let n = 0;
+          document.querySelectorAll('figure svg').forEach((svg, si) => {
+            const plot = svg.parentElement;
+            if (!plot) return;
+            const box = plot.getBoundingClientRect();
+            /**
+             * The two sides are not the same and must not be asserted the same.
+             * LEFT of the plot is the axis gutter — somebody else's space, and a
+             * chart label there is the defect this test exists for. RIGHT of it
+             * is a pad that exists precisely so a label centred on the final
+             * point can overhang; the bound is read off the element rather than
+             * hard-coded, so it tracks the real value.
+             */
+            const rightPad = parseFloat(
+              getComputedStyle(plot.parentElement as HTMLElement).paddingRight,
+            );
+            plot.querySelectorAll('span').forEach((el) => {
+              if (el.children.length > 0) return;
+              if (!(el.textContent ?? '').trim()) return;
+              // Axis furniture lives in the gutter on purpose.
+              if (el.closest('[data-axis-label], [data-year-tick]')) return;
+              if (el.hasAttribute('data-axis-label') || el.hasAttribute('data-year-tick')) return;
+              const cs = getComputedStyle(el);
+              if (cs.visibility === 'hidden' || cs.display === 'none') return;
+              const r = el.getBoundingClientRect();
+              if (r.width === 0) return;
+              n += 1;
+              const overLeft = Math.round(box.left - r.left);
+              const overRight = Math.round(r.right - (box.right + rightPad));
+              if (overLeft > 1) {
+                hits.push(
+                  `plot${si + 1} "${(el.textContent ?? '').trim().slice(0, 26)}" reaches ${overLeft}px into the axis gutter`,
+                );
+              } else if (overRight > 1) {
+                hits.push(
+                  `plot${si + 1} "${(el.textContent ?? '').trim().slice(0, 26)}" hangs ${overRight}px past the right pad`,
+                );
+              }
+            });
+          });
+          return { hits, n };
+        });
+
+        measured += found.n;
+        for (const h of found.hits) failures.push(`${path} @${width}px: ${h}`);
+      }
+    }
+
+    // The control: a selector matching nothing reports no escapes for ever.
+    expect(measured, 'no in-plot labels were measured at all').toBeGreaterThan(50);
+    expect(failures, `labels outside their plot:\n${failures.join('\n')}`).toEqual([]);
+  });
+});
+
 test.describe('nothing in a figure is drawn on top of anything else', () => {
   /**
    * ⚠️ **This replaces three separate collision checks, and it exists because all

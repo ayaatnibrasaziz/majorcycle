@@ -87,7 +87,12 @@ export function PriceRecoveryFigure() {
       }
     >
       {/* ── the price ─────────────────────────────────────────────────────── */}
-      <Plot box="aspect-[16/7] sm:aspect-[16/5]">
+      {/* ⚠️ 16/10 on a phone. Four price labels down a 72px panel left them 2px
+          apart — and the panel only got that short because the plot gained a
+          22px right pad, i.e. a change at the other end of the box. A stack of
+          axis labels is a HEIGHT requirement in pixels; anything that narrows the
+          box shortens it too. */}
+      <Plot box="aspect-[16/10] sm:aspect-[16/5]">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"

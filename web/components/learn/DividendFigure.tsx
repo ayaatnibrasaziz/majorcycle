@@ -136,6 +136,15 @@ function Panel({
               color={LIMIT_LINE}
               id="crossed"
             />
+            {/* ⚠️ **Anchored right, so its width is spent LEFTWARDS from a dot a
+                third of the way across the plot** — and at 360px the full phrase is
+                wider than that, so it ran out of the drawing and into the axis
+                gutter, landing on "100%" and "150%". It measured clear on Windows
+                and overlapped by 3px on CI, because Linux renders the same font a
+                touch wider: a label that only just fits is a label that does not.
+                Above-left is still the right *place* (the curve is below the line
+                there, and above-right is where it climbs), so what gives on a
+                narrow screen is the number of words. */}
             <span
               data-cross-label=""
               className="absolute whitespace-nowrap text-[12px] font-semibold text-[var(--text-primary)]"
@@ -145,7 +154,8 @@ function Panel({
                 transform: 'translate(-100%, -22px)',
               }}
             >
-              more than it earns&nbsp;
+              <span className="sm:hidden">over 100%&nbsp;</span>
+              <span className="hidden sm:inline">more than it earns&nbsp;</span>
             </span>
           </>
         )}

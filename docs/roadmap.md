@@ -1719,6 +1719,23 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 >   stock page; it now describes the idea, not our UI.
 > - `RecoveryTimeFigure` + `recoveryGeometry` deleted at the owner's word.
 >
+> ⚠️ **CI went red a SECOND time on the same pair, and the second round is the lesson.**
+> The 2px margin was the right rule and it still could not see this: "more than it earns" is
+> anchored to a dot a third of the way across the plot and spends its width *leftwards*, so on
+> a narrow screen it left the drawing entirely and landed in the axis gutter. On Windows it
+> escaped by 3px and cleared the axis label by 5px — green. On Linux the same phrase is ~6px
+> wider — a 3px collision. **A label leaving its own plot is wrong at any font size**, which is
+> the assertion that holds everywhere, so `learn.spec.ts` now carries *"no chart label hangs
+> outside its own plot"*. It bounds each side by its own allowance: **zero into the left gutter,
+> `PLOT_RIGHT_PAD_PX` on the right, read off the element rather than hard-coded.**
+> ⚠️ **Its first version allowed 4px of slack** so an end label could overhang, and 4px is
+> exactly what let the defect through — it escaped by 3. The overhang turned out to be the same
+> family of bug (a right margin measured as a percentage of the panel), so it was fixed at the
+> source instead of tolerated in the guard. **A guard's slack is where its defects live.**
+> ⚠️ And the right pad then shortened every plot through its aspect ratio, closing the price
+> panel's four axis labels to 2px apart: **a change at one edge of a box is a change to its
+> height.**
+>
 > ⚠️ **Method note.** A test of "all labels below, taller mobile panel" came back with
 > *every* axis label overlapping — not the experiment failing, but `aspect-[16/16]` not
 > existing as a Tailwind class, collapsing the panel to zero height. **An undefined CSS class

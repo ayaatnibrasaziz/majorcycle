@@ -30,8 +30,20 @@ export const AXIS_GUTTER_PX = 44;
  * not half-clipped by the viewBox edge.
  */
 export const PLOT_L = 1;
-export const PLOT_R = 96;
+export const PLOT_R = 100;
 export const rx = (x: number): number => PLOT_L + (x / 100) * (PLOT_R - PLOT_L);
+
+/**
+ * Room on the RIGHT for half of a label centred on the last point.
+ *
+ * ⚠️ **This was 4 viewBox units of the plot's own width, and that is the same
+ * mistake as the left gutter.** A "today" label centred at the final point needs
+ * half its width — about 15px — and 4% is 23px on a full-width panel and **10px**
+ * on one of the two half-width panels in the dip/correction figure, where the
+ * label duly hung 5px outside the drawing. Half a label is a number of pixels; it
+ * does not shrink when the panel does.
+ */
+export const PLOT_RIGHT_PAD_PX = 22;
 
 /**
  * A plot and its axis gutter.
@@ -59,7 +71,10 @@ export function Plot({
   children: React.ReactNode;
 }) {
   return (
-    <div className={`relative w-full ${className}`} style={{ paddingLeft: AXIS_GUTTER_PX }}>
+    <div
+      className={`relative w-full ${className}`}
+      style={{ paddingLeft: AXIS_GUTTER_PX, paddingRight: PLOT_RIGHT_PAD_PX }}
+    >
       <div className={`relative w-full ${box}`}>{children}</div>
     </div>
   );
