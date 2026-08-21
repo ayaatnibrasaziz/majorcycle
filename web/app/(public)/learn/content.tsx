@@ -1687,8 +1687,8 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
       <h2>How MajorCycle shows it</h2>
       <p>
         We show the consensus target, the lowest and highest individual targets, and
-        how many analysts the figures come from — because the spread and the count
-        are the parts that get dropped everywhere else.
+        how many analysts the figures come from &mdash; so you can see the whole range,
+        and how many views it rests on, rather than only the middle of it.
       </p>
       <p>
         Further down the same page, Smart Money Activity plots the individual rating
