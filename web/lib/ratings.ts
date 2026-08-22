@@ -38,7 +38,7 @@ export const RATING_TIER_HEX: Readonly<Record<1 | 2 | 3 | 4 | 5, string>> = {
   2: '#1E7C1E',
   3: '#87660F',
   4: '#C73600',
-  5: '#B22222',
+  5: '#8B1414',
 } as const;
 
 /** Tier index 1 (strongest) … 5 (weakest) for a 0–100 score. */

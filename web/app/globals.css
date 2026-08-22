@@ -121,7 +121,31 @@
        2      #228B22   #1E7C1E     4.39 → 5.31   3.97 → 4.80
        3      #D4A017   #87660F     2.38 → 5.32   2.15 → 4.82
        4      #FF4500   #C73600     3.44 → 5.32   3.11 → 4.81
-       5      #B22222   unchanged   6.68  ✓       6.04
+       5      #B22222   #8B1414     6.68 → 9.51   6.04 → 8.61
+
+     ⚠️ TIER 5 MOVED FOR A SECOND REASON, and it is not contrast — it already
+     passed. Darkening Cautious out of orange (#FF4500) and into red (#C73600)
+     put it next to Bearish, and the owner spotted on sight that the two no longer
+     read as different tiers. Measured, they were 10.7 apart on the standard
+     perceptual scale — the range where most people call two colours "the same
+     sort of colour" — and **10.0 apart to a red-green colour-blind reader**, who
+     is roughly one man in twelve and to whom both are olive.
+
+     #8B1414 takes that to 16.3 and 16.1. It separates by LIGHTNESS rather than
+     hue, which is the separation that survives colour blindness, a printed page
+     and a dimmed screen; a hue-based separation (a claret was measured at 26.1)
+     was offered and the owner chose to keep Bearish unmistakably red. Note it is
+     not a new colour: it is the value --c-tier-5-ink already held, so the palette
+     got smaller. Owner-approved 2026-08-22.
+
+     ⚠️ The general lesson, which cost nothing here only because the owner looked:
+     **a colour fixed in isolation can break a set.** Every one of the three
+     darkenings above was correct on its own terms and measured against its own
+     ground; the defect they created was a RELATIONSHIP, which no per-colour
+     assertion can see. `pnpm check:tier-palette` now measures the gap between
+     every adjacent pair, so the next well-meant darkening cannot quietly collapse
+     one. (Same shape as design-system.md §11's "how many scales does the site
+     have after this?" — ask what a local fix does to the set.)
 
      ⚠️ SOLVED AGAINST THE DARKEST GROUND THE TEXT ACTUALLY SITS ON, and the first
      attempt was not. These colours are also used as `.score-tag` text, and I sized
@@ -150,7 +174,7 @@
   --c-tier-2: #1E7C1E;
   --c-tier-3: #87660F;
   --c-tier-4: #C73600;
-  --c-tier-5: #B22222;
+  --c-tier-5: #8B1414;
 
   /* Tier ink (text on tinted bg) */
   --c-tier-2-ink: #0D5C0D;
@@ -183,6 +207,49 @@
   --tint-tier-3: rgba(212, 160, 23, 0.10);
   --tint-tier-3-strong: rgba(212, 160, 23, 0.12);
   --tint-brand: rgba(46, 125, 232, 0.10);
+
+  /* ── SEMANTIC INK — the same meanings, for when the colour is TEXT ─────────
+     A colour that is a line, a candle, a dot or a bar keeps the value it has
+     always had; the same colour used as WORDS points at one of these instead.
+
+     ⚠️ WHY A SECOND SET RATHER THAN DARKENING THE ORIGINALS. Green-for-up is a
+     convention every trading tool follows and the owner scoped it out of the
+     2026-08-22 rating work for that reason. But measuring the signed-in pages
+     for the first time showed the direction palette is not only fills and lines:
+     on one stock page it was **57 pieces of TEXT**, worst 2.11:1 against a 4.5
+     floor — the Key Risks heading, Current Drawdown, the analyst consensus
+     figure, every beat/miss and streak. A rising candle and the sentence about it
+     are different objects with different rules, so they get different tokens. The
+     candle is untouched; the sentence is legible. Owner-approved 2026-08-22.
+
+     ⚠️ Each value is solved against the DARKEST ground it was actually observed
+     on — measured, not guessed, by dumping every sub-floor element on an ENTITLED
+     stock page with its computed colour AND its composited background (11l ii).
+     The green sits on a 10% green tint in one place (#E9F3E9) and the gold on a
+     10% gold tint (#F7F1E1); both would have looked fine solved against white and
+     shipped under the floor, which is exactly how the tier inks went wrong once.
+     Target is 4.8, not 4.5, so the next surface's ground does not reopen this.
+
+       role      was                            now       worst measured
+       up        #228B22                        #1B741B   3.86 → 5.18
+       neutral   #D4A017 / #9A7010 / #B58800    #81600F   2.11 → 5.15
+       warn      #FF4500                        #C73600   3.11 → 4.81
+       brand     #2E7DE8                        #1E5CB3   3.67 → 5.91
+
+     ⚠️ THREE golds collapse into one. #D4A017, #9A7010 and #B58800 were three
+     hand-typed near-misses for the same idea, and nothing could have told you
+     they were meant to be the same colour (CLAUDE.md 11c).
+
+     ⚠️ Values coincide with --c-tier-2/-3/-4 in places and the tokens are still
+     separate, deliberately. A rating is our judgement about a stock; a direction
+     is a fact about a number. They must be free to move apart, and one shared
+     token is how they would silently stop being. `lib/ink.ts` mirrors these for
+     the chart props that cannot read a CSS variable; `pnpm check:tier-palette`
+     fails if the two copies disagree. */
+  --c-up-ink: #1B741B;
+  --c-neutral-ink: #81600F;
+  --c-warn-ink: #C73600;
+  --c-brand-ink: #1E5CB3;
 
   /* Chart heights */
   --chart-h-sm: 200px;
@@ -495,7 +562,13 @@
   color: white;
   font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
   display: inline-flex; align-items: center; justify-content: center;
-  margin-top: 2px; opacity: .85;
+  margin-top: 2px;
+  /* ⚠️ NO `opacity` HERE. It was .85, which took white-on-Constructive from 5.31
+     to 4.31 — under the floor for no reason but the fade, on a premium card. And
+     it was invisible to every run we had ever done, because the contrast suites
+     sign in with the free account and have therefore never seen this card. Recede
+     with a colour, never with transparency: a token can be measured, an opacity
+     silently reprices whatever it lands on (CLAUDE.md 11q). */
 }
 .verdict-bands {
   display: grid; grid-template-columns: 1.4fr 1fr 1fr;
@@ -607,27 +680,49 @@
   letter-spacing: .5px; vertical-align: 1px; font-size: 9px; font-weight: 600;
   cursor: help; user-select: none;
 }
-.insight-strength.is-attr { color: #228B22; }
-.insight-strength.is-risk { color: #B58800; }
+.insight-strength.is-attr { color: var(--c-up-ink); }
+.insight-strength.is-risk { color: var(--c-neutral-ink); }
 .insight-strength-label {
   font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 700;
-  letter-spacing: 1.2px; text-transform: uppercase; margin-right: 4px; opacity: .75;
+  letter-spacing: 1.2px; text-transform: uppercase; margin-right: 4px;
+  /* ⚠️ `opacity: .75` until 2026-08-22, and it survived the ink change by hiding
+     inside it: the green underneath went from 4.39 to 5.90, and the fade still
+     took the rendered word to 3.55. A colour fixed at full strength is not fixed
+     if something upstream dims it — which is the THIRD instance of this in one
+     day (.verdict-thesis-num, this, and the brand watermark). Recede with a
+     colour, never with transparency (CLAUDE.md 11q). Here there was no room to
+     recede: the ink sits at 5.90 and the floor for 9px is the full 4.5, so the
+     label simply stands at its own colour and the size and letter-spacing carry
+     the hierarchy instead. */
 }
 .insight-invalidation {
   display: flex; align-items: flex-start; gap: 6px; margin-top: 6px;
   padding: 7px 10px; background: rgba(180,140,40,.06);
-  border-left: 2px solid #D4A017; border-radius: 0 4px 4px 0;
+  border-left: 2px solid var(--c-neutral-ink); border-radius: 0 4px 4px 0;
   font-family: 'Sora', sans-serif; font-size: 11px; font-style: italic;
   color: #7A5A10; line-height: 1.5;
 }
-.insight-invalidation-icon { flex-shrink: 0; color: #9A7010; margin-top: 2px; }
+.insight-invalidation-icon { flex-shrink: 0; color: var(--c-neutral-ink); margin-top: 2px; }
 .insight-invalidation-icon svg { width: 11px; height: 11px; display: block; }
 .insight-invalidation strong { font-style: normal; font-weight: 700; color: #5A4408; }
 
-.card-header--accent-buy  { border-left: 3px solid #228B22; }
-.card-header--accent-buy .card-title  { color: #228B22; }
-.card-header--accent-hold { border-left: 3px solid #D4A017; }
-.card-header--accent-hold .card-title { color: #D4A017; }
+/* The accent stripe and its heading on "Why Attractive" / "Key Risks".
+   ⚠️ The stripe is a GRAPHIC and the heading is TEXT, and the gold failed both:
+   2.38:1 against a white card, under the 4.5 for text and under the 3.0 that a
+   plain decorative line owes as well. They move together because a stripe that
+   disagreed with its own heading would read as a mistake.
+
+   ⚠️ ONLY THE COLOUR MOVED. The 3px left stripe itself is verbatim from
+   reference/original-design.html (lines 744 and 746; the 2px one on
+   .insight-invalidation is line 573), which non-negotiable #1 requires this UI to
+   match — so the shape is mandated, not chosen, and a design linter reading it as
+   a generic "side-tab accent" is looking at the one thing here that is not ours to
+   change. The owner reviewed these two stripes directly on 2026-08-22 and approved
+   deepening them: same width, same position, same shape. */
+.card-header--accent-buy  { border-left: 3px solid var(--c-up-ink); }
+.card-header--accent-buy .card-title  { color: var(--c-up-ink); }
+.card-header--accent-hold { border-left: 3px solid var(--c-neutral-ink); }
+.card-header--accent-hold .card-title { color: var(--c-neutral-ink); }
 
 @media (max-width: 640px) {
   .insight-grid { grid-template-columns: 1fr; }
@@ -669,8 +764,14 @@
 }
 .ma-pill:hover { border-color: var(--text-secondary); color: var(--text-secondary); }
 /* Legend chips match the on-chart DMA line colours (design-system §5):
-   50 DMA = brand-bright #2E7DE8, 200 DMA = brand-deep #1A3A6E. */
-.ma-pill--50.active  { color: #2E7DE8; border-color: #2E7DE8; background: rgba(46,125,232,.08); }
+   50 DMA = brand-bright #2E7DE8, 200 DMA = brand-deep #1A3A6E.
+   ⚠️ The 50 chip's BORDER still carries the line's colour — that is the whole
+   point of a legend — but its LABEL does not, because #2E7DE8 on the chip's own
+   8% tint measures 3.67:1. The line itself is fine (4.03 against white, over the
+   3.0 a graphic owes) and is deliberately left alone: darkening it would push it
+   toward the 200 DMA's brand-deep and cost the reader the distinction the two
+   lines exist to make. Border keeps the link, label becomes readable. */
+.ma-pill--50.active  { color: var(--c-brand-ink); border-color: #2E7DE8; background: rgba(46,125,232,.08); }
 .ma-pill--200.active { color: #1A3A6E; border-color: #1A3A6E; background: rgba(26,58,110,.10); }
 .ma-pill--50.active:hover  { background: rgba(46,125,232,.14); }
 .ma-pill--200.active:hover { background: rgba(26,58,110,.16); }
@@ -721,8 +822,8 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 15px; font-weight: 600; color: var(--text-primary);
 }
-.stat-pill-val.green { color: #228B22; }
-.stat-pill-val.amber { color: #D4A017; }
+.stat-pill-val.green { color: var(--c-up-ink); }
+.stat-pill-val.amber { color: var(--c-neutral-ink); }
 .stat-pill-val.red   { color: #B22222; }
 
 @media (max-width: 640px) {
@@ -908,7 +1009,7 @@ td.num             { font-weight: 600; }
 .km-cat-cell { text-align: left; }
 .km-value { font-size: 11.5px; font-weight: 600; color: var(--text-primary); }
 .km-cmp { font-size: 11.5px; font-weight: 600; cursor: help; }
-.km-cmp--better { color: #228B22; }
+.km-cmp--better { color: var(--c-up-ink); }
 .km-cmp--worse  { color: #B22222; }
 .km-cmp--inline { color: var(--text-muted); }
 /* ⚠️ --border-strong (#CBD5E1) until 2026-08-22, i.e. a BORDER token used as ink:
@@ -966,6 +1067,10 @@ td.num             { font-weight: 600; }
 .smart-legend-chip                          { display: inline-flex; align-items: center; gap: 5px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: .3px; }
 .smart-legend-chip-dot                      { width: 7px; height: 7px; border-radius: 50%; background: var(--lg, #1E5CB3); flex-shrink: 0; }
 .smart-pill.is-buy        { background: rgba(34,139,34,.12); color: #0D5C0D; border: 1px solid rgba(34,139,34,.25); }
+/* ⚠️ #8B1414 here is the DIRECTION red darkened for a tinted ground, and it has
+   held that value since long before --c-tier-5 arrived at the same one in 2026-08.
+   Two rules, one hex, no relationship — do not "unify" them (CLAUDE.md 11c cuts
+   both ways: a shared value is not evidence of a shared rule). */
 .smart-pill.is-sell       { background: rgba(178,34,34,.10); color: #8B1414; border: 1px solid rgba(178,34,34,.22); }
 .smart-pill.is-upgrade    { background: rgba(34,139,34,.12); color: #0D5C0D; border: 1px solid rgba(34,139,34,.25); }
 .smart-pill.is-downgrade  { background: rgba(178,34,34,.10); color: #8B1414; border: 1px solid rgba(178,34,34,.22); }
@@ -1726,7 +1831,13 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   background: var(--brand-light); border: 1px solid var(--brand-light-border);
   font-size: 12px; color: var(--brand-mid);
 }
-.req-notice-x { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--brand-mid); opacity: .7; }
+/* ⚠️ `opacity: .7` until 2026-08-22 — 3.40:1 on the notice, against a 4.5 floor.
+   Found by GREPPING for faded text rather than by measuring, because the notice
+   only appears after a reader adds a ticker and the contrast probe walks pages in
+   their initial state: an element that renders only after an interaction has never
+   been measured by anything we own (CLAUDE.md 14g). The colour was always fine —
+   brand-mid is 6.49 on white — and the fade was the whole defect (11q). */
+.req-notice-x { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--brand-mid); }
 .req-notice-x:hover { opacity: 1; }
 
 .req-empty { margin-top: 12px; font-size: 12px; color: var(--text-muted); font-style: italic; }

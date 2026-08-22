@@ -60,18 +60,41 @@ The new build's job is to **rebuild the same product on a modern foundation**, n
   --border-faint:        rgba(26,58,110,.08);
   --border-faint-strong: rgba(26,58,110,.10);
 
-  /* Rating tier semantic colours (the underlying hex values do not change,
-     only the label text changes — see section 4 below) */
-  --c-tier-1:      #006400;  /* High Conviction */
-  --c-tier-2:      #228B22;  /* Constructive */
-  --c-tier-3:      #D4A017;  /* Neutral */
-  --c-tier-4:      #FF4500;  /* Cautious */
-  --c-tier-5:      #B22222;  /* Bearish */
+  /* Rating tier semantic colours — OUR JUDGEMENT, and NOT the direction colours.
+     ⚠️ This block said "the underlying hex values do not change" until 2026-08-22.
+     They changed twice that day and the sentence was simply wrong afterwards, in
+     the one document a reader consults to find out what the palette is. Four of
+     the five moved; `globals.css` carries the measurements and the reasons. */
+  --c-tier-1:      #006400;  /* High Conviction — unchanged */
+  --c-tier-2:      #1E7C1E;  /* Constructive   — was #228B22, 4.39:1 under white */
+  --c-tier-3:      #87660F;  /* Neutral        — was #D4A017, 2.38:1 under white */
+  --c-tier-4:      #C73600;  /* Cautious       — was #FF4500, 3.44:1 under white */
+  --c-tier-5:      #8B1414;  /* Bearish        — was #B22222; see below */
+
+  /* ⚠️ Tier 5 moved for a reason that is NOT contrast — it already passed at 6.68.
+     Darkening Cautious out of orange put it beside Bearish: 10.7 apart on the
+     standard perceptual scale, and 10.0 to a red-green colour-blind reader, who is
+     roughly one man in twelve. #8B1414 takes those to 16.3 and 16.1. Owner-approved.
+     The lesson is in `check-tier-palette.mjs` check 4: a colour fixed in isolation
+     can break a SET, and no per-colour assertion can see it. */
 
   /* Ink shades — for text on tinted backgrounds */
   --c-tier-2-ink:  #0D5C0D;
-  --c-tier-5-ink:  #8B1414;
-  --c-tier-3-ink:  #8A6710;
+  --c-tier-5-ink:  #8B1414;  /* same value as the tier now; separate token */
+  --c-tier-3-ink:  #81600F;  /* was #8A6710 — 4.32:1 on --bg-page */
+  --c-tier-4-ink:  #B23A00;
+
+  /* ── SEMANTIC INK — the direction palette, for when the colour is TEXT ──────
+     A colour that is a line, a candle, a dot or a bar keeps the value it has
+     always had (§5 below). The same colour used as WORDS points at one of these.
+     Added 2026-08-22: the direction palette turned out to be 57 pieces of TEXT on
+     one stock page, worst 2.11:1. Mirrored in `lib/ink.ts` for the chart props
+     that cannot read a CSS variable; `pnpm check:tier-palette` keeps them in step
+     and measures each against the darkest ground it was OBSERVED on. */
+  --c-up-ink:      #1B741B;  /* was #228B22 as text */
+  --c-neutral-ink: #81600F;  /* was #D4A017 / #9A7010 / #B58800 as text */
+  --c-warn-ink:    #C73600;  /* was #FF4500 as text */
+  --c-brand-ink:   #1E5CB3;  /* was #2E7DE8 as text on its own tint */
 
   /* Tint scale — 10/12% alpha for pills, cells, hover states */
   --tint-tier-2:        rgba(34,139,34,.10);
@@ -258,10 +281,16 @@ The five composite rating tiers display as **neutral, advice-free language**. Th
 | Score Range | Label (use exactly this text) | Colour Token | Semantic |
 |---|---|---|---|
 | 80–100 | **High Conviction** | `--c-tier-1` (#006400) | Best-in-class opportunity |
-| 65–79 | **Constructive** | `--c-tier-2` (#228B22) | Favourable setup |
-| 50–64 | **Neutral** | `--c-tier-3` (#D4A017) | Mixed signal |
-| 35–49 | **Cautious** | `--c-tier-4` (#FF4500) | Elevated risk |
-| 0–34 | **Bearish** | `--c-tier-5` (#B22222) | Significant concerns |
+| 65–79 | **Constructive** | `--c-tier-2` (#1E7C1E) | Favourable setup |
+| 50–64 | **Neutral** | `--c-tier-3` (#87660F) | Mixed signal |
+| 35–49 | **Cautious** | `--c-tier-4` (#C73600) | Elevated risk |
+| 0–34 | **Bearish** | `--c-tier-5` (#8B1414) | Significant concerns |
+
+⚠️ **Never hand-type one of these.** They were written out 247 times across 26
+files before 2026-08-22, and three of them were illegible under white text for the
+life of the product. Use `tierColorVar()` / `scoreColor()` where CSS can reach, and
+`RATING_TIER_HEX` where it cannot (the `.xlsx` workbook, a Recharts prop, an SVG
+attribute). `pnpm check:tier-palette` fails the build on a fresh copy.
 
 **Forbidden everywhere in our scoring outputs:** Buy, Sell, Strong Buy, Hold, Avoid, Recommend, Outperform, Underperform, Overweight, Underweight.
 
@@ -288,11 +317,14 @@ score tier (one colour per label, so a label never shows two colours):
 
 | Score | Valuation label | Tier colour |
 |---|---|---|
-| 80–100 | Compelling | `#006400` |
-| 65–79 | Attractive | `#228B22` |
-| 50–64 | Reasonable | `#D4A017` |
-| 35–49 | Elevated | `#FF4500` |
-| 0–34 | Expensive | `#B22222` |
+| 80–100 | Compelling | `--c-tier-1` |
+| 65–79 | Attractive | `--c-tier-2` |
+| 50–64 | Reasonable | `--c-tier-3` |
+| 35–49 | Elevated | `--c-tier-4` |
+| 0–34 | Expensive | `--c-tier-5` |
+
+(Tokens rather than hexes, deliberately: this ladder IS the rating ladder, and
+writing the values here a second time is how the two would come to disagree.)
 
 The **Cycle Position** column shows just the 0–100 reading (gauge + number, coloured
 by `cyclePositionColor`). The zone words are *not* rendered in that cell — they're
@@ -305,9 +337,10 @@ via `ZONE_TIER`/`ZONE_DISPLAY` and is the only place the Deep Value…Stretched 
 appear with their zone-tier colour.)
 
 The **Health** column has only THREE labels (Healthy ≥80 · Adequate ≥60 · At Risk
-below 60), so it is coloured by `healthColor` — **one colour per tier**: green
-`#006400` / gold `#D4A017` / red `#B22222` — applied to BOTH the number badge and
-the label. It deliberately does NOT use the 5-tier `scoreColor` ladder (which would
+below 60), so it is coloured by `healthColor` — **one colour per tier**:
+`--c-tier-1` green / `--c-tier-3` gold / `--c-tier-5` red — applied to BOTH the
+number badge and the label. It reads the tokens, so the 2026-08-22 palette change
+reached this column and the Valuation ladder above without either being edited. It deliberately does NOT use the 5-tier `scoreColor` ladder (which would
 paint "Adequate" and "At Risk" rows several different shades for the same word).
 Valuation keeps the 5-tier ladder above because it genuinely has five labels.
 
@@ -317,14 +350,29 @@ Valuation keeps the 5-tier ladder above because it genuinely has five labels.
 
 Every chart MUST follow these. Hard rule.
 
-| Direction / Meaning | Fill | Border |
-|---|---|---|
-| Positive / up / profit / good | `#228B22` | `#006400` |
-| Negative / down / drawdown / bad | `#B22222` | `#8B0000` |
-| Neutral / informational | `#1E5CB3` | `#1A3A6E` |
-| Highlight / cursor / focus | `#2E7DE8` | `#1A3A6E` |
-| Grid lines | `#E2E8F0` (10% alpha for major, 5% for minor) | — |
-| Axis labels | `#8A97A8` | — |
+| Direction / Meaning | Fill | Border | As TEXT |
+|---|---|---|---|
+| Positive / up / profit / good | `#228B22` | `#006400` | `--c-up-ink` |
+| Negative / down / drawdown / bad | `#B22222` | `#8B0000` | `#B22222` (already 6.68) |
+| Neutral / mixed / average | `#D4A017` | — | `--c-neutral-ink` |
+| Neutral / informational | `#1E5CB3` | `#1A3A6E` | `#1E5CB3` |
+| Highlight / cursor / focus | `#2E7DE8` | `#1A3A6E` | `--c-brand-ink` |
+| Grid lines | `#E2E8F0` (10% alpha for major, 5% for minor) | — | — |
+| Axis labels | `#8A97A8` | — | — |
+
+⚠️ **The fills and borders are unchanged and must stay that way** — green-for-up is
+the convention every trading tool follows. The fourth column exists because the
+same colours were also painting *words*: 57 of them on one stock page, worst 2.11:1
+(the "Key Risks" heading, Current Drawdown, the analyst consensus figure, every
+beat/miss and dividend streak). Import `INK` from `lib/ink.ts`; do not hand-type
+either column.
+
+⚠️ **ONE EXCEPTION, and it is a Recharts fact rather than a choice: a legend entry
+is painted in its series' own colour**, so for a series the fill and the words are
+one value and cannot diverge. Two series therefore carry their ink value rather
+than their fill value — the ASX 200 line in Relative Performance (its gold measured
+2.38, failing even the 3.0 a plain graphic owes) and the Cash & Equivalents bar in
+Balance Sheet. Where you add a legended series, check the label, not just the mark.
 
 ### Candlestick colours (Lightweight Charts config)
 
@@ -537,7 +585,7 @@ The Smart Money Activity chart is the one **non-candlestick chart built on Light
 
 The Stock Scorecard plots the five Financial-Health pillars (Recharts `RadarChart`) plus a right-hand bar list. Conventions (S9):
 
-- **Pillar colours are score-based, by the rating tiers** — this **deliberately deviates from the reference**, which used fixed per-axis identity colours (so "Shareholder" rendered red even at 100, falsely reading as "bad"). Each bar fill, score number, and radar vertex dot is coloured by `tierColor(score)`: ≥80 `#006400` · ≥65 `#228B22` · ≥50 `#D4A017` · ≥35 `#FF4500` · <35 `#B22222`. Colour now *means* "strong → weak". The connecting polygon stroke/fill stays brand blue (`#1E5CB3` / `rgba(30,92,179,.15)`) as the neutral "shape".
+- **Pillar colours are score-based, by the rating tiers** — this **deliberately deviates from the reference**, which used fixed per-axis identity colours (so "Shareholder" rendered red even at 100, falsely reading as "bad"). Each bar fill, score number, and radar vertex dot is coloured by `tierColor(score)`, i.e. by `--c-tier-1` … `--c-tier-5` at the 80/65/50/35 bands. (This line named the five hexes until 2026-08-22 and every one of them was stale within hours of the palette change — the tokens are the only safe way to write it down.) Colour now *means* "strong → weak". The connecting polygon stroke/fill stays brand blue (`#1E5CB3` / `rgba(30,92,179,.15)`) as the neutral "shape".
 - **Full 0–100 radius scale** (a maxed pillar reaches the outer grid ring). The **angle-axis labels sit in the margin *outside* the grid ring** — the custom `AngleAxisTick` anchors each label *outward* (right→`start`, left→`end`, top/bottom→`middle`) with a small radial nudge. `outerRadius` is ~52% and the radar column is widened (`.radar-grid` `340px 1fr`) so the long names ("Balance Sheet", "Shareholder") clear without clipping.
 - **A11y:** the chart wrapper carries `role="img"` + a dynamic `aria-label` summarising the plotted pillars (reflects only the real pillars, so a withheld-pillar stock reads fewer).
 - **Weighting is explained, not shown per-bar:** the Health Score is the *weighted* mean (Profitability 30 / Balance Sheet 25 / Growth 20 / Cash Flow 15 / Shareholder 10); the weights live in the card-title `InfoTip` only (a per-bar weight column was tried and removed as too busy). Subtitle is just `Health Score N/100`.
@@ -550,7 +598,7 @@ Real yfinance values can be absurd (a near-zero denominator gives P/E 3,500×, R
 - **`MetricDef.cap`** (Key Metrics, `MetricsTable.tsx`): a per-metric cap. Beyond `±cap` the cell shows `>+cap` / `<−cap`, and the **true value goes in the hover tooltip** ("Actual … — capped for display"). Current caps: P/E 150x · EV/EBITDA 150x · PEG 25 · FCF Yield 100% · Op/Net Margin 300% · ROE 300% · ROA 300% · D/E 25 · Current Ratio 25 · Revenue/Earnings Growth 300%.
 - **Median hygiene:** the same bounds are mirrored in `medians.server.ts` `OUTLIER_BOUND` so capped outliers don't skew the peer median (bump the cache key when you change them).
 - **Peer comparison columns:** Key Metrics shows three relative columns — **vs Industry**, **vs Sector**, **vs Market** — ordered most-specific → broadest (industry ⊂ sector ⊂ market). Each cell is coloured green/red/grey by whether the stock beats / trails / matches that peer group's median. `medians.server.ts` (`fetchMetricMedians`, cache key `metric-medians-v5`) groups the whole universe by industry, sector, and market in one daily-cached scan. **Industry peer floor:** industries are small (~126 across 719 stocks), so a group needs **≥ 5 stocks** (`INDUSTRY_PEER_FLOOR`) before its median is trusted; below that the industry is omitted and the cell falls back to "—" rather than showing a one- or two-peer median.
-- **Distress flag (not a cap):** where a high number is *bad* (a trailing dividend yield > 20% almost always means a collapsed price / imminent cut), show the **real** value but recolour it amber (`#D4A017`, not reassuring green) + a ⚠ + a caution tooltip — capping it would read as "good".
+- **Distress flag (not a cap):** where a high number is *bad* (a trailing dividend yield > 20% almost always means a collapsed price / imminent cut), show the **real** value but recolour it amber (`INK.neutral`, not reassuring green) + a ⚠ + a caution tooltip — capping it would read as "good".
 - **`fmtCapped(value, cap, decimals)`** (`web/lib/format.ts`) is the shared helper for **prose** numbers — the same cap pattern for values interpolated into sentences rather than table cells. Used by the Thesis narrative (`VerdictCard` `bestStrength`/`topRisk`, `ThesisInsights` `buildAttractive`/`buildRisks`): ROE/margins/growth 300, FCF Yield 100, D/E & PEG 25. Beyond the cap it renders ">cap" inline (e.g. "an exceptional >300% return on equity").
 - These are **display-only**: the cycle math and FH pillars already clamp their inputs, so ratings are untouched.
 

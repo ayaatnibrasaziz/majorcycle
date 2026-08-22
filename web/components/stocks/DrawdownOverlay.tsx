@@ -23,6 +23,7 @@ import {
 } from '@/lib/chartSync';
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { CycleAnalysisFree, PriceBar } from '@/lib/types';
+import { INK } from '@/lib/ink';
 
 type Mode = 'drawdown' | 'profit';
 
@@ -196,7 +197,9 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
 
     if (typLine !== null) {
       chart.addLineSeries({
-        color: '#D4A017',
+        // Lightweight Charts paints the price-scale label in the series colour,
+        // so this is a dashed line AND its own text. 2.38:1 either way.
+        color: INK.neutral,
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         priceLineVisible: false,

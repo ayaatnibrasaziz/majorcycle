@@ -83,6 +83,102 @@ const ratio = (a, b) => {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 };
 
+// ── perceptual distance (CIEDE2000) and dichromat simulation ────────────────
+// Contrast answers "can this be READ". It says nothing about "can these two be
+// TOLD APART", which is a different question with a different answer — and it is
+// the one that went wrong in 2026-08. See check 4.
+const XYZ = (hex) => {
+  const [r, g, b] = rgb(hex).map((v) => {
+    const c = v / 255;
+    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return [
+    r * 0.4124564 + g * 0.3575761 + b * 0.1804375,
+    r * 0.2126729 + g * 0.7151522 + b * 0.072175,
+    r * 0.0193339 + g * 0.119192 + b * 0.9503041,
+  ];
+};
+const LAB = (hex) => {
+  const f = (t) => (t > 216 / 24389 ? Math.cbrt(t) : ((24389 / 27) * t + 16) / 116);
+  const [X, Y, Z] = XYZ(hex);
+  const [fx, fy, fz] = [f(X / 0.95047), f(Y), f(Z / 1.08883)];
+  return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+};
+const deltaE = (h1, h2) => {
+  const [L1, a1, b1] = LAB(h1);
+  const [L2, a2, b2] = LAB(h2);
+  const rad = Math.PI / 180;
+  const deg = 180 / Math.PI;
+  const C1 = Math.hypot(a1, b1);
+  const C2 = Math.hypot(a2, b2);
+  const Cb = (C1 + C2) / 2;
+  const G = 0.5 * (1 - Math.sqrt(Cb ** 7 / (Cb ** 7 + 25 ** 7)));
+  const ap1 = (1 + G) * a1;
+  const ap2 = (1 + G) * a2;
+  const Cp1 = Math.hypot(ap1, b1);
+  const Cp2 = Math.hypot(ap2, b2);
+  const hp = (b, ap) => {
+    if (b === 0 && ap === 0) return 0;
+    const d = Math.atan2(b, ap) * deg;
+    return d >= 0 ? d : d + 360;
+  };
+  const hp1 = hp(b1, ap1);
+  const hp2 = hp(b2, ap2);
+  const dLp = L2 - L1;
+  const dCp = Cp2 - Cp1;
+  let dhp = 0;
+  if (Cp1 * Cp2 !== 0) {
+    dhp = hp2 - hp1;
+    if (dhp > 180) dhp -= 360;
+    else if (dhp < -180) dhp += 360;
+  }
+  const dHp = 2 * Math.sqrt(Cp1 * Cp2) * Math.sin((dhp / 2) * rad);
+  const Lbp = (L1 + L2) / 2;
+  const Cbp = (Cp1 + Cp2) / 2;
+  let hbp = hp1 + hp2;
+  if (Cp1 * Cp2 !== 0) {
+    if (Math.abs(hp1 - hp2) > 180) hbp += hbp < 360 ? 360 : -360;
+    hbp /= 2;
+  }
+  const T =
+    1 -
+    0.17 * Math.cos((hbp - 30) * rad) +
+    0.24 * Math.cos(2 * hbp * rad) +
+    0.32 * Math.cos((3 * hbp + 6) * rad) -
+    0.2 * Math.cos((4 * hbp - 63) * rad);
+  const dTh = 30 * Math.exp(-(((hbp - 275) / 25) ** 2));
+  const Rc = 2 * Math.sqrt(Cbp ** 7 / (Cbp ** 7 + 25 ** 7));
+  const Sl = 1 + (0.015 * (Lbp - 50) ** 2) / Math.sqrt(20 + (Lbp - 50) ** 2);
+  const Sc = 1 + 0.045 * Cbp;
+  const Sh = 1 + 0.015 * Cbp * T;
+  const Rt = -Math.sin(2 * dTh * rad) * Rc;
+  return Math.sqrt(
+    (dLp / Sl) ** 2 + (dCp / Sc) ** 2 + (dHp / Sh) ** 2 + Rt * (dCp / Sc) * (dHp / Sh),
+  );
+};
+
+// Brettel/Vienot dichromat simulation (LMS, D65).
+const RGB2LMS = [[17.8824, 43.5161, 4.11935], [3.45565, 27.1554, 3.86714], [0.0299566, 0.184309, 1.46709]];
+const LMS2RGB = [[0.080944, -0.130504, 0.116721], [-0.0102485, 0.0540194, -0.113615], [-0.000365294, -0.00412163, 0.693513]];
+const SIM = {
+  protan: [[0, 2.02344, -2.52581], [0, 1, 0], [0, 0, 1]],
+  deutan: [[1, 0, 0], [0.494207, 0, 1.24827], [0, 0, 1]],
+};
+const mul = (M, v) => M.map((r) => r[0] * v[0] + r[1] * v[1] + r[2] * v[2]);
+const simulate = (hex, kind) => {
+  const lms = mul(RGB2LMS, rgb(hex));
+  const key = kind === 'protan' ? 0 : 1;
+  const out = mul(SIM[kind], lms);
+  const merged = lms.map((v, i) => (i === key ? out[i] : v));
+  return (
+    '#' +
+    mul(LMS2RGB, merged)
+      .map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase()
+  );
+};
+
 // ── 1 · read both copies ────────────────────────────────────────────────────
 const css = readFileSync(CSS, 'utf8');
 const ts = readFileSync(TS, 'utf8');
@@ -141,8 +237,27 @@ for (const t of ['1', '2', '3', '4', '5']) {
 }
 
 // ── 3 · no third copy of a changed tier ─────────────────────────────────────
-const CHANGED = ['2', '3', '4'].map((t) => fromCss[t]).filter(Boolean);
-const SOURCES = new Set([CSS, TS].map((p) => relative(ROOT, p).replace(/\\/g, '/')));
+/*
+ * ⚠️ Tier 5 JOINED THIS LIST on 2026-08-22. It used to be excluded with tier 1,
+ * because the old Bearish red was ALSO the direction red (a down candle, a miss,
+ * a sell), and a hex that means two things cannot be policed as a copy of one of
+ * them. Deepening Bearish severed that — the direction red stayed exactly where
+ * it was — so four of the five are now checkable. Tier 1 is still shared with the
+ * deep-green candle borders and stays out.
+ *
+ * ⚠️ Every continuation line here starts with `*` deliberately: the prose filter
+ * below skips `//`, `*` and `/*`, and the first draft of this very comment was
+ * reported as a stray copy because it named the new hex mid-paragraph. That is
+ * the third time in this repo a guard has failed on the sentence documenting its
+ * own subject (CLAUDE.md 11c-iv). Hexes are named in words here, not digits.
+ */
+const CHANGED = ['2', '3', '4', '5'].map((t) => fromCss[t]).filter(Boolean);
+/* ⚠️ lib/ink.ts is a SOURCE here, not a suspect. INK.warn deliberately holds the
+   same value as tier 4 — a rating and a direction that agree today and must stay
+   free to move apart — so a copy check cannot tell it from a stray paste. Its own
+   values are policed by check 5, which is stricter about them than this walk. */
+const INK_TS_PATH = join(ROOT, 'lib', 'ink.ts');
+const SOURCES = new Set([CSS, TS, INK_TS_PATH].map((p) => relative(ROOT, p).replace(/\\/g, '/')));
 const SKIP_DIRS = new Set(['node_modules', '.next', '.next-dev', '.git', 'lighthouse-report', 'design-system-build', 'report-bundle', 'test-results', 'playwright-report']);
 
 const walk = (dir, out = []) => {
@@ -181,6 +296,132 @@ for (const f of files) {
   }
 }
 
+// ── 4 · adjacent tiers stay TELLABLE APART ──────────────────────────────────
+/*
+ * ⚠️ THE CHECK THAT WOULD HAVE CAUGHT 2026-08-22's SECOND DEFECT. Darkening
+ * Cautious out of orange and into red was correct in isolation, measured against
+ * its own ground, and it left two neighbouring tiers 10.7 apart — the range where
+ * most people call two colours "the same sort of colour". The owner saw it on
+ * sight; nothing in this file could, because every assertion above judges one
+ * colour at a time. **A colour fixed in isolation can break a set.**
+ *
+ * So these are RATCHETS, not targets. Each floor is what the pair measures today,
+ * rounded down. A change that narrows a gap fails, and has to either back off or
+ * move the number deliberately and say why. A uniform threshold would have been
+ * dishonest: two pairs already sit below the one the owner objected to, and a
+ * guard that fails on the day it is written gets loosened rather than obeyed.
+ *
+ * ⚠️ TWO ARE WEAK, AND ARE RECORDED RATHER THAN FIXED (CLAUDE.md 11l — a real
+ * defect does not entitle me to widen a scope the owner set):
+ *
+ *   · 1 to 2, the two greens, sit 8.2 apart — CLOSER than the 4-to-5 pair that
+ *     prompted all of this. Reported to the owner 2026-08-22.
+ *   · 2 to 3 measures 2.8 to a protanope and 3 to 4 measures 5.9 to a
+ *     deuteranope. Below about 2.3, two colours are indistinguishable.
+ *
+ * Not a WCAG failure: 1.4.1 forbids colour as the ONLY channel, and every chip
+ * carries its score while every badge carries its word. It is a quality question,
+ * and it belongs to the owner.
+ */
+const SEPARATION = [
+  // pair, plain, protanope, deuteranope — all measured 2026-08-22
+  [['1', '2'], 8.0, 8.5, 8.5],
+  [['2', '3'], 28.0, 2.5, 7.0],
+  [['3', '4'], 26.0, 12.5, 5.5],
+  [['4', '5'], 16.0, 17.5, 16.0],
+];
+for (const [[a, b], minPlain, minProtan, minDeutan] of SEPARATION) {
+  const [x, y] = [fromCss[a], fromCss[b]];
+  if (!x || !y) continue;
+  const plain = deltaE(x, y);
+  const protan = deltaE(simulate(x, 'protan'), simulate(y, 'protan'));
+  const deutan = deltaE(simulate(x, 'deutan'), simulate(y, 'deutan'));
+  note.push(
+    `  tier ${a}-${b}   apart ${plain.toFixed(1)}   protanope ${protan.toFixed(1)}   deuteranope ${deutan.toFixed(1)}`,
+  );
+  for (const [label, got, floor] of [
+    ['', plain, minPlain],
+    [' to a protanope', protan, minProtan],
+    [' to a deuteranope', deutan, minDeutan],
+  ]) {
+    if (got < floor) {
+      fail.push(
+        `tiers ${a} and ${b} moved CLOSER together${label}: ${got.toFixed(1)}, floor ${floor}. ` +
+          `Each colour may still be perfectly legible on its own — this is whether a reader can ` +
+          `tell the two TIERS apart, which no per-colour check can see.`,
+      );
+    }
+  }
+}
+
+// ── 5 · the ink layer: two copies in step, legible where it actually sits ───
+/*
+ * The text twins of the direction palette (`--c-*-ink` and `lib/ink.ts`). Same
+ * two-copy arrangement and the same reason as the tiers: a Recharts fill prop is
+ * an SVG attribute, where a CSS variable is not resolved.
+ *
+ * ⚠️ EACH GROUND IS THE DARKEST ONE THAT COLOUR WAS OBSERVED ON, dumped from a
+ * live ENTITLED stock page with the computed colour AND its composited
+ * background. Solving the green against white would have "passed" at 5.90 while
+ * shipping 3.86 to the one place it sits on a green tint — which is exactly how
+ * the tier inks went wrong the first time (CLAUDE.md 11l ii).
+ */
+const INK_GROUND = {
+  up: ['#E9F3E9', 'a 10% green tint - the insight strength tag'],
+  neutral: ['#F7F1E1', 'a 10% gold tint - the Smart Money consensus pill'],
+  warn: ['#F0F4F8', '--bg-page - the KPI drawdown value'],
+  down: ['#F0F4F8', '--bg-page - summary strip values'],
+  brand: ['#EEF5FD', "the 50 DMA chip's own 8% tint"],
+};
+
+const inkTs = readFileSync(INK_TS_PATH, 'utf8');
+const inkFromTs = {};
+const inkBlock = inkTs.match(/export const INK\s*=\s*\{([\s\S]*?)\}\s*as const/);
+if (!inkBlock) {
+  fail.push(`INK not found in ${relative(ROOT, INK_TS_PATH)} — has it been renamed?`);
+} else {
+  for (const m of inkBlock[1].matchAll(/(\w+)\s*:\s*'(#[0-9A-Fa-f]{6})'/g)) {
+    inkFromTs[m[1]] = m[2].toUpperCase();
+  }
+}
+const inkFromCss = {};
+for (const m of css.matchAll(/--c-([a-z]+)-ink\s*:\s*(#[0-9A-Fa-f]{6})\s*;/g)) {
+  if (!(m[1] in inkFromCss)) inkFromCss[m[1]] = m[2].toUpperCase();
+}
+
+for (const [role, [ground, where]] of Object.entries(INK_GROUND)) {
+  const hex = inkFromTs[role];
+  if (!hex) {
+    fail.push(`INK.${role} is missing from lib/ink.ts`);
+    continue;
+  }
+  const r = ratio(hex, ground);
+  note.push(`  ink ${role.padEnd(8)} ${hex}   ${r.toFixed(2)} on ${ground}   (${where})`);
+  if (r < FLOOR) {
+    fail.push(`INK.${role} (${hex}) scores ${r.toFixed(2)} on ${ground}, under ${FLOOR} — ${where}.`);
+  }
+  /* ⚠️ `down` has no CSS twin ON PURPOSE, and this says so out loud rather than
+     skipping quietly: it did not change, so no stylesheet rule needed rewriting.
+     It exists in INK only so a call site writing `up ? … : down` imports both
+     rather than hand-typing one of them (CLAUDE.md 11c). */
+  if (role === 'down') continue;
+  if (!(role in inkFromCss)) {
+    fail.push(`--c-${role}-ink is missing from globals.css, but INK.${role} exists`);
+  } else if (inkFromCss[role] !== hex) {
+    fail.push(
+      `ink "${role}" DISAGREES: globals.css says ${inkFromCss[role]}, lib/ink.ts says ${hex}. ` +
+        `The stylesheet paints the headings and the TS copy paints the chart labels, so a ` +
+        `reader would see two shades of one colour on one card.`,
+    );
+  }
+}
+for (const role of Object.keys(inkFromCss)) {
+  // A tier ink is a RATING colour, covered by checks 1-2 rather than here.
+  if (role.startsWith('tier') || role in INK_GROUND) continue;
+  fail.push(`--c-${role}-ink exists in globals.css with no INK.${role} and no recorded ground`);
+}
+
+
 // ── report ──────────────────────────────────────────────────────────────────
 console.log('Rating tier palette');
 console.log(note.join('\n'));
@@ -191,4 +432,7 @@ if (fail.length) {
   for (const f of fail) console.error(`  · ${f}`);
   process.exit(1);
 }
-console.log('\n✓ one palette, two copies in step, all five tiers legible both ways round');
+console.log(
+  '\n✓ one palette, two copies in step, five tiers legible both ways round,\n' +
+    '  every adjacent pair still tellable apart, and the ink layer in step with it',
+);

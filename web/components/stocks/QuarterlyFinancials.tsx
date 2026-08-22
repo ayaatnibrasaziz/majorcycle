@@ -15,6 +15,7 @@ import {
 
 import type { Currency, FinancialStatement } from '@/lib/types';
 import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, makeCompactAxisFormatter } from '@/lib/format';
+import { INK } from '@/lib/ink';
 
 interface Props {
   incomeStatementQuarterly?: FinancialStatement;
@@ -262,7 +263,7 @@ export function QuarterlyFinancials({
                       {pct !== null && (
                         <div
                           style={{
-                            color: pct >= 0 ? '#228B22' : '#B22222',
+                            color: pct >= 0 ? INK.up : INK.down,
                             fontFamily: "'JetBrains Mono', monospace",
                             fontSize: 11,
                           }}

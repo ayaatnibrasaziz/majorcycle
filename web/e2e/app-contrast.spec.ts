@@ -38,58 +38,38 @@ const EMAIL = process.env.E2E_EMAIL;
 const PASSWORD = process.env.E2E_PASSWORD;
 
 /**
- * ── The ONE open exemption, and it is a pending owner decision, not a defect ──
+ * ── The ONE exemption, and it is a WCAG carve-out rather than a debt ─────────
  *
- * The five tier hexes do TWO jobs in this product. As a RATING they are our
- * judgement (High Conviction … Bearish); as a DIRECTION they say the price rose,
- * earnings beat, the trend is bullish, an insider bought. They share a hue and
- * nothing else.
+ * `.verdict-watermark` is the faint "MajorCycle" brand stamp in the corner of the
+ * Verdict card: --brand-deep at 18% opacity, measuring 1.37:1. WCAG 1.4.3 exempts
+ * "text that is part of a logo or brand name" from the contrast requirement, and
+ * this is exactly that — a stamp, not something a reader reads for information.
+ * The owner confirmed on 2026-08-22 that it stays as designed; darkening it would
+ * make the watermark more prominent than the design intends.
  *
- * On 2026-08-22 the owner authorised darkening the RATING colours for contrast and
- * explicitly scoped the direction colours OUT — green-for-up is the convention
- * every trading tool follows, and changing it would say something about a stock
- * that we do not mean. That decision was made on the evidence available then.
+ * ⚠️ Matched on the OPACITY as well as the colour, so it cannot spread. Ordinary
+ * --brand-deep text at full strength is not excused by this, and a second faded
+ * brand stamp would push the count past 1 and fail. It is excluded from pass/fail
+ * but COUNTED, so it can neither grow nor quietly stop excusing anything
+ * (CLAUDE.md 14g).
  *
- * ⚠️ Measuring the signed-in pages for the first time produced NEW evidence: the
- * direction colours are not only fills and lines, they are also TEXT — 42 elements
- * in #228B22 (worst 2.93) and 9 in #D4A017 (worst 2.27) on the Stock Detail page,
- * against a 4.5 floor. That is a genuine WCAG failure on a paid surface.
- *
- * It is EXEMPTED rather than fixed, because a real defect does not entitle me to
- * widen a scope the owner set (CLAUDE.md 11l — where exactly that was tried on
- * these same colours and reversed). Exempted BY COMPUTED COLOUR and BOUNDED by
- * count, so it can neither grow nor start excusing something else. Retiring it is a
- * product decision with two honest answers: darken the direction ramp where it is
- * used as text, or stop using these colours as text and keep them for marks.
- *
- * ⚠️ THIS LIST IS NOT "THE DIRECTION PALETTE", and it was named and described
- * that way — five times over — until 2026-08-22. Only two of the five entries are
- * the up/green, neutral/gold convention; the other three are a chart key, a chart
- * series colour, and a near miss on a label. The green and gold ALSO paint "Why
- * Attractive" and "Key Risks" (card-header--accent-*), which are not directions.
- *
- * That mislabel mattered. "Green for up is the convention every trading tool
- * follows" is a genuinely good argument for deferring, and it does not cover a
- * card heading that is simply gold text at 2.27. Describing a whole list by its
- * most defensible member overstates the case for keeping it — in my own favour,
- * in the one place a reader checks whether the exemption is still honest
- * (CLAUDE.md 11c-v: a description IS a copy of the fact, and prose is where
- * copies drift). The colours are unchanged; only the claim about them is.
+ * ── What used to live here ───────────────────────────────────────────────────
+ * A five-colour exemption covering 57 pieces of low-contrast TEXT painted in the
+ * direction palette — "Why Attractive" at 4.39, "Key Risks" at 2.38, Current
+ * Drawdown at 2.27. It was deferred because green-for-up is a convention the
+ * owner had explicitly scoped out, and retired on 2026-08-22 when the owner
+ * approved the ink layer: the lines, candles and dots keep their colours, and the
+ * same colours used as words point at `--c-*-ink` / `lib/ink.ts` instead. The
+ * debt is paid, so the excuse is deleted rather than left sitting here.
  */
-const DEFERRED_TEXT_COLOURS = [
-  'rgb(34, 139, 34)', // #228B22 — "up" green: beat/miss, bullish, insider buys
-  'rgb(212, 160, 23)', // #D4A017 — "neutral" gold: mixed signals, average lines
-  'rgb(154, 112, 16)', // #9A7010 — consensus-target label, 4.47 (a near miss)
-  'rgb(46, 125, 232)', // --brand-bright on its own tint — the moving-average key
-  'rgb(14, 159, 142)', // the TSX series teal
-];
+const LOGOTYPE_COLOUR = 'rgb(26, 58, 110)'; // --brand-deep
+const LOGOTYPE_MAX_OPACITY = 0.25;
+const LOGOTYPE_MAX = 1;
 
-/** How many such elements exist today. A jump means NEW low-contrast text. */
-const DEFERRED_CEILING = 60;
+const isLogotype = (f: Fail) =>
+  f.color === LOGOTYPE_COLOUR && f.opacity > 0 && f.opacity <= LOGOTYPE_MAX_OPACITY;
 
-const isDeferred = (f: Fail) => DEFERRED_TEXT_COLOURS.includes(f.color);
-
-const unexpected = (p: Probe): Fail[] => p.fails.filter((f) => !isDeferred(f));
+const unexpected = (p: Probe): Fail[] => p.fails.filter((f) => !isLogotype(f));
 
 async function signIn(page: Page) {
   await page.goto('/login');
@@ -121,9 +101,6 @@ const APP_PAGES = [
   '/account',
 ];
 
-/** Pages that draw these colours as text, and so carry the exemption. */
-const PAGES_WITH_DEFERRED = new Set(['/stocks/us/AAPL']);
-
 test.describe('the signed-in product is legible', () => {
   test.skip(!EMAIL || !PASSWORD, 'set E2E_EMAIL + E2E_PASSWORD to run');
   test.beforeEach(async ({ page }) => {
@@ -144,39 +121,25 @@ test.describe('the signed-in product is legible', () => {
         `${path} — ${fails.length} element(s) under the floor:\n${JSON.stringify(fails, null, 2)}`,
       ).toEqual([]);
 
-      const deferred = probe.fails.filter(isDeferred);
-      if (PAGES_WITH_DEFERRED.has(path)) {
-        // It is real — if this hits zero the exemption has outlived its defect and
-        // must come out rather than sit here excusing nothing (CLAUDE.md 14g).
-        expect(
-          deferred.length,
-          `${path} has no deferred low-contrast text left — delete the exemption`,
-        ).toBeGreaterThan(0);
-        // And bounded, so new low-contrast text cannot hide inside an old excuse.
-        expect(
-          deferred.length,
-          `deferred low-contrast text grew to ${deferred.length}`,
-        ).toBeLessThanOrEqual(DEFERRED_CEILING);
-      } else {
-        expect(
-          deferred,
-          `${path} has GROWN low-contrast text below the floor — not an inherited debt here`,
-        ).toEqual([]);
-      }
+      /* The watermark lives on the Verdict card, which this account cannot see —
+         so nothing here should be excused at all. Saying so keeps the carve-out
+         from silently widening onto a free page. */
+      expect(
+        probe.fails.filter(isLogotype),
+        `${path} excused something as a logotype — the brand stamp is not on this page`,
+      ).toEqual([]);
     });
   }
 
-  test('the exemption is still pinned to exactly the five inherited colours', () => {
-    /* A list like this grows one entry at a time, each reasonable on its own, until
-       it is excusing the page. Pinning the contents makes every addition a visible
-       decision in a diff rather than a quiet edit to an array nobody reads. */
-    expect(DEFERRED_TEXT_COLOURS).toHaveLength(5);
+  test('the logotype carve-out cannot widen', () => {
+    /* An exemption grows one entry at a time, each reasonable on its own, until it
+       is excusing the page. This one is two constants and a count, so widening it
+       is a visible decision in a diff rather than a quiet edit to an array. */
+    expect(LOGOTYPE_MAX, 'one brand stamp, not a category').toBe(1);
+    expect(LOGOTYPE_MAX_OPACITY, 'only a deliberately faded stamp qualifies').toBeLessThanOrEqual(0.25);
     // Matched on the exact COMPUTED colour, never on text: a text match would drift
     // onto any element that happened to contain the same word.
-    expect(
-      DEFERRED_TEXT_COLOURS.filter((c) => !/^rgb\(\d+, \d+, \d+\)$/.test(c)),
-      'every exemption must be an exact computed colour',
-    ).toEqual([]);
+    expect(/^rgb\(\d+, \d+, \d+\)$/.test(LOGOTYPE_COLOUR)).toBe(true);
   });
 });
 
@@ -305,5 +268,65 @@ test.describe('the paid screener output is legible', () => {
       fails,
       `/results — ${fails.length} element(s) under the floor:\n${JSON.stringify(fails, null, 2)}`,
     ).toEqual([]);
+  });
+
+  /**
+   * ── The Stock Detail page AS A SUBSCRIBER SEES IT ───────────────────────────
+   *
+   * The describe above measures `/stocks/us/AAPL` too — with the shared account,
+   * which holds no subscription. That is a real state and it is not the product:
+   * the Verdict card, the scorecard radar and the rating badges are all withheld,
+   * so the busiest premium surface in the app had **no contrast evidence of any
+   * kind** while a spec named after it passed on every run.
+   *
+   * ⚠️ Measuring it entitled for the first time on 2026-08-22 found something no
+   * previous run could have: `.verdict-thesis-num` drew white numerals at 85%
+   * opacity on Constructive green, which took 5.31 down to **4.31**. The opacity
+   * was the whole defect (CLAUDE.md 11q — recede with a colour, never with
+   * transparency), and it had been there since the card was built.
+   *
+   * Same throwaway account as `/results` above, deliberately: a second concurrent
+   * paid user is a second writer to `profiles`, which is the race that forces
+   * `entitlement-routes.spec.ts` to run serially.
+   */
+  test('the Verdict, the radar and the badges are readable too', async ({ page }) => {
+    test.setTimeout(180_000);
+
+    await page.goto('/login');
+    await page.fill('input#email', PAID_EMAIL);
+    await page.fill('input#password', PAID_PASSWORD);
+    await page.getByRole('button', { name: /^sign in$/i }).click();
+    await page.waitForURL(/\/stocks/, { timeout: 30_000 });
+    await expect(page.getByLabel(/I understand and acknowledge/i)).toHaveCount(0);
+
+    const probe = await measure(page, '/stocks/us/AAPL', 'app', MIN_MEASURED.detail);
+
+    /* THE CONTROL, and it is the whole point of this test: without it this passes
+       just as happily on the page the FREE account sees, which is the coverage
+       that already existed. `.verdict-headline` and `.score-tag` exist only for an
+       entitled viewer. */
+    expect(
+      await page.locator('.card--verdict').count(),
+      'no Verdict card — this measured the free viewer\'s page, not the subscriber\'s',
+    ).toBeGreaterThan(0);
+
+    const fails = unexpected(probe);
+    expect(
+      fails,
+      `/stocks/us/AAPL entitled — ${fails.length} element(s) under the floor:\n${JSON.stringify(fails, null, 2)}`,
+    ).toEqual([]);
+
+    /* The brand stamp is the one thing excused, and it is bounded both ways: if it
+       ever measures zero the carve-out has outlived its subject and must come out
+       rather than sit here excusing nothing (CLAUDE.md 14g). */
+    const excused = probe.fails.filter(isLogotype);
+    expect(
+      excused.length,
+      'no faded brand stamp found — delete the logotype carve-out',
+    ).toBeGreaterThan(0);
+    expect(
+      excused.length,
+      `${excused.length} elements excused as a logotype; there is one watermark`,
+    ).toBeLessThanOrEqual(LOGOTYPE_MAX);
   });
 });

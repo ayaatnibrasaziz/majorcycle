@@ -54,9 +54,6 @@ const PAGE_ELEMENT_FLOOR: Record<string, number> = {
   '/stocks/us/AAPL': 900,
 };
 
-/** Pages carrying the deferred low-contrast text debt. See the block at its use. */
-const DEFERRED_CONTRAST_PAGES = new Set(['/stocks/us/AAPL']);
-const DEFERRED_CONTRAST_CEILING = 45;
 
 async function signIn(page: Page) {
   await page.goto('/login');
@@ -131,34 +128,24 @@ test.describe('the signed-in product is accessible', () => {
         `axe checked nothing on ${path} — the page did not render`,
       ).toBeGreaterThan(10);
 
-      /* ⚠️ ONE bounded exemption, and it is a pending owner decision rather than a
-         defect this suite may fix. The Stock Detail page renders the DIRECTION
-         palette as text — "up" green and "neutral" gold on beat/miss, bullish and
-         insider rows — which the owner explicitly scoped out of the 2026-08-22
-         contrast work, because green-for-up is the convention every trading tool
-         follows. `app-contrast.spec.ts` carries the same debt with the same
-         reasoning and its own ceiling; see its DEFERRED_TEXT_COLOURS block for
-         the argument and the two honest ways to retire it.
+      /* ⚠️ NO EXEMPTION HERE ANY MORE. This block used to wave through every
+         `color-contrast` violation on the Stock Detail page — 45 of them at the
+         ceiling — because the direction palette was painting text that the owner
+         had scoped out of the rating fix. The owner approved the ink layer on
+         2026-08-22: the lines and candles kept their colours, the same colours
+         used as words got darker twins, and the debt is paid. An excuse that no
+         longer excuses anything is deleted, not left standing (CLAUDE.md 14g).
 
-         Excluded from pass/fail but COUNTED, so it can neither grow silently nor
-         quietly stop excusing anything (CLAUDE.md 14g). */
-      const deferredHere = DEFERRED_CONTRAST_PAGES.has(path);
-      const found = results.violations
-        .filter((v) => !(deferredHere && v.id === 'color-contrast'))
-        .map((v) => `[${v.impact}] ${v.id} — ${v.nodes.length} node(s): ${v.help}`);
+         ⚠️ Note what this scan still does NOT cover: it signs in with the shared
+         account, which holds no subscription, so the Verdict card and the
+         scorecard radar are not on the page it looks at. `app-contrast.spec.ts`
+         measures those on a throwaway paid account; extending THIS scan the same
+         way is the obvious follow-up, and saying so is cheaper than letting the
+         file imply a coverage it does not have. */
+      const found = results.violations.map(
+        (v) => `[${v.impact}] ${v.id} — ${v.nodes.length} node(s): ${v.help}`,
+      );
       expect(found, `${path}:\n${found.join('\n')}`).toEqual([]);
-
-      const contrast = results.violations.find((v) => v.id === 'color-contrast');
-      if (deferredHere) {
-        expect(
-          contrast?.nodes.length ?? 0,
-          `${path} has no deferred colour-contrast nodes left — delete the exemption`,
-        ).toBeGreaterThan(0);
-        expect(
-          contrast!.nodes.length,
-          `deferred colour-contrast nodes grew to ${contrast!.nodes.length} on ${path}`,
-        ).toBeLessThanOrEqual(DEFERRED_CONTRAST_CEILING);
-      }
     });
   }
 });

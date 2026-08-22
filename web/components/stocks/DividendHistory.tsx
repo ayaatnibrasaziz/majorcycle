@@ -20,6 +20,7 @@ import {
   PAYOUT_DISPLAY_CAP,
   PAYOUT_STRAINED_MAX,
 } from '@/lib/dividends';
+import { INK } from '@/lib/ink';
 
 interface Props {
   dividendHistory: Array<{ year: number; amount: number }>;
@@ -238,7 +239,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
               <div className="summary-strip-label">Current Yield</div>
               <div
                 className="summary-strip-val"
-                style={{ color: yieldDistressed ? '#D4A017' : '#228B22' }}
+                style={{ color: yieldDistressed ? INK.neutral : INK.up }}
               >
                 {currYield}{yieldDistressed ? ' ⚠' : ''}
               </div>
@@ -260,7 +261,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
             <div className="summary-strip-label">Growth Streak</div>
             <div
               className="summary-strip-val"
-              style={{ color: streak >= 5 ? '#228B22' : 'var(--text-primary)' }}
+              style={{ color: streak >= 5 ? INK.up : 'var(--text-primary)' }}
             >
               {streak} yrs
             </div>
@@ -287,10 +288,10 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
                     yieldDistressed || payoutRatioPct === 0
                       ? 'var(--text-secondary)'
                       : payoutRatioPct < PAYOUT_COMFORTABLE_MAX
-                        ? '#228B22'
+                        ? INK.up
                         : payoutRatioPct < PAYOUT_STRAINED_MAX
-                          ? '#D4A017'
-                          : '#B22222',
+                          ? INK.neutral
+                          : INK.down,
                 }}
               >
                 {Math.abs(payoutRatioPct) > PAYOUT_DISPLAY_CAP

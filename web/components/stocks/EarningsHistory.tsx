@@ -16,6 +16,7 @@ import {
 
 import { CHART_RIGHT_AXIS_WIDTH, fmtPerShare } from '@/lib/format';
 import type { Currency, EarningsHistoryItem } from '@/lib/types';
+import { INK } from '@/lib/ink';
 
 interface Props {
   earningsHistory: EarningsHistoryItem[];
@@ -179,7 +180,7 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
                       {row?.surp != null && (
                         <div
                           style={{
-                            color: row.surp >= 0 ? '#228B22' : '#B22222',
+                            color: row.surp >= 0 ? INK.up : INK.down,
                             fontFamily: "'JetBrains Mono', monospace",
                             fontSize: 11,
                           }}
@@ -255,7 +256,7 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
               style={{
                 color:
                   beats >= Math.ceil(data.length * 0.75)
-                    ? '#228B22'
+                    ? INK.up
                     : 'var(--text-primary)',
               }}
             >
@@ -271,7 +272,7 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
               <div className="summary-strip-label">Avg Surprise</div>
               <div
                 className="summary-strip-val"
-                style={{ color: avgSurp >= 0 ? '#228B22' : '#B22222' }}
+                style={{ color: avgSurp >= 0 ? INK.up : INK.down }}
               >
                 {avgSurp >= 0 ? '+' : ''}
                 {avgSurp}%
@@ -287,7 +288,7 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
               <div className="summary-strip-label">Recent Trend</div>
               <div
                 className="summary-strip-val"
-                style={{ color: trending ? '#228B22' : '#B22222' }}
+                style={{ color: trending ? INK.up : INK.down }}
               >
                 {trending ? '▲ Accelerating' : '▼ Decelerating'}
               </div>
