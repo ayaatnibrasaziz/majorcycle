@@ -214,9 +214,34 @@ test.describe('the paid screener output is legible', () => {
     if (error || !created?.user) throw new Error(`could not create user: ${error?.message}`);
     paidUserId = created.user.id;
 
+    /* `acknowledged_disclaimer_at` is set for the same reason `entitlement-routes`
+       sets it: the first-login modal must never overlay the pages we assert on.
+
+       ⚠️ This is a FIX, and the bug it closes is worth keeping. This test used to
+       dismiss the modal through the UI, guarded by `if (await ack.isVisible())`.
+       `isVisible()` does not wait — it samples once, right after `waitForURL`
+       resolves on the navigation commit, which can be before the modal has
+       painted. Sample too early, read false, skip the dismissal.
+
+       And the consequence is total rather than partial: `app/(app)/layout.tsx`
+       returns the modal ALONE when the disclaimer is unacknowledged — no sidebar,
+       no page — so every later navigation renders nothing but the dialog, and the
+       "app" sentinel (a sidebar-offset <main>) can never become true. It surfaced
+       on CI as one flaky run whose diagnostic dump read "Welcome to … please read
+       and acknowledge", which is the only reason it took one run to find rather
+       than an afternoon (CLAUDE.md 11i — a flaky test in code you wrote this
+       session is your defect, not the harness's).
+
+       Setting the column removes the race instead of timing it: the modal is a
+       SERVER decision from this one field, so it is not rendered at all. */
     const { error: upd } = await admin
       .from('profiles')
-      .update({ subscription_status: 'active', grace_until: null, billing_blocked: false })
+      .update({
+        subscription_status: 'active',
+        grace_until: null,
+        billing_blocked: false,
+        acknowledged_disclaimer_at: new Date().toISOString(),
+      })
       .eq('id', paidUserId);
     if (upd) throw new Error(`could not grant entitlement: ${upd.message}`);
   });
@@ -234,19 +259,17 @@ test.describe('the paid screener output is legible', () => {
     await page.getByRole('button', { name: /^sign in$/i }).click();
     await page.waitForURL(/\/stocks/, { timeout: 30_000 });
 
-    /* ⚠️ A BRAND-NEW account meets the first-login onboarding modal (decision #23:
-       methodology + disclaimer acknowledgement) before it can reach anything. The
-       shared E2E account cleared it long ago, so this trap only exists for a
-       throwaway user — and it presents as the stylesheet sentinel timing out on
-       /results, which points nowhere near the cause. It was the sentinel's
-       diagnostic dump, printing the page's actual text, that named it in one run.
-       Worth the cost of that dump every time a wait fails. */
-    const ack = page.getByLabel(/I understand and acknowledge/i);
-    if (await ack.isVisible().catch(() => false)) {
-      await ack.check();
-      await page.getByRole('button', { name: /Continue to MajorCycle/i }).click();
-      await expect(ack).toBeHidden({ timeout: 15_000 });
-    }
+    /* ⚠️ THE ONBOARDING MODAL IS HANDLED IN `beforeAll`, NOT HERE — see the note
+       there. A brand-new account meets the first-login modal (decision #23) before
+       it can reach anything, and the shared E2E account cleared it long ago, so
+       this trap exists only for a throwaway user. Dismissing it through the UI is
+       what made this test flaky; the acknowledgement is now set on the profile so
+       the modal is never rendered.
+
+       Asserting it is absent, because "I set a column" and "the page is clear" are
+       different claims, and the failure mode is silent: the modal renders INSTEAD
+       of the app, so everything below would measure a dialog. */
+    await expect(page.getByLabel(/I understand and acknowledge/i)).toHaveCount(0);
 
     await page.evaluate(
       ([key, snap]) => sessionStorage.setItem(key as string, JSON.stringify(snap)),
