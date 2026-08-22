@@ -61,8 +61,22 @@ const PASSWORD = process.env.E2E_PASSWORD;
  * count, so it can neither grow nor start excusing something else. Retiring it is a
  * product decision with two honest answers: darken the direction ramp where it is
  * used as text, or stop using these colours as text and keep them for marks.
+ *
+ * ⚠️ THIS LIST IS NOT "THE DIRECTION PALETTE", and it was named and described
+ * that way — five times over — until 2026-08-22. Only two of the five entries are
+ * the up/green, neutral/gold convention; the other three are a chart key, a chart
+ * series colour, and a near miss on a label. The green and gold ALSO paint "Why
+ * Attractive" and "Key Risks" (card-header--accent-*), which are not directions.
+ *
+ * That mislabel mattered. "Green for up is the convention every trading tool
+ * follows" is a genuinely good argument for deferring, and it does not cover a
+ * card heading that is simply gold text at 2.27. Describing a whole list by its
+ * most defensible member overstates the case for keeping it — in my own favour,
+ * in the one place a reader checks whether the exemption is still honest
+ * (CLAUDE.md 11c-v: a description IS a copy of the fact, and prose is where
+ * copies drift). The colours are unchanged; only the claim about them is.
  */
-const DEFERRED_DIRECTION_COLOURS = [
+const DEFERRED_TEXT_COLOURS = [
   'rgb(34, 139, 34)', // #228B22 — "up" green: beat/miss, bullish, insider buys
   'rgb(212, 160, 23)', // #D4A017 — "neutral" gold: mixed signals, average lines
   'rgb(154, 112, 16)', // #9A7010 — consensus-target label, 4.47 (a near miss)
@@ -73,7 +87,7 @@ const DEFERRED_DIRECTION_COLOURS = [
 /** How many such elements exist today. A jump means NEW low-contrast text. */
 const DEFERRED_CEILING = 60;
 
-const isDeferred = (f: Fail) => DEFERRED_DIRECTION_COLOURS.includes(f.color);
+const isDeferred = (f: Fail) => DEFERRED_TEXT_COLOURS.includes(f.color);
 
 const unexpected = (p: Probe): Fail[] => p.fails.filter((f) => !isDeferred(f));
 
@@ -107,7 +121,7 @@ const APP_PAGES = [
   '/account',
 ];
 
-/** Pages that draw the direction palette as text, and so carry the exemption. */
+/** Pages that draw these colours as text, and so carry the exemption. */
 const PAGES_WITH_DEFERRED = new Set(['/stocks/us/AAPL']);
 
 test.describe('the signed-in product is legible', () => {
@@ -136,31 +150,31 @@ test.describe('the signed-in product is legible', () => {
         // must come out rather than sit here excusing nothing (CLAUDE.md 14g).
         expect(
           deferred.length,
-          `${path} has no deferred direction-colour text left — delete the exemption`,
+          `${path} has no deferred low-contrast text left — delete the exemption`,
         ).toBeGreaterThan(0);
         // And bounded, so new low-contrast text cannot hide inside an old excuse.
         expect(
           deferred.length,
-          `deferred direction-colour text grew to ${deferred.length}`,
+          `deferred low-contrast text grew to ${deferred.length}`,
         ).toBeLessThanOrEqual(DEFERRED_CEILING);
       } else {
         expect(
           deferred,
-          `${path} has GROWN direction-colour text below the floor — not an inherited debt here`,
+          `${path} has GROWN low-contrast text below the floor — not an inherited debt here`,
         ).toEqual([]);
       }
     });
   }
 
-  test('the exemption still names only the direction palette', () => {
+  test('the exemption is still pinned to exactly the five inherited colours', () => {
     /* A list like this grows one entry at a time, each reasonable on its own, until
        it is excusing the page. Pinning the contents makes every addition a visible
        decision in a diff rather than a quiet edit to an array nobody reads. */
-    expect(DEFERRED_DIRECTION_COLOURS).toHaveLength(5);
+    expect(DEFERRED_TEXT_COLOURS).toHaveLength(5);
     // Matched on the exact COMPUTED colour, never on text: a text match would drift
     // onto any element that happened to contain the same word.
     expect(
-      DEFERRED_DIRECTION_COLOURS.filter((c) => !/^rgb\(\d+, \d+, \d+\)$/.test(c)),
+      DEFERRED_TEXT_COLOURS.filter((c) => !/^rgb\(\d+, \d+, \d+\)$/.test(c)),
       'every exemption must be an exact computed colour',
     ).toEqual([]);
   });

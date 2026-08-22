@@ -54,7 +54,7 @@ const PAGE_ELEMENT_FLOOR: Record<string, number> = {
   '/stocks/us/AAPL': 900,
 };
 
-/** Pages carrying the deferred direction-colour debt. See the block at its use. */
+/** Pages carrying the deferred low-contrast text debt. See the block at its use. */
 const DEFERRED_CONTRAST_PAGES = new Set(['/stocks/us/AAPL']);
 const DEFERRED_CONTRAST_CEILING = 45;
 
@@ -137,7 +137,7 @@ test.describe('the signed-in product is accessible', () => {
          insider rows — which the owner explicitly scoped out of the 2026-08-22
          contrast work, because green-for-up is the convention every trading tool
          follows. `app-contrast.spec.ts` carries the same debt with the same
-         reasoning and its own ceiling; see its DEFERRED_DIRECTION_COLOURS block for
+         reasoning and its own ceiling; see its DEFERRED_TEXT_COLOURS block for
          the argument and the two honest ways to retire it.
 
          Excluded from pass/fail but COUNTED, so it can neither grow silently nor
