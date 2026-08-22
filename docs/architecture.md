@@ -1301,6 +1301,14 @@ by preference): custom domain (~US$10/mo), custom email domain (owner keeps the 
 >   `window.location.href` after a `fetch`, a script-initiated navigation `form-action`
 >   never governs.
 >
+>   ✅ **Verified by hand in a real Chrome, 2026-08-23, with a control.** A form POSTing to
+>   `https://example.com` (not on the list) is **refused** — `form-action -> https://example.com/`,
+>   page stays put. The same form POSTing to `https://billing.stripe.com` is **allowed** and
+>   navigates. So the entry does something, and the check can tell the difference. ⚠️ The
+>   first attempt at that control returned *no violation and no navigation*, which reads
+>   like a pass: a programmatic submit into `target="_blank"` is stopped by the popup
+>   blocker **before** any policy check, so nothing was tested. Submit in the current tab.
+>
 >   **Where it lives.** `lib/csp.ts` builds both forms and owns `usesNonce()`; `proxy.ts`
 >   mints the nonce and puts the policy on every response it returns, including the
 >   redirects and the refusals — Next attaches no CSP to those, and a header applied by a
@@ -1342,6 +1350,18 @@ by preference): custom domain (~US$10/mo), custom email domain (owner keeps the 
 >   The dev server keeps `'unsafe-eval'`, gated on `NODE_ENV`, because Turbopack compiles
 >   with `eval` for hot reloading; `check:csp` fails the build if it ever appears in
 >   production.
+>
+>   ✅ **Google sign-in, click-through completed in a real Chrome, 2026-08-23.** The popup
+>   opens — so the enforcing policy blocks nothing on that path: GIS script, stylesheet,
+>   button iframe and popup all fine, **zero** `securitypolicyviolation` events through the
+>   click. Google itself then answers **`Error 400: origin_mismatch`**, because
+>   `http://localhost:3200` is not a registered JavaScript origin — authorised origins admit
+>   no wildcards and a port is part of an origin (CLAUDE.md 11h). That is a Google Cloud
+>   Console fact about the local port, unrelated to the CSP, and it is the *right* outcome
+>   for this test: reaching Google's refusal proves the whole chain up to Google ran.
+>   ⚠️ The popup opens as a separate WINDOW, invisible to a tab-scoped screenshot — the
+>   owner had to look at their own screen to see it. Do not read "I saw nothing happen" as
+>   "nothing happened" (11h again, from the other direction).
 >
 > ⚠️ **The other blocker was a real bug in the policy, and it is fixed.** `style-src` was
 > missing `https://accounts.google.com`, so `/login` and `/signup` each reported
