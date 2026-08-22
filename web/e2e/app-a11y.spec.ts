@@ -43,6 +43,17 @@ const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
  */
 const APP_PATHS = ['/stocks', '/stocks/us/AAPL', '/run', '/results', '/request', '/account'];
 
+/**
+ * How many DOM elements a page must carry before it counts as rendered.
+ *
+ * Only the pages big enough for the gap to matter are listed; everything else is
+ * small and arrives with the shell. The stock detail page really does carry ~1400
+ * elements, so 900 is a floor it clears easily while a half-built page cannot.
+ */
+const PAGE_ELEMENT_FLOOR: Record<string, number> = {
+  '/stocks/us/AAPL': 900,
+};
+
 /** Pages carrying the deferred direction-colour debt. See the block at its use. */
 const DEFERRED_CONTRAST_PAGES = new Set(['/stocks/us/AAPL']);
 const DEFERRED_CONTRAST_CEILING = 45;
@@ -77,6 +88,27 @@ async function scan(page: Page, path: string) {
     undefined,
     { timeout: 30_000 },
   );
+
+  /* ⚠️ AND WAIT FOR THE PAGE, which the sentinel above does not prove. The sidebar
+     offset is CHROME: it is satisfied the moment the app layout renders, while the
+     page beneath it is still filling in. On the stock detail page — a dozen chart
+     sections, an order of magnitude more DOM than anything else in the app — that
+     gap was wide enough to make this spec and `app-contrast` both flaky, passing
+     on retry. A retry-pass is the most ignorable result a suite can produce and it
+     means the scan looked at an unfinished page.
+
+     Waiting on a POSITIVE signal (enough elements exist) rather than on quiet:
+     `networkidle` is satisfied by a page that has stopped fetching and not yet
+     rendered, which is the same trap the public suite hit at 47 elements of 291. */
+  const floor = PAGE_ELEMENT_FLOOR[path] ?? 0;
+  if (floor > 0) {
+    await expect
+      .poll(() => page.evaluate(() => document.querySelectorAll('body *').length), {
+        message: `${path} never reached ${floor} elements — the scan would have run on a half-built page`,
+        timeout: 45_000,
+      })
+      .toBeGreaterThanOrEqual(floor);
+  }
 
   return new AxeBuilder({ page }).withTags(TAGS).analyze();
 }

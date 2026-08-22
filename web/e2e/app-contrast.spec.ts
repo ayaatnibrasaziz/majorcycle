@@ -119,7 +119,11 @@ test.describe('the signed-in product is legible', () => {
   for (const path of APP_PAGES) {
     test(`${path} — every readable element clears the WCAG floor`, async ({ page }) => {
       test.setTimeout(120_000);
-      const probe = await measure(page, path, 'app', MIN_MEASURED.app);
+      // The heaviest page in the product gets its own floor — see MIN_MEASURED.detail.
+      const floor = path.startsWith('/stocks/') && path !== '/stocks'
+        ? MIN_MEASURED.detail
+        : MIN_MEASURED.app;
+      const probe = await measure(page, path, 'app', floor);
       const fails = unexpected(probe);
       expect(
         fails,

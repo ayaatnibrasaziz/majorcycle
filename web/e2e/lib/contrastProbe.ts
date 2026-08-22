@@ -249,6 +249,22 @@ export const MIN_MEASURED = {
   app: 45,
   /** /results with a seeded run: 6 rows x ~10 labelled cells, plus toolbar. */
   results: 90,
+  /**
+   * The stock detail page, which is an order of magnitude bigger than the rest of
+   * the app (572 measured elements against Browse's 772 and /run's ~50).
+   *
+   * ⚠️ It needs its own floor because `measure()` uses this number as BOTH the wait
+   * and the assertion — deliberately, so the two can never disagree. Sharing the
+   * generic `app: 45` meant the wait was satisfied after the shell and a couple of
+   * cards had rendered, while a dozen chart sections were still arriving. Both
+   * signed-in specs went flaky on this one page and passed on retry: the most
+   * ignorable result a suite can give, and the one that means the guard is
+   * measuring a page that is not finished.
+   *
+   * 420 is comfortably below the real 572 (charts vary a little with the data a
+   * ticker actually has) and far above anything a half-rendered page reaches.
+   */
+  detail: 420,
 } as const;
 
 export async function measure(
