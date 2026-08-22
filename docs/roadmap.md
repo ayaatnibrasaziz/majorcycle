@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited. Layer G is in its last stretch, all of it inside PR #89, deliberately unmerged until the layer is finished.** Done: **G1** SEO plumbing · **G2** design foundations · **G3** public chrome · **G3.5** the auth net · **G3.7** the legal documents (owner-accepted 2026-08-13; their TEXT is still `BASELINE CONTENT` awaiting professional review before wide launch) · the **legal compliance audit**, all 7 findings applied · **G3.8** the landing page rebuilt to the approved storyboard and `/methodology` folded into it · **G3.9** the render-mode fix (every public page now prerendered) · **G4** the twelve-article `/learn` library, **all three topics read through and approved by the owner** (2026-08-21/22) · **G5** Lighthouse, accessibility, structured data and the config review · **G6** the colour review (the ink layer, two rating colours, three faded-text defects, and the reference HTML demoted from contract to mock-up). · **G7** the CSP flip — enforcing at last, with a per-request nonce wherever a session lives. **Remaining in Layer G: the weekly market note (`/notes` + `/notes/[date]`)**, then a full Layer G audit before merge. ⛔ `/about` and `/glossary` are **dropped** (owner, 2026-08-22) — About may return later, the glossary is permanently cancelled; `llms.txt` dropped on the same day.
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited. Layer G is in its last stretch, all of it inside PR #89, deliberately unmerged until the layer is finished.** Done: **G1** SEO plumbing · **G2** design foundations · **G3** public chrome · **G3.5** the auth net · **G3.7** the legal documents (owner-accepted 2026-08-13; their TEXT is still `BASELINE CONTENT` awaiting professional review before wide launch) · the **legal compliance audit**, all 7 findings applied · **G3.8** the landing page rebuilt to the approved storyboard and `/methodology` folded into it · **G3.9** the render-mode fix (every public page now prerendered) · **G4** the twelve-article `/learn` library, **all three topics read through and approved by the owner** (2026-08-21/22) · **G5** Lighthouse, accessibility, structured data and the config review · **G6** the colour review (the ink layer, two rating colours, three faded-text defects, and the reference HTML demoted from contract to mock-up). · **G7** the CSP flip — enforcing at last, with a per-request nonce wherever a session lives. **Remaining in Layer G, as of 2026-08-23:** (1) the ticker page from Lighthouse **84 → 90**, owner-authorised 2026-08-22 and not yet started; (2) the **weekly market note** (`/notes` + `/notes/[date]`); (3) a **bundle-size audit** — unused dependencies, never done; then (4) a full Layer G audit before merge. **At merge, and only the owner can do them:** flip the apex→`www` redirect from **307 to 308** (re-measured 2026-08-23, still 307 — the highest-value SEO item in the layer), and submit the sitemap in Search Console *after* deploy (`/sitemap.xml` still answers 307 on production, and submitting a redirect teaches Google to distrust it). **One decision is genuinely still open:** whether to lift the public documents' 13px body size — it moves the legal pages, the auth cards and the articles together, so no page opts out alone. ⛔ `/about` and `/glossary` are **dropped** (owner, 2026-08-22) — About may return later, the glossary is permanently cancelled; `llms.txt` dropped on the same day.
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -381,7 +381,10 @@ tier, 7-day trial, paid conversion, and the paywall that separates them.
       columns are client-immutable, verified via `column_privileges`
 - [x] FK covering indexes (`20260705032503`); advisor WARNs cleared
 - [x] Security headers + **CSP report-only** (`web/next.config.ts`) — the flip to enforcing is a
-      tracked launch decision, carried in the audit doc
+      tracked launch decision, carried in the audit doc.
+      ✅ **Flipped 2026-08-23 (Layer G, G7)** — enforcing, with a per-request nonce on the
+      routes that already render per request. The policy now lives in `proxy.ts` / `lib/csp.ts`,
+      not `next.config.ts`.
 - [x] DMARC `p=none` → `p=reject`, verified live
 - [x] `/disclaimer`, `/terms`, `/privacy` — baseline legal pages
 
@@ -1230,9 +1233,12 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > byte-identical. Re-rolling would have destroyed an approved, unreproducible composition to
 > fix arithmetic.
 >
-> 🔶 **Image 2 ships with a stepped plinth under the towers** — the brief asked for both
+> ✅ **Image 2 ships with a stepped plinth under the towers** — the brief asked for both
 > "flat and plain, no steps" *and* "stepped bands", and the model built stairs. Owner has
-> seen it and called it fine.
+> seen it and called it fine. *(Marker corrected 2026-08-23: this had carried an amber 🔶
+> while its own last sentence recorded the approval. An open flag beside a closed decision
+> is how a settled question gets re-asked — and it was, on 2026-08-23, when I listed it back
+> to the owner as outstanding.)*
 >
 > **Gates:** typecheck · lint · `learn.spec.ts` **16/16** · all three confirmed loading in
 > the browser at 1280px and 375px, no horizontal scroll.
@@ -1616,7 +1622,9 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
       **(i)** `poweredByHeader: false` — `X-Powered-By: Next.js` was going out on every
       response, verified on the wire and now verified gone. **(ii)** No `images` block: every
       image is local, and an unset `remotePatterns` is precisely what stops our optimiser being
-      an open proxy. **(iii)** CSP **stays Report-Only** — measured on the production build,
+      an open proxy. **(iii)** CSP **stays Report-Only** — ✅ *superseded: flipped to enforcing
+      on 2026-08-23, see G7 below; the paragraph is kept as the record of what was measured
+      and why the flip was scoped rather than done that day* — measured on the production build,
       every page reports `script-src-elem :: inline` (14 on `/terms`, 28 on the landing,
       scaling with page complexity: Next's own hydration bootstraps). Enforcing needs a
       per-request nonce threaded from `proxy.ts`, whose failure mode is "the page loads but
@@ -1627,7 +1635,13 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
       blocks — **a Report-Only policy that is wrong is a trap primed for whoever flips it.**
 
 **Verification:**
-- Lighthouse CI runs in `.github/workflows/ci.yml`
+- ~~Lighthouse CI runs in `.github/workflows/ci.yml`~~ ❌ **This was never true.** No
+  workflow has ever mentioned Lighthouse — checked across all four on 2026-08-23. It is
+  `pnpm lighthouse`, a **local** script driving the production build on `:3200`, and it is
+  deliberately not in CI: it needs a production server, a real session for the gated routes,
+  and the median of 3 runs (one run is not a number — the same page scored 85→62 across
+  five). A plan line that describes an intention reads exactly like a line that describes a
+  fact once the work is done.
 - Test URL via Google's Rich Results test
 - Test OG images via Twitter/LinkedIn debuggers
 - `curl` proves `/sitemap.xml` and `/robots.txt` answer **200 signed-out**, not 307
@@ -1845,11 +1859,23 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > blocking time **534ms → 286ms**, and the exact non-noisy fact — **588 KB on every load →
 > 0 KB on every load**.
 >
-> **What is left on that page, and it is owner's call.** The median is **84** against
-> decision #33's 90. The remaining drag is the page's own weight: a 655 KB document (the
-> full price history inline), ~114 KB of unused JavaScript, and the chart libraries booting.
-> Closing it means code-splitting the charts and deferring below-fold sections — real
-> architectural work on a **paid** surface, which is not something to do unasked (11l).
+> **What is left on that page.** The median is **84** against decision #33's 90. The
+> remaining drag is the page's own weight: a 655 KB document (the full price history
+> inline), ~114 KB of unused JavaScript, and the chart libraries booting. Closing it means
+> code-splitting the charts and deferring below-fold sections — real architectural work on a
+> **paid** surface, which is not something to do unasked (11l).
+>
+> ✅ **ASKED AND ANSWERED 2026-08-22 — the owner authorised it**, verbatim: *"I am happy for
+> you to proceed so that we have good score for lighthouse for the paid surface"*, and, on
+> scope, *"We will need to do it for all pages and ensure the scores is as high as possible
+> without compromising security. Always read latest docs for best practices."* Bounded by the
+> standing constraint in the same message: *"security over anything. However, try to find
+> ways to optimise it without hampering security."*
+>
+> ⚠️ **So this is OUTSTANDING WORK, not a pending decision**, and it was mis-filed as the
+> latter on 2026-08-23 — I listed it back to the owner as "owner's call" when the call had
+> been made the day before. **A line that says "owner's call" outlives the call unless
+> someone edits it**, and the person most likely to read it next is the one who wrote it.
 >
 > **Accessibility — `e2e/a11y.spec.ts`, axe-core inside the existing Playwright runner** (no
 > second test runner, ever). Every public page, WCAG 2.1 A + AA, credential-free. **All
@@ -1893,6 +1919,9 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > about a security; `poweredByHeader` off; no `images` block on purpose; CSP stays
 > Report-Only with the reason and the remaining blocker written down, and the one genuine
 > policy bug in it (`style-src` missing `accounts.google.com`) fixed.
+> ✅ **The CSP half was superseded the next day — see G7.** What G5 contributed was the
+> measurement that made the flip decidable: 22 pages, 186 violations, every one of them
+> `script-src-elem :: inline`.
 >
 > ⚠️ **`tsconfig.json` no longer type-checks `.next-dev`.** `pnpm build` failed twice in this
 > session on a truncated `.next-dev/dev/types/routes.d.ts` — a file the *dev server* owns and
@@ -1954,6 +1983,19 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > on the local Python cycle spawn — and they previously failed together at the tail of an
 > 11-minute single-worker run that then aborted (21 tests "did not run"). Not reproduced in
 > three runs today.
+>
+> ✅ **DIAGNOSED 2026-08-23, and the cause is not the tests.** They failed again — the report
+> route answering **404** where it should answer 402 — and this time reproducibly: three
+> failures with a change applied, three passes with it stashed, then six more consistent
+> bisect results. All of it was a **stale `.next-dev` cache**, which survives `git stash`, a
+> server restart and `reuseExistingServer: false`, so it sat underneath *both arms* of the
+> experiment and tracked the edits rather than the code. Moving `.next-dev` out of the repo
+> and re-running gave **46/46** on the unmodified change, and the full suite **520 passed +
+> 3 flaky = 523** locally against **523 passed** on CI. That closes the owner's *"Ensure the
+> two tests pass on the machine. Investigate and fix it."* — the machine was the problem, and
+> the fix is the habit: **clear the build cache between the arms of an A/B, not just before
+> it.** The three flaky on the cold run were first-compile timeouts on `/stocks` and
+> `/account`, not these two. Full account: CLAUDE.md 11i, fifth item.
 
 > #### ✅ G6 — the colour review. 2026-08-22, still inside PR #89.
 >

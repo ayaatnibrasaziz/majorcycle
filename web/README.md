@@ -34,7 +34,8 @@ must stay that way; a pre-commit hook (`.githooks/pre-commit`, enabled with
 | `_engine/` | Vendored snapshot of `../analytics/`, kept in sync by a CI drift check |
 | `lib/` | Types, Supabase clients, entitlement, billing, cycle fetching |
 | `components/` | React components (`ui/` = shadcn-style primitives owned in-repo) |
-| `proxy.ts` | Middleware — auth boundary, premium API gate, `/api/cycle` secret branch |
+| `proxy.ts` | Middleware — auth boundary, premium API gate, `/api/cycle` secret branch, and the CSP (it mints the per-request nonce) |
+| `lib/csp.ts` | The Content-Security-Policy, both forms, and `usesNonce()` — the one list saying which routes render per request |
 | `e2e/` | Playwright suites (auth, account, Stripe webhook contract, entitlement) |
 
 Fonts are **Sora** (UI) and **JetBrains Mono** (numbers) — locked decision #26, not the
@@ -50,7 +51,22 @@ pnpm check:entitlement-gates # paywall can't silently regress (no credentials ne
 pnpm check:report-sections   # downloaded report stays in step with Stock Detail
 pnpm check:data-integrity    # unpaginated reads, currency labelling, the P/E currency gate
 pnpm check:seo               # robots/sitemap/canonical registry and its four consumers
+pnpm check:tier-palette      # one rating palette, all five tiers legible, adjacent pairs apart
 ```
+
+Four more need a **production build**, because the dev server is not the product. Run
+`pnpm start:fresh --port 3200` first (it rebuilds, so it cannot serve stale code), then:
+
+```bash
+pnpm check:render-modes      # which routes are prerendered, and the CSP nonce invariant
+pnpm check:csp               # the policy on the wire + zero violations in a real browser
+pnpm check:page-weight       # bytes a reader actually pays for, per page
+pnpm lighthouse              # median of 3 — never against :3000, where the numbers are fiction
+```
+
+⚠️ `check:render-modes` reads `.next/server/app/`, so it must follow `pnpm build`; it is the
+only one of the four that runs in CI. The other three need a running server and a real
+session, which is why they are scripts you run rather than specs that run themselves.
 
 Not a check, but related — the design-system gallery:
 
@@ -121,3 +137,11 @@ wall, so Stripe can't POST to them.
   the HTML; strip restricted fields at the data layer (CLAUDE.md 11b).
 - **Edit `../analytics/<file>.py` first**, then mirror into `_engine/` in the same commit,
   or the CI drift check fails.
+- **A prerendered page can never carry a CSP nonce.** Its HTML was written at build time, so
+  a nonce policy refuses every script in it and the page renders and then does nothing.
+  `usesNonce()` in `lib/csp.ts` is an allow-list for exactly this reason, and
+  `pnpm check:render-modes` fails the build if the two sets ever overlap.
+- **A stale `.next-dev` survives `git stash`, a server restart and `reuseExistingServer:
+  false`.** It once produced three clean failures and three clean passes across a controlled
+  A/B and the code under test was innocent. Clear it *between* the arms of any experiment —
+  and move it OUT of `web/`, never sideways within it, or Tailwind scans the compiled chunks.

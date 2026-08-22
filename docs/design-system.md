@@ -54,6 +54,25 @@ clear the contrast floor a graphic owes (the gold measured 2.38:1).
 settled nothing — see the box in §1. It is now a decision with a reason, and the
 reason is arguable on its own terms, which is the difference.
 
+**All five of the design linter's `side-tab` findings, and what each one is** —
+written out because the config that used to silence them was deleted on the same
+day, so they surface on every edit to `globals.css` and someone will otherwise
+re-litigate them one at a time:
+
+| | Selector | Verdict |
+|---|---|---|
+| 1 | `.card-header--accent-buy` (3px) | **Stays** — "Why Attractive", the reason above |
+| 2 | `.card-header--accent-hold` (3px) | **Stays** — "Key Risks", the reason above |
+| 3 | `.insight-invalidation` (2px) | **Stays** — the italic caveat under each insight |
+| 4 | `.kpi-card::before` (3px) | **Not a stripe.** `left:0; right:0; height:3px` is a rule across the **top** of the card. The rule's own wording — "a thick coloured border on ONE SIDE" — does not describe it. A misread, not a finding |
+| 5 | `.card--verdict::before` (5px) | **Stays**, covered by the same ruling. It was flagged separately on 2026-08-23 as "never separately ruled on"; the owner's answer was that the decision had already been given |
+
+⚠️ **No exemption has been filed, deliberately.** The last one was verified once,
+quietly stopped applying, and nobody noticed for four days — so the honest state is
+a warning we have decided against, written down here, rather than a silence resting
+on a reason nobody re-checks. A fresh exception carrying the real reason can be
+filed on request.
+
 ---
 
 ## 2. Brand Colours

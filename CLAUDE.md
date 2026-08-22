@@ -83,6 +83,8 @@ When in doubt about any decision: **ask, don't guess.**
 │   ├── scripts/                    ← build + guard scripts (check-*.mjs, build-*.mjs)
 │   │                                 `lighthouse.mjs` MEASURES the production build on :3200
 │   │                                 (never :3000) → lighthouse-report/ (gitignored)
+│   │                                 `check-csp.mjs` READS the policy off a running :3200
+│   │                                 and asserts zero violations in a real browser
 │   │                                 `build-design-system.mjs` GENERATES the Claude Design
 │   │                                 gallery from globals.css → design-system-build/
 │   │                                 (gitignored — a rendering, never a source of truth)

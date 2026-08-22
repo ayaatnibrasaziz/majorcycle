@@ -331,9 +331,13 @@ closed rather than merely being written to.
 
 ## Known carry-over (recorded, not fixed in this audit)
 
-- **CSP is still `Content-Security-Policy-Report-Only`** (`web/next.config.ts:42`). Flipping it
-  to enforcing was always a tracked follow-up from F0.5 and is a launch decision, not an audit
-  finding.
+- ~~**CSP is still `Content-Security-Policy-Report-Only`**~~ ✅ **CLOSED 2026-08-23 (Layer G,
+  G7): the policy enforces.** A per-request nonce on the routes that already render per
+  request, `'unsafe-inline'` on the seven prerendered public pages. ⚠️ The line reference in
+  the original note (`web/next.config.ts:42`) is now doubly wrong — the policy no longer
+  lives in that file at all; it is built in `lib/csp.ts` and applied in `proxy.ts`. **Cite a
+  file and a symbol, never a line number**; a line number is stale the next time anyone edits
+  above it. See `architecture.md` §7 for the posture and `pnpm check:csp` for the proof.
 - **375px mobile** → Layer H (already triaged and measured there: 130px overflow, root-caused to
   the `(app)` shell, not to Layer F components).
 - **Lighthouse / SEO / sitemap / robots** → Layer G.
@@ -605,7 +609,9 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
       client-immutable; RLS policies rewritten `(select auth.uid())`. Verified via column_privileges.
 - [x] **FK covering indexes** — migration `20260705032503` (advisor M); advisor WARNs cleared
 - [x] **Security headers** — `web/next.config.ts`: X-Frame-Options, nosniff, Referrer-Policy,
-      Permissions-Policy + CSP **report-only** (flip to enforcing is a tracked follow-up)
+      Permissions-Policy + CSP **report-only** (flip to enforcing is a tracked follow-up).
+      ✅ **The follow-up shipped 2026-08-23** — the CSP enforces and has moved out of
+      `next.config.ts` into `lib/csp.ts` + `proxy.ts`; the four flat headers stay where they are.
 - [x] **DMARC hardened** — `_dmarc` `p=none` → `p=reject` (strict alignment + rua/ruf reporting);
       safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Verified live.
 - Declined/deferred: leaked-password protection (Supabase Pro-only — skipped for an info product);
