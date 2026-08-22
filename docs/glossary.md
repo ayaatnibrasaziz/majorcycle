@@ -22,7 +22,7 @@
 
 **Batch tier** — Tier 1 of the architecture. Scheduled GitHub Actions cron job that pre-fetches yfinance data nightly. See `architecture.md` §2.
 
-**Bearish** — The lowest of the five rating tiers (score 0-34). Indicates significant concerns. Replaces the original "AVOID" label.
+**Bearish** — The lowest of the five rating tiers (score 0-34). Indicates significant concerns. Replaces the original "AVOID" label. Colour: `--c-tier-5`, deepened to a dark red on 2026-08-22 so it reads as a different tier from Cautious — the two were 10.7 apart perceptually and 10.0 to a red-green colour-blind reader. ⚠️ Never write the hex; use `tierColorVar()` / `scoreColor()`, or `RATING_TIER_HEX` where CSS cannot reach.
 
 **Beta** — Statistical measure of a stock's volatility relative to the broader market. Beta > 1 = more volatile than market, Beta < 1 = less volatile. Sourced from yfinance.
 
@@ -34,15 +34,17 @@
 
 **Card** — The standard UI container: white surface, subtle border, slight shadow. See `design-system.md` §9.
 
-**Contrast ratio** — How far apart two colours are in lightness, expressed as a ratio. Text needs **4.5:1** against its background to be readable by most people (**3:1** if it is large). ⚠️ Measured on the live site 2026-08-07: **8 elements fail**, including the **rating tier badges at 2.38:1** — the five labels that are the product's whole vocabulary — and the **"Full disclaimer" link at 2.69:1**, which is compliance-adjacent copy. Those two are fixed inside Layer G; the rest go to Layer H. See `design-system.md` §14.
+**Contrast ratio** — How far apart two colours are in lightness, expressed as a ratio. Text needs **4.5:1** against its background to be readable by most people (**3:1** if it is large, and **3:1** for a graphic that carries meaning, like a chart line). ⚠️ Measured on the live site 2026-08-07, 8 public elements failed, including the **rating tier badges at 2.38:1**. ✅ **Resolved sitewide 2026-08-22**: public and signed-in pages both measure zero failures, with no deferrals left. The sweep found far more than the original eight — `--text-muted` at 2.97:1 (258 failing elements on Browse alone, including the mandatory disclaimer), three of five score chips unable to carry white text, and **57 pieces of direction-palette TEXT** on one stock page. ⚠️ Two lessons worth keeping: **measure a colour where it actually sits**, not on white (a composited tint is the darkest ground and the easy case is white); and **an `opacity` upstream silently reprices a colour that was correct at full strength** — four separate instances in one day. The house floor is **4.8**, not 4.5, so the next surface's background does not reopen the question. See `design-system.md` §14 and `architecture.md` §7.2e.
+
+**Ink (`--c-up-ink`, `--c-neutral-ink`, `--c-warn-ink`, `--c-brand-ink`, `lib/ink.ts`)** — The text twin of a colour. A colour that is a **line, a candle, a dot or a bar** keeps the value it has always had; the same colour used as **words** points at its ink instead. Introduced 2026-08-22, when measuring the signed-in pages showed the direction palette was not only marks but 57 pieces of text, worst 2.11:1. Green-for-up is a convention every trading tool follows and is deliberately untouched — a rising candle is still `#228B22`; it is only the *sentence about it* that deepens to `#1B741B`. ⚠️ Mirrored in TypeScript because a Recharts `fill` prop and a Lightweight-Charts series option are SVG **attributes**, where a CSS variable is not resolved; `pnpm check:tier-palette` fails the build if the two copies disagree. ⚠️ ONE exception, and it is a Recharts fact rather than a choice: **a legend entry is painted in its series' own colour**, so for a series the mark and its label are one value — the ASX 200 line and the Cash & Equivalents bar therefore carry ink. Not to be confused with the **tier inks** (`--c-tier-N-ink`), which are the RATING palette's text forms; the two sets share some values today and are deliberately separate tokens, because a rating is our judgement and a direction is a fact about a number.
 
 **Crawler** — An automated program that reads web pages, e.g. Googlebot. Three kinds matter to us and we treat them differently in `robots.txt`: **search** crawlers (`OAI-SearchBot`, `Claude-SearchBot`, `PerplexityBot`) that cite us and send readers — allowed; **user-triggered** fetchers (`ChatGPT-User`, `Claude-User`, `Perplexity-User`) that load a page because a real person asked an assistant about it — allowed, since that person is a potential customer; and **training** crawlers (`GPTBot`, `ClaudeBot`, `Google-Extended`) that copy content into models — blocked. ⚠️ Crawler groups **do not inherit**: a crawler matching a named group ignores the `*` group entirely, so any bot we want covered must be named. Blocking `Google-Extended` has **no** effect on Google Search ranking.
 
-**Cautious** — Rating tier 4 (score 35-49). Indicates elevated risk. Replaces the original "HOLD" label.
+**Cautious** — Rating tier 4 (score 35-49). Indicates elevated risk. Replaces the original "HOLD" label. Colour: `--c-tier-4`, darkened out of orange on 2026-08-22 because it could not carry white numerals (3.44:1) — which is what pushed it next to Bearish and forced that one to move too.
 
 **Cohort Tripwire** — `analytics/cron/check_field_units.py`, run nightly after the refresh. It compares each fundamentals field's **median across the whole universe** against the band declared beside its unit in `field_spec.py`, and emails the owner on a breach. It exists because a units change is invisible per value and obvious across 863: `0.024` is a fine dividend yield for one stock and impossible as the median. ⚠️ **It is deliberately blind to a single wrong stock** — a 35% yield is real and rejecting outliers would discard true data. Catching one bad stock needs a per-stock cross-check against the provider's own derived figure, which is **not built** and is **owner-deferred to after the remaining layers** — its full design is in `data-audit.md` § *Deferred — the per-stock number check*. It also carries three per-row **invariants**, whose *names* it prints rather than a count.
 
-**Constructive** — Rating tier 2 (score 65-79). Indicates a favourable setup. Replaces the original "BUY" label.
+**Constructive** — Rating tier 2 (score 65-79). Indicates a favourable setup. Replaces the original "BUY" label. Colour: `--c-tier-2`. ⚠️ It is the palette's **pinned** colour: at 4.80 against the page background as text it sits exactly on the house floor, so it cannot be lightened. Every adjacent-gap problem has to be solved by moving the *other* colour.
 
 **Current Drawdown** — How far the current price has fallen from the peak inside the lookback window. Always a negative number (or zero). E.g. "-18%" means the stock is 18% below its recent high.
 
@@ -151,7 +153,7 @@
 
 ## H
 
-**High Conviction** — The highest of the five rating tiers (score 80-100). Replaces the original "STRONG BUY" label.
+**High Conviction** — The highest of the five rating tiers (score 80-100). Replaces the original "STRONG BUY" label. Colour: `--c-tier-1`, moved to a deep **pine** green on 2026-08-22. It sat only 8.2 from Constructive — the closest pair in the palette — and Constructive could not move, so the gap had to come from here. A pine rather than a darker grass green because it is almost exactly as *light* as the old colour (the top chip does not become heavier than the four below it) and separating by hue as well as weight takes the colour-blind gap from 8.6 to 24.6.
 
 ---
 
@@ -199,7 +201,7 @@
 
 **noindex** — A tag telling search engines "you may read this page, but do not list it in results". Used on `/login`, `/signup`, `/reset-password` and `/deletion-requested` — pages that work fine but would be meaningless in a search result. ⚠️ **Never combine `noindex` with a `robots.txt` block on the same page.** Blocking stops the page being fetched at all, so the `noindex` is never read, and the address can still be listed from a link found elsewhere. They are alternatives, not reinforcements. `robots.ts` fails the build if the two lists ever contradict.
 
-**Neutral** — Rating tier 3 (score 50-64). Mixed signal. Same label as the original UI.
+**Neutral** — Rating tier 3 (score 50-64). Mixed signal. Same label as the original UI. Colour: `--c-tier-3`, darkened from gold on 2026-08-22 — it measured **2.38:1** under white numerals, the worst in the palette and a compliance failure on every ranked row and in every downloaded workbook. ⚠️ Against Cautious it remains the hardest pair for a red-green colour-blind reader (5.9); measured and left by owner decision, because the only lever costs about as much on Cautious/Bearish as it buys here.
 
 **News Item** — A single news article entry: title, URL, publish date, source. Stored in `stocks.news` JSONB column. Sourced from yfinance in Phase 1; quality is mediocre.
 
@@ -259,7 +261,7 @@
 
 ## R
 
-**Rating Tier** — One of the five composite tiers: High Conviction, Constructive, Neutral, Cautious, Bearish. See `design-system.md` §4.
+**Rating Tier** — One of the five composite tiers: High Conviction, Constructive, Neutral, Cautious, Bearish. See `design-system.md` §4. ⚠️ The five colours are OUR JUDGEMENT and are **not** the direction colours (a rising candle, a beat, a buy marker) — the two sets share some hues, mean different things, and must stay free to move apart. `pnpm check:tier-palette` holds the two copies (`globals.css`, `RATING_TIER_HEX`) in step, checks every tier is legible **both** as a background under white text and as text on the page ground, and — since 2026-08-22 — checks that **every adjacent pair is still tellable apart**, in normal vision and simulated colour blindness. That last check exists because a colour fixed in isolation can be correct on its own terms and still break the SET.
 
 **Reading scale** — The larger type scale used by **public/content** pages (landing, About, Learn, glossary, notes), as distinct from the **app scale** used by the signed-in terminal. Added in Layer G because the app's scale had leaked onto reading pages: the since-retired `/methodology` rendered **13px body and 8px labels across 9 distinct sizes**. Dense type is right for a terminal that is *scanned* and wrong for a page that is *read*. ⚠️ The fix is never to enlarge the app — it is to stop the app's scale being inherited by content. See `design-system.md` §3.
 

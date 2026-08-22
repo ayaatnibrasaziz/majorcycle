@@ -1703,8 +1703,9 @@ The **gap lives inside the component**, not on the callers' containers: a shared
 component whose spacing is still supplied by two different parents has only moved the
 drift somewhere less visible.
 
-> ⚠️ **Do not "fix" the 9px subtitle here.** It is the named `KNOWN_DEFERRED` exemption
-> in `contrast.spec.ts`, assigned to the Layer H sweep so the whole site moves at once.
+> ⚠️ **The 9px subtitle was the named `KNOWN_DEFERRED` exemption in `contrast.spec.ts`.**
+> Resolved in the 2026-08-22 sweep; that array is now empty and there are no deferred
+> contrast failures left on any public page.
 >
 > ⚠️ The guard that asserts the 10px gap now measures the **rendered distance** between
 > the mark and the wordmark, not `gap` on a named element. The old form went red on this
@@ -1747,6 +1748,11 @@ drift somewhere less visible.
 > because they sit on pages G is redesigning anyway and "we rebuilt this page and left the
 > illegible badge" is not defensible. The remaining six go to H with the rest of the sweep.
 >
+> ✅ **Overtaken on 2026-08-22: the owner brought the whole sweep forward**, signed-in app
+> included, rather than launch with known failures. The scope note above is the state at
+> the time it was written, and the reasoning in it is still the right reasoning — it is only
+> the boundary that moved.
+>
 > ⚠️ **`--text-muted` (#8A97A8) is 2.69:1 on `--bg-page` and 2.97:1 on `--bg-surface`
 > wherever it appears** — it is not a `/methodology` problem, it is a token problem.
 > Before using it for anything a reader must actually read, check the pairing. It is
@@ -1770,10 +1776,9 @@ drift somewhere less visible.
 > rebuilding**. These are on the sign-in and payment path, and every fix was a single
 > colour token — no size, weight or spacing moved.
 >
-> **State today, measured on every public page at 1280px and 375px:**
-> **zero failures at 375px**, and exactly **one at 1280px** — the 9px "Financial
-> Terminal" wordmark, still deferred to Layer H and still named by its text in
-> `KNOWN_DEFERRED` so the exemption cannot quietly widen.
+> **State after the 2026-08-22 sweep, measured on every public page at 1280px and 375px:**
+> **zero failures at either width.** The 9px "Financial Terminal" wordmark, the last
+> deferral, is fixed; `KNOWN_DEFERRED` is an empty array and stays that way.
 >
 > #### The second deferral — the product's score palette, on the landing page (2026-08-15)
 >
@@ -1783,20 +1788,21 @@ drift somewhere less visible.
 > the tier *badges*. This had never been caught because the contrast guard walks **public**
 > routes and the screener is gated, so `/` was the first measured page ever to draw one.
 >
-> ⚠️ **It is deferred by owner decision, not by oversight.** The instruction was *"whatever
+> ⚠️ **It was deferred by owner decision, not by oversight.** The instruction was *"whatever
 > is present on the live site, the color should exactly match that"* — a landing page that
-> quietly repaints a paid surface is a scope breach, however real the defect. Fixing it is
-> a **product-wide Layer H** job. The debt is carried in the open instead:
+> quietly repaints a paid surface is a scope breach, however real the defect. The debt was
+> carried in the open instead, via a `[data-legacy-contrast]` marker on `Mag7Table`'s
+> wrapper: excluded from pass/fail but **counted**, bounded at 42, and required to be
+> non-empty so it could not sit there excusing nothing (14g).
 >
-> - `[data-legacy-contrast]` marks the one subtree (`Mag7Table`'s wrapper).
-> - Failures inside it are excluded from pass/fail but **counted**, bounded at **42** —
->   7 rows × 6 low-contrast elements, so a jump past it means new text was *added*, not
->   inherited.
-> - The marker must sit on **exactly one** subtree, and at least one failure must still be
->   inside it. If it hits zero the exemption is excusing nothing and comes out (14g).
+> ✅ **PAID OFF 2026-08-22.** The owner authorised the palette change; three of the five
+> tier fills were darkened by the minimum factor that clears white text, and the marker was
+> deleted. It no longer exists in any markup.
 >
 > **Record a defect you are not authorised to fix; do not fix it quietly and call it
-> tidying.** An exemption with no ceiling and no floor is a blindfold, not a decision.
+> tidying.** An exemption with no ceiling and no floor is a blindfold, not a decision —
+> and one that outlives its defect is worse, because it goes on excusing whatever wanders
+> into it.
 >
 > ⚠️ **Two more measurement lessons from the same sweep.** (i) The Neutral badge scores
 > 4.73:1 on white and **4.32:1** on `--bg-page` — the badge did not change, what sat behind
@@ -1867,8 +1873,10 @@ The reference Run tab (two co-equal cards: a large **CSV upload** drop-zone + a
 raw **Analysis Settings** card, plus a cosmetic clock-based progress bar) is a
 power-user layout. It fails our **mass-retail beginner** audience: the blank-canvas
 problem ("I have no tickers.csv and can't name 50 tickers"), over-promoted CSV,
-and intimidating raw thresholds. Layer D **deviates from #1 visual parity for this
-tab only**, keeping all brand tokens/typography, and reframes it as a single
+and intimidating raw thresholds. Layer D **departs from the mock-up for this tab only**
+(a deviation that needed defending under the old #1; since 2026-08-22 the mock-up is a
+reference rather than a contract, so this is simply a recorded decision), keeping all
+brand tokens/typography, and reframes it as a single
 **"Build your analysis"** flow (`web/components/run/`):
 
 - **Choose what to analyse** — ready-made **baskets** lead (`BasketPicker`: index /

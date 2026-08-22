@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited. Layer G is in its last stretch, all of it inside PR #89, deliberately unmerged until the layer is finished.** Done: **G1** SEO plumbing · **G2** design foundations · **G3** public chrome · **G3.5** the auth net · **G3.7** the legal documents (owner-accepted 2026-08-13; their TEXT is still `BASELINE CONTENT` awaiting professional review before wide launch) · the **legal compliance audit**, all 7 findings applied · **G3.8** the landing page rebuilt to the approved storyboard and `/methodology` folded into it · **G3.9** the render-mode fix (every public page now prerendered) · **G4** the twelve-article `/learn` library, **all three topics read through and approved by the owner** (2026-08-21/22) · **G5** Lighthouse, accessibility, structured data and the config review. **Remaining in Layer G: the weekly market note (`/notes` + `/notes/[date]`)**, then a full Layer G audit before merge. ⛔ `/about` and `/glossary` are **dropped** (owner, 2026-08-22) — About may return later, the glossary is permanently cancelled; `llms.txt` dropped on the same day.
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited. Layer G is in its last stretch, all of it inside PR #89, deliberately unmerged until the layer is finished.** Done: **G1** SEO plumbing · **G2** design foundations · **G3** public chrome · **G3.5** the auth net · **G3.7** the legal documents (owner-accepted 2026-08-13; their TEXT is still `BASELINE CONTENT` awaiting professional review before wide launch) · the **legal compliance audit**, all 7 findings applied · **G3.8** the landing page rebuilt to the approved storyboard and `/methodology` folded into it · **G3.9** the render-mode fix (every public page now prerendered) · **G4** the twelve-article `/learn` library, **all three topics read through and approved by the owner** (2026-08-21/22) · **G5** Lighthouse, accessibility, structured data and the config review · **G6** the colour review (the ink layer, two rating colours, three faded-text defects, and the reference HTML demoted from contract to mock-up). **Remaining in Layer G: the weekly market note (`/notes` + `/notes/[date]`)**, then a full Layer G audit before merge. ⛔ `/about` and `/glossary` are **dropped** (owner, 2026-08-22) — About may return later, the glossary is permanently cancelled; `llms.txt` dropped on the same day.
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -924,10 +924,16 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > that function and applied it to the screener as well, repainting a paid surface, unasked,
 > inside a landing-page commit. The instruction was *"whatever is present on the live site,
 > the color should exactly match that."* Both surfaces are back on `scoreColor()`, the
-> function is deleted, and the debt is now carried in the open: a `[data-legacy-contrast]`
-> marker on the table, excluded from pass/fail but **counted** and bounded at 42, with the
-> marker required to sit on exactly one subtree. Fixing it properly is a product-wide
-> **Layer H** job. **A real defect does not entitle you to widen your scope.**
+> function is deleted, and the debt was carried in the open instead: a
+> `[data-legacy-contrast]` marker on the table, excluded from pass/fail but **counted** and
+> bounded at 42, with the marker required to sit on exactly one subtree.
+> **A real defect does not entitle you to widen your scope.**
+>
+> ✅ **PAID OFF 2026-08-22.** The owner authorised the palette change on its own merits —
+> not smuggled into a landing commit — and three of the five tier fills were darkened by the
+> minimum factor that clears white text. The marker is deleted and no longer exists in any
+> markup. The *right* shape for that defect turned out to be exactly this: record it, keep
+> it counted, and wait to be authorised.
 >
 > ⚠️ **A deliberate break stayed green twice**, and the boring explanation was right the
 > first time and wrong the second: `next dev` served a stale stylesheet from `.next-dev`,
@@ -1313,9 +1319,9 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > action either one before Layer G is done.**
 >
 > **1 · GA-2 re-fired, and the product is not the reason.** The design hook reported the
-> same seven `globals.css` findings that GA-2 closed on 2026-08-18. The exception is
-> **intact and correct** — `.impeccable/config.json` still carries both file-scoped
-> wildcard entries with their reasoning. What is stale is the hook's own cache:
+> same seven `globals.css` findings that GA-2 closed on 2026-08-18. The exception was then
+> **intact and correct** — `.impeccable/config.json` carried both file-scoped wildcard
+> entries with their reasoning. What was stale is the hook's own cache:
 > `hook.cache.json` was written at **00:01:57** and the config at **00:46:14**, so the
 > cache predates the exception by 45 minutes and is replaying findings recorded before it
 > existed (`"cleanAcked":true` is already set on the entry). ⚠️ **Nothing in the product
@@ -1338,8 +1344,19 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > | 6 | `layout-transition` | `.radar-axis-bar-fill` — `transition: width .6s` | paid |
 > | 7 | `layout-transition` | `.progress-bar-fill` — `transition: width .4s` | paid |
 >
-> All seven are on **gated** surfaces and all seven are already covered by the two
-> wildcard entries. The assessments in the GA-2 row stand unchanged.
+> All seven are on **gated** surfaces and all seven were covered by the two wildcard
+> entries.
+>
+> ⚠️ **STATE AS OF 2026-08-22 — read this table with the row below, not on its own.**
+> Findings 6 and 7 are **fixed** (the bars now transform; commit `c9430bb`), so they can
+> never fire again. Findings 1–3 were **ruled on by the owner: the stripes stay**, for the
+> reason in `design-system.md` §1a rather than an appeal to the mock-up. Finding 4
+> (`.kpi-card::before`) is a **misread** — `left:0; right:0; height:3px` is a rule across
+> the TOP of the card, not a stripe down its side; the rule's own description ("thick
+> coloured border on ONE SIDE") does not describe it. Finding 5 (`.card--verdict::before`)
+> is a genuine 5px left rail on the Verdict card and has **not** been separately ruled on;
+> it was flagged to the owner rather than folded into their decision about the other two.
+> The config that silenced all of this is deleted, so 1–5 now surface on every edit.
 >
 > **2 · NEW — two CSS class names use forbidden rating vocabulary.**
 > `.card-header--accent-buy` and `.card-header--accent-hold` (`globals.css` 541–544) use
@@ -1387,6 +1404,16 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > phrases so a swallowed JSX space fails too. Broken on purpose two ways — a re-typed
 > literal, and a deleted space — since bumping the snapshot alone *cannot* fail once
 > the page derives from it (coding-standards §14 item 29).
+>
+> ⚠️ **SUPERSEDED 2026-08-22 — the stale-cache diagnosis no longer explains it.** The cache
+> was rewritten on 2026-08-20, i.e. two days AFTER the config, and the hook still reported
+> every suppressed finding twice on 2026-08-22. So the exception had genuinely stopped
+> taking effect, by some mechanism not diagnosable from a Claude Code session (the tool is
+> not runnable here). **A control verified once and never re-checked is a control you no
+> longer have** — and note the shape of the near-miss: a plausible cause that was really
+> present (a cache that really was stale, once) is the hardest kind of wrong explanation to
+> catch, because nothing contradicts it (CLAUDE.md 14f). The config was deleted on owner
+> instruction; see the GA-2 row.
 
 >
 > ### 📝 2026-08-19 — the Learn cluster, and one announced title the ENGINE cannot support
@@ -1506,6 +1533,11 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
       badges **2.38 → 4.73:1** (the page now renders the REAL `.tier-badge`, so no locked
       tier colour was touched) and the "Full disclaimer" link **2.69 → 6.8:1**. The
       remaining six stay with the Layer H sweep. Guarded by `e2e/contrast.spec.ts`.
+      ✅ **Superseded 2026-08-22 — the owner brought the whole sweep forward** rather than
+      leaving six known failures on a launching site. Public AND signed-in pages now measure
+      zero failures with zero deferrals; the sweep found far more than six, including
+      `--text-muted` at 2.97:1 (258 failing elements on Browse alone) and 57 pieces of
+      direction-palette text on one stock page.
 - [x] **Define the reading type scale.** Seven tokens (`--rd-micro` … `--rd-display`),
       applied once through `.reading`; three `--measure-*` widths behind `PageFrame`.
       Table in `design-system.md` §3.
@@ -1821,10 +1853,16 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 >
 > **Accessibility — `e2e/a11y.spec.ts`, axe-core inside the existing Playwright runner** (no
 > second test runner, ever). Every public page, WCAG 2.1 A + AA, credential-free. **All
-> clean** except the one subtree already carrying `[data-legacy-contrast]`, which is
-> excluded *and bounded*: a second test scans with no exclusion and requires every violating
-> node to be inside that marker, and at least one to exist — so the exemption can neither
-> grow nor sit there excusing nothing (14g).
+> clean** except the one subtree then carrying `[data-legacy-contrast]`, which was excluded
+> *and bounded*: a second test scanned with no exclusion and required every violating node
+> to be inside that marker, and at least one to exist — so the exemption could neither grow
+> nor sit there excusing nothing (14g).
+>
+> ✅ **2026-08-22: that exclusion is gone and the public scan is clean with none.** The same
+> two instruments now also cover the SIGNED-IN product (`app-a11y.spec.ts`,
+> `app-contrast.spec.ts`), which had no accessibility evidence of any kind before that date
+> — including a second pass over the stock page on a throwaway PAID account, because the
+> shared E2E account cannot see the Verdict card, the radar or the rating badges.
 >
 > ⚠️ **Three instrument failures in a row, and each one nearly became a finding.**
 > **(i)** Axe composites `opacity`, so it read the landing's un-revealed scroll blocks as
@@ -1916,6 +1954,82 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > on the local Python cycle spawn — and they previously failed together at the tail of an
 > 11-minute single-worker run that then aborted (21 tests "did not run"). Not reproduced in
 > three runs today.
+
+> #### ✅ G6 — the colour review. 2026-08-22, still inside PR #89.
+>
+> Playwright **519** (518 + one added), pytest 153, all seven guards green, `pnpm build`
+> clean, CI reconciling exactly. Four owner decisions and three defects found while
+> implementing them. Commits `c9430bb`, `953445b`, `c304cd8`, `bd37d76`.
+>
+> **1 · The ink layer.** Measuring the signed-in pages for the first time showed the
+> direction palette is not only fills and lines — it was **57 pieces of TEXT** on one stock
+> page, worst **2.11:1**: the "Key Risks" heading, Current Drawdown, the analyst consensus
+> figure, every earnings beat and dividend streak. Green-for-up is a convention the owner
+> had explicitly scoped out, and it still is: **a rising candle is untouched.** Only the
+> *sentence about it* deepens, via `--c-*-ink` / `lib/ink.ts`. Three near-miss golds
+> (`#D4A017`, `#9A7010`, `#B58800`) collapsed into one. ⚠️ ONE exception is a Recharts
+> fact rather than a choice — a legend entry is painted in its series' own colour, so for
+> a series the mark and its label cannot diverge; the ASX 200 line and the Cash &
+> Equivalents bar therefore carry ink.
+>
+> **2 · Bearish `#B22222` → `#8B1414`, and High Conviction `#006400` → `#065F46`.** Neither
+> was a contrast failure. The morning's rating darkening had put **Cautious next to
+> Bearish** (10.7 apart, 10.0 to a red-green colour-blind reader) and the owner spotted it
+> on sight; fixing that exposed the same defect one row up, where the two greens sat at
+> **8.2**. Constructive could not move — 4.80 as text is exactly the house floor — so both
+> gaps had to be closed from the other side. The greens use a **pine**, which is as light
+> as the old green (the ramp keeps its rhythm) while separating by hue as well as weight
+> (colour-blind gap 8.6 → **24.6**; a plain darker green reached only 14.1). Weakest pair
+> in the palette went **8.2 → 16.3**.
+>
+> ⚠️ **Both moves severed a double meaning.** `#B22222` was also the down candle and
+> `#006400` the candle border and insider-buy marker; a hex that means two things cannot be
+> policed as a copy of one of them. The direction colours stayed exactly where they were,
+> so **all five tiers are now checkable** where three were.
+>
+> **3 · Three faded-text defects, one shape.** A colour correct at full strength, dimmed
+> below the floor by something upstream (CLAUDE.md 11q):
+>
+> | | Was | Rendered | Found by |
+> |---|---|---|---|
+> | `.verdict-thesis-num` | white on green, `opacity: .85` | 5.31 → **4.31** | measuring the page as a PAYING customer for the first time |
+> | `.insight-strength-label` | the new ink, `opacity: .75` | 5.90 → **3.55** | the guard, after the ink landed |
+> | `.req-notice-x` | `--brand-mid`, `opacity: .7` | 6.49 → **3.40** | grep — it renders only after a reader adds a ticker, so nothing we own had ever seen it |
+>
+> A fourth (`MethodologyModal`, `opacity-95`) was never a failure but was spending 0.4 of
+> the margin the palette work had just bought; removed.
+>
+> **4 · What the guards do now.** `check:tier-palette` gained two checks, each broken on
+> purpose first: **adjacent-pair separation** (the check that would have caught defect 2 —
+> ratchets rather than invented thresholds, in normal vision and two simulated colour
+> blindnesses) and the **ink layer's two copies**. ⚠️ Breaking it caught a real mistake: the
+> first version updated the comment claiming all five tiers were policed and left the array
+> at four. **A comment is not a control.** `app-contrast.spec.ts` now measures the stock
+> page a second time on a throwaway PAID account, because the shared E2E account cannot see
+> the Verdict card, the radar or the rating badges — the busiest premium surface in the
+> product had no evidence of any kind while a spec named after it passed on every run.
+>
+> **5 · Recorded, not fixed.** Neutral against Cautious measures **5.9** to a deuteranope
+> and cannot be improved without costing about as much on Cautious/Bearish. A trade, not a
+> win; owner decided to leave it. Nothing is unreadable — every chip carries its score and
+> every badge its word, so 1.4.1 is satisfied by the text rather than the colour.
+>
+> **6 · Two process changes.** The reference HTML is now a **mock-up, not a contract**
+> (CLAUDE.md #1 reversed at owner instruction), and `.impeccable/config.json` was deleted:
+> both its entries were void and it had silently stopped applying. The accent stripes stay,
+> now for a stated reason rather than an appeal to the file. See GA-2 and `design-system.md`
+> §1a.
+>
+> ⚠️ **Traps hit and worth remembering.** (i) The dev server served a **stale compiled
+> stylesheet** — `--c-up-ink` absent, `--c-tier-5` still the old red — from a cache at
+> `.next-dev/dev/cache`, *not* `.next-dev/cache`, which is the path a previous session also
+> got wrong. Compiled CSS **newer** than the source is not evidence it is current.
+> (ii) Renaming that stale directory to `.next-dev.stale` left it inside `web/`, where it is
+> not gitignored, so Tailwind scanned 6,915 compiled chunks and emitted garbage class names
+> that broke the build. Move a stale build **out of the project**, not sideways within it.
+> (iii) A 48-minute run with 267 failures was the machine thrashing, not a regression —
+> the same tree ran clean in 8 minutes. **Re-run before diagnosing.**
+
 
 ### Layer H: Pre-launch Hardening (Phase 1.5, target: 1 week)
 
@@ -2032,7 +2146,7 @@ memory** — re-verified 2026-08-02. ✅ proven · 🟡 partly proven, with what
 | ✅ | Zero ESLint errors | `pnpm lint` clean |
 | ✅ | Zero Python type errors | `mypy analytics/` — no issues in **33 source files** |
 | ✅ | All tests passing in CI | Run on `ab11e18`: Python ✅ · Frontend ✅ · E2E **105/105** · `pytest` **86** |
-| 🟡 | Lighthouse Performance 90+, SEO 100, Accessibility 95+ | **MEASURED 2026-08-22** (`pnpm lighthouse`, median of 3, production build). **Public pages: 100 / 100 / 96 / 100.** The per-ticker page decision #33 names went **61 → 84** after the 588 KB report-bundle prefetch was gated and deferred (§ architecture 7.2d). ⚠️ SEO is not scored on the two gated routes — they are `Disallow`ed on purpose, so Lighthouse fails `is-crawlable` and scoring that would flag correct behaviour as a defect. **The last 6 points are owner's call**: a 655 KB document, ~114 KB unused JS and the chart libraries booting — code-splitting a **paid** surface, not something to do unasked. Accessibility is **measured in G, fixed in Layer H**; `e2e/a11y.spec.ts` now runs axe over every public page with one bounded exemption. |
+| 🟢 | Lighthouse Performance 90+, SEO 100, Accessibility 95+ | **MEASURED 2026-08-22** (`pnpm lighthouse`, median of 3, production build). **Public pages: 100 / 100 / 96 / 100.** The per-ticker page decision #33 names went **61 → 84** after the 588 KB report-bundle prefetch was gated and deferred (§ architecture 7.2d). ⚠️ SEO is not scored on the two gated routes — they are `Disallow`ed on purpose, so Lighthouse fails `is-crawlable` and scoring that would flag correct behaviour as a defect. **The last 6 points are owner's call**: a 655 KB document, ~114 KB unused JS and the chart libraries booting — code-splitting a **paid** surface, not something to do unasked. ✅ **Accessibility was measured in G and then FIXED in G**, the owner having brought the sweep forward rather than launch with known failures. `a11y.spec.ts` + `contrast.spec.ts` cover every public page and `app-a11y.spec.ts` + `app-contrast.spec.ts` the signed-in product — **zero violations, zero deferrals**, with one WCAG 1.4.3 logotype carve-out bounded to a single element. |
 | ⬜ | Mobile responsive at 375px width | **Layer H** — already triaged and measured there: ~130px overflow, root-caused to the `(app)` shell sidebar, not to page components |
 
 ### Content
@@ -2107,7 +2221,7 @@ Order of priority TBD based on user feedback. Candidate features:
 ✅ Phase 1 Layer F: Static Pages + Subscription  (built + merged PR #72 + live 2026-08-01)
    ✅  └─ production-readiness audit F-A1…F-A6 COMPLETE 2026-08-02 → docs/layer-f-audit.md
    ↓
-🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1–G5 done; only the weekly note + the
+🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1–G6 done; only the weekly note + the
                                               layer audit remain; PR #89 open, unmerged)
    ↓
    Phase 1 Layer H: Hardening (Phase 1.5)  — owns 375px, a11y, cross-browser, Sentry

@@ -673,9 +673,19 @@ decision — see § 8.**)
     (7 — a failed database read must throw, never masquerade as "not found"; § CLAUDE.md 11e),
     both credential-free and therefore unskippable. Added 2026-08-22:
     **`e2e/a11y.spec.ts`** (axe-core inside Playwright — never a second runner — over every
-    public page and all twelve articles, with the one `[data-legacy-contrast]` exemption
-    bounded by a test that scans *without* it), and the meta-description bounds inside
-    `seo.spec.ts`, asserted on the rendered tag because three different routes produce it.
+    public page and all twelve articles), **`e2e/app-a11y.spec.ts`** and
+    **`e2e/app-contrast.spec.ts`** (the same two instruments over the SIGNED-IN product,
+    which had no accessibility evidence of any kind until 2026-08-22 — these need
+    credentials and can therefore skip, which is why they are separate files from the
+    credential-free public pair), and the meta-description bounds inside `seo.spec.ts`,
+    asserted on the rendered tag because three different routes produce it.
+
+    ⚠️ **The exemptions those files carried are gone.** `[data-legacy-contrast]` and
+    `KNOWN_DEFERRED` were both retired on 2026-08-22 when the rating palette and the ink
+    layer paid the debts they excused; `KNOWN_DEFERRED` is now an empty array and the
+    marker no longer exists in any markup. One carve-out remains and it is a WCAG rule
+    rather than a debt: `.verdict-watermark`, exempt under 1.4.3 as a brand logotype,
+    matched on opacity as well as colour and bounded to exactly one element.
 
 > ⚠️ **Check the COUNT, not the colour.** A suite that silently skipped is also green — which
 > is why the numbers above are worth reading off the run rather than trusting the badge.
@@ -729,9 +739,11 @@ Every task ends with the relevant command(s) and shown output:
 | Edit to cycle math / scoring | Mirror the edit in `web/_engine/<same_file>.py` (replace `from analytics.` with `from _engine.`); run the drift check from `.github/workflows/ci.yml` locally | drift check exits 0 |
 | Cycle math change | `pytest analytics/tests/test_major_cycle.py -v` | all pass |
 | New API route | `pnpm build` then test in Vercel preview | route returns expected shape |
-| UI change | Screenshot before/after | visual match with reference |
+| UI change | Screenshot before/after | matches the DECISION recorded in `design-system.md` — not the mock-up (CLAUDE.md #1, changed 2026-08-22) |
 | Schema change | Apply migration locally + run app | no broken queries |
-| Public-page markup, CSS or a new page | `pnpm e2e e2e/a11y.spec.ts` | 0 axe violations outside `[data-legacy-contrast]` |
+| Public-page markup, CSS or a new page | `pnpm e2e e2e/a11y.spec.ts` | **0** axe violations — there are no public exemptions left |
+| Signed-in markup, CSS or a colour | `pnpm e2e e2e/app-a11y.spec.ts e2e/app-contrast.spec.ts` | 0 violations; the ONE logotype carve-out stays at exactly 1 |
+| Any rating or direction colour | `pnpm check:tier-palette` | two copies in step · all five tiers legible both ways · every adjacent pair still tellable apart · the ink layer in step |
 | Anything that could change page weight | `pnpm lighthouse` (needs `next start` on **:3200**) | public pages 100; ticker page not below its recorded median |
 
 ⚠️ **`pnpm lighthouse` refuses to run against `:3000`.** A dev-server score is meaningless —

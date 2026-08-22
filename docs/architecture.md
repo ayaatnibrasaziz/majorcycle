@@ -1097,19 +1097,36 @@ the page's own weight: a 655 KB document (the full price history inline in the R
 code-splitting the charts and deferring below-fold sections — real architectural work on a
 **paid** surface, which is not something to do unasked (11l).
 
-### 7.2e Accessibility — measured in G, fixed in H
+### 7.2e Accessibility — measured in G, and now fixed
 
 `web/e2e/a11y.spec.ts` runs **axe-core inside Playwright** (never a second test runner —
 that rule is absolute), WCAG 2.1 A + AA, over every public page and all twelve articles,
-credential-free. **Everything passes** except the one subtree already carrying
-`[data-legacy-contrast]` — the landing's worked screener run, which draws the product's real
-score chips, three of whose five tier colours are too light to sit white text on. That is a
-product-wide repaint and Layer G is not authorised to make it (11l, where exactly that was
-tried and reversed by the owner).
+credential-free. `app-a11y.spec.ts` and `app-contrast.spec.ts` do the same for the
+**signed-in** product, which had no accessibility evidence of any kind until 2026-08-22.
 
-The exemption is **bounded**: a second test scans with no exclusion at all and requires every
-violating node to be inside that marker, and at least one to exist — so it can neither grow
-nor sit there excusing nothing (14g).
+**There are no exemptions left on the public side.** `KNOWN_DEFERRED` in
+`contrast.spec.ts` is an empty array and `[data-legacy-contrast]` no longer exists in the
+markup. Both were real and both were paid off on 2026-08-22:
+
+| Exemption | What it excused | How it ended |
+|---|---|---|
+| `[data-legacy-contrast]` | the landing's worked screener run, drawing real score chips whose tier colours could not carry white text | the rating palette was darkened with owner approval; three of five tiers changed |
+| `KNOWN_DEFERRED` | a 9px wordmark subtitle | resolved in the same sweep |
+| the 5-colour list in `app-contrast.spec.ts` | 57 pieces of direction-palette TEXT on one stock page, worst 2.11:1 | the **ink layer** — `--c-*-ink` / `lib/ink.ts`; lines and candles kept their colours, words got darker twins |
+
+**ONE carve-out remains, and it is a WCAG rule rather than a debt.**
+`.verdict-watermark` — the faint brand stamp on the Verdict card, `--brand-deep` at 18%
+opacity, 1.37:1. WCAG 1.4.3 exempts text that is part of a logo or brand name. Matched on
+**opacity as well as colour** and bounded to exactly one element, and asserted to be ≥1 so
+it cannot outlive its subject (14g).
+
+⚠️ **The signed-in scan sees what the free account sees, which is not the product.**
+`app-contrast.spec.ts` measures `/stocks/us/AAPL` a second time on a **throwaway paid
+account**, because the shared E2E account holds no subscription — so the Verdict card, the
+scorecard radar and the rating badges were invisible to every run for the life of the site.
+Measuring it entitled for the first time found `.verdict-thesis-num` drawing white numerals
+at 85% opacity, 5.31 → **4.31**. Extending `app-a11y.spec.ts` the same way is the open
+follow-up, and the file says so rather than implying a coverage it lacks.
 
 ⚠️ **Scanned under `prefers-reduced-motion: reduce`, and that is a correctness decision.**
 Axe composites `opacity`, and the landing's below-fold sections rest at `opacity: 0` until an
@@ -1234,7 +1251,7 @@ by preference): custom domain (~US$10/mo), custom email domain (owner keeps the 
 
 **Auth pattern:** `web/proxy.ts` (middleware) and `(app)/layout.tsx` check that a `user` session exists and refresh it. **Subscription gating is enforced on top of that as of F3 Step 10 — see §7.1 above** (merged to `main` and live in production 2026-08-01, PR #72, merge commit `cd6b014`): checkout + the webhook populate the client-immutable entitlement columns on `profiles`, and `lib/entitlement.ts` is the single rule that reads them, enforced at the page, the proxy and the Python functions. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
 
-**Security posture (F0.5 hardening — shipped 2026-07-05, PR #61):** a full code + platform audit hardened the auth surface. (a) **Recovery-session confinement:** a password-reset link mints a full session, so `auth/confirm` sets an httpOnly `mc_pw_recovery` marker and `proxy.ts` restricts that session to `/account/update-password` (+ `/auth/recovery-done`, `/auth/signout`) until the password is changed — a leaked/forwarded reset link can no longer roam the app (live-verified). The page now lives under the `(public)` shell (no sidebar). (b) **Sign-out:** POST `/auth/signout` + a sidebar `SignOutButton`. (c) **`profiles` billing-column lockdown:** table-level `UPDATE` revoked; a column `GRANT` allows only `display_name`/`country`/`acknowledged_disclaimer_at`, so `subscription_*`/`trial_ends_at`/`stripe_*` are client-immutable (cron/webhooks write them via the service-role key) — migration `20260705032433`. (d) **Security headers** in `web/next.config.ts` (X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, CSP report-only). (e) **Open-redirect guard** `safeNextPath()`. (f) **DMARC** tightened to `p=reject` (strict) — safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Deferred: leaked-password protection (Supabase Pro-only), CSP flip to enforcing.
+**Security posture (F0.5 hardening — shipped 2026-07-05, PR #61):** a full code + platform audit hardened the auth surface. (a) **Recovery-session confinement:** a password-reset link mints a full session, so `auth/confirm` sets an httpOnly `mc_pw_recovery` marker and `proxy.ts` restricts that session to `/account/update-password` (+ `/auth/recovery-done`, `/auth/signout`) until the password is changed — a leaked/forwarded reset link can no longer roam the app (live-verified). The page now lives under the `(public)` shell (no sidebar). (b) **Sign-out:** POST `/auth/signout` + a sidebar `SignOutButton`. (c) **`profiles` billing-column lockdown:** table-level `UPDATE` revoked; a column `GRANT` allows only `display_name`/`country`/`acknowledged_disclaimer_at`, so `subscription_*`/`trial_ends_at`/`stripe_*` are client-immutable (cron/webhooks write them via the service-role key) — migration `20260705032433`. (d) **Security headers** in `web/next.config.ts` (X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, CSP report-only). (e) **Open-redirect guard** `safeNextPath()`. (f) **DMARC** tightened to `p=reject` (strict) — safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Deferred: leaked-password protection (Supabase Pro-only), CSP flip to enforcing (scoped and costed 2026-08-22 — see the posture box below; owner chose option C, a nonce on the per-request routes, deferred to its own session).
 
 > **Header review, Layer G, 2026-08-22 — the three settings nobody had consciously chosen.**
 >
@@ -1245,14 +1262,35 @@ by preference): custom domain (~US$10/mo), custom email domain (owner keeps the 
 >   local. An unset `remotePatterns` is not an omission: it is the setting that stops our own
 >   image optimiser being used as an open proxy for arbitrary URLs. Adding a pattern is a
 >   security decision.
-> - **CSP stays `Report-Only`, and here is exactly what blocks the flip.** Measured on the
->   **production build** (dev is useless for this — Turbopack's `eval` produces violations
->   that never ship): every page reports `script-src-elem :: inline`, 14 on `/terms` and 28
->   on the landing, scaling with page complexity. They are Next's own hydration bootstraps.
->   Enforcing needs a per-request nonce threaded from `proxy.ts` through every response,
->   whose failure mode is "the page renders but nothing is interactive" — on pages including
->   sign-in, which the owner cannot debug from outside. **→ Layer H, with its own
->   verification.**
+> - **CSP stays `Report-Only` as of 2026-08-22, and the flip is now scoped rather than
+>   blocked.** Re-measured across **22 pages** on the **production build** (dev is useless
+>   for this — Turbopack's `eval` produces violations that never ship), signed out and
+>   signed in, including the 12 Learn articles, the legal pages, the auth pages and every
+>   gated route: **186 violations, and every single one is `script-src-elem :: inline`.**
+>   Zero for `style-src`, `img-src`, `font-src`, `connect-src`, `frame-src`, `form-action`,
+>   `base-uri` or `object-src`. They are Next's own hydration bootstraps, 5 on `/login`,
+>   28 on the landing, 57 on a stock page — scaling with page complexity, as expected.
+>
+>   That measurement splits the decision into three, and the owner has chosen **C, deferred
+>   to its own session**:
+>
+>   | | What | Cost | Risk |
+>   |---|---|---|---|
+>   | **A** | enforce everything, `script-src` keeps `'unsafe-inline'` | none | measured zero |
+>   | **B** | full nonce everywhere | every route turns dynamic; the 77ms click returns to ~674ms (11s) | "loads but nothing works", sign-in included |
+>   | **C** | nonce on the routes that are ALREADY per-request; A's policy on the 7 prerendered pages | none | needs its own verification |
+>
+>   ⚠️ **C is cheap because of a fact about this site rather than a clever trick.** A nonce
+>   must differ per visit, so it forces a page to be rendered per request — but only **7
+>   routes are prerendered** (`/`, `/contact`, `/disclaimer`, `/learn`, `/learn/[slug]`,
+>   `/privacy`, `/terms`) and they carry no session, no form that matters and no personal
+>   data. Everything else — sign-in, sign-up, pricing, password reset, and every signed-in
+>   page — is **already** rendered per request because it shows one person's data, so a
+>   nonce there costs nothing. The strongest policy lands exactly where a session lives.
+>
+>   Failure mode remains "the page renders but nothing is interactive", on pages including
+>   sign-in, which the owner cannot debug from outside. **→ its own session, with its own
+>   verification on the preview before production.**
 >
 > ⚠️ **The other blocker was a real bug in the policy, and it is fixed.** `style-src` was
 > missing `https://accounts.google.com`, so `/login` and `/signup` each reported

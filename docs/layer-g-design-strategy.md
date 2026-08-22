@@ -47,6 +47,15 @@ Measured, not estimated (WCAG relative-luminance formula, computed in-page):
 | **"Full disclaimer" link** | **2.69 : 1** | 4.5 : 1 |
 | "Financial Terminal" wordmark (9px) | 2.69 : 1 | 4.5 : 1 |
 
+> ✅ **All three closed, and the scope note below was overtaken.** The badges and the
+> disclaimer link were fixed inside G as planned; the wordmark followed on 2026-08-22, when
+> the owner authorised a whole-site sweep rather than deferring the rest to Layer H. That
+> sweep found far more than this table: `--text-muted` at **2.97:1** (258 failing elements on
+> Browse alone, including the mandatory disclaimer), the five score chips white-on-tier, and
+> **57 pieces of direction-palette text** on a single stock page. Public and signed-in pages
+> now both have zero contrast failures and zero deferrals. ⚠️ This table is the state on the
+> day Layer G started — read it as a starting point, not as the current site.
+
 Two of these are not cosmetic. The **rating tier badges are `design-system.md` §4, "THE
 Most Important Spec"** — the five labels are the product's entire vocabulary, and they
 are the hardest thing on the page to read. The **disclaimer link is compliance-adjacent**
