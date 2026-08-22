@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { useMemo, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -31,7 +32,7 @@ const RANGE_LABELS: Record<Range, string> = { '1y': '1Y', '3y': '3Y', 'max': 'Ma
 
 const STOCK_COLOR = '#1E5CB3';
 const BENCH_COLOR: Record<string, string> = {
-  '^GSPC': '#8A97A8',   // S&P 500 — neutral grey
+  '^GSPC': CHART_INK,   // S&P 500 — neutral grey
   '^IXIC': '#7C3AED',   // Nasdaq — violet
   '^AXJO': '#D4A017',   // ASX 200 — gold
   '^GSPTSE': '#0E9F8E', // S&P/TSX — teal
@@ -198,7 +199,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                   scale="time"
                   domain={['dataMin', 'dataMax']}
                   tickFormatter={(ts: number) => fmtTick(ts, spanDays)}
-                  tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: 'Sora' }}
+                  tick={{ fill: CHART_INK, fontSize: 10, fontFamily: 'Sora' }}
                   axisLine={false}
                   tickLine={false}
                   minTickGap={28}
@@ -207,7 +208,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                   orientation="right"
                   width={CHART_RIGHT_AXIS_WIDTH}
                   tickMargin={6}
-                  tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
+                  tick={{ fill: CHART_INK, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
                   tickFormatter={(v: number) => `${v - 100 >= 0 ? '+' : ''}${(v - 100).toFixed(0)}%`}
                   axisLine={false}
                   tickLine={false}
@@ -219,7 +220,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                     const ts = payload[0]!.payload.ts as number;
                     return (
                       <div style={{ background: '#1A1A1B', border: '1px solid #2E3347', borderRadius: 6, padding: '8px 12px', fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
-                        <div style={{ color: '#8A97A8', marginBottom: 4 }}>
+                        <div style={{ color: CHART_INK, marginBottom: 4 }}>
                           {new Date(ts).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </div>
                         {payload
@@ -267,7 +268,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                     dataKey={t}
                     name={BENCHMARKS.find((b) => b.ticker === t)?.label ?? t}
                     type="monotone"
-                    stroke={BENCH_COLOR[t] ?? '#8A97A8'}
+                    stroke={BENCH_COLOR[t] ?? CHART_INK}
                     strokeWidth={1.75}
                     dot={false}
                     isAnimationActive={false}

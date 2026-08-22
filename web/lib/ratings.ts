@@ -9,6 +9,38 @@
 import { tickerToUrlParts } from '@/lib/ticker';
 import type { CycleAnalysis, OverallLabel, ValuationZone } from '@/lib/types';
 
+/**
+ * The five rating-tier hexes, for the surfaces that CANNOT read a CSS variable.
+ *
+ * Three of them exist: the `.xlsx` workbook (ExcelJS wants ARGB), a Recharts
+ * `fill`/`stroke` prop, and an inline SVG attribute. Everything that can reach the
+ * stylesheet must use `tierColorVar()` / `scoreColor()` instead — a hex written
+ * into a component is a copy, and this palette had **247** copies across 26 files
+ * before 2026-08-22 (CLAUDE.md 11c).
+ *
+ * ⚠️ THIS IS THE SECOND COPY OF `--c-tier-*`, and it cannot be the first: CSS
+ * cannot be imported into TypeScript, and the workbook is generated with no DOM to
+ * resolve a variable against. Two copies of a rule drift, so the drift is made
+ * impossible instead of merely discouraged — `pnpm check:tier-palette` parses both
+ * `app/globals.css` and this object and fails the build if any value disagrees.
+ * That guard was broken on purpose (one digit changed, in each file in turn) before
+ * being trusted.
+ *
+ * ⚠️ These are RATING colours — our judgement about a stock. They are NOT the
+ * direction colours. A candlestick's green, a beat/miss green, a "bullish" green
+ * and a buy-marker green are a separate rule that merely shares a hue; those kept
+ * their original values when these were darkened for contrast (see globals.css).
+ * Reaching for `RATING_TIER_HEX[2]` to colour a rising price would silently
+ * couple two things that must be free to move apart.
+ */
+export const RATING_TIER_HEX: Readonly<Record<1 | 2 | 3 | 4 | 5, string>> = {
+  1: '#006400',
+  2: '#1E7C1E',
+  3: '#87660F',
+  4: '#C73600',
+  5: '#B22222',
+} as const;
+
 /** Tier index 1 (strongest) … 5 (weakest) for a 0–100 score. */
 export function tierFromScore(score: number): 1 | 2 | 3 | 4 | 5 {
   if (score >= 80) return 1;

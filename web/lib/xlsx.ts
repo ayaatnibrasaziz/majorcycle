@@ -12,7 +12,7 @@
 import type { Row } from 'exceljs';
 
 import type { ResultRow } from '@/components/results/columns';
-import { exportText, tierFromScore, type ExportFmt } from '@/lib/ratings';
+import { exportText, RATING_TIER_HEX, tierFromScore, type ExportFmt } from '@/lib/ratings';
 
 type ExportColumn = { header: string; get: (r: ResultRow) => string | number | null; xf?: ExportFmt };
 
@@ -42,14 +42,23 @@ export function cellValue(value: string | number | null, xf?: ExportFmt): string
   return value;
 }
 
-// Tier → ARGB fill (the app's tier hexes, as used on the Stock Detail page).
-const TIER_ARGB: Record<1 | 2 | 3 | 4 | 5, string> = {
-  1: 'FF006400',
-  2: 'FF228B22',
-  3: 'FFD4A017',
-  4: 'FFFF4500',
-  5: 'FFB22222',
-};
+/**
+ * Tier → ARGB fill, DERIVED from the one palette rather than restated.
+ *
+ * ⚠️ This was a hand-typed copy of all five hexes until 2026-08-22, and it is the
+ * reason the workbook mattered here at all: `paint()` below writes **white bold
+ * text** onto these fills, so the downloaded `.xlsx` carried the identical
+ * contrast failure as the on-screen chips — Neutral at 2.38 against a 4.5 floor.
+ * Fixing the website alone would have left every customer's spreadsheet wrong,
+ * and nothing would have gone red, because no guard reads a workbook's fills.
+ *
+ * ExcelJS wants `AARRGGBB`, so the alpha prefix is added here and the colour is
+ * never restated — a second list is a second product (CLAUDE.md 11c iii/11d).
+ * `web/e2e/export-parity.spec.ts` imports this real map, so it cannot drift.
+ */
+const TIER_ARGB: Record<1 | 2 | 3 | 4 | 5, string> = Object.fromEntries(
+  ([1, 2, 3, 4, 5] as const).map((t) => [t, `FF${RATING_TIER_HEX[t].slice(1).toUpperCase()}`]),
+) as Record<1 | 2 | 3 | 4 | 5, string>;
 
 /** Financial Health uses a 3-tier scale (matches healthColor): Healthy / Adequate / At Risk. */
 function healthTier(score: number): 1 | 3 | 5 {

@@ -79,8 +79,16 @@ export async function GET(
 
   const { market, ticker } = await params;
   if (!isValidMarket(market)) {
+    // ⚠️ Every 404 from this route carries a distinct `reason`. There are two of
+    // them and they mean completely different things — "that is not one of our
+    // three markets" versus "we have no such stock" — and until 2026-08-22 both
+    // answered a bare `{ error: 'Not found' }`. An intermittent failure here was
+    // investigated across two sessions and never explained, because the only
+    // evidence it left was a status code that three separate branches can produce.
+    // A refusal that does not say which refusal it is cannot be debugged from the
+    // outside, which is exactly the position the owner is in (CLAUDE.md 11e).
     return NextResponse.json(
-      { error: 'Not found' },
+      { error: 'Not found', reason: 'unknown_market' },
       { status: 404, headers: NO_STORE },
     );
   }
@@ -111,8 +119,10 @@ export async function GET(
     throw err;
   }
   if (!data) {
+    // A genuine absence: the read succeeded and there is no such stock. Distinct
+    // from `unknown_market` above and from the 503 `read_failed` just before it.
     return NextResponse.json(
-      { error: 'Not found' },
+      { error: 'Not found', reason: 'no_such_stock' },
       { status: 404, headers: NO_STORE },
     );
   }

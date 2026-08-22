@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Bar,
@@ -157,14 +158,14 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
             >
               <XAxis
                 dataKey="label"
-                tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: 'Sora' }}
+                tick={{ fill: CHART_INK, fontSize: 10, fontFamily: 'Sora' }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 orientation="right"
                 tick={{
-                  fill: '#8A97A8',
+                  fill: CHART_INK,
                   fontSize: 10,
                   fontFamily: "'JetBrains Mono', monospace",
                 }}

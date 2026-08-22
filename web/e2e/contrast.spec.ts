@@ -1,6 +1,12 @@
 import { expect, test } from '@playwright/test';
 
 import { LEARN_ARTICLES, learnPath } from '../lib/learn';
+// ⚠️ The probe, the sentinels and `measure()` live in ONE module, shared with
+// `app-contrast.spec.ts` (the signed-in pages). They were inlined here until
+// 2026-08-22; copying them into the second suite would have repeated the exact
+// mistake this file documents below — a second copy of the preamble that stopped
+// keeping up with the first.
+import { measure, MIN_MEASURED, type Fail, type Probe } from './lib/contrastProbe';
 
 /**
  * ── How the landing nearly became unmeasurable, and what fixed it ─────────────
@@ -143,379 +149,43 @@ const FORM_PAGES = [
 ];
 
 /**
- * The one element still under the floor, and it is deliberate: the 9px
- * "Financial Terminal" wordmark in the shared public header measures 2.69:1.
- * design-system.md §14 assigns it to Layer H with the rest of the sweep.
+ * ⚠️ EMPTY, and that is the finding — the public site now carries NO contrast
+ * exemption at all.
  *
- * It is listed BY TEXT rather than raised as a threshold, so the exemption
- * cannot quietly cover a second element. If the header is restyled and this
- * stops failing, the last assertion in this file turns red and says so — an
- * allow-list that is never checked for staleness becomes a blindfold.
+ * It held one for the life of Layer G: the 9px "Financial Terminal" wordmark in
+ * the shared public header, at 2.69:1, deferred to Layer H with the rest of the
+ * sweep. It was never really a header problem. It was `--text-muted` at #8A97A8
+ * (2.97 on white), the same token that turned out to be failing 258 times on one
+ * signed-in page — so fixing the token on 2026-08-22 fixed the wordmark too, and
+ * the staleness test at the foot of this file went red to say so. Exactly what it
+ * was written for.
+ *
+ * Kept as an empty list rather than deleted, so that adding the first entry back
+ * is a visible decision in a diff instead of a quiet edit to a filter.
  */
-const KNOWN_DEFERRED = ['Financial Terminal'];
+const KNOWN_DEFERRED: string[] = [];
 
-/** Serialised into the page; keep it dependency-free. */
-const PROBE = `(() => {
-  const lum = (c) => {
-    const [r, g, b] = c.map((v) => {
-      v /= 255;
-      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-    });
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  };
-  const parse = (s) => {
-    const m = s.match(/rgba?\\(([^)]+)\\)/);
-    if (!m) return null;
-    const p = m[1].split(/[,\\s\\/]+/).filter((x) => x !== '').map(Number);
-    return { rgb: [p[0], p[1], p[2]], a: p.length > 3 ? p[3] : 1 };
-  };
-  const over = (fg, bg) => fg.rgb.map((v, i) => v * fg.a + bg[i] * (1 - fg.a));
-  // Composite every translucent ancestor, outermost first. A tinted badge on a
-  // white card is the whole reason the tier fix works, and a probe that stopped
-  // at the first background would score it against nothing.
-  const bgOf = (el) => {
-    let n = el, acc = [255, 255, 255];
-    const stack = [];
-    while (n && n !== document.documentElement) {
-      const c = parse(getComputedStyle(n).backgroundColor);
-      if (c && c.a > 0) stack.push(c);
-      n = n.parentElement;
-    }
-    for (let i = stack.length - 1; i >= 0; i--) acc = over(stack[i], acc);
-    return acc;
-  };
-  const ratio = (a, b) => {
-    const L1 = lum(a), L2 = lum(b);
-    return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
-  };
-  // ⚠️ ACCUMULATED \`opacity\`, and this probe was blind to it until 2026-08-17.
-  // A wrapper carrying \`opacity: .7\` dims its text exactly as an alpha on
-  // \`color\` would, but appears in NEITHER \`color\` nor \`backgroundColor\` — so
-  // the reading came out at full strength. On /learn that scored 25 elements at
-  // 6.81 which a reader was seeing at 3.38, i.e. the page broke a compliance
-  // rule (CLAUDE.md #4/#12) with the guard green. Unmeasurable counted as
-  // clean, one more time (14g).
-  //
-  // Multiplied up the whole ancestor chain rather than read off the element,
-  // because \`opacity\` composites per layer: .7 nested inside .7 is .49.
-  const effOpacity = (el) => {
-    let o = 1, n = el;
-    while (n && n !== document.documentElement) {
-      o *= parseFloat(getComputedStyle(n).opacity || '1');
-      n = n.parentElement;
-    }
-    return o;
-  };
-
-  const out = { measured: 0, sizes: [], fails: [], skipped: { hidden: 0, transparent: 0, noText: 0, noColor: 0 } };
-  const seen = new Set();
-  document.querySelectorAll('body *').forEach((el) => {
-    // Own text only: an ancestor inherits colour but not necessarily background,
-    // and counting it twice would score the wrong pairing.
-    const txt = [...el.childNodes]
-      .filter((n) => n.nodeType === 3)
-      .map((n) => n.textContent.trim())
-      .join(' ')
-      .trim();
-    if (!txt) { out.skipped.noText++; return; }
-    const cs = getComputedStyle(el);
-    if (cs.visibility === 'hidden' || cs.display === 'none') { out.skipped.hidden++; return; }
-    // Fully transparent anywhere up the chain: genuinely invisible, nothing to
-    // measure. This replaces a check on the element's OWN opacity, which let a
-    // subtree hidden by its parent through.
-    const op = effOpacity(el);
-    if (op === 0) { out.skipped.transparent++; return; }
-    const fs = parseFloat(cs.fontSize);
-    seen.add(fs);
-    const fg = parse(cs.color);
-    if (!fg) { out.skipped.noColor++; return; }
-    // The two ways text gets faded are one number to the eye, so make them one
-    // number here too.
-    fg.a *= op;
-    const bg = bgOf(el);
-    const r = ratio(over(fg, bg), bg);
-    // WCAG "large text" = 24px, or 18.66px when bold.
-    const need = fs >= 24 || (fs >= 18.66 && +cs.fontWeight >= 700) ? 3 : 4.5;
-    out.measured++;
-    // \`opacity\` is reported so a failure NAMES its cause: "3.38 at opacity 0.7"
-    // sends you to the right line, where a bare "3.38" sends you hunting for a
-    // colour token that is in fact perfectly fine.
-    if (r < need) out.fails.push({ text: txt.slice(0, 60), fontSize: fs, ratio: +r.toFixed(2), need, opacity: +op.toFixed(2), legacy: !!el.closest('[data-legacy-contrast]') });
-  });
-  out.sizes = [...seen].sort((a, b) => a - b);
-  return out;
-})()`;
-
-interface Fail {
-  text: string;
-  fontSize: number;
-  ratio: number;
-  need: number;
-  /** Accumulated ancestor `opacity` at the moment of measurement. 1 means the
-   *  colour token itself is too weak; anything less names the dimming as the
-   *  cause and points at the wrapper rather than at the palette. */
-  opacity: number;
-  /** Inside a subtree flagged as carrying the PRODUCT's palette — see below. */
-  legacy: boolean;
-}
-interface Probe {
-  measured: number;
-  skipped: { hidden: number; transparent: number; noText: number; noColor: number };
-  sizes: number[];
-  fails: Fail[];
-}
 
 /**
- * Proof the stylesheet is live, expressed as something that can only be true once
- * it is. Two of them because the two page families share no styled feature:
+ * ⚠️ ONE kind of exemption now, and it names a single element by its text.
  *
- *  · `reading` — `.reading` computing to --rd-body (17px). Nothing else sets it.
- *  · `chrome`  — the shared public header computing `position: sticky`. Every
- *                element is `static` until a stylesheet says otherwise, so this
- *                cannot pass on an unstyled page.
- */
-const SENTINEL = {
-  reading: () => {
-    const el = document.querySelector('.reading');
-    return !!el && parseFloat(getComputedStyle(el).fontSize) === 17;
-  },
-  chrome: () => {
-    const el = document.querySelector('[data-public-header]');
-    return !!el && getComputedStyle(el).position === 'sticky';
-  },
-} as const;
-
-/**
- * How many measurable elements a page must carry before it counts as rendered.
+ * There used to be a second: a `legacy` flag excluding the whole marked subtree of
+ * the landing's worked results table, because three of the five tier colours could
+ * not carry white text (Neutral at **2.38:1**) and the owner had asked that the
+ * landing match the live product exactly — so correcting it here would have put two
+ * different colours on one score.
  *
- * ⚠️ ONE constant serving two jobs, and that is the point (CLAUDE.md 11c). It is
- * the floor the test asserts — "did we measure anything at all?" — AND the
- * precondition `measure()` waits for. Written twice, the wait and the assertion
- * could disagree, and the failure mode of that disagreement is a guard that
- * waits for less than it demands and reports a flake instead of a defect.
+ * That debt was PAID on 2026-08-22, with the owner's authorisation, at its source:
+ * the tier tokens were darkened to clear 4.8 on the darkest ground they sit on, and
+ * every rating surface — chips, badges, radar, verdict card, the .xlsx workbook —
+ * now derives from the one palette. The subtree exclusion is gone rather than
+ * loosened, and the test at the foot of this file asserts the marker cannot return.
  *
- * The numbers are the pages' real sizes, not round guesses: an article and the
- * legal documents clear 20 comfortably; the landing carries eight sections, a
- * ten-column table and two rulers, so 120 is a floor it passes by a wide margin
- * while a shell (47 — header and footer only) never can; /reset-password is the
- * smallest card at 21.
- */
-const MIN_MEASURED = { reading: 20, landing: 120, form: 15 } as const;
-
-async function measure(
-  page: import('@playwright/test').Page,
-  path: string,
-  sentinel: keyof typeof SENTINEL = 'reading',
-  expectAtLeast: number = MIN_MEASURED.reading,
-): Promise<Probe> {
-  await page.goto(path, { waitUntil: 'networkidle' });
-
-  // ⚠️ ONE reload if `next dev` hands back an EMPTY DOCUMENT.
-  //
-  // Under a repeated run the dev server occasionally serves a shell with no app
-  // in it at all. Caught with a diagnostic rather than guessed at, and the
-  // numbers are what make it identifiable:
-  //
-  //   {"readingEls":0,"publicHeader":false,"stillLoading":false,"bodyEls":5,"text":""}
-  //
-  // `publicHeader: false` is the tell. That element lives in the public LAYOUT,
-  // which renders above every page here — so this is not a slow page, a
-  // suspended page, or a page of mine that rendered wrong. The layout itself is
-  // absent, which nothing in the application can cause. It is the dev server
-  // dropping a stream, roughly one navigation in a hundred and only under load.
-  //
-  // ⚠️ Deliberately NOT a blanket retry. It re-navigates only when the document
-  // is empty, so it can never mask a real assertion — a page that renders and
-  // fails still fails on the first pass. Reloading is also the honest response
-  // to a dropped response: it is what a reader does.
-  if (await page.evaluate(() => document.querySelectorAll('body *').length < 10)) {
-    await page.reload({ waitUntil: 'networkidle' });
-  }
-
-  await page.evaluate(() => document.fonts.ready);
-
-  // Prove we are on the page we think we are. A public route that starts
-  // redirecting to /login would otherwise be measured as a clean pass, which is
-  // exactly how "unmeasurable counted as clean" has bitten this repo before.
-  //
-  // Compared pathname-to-pathname. This read `.toBe(path)` until a FORM_PAGES
-  // entry first carried a query string (`/login?error=…`, added to measure the
-  // error banner) — and then it could never match, so the entry failed with
-  // "did not stay put" while sitting on exactly the right page. The assertion
-  // was right to refuse rather than measure something else; it was simply
-  // comparing two different kinds of string.
-  const expected = new URL(path, 'http://localhost').pathname;
-  expect(new URL(page.url()).pathname, `${path} did not stay put`).toBe(expected);
-
-  // ⚠️ WAIT FOR THE STYLESHEET, don't assume it. Without this the suite was
-  // genuinely flaky: the same deliberate break reported "1 failed" on one run
-  // and "4 failed" on the next, because on a cold dev-server compile the probe
-  // could run before the reading stylesheet had been applied — and an unstyled
-  // page has no low-contrast text to find, so it scores as PERFECT.
-  //
-  // A contrast guard that reports clean when it cannot see is the same failure
-  // mode as check_invariants() finding zero violations over a universe missing
-  // the field it inspects (CLAUDE.md 14g). See SENTINEL above for the two proofs.
-  // ⚠️ AND WAIT FOR THE PAGE ITSELF, which the sentinel above does not prove.
-  // Both sentinels are satisfied by the LAYOUT: `.reading` and the sticky header
-  // are chrome, and chrome renders while the page body is still suspended. So a
-  // green sentinel can sit above a page that is still `app/loading.tsx`.
-  //
-  // Observed here, not imagined: `/` went flaky with the probe reporting 47
-  // measured elements against its floor of 120 — the header, the footer and
-  // nothing in between. The assertion is a negative one ("no failures"), and a
-  // page with no content trivially satisfies it, so only the `measured` control
-  // stood between that and a silent pass. Same shape as CLAUDE.md 14g.
-  await page.waitForFunction(
-    () => !document.querySelector('[data-route-loading]'),
-    undefined,
-    { timeout: 15_000 },
-  );
-
-  // 20s, not 10: a COLD `next dev` route compile regularly runs past ten
-  // seconds on a 2-core CI box, and the article page timed out here once per
-  // four-run sweep for that reason alone. Raising it weakens nothing — a
-  // sentinel that never becomes true still fails, it just stops reporting the
-  // dev server's compile time as a contrast defect.
-  // ⚠️ REPORT WHAT IT SAW. A bare `waitForFunction` timeout says only
-  // "Timeout 20000ms exceeded" and names a line — which sent me hunting through
-  // three different theories for a flake that turned out to be an ORDERING bug
-  // (this waited for `.reading`, which cannot exist while the Suspense fallback
-  // is on screen, so it was checking the stylesheet of a page that had not
-  // arrived). A guard that fails without evidence costs more than it saves.
-  try {
-    await page.waitForFunction(SENTINEL[sentinel], undefined, { timeout: 20_000 });
-  } catch {
-    const diag = await page.evaluate(() => {
-      const el = document.querySelector('.reading');
-      return {
-        url: location.href,
-        readingEls: document.querySelectorAll('.reading').length,
-        firstReadingFontSize: el ? getComputedStyle(el).fontSize : null,
-        publicHeader: !!document.querySelector('[data-public-header]'),
-        stillLoading: !!document.querySelector('[data-route-loading]'),
-        bodyEls: document.querySelectorAll('body *').length,
-        text: document.body.innerText.replace(/\s+/g, ' ').slice(0, 160),
-      };
-    });
-    throw new Error(
-      `${path}: the "${sentinel}" stylesheet sentinel never became true within 20s. ` +
-        `Page state: ${JSON.stringify(diag)}`,
-    );
-  }
-
-
-  // ⚠️ AND THEN WAIT FOR THE THING THE MEASUREMENT ACTUALLY DEPENDS ON — the
-  // count of measurable elements — rather than for something that merely
-  // correlates with the page being ready.
-  //
-  // Everything above is a proxy. On a warm server the proxies suffice: `/`
-  // reaches its full 581 nodes before networkidle every time, which is exactly
-  // why this looked fine. Under load it does not — `--repeat-each=4` put `/` at
-  // 47 measured elements, the header and footer with nothing between them, and
-  // took the legacy-palette test down with it because that reads the same page.
-  // Two symptoms, one cause.
-  //
-  // ⚠️ AND A PLATEAU IS NOT A FINISH. The first version of this waited for two
-  // consecutive equal readings, which sounds like settling and is not: the dev
-  // server serves the shell, sits at 47 while it compiles the rest, then
-  // streams. Two equal samples across that pause satisfied "stable" perfectly,
-  // and the guard measured the shell. Stability is only evidence of completion
-  // when you already know what completion looks like.
-  //
-  // So wait for a POSITIVE signal instead — the floor the assertion itself
-  // demands. If a page genuinely cannot reach it, nothing is masked: the loop
-  // simply runs out and the assertion below fails with the real count, which is
-  // the honest outcome. The wait can never turn a defect into a pass, only a
-  // race into a wait.
-  // ⚠️ DISARM THE REVEAL, so the page is measured in its RESTING state.
-  //
-  // The landing arms its sections at `opacity: 0` and reveals them on scroll.
-  // Now that the probe composites `opacity`, an unrevealed section is —
-  // correctly — invisible text and gets skipped: measured, 244 elements skipped
-  // as transparent and 47 survivors on a page of 291. The header, the footer,
-  // and none of the argument between them. A guard reporting a clean page it had
-  // never looked at is the exact failure CLAUDE.md 14g is about, and the
-  // `MIN_MEASURED` floor below is the only reason it announced itself.
-  //
-  // `data-motion` is `LandingMotion`'s own arming switch, set on mount, and the
-  // armed state lives entirely behind it in landing.css. Removing it is
-  // therefore not a hack against the page — it is precisely the no-JS path the
-  // component is built around ("No JS → no class → the page simply renders"),
-  // which is the final state, fully visible, with no animation in flight.
-  //
-  // Preferred over the two alternatives after both were tried: driving a scroll
-  // to fire every observer works but costs a multi-second pass on all thirteen
-  // pages (the suite went 1.5m → 4.3m and tests began timing out), and
-  // `reducedMotion` alone is one code path's courtesy rather than a property of
-  // the page. This is one line and cannot race.
-  // ⚠️ AND IT HAS TO WAIT FOR THE ARMING FIRST, or it races it. `data-motion` is
-  // set inside a mount effect, so removing it on arrival simply loses: hydration
-  // runs a moment later, re-arms, and the observer then reveals only what is in
-  // view. That produced a clean 291 / 47 / 47 / 291 across four identical runs —
-  // the signature of a race, not of a page that renders differently.
-  //
-  // Waiting for the attribute to APPEAR is what makes this deterministic: its
-  // presence is proof the effect has already run, so the removal cannot be undone
-  // by it. Scoped to pages that actually carry the motion root, because a
-  // blanket wait would cost every other page the full timeout for nothing.
-  if (await page.evaluate(() => !!document.querySelector('.lp'))) {
-    await page.waitForFunction(() => !!document.querySelector('[data-motion]'), undefined, {
-      timeout: 10_000,
-    });
-    await page.evaluate(() => {
-      document.querySelectorAll('[data-motion]').forEach((e) => e.removeAttribute('data-motion'));
-    });
-  }
-
-  for (let i = 0; i < 60; i++) {
-    if (((await page.evaluate(PROBE)) as Probe).measured >= expectAtLeast) break;
-    await page.waitForTimeout(250);
-  }
-
-  // ⚠️ LET THE MOUNT ANIMATIONS FINISH. Now that the probe composites `opacity`,
-  // a page measured mid-fade reports every element at the animation's CURRENT
-  // opacity rather than its resting one — and a fade starts near zero, so a
-  // whole page would fail at once.
-  //
-  // This is not hypothetical: while auditing /learn I swept the public pages
-  // with an opacity-aware probe and it reported 217 failures on the landing at
-  // opacity 0.05. Every one was an artefact of measuring 300ms after
-  // networkidle, mid-transition. Re-measured after settling, the landing is
-  // clean. The lesson cost nothing that time because I checked; inside a CI
-  // guard it would have been an intermittent red on a page with no defect.
-  //
-  // Infinite animations (`metaPulse`) never resolve `finished`, so they are
-  // filtered out rather than waited on — otherwise this hangs on any page that
-  // has one. `catch` because an animation cancelled mid-flight rejects, and a
-  // cancelled animation is exactly as settled as a finished one.
-  await page.evaluate(async () => {
-    const finite = document
-      .getAnimations()
-      .filter((a) => a.effect?.getComputedTiming?.().iterations !== Infinity);
-    await Promise.all(finite.map((a) => a.finished.catch(() => {})));
-  });
-
-  return (await page.evaluate(PROBE)) as Probe;
-}
-
-/**
- * ⚠️ Two kinds of exemption, and they are different claims.
- *
- * `KNOWN_DEFERRED` names ONE element by its text. `legacy` excludes a marked
- * SUBTREE — today only the landing page's worked results table, every chip and tag
- * in which is painted by the screener's own palette (white numerals on a tier
- * fill, 9px tier-coloured tags, several at 2.38:1). The owner asked on 2026-08-15
- * that the landing match the live product exactly, so correcting them here would
- * put two different colours on one score. It is a product-wide fix on a paid
- * surface — Layer H — not a landing-page one.
- *
- * The debt is COUNTED rather than waved through, by the test at the foot of this
- * file. An exemption nobody re-checks is a blindfold (same reason KNOWN_DEFERRED
- * is asserted to still be real).
+ * The remaining `KNOWN_DEFERRED` is still asserted to be real, for the same reason
+ * the other one had to go: an exemption nobody re-checks is a blindfold.
  */
 const unexpected = (p: Probe): Fail[] =>
-  p.fails.filter((f) => !f.legacy && !KNOWN_DEFERRED.some((k) => f.text.includes(k)));
+  p.fails.filter((f) => !KNOWN_DEFERRED.some((k) => f.text.includes(k)));
 
 for (const path of READING_PAGES) {
   test(`${path} — every readable element clears the WCAG floor`, async ({ page }) => {
@@ -646,46 +316,60 @@ test('the reading scale holds its 12px floor on content pages', async ({ page })
   expect(probe.measured).toBeGreaterThan(20);
 });
 
-test('the deferred exemption is still real, not stale', async ({ page }) => {
-  // If the header gets fixed early, KNOWN_DEFERRED must shrink with it. An
-  // allow-list nobody re-checks silently widens into a blindfold.
+test('the public site still needs no exemption at all', async ({ page }) => {
+  /* ⚠️ This asserted the OPPOSITE until 2026-08-22 — that the 9px header wordmark
+     DOES still fail — because an allow-list nobody re-checks becomes a blindfold.
+     It did its job: darkening `--text-muted` fixed the wordmark as a side effect,
+     this went red, and the exemption came out instead of quietly outliving its
+     defect. Now it guards the other direction, which is the one that matters once
+     a list is empty: nothing may be added back without a decision. */
   const probe = await measure(page, '/', 'chrome', MIN_MEASURED.landing);
-  const still = probe.fails.filter((f) => f.text.includes('Financial Terminal'));
   expect(
-    still.length,
-    'The 9px header wordmark now passes — delete it from KNOWN_DEFERRED.',
-  ).toBe(1);
+    KNOWN_DEFERRED,
+    'a public contrast exemption has been added back — say why in the diff',
+  ).toEqual([]);
+  expect(
+    probe.fails,
+    `the landing has ${probe.fails.length} element(s) under the floor:
+${JSON.stringify(probe.fails, null, 2)}`,
+  ).toEqual([]);
 });
 
 
-test('the deferred product palette stays inside the table, and does not grow', async ({ page }) => {
-  // The landing renders the screener's chips with the screener's colours (owner,
-  // 2026-08-15). That debt is real and bounded; this proves both halves.
-  // ⚠️ `measure()`, not a hand-rolled goto + sentinel. This test used to open the
-  // page itself and run the probe directly, which is the same preamble written a
-  // second time — and it drifted exactly as CLAUDE.md 11c says it would. When the
-  // landing started arriving late under load, `measure()` grew a wait for the
-  // render to complete and THIS copy did not, so it read the bare shell, found no
-  // legacy failures and reported the marker as stale. The finding it announced
-  // ("remove the marker") would have been completely wrong.
+test('the product palette carries NO exemption any more', async ({ page }) => {
+  /* This file used to carry the opposite assertion — that the landing's screener
+     chips DO fail, bounded at 42 — because three of the five tier colours could
+     not hold white text and repainting a paid surface was out of scope at the
+     time (CLAUDE.md 11l). The owner authorised the fix on 2026-08-22 and the
+     debt is paid: the tiers were darkened to clear 4.8 on the darkest ground.
+
+     ⚠️ So this now asserts the exemption is GONE, in both directions. A bounded
+     allow-list that has stopped excusing anything is worse than no allow-list —
+     it is a live blindfold over whatever moves under it next (14g). Deleting the
+     marker without this test would leave nothing saying it must never come back. */
   const probe = await measure(page, '/', 'chrome', MIN_MEASURED.landing);
-  const legacy = probe.fails.filter((f) => f.legacy);
 
-  // It exists — if this hits zero the marker is stale or the table is gone, and
-  // the exemption must come out rather than sit here excusing nothing (14g).
-  expect(legacy.length, 'nothing inside [data-legacy-contrast] fails — remove the marker').toBeGreaterThan(0);
-
-  // Every one of them really is in the results table, not somewhere the marker
-  // drifted onto.
   const marked = await page.locator('[data-legacy-contrast]').count();
-  expect(marked, 'the legacy marker should sit on exactly one subtree').toBe(1);
-
-  // And it is bounded. 7 rows x (Overall chip + Health chip + Health tag +
-  // Valuation chip + Valuation tag + tinted DD) is the ceiling; a jump past it
-  // means new low-contrast text has been added, not inherited.
   expect(
-    legacy.length,
-    `legacy contrast failures grew to ${legacy.length}:
-${JSON.stringify(legacy, null, 2)}`,
-  ).toBeLessThanOrEqual(42);
+    marked,
+    'a [data-legacy-contrast] marker is back. The tier palette clears WCAG AA now; ' +
+      'if a surface needs excusing, it is a NEW defect and needs its own decision.',
+  ).toBe(0);
+
+  // And the elements it used to cover really do pass, rather than merely having
+  // lost their marker. Named by class, so this keeps testing the chips even if
+  // the table around them is restructured.
+  const chips = await page.locator('.score-num, .score-tag').count();
+  expect(chips, 'the worked screener run should still draw real score chips').toBeGreaterThan(20);
+  // ⚠️ `unexpected()`, not `probe.fails`. The FIRST version of this assertion used
+  // the raw list and went red on "Financial Terminal" — the 9px header wordmark at
+  // 2.94:1, which is the OTHER exemption and still deliberately in force. Two
+  // exemptions retired at different times is exactly how a test starts asserting
+  // something nobody meant; the filter is the single place that knows what is
+  // still excused.
+  const remaining = unexpected(probe);
+  expect(
+    remaining,
+    `the landing's screener chips are failing again:\n${JSON.stringify(remaining, null, 2)}`,
+  ).toEqual([]);
 });

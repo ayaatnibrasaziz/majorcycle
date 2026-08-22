@@ -92,6 +92,24 @@ jobs:
         # Prints the number of checks it ran — read the count, not the colour.
         run: pnpm check:seo
 
+      # The five rating-tier colours: ONE palette, and every one of them legible.
+      #
+      # Two invariants, both of which had been broken in the shipped product until
+      # 2026-08-22. (i) The palette exists in two places that cannot be derived from
+      # each other at runtime — `app/globals.css` for the page and
+      # `RATING_TIER_HEX` in `lib/ratings.ts` for the .xlsx workbook and the chart
+      # props — so the drift is made impossible rather than discouraged. (ii) Every
+      # tier clears the WCAG floor BOTH as a background under white text
+      # (`.score-num`, the workbook fills) and as text on the darkest ground the
+      # site puts it on. Three of the five failed that second test for the life of
+      # the product, Neutral at 2.38:1, because the contrast guard only ever walked
+      # PUBLIC routes and the score chips live on the gated screener.
+      #
+      # Runs before the build because it reads source, not output. Broken on purpose
+      # four ways before being trusted. Prints its own numbers.
+      - name: Tier palette (one source, all five legible)
+        run: pnpm check:tier-palette
+
       - name: Build
         run: pnpm build
 

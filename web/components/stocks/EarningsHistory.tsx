@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -129,14 +130,14 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
             >
               <XAxis
                 dataKey="label"
-                tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: 'Sora' }}
+                tick={{ fill: CHART_INK, fontSize: 10, fontFamily: 'Sora' }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 orientation="right"
                 tick={{
-                  fill: '#8A97A8',
+                  fill: CHART_INK,
                   fontSize: 10,
                   fontFamily: "'JetBrains Mono', monospace",
                 }}
@@ -201,14 +202,22 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
                 formatter={(value, entry) => {
                   const key = (entry as { dataKey?: unknown }).dataKey;
                   const off = typeof key === 'string' && hidden.has(key);
-                  // Only restyle hidden series; visible labels keep recharts'
-                  // default series-coloured text.
+                  // ⚠️ Recharts colours a visible legend label with its SERIES
+                  // colour, and the Estimate bar is a 20% wash
+                  // (rgba(139,157,168,.20)) chosen to sit behind the actual bar.
+                  // As a fill that is right; as TEXT it measured **1.19:1**, the
+                  // worst reading on the page. This used to leave visible labels
+                  // to the default for exactly that reason -- "keep recharts'
+                  // series-coloured text" -- which is fine until a series is
+                  // deliberately faint. Both states now carry readable ink; the
+                  // struck-through style is what marks a hidden series, not a
+                  // washed-out colour.
                   return off ? (
                     <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>
                       {value}
                     </span>
                   ) : (
-                    <span>{value}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>{value}</span>
                   );
                 }}
               />

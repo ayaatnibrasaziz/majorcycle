@@ -533,14 +533,32 @@ test.describe('entitlement enforcement across subscription states', () => {
   }) => {
     test.setTimeout(120_000);
 
+    /* ⚠️ Both assertions report the BODY, not just the status they wanted.
+       This pair failed intermittently on one machine across two sessions and was
+       written off as "environmental" precisely because a bare status told nobody
+       anything: a 404 here can mean an unknown market, a genuinely absent stock, or
+       (before 2026-08-07) a swallowed database error, and the route answered all of
+       them identically. It now sends a distinct `reason` on every refusal, and
+       printing it is what turns the next occurrence into a diagnosis instead of
+       another shrug. A flaky test is a finding (CLAUDE.md 11i). */
     await setState({ subscription_status: null });
     const denied = await page.request.get(REPORT, { maxRedirects: 0 });
-    expect(denied.status(), 'a free viewer must not be able to fetch the report').toBe(402);
+    expect(
+      denied.status(),
+      `a free viewer must not be able to fetch the report — got ${denied.status()}: ${(
+        await denied.text()
+      ).slice(0, 200)}`,
+    ).toBe(402);
     expect(await denied.text()).not.toMatch(/\d{1,3}\/100/);
 
     await setState({ subscription_status: 'active' });
     const allowed = await page.request.get(REPORT);
-    expect(allowed.status(), 'a subscriber must still get their report').toBe(200);
+    expect(
+      allowed.status(),
+      `a subscriber must still get their report — got ${allowed.status()}: ${(
+        await allowed.text()
+      ).slice(0, 200)}`,
+    ).toBe(200);
     // Per-viewer payload — must never be shared-cacheable (CLAUDE.md 11a).
     expect(allowed.headers()['cache-control']).toContain('no-store');
   });

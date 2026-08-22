@@ -85,6 +85,13 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
               boxShadow:
                 '0 1px 3px rgba(0,0,0,0.25), 0 0 0 1px rgba(26,58,110,0.20)',
             }}
+            /* ⚠️ `role="img"` is required, not decorative. `aria-label` is
+               PROHIBITED on a plain <div>: a div has no implicit role, and ARIA
+               only allows a name on something that is a thing. Without the role
+               a screen reader announces nothing at all here — so the label read
+               as present and did nothing, which is the worst of both. Caught by
+               axe on the first scan the signed-in pages had ever had. */
+            role="img"
             aria-label={`Current price position: ${zone}, ${offText}`}
           />
         </div>

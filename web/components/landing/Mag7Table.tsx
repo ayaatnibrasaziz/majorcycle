@@ -71,14 +71,18 @@ export function Mag7Table({ snapshot }: { snapshot: Mag7Snapshot }) {
   const rows = mag7Rows(snapshot);
 
   return (
-    // ⚠️ Marks this subtree as carrying the PRODUCT's contrast debt, not the
-    // landing page's. Every chip and tag inside is painted by the screener's own
-    // palette — white numerals on a tier fill, 9px tier-coloured tags — which the
-    // owner has asked the landing to match exactly (2026-08-15). Several measure
-    // 2.38:1. Fixing them is a product-wide change to a paid surface, so it is
-    // deferred to Layer H rather than made twice; e2e/contrast.spec.ts counts what
-    // is in here so the exemption cannot quietly widen.
-    <div className="results-table-wrap" data-legacy-contrast>
+    // ⚠️ This carried `data-legacy-contrast` until 2026-08-22 — a marker excusing
+    // every chip and tag below from the contrast guard, because they are painted by
+    // the screener's own palette and three of the five tier colours could not hold
+    // white text (Neutral at 2.38:1). It was the right call at the time: the owner
+    // had asked the landing to match the live product exactly, so fixing it here
+    // would have put two different colours on one score.
+    //
+    // The palette itself is fixed now, at its source, so the marker is GONE rather
+    // than merely unused — and `e2e/contrast.spec.ts` asserts it cannot come back.
+    // If a future surface needs excusing, that is a new defect and a new decision,
+    // not an inheritance.
+    <div className="results-table-wrap">
       <table className="results-table">
         <caption className="sr-only">
           A worked MajorCycle run over the seven largest US technology companies, ranked by

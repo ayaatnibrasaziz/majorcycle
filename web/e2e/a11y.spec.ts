@@ -111,17 +111,19 @@ async function scan(page: Page, path: string) {
       .toBe(17);
   }
 
-  /* ⚠️ The ONE exemption, and it is the same subtree `contrast.spec.ts` already
-     carries: the landing's worked screener run draws the product's real score
-     chips, and three of the five tier colours are too light to sit white text
-     on. That is product-wide Layer H work — a real defect does not entitle this
-     layer to repaint a paid surface (CLAUDE.md 11l, where exactly that was tried
-     and reversed by the owner). Excluded here, and BOUNDED by the test below, so
-     it can neither grow nor quietly stop excusing anything. */
-  return new AxeBuilder({ page })
-    .withTags(TAGS)
-    .exclude('[data-legacy-contrast]')
-    .analyze();
+  /* ⚠️ NO EXCLUSIONS. There was one until 2026-08-22 — `[data-legacy-contrast]`,
+     covering the landing's worked screener run, whose real score chips could not
+     hold white text because three of the five tier colours were too light
+     (Neutral at 2.38:1). It was correctly scoped as product-wide work rather than
+     repainting a paid surface inside a landing-page change (CLAUDE.md 11l).
+
+     The palette was fixed at its source with the owner's authorisation, so the
+     exclusion is deleted rather than kept "just in case". Adding one back is a
+     decision about what this guard is allowed to stop seeing — make it explicitly,
+     with a control that proves it still covers exactly what it claims to, because
+     an exemption that has outlived its defect excuses whatever moves under it
+     next (14g). */
+  return new AxeBuilder({ page }).withTags(TAGS).analyze();
 }
 
 test.describe('the public site is accessible', () => {
@@ -190,17 +192,21 @@ test.describe('the public site is accessible', () => {
     ).toBe(0);
   });
 
-  test('the one exemption still covers exactly what it claims to', async ({ page }) => {
+  test('the landing needs no exemption at all', async ({ page }) => {
     /**
-     * ⚠️ **An exclusion is a promise about what is NOT being checked, and a
-     * promise nobody verifies is how a guard rots.** Two ways this could go
-     * wrong, both silent: the marker outlives the defect and sits there
-     * excusing nothing, or a genuinely new violation appears somewhere else and
-     * the exemption is blamed for it.
+     * ⚠️ This test used to assert the OPPOSITE — that the landing DOES violate,
+     * and that every violating node sits inside `[data-legacy-contrast]`. That was
+     * honest bookkeeping for a real, bounded debt: the worked screener run drew the
+     * product's own score chips, three of the five tier colours could not hold
+     * white text, and repainting a paid surface was not this layer's call.
      *
-     * So scan the landing with NO exclusion, and require that every violating
-     * node is inside `[data-legacy-contrast]` — and that there is at least one,
-     * or the marker should come out (CLAUDE.md 14g).
+     * The palette was fixed on 2026-08-22, so the claim inverts. Keeping the old
+     * assertion would have been worse than deleting it — it demanded that a
+     * violation still exist, and would have gone red for the fix.
+     *
+     * ⚠️ Both halves still matter, which is why this is a test rather than nothing:
+     * a clean scan proves the debt is paid, and a marker count of zero proves
+     * nobody re-introduced the blindfold to make something else go quiet.
      */
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
@@ -209,30 +215,28 @@ test.describe('the public site is accessible', () => {
 
     const full = await new AxeBuilder({ page }).withTags(TAGS).analyze();
     const targets = full.violations.flatMap((v) =>
-      v.nodes.map((n) => ({ id: v.id, sel: n.target.join(' ') })),
+      v.nodes.map((n) => `${v.id} @ ${n.target.join(' ')}`),
     );
     expect(
-      targets.length,
-      'the landing has no violations at all — delete the exemption rather than leave it',
-    ).toBeGreaterThan(0);
-
-    const outside = await page.evaluate(
-      (sels: string[]) =>
-        sels.filter((sel) => {
-          const el = document.querySelector(sel);
-          return !el || !el.closest('[data-legacy-contrast]');
-        }),
-      targets.map((t) => t.sel),
-    );
-    expect(
-      outside,
-      `violations OUTSIDE the known-debt subtree: ${outside.join(" | ")}`,
+      targets,
+      'the landing has axe violations: ' + targets.join(' | '),
     ).toEqual([]);
+
+    // The control: a scan that measured nothing also reports zero violations, so
+    // prove it actually looked at the score chips this test exists for (14g).
+    expect(
+      full.passes.length,
+      'axe found nothing to check — the page did not render',
+    ).toBeGreaterThan(10);
+    expect(
+      await page.locator('.score-num, .score-tag').count(),
+      'the worked screener run should still be drawing real score chips',
+    ).toBeGreaterThan(20);
 
     expect(
       await page.locator('[data-legacy-contrast]').count(),
-      'the legacy marker should sit on exactly one subtree',
-    ).toBe(1);
+      'a contrast exemption marker is back — that is a new decision, not an inheritance',
+    ).toBe(0);
   });
 
   test('every article passes, not just the one that stands for them', async ({ page }) => {

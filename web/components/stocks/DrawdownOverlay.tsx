@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -152,7 +153,7 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       height: 200,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#8A97A8',
+        textColor: CHART_INK,
         fontFamily: "'JetBrains Mono', monospace",
       },
       grid: {
@@ -166,7 +167,7 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       },
       rightPriceScale: {
         borderColor: '#E2E8F0',
-        textColor: '#8A97A8',
+        textColor: CHART_INK,
         minimumWidth: CHART_RIGHT_AXIS_WIDTH,
       },
       // Pin both edges so this overlay (and the Price chart, which does the same)

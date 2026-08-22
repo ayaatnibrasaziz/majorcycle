@@ -64,7 +64,30 @@
   /* Text */
   --text-primary: #0F1923;
   --text-secondary: #4A5568;
-  --text-muted: #8A97A8;
+  /* ⚠️ #8A97A8 until 2026-08-22 — **2.97:1 on white, 2.69 on --bg-page**, against a
+     4.5 floor. This one token was the single largest accessibility defect in the
+     product: 258 failing elements on Browse alone, 203 on Stock Detail, and every
+     one of them the same colour. It sets the section labels, the table captions,
+     the empty-state prose, the sidebar's own nav labels — and the "⚠ For
+     educational and research purposes only. Not financial advice" strip that
+     CLAUDE.md #4/#12 make legally material, on EVERY signed-in page, at 2.84.
+
+     ⚠️ THE TOKEN WAS NEVER THE THING THAT GOT FIXED. Layer G found six failures at
+     exactly 2.97 on the public sign-in and payment pages and repaired them by
+     moving those six usages onto --text-secondary. That made the measured pages
+     green and left the rule broken, so every consumer nobody had measured kept it
+     — which was the whole signed-in product, because the contrast guard only ever
+     walked public routes. Fixing consumers instead of the rule is CLAUDE.md 11c,
+     and this is what it costs: one line, un-fixed, spread across six pages.
+
+     Solved to 4.8 against the DARKEST ground it was observed on (#EBF3FF, the
+     tinted info panel), not against white — measuring dark text on white measures
+     the one place it was never in trouble (11l ii). Result: 5.39 on white, 4.87 on
+     --bg-page, 4.82 at worst.
+
+     Still clearly the lightest of the three, so the hierarchy it exists to express
+     survives: primary #0F1923 (17.1) → secondary #4A5568 (7.53) → muted (5.39). */
+  --text-muted: #626B77;
 
   /* Borders */
   --border: #E2E8F0;
@@ -72,24 +95,87 @@
   --border-faint: rgba(26, 58, 110, 0.08);
   --border-faint-strong: rgba(26, 58, 110, 0.10);
 
-  /* Rating tier colours */
+  /* Rating tier colours — OUR JUDGEMENT (High Conviction … Bearish).
+     ⚠️ These are NOT the direction colours. Green here means "Constructive",
+     not "the price rose"; the candlestick / beat-miss / bullish-bearish greens
+     and reds are a SEPARATE rule that happens to share a hue, and they are
+     deliberately untouched by the 2026-08-22 change below. Before reaching for
+     one of these in a chart, ask which of the two things you are colouring.
+
+     ⚠️ THREE OF THESE COULD NOT CARRY WHITE TEXT, from the product's first day
+     until 2026-08-22. `.score-num` is white numerals on a solid tier colour and
+     `lib/xlsx.ts` paints the same white-on-tier into the downloaded workbook, so
+     the ratios below are a compliance failure (CLAUDE.md #4/#12), not a
+     preference: Constructive 4.39, Neutral **2.38**, Cautious 3.44, against a
+     4.5 floor. The same three fail a second time as `.score-tag`, where the
+     colour IS the text on a white card.
+
+     Each failing colour is scaled toward black by the MINIMUM factor that clears
+     the floor — hue and saturation are untouched, so this is the smallest change
+     that can be correct rather than a repaint. The two that already passed are
+     byte-identical, which also keeps the ramp's ordering intact (tier 1 stays the
+     darkest green; the existing --c-tier-2-ink at 8.22 would have inverted it).
+
+       tier   before    after      white ON it   as TEXT on the darkest ground
+       1      #006400   unchanged   7.44  ✓       6.73
+       2      #228B22   #1E7C1E     4.39 → 5.31   3.97 → 4.80
+       3      #D4A017   #87660F     2.38 → 5.32   2.15 → 4.82
+       4      #FF4500   #C73600     3.44 → 5.32   3.11 → 4.81
+       5      #B22222   unchanged   6.68  ✓       6.04
+
+     ⚠️ SOLVED AGAINST THE DARKEST GROUND THE TEXT ACTUALLY SITS ON, and the first
+     attempt was not. These colours are also used as `.score-tag` text, and I sized
+     them against #FFFFFF — which gave 4.61/4.64, looked like a pass, and shipped
+     4.41/4.44 to the probe, because the results table's rows are #F8FAFC and the
+     page ground is #F0F4F8. For DARK text a lighter ground is the EASY case, so
+     measuring on white measures the one place the colour was never in trouble.
+     That is CLAUDE.md 11l(ii) a second time — a composited colour has to be
+     measured where it sits — and it is why the target here is 4.8 on --bg-page
+     rather than 4.5 on white: the margin absorbs the next surface's ground
+     without another round of this (11i-b: assert a margin, not a boundary).
+
+     ⚠️ WHY THIS SURVIVED SO LONG: contrast and axe only ever walked PUBLIC
+     routes, and the chips live on the gated screener. Nothing measured them
+     until the landing page began drawing a real screener table on a public URL,
+     which is when they surfaced as a bounded `[data-legacy-contrast]` exemption
+     — now removed, because the debt is paid. `e2e/contrast.spec.ts` covers the
+     signed-in pages too, so a fourth surface cannot inherit this silently.
+
+     ⚠️ ONE COPY. These five values were typed out by hand 247 times across 26
+     files before this change (CLAUDE.md 11c). The rating uses now derive from
+     these tokens or from `RATING_TIER_HEX` in `lib/ratings.ts`, and
+     `pnpm check:tier-palette` fails the build if a rating surface grows a
+     literal again. The direction colours are a different rule and keep theirs. */
   --c-tier-1: #006400;
-  --c-tier-2: #228B22;
-  --c-tier-3: #D4A017;
-  --c-tier-4: #FF4500;
+  --c-tier-2: #1E7C1E;
+  --c-tier-3: #87660F;
+  --c-tier-4: #C73600;
   --c-tier-5: #B22222;
 
   /* Tier ink (text on tinted bg) */
   --c-tier-2-ink: #0D5C0D;
   --c-tier-5-ink: #8B1414;
-  --c-tier-3-ink: #8A6710;
+  /* ⚠️ #8A6710 until 2026-08-22, which measured 4.73 on a white card and **4.32
+     on --bg-page** — under the 4.5 floor on the page ground, and recorded as such
+     in CLAUDE.md 11l(ii) without ever being fixed. The badge never changed; what
+     sat behind it did. Darkened ~6% so it clears on BOTH grounds (4.82 on the
+     page tint, 5.25 on the card tint) rather than only the one a screenshot
+     happened to catch it on. Measure a composited colour where it actually sits. */
+  --c-tier-3-ink: #81600F;
   /* Cautious was the only tier whose ink had no token — it lived as a bare
      #B23A00 literal inside `.tier-badge--4`, where nothing else could reach it
      and no one would think to keep it in step with its four siblings. Same
      value, so this is a zero-pixel change. */
   --c-tier-4-ink: #B23A00;
 
-  /* Tier tints */
+  /* Tier tints.
+     ⚠️ DELIBERATELY still built from the PRE-2026-08-22 hues, and syncing them to
+     the darkened tiers above would be a regression, not tidying. These are a 10–12%
+     wash behind dark ink, so darkening them darkens the BACKGROUND and eats the
+     very margin the ink change just bought: measured, `.tier-badge--3` would go
+     4.73 → 4.49 on a card and 4.32 → 4.09 on --bg-page. The tiers changed because
+     white text sits ON them; a tint has ink sitting on IT, so the same move runs
+     the opposite way. Leave them. */
   --tint-tier-2: rgba(34, 139, 34, 0.10);
   --tint-tier-2-strong: rgba(34, 139, 34, 0.12);
   --tint-tier-5: rgba(178, 34, 34, 0.10);
@@ -813,7 +899,13 @@ td.num             { font-weight: 600; }
 .km-cmp--better { color: #228B22; }
 .km-cmp--worse  { color: #B22222; }
 .km-cmp--inline { color: var(--text-muted); }
-.km-cmp--na     { color: var(--border-strong); }
+/* ⚠️ --border-strong (#CBD5E1) until 2026-08-22, i.e. a BORDER token used as ink:
+   **1.48:1** on a white card and 1.42 on a striped row, where the floor is 4.5.
+   It is the "no industry median available" dash, so it is genuinely secondary —
+   but secondary means --text-muted, which exists for exactly this and measures
+   5.39. A colour chosen because it "looks quiet enough" is how ink ends up at a
+   ratio no one would have typed on purpose. */
+.km-cmp--na     { color: var(--text-muted); }
 .km-empty { color: var(--text-muted); font-size: 13px; text-align: center; padding: 24px 0; }
 
 /* News rows — CSS hover (NewsFeed is a Server Component, so no JS handlers). */
@@ -1082,7 +1174,8 @@ td.num             { font-weight: 600; }
 }
 .preset-btn:hover { border-color: var(--brand-bright); }
 .preset-btn[aria-pressed='true'] {
-  background: linear-gradient(135deg, var(--brand-mid), var(--brand-deep));
+  background-color: var(--brand-mid);
+  background-image: linear-gradient(135deg, var(--brand-mid), var(--brand-deep));
   border-color: var(--brand-mid);
 }
 .preset-btn-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
@@ -1121,7 +1214,8 @@ td.num             { font-weight: 600; }
 /* Primary run CTA */
 .btn-run {
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  background: linear-gradient(135deg, var(--brand-mid), var(--brand-deep)); color: #fff;
+  background-color: var(--brand-mid);
+  background-image: linear-gradient(135deg, var(--brand-mid), var(--brand-deep)); color: #fff;
   border: none; border-radius: var(--radius-sm); padding: 11px 16px; width: 100%;
   font-size: 13px; font-weight: 600; font-family: 'Sora', sans-serif; cursor: pointer;
   transition: all .2s; box-shadow: 0 2px 8px rgba(30, 92, 179, .25);
@@ -1256,7 +1350,13 @@ td.num             { font-weight: 600; }
   display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
   font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); margin-bottom: 14px;
 }
-.provenance .pv-sep { color: var(--border-strong); }
+/* ⚠️ --border-strong (#CBD5E1) as INK until 2026-08-22: **1.34:1**, the worst
+   reading on the paid screener. It is only a "·" between provenance items, so it
+   carries no information and the instinct to make it disappear is right — but a
+   separator a reader cannot see is not quieter, it is absent, and it still has to
+   clear the floor. Second instance of a border token used as text in one sweep
+   (see .km-cmp--na); --border-strong now appears nowhere as a colour. */
+.provenance .pv-sep { color: var(--text-muted); }
 /* Matches the stock-detail "Data Freshness" dot (StockHeader.tsx): same green
    tier token, soft glow ring, and metaPulse animation. */
 .provenance .pv-dot {
@@ -1366,7 +1466,17 @@ td.num             { font-weight: 600; }
   display: inline-flex; align-items: center; gap: 6px; font-family: 'Sora', sans-serif;
   font-size: 11px; font-weight: 700; padding: 7px 13px; border-radius: var(--radius-sm);
   border: 1px solid transparent; cursor: pointer; color: #fff;
-  background: linear-gradient(135deg, var(--brand-mid), var(--brand-deep));
+  /* ⚠️ background-color AND background-image, never the `background` shorthand,
+     because white text sits on this. The shorthand RESETS background-color to
+     transparent, so anything asking the DOM what is behind the label reads
+     straight through to the page — this button measured **1.11:1** on the paid
+     screener while looking perfectly normal. Declaring the gradient's LIGHTER
+     stop as the background colour makes the measurement honest AND makes the
+     worst case the one that gets measured. Same fix already in
+     components/ui/button.tsx and documented as CLAUDE.md 11l(iii); it simply
+     never reached these two consumers (11c-iv). */
+  background-color: var(--brand-mid);
+  background-image: linear-gradient(135deg, var(--brand-mid), var(--brand-deep));
   box-shadow: 0 2px 8px rgba(30, 92, 179, .25); transition: transform .15s, box-shadow .15s;
 }
 .export-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(30, 92, 179, .35); }

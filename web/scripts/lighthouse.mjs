@@ -29,9 +29,35 @@
  * Usage: pnpm lighthouse            (3 runs per route)
  *        LH_RUNS=1 pnpm lighthouse  (quick look)
  */
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 import lighthouse from 'lighthouse';
 import { chromium } from '@playwright/test';
+
+/**
+ * Pull the two e2e credentials out of `.env.local` if they are not already in the
+ * environment.
+ *
+ * ⚠️ Without this the tool printed "gated routes will be SKIPPED, not guessed" and
+ * measured only the five public pages — which is honest, and still means the run
+ * silently omitted `/stocks/us/AAPL`, THE route decision #33 actually sets a target
+ * for. Next loads `.env.local` itself, so the dev server and Playwright both see
+ * these; a plain Node script does not, and the difference is invisible unless you
+ * read the one line of output that says so. A tool whose default run skips its own
+ * headline metric will eventually be trusted for a number it never took.
+ *
+ * Named keys only, never logged. Nothing else in the file is touched or echoed.
+ */
+function loadE2ECredsFromEnvLocal() {
+  if (process.env.E2E_EMAIL && process.env.E2E_PASSWORD) return;
+  const f = '.env.local';
+  if (!existsSync(f)) return;
+  for (const line of readFileSync(f, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*(E2E_EMAIL|E2E_PASSWORD)\s*=\s*(.*)\s*$/);
+    if (m) process.env[m[1]] ??= m[2].replace(/^['"]|['"]$/g, '');
+  }
+}
+loadE2ECredsFromEnvLocal();
 
 const ORIGIN = process.env.LH_ORIGIN ?? 'http://localhost:3200';
 const OUT = 'lighthouse-report';
@@ -80,6 +106,80 @@ async function run(chrome, url, cookieHeader) {
   return result;
 }
 
+/**
+ * Prove the server answering on :3200 is running THE BUILD ON DISK.
+ *
+ * ⚠️ This exists because of a real, expensive mistake on 2026-08-22. I killed the
+ * old `next start` with `pkill`, it silently did not die, the new one lost the port
+ * with EADDRINUSE, and the survivor went on serving routes it held in memory while
+ * the chunks on disk had been rebuilt underneath it. I then measured that, chased a
+ * 500 on a chunk that existed in no build as if it were a defect, and reported a
+ * performance gain that was partly an artifact of comparing an old server with new
+ * files. Every individual step looked like it worked (CLAUDE.md 11o — a command
+ * that succeeded is not a state that is true).
+ *
+ * A note telling the next person to "check the server restarted" would not have
+ * helped: I believed it HAD. So the check is mechanical. Next stamps every build
+ * with a BUILD_ID and embeds it in the page as `buildId` in the __NEXT_DATA__ /
+ * flight payload; if the value the server sends differs from `.next/BUILD_ID` on
+ * disk, the two have diverged and every number this tool prints is meaningless.
+ *
+ * ⚠️ Fails LOUDLY rather than rebuilding or restarting anything. Guessing which of
+ * the two is the one you meant is how a tool starts destroying work.
+ */
+async function assertServerMatchesDisk(browser) {
+  if (!existsSync(join('.next', 'BUILD_ID'))) {
+    console.error('no .next/BUILD_ID — there is no production build to measure. Run `pnpm build` first.');
+    process.exit(1);
+  }
+
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  let assets = [];
+  try {
+    const res = await page.goto(ORIGIN, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    if (!res || !res.ok()) {
+      console.error(`nothing is answering on ${ORIGIN} (status ${res?.status() ?? 'none'}).`);
+      process.exit(1);
+    }
+    const html = await page.content();
+    assets = [...new Set(html.match(/\/_next\/static\/[^"'\s>]+/g) ?? [])];
+  } finally {
+    await ctx.close();
+  }
+
+  /* ⚠️ A page that referenced NO build assets means the extraction broke, not that
+     everything is fine. Unmeasurable must never read as clean (CLAUDE.md 14g). */
+  if (assets.length < 5) {
+    console.error(
+      `only ${assets.length} /_next/static asset(s) found on the served page — ` +
+        'refusing to report numbers I cannot attribute.',
+    );
+    process.exit(1);
+  }
+
+  const missing = assets.filter((a) => !existsSync(join('.next', a.replace('/_next/', ''))));
+  if (missing.length) {
+    const lines = [
+      '',
+      `X THE SERVER ON ${ORIGIN} IS NOT THE BUILD ON DISK.`,
+      '',
+      `  It is serving ${missing.length} of ${assets.length} assets that do not exist in .next/:`,
+      ...missing.slice(0, 5).map((m) => `    ${m}`),
+      '',
+      '  An old next-start process is still holding the port. It keeps serving routes',
+      '  and chunk names from memory while the files under it have been replaced, so',
+      '  every number below would belong to neither build. Kill it BY PID, confirm the',
+      '  port is free, then start it again.',
+      '',
+    ];
+    console.error(lines.join('\n'));
+    process.exit(1);
+  }
+
+  console.log(`server on ${ORIGIN} is the build on disk (${assets.length} assets verified)`);
+}
+
 async function main() {
   if (ORIGIN.includes(':3000')) {
     console.error('refusing to measure the dev server — run `pnpm start:fresh --port 3200`');
@@ -93,6 +193,10 @@ async function main() {
   const PORT = 9222;
   const browser = await chromium.launch({ args: [`--remote-debugging-port=${PORT}`] });
   const chrome = { port: PORT, kill: () => browser.close() };
+
+  // ⚠️ BEFORE anything is measured. A wrong-server reading is worse than no
+  // reading, because it looks like evidence.
+  await assertServerMatchesDisk(browser);
 
   const cookieHeader = await signedInCookieHeader(browser);
   if (!cookieHeader) {

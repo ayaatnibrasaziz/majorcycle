@@ -1,5 +1,7 @@
+import { CHART_INK } from '@/lib/chartTheme';
 import { isFullCycle, type CycleAnalysis, type CycleAnalysisFree } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
+import { RATING_TIER_HEX, tierFromScore } from '@/lib/ratings';
 import { PremiumLockKpi } from '@/components/stocks/PremiumLock';
 
 interface Props {
@@ -18,14 +20,36 @@ interface Props {
   entitled: boolean;
 }
 
+// ⚠️ A third copy of the rating ladder — hexes AND thresholds — until 2026-08-22.
+// Now derived, so the KPI strip cannot disagree with the chip, the badge, the
+// radar or the workbook about what a 62 looks like.
 function ratingColor(rating: number): string {
-  if (rating >= 80) return '#006400';
-  if (rating >= 65) return '#228B22';
-  if (rating >= 50) return '#D4A017';
-  if (rating >= 35) return '#FF4500';
-  return '#B22222';
+  return RATING_TIER_HEX[tierFromScore(rating)];
 }
 
+// ⚠️ NOT a rating, despite sharing four of the same hexes: this ranks how DEEP a
+// drawdown is, and deeper is more cyclically favourable, so it deliberately keeps
+// its own thresholds and its own literals. Left untouched by the 2026-08-22
+// contrast change (owner decision: ratings only) — darkening it would say
+// something about our judgement of the stock that we do not mean.
+//
+// 🔴 OPEN DEFECT, OWNER'S CALL — measured 2026-08-22, NOT fixed here.
+// `accentColor` lands on `--kpi-value-color`, which globals.css uses as `color:`
+// on `.kpi-value` — so these are TEXT, at 22px/600. WCAG counts "large text" from
+// 24px, or 18.66px at weight **700**; 600 is not bold, so the floor is 4.5 and
+// three of the four fail on --bg-page:
+//
+//     dd <= -10  #006400  6.73  ✓
+//     dd <=  -5  #228B22  3.97  ✗
+//     dd <=  -2  #D4A017  2.15  ✗   ← Current Drawdown, Stock Detail, every view
+//     else       #FF4500  3.11  ✗
+//
+// I wrote "every one of these clears 4.5" in this comment before measuring it, and
+// it was wrong by a factor of two. Recorded rather than fixed because the owner
+// scoped this session to rating colours, and a real defect does not entitle me to
+// widen that scope (CLAUDE.md 11l — where exactly that was tried and reversed).
+// Fixing it means either darkening the direction ramp or moving the tint off the
+// numeral onto the card's rule; both are product decisions, not tidying.
 function drawdownColor(dd: number): string {
   if (dd <= -10) return '#006400';
   if (dd <= -5)  return '#228B22';
@@ -107,7 +131,7 @@ export function KpiStrip({ cycle, entitled }: Props) {
           accentColor={
             scored.financialHealthScore != null
               ? ratingColor(scored.financialHealthScore)
-              : '#8A97A8'
+              : CHART_INK
           }
           tipBody="How financially strong the business is (0–100), based on profitability, a safe balance sheet, and steady cash generation. 80+ = very healthy · 60–79 = adequate · below 60 = elevated risk."
         />

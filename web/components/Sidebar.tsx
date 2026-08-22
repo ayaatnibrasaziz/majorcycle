@@ -204,8 +204,18 @@ export function Sidebar({
           </div>
           {/* Uppercased in CSS, not in LICENCE_LABELS, so the source strings stay
               readable prose for screen readers and for any other surface reusing them. */}
+          {/* ⚠️ The label needs a role to exist at all — `aria-label` on a bare
+              <div> is prohibited and silently ignored. `group` is the honest
+              choice here: this is a labelled region of text, not an image.
+              ⚠️ And note this line renders ONLY for an account with a
+              subscription status, so the E2E account (which has none) can never
+              reach it — the axe scan that found its twin in WeekRangeGauge was
+              structurally incapable of seeing this one. Found by grep, on the
+              strength of knowing what the other one looked like. A state no
+              fixture reaches is a state no guard covers. */}
           <div
             className="font-[var(--font-mono)] text-[10px] text-[var(--brand-mid)] font-semibold mt-0.5 uppercase tracking-[0.5px]"
+            role="group"
             aria-label="Subscription status"
           >
             {licenceLabel(subscriptionStatus, billingBlocked, entitled)}

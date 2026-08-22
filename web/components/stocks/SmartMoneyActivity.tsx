@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { InfoTip } from '@/components/ui/InfoTip';
@@ -32,7 +33,7 @@ const INSIDER_STYLE: Record<InsiderTransaction['type'], { pill: string; label: s
   Sale:     { pill: 'is-sell',      label: 'Sell',  dot: '#B22222' },
   Award:    { pill: 'is-reiterate', label: 'Award', dot: '#2E7DE8' },
   Gift:     { pill: 'is-reiterate', label: 'Gift',  dot: '#1E5CB3' },
-  Other:    { pill: 'is-reiterate', label: 'Other', dot: '#8A97A8' },
+  Other:    { pill: 'is-reiterate', label: 'Other', dot: CHART_INK },
 };
 
 function classifyAction(action: string): { pill: string; label: string } {
@@ -274,7 +275,7 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
       height: el.clientHeight || 220,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#8A97A8',
+        textColor: CHART_INK,
         fontFamily: "'JetBrains Mono', monospace",
       },
       grid: { vertLines: { color: '#F0F4F8' }, horzLines: { color: '#F0F4F8' } },
@@ -285,7 +286,7 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
       },
       rightPriceScale: {
         borderColor: '#E2E8F0',
-        textColor: '#8A97A8',
+        textColor: CHART_INK,
         minimumWidth: CHART_RIGHT_AXIS_WIDTH,
       },
       timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
@@ -558,7 +559,7 @@ function ChartLegend({ visible, toggle }: { visible: Visibility; toggle: (k: key
       <LegendChip active={visible.other} onClick={() => toggle('other')} icon={
         <span style={{ display: 'inline-flex', gap: 2 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2E7DE8' }} />
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#8A97A8' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: CHART_INK }} />
         </span>
       }>Award / Other</LegendChip>
       <LegendChip active={visible.analyst} onClick={() => toggle('analyst')} icon={
