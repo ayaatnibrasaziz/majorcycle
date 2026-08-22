@@ -64,7 +64,12 @@ export function RunProgress({
           aria-valuemin={0}
           aria-valuemax={100}
         >
-          <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
+          {/* A unitless fraction for `scaleX`, not a width — the bar is full-width
+              and scaled, so growing it costs no layout mid-run. See globals.css. */}
+          <div
+            className="progress-bar-fill"
+            style={{ '--fill': String(pct / 100) } as React.CSSProperties}
+          />
         </div>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">

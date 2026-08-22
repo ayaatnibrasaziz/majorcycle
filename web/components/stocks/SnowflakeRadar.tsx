@@ -248,7 +248,9 @@ export function SnowflakeRadar({ cycle }: Props) {
                   <div className="radar-axis-bar-track">
                     <div
                       className="radar-axis-bar-fill"
-                      style={{ width: `${pct ?? 0}%`, background: barColor }}
+                      // `--fill` rather than `width`: the bar is drawn full-width and
+                      // slid into place with a composited transform. See globals.css.
+                      style={{ '--fill': `${pct ?? 0}%`, background: barColor } as React.CSSProperties}
                     />
                   </div>
                   <div className="radar-axis-score" style={{ color: barColor }}>

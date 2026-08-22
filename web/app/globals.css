@@ -799,7 +799,19 @@
   flex: 1; background: var(--bg-stripe); border-radius: 20px;
   height: 6px; overflow: hidden; border: 1px solid var(--border);
 }
-.radar-axis-bar-fill { height: 100%; border-radius: 20px; transition: width .6s ease; }
+/* ⚠️ TRANSLATE, not width. Animating the width itself makes the browser re-run
+   layout for the whole document on every frame; a transform is composited and
+   touches neither layout nor paint. Two shapes are available and they are NOT interchangeable —
+   see `.progress-bar-fill` for the other one. Here the fill is a SOLID colour, so
+   a full-width bar slid left by the remainder is pixel-identical to a short bar:
+   its rounded right cap keeps its true radius, and its left cap lands exactly on
+   the track's own rounded corner, which `overflow: hidden` clips to the same
+   curve `width` produced. Nothing about the drawing changes. */
+.radar-axis-bar-fill {
+  height: 100%; width: 100%; border-radius: 20px;
+  transform: translateX(calc(var(--fill, 0%) - 100%));
+  transition: transform .6s ease;
+}
 .radar-axis-score {
   font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
   width: 28px; text-align: right; flex-shrink: 0;
@@ -1228,9 +1240,25 @@ td.num             { font-weight: 600; }
   background: var(--bg-stripe); border: 1px solid var(--border); border-radius: 30px;
   height: 8px; overflow: hidden;
 }
+/* ⚠️ SCALE, not translate, and not width — the gradient is why. This bar fills
+   live during a screener run, so it was the one of the two whose animation
+   actually cost something: a full-document layout per frame while the page is
+   also rendering results. The fill carries a mid→bright gradient, and a bar sized
+   to three-tenths compressed the whole ramp into that visible three-tenths.
+   `scaleX` squashes the painted gradient the same way, so the colours are
+   unchanged; translating a full-width bar (the shape `.radar-axis-bar-fill` uses)
+   would instead show only the left third of the ramp and read a shade duller. The
+   one thing scaleX does not preserve is the trailing cap, whose 4px radius is
+   squashed in proportion to the fraction filled — flatter below ~40%, where the
+   bar is a few pixels long anyway. Cap over colour was the trade here; the
+   reverse for a solid fill. */
 .progress-bar-fill {
-  height: 100%; background: linear-gradient(90deg, var(--brand-mid), var(--brand-bright));
-  border-radius: 30px; transition: width .4s ease;
+  height: 100%; width: 100%;
+  background: linear-gradient(90deg, var(--brand-mid), var(--brand-bright));
+  border-radius: 30px;
+  transform-origin: left center;
+  transform: scaleX(var(--fill, 0));
+  transition: transform .4s ease;
 }
 .timer-chip-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); }
 .timer-chip-val { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
