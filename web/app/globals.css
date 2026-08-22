@@ -64,7 +64,30 @@
   /* Text */
   --text-primary: #0F1923;
   --text-secondary: #4A5568;
-  --text-muted: #8A97A8;
+  /* ⚠️ #8A97A8 until 2026-08-22 — **2.97:1 on white, 2.69 on --bg-page**, against a
+     4.5 floor. This one token was the single largest accessibility defect in the
+     product: 258 failing elements on Browse alone, 203 on Stock Detail, and every
+     one of them the same colour. It sets the section labels, the table captions,
+     the empty-state prose, the sidebar's own nav labels — and the "⚠ For
+     educational and research purposes only. Not financial advice" strip that
+     CLAUDE.md #4/#12 make legally material, on EVERY signed-in page, at 2.84.
+
+     ⚠️ THE TOKEN WAS NEVER THE THING THAT GOT FIXED. Layer G found six failures at
+     exactly 2.97 on the public sign-in and payment pages and repaired them by
+     moving those six usages onto --text-secondary. That made the measured pages
+     green and left the rule broken, so every consumer nobody had measured kept it
+     — which was the whole signed-in product, because the contrast guard only ever
+     walked public routes. Fixing consumers instead of the rule is CLAUDE.md 11c,
+     and this is what it costs: one line, un-fixed, spread across six pages.
+
+     Solved to 4.8 against the DARKEST ground it was observed on (#EBF3FF, the
+     tinted info panel), not against white — measuring dark text on white measures
+     the one place it was never in trouble (11l ii). Result: 5.39 on white, 4.87 on
+     --bg-page, 4.82 at worst.
+
+     Still clearly the lightest of the three, so the hierarchy it exists to express
+     survives: primary #0F1923 (17.1) → secondary #4A5568 (7.53) → muted (5.39). */
+  --text-muted: #626B77;
 
   /* Borders */
   --border: #E2E8F0;
@@ -72,19 +95,137 @@
   --border-faint: rgba(26, 58, 110, 0.08);
   --border-faint-strong: rgba(26, 58, 110, 0.10);
 
-  /* Rating tier colours */
-  --c-tier-1: #006400;
-  --c-tier-2: #228B22;
-  --c-tier-3: #D4A017;
-  --c-tier-4: #FF4500;
-  --c-tier-5: #B22222;
+  /* Rating tier colours — OUR JUDGEMENT (High Conviction … Bearish).
+     ⚠️ These are NOT the direction colours. Green here means "Constructive",
+     not "the price rose"; the candlestick / beat-miss / bullish-bearish greens
+     and reds are a SEPARATE rule that happens to share a hue, and they are
+     deliberately untouched by the 2026-08-22 change below. Before reaching for
+     one of these in a chart, ask which of the two things you are colouring.
+
+     ⚠️ THREE OF THESE COULD NOT CARRY WHITE TEXT, from the product's first day
+     until 2026-08-22. `.score-num` is white numerals on a solid tier colour and
+     `lib/xlsx.ts` paints the same white-on-tier into the downloaded workbook, so
+     the ratios below are a compliance failure (CLAUDE.md #4/#12), not a
+     preference: Constructive 4.39, Neutral **2.38**, Cautious 3.44, against a
+     4.5 floor. The same three fail a second time as `.score-tag`, where the
+     colour IS the text on a white card.
+
+     Each failing colour is scaled toward black by the MINIMUM factor that clears
+     the floor — hue and saturation are untouched, so this is the smallest change
+     that can be correct rather than a repaint. The two that already passed are
+     byte-identical, which also keeps the ramp's ordering intact (tier 1 stays the
+     darkest green; the existing --c-tier-2-ink at 8.22 would have inverted it).
+
+       tier   before    after      white ON it   as TEXT on the darkest ground
+       1      #006400   #065F46     7.44 → 7.68   6.73 → 6.95
+       2      #228B22   #1E7C1E     4.39 → 5.31   3.97 → 4.80
+       3      #D4A017   #87660F     2.38 → 5.32   2.15 → 4.82
+       4      #FF4500   #C73600     3.44 → 5.32   3.11 → 4.81
+       5      #B22222   #8B1414     6.68 → 9.51   6.04 → 8.61
+
+     ⚠️ TIER 5 MOVED FOR A SECOND REASON, and it is not contrast — it already
+     passed. Darkening Cautious out of orange (#FF4500) and into red (#C73600)
+     put it next to Bearish, and the owner spotted on sight that the two no longer
+     read as different tiers. Measured, they were 10.7 apart on the standard
+     perceptual scale — the range where most people call two colours "the same
+     sort of colour" — and **10.0 apart to a red-green colour-blind reader**, who
+     is roughly one man in twelve and to whom both are olive.
+
+     #8B1414 takes that to 16.3 and 16.1. It separates by LIGHTNESS rather than
+     hue, which is the separation that survives colour blindness, a printed page
+     and a dimmed screen; a hue-based separation (a claret was measured at 26.1)
+     was offered and the owner chose to keep Bearish unmistakably red. Note it is
+     not a new colour: it is the value --c-tier-5-ink already held, so the palette
+     got smaller. Owner-approved 2026-08-22.
+
+     ⚠️ TIER 1 MOVED FOR THE SAME REASON, one row up and worse — 2026-08-22, on
+     the same owner review. The two greens sat **8.2** apart, CLOSER than the red
+     pair that had just been fixed, and 8.6 to a red-green colour-blind reader.
+     Constructive could not move (4.80 as text is exactly the margin the palette
+     is built on), so the gap had to come from High Conviction, which had 7.44 to
+     spend. #065F46 is a deep PINE rather than a darker grass green, and the hue
+     shift is the point: it is almost exactly as LIGHT as #006400, so the top chip
+     does not become visibly heavier than the four below it, while separating by
+     hue as well as weight takes the colour-blind gap to **24.6** — a plain darker
+     green reached only 14.1. It also reads with the navy brand rather than
+     against it. Result: 8.2 → 17.1, and the weakest pair in the whole palette
+     becomes Cautious/Bearish at 16.3, so the floor under the ramp roughly doubles.
+
+     ⚠️ AND IT SEVERED THE LAST DOUBLE MEANING. #006400 is also the deep green on
+     candle borders, insider-buy markers and drawdown bounds — a hex that means
+     two things cannot be policed as a copy of one of them, which is why tiers 1
+     and 5 were both exempt from the stray-copy check. Both have now moved off
+     their direction twins, and **all five tiers are checkable** where three were.
+
+     ⚠️ ONE THING THIS DID NOT FIX, recorded rather than chased: Neutral against
+     Cautious measures **5.9** to a deuteranope (gold and orange-red both go
+     brown). The only lever is darkening Cautious, and every step that helps there
+     costs about the same on Cautious/Bearish. A trade, not a win — owner decided
+     to leave it. Nothing is unreadable: every chip carries its score and every
+     badge its word, so WCAG 1.4.1 is satisfied by the text, not the colour.
+
+     ⚠️ The general lesson, which cost nothing here only because the owner looked:
+     **a colour fixed in isolation can break a set.** Every one of the three
+     darkenings above was correct on its own terms and measured against its own
+     ground; the defect they created was a RELATIONSHIP, which no per-colour
+     assertion can see. `pnpm check:tier-palette` now measures the gap between
+     every adjacent pair, so the next well-meant darkening cannot quietly collapse
+     one. (Same shape as design-system.md §11's "how many scales does the site
+     have after this?" — ask what a local fix does to the set.)
+
+     ⚠️ SOLVED AGAINST THE DARKEST GROUND THE TEXT ACTUALLY SITS ON, and the first
+     attempt was not. These colours are also used as `.score-tag` text, and I sized
+     them against #FFFFFF — which gave 4.61/4.64, looked like a pass, and shipped
+     4.41/4.44 to the probe, because the results table's rows are #F8FAFC and the
+     page ground is #F0F4F8. For DARK text a lighter ground is the EASY case, so
+     measuring on white measures the one place the colour was never in trouble.
+     That is CLAUDE.md 11l(ii) a second time — a composited colour has to be
+     measured where it sits — and it is why the target here is 4.8 on --bg-page
+     rather than 4.5 on white: the margin absorbs the next surface's ground
+     without another round of this (11i-b: assert a margin, not a boundary).
+
+     ⚠️ WHY THIS SURVIVED SO LONG: contrast and axe only ever walked PUBLIC
+     routes, and the chips live on the gated screener. Nothing measured them
+     until the landing page began drawing a real screener table on a public URL,
+     which is when they surfaced as a bounded `[data-legacy-contrast]` exemption
+     — now removed, because the debt is paid. `e2e/contrast.spec.ts` covers the
+     signed-in pages too, so a fourth surface cannot inherit this silently.
+
+     ⚠️ ONE COPY. These five values were typed out by hand 247 times across 26
+     files before this change (CLAUDE.md 11c). The rating uses now derive from
+     these tokens or from `RATING_TIER_HEX` in `lib/ratings.ts`, and
+     `pnpm check:tier-palette` fails the build if a rating surface grows a
+     literal again. The direction colours are a different rule and keep theirs. */
+  --c-tier-1: #065F46;
+  --c-tier-2: #1E7C1E;
+  --c-tier-3: #87660F;
+  --c-tier-4: #C73600;
+  --c-tier-5: #8B1414;
 
   /* Tier ink (text on tinted bg) */
   --c-tier-2-ink: #0D5C0D;
   --c-tier-5-ink: #8B1414;
-  --c-tier-3-ink: #8A6710;
+  /* ⚠️ #8A6710 until 2026-08-22, which measured 4.73 on a white card and **4.32
+     on --bg-page** — under the 4.5 floor on the page ground, and recorded as such
+     in CLAUDE.md 11l(ii) without ever being fixed. The badge never changed; what
+     sat behind it did. Darkened ~6% so it clears on BOTH grounds (4.82 on the
+     page tint, 5.25 on the card tint) rather than only the one a screenshot
+     happened to catch it on. Measure a composited colour where it actually sits. */
+  --c-tier-3-ink: #81600F;
+  /* Cautious was the only tier whose ink had no token — it lived as a bare
+     #B23A00 literal inside `.tier-badge--4`, where nothing else could reach it
+     and no one would think to keep it in step with its four siblings. Same
+     value, so this is a zero-pixel change. */
+  --c-tier-4-ink: #B23A00;
 
-  /* Tier tints */
+  /* Tier tints.
+     ⚠️ DELIBERATELY still built from the PRE-2026-08-22 hues, and syncing them to
+     the darkened tiers above would be a regression, not tidying. These are a 10–12%
+     wash behind dark ink, so darkening them darkens the BACKGROUND and eats the
+     very margin the ink change just bought: measured, `.tier-badge--3` would go
+     4.73 → 4.49 on a card and 4.32 → 4.09 on --bg-page. The tiers changed because
+     white text sits ON them; a tint has ink sitting on IT, so the same move runs
+     the opposite way. Leave them. */
   --tint-tier-2: rgba(34, 139, 34, 0.10);
   --tint-tier-2-strong: rgba(34, 139, 34, 0.12);
   --tint-tier-5: rgba(178, 34, 34, 0.10);
@@ -92,6 +233,49 @@
   --tint-tier-3: rgba(212, 160, 23, 0.10);
   --tint-tier-3-strong: rgba(212, 160, 23, 0.12);
   --tint-brand: rgba(46, 125, 232, 0.10);
+
+  /* ── SEMANTIC INK — the same meanings, for when the colour is TEXT ─────────
+     A colour that is a line, a candle, a dot or a bar keeps the value it has
+     always had; the same colour used as WORDS points at one of these instead.
+
+     ⚠️ WHY A SECOND SET RATHER THAN DARKENING THE ORIGINALS. Green-for-up is a
+     convention every trading tool follows and the owner scoped it out of the
+     2026-08-22 rating work for that reason. But measuring the signed-in pages
+     for the first time showed the direction palette is not only fills and lines:
+     on one stock page it was **57 pieces of TEXT**, worst 2.11:1 against a 4.5
+     floor — the Key Risks heading, Current Drawdown, the analyst consensus
+     figure, every beat/miss and streak. A rising candle and the sentence about it
+     are different objects with different rules, so they get different tokens. The
+     candle is untouched; the sentence is legible. Owner-approved 2026-08-22.
+
+     ⚠️ Each value is solved against the DARKEST ground it was actually observed
+     on — measured, not guessed, by dumping every sub-floor element on an ENTITLED
+     stock page with its computed colour AND its composited background (11l ii).
+     The green sits on a 10% green tint in one place (#E9F3E9) and the gold on a
+     10% gold tint (#F7F1E1); both would have looked fine solved against white and
+     shipped under the floor, which is exactly how the tier inks went wrong once.
+     Target is 4.8, not 4.5, so the next surface's ground does not reopen this.
+
+       role      was                            now       worst measured
+       up        #228B22                        #1B741B   3.86 → 5.18
+       neutral   #D4A017 / #9A7010 / #B58800    #81600F   2.11 → 5.15
+       warn      #FF4500                        #C73600   3.11 → 4.81
+       brand     #2E7DE8                        #1E5CB3   3.67 → 5.91
+
+     ⚠️ THREE golds collapse into one. #D4A017, #9A7010 and #B58800 were three
+     hand-typed near-misses for the same idea, and nothing could have told you
+     they were meant to be the same colour (CLAUDE.md 11c).
+
+     ⚠️ Values coincide with --c-tier-2/-3/-4 in places and the tokens are still
+     separate, deliberately. A rating is our judgement about a stock; a direction
+     is a fact about a number. They must be free to move apart, and one shared
+     token is how they would silently stop being. `lib/ink.ts` mirrors these for
+     the chart props that cannot read a CSS variable; `pnpm check:tier-palette`
+     fails if the two copies disagree. */
+  --c-up-ink: #1B741B;
+  --c-neutral-ink: #81600F;
+  --c-warn-ink: #C73600;
+  --c-brand-ink: #1E5CB3;
 
   /* Chart heights */
   --chart-h-sm: 200px;
@@ -103,11 +287,78 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.10), 0 4px 8px rgba(0, 0, 0, 0.06);
+  /* The FLOATING-card step, added in Layer G. Three roles, three shadows, and
+     the middle one had no name: a card sitting in a stack takes --shadow-sm, a
+     modal takes --shadow-lg, and a card that floats alone on the page ground —
+     the sign-in card, the pricing card — is neither. It was hand-typed as a
+     60px ambient blur in four separate files, which read as a different product
+     from the terminal you were signing in to. Navy-tinted rather than neutral
+     black, because it falls on --bg-page, which is blue-grey. */
+  --shadow-lift: 0 10px 30px rgba(15, 25, 35, 0.08), 0 3px 10px rgba(15, 25, 35, 0.05);
 
   /* Layout */
   --sidebar-w: 220px;
   --header-h: 58px;
   --font-hero: 26px;
+
+  /* ── Reading scale — the SECOND type scale (Layer G) ───────────────────
+     Everything above this line is the APP scale: 9–14px, correct for a
+     terminal that is *scanned*, where density is a feature. These are for
+     pages that are *read*. design-system.md §3 explains the split; it is
+     the same one Stripe and Linear run between their docs and dashboard.
+
+     Seven steps and no half-pixels. The live /methodology carried NINE
+     sizes including 10.5 and 11.5 — the eye cannot resolve half a pixel as
+     intent, so near-duplicates read as inconsistency, not hierarchy.
+
+     ⚠️ --rd-micro is a FLOOR, not a suggestion. Nothing on a reading page
+     goes below 12px; the leaked app scale put five 8px elements on
+     /methodology, and 8px uppercase is decoration wearing the costume of
+     information. Consumed only through `.reading` — never hand-typed as a
+     px value in a page, or this becomes a second copy (CLAUDE.md 11c). */
+  --rd-micro: 12px;
+  --rd-small: 14px;
+  --rd-body: 17px;
+  --rd-lead: 20px;
+  --rd-h2: 26px;
+  --rd-h1: 36px;
+  --rd-display: 48px;
+
+  /* ── PUBLIC-PAGE sizes — the signed-out site's own scale ─────────────────
+     Consumed by `AuthCard` (login, signup, contact, reset-password,
+     deletion-requested, pricing) AND by the three legal documents, so the two
+     cannot drift apart. Named --pub-* rather than --doc-*: they were introduced
+     for the legal pages, but a token called "doc" that the sign-in card reads
+     is the kind of misleading name this repo has been bitten by.
+
+     ⚠️ --pub-title-sm exists because AuthCard steps its title down on a phone
+     (22px below 640px, 24px above) and the legal masthead does not. Without it,
+     "consume the token" would have silently GROWN every form title on mobile —
+     a 2px change nobody would have reported and no test was watching.
+
+     Not a third scale: --pub-h and --pub-label are the same 17px and 12px as
+     --rd-body and --rd-micro above; --pub-title/--pub-body are the sizes the
+     auth cards have always rendered. `e2e/legal-doc.spec.ts` measures the auth
+     card and the legal document in the browser and fails if they disagree. */
+  --pub-title: 24px;
+  --pub-title-sm: 22px;
+  --pub-h: 17px;
+  --pub-body: 13px;
+  --pub-label: 12px;
+
+  /* The legal document's column. NOT --measure-prose (680px): that holds ~68
+     characters at --rd-body (17px) and /methodology still needs it. At
+     --pub-body (13px) the same 680px box fits ~91 characters, well past the
+     45-75 band, because smaller letters mean MORE of them per line. Measured,
+     then set. */
+  --measure-doc: 560px;
+
+  /* Line lengths. --measure-prose holds ~68 characters at --rd-body, which
+     is the middle of the 45–75 band; --measure-narrow is the auth-card
+     width the public pages were ALL locked to before Layer G. */
+  --measure-narrow: 440px;
+  --measure-prose: 680px;
+  --measure-wide: 1120px;
 }
 
 /* Base layer — wraps resets/typography so Tailwind utility classes can override.
@@ -172,7 +423,7 @@
 .tier-badge--1 { background: rgba(0,100,0,0.12);              color: var(--c-tier-1); }
 .tier-badge--2 { background: var(--tint-tier-2-strong);        color: var(--c-tier-2-ink); }
 .tier-badge--3 { background: var(--tint-tier-3-strong);        color: var(--c-tier-3-ink); }
-.tier-badge--4 { background: rgba(255,69,0,0.10);              color: #B23A00; }
+.tier-badge--4 { background: rgba(255,69,0,0.10);              color: var(--c-tier-4-ink); }
 .tier-badge--5 { background: var(--tint-tier-5-strong);        color: var(--c-tier-5-ink); }
 .tier-badge--analyst { background: rgba(74,85,104,0.12);       color: #4A5568; }
 
@@ -337,7 +588,13 @@
   color: white;
   font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
   display: inline-flex; align-items: center; justify-content: center;
-  margin-top: 2px; opacity: .85;
+  margin-top: 2px;
+  /* ⚠️ NO `opacity` HERE. It was .85, which took white-on-Constructive from 5.31
+     to 4.31 — under the floor for no reason but the fade, on a premium card. And
+     it was invisible to every run we had ever done, because the contrast suites
+     sign in with the free account and have therefore never seen this card. Recede
+     with a colour, never with transparency: a token can be measured, an opacity
+     silently reprices whatever it lands on (CLAUDE.md 11q). */
 }
 .verdict-bands {
   display: grid; grid-template-columns: 1.4fr 1fr 1fr;
@@ -399,6 +656,22 @@
   font-size: 12px; font-weight: 700; color: var(--text-primary);
   letter-spacing: .2px; text-transform: uppercase; font-family: 'Sora', sans-serif;
 }
+/* The quiet counterpart to `.card-title` — the dated provenance line that sits on
+   the other end of a card header ("medium horizon · full price history to 13 Aug").
+   It had never been defined, so every use of it inherited its parent's size: on the
+   landing page that meant a 10px provenance note rendering at 15px in full-strength
+   ink, louder than the card title beside it. Nothing errored; it simply looked
+   wrong, and only a computed-style diff against the approved artifact found it.
+   ⚠️ 12px (`--rd-micro`), not the storyboard's 10px: --rd-micro is a FLOOR, and the
+   NEWER design-system artifact already sets .card-note to it. --text-secondary
+   rather than --text-muted for the usual reason (2.69:1). */
+.card-note {
+  font-size: var(--rd-micro);
+  color: var(--text-secondary);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
 .card-body { padding: 16px 18px; }
 .card-body--compact { padding: 12px 18px; }
 .card-body--chart { padding-bottom: 8px; }
@@ -433,27 +706,49 @@
   letter-spacing: .5px; vertical-align: 1px; font-size: 9px; font-weight: 600;
   cursor: help; user-select: none;
 }
-.insight-strength.is-attr { color: #228B22; }
-.insight-strength.is-risk { color: #B58800; }
+.insight-strength.is-attr { color: var(--c-up-ink); }
+.insight-strength.is-risk { color: var(--c-neutral-ink); }
 .insight-strength-label {
   font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 700;
-  letter-spacing: 1.2px; text-transform: uppercase; margin-right: 4px; opacity: .75;
+  letter-spacing: 1.2px; text-transform: uppercase; margin-right: 4px;
+  /* ⚠️ `opacity: .75` until 2026-08-22, and it survived the ink change by hiding
+     inside it: the green underneath went from 4.39 to 5.90, and the fade still
+     took the rendered word to 3.55. A colour fixed at full strength is not fixed
+     if something upstream dims it — which is the THIRD instance of this in one
+     day (.verdict-thesis-num, this, and the brand watermark). Recede with a
+     colour, never with transparency (CLAUDE.md 11q). Here there was no room to
+     recede: the ink sits at 5.90 and the floor for 9px is the full 4.5, so the
+     label simply stands at its own colour and the size and letter-spacing carry
+     the hierarchy instead. */
 }
 .insight-invalidation {
   display: flex; align-items: flex-start; gap: 6px; margin-top: 6px;
   padding: 7px 10px; background: rgba(180,140,40,.06);
-  border-left: 2px solid #D4A017; border-radius: 0 4px 4px 0;
+  border-left: 2px solid var(--c-neutral-ink); border-radius: 0 4px 4px 0;
   font-family: 'Sora', sans-serif; font-size: 11px; font-style: italic;
   color: #7A5A10; line-height: 1.5;
 }
-.insight-invalidation-icon { flex-shrink: 0; color: #9A7010; margin-top: 2px; }
+.insight-invalidation-icon { flex-shrink: 0; color: var(--c-neutral-ink); margin-top: 2px; }
 .insight-invalidation-icon svg { width: 11px; height: 11px; display: block; }
 .insight-invalidation strong { font-style: normal; font-weight: 700; color: #5A4408; }
 
-.card-header--accent-buy  { border-left: 3px solid #228B22; }
-.card-header--accent-buy .card-title  { color: #228B22; }
-.card-header--accent-hold { border-left: 3px solid #D4A017; }
-.card-header--accent-hold .card-title { color: #D4A017; }
+/* The accent stripe and its heading on "Why Attractive" / "Key Risks".
+   ⚠️ The stripe is a GRAPHIC and the heading is TEXT, and the gold failed both:
+   2.38:1 against a white card, under the 4.5 for text and under the 3.0 that a
+   plain decorative line owes as well. They move together because a stripe that
+   disagreed with its own heading would read as a mistake.
+
+   ⚠️ ONLY THE COLOUR MOVED. The 3px left stripe itself is verbatim from
+   reference/original-design.html (lines 744 and 746; the 2px one on
+   .insight-invalidation is line 573), which non-negotiable #1 requires this UI to
+   match — so the shape is mandated, not chosen, and a design linter reading it as
+   a generic "side-tab accent" is looking at the one thing here that is not ours to
+   change. The owner reviewed these two stripes directly on 2026-08-22 and approved
+   deepening them: same width, same position, same shape. */
+.card-header--accent-buy  { border-left: 3px solid var(--c-up-ink); }
+.card-header--accent-buy .card-title  { color: var(--c-up-ink); }
+.card-header--accent-hold { border-left: 3px solid var(--c-neutral-ink); }
+.card-header--accent-hold .card-title { color: var(--c-neutral-ink); }
 
 @media (max-width: 640px) {
   .insight-grid { grid-template-columns: 1fr; }
@@ -495,8 +790,14 @@
 }
 .ma-pill:hover { border-color: var(--text-secondary); color: var(--text-secondary); }
 /* Legend chips match the on-chart DMA line colours (design-system §5):
-   50 DMA = brand-bright #2E7DE8, 200 DMA = brand-deep #1A3A6E. */
-.ma-pill--50.active  { color: #2E7DE8; border-color: #2E7DE8; background: rgba(46,125,232,.08); }
+   50 DMA = brand-bright #2E7DE8, 200 DMA = brand-deep #1A3A6E.
+   ⚠️ The 50 chip's BORDER still carries the line's colour — that is the whole
+   point of a legend — but its LABEL does not, because #2E7DE8 on the chip's own
+   8% tint measures 3.67:1. The line itself is fine (4.03 against white, over the
+   3.0 a graphic owes) and is deliberately left alone: darkening it would push it
+   toward the 200 DMA's brand-deep and cost the reader the distinction the two
+   lines exist to make. Border keeps the link, label becomes readable. */
+.ma-pill--50.active  { color: var(--c-brand-ink); border-color: #2E7DE8; background: rgba(46,125,232,.08); }
 .ma-pill--200.active { color: #1A3A6E; border-color: #1A3A6E; background: rgba(26,58,110,.10); }
 .ma-pill--50.active:hover  { background: rgba(46,125,232,.14); }
 .ma-pill--200.active:hover { background: rgba(26,58,110,.16); }
@@ -547,8 +848,8 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 15px; font-weight: 600; color: var(--text-primary);
 }
-.stat-pill-val.green { color: #228B22; }
-.stat-pill-val.amber { color: #D4A017; }
+.stat-pill-val.green { color: var(--c-up-ink); }
+.stat-pill-val.amber { color: var(--c-neutral-ink); }
 .stat-pill-val.red   { color: #B22222; }
 
 @media (max-width: 640px) {
@@ -625,7 +926,19 @@
   flex: 1; background: var(--bg-stripe); border-radius: 20px;
   height: 6px; overflow: hidden; border: 1px solid var(--border);
 }
-.radar-axis-bar-fill { height: 100%; border-radius: 20px; transition: width .6s ease; }
+/* ⚠️ TRANSLATE, not width. Animating the width itself makes the browser re-run
+   layout for the whole document on every frame; a transform is composited and
+   touches neither layout nor paint. Two shapes are available and they are NOT interchangeable —
+   see `.progress-bar-fill` for the other one. Here the fill is a SOLID colour, so
+   a full-width bar slid left by the remainder is pixel-identical to a short bar:
+   its rounded right cap keeps its true radius, and its left cap lands exactly on
+   the track's own rounded corner, which `overflow: hidden` clips to the same
+   curve `width` produced. Nothing about the drawing changes. */
+.radar-axis-bar-fill {
+  height: 100%; width: 100%; border-radius: 20px;
+  transform: translateX(calc(var(--fill, 0%) - 100%));
+  transition: transform .6s ease;
+}
 .radar-axis-score {
   font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
   width: 28px; text-align: right; flex-shrink: 0;
@@ -722,10 +1035,16 @@ td.num             { font-weight: 600; }
 .km-cat-cell { text-align: left; }
 .km-value { font-size: 11.5px; font-weight: 600; color: var(--text-primary); }
 .km-cmp { font-size: 11.5px; font-weight: 600; cursor: help; }
-.km-cmp--better { color: #228B22; }
+.km-cmp--better { color: var(--c-up-ink); }
 .km-cmp--worse  { color: #B22222; }
 .km-cmp--inline { color: var(--text-muted); }
-.km-cmp--na     { color: var(--border-strong); }
+/* ⚠️ --border-strong (#CBD5E1) until 2026-08-22, i.e. a BORDER token used as ink:
+   **1.48:1** on a white card and 1.42 on a striped row, where the floor is 4.5.
+   It is the "no industry median available" dash, so it is genuinely secondary —
+   but secondary means --text-muted, which exists for exactly this and measures
+   5.39. A colour chosen because it "looks quiet enough" is how ink ends up at a
+   ratio no one would have typed on purpose. */
+.km-cmp--na     { color: var(--text-muted); }
 .km-empty { color: var(--text-muted); font-size: 13px; text-align: center; padding: 24px 0; }
 
 /* News rows — CSS hover (NewsFeed is a Server Component, so no JS handlers). */
@@ -774,6 +1093,10 @@ td.num             { font-weight: 600; }
 .smart-legend-chip                          { display: inline-flex; align-items: center; gap: 5px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: .3px; }
 .smart-legend-chip-dot                      { width: 7px; height: 7px; border-radius: 50%; background: var(--lg, #1E5CB3); flex-shrink: 0; }
 .smart-pill.is-buy        { background: rgba(34,139,34,.12); color: #0D5C0D; border: 1px solid rgba(34,139,34,.25); }
+/* ⚠️ #8B1414 here is the DIRECTION red darkened for a tinted ground, and it has
+   held that value since long before --c-tier-5 arrived at the same one in 2026-08.
+   Two rules, one hex, no relationship — do not "unify" them (CLAUDE.md 11c cuts
+   both ways: a shared value is not evidence of a shared rule). */
 .smart-pill.is-sell       { background: rgba(178,34,34,.10); color: #8B1414; border: 1px solid rgba(178,34,34,.22); }
 .smart-pill.is-upgrade    { background: rgba(34,139,34,.12); color: #0D5C0D; border: 1px solid rgba(34,139,34,.25); }
 .smart-pill.is-downgrade  { background: rgba(178,34,34,.10); color: #8B1414; border: 1px solid rgba(178,34,34,.22); }
@@ -994,7 +1317,8 @@ td.num             { font-weight: 600; }
 }
 .preset-btn:hover { border-color: var(--brand-bright); }
 .preset-btn[aria-pressed='true'] {
-  background: linear-gradient(135deg, var(--brand-mid), var(--brand-deep));
+  background-color: var(--brand-mid);
+  background-image: linear-gradient(135deg, var(--brand-mid), var(--brand-deep));
   border-color: var(--brand-mid);
 }
 .preset-btn-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
@@ -1033,7 +1357,8 @@ td.num             { font-weight: 600; }
 /* Primary run CTA */
 .btn-run {
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  background: linear-gradient(135deg, var(--brand-mid), var(--brand-deep)); color: #fff;
+  background-color: var(--brand-mid);
+  background-image: linear-gradient(135deg, var(--brand-mid), var(--brand-deep)); color: #fff;
   border: none; border-radius: var(--radius-sm); padding: 11px 16px; width: 100%;
   font-size: 13px; font-weight: 600; font-family: 'Sora', sans-serif; cursor: pointer;
   transition: all .2s; box-shadow: 0 2px 8px rgba(30, 92, 179, .25);
@@ -1046,9 +1371,25 @@ td.num             { font-weight: 600; }
   background: var(--bg-stripe); border: 1px solid var(--border); border-radius: 30px;
   height: 8px; overflow: hidden;
 }
+/* ⚠️ SCALE, not translate, and not width — the gradient is why. This bar fills
+   live during a screener run, so it was the one of the two whose animation
+   actually cost something: a full-document layout per frame while the page is
+   also rendering results. The fill carries a mid→bright gradient, and a bar sized
+   to three-tenths compressed the whole ramp into that visible three-tenths.
+   `scaleX` squashes the painted gradient the same way, so the colours are
+   unchanged; translating a full-width bar (the shape `.radar-axis-bar-fill` uses)
+   would instead show only the left third of the ramp and read a shade duller. The
+   one thing scaleX does not preserve is the trailing cap, whose 4px radius is
+   squashed in proportion to the fraction filled — flatter below ~40%, where the
+   bar is a few pixels long anyway. Cap over colour was the trade here; the
+   reverse for a solid fill. */
 .progress-bar-fill {
-  height: 100%; background: linear-gradient(90deg, var(--brand-mid), var(--brand-bright));
-  border-radius: 30px; transition: width .4s ease;
+  height: 100%; width: 100%;
+  background: linear-gradient(90deg, var(--brand-mid), var(--brand-bright));
+  border-radius: 30px;
+  transform-origin: left center;
+  transform: scaleX(var(--fill, 0));
+  transition: transform .4s ease;
 }
 .timer-chip-label { font-size: 9.5px; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); }
 .timer-chip-val { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); }
@@ -1137,7 +1478,7 @@ td.num             { font-weight: 600; }
 }
 .briefing-ring-cap {
   font-family: 'Sora', sans-serif; font-size: 8.5px; font-weight: 600;
-  color: var(--text-muted); letter-spacing: .6px; text-transform: uppercase;
+  color: var(--text-secondary); letter-spacing: .6px; text-transform: uppercase;
 }
 .briefing-body { flex: 1; min-width: 0; }
 .briefing-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
@@ -1161,14 +1502,20 @@ td.num             { font-weight: 600; }
 }
 .b-pill:hover { border-color: var(--brand-bright); color: var(--brand-mid); }
 .b-pill .b-pill-n { font-family: var(--font-mono); font-weight: 700; }
-.briefing-disclaimer { margin-top: 10px; font-size: 10.5px; color: var(--text-muted); }
+.briefing-disclaimer { margin-top: 10px; font-size: 10.5px; color: var(--text-secondary); }
 
 /* Provenance bar */
 .provenance {
   display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
   font-family: var(--font-mono); font-size: 10.5px; color: var(--text-muted); margin-bottom: 14px;
 }
-.provenance .pv-sep { color: var(--border-strong); }
+/* ⚠️ --border-strong (#CBD5E1) as INK until 2026-08-22: **1.34:1**, the worst
+   reading on the paid screener. It is only a "·" between provenance items, so it
+   carries no information and the instinct to make it disappear is right — but a
+   separator a reader cannot see is not quieter, it is absent, and it still has to
+   clear the floor. Second instance of a border token used as text in one sweep
+   (see .km-cmp--na); --border-strong now appears nowhere as a colour. */
+.provenance .pv-sep { color: var(--text-muted); }
 /* Matches the stock-detail "Data Freshness" dot (StockHeader.tsx): same green
    tier token, soft glow ring, and metaPulse animation. */
 .provenance .pv-dot {
@@ -1278,7 +1625,17 @@ td.num             { font-weight: 600; }
   display: inline-flex; align-items: center; gap: 6px; font-family: 'Sora', sans-serif;
   font-size: 11px; font-weight: 700; padding: 7px 13px; border-radius: var(--radius-sm);
   border: 1px solid transparent; cursor: pointer; color: #fff;
-  background: linear-gradient(135deg, var(--brand-mid), var(--brand-deep));
+  /* ⚠️ background-color AND background-image, never the `background` shorthand,
+     because white text sits on this. The shorthand RESETS background-color to
+     transparent, so anything asking the DOM what is behind the label reads
+     straight through to the page — this button measured **1.11:1** on the paid
+     screener while looking perfectly normal. Declaring the gradient's LIGHTER
+     stop as the background colour makes the measurement honest AND makes the
+     worst case the one that gets measured. Same fix already in
+     components/ui/button.tsx and documented as CLAUDE.md 11l(iii); it simply
+     never reached these two consumers (11c-iv). */
+  background-color: var(--brand-mid);
+  background-image: linear-gradient(135deg, var(--brand-mid), var(--brand-deep));
   box-shadow: 0 2px 8px rgba(30, 92, 179, .25); transition: transform .15s, box-shadow .15s;
 }
 .export-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(30, 92, 179, .35); }
@@ -1342,7 +1699,7 @@ a.ticker-cell:hover { text-decoration: underline; }
 a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offset: 2px; border-radius: 3px; }
 
 /* Band header tints (reuse the reference palette) */
-.results-table .band-identity { background: var(--bg-stripe); color: var(--text-muted); }
+.results-table .band-identity { background: var(--bg-stripe); color: var(--text-secondary); }
 .results-table .band-verdict { background: #E8F0FB; color: var(--brand-deep); }
 .results-table .band-price { background: #E6F2EC; color: #0F5132; }
 .results-table .band-growth { background: #EDEAF6; color: #3C3489; }
@@ -1500,7 +1857,13 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   background: var(--brand-light); border: 1px solid var(--brand-light-border);
   font-size: 12px; color: var(--brand-mid);
 }
-.req-notice-x { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--brand-mid); opacity: .7; }
+/* ⚠️ `opacity: .7` until 2026-08-22 — 3.40:1 on the notice, against a 4.5 floor.
+   Found by GREPPING for faded text rather than by measuring, because the notice
+   only appears after a reader adds a ticker and the contrast probe walks pages in
+   their initial state: an element that renders only after an interaction has never
+   been measured by anything we own (CLAUDE.md 14g). The colour was always fine —
+   brand-mid is 6.49 on white — and the fade was the whole defect (11q). */
+.req-notice-x { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--brand-mid); }
 .req-notice-x:hover { opacity: 1; }
 
 .req-empty { margin-top: 12px; font-size: 12px; color: var(--text-muted); font-style: italic; }
@@ -1683,4 +2046,453 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 /* Smooth scroll for the report nav (scopes to the report page/file only). */
 .report-page {
   scroll-behavior: smooth;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   READING SCOPE — public / content pages (Layer G)
+
+   Opt in by putting `.reading` on a container. Everything inside picks up
+   the reading scale; nothing outside it changes, so the signed-in terminal
+   is untouched by design (design-system.md §3: "the fix is NOT to enlarge
+   the app").
+
+   This is the ONE place the reading sizes are applied. A page that wants
+   bigger text asks for a bigger element, never a px override — the moment a
+   second copy of these numbers exists they drift (CLAUDE.md 11c).
+   ═════════════════════════════════════════════════════════════════════════ */
+/* In @layer base, so a Tailwind utility on the element still wins. Unlayered,
+   `.reading a { color: … }` (0,1,1) BEAT `.text-white` (0,1,0) and painted the
+   /methodology call-to-action brand-blue on a brand-blue button — 1.0:1,
+   invisible. Same mechanism as the @layer base note above the reset. */
+@layer base {
+  .reading {
+    font-size: var(--rd-body);
+    line-height: 1.7;
+    color: var(--text-secondary);
+    letter-spacing: -0.06px;
+  }
+
+  .reading h1,
+  .reading h2,
+  .reading h3 {
+    color: var(--text-primary);
+    font-weight: 700;
+    text-wrap: balance;
+  }
+  .reading h1 {
+    font-size: var(--rd-h1);
+    line-height: 1.15;
+    letter-spacing: -0.9px;
+  }
+  .reading h2 {
+    font-size: var(--rd-h2);
+    line-height: 1.25;
+    letter-spacing: -0.5px;
+  }
+  .reading h3 {
+    font-size: var(--rd-lead);
+    line-height: 1.35;
+    letter-spacing: -0.25px;
+    font-weight: 600;
+  }
+
+  /* Lead paragraph — same size as h3, separated by weight rather than by a
+     fourth size. Sizes are for hierarchy; weight is for role. */
+  .reading .lead {
+    font-size: var(--rd-lead);
+    line-height: 1.6;
+    letter-spacing: -0.2px;
+    color: var(--text-secondary);
+  }
+
+  .reading .small { font-size: var(--rd-small); line-height: 1.6; }
+  /* --rd-micro is for eyebrows and labels: uppercase, tracked, never a
+     sentence. If it needs reading, it is not micro. */
+  .reading .micro {
+    font-size: var(--rd-micro);
+    line-height: 1.5;
+    font-weight: 700;
+    letter-spacing: 1.1px;
+    text-transform: uppercase;
+  }
+
+  .reading p + p { margin-top: 1.1em; }
+
+  /* ── Room around a HEADING ────────────────────────────────────────────────
+     Missing entirely until 2026-08-17, and the gap was invisible for the usual
+     reason: it renders perfectly. `.reading` described the space between two
+     paragraphs, around a list, and after a list — every adjacency prose had
+     actually met — but never the space around a heading, because no `.reading`
+     prose had ever CONTAINED one. The legal pages mark their own headings up as
+     `.doc-h` and position them with the section's flex gap, so they never asked.
+
+     An article body is authored as bare `<h2>` (a content file should not have
+     to know the design system's class names), which made it the first prose to
+     need this. It got 0px: measured on /learn/what-is-a-drawdown, a heading sat
+     flush against the paragraph above AND below it, while two ordinary
+     paragraphs got 14.3px between them — the strongest structural signal in the
+     document with the weakest spacing. Note this shipped in the same commit
+     that gave `.doc-scale` headings their SIZE; size was ported and rhythm was
+     not (CLAUDE.md 11c-iv).
+
+     ⚠️ `:not(:first-child)` is what keeps this ONE rule rather than two.
+     Every LegalDoc section OPENS with its own `.doc-h` inside a
+     `flex flex-col gap-8`, and in a flex container a child's margin ADDS to the
+     gap — so a blanket `margin-top` would silently double-space all three legal
+     pages while fixing the articles. A heading that opens its container is
+     already positioned by that container; a heading that FOLLOWS prose is the
+     one that needs air. Same adjacency logic as `p + p` above.
+
+     ⚠️ `em`, not px: the margin resolves against the heading's OWN size, so it
+     stays proportional across `.doc-scale`'s 17px h2 and `.reading`'s larger
+     one, instead of looking generous on one page and mean on the other.
+
+     ⚠️ The 0.5em BELOW is deliberately just under LegalDoc's own `mt-2.5`
+     (8.5px vs 8.75px at a 17px heading). Adjacent margins collapse to the
+     larger, so the legal pages keep the exact gap they already had — verified
+     by measuring, not assumed — while an article body gains one where it had
+     nothing. A heading binds to the text it introduces, so the space above it
+     should be several times the space below. */
+  .reading h2:not(:first-child),
+  .reading h3:not(:first-child) { margin-top: 1.75em; }
+  .reading h2,
+  .reading h3 { margin-bottom: 0.5em; }
+
+  /* ── The opt-out, for a heading that is a LABEL rather than prose ──────────
+     Some headings are not in prose flow at all: the Learn index sets each topic
+     title in a flex row beside its number and its article-count pill, and the
+     ROW positions it. Prose margins there do two wrong things at once — they
+     add to the band's own padding, and, because the row is `items-center`,
+     flex centres the MARGIN box, so the heading's text slides away from the
+     number beside it.
+
+     ⚠️ Measured, not guessed: applying the rule above without this moved the
+     "01" to 10.6px off the heading's centre on all three bands, which is
+     plainly visible and was introduced by a change whose entire purpose was to
+     improve typography. I checked the legal pages and the article body before
+     shipping that rule and did not check the Learn INDEX — the same "a shared
+     rule reached a consumer nobody checked" shape as CLAUDE.md 11c-iv, made
+     while fixing an instance of it.
+
+     ⚠️ SPECIFICITY, and the first attempt got it wrong in a way worth keeping.
+     `.reading .heading-flush` is (0,2,0) and beats `.reading h2` (0,1,1) — but
+     NOT `.reading h2:not(:first-child)`, because `:not()` contributes the
+     specificity of its argument, making that selector (0,2,1). So the
+     margin-bottom was cleared and the margin-top was not, and the misalignment
+     got WORSE (10.6px → 14.9px, exactly half of the 29.75px that survived).
+     Naming the element here lifts this to (0,2,1) and source order settles the
+     tie. A "no !important" win is only a win if you check which rule actually
+     applied — `getComputedStyle` said 29.75px while the stylesheet said 0.
+     Guarded by `learn.spec.ts`, which asserts the number stays centred on its
+     heading rather than asserting any particular margin. */
+  .reading h2.heading-flush,
+  .reading h3.heading-flush { margin-top: 0; margin-bottom: 0; }
+
+  .reading strong { color: var(--text-primary); font-weight: 600; }
+
+  .reading ul { margin: 1.1em 0 0; padding-left: 1.35em; list-style: disc; }
+  .reading ol { margin: 1.1em 0 0; padding-left: 1.35em; list-style: decimal; }
+  .reading li + li { margin-top: 0.5em; }
+  /* A paragraph AFTER a list. `p + p` covered prose that only ever alternated
+     paragraphs; the first clause written as "lead-in, list, then a closing
+     sentence" had that sentence sitting flush against the last bullet, reading
+     as a sixth item. Same 1.1em, so the rhythm is one value, not two. */
+  .reading ul + p,
+  .reading ol + p { margin-top: 1.1em; }
+  .reading li::marker { color: var(--text-muted); }
+
+  /* A list inside a FIGURE is a layout, not prose — and it must share the
+     figure's own left edge, because other things in the drawing are positioned
+     against that edge.
+
+     ⚠️ Found 2026-08-20 on the limits figure. `.reading ul`'s `padding-left:
+     1.35em` inset the list by **17.55px**, so every bar inside it started 17px
+     right of where its own percentage said, while the dashed "today" rule — a
+     sibling one level up, outside the list — kept the full width. The one line
+     the figure exists to draw therefore sat 17px away from the bar it marks.
+     Nothing errored, the width sweep found no overlap, and a 17px offset reads
+     as a deliberate gap rather than a bug. Every other figure's list had the
+     same inset and got away with it only because nothing was aligned to them.
+
+     Same shape as `.heading-flush` above: naming the element lifts this to
+     (0,2,1) so it beats `.reading ul` at (0,1,1) without `!important`. The
+     bullets were already suppressed by `display:flex` blockifying the items —
+     `list-style: none` is stated anyway, so a future non-flex figure list does
+     not sprout discs. */
+  .reading ul.figure-list,
+  .reading ol.figure-list { margin: 0; padding-left: 0; list-style: none; }
+
+  .reading a {
+    color: var(--brand-mid);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+    text-decoration-color: rgba(30, 92, 179, 0.35);
+    transition: color 0.15s, text-decoration-color 0.15s;
+  }
+  .reading a:hover {
+    color: var(--brand-bright);
+    text-decoration-color: currentColor;
+  }
+
+  /* Numbers keep JetBrains Mono even here (design-system §3, no exceptions),
+     but at reading sizes mono runs visually large beside Sora — hold it back
+     a touch so a figure inside a sentence doesn't shout. */
+  .reading .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.94em;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  /* Phones: the two display steps are the only ones that need to move. Body
+     text stays 17px at 375px — shrinking body copy on the device most people
+     read on is the opposite of the fix. */
+  @media (max-width: 640px) {
+    .reading h1 { font-size: 28px; letter-spacing: -0.6px; }
+    .reading h2 { font-size: 22px; letter-spacing: -0.4px; }
+    .reading h3,
+    .reading .lead { font-size: 18px; }
+  }
+
+  /* ───────────────────────────────────────────────────────────────────────
+     DOCUMENT ROLES — /disclaimer, /terms, /privacy.
+
+     ⚠️ Owner instruction, 2026-08-13: *"ensure the font sizes are consistent
+     throughout all the public pages and amend the legal pages to match. There
+     is no need to make it slightly bigger"*, then, when asked to scope it:
+     *"only change font sizes in the legal pages. Do not change anything on
+     other pages."*
+
+     So a legal document is now set at the sizes the rest of the public site
+     already uses. Nothing here is invented — every value is a size measured on
+     a live public page, which is the whole point:
+
+        --pub-title  24px  the AuthCard h1 from 640px up (--pub-title-sm 22px below)
+        --pub-h      17px  = --rd-body, already on / and /methodology
+        --pub-body   13px  the AuthCard body size, used across all six forms
+        --pub-label  12px  = --rd-micro, the floor
+
+     Four sizes on the page, all of them already elsewhere on the site. The
+     ratio that matters — heading over body — is 17/13 = 1.31, which is a
+     heading doing its job. (The previous 26/17 was 1.53, which is why the
+     clauses read as a stack of headlines, and 20/13 would be 1.54 again.)
+
+     ⚠️ 13px and 24px are hard-coded in `AuthCard.tsx` rather than tokenised,
+     so these two tokens are a SECOND copy of those numbers — exactly the drift
+     CLAUDE.md 11c warns about. Left deliberately: unifying them means editing
+     the form pages, which this instruction explicitly forbids. **When the form
+     pages are next touched, AuthCard should consume these tokens and the
+     duplication should end there.**
+
+     ⚠️ Specificity, deliberately: `.reading .doc-title` is (0,2,0) and beats
+     `.reading h1` (0,1,1), INCLUDING the ≤640px block above — media queries add
+     no specificity. So the mobile step-down does not apply here and these sizes
+     must stand alone at 375px. They do: 24/17/13.
+     ─────────────────────────────────────────────────────────────────────── */
+  /* ── `.doc-scale` — the public site's document scale, in ONE place ────────
+     Was `.reading .legal-layout`, i.e. the scale was welded to the class that
+     also builds the legal contents-rail GRID. That worked while exactly one
+     kind of document existed. The Learn library made it two, and a second
+     document inheriting `.reading`'s 36/26/20/17 instead came out as a FOURTH
+     type scale on the public site — measured 2026-08-15:
+
+         /learn      h1 36  h2 26  lead 20        ← matched nothing
+         /terms      h1 24  h2 17  body 13
+         /contact    h1 24
+         /  (landing) h1 50  h2 34               ← deliberate, marketing only
+
+     Nobody had done anything wrong: `.reading` is the correct default for a
+     long page, and the legal pages simply opted out of it through a class the
+     new pages had no reason to wear. That is the shape of CLAUDE.md 11c-iv —
+     the rule existed and one of its consumers never received it.
+
+     So the scale is now a class in its own right and layout is not a
+     precondition for getting it. `.legal-layout` and the Learn pages both wear
+     it, and a third document type cannot silently miss out: it is one class,
+     and `e2e/legal-doc.spec.ts` measures all three surfaces against each other.
+
+     ⚠️ Element selectors, not just the `.doc-*` helper classes. LegalDoc marks
+     its own headings up (`doc-title`, `doc-h`); an ARTICLE body is authored as
+     plain `<h2>`, because prose written in a content file should not have to
+     know the design system's class names. Both are covered here.
+
+     Specificity: `.reading .doc-scale h2` is (0,2,1) and beats `.reading h2`
+     (0,1,1) — including the ≤640px step-down block above, since media queries
+     add no specificity. So these sizes stand alone at 375px, which is intended:
+     24/17/13 needs no phone step-down. */
+  .reading .doc-scale { font-size: var(--pub-body); }
+  .reading .doc-scale .small { font-size: var(--pub-label); }
+  .reading .doc-scale .micro { font-size: var(--pub-label); }
+  .reading .doc-scale h1 {
+    font-size: var(--pub-title);
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+  }
+  .reading .doc-scale h2 {
+    font-size: var(--pub-h);
+    line-height: 1.3;
+    letter-spacing: -0.25px;
+  }
+  /* ── h3 is a STEP DOWN from h2, and it was not until 2026-08-19 ────────────
+     This rule read `.doc-scale h2, .doc-scale h3 { font-size: var(--pub-h) }`,
+     collapsing both levels onto 17px. The base `.reading` scale does not do
+     that — there h2 takes `--rd-h2` and h3 takes the smaller `--rd-lead` — so
+     the document scale was the anomaly, and it went unnoticed for a simple
+     reason: **no `.doc-scale` page had ever used an h3.** All three legal pages
+     are h2-only. The first article to need subsections inherited a shared rule
+     that flattened them.
+
+     That is CLAUDE.md 11c-iv once more — a rule reaching a consumer nobody
+     checked — and the symptom was exactly the invisible kind: eight h2s and four
+     h3s rendered at the same size, the same colour and the same 29.75px of space
+     above, separated only by 700 vs 600 weight. Nothing errored, every size was
+     still on the 24/17/13/12 scale, and the type-scale guard passed. The owner
+     read the page and said the sizes looked wrong.
+
+     ⚠️ **No fifth size** (11c-vi). h3 takes `--pub-body`, which the body already
+     uses, and earns its heading role from weight 700 and from being a block —
+     `strong` is 600 and inline, so the two cannot be confused. The step is
+     17 → 13, the same DIRECTION the base scale steps.
+
+     ⚠️ The top margin steps too, and that is half the fix: a subsection should
+     sit nearer the section it divides than a new section does. h2 keeps 1.75em
+     (29.75px); h3 takes 1.6em of its own smaller size (~21px). Spacing carries
+     hierarchy at least as much as size does. */
+  .reading .doc-scale h3 {
+    font-size: var(--pub-body);
+    line-height: 1.4;
+    letter-spacing: 0;
+    font-weight: 700;
+  }
+  .reading .doc-scale h3:not(:first-child) { margin-top: 1.6em; }
+  /* The lead sits between the title and the body, so it takes the heading size
+     rather than `.reading`'s 20px — which at a 13px body would be a ratio of
+     1.54, the exact figure the owner rejected on the legal pages for reading as
+     "a stack of headlines". */
+  .reading .doc-scale .lead { font-size: var(--pub-h); line-height: 1.55; }
+  .reading .doc-title {
+    font-size: var(--pub-title);
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+  }
+  .reading .doc-h {
+    font-size: var(--pub-h);
+    line-height: 1.3;
+    letter-spacing: -0.25px;
+  }
+  /* The clause number. A reference document is cited by number ("clause 5"), so
+     this is content, not texture — never a muted grey, never below the 12px floor.
+     ⚠️ SORA, not JetBrains Mono, and this is a deliberate exception to §3's
+     "every numeric value uses JetBrains Mono". That rule is about VALUES — a
+     price, a score, a percentage — where a monospace face aligns digits in a
+     column and signals "this is data". A clause ordinal is none of those: it
+     is part of the heading's own sentence, and setting two words of one line
+     in two different typefaces just looks like a mistake, which is exactly
+     how the owner read it. Size and weight inherit from the heading for the
+     same reason. */
+  /* ⚠️ No `color` at all, deliberately — it INHERITS. In a clause heading that
+     makes the numeral the same black as the words beside it (owner's call,
+     2026-08-13: a blue numeral read as a separate object rather than as part of
+     the heading). In the inline contents list the same class inherits the body
+     colour instead, which is right there for the same reason. One rule, correct
+     in both places, because it declines to have an opinion. */
+  .reading .doc-num {
+    font-size: inherit;
+    font-weight: inherit;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Document layout — a contents rail beside the document (Layer G).
+
+   A legal page is NAVIGATED, not read top to bottom: most readers arrive
+   wanting one clause. Below 1024px that is the inline contents list the
+   document already carried. At 1024px and up the rail moves into the margin,
+   which on a 1280px screen was 600px of empty page beside a 680px column.
+
+   ⚠️ A grid item stretches to the row height by default, and a sticky element
+   as tall as its own scroll range has nowhere to travel — it simply never
+   moves. TWO separate things stop that here, and I only understood which after
+   breaking each one and measuring (rail top at scrollY 700, 1280×900):
+
+     align-items: start + the rail's max-height  →  425px tall, pinned at 82
+     stretch, max-height kept                    →  794px tall, pinned at 82
+     stretch, max-height removed                 →  1841px tall, top −765 ✗
+
+   So the load-bearing one is the rail's own `max-height` clamp, NOT this line —
+   the clamp holds the stretched item below the row height. `align-items: start`
+   is kept anyway, because the clamp exists to stop a long contents list
+   overflowing the viewport, not to make sticking work: someone shortening a
+   document and removing the clamp as redundant must not silently un-stick the
+   rail. Belt and braces, with the belt named.
+
+   ⚠️ I first wrote this comment asserting the opposite, and the guard I wrote to
+   defend it stayed GREEN when I removed this line. The test is right — it
+   asserts the rail is pinned, which is the outcome — and the comment was wrong.
+   A mechanism you have not broken is a mechanism you are guessing at.
+
+   ⚠️ No ancestor may set `overflow` (the public layout does not): a scrollable
+   ancestor silently becomes what `top:` is measured against, and the rail
+   sticks to the wrong thing with no error anywhere.
+
+   Two columns, centred as a pair, so the widths come from --measure-prose and
+   one gap rather than from fraction arithmetic that re-centres the document at
+   every breakpoint.
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  .legal-layout {
+    display: grid;
+    grid-template-columns: 200px var(--measure-doc);
+    column-gap: 48px;
+    align-items: start;
+    justify-content: center;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Tier legend — the five rating labels, shown to a reader who has not seen
+   the product yet.
+
+   ⚠️ This renders the REAL `.tier-badge--N` component, deliberately. The
+   earlier version painted white on the solid tier fill, which measured
+   2.38:1 on --c-tier-3 (design-system §14) — the product's entire
+   vocabulary set in its least readable text. It also taught the wrong
+   picture: nothing in the app looks like that. Tint-plus-ink is what a
+   reader will actually meet, and it clears 4.5:1 on all five tiers.
+   ───────────────────────────────────────────────────────────────────────── */
+.tier-legend {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.tier-legend-row {
+  display: grid;
+  grid-template-columns: 4px 84px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 11px 16px 11px 0;
+  background: var(--bg-surface);
+}
+.tier-legend-row + .tier-legend-row { border-top: 1px solid var(--border); }
+.tier-legend-swatch { align-self: stretch; background: var(--tier); }
+.tier-legend-range {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--rd-small);
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+/* The legend sits inside `.reading`, where 11px badge text would be the
+   smallest thing on the page again. One size per context, chosen by the
+   frame — never a one-off override (design-system §3). */
+.tier-legend .tier-badge { font-size: var(--rd-small); padding: 5px 12px; }
+
+@media (max-width: 480px) {
+  .tier-legend-row { grid-template-columns: 4px 1fr; row-gap: 6px; padding-bottom: 12px; }
+  .tier-legend-range { grid-column: 2; }
+  .tier-legend .tier-badge { grid-column: 2; }
 }

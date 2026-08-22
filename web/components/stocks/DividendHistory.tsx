@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Bar,
@@ -13,6 +14,13 @@ import {
 
 import { CHART_RIGHT_AXIS_WIDTH, fmtPerShare } from '@/lib/format';
 import type { FundamentalsSnapshot } from '@/lib/types';
+import {
+  DISTRESS_YIELD_PCT,
+  PAYOUT_COMFORTABLE_MAX,
+  PAYOUT_DISPLAY_CAP,
+  PAYOUT_STRAINED_MAX,
+} from '@/lib/dividends';
+import { INK } from '@/lib/ink';
 
 interface Props {
   dividendHistory: Array<{ year: number; amount: number }>;
@@ -116,8 +124,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
   // A trailing yield this high almost always reflects a collapsed share price (a
   // dividend cut is usually coming) rather than income you can rely on. Show the
   // real number, but flag it and drop the reassuring green (S9 sanity-bounds).
-  const DISTRESS_YIELD = 20;
-  const yieldDistressed = yieldPct !== null && yieldPct > DISTRESS_YIELD;
+  const yieldDistressed = yieldPct !== null && yieldPct > DISTRESS_YIELD_PCT;
 
   // Consecutive years of growth streak
   let streak = 0;
@@ -152,14 +159,14 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
             >
               <XAxis
                 dataKey="label"
-                tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: 'Sora' }}
+                tick={{ fill: CHART_INK, fontSize: 10, fontFamily: 'Sora' }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 orientation="right"
                 tick={{
-                  fill: '#8A97A8',
+                  fill: CHART_INK,
                   fontSize: 10,
                   fontFamily: "'JetBrains Mono', monospace",
                 }}
@@ -232,7 +239,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
               <div className="summary-strip-label">Current Yield</div>
               <div
                 className="summary-strip-val"
-                style={{ color: yieldDistressed ? '#D4A017' : '#228B22' }}
+                style={{ color: yieldDistressed ? INK.neutral : INK.up }}
               >
                 {currYield}{yieldDistressed ? ' ⚠' : ''}
               </div>
@@ -254,7 +261,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
             <div className="summary-strip-label">Growth Streak</div>
             <div
               className="summary-strip-val"
-              style={{ color: streak >= 5 ? '#228B22' : 'var(--text-primary)' }}
+              style={{ color: streak >= 5 ? INK.up : 'var(--text-primary)' }}
             >
               {streak} yrs
             </div>
@@ -264,9 +271,9 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
             <div
               className="summary-strip-item"
               title={
-                Math.abs(payoutRatioPct) > 300
+                Math.abs(payoutRatioPct) > PAYOUT_DISPLAY_CAP
                   ? `Payout Ratio % — Dividends ÷ Net Income × 100. Actual ${payoutRatioPct.toFixed(1)}% (capped for display). A reading this far above 100% means the company is paying out far more than it earns — usually unsustainable.`
-                  : 'Payout Ratio % — Dividends ÷ Net Income × 100. Below 60% = sustainable and room to grow · 60–80% = moderately high · Above 80% = potentially unsustainable.'
+                  : `Payout Ratio % — Dividends ÷ Net Income × 100. Below ${PAYOUT_COMFORTABLE_MAX}% = sustainable and room to grow · ${PAYOUT_COMFORTABLE_MAX}–${PAYOUT_STRAINED_MAX}% = moderately high · Above ${PAYOUT_STRAINED_MAX}% = potentially unsustainable.`
               }
             >
               <div className="summary-strip-label">Payout Ratio</div>
@@ -280,15 +287,15 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
                   color:
                     yieldDistressed || payoutRatioPct === 0
                       ? 'var(--text-secondary)'
-                      : payoutRatioPct < 60
-                        ? '#228B22'
-                        : payoutRatioPct < 80
-                          ? '#D4A017'
-                          : '#B22222',
+                      : payoutRatioPct < PAYOUT_COMFORTABLE_MAX
+                        ? INK.up
+                        : payoutRatioPct < PAYOUT_STRAINED_MAX
+                          ? INK.neutral
+                          : INK.down,
                 }}
               >
-                {Math.abs(payoutRatioPct) > 300
-                  ? `${payoutRatioPct > 0 ? '>+' : '<−'}300%`
+                {Math.abs(payoutRatioPct) > PAYOUT_DISPLAY_CAP
+                  ? `${payoutRatioPct > 0 ? '>+' : '<−'}${PAYOUT_DISPLAY_CAP}%`
                   : `${payoutRatioPct.toFixed(1)}%`}
               </div>
             </div>

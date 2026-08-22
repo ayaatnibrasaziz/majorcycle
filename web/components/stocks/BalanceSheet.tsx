@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -21,6 +22,7 @@ import {
   reportingCurrencyNote,
   statementCurrency,
 } from '@/lib/format';
+import { INK } from '@/lib/ink';
 
 interface Props {
   balanceSheetAnnual?: FinancialStatement;
@@ -38,12 +40,13 @@ function toYearLabel(dateStr: string): string {
   return `FY${new Date(dateStr + 'T00:00:00').getFullYear()}`;
 }
 
+/** Text only — both call sites paint a `.summary-strip-val`, never a bar. */
 function ratioColor(val: number | null, thresholds: [number, number]): string {
   if (val === null) return 'var(--text-primary)';
   const [good, ok] = thresholds;
-  if (val >= good) return '#228B22';
-  if (val >= ok)   return '#D4A017';
-  return '#B22222';
+  if (val >= good) return INK.up;
+  if (val >= ok)   return INK.neutral;
+  return INK.down;
 }
 
 export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
@@ -143,14 +146,14 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
               >
                 <XAxis
                   dataKey="label"
-                  tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: 'Sora' }}
+                  tick={{ fill: CHART_INK, fontSize: 10, fontFamily: 'Sora' }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
                   orientation="right"
                   tick={{
-                    fill: '#8A97A8',
+                    fill: CHART_INK,
                     fontSize: 10,
                     fontFamily: "'JetBrains Mono', monospace",
                   }}
@@ -223,7 +226,13 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                   dataKey="cash"
                   name="Cash & Equivalents"
                   stackId="assets"
-                  fill="#228B22"
+                  /* ⚠️ INK, not the plain green, because Recharts paints a legend
+                     entry in its series' own colour — so this value is a filled bar
+                     AND the words "Cash & Equivalents" underneath it. The bar was
+                     fine on its own (4.39 clears the 3.0 a graphic owes); the label
+                     was not (4.39 against 4.5). Second instance of this coupling —
+                     see BENCH_COLOR in RelativePerformance for the first. */
+                  fill={INK.up}
                   stroke="#006400"
                   strokeWidth={1.5}
                   radius={[0, 0, 0, 0]}
@@ -269,8 +278,8 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                   isNetCash === null
                     ? 'var(--text-primary)'
                     : isNetCash
-                      ? '#228B22'
-                      : '#D4A017',
+                      ? INK.up
+                      : INK.neutral,
               }}
             >
               {netCash !== null ? fmtCompact(Math.abs(netCash), currency) : '—'}
@@ -302,10 +311,10 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                   debtToEquity === null
                     ? 'var(--text-primary)'
                     : debtToEquity < 0.5
-                      ? '#228B22'
+                      ? INK.up
                       : debtToEquity < 1.5
-                        ? '#D4A017'
-                        : '#B22222',
+                        ? INK.neutral
+                        : INK.down,
               }}
             >
               {debtToEquity !== null ? debtToEquity.toFixed(2) : '—'}

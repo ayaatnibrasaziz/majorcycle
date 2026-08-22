@@ -6,10 +6,26 @@ on:
   pull_request:
     branches: [main]
 
+# One run per branch at a time. Pushing again cancels the older run instead of
+# leaving it orphaned.
+#
+# ⚠️ Learned on 2026-08-19, and the second push was not the cause. A run for
+# 476bcd5 sat "in progress" for over an hour while the newer run for the same
+# branch finished in 3.3 minutes; it was wedged on `playwright install`, four
+# steps before any test, holding a runner. Without this block GitHub keeps both
+# alive, so the branch shows a permanently unfinished run next to a green one —
+# and "unfinished" is the state hardest to read correctly, because it looks the
+# same whether a job is working or dead.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   frontend:
     name: Frontend checks
     runs-on: ubuntu-latest
+    # Ran in ~1m on 2026-08-19; 15 is generous headroom, not a target.
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: web
@@ -60,12 +76,69 @@ jobs:
         # It prints the number of checks it ran — read the count, not the colour.
         run: pnpm check:data-integrity
 
+      - name: Check SEO plumbing
+        # The static half of a pair (the other is e2e/seo.spec.ts, which reads the
+        # real rendered HTML). Nothing here changes a pixel, so an SEO regression
+        # cannot be seen by looking at the site, and every defect in the class is a
+        # line that ISN'T there: a page with no canonical, a route missing from the
+        # sitemap, a public path the middleware still bounces.
+        #
+        # It also enforces ONE canonical origin. That literal was in five files
+        # before Layer G and one of them disagreed (apex vs www) — invisible because
+        # NEXT_PUBLIC_SITE_URL is set in production, so the wrong fallback never
+        # fired. `www` is load-bearing: the live Stripe webhook is registered on it
+        # and Stripe counts a 3xx as a failed delivery.
+        #
+        # Prints the number of checks it ran — read the count, not the colour.
+        run: pnpm check:seo
+
+      # The five rating-tier colours: ONE palette, and every one of them legible.
+      #
+      # Two invariants, both of which had been broken in the shipped product until
+      # 2026-08-22. (i) The palette exists in two places that cannot be derived from
+      # each other at runtime — `app/globals.css` for the page and
+      # `RATING_TIER_HEX` in `lib/ratings.ts` for the .xlsx workbook and the chart
+      # props — so the drift is made impossible rather than discouraged. (ii) Every
+      # tier clears the WCAG floor BOTH as a background under white text
+      # (`.score-num`, the workbook fills) and as text on the darkest ground the
+      # site puts it on. Three of the five failed that second test for the life of
+      # the product, Neutral at 2.38:1, because the contrast guard only ever walked
+      # PUBLIC routes and the score chips live on the gated screener.
+      #
+      # Runs before the build because it reads source, not output. Broken on purpose
+      # four ways before being trusted. Prints its own numbers.
+      - name: Tier palette (one source, all five legible)
+        run: pnpm check:tier-palette
+
       - name: Build
         run: pnpm build
+
+      # Reads the BUILD OUTPUT, so it has to follow the build. Asserts which
+      # public pages are prerendered and — just as important — which must never
+      # be. Both regressions are silent: a stray session read in the shared tree
+      # un-statics the whole public site with nothing going red, and a page that
+      # becomes static starts sending `s-maxage` where it used to send
+      # `private, no-store` (CLAUDE.md 11a). Prints its own count.
+      #
+      # ⚠️ Since 2026-08-23 it also carries the CSP nonce invariant, and that one
+      # is not a performance matter: a prerendered page's HTML was written at
+      # build time and carries no nonce, so sending it a nonce policy refuses
+      # every script in it — the page renders and then does nothing. Measured on
+      # a deliberate break: 14 violations on /terms. This is the only CI-runnable
+      # guard for it; `pnpm check:csp` proves the rest, but it needs a production
+      # server and a real session, so it runs locally like `check:page-weight`.
+      - name: Render modes (which pages are prerendered, and which take a CSP nonce)
+        run: pnpm check:render-modes
 
   e2e:
     name: E2E (Playwright — auth + Stripe webhook + entitlement)
     runs-on: ubuntu-latest
+    # ⚠️ A hang here used to be INVISIBLE. GitHub's default is 6 hours, so the
+    # wedged `playwright install` on 2026-08-19 produced no red, no email and no
+    # notification — an unfinished run reads exactly like a slow one. The failed-
+    # workflow email is the only alerting channel this project has, so a hang has
+    # to become a FAILURE for anyone to hear about it. Whole suite runs in ~3.3m.
+    timeout-minutes: 30
     # Boots a real Next dev server, so it needs the (public) Supabase URL + anon
     # key. They live as repo Variables — until they're set this job SKIPS cleanly
     # instead of failing, so CI never goes red on missing config. Add repo
@@ -121,7 +194,25 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
+        # ⚠️ NO `--with-deps`, and the reason is measured rather than assumed.
+        # That flag runs `apt-get`, and on 2026-08-19 apt hung TWICE against
+        # Ubuntu's mirrors — the log shows `Ign:` on azure.archive.ubuntu.com,
+        # a fallback to archive.ubuntu.com, then 41 minutes of complete silence
+        # before the run was killed. Four steps before any test ran.
+        #
+        # What it bought us, read off the one run that got through: every
+        # Chromium shared library was already "the newest version" on the runner
+        # image, and the ONLY 9 packages it installed were fonts —
+        # fonts-ipafont-gothic, fonts-wqy-zenhei, xfonts-cyrillic and friends,
+        # i.e. Japanese, Chinese, Thai and Cyrillic glyphs. This site is English
+        # and ships its own webfonts (Sora + JetBrains Mono), so it renders no
+        # script those fonts serve. The flag was ~2.5 of the step's 2.9 minutes,
+        # all of the hang risk, and none of the benefit.
+        #
+        # If a genuine library ever does go missing from the image, Chromium
+        # fails to launch and the suite goes RED with a clear message — a loud
+        # failure, not a silent one, and re-adding the flag is a one-line undo.
+        run: pnpm exec playwright install chromium
 
       # The E2E server is `next dev`, which computes a stock's cycle by SPAWNING
       # web/api/cycle.py as a CLI (lib/cycle.ts) rather than over HTTP. Without a Python
@@ -162,6 +253,8 @@ jobs:
   backend:
     name: Python checks
     runs-on: ubuntu-latest
+    # Ran in ~1m on 2026-08-19 (pytest 153 in 11.5s); 15 is generous headroom.
+    timeout-minutes: 15
     env:
       PYTHONPATH: .
 

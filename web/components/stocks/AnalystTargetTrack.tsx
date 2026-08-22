@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { fmtPrice } from '@/lib/format';
 import type { Currency, FundamentalsSnapshot } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
+import { INK } from '@/lib/ink';
 
 interface Props {
   fundamentals: FundamentalsSnapshot;
@@ -56,7 +57,7 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
   const meanPos   = pos(analystTargetPrice);
   const upside    = ((analystTargetPrice - currentClose) / currentClose) * 100;
   const upsideStr = signedPct(upside);
-  const upsideColor  = upside >= 0 ? '#228B22' : '#B22222';
+  const upsideColor  = upside >= 0 ? INK.up : INK.down;
   const upsideLabel  = upside >= 0
     ? `${upsideStr}% upside to Consensus Target`
     : `${Math.abs(upside).toFixed(1)}% above Consensus Target`;
@@ -110,7 +111,7 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
               style={{ left: `${meanPos}%`, background: '#D4A017', width: 14, height: 14, zIndex: 3 }}
               title="Consensus Target — mean 12-month analyst estimate"
             >
-              <div className="target-label" style={{ ...labelStyle(meanPos), color: '#9A7010' }}>
+              <div className="target-label" style={{ ...labelStyle(meanPos), color: INK.neutral }}>
                 {fmtPrice(analystTargetPrice, currency)}<br />
                 <span style={{ fontSize: 9 }}>Consensus</span>
               </div>
@@ -147,7 +148,7 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
         </div>
 
         {outOfRange && (
-          <div style={{ fontSize: 10, textAlign: 'center', marginTop: 4, color: '#B22222' }}>
+          <div style={{ fontSize: 10, textAlign: 'center', marginTop: 4, color: INK.down }}>
             {outOfRange}
           </div>
         )}
@@ -165,7 +166,7 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
             title={`Bear Case Target — The lowest 12-month price target across the ${numAnalystOpinions} analysts covering this stock. Represents the most cautious view — typically reflects concerns about execution, valuation, or sector headwinds.`}
           >
             <div className="target-stat-label">Bear Case Target</div>
-            <div className="target-stat-val" style={{ color: '#B22222' }}>
+            <div className="target-stat-val" style={{ color: INK.down }}>
               {fmtPrice(analystLowPrice, currency)}
             </div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
@@ -179,7 +180,7 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
             title={`Consensus Target — The mean 12-month price target across all ${numAnalystOpinions} analysts covering this stock. This is the central case — what Wall Street collectively expects.`}
           >
             <div className="target-stat-label">Consensus Target</div>
-            <div className="target-stat-val" style={{ color: '#D4A017' }}>
+            <div className="target-stat-val" style={{ color: INK.neutral }}>
               {fmtPrice(analystTargetPrice, currency)}
             </div>
             <div style={{ fontSize: 10, color: upsideColor, marginTop: 2 }}>
@@ -193,10 +194,10 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
             title={`Bull Case Target — The highest 12-month price target across the ${numAnalystOpinions} analysts covering this stock. Represents the most optimistic view — typically reflects upside from a specific catalyst, market expansion, or margin acceleration.`}
           >
             <div className="target-stat-label">Bull Case Target</div>
-            <div className="target-stat-val" style={{ color: '#228B22' }}>
+            <div className="target-stat-val" style={{ color: INK.up }}>
               {fmtPrice(analystHighPrice, currency)}
             </div>
-            <div style={{ fontSize: 10, color: '#228B22', marginTop: 2 }}>
+            <div style={{ fontSize: 10, color: INK.up, marginTop: 2 }}>
               {bullVsCurrent}% vs current
             </div>
             <div className="target-stat-caption">Most optimistic analyst view</div>

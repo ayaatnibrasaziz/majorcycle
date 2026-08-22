@@ -47,7 +47,32 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // One retry EVERYWHERE, not just CI. This was `process.env.CI ? 1 : 0`, which made
+  // a local run strictly LESS reliable than CI and produced exactly one bad outcome:
+  // a full run aborting with a single failure nobody could explain, while CI — same
+  // code — went green. A harness that disagrees with CI about whether the suite
+  // passed is a harness you cannot cite as evidence.
+  //
+  // ⚠️ The instability that prompted this was NOT a product bug and, as it turned
+  // out, not really a test bug either: it was the reused dev server (see
+  // `reuseExistingServer` below). With that fixed the suite ran 145/145 four times
+  // in a row, zero flaky.
+  //
+  // I originally justified this line with a "control" run on the pre-G1 commit that
+  // appeared to show the same failures. That experiment was WORTHLESS — the server it
+  // talked to had been started from the Layer G branch and was never restarted, so it
+  // measured the wrong code entirely. The conclusion it supported (`pre-existing, not
+  // ours`) may or may not be true; it was not evidence either way. Recorded because a
+  // plausible experiment that silently measures nothing is worse than no experiment.
+  //
+  // The retry is kept anyway, on its own merits: a local run should not be able to
+  // disagree with CI about whether the suite passed.
+  //
+  // ⚠️ This hides NOTHING. Playwright reports a retried pass as **flaky** on its own
+  // line: "142 passed, 2 flaky" reads differently from "144 passed", and a flaky
+  // count is a signal to investigate, never noise to skip. Read the whole summary
+  // line, not the colour — same rule as always, one level further in.
+  retries: 1,
   reporter: [['list']],
   timeout: 60_000,
   expect: { timeout: 15_000 },
@@ -60,7 +85,21 @@ export default defineConfig({
   webServer: {
     command: `pnpm exec next dev --port ${PORT}`,
     url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
+    // NEVER reuse. This was `!process.env.CI`, i.e. locally a run would attach to
+    // whatever `next dev` already held port 3100 — no matter how old it was or which
+    // branch it had been started from.
+    //
+    // That turned the suite into an instrument that lies, and it lied to me for an
+    // entire session. A dev server left running across several `git checkout`s was
+    // answering with a mix of stale and current code, and the results were spectacular
+    // nonsense: the same report test failed 8 of 8 in isolation against the reused
+    // server and passed 4 of 4 the moment it was killed. Worse, a "control" run I did
+    // on the pre-G1 commit was served by a process started from the Layer G branch, so
+    // it measured nothing at all — I nearly reported a pre-existing bug on that basis.
+    //
+    // Booting a server costs ~30 seconds. Being unable to trust a green run costs a
+    // great deal more. `pnpm e2e` now always tests the working tree in front of it.
+    reuseExistingServer: false,
     timeout: 180_000,
   },
 });

@@ -14,10 +14,29 @@ export function friendlyAuthError(message: string): string {
   if (m.includes('email not confirmed')) {
     return 'Please confirm your email first — check your inbox for the link.';
   }
-  if (m.includes('already registered') || m.includes('already exists')) {
+  // ⚠️ "already BEEN registered" is a different string from "already registered"
+  // and does not contain it. Supabase sends both wordings depending on the call
+  // and the release, and only one of them was matched until 2026-08-12 — so a
+  // reader who signed up twice was shown raw GoTrue English. Found by
+  // e2e/auth-contracts.spec.ts, which drives this function over the real
+  // upstream messages rather than over the phrases it was written against.
+  if (
+    m.includes('already registered') ||
+    m.includes('already been registered') ||
+    m.includes('already exists')
+  ) {
     return 'An account with this email already exists. Try signing in instead.';
   }
-  if (m.includes('rate limit') || m.includes('too many')) {
+  // ⚠️ The 60-second cooldown — by far the most likely limit a real person meets,
+  // by pressing "Send reset link" twice — says neither "rate limit" nor "too
+  // many". It says "For security purposes, you can only request this after 51
+  // seconds", and it too fell straight through to the raw text.
+  if (
+    m.includes('rate limit') ||
+    m.includes('too many') ||
+    m.includes('for security purposes') ||
+    m.includes('you can only request this')
+  ) {
     return 'Too many attempts. Please wait a minute and try again.';
   }
   if (

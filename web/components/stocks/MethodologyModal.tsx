@@ -102,10 +102,18 @@ export function MethodologyModal({ open, onOpenChange }: MethodologyModalProps) 
                 className="text-center px-1.5 py-2 rounded-[var(--radius-sm)] text-white"
                 style={{ background: t.color }}
               >
-                <div className="font-[var(--font-mono)] text-[11px] font-semibold mb-[3px] opacity-95">
+                {/* ⚠️ `opacity-95` on both of these until 2026-08-22. It was never a
+                    failure — white on the tier colours held 4.92 at worst — but it
+                    was spending 0.4 of the margin the palette work had just bought,
+                    for a 5% fade nobody can see. Fourth instance of the same shape
+                    in one day: a colour that is correct at full strength, dimmed
+                    below what it was measured at by something upstream. Recede with
+                    a colour, never with transparency (CLAUDE.md 11q). Restores
+                    5.31 / 5.33 / 5.31 / 9.51 across the five chips. */}
+                <div className="font-[var(--font-mono)] text-[11px] font-semibold mb-[3px]">
                   {t.range}
                 </div>
-                <div className="text-[9px] font-bold uppercase tracking-[0.6px] leading-tight opacity-95">
+                <div className="text-[9px] font-bold uppercase tracking-[0.6px] leading-tight">
                   {t.label}
                 </div>
               </div>

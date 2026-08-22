@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { useEffect, useRef, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -87,7 +88,7 @@ export function PriceChart({ priceBars, ticker }: Props) {
       height: 300,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#8A97A8',
+        textColor: CHART_INK,
         fontFamily: "'JetBrains Mono', monospace",
       },
       grid: {
@@ -101,7 +102,7 @@ export function PriceChart({ priceBars, ticker }: Props) {
       },
       rightPriceScale: {
         borderColor: '#E2E8F0',
-        textColor: '#8A97A8',
+        textColor: CHART_INK,
         minimumWidth: CHART_RIGHT_AXIS_WIDTH,
       },
       // fixLeftEdge/fixRightEdge stop scrolling past the first/last bar into

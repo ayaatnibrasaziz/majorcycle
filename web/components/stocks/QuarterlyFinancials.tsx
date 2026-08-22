@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -14,6 +15,7 @@ import {
 
 import type { Currency, FinancialStatement } from '@/lib/types';
 import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, makeCompactAxisFormatter } from '@/lib/format';
+import { INK } from '@/lib/ink';
 
 interface Props {
   incomeStatementQuarterly?: FinancialStatement;
@@ -195,14 +197,14 @@ export function QuarterlyFinancials({
             >
               <XAxis
                 dataKey="label"
-                tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: 'Sora' }}
+                tick={{ fill: CHART_INK, fontSize: 10, fontFamily: 'Sora' }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 orientation="right"
                 tick={{
-                  fill: '#8A97A8',
+                  fill: CHART_INK,
                   fontSize: 10,
                   fontFamily: "'JetBrains Mono', monospace",
                 }}
@@ -261,7 +263,7 @@ export function QuarterlyFinancials({
                       {pct !== null && (
                         <div
                           style={{
-                            color: pct >= 0 ? '#228B22' : '#B22222',
+                            color: pct >= 0 ? INK.up : INK.down,
                             fontFamily: "'JetBrains Mono', monospace",
                             fontSize: 11,
                           }}

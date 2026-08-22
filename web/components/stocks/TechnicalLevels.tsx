@@ -1,6 +1,7 @@
 import { fmtPrice } from '@/lib/format';
 import type { Currency, PriceBar } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
+import { INK } from '@/lib/ink';
 
 interface Props {
   priceBars: PriceBar[];
@@ -68,12 +69,12 @@ function computeMaSignal(bars: PriceBar[]): MaSignal {
 
   if (recentCross) {
     return bullish
-      ? { label: 'Golden Cross', color: '#228B22' }
-      : { label: 'Death Cross',  color: '#B22222' };
+      ? { label: 'Golden Cross', color: INK.up }
+      : { label: 'Death Cross',  color: INK.down };
   }
   return bullish
-    ? { label: 'Bullish', color: '#228B22' }
-    : { label: 'Bearish', color: '#B22222' };
+    ? { label: 'Bullish', color: INK.up }
+    : { label: 'Bearish', color: INK.down };
 }
 
 export function TechnicalLevels({ priceBars, currency }: Props) {
@@ -129,7 +130,7 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
             <div className="stat-pill-label">50 DMA</div>
             <div
               className="stat-pill-val"
-              style={{ color: abv50 !== null ? (abv50 >= 0 ? '#228B22' : '#B22222') : 'var(--text-primary)' }}
+              style={{ color: abv50 !== null ? (abv50 >= 0 ? INK.up : INK.down) : 'var(--text-primary)' }}
             >
               {dma50 !== null ? fmtPrice(dma50, currency) : '—'}
             </div>
@@ -154,7 +155,7 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
             <div className="stat-pill-label">200 DMA</div>
             <div
               className="stat-pill-val"
-              style={{ color: abv200 !== null ? (abv200 >= 0 ? '#228B22' : '#B22222') : 'var(--text-primary)' }}
+              style={{ color: abv200 !== null ? (abv200 >= 0 ? INK.up : INK.down) : 'var(--text-primary)' }}
             >
               {dma200 !== null ? fmtPrice(dma200, currency) : '—'}
             </div>

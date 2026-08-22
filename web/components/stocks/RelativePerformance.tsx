@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { useMemo, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -18,6 +19,7 @@ import { BENCHMARKS, type BenchmarkSeries } from '@/lib/benchmarks';
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { Market, PriceBar } from '@/lib/types';
 import { tickerToUrlParts } from '@/lib/ticker';
+import { INK, SERIES_TEAL } from '@/lib/ink';
 
 interface Props {
   ticker: string;
@@ -30,11 +32,18 @@ type Range = '1y' | '3y' | 'max';
 const RANGE_LABELS: Record<Range, string> = { '1y': '1Y', '3y': '3Y', 'max': 'Max' };
 
 const STOCK_COLOR = '#1E5CB3';
+/* ⚠️ Recharts paints a legend entry in its series' OWN colour, so the line and
+   the words naming it are one value by construction — which makes each of these
+   a chart line AND 10px text at the same time. Two failed: the ASX gold measured
+   2.38:1, under even the 3.0 a plain graphic owes, and the TSX teal cleared the
+   graphic floor at 3.30 while failing as a label. Both now carry their ink value,
+   so each legend entry still matches the line it names. The grey and the violet
+   were already legible (5.70 for the violet) and are untouched. */
 const BENCH_COLOR: Record<string, string> = {
-  '^GSPC': '#8A97A8',   // S&P 500 — neutral grey
-  '^IXIC': '#7C3AED',   // Nasdaq — violet
-  '^AXJO': '#D4A017',   // ASX 200 — gold
-  '^GSPTSE': '#0E9F8E', // S&P/TSX — teal
+  '^GSPC': CHART_INK,      // S&P 500 — neutral grey
+  '^IXIC': '#7C3AED',      // Nasdaq — violet
+  '^AXJO': INK.neutral,    // ASX 200 — gold
+  '^GSPTSE': SERIES_TEAL,  // S&P/TSX — teal
 };
 
 function toTs(d: string): number {
@@ -198,7 +207,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                   scale="time"
                   domain={['dataMin', 'dataMax']}
                   tickFormatter={(ts: number) => fmtTick(ts, spanDays)}
-                  tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: 'Sora' }}
+                  tick={{ fill: CHART_INK, fontSize: 10, fontFamily: 'Sora' }}
                   axisLine={false}
                   tickLine={false}
                   minTickGap={28}
@@ -207,7 +216,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                   orientation="right"
                   width={CHART_RIGHT_AXIS_WIDTH}
                   tickMargin={6}
-                  tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
+                  tick={{ fill: CHART_INK, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
                   tickFormatter={(v: number) => `${v - 100 >= 0 ? '+' : ''}${(v - 100).toFixed(0)}%`}
                   axisLine={false}
                   tickLine={false}
@@ -219,7 +228,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                     const ts = payload[0]!.payload.ts as number;
                     return (
                       <div style={{ background: '#1A1A1B', border: '1px solid #2E3347', borderRadius: 6, padding: '8px 12px', fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
-                        <div style={{ color: '#8A97A8', marginBottom: 4 }}>
+                        <div style={{ color: CHART_INK, marginBottom: 4 }}>
                           {new Date(ts).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </div>
                         {payload
@@ -267,7 +276,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                     dataKey={t}
                     name={BENCHMARKS.find((b) => b.ticker === t)?.label ?? t}
                     type="monotone"
-                    stroke={BENCH_COLOR[t] ?? '#8A97A8'}
+                    stroke={BENCH_COLOR[t] ?? CHART_INK}
                     strokeWidth={1.75}
                     dot={false}
                     isAnimationActive={false}
@@ -284,25 +293,25 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
           <div className="summary-strip">
             <div className="summary-strip-item" title="Stock Return (%) — how much this stock gained or lost over the selected period, indexed from 100.">
               <div className="summary-strip-label">Stock Return</div>
-              <div className="summary-strip-val" style={{ color: stockReturn >= 0 ? '#228B22' : '#B22222' }}>
+              <div className="summary-strip-val" style={{ color: stockReturn >= 0 ? INK.up : INK.down }}>
                 {stockReturn >= 0 ? '+' : ''}{stockReturn.toFixed(1)}%
               </div>
             </div>
             <div className="summary-strip-item" title={`${homeMeta.label} Return (%) — the benchmark's return over the same period.`}>
               <div className="summary-strip-label">{homeMeta.label} Return</div>
-              <div className="summary-strip-val" style={{ color: (homeIdxReturn ?? 0) >= 0 ? '#228B22' : '#B22222' }}>
+              <div className="summary-strip-val" style={{ color: (homeIdxReturn ?? 0) >= 0 ? INK.up : INK.down }}>
                 {homeIdxReturn !== null ? `${homeIdxReturn >= 0 ? '+' : ''}${homeIdxReturn.toFixed(1)}%` : '—'}
               </div>
             </div>
             <div className="summary-strip-item" title="Alpha (%) — Stock Return minus benchmark Return. Positive = beat the market.">
               <div className="summary-strip-label">Alpha</div>
-              <div className="summary-strip-val" style={{ color: (alpha ?? 0) >= 0 ? '#228B22' : '#B22222' }}>
+              <div className="summary-strip-val" style={{ color: (alpha ?? 0) >= 0 ? INK.up : INK.down }}>
                 {alpha !== null ? `${alpha >= 0 ? '+' : ''}${alpha.toFixed(1)}%` : '—'}
               </div>
             </div>
             <div className="summary-strip-item" title="Whether the stock outperformed or underperformed its home-market index over the period.">
               <div className="summary-strip-label">Verdict</div>
-              <div className="summary-strip-val" style={{ color: outperf ? '#228B22' : '#B22222', fontSize: 13 }}>
+              <div className="summary-strip-val" style={{ color: outperf ? INK.up : INK.down, fontSize: 13 }}>
                 {outperf === null ? '—' : outperf ? '▲ Outperforming' : '▼ Underperforming'}
               </div>
             </div>

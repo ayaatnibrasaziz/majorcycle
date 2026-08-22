@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 
 import type { CycleAnalysis } from '@/lib/types';
+import { RATING_TIER_HEX, tierFromScore } from '@/lib/ratings';
 import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
@@ -98,12 +99,14 @@ const AXES = [
  * is *meaningful* — strong pillars green, weak pillars red — rather than the
  * reference's fixed identity colours (which left Shareholder red even at 100).
  */
+// ⚠️ This restated BOTH the five hexes and the 80/65/50/35 thresholds until
+// 2026-08-22 — a whole second copy of the rating ladder, in a file nobody would
+// open to change a rating. Recharts needs a literal colour (an SVG `fill` cannot
+// resolve a CSS variable through its props), which is why the hex comes from
+// `RATING_TIER_HEX` rather than `scoreColor`; the THRESHOLDS have no such excuse
+// and now come from `tierFromScore` (CLAUDE.md 11c).
 function tierColor(score: number): string {
-  if (score >= 80) return '#006400'; // tier-1 High Conviction
-  if (score >= 65) return '#228B22'; // tier-2 Constructive
-  if (score >= 50) return '#D4A017'; // tier-3 Neutral
-  if (score >= 35) return '#FF4500'; // tier-4 Cautious
-  return '#B22222';                  // tier-5 Bearish
+  return RATING_TIER_HEX[tierFromScore(score)];
 }
 
 /** Radar vertex dot, coloured by the pillar's score tier (matches the bars). */
@@ -245,7 +248,9 @@ export function SnowflakeRadar({ cycle }: Props) {
                   <div className="radar-axis-bar-track">
                     <div
                       className="radar-axis-bar-fill"
-                      style={{ width: `${pct ?? 0}%`, background: barColor }}
+                      // `--fill` rather than `width`: the bar is drawn full-width and
+                      // slid into place with a composited transform. See globals.css.
+                      style={{ '--fill': `${pct ?? 0}%`, background: barColor } as React.CSSProperties}
                     />
                   </div>
                   <div className="radar-axis-score" style={{ color: barColor }}>

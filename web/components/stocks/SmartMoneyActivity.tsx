@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { InfoTip } from '@/components/ui/InfoTip';
@@ -15,6 +16,7 @@ import {
 
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { AnalystUpgrade, InsiderTransaction, PriceBar } from '@/lib/types';
+import { INK } from '@/lib/ink';
 
 type Range = '1y' | '3y' | 'all';
 const RANGE_LABELS: Record<Range, string> = { '1y': '1Y', '3y': '3Y', 'all': 'All' };
@@ -32,7 +34,7 @@ const INSIDER_STYLE: Record<InsiderTransaction['type'], { pill: string; label: s
   Sale:     { pill: 'is-sell',      label: 'Sell',  dot: '#B22222' },
   Award:    { pill: 'is-reiterate', label: 'Award', dot: '#2E7DE8' },
   Gift:     { pill: 'is-reiterate', label: 'Gift',  dot: '#1E5CB3' },
-  Other:    { pill: 'is-reiterate', label: 'Other', dot: '#8A97A8' },
+  Other:    { pill: 'is-reiterate', label: 'Other', dot: CHART_INK },
 };
 
 function classifyAction(action: string): { pill: string; label: string } {
@@ -43,15 +45,19 @@ function classifyAction(action: string): { pill: string; label: string } {
   return                                        { pill: 'is-reiterate', label: 'Reiterate' };
 }
 
+/* ⚠️ Used FOUR ways: a chart marker, a small square glyph, the `--dot` on a
+   timeline entry, and the grade name itself as TEXT — where "Hold" in #D4A017
+   measured 2.38:1. One function, so it returns ink and the markers darken with
+   the words rather than drifting apart from them. */
 function gradeColor(grade: string | undefined): string {
   const g = (grade ?? '').toLowerCase().trim().replace(/-/g, ' ');
   if (g.includes('strong buy') || g === 'buy' || g.includes('outperform') || g.includes('overweight') || g === 'accumulate' || g === 'add' || g === 'positive' || g === 'long term buy')
-    return '#228B22';
+    return INK.up;
   if (g.includes('sell') || g.includes('underperform') || g.includes('underweight') || g === 'reduce' || g === 'negative' || g === 'avoid')
-    return '#B22222';
+    return INK.down;
   if (g === 'neutral' || g === 'hold' || g.includes('market perform') || g.includes('equal weight') || g.includes('peer perform') || g.includes('sector perform') || g.includes('market weight') || g.includes('in line') || g.includes('fair value'))
-    return '#D4A017';
-  return '#1E5CB3';
+    return INK.neutral;
+  return INK.brand;
 }
 
 function classifyGrade(grade: string | undefined): 'bull' | 'bear' | 'neut' {
@@ -66,8 +72,11 @@ function classifyGrade(grade: string | undefined): 'bull' | 'bear' | 'neut' {
 function insiderSentiment(txs: InsiderTransaction[]): { label: string; color: string; bg: string } {
   const buys  = txs.filter(t => t.type === 'Purchase').reduce((s, t) => s + (t.value ?? 0), 0);
   const sells = txs.filter(t => t.type === 'Sale').reduce((s, t) => s + (t.value ?? 0), 0);
-  if (buys > sells * 0.5) return { label: 'NET BUYER (Bullish)',  color: '#228B22', bg: 'rgba(34,139,34,.10)' };
-  return                         { label: 'NET SELLER (Bearish)', color: '#B22222', bg: 'rgba(178,34,34,.08)' };
+  // `color` paints a `.smart-section-tag` — text sitting on `bg`, a 8-10% wash of
+  // the same hue. The tint is the darkest ground either colour meets, and it is
+  // what the ink values were solved against.
+  if (buys > sells * 0.5) return { label: 'NET BUYER (Bullish)',  color: INK.up,   bg: 'rgba(34,139,34,.10)' };
+  return                         { label: 'NET SELLER (Bearish)', color: INK.down, bg: 'rgba(178,34,34,.08)' };
 }
 
 // Computes overall analyst consensus from the most recent rating per firm.
@@ -87,9 +96,9 @@ function analystConsensus(upgrades: AnalystUpgrade[]): { label: string; color: s
     else neut++;
   }
   if (!bull && !bear && !neut) return null;
-  if (bull >= bear && bull > neut) return { label: 'BULLISH',  color: '#228B22', bg: 'rgba(34,139,34,.10)' };
-  if (bear > bull  && bear > neut) return { label: 'BEARISH',  color: '#B22222', bg: 'rgba(178,34,34,.08)' };
-  return                                   { label: 'NEUTRAL',  color: '#D4A017', bg: 'rgba(212,160,23,.10)' };
+  if (bull >= bear && bull > neut) return { label: 'BULLISH',  color: INK.up,      bg: 'rgba(34,139,34,.10)' };
+  if (bear > bull  && bear > neut) return { label: 'BEARISH',  color: INK.down,    bg: 'rgba(178,34,34,.08)' };
+  return                                   { label: 'NEUTRAL',  color: INK.neutral, bg: 'rgba(212,160,23,.10)' };
 }
 
 function fmtDate(iso: string): string {
@@ -274,7 +283,7 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
       height: el.clientHeight || 220,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#8A97A8',
+        textColor: CHART_INK,
         fontFamily: "'JetBrains Mono', monospace",
       },
       grid: { vertLines: { color: '#F0F4F8' }, horzLines: { color: '#F0F4F8' } },
@@ -285,7 +294,7 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
       },
       rightPriceScale: {
         borderColor: '#E2E8F0',
-        textColor: '#8A97A8',
+        textColor: CHART_INK,
         minimumWidth: CHART_RIGHT_AXIS_WIDTH,
       },
       timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
@@ -558,7 +567,7 @@ function ChartLegend({ visible, toggle }: { visible: Visibility; toggle: (k: key
       <LegendChip active={visible.other} onClick={() => toggle('other')} icon={
         <span style={{ display: 'inline-flex', gap: 2 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2E7DE8' }} />
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#8A97A8' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: CHART_INK }} />
         </span>
       }>Award / Other</LegendChip>
       <LegendChip active={visible.analyst} onClick={() => toggle('analyst')} icon={

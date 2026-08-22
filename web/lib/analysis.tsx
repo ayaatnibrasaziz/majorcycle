@@ -52,7 +52,17 @@ const RETRY_BACKOFF_MS = 600;
 // transient batch read-timeouts (the "false skips") into successes. Genuinely
 // unknown / short-history tickers simply come back unavailable again.
 const RECONCILE_POOL = 2;
-const SNAPSHOT_KEY = 'mc:analysis-snapshot-v1';
+/**
+ * Where a finished run is mirrored so /results can render it with no recompute.
+ *
+ * ⚠️ EXPORTED so `e2e/fixtures/runSnapshot.ts` can seed it by importing this
+ * constant rather than restating the string. A test that hard-codes a storage key
+ * seeds NOTHING the day the key changes — and the page it then measures is the
+ * empty state, which passes every assertion perfectly. That is 14g's failure mode
+ * with a fixture attached: unmeasurable counted as clean. Nothing outside the
+ * tests should read this; use the context.
+ */
+export const SNAPSHOT_KEY = 'mc:analysis-snapshot-v1';
 
 /** A cancellable sleep — rejects (AbortError) if the run is cancelled mid-wait. */
 function delay(ms: number, signal: AbortSignal): Promise<void> {

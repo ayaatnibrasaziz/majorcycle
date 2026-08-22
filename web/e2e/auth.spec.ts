@@ -21,8 +21,8 @@ const BUILT_PUBLIC_PAGES = [
   '/disclaimer',
   '/terms',
   '/privacy',
-  '/methodology',
   '/contact',
+  '/learn',
 ];
 
 test.describe('unauthenticated gating', () => {
@@ -66,8 +66,11 @@ test.describe('security headers', () => {
     expect(h['x-content-type-options']).toBe('nosniff');
     expect(h['referrer-policy']).toBe('strict-origin-when-cross-origin');
     expect(h['permissions-policy']).toBeTruthy();
-    // CSP ships report-only until the enforcing flip (F4).
-    expect(h['content-security-policy-report-only']).toContain("default-src 'self'");
+    // Enforcing since 2026-08-23; it reported and blocked nothing before that.
+    // The policy itself is `csp.spec.ts`'s subject — asserted here only so this
+    // list of "the hardening headers" stays complete.
+    expect(h['content-security-policy']).toContain("default-src 'self'");
+    expect(h['content-security-policy-report-only']).toBeUndefined();
   });
 });
 
@@ -90,17 +93,98 @@ test.describe('auth-aware 404', () => {
     await expect(page).toHaveURL(/\/login\?next=/);
   });
 
-  test('a bad URL under a PUBLIC prefix renders the auth-aware 404 with "Back to sign in"', async ({
+  test('a bad URL under a PUBLIC prefix renders the 404 with one way out', async ({ page }) => {
+    // `/login/...` is treated as public, so middleware lets it through and Next
+    // renders the not-found.
+    //
+    // ⚠️ The page is deliberately SESSION-UNAWARE as of 2026-08-18. It used to
+    // read the session so it could say "Back to Browse" or "Back to sign in", and
+    // that one read made every public page on the site render on demand — the root
+    // not-found boundary is in every route's tree. The escape hatch is now a single
+    // link to `/`, which is correct for both readers because the middleware already
+    // owns that decision (see the next test).
+    await page.goto('/login/__no_such_page__');
+    const out = page.getByRole('link', { name: /back to majorcycle/i });
+    await expect(out).toBeVisible();
+    await expect(out).toHaveAttribute('href', '/');
+    // CONTROL: the session-reading version is gone for good. If someone
+    // reintroduces it to personalise the label, the public site quietly stops
+    // being prerendered and nothing else goes red.
+    await expect(page.getByRole('link', { name: /back to browse/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /back to sign in/i })).toHaveCount(0);
+  });
+
+  test('and that one link still lands a signed-out reader somewhere useful', async ({ page }) => {
+    // The half that makes the single link safe: `/` must actually serve the
+    // landing page to a reader with no session, rather than bouncing them. (The
+    // signed-in half — `/` → /stocks via SIGNED_OUT_ONLY_PATHS — is covered by
+    // the signed-in redirect tests, which have a real session to do it with.)
+    await page.goto('/login/__no_such_page__');
+    await page.getByRole('link', { name: /back to majorcycle/i }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator('header a[href="/signup"]')).toBeVisible();
+  });
+});
+
+test.describe('the deletion confirmation is for one reader only', () => {
+  /**
+   * `/deletion-requested` says "your account is now scheduled for permanent
+   * deletion" — true of exactly one person at one moment. It is public (the
+   * deletion flow signs you out globally, so it cannot read a session) and until
+   * Layer G it had no gate at all: any stranger typing the URL was told their
+   * account was being deleted.
+   *
+   * The marker is set by `requestAccountDeletion` right before it redirects.
+   * These tests drive the GATE; the setter is exercised by the real flow.
+   */
+  const MARKER = {
+    name: 'mc_deletion_notice',
+    value: '1',
+    domain: 'localhost',
+    // Path-scoped exactly as the server sets it — a mismatch here would make the
+    // test pass against a cookie the real browser would never send.
+    path: '/deletion-requested',
+  };
+
+  test('a stranger with no marker is sent to /login', async ({ page }) => {
+    await page.goto('/deletion-requested');
+    await expect(page).toHaveURL(/\/login/);
+  });
+
+  test('the browser that just deleted sees the confirmation', async ({ context, page }) => {
+    await context.addCookies([MARKER]);
+    const res = await page.goto('/deletion-requested');
+    expect(res?.status()).toBe(200);
+    await expect(page).toHaveURL(/\/deletion-requested/);
+    // The control: assert the PAGE, not just the status. A 200 on a redirected
+    // shell would otherwise read as a pass.
+    await expect(
+      page.getByRole('heading', { name: /account deletion scheduled/i }),
+    ).toBeVisible();
+  });
+
+  test('the marker survives a refresh — it is time-boxed, not one-shot', async ({
+    context,
     page,
   }) => {
-    // `/login/...` is treated as public, so middleware lets it through and Next
-    // renders the auth-aware not-found — which, logged-out, must offer sign-in.
-    await page.goto('/login/__no_such_page__');
-    await expect(page.getByRole('link', { name: /back to sign in/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /back to sign in/i })).toHaveAttribute(
-      'href',
-      '/login'
-    );
+    // A one-shot marker would bounce anyone who simply refreshed the page they
+    // had just been sent to, which is worse than the problem it solves.
+    await context.addCookies([MARKER]);
+    await page.goto('/deletion-requested');
+    await page.reload();
+    await expect(page).toHaveURL(/\/deletion-requested/);
+  });
+
+  test('the marker is not a key to anything else', async ({ context, page }) => {
+    // It unlocks one static page and grants nothing. If it ever starts standing
+    // in for a session, this turns red.
+    await context.addCookies([{ ...MARKER, path: '/' }]);
+    for (const route of ['/stocks', '/account', '/results']) {
+      await page.goto(route);
+      await expect(page, `${route} must still require a session`).toHaveURL(
+        /\/login\?next=/,
+      );
+    }
   });
 });
 
@@ -131,6 +215,104 @@ const PASSWORD = process.env.E2E_PASSWORD;
 
 test.describe('authenticated flows', () => {
   test.skip(!EMAIL || !PASSWORD, 'set E2E_EMAIL + E2E_PASSWORD to run');
+
+  /**
+   * Sign in and land wherever `next` says. Shared by the tests below.
+   *
+   * ⚠️ The wait is load-bearing, not tidiness. LoginForm finishes with a HARD
+   * `window.location.assign(next)` (deliberately — a client transition can race
+   * the freshly-set auth cookies). A caller that navigates straight afterwards
+   * is racing that assign, and the caller's own `goto` gets discarded: the first
+   * version of this helper returned immediately and the update-password test
+   * landed on /stocks looking for a heading that was never going to be there.
+   */
+  async function signIn(page: import('@playwright/test').Page, next?: string) {
+    await page.goto(next ? `/login?next=${encodeURIComponent(next)}` : '/login');
+    await page.fill('input#email', EMAIL!);
+    await page.fill('input#password', PASSWORD!);
+    await page.getByRole('button', { name: /^sign in$/i }).click();
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'));
+  }
+
+  test('a ?next= destination survives sign-in', async ({ page }) => {
+    // The trial funnel depends on this: /pricing sends a signed-out reader to
+    // /signup?next=/account and /login carries the same parameter, so a reader
+    // who bounced off a gated page must land back on it rather than on /stocks.
+    // Claimed as suite-covered by the Layer G plan; it was not.
+    await signIn(page, '/account');
+    await expect(page).toHaveURL(/\/account/);
+  });
+
+  test('an off-site ?next= cannot redirect a freshly authenticated session', async ({ page }) => {
+    // safeNextPath's rejection table is pinned in auth-contracts.spec.ts. This is
+    // the one that matters in practice: the guard runs on a value that is about
+    // to be handed to window.location.assign WITH a live session in the jar.
+    await signIn(page, 'https://evil.example/harvest');
+    await expect(page).toHaveURL(/\/stocks/);
+    expect(page.url()).not.toContain('evil.example');
+  });
+
+  test('a GET cannot sign you out, and cannot clear the recovery marker', async ({ page }) => {
+    // Both routes are POST-only precisely so a link, an <img>, or a speculative
+    // prefetch cannot fire them. Signed OUT the proxy answers first (covered in
+    // auth-forms.spec.ts); this is the half where there is a session to lose.
+    await signIn(page);
+    await expect(page).toHaveURL(/\/stocks/);
+
+    for (const route of ['/auth/signout', '/auth/recovery-done']) {
+      const res = await page.request.get(route, { maxRedirects: 0 });
+      expect(res.status(), `GET ${route} must not be handled`).toBe(405);
+    }
+
+    // The session is intact — asserting the outcome, not the status code alone.
+    await page.goto('/account');
+    await expect(page).toHaveURL(/\/account/);
+  });
+
+  test('the password-set form validates locally and never sends a bad update', async ({ page }) => {
+    // Both checks run BEFORE supabase.auth.updateUser, so this can be driven on
+    // the real test account without ever changing its password — which the
+    // request counter below proves rather than assumes.
+    await signIn(page);
+    await page.goto('/account/update-password');
+    await expect(page.getByRole('heading', { name: /set a new password/i })).toBeVisible();
+
+    // Count only WRITES to the user endpoint: aborting reads would break the
+    // session refresh and fail the test for an unrelated reason.
+    let writes = 0;
+    await page.route('**/auth/v1/user*', async (route) => {
+      if (route.request().method() === 'GET') return route.continue();
+      writes += 1;
+      await route.abort();
+    });
+
+    // Mismatch — the pair is checked, not just each field.
+    await page.fill('input#password', 'a-long-enough-password');
+    await page.fill('input#confirm', 'a-different-password');
+    await page.getByRole('button', { name: /update password/i }).click();
+    await expect(page.locator('form [role="alert"]')).toHaveText(/do not match/i);
+
+    // Too short, with the browser's own validation switched off so the JS check
+    // is the one under test. Set as a property, not by stripping React's
+    // minlength attribute — that would log a hydration mismatch and could be
+    // undone by the next render.
+    await page.locator('form').first().evaluate((f: HTMLFormElement) => {
+      f.noValidate = true;
+    });
+    await page.fill('input#password', 'short12');
+    await page.fill('input#confirm', 'short12');
+    await page.getByRole('button', { name: /update password/i }).click();
+    await expect(page.locator('form [role="alert"]')).toHaveText(/at least 8 characters/i);
+
+    expect(writes, 'no password change may have been attempted').toBe(0);
+
+    // The escape hatch is present and is a real POST to /auth/signout — a
+    // recovery-confined session has no other way off this page.
+    const escape = page.getByRole('button', { name: /cancel and return to sign in/i });
+    await expect(escape).toBeVisible();
+    const form = page.locator('form[action="/auth/signout"]');
+    await expect(form).toHaveAttribute('method', /post/i);
+  });
 
   test('email login → /stocks, sign-out → /login, re-gate works', async ({ page }) => {
     await page.goto('/login');
@@ -195,6 +377,19 @@ test.describe('authenticated flows', () => {
         /\/stocks/
       );
     }
+
+    // Ordering, stated as a test rather than as a comment beside the code: the
+    // new deletion-marker gate sits AFTER the signed-out-only bounce, so holding
+    // the marker can never let a signed-in reader onto that page. If the two
+    // checks are ever reordered, this is what says so.
+    await page.context().addCookies([
+      { name: 'mc_deletion_notice', value: '1', domain: 'localhost', path: '/deletion-requested' },
+    ]);
+    await page.goto('/deletion-requested');
+    await expect(
+      page,
+      'a signed-in reader holding the marker must still go to /stocks',
+    ).toHaveURL(/\/stocks/);
 
     // Sign out now lives in the header account menu rather than at the foot of the
     // sidebar (F3 Step 10) — that keeps it ONE click, which matters most on a shared

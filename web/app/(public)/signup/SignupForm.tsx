@@ -148,8 +148,11 @@ export function SignupForm() {
 
       {/* Kept OUT of the free-tier list on purpose. The trial is a separate, later
           choice with a different requirement, and the card must be named in the same
-          sentence — a reader who takes only half of this must still take a true half. */}
-      <p className="-mt-3 mb-6 text-[11.5px] leading-relaxed text-[var(--text-muted)]">
+          sentence — a reader who takes only half of this must still take a true half.
+          Which is also why it is --text-secondary rather than --text-muted (2.97:1)
+          from Layer G on: the sentence that stops someone misreading "free account"
+          as "free trial, card required" cannot be the faintest text on the page. */}
+      <p className="-mt-3 mb-6 text-[11.5px] leading-relaxed text-[var(--text-secondary)]">
         Our ratings, scorecard and screener are paid. When you want them, you can start
         a 7-day free trial from your account — that step does ask for a card, and
         nothing is charged until day 7.{' '}

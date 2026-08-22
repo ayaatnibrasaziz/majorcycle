@@ -60,17 +60,49 @@ export function StockSubnav({
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
-  // Warm the static offline bundle (~1.3 MB, same for every stock) once on mount,
-  // so a later Download click only waits on this stock's data, not the bundle.
+  /**
+   * Warm the static offline bundle (~1.3 MB, same for every stock) so a later
+   * Download click only waits on this stock's data.
+   *
+   * ⚠️ **Two conditions, and it had neither until 2026-08-22.** It ran on mount,
+   * for every viewer, and Lighthouse put the ticker page at **58** against
+   * decision #33's 90+ — 588 KB transferred inside the critical window, on a
+   * page already fighting a 790ms blocking time.
+   *
+   *  1. **Only for viewers who can download it.** A free account sees a lock
+   *     where this button is, so it was paying half a megabyte for a file the
+   *     route would answer 402 for. Note the sibling: `warmReportData` below has
+   *     always checked `entitled`. The rule existed and one of its two consumers
+   *     never received it (CLAUDE.md 11c-iv).
+   *  2. **Only when the browser is idle.** Prefetching is a courtesy to the next
+   *     click and must never compete with the page the reader is waiting on.
+   *     `requestIdleCallback` says exactly that; a bare effect says the opposite.
+   *
+   * Hovering the button still warms it immediately (`warmReportData`), so a
+   * customer who goes straight for Download does not wait on the idle callback.
+   */
   useEffect(() => {
-    prefetchReportBundle();
-  }, []);
+    if (!entitled) return;
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(() => prefetchReportBundle(), { timeout: 5_000 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(prefetchReportBundle, 2_000);
+    return () => clearTimeout(t);
+  }, [entitled]);
 
   // Start fetching this stock's report data the moment the user hovers/focuses the
   // button, so the file is usually ready by the time they click.
   function warmReportData() {
     // Nothing to warm without access — the route would only answer 402.
     if (!entitled) return;
+    // The bundle too: hover is a strong signal, and the idle warm above may not
+    // have fired yet on a slow machine.
+    prefetchReportBundle();
     prefetchReportData({ market, ticker, horizonQuery });
   }
 

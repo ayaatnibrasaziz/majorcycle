@@ -1,5 +1,5 @@
-import Image from 'next/image';
-import Link from 'next/link';
+import { PublicFooter } from '@/components/PublicFooter';
+import { PublicHeader } from '@/components/PublicHeader';
 
 // Origin of the Supabase project, derived from the public URL — used to warm the
 // TLS connection before the auth token exchange fires (see preconnect below).
@@ -42,51 +42,27 @@ export default function PublicLayout({
         }}
       />
 
-      {/* Top status bar — financial terminal touch */}
-      <div className="relative z-10 flex items-center justify-between px-6 lg:px-10 py-4 lg:py-5">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <Image
-            src="/logo.png"
-            alt="MajorCycle logo"
-            width={34}
-            height={34}
-            priority
-            className="w-[34px] h-[34px] rounded-[8px] shadow-[0_2px_8px_rgba(30,92,179,0.3)] transition-transform group-hover:scale-[1.04]"
-          />
-          <div className="leading-none">
-            <div className="text-[13px] font-bold text-[var(--brand-deep)] tracking-[-0.3px]">MajorCycle</div>
-            <div className="text-[9px] font-medium uppercase tracking-[0.8px] text-[var(--text-muted)] mt-1 font-mono">
-              Financial Terminal
-            </div>
-          </div>
-        </Link>
+      {/* The site header — nav, sign-in and the free-account call to action. One
+          definition for every public page (components/PublicHeader.tsx); the
+          "Markets · Live" pill it replaced was decoration on a page whose job is
+          to explain the product to a stranger and offer them a way in. */}
+      <PublicHeader />
 
-        {/* Status pill — matches reference's .header-pill style */}
-        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-surface)] border border-[var(--border)] shadow-[var(--shadow-sm)]">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
-          <span className="text-[10.5px] font-mono font-medium text-[var(--text-secondary)] tracking-[0.3px]">
-            Markets · Live
-          </span>
-        </div>
-      </div>
+      {/* Content area. The width lives with the PAGE, via <PageFrame> — this
+          used to be a hard-coded max-w-[440px], which put long-form prose down
+          a sign-in card. Chrome (above and below) is still defined once here,
+          so widening a page can never fork the header or the footer.
 
-      {/* Card area */}
-      <main className="relative z-10 flex-1 flex items-center justify-center px-5 pb-10">
-        <div className="w-full max-w-[440px]">
-          {children}
-        </div>
+          `pt-7` is not decoration: the header is sticky, and a vertically-centred
+          auth card otherwise sits flush against it with its own top edge cropped. */}
+      <main className="relative z-10 flex-1 flex flex-col px-5 pt-7 pb-10">
+        {children}
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 px-6 pb-6 text-center">
-        <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-          Information only — not financial advice.{' '}
-          <Link href="/disclaimer" className="underline underline-offset-2 hover:text-[var(--brand-mid)] transition-colors">
-            Full disclaimer
-          </Link>
-          .
-        </p>
-      </footer>
+      {/* Footer — ONE definition for every public page (CLAUDE.md 11c).
+          The YEAR is computed here, in the server component, and passed down: see
+          the note in PublicFooter for why it must not be read on the client. */}
+      <PublicFooter year={new Date().getFullYear()} />
     </div>
   );
 }

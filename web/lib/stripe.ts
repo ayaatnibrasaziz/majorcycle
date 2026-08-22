@@ -1,5 +1,7 @@
 import Stripe from 'stripe';
 
+import { SITE_ORIGIN } from '@/lib/url';
+
 /**
  * Server-side Stripe client + the small pure helpers shared across F3 (checkout,
  * webhook, portal, cron). Import this only from server code — it reads the secret
@@ -33,7 +35,7 @@ export function getStripe(): Stripe {
   _stripe = new Stripe(key, {
     apiVersion: STRIPE_API_VERSION,
     typescript: true,
-    appInfo: { name: 'MajorCycle', url: 'https://www.majorcycle.com' },
+    appInfo: { name: 'MajorCycle', url: SITE_ORIGIN },
     // Auto-retry transient network failures with idempotency keys + exponential
     // backoff (Stripe's recommended resilience default; the SDK does 0 retries
     // unless told to). Safe for our GETs (price list) and the checkout POST alike.

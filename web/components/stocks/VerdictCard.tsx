@@ -1,6 +1,7 @@
 import type { CycleAnalysis, Currency, FundamentalsSnapshot, OverallLabel, ValuationZone } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
 import { fmtCapped, fmtPrice } from '@/lib/format';
+import { OVERALL_LABELS, RATING_TIER_HEX, tierFromLabel } from '@/lib/ratings';
 import { tickerToUrlParts } from '@/lib/ticker';
 
 interface Props {
@@ -10,13 +11,40 @@ interface Props {
 }
 
 // ── Colour theme ────────────────────────────────────────────────────────────
-const COLOR_MAP: Record<OverallLabel, [string, string]> = {
-  'High Conviction': ['#006400', '#003200'],
-  'Constructive':    ['#228B22', '#0D5C0D'],
-  'Neutral':         ['#D4A017', '#8A6710'],
-  'Cautious':        ['#FF4500', '#A82E00'],
-  'Bearish':         ['#B22222', '#6B1414'],
-};
+//
+// ⚠️ Ten hand-typed hexes until 2026-08-22, and the reason it mattered is that
+// `--verdict-color` is used as TEXT (globals.css `.verdict-*`), not only as a
+// gradient: a Neutral verdict rendered its heading and its big score numeral in
+// #D4A017 on white, which measures **2.38** against a 4.5 floor. The Verdict card
+// is a premium surface on the Stock Detail page, and no guard had ever walked a
+// signed-in route, so it had failed since the day it was built.
+//
+// Both halves are now DERIVED. The bright end is the shared rating palette, so
+// this card can never drift from the screener's chips or the workbook's fills.
+// The deep end is the bright end scaled toward black — the five pairs were
+// already doing roughly this by hand (ratios ranged 0.50…0.66), and pinning the
+// rule matters more than preserving each accident: with brights darkened, the
+// old literal deep for Neutral (#8A6710) had come within a hair of its own bright
+// and the gradient would have rendered flat.
+//
+// White text sits on the gradient, and its LIGHT end is the bright one, so the
+// worst case is exactly the 4.6+ the palette now guarantees.
+const DEEP_SCALE = 0.62;
+
+function deepen(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+    .map((v) => Math.round(v * DEEP_SCALE).toString(16).padStart(2, '0'))
+    .join('');
+  return `#${ch}`;
+}
+
+const COLOR_MAP: Record<OverallLabel, [string, string]> = Object.fromEntries(
+  OVERALL_LABELS.map((label) => {
+    const bright = RATING_TIER_HEX[tierFromLabel(label)];
+    return [label, [bright, deepen(bright)]];
+  }),
+) as Record<OverallLabel, [string, string]>;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function fmt(n: number, decimals = 1): string {

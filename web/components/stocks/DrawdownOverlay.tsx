@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -22,6 +23,7 @@ import {
 } from '@/lib/chartSync';
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { CycleAnalysisFree, PriceBar } from '@/lib/types';
+import { INK } from '@/lib/ink';
 
 type Mode = 'drawdown' | 'profit';
 
@@ -152,7 +154,7 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       height: 200,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#8A97A8',
+        textColor: CHART_INK,
         fontFamily: "'JetBrains Mono', monospace",
       },
       grid: {
@@ -166,7 +168,7 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       },
       rightPriceScale: {
         borderColor: '#E2E8F0',
-        textColor: '#8A97A8',
+        textColor: CHART_INK,
         minimumWidth: CHART_RIGHT_AXIS_WIDTH,
       },
       // Pin both edges so this overlay (and the Price chart, which does the same)
@@ -195,7 +197,9 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
 
     if (typLine !== null) {
       chart.addLineSeries({
-        color: '#D4A017',
+        // Lightweight Charts paints the price-scale label in the series colour,
+        // so this is a dashed line AND its own text. 2.38:1 either way.
+        color: INK.neutral,
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         priceLineVisible: false,
