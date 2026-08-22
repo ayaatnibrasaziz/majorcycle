@@ -60,7 +60,8 @@ When in doubt about any decision: **ask, don't guess.**
 ├── CLAUDE.md                       ← THIS FILE — read first
 ├── README.md                       ← brief project intro for GitHub
 ├── reference/
-│   └── original-design.html        ← VISUAL SOURCE OF TRUTH for UI tasks
+│   └── original-design.html        ← the owner's original MOCK-UP. A reference,
+│                                     not a contract — see non-negotiable #1
 ├── docs/
 │   ├── architecture.md             ← system diagrams, data flow, hosting
 │   ├── design-system.md            ← colours, fonts, components, visual rules
@@ -123,7 +124,13 @@ These rules cannot be bent. If a task seems to require breaking one, **stop and 
 
 ### Visual & UX
 
-1. **Visual parity rule.** Any UI section with an equivalent in `/reference/original-design.html` MUST visually match it: brand palette, fonts, spacing, layout, hover states, tooltips — all preserved. Open the reference before building UI. Match it.
+1. **The reference HTML is a REFERENCE, not a contract.** `/reference/original-design.html` is the mock-up the owner built to *show* what they had in mind before any code existed. Read it to understand the intent — the brand palette, the fonts, the density, the shape of each section. It is **not** a specification the live site has to match, and it is **not** evidence that anything currently on the site is correct.
+
+    ⚠️ **This rule said the opposite until 2026-08-22**, and the cost was real: it read *"Any UI section with an equivalent MUST visually match it"*, so for months the answer to "why is it like this?" could be "because the mock-up is", and that ended the conversation. It ended one the same day — a design review flagged the accent stripes on "Why Attractive" / "Key Risks" and the honest answer was "the reference has them", which settles nothing about whether they should be on the live site. **A mock-up cannot tell you whether a decision is still right; it can only tell you what someone drew once.**
+
+    **So: the live site is decided with the owner, not derived from the file.** When something on screen is only defensible by pointing at the reference, that is the signal to *ask*, not to close the question. Deviations no longer need justifying against it; they need to be deliberate, and the reasoning goes in `docs/design-system.md`, which is the living record of what the site actually does and why.
+
+    ⚠️ **What has NOT changed:** the brand decisions in this file still bind (#25 colours, #26 fonts, #2 rating labels), accessibility is still a floor rather than a preference (#12), and "I felt like it" is still not a reason. What changed is only which document wins when they disagree — the owner does.
 
 2. **Rating labels.** The five tiers are **High Conviction / Constructive / Neutral / Cautious / Bearish**. Never use "Buy", "Sell", "Strong Buy", "Avoid" in our scoring outputs. (Wall Street analyst recommendations from yfinance display verbatim — that's third-party data, not our judgment.)
 
@@ -275,7 +282,7 @@ Fixed with `.figure-list` (`design-system.md` §11), the same opt-out shape as `
 - [ ] Read `docs/data-contracts.md` if the task involves data shapes or types
 - [ ] Read `docs/coding-standards.md` if writing new files or refactoring
 - [ ] Check `docs/glossary.md` if you hit an unfamiliar domain term
-- [ ] Open `/reference/original-design.html` if implementing UI that exists there
+- [ ] Skim `/reference/original-design.html` if the screen exists there — for intent, not as a spec (#1)
 - [ ] Confirm the task is in current Phase scope per `docs/roadmap.md`
 
 ---
@@ -355,7 +362,7 @@ These were agreed during planning. Do not relitigate.
 - File-naming, anti-patterns, conventions → `docs/coding-standards.md`
 - Domain vocabulary → `docs/glossary.md`
 - System diagrams and infrastructure → `docs/architecture.md`
-- Original UI source of truth → `/reference/original-design.html`
+- What the live site actually does, and why → `docs/design-system.md` (the reference HTML is a mock-up, not a spec — see #1)
 - Legal-page accuracy vs. what the system does → `docs/legal-audit.md` ✅ **all 7 applied 2026-08-15**
 - The Learn library — registry, guards, article contract, "Coming soon" → `data-contracts.md` §7b + `architecture.md` (public routes)
 - The three Learn illustrations — house style, the four load-bearing prompt lines, the 4K masters → `design-system.md` §11

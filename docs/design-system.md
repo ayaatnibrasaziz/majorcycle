@@ -1,21 +1,39 @@
 # Design System
 
-> **Purpose:** Defines every visual primitive — colours, fonts, spacing, components, chart standards, labels — used in `MajorCycle`. Read this before any UI task. Pair it with the visual parity rule from CLAUDE.md and the reference HTML.
+> **Purpose:** Defines every visual primitive — colours, fonts, spacing, components, chart standards, labels — used in `MajorCycle`. **This file, not the mock-up, is the record of what the live site does and why.** Read it before any UI task.
 >
-> See also: `CLAUDE.md`, `/reference/original-design.html`.
+> See also: `CLAUDE.md` (non-negotiable #1), and `/reference/original-design.html` for the owner's original intent.
 
 ---
 
-## 1. The Visual Parity Rule (Repeat, Important)
+## 1. The Reference HTML — What It Is, and What It Is Not
 
-Every UI section that has an equivalent in `/reference/original-design.html` MUST visually match it: same layout, same spacing, same hover behaviour, same tooltips, same colours. Before building any UI component:
+`/reference/original-design.html` is the **mock-up the owner built to show what they
+had in mind** before any code existed. It is a reference. It is not a contract, and
+the live site does not have to match it.
 
-1. Open `/reference/original-design.html`
-2. Locate the equivalent section (search for distinctive text or class names)
-3. Inspect its HTML structure, CSS values, and behaviour
-4. Replicate in React + Tailwind
+**Use it for intent.** When you are about to build a screen that exists there, open
+it and read what the owner was reaching for: the density, the rhythm of the sections,
+which numbers sit next to which, what the hover reveals. That is information you
+cannot get anywhere else, and it is still the fastest way to understand a screen.
 
-The new build's job is to **rebuild the same product on a modern foundation**, not to redesign it. Where reference exists, reference wins.
+**Do not use it as evidence.** "The reference does it this way" is not an argument
+that the live site is right, and it is not a reason to keep something. If the only
+defence of what is on screen is the mock-up, that is the moment to **ask the owner**,
+not the moment to close the question.
+
+> ⚠️ **This section said the opposite until 2026-08-22** — *"Where reference exists,
+> reference wins"* — and the cost was a category of question that could never be
+> asked. A design review flagged the 3px accent stripes on "Why Attractive" and "Key
+> Risks"; the answer was "they are in the reference at lines 744 and 746", which is
+> true and settles nothing. A mock-up can tell you what someone drew once. It cannot
+> tell you whether the decision is still right.
+
+**Where decisions are recorded now:** here. Every deviation, every deliberate choice,
+every measurement that forced one — this document. The brand decisions in `CLAUDE.md`
+(#25 colours, #26 fonts, #2 rating labels) still bind, and accessibility (#12) is a
+floor rather than a preference. What changed is only which document wins when the
+screen and the mock-up disagree: **the owner does.**
 
 ---
 
