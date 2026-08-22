@@ -117,7 +117,7 @@
      darkest green; the existing --c-tier-2-ink at 8.22 would have inverted it).
 
        tier   before    after      white ON it   as TEXT on the darkest ground
-       1      #006400   unchanged   7.44  ✓       6.73
+       1      #006400   #065F46     7.44 → 7.68   6.73 → 6.95
        2      #228B22   #1E7C1E     4.39 → 5.31   3.97 → 4.80
        3      #D4A017   #87660F     2.38 → 5.32   2.15 → 4.82
        4      #FF4500   #C73600     3.44 → 5.32   3.11 → 4.81
@@ -137,6 +137,32 @@
      was offered and the owner chose to keep Bearish unmistakably red. Note it is
      not a new colour: it is the value --c-tier-5-ink already held, so the palette
      got smaller. Owner-approved 2026-08-22.
+
+     ⚠️ TIER 1 MOVED FOR THE SAME REASON, one row up and worse — 2026-08-22, on
+     the same owner review. The two greens sat **8.2** apart, CLOSER than the red
+     pair that had just been fixed, and 8.6 to a red-green colour-blind reader.
+     Constructive could not move (4.80 as text is exactly the margin the palette
+     is built on), so the gap had to come from High Conviction, which had 7.44 to
+     spend. #065F46 is a deep PINE rather than a darker grass green, and the hue
+     shift is the point: it is almost exactly as LIGHT as #006400, so the top chip
+     does not become visibly heavier than the four below it, while separating by
+     hue as well as weight takes the colour-blind gap to **24.6** — a plain darker
+     green reached only 14.1. It also reads with the navy brand rather than
+     against it. Result: 8.2 → 17.1, and the weakest pair in the whole palette
+     becomes Cautious/Bearish at 16.3, so the floor under the ramp roughly doubles.
+
+     ⚠️ AND IT SEVERED THE LAST DOUBLE MEANING. #006400 is also the deep green on
+     candle borders, insider-buy markers and drawdown bounds — a hex that means
+     two things cannot be policed as a copy of one of them, which is why tiers 1
+     and 5 were both exempt from the stray-copy check. Both have now moved off
+     their direction twins, and **all five tiers are checkable** where three were.
+
+     ⚠️ ONE THING THIS DID NOT FIX, recorded rather than chased: Neutral against
+     Cautious measures **5.9** to a deuteranope (gold and orange-red both go
+     brown). The only lever is darkening Cautious, and every step that helps there
+     costs about the same on Cautious/Bearish. A trade, not a win — owner decided
+     to leave it. Nothing is unreadable: every chip carries its score and every
+     badge its word, so WCAG 1.4.1 is satisfied by the text, not the colour.
 
      ⚠️ The general lesson, which cost nothing here only because the owner looked:
      **a colour fixed in isolation can break a set.** Every one of the three
@@ -170,7 +196,7 @@
      these tokens or from `RATING_TIER_HEX` in `lib/ratings.ts`, and
      `pnpm check:tier-palette` fails the build if a rating surface grows a
      literal again. The direction colours are a different rule and keep theirs. */
-  --c-tier-1: #006400;
+  --c-tier-1: #065F46;
   --c-tier-2: #1E7C1E;
   --c-tier-3: #87660F;
   --c-tier-4: #C73600;

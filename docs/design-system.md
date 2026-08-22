@@ -37,6 +37,25 @@ screen and the mock-up disagree: **the owner does.**
 
 ---
 
+### 1a. Decisions taken about the live site
+
+Recorded here because §1 above no longer lets the mock-up answer for them.
+
+**The accent stripes stay** (owner, 2026-08-22). The 3px coloured bar down the
+left of the "Why Attractive" and "Key Risks" card headers, and the 2px one on the
+italic caveat block beneath each insight. A design review flagged them twice as a
+generic template look; the case for keeping them is that the stripe is the only
+thing that says, before a word is read, which of two facing cards is the good news
+and which is the caution. That is information, not decoration, and the criticism
+is aimed at decoration. Their colours moved to the ink layer the same day so they
+clear the contrast floor a graphic owes (the gold measured 2.38:1).
+
+⚠️ **This was previously "settled" by pointing at the reference HTML**, which
+settled nothing — see the box in §1. It is now a decision with a reason, and the
+reason is arguable on its own terms, which is the difference.
+
+---
+
 ## 2. Brand Colours
 
 ```css
@@ -83,13 +102,21 @@ screen and the mock-up disagree: **the owner does.**
      They changed twice that day and the sentence was simply wrong afterwards, in
      the one document a reader consults to find out what the palette is. Four of
      the five moved; `globals.css` carries the measurements and the reasons. */
-  --c-tier-1:      #006400;  /* High Conviction — unchanged */
+  --c-tier-1:      #065F46;  /* High Conviction — was #006400; see below */
   --c-tier-2:      #1E7C1E;  /* Constructive   — was #228B22, 4.39:1 under white */
   --c-tier-3:      #87660F;  /* Neutral        — was #D4A017, 2.38:1 under white */
   --c-tier-4:      #C73600;  /* Cautious       — was #FF4500, 3.44:1 under white */
   --c-tier-5:      #8B1414;  /* Bearish        — was #B22222; see below */
 
-  /* ⚠️ Tier 5 moved for a reason that is NOT contrast — it already passed at 6.68.
+  /* ⚠️ Tier 1 is a deep PINE, not a darker grass green, and the hue is the point.
+     The two greens sat 8.2 apart — closer than the red pair below — and Constructive
+     could not move (4.80 as text is exactly the palette's margin), so the gap had to
+     come from High Conviction. A pine is almost exactly as LIGHT as #006400, so the
+     top chip does not become heavier than the four beneath it, and separating by hue
+     as well as weight takes the colour-blind gap from 8.6 to 24.6 (a plain darker
+     green reached 14.1). 8.2 → 17.1. Owner-approved 2026-08-22.
+
+     ⚠️ Tier 5 moved for a reason that is NOT contrast — it already passed at 6.68.
      Darkening Cautious out of orange put it beside Bearish: 10.7 apart on the
      standard perceptual scale, and 10.0 to a red-green colour-blind reader, who is
      roughly one man in twelve. #8B1414 takes those to 16.3 and 16.1. Owner-approved.
@@ -298,7 +325,7 @@ The five composite rating tiers display as **neutral, advice-free language**. Th
 
 | Score Range | Label (use exactly this text) | Colour Token | Semantic |
 |---|---|---|---|
-| 80–100 | **High Conviction** | `--c-tier-1` (#006400) | Best-in-class opportunity |
+| 80–100 | **High Conviction** | `--c-tier-1` (#065F46) | Best-in-class opportunity |
 | 65–79 | **Constructive** | `--c-tier-2` (#1E7C1E) | Favourable setup |
 | 50–64 | **Neutral** | `--c-tier-3` (#87660F) | Mixed signal |
 | 35–49 | **Cautious** | `--c-tier-4` (#C73600) | Elevated risk |

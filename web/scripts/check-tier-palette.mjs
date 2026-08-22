@@ -238,12 +238,13 @@ for (const t of ['1', '2', '3', '4', '5']) {
 
 // ── 3 · no third copy of a changed tier ─────────────────────────────────────
 /*
- * ⚠️ Tier 5 JOINED THIS LIST on 2026-08-22. It used to be excluded with tier 1,
- * because the old Bearish red was ALSO the direction red (a down candle, a miss,
- * a sell), and a hex that means two things cannot be policed as a copy of one of
- * them. Deepening Bearish severed that — the direction red stayed exactly where
- * it was — so four of the five are now checkable. Tier 1 is still shared with the
- * deep-green candle borders and stays out.
+ * ⚠️ ALL FIVE ARE CHECKABLE as of 2026-08-22, where three were that morning.
+ * Tiers 1 and 5 were both excluded because each shared its hex with a DIRECTION
+ * colour — the old Bearish red was also a down candle and a sell marker, the old
+ * High Conviction green also a candle border and an insider-buy arrow — and a hex
+ * that means two things cannot be policed as a copy of one of them. Both tiers
+ * have since moved for reasons of their own, and each move severed the twin: the
+ * direction colours stayed exactly where they were.
  *
  * ⚠️ Every continuation line here starts with `*` deliberately: the prose filter
  * below skips `//`, `*` and `/*`, and the first draft of this very comment was
@@ -251,7 +252,7 @@ for (const t of ['1', '2', '3', '4', '5']) {
  * the third time in this repo a guard has failed on the sentence documenting its
  * own subject (CLAUDE.md 11c-iv). Hexes are named in words here, not digits.
  */
-const CHANGED = ['2', '3', '4', '5'].map((t) => fromCss[t]).filter(Boolean);
+const CHANGED = ['1', '2', '3', '4', '5'].map((t) => fromCss[t]).filter(Boolean);
 /* ⚠️ lib/ink.ts is a SOURCE here, not a suspect. INK.warn deliberately holds the
    same value as tier 4 — a rating and a direction that agree today and must stay
    free to move apart — so a copy check cannot tell it from a stray paste. Its own
@@ -314,10 +315,16 @@ for (const f of files) {
  * ⚠️ TWO ARE WEAK, AND ARE RECORDED RATHER THAN FIXED (CLAUDE.md 11l — a real
  * defect does not entitle me to widen a scope the owner set):
  *
- *   · 1 to 2, the two greens, sit 8.2 apart — CLOSER than the 4-to-5 pair that
- *     prompted all of this. Reported to the owner 2026-08-22.
  *   · 2 to 3 measures 2.8 to a protanope and 3 to 4 measures 5.9 to a
- *     deuteranope. Below about 2.3, two colours are indistinguishable.
+ *     deuteranope. Below about 2.3, two colours are indistinguishable. The gold
+ *     and the orange-red is the one a real person meets; it was measured and left
+ *     by owner decision, because the only lever (darkening Cautious) costs about
+ *     as much on the Cautious/Bearish pair as it buys here. A trade, not a win.
+ *
+ * The greens WERE the third: 1 to 2 sat 8.2 apart, closer than the pair that
+ * prompted all of this. Reported to the owner on 2026-08-22 and fixed the same
+ * day — High Conviction moved to a pine green, 8.2 → 17.1 and 8.6 → 24.6 for a
+ * colour-blind reader, which is why this pair's floors are the highest here.
  *
  * Not a WCAG failure: 1.4.1 forbids colour as the ONLY channel, and every chip
  * carries its score while every badge carries its word. It is a quality question,
@@ -325,7 +332,7 @@ for (const f of files) {
  */
 const SEPARATION = [
   // pair, plain, protanope, deuteranope — all measured 2026-08-22
-  [['1', '2'], 8.0, 8.5, 8.5],
+  [['1', '2'], 17.0, 18.0, 24.0],
   [['2', '3'], 28.0, 2.5, 7.0],
   [['3', '4'], 26.0, 12.5, 5.5],
   [['4', '5'], 16.0, 17.5, 16.0],

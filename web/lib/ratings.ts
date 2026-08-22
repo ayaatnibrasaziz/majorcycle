@@ -34,7 +34,7 @@ import type { CycleAnalysis, OverallLabel, ValuationZone } from '@/lib/types';
  * couple two things that must be free to move apart.
  */
 export const RATING_TIER_HEX: Readonly<Record<1 | 2 | 3 | 4 | 5, string>> = {
-  1: '#006400',
+  1: '#065F46',
   2: '#1E7C1E',
   3: '#87660F',
   4: '#C73600',
