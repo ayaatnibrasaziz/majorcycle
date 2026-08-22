@@ -1251,7 +1251,7 @@ by preference): custom domain (~US$10/mo), custom email domain (owner keeps the 
 
 **Auth pattern:** `web/proxy.ts` (middleware) and `(app)/layout.tsx` check that a `user` session exists and refresh it. **Subscription gating is enforced on top of that as of F3 Step 10 — see §7.1 above** (merged to `main` and live in production 2026-08-01, PR #72, merge commit `cd6b014`): checkout + the webhook populate the client-immutable entitlement columns on `profiles`, and `lib/entitlement.ts` is the single rule that reads them, enforced at the page, the proxy and the Python functions. A `profiles` row is created automatically for every new auth user by the `handle_new_user` trigger on `auth.users` (covers email/password + Google OAuth; `SECURITY DEFINER`, exception-safe so it can never block sign-in) — see migration `20260614030000_profiles_auto_create.sql`.
 
-**Security posture (F0.5 hardening — shipped 2026-07-05, PR #61):** a full code + platform audit hardened the auth surface. (a) **Recovery-session confinement:** a password-reset link mints a full session, so `auth/confirm` sets an httpOnly `mc_pw_recovery` marker and `proxy.ts` restricts that session to `/account/update-password` (+ `/auth/recovery-done`, `/auth/signout`) until the password is changed — a leaked/forwarded reset link can no longer roam the app (live-verified). The page now lives under the `(public)` shell (no sidebar). (b) **Sign-out:** POST `/auth/signout` + a sidebar `SignOutButton`. (c) **`profiles` billing-column lockdown:** table-level `UPDATE` revoked; a column `GRANT` allows only `display_name`/`country`/`acknowledged_disclaimer_at`, so `subscription_*`/`trial_ends_at`/`stripe_*` are client-immutable (cron/webhooks write them via the service-role key) — migration `20260705032433`. (d) **Security headers** in `web/next.config.ts` (X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, CSP report-only). (e) **Open-redirect guard** `safeNextPath()`. (f) **DMARC** tightened to `p=reject` (strict) — safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Deferred: leaked-password protection (Supabase Pro-only), CSP flip to enforcing (scoped and costed 2026-08-22 — see the posture box below; owner chose option C, a nonce on the per-request routes, deferred to its own session).
+**Security posture (F0.5 hardening — shipped 2026-07-05, PR #61):** a full code + platform audit hardened the auth surface. (a) **Recovery-session confinement:** a password-reset link mints a full session, so `auth/confirm` sets an httpOnly `mc_pw_recovery` marker and `proxy.ts` restricts that session to `/account/update-password` (+ `/auth/recovery-done`, `/auth/signout`) until the password is changed — a leaked/forwarded reset link can no longer roam the app (live-verified). The page now lives under the `(public)` shell (no sidebar). (b) **Sign-out:** POST `/auth/signout` + a sidebar `SignOutButton`. (c) **`profiles` billing-column lockdown:** table-level `UPDATE` revoked; a column `GRANT` allows only `display_name`/`country`/`acknowledged_disclaimer_at`, so `subscription_*`/`trial_ends_at`/`stripe_*` are client-immutable (cron/webhooks write them via the service-role key) — migration `20260705032433`. (d) **Security headers** in `web/next.config.ts` (X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy, CSP report-only). (e) **Open-redirect guard** `safeNextPath()`. (f) **DMARC** tightened to `p=reject` (strict) — safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Deferred: leaked-password protection (Supabase Pro-only). ✅ **The CSP flip to enforcing shipped 2026-08-23** — option C, a per-request nonce on the routes that already render per request and `'unsafe-inline'` on the seven prerendered pages; see the posture box below.
 
 > **Header review, Layer G, 2026-08-22 — the three settings nobody had consciously chosen.**
 >
@@ -1262,23 +1262,23 @@ by preference): custom domain (~US$10/mo), custom email domain (owner keeps the 
 >   local. An unset `remotePatterns` is not an omission: it is the setting that stops our own
 >   image optimiser being used as an open proxy for arbitrary URLs. Adding a pattern is a
 >   security decision.
-> - **CSP stays `Report-Only` as of 2026-08-22, and the flip is now scoped rather than
->   blocked.** Re-measured across **22 pages** on the **production build** (dev is useless
->   for this — Turbopack's `eval` produces violations that never ship), signed out and
->   signed in, including the 12 Learn articles, the legal pages, the auth pages and every
->   gated route: **186 violations, and every single one is `script-src-elem :: inline`.**
->   Zero for `style-src`, `img-src`, `font-src`, `connect-src`, `frame-src`, `form-action`,
->   `base-uri` or `object-src`. They are Next's own hydration bootstraps, 5 on `/login`,
->   28 on the landing, 57 on a stock page — scaling with page complexity, as expected.
+> - **CSP is ENFORCING since 2026-08-23** (`Report-Only` from F0.5 until then, i.e. it
+>   reported and blocked nothing for seven weeks). The flip was scoped by re-measuring
+>   **22 pages** on the **production build** — dev is useless for this, Turbopack's `eval`
+>   produces violations that never ship — signed out and signed in, including the 12 Learn
+>   articles, the legal pages, the auth pages and every gated route: **186 violations, and
+>   every single one `script-src-elem :: inline`.** Zero for `style-src`, `img-src`,
+>   `font-src`, `connect-src`, `frame-src`, `form-action`, `base-uri` or `object-src`.
+>   Those are Next's own hydration bootstraps, 5 on `/login`, 28 on the landing, 57 on a
+>   stock page — scaling with page complexity, as expected.
 >
->   That measurement splits the decision into three, and the owner has chosen **C, deferred
->   to its own session**:
+>   That measurement split the decision into three, and the owner chose **C**:
 >
 >   | | What | Cost | Risk |
 >   |---|---|---|---|
->   | **A** | enforce everything, `script-src` keeps `'unsafe-inline'` | none | measured zero |
->   | **B** | full nonce everywhere | every route turns dynamic; the 77ms click returns to ~674ms (11s) | "loads but nothing works", sign-in included |
->   | **C** | nonce on the routes that are ALREADY per-request; A's policy on the 7 prerendered pages | none | needs its own verification |
+>   | A | enforce everything, `script-src` keeps `'unsafe-inline'` | none | measured zero |
+>   | B | full nonce everywhere | every route turns dynamic; the 77ms click returns to ~674ms (11s) | "loads but nothing works", sign-in included |
+>   | **C ✅** | nonce on the routes that are ALREADY per-request; A's policy on the 7 prerendered pages | none | verified below |
 >
 >   ⚠️ **C is cheap because of a fact about this site rather than a clever trick.** A nonce
 >   must differ per visit, so it forces a page to be rendered per request — but only **7
@@ -1288,9 +1288,60 @@ by preference): custom domain (~US$10/mo), custom email domain (owner keeps the 
 >   page — is **already** rendered per request because it shows one person's data, so a
 >   nonce there costs nothing. The strongest policy lands exactly where a session lives.
 >
->   Failure mode remains "the page renders but nothing is interactive", on pages including
->   sign-in, which the owner cannot debug from outside. **→ its own session, with its own
->   verification on the preview before production.**
+>   ⚠️ **One directive is wider than "what we measured", on purpose.** `form-action` is
+>   `'self' https://billing.stripe.com`, because `SubscriptionCard` opens the Customer
+>   Portal with a real `<form method="post" action="/api/portal">` and that route answers
+>   `303 → https://billing.stripe.com/p/session/…`. Whether `form-action` is checked
+>   against the **redirect** as well as the original target has moved with browser versions
+>   — Chrome shipped it, reverted it because it broke SSO flows, Safari differs again — and
+>   the 22-page sweep could not have seen it, because a `form-action` violation only fires
+>   on submission. Naming the destination removes the question rather than betting on it,
+>   on the one button a paying customer presses to change their card or cancel. The
+>   Checkout hand-off is *not* affected and is deliberately not listed: it is
+>   `window.location.href` after a `fetch`, a script-initiated navigation `form-action`
+>   never governs.
+>
+>   **Where it lives.** `lib/csp.ts` builds both forms and owns `usesNonce()`; `proxy.ts`
+>   mints the nonce and puts the policy on every response it returns, including the
+>   redirects and the refusals — Next attaches no CSP to those, and a header applied by a
+>   helper every `return` passes through cannot quietly stop applying to one branch (11a,
+>   four times). `next.config.ts` keeps only the four flat headers. Measured on the wire
+>   after the change: prerendered routes still answer `x-nextjs-prerender: 1` with
+>   `s-maxage=31536000`, so **the 77ms click is intact**.
+>
+>   ⚠️ **The failure this design exists to avoid, measured rather than imagined.** A
+>   prerendered page's HTML was written at build time and its script tags carry no nonce.
+>   Deliberately putting `/terms` on the nonce list produced exactly the predicted result:
+>   the header named a nonce, the document contained **zero** nonce attributes, and the
+>   browser reported **14 violations** — every script refused, the page rendering and then
+>   doing nothing. That is why `usesNonce` is an **allow-list**: an unrecognised path (Next
+>   serves one prerendered `_not-found.html` for anything that matches no route) falls to
+>   the inline form and works. Getting the list wrong costs strength on one route; it can
+>   never produce a dead page.
+>
+>   ⚠️ **And a trap found by sabotage, worth knowing before anyone edits `proxy.ts`.**
+>   Next's Node server copies every middleware **response** header back onto the **request**
+>   before rendering (`resolve-routes.js`: `resHeaders[key] = value; req.headers[key] =
+>   value`). So on `next start` the response header wins and the header and the HTML can
+>   never be *seen* to disagree — a sabotage that gave the response a second, different
+>   nonce came back **matching** on the wire. Vercel's edge is not obliged to do that copy.
+>   Deriving the response from a second `createNonce()` would therefore pass every local
+>   check and ship a dead page in production only. **One string, built once, used for both.**
+>
+>   **Guarded three ways.** `pnpm check:render-modes` (in CI, reads the build output)
+>   asserts the nonce list and the prerendered set can never overlap, in *both* directions
+>   — the reverse error is silent, a per-request page quietly shipping the weaker policy.
+>   `e2e/csp.spec.ts` asserts the header is enforcing on every route class including the
+>   307s and the 401. `pnpm check:csp` drives the production build on :3200, signs in, and
+>   checks the nonce reaches every inline script, changes between requests, and that a real
+>   browser reports zero violations across 12 routes — the last being the only one that
+>   answers "does the site still work". All three were broken on purpose first; the third
+>   caught a false positive in itself (an external `src` script needs no nonce, so
+>   Google Identity Services made the strict form flaky).
+>
+>   The dev server keeps `'unsafe-eval'`, gated on `NODE_ENV`, because Turbopack compiles
+>   with `eval` for hot reloading; `check:csp` fails the build if it ever appears in
+>   production.
 >
 > ⚠️ **The other blocker was a real bug in the policy, and it is fixed.** `style-src` was
 > missing `https://accounts.google.com`, so `/login` and `/signup` each reported
@@ -1298,7 +1349,8 @@ by preference): custom domain (~US$10/mo), custom email domain (owner keeps the 
 > policy reports rather than blocks — **which is exactly the danger. A Report-Only policy
 > that is wrong is not harmless; it is a trap primed for whoever eventually flips it**, and
 > the thing it would have broken is the Google sign-in button. Verified fixed on the wire:
-> that violation is gone, the inline-script ones remain.
+> that violation is gone. The inline-script ones are now *allowed* rather than reported —
+> by a nonce where the route can carry one, by `'unsafe-inline'` where it cannot.
 
 **(g) Deletion-notice confinement (Layer G, 2026-08-12).** A second httpOnly marker,
 `mc_deletion_notice`, set by `requestAccountDeletion` and enforced in `proxy.ts`, so the

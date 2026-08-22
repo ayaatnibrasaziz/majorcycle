@@ -119,7 +119,15 @@ jobs:
       # un-statics the whole public site with nothing going red, and a page that
       # becomes static starts sending `s-maxage` where it used to send
       # `private, no-store` (CLAUDE.md 11a). Prints its own count.
-      - name: Render modes (which pages are prerendered)
+      #
+      # ⚠️ Since 2026-08-23 it also carries the CSP nonce invariant, and that one
+      # is not a performance matter: a prerendered page's HTML was written at
+      # build time and carries no nonce, so sending it a nonce policy refuses
+      # every script in it — the page renders and then does nothing. Measured on
+      # a deliberate break: 14 violations on /terms. This is the only CI-runnable
+      # guard for it; `pnpm check:csp` proves the rest, but it needs a production
+      # server and a real session, so it runs locally like `check:page-weight`.
+      - name: Render modes (which pages are prerendered, and which take a CSP nonce)
         run: pnpm check:render-modes
 
   e2e:

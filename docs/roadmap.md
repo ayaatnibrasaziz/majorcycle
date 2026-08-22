@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited. Layer G is in its last stretch, all of it inside PR #89, deliberately unmerged until the layer is finished.** Done: **G1** SEO plumbing · **G2** design foundations · **G3** public chrome · **G3.5** the auth net · **G3.7** the legal documents (owner-accepted 2026-08-13; their TEXT is still `BASELINE CONTENT` awaiting professional review before wide launch) · the **legal compliance audit**, all 7 findings applied · **G3.8** the landing page rebuilt to the approved storyboard and `/methodology` folded into it · **G3.9** the render-mode fix (every public page now prerendered) · **G4** the twelve-article `/learn` library, **all three topics read through and approved by the owner** (2026-08-21/22) · **G5** Lighthouse, accessibility, structured data and the config review · **G6** the colour review (the ink layer, two rating colours, three faded-text defects, and the reference HTML demoted from contract to mock-up). **Remaining in Layer G: the weekly market note (`/notes` + `/notes/[date]`)**, then a full Layer G audit before merge. ⛔ `/about` and `/glossary` are **dropped** (owner, 2026-08-22) — About may return later, the glossary is permanently cancelled; `llms.txt` dropped on the same day.
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited. Layer G is in its last stretch, all of it inside PR #89, deliberately unmerged until the layer is finished.** Done: **G1** SEO plumbing · **G2** design foundations · **G3** public chrome · **G3.5** the auth net · **G3.7** the legal documents (owner-accepted 2026-08-13; their TEXT is still `BASELINE CONTENT` awaiting professional review before wide launch) · the **legal compliance audit**, all 7 findings applied · **G3.8** the landing page rebuilt to the approved storyboard and `/methodology` folded into it · **G3.9** the render-mode fix (every public page now prerendered) · **G4** the twelve-article `/learn` library, **all three topics read through and approved by the owner** (2026-08-21/22) · **G5** Lighthouse, accessibility, structured data and the config review · **G6** the colour review (the ink layer, two rating colours, three faded-text defects, and the reference HTML demoted from contract to mock-up). · **G7** the CSP flip — enforcing at last, with a per-request nonce wherever a session lives. **Remaining in Layer G: the weekly market note (`/notes` + `/notes/[date]`)**, then a full Layer G audit before merge. ⛔ `/about` and `/glossary` are **dropped** (owner, 2026-08-22) — About may return later, the glossary is permanently cancelled; `llms.txt` dropped on the same day.
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -2029,6 +2029,69 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > that broke the build. Move a stale build **out of the project**, not sideways within it.
 > (iii) A 48-minute run with 267 failures was the machine thrashing, not a regression —
 > the same tree ran clean in 8 minutes. **Re-run before diagnosing.**
+
+
+> #### ✅ G7 — the CSP flip. 2026-08-23, still inside PR #89.
+>
+> The Content-Security-Policy has been `Report-Only` since F0.5 — seven weeks of a header
+> that reported and blocked nothing. It now **enforces**, in the shape the owner chose from
+> the three costed options (A/B/C in `architecture.md` §7): **option C**, a per-request
+> nonce on the routes that already render per request, and A's `'unsafe-inline'` policy on
+> the seven prerendered pages.
+>
+> **Why the split is a fact rather than a compromise.** A nonce must differ per visit, so it
+> can only exist on HTML generated per visit. Seven public routes are prerendered on
+> purpose — that is the 77ms click against ~674ms (11s) — and their HTML was written at
+> build time with no token in it. Sending those a nonce policy does not weaken them, it
+> **kills** them: every script refused, the page rendering and then doing nothing. Every
+> route that holds a session already renders per request, so the nonce costs nothing
+> exactly where it is worth most.
+>
+> **Built:** `lib/csp.ts` (both forms, `usesNonce()`, the nonce generator), `proxy.ts` (mints
+> it, and puts the policy on **every** response it returns — the redirects and the refusals
+> included, because a header applied by a helper every `return` passes through cannot
+> quietly stop applying to one branch), `next.config.ts` reduced to the four flat headers.
+> Measured after the change: prerendered routes still answer `x-nextjs-prerender: 1` with
+> `s-maxage=31536000`, so nothing was traded away.
+>
+> **Guarded three ways, each broken on purpose first.** `check:render-modes` (in CI, reads
+> the build output) asserts the nonce set and the prerendered set can never overlap, in both
+> directions — the reverse error is silent, a per-request page quietly shipping the weaker
+> policy. `e2e/csp.spec.ts` asserts the header is enforcing on every route class including a
+> 307 and a 401. `pnpm check:csp` drives the production build on :3200, signs in, and checks
+> 12 routes for the right form, the nonce reaching every inline script, the nonce changing
+> between requests, `'unsafe-eval'` never appearing, and **zero** `securitypolicyviolation`
+> events in a real browser.
+>
+> ⚠️ **Three findings from the breaks, and two were about my own instruments.**
+> (i) Mis-listing `/terms` produced the predicted death exactly: header naming a nonce, zero
+> nonce attributes in the document, **14 violations**. That is why `usesNonce` is an
+> ALLOW-list — Next serves one prerendered `_not-found.html` for any unmatched path, and no
+> middleware can predict that, so an unrecognised route must fall to the working form.
+> (ii) **A sabotage that failed to break.** Giving the response a second, different nonce
+> came back *matching* on the wire: Next's Node server copies every middleware response
+> header onto the request before rendering, so locally the two can never be seen to
+> disagree — and **Vercel's edge is not obliged to do that**. The code would have passed
+> every local check and shipped a dead page in production only. Fixed structurally: one
+> string, built once, used for both. (iii) The nonce check was **stricter than the rule**
+> and went flaky — a script with a `src` is judged by its URL against the allow-list and
+> needs no nonce, and Google Identity Services injects exactly such a tag.
+>
+> ⚠️ **A fourth finding, and it cost the most: a false regression that survived a
+> controlled A/B.** The report route began answering 404 instead of 402. `git stash`, three
+> runs each side, gave **3 failures with the change and 3 passes without** — then a bisect
+> gave six more consistent results pinning it on the response header's NAME. All of it was
+> the `.next-dev` cache, which persists across a stash, across `reuseExistingServer: false`
+> and across a server restart, so it sat under *both* arms and tracked my edits rather than
+> the code under test. Moving `.next-dev` out of the repo and re-running gave **46 passed**
+> on the unmodified change. The tell was there and I did not take it: "the header's name
+> breaks route resolution, but only on a dynamic route handler" is not a mechanism any
+> reading of Next's source supports. **Clear the build cache between the arms of an A/B,
+> and treat an implausible mechanism as evidence against the instrument.** CLAUDE.md 11i,
+> fifth item.
+>
+> The dev server keeps `'unsafe-eval'` (Turbopack compiles with `eval` for hot reloading),
+> gated on `NODE_ENV` and asserted absent in production by `check:csp`.
 
 
 ### Layer H: Pre-launch Hardening (Phase 1.5, target: 1 week)

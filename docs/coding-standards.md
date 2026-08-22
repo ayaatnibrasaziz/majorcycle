@@ -656,7 +656,23 @@ decision — see § 8.**)
     emits, and asserts **both** columns: which routes are prerendered and which must never
     be. A missing static page and an extra one fail in opposite directions, and the extra
     one is the security case (§ CLAUDE.md 11s). Runs after `pnpm build`, because it guards
-    the artifact rather than the source.
+    the artifact rather than the source. ⚠️ Since 2026-08-23 it also carries the **CSP
+    nonce invariant**, which is the one that would take the site down rather than slow it:
+    a prerendered page's HTML was written at build time and carries no nonce, so a nonce
+    policy refuses every script in it and the page renders and then does nothing (measured:
+    14 violations on a deliberately mis-listed `/terms`). It imports `usesNonce` from
+    `lib/csp.ts` rather than restating the list, and checks both directions — the reverse
+    error, a per-request page silently shipping the weaker `'unsafe-inline'` policy, breaks
+    nothing and so would never be noticed (14g).
+15. `pnpm check:csp` — the production half, and a **script rather than a spec** for the
+    same reason as `check:page-weight`: e2e boots `next dev`, where the policy deliberately
+    allows `'unsafe-eval'` for Turbopack's hot reloading. Needs `pnpm start:fresh --port
+    3200` and a real session. Across 12 routes it asserts the header is enforcing (never
+    `Report-Only`), the right form per route, that the nonce reaches **every inline script**
+    in the document, that it changes between two requests, that `'unsafe-eval'` never
+    appears, and that a real browser reports **zero** `securitypolicyviolation` events —
+    the last being the only one that answers "does the site still work". It counts inline
+    scripts so a page that failed to load cannot pass by being empty.
 13. Playwright e2e — *(no count here on purpose. It has read 121, 332 and 335, each stale
     within days, in the very section that tells you to read the count off the run. A doc
     figure is not a measurement.)* Includes the paywall behavioural matrix, the Stripe
@@ -745,6 +761,7 @@ Every task ends with the relevant command(s) and shown output:
 | Signed-in markup, CSS or a colour | `pnpm e2e e2e/app-a11y.spec.ts e2e/app-contrast.spec.ts` | 0 violations; the ONE logotype carve-out stays at exactly 1 |
 | Any rating or direction colour | `pnpm check:tier-palette` | two copies in step · all five tiers legible both ways · every adjacent pair still tellable apart · the ink layer in step |
 | Anything that could change page weight | `pnpm lighthouse` (needs `next start` on **:3200**) | public pages 100; ticker page not below its recorded median |
+| `proxy.ts`, `lib/csp.ts`, or anything that adds a script/style/font/API origin | `pnpm check:csp` (needs `pnpm start:fresh --port 3200`) + `pnpm check:render-modes` | 12 routes, zero violations; the nonce and prerendered sets do not overlap |
 
 ⚠️ **`pnpm lighthouse` refuses to run against `:3000`.** A dev-server score is meaningless —
 unminified bundles, no prerender, a compile inside the first request — and the number looks

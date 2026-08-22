@@ -1,51 +1,25 @@
 import type { NextConfig } from "next";
 
-// ── Security headers (F0.5 finding F) ────────────────────────────────────────
-// Vercel already sends HSTS. We add clickjacking / MIME / referrer / permissions
-// protections plus a Content-Security-Policy.
+// ── Security headers (F0.5 finding F) ───────────────────────────────
+// Vercel already sends HSTS. These four are flat strings that are the same on
+// every response, so they belong here.
 //
-// The CSP is shipped as **Report-Only** first: it does NOT block anything yet, it
-// only reports what WOULD be blocked. This is deliberate — it lets us confirm the
-// Google Identity Services popup, the Supabase auth calls, and Next.js's own
-// inline hydration scripts all still work before we switch it to enforcing in a
-// later change. Flip `Content-Security-Policy-Report-Only` → `Content-Security-Policy`
-// only after verifying the browser console shows no blocking violations (and,
-// for scripts, after adding a nonce or `'unsafe-inline'` as needed).
-const supabaseOrigin = (() => {
-  const url = process.env['NEXT_PUBLIC_SUPABASE_URL'];
-  try {
-    return url ? new URL(url).origin : 'https://*.supabase.co';
-  } catch {
-    return 'https://*.supabase.co';
-  }
-})();
-
-const csp = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-  "script-src 'self' https://accounts.google.com https://apis.google.com",
-  // ⚠️ `accounts.google.com` belongs here, and its absence was a real defect —
-  // measured on the production build 2026-08-22, `/login` and `/signup` each
-  // reported `style-src-elem :: https://accounts.google.com/gsi/style`. Nothing
-  // broke, because the policy is Report-Only; the day it is enforced, the Google
-  // sign-in button would lose its stylesheet. **A Report-Only policy that is
-  // wrong is not harmless — it is a trap primed for the person who flips it.**
-  "style-src 'self' 'unsafe-inline' https://accounts.google.com",
-  "img-src 'self' data: https://www.majorcycle.com",
-  "font-src 'self'",
-  `connect-src 'self' ${supabaseOrigin} https://accounts.google.com`,
-  "frame-src https://accounts.google.com",
-].join('; ');
-
+// ⚠️ **The Content-Security-Policy is NOT here — it lives in `proxy.ts`.** It
+// stopped being one string on 2026-08-23: a route rendered per request now carries
+// a per-request nonce and a prerendered one carries `'unsafe-inline'`, and only
+// middleware knows which request it is looking at. `lib/csp.ts` builds both forms
+// and explains why the split is a fact about this site rather than a compromise.
+//
+// The consequence to know: middleware does not run for `_next/static`, `_next/image`
+// or image files (see the matcher at the foot of `proxy.ts`), so those responses
+// carry these four headers and no CSP. That is correct rather than tolerated — a
+// CSP governs the DOCUMENT that loads a subresource, not the subresource itself,
+// and every document on this site goes through the middleware.
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-  { key: 'Content-Security-Policy-Report-Only', value: csp },
 ];
 
 // ── Build output directory (live-check Session 2, finding C) ─────────────────
@@ -106,17 +80,13 @@ const nextConfig: NextConfig = {
   // optimiser being used as an open proxy for arbitrary URLs. Adding a pattern
   // is a security decision, not a convenience one.
   //
-  // ⚠️ **3. The CSP stays REPORT-ONLY, and here is exactly what blocks it.**
-  // Measured on the production build (not dev, where Turbopack's `eval` produces
-  // violations that will never ship): every page reports `script-src-elem ::
-  // inline`, 14 on `/terms` and 28 on the landing, scaling with page complexity.
-  // These are Next's own hydration bootstraps. Enforcing today would break the
-  // entire site, and the only correct fix is a per-request nonce threaded from
-  // `proxy.ts` through every response — real work, with the failure mode "the
-  // site loads but nothing is interactive", on pages including sign-in. That is
-  // a Layer H job with its own verification, not a flag flip at the end of G.
-  // The `style-src` gap above was the other blocker and is now closed, so the
-  // policy is at least TRUE about what the site does.
+  // ⚠️ **3. The CSP is ENFORCING, and it is built in `proxy.ts`.** It was
+  // `Report-Only` until 2026-08-23. The flip was scoped by measuring 22 pages on
+  // the production build: 186 violations, every single one `script-src-elem ::
+  // inline` — Next's own hydration bootstraps — and zero for every other
+  // directive. See `lib/csp.ts` for the two forms and `pnpm check:csp` for the
+  // proof, which reads the headers and the rendered HTML off a real server rather
+  // than trusting this file.
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

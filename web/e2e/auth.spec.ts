@@ -66,8 +66,11 @@ test.describe('security headers', () => {
     expect(h['x-content-type-options']).toBe('nosniff');
     expect(h['referrer-policy']).toBe('strict-origin-when-cross-origin');
     expect(h['permissions-policy']).toBeTruthy();
-    // CSP ships report-only until the enforcing flip (F4).
-    expect(h['content-security-policy-report-only']).toContain("default-src 'self'");
+    // Enforcing since 2026-08-23; it reported and blocked nothing before that.
+    // The policy itself is `csp.spec.ts`'s subject — asserted here only so this
+    // list of "the hardening headers" stays complete.
+    expect(h['content-security-policy']).toContain("default-src 'self'");
+    expect(h['content-security-policy-report-only']).toBeUndefined();
   });
 });
 

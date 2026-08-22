@@ -2,9 +2,11 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { DELETION_NOTICE_COOKIE, DELETION_NOTICE_PATH } from '@/lib/account';
 import { PW_RECOVERY_COOKIE, PW_RECOVERY_ALLOWED_PATHS } from '@/lib/authRecovery';
+import { contentSecurityPolicy, createNonce, usesNonce } from '@/lib/csp';
 import { accessDenialReason, hasAccess } from '@/lib/entitlement';
 import { INTERNAL_HEADER, hasInternalSecret } from '@/lib/internalAuth';
 import { PUBLIC_ENDPOINTS, PUBLIC_PAGES } from '@/lib/seo';
+import { SITE_ORIGIN } from '@/lib/url';
 
 /** Internal-only analysis endpoint — secret-gated, never session-gated. */
 const CYCLE_PATH = '/api/cycle';
@@ -67,10 +69,76 @@ const PUBLIC_PATHS = [
 ];
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // ── Content-Security-Policy ─────────────────────────────────────────────────
+  // The policy is built HERE rather than in `next.config.ts` because it is no
+  // longer one string: a route rendered per request gets a per-request nonce, a
+  // prerendered one cannot (lib/csp.ts explains why at length). Only middleware
+  // knows which request it is looking at.
+  //
+  // ⚠️ Every response this function returns must carry it — including the
+  // refusals and the redirects. Next attaches NO `Cache-Control` to route
+  // handlers and it attaches no CSP either; "I didn't see a missing header" is
+  // not the same as "the header is there", and this repo has been bitten four
+  // times by exactly that (11a). Hence `send()`, which every `return` goes
+  // through, and `check:csp`, which reads them off the wire.
+  const nonce = usesNonce(pathname) ? createNonce() : null;
+  const policy = contentSecurityPolicy({
+    nonce,
+    dev: process.env.NODE_ENV !== 'production',
+    supabaseUrl: process.env['NEXT_PUBLIC_SUPABASE_URL'],
+    siteOrigin: SITE_ORIGIN,
+  });
+
+  // The nonce reaches the renderer on the REQUEST, not the response: Next parses
+  // an incoming `Content-Security-Policy` for a `'nonce-…'` source and stamps it
+  // onto every script tag it emits (`get-script-nonce-from-header.js`).
+  //
+  // ⚠️ Built only when there IS a nonce. Handing Next modified request headers is
+  // a signal in its own right, and the seven prerendered routes must keep being
+  // served from their prebuilt files — that is the 77ms click. Nothing changes
+  // for them here at all.
+  // ⚠️ Built fresh on every call, never once and reused. `setAll` below writes the
+  // refreshed session onto `request.cookies` and then re-derives the response; a
+  // header snapshot taken up here would still hold the OLD cookie and hand the
+  // renderer a stale session — on precisely the nonce'd routes, which are the
+  // signed-in ones. Cloning costs nothing; being wrong here costs a sign-in.
+  const nonceHeaders = () => {
+    if (!nonce) return null;
+    const headers = new Headers(request.headers);
+    headers.set('content-security-policy', policy);
+    headers.set('x-nonce', nonce);
+    return headers;
+  };
+
+  const passThrough = (extraHeaders?: Headers) => {
+    const headers = extraHeaders ?? nonceHeaders();
+    return headers
+      ? NextResponse.next({ request: { headers } })
+      : NextResponse.next({ request });
+  };
+
+  // ⚠️ The SAME string goes on the response as went on the request, and that is a
+  // safety property rather than tidiness. Next's Node server copies every
+  // middleware response header back onto the request before rendering
+  // (`resolve-routes.js` — `resHeaders[key] = value; req.headers[key] = value`),
+  // so locally the response wins and the two can never be seen to disagree.
+  // Vercel's edge is not obliged to do that. Deriving the response from a second
+  // `createNonce()` would therefore pass every local check and ship a page whose
+  // header names a nonce its own HTML does not carry — every script refused, the
+  // page rendering and then doing nothing, in production only. Measured: that is
+  // exactly what a prerendered route with a nonce policy does (14 violations on
+  // `/terms`, zero nonce attributes in the document). One string, used twice.
+  const send = <T extends NextResponse>(response: T): T => {
+    response.headers.set('Content-Security-Policy', policy);
+    return response;
+  };
+
   // Dev-only bypass: skip auth so the local preview server can render pages
   // without a Supabase session. NODE_ENV guard ensures this never fires in prod.
   if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {
-    return NextResponse.next({ request });
+    return send(passThrough());
   }
 
   // /api/cycle — internal only. Checked FIRST, before the Supabase client is even
@@ -84,17 +152,17 @@ export async function proxy(request: NextRequest) {
   //
   // This is the edge half of the gate; api/cycle.py re-checks the same header and is
   // the authority. (F3 Step 10 audit, finding B2.)
-  if (request.nextUrl.pathname === CYCLE_PATH) {
+  if (pathname === CYCLE_PATH) {
     if (hasInternalSecret(request.headers.get(INTERNAL_HEADER))) {
-      return NextResponse.next({ request });
+      return send(passThrough());
     }
-    return NextResponse.json(
+    return send(NextResponse.json(
       { error: 'unauthorized' },
       { status: 401, headers: NO_STORE },
-    );
+    ));
   }
 
-  let response = NextResponse.next({ request });
+  let response = passThrough();
 
   const supabase = createServerClient(
     process.env['NEXT_PUBLIC_SUPABASE_URL']!,
@@ -108,7 +176,7 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          response = NextResponse.next({ request });
+          response = passThrough();
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
@@ -126,7 +194,6 @@ export async function proxy(request: NextRequest) {
   const claims = claimsData?.claims ?? null;
   const userId = claims?.sub ?? null;
 
-  const pathname = request.nextUrl.pathname;
   const isPublicPath = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + '/')
   );
@@ -140,7 +207,7 @@ export async function proxy(request: NextRequest) {
     // were the reported gap, but their signed-out bounce came from here and was
     // equally silent. Harmless today (a cached bounce would deny a signed-in user,
     // not leak to them) and still worth stating rather than assuming.
-    return NextResponse.redirect(loginUrl, { headers: NO_STORE });
+    return send(NextResponse.redirect(loginUrl, { headers: NO_STORE }));
   }
 
   // Recovery-session confinement: a session that arrived via a password-reset
@@ -160,9 +227,9 @@ export async function proxy(request: NextRequest) {
     recoveryMarker?.value === userId &&
     !PW_RECOVERY_ALLOWED_PATHS.includes(pathname)
   ) {
-    return NextResponse.redirect(new URL('/account/update-password', request.url), {
+    return send(NextResponse.redirect(new URL('/account/update-password', request.url), {
       headers: NO_STORE,
-    });
+    }));
   }
 
   // ── Premium API gate ────────────────────────────────────────────────────────
@@ -194,22 +261,22 @@ export async function proxy(request: NextRequest) {
     // they may already have paid. Placed before hasAccess so the reason is never
     // mistaken for a billing problem.
     if (profile?.deletion_scheduled_at) {
-      return NextResponse.json(
+      return send(NextResponse.json(
         { error: 'Account scheduled for deletion', reason: 'account_deleting' },
         { status: 403, headers: NO_STORE },
-      );
+      ));
     }
 
     if (!hasAccess(profile)) {
-      return NextResponse.json(
+      return send(NextResponse.json(
         { error: 'Payment Required', reason: accessDenialReason(profile) },
         { status: 402, headers: NO_STORE },
-      );
+      ));
     }
 
-    const headers = new Headers(request.headers);
+    const headers = nonceHeaders() ?? new Headers(request.headers);
     headers.set(INTERNAL_HEADER, process.env.CYCLE_INTERNAL_SECRET ?? '');
-    return NextResponse.next({ request: { headers } });
+    return send(passThrough(headers));
   }
 
   // Pages that only make sense to a SIGNED-OUT reader. Being in PUBLIC_PATHS only
@@ -226,7 +293,7 @@ export async function proxy(request: NextRequest) {
     // Per-viewer for the same reason as the bounce above: /login answers a signed-in
     // caller with a redirect and a signed-out one with the page. A shared cache keyed
     // on the URL alone could not tell them apart.
-    return NextResponse.redirect(new URL('/stocks', request.url), { headers: NO_STORE });
+    return send(NextResponse.redirect(new URL('/stocks', request.url), { headers: NO_STORE }));
   }
 
   // The deletion confirmation is for ONE reader: the person whose browser just
@@ -241,10 +308,10 @@ export async function proxy(request: NextRequest) {
   // signed-out case. /login is the right destination: the deletion flow has just
   // signed them out globally, and it is where the page's own button points.
   if (pathname === DELETION_NOTICE_PATH && !request.cookies.get(DELETION_NOTICE_COOKIE)) {
-    return NextResponse.redirect(new URL('/login', request.url), { headers: NO_STORE });
+    return send(NextResponse.redirect(new URL('/login', request.url), { headers: NO_STORE }));
   }
 
-  return response;
+  return send(response);
 }
 
 export const config = {

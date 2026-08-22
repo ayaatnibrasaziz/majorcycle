@@ -34,9 +34,10 @@
  *
  * Run AFTER `pnpm build`.
  */
-import { existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
+import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { usesNonce, NONCE_ROUTES } from '../lib/csp.ts';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const APP = join(WEB, '.next', 'server', 'app');
@@ -76,6 +77,45 @@ const MUST_BE_DYNAMIC = [
   ['/signup', 'signup.html', 'reads ?next= per request'],
 ];
 
+/**
+ * The nonce invariant — the one that would take the site down rather than slow it.
+ *
+ * A per-request nonce can only be stamped onto HTML that is generated per request.
+ * Send a nonce policy alongside a PREBUILT file and the browser refuses every
+ * script in it: the page renders and then does nothing. So `usesNonce()` in
+ * `lib/csp.ts` and this directory of `.html` files must never overlap.
+ *
+ * Asserted against the ARTIFACT and in BOTH directions, because the two failures
+ * are opposite and only one of them is loud:
+ *
+ *   • A prerendered route that takes a nonce → a dead page in production.
+ *   • A dynamic route that does NOT → nothing breaks, it just quietly ships the
+ *     weaker `'unsafe-inline'` policy on a page holding somebody's session. That
+ *     is the one nobody would ever notice (14g).
+ *
+ * `lib/csp.ts` is IMPORTED rather than re-read, so there is one list (11c). Node
+ * strips the types; the file deliberately has no imports of its own.
+ */
+function routesWithPrerenderedHtml() {
+  const found = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.html')) {
+        const rel = relative(APP, full).split(sep).join('/').replace(/\.html$/, '');
+        // `_not-found` and `_global-error` are Next's own fallbacks, served for a
+        // path that matches no route. They are exactly why `usesNonce()` is an
+        // ALLOW-list: an unrecognised path gets the inline policy and they work.
+        if (rel.startsWith('_')) continue;
+        found.push(rel === 'index' ? '/' : `/${rel}`);
+      }
+    }
+  };
+  walk(APP);
+  return found.sort();
+}
+
 const problems = [];
 
 if (!existsSync(APP)) {
@@ -108,6 +148,30 @@ for (const [route, file, why] of MUST_BE_DYNAMIC) {
   }
 }
 
+const prerendered = routesWithPrerenderedHtml();
+
+for (const route of prerendered) {
+  if (usesNonce(route)) {
+    problems.push(
+      `${route} is PRERENDERED and \`usesNonce()\` says it gets a nonce.\n` +
+        `    Its .html was written at build time, so its script tags carry no nonce\n` +
+        `    and the browser would refuse every one of them: the page renders and\n` +
+        `    then does nothing. Remove it from NONCE_ROUTES in lib/csp.ts, or make\n` +
+        `    the route dynamic — but read why it is prerendered first.`,
+    );
+  }
+}
+
+for (const [route] of MUST_BE_DYNAMIC) {
+  if (!usesNonce(route)) {
+    problems.push(
+      `${route} renders per request but \`usesNonce()\` says no, so it ships the\n` +
+        `    weaker 'unsafe-inline' policy on a page that could carry a nonce.\n` +
+        `    Nothing breaks — which is the problem. Add it to NONCE_ROUTES.`,
+    );
+  }
+}
+
 const total = MUST_BE_STATIC.length + MUST_BE_DYNAMIC.length;
 if (problems.length) {
   console.error(`\n✗ check:render-modes — ${problems.length} of ${total} routes wrong:\n`);
@@ -120,4 +184,8 @@ if (problems.length) {
 console.log(
   `✓ check:render-modes — ${MUST_BE_STATIC.length} routes prerendered, ` +
     `${MUST_BE_DYNAMIC.length} correctly dynamic (${total} asserted)`,
+);
+console.log(
+  `✓ check:render-modes — CSP nonce invariant: ${prerendered.length} prerendered ` +
+    `routes take no nonce, ${NONCE_ROUTES.length} nonce routes declared`,
 );
