@@ -306,10 +306,26 @@ on `next dev`. The assertion wanted the **status line**, which arrives in the fi
 packet. Fixed with `waitUntil: 'commit'`. The two 404 assertions keep the default wait —
 those pages are tiny, so the stricter wait is free.
 
-**The `seo` one is recorded, not fixed.** Same shape and a one-line change, but it is
-outside items 1–8 and touching it would be the quiet scope-widening this log already
-records once (11l). Worth noting it is a *dev-server-under-load* artefact rather than a
-product fault: the suite boots `next dev`, which recompiles per route.
+**✅ The `seo` one is now fixed too, at the owner's request — and my first fix was
+wrong, which is the useful part.**
+
+That test walked **19 pages inside ONE test** (7 static plus every Learn article) against
+a single 60s budget. I diagnosed the cost as the Learn illustrations and changed the wait
+to `domcontentloaded`, which reads the `<head>` tag without waiting for images. Measured
+before shipping it: **28.2s → 30.2s**. No improvement. The cost is `next dev` compiling
+nineteen routes on first request, and no client-side wait can avoid that.
+
+⚠️ **Had I not timed it, I would have committed a comment stating a mechanism I had never
+verified** — CLAUDE.md **14f** exactly: *a doc that attributes a number to a cause owes
+that number a measurement*, and a plausible cause that is genuinely present is the hardest
+kind of wrong explanation to catch. Slower-page-loads *is* a real phenomenon here; it just
+is not what was costing the 28 seconds.
+
+The actual fix is the shape the same file already used **70 lines above**: one test per
+page instead of one loop inside one test, so each page gets its own budget and a failure
+names the page rather than producing one opaque timeout. `seo.spec.ts` 62 → **80 tests**.
+The `domcontentloaded` change is kept — it is the honest wait for an assertion that reads
+one tag from `<head>` — with its comment rewritten to say it bought nothing.
 
 ### F-012 🟠 `/api/request-ticker` treated a failed database read as "not covered" — FIXED
 

@@ -233,17 +233,32 @@ test.describe('page metadata on the rendered HTML', () => {
     expect(body.readUInt32BE(20)).toBe(OG_IMAGE.height);
   });
 
-  test('no page ships a SECOND, per-page share card', async ({ page: pw }) => {
-    // A per-stock or per-page card is fetched by anonymous crawlers and cached
-    // publicly, so one carrying a rating would publish paid output on a CDN
-    // (CLAUDE.md 11a/11b). One image sitewide, and this is what keeps it one.
-    for (const p of INDEXABLE) {
-      await pw.goto(p.path);
+  /*
+   * A per-stock or per-page card is fetched by anonymous crawlers and cached
+   * publicly, so one carrying a rating would publish paid output on a CDN
+   * (CLAUDE.md 11a/11b). One image sitewide, and this is what keeps it one.
+   *
+   * ⚠️ ONE TEST PER PAGE, not one loop inside one test — which is what this was
+   * until 2026-08-23, when it went flaky on a full run. Nineteen `goto`s (7 static
+   * pages plus every Learn article) shared a single 60s budget: 28s with the
+   * machine idle, and past 60s under parallel load. Split, each page gets its own
+   * budget — and a failure now names the page instead of one opaque timeout.
+   *
+   * ⚠️ `domcontentloaded` because the assertion reads one tag out of <head>,
+   * parsed long before the images are. **It is not what fixed the flakiness**: I
+   * measured it first, on the theory that the Learn illustrations were the cost,
+   * and the test went 28.2s → 30.2s. The time is `next dev` compiling nineteen
+   * routes on first request, which no client-side wait can avoid. Kept because it
+   * is the honest wait for this assertion, not because it bought anything.
+   */
+  for (const p of INDEXABLE) {
+    test(`${p.path} ships no SECOND, per-page share card`, async ({ page: pw }) => {
+      await pw.goto(p.path, { waitUntil: 'domcontentloaded' });
       const urls = await pw.locator('meta[property="og:image"]').all();
       expect(urls.length, `${p.path} declares ${urls.length} og:image tags`).toBe(1);
       expect(await urls[0]!.getAttribute('content')).toBe(OG_IMAGE.url);
-    }
-  });
+    });
+  }
 });
 
 test.describe('noindex pages', () => {
