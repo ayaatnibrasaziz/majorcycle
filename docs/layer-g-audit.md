@@ -302,6 +302,7 @@ merge. An empty number is an unticked box.
 | ⬜ | `pnpm lighthouse` | meets decision #33 — **manual, median of 3** | — |
 | ⬜ | Launch-gate table re-verified | every row's evidence current, not from 2026-08-02 | — |
 | ⬜ | Deferred list GA-1…GA-5 re-verified | closed *today*, not closed *once* | — |
+| 🟡 | Layer 1 coverage map | built, and the uncovered list ruled on by the owner | map built 2026-08-23 → `docs/layer-g-coverage-map.md`; **8 items awaiting the owner's ruling** |
 | ⬜ | All findings resolved | passed / fixed+guarded / accepted with sign-off. **Zero unknown** | — |
 
 **At merge, owner-only:**
