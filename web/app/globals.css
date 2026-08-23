@@ -769,13 +769,23 @@
    plain decorative line owes as well. They move together because a stripe that
    disagreed with its own heading would read as a mistake.
 
-   ⚠️ ONLY THE COLOUR MOVED. The 3px left stripe itself is verbatim from
-   reference/original-design.html (lines 744 and 746; the 2px one on
-   .insight-invalidation is line 573), which non-negotiable #1 requires this UI to
-   match — so the shape is mandated, not chosen, and a design linter reading it as
-   a generic "side-tab accent" is looking at the one thing here that is not ours to
-   change. The owner reviewed these two stripes directly on 2026-08-22 and approved
-   deepening them: same width, same position, same shape. */
+   ⚠️ ONLY THE COLOUR MOVED: same width, same position, same shape. The owner
+   reviewed these two stripes directly on 2026-08-22 and approved deepening them.
+
+   ⚠️ THE STRIPE STAYS BECAUSE IT CARRIES INFORMATION, NOT BECAUSE THE MOCK-UP HAS
+   ONE. This comment argued the opposite until 2026-08-23 — it cited the 3px rule
+   as "verbatim from reference/original-design.html … which non-negotiable #1
+   requires this UI to match", i.e. mandated rather than chosen. That reading of #1
+   was REVERSED on 2026-08-22: the mock-up is a reference, not a contract, and
+   §1 of design-system.md records that a drawing can only tell you what someone
+   drew once. Pointing at the file ended the conversation without settling it.
+   The real reason, and the one a design linter's "generic side-tab accent" finding
+   does not reach: green vs grey is the only thing that says which of two facing
+   cards is the good news and which is the caution, before a word is read. That is
+   information. The same ruling covers .insight-invalidation (2px) and
+   .card--verdict::before (5px, and see VerdictCard.tsx — its colour is the rating
+   tier, so the CSS fallback #1E5CB3 never renders). All five findings and their
+   individual verdicts: design-system.md §1a. */
 .card-header--accent-buy  { border-left: 3px solid var(--c-up-ink); }
 .card-header--accent-buy .card-title  { color: var(--c-up-ink); }
 .card-header--accent-hold { border-left: 3px solid var(--c-neutral-ink); }

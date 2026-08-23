@@ -65,7 +65,18 @@ re-litigate them one at a time:
 | 2 | `.card-header--accent-hold` (3px) | **Stays** — "Key Risks", the reason above |
 | 3 | `.insight-invalidation` (2px) | **Stays** — the italic caveat under each insight |
 | 4 | `.kpi-card::before` (3px) | **Not a stripe.** `left:0; right:0; height:3px` is a rule across the **top** of the card. The rule's own wording — "a thick coloured border on ONE SIDE" — does not describe it. A misread, not a finding |
-| 5 | `.card--verdict::before` (5px) | **Stays**, covered by the same ruling. It was flagged separately on 2026-08-23 as "never separately ruled on"; the owner's answer was that the decision had already been given |
+| 5 | `.card--verdict::before` (5px) | **Stays** — it *is* the rating. `VerdictCard.tsx` sets `--verdict-color` from `RATING_TIER_HEX`, so the edge runs High Conviction green → Bearish red, gradient to a 62%-darkened end. Information, same as 1 and 2 |
+
+⚠️ **On entry 5, I got it wrong on 2026-08-23 and the owner caught it.** I read
+`var(--verdict-color, #1E5CB3)` in `globals.css`, drew the **fallback**, and graded the
+stripe as decoration on the grounds that navy said nothing the card wasn't already
+saying — recommending its removal. The fallback never renders: `VerdictCard.tsx` always
+sets the variable. **A CSS custom property's default is not evidence about what the page
+shows** — the answer is in whichever component sets it, and a mockup built from the
+stylesheet alone will faithfully reproduce a colour no user has ever seen. Note also
+that `--verdict-color` is not only the stripe: it drives the heading, the score numeral,
+the ring stroke and the status dot (`globals.css` lines 570–618), which is why the
+2026-08-22 contrast fix reached this card at all.
 
 ⚠️ **No exemption has been filed, deliberately.** The last one was verified once,
 quietly stopped applying, and nobody noticed for four days — so the honest state is
