@@ -53,13 +53,34 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
+  // ⚠️ Both reads below check `error` BEFORE `data`, and the reason is CLAUDE.md
+  // 11e: "I could not read it" and "it does not exist" must never share a return
+  // value. Until 2026-08-23 both destructured only `data`, so a failed query was
+  // indistinguishable from an absent row — and the two failures pointed opposite
+  // ways. A `listings` error told a reader their real stock was "not a known
+  // US/AU/CA listed stock", which is merely wrong. A `stocks` error was worse: it
+  // fell through to the upsert and QUEUED A REQUEST for a ticker we already cover,
+  // so the nightly cron would go and re-fetch it. Nothing errored, nothing logged,
+  // and the row looked exactly like a genuine reader request.
+  //
+  // Found while writing this route's first tests: the 409 case failed once under
+  // full-suite load and passed in isolation, which is what a swallowed transient
+  // read error looks like from the outside.
+
   // Choose-only guard: the symbol MUST be a real, active US/AU/CA listing.
-  const { data: listing } = await admin
+  const { data: listing, error: listingErr } = await admin
     .from('listings')
     .select('symbol,market')
     .eq('symbol', symbol)
     .eq('is_active', true)
     .maybeSingle();
+  if (listingErr) {
+    console.error('request-ticker: listings lookup failed', symbol, listingErr);
+    return NextResponse.json(
+      { error: 'Could not check coverage right now' },
+      { status: 503, headers: { ...NO_STORE, 'Retry-After': '5' } },
+    );
+  }
   if (!listing) {
     return NextResponse.json(
       { error: 'Not a known US/AU/CA listed stock' },
@@ -68,11 +89,18 @@ export async function POST(request: Request) {
   }
 
   // Already analysable → nothing to queue.
-  const { data: stock } = await admin
+  const { data: stock, error: stockErr } = await admin
     .from('stocks')
     .select('ticker')
     .eq('ticker', symbol)
     .maybeSingle();
+  if (stockErr) {
+    console.error('request-ticker: stocks lookup failed', symbol, stockErr);
+    return NextResponse.json(
+      { error: 'Could not check coverage right now' },
+      { status: 503, headers: { ...NO_STORE, 'Retry-After': '5' } },
+    );
+  }
   if (stock) {
     return NextResponse.json({ error: 'Already in coverage' }, { status: 409, headers: NO_STORE });
   }

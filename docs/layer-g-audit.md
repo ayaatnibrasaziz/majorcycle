@@ -247,10 +247,72 @@ today is small. `/stocks` is `Disallow`ed, so no crawler ever sees it; a human
 reader sees the right page. The cost is to anything reading the status
 programmatically, and to the honesty of the response.
 
-**Not fixed, and no status assertion written** — one would either fail or enshrine
-the defect. `e2e/stock-not-found.spec.ts` asserts the half that stays true under
-either decision: the reader gets the right page, with the way out, and a real ticker
-is not mistaken for a missing one.
+**✅ FIXED the same day, and the trade-off turned out to be avoidable.** The owner
+asked for the fix *and* for a way that costs nothing, and there is one. Next nests a
+segment as `<Layout>` → `<Suspense fallback={<Loading/>}>` → `<Page/>`, so **a layout
+renders outside the boundary**. The existence check moved into a new
+`stocks/[market]/[ticker]/layout.tsx` and only the *group-level*
+`app/(app)/loading.tsx` was removed — the ticker route keeps its own detailed
+skeleton.
+
+Measured after, on the production build:
+
+| | Before | After |
+|---|---|---|
+| `/stocks/us/ZZZZNOTREAL` | 200 | **404** |
+| `/stocks/xx/AAPL` | 200 | **404** |
+| real ticker | 200 | 200 |
+| ticker-page skeleton | 430ms | **389ms** |
+| `/stocks` · `/run` · `/results` · `/account` · `/request` | group skeleton | 812 · 380 · 453 · 945 · 387 ms to full load |
+
+The four routes that lost the group skeleton all load in under a second, and Next's
+router keeps the previous page on screen during a client navigation anyway, so the
+skeleton was buying them a flash rather than a wait.
+
+⚠️ **Two wrong turns, both caught by measuring rather than reasoning.** (i) My first
+attempt added the layout and kept `app/(app)/loading.tsx` — still 200, because that
+file's boundary sits *above* the new layout. The theory was right and the placement
+was wrong, and only the wire said so. (ii) The fix then silently broke the
+reader-facing half: **a `notFound()` thrown by a layout is caught by the boundary
+ABOVE that segment**, so `[ticker]/not-found.tsx` stopped firing and the friendly
+"Not in our coverage yet" page was replaced by the generic 404 — statuses green,
+customer experience quietly worse. The e2e tests written an hour earlier caught it.
+Fixed by extracting `components/stocks/NotInCoverage.tsx` and re-exporting it from
+both boundaries, rather than copying the markup into the second one (11c).
+
+Guarded by `e2e/stock-not-found.spec.ts`: the two 404s, a 200 control, the friendly
+page and its Request link, **and that the skeleton still appears** — because the
+cheap "fix" for this is to delete the last `loading.tsx`, which would keep every
+status green and hand the reader a blank screen for three seconds.
+
+### F-012 🟠 `/api/request-ticker` treated a failed database read as "not covered" — FIXED
+
+**Found:** Layer 1, by a flaky test — the kind of result that is easiest to re-run and ignore.
+
+The 409 case ("this stock is already covered") passed in isolation and **failed once in
+the full suite**. Both of the route's lookups destructured only `data` and discarded
+`error`, so a transient read failure was indistinguishable from an absent row — CLAUDE.md
+**11e**, on a route that had no tests at all until that morning.
+
+The two failures point in opposite directions and the second one writes:
+
+- a `listings` error told a reader their real stock was **"not a known US/AU/CA listed
+  stock"** — wrong, but a refusal;
+- a `stocks` error fell through to the upsert and **queued a request for a ticker we
+  already cover**, so the nightly cron would go and re-fetch it. Nothing errored, nothing
+  logged, and the row was indistinguishable from a genuine reader request.
+
+Both now check `error` first and answer **503 + `Retry-After`**, matching the report
+route. ⚠️ **Checked before assuming:** the live queue holds 9 rows, all from June, so no
+spurious row was ever written — by the tests or otherwise.
+
+⚠️ And the fix tripped the paywall guard for the wrong reason: its regex matched
+`headers: NO_STORE` but not `headers: { ...NO_STORE, 'Retry-After': '5' }`, so a
+correctly-guarded 503 read as unguarded. The report-route section a few checks above had
+already widened its pattern; the two had drifted (11c). Widened and re-proven able to
+catch a genuinely missing header.
+
+
 
 ### ✅ Verified clean — recorded so these are checked facts, not assumptions
 

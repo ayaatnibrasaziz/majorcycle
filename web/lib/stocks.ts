@@ -66,6 +66,40 @@ export class StockReadError extends Error {
 }
 
 /**
+ * Is this ticker in our universe? One column, one row — deliberately the
+ * cheapest question we can ask about a stock.
+ *
+ * ── Why a second, lighter read exists ───────────────────────────────────────
+ * It runs in `stocks/[market]/[ticker]/layout.tsx`, which sits ABOVE the Suspense
+ * boundary that `loading.tsx` creates. That position is the whole point: once a
+ * boundary streams its fallback the response has begun, the status line is
+ * already on the wire, and a later `notFound()` can no longer change it — which
+ * is why an unknown ticker answered **200** until 2026-08-23 (audit F-011, and
+ * CLAUDE.md 11r one floor up). Asking here answers before anything is sent.
+ *
+ * `readStockRow` cannot be reused for this: it does `select('*')`, which drags
+ * the whole fundamentals JSONB across for a question whose answer is one bit.
+ * `cache()`d per render, so the layout and anything else asking in the same
+ * request share one query.
+ *
+ * ⚠️ `false` means **not in our universe**, and nothing else. A failed read
+ * throws `StockReadError`, exactly as `readStockRow` does — collapsing the two
+ * is the 11e bug, where a Supabase timeout reached a paying customer as a
+ * permanent "Stock not found". A boolean makes that collapse very easy to write
+ * by accident, which is why it is spelled out here.
+ */
+export const stockExists = cache(async (ticker: string): Promise<boolean> => {
+  const { data, error } = await createAdminClient()
+    .from('stocks')
+    .select('ticker')
+    .eq('ticker', ticker)
+    .maybeSingle();
+
+  if (error) throw new StockReadError(ticker, 'stocks existence check', error);
+  return data !== null;
+});
+
+/**
  * Read the canonical `stocks` row.
  *
  * `null` means the ticker is genuinely not in our universe — the ONE condition

@@ -11,20 +11,24 @@ import { test, expect, type Page } from '@playwright/test';
  * sitewide soft-404 (every `notFound()` answering 200) fixed on 2026-08-18, so
  * the route with no assertion on it was the one that would regress in silence.
  *
- * ⚠️ **And it had regressed — or rather, was never fixed here.** Measured
- * 2026-08-23 on the production build: `/stocks/us/ZZZZNOTREAL` answers **200**,
- * and so does `/stocks/xx/AAPL`. The August fix deleted the *root*
- * `app/loading.tsx`; `app/(app)/loading.tsx` and the ticker route's own
- * `loading.tsx` are still there, so the Suspense shell still flushes before the
- * status is set. Recorded as **F-011**; the fix is a trade-off only the owner can
- * make (removing those files also removes the skeleton from the slowest page in
- * the product), so **no status assertion is made below** — one would either fail
- * or enshrine the defect.
+ * ⚠️ **And it had never been fixed here.** Measured 2026-08-23 on the production
+ * build, `/stocks/us/ZZZZNOTREAL` answered **200**, and so did `/stocks/xx/AAPL`.
+ * The August fix deleted the *root* `app/loading.tsx` and stopped; the signed-in
+ * product kept `app/(app)/loading.tsx`, whose Suspense shell still flushed before
+ * the status was set. Audit finding **F-011**.
  *
- * What IS asserted is the half that is unambiguous and would still be true after
- * either decision: **the reader gets the right page.** That is the part a customer
- * actually experiences, and it is currently correct — which is precisely why the
- * status bug survived. Nothing on screen looks wrong.
+ * **Fixed the same day, and the fix cost nothing** — see
+ * `stocks/[market]/[ticker]/layout.tsx` for the mechanism. The obvious remedy
+ * (delete every `loading.tsx`) would have taken the skeleton off the heaviest page
+ * in the product; instead the existence check moved into a layout above the
+ * boundary, and only the *group-level* loading file went. Measured after: the
+ * ticker page still paints its skeleton at **389ms**, and the four routes that
+ * lost the group skeleton all load in **380–945ms**, where Next's router keeps the
+ * previous page visible anyway.
+ *
+ * So the status assertions below are the point of the file. The
+ * reader-facing ones matter just as much and are kept: the bug survived for months
+ * precisely because **nothing on screen looked wrong**.
  */
 
 const EMAIL = process.env.E2E_EMAIL;
@@ -57,6 +61,43 @@ test.describe('a ticker we do not cover', () => {
   test('an unknown ticker gets the coverage page, not an error and not a blank', async ({ page }) => {
     await page.goto('/stocks/us/ZZZZNOTREAL');
     await expect(page.getByRole('heading', { name: /not in our coverage yet/i })).toBeVisible();
+  });
+
+  test('an unknown ticker answers 404, not 200 — F-011', async ({ page }) => {
+    // The regression guard. A `loading.tsx` reintroduced at `(app)` or `stocks/`
+    // level puts a Suspense boundary back above the layout that does this check,
+    // and the status silently reverts to 200 while every page still renders
+    // perfectly. That is exactly how the bug survived from launch to 2026-08-23,
+    // so this assertion is the only thing that would notice.
+    const res = await page.goto('/stocks/us/ZZZZNOTREAL');
+    expect(res?.status()).toBe(404);
+  });
+
+  test('an unknown MARKET answers 404 too', async ({ page }) => {
+    // A separate branch — `isValidMarket` refuses before the database is touched.
+    const res = await page.goto('/stocks/xx/AAPL');
+    expect(res?.status()).toBe(404);
+  });
+
+  test('a real ticker still answers 200', async ({ page }) => {
+    // The control. Without it, a change that 404'd every stock would satisfy both
+    // assertions above — and that is not a hypothetical: it is the shape of the
+    // 11e bug, where a failed database read made every ticker look absent.
+    const res = await page.goto('/stocks/us/AAPL');
+    expect(res?.status()).toBe(200);
+  });
+
+  test('the ticker page still shows its loading skeleton', async ({ page }) => {
+    // ⚠️ The other half of the fix, and the reason it was worth doing properly.
+    // Deleting every `loading.tsx` would also have produced correct statuses, at
+    // the cost of the skeleton on the slowest page we ship. If someone later
+    // "simplifies" by removing the ticker route's own loading.tsx, the statuses
+    // stay green and the reader silently gets a blank screen for ~3 seconds
+    // instead. This is what notices.
+    await page.goto('/stocks');
+    const nav = page.goto('/stocks/us/MSFT', { waitUntil: 'commit' });
+    await expect(page.locator('.animate-pulse').first()).toBeVisible({ timeout: 5000 });
+    await nav;
   });
 
   test('and it offers the way out — request it', async ({ page }) => {

@@ -477,7 +477,15 @@ const PREMIUM_KEYS = [
     // Every return must carry it — a single unguarded branch is the whole hole, and
     // the refusals are exactly the branches people forget.
     const returns = code.match(/return NextResponse\.(json|redirect)\(/g) ?? [];
-    const guarded = code.match(/headers:\s*NO_STORE/g) ?? [];
+    // ⚠️ Matches `headers: NO_STORE` AND `headers: { ...NO_STORE, … }`. The second
+    // form is how a response adds `Retry-After` to a 503 while keeping the private
+    // posture, and this pattern missed it until 2026-08-23 — so a correctly
+    // guarded 503 read as an UNguarded response and the check went red for the
+    // wrong reason. The report-route section a few checks above already matched
+    // both; the two had simply drifted (11c). Widening here is not a loosening:
+    // the spread still sets the header, and the sabotage below proves a genuinely
+    // missing one is still caught.
+    const guarded = code.match(/headers:\s*(?:\{\s*\.\.\.)?NO_STORE/g) ?? [];
     if (returns.length === 0) {
       fail(`${label} has no NextResponse returns to check`, 'The scan below cannot be trusted; update this guard.');
     } else if (guarded.length < returns.length) {
