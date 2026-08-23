@@ -164,7 +164,7 @@ actually import.
 | `config` | Constants | ℹ️ |
 | `fix_split_history` | Repairs split-corrupted price history | ℹ️ **KEEP — not dead.** See correction below |
 | `fix_pe_history` | Recomputes thin `pe_history` | ℹ️ **KEEP** — see correction below |
-| `fix_insider_transactions` | Repairs insider dates stored as row indices | ℹ️ genuinely spent |
+| `fix_insider_transactions` | Repairs insider dates stored as row indices | ✅ **DELETED 2026-08-23** — owner-approved |
 
 ### ⚠️ Correction — I recommended deleting three scripts and was wrong about two
 
@@ -182,8 +182,9 @@ deriving a diagnosis" — showed the premise was false for two of the three:
 - **`fix_insider_transactions.py`** is the only genuinely spent one: it repairs dates
   stored as row indices by a bug that was fixed at source and cannot recur.
 
-**Nothing was deleted.** One clearly-dead script is not the three the owner agreed to, so
-the decision goes back rather than being quietly narrowed. ⚠️ The general lesson is the
+**Nothing was deleted at the time.** One clearly-dead script is not the three the owner
+agreed to, so the decision went back rather than being quietly narrowed — and the owner then
+authorised the one. `fix_insider_transactions.py` is gone; the other two remain. ⚠️ The general lesson is the
 one this audit keeps re-learning in new costumes: **"no test references it" and "nothing
 needs it" are different claims**, and I had let the first stand in for the second. A
 maintenance tool is *supposed* to have no automated caller — that is what makes it a
@@ -205,6 +206,34 @@ Stated so silence is not mistaken for a clean bill:
 
 ---
 
+## ✅ What was done about it (2026-08-23)
+
+The owner approved acting on all eight. **Playwright 523 → 589, pytest 153 → 170**, and
+acting on the list turned up **two defects nobody knew about**.
+
+| | Gap | Outcome |
+|---|---|---|
+| 1 | `/api/cron/purge-accounts` | 16 tests. Row selection driven by a stub client; the Bearer comparison extracted and tested **with an invented secret**. ⚠️ No test may hold the real one: the day someone loosens the check to a substring match, such a test stops being a refusal and becomes a live purge of the production database |
+| 2 | Unknown ticker → 404 | **Was a live bug** — F-011, fixed, skeleton kept |
+| 3 | `/api/request-ticker` | All five refusal branches. **Found F-012** — a failed read read as “not covered”, which would have queued a duplicate request |
+| 4 | Missing `Cache-Control` | Fixed on 5 routes; guard widened from 2 files to 7 |
+| 5 | `presets`, `drain_requests` | 17 Python tests |
+| 6 | search + listings | 18 tests |
+| 7 | Four thin subscription states | F-005 fixed — each now says what actually happened |
+| 8 | Three `fix_*` scripts | Narrowed to one, deleted |
+
+**Not driven, and stated rather than left to silence:** a *valid* call to the purge cron (it
+would really delete accounts — there is no test database), and a *successful*
+`POST /api/request-ticker` (it writes a real row and the nightly cron would then permanently
+expand the universe from a test run).
+
+⚠️ **Two of this document's own first-pass numbers were wrong**, and both are corrected
+above: seventeen “untested” Python modules were really eleven, and eight “untested” routes
+were really six. In each case the check that fixed it was cheap and the confident version
+would have sent someone chasing work that did not exist.
+
+---
+
 ## The list that goes to the owner
 
 Ranked by what would hurt most if it broke silently:
@@ -216,5 +245,5 @@ Ranked by what would hurt most if it broke silently:
 5. 🟠 **`presets` and `drain_requests`** — product logic with no Python test
 6. 🟡 **`/api/search`, `/api/listings/*`** — gated routes, no test
 7. 🟡 **Four thin subscription states** — already F-005, awaiting the owner
-8. ℹ️ ~~Three `fix_*` scripts — propose archiving~~ → **withdrawn.** Two are live tools; only
-   `fix_insider_transactions.py` is spent. Nothing deleted, decision returned to the owner
+8. ✅ ~~Three `fix_*` scripts — propose archiving~~ → **narrowed to one, then done.** Two are
+   live tools and stay; `fix_insider_transactions.py` deleted 2026-08-23

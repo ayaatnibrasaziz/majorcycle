@@ -861,7 +861,18 @@ interface AnalysisRunRecord {
 - `401` — not logged in (enforced by `proxy.ts`), or the internal secret is absent/wrong
   (`analyze.py` re-checks the header the proxy injects)
 - `402` — **no live subscription** (F3 Step 10). Body `{ error: 'Payment Required', reason }`
-  with `reason` ∈ `no_subscription` / `canceled` / `payment_failed` / `billing_blocked`
+  with `reason` ∈ `no_subscription` / `canceled` / `payment_failed` / `billing_blocked` /
+  `setup_incomplete` / `subscription_paused`.
+  ⚠️ **The last two were added 2026-08-23 (audit F-005).** Stripe has eight subscription
+  statuses and this mapping knew four; the other four all fell through to `no_subscription`,
+  so a reader whose subscription was *stuck* was told they did not have one — and three of
+  the four had already tried to pay us. `incomplete` and `incomplete_expired` →
+  `setup_incomplete`; `paused` → `subscription_paused`; **`unpaid` → `payment_failed`
+  deliberately**, because it is what `past_due` becomes once Stripe stops retrying, so the
+  reader's situation and their next action are identical and a separate reason would be a
+  distinction that exists in Stripe's model and not in theirs. The access *decision* was
+  correct throughout and is unchanged — only the sentence was wrong, which is why nothing
+  ever failed.
 - `403` — **account scheduled for deletion** (live-check S3, 2026-08-01). Body
   `{ error: 'Account scheduled for deletion', reason: 'account_deleting' }`, issued by
   `proxy.ts` **before** the entitlement check, mirroring the page order (`requirePremiumPage`

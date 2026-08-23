@@ -439,14 +439,14 @@ present. **No findings.**
 ### F-A3 — `/account` + paywall surfaces (2026-08-02) — **in progress**
 
 **`PremiumLockPage` denial copy — ✅ pass, and the correctness is structural, not just written.**
-Each of the four `AccessDenialReason` values gets its own message, each naming the caller's real
+Each `AccessDenialReason` value (four at the time; **six since 2026-08-23**) gets its own message, each naming the caller's real
 situation and the real remedy: `canceled` reassures that browsing and financials remain free;
 `payment_failed` says update the card rather than buy a new plan; `billing_blocked` names the
 dispute. `no_subscription` is deliberately `null` — a first-time free viewer has had nothing go
 wrong, so a warning banner would read as a telling-off.
 
 **Why it cannot silently rot:** `DENIAL_COPY` is typed `Record<AccessDenialReason, …>`, so adding
-a fifth denial reason **fails the build** until its copy exists. That is the same principle as the
+a fifth denial reason **fails the build** until its copy exists. ⚠️ **That held — tested on 2026-08-23**, when the union grew to **six** (`setup_incomplete`, `subscription_paused`; audit F-005): deleting one entry made `tsc` name the missing key. What the type could NOT catch is the defect that prompted it — four Stripe statuses were *mapped* to an existing reason rather than left unmapped, so every key was present and the copy was simply wrong for those readers. That is the same principle as the
 CI guards — the property is enforced by the toolchain rather than by remembering. Worth recording
 as a strength, given this is precisely the surface where two real copy defects have already
 occurred.

@@ -2135,6 +2135,44 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > The dev server keeps `'unsafe-eval'` (Turbopack compiles with `eval` for hot reloading),
 > gated on `NODE_ENV` and asserted absent in production by `check:csp`.
 
+> **G8 — the Layer G audit. Sessions 1–2 of 8, 2026-08-23. Log: `docs/layer-g-audit.md`;
+> coverage map: `docs/layer-g-coverage-map.md`.**
+>
+> Layers **step zero**, **0** (prove the instruments) and **1** (the coverage map) are done.
+> Layer 2 onward is next session.
+>
+> **All eight `check:*` guards are now proven able to fail** — 13 sabotages, each with a
+> control. The three that needed a production build on `:3200` (`render-modes`, `csp`,
+> `page-weight`) ran here.
+>
+> **The coverage map enumerated what the suite does NOT cover**, route by route and state by
+> state, from the production build's own route list rather than the `app/` directory. Owner
+> approved acting on all eight gaps. **Playwright 523 → 589, pytest 153 → 170.**
+>
+> **Five real defects, none of which had a failing test, a log line or a visible symptom:**
+>
+> | | Defect | Now |
+> |---|---|---|
+> | **F-011** | An unknown ticker — and an unknown market — answered **200**. The 2026-08-18 soft-404 fix reached the public site and never the signed-in product | 404, **and the skeleton kept** (§7.2) |
+> | **F-012** | `/api/request-ticker` treated a failed DB read as “not covered” and would **queue a request for a stock we already have**, which the nightly cron would re-fetch | 503 + `Retry-After` |
+> | **F-005** | Four of Stripe's eight statuses told a customer they had no subscription when theirs was merely stuck | Each says what happened |
+> | **F-009** | The score composition bar was painted in the **pre-2026-08-22** palette, in `r,g,b` form the hex-hunting guard could not see | Derived from `RATING_TIER_HEX` — the copy is deleted, not corrected |
+> | **11a ×5** | Five gated API routes sent **no `Cache-Control` at all** on their signed-in responses | `private, no-store`, and the guard widened from 2 files to 7 |
+>
+> Plus two flaky tests fixed at the cause — one was a Learn figure genuinely **0.5px** from
+> breaking at 360px, found by sweeping every article at every width and printing the tightest
+> clearance rather than re-running. `analytics/cron/fix_insider_transactions.py` deleted
+> (spent); the other two `fix_*` scripts **kept** — `architecture.md` names `fix_split_history`
+> as the standing remedy for a corrupted ticker.
+>
+> ⚠️ **Three of my own diagnoses were confidently wrong and caught by measuring**: a webfont
+> theory (blocked the fonts — no change), an image-loading theory (28.2s → 30.2s, no
+> improvement), and a first 404 fix that left the status at 200. **A plausible cause that is
+> genuinely present is the hardest kind of wrong explanation to catch** (14f).
+>
+> **Still open for the owner:** the 13px public document size, and the merge-day actions
+> (apex 307→308, move off the free hosting tier, submit the sitemap).
+
 
 ### Layer H: Pre-launch Hardening (Phase 1.5, target: 1 week)
 

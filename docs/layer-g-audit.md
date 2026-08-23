@@ -390,6 +390,10 @@ defers the failure to a confusing place. Not changed: they are hand-run repair t
 nightly pipeline, and churning them mid-audit buys little. Recorded so it is a known
 inconsistency rather than an unnoticed one.
 
+⚠️ **Update 2026-08-23:** `fix_insider_transactions.py` was deleted (owner-approved — it
+repaired dates stored as row indices by a bug fixed at source, and cannot recur), so **one**
+weak-fallback script remains: `fix_pe_history.py`. Still not changed, for the same reason.
+
 ### 2 ✅ Two guards never ran automatically — now a required merge gate
 
 `pnpm check:page-weight` and `pnpm lighthouse` exist but sit outside CI. Both need a

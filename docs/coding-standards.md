@@ -972,10 +972,16 @@ content **is** in the bytes — it is simply never unhidden. The split falls on 
 not on anything about the pages themselves, which is why it hits the landing page and the
 three legal documents and spares the four smaller auth cards.
 
-**Why it is recorded rather than fixed:** it is a platform-level consequence of our own
-root loading boundary, it affects every large page equally, and the remedy is an
-architectural choice (scope `loading.tsx` to the `(app)` group, or accept it) that belongs
-to the owner. **Severity is genuinely low** — Googlebot executes JavaScript, so indexing is
+**Why it was recorded rather than fixed at the time:** it is a platform-level consequence
+of our own root loading boundary, it affects every large page equally, and the remedy was
+an architectural choice that belonged to the owner. ⚠️ **The option named here — “scope
+`loading.tsx` to the `(app)` group” — is exactly what was done, and it turned out to be
+half a fix.** Scoping the boundary to `(app)` cured the public site and left the *same*
+soft-404 inside the signed-in product for five days: an unknown ticker measured **200** on
+the production build until 2026-08-23 (audit F-011). The lesson is not that the choice was
+wrong, it is that **a fix expressed as “move the boundary” needs asking what is now under
+the boundary in its new position.** Today only one `loading.tsx` remains, and the check
+that decides a 404 sits in a *layout* above it — see `architecture.md` §7.2. **Severity is genuinely low** — Googlebot executes JavaScript, so indexing is
 unaffected, and the raw markup is present for any crawler that reads bytes. It matters for
 readers with scripting blocked and as a robustness floor.
 
@@ -1471,6 +1477,20 @@ Reading the file could never have told you; only removing it did.
 so a no-JS visitor gets the fallback and never the form — on the two pages that must
 work for everyone. `force-dynamic` was correct instead. **A documented fix is advice
 about the common case; check it against your constraint before taking it.**
+
+⚠️ **Postscript, 2026-08-23: the fix was incomplete for five days and nothing said so.**
+Only the ROOT file went; `app/(app)/loading.tsx` stayed, so the identical soft-404 lived on
+inside the signed-in product — an unknown ticker answered **200** on the production build.
+It was found by the Layer G coverage map, which noticed the whole suite held **one**
+assertion on a 404 status and it covered a Learn slug: *the route with no assertion on it
+was the one still broken.* **When you fix a defect by deleting one instance of a pattern,
+grep for the others in the same commit** (11c). Fixed by moving the existence check into
+`stocks/[market]/[ticker]/layout.tsx` — a layout renders OUTSIDE the Suspense boundary its
+sibling `loading.tsx` creates, so `notFound()` runs before a byte is sent and the skeleton
+survives. ⚠️ Second-order trap found the same hour: **a layout's `notFound()` is caught by
+the boundary ABOVE its segment**, so the route's own `not-found.tsx` stopped firing and
+readers silently got the generic 404 instead of the friendly “Not in our coverage yet” page
+with its Request button. Statuses green, experience worse; the e2e tests caught it.
 
 ### 21. A measurement can disprove your hypothesis backwards (2026-08-18)
 

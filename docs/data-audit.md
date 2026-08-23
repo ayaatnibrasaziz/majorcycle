@@ -1089,6 +1089,13 @@ stocks still work; a stock already counted today opens normally and writes nothi
 Eleven states × four surfaces. Entitled states show the real rating and carry all
 nine premium fields; unentitled states show `Unlock` and carry **zero**.
 
+⚠️ **Measured 2026-08-06; the `reason` column has since moved.** Audit F-005 (2026-08-23)
+found that four of Stripe's eight statuses — `incomplete`, `incomplete_expired`, `unpaid`,
+`paused` — all reported `no_subscription`, telling a reader whose subscription was *stuck*
+that they did not have one. The **access decisions in this table are unchanged and were
+always right**; only the reason string moved. Today: `paused` → `subscription_paused`,
+`incomplete`/`incomplete_expired` → `setup_incomplete`, `unpaid` → `payment_failed`.
+
 | State | Badge | Rating | Screener | `…/report` |
 |---|---|---|---|---|
 | no subscription | NO PLAN | locked | locked | 402 `no_subscription` |
@@ -1098,7 +1105,7 @@ nine premium fields; unentitled states show `Unlock` and carry **zero**.
 | past_due inside grace | PAYMENT DUE | shown | open | 200 |
 | past_due, grace expired | ACCESS PAUSED | locked | locked | 402 `payment_failed` |
 | canceled | CANCELLED | locked | locked | 402 `canceled` |
-| `paused` (unreachable — see below) | NO PLAN | locked | locked | 402 `no_subscription` |
+| `paused` (unreachable — see below) | NO PLAN | locked | locked | 402 `no_subscription` → **`subscription_paused` since 2026-08-23** |
 | dispute lock on an ACTIVE sub | ON HOLD | locked | locked | 402 `billing_blocked` |
 | dispute LOST (cancelled + blocked) | ON HOLD | locked | locked | 402 `billing_blocked` |
 | deletion scheduled on an ACTIVE sub | — | confined | confined | 403 `account_deleting` |

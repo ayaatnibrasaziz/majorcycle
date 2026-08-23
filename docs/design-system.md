@@ -168,7 +168,7 @@ filed on request.
      the five moved; `globals.css` carries the measurements and the reasons. */
   --c-tier-1:      #065F46;  /* High Conviction — was #006400; see below */
   --c-tier-2:      #1E7C1E;  /* Constructive   — was #228B22, 4.39:1 under white */
-  --c-tier-3:      #87660F;  /* Neutral        — was #D4A017, 2.38:1 under white */
+  --c-tier-3:      #72696D;  /* Neutral        — #D4A017 → #87660F → grey, see below */
   --c-tier-4:      #C73600;  /* Cautious       — was #FF4500, 3.44:1 under white */
   --c-tier-5:      #8B1414;  /* Bearish        — was #B22222; see below */
 
@@ -391,15 +391,35 @@ The five composite rating tiers display as **neutral, advice-free language**. Th
 |---|---|---|---|
 | 80–100 | **High Conviction** | `--c-tier-1` (#065F46) | Best-in-class opportunity |
 | 65–79 | **Constructive** | `--c-tier-2` (#1E7C1E) | Favourable setup |
-| 50–64 | **Neutral** | `--c-tier-3` (#87660F) | Mixed signal |
+| 50–64 | **Neutral** | `--c-tier-3` (#72696D) | Mixed signal |
 | 35–49 | **Cautious** | `--c-tier-4` (#C73600) | Elevated risk |
 | 0–34 | **Bearish** | `--c-tier-5` (#8B1414) | Significant concerns |
+
+⚠️ **Neutral is a true grey as of 2026-08-23**, and it took three attempts to get
+there. `#D4A017` measured **2.38:1** under white — illegible for the life of the
+product. Darkening it to `#87660F` fixed that one colour and broke the *set*: with
+tiers 2, 3 and 4 each darkened to just clear the floor they landed at 5.31 / 5.33 /
+5.31, practically one lightness, and adjacent tiers became hard to tell apart —
+worse for a colour-blind reader than what it replaced (CLAUDE.md 11t). Gold was then
+proven unsalvageable (15,866 candidates searched; the best managed 12.9) and yellow
+impossible, because the binding constraint is the colour's use **as text**, not as a
+background. **Owner chose a true grey**, which is also what the word means.
 
 ⚠️ **Never hand-type one of these.** They were written out 247 times across 26
 files before 2026-08-22, and three of them were illegible under white text for the
 life of the product. Use `tierColorVar()` / `scoreColor()` where CSS can reach, and
 `RATING_TIER_HEX` where it cannot (the `.xlsx` workbook, a Recharts prop, an SVG
 attribute). `pnpm check:tier-palette` fails the build on a fresh copy.
+
+⚠️ **… and “hand-type” includes formats the guard cannot read.** It hunts stray
+copies **by hex**, so `compositionRamp()` — which held the same five colours as
+`r,g,b` strings for the score micro-bar — was invisible to it and sat on the
+**pre-2026-08-22** values for a month, painting the bar in the old palette directly
+beneath a chip using the new one. Nobody saw it, because the change was a darkening
+rather than a hue swap. Found 2026-08-23 (audit F-009) and fixed by **deleting the
+copy**, not correcting it: the triplet is now computed from `RATING_TIER_HEX`.
+**When you find a second copy of the palette, ask whether you can delete it rather
+than update it** — correcting the values leaves the mechanism and resets the clock.
 
 **Forbidden everywhere in our scoring outputs:** Buy, Sell, Strong Buy, Hold, Avoid, Recommend, Outperform, Underperform, Overweight, Underweight.
 

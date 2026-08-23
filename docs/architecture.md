@@ -810,7 +810,7 @@ entitlement rule above.
 - Counted only after `notFound()` (a bad ticker costs nothing) and never for a subscriber
   — locked decision #18 promises them no usage limits.
 
-### 7.2 Rendering: no root `loading.tsx`, and why two pages are `force-dynamic`
+### 7.2 Rendering: where `loading.tsx` may live, and why two pages are `force-dynamic`
 
 **There is deliberately no `web/app/loading.tsx`.** It existed until 2026-08-18 and
 wrapped **every route on the site** in a Suspense boundary, which caused two defects
@@ -821,10 +821,51 @@ that looked unrelated and shared one cause:
 | Every `notFound()` answered **200**, sitewide | The shell was flushed before the page finished. Once bytes are on the wire the status is committed, so Next swapped the not-found content in afterwards. A **soft-404** — Google treats a 200 carrying "Page not found" far more harshly than an honest 404 |
 | `/`, `/terms`, `/privacy`, `/disclaimer` showed only "Loading…" without JavaScript | React streams any page whose HTML overruns the first flush into a `<div hidden>` that an inline script swaps in. No script, no swap. Size-dependent, which is why the smaller auth pages were unaffected and it looked arbitrary |
 
-`web/app/(app)/loading.tsx` **remains** — the signed-in terminal keeps its skeleton.
-Only the public pages lost a route-level fallback, which is also what Vercel's own
-guidance describes: a Suspense boundary belongs around the dynamic part *inside* a
-page, not wrapped around every route.
+⚠️ **This paragraph said `web/app/(app)/loading.tsx` “remains” until 2026-08-23. It
+does not, and the reason is that the 2026-08-18 fix was CORRECT AND INCOMPLETE.** Deleting
+the root file fixed the public site; the signed-in product kept its own group-level
+boundary, so inside `(app)` every `notFound()` still answered **200**. Measured on the
+production build during the Layer G audit: `/stocks/us/ZZZZNOTREAL` → 200,
+`/stocks/xx/AAPL` → 200, while `/learn/not-a-real-article` → 404. **The same bug, in the
+half nobody re-checked** — CLAUDE.md 11c (“one rule, one place”) and 14g (a check scoped to
+public routes is silent, not clean, about the rest). Audit finding **F-011**.
+
+**Today the layout of the ticker route decides, and only ONE `loading.tsx` survives.**
+
+```
+app/(app)/loading.tsx                              DELETED 2026-08-23
+app/(app)/stocks/[market]/[ticker]/loading.tsx     kept — the skeleton readers see
+app/(app)/stocks/[market]/[ticker]/layout.tsx      NEW — does the existence check
+```
+
+Next nests a segment as `<Layout>` → `<Suspense fallback={<Loading/>}>` → `<Page/>`, so
+**a layout renders OUTSIDE the boundary**. Moving the market and ticker checks there means
+`notFound()` runs before a byte is sent, while the status is still ours to set — and the
+page beneath keeps its skeleton. Measured after:
+
+| | Before | After |
+|---|---|---|
+| `/stocks/us/ZZZZNOTREAL` | 200 | **404** |
+| `/stocks/xx/AAPL` | 200 | **404** |
+| a real ticker | 200 | 200 |
+| ticker-page skeleton | 430ms | **389ms** — still there |
+| `/stocks` · `/run` · `/results` · `/account` · `/request` | group skeleton | 812 · 380 · 453 · 945 · 387 ms to full load |
+
+Those five load in under a second and Next's router keeps the previous page on screen
+during a client navigation, so the group skeleton was buying them a flash rather than
+saving them a wait. The one page that genuinely needs a skeleton — the heaviest we ship —
+still has it.
+
+⚠️ **A layout's `notFound()` is caught by the boundary ABOVE its segment**, not its own.
+So `[market]/not-found.tsx` is the file that fires, and `[ticker]/not-found.tsx` stays as
+the backstop for the page's own calls. Both are one-line re-exports of
+`components/stocks/NotInCoverage.tsx`; copying the markup into the second was tried first
+and is the 11c trap — the statuses went green while the reader silently got the generic
+404 instead of the Request button, and `e2e/stock-not-found.spec.ts` caught it.
+
+Only the public pages lost a route-level fallback in 2026-08-18, which is also what
+Vercel's own guidance describes: a Suspense boundary belongs around the dynamic part
+*inside* a page, not wrapped around every route. That reasoning now applies sitewide.
 
 > ⚠️ **`/login` and `/signup` are `export const dynamic = 'force-dynamic'`, and it is
 > load-bearing.** Both call `useSearchParams()` (for `?next=` and `?error=`), and Next
