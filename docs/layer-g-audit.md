@@ -384,9 +384,71 @@ carry the **number**, so a reader who cannot separate the hues still gets the in
 That keeps it clear of the accessibility rule that colour must never be the sole means. It is
 a loss of *redundancy*, not of meaning.
 
-**Owner's call**, and it is the same shape as the finding they caught by eye in G6 — with the
-difference that this one is only visible through a simulation. Fixing it means moving
-Constructive or Neutral, which is a locked brand decision.
+**Status: ✅ FIXED 2026-08-23. Neutral is now a true grey, `#87660F` → `#72696D`.** Owner chose
+it from three equivalent options after seeing them rendered under all three vision types.
+
+| Pair | Protanope before → after | Deuteranope before → after |
+|---|---|---|
+| 2–3 | **2.8 → 25.2** | **7.3 → 22.0** |
+| 3–4 | 12.7 → 27.0 | **5.9 → 24.6** |
+
+Worst case across the scale: **2.8 → 16.1**, which is the ceiling — pairs 1–2 and 4–5 bind it
+and neither was touched. Contrast is unchanged at 5.31 / 4.80. Verified on the rendered page,
+not just the tokens: **11 grey elements measured, worst 5.07** against a 4.5 floor.
+
+**Why gold could not be kept, measured rather than asserted.** All **15,866** golds clearing
+both floors were searched; the best scores 12.9 and only by becoming `#3E301E`, a near-black
+brown. A true yellow is worse — `#FFD700` scores **1.27** as text and the original `#D4A017`
+scored **2.15**. Green and gold both lose the same channel for a red-blind reader and converge
+on olive, which *is* the 2–3 collapse.
+
+⚠️ **A test of mine that proved nothing.** I assumed the binding constraint was *white numerals
+sit on this colour*, re-ran the search without it, and got **identical results** — which is how
+I learned the test was a no-op. The real constraint is the *other* floor: Neutral is also used
+**as text** on the light page, demanding luminance ≤ `0.1479` where white-on-it demands
+`0.1688`. I had removed the requirement I suspected, and it was never the one binding.
+**A control that changes nothing is telling you your model is wrong, not that the thing is
+irrelevant** (11u).
+
+**What moved:** `--c-tier-3`, `--c-tier-3-ink`, `--c-neutral-ink`, both `--tint-tier-3*`, the
+profitability-pill border, `ratings.ts` tier 3, `ink.ts` neutral, and the guard's ink ground
+plus its 2–3 / 3–4 floors, re-based upward so the new separation is now the ratchet.
+
+⚠️ **The ink is NOT the colour.** `#72696D` scores **4.67** on its own 10% tint — just under
+the floor — so the ink is `#6B6266` (5.18). Computing it rather than assuming they could be the
+same is what caught that.
+
+⚠️ **Two floors, two of my own errors, both caught by the guard rather than by me.** I set the
+2–3 deuteranope floor to `22.0` when the measured value *displays* as 22.0 but is fractionally
+below it, so the guard went red on the change that fixed it — the boundary-versus-margin lesson
+(11i-b) in miniature. And I missed `--c-neutral-ink` entirely, because the guard's ink regex
+matches `--c-<letters>-ink` and the one I had already fixed is `--c-tier-3-ink`; two variables,
+one concept, and only one of them is what the ink layer reads.
+
+### F-009 🟡 The composition bar still paints the pre-August palette, in a form the guard cannot see
+
+Found while fixing F-008. `compositionRamp()` in `lib/ratings.ts` — which colours the
+Health / Valuation / Cycle Payoff micro-bar under every Overall score — holds its own copy of
+the tier palette as **`r,g,b` strings**:
+
+```
+1: '0,100,0'   2: '34,139,34'   3: '212,160,23'   4: '255,69,0'   5: '178,34,34'
+```
+
+Those are the **original pre-2026-08-22 colours**. The G6 contrast fix never reached them, so
+the bar beneath a score chip has been drawn in the old palette while the chip itself uses the
+new one.
+
+⚠️ **The guard walks 278 files for stray copies and cannot see this**, because it searches for
+**hex**. A copy written as `212,160,23` is invisible to it — so the one control that exists for
+exactly this class of drift has a blind spot the width of a format change. Same family as F-007:
+the guard is right about what it looks at and silent about the rest.
+
+**Tier 3 only is fixed here** (`212,160,23` → `114,105,109`), because leaving it would have made
+the approved change incoherent — a gold bar under a grey chip. **Tiers 1, 2, 4 and 5 are left
+alone and raised for the owner**: repainting four more colours is not what was approved, and the
+difference is subtle since G6 only darkened them. The guard should also learn to match `r,g,b`
+form.
 
 ---
 

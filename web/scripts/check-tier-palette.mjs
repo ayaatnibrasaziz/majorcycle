@@ -312,14 +312,29 @@ for (const f of files) {
  * dishonest: two pairs already sit below the one the owner objected to, and a
  * guard that fails on the day it is written gets loosened rather than obeyed.
  *
- * ⚠️ TWO ARE WEAK, AND ARE RECORDED RATHER THAN FIXED (CLAUDE.md 11l — a real
- * defect does not entitle me to widen a scope the owner set):
+ * ⚠️ TWO WERE WEAK AND ARE NOW FIXED (2026-08-23, Layer G audit F-008). They read:
  *
- *   · 2 to 3 measures 2.8 to a protanope and 3 to 4 measures 5.9 to a
- *     deuteranope. Below about 2.3, two colours are indistinguishable. The gold
- *     and the orange-red is the one a real person meets; it was measured and left
- *     by owner decision, because the only lever (darkening Cautious) costs about
- *     as much on the Cautious/Bearish pair as it buys here. A trade, not a win.
+ *   · 2 to 3 measured 2.8 to a protanope and 3 to 4 measured 5.9 to a
+ *     deuteranope. Below about 2.3 two colours are indistinguishable, so the
+ *     Constructive/Neutral boundary — the line between "our analysis likes this"
+ *     and "our analysis is indifferent" — was effectively invisible to roughly
+ *     one man in twelve.
+ *
+ * ⚠️ THE CAUSE WAS THE 2026-08-22 CONTRAST FIX ITSELF, and this is the lesson.
+ * Darkening tiers 2, 3 and 4 each to just clear the 4.8 floor left all three at
+ * almost identical LIGHTNESS (5.31 / 5.33 / 5.31). Under dichromacy hue collapses
+ * and lightness is all that remains — so the fix removed the only channel those
+ * pairs had left. Every colour was individually correct and the set got worse
+ * (CLAUDE.md 11t, on a second axis). Worse, this ratchet was calibrated AFTER the
+ * regression, so it faithfully locked the damage in as the floor.
+ *
+ * The fix: Neutral became a true grey. A near-grey has almost no colour to lose,
+ * so it holds still under every simulation while its neighbours move around it —
+ * and "Neutral is grey" is what the label meant anyway. Gold could not be saved:
+ * all 15,866 golds clearing both floors were searched and the best scores 12.9,
+ * only by becoming #3E301E, a near-black brown. A true yellow is worse still,
+ * because the binding constraint is that this token is also used AS TEXT on the
+ * light page (luminance ≤ 0.1479), and a yellow that dark has stopped being one.
  *
  * The greens WERE the third: 1 to 2 sat 8.2 apart, closer than the pair that
  * prompted all of this. Reported to the owner on 2026-08-22 and fixed the same
@@ -331,11 +346,11 @@ for (const f of files) {
  * and it belongs to the owner.
  */
 const SEPARATION = [
-  // pair, plain, protanope, deuteranope — all measured 2026-08-22
-  [['1', '2'], 17.0, 18.0, 24.0],
-  [['2', '3'], 28.0, 2.5, 7.0],
-  [['3', '4'], 26.0, 12.5, 5.5],
-  [['4', '5'], 16.0, 17.5, 16.0],
+  // pair, plain, protanope, deuteranope
+  [['1', '2'], 17.0, 18.0, 24.0], // measured 2026-08-22
+  [['2', '3'], 34.0, 25.0, 21.5], // re-based 2026-08-23 when Neutral became grey
+  [['3', '4'], 28.0, 26.5, 24.0], // re-based 2026-08-23
+  [['4', '5'], 16.0, 17.5, 16.0], // measured 2026-08-22
 ];
 for (const [[a, b], minPlain, minProtan, minDeutan] of SEPARATION) {
   const [x, y] = [fromCss[a], fromCss[b]];
@@ -375,7 +390,7 @@ for (const [[a, b], minPlain, minProtan, minDeutan] of SEPARATION) {
  */
 const INK_GROUND = {
   up: ['#E9F3E9', 'a 10% green tint - the insight strength tag'],
-  neutral: ['#F7F1E1', 'a 10% gold tint - the Smart Money consensus pill'],
+  neutral: ['#F1F0F0', 'a 10% grey tint - the Smart Money consensus pill'],
   warn: ['#F0F4F8', '--bg-page - the KPI drawdown value'],
   down: ['#F0F4F8', '--bg-page - summary strip values'],
   brand: ['#EEF5FD', "the 50 DMA chip's own 8% tint"],

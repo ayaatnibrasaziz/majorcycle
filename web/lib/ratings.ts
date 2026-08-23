@@ -36,7 +36,7 @@ import type { CycleAnalysis, OverallLabel, ValuationZone } from '@/lib/types';
 export const RATING_TIER_HEX: Readonly<Record<1 | 2 | 3 | 4 | 5, string>> = {
   1: '#065F46',
   2: '#1E7C1E',
-  3: '#87660F',
+  3: '#72696D',
   4: '#C73600',
   5: '#8B1414',
 } as const;
@@ -362,7 +362,7 @@ export function compositionRamp(score: number): [string, string, string] {
   const rgb: Record<1 | 2 | 3 | 4 | 5, string> = {
     1: '0,100,0',
     2: '34,139,34',
-    3: '212,160,23',
+    3: '114,105,109',
     4: '255,69,0',
     5: '178,34,34',
   };

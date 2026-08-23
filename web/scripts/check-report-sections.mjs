@@ -43,10 +43,38 @@ function importedStockComponents(src) {
   return names;
 }
 
+/**
+ * Source with comments removed, so a DISABLED section cannot pass for a rendered one.
+ *
+ * Layer G audit, F-007: this guard tested whether `<Name` appeared anywhere in the file
+ * and never stripped comments, so a JSX-commented `<DrawdownOverlay />` still counted
+ * as rendered. Deleting a section was caught; commenting one out was not — and commenting
+ * out is the likelier real slip (disable a section while debugging, forget to restore).
+ * The offline report would have lost a section a paying customer downloads, with CI
+ * green. Proven by breaking it both ways: deletion exited 1, comment-out exited 0.
+ *
+ * ⚠️ The identical defect was already fixed once in `e2e/public-chrome.spec.ts`, which
+ * reads source with comments stripped because its first version failed on the very
+ * sentence documenting the fix. The lesson lived in one guard and never reached this
+ * one (CLAUDE.md 11c-iv).
+ *
+ * Line comments are stripped only when `//` OPENS the line. A mid-line `//` is far more
+ * often a URL (`https://…`) than a comment, and butchering those would make this guard
+ * wrong in a new way — a probe stricter than the rule it enforces (CLAUDE.md 11u).
+ */
+function stripComments(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/^[ \t]*\/\/.*$/gm, ' ');
+}
+
 /** Of the imported stock components, those actually rendered (`<Name`). */
 function renderedStockSections(file) {
-  const src = readFileSync(file, 'utf8');
-  const imported = importedStockComponents(src);
+  const raw = readFileSync(file, 'utf8');
+  // Imports are read from the RAW source (a commented-out import is already invisible
+  // to `<Name` matching); only the render test needs comments gone.
+  const imported = importedStockComponents(raw);
+  const src = stripComments(raw);
   const rendered = new Set();
   for (const name of imported) {
     if (new RegExp(`<${name}[\\s/>]`).test(src)) rendered.add(name);

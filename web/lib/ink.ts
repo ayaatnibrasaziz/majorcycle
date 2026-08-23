@@ -33,7 +33,7 @@ export const INK = {
   /** Up, better, a beat, a buy. Was #228B22 — 3.86:1 on a 10% green tint. */
   up: '#1B741B',
   /** Mixed, average, stretched, "hold". Was #D4A017 / #9A7010 / #B58800. */
-  neutral: '#81600F',
+  neutral: '#6B6266',
   /** The least favourable rung of a ramp. Was #FF4500 — 3.11:1 as a KPI value. */
   warn: '#C73600',
   /** Down, worse, a miss, a sell. Already legible at 6.68:1 — unchanged, and

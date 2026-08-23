@@ -119,9 +119,40 @@
        tier   before    after      white ON it   as TEXT on the darkest ground
        1      #006400   #065F46     7.44 → 7.68   6.73 → 6.95
        2      #228B22   #1E7C1E     4.39 → 5.31   3.97 → 4.80
-       3      #D4A017   #87660F     2.38 → 5.32   2.15 → 4.82
+       3      #D4A017   #72696D     2.38 → 5.31   2.15 → 4.80   (see TIER 3 below)
        4      #FF4500   #C73600     3.44 → 5.32   3.11 → 4.81
        5      #B22222   #8B1414     6.68 → 9.51   6.04 → 8.61
+
+     ⚠️ TIER 3 IS NO LONGER GOLD, and the reason is that THIS TABLE broke it.
+     2026-08-23, Layer G audit F-008. Darkening 2, 3 and 4 each to just clear the
+     floor left all three at practically the same LIGHTNESS — 5.31 / 5.33 / 5.31.
+     Contrast is a luminance ratio, so "make each one just pass" is the same
+     instruction as "make them all equally dark". Under colour blindness hue
+     collapses and lightness is the only thing left, so the fix above destroyed
+     the last channel separating those pairs: Constructive against Neutral fell to
+     **2.8** for a red-blind reader (both render olive, #71711E vs #6A6A0F) and
+     Neutral against Cautious to **5.9** for a green-blind one.
+
+     Each colour above was individually correct. The SET got worse. That is the
+     same failure as the tier 1 and tier 5 notes below, one axis over — and this
+     time the guard could not see it, because its ratchet was calibrated after the
+     regression and so locked the damage in as the floor.
+
+     Gold could not be rescued: every one of the 15,866 golds clearing both floors
+     was measured and the best scores 12.9, only by becoming #3E301E — a near-black
+     brown. A true yellow is worse, because the binding constraint is that this
+     token is ALSO used as text on the light page (luminance ≤ 0.1479), and a
+     yellow dark enough for that is an olive. #FFD700 scores 1.27; the original
+     #D4A017 scored 2.15.
+
+     #72696D is a true grey — it has almost no colour to lose, so it holds still
+     under every simulation while its neighbours move around it, taking 2-3 to
+     34.1 / 25.2 / 22.0 and 3-4 to 28.4 / 27.0 / 24.6. It is also what "Neutral"
+     means. Owner chose it from three equivalent options (warm stone, true grey,
+     cool slate) on 2026-08-23; grey was picked over the slate because a slate
+     sits ~15 from the brand navy where a grey does not compete with it at all.
+     Its ink is #6B6266, NOT the colour itself — #72696D scores 4.67 on its own
+     10% tint, just under the floor.
 
      ⚠️ TIER 5 MOVED FOR A SECOND REASON, and it is not contrast — it already
      passed. Darkening Cautious out of orange (#FF4500) and into red (#C73600)
@@ -198,7 +229,7 @@
      literal again. The direction colours are a different rule and keep theirs. */
   --c-tier-1: #065F46;
   --c-tier-2: #1E7C1E;
-  --c-tier-3: #87660F;
+  --c-tier-3: #72696D;
   --c-tier-4: #C73600;
   --c-tier-5: #8B1414;
 
@@ -211,7 +242,7 @@
      sat behind it did. Darkened ~6% so it clears on BOTH grounds (4.82 on the
      page tint, 5.25 on the card tint) rather than only the one a screenshot
      happened to catch it on. Measure a composited colour where it actually sits. */
-  --c-tier-3-ink: #81600F;
+  --c-tier-3-ink: #6B6266;
   /* Cautious was the only tier whose ink had no token — it lived as a bare
      #B23A00 literal inside `.tier-badge--4`, where nothing else could reach it
      and no one would think to keep it in step with its four siblings. Same
@@ -230,8 +261,8 @@
   --tint-tier-2-strong: rgba(34, 139, 34, 0.12);
   --tint-tier-5: rgba(178, 34, 34, 0.10);
   --tint-tier-5-strong: rgba(178, 34, 34, 0.12);
-  --tint-tier-3: rgba(212, 160, 23, 0.10);
-  --tint-tier-3-strong: rgba(212, 160, 23, 0.12);
+  --tint-tier-3: rgba(114, 105, 109, 0.10);
+  --tint-tier-3-strong: rgba(114, 105, 109, 0.12);
   --tint-brand: rgba(46, 125, 232, 0.10);
 
   /* ── SEMANTIC INK — the same meanings, for when the colour is TEXT ─────────
@@ -258,7 +289,7 @@
 
        role      was                            now       worst measured
        up        #228B22                        #1B741B   3.86 → 5.18
-       neutral   #D4A017 / #9A7010 / #B58800    #81600F   2.11 → 5.15
+       neutral   #D4A017 / #9A7010 / #B58800    #6B6266   2.11 → 5.18   (grey since 2026-08-23)
        warn      #FF4500                        #C73600   3.11 → 4.81
        brand     #2E7DE8                        #1E5CB3   3.67 → 5.91
 
@@ -273,7 +304,7 @@
      the chart props that cannot read a CSS variable; `pnpm check:tier-palette`
      fails if the two copies disagree. */
   --c-up-ink: #1B741B;
-  --c-neutral-ink: #81600F;
+  --c-neutral-ink: #6B6266;
   --c-warn-ink: #C73600;
   --c-brand-ink: #1E5CB3;
 
@@ -1054,7 +1085,7 @@ td.num             { font-weight: 600; }
 .mt-cat-pill        { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 4px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap; }
 .mt-cat-valuation   { background: var(--tint-brand);        color: var(--brand-deep);     border: 1px solid rgba(46,125,232,.22); }
 .mt-cat-growth      { background: var(--tint-tier-2);       color: var(--c-tier-2-ink);   border: 1px solid rgba(34,139,34,.22); }
-.mt-cat-profitability { background: var(--tint-tier-3);     color: var(--c-tier-3-ink);   border: 1px solid rgba(212,160,23,.28); }
+.mt-cat-profitability { background: var(--tint-tier-3);     color: var(--c-tier-3-ink);   border: 1px solid rgba(114,105,109,.28); }
 .mt-cat-balance     { background: rgba(74,85,104,.10);      color: #4A5568;               border: 1px solid rgba(74,85,104,.22); }
 .mt-cat-cashflow    { background: rgba(46,125,232,.08);     color: #1E5CB3;               border: 1px solid rgba(46,125,232,.18); }
 .mt-cat-income      { background: rgba(212,160,23,.08);     color: #8A6710;               border: 1px solid rgba(212,160,23,.22); }
