@@ -211,6 +211,47 @@ a claim about the working tree.
 
 **The remaining rows are re-verified in Layer 2.**
 
+### F-011 🔵 An unknown ticker answers 200, not 404 — the August soft-404 fix never reached the signed-in app
+
+**Found:** Layer 1, by writing the test the coverage map said was missing.
+
+Measured on the production build, signed in, 2026-08-23:
+
+| URL | Status | Should be |
+|---|---|---|
+| `/stocks/us/ZZZZNOTREAL` | **200** | 404 |
+| `/stocks/xx/AAPL` (no such market) | **200** | 404 |
+| `/learn/not-a-real-article` | 404 ✅ | 404 |
+
+CLAUDE.md **11r** records a sitewide soft-404 — every `notFound()` answering 200 —
+fixed on 2026-08-18 by deleting the root `app/loading.tsx`. That fix was correct and
+it was **incomplete**: `app/(app)/loading.tsx` and the ticker route's own
+`loading.tsx` are still present, so inside the signed-in product the Suspense shell
+is still flushed before the status is set. Same bug, same mechanism, the half of the
+site nobody re-checked — 11c's "one rule, one place" and 14g's "a guard scoped to
+public routes is silent, not clean, about the rest."
+
+⚠️ **Nothing on screen is wrong**, which is why it survived: the reader gets the
+correct "Not in our coverage yet" page with its Request button. Only the status line
+disagrees.
+
+**Cause proven, not theorised.** Moving both `loading.tsx` files aside and rebuilding
+turned both 200s into **404s**; restoring them turned them back. Two builds, both
+directions.
+
+**🔵 Why this is the owner's call and not a fix.** Removing those files removes the
+loading skeleton from the slowest page in the product — the ticker page took
+**~4 seconds** to render in the same measurement, and without a `loading.tsx` there
+is no shell to stream, so that becomes 4 seconds of blank. Against that: the harm
+today is small. `/stocks` is `Disallow`ed, so no crawler ever sees it; a human
+reader sees the right page. The cost is to anything reading the status
+programmatically, and to the honesty of the response.
+
+**Not fixed, and no status assertion written** — one would either fail or enshrine
+the defect. `e2e/stock-not-found.spec.ts` asserts the half that stays true under
+either decision: the reader gets the right page, with the way out, and a real ticker
+is not mistaken for a missing one.
+
 ### ✅ Verified clean — recorded so these are checked facts, not assumptions
 
 | Check | Result |
