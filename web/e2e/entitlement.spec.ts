@@ -142,21 +142,30 @@ test.describe('accessDenialReason', () => {
     }
   });
 
-  test('the four rare states all report as no_subscription — F-005, open', () => {
-    // ⚠️ This PINS current behaviour rather than endorsing it. `AccessDenialReason`
-    // has four values and these four states collapse into the one that says "you
-    // don't have a subscription" — which is a plain untruth to someone whose card
-    // is mid-authentication (`incomplete`), whose payment failed outright
-    // (`unpaid`), or whose subscription we paused. They do have one; it is stuck.
+  test('each rare state now says what actually happened — F-005, FIXED', () => {
+    // ⚠️ This test used to PIN the defect: all four collapsed to
+    // `no_subscription`, which told a reader with a stuck subscription that they
+    // did not have one — and three of the four had already tried to pay us. The
+    // access decision was always right; only the sentence was wrong, which is why
+    // nothing failed and nobody noticed.
     //
-    // The access decision is right; only the sentence is wrong, which is why this
-    // is a copy question for the owner (F-005) and not a bug fix. The test exists
-    // so that changing the mapping is a deliberate act with a failing test in
-    // front of it, rather than something that drifts.
-    for (const subscription_status of THIN_STATES) {
-      expect(accessDenialReason({ subscription_status }, NOW)).toBe('no_subscription');
-    }
+    // `unpaid` maps to `payment_failed` on purpose, not by omission: it is what
+    // `past_due` becomes once Stripe stops retrying, so the reader's situation and
+    // their next action — update the card — are identical. A separate reason would
+    // be a distinction that exists in Stripe's model and not in theirs.
+    expect(accessDenialReason({ subscription_status: 'incomplete' }, NOW)).toBe('setup_incomplete');
+    expect(accessDenialReason({ subscription_status: 'incomplete_expired' }, NOW)).toBe('setup_incomplete');
+    expect(accessDenialReason({ subscription_status: 'unpaid' }, NOW)).toBe('payment_failed');
+    expect(accessDenialReason({ subscription_status: 'paused' }, NOW)).toBe('subscription_paused');
   });
+
+  // ⚠️ There is deliberately NO test here that every reason has copy. It would
+  // duplicate a guarantee the compiler already gives: `DENIAL_COPY` is typed
+  // `Record<AccessDenialReason, …>`, so a reason added to the union without its
+  // entry is a `pnpm typecheck` failure, not a runtime surprise. Asserting it here
+  // would also mean importing a React client component into a pure spec — and an
+  // app-side import has taken this whole suite down once before (the `server-only`
+  // incident in the legal audit).
 
   test('an unrecognised status from Stripe still fails closed', () => {
     // Stripe adds states over time. A status we have never seen must deny, not

@@ -47,7 +47,9 @@ export type AccessDenialReason =
   | 'no_subscription'
   | 'canceled'
   | 'payment_failed'
-  | 'billing_blocked';
+  | 'billing_blocked'
+  | 'setup_incomplete'
+  | 'subscription_paused';
 
 /** Statuses that carry full access with no further checks. */
 const LIVE_STATES = new Set(['active', 'trialing']);
@@ -95,5 +97,23 @@ export function accessDenialReason(
   const status = profile?.subscription_status ?? null;
   if (status === 'past_due') return 'payment_failed';
   if (status === 'canceled') return 'canceled';
+
+  // ⚠️ Stripe has EIGHT statuses and this function knew four. The other four all
+  // fell through to `no_subscription` below, which shows a reader with a stuck
+  // subscription the same screen as someone who has never subscribed — "you don't
+  // have a subscription" to a person who does, and who in three of these cases has
+  // already tried to pay us. Found by the Layer G coverage map (F-005):
+  // `incomplete_expired` had never appeared in a single test, the other three once
+  // or twice. **The access decision was always right; only the sentence was wrong**,
+  // which is why nothing was failing and nobody noticed.
+  //
+  // `unpaid` deliberately REUSES `payment_failed` rather than getting its own copy:
+  // it is what `past_due` becomes once Stripe stops retrying, so the reader's
+  // situation and their next action — update the card — are identical. A separate
+  // reason would be a distinction that exists in Stripe's model and not in theirs.
+  if (status === 'unpaid') return 'payment_failed';
+  if (status === 'incomplete' || status === 'incomplete_expired') return 'setup_incomplete';
+  if (status === 'paused') return 'subscription_paused';
+
   return 'no_subscription';
 }
