@@ -55,9 +55,10 @@ INVARIANT_RULES = (
 
 
 def _get_supabase() -> Client:
-    return create_client(
-        os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    )
+    # Accept either name — see the same note in daily_refresh.py. The workflow sets
+    # SUPABASE_URL; a hand-run off .env.local has only NEXT_PUBLIC_SUPABASE_URL.
+    url = os.environ.get("SUPABASE_URL") or os.environ["NEXT_PUBLIC_SUPABASE_URL"]
+    return create_client(url, os.environ["SUPABASE_SERVICE_ROLE_KEY"])
 
 
 def _load_fundamentals(supabase: Client) -> list[dict[str, Any]]:

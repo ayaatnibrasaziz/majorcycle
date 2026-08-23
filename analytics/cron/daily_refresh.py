@@ -65,7 +65,11 @@ def _jsonb(obj: Any) -> Any:
 
 
 def _get_supabase() -> Client:
-    url = os.environ["SUPABASE_URL"]
+    # SUPABASE_URL is what the workflow sets; `NEXT_PUBLIC_SUPABASE_URL` is the web
+    # app's name for the same value. Six of the eight cron scripts accept either, so
+    # a hand-run off .env.local works; this one and check_field_units.py did not, and
+    # raised a bare KeyError naming a variable the operator had never heard of.
+    url = os.environ.get("SUPABASE_URL") or os.environ["NEXT_PUBLIC_SUPABASE_URL"]
     key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     return create_client(url, key)
 
