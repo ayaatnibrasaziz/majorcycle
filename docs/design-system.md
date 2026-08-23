@@ -78,6 +78,23 @@ that `--verdict-color` is not only the stripe: it drives the heading, the score 
 the ring stroke and the status dot (`globals.css` lines 570–618), which is why the
 2026-08-22 contrast fix reached this card at all.
 
+⚠️ **Waived per-LINE on 2026-08-23, at the owner's instruction, after they had ruled on
+the same five findings three times in one session.** Each of the five carries an
+`impeccable-disable-line side-tab: <reason>` comment naming *why that particular one* is
+approved. **Per-line, not per-file, was the owner's own framing** — *"turn it off for the
+things I approve on … that way it will flag for the right reasons all the time"* — and it
+is the right shape: a file-wide waiver would also silence a genuinely bad stripe added to
+`globals.css` tomorrow, which is precisely the blindness the paragraph below warns about.
+Five named lines cannot grow into a blanket. ⚠️ **Verification is the next time the hook
+fires, not this commit.** The waivers are applied and the stylesheet still parses (`/*`
+and `*/` balanced at 149 each, `check:tier-palette` green), but the detector could not be
+driven by hand — invoked directly it reported nothing even on a file written to fail,
+which is an instrument fault, not a clean result (14g). Until the hook next runs quiet on
+this file, treat the waiver as unproven.
+
+⚠️ **The paragraph below is the reasoning it replaces, kept because the risk did not go
+away — it was accepted:**
+
 ⚠️ **No exemption has been filed, deliberately.** The last one was verified once,
 quietly stopped applying, and nobody noticed for four days — so the honest state is
 a warning we have decided against, written down here, rather than a silence resting

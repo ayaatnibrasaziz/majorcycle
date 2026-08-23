@@ -342,6 +342,8 @@ editing the source and re-running the guard would have measured the previous bui
 (CLAUDE.md 11i). **The sabotage was confirmed on the wire with `curl -I` before the guard
 ran**, so a green result could not have been the sabotage silently failing to land.
 
+### ✅ F-010 The page-weight guard printed `ok` next to a failing page — FIXED
+
 ⚠️ **Two of the three page-weight sabotages printed `ok` in the summary table while
 failing.** The `ok`/`OVER` column reports the budget comparison only, so a page that
 redirected somewhere else, or never loaded, is labelled `ok` on the very line meant to
@@ -349,8 +351,15 @@ summarise it — `ok /methodology 277 KB / 400 … landed /` and `ok /robots.txt
 0 reqs`. The problem block underneath catches both and the exit code is 1, so nothing is
 missed by a reader who scrolls; it is cosmetic. Recorded because the theme of this whole
 layer is checks that look clean while blind, and a column that says `ok` next to a
-failure is one careless skim from being believed. **Not fixed — it is a display change to
-a passing guard, which is Layer 5b's call, not mine mid-audit.**
+failure is one careless skim from being believed.
+
+**Owner's ruling (2026-08-23): fix it.** The flag was `kb > maxKB ? 'OVER' : '  ok'`,
+computed from the budget alone and printed *before* the other two checks had run. Now the
+row's problems are collected first and the label is derived from all three, giving three
+states that each mean something: **OVER** (too heavy), **FAIL** (redirected, or never
+loaded), **ok** (genuinely nothing wrong). Re-ran all three sabotages against the fix —
+`/learn` OVER, `/methodology` FAIL, `/robots.txt` FAIL, exit 1 — then a clean control:
+six rows `ok`, exit 0. `pnpm lint` and `pnpm typecheck` both clean.
 
 ### ⚠️ Two method errors of mine in this layer, both caught by controls
 

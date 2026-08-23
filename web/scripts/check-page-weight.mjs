@@ -123,28 +123,44 @@ for (const [path, maxKB, needsAuth, why] of BUDGETS) {
   const kb = Math.round(bytes / 1024);
   const landed = new URL(page.url()).pathname;
 
-  // Print the landed URL: a route that redirects would otherwise be reported as a
-  // very light version of the page you asked for.
-  const flag = kb > maxKB ? 'OVER' : '  ok';
+  // ⚠️ Collect this row's problems BEFORE printing it, so the label can reflect all
+  // three of them rather than the budget alone. It printed `ok` beside a failure
+  // until 2026-08-23: the flag was `kb > maxKB ? 'OVER' : ' ok'`, so a page that
+  // redirected somewhere else, or never loaded at all, was labelled `ok` on the
+  // very line meant to summarise it — `ok /robots.txt 1 KB / 400  0 reqs` sat above
+  // `it did not load`. Nothing was ever missed (the problem block below prints and
+  // the exit code is 1), but a column reading `ok` next to a failure is one skim
+  // from being believed, and "looks clean while broken" is the exact defect this
+  // whole file exists to catch. Found by sabotaging the guard three ways in the
+  // Layer G audit — two of the three sabotages printed `ok`.
+  const rowProblems = [];
+
+  if (landed !== path) {
+    rowProblems.push(`${path} redirected to ${landed} — that is not the page this budget describes`);
+  }
+  // A page that did not load transfers almost nothing and would pass every budget
+  // in this file (CLAUDE.md 14g).
+  if (kb < 40 || requests < 5) {
+    rowProblems.push(`${path} transferred only ${kb} KB over ${requests} requests — it did not load`);
+  }
+  if (kb > maxKB) {
+    rowProblems.push(
+      `${path} is ${kb} KB, over its ${maxKB} KB budget (${why}).\n` +
+        `      heaviest: ${heaviest.join('\n                ')}`,
+    );
+  }
+
+  // Three labels, each meaning something: OVER = too heavy, FAIL = a problem that
+  // is not about size (redirected, or did not load), ok = genuinely nothing wrong.
+  // Print the landed URL either way — a route that redirects would otherwise be
+  // reported as a very light version of the page you asked for.
+  const flag = kb > maxKB ? 'OVER' : rowProblems.length ? 'FAIL' : '  ok';
   console.log(
     `  ${flag}  ${path.padEnd(22)} ${String(kb).padStart(5)} KB / ${maxKB}  ` +
       `${String(requests).padStart(3)} reqs  landed ${landed}`,
   );
 
-  if (landed !== path) {
-    problems.push(`${path} redirected to ${landed} — that is not the page this budget describes`);
-  }
-  // A page that did not load transfers almost nothing and would pass every budget
-  // in this file (CLAUDE.md 14g).
-  if (kb < 40 || requests < 5) {
-    problems.push(`${path} transferred only ${kb} KB over ${requests} requests — it did not load`);
-  }
-  if (kb > maxKB) {
-    problems.push(
-      `${path} is ${kb} KB, over its ${maxKB} KB budget (${why}).\n` +
-        `      heaviest: ${heaviest.join('\n                ')}`,
-    );
-  }
+  problems.push(...rowProblems);
 }
 
 await browser.close();

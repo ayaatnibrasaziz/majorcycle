@@ -481,7 +481,7 @@
   cursor: help;
 }
 .kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
-.kpi-card::before {
+.kpi-card::before {  /* impeccable-disable-line side-tab: not a stripe - left:0;right:0;height:3px is a rule across the TOP (design-system.md 1a) */
   content: '';
   position: absolute; top: 0; left: 0; right: 0; height: 3px;
   background: linear-gradient(90deg, var(--brand-mid), var(--brand-bright));
@@ -520,7 +520,7 @@
   box-shadow: 0 4px 14px -4px rgba(26,58,110,.10), 0 1px 3px rgba(26,58,110,.05);
   overflow: hidden;
 }
-.card--verdict::before {
+.card--verdict::before {  /* impeccable-disable-line side-tab: the bar IS the rating tier - VerdictCard.tsx sets --verdict-color (design-system.md 1a) */
   content: '';
   position: absolute; top: 0; left: 0; bottom: 0; width: 5px;
   background: linear-gradient(180deg, var(--verdict-color, #1E5CB3), var(--verdict-color-deep, #1A3A6E));
@@ -755,7 +755,7 @@
 .insight-invalidation {
   display: flex; align-items: flex-start; gap: 6px; margin-top: 6px;
   padding: 7px 10px; background: rgba(180,140,40,.06);
-  border-left: 2px solid var(--c-neutral-ink); border-radius: 0 4px 4px 0;
+  border-left: 2px solid var(--c-neutral-ink); border-radius: 0 4px 4px 0;  /* impeccable-disable-line side-tab: owner-approved 2026-08-22 - marks the caveat as a condition (design-system.md 1a) */
   font-family: 'Sora', sans-serif; font-size: 11px; font-style: italic;
   color: #7A5A10; line-height: 1.5;
 }
@@ -786,9 +786,9 @@
    .card--verdict::before (5px, and see VerdictCard.tsx — its colour is the rating
    tier, so the CSS fallback #1E5CB3 never renders). All five findings and their
    individual verdicts: design-system.md §1a. */
-.card-header--accent-buy  { border-left: 3px solid var(--c-up-ink); }
+.card-header--accent-buy  { border-left: 3px solid var(--c-up-ink); }  /* impeccable-disable-line side-tab: owner-approved 2026-08-22 - green says good news before a word is read (design-system.md 1a) */
 .card-header--accent-buy .card-title  { color: var(--c-up-ink); }
-.card-header--accent-hold { border-left: 3px solid var(--c-neutral-ink); }
+.card-header--accent-hold { border-left: 3px solid var(--c-neutral-ink); }  /* impeccable-disable-line side-tab: owner-approved 2026-08-22 - grey says caution before a word is read (design-system.md 1a) */
 .card-header--accent-hold .card-title { color: var(--c-neutral-ink); }
 
 @media (max-width: 640px) {
