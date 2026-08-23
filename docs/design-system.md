@@ -85,12 +85,29 @@ approved. **Per-line, not per-file, was the owner's own framing** — *"turn it 
 things I approve on … that way it will flag for the right reasons all the time"* — and it
 is the right shape: a file-wide waiver would also silence a genuinely bad stripe added to
 `globals.css` tomorrow, which is precisely the blindness the paragraph below warns about.
-Five named lines cannot grow into a blanket. ⚠️ **Verification is the next time the hook
-fires, not this commit.** The waivers are applied and the stylesheet still parses (`/*`
-and `*/` balanced at 149 each, `check:tier-palette` green), but the detector could not be
-driven by hand — invoked directly it reported nothing even on a file written to fail,
-which is an instrument fault, not a clean result (14g). Until the hook next runs quiet on
-this file, treat the waiver as unproven.
+Five named lines cannot grow into a blanket.
+
+✅ **Proven both ways, 2026-08-23**, by driving the real Stop hook rather than waiting to
+see whether it went quiet:
+
+| | State of the file | Hook says |
+|---|---|---|
+| Control | one **new, unwaived** stripe appended | **1 finding, at its line** — and none of the five |
+| Test | the five waived stripes only | **silence** (zero bytes) |
+
+The control is what makes the silence mean anything: the same command, the same seeded
+session, minutes apart. ⚠️ **Three instrument faults had to be cleared first, and each
+produced a convincing false pass.** (i) The detector CLI scans `.css` with the text engine,
+but `side-tab` lives in the browser engine — so scanning the stylesheet directly reported
+nothing, *including on a file written to fail*. (ii) The Stop hook scans a per-session
+cache of touched files, so invoking it without a `session_id` scanned nothing at all.
+(iii) Seeding that cache by hand, my own shell escaping ate the backslashes and wrote
+`C:UsersAyaat…` — a path that does not exist, so the hook dutifully scanned an empty set
+and said nothing. **All three look identical to "clean".** The fix was to lift the real
+path key out of the real session rather than retype it (CLAUDE.md 11o, and the repo's own
+heredoc-mangling lesson). ⚠️ And note the cache keys findings as `rule:line`: the waivers
+sit on the *same* lines they waive, so a stale cache entry could have faked the pass on
+its own. Each run used a fresh session id with an empty finding list.
 
 ⚠️ **The paragraph below is the reasoning it replaces, kept because the risk did not go
 away — it was accepted:**
