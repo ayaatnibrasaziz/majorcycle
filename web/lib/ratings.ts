@@ -352,21 +352,37 @@ export function ratingComposition(r: CycleAnalysis): { health: number; valuation
   };
 }
 
+/** `#RRGGBB` → `"r,g,b"`, so an `rgba()` can be built from the one palette. */
+function hexToRgbTriplet(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+}
+
 /**
  * Three shades of a score's tier colour — for the Overall composition micro-bar
  * (Health / Valuation / Cycle Payoff segments), mirroring the reference's
  * `zoneRamp`. Darkest → lightest.
+ *
+ * ── ⚠️ DERIVED, not a second copy of the palette (audit F-009) ──────────────
+ * This held its own table of the five tier colours as `r,g,b` strings, and they
+ * were the **pre-2026-08-22** ones. The G6 contrast fix moved the palette and
+ * never reached here, so for a month the micro-bar under every Overall score was
+ * painted in the old colours while the chip directly above it used the new ones.
+ * Nobody saw it because the change was a darkening, not a hue swap.
+ *
+ * ⚠️ **The guard that exists for exactly this could not see it.** `check:tier-palette`
+ * walks 278 files hunting stray copies of the palette — by **hex**. A copy written
+ * as `212,160,23` is invisible to it, so the one control against this drift had a
+ * blind spot the width of a format change. Fixing the literals would have left that
+ * blind spot intact and simply reset the clock.
+ *
+ * So the copy is gone. `RATING_TIER_HEX` is the single source and the triplet is
+ * computed from it — CLAUDE.md **11c (iii)**: when a rule is shared, make the second
+ * consumer *derive* from the first rather than restate it, because two things that
+ * merely agree today will not agree forever.
  */
 export function compositionRamp(score: number): [string, string, string] {
-  const t = tierFromScore(score);
-  const rgb: Record<1 | 2 | 3 | 4 | 5, string> = {
-    1: '0,100,0',
-    2: '34,139,34',
-    3: '114,105,109',
-    4: '255,69,0',
-    5: '178,34,34',
-  };
-  const c = rgb[t];
+  const c = hexToRgbTriplet(RATING_TIER_HEX[tierFromScore(score)]);
   return [`rgba(${c},0.85)`, `rgba(${c},0.55)`, `rgba(${c},0.30)`];
 }
 

@@ -630,11 +630,28 @@ new one.
 exactly this class of drift has a blind spot the width of a format change. Same family as F-007:
 the guard is right about what it looks at and silent about the rest.
 
-**Tier 3 only is fixed here** (`212,160,23` → `114,105,109`), because leaving it would have made
-the approved change incoherent — a gold bar under a grey chip. **Tiers 1, 2, 4 and 5 are left
-alone and raised for the owner**: repainting four more colours is not what was approved, and the
-difference is subtle since G6 only darkened them. The guard should also learn to match `r,g,b`
-form.
+**✅ FIXED 2026-08-23, on the owner's instruction — and not by repainting the literals.**
+
+Fixing the four remaining values would have left the mechanism intact and simply reset the
+clock: a second copy of the palette, in a format the guard cannot read, waiting for the next
+palette change. So **the copy is gone**. `compositionRamp` now derives its triplet from
+`RATING_TIER_HEX` — CLAUDE.md **11c (iii)**: when a rule is shared, make the second consumer
+*derive* from the first rather than restate it, because two things that merely agree today
+will not agree forever.
+
+| Tier | Bar was | Bar now | Chip |
+|---|---|---|---|
+| High Conviction | `0,100,0` | `6,95,70` | `#065F46` |
+| Constructive | `34,139,34` | `30,124,30` | `#1E7C1E` |
+| Neutral | `114,105,109` | unchanged | `#72696D` |
+| Cautious | `255,69,0` | `199,54,0` | `#C73600` |
+| Bearish | `178,34,34` | `139,20,20` | `#8B1414` |
+
+Proven by changing tier 4 in the palette to magenta and confirming the bar followed it with no
+second edit. ⚠️ **The guard's r,g,b blind spot is now moot for this file** — there is no
+literal left to drift — but it remains true of the guard, and is worth teaching it if another
+such copy ever appears. Recorded rather than fixed: widening the guard was not part of what was
+asked, and the defect it would catch no longer exists here.
 
 ---
 
