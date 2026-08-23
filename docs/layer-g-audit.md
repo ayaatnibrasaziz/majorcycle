@@ -303,4 +303,91 @@ merge. An empty number is an unticked box.
 
 ---
 
+## Layer 0 — proving the instruments
+
+Each guard broken on purpose and required to go red **for the stated reason**, with a control
+run after every revert. Exit codes measured **without a pipe** — see the method note below.
+
+| Guard | Sabotage | Exit | Message |
+|---|---|---|---|
+| `check:entitlement-gates` | `/api/portal` header → `public, s-maxage=60` | **1** ✅ | named the file, the directive, and *why* a shared cache leaks a Stripe session URL |
+| `check:report-sections` | **delete** the `<DrawdownOverlay>` render | **1** ✅ | `DRIFT: … on the Stock Detail page but NOT in the report — DrawdownOverlay` |
+| `check:report-sections` | **comment out** the same render | **0** 🔴 | *nothing* — see F-007 |
+| `check:data-integrity` | unpaginated `.from('stocks').select()` | **1** ✅ | named the file, the table, the 1000-row cap and the three valid fixes |
+| `check:seo` | `/pricing` → `index: false` | **1** ✅ | named the page and that it "keeps working, so nothing looks wrong" |
+| `check:tier-palette` | change tier 4 in **one** copy | **1** ✅ | caught the two copies drifting apart |
+| `check:tier-palette` | collide tiers 4+5 in **both** copies | **1** ✅ | 3 messages: 1.0 vs floor 16, protanope 3.2 vs 17.5, deuteranope 1.6 vs 16 |
+
+**Still to prove:** `check:render-modes`, `check:csp`, `check:page-weight` — all need a
+production build and a running server, so they run with Layer 2.
+
+### ⚠️ Two method errors of mine in this layer, both caught by controls
+
+**(i) I measured an exit code through a pipe.** `pnpm … | tail; echo $?` reports `tail`'s
+status, not the guard's — so my first sabotage printed two correct failures beside
+`exit=0`, which reads exactly like *"the guard prints red but CI stays green"*, the most
+alarming result a guard can give. Re-measured without the pipe: **1 when broken, 0 when
+clean.** The guard was always fine; the instrument was not. Every row above is now measured
+directly, with a control.
+
+**(ii) My first tier-palette sabotage tested a different check than I intended.** Changing
+tier 4 in `ratings.ts` alone failed the *two-copies-in-step* check, and the printed adjacency
+numbers were **identical to the clean run** — which is what gave it away. Had I stopped at
+"exit 1, guard works", **the adjacency check would still be unproven** while I recorded it as
+verified. Changing both copies exercised it properly. This is CLAUDE.md **11u**: a break that
+fails in an unexpected way is a finding about your model, not a verdict on the test.
+
+### F-007 🟡 `check:report-sections` is blind to a commented-out section
+
+The guard collects components imported from `@/components/stocks/…`, then tests whether
+`<Name` appears anywhere in the file. **It never strips comments**, so
+`{/* <DrawdownOverlay … /> */}` still matches and the section counts as rendered.
+
+Deleting a section is caught. **Commenting one out is not** — and commenting out is the more
+likely real action: someone disables a section while debugging and forgets. The report would
+silently lose a section a paying customer downloads, with the guard green.
+
+⚠️ Note this is the *same* defect shape the repo already fixed once elsewhere:
+`public-chrome.spec.ts` reads source **with comments stripped**, because its first version
+failed on the very sentence documenting the fix. The lesson was learned in one guard and not
+carried to this one — **11c-iv** again.
+
+**Not fixed:** it is a CI guard change and the owner asked to see changes before they land.
+**Proposed:** strip block and line comments before matching, and prove it by re-running the
+comment-out sabotage — which must then exit 1.
+
+### F-008 🟡 Two adjacent rating tiers are near-indistinguishable to a red-blind reader
+
+From the *passing* baseline, not a sabotage:
+
+```
+tier 1-2   apart 17.1   protanope 18.6   deuteranope 24.6
+tier 2-3   apart 28.8   protanope  2.8   deuteranope  7.3   ← Constructive vs Neutral
+tier 3-4   apart 26.8   protanope 12.7   deuteranope  5.9
+tier 4-5   apart 16.3   protanope 18.0   deuteranope 16.1
+```
+
+**Constructive (`#1E7C1E` green) against Neutral (`#87660F` gold) is 2.8 apart to a
+protanope**, where every other pair sits between 12.7 and 26.1. Protanopia affects roughly 1%
+of men. Constructive-versus-Neutral is also the most consequential boundary we draw — it is
+the line between *our analysis likes this* and *our analysis is indifferent*.
+
+**The guard is working exactly as designed.** It is a **ratchet** (CLAUDE.md **11t**): it
+records today's measurement as the floor so a colour can never get *closer*, deliberately
+rather than inventing a threshold that would fail on the day it was written. It therefore
+prevents worsening and says nothing about adequacy — 2.8 is locked in as *acceptable* purely
+because it was the value on the day.
+
+**Graded 🟡, not 🔴, and here is the honest reason:** colour is not the only channel. Rating
+tiers render with their **word** (`High Conviction` / `Constructive` / …) and score chips
+carry the **number**, so a reader who cannot separate the hues still gets the information.
+That keeps it clear of the accessibility rule that colour must never be the sole means. It is
+a loss of *redundancy*, not of meaning.
+
+**Owner's call**, and it is the same shape as the finding they caught by eye in G6 — with the
+difference that this one is only visible through a simulation. Fixing it means moving
+Constructive or Neutral, which is a locked brand decision.
+
+---
+
 *Log continues as the audit proceeds.*
