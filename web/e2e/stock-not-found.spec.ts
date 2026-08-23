@@ -83,7 +83,17 @@ test.describe('a ticker we do not cover', () => {
     // The control. Without it, a change that 404'd every stock would satisfy both
     // assertions above — and that is not a hypothetical: it is the shape of the
     // 11e bug, where a failed database read made every ticker look absent.
-    const res = await page.goto('/stocks/us/AAPL');
+    //
+    // ⚠️ `waitUntil: 'commit'` because this test wants the STATUS LINE and nothing
+    // else. The default waits for `load`, which on this page means the charts and
+    // the Python cycle analysis — and under full-suite load on the dev server that
+    // exceeded the 60s timeout and made this test flaky on its first full run.
+    // A flaky result on a test written the same day is far likelier to be the
+    // test's fault than the harness's (CLAUDE.md 11i), and it was: waiting for
+    // three seconds of rendering to read a header that arrived in the first
+    // packet. The two 404 assertions are left on the default wait — those pages
+    // are tiny, and the stricter wait is free there.
+    const res = await page.goto('/stocks/us/AAPL', { waitUntil: 'commit' });
     expect(res?.status()).toBe(200);
   });
 

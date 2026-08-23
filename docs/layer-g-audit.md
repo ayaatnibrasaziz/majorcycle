@@ -285,6 +285,32 @@ page and its Request link, **and that the skeleton still appears** — because t
 cheap "fix" for this is to delete the last `loading.tsx`, which would keep every
 status green and hand the reader a blank screen for three seconds.
 
+### ℹ️ Two flaky tests on the first full run, same cause — one fixed, one recorded
+
+The full suite came back **571 listed = 569 passed + 2 flaky, 0 failed, 0 skipped**, exit
+code 0 measured **without a pipe** (Layer 0's own lesson). Reconciled deliberately: a
+green line is not a report, and 2-apart is exactly the gap that hid a real failure earlier
+the same day.
+
+Both flakes were `page.goto` **timing out at 60s**, not a wrong answer:
+
+| Test | Mine? | Page |
+|---|---|---|
+| `stock-not-found` · a real ticker still answers 200 | **yes** | `/stocks/us/AAPL` |
+| `seo` · no page ships a SECOND, per-page share card | no, pre-existing | `/learn/what-majorcycle-doesnt-do` |
+
+⚠️ **Mine was my defect, as 11i predicts for a test written the same day.** `page.goto`
+waits for `load` by default, which on the ticker page means the charts and the Python
+cycle analysis — three-plus seconds normally, and past 60s under full-suite parallel load
+on `next dev`. The assertion wanted the **status line**, which arrives in the first
+packet. Fixed with `waitUntil: 'commit'`. The two 404 assertions keep the default wait —
+those pages are tiny, so the stricter wait is free.
+
+**The `seo` one is recorded, not fixed.** Same shape and a one-line change, but it is
+outside items 1–8 and touching it would be the quiet scope-widening this log already
+records once (11l). Worth noting it is a *dev-server-under-load* artefact rather than a
+product fault: the suite boots `next dev`, which recompiles per route.
+
 ### F-012 🟠 `/api/request-ticker` treated a failed database read as "not covered" — FIXED
 
 **Found:** Layer 1, by a flaky test — the kind of result that is easiest to re-run and ignore.
