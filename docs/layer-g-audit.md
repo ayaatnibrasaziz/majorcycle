@@ -195,10 +195,21 @@ Owner's call; the four screens go to them in Layer 5b.
 ### F-006 🟠 The launch-gate table's evidence is three weeks stale
 
 `roadmap.md` §3 is the formal definition of ready, and every row is supposed to cite a reading.
-It cites **E2E 105/105 and pytest 86**, measured 2026-08-02 on `ab11e18`. Today those are
-**523** and **153**. Several rows are 🟡 *partly proven*. The table is not wrong so much as
-**out of date in a way that reads as current** — the same shape as CLAUDE.md **11j**, where
-three documents said a page was finished. Re-verified row by row in Layer 2.
+It cites **E2E 105/105 and pytest 86**, measured 2026-08-02 on `ab11e18`. Several rows are
+🟡 *partly proven*. The table is not wrong so much as **out of date in a way that reads as
+current** — the same shape as CLAUDE.md **11j**, where three documents said a page was
+finished.
+
+✅ **The test row is fixed (2026-08-23).** Re-read from CI run `32585813431` on `f17866a`:
+**E2E 523 passed, pytest 153**, with no `flaky` and no `skipped` line in either summary
+(read the whole block — CLAUDE.md 11i). Local `pytest` re-run the same day independently
+gave 153, agreeing. The row now cites the run id and the SHA, which is the thing that
+stops a number ageing invisibly: without one, *"all tests passing"* stays true-looking
+forever. ⚠️ **Noted in the row itself:** the audit's own commits were local and unpushed
+at the time, so CI has not seen them — the citation is the last SHA it actually ran, not
+a claim about the working tree.
+
+**The remaining rows are re-verified in Layer 2.**
 
 ### ✅ Verified clean — recorded so these are checked facts, not assumptions
 
@@ -286,8 +297,8 @@ merge. An empty number is an unticked box.
 | ⬜ | `pnpm e2e` | 0 failed, 0 skipped, count reconciled with CI | — |
 | ⬜ | `pytest analytics/` | all pass | 153 ✅ (step zero) |
 | ⬜ | `mypy analytics/` | no issues | 42 files ✅ (step zero) |
-| ⬜ | The eight `check:*` guards | all green, **each proven able to fail** in Layer 0 | — |
-| ⬜ | `pnpm check:page-weight` | within budget — **manual, production build** | — |
+| 🟡 | The eight `check:*` guards | all green, **each proven able to fail** in Layer 0 | **all 8 proven able to fail** ✅ (Layer 0, 2026-08-23 — 13 sabotages, each with a control). Green readings re-taken in Layer 2 |
+| 🟡 | `pnpm check:page-weight` | within budget — **manual, production build** | all 6 pages within budget ✅ 2026-08-23; heaviest `/stocks/us/AAPL` **1223 / 1400 KB**. Re-taken at merge |
 | ⬜ | `pnpm lighthouse` | meets decision #33 — **manual, median of 3** | — |
 | ⬜ | Launch-gate table re-verified | every row's evidence current, not from 2026-08-02 | — |
 | ⬜ | Deferred list GA-1…GA-5 re-verified | closed *today*, not closed *once* | — |
@@ -317,9 +328,29 @@ run after every revert. Exit codes measured **without a pipe** — see the metho
 | `check:seo` | `/pricing` → `index: false` | **1** ✅ | named the page and that it "keeps working, so nothing looks wrong" |
 | `check:tier-palette` | change tier 4 in **one** copy | **1** ✅ | caught the two copies drifting apart |
 | `check:tier-palette` | collide tiers 4+5 in **both** copies | **1** ✅ | 3 messages: 1.0 vs floor 16, protanope 3.2 vs 17.5, deuteranope 1.6 vs 16 |
+| `check:render-modes` | move `.next/server/app/terms.html` aside | **1** ✅ | `/terms is NOT prerendered` — and named `app/not-found.tsx` as the usual culprit |
+| `check:render-modes` | plant a `login.html` (the opposite direction) | **1** ✅ | `/login IS prerendered and must not be`, **plus** a second message: the nonce interlock, unprompted |
+| `check:csp` | `proxy.ts` header → `…-Report-Only` | **1** ✅ | all 12 routes `sent NO Content-Security-Policy` — correct, Report-Only enforces nothing |
+| `check:page-weight` | `/learn` budget 380 → 100 | **1** ✅ | named the overage **and the five heaviest resources** |
+| `check:page-weight` | budget a route that 308s (`/methodology`) | **1** ✅ | `redirected to / — that is not the page this budget describes` |
+| `check:page-weight` | budget a route that barely loads (`/robots.txt`) | **1** ✅ | `transferred only 1 KB over 0 requests — it did not load` (the 14g floor) |
 
-**Still to prove:** `check:render-modes`, `check:csp`, `check:page-weight` — all need a
-production build and a running server, so they run with Layer 2.
+**All eight `check:*` guards are now proven able to fail.** The three added 2026-08-23
+needed a production build on `:3200` and a running server; the CSP one needed two full
+rebuilds, because the header is set in `proxy.ts`, which Next compiles at build time —
+editing the source and re-running the guard would have measured the previous build
+(CLAUDE.md 11i). **The sabotage was confirmed on the wire with `curl -I` before the guard
+ran**, so a green result could not have been the sabotage silently failing to land.
+
+⚠️ **Two of the three page-weight sabotages printed `ok` in the summary table while
+failing.** The `ok`/`OVER` column reports the budget comparison only, so a page that
+redirected somewhere else, or never loaded, is labelled `ok` on the very line meant to
+summarise it — `ok /methodology 277 KB / 400 … landed /` and `ok /robots.txt 1 KB / 400
+0 reqs`. The problem block underneath catches both and the exit code is 1, so nothing is
+missed by a reader who scrolls; it is cosmetic. Recorded because the theme of this whole
+layer is checks that look clean while blind, and a column that says `ok` next to a
+failure is one careless skim from being believed. **Not fixed — it is a display change to
+a passing guard, which is Layer 5b's call, not mine mid-audit.**
 
 ### ⚠️ Two method errors of mine in this layer, both caught by controls
 
