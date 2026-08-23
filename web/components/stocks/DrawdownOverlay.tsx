@@ -373,9 +373,15 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
           </div>
           <div
             className="stat-pill"
+            // The bounds are the EXTREMES of the recorded history, not a band a live
+            // move stays inside — so neither may claim the level is rarely breached.
+            // This said "Stocks rarely breach this level", which is the same factual
+            // error PR #90 corrected on the Results table tooltips; one screen was
+            // fixed and this one was not (CLAUDE.md 11c). The two screens keep their
+            // own voice by owner decision — only the factual clause is shared.
             title={isDD
-              ? 'Lower Bound — The deepest drawdown ever recorded for this stock across all historical cycles. Stocks rarely breach this level. If Current approaches Lower Bound, risk/reward is very favourable.'
-              : 'Upper Bound — The highest profit recovery peak ever recorded across all historical cycles. If Current approaches Upper Bound, consider taking profits.'}
+              ? 'Lower Bound — The deepest drawdown ever recorded for this stock across all historical cycles. A still-forming dip can run below it. If Current approaches Lower Bound, risk/reward is very favourable.'
+              : 'Upper Bound — The highest profit recovery peak ever recorded across all historical cycles. A still-forming rally can run above it. If Current approaches Upper Bound, the stock is near the top of its historical range.'}
           >
             <div className="stat-pill-label">{isDD ? 'Lower Bound' : 'Upper Bound'}</div>
             <div className={`stat-pill-val ${isDD ? 'red' : 'green'}`}>{boundVal !== null ? `${fmt(boundVal)}%` : '—'}</div>
