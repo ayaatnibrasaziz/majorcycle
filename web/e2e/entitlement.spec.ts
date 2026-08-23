@@ -123,6 +123,60 @@ test.describe('accessDenialReason', () => {
     ).toBe('billing_blocked');
   });
 
+  /* ── every Stripe status, not just the four we meet daily ────────────────── */
+
+  // Stripe can put a subscription in eight states. `entitlement.spec.ts` and the
+  // behavioural matrix between them exercised `active`, `trialing`, `past_due` and
+  // `canceled` heavily — 84 mentions — and the other four barely or never:
+  // `paused` twice, `incomplete` once, `unpaid` once, `incomplete_expired` NEVER.
+  // The Layer G coverage map found the hole. What follows closes it.
+  const THIN_STATES = ['incomplete', 'incomplete_expired', 'unpaid', 'paused'] as const;
+
+  test('every status outside active/trialing denies access', () => {
+    // The security property, and it holds by construction: LIVE_STATES is a
+    // two-element set and everything else falls through. Asserted anyway, because
+    // "correct by construction" is a statement about today's code — the day
+    // someone adds a status to that set, this is what says so.
+    for (const subscription_status of THIN_STATES) {
+      expect(hasAccess({ subscription_status }, NOW), `${subscription_status} must not be entitled`).toBe(false);
+    }
+  });
+
+  test('the four rare states all report as no_subscription — F-005, open', () => {
+    // ⚠️ This PINS current behaviour rather than endorsing it. `AccessDenialReason`
+    // has four values and these four states collapse into the one that says "you
+    // don't have a subscription" — which is a plain untruth to someone whose card
+    // is mid-authentication (`incomplete`), whose payment failed outright
+    // (`unpaid`), or whose subscription we paused. They do have one; it is stuck.
+    //
+    // The access decision is right; only the sentence is wrong, which is why this
+    // is a copy question for the owner (F-005) and not a bug fix. The test exists
+    // so that changing the mapping is a deliberate act with a failing test in
+    // front of it, rather than something that drifts.
+    for (const subscription_status of THIN_STATES) {
+      expect(accessDenialReason({ subscription_status }, NOW)).toBe('no_subscription');
+    }
+  });
+
+  test('an unrecognised status from Stripe still fails closed', () => {
+    // Stripe adds states over time. A status we have never seen must deny, not
+    // slip through a switch that only enumerates the ones we knew about.
+    expect(hasAccess({ subscription_status: 'some_future_stripe_state' }, NOW)).toBe(false);
+    expect(accessDenialReason({ subscription_status: 'some_future_stripe_state' }, NOW)).toBe(
+      'no_subscription',
+    );
+  });
+
+  test('a dispute lock outranks even the rare states', () => {
+    // `billing_blocked` is checked before the status is consulted, so a paused
+    // account under dispute must say so rather than reporting the pause.
+    for (const subscription_status of THIN_STATES) {
+      expect(
+        accessDenialReason({ subscription_status, billing_blocked: true }, NOW),
+      ).toBe('billing_blocked');
+    }
+  });
+
   test('a dispute lock reports as blocked, not as the underlying status', () => {
     // Otherwise a disputed past_due account would be told "update your card",
     // which is not the actionable truth.

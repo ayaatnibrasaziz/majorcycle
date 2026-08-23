@@ -162,7 +162,32 @@ actually import.
 | `refresh_index_membership` | Nightly SPY/IOZ/XIU holdings | 🟡 |
 | `fmp_provider` | Phase 2 stub, deliberately unimplemented | ℹ️ not a gap |
 | `config` | Constants | ℹ️ |
-| `fix_insider_transactions`, `fix_pe_history`, `fix_split_history` | One-off historical repair scripts | ℹ️ **and arguably should be archived rather than tested** — a script that ran once and will not run again is dead weight in a directory people grep |
+| `fix_split_history` | Repairs split-corrupted price history | ℹ️ **KEEP — not dead.** See correction below |
+| `fix_pe_history` | Recomputes thin `pe_history` | ℹ️ **KEEP** — see correction below |
+| `fix_insider_transactions` | Repairs insider dates stored as row indices | ℹ️ genuinely spent |
+
+### ⚠️ Correction — I recommended deleting three scripts and was wrong about two
+
+The table above originally read *"one-off historical repair scripts … arguably should be
+archived rather than tested"*, and the owner approved acting on it. Checking before
+deleting — the owner's standing rule, and CLAUDE.md **11h**'s "grep the audit docs before
+deriving a diagnosis" — showed the premise was false for two of the three:
+
+- **`fix_split_history.py` is a live operational tool.** `architecture.md` §73 names it as
+  *the* remedy for an already-corrupted ticker, with its flags, and records a standing
+  case (**DD**, where yfinance lists a split but never back-adjusts the prices). Deleting
+  it would have removed the documented answer to a problem the docs say still happens.
+- **`fix_pe_history.py` repairs thin `pe_history`**, which is a condition that recurs for
+  newly added tickers rather than a one-time historical mess.
+- **`fix_insider_transactions.py`** is the only genuinely spent one: it repairs dates
+  stored as row indices by a bug that was fixed at source and cannot recur.
+
+**Nothing was deleted.** One clearly-dead script is not the three the owner agreed to, so
+the decision goes back rather than being quietly narrowed. ⚠️ The general lesson is the
+one this audit keeps re-learning in new costumes: **"no test references it" and "nothing
+needs it" are different claims**, and I had let the first stand in for the second. A
+maintenance tool is *supposed* to have no automated caller — that is what makes it a
+maintenance tool, not what makes it dead.
 
 ---
 
@@ -191,4 +216,5 @@ Ranked by what would hurt most if it broke silently:
 5. 🟠 **`presets` and `drain_requests`** — product logic with no Python test
 6. 🟡 **`/api/search`, `/api/listings/*`** — gated routes, no test
 7. 🟡 **Four thin subscription states** — already F-005, awaiting the owner
-8. ℹ️ **Three `fix_*` scripts** — propose archiving rather than testing
+8. ℹ️ ~~Three `fix_*` scripts — propose archiving~~ → **withdrawn.** Two are live tools; only
+   `fix_insider_transactions.py` is spent. Nothing deleted, decision returned to the owner
