@@ -75,7 +75,17 @@ function Panel({
   return (
     <div>
       <p className="text-[13px] font-semibold text-[var(--text-primary)]">{title}</p>
-      <Plot box="aspect-[16/7]" className="mt-2">
+      {/* ⚠️ `min-h` as well as the aspect ratio. Four axis labels stack up this
+          panel's left edge and each is 20.4px tall — 81.6px of text — while a pure
+          16/7 aspect shrinks the plot with the viewport: 88.4px tall at 375px,
+          **81.8px at 360px**. So the labels went from 4.4px apart to 2.5px against a
+          2px bar, half a pixel from failing, and the overlap guard duly went flaky on
+          a full run (2026-08-23). Nothing was wrong with the guard; the figure was
+          genuinely almost-broken and only at the narrowest width. 116px keeps the
+          gaps at ~11px everywhere, and the ratio still governs every width above it.
+          CLAUDE.md 11i-b: assert a margin, not a boundary — and the same applies to
+          the design, not just the assertion. */}
+      <Plot box="aspect-[16/7] min-h-[116px]" className="mt-2">
         <svg
           className="absolute inset-0 h-full w-full"
           viewBox="0 0 100 100"

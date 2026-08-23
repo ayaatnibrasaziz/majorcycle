@@ -2693,6 +2693,23 @@ test.describe('nothing in a figure is drawn on top of anything else', () => {
                 // glyphs. A figure whose labels clear each other by half a pixel
                 // is not correct, it is lucky. Two pixels of daylight is the bar;
                 // the whole library clears it by at least 3px, measured.
+                //
+                // ⚠️ **That claim went stale and this test caught it by going flaky**
+                // (2026-08-23). Sweeping every article at every width printed the
+                // real tightest clearance: **2.5px**, on the dividend figure at
+                // 360px — half a pixel of headroom, not the 3px promised here. Its
+                // four axis labels are 20.4px tall and the plot is a fixed 16/7
+                // aspect, so narrowing the page squeezed 81.6px of text into an
+                // 81.8px box. A `min-h` on that plot took it to 12.1px. Two more
+                // pairs sat at 2.9px and were not labels at all — <strong> runs
+                // inside a SENTENCE, where 2.9px is the width of a space — now
+                // declared `[data-label-group]`. Re-swept after: **3.0px** is the
+                // true floor, so the sentence above is honest again.
+                //
+                // The habit worth keeping: when this goes flaky, **sweep for the
+                // tightest clearance and print it** rather than re-running. A
+                // boundary test tells you pass/fail; the margin tells you how close
+                // you were, and that is the number that predicts the next failure.
                 if (ox > -clearPx && oy > -clearPx) {
                   hits.push(
                     `fig${fi + 1} "${(leaves[i]!.textContent ?? '').trim().slice(0, 24)}" over "${(

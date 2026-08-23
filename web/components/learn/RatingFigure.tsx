@@ -73,7 +73,20 @@ export function RatingFigure() {
         })}
       </ul>
 
-      <p className="mt-3 border-t border-[var(--border)] pt-2 text-[13px] text-[var(--text-secondary)]">
+      {/* ⚠️ `data-label-group` because this is a SENTENCE, not a layout. The
+          overlap guard walks leaf elements, so the <strong> runs inside running
+          prose read to it as two positioned labels sitting 2.9px apart — which is
+          not a near-miss, it is the width of a space character. Stable at every
+          width, so it never failed; but it sat 0.9px above a 2px bar, and the one
+          thing that moves a space is font rendering, which is exactly what differs
+          between this machine and CI (see the guard's own note about Linux
+          glyphs). Declaring the line one group is the documented way to say "these
+          touch on purpose". Found 2026-08-23 by sweeping the library for its
+          tightest clearance rather than waiting for the next flake. */}
+      <p
+        data-label-group=""
+        className="mt-3 border-t border-[var(--border)] pt-2 text-[13px] text-[var(--text-secondary)]"
+      >
         Weights add to {WEIGHT_TOTAL}%. This example totals{' '}
         <strong className="font-[family-name:var(--font-mono)] text-[var(--text-primary)]">
           {rounded}
