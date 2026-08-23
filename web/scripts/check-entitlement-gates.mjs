@@ -422,10 +422,32 @@ const PREMIUM_KEYS = [
 // these are POSTs carrying none — which is exactly the objection. That is "safe by
 // someone else's default", the failure CLAUDE.md 11a records THREE times, and the rule
 // it now states is "say it AND guard it". This is the guard.
+//
+// ⚠️ **A FIFTH time, 2026-08-23, and this one was found by ASKING A DIFFERENT QUESTION.**
+// The Layer G audit was building a test-coverage map, not hunting headers — and the five
+// routes below turned out to have no test AND no `Cache-Control`, because this section
+// listed the two endpoints that had bitten us and stopped there. A guard scoped to the
+// last defect is silent, not clean, about everything outside it (14g). Measured on the
+// wire: `/api/search`, `/api/listings/*` and `/api/request-ticker` all answered a
+// signed-in 200 with no header at all, while their signed-OUT refusals looked correct —
+// because the PROXY sets `private, no-store` on its own 307 before any handler runs, so
+// reading the refusal told you nothing about the response that carries the data. The
+// purge cron said nothing on its 401 either.
+//
+// Stakes are lower than the billing pair — ticker names, identical for every signed-in
+// reader — but all five sit BEHIND the sign-in gate, so a shared cache storing one would
+// serve gated content at a URL a signed-out reader can type. The purge cron is listed
+// because it is the account-deletion trigger and its responses describe one deployment's
+// deletion queue.
 {
   for (const [label, file] of [
     ['app/api/portal/route.ts', ['app', 'api', 'portal', 'route.ts']],
     ['app/api/checkout/route.ts', ['app', 'api', 'checkout', 'route.ts']],
+    ['app/api/search/route.ts', ['app', 'api', 'search', 'route.ts']],
+    ['app/api/listings/search/route.ts', ['app', 'api', 'listings', 'search', 'route.ts']],
+    ['app/api/listings/status/route.ts', ['app', 'api', 'listings', 'status', 'route.ts']],
+    ['app/api/request-ticker/route.ts', ['app', 'api', 'request-ticker', 'route.ts']],
+    ['app/api/cron/purge-accounts/route.ts', ['app', 'api', 'cron', 'purge-accounts', 'route.ts']],
   ]) {
     const src = read(...file);
     // Strip comments so the prose above (which quotes the directives) can't satisfy

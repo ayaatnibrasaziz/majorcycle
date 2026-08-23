@@ -10,6 +10,18 @@ import type { Market, TickerRequest } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * These routes sit behind the sign-in gate (they are not in `PUBLIC_PATHS`), and Next
+ * attaches NO `Cache-Control` to route handlers — a habit formed on pages does not carry
+ * over (CLAUDE.md 11a). Measured on the wire 2026-08-23: the signed-OUT refusal was
+ * correctly `private, no-store` because the proxy sets it on its own 307, while the
+ * signed-IN 200 said nothing at all. Nothing was exposed, because Vercel shared-caches
+ * only on `s-maxage` — which is precisely 11a's complaint: safe by someone else's
+ * default rather than because we said so.
+ */
+const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
+
+
 interface RawRequestRow {
   symbol: string;
   market: Market;
@@ -36,7 +48,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { symbol?: unknown } | null;
   const symbol = typeof body?.symbol === 'string' ? body.symbol.trim().toUpperCase() : '';
   if (!symbol) {
-    return NextResponse.json({ error: 'Missing symbol' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing symbol' }, { status: 400, headers: NO_STORE });
   }
 
   const admin = createAdminClient();
@@ -51,7 +63,7 @@ export async function POST(request: Request) {
   if (!listing) {
     return NextResponse.json(
       { error: 'Not a known US/AU/CA listed stock' },
-      { status: 404 },
+      { status: 404, headers: NO_STORE },
     );
   }
 
@@ -62,7 +74,7 @@ export async function POST(request: Request) {
     .eq('ticker', symbol)
     .maybeSingle();
   if (stock) {
-    return NextResponse.json({ error: 'Already in coverage' }, { status: 409 });
+    return NextResponse.json({ error: 'Already in coverage' }, { status: 409, headers: NO_STORE });
   }
 
   const supabase = await createServerSupabaseClient();
@@ -91,9 +103,9 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (error || !upserted) {
-    return NextResponse.json({ error: 'Could not queue request' }, { status: 500 });
+    return NextResponse.json({ error: 'Could not queue request' }, { status: 500, headers: NO_STORE });
   }
-  return NextResponse.json({ request: toTickerRequest(upserted as RawRequestRow) });
+  return NextResponse.json({ request: toTickerRequest(upserted as RawRequestRow) }, { headers: NO_STORE });
 }
 
 export async function GET() {
@@ -108,5 +120,5 @@ export async function GET() {
     .order('requested_at', { ascending: false })
     .limit(50);
   const requests = ((data ?? []) as RawRequestRow[]).map(toTickerRequest);
-  return NextResponse.json({ requests });
+  return NextResponse.json({ requests }, { headers: NO_STORE });
 }

@@ -13,6 +13,18 @@ import type { RequestStatus, SkippedStatus } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * These routes sit behind the sign-in gate (they are not in `PUBLIC_PATHS`), and Next
+ * attaches NO `Cache-Control` to route handlers — a habit formed on pages does not carry
+ * over (CLAUDE.md 11a). Measured on the wire 2026-08-23: the signed-OUT refusal was
+ * correctly `private, no-store` because the proxy sets it on its own 307, while the
+ * signed-IN 200 said nothing at all. Nothing was exposed, because Vercel shared-caches
+ * only on `s-maxage` — which is precisely 11a's complaint: safe by someone else's
+ * default rather than because we said so.
+ */
+const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
+
+
 const MAX_SYMBOLS = 200;
 
 export async function POST(request: Request) {
@@ -28,7 +40,10 @@ export async function POST(request: Request) {
   ].slice(0, MAX_SYMBOLS);
 
   if (symbols.length === 0) {
-    return NextResponse.json({ statuses: {} as Record<string, SkippedStatus> });
+    return NextResponse.json(
+      { statuses: {} as Record<string, SkippedStatus> },
+      { headers: NO_STORE },
+    );
   }
 
   const admin = createAdminClient();
@@ -53,5 +68,5 @@ export async function POST(request: Request) {
     };
   }
 
-  return NextResponse.json({ statuses });
+  return NextResponse.json({ statuses }, { headers: NO_STORE });
 }

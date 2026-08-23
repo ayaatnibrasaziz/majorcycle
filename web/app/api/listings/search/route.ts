@@ -13,6 +13,18 @@ import type { ListingHit, Market, RequestStatus } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * These routes sit behind the sign-in gate (they are not in `PUBLIC_PATHS`), and Next
+ * attaches NO `Cache-Control` to route handlers — a habit formed on pages does not carry
+ * over (CLAUDE.md 11a). Measured on the wire 2026-08-23: the signed-OUT refusal was
+ * correctly `private, no-store` because the proxy sets it on its own 307, while the
+ * signed-IN 200 said nothing at all. Nothing was exposed, because Vercel shared-caches
+ * only on `s-maxage` — which is precisely 11a's complaint: safe by someone else's
+ * default rather than because we said so.
+ */
+const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
+
+
 interface RawHit {
   symbol: string;
   name: string | null;
@@ -27,12 +39,12 @@ export async function GET(request: Request) {
   // Strip characters meaningful to LIKE patterns before handing to the RPC.
   const q = raw.replace(/[%_*,()]/g, '').toLowerCase();
   if (q.length < 1) {
-    return NextResponse.json({ results: [] satisfies ListingHit[] });
+    return NextResponse.json({ results: [] satisfies ListingHit[] }, { headers: NO_STORE });
   }
 
   const { data, error } = await createAdminClient().rpc('search_listings', { p_q: q });
   if (error || !data) {
-    return NextResponse.json({ results: [] satisfies ListingHit[] });
+    return NextResponse.json({ results: [] satisfies ListingHit[] }, { headers: NO_STORE });
   }
 
   const results: ListingHit[] = (data as RawHit[]).map((r) => ({
@@ -44,5 +56,5 @@ export async function GET(request: Request) {
     requestStatus: r.request_status,
   }));
 
-  return NextResponse.json({ results });
+  return NextResponse.json({ results }, { headers: NO_STORE });
 }
