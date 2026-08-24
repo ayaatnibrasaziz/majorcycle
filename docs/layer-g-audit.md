@@ -806,6 +806,89 @@ libraries, which sit in separate chunks and cost 167 ms and 39 ms.
 is a real change to a paid surface and goes to the owner as a plan first (**11l**), not as a
 quiet edit inside a measurement layer.
 
+### F-019 🟠 A third of every Stock Detail page was four index series, re-sent per ticker — FIXED
+
+**Found by chasing the wrong thing first, twice, which is the part worth recording.**
+
+Layer 2 had reported the ticker page's loss as Total Blocking Time and blamed React's
+hydration. Reading the report's **score contributions** rather than its timings said otherwise:
+of 16 points lost on `/stocks/us/AAPL`, **10.2 were Largest Contentful Paint (6.5) and Speed
+Index (3.7)** — both dominated by how long the document takes to arrive — against 5.1 for
+blocking time, which was only 190 ms. **The earlier diagnosis was inferred from timings; this
+one is read off the report.**
+
+Measuring the document then showed 3,019 KB of HTML for AAPL, 97% of it RSC payload.
+
+⚠️ **My first fix was wrong, and the measurement is what said so.** Counting repeated
+*dates* in the payload, I concluded the stock's own price bars were being serialised three to
+five times, and moved all four charts onto a shared React context so the bars would be written
+once. Rebuilt, re-measured: **3,019 KB before, 3,019 KB after. Not one kilobyte.** React had
+been deduping the shared array all along. The change was reverted — six files and 370
+re-indented lines on a paid surface for zero measured benefit is churn, not a fix.
+
+Locating the duplicates properly — printing what *surrounds* each occurrence instead of
+counting them — named the real holder immediately: `\"benchmarks\"`, four index series
+(`^GSPC`, `^IXIC`, `^AXJO`, `^GSPTSE`). A date appearing 5x was the stock's bar plus one point
+in each of four indices. The arithmetic then matched exactly: AAPL's 11,660 own bars + ~20,000
+benchmark points = the 31,641 counted.
+
+| page | benchmarks in the document | points shipped | points the chart can draw |
+|---|---|---|---|
+| `/stocks/us/AAPL` | **1,011 KB (33%)** | 20,126 | 720 |
+| `/stocks/au/BHP` | **1,011 KB (38%)** | 20,126 | 720 |
+| `/stocks/us/ABNB` | 285 KB (40%) | 5,730 | 720 |
+
+AAPL's and BHP's figures are identical **because the data is identical** — same indices, same
+window, every stock, every reader — and `RelativePerformance` downsamples to 180 points per
+line, so 20,126 points were shipped to draw at most 720.
+
+**Fixed** by serving them once from `/api/benchmarks` and letting the browser keep them.
+Document 3,019 → **2,004 KB**; transferred-to-load 1,222 → **1,079 KB**; the second ticker page
+downloads **nothing**, proven on the wire (914,376 bytes, then 0).
+
+⚠️ **The cache header is the one deliberate exception in the codebase.** Every other gated
+route says `private, no-store`; this says `private, max-age=3600`. `private` is what makes it
+safe — it forbids shared caches outright, so **11a**'s failure mode cannot occur — and the
+payload has no viewer dimension at all. `check:entitlement-gates` keeps `private` mandatory and
+every shared-cache directive forbidden, with the carve-out naming `max-age` alone; broken three
+ways before being trusted.
+
+⚠️ **The owner caught the freshness bug before it shipped**, by asking what happens the next
+day when the stock and the four indices each gain a bar. The server held the series for a flat
+**24 hours measured from whenever an instance first warmed** — a duration unrelated to when
+closes arrive, so an instance warmed at 09:00 UTC served pre-cron data through the 22:30
+refresh and on to 09:00 the next day. **Pre-existing**, and survivable only because Vercel
+recycles instances often enough to hide it — safe by someone else's behaviour again. Letting
+*browsers* hold the same payload would have made it reliable, because a browser does not
+recycle. And the failure is invisible: the index lines simply run flat for the final day while
+alpha compares today's stock against yesterday's market, both figures plausible. Now keyed to
+`benchmarkDataVersion()`, turning over just after each cron for the same number of reads, with
+the browser bounding its lag at an hour.
+
+⚠️ **And the fetch had to WAIT.** Moving the bytes out of the document and fetching them on
+mount made the document a third smaller and **LCP worse (1.7s → 2.2s)** — the bytes had not
+gone away, they had moved into the load. Speed Index improving at the same time is the tell.
+Armed on browser-idle or within 600px of the chart, whichever comes first, LCP returned to
+1.6s. This is the owner's own "load it when idle" proposal, landing where it actually earns
+its keep.
+
+⚠️ **Honest about the score: it did not move.** 83 before, 83 after. Lighthouse measures one
+cold load with an empty cache, which is exactly the case this helps least; the spread tightened
+(74/83/85 → 85/82/83) and the bytes are real, but the median is unchanged. The saving is for a
+reader opening several stocks, on a phone, or on a slow connection — none of which Lighthouse
+simulates. **Kept on its merits, not on a number it did not produce.**
+
+`check:page-weight` ratcheted **1400 → 1250 KB** so the saving cannot be given back silently;
+the 588 KB regression it was written for still trips it (**11t**).
+
+Playwright **589 → 596**, the 7 new tests covering the cron boundary; setting the settle window
+to 0 fails 2 of them for the right reasons. `pnpm gates` 16 of 16.
+
+🔵 **Still open, and unchanged by this:** the remaining 17 points are **7.8 on blocking
+time**, 5.8 on LCP, 2.9 on Speed Index. Blocking time is React starting up, and reducing it
+means fewer client components — a real change to a paid surface that goes to the owner as a
+plan first (**11l**).
+
 ### F-018 🔵 `pnpm gates` passing locally does NOT guarantee CI passes — the Python toolchain drifts
 
 **Found by the owner asking the right question:** *"confirm there is no drift between the local
