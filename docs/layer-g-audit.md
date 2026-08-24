@@ -806,6 +806,56 @@ libraries, which sit in separate chunks and cost 167 ms and 39 ms.
 is a real change to a paid surface and goes to the owner as a plan first (**11l**), not as a
 quiet edit inside a measurement layer.
 
+### F-020 ⚪ Splitting hydration with Suspense boundaries made it WORSE — REVERTED
+
+**Owner constraint that framed this:** *"I don't want to change the interactive things
+happening in the stock detail page. I made it interactive so that the user can easily view
+things and make decisions."* That rules out the standard remedy for blocking time — fewer
+client components — so the search was for something that keeps every control live.
+
+**What the research found.** Next's own streaming guide, shipped in `node_modules` at the exact
+installed version (`01-app/02-guides/streaming.md`, line 600):
+
+> Each `<Suspense>` boundary is a hydration unit. Without them, React hydrates the entire page
+> in one blocking pass. With them, hydration is broken into smaller tasks that yield to the
+> browser, keeping the main thread responsive.
+
+That looked ideal. Total Blocking Time counts only the part of each task beyond 50 ms, so the
+same total work split across many tasks scores far better — with **nothing** deferred, removed
+or made lazy. And the page was a good fit on inspection: all 7 existing boundaries sat in
+`sec-thesis` and `sec-cycle`, while `sec-fundamentals` and `sec-sentiment` — six recharts
+components including the 743-line `SmartMoneyActivity` — had **none**.
+
+**Measured, and it went the wrong way.** Nine client components each given their own boundary,
+7 → 16:
+
+| | before | after |
+|---|---|---|
+| performance | **83** (85/82/83) | **73** (73/76/71) |
+| total blocking time | 220 ms | **430 ms** |
+| script evaluation | 1,688 ms | 2,081 ms |
+
+Blocking time nearly doubled. Reverted; `page.tsx` is byte-identical to the committed version.
+
+⚠️ **Why the documented mechanism does not apply here, which is the part to remember.** The
+guide describes boundaries that actually *stream* — async content arriving in separate chunks,
+which is what gives React distinct hydration units to interleave. These sections render
+**synchronously**: nothing suspends, so nothing streams, and the boundaries bought no splitting
+at all while still costing payload structure and hydration bookkeeping on every one. **A
+Suspense boundary around synchronous content is overhead with no upside.**
+
+⚪ **The honest conclusion: with the interactivity requirement in place, the blocking-time
+points are not available by configuration.** They are the intrinsic cost of ~18 interactive
+components and two charting libraries hydrating. The remaining real lever is consolidating
+`lightweight-charts` and `recharts` into one library — a genuine JS reduction with no loss of
+interactivity, but a rewrite of the chart components and a visual change, so it is an owner
+decision rather than a tuning exercise.
+
+⚠️ Recorded as a NEGATIVE finding on purpose. It reads like an obvious win, it is
+well-documented by the framework, and the next person to look at this page's blocking time will
+find the same guide and reach the same conclusion. The measurement is the only thing that
+stops it being tried again.
+
 ### F-019 🟠 A third of every Stock Detail page was four index series, re-sent per ticker — FIXED
 
 **Found by chasing the wrong thing first, twice, which is the part worth recording.**
