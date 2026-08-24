@@ -69,7 +69,16 @@ async function scan(page: Page, path: string) {
      is the worst combination available. The public suite learned this the hard way
      when axe reported 175 phantom contrast violations against faded-in blocks. */
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(path, { waitUntil: 'networkidle' });
+
+  /* ⚠️ NOT `networkidle`, and the argument is written out 20 lines below: quiet
+     is not readiness. It waited here anyway until 2026-08-24, when this spec came
+     back FLAKY on `/stocks/us/AAPL` — `page.goto` timing out at 45s waiting for a
+     network that never went quiet, on the heaviest page in the product under full
+     parallel load. The wait proved nothing the two POSITIVE signals below do not
+     prove better, and it was the only thing in the function that could time out
+     before either of them ran. Same shape as CLAUDE.md 11c-iv: the rule existed,
+     in a comment, and the one line that needed it never received it. */
+  await page.goto(path, { waitUntil: 'domcontentloaded' });
 
   // Prove we are on the page we think we are: a signed-in route that started
   // bouncing to /login would otherwise scan clean and mean nothing.
