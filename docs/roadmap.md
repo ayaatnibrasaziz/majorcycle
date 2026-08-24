@@ -2317,7 +2317,7 @@ Order of priority TBD based on user feedback. Candidate features:
 
 | Feature | Notes |
 |---|---|
-| **Smart Money Activity UI** | Insider buying/selling timeline, institutional holders table, analyst upgrades/downgrades feed. **Data already collected in Phase 1** (`insider_transactions`, `top_holders`, `analyst_upgrades_downgrades` columns in `stocks`). Phase 2 is UI-only. |
+| **Smart Money Activity UI** | ⚠️ **This row was stale and is corrected here (2026-08-24, audit Layer 2).** It said *"Phase 2 is UI-only"* — but the UI was **built in Phase 1 and ships today**: `SmartMoneyActivity.tsx`, added `3ab37e1` on 2026-05-30, rendered on the Stock Detail page in `#sec-sentiment` with the insider timeline and the analyst rating-change feed. Decision #29 excludes Smart Money from Phase 1 and decision #30 lists it under Phase 2, so **three documents disagreed with the running product** and only the product was right. Found while decomposing the ticker page's Lighthouse score — it is the largest client component on that page (33 KB) — and checked against `git log` before anything was proposed, because the obvious move from a stale doc would have been to *remove a shipped feature*. **What genuinely remains for Phase 2:** the institutional holders table beyond the current donut, and the upgrades/downgrades feed's history view. |
 | **Earnings Calendar** | Calendar view of upcoming earnings dates across the universe. **Data already collected in Phase 1** (`next_earnings_date` column in `stocks`, populated by `t.calendar` from yfinance). Phase 2 is UI-only. |
 | **Watchlists** | Saved ticker collections per user. Supabase table + UI. |
 | **Alerts** | Email when stock enters a tier or crosses a threshold. Daily cron checks + Resend send. |
