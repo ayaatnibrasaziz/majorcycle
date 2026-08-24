@@ -839,6 +839,12 @@ number nobody can measure reliably.** It was agreed during planning, before this
 and before anyone had run Lighthouse against it. That is not an argument for abandoning the
 goal; it is an argument that the goal needs an instrument, and today it has none.
 
+✅ **OWNER DECISION, 2026-08-24: real-user monitoring will be added LATER, not now.** The
+audit resumes instead. So decision #33's row stays red and open rather than being quietly
+dropped — the target is not abandoned, it is waiting for the instrument that can measure it,
+and the reason it cannot be ticked today is written down above rather than left as a mystery for
+whoever reads the merge gate next.
+
 **The instrument that fits is real-user monitoring** — it measures actual customers on actual
 devices and networks, works perfectly well on gated pages because it runs inside the session,
 and replaces a contaminated proxy with the thing the target is actually about. Nothing of the
