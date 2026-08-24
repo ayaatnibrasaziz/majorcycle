@@ -446,12 +446,13 @@ merge. An empty number is an unticked box.
 | ✅ | `pnpm e2e` | 0 failed, 0 skipped, count reconciled with CI | **589 passed, 0 failed, 0 flaky, 0 skipped**, exit 0 measured without a pipe. **Reconciled with CI by TITLE, not by count** — 588 of 589 identical, the 589th differing only by GitHub's redaction (F-017) |
 | ✅ | `pytest analytics/` | all pass | **170 passed** — 153 at step zero + 17 added in Layer 1 |
 | ✅ | `mypy analytics/` | no issues | **43 files, no issues** — 42 at step zero, +2 new tests −1 deleted script |
+| ✅ | `ruff check analytics/` **and** `cd web && ruff check _engine/ api/` | zero errors | **both clean.** ⚠️ Added to this table on 2026-08-24 because Layer 2 originally omitted it and CI caught 6 errors on the first push — F-016. A gate absent from the list is a gate nobody runs |
 | 🟡 | The eight `check:*` guards | all green, **each proven able to fail** in Layer 0 | **all 8 proven able to fail** ✅ (Layer 0, 2026-08-23 — 13 sabotages, each with a control). **and all 8 green on a fresh production build** ✅ (Layer 2, 2026-08-24) |
 | ✅ | `pnpm check:page-weight` | within budget — **manual, production build** | all 6 within budget ✅ **re-taken 2026-08-24**; heaviest `/stocks/us/AAPL` **1223 / 1400 KB**. Re-taken again at merge |
 | 🔵 | `pnpm lighthouse` | meets decision #33 — **manual, median of 3** | public pages **100 / 100 / 100 / 100**; `/stocks` **100**; `/stocks/us/AAPL` **72** (65 before F-013 was fixed). **Below the 90 target** — the authorised 84→90 work has not been started, and the local score carries ~1s of Australia→`us-east-1` latency that production does not have. See F-013 / F-014 |
 | ⬜ | Launch-gate table re-verified | every row's evidence current, not from 2026-08-02 | — |
 | ⬜ | Deferred list GA-1…GA-5 re-verified | closed *today*, not closed *once* | — |
-| 🟡 | Layer 1 coverage map | built, and the uncovered list ruled on by the owner | map built 2026-08-23 → `docs/layer-g-coverage-map.md`; **8 items awaiting the owner's ruling** |
+| 🟡 | Layer 1 coverage map | built, and the uncovered list ruled on by the owner | map built 2026-08-23 → `docs/layer-g-coverage-map.md`; owner ruled on all 8 the same day and **all 8 acted on** ✅ — five defects found (F-005, F-009, F-011, F-012, and 11a's fifth instance) |
 | ⬜ | All findings resolved | passed / fixed+guarded / accepted with sign-off. **Zero unknown** | — |
 
 **At merge, owner-only:**
