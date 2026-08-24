@@ -806,6 +806,57 @@ libraries, which sit in separate chunks and cost 167 ms and 39 ms.
 is a real change to a paid surface and goes to the owner as a plan first (**11l**), not as a
 quiet edit inside a measurement layer.
 
+### F-021 🔴 The ticker page's score cannot be measured honestly from here — and my theory about it was wrong
+
+**My hypothesis, stated to the owner:** every number in this session came from a laptop in
+Australia talking to Supabase in `us-east-1`, and the project's own notes put ~390 ms of that
+round trip down to pure distance. In production the function runs in `iad1`, beside the
+database. So the local 83 should be *pessimistic*, and the deployed page might already be near
+the 90 decision #33 asks for. Worth measuring before spending anything more.
+
+**Measured on the deployed preview, signed in, three runs. The hypothesis was wrong.**
+
+| | local `:3200` | Vercel preview |
+|---|---|---|
+| performance | **83** (85/82/83) | **64** (64/61/74) |
+| total blocking time | 220 ms | **370 / 540 / 990 ms** |
+| largest contentful paint | 1.6 s | 1.5–1.8 s |
+| cumulative layout shift | 0 | 0 / 0 / **0.022** |
+
+⚠️ **But the preview number is not trustworthy either, and that is the actual finding.** A
+2.7× swing in blocking time across three consecutive runs is not a measurement, it is noise;
+and every request now crosses the Pacific to reach this machine, which inflates Lighthouse's
+simulated load in a way no customer experiences. **The two available numbers are contaminated in
+opposite directions and neither is what a reader in New York sees.**
+
+⚠️ **And there is no third instrument.** Google's PageSpeed Insights would measure from near
+the deployment, removing my distance entirely — but it cannot reach this page twice over: the
+preview is SSO-gated, and the ticker page is behind sign-in even in production. **A lab tool
+outside the session boundary can never measure a page inside it.**
+
+⚪ **So decision #33 — "Lighthouse 90+ on per-ticker pages" — currently sets a target on a
+number nobody can measure reliably.** It was agreed during planning, before this page existed
+and before anyone had run Lighthouse against it. That is not an argument for abandoning the
+goal; it is an argument that the goal needs an instrument, and today it has none.
+
+**The instrument that fits is real-user monitoring** — it measures actual customers on actual
+devices and networks, works perfectly well on gated pages because it runs inside the session,
+and replaces a contaminated proxy with the thing the target is actually about. Nothing of the
+sort is installed today (no `@vercel/speed-insights`, no `@vercel/analytics`, no Sentry). Adding
+one is a change to the locked stack, so it goes to the owner rather than being slipped in.
+
+⚠️ **What survives all of this: the byte counts.** `lighthouse.mjs` says so in its own
+header — "the byte counts do not have this problem and are the better evidence when one
+exists". The document went 3,019 → 2,004 KB and transferred-to-load 1,222 → 1,079 KB, measured
+identically three times each. Those numbers are exact, they are not affected by which machine
+took them, and they are the honest evidence that F-019 was worth doing — not the score, which
+did not move.
+
+⚠️ One thing to watch rather than act on: **CLS was 0.022 on one preview run** and 0 on the
+other two, where local is reliably 0. A single non-zero reading inside a noisy set is not a
+regression, but the benchmark fetch landing during load is a plausible mechanism and this is
+the first reading that has ever been non-zero. Worth re-checking once a real instrument exists.
+
 ### F-020 ⚪ Splitting hydration with Suspense boundaries made it WORSE — REVERTED
 
 **Owner constraint that framed this:** *"I don't want to change the interactive things
