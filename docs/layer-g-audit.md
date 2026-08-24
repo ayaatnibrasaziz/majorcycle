@@ -440,15 +440,15 @@ merge. An empty number is an unticked box.
 
 | | Gate | Required | Last reading |
 |---|---|---|---|
-| ⬜ | `pnpm typecheck` | zero errors | — |
-| ⬜ | `pnpm lint` | zero errors | — |
-| ⬜ | `pnpm build` | succeeds | — |
+| ✅ | `pnpm typecheck` | zero errors | **0 errors** — Layer 2, 2026-08-24 |
+| ✅ | `pnpm lint` | zero errors | **0 errors** — Layer 2, 2026-08-24 |
+| ✅ | `pnpm build` | succeeds | **succeeds**, compiled in 37.5s — Layer 2, 2026-08-24 |
 | ⬜ | `pnpm e2e` | 0 failed, 0 skipped, count reconciled with CI | — |
-| ⬜ | `pytest analytics/` | all pass | 153 ✅ (step zero) |
-| ⬜ | `mypy analytics/` | no issues | 42 files ✅ (step zero) |
-| 🟡 | The eight `check:*` guards | all green, **each proven able to fail** in Layer 0 | **all 8 proven able to fail** ✅ (Layer 0, 2026-08-23 — 13 sabotages, each with a control). Green readings re-taken in Layer 2 |
-| 🟡 | `pnpm check:page-weight` | within budget — **manual, production build** | all 6 pages within budget ✅ 2026-08-23; heaviest `/stocks/us/AAPL` **1223 / 1400 KB**. Re-taken at merge |
-| ⬜ | `pnpm lighthouse` | meets decision #33 — **manual, median of 3** | — |
+| ✅ | `pytest analytics/` | all pass | **170 passed** — 153 at step zero + 17 added in Layer 1 |
+| ✅ | `mypy analytics/` | no issues | **43 files, no issues** — 42 at step zero, +2 new tests −1 deleted script |
+| 🟡 | The eight `check:*` guards | all green, **each proven able to fail** in Layer 0 | **all 8 proven able to fail** ✅ (Layer 0, 2026-08-23 — 13 sabotages, each with a control). **and all 8 green on a fresh production build** ✅ (Layer 2, 2026-08-24) |
+| ✅ | `pnpm check:page-weight` | within budget — **manual, production build** | all 6 within budget ✅ **re-taken 2026-08-24**; heaviest `/stocks/us/AAPL` **1223 / 1400 KB**. Re-taken again at merge |
+| 🔵 | `pnpm lighthouse` | meets decision #33 — **manual, median of 3** | public pages **100 / 100 / 100 / 100**; `/stocks` **100**; `/stocks/us/AAPL` **72** (65 before F-013 was fixed). **Below the 90 target** — the authorised 84→90 work has not been started, and the local score carries ~1s of Australia→`us-east-1` latency that production does not have. See F-013 / F-014 |
 | ⬜ | Launch-gate table re-verified | every row's evidence current, not from 2026-08-02 | — |
 | ⬜ | Deferred list GA-1…GA-5 re-verified | closed *today*, not closed *once* | — |
 | 🟡 | Layer 1 coverage map | built, and the uncovered list ruled on by the owner | map built 2026-08-23 → `docs/layer-g-coverage-map.md`; **8 items awaiting the owner's ruling** |
@@ -656,6 +656,134 @@ second edit. ⚠️ **The guard's r,g,b blind spot is now moot for this file** �
 literal left to drift — but it remains true of the guard, and is worth teaching it if another
 such copy ever appears. Recorded rather than fixed: widening the guard was not part of what was
 asked, and the defect it would catch no longer exists here.
+
+---
+
+## Layer 2 — the machine sweep
+
+Every automated gate run end to end on `feat/layer-g`, on a **fresh production build**, with
+the number recorded rather than the colour. Run 2026-08-24.
+
+| Gate | Result | Reconciliation |
+|---|---|---|
+| `pnpm typecheck` | **0 errors** | — |
+| `pnpm lint` | **0 errors** | — |
+| `pnpm build` | **succeeds** | compiled in 37.5s |
+| `pytest analytics/` | **170 passed** | 153 at step zero + 17 added in Layer 1 |
+| `mypy analytics/` | **43 files, no issues** | 42 at step zero **+2** new test files **−1** deleted cron script |
+| `check:report-sections` | ✅ | 22 sections match |
+| `check:entitlement-gates` | ✅ | 11 checks |
+| `check:data-integrity` | ✅ | 61 checks over 230 TS + 45 Python files |
+| `check:seo` | ✅ | 587 checks over 11 public pages (7 indexable) |
+| `check:tier-palette` | ✅ | 284 files swept for stray copies |
+| `check:render-modes` | ✅ | 7 prerendered, 6 dynamic, 13 asserted; nonce invariant holds |
+| `check:csp` | ✅ | 12 routes, 7 nonce, 5 prerendered, **zero violations** |
+| `check:page-weight` | ✅ | 6 pages within budget; heaviest `/stocks/us/AAPL` **1223 / 1400 KB** |
+
+Each number is a reconciliation, not a reading: **mypy's file count moving 42 → 43** is the
+kind of thing that would otherwise pass as "still green" while a file quietly stopped being
+checked (14g). It matches the day's edits exactly.
+
+### F-013 🟠 My own F-011 fix cost the ticker page 19 Lighthouse points — FIXED
+
+**Found:** by running `pnpm lighthouse` and *reconciling against the recorded figure* rather
+than reading the new one on its own. `docs/architecture.md` records `/stocks/us/AAPL` at
+**84** (2026-08-22, median of 3, production build). Today's median: **65** — runs 65 / 68 / 54.
+
+The suspect was immediate and it was mine. F-011 put an existence check in
+`stocks/[market]/[ticker]/layout.tsx`, and that check ran its **own** query. So the route went
+from two sequential cross-region database round trips to **three**.
+
+⚠️ **The justification I wrote for the extra query was about the wrong quantity.** The comment
+read: *"`readStockRow` cannot be reused for this: it does `select('*')`, which drags the whole
+fundamentals JSONB across for a question whose answer is one bit."* That is an argument about
+**bytes**. Measured from the owner's machine against the database in `us-east-1`, interleaved
+so a network mood swing hits both arms:
+
+| Query | Payload | Median (round 1) | Median (round 2) |
+|---|---|---|---|
+| `select ticker` | **17 bytes** | 553 ms | 463 ms |
+| `select *` | **48,489 bytes** | 531 ms | 533 ms |
+
+**48 KB costs the same as 17 bytes.** The payload is free; the round trip is the entire cost —
+about **500 ms each, from Australia**. So the "lighter" read was not lighter. It was a third
+trip bought at full price, to avoid a cost that does not exist. CLAUDE.md **14f** exactly: a
+mechanism that is genuinely present is not thereby the one responsible.
+
+**Fixed** by making the layout and the page share one `cache()`d row read, so whichever asks
+first pays and the other is free. The route is back to two round trips — *the same number it
+made before the layout existed*, so the 404 fix now costs nothing at all.
+
+| | Before F-011 | With F-011 | Now |
+|---|---|---|---|
+| DB round trips on the ticker page | 2 | **3** | 2 |
+| Lighthouse performance (median of 3) | 84 (2026-08-22) | **65** | **72** |
+| Individual runs | — | 54 / 65 / 68 | 68 / 72 / 77 |
+
+**How I know the sharing actually happens.** The fix rests on React's `cache()` deduplicating
+between a layout and the page inside it — if it did not, the row would simply be read twice and
+the route would still make three trips. **That is exactly what the measurement rules out:** had
+the dedupe failed, the trip count would be unchanged and there would be no improvement to see.
+The improvement is the evidence. (The same mechanism was already load-bearing here for
+`generateMetadata` and the page, which is why it was reasonable to reach for.)
+
+**Every quantile improved** — sorted, 54→68, 65→72, 68→77 — which is a shift, not noise around
+a shared mean. The saving lands *after* the shell, exactly where the removed trip was: TTFB is
+**540 ms** (one round trip, the layout's), LCP **1.8 s**.
+
+⚠️ **72 is still not 84, and I am not claiming the gap is closed.** Two honest caveats. (i) The
+local score is dominated by ~500 ms per database round trip to a machine 15,000 km away;
+production runs in `iad1`, the same region as the database, where the same two trips cost tens
+of milliseconds. The local number understates production by roughly a second. (ii) It is noisy
+day to day for the same reason, so **84 and 72 were not measured under the same conditions**
+and the difference between them is not evidence of anything on its own. What *is* evidence is
+the before/after taken minutes apart on one machine, above.
+
+### F-014 🔵 The ticker page makes two database round trips that could be one — recorded, not done
+
+`fetchStockDetail` awaits the `stocks` row and *then* the price bars. Given the ticker, those
+two reads do not depend on each other — they are sequential only because they are written that
+way. Running them together would make the page's wall-clock cost one round trip instead of two.
+
+**Not done here on purpose.** Layer 2 is a measurement sweep, and this is a change to the data
+path of a **paid** surface. It belongs to the ticker-page performance work the owner authorised
+on 2026-08-22 (Lighthouse 84 → 90), where it can be built and proven on its own. Recording it
+rather than quietly doing it is the rule from CLAUDE.md **11l**.
+
+### F-015 🟠 The a11y scan waited on quiet, on a page that never goes quiet — FIXED
+
+The full suite came back **589 listed = 588 passed + 1 flaky, 0 failed, 0 skipped**, exit code
+**0** measured without a pipe. The flake: `app-a11y.spec.ts` › *`/stocks/us/AAPL` has no axe
+violations* — `page.goto` timing out at 45 s waiting for `networkidle`.
+
+⚠️ **The file already argued against exactly this**, twenty lines below the offending call:
+
+> *Waiting on a POSITIVE signal (enough elements exist) rather than on quiet: `networkidle` is
+> satisfied by a page that has stopped fetching and not yet rendered, which is the same trap
+> the public suite hit at 47 elements of 291.*
+
+That reasoning produced two good waits — the stylesheet sentinel and a 420-element floor — and
+**the `goto` above them was never changed to match**. So the function's first act was the one
+wait its own comment rejects, and the only one that could expire before either positive signal
+ran. CLAUDE.md **11c-iv** in miniature: the rule existed, was written down, and one consumer
+never received it.
+
+Fixed by navigating with `domcontentloaded` and letting the two positive signals do the
+waiting. **Scope kept deliberately narrow:** sixteen other specs also pass `networkidle`, and
+none of them flaked — they drive prerendered public pages where quiet arrives immediately.
+Sweeping all seventeen would have been a change to fifteen tests that are working, to fix one
+that is not.
+
+⚠️ **And my own monitoring instrument misreported the re-run as finished**, because
+`grep -E "^  [0-9]+ passed|failed"` binds the alternation across the whole pattern — so the
+bare word `failed` matched a Resend log line (`send failed 422`) mid-run. It reported a
+finished suite at test 29 of 589. Harmless here because the real completion signal was
+independent, and worth writing down anyway: **this is the same class as measuring an exit code
+through a pipe** (Layer 0). The instrument was wrong, the thing it measured was fine, and the
+reading looked entirely normal.
+
+⚠️ **A pass from re-running this spec alone would prove nothing** — the flake needs the heavy
+page *plus* full-suite parallel load. The verification is therefore the whole suite again.
 
 ---
 

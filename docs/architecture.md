@@ -1102,6 +1102,23 @@ target at 90+ on per-ticker pages; nobody had ever run the instrument.
 | `/stocks` | 100 | 96 | 96 | n/a |
 | `/stocks/us/AAPL` | **84** (was 61) | 92 | 96 | n/a |
 
+**Re-measured 2026-08-24** (audit Layer 2). Public pages and `/stocks` now score **100** on
+every category that applies — best practices rose 96 → 100 between the two runs, and the CSP
+flip of 2026-08-23 is the obvious candidate but **I have not measured that it is the cause**,
+so it is recorded as a change, not an explanation (14f). The ticker page
+came back **65**, and the reconciliation against the 84 above is what found audit **F-013**:
+the existence check added to the ticker layout the previous day had made the route do a
+**third** sequential cross-region database round trip. Sharing one `cache()`d row read between
+the layout and the page put it back to two — **65 → 72**, every run improved.
+
+⚠️ **Do not read 72 against 84 as a like-for-like comparison.** Both are local numbers, and
+the local ticker score is dominated by ~500 ms *per database round trip* from Australia to
+`us-east-1`; production runs in `iad1`, beside the database, where the same two trips cost tens
+of milliseconds. Day-to-day network variance moves this figure more than most code changes do
+— which is exactly why F-013's evidence is a before/after taken minutes apart on one machine,
+not the gap to a figure measured two days earlier. The authorised 84 → 90 work has still not
+been started.
+
 ⚠️ **SEO is not scored on the two gated routes.** They are `Disallow`ed on purpose
 (2026-08-04 decision), so Lighthouse fails `is-crawlable` and hands them 58–66. Reporting
 that as the site's worst score would flag correct behaviour as a defect, which is how a
