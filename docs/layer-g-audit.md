@@ -806,6 +806,60 @@ libraries, which sit in separate chunks and cost 167 ms and 39 ms.
 is a real change to a paid surface and goes to the owner as a plan first (**11l**), not as a
 quiet edit inside a measurement layer.
 
+## Layer 3 — the wire sweep
+
+**Run 2026-08-24, against the DEPLOYED PREVIEW.** 50 checks: 10 billing states × 5 premium
+surfaces, each recording the status code, the `Cache-Control` header and the **raw response
+body**. States enumerated from `lib/entitlement.ts`; premium field names parsed out of
+`PREMIUM_FIELDS` in `lib/cycle.ts` at run time, so the needle list cannot drift from the real one.
+
+### F-023 🔴 This sweep is MEANINGLESS on localhost — and it silently passed there first
+
+The sweep was written against `localhost:3200` and reported a perfect result: no premium keys in
+any body, in any state. **It was worthless**, and the control is what said so.
+
+`/api/cycle` is a Vercel **Python** function. `next start` does not serve it, so on the local
+production build the entire cycle block renders **nothing** — verified directly: no "Overall
+Rating", no "Health Score", no "The Verdict", and not even the *free* "Current Drawdown" or the
+"Major Cycle — not available at this horizon" notice. There was no paid payload on the page for
+anyone, so of course none leaked.
+
+⚠️ **Two instrument failures, stacked, both of which produce a clean bill of health.** The first
+needle searched for `"overallRating"` with real quotes; in the RSC payload the JSON sits inside a
+JavaScript string literal with every quote backslash-escaped, so it matched nothing anywhere.
+Fixing that revealed the second and larger problem above. **A leak sweep that cannot see a leak
+reports the same thing as a system with no leaks** — 14g, on the one layer whose entire job is
+to find an authorisation bug.
+
+**The fix is a positive control, and it is now part of the sweep**: an entitled viewer's page
+*must* contain premium keys. If it does not, the run prints "THE SEARCH IS BROKEN, ignore every
+row above" and fails. The harness also **refuses to run against localhost** rather than
+producing a number that looks like evidence.
+
+### Result on the preview — clean, with the control passing
+
+| | |
+|---|---|
+| **Control** | entitled page contains all **9** premium fields — the search works |
+| **Leaks** | **zero** premium keys in the raw body across all 7 denied states |
+| Report download | 200 for `active` / `trialing` / `past_due` in grace; **402** for all 7 denied |
+| `/api/analyze` | 200 for the 3 entitled; **402** for all 7 denied |
+| `/api/cycle` direct | **401 in every state** — the internal-secret gate holds |
+| `/run` | 216 KB entitled vs ~29 KB denied — the locked panel, not the screener |
+| Cache headers | `private, no-store` or `private, no-cache, no-store` on **every** row; no `public`, no `s-maxage`, no `stale-while-revalidate` anywhere |
+
+The four states the plan flagged as never-before-tested — `unpaid`, `incomplete`,
+`incomplete_expired`, `paused` — all deny correctly and leak nothing. **CLAUDE.md 11b's failure
+mode (a score hidden in the UI but sitting in View Source) is not present on any surface in any
+state.**
+
+⚠️ Note what this cost to learn: the same environmental limit that broke F-021's measurement
+broke this sweep too, in a completely different way. **Localhost is not a place where this
+product's paid surfaces can be audited.** Any remaining layer that touches the cycle payload
+must run against a deployment.
+
+---
+
 ### F-021 🔴 The ticker page's score cannot be measured honestly from here — and my theory about it was wrong
 
 **My hypothesis, stated to the owner:** every number in this session came from a laptop in
