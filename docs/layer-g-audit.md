@@ -670,6 +670,7 @@ the number recorded rather than the colour. Run 2026-08-24.
 | `pnpm lint` | **0 errors** | — |
 | `pnpm build` | **succeeds** | compiled in 37.5s |
 | `pytest analytics/` | **170 passed** | 153 at step zero + 17 added in Layer 1 |
+| `ruff check analytics/` + `web/_engine api` | ✅ | **missed on the first pass — see F-016** |
 | `mypy analytics/` | **43 files, no issues** | 42 at step zero **+2** new test files **−1** deleted cron script |
 | `check:report-sections` | ✅ | 22 sections match |
 | `check:entitlement-gates` | ✅ | 11 checks |
@@ -749,6 +750,38 @@ way. Running them together would make the page's wall-clock cost one round trip 
 path of a **paid** surface. It belongs to the ticker-page performance work the owner authorised
 on 2026-08-22 (Lighthouse 84 → 90), where it can be built and proven on its own. Recording it
 rather than quietly doing it is the rule from CLAUDE.md **11l**.
+
+### F-016 🔴 My "everything automated" sweep was missing a whole tool — CI caught it
+
+**The push went red, and it was right to.** `ruff` found **6 errors**, all of them in
+`analytics/tests/test_drain_requests.py` — a file *I* wrote in Layer 1 — and all six had been
+sitting in the branch since then: five `UP037` (quotes around a type annotation in a module
+that already defers annotations, so they are redundant) and one `F841` (`fake = patched(…)`
+assigned and never read).
+
+⚠️ **The defect is not the six lint errors. It is that Layer 2 declared a complete sweep of
+"everything automated" and never ran ruff.** I ran typecheck, lint, build, pytest, mypy, eight
+guards, page weight, CSP, render modes and Lighthouse — and reported them as the full set. CI
+runs **eleven** things; I ran ten. A missing check is invisible in exactly the way this whole
+audit exists to catch: nothing was red, because nothing had looked.
+
+**Why I missed it, and it is structural rather than careless.** Every JavaScript gate has a
+`pnpm` script, so the set is enumerable from `package.json`. The Python gates exist **only as
+steps inside `.github/workflows/ci.yml`** — there is no local command that runs them, and
+therefore no local command that can be *complete*. I assembled my list from the thing that
+lists things, and the Python lint was not in it.
+
+**Fixed** and re-run exactly as CI invokes it (`ruff check analytics/`, then
+`cd web && ruff check _engine/ api/`) — both clean, with pytest 170 and mypy 43 re-confirmed
+after the edits, since an auto-fix that changes source is not proven by the linter that made it.
+
+🔵 **Recorded for the owner, not done:** there is no single local command that runs every gate,
+and until there is, "I ran everything" is a claim about memory rather than about a list.
+CLAUDE.md **11o**: when a trap depends on a human remembering, make it structural. That is a
+change to the tooling rather than to the product, so it waits for a decision.
+
+⚠️ Note what this says about the value of pushing. The branch had **25 unpushed commits** and
+these six errors had survived every local gate for a day. **The first thing CI did was fail.**
 
 ### F-015 🟠 The a11y scan waited on quiet, on a page that never goes quiet — FIXED
 

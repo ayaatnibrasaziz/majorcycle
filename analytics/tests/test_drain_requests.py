@@ -49,23 +49,23 @@ class _Table:
         self._rows = rows
         self._op: dict[str, Any] = {"table": name}
 
-    def select(self, cols: str) -> "_Table":
+    def select(self, cols: str) -> _Table:
         self._op |= {"op": "select", "cols": cols}
         return self
 
-    def update(self, payload: dict[str, Any]) -> "_Table":
+    def update(self, payload: dict[str, Any]) -> _Table:
         self._op |= {"op": "update", "payload": payload}
         return self
 
-    def insert(self, payload: dict[str, Any]) -> "_Table":
+    def insert(self, payload: dict[str, Any]) -> _Table:
         self._op |= {"op": "insert", "payload": payload}
         return self
 
-    def in_(self, col: str, vals: list[str]) -> "_Table":
+    def in_(self, col: str, vals: list[str]) -> _Table:
         self._op |= {"in": (col, vals)}
         return self
 
-    def eq(self, col: str, val: Any) -> "_Table":
+    def eq(self, col: str, val: Any) -> _Table:
         self._op |= {"eq": (col, val)}
         return self
 
@@ -213,7 +213,7 @@ def test_only_queued_and_failed_are_picked_up(patched) -> None:
 
 
 def test_a_mixed_batch_is_counted_correctly(patched) -> None:
-    fake = patched(
+    patched(
         pending=[
             {"symbol": "AAA", "market": "us", "attempts": 0, "requested_by": "u1"},
             {"symbol": "BBB", "market": "us", "attempts": 0, "requested_by": None},
