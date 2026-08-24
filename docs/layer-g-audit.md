@@ -860,6 +860,35 @@ must run against a deployment.
 
 ---
 
+## Where the audit stands — 2026-08-24
+
+| Stage | Status |
+|---|---|
+| Step zero — sync + fold-ins | ✅ |
+| Layer 0 — prove the instruments | ✅ 8 guards, 13 sabotages |
+| Layer 1 — the coverage map | ✅ `docs/layer-g-coverage-map.md`, 5 defects |
+| Layer 2 — the machine sweep | ✅ 16 of 16 gates; Playwright **597** |
+| Layer 3 — the wire sweep | ✅ 50 checks on the deployed preview, clean |
+| Layer 3b — the platform sweep | ✅ live Supabase / Vercel / Stripe / Actions |
+| **Layer 4 — the data sweep** | ⬜ **next, after the two fixes below** |
+| Layer 5a — my visual sweep | ⬜ |
+| Layer 5b — the owner's judgement sweep | ⬜ |
+
+**Owner decision, 2026-08-24 — the next session does, in order:**
+
+1. **F-024** — revoke `anon`'s `UPDATE`/`INSERT` grants on `profiles`, with a guard so a future
+   migration cannot widen them back in silence. Proven non-exploitable today; it is the missing
+   layer, not a hole.
+2. **F-025** — tie the price the site shows to the price Stripe charges, with the limit stated
+   plainly: a CI guard can only see the **sandbox**, so the live figures are re-read at merge.
+3. **Layer 4** — the data sweep.
+
+⚠️ Real-user monitoring is **deferred, not dropped**. Until it exists, decision #33's merge-gate
+row stays **red**, and the reason is written into that row so nobody reads it as unfinished work
+and repeats F-019 → F-021.
+
+---
+
 ## Layer 3b — the platform sweep
 
 **Run 2026-08-24 against the LIVE systems** (Supabase, Vercel, Stripe, GitHub Actions). None of
