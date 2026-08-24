@@ -22,7 +22,9 @@
     "lighthouse": "node scripts/lighthouse.mjs",
     "check:tier-palette": "node scripts/check-tier-palette.mjs",
     "check:page-weight": "node scripts/check-page-weight.mjs",
-    "check:csp": "node scripts/check-csp.mjs"
+    "check:csp": "node scripts/check-csp.mjs",
+    "check:engine-drift": "node scripts/check-engine-drift.mjs",
+    "gates": "node scripts/gates.mjs"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",

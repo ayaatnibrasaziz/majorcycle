@@ -130,6 +130,19 @@ jobs:
       - name: Render modes (which pages are prerendered, and which take a CSP nonce)
         run: pnpm check:render-modes
 
+      - name: Check _engine drift from analytics
+        # Every file in web/_engine/ must match analytics/<same path>, modulo the
+        # `from analytics.` → `from _engine.` import rewrite. Edit one without the
+        # other and this fails.
+        #
+        # ⚠️ This was ~30 lines of inline shell until 2026-08-24, which meant the
+        # check ran HERE AND NOWHERE ELSE — no local command could run it, so no
+        # local list of gates could be complete (audit finding F-016). It is now a
+        # script, so `pnpm gates` runs the SAME implementation rather than a second
+        # copy of the rule in another language (CLAUDE.md 11c).
+        working-directory: web
+        run: pnpm check:engine-drift
+
   e2e:
     name: E2E (Playwright — auth + Stripe webhook + entitlement)
     runs-on: ubuntu-latest
@@ -298,44 +311,3 @@ jobs:
       - name: Pytest
         run: python -m pytest analytics/ -v
 
-      - name: Check _engine drift from analytics
-        run: |
-          # Every file in web/_engine/ must match analytics/<same path>, modulo
-          # the `from analytics.` → `from _engine.` import rewrite. If you edit
-          # one without the other, this step fails.
-          set -e
-          fail=0
-          # The list is DERIVED from what web/_engine/ actually contains, not
-          # hardcoded. A hardcoded list has the same defect as everything else
-          # this repo has been bitten by: adding a vendored file and forgetting
-          # to add it to the list leaves it silently unguarded, and nothing goes
-          # red. __init__.py files are the vendoring scaffolding itself and have
-          # no analytics/ counterpart.
-          files=$(cd web/_engine && find . -name '*.py' ! -name '__init__.py' \
-                    | sed 's|^\./||' | sort)
-          count=$(echo "$files" | grep -c . || true)
-          echo "Comparing $count vendored file(s) against analytics/"
-          if [ "$count" -lt 6 ]; then
-            echo "Only $count files found in web/_engine/ — the scan is broken, not clean"
-            exit 1
-          fi
-          for f in $files; do
-            if [ ! -f "analytics/$f" ]; then
-              echo "DRIFT: web/_engine/$f has no counterpart at analytics/$f"
-              fail=1
-              continue
-            fi
-            if ! diff -u \
-                <(sed 's|from analytics\.|from _engine.|g' "analytics/$f") \
-                "web/_engine/$f"; then
-              echo "DRIFT: web/_engine/$f differs from analytics/$f"
-              fail=1
-            fi
-          done
-          if [ "$fail" -ne 0 ]; then
-            echo ""
-            echo "The vendored cycle math in web/_engine/ is out of sync with"
-            echo "the canonical files in analytics/. Update both in the same"
-            echo "commit. See web/_engine/__init__.py for context."
-            exit 1
-          fi

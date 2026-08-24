@@ -769,7 +769,7 @@ path of a **paid** surface. It belongs to the ticker-page performance work the o
 on 2026-08-22 (Lighthouse 84 → 90), where it can be built and proven on its own. Recording it
 rather than quietly doing it is the rule from CLAUDE.md **11l**.
 
-### F-017 🔵 A CI secret's value appears to be the word "Bearer" — owner's to check
+### F-017 ✅ A CI secret's value was the word "Bearer" — CONFIRMED and ROTATED
 
 **Found by the local-vs-CI title diff, and not by looking for it.** The two runs each report
 **589 passed**; comparing the *titles* left exactly one row on each side, and it is the same
@@ -796,9 +796,25 @@ every push. And separately, the masking now fires on an ordinary word, so **ever
 use of "Bearer" in any future CI log is redacted** — which is how a log stops being readable
 and, worse, how a genuinely masked value stops standing out.
 
-**Owner's action, because it is a credential and I do not touch those:** set `E2E_PASSWORD` to
-a long random value in the repository secrets, and change that account's password in Supabase
-to match. Nothing in the code needs to change.
+**Rotated 2026-08-24.** The owner generated a 40-character random value in their own
+terminal — deliberately never through this conversation — and set it in the GitHub secret and
+in `web/.env.local` themselves.
+
+⚠️ **Supabase turned out to have no way to set a password from the dashboard**, only *"send a
+password recovery email"* to `e2e@majorcycle.com`, a mailbox that may not receive. So the third
+copy was closed by syncing Supabase **to the file the owner had already updated**, via the admin
+API in a single process: read from `.env.local`, sent to Supabase, never printed, never logged.
+
+**Verified three ways, and the third is the one that proves anything:**
+
+| | evidence |
+|---|---|
+| Supabase | sign-in with the new password succeeded — **and the old password `Bearer` was REFUSED**, the control without which a successful sign-in only proves the credentials are valid, not that they changed |
+| `web/.env.local` | `account.spec.ts` **5 passed, 0 skipped** locally — these self-skip when the credentials are absent, so a skip would have looked like a pass |
+| GitHub secret | the E2E job **re-run after the rotation**: **589 passed, 0 skipped**, with the 5 sign-in tests present in the log |
+
+⚠️ The earlier green CI run proved nothing about the new secret — it had started *before* the
+rotation. Re-running the job was the only thing that could answer the question.
 
 ℹ️ Note this was invisible to both runs individually — each said 589 passed. **Only the diff
 of titles could show it**, which is the argument for doing the reconciliation by title rather
@@ -828,10 +844,35 @@ lists things, and the Python lint was not in it.
 `cd web && ruff check _engine/ api/`) — both clean, with pytest 170 and mypy 43 re-confirmed
 after the edits, since an auto-fix that changes source is not proven by the linter that made it.
 
-🔵 **Recorded for the owner, not done:** there is no single local command that runs every gate,
-and until there is, "I ran everything" is a claim about memory rather than about a list.
-CLAUDE.md **11o**: when a trap depends on a human remembering, make it structural. That is a
-change to the tooling rather than to the product, so it waits for a decision.
+✅ **CLOSED the same day, at the owner's instruction — `pnpm gates`.** One command runs all
+**sixteen** checks, cheapest first, stopping at the first failure.
+
+**The part that matters is not the convenience, it is that the list polices itself.** A
+hand-maintained list of gates rots exactly the way the old situation did, one CI step at a time.
+So before running anything, `scripts/gates.mjs` reads `ci.yml` and asserts that **every command
+CI runs is accounted for** — as a gate, or as an explicit non-gate with a reason. Add a step to
+CI and forget this file and it refuses to run, naming the step.
+
+**Proven both ways before being trusted**, per Layer 0's own rule:
+
+| Sabotage | Result |
+|---|---|
+| a fake `pnpm check:something-new` step added to `ci.yml` | **exit 1** — *"this list is OUT OF DATE"*, named the command, ran nothing |
+| an orphan file in `web/_engine/` | **exit 1** at `check:engine-drift`, then enumerated all 7 gates that consequently did **not** run |
+| clean control, both reverted | **exit 0** — 15 of 15 (16 with e2e) |
+
+⚠️ **A twelfth gate turned up while building it**, and it is the same disease: the `_engine`
+drift check was ~30 lines of **inline shell inside `ci.yml`**, so it too ran there and nowhere
+else. It is now `scripts/check-engine-drift.mjs`, called by **both** CI and `pnpm gates` — one
+implementation rather than a second copy of the rule in another language (11c). ⚠️ Moving it
+also meant moving the *step*: it had been sitting in the Python job, which has no `pnpm`, so
+calling the script from where it stood would have failed on the runner. Caught by asking which
+job the step belonged to rather than assuming.
+
+The three server-dependent checks (`check:page-weight`, `check:csp`, `lighthouse`) are printed
+as **NOT RUN with the reason** rather than omitted — silent omission being the entire defect.
+
+CLAUDE.md **#17** now names `pnpm gates` instead of listing four commands out of sixteen.
 
 ⚠️ Note what this says about the value of pushing. The branch had **25 unpushed commits** and
 these six errors had survived every local gate for a day. **The first thing CI did was fail.**

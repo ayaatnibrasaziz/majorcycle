@@ -280,7 +280,11 @@ Fixed with `.figure-list` (`design-system.md` §11), the same opt-out shape as `
 
 ### Workflow
 
-17. **Self-verification before "done".** Run the appropriate command (`pnpm typecheck`, `pnpm lint`, `pnpm build`, `pytest`) and show passing output before reporting complete.
+17. **Self-verification before "done".** Run **`pnpm gates`** and show passing output before reporting complete.
+
+    ⚠️ **This said "run the appropriate command (`pnpm typecheck`, `pnpm lint`, `pnpm build`, `pytest`)" until 2026-08-24, and that list was never the whole set.** CI runs sixteen checks; that sentence named four, so "I ran the gates" meant "I ran the ones I could think of". The cost, audit finding **F-016**: a Layer 2 sweep that declared *everything automated* had silently skipped `ruff` and the `_engine` drift check, and six lint errors sat in a branch for a day until the first push went red. The cause was structural — every JS gate had a `pnpm` script and was therefore enumerable, while the Python gates and the drift check existed **only as steps inside `.github/workflows/ci.yml`**, so no local command could run them and no local list could be complete. **A gate absent from the list is a gate nobody runs, and nothing goes red, because nothing looked.**
+
+    `scripts/gates.mjs` now runs all sixteen in one command, and — the part that matters — **it reads `ci.yml` and refuses to run at all if CI has a step it does not account for**, so the list cannot rot one step at a time. Proven both ways before being trusted: a fake CI step made it refuse and name the step; an orphan vendored file made it stop mid-run and enumerate every gate that consequently did **not** run. Three checks genuinely cannot run from a bare checkout (`check:page-weight`, `check:csp`, `lighthouse` — each needs a production server on `:3200`); they are printed as **NOT RUN with the reason**, never omitted, because silent omission is the whole defect.
 
 18. **Zero tolerance on errors.** Zero TypeScript errors. Zero ESLint errors. Zero Python type errors. No warnings ignored.
 
