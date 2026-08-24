@@ -497,6 +497,59 @@ const PREMIUM_KEYS = [
   }
 }
 
+// ── /api/benchmarks: the ONE gated route allowed to be cacheable, bounded ──────
+// Every other gated endpoint above must say `private, no-store`. This one says
+// `private, max-age=86400`, deliberately, and the exception is the feature: the
+// four benchmark index series used to be baked into every Stock Detail page —
+// 1,011 KB, a third of the whole document, re-sent on every ticker a reader opened
+// (audit F-019). Serving them once and letting the browser keep them is the entire
+// point, and `no-store` would undo it.
+//
+// ⚠️ The exemption is bounded on BOTH sides (CLAUDE.md 11t), so it cannot quietly
+// grow into permission to share-cache something that matters:
+//   - `private` is still MANDATORY here. It forbids shared caches outright, so
+//     11a's failure — Vercel's edge keying on the URL alone and handing one
+//     viewer's response to the next — remains impossible. Only the reader's own
+//     browser may reuse it.
+//   - every shared-cache directive is still forbidden, exactly as elsewhere.
+//   - and the carve-out names `max-age` specifically. Anything else has to come
+//     back here and be argued for.
+//
+// It is safe to reuse because the payload has no viewer dimension at all: four
+// public stock-market indices, identical bytes for a free account and a
+// subscriber, on a chart that is free-tier visible. There is no premium field and
+// no personalisation to leak to the reader's future self.
+{
+  const label = 'app/api/benchmarks/route.ts';
+  const code = read('app', 'api', 'benchmarks', 'route.ts')
+    .split('\n')
+    .filter((l) => {
+      const t = l.trim();
+      return !t.startsWith('*') && !t.startsWith('//') && !t.startsWith('/*');
+    })
+    .join('\n');
+
+  if (!/'Cache-Control':\s*['"`]private,\s*max-age=\d+['"`]/.test(code)) {
+    fail(
+      `${label} no longer declares \`private, max-age=<n>\``,
+      'This route is the one cacheable gated endpoint and `private` is what makes\n' +
+        '  that safe. If caching is no longer wanted, use `private, no-store` and move\n' +
+        '  this file into the no-store list above rather than leaving it unasserted.',
+    );
+  }
+  for (const bad of ['s-maxage', 'stale-while-revalidate', 'public,', 'no-store']) {
+    if (code.includes(bad)) {
+      fail(
+        `${label} sends \`${bad}\``,
+        bad === 'no-store'
+          ? 'Then it is not cacheable, and it belongs in the no-store list above.'
+          : 'A shared cache keys on the URL alone. This route may be reused by the\n' +
+            '  reader who fetched it and by nobody else.',
+      );
+    }
+  }
+}
+
 // ── 10. deletion confinement must reach the route handlers, not just the pages ─
 // Live-check Session 3: every PAGE correctly streamed NEXT_REDIRECT to /reactivate for
 // a deletion-scheduled account, while `/report` returned the full 3.2 MB paid report,

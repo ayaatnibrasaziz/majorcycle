@@ -65,7 +65,24 @@ const BUDGETS = [
   ['/pricing', 350, false, 'the page a reader is on when deciding to pay'], // 267
   ['/login', 430, false, 'the sign-in path, plus Google Identity Services'],// 332
   ['/stocks', 500, true, 'Browse'],                                         // 389
-  ['/stocks/us/AAPL', 1400, true, 'the heaviest page we ship, and where the 588 KB regression landed'], // 1222
+  // ⚠️ RATCHETED 1400 → 1250 on 2026-08-24, because the measurement moved: the
+  // four benchmark index series left the document for `/api/benchmarks`, taking
+  // it from 1222 KB to 1079 KB transferred (audit F-019). Leaving the old ceiling
+  // would have let the whole saving be given back without anything going red —
+  // today's measurement becomes the floor, which is how these stop rotting
+  // (CLAUDE.md 11t). Measured three consecutive runs at 1079 KB, so the 16%
+  // headroom is headroom rather than noise.
+  //
+  // ⚠️ The 588 KB regression this file was written for still trips it: 1079 + 588
+  // is 1667 against a 1250 ceiling. A budget the original bug passes is decoration.
+  //
+  // ⚠️ Known timing sensitivity, unchanged by the ratchet. The benchmark fetch is
+  // deferred to browser-idle, so it normally lands AFTER `load` and is not counted
+  // here. If it ever landed inside the window it would add ~900 KB and trip this —
+  // and it would equally have tripped the old 1400. So this is not a new flake
+  // risk; it is the same one, and a red here should first be checked against
+  // `RelativePerformance`'s idle arming before anyone touches the number.
+  ['/stocks/us/AAPL', 1250, true, 'the heaviest page we ship, and where the 588 KB regression landed'], // 1079
 ];
 
 async function weigh(page, path) {
