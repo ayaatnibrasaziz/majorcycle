@@ -24,7 +24,8 @@ import {
 
 import { toCamel } from '@/lib/case';
 import { PRESETS } from '@/lib/presets';
-import { createBrowserClient } from '@/lib/supabase/client';
+// ⚠️ `createBrowserClient` is imported ON DEMAND at its two call sites below, not
+// here. See the note on `loadSupabase`.
 import type {
   AnalysisRunRecord,
   AnalyzeRequest,
@@ -195,11 +196,44 @@ async function postChunk(
   };
 }
 
+/**
+ * The Supabase browser client, fetched only when it is actually needed.
+ *
+ * ── Why this is a dynamic import (audit F-022, 2026-08-24) ──────────────────
+ * `AnalysisProvider` wraps EVERY signed-in page from `app/(app)/layout.tsx`, so a
+ * static import at the top of this file put the whole Supabase JS client — auth,
+ * token refresh, and the realtime/websocket module this app never uses — into the
+ * initial bundle of Browse, Stock Detail and everything else. Confirmed by
+ * signature in the built chunk (`GoTrueClient`, `SupabaseAuthClient`,
+ * `onAuthStateChange`, 22 hits for `realtime`): **236 KB, on every signed-in page**.
+ *
+ * It is used for exactly two things, both of which happen only when someone runs
+ * the screener: writing a run's INPUTS to history, and reading the last run back.
+ * The Stock Detail page never reaches either, and paid 236 KB for the privilege.
+ *
+ * ⚠️ **The singleton survives this, which is the thing that had to be checked.**
+ * `lib/supabase/client.ts` memoises its client at module scope precisely because
+ * multiple `GoTrueClient` instances race on refresh-token rotation and cause
+ * intermittent, unrecoverable sign-outs. A dynamic `import()` resolves to the SAME
+ * module instance as any static import elsewhere in the page — the module registry
+ * is per document, not per import site — so there is still exactly one client and
+ * one refresh loop. This changes WHEN the module loads, never how many exist.
+ *
+ * Both call sites already sit inside `async` functions wrapped in try/catch whose
+ * failure is deliberately non-fatal, so the extra await introduces no new failure
+ * mode: a network hiccup fetching the chunk lands in the same catch that a rejected
+ * insert already did.
+ */
+async function loadSupabase() {
+  const { createBrowserClient } = await import('@/lib/supabase/client');
+  return createBrowserClient();
+}
+
 async function writeRun(req: AnalyzeRequest, meta: RunMeta, partial: boolean): Promise<void> {
   // INPUTS ONLY — never the computed results. Fails silently: a rejected write
   // (e.g. RLS) must not break the user's run or the results handoff.
   try {
-    const supabase = createBrowserClient();
+    const supabase = await loadSupabase();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -279,7 +313,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
 
   const refreshLastRun = useCallback(async () => {
     try {
-      const supabase = createBrowserClient();
+      const supabase = await loadSupabase();
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -297,13 +331,22 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  useEffect(() => {
-    // Fetch the latest run history once on mount. setLastRun fires only after an
-    // awaited network round-trip (not synchronously), so it cannot cascade;
-    // the rule flags the call transitively — a false positive here.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void refreshLastRun();
-  }, [refreshLastRun]);
+  /*
+   * ⚠️ THE HISTORY FETCH USED TO RUN HERE, ON MOUNT, and moving it is the whole
+   * point of the change (audit F-022).
+   *
+   * This provider wraps EVERY signed-in page, so a mount-time fetch meant Browse
+   * and Stock Detail each: pulled the 236 KB Supabase client onto the critical
+   * path, and made a database round trip for a row only the Run tab ever displays.
+   *
+   * Making the Supabase import dynamic did NOT fix that by itself — measured, the
+   * chunk still arrived before `load`. Code-splitting only decides which file the
+   * code lives in; something has to stop CALLING it. This effect was the caller.
+   *
+   * `refreshLastRun` stays on the context and is still awaited after a run
+   * finishes (below), so the Run tab's behaviour is unchanged. `RunAnalysis` — the
+   * only component that reads `lastRun` — now asks for it on its own mount.
+   */
 
   const cancel = useCallback(() => {
     abortRef.current?.abort();

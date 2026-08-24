@@ -64,17 +64,23 @@ const BUDGETS = [
   ['/learn', 380, false, 'the library index'],                              // 288
   ['/pricing', 350, false, 'the page a reader is on when deciding to pay'], // 267
   ['/login', 430, false, 'the sign-in path, plus Google Identity Services'],// 332
-  ['/stocks', 500, true, 'Browse'],                                         // 389
-  // ⚠️ RATCHETED 1400 → 1250 on 2026-08-24, because the measurement moved: the
-  // four benchmark index series left the document for `/api/benchmarks`, taking
-  // it from 1222 KB to 1079 KB transferred (audit F-019). Leaving the old ceiling
-  // would have let the whole saving be given back without anything going red —
-  // today's measurement becomes the floor, which is how these stop rotting
-  // (CLAUDE.md 11t). Measured three consecutive runs at 1079 KB, so the 16%
-  // headroom is headroom rather than noise.
+  // Ratcheted 500 → 400 on 2026-08-24 (F-022): the Supabase client stopped being
+  // pulled onto every signed-in page, taking Browse from 389 to 327 KB.
+  ['/stocks', 400, true, 'Browse'],                                         // 327
+  // ⚠️ RATCHETED TWICE on 2026-08-24 — 1400 → 1250 → 1150 — because the measurement
+  // moved twice in one day:
+  //   1222 → 1079 KB  the four benchmark index series left the document for
+  //                   `/api/benchmarks`, browser-cached across ticker pages (F-019)
+  //   1079 → 1017 KB  the Supabase client stopped being pulled onto every
+  //                   signed-in page by the run-history fetch (F-022)
   //
-  // ⚠️ The 588 KB regression this file was written for still trips it: 1079 + 588
-  // is 1667 against a 1250 ceiling. A budget the original bug passes is decoration.
+  // Leaving the old ceiling would have let both savings be given back with nothing
+  // going red. Today's measurement becomes the floor, which is how these stop
+  // rotting (CLAUDE.md 11t); each figure was measured three consecutive times, so
+  // the ~13% headroom is headroom rather than noise.
+  //
+  // ⚠️ The 588 KB regression this file was written for still trips it: 1017 + 588
+  // is 1605 against a 1150 ceiling. A budget the original bug passes is decoration.
   //
   // ⚠️ Known timing sensitivity, unchanged by the ratchet. The benchmark fetch is
   // deferred to browser-idle, so it normally lands AFTER `load` and is not counted
@@ -82,7 +88,7 @@ const BUDGETS = [
   // and it would equally have tripped the old 1400. So this is not a new flake
   // risk; it is the same one, and a red here should first be checked against
   // `RelativePerformance`'s idle arming before anyone touches the number.
-  ['/stocks/us/AAPL', 1250, true, 'the heaviest page we ship, and where the 588 KB regression landed'], // 1079
+  ['/stocks/us/AAPL', 1150, true, 'the heaviest page we ship, and where the 588 KB regression landed'], // 1017
 ];
 
 async function weigh(page, path) {
