@@ -210,12 +210,26 @@ export async function loadPriceBars(
  */
 export const fetchStockDetail = cache(
   async (ticker: string): Promise<StockDetail | null> => {
-    // Shared with the layout's existence check — whichever ran first already
-    // paid for this, and a cross-region round trip is ~500ms from Australia.
-    const stockRow = await cachedStockRow(ticker);
+    // ── Both reads START together (audit F-014) ─────────────────────────────
+    // They never depended on each other: `loadPriceBars` needs the ticker, not
+    // the row. They were sequential only because they were written that way, so
+    // the caller paid two round trips end to end instead of one.
+    //
+    // The row is shared with the layout's existence check, so on the Stock Detail
+    // page it is already resolved and free; this overlap is what the callers with
+    // NO layout above them get — the report route and `generateMetadata`.
+    //
+    // ⚠️ Deliberately NOT hoisted into the layout as a speculative warm-up. That
+    // would shave another round trip off the page, and it would also mean any
+    // signed-in reader could make us run a price-history query for a ticker that
+    // does not exist, simply by typing URLs. ~15ms in production — the round trip
+    // is ~500ms from Australia but the functions run in `iad1`, beside the
+    // database — is not worth handing someone a free amplifier.
+    const [stockRow, priceBars] = await Promise.all([
+      cachedStockRow(ticker),
+      loadPriceBars(createAdminClient(), ticker),
+    ]);
     if (!stockRow) return null;
-
-    const priceBars = await loadPriceBars(createAdminClient(), ticker);
 
     const camelRow = shallowCamel(stockRow as Record<string, unknown>);
 

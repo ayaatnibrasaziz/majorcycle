@@ -91,12 +91,23 @@ test.describe('downloaded report renders from disk', () => {
     // `prebuild`, which does NOT run for `next dev` — so without an explicit
     // build step the click fetches a 404 and simply never fires a download,
     // which surfaces as an inscrutable 2-minute timeout. Say so instead.
+    // ⚠️ POLLED, not a single request, and the reason is a false accusation.
+    // On 2026-08-24 this went flaky under full-suite parallel load and reported
+    // `/report-bundle/report.js is missing — run pnpm build:report-bundle` — while
+    // both files sat on disk, 1.09 MB and 438 KB, built minutes earlier. The
+    // dev server had simply not answered that one request; the precondition then
+    // blamed the developer for something they had already done.
+    //
+    // A check that misstates its own failure is worse than no check: it sends you
+    // to rebuild an artifact that is already correct. Polling separates "not there"
+    // from "not there YET", and only the first is the developer's problem.
     for (const asset of ['/report-bundle/report.js', '/report-bundle/report.css']) {
-      const res = await page.request.get(asset);
-      expect(
-        res.status(),
-        `${asset} is missing — run \`pnpm build:report-bundle\` first (next dev does not)`,
-      ).toBe(200);
+      await expect
+        .poll(async () => (await page.request.get(asset)).status(), {
+          message: `${asset} never answered 200 — if this persists, run \`pnpm build:report-bundle\` (next dev does not)`,
+          timeout: 15_000,
+        })
+        .toBe(200);
     }
 
     /* Registered BEFORE the navigation, deliberately. The idle prefetch can land

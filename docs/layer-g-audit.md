@@ -758,16 +758,134 @@ day to day for the same reason, so **84 and 72 were not measured under the same 
 and the difference between them is not evidence of anything on its own. What *is* evidence is
 the before/after taken minutes apart on one machine, above.
 
-### F-014 🔵 The ticker page makes two database round trips that could be one — recorded, not done
+### F-014 ✅ The ticker page's two database reads now start together — and it is worth ~15ms
 
 `fetchStockDetail` awaits the `stocks` row and *then* the price bars. Given the ticker, those
 two reads do not depend on each other — they are sequential only because they are written that
 way. Running them together would make the page's wall-clock cost one round trip instead of two.
 
-**Not done here on purpose.** Layer 2 is a measurement sweep, and this is a change to the data
-path of a **paid** surface. It belongs to the ticker-page performance work the owner authorised
-on 2026-08-22 (Lighthouse 84 → 90), where it can be built and proven on its own. Recording it
-rather than quietly doing it is the rule from CLAUDE.md **11l**.
+**Done 2026-08-24 at the owner's instruction** — `Promise.all` in `fetchStockDetail`, so the
+row and the bars are in flight together. It benefits the callers with no layout above them:
+the report route and `generateMetadata`.
+
+⚠️ **And it is worth far less than it looks, which is the honest part.** The round trip is
+~500 ms *from Australia*; the functions run in `iad1`, beside the database, where it is tens of
+milliseconds. **The production gain is ~15 ms.** The local Lighthouse number will improve more
+than production does, and reporting that improvement as a win would be measuring the distance
+from this desk to Virginia.
+
+⚠️ **The larger version of this fix was deliberately NOT taken.** Starting the price-history
+read in the *layout*, alongside the existence check, would overlap the last two trips and save
+~500 ms locally. It would also mean any signed-in reader could make the database run a
+price-history query for a ticker that does not exist, just by typing URLs — a free amplifier,
+bought for 15 ms in the environment that matters. Security first; the owner's standing rule.
+
+### Where the ticker page's points ACTUALLY are — measured, not assumed
+
+The reason F-014 was never going to reach 90 is visible the moment the score is decomposed
+rather than read. From the same report:
+
+| Metric | Weight | Score | **Points lost** |
+|---|---|---|---|
+| **Total Blocking Time** | 30 | 0.39 | **18.3** |
+| Largest Contentful Paint | 25 | 0.71 | 7.3 |
+| Speed Index | 10 | 0.44 | 5.6 |
+| First Contentful Paint | 10 | 0.93 | 0.7 |
+| Cumulative Layout Shift | 25 | 1.00 | **0.0** |
+
+**Over half the loss is Total Blocking Time — JavaScript occupying the main thread — and that
+number is the same in production**, because it is CPU, not network. Database round trips move
+LCP and Speed Index, the *smaller* half, and only on this machine.
+
+Attributed to a single file: chunk `02jjyeg9mlceh.js`, **221 KB, 1,494 ms of script evaluation**
+under Lighthouse's 4× CPU throttle. Fingerprinted rather than guessed — it contains `react-dom`
+and `hydrateRoot`. So the cost is **React booting and hydrating the page**, not the chart
+libraries, which sit in separate chunks and cost 167 ms and 39 ms.
+
+🔵 **The remaining work is therefore about how much of this page is a client component**, which
+is a real change to a paid surface and goes to the owner as a plan first (**11l**), not as a
+quiet edit inside a measurement layer.
+
+### F-018 🔵 `pnpm gates` passing locally does NOT guarantee CI passes — the Python toolchain drifts
+
+**Found by the owner asking the right question:** *"confirm there is no drift between the local
+checks and the ones that run in CI."* I had implied `pnpm gates` closed that gap. It does not,
+and the distinction matters: **it closes the LIST gap — which commands run — and says nothing
+about the VERSION gap — what those commands are.**
+
+Measured rather than assumed, local against what CI's own log shows it installed on run
+32691216636:
+
+| | local | CI (today) | pinned? |
+|---|---|---|---|
+| Python | **3.14.4** | **3.12** | CI yes, local no |
+| ruff | **0.15.14** | **0.16.4** | ❌ `ruff>=0.4.0` — whatever is newest at run time |
+| mypy | **2.1.0** | **2.3.1** | ❌ `mypy>=1.10.0` |
+| pytest | **9.0.3** | **9.1.1** | ❌ `pytest>=8.2.0` |
+| Node | v24.18.0 | 24 | ✅ |
+| JS dependencies | lockfile | `--frozen-lockfile` | ✅ identical |
+
+**The JavaScript half has no drift.** The lockfile is committed and CI installs from it frozen,
+so every JS gate judges the same code with the same tools. The whole gap is on the Python side.
+
+⚠️ **And this has already bitten, once, exactly this way.** `web/ruff.toml` exists *because* of
+it, and its own comment says so: on 2026-08-01 **ruff 0.16.1 added UP045 to its defaults** and
+failed the build on `web/_engine/major_cycle.py` — *"Nobody had touched that code. Any future
+default-rule change would do the same again."* The fix at the time made the **rulebook** match
+across the two directories. It did not make the **version** match across the two machines, and
+that sentence is still true today: local is on 0.15, CI is on 0.16.
+
+**So the practical consequence is concrete, not theoretical:** a rule added in ruff 0.16 passes
+`pnpm gates` on this machine and fails CI, on code nobody edited. Local being *older* is the
+unlucky direction — CI is stricter than the thing that is supposed to predict it.
+
+⚠️ **One claim I nearly made and checked first.** CI installed `yfinance 1.6.0` while the cron
+pins `yfinance==1.5.2`, and I was about to report the test suite as validating a different
+library than production runs — a serious claim under CLAUDE.md **14e**. It is **wrong**:
+`test_yfinance_provider.py` drives the provider with `MagicMock`/`patch`, so the tests exercise
+our wrapper against a fake and never the real library's behaviour. The residual risk is only
+that `import yfinance` must keep working at whatever version CI grabs. **Recorded because the
+check is the point** — the mechanism was real, present, and not responsible (14f).
+
+### The third environment — what the WEBSITE runs, which is neither of the above
+
+The owner asked the sharper question: *"CI and local have 2 versions — what is the website
+actually using?"* There are **four** Python environments, not two:
+
+| Environment | Python | Packages | Pinned? |
+|---|---|---|---|
+| This machine | 3.14.4 | ad hoc | ❌ |
+| CI | 3.12 | `ruff>=`, `mypy>=`, `pytest>=`, `pandas>=` … | ❌ resolved per run |
+| **The live website** (`/api/cycle`, `/api/analyze`) | **3.12** | `web/requirements.txt` — `pandas>=2.2.0`, `numpy>=1.26.0`, `supabase>=2.4.0` | ❌ **resolved per deploy** |
+| The nightly data cron | 3.12 | `analytics/requirements-cron.txt` | ✅ exact `==` pins |
+
+**Read off the real Vercel build log** for deployment `dpl_DHr8Cfm4bYzP7q8r3xjC8dVEshu7`, not
+inferred: `Using python version: 3.12` … `Installing required dependencies from
+web/requirements.txt`.
+
+⚠️ **The build log mentions a `uv.lock`, and I checked before concluding anything.** Neither
+`web/uv.lock` nor `web/pyproject.toml` exists in the repository — Vercel **generates** both from
+`requirements.txt` during each build. So the lock is per-build and pins nothing *between*
+deploys. Had I stopped at the word "lock" in the log I would have reported the opposite.
+
+**The consequence, stated carefully.** `pandas>=2.2.0` admits pandas **3.x**, a major version,
+and the functions it governs are `/api/cycle` and `/api/analyze` — the paid analysis itself.
+Every deploy re-resolves them. That is CLAUDE.md **14e**'s argument exactly (*"an unpinned
+install is an unreviewed deploy … an upstream release can change what a number MEANS"*), and
+14e was written about the cron, which was then pinned. **The website never was.** 11c again: the
+rule reached one consumer and not the other — and this time the consumer it missed is the one
+customers pay for.
+
+⚠️ **And note what cannot be observed from here:** the build log does not print the resolved
+versions, and no endpoint reports them. **There is currently no way to tell what pandas the live
+analysis is running.** Not knowing is the finding.
+
+🔵 **Owner's decision, not fixed.** Pinning CI's lint/type/test tools is a change to the build
+pipeline, and it carries a real trade-off — a pin means new rules arrive when someone chooses
+rather than overnight, but it also means nobody is told about them until that choice is made.
+The cron already made this decision, in `analytics/requirements-cron.txt`, with the reasoning
+written out. CI was simply never given the same treatment: **11c, one rule applied to one
+consumer and not the other.**
 
 ### F-017 ✅ A CI secret's value was the word "Bearer" — CONFIRMED and ROTATED
 
