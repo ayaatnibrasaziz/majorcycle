@@ -443,7 +443,7 @@ merge. An empty number is an unticked box.
 | ✅ | `pnpm typecheck` | zero errors | **0 errors** — Layer 2, 2026-08-24 |
 | ✅ | `pnpm lint` | zero errors | **0 errors** — Layer 2, 2026-08-24 |
 | ✅ | `pnpm build` | succeeds | **succeeds**, compiled in 37.5s — Layer 2, 2026-08-24 |
-| ⬜ | `pnpm e2e` | 0 failed, 0 skipped, count reconciled with CI | — |
+| ✅ | `pnpm e2e` | 0 failed, 0 skipped, count reconciled with CI | **589 passed, 0 failed, 0 flaky, 0 skipped**, exit 0 measured without a pipe. **Reconciled with CI by TITLE, not by count** — 588 of 589 identical, the 589th differing only by GitHub's redaction (F-017) |
 | ✅ | `pytest analytics/` | all pass | **170 passed** — 153 at step zero + 17 added in Layer 1 |
 | ✅ | `mypy analytics/` | no issues | **43 files, no issues** — 42 at step zero, +2 new tests −1 deleted script |
 | 🟡 | The eight `check:*` guards | all green, **each proven able to fail** in Layer 0 | **all 8 proven able to fail** ✅ (Layer 0, 2026-08-23 — 13 sabotages, each with a control). **and all 8 green on a fresh production build** ✅ (Layer 2, 2026-08-24) |
@@ -681,6 +681,23 @@ the number recorded rather than the colour. Run 2026-08-24.
 | `check:csp` | ✅ | 12 routes, 7 nonce, 5 prerendered, **zero violations** |
 | `check:page-weight` | ✅ | 6 pages within budget; heaviest `/stocks/us/AAPL` **1223 / 1400 KB** |
 
+**Reconciled against CI, by title.** Both the local run and CI run 32686988274 report
+**589 passed**. Equal counts are not the check — a renamed test and a silently skipped one both
+move the number and mean opposite things — so the two logs were compared title for title, with
+CI's forward slashes, its check-mark reporter and each test's `line:col` normalised away.
+**588 of 589 matched exactly**, and the one that did not turned out to be F-017 rather than a
+missing test.
+
+⚠️ **That comparison took four attempts and the first three were all wrong**, each in a way
+that reads as success. (i) The parser matched the local reporter's `ok` marker; CI prints a
+check mark, so it extracted **0 CI titles** — which then listed all 589 local tests as "missing
+from CI", a terrifying and entirely false result. (ii) Fixed, it dropped one local test whose
+duration reads `(1.1m)` rather than seconds. (iii) Then a shell-escaping error left **both**
+lists empty — and `diff` on two empty files reports them identical, so it printed
+**"RECONCILED"** while comparing nothing. That is 14g in the instrument built to enforce 14g.
+The script now refuses to compare at all unless both lists reach 589, and the heredoc that
+mangled the escape was abandoned for a real file.
+
 Each number is a reconciliation, not a reading: **mypy's file count moving 42 → 43** is the
 kind of thing that would otherwise pass as "still green" while a file quietly stopped being
 checked (14g). It matches the day's edits exactly.
@@ -750,6 +767,41 @@ way. Running them together would make the page's wall-clock cost one round trip 
 path of a **paid** surface. It belongs to the ticker-page performance work the owner authorised
 on 2026-08-22 (Lighthouse 84 → 90), where it can be built and proven on its own. Recording it
 rather than quietly doing it is the rule from CLAUDE.md **11l**.
+
+### F-017 🔵 A CI secret's value appears to be the word "Bearer" — owner's to check
+
+**Found by the local-vs-CI title diff, and not by looking for it.** The two runs each report
+**589 passed**; comparing the *titles* left exactly one row on each side, and it is the same
+test:
+
+| | title as printed |
+|---|---|
+| local | `purge cron › who counts as Vercel Cron › the exact **Bearer** form is the only thing that passes` |
+| CI | `purge cron › who counts as Vercel Cron › the exact **\*\*\*** form is the only thing that passes` |
+
+GitHub redacts a string from a log **only when that string is the value of a secret available
+to the job.** The word `Bearer` appears **zero** times unmasked anywhere in the CI log, and the
+same redaction marker appears beside `E2E_PASSWORD`, `STRIPE_SECRET_KEY` and the rest. So one
+of the five secrets that job uses has the exact value `Bearer`.
+
+By elimination it is almost certainly **`E2E_PASSWORD`** — the other four have known shapes
+(an email address, a `whsec_…`, an `rk_test_…`, and a JWT), and none of them can be one English
+word. ⚠️ **I have not read any secret's value and will not**; this is inference from what the
+masking did, not from the value.
+
+**Why it matters, and it is two things.** A password that is one common English word is not a
+password, and this account is a real Supabase user on the real project — CI signs in as it on
+every push. And separately, the masking now fires on an ordinary word, so **every legitimate
+use of "Bearer" in any future CI log is redacted** — which is how a log stops being readable
+and, worse, how a genuinely masked value stops standing out.
+
+**Owner's action, because it is a credential and I do not touch those:** set `E2E_PASSWORD` to
+a long random value in the repository secrets, and change that account's password in Supabase
+to match. Nothing in the code needs to change.
+
+ℹ️ Note this was invisible to both runs individually — each said 589 passed. **Only the diff
+of titles could show it**, which is the argument for doing the reconciliation by title rather
+than by count, made by a defect nobody was hunting.
 
 ### F-016 🔴 My "everything automated" sweep was missing a whole tool — CI caught it
 
