@@ -31,11 +31,17 @@ import { urlPartsToTicker } from '@/lib/ticker';
  * numbers are in the audit.
  *
  * ── What it costs ───────────────────────────────────────────────────────────
- * One `select ticker … limit 1`, which blocks the shell. `stockExists` is
- * `cache()`d per render and deliberately reads a single column, so it does not
- * duplicate the page's own `fetchStockDetail`, and the page's heavy work (the
- * cycle analysis, the benchmark series) still streams behind its own Suspense
- * boundaries exactly as before.
+ * One `stocks` row read, which blocks the shell. `stockExists` shares its
+ * `cache()`d result with the page's own `fetchStockDetail`, so the route makes
+ * the SAME number of database round trips it made before this file existed. The
+ * page's heavy work (the cycle analysis, the benchmark series) still streams
+ * behind its own Suspense boundaries exactly as before.
+ *
+ * ⚠️ It did not start that way. The first version asked a deliberately lighter
+ * question — one column instead of the row — and that made it a THIRD sequential
+ * round trip rather than a shared one. From Australia that is ~500ms, and it cost
+ * the page 19 Lighthouse points before anyone looked. The measurement is in
+ * `lib/stocks.ts`.
  *
  * ⚠️ Both checks belong HERE rather than being split with the page. The page
  * keeps its own `notFound()` calls as a backstop — they are unreachable while

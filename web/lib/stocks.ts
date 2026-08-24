@@ -77,10 +77,20 @@ export class StockReadError extends Error {
  * is why an unknown ticker answered **200** until 2026-08-23 (audit F-011, and
  * CLAUDE.md 11r one floor up). Asking here answers before anything is sent.
  *
- * `readStockRow` cannot be reused for this: it does `select('*')`, which drags
- * the whole fundamentals JSONB across for a question whose answer is one bit.
- * `cache()`d per render, so the layout and anything else asking in the same
- * request share one query.
+ * ⚠️ It reads the WHOLE row, and the first version of this did not — it selected
+ * one column, reasoning that `select('*')` drags the fundamentals JSONB across
+ * for a question whose answer is one bit. **That reasoning was about bytes, and
+ * the cost is latency.** Measured from the owner's machine against the database
+ * in `us-east-1`: `select ticker` (17 bytes) median **553 / 463 ms**, `select *`
+ * (48,489 bytes) median **531 / 533 ms** — interleaved, so a network mood swing
+ * hits both arms. The payload is free; the round trip is the entire cost.
+ *
+ * So the light read was not cheaper — it was a THIRD sequential cross-region
+ * round trip on the heaviest page in the product, and it showed up as Lighthouse
+ * performance **84 → 65** the day the layout landed (audit Layer 2). Sharing one
+ * `cache()`d full-row read with `fetchStockDetail` puts it back to two, and the
+ * 404 fix costs nothing at all. CLAUDE.md **14f**: a mechanism that is genuinely
+ * present is not thereby the one responsible.
  *
  * ⚠️ `false` means **not in our universe**, and nothing else. A failed read
  * throws `StockReadError`, exactly as `readStockRow` does — collapsing the two
@@ -88,16 +98,22 @@ export class StockReadError extends Error {
  * permanent "Stock not found". A boolean makes that collapse very easy to write
  * by accident, which is why it is spelled out here.
  */
-export const stockExists = cache(async (ticker: string): Promise<boolean> => {
-  const { data, error } = await createAdminClient()
-    .from('stocks')
-    .select('ticker')
-    .eq('ticker', ticker)
-    .maybeSingle();
+export const stockExists = async (ticker: string): Promise<boolean> =>
+  (await cachedStockRow(ticker)) !== null;
 
-  if (error) throw new StockReadError(ticker, 'stocks existence check', error);
-  return data !== null;
-});
+/**
+ * The one `stocks` row read per render, shared by the layout's existence check
+ * and by `fetchStockDetail`.
+ *
+ * React's `cache()` memoises per request, so whichever asks first pays and the
+ * other is free — the layout and the page cannot fall out of step, and cannot
+ * pay twice. It memoises a rejection too, so a failed read is one failure with
+ * one explanation rather than two racing ones.
+ */
+const cachedStockRow = cache(
+  async (ticker: string): Promise<Record<string, unknown> | null> =>
+    readStockRow(createAdminClient(), ticker),
+);
 
 /**
  * Read the canonical `stocks` row.
@@ -194,12 +210,12 @@ export async function loadPriceBars(
  */
 export const fetchStockDetail = cache(
   async (ticker: string): Promise<StockDetail | null> => {
-    const supabase = createAdminClient();
-
-    const stockRow = await readStockRow(supabase, ticker);
+    // Shared with the layout's existence check — whichever ran first already
+    // paid for this, and a cross-region round trip is ~500ms from Australia.
+    const stockRow = await cachedStockRow(ticker);
     if (!stockRow) return null;
 
-    const priceBars = await loadPriceBars(supabase, ticker);
+    const priceBars = await loadPriceBars(createAdminClient(), ticker);
 
     const camelRow = shallowCamel(stockRow as Record<string, unknown>);
 
