@@ -860,6 +860,81 @@ must run against a deployment.
 
 ---
 
+## Layer 3b — the platform sweep
+
+**Run 2026-08-24 against the LIVE systems** (Supabase, Vercel, Stripe, GitHub Actions). None of
+this lives in the repository, so no test, guard or code review can see it — it has to be asked
+of the platforms directly.
+
+### The headline: there is no paywall bypass in the database
+
+The question the method singles out is *can a signed-in customer edit their own subscription
+status and give themselves the paid product?* **No.** The column-level grant for `authenticated`
+on `profiles` is exactly three columns:
+
+    acknowledged_disclaimer_at, country, display_name
+
+`subscription_status`, `grace_until`, `billing_blocked`, `stripe_subscription_id` and the rest
+are not writable by a customer at all. The row policy (`auth.uid() = id`) scopes them to their
+own row on top of that.
+
+| Area | Result |
+|---|---|
+| Row-level security | **on for all 12 tables**; 9 carry no policy (deny-all — the intended state for server-only tables), 3 are scoped to the caller's own rows |
+| Security advisors | **9, all INFO**, all "RLS enabled, no policy" — i.e. the deny-all tables above |
+| Stripe live webhook | **1 endpoint**, enabled, livemode, 13 events, on the `www` host (the apex 307s and Stripe counts a 3xx as failed delivery) |
+| Prices charged vs shown | **all six match** — see below |
+| Scheduled jobs | both GitHub crons **succeeded on their last 3 runs**; `stocks` last updated 08:41 UTC today |
+| Account purge | scheduled in `web/vercel.json` (`0 3 * * *`); **0 profiles overdue** past the 30-day promise (1 scheduled, none stale) |
+| Hosting plan | **hobby** — the launch blocker, re-verified live rather than remembered |
+
+### F-024 🟡 `anon` can still write every profile column — proven harmless, still a missing layer
+
+`authenticated` was deliberately narrowed to three columns. **`anon` was not**: it retains
+`UPDATE` and `INSERT` on all 20 columns of `profiles`, `subscription_status` included.
+
+⚠️ **Not exploitable, and I proved that rather than reasoning it.** An anonymous client was
+pointed at a throwaway profile and told to set `subscription_status` to `active`. Result: no
+error, **0 rows returned, value unchanged** — the row policy compares `auth.uid() = id`, and for
+an anonymous caller `auth.uid()` is NULL, which is never true. **With a control**: the same row
+was then written successfully by the service role, so "nothing changed" is a refusal rather than
+an unreachable row or a silently broken client.
+
+It is still the shape this project has been bitten by four times: **a rule applied to one
+consumer and not its sibling** (CLAUDE.md 11c-iv). One `revoke` closes it, plus a guard so a
+future migration cannot widen it back in silence.
+
+### F-025 🟡 The price a customer is CHARGED and the price they are SHOWN have no automated link
+
+Checked by hand, and every figure agrees — Stripe live, `PRICE_TABLE` in `lib/pricing.ts`, and
+locked decision #18:
+
+| | Stripe (live) | the site shows |
+|---|---|---|
+| Monthly | US$15 · A$19 · C$20 | US$15 · A$19 · C$20 |
+| Annual | US$126 · A$159 · C$168 | US$126 · A$159 · C$168 |
+
+⚠️ **Nothing enforces that agreement.** The amounts live in two systems that cannot see each
+other, and a change to either is silent: edit `PRICE_TABLE` and the site advertises a price
+Stripe will not charge; edit the Stripe price and the site advertises one it no longer charges.
+The second direction is a consumer-law problem, not a bug — and this is exactly **11c (v)**,
+a number stated in one place and enforced in another, which is where copies go to drift.
+
+⚠️ **And a CI guard can only see half of it.** The Stripe key in CI is the sandbox
+(`stripe-key-scope.spec.ts` proves it is restricted), so a test can assert `PRICE_TABLE` against
+**sandbox** prices — which catches the common case of someone editing the table, and cannot see
+a live-mode change at all. Worth building with that limit stated, with the live figures re-read
+at merge. Owner's call.
+
+### Recorded, no action
+
+`stocks` is **871 rows** — 129 from PostgREST's silent 1000-row truncation, and the universe
+grows on every reader's ticker request (#16). `listings` is **9,134**, i.e. already far past it,
+so `selectAll()` is load-bearing today rather than prophylactic. Both are covered by
+`pnpm check:data-integrity`, which Layer 0 proved able to fail.
+
+---
+
 ### F-021 🔴 The ticker page's score cannot be measured honestly from here — and my theory about it was wrong
 
 **My hypothesis, stated to the owner:** every number in this session came from a laptop in
