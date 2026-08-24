@@ -1,5 +1,19 @@
-'use client';
-
+// NOT a client component — deliberately, since 2026-08-24.
+//
+// This section is pure presentation: an SVG arc gauge and a table of numbers. No
+// state, no effects, no event handlers, nothing that can change after render. It
+// carried a "use client" directive anyway, which shipped ~160 lines to every
+// browser and paid React's hydration cost for markup that can never move.
+//
+// InfoTip below IS interactive and stays a client component. A server component
+// may render one, and only that small island hydrates — which is the whole point:
+// the cost should scale with what is actually interactive, not with the file.
+//
+// ⚠️ It must also stay HOOK-FREE, for a second and less obvious reason:
+// ReportDocument renders this same component inside the offline report, which is
+// an esbuild bundle with no server in it at all. A hook-free component works in
+// both builds; a hook here would be legal in the report and illegal in Next
+// (CLAUDE.md 11d — a second build of the same components is a second product).
 import type { FundamentalsSnapshot } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
 
