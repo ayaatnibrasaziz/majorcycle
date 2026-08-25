@@ -12,7 +12,7 @@ reviewed.
 
 ## The instrument
 
-The suite is **523 Playwright tests in 26 files**, and `pytest` is **153**.
+The suite is **523 Playwright tests in 26 files**, and `pytest` is **153**. *(⚠️ Those are the figures on the day this map was built, 2026-08-23, and this document is a dated record — do not read them as current. As at 2026-08-25 the suite is **617 Playwright in 34 files** and **188 pytest**; the merge-gate table in `layer-g-audit.md` is the row that stays current.)*
 
 ⚠️ **A grep for `test(` returns 406, not 523** — a third of the suite is generated inside
 loops, so counting the source undercounts it by 117. Every number below comes from

@@ -389,15 +389,17 @@ and ignored. The gate reads `steps.listings.outcome`, the result *before*
 *The delisting sweep refuses to run when it would retire more than **2%** of a
 market in one night* — measured as a per-symbol set difference, not inferred from
 totals. A source that "works" can still be **incomplete**: the current ASX
-directory carries 1,841 of our 1,999 symbols and omits QUB.AX and CVW.AX, both
+directory carries ~1,810 of our 1,999 symbols and omits QUB.AX and CVW.AX, both
 live and both covered. Leaving a delisted name in the menu costs one failed request
 that `drain_requests` already resolves as `unsupported`; removing a live one tells
 a customer their real stock does not exist. A warning, not a red run — the state
 persists while two sources disagree.
 
-⚠️ **The AU sweep is refused today** (7.9% missing), so genuine ASX delistings will
+⚠️ **The AU sweep is refused today** (~9.5% missing), so genuine ASX delistings will
 linger in the menu until the source gap closes. Deliberate, and the cheaper of the
 two errors.
+
+⚠️ **The ASX file MOVES during the day, which is itself a finding.** The first measurement on 2026-08-25 read **1,841**; the GitHub run about an hour later read **1,810**, and a re-fetch from a second machine at the same time also read 1,810 — so it is the directory changing, not a difference between locations. Any single figure here is a snapshot. It is also the argument for the churn guard being a **proportion** rather than a symbol count: a fixed number would have to be re-tuned every time the source breathes.
 
 ```sql
 CREATE TABLE listings (
@@ -510,7 +512,7 @@ live-check Session 1):
 | Page | Purpose | Note |
 |---|---|---|
 | `/` | The landing page — the argument, a worked screener run, and how it works | ⚠️ **This table listed every public page except the front door until 2026-08-22** — an omission that renders perfectly (11j). Rebuilt to the approved storyboard in G3.8, eight sections. It is in **`SIGNED_OUT_ONLY_PATHS`**: a signed-in reader goes to `/stocks`. Its figures come from `web/app/landing-snapshot.json` + `mag7-snapshot.json`, committed files rebuilt nightly, so no DB read sits in the front door's critical path. Lighthouse **100/100/96/100** |
-| `/notes` · `/notes/[date]` | The weekly, human-edited market note + its archive | ⛔ **NOT BUILT.** The last page type Layer G still owes. One permanent page per week, deliberately not part of `/learn` — an explainer is durable, a note is dated |
+| `/articles` · `/articles/[?]` | Weekly, human-written articles on what actually happened that week, plus their archive | ⛔ **NOT BUILT — and re-scoped 2026-08-25.** Called the "weekly market note" until then, with a fixed five-part template; the owner dropped both the name and the template. It is now **articles**: each one written to whatever shape that week's story needs, aimed squarely at search visibility. Structure is being settled in a following session, drafted as **markdown first** and only then given a UI. ⚠️ **The per-article URL shape is NOT yet decided** — a dated path (`/articles/2026-08-28`) was the old brief's, a topic slug (`/articles/gold-miners-swept-the-week`) is far better for search. Written as `[?]` on purpose so nobody reads a placeholder as a decision. Still deliberately not part of `/learn` — an explainer is durable, an article about this week is dated |
 | `/login` · `/signup` | Sign in, create a free account | Signed-in users are bounced to `/stocks` by the proxy (`SIGNED_OUT_ONLY_PATHS`). Signup takes **no card** (§7.2) |
 | `/reset-password` | Request a reset link | **Deliberately NOT bounced** for a signed-in reader — asking for a reset link is a legitimate thing to do while signed in (e.g. on a shared machine, or a Google-only account adding a password). Verified live 2026-08-02: it renders rather than redirecting. The doc previously grouped it with `/login`·`/signup` and was wrong |
 | `/pricing` | The signed-out shop window: both plans, local currency | A **signed-in** visitor is redirected to `/account` — they are a customer, not a shopper |
@@ -1859,8 +1861,17 @@ mentioning pages.** The plan named the landing page, `/about`, `/learn`, `/gloss
 weekly human-edited market note. **`/about` and `/glossary` are dropped** (owner,
 2026-08-22): About *may* return later, the glossary is **permanently** cancelled. What
 remains is the landing page, the twelve-article `/learn` library (complete and
-owner-approved), and the weekly note at `/notes`, which is the last page type Layer G still
-has to build.
+owner-approved), and the **articles** section at `/articles`, which is the last page type
+Layer G still has to build.
+
+⚠️ **Re-scoped by the owner on 2026-08-25**, after a storyboard for the earlier design:
+the "weekly market note" — a fixed five-part template — is **replaced by articles**, each
+written to whatever shape that week's story needs. The reasoning is SEO: a piece that reads
+as *what happened this week* is what someone actually searches for, and a rigid template
+makes every week look the same to a reader and to a crawler. Cadence stays **weekly and
+human-written**; nothing here becomes automated. The structure itself is deliberately still
+open — the next session drafts one in **markdown** and settles the shape before any UI is
+built.
 
 This reverses the earlier plan to index Stock Detail as a "free tier shop window". Do not
 re-propose it.

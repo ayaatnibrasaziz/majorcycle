@@ -19,7 +19,7 @@
 > **(1) demonstrate the method first, name it second · (2) the landing page shows a
 > FIXED stock — Apple, not a rotating one · (3) the About trust list is sufficient
 > without a name · (4) Learn articles target the newcomer, not the paying buyer.**
-> **(5) The weekly note gets its OWN section, one permanent page per week**, with an
+> **(5) The weekly note gets its OWN section, one permanent page per week**, with an *(⚠️ re-scoped 2026-08-25 — now `/articles`, no fixed template; see §6)*
 > archive index — `/notes` + `/notes/2026-08-07`. Not one page rewritten weekly, and
 > not mixed into `/learn`. Rationale: each week is original content that can rank and
 > be linked to, so the writing compounds instead of being destroyed; and an explainer
@@ -42,8 +42,16 @@
 > artifact, not to §1's prose), §3 the Learn index, §4 the Learn article template — twelve
 > articles, all read through and approved by the owner on 2026-08-21 and 2026-08-22.
 >
-> **What is still owed: §6, the weekly market note** — `/notes` + `/notes/[date]`. It is the
-> last page type in Layer G.
+> **What is still owed: §6 — and it was RE-SCOPED on 2026-08-25.** It is no longer the
+> "weekly market note" at `/notes` with a fixed five-part template. It is **`/articles`**:
+> weekly, human-written pieces on **what actually happened that week**, each shaped by that
+> week's story rather than poured into a form. The owner's reasoning is search visibility —
+> *"the latest news that people would want to read"* — and that a rigid template makes every
+> week look identical to a reader and to a crawler. §6 below is kept as the historical
+> record of what was approved on 2026-08-07 and is **no longer the plan**; read it for the
+> parts that survived, which are listed at the top of it.
+>
+> It is still the last page type in Layer G.
 
 ---
 
@@ -60,16 +68,19 @@ into; one is **recurring**.
 | Learn index `/learn` | one-off | 1 | 1 |
 | **Learn article** `/learn/…` | **template** | 4 *(staged)* | ~12 |
 | **Glossary** `/glossary` | one page, many entries | 1 | 1 *(entries grow inside it)* |
-| Notes archive `/notes` | one-off | 1 | 1 |
-| **Weekly note** `/notes/…` | **template, recurring** | 1 | +1 every week |
+| Articles archive `/articles` | one-off | 1 | 1 |
+| **Article** `/articles/…` | **recurring** | 1 | +1 every week |
 
 So: **six designs to approve**, about **nine pages** at launch, and one of them adds a
 new page every week forever.
 
 **"Template" means one design, many pages.** `/learn/what-a-drawdown-is` and
 `/learn/reading-a-pe-honestly` are two pages sharing one layout — approve it once and
-every future article inherits it. Same for the weekly note. This is why the count of
-*designs* is small while the count of *pages* keeps growing.
+every future article inherits it. ⚠️ **`/articles` is the exception** — since 2026-08-25 it
+deliberately has no fixed template, so each piece is shaped by its own content. What gets
+approved there is the page's *furniture* (header, date, byline, disclaimer, archive row),
+not the body. This is why the count of *designs* is small while the count of *pages* keeps
+growing.
 >
 > Written 2026-08-07 (G2). Each brief states what the page is *for*, who is reading it,
 > and how we would know it worked. It does **not** describe layout — that comes after
@@ -253,7 +264,28 @@ click and return.
 
 ---
 
-## 6. Weekly market note — `/notes` (archive) + `/notes/[date]` (each week)
+## 6. Articles — `/articles` (archive) + one page per week
+
+> ⚠️ **RE-SCOPED 2026-08-25. Everything below the line is the brief approved on 2026-08-07
+> and is kept as history, not as the plan.** Read it for what survived, which is this:
+>
+> | Still true | Changed |
+> |---|---|
+> | **Weekly, human-written.** Not automated, not daily | The **name**: "weekly market note" → **articles** |
+> | **Its own section**, separate from `/learn` | The **fixed five-part shape** is dropped — each piece is shaped by that week's story |
+> | **One permanent page each**, never one page rewritten | The **framing**: from a structured column to *what actually happened this week* |
+> | **Byline: MajorCycle**, no invented author | The **URL shape** is reopened — dated path vs topic slug, undecided |
+> | **Never retro-edit a published piece's figures** | The **purpose** leans harder on search visibility |
+>
+> **Owner's reasoning:** *"I don't like the idea of having a consistent format. I think it
+> will be better to post what has happened in the week so that it ranks better for SEO as it
+> is saying the latest news that people would want to read."*
+>
+> **Next step, agreed:** draft one article as a **markdown file** against a real week, settle
+> the shape on that, and only then design the page. The storyboard published on 2026-08-25
+> (`claude.ai/code/artifact/24903b9d`) drew the OLD template and is superseded.
+
+---
 
 **Purpose.** Give the site a reason to be visited again, and a reason to earn an email
 address.
@@ -294,7 +326,7 @@ sheet.
 | Landing stock | **Fixed — Apple.** Not rotating: alive is not worth an unwatched awkward figure on the front page |
 | About | Trust list is **sufficient** without a name |
 | Learn articles | Target the **newcomer**, not the paying buyer |
-| Weekly note | **Own section**, one permanent page per week, with an archive |
+| Weekly note *(now **articles**)* | **Own section**, one permanent page per week, with an archive. ⚠️ Re-scoped 2026-08-25: `/articles`, weekly and human-written but with **no fixed template**, framed as what happened that week. §6 has what survived and what changed |
 
 **Still to approve: the layout stage.** These briefs fix *what each page is for*. What it
 looks like comes next, and is a separate approval.

@@ -84,12 +84,19 @@ def is_safe_to_deactivate(missing: int, existing_active: int) -> bool:
     ── Why this exists ──────────────────────────────────────────────────────────
     The delisting sweep trusts the pull to be a complete picture of the market. On
     2026-08-25 that turned out to be false in a way no status code reveals: the
-    replacement ASX directory carries 1,841 of the 1,981 symbols we hold, and the
-    158 it omits are not all delistings. Two of them — **QUB.AX (Qube Holdings)
-    and CVW.AX** — are companies we actively cover, with current price data. 27 of
-    29 well-known ASX codes are present; those two simply are not in the file.
+    replacement ASX directory carries roughly 1,810 of the ~1,999 symbols we hold,
+    and the ~190 it omits are not all delistings. Two of them — **QUB.AX (Qube
+    Holdings) and CVW.AX** — are companies we actively cover, with current price
+    data. 27 of 29 well-known ASX codes are present; those two simply are not in
+    the file.
 
-    So without this, applying the URL fix would have marked 158 live companies
+    ⚠️ "Roughly", because the file MOVES: measured at 1,841 one hour and 1,810 the
+    next on 2026-08-25, from two different machines, so it is the directory
+    changing rather than a difference between locations. That is precisely why this
+    is a PROPORTION and not a symbol count — a fixed threshold would need re-tuning
+    every time the source breathes.
+
+    So without this, applying the URL fix would have marked ~190 live companies
     "not a known listing" — turning a source that returned *nothing* into a source
     that returned something *wrong*, which is worse, because the second one looks
     like it is working.

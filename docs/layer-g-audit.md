@@ -443,11 +443,11 @@ merge. An empty number is an unticked box.
 | ✅ | `pnpm typecheck` | zero errors | **0 errors** — Layer 2, 2026-08-24 |
 | ✅ | `pnpm lint` | zero errors | **0 errors** — Layer 2, 2026-08-24 |
 | ✅ | `pnpm build` | succeeds | **succeeds**, compiled in 37.5s — Layer 2, 2026-08-24 |
-| ✅ | `pnpm e2e` | 0 failed, 0 skipped, count reconciled with CI | **589 passed, 0 failed, 0 flaky, 0 skipped**, exit 0 measured without a pipe. **Reconciled with CI by TITLE, not by count** — 588 of 589 identical, the 589th differing only by GitHub's redaction (F-017) |
-| ✅ | `pytest analytics/` | all pass | **170 passed** — 153 at step zero + 17 added in Layer 1 |
+| ✅ | `pnpm e2e` | 0 failed, 0 skipped, count reconciled with CI | **617 passed, 0 failed, 0 flaky, 0 skipped** — CI run `32847359890` on `bc7672e`, matching the 617 collected locally. Grew 589 → 617 across the fixes: +7 benchmark-cache, +1 run-history, +15 db-grants, +3 pricing-parity, +2 stock-currency. ⚠️ Earlier in the layer this was **reconciled with CI by TITLE, not by count** — 588 of 589 identical, the 589th differing only by GitHub's redaction (F-017) — and that remains the method whenever the two disagree |
+| ✅ | `pytest analytics/` | all pass | **189 passed** — 153 at step zero, +17 in Layer 1, +19 for the listings regression rules (F-027/F-028) |
 | ✅ | `mypy analytics/` | no issues | **43 files, no issues** — 42 at step zero, +2 new tests −1 deleted script |
 | ✅ | `ruff check analytics/` **and** `cd web && ruff check _engine/ api/` | zero errors | **both clean.** ⚠️ Added to this table on 2026-08-24 because Layer 2 originally omitted it and CI caught 6 errors on the first push — F-016. A gate absent from the list is a gate nobody runs |
-| 🟡 | The eight `check:*` guards | all green, **each proven able to fail** in Layer 0 | **all 8 proven able to fail** ✅ (Layer 0, 2026-08-23 — 13 sabotages, each with a control). **and all 8 green on a fresh production build** ✅ (Layer 2, 2026-08-24) |
+| ✅ | The **nine** `check:*` guards | all green, **each proven able to fail** | **all 9 proven able to fail** ✅ — eight in Layer 0 (2026-08-23, 13 sabotages each with a control) and the ninth on 2026-08-25. ⚠️ **This row said "eight" until then, and there were nine.** `check:engine-drift` had never been broken on purpose, so the row read as "all of them" while one was unproven — the audit's own rule 3 turned on the audit. Sabotaged by appending a line to `web/_engine/major_cycle.py`: it names the file, explains the fix, and **exits 1** (read without a pipe — `$?` after a pipe is `tail`'s). **All 9 green on a fresh production build** ✅ |
 | ✅ | `pnpm check:page-weight` | within budget — **manual, production build** | all 6 within budget ✅ **re-taken 2026-08-24 after F-019**; heaviest `/stocks/us/AAPL` **1079 / 1250 KB** (was 1222 / 1400 — the four index series left the document, and the ceiling was ratcheted so the saving cannot be given back). Re-taken again at merge |
 | 🔴 | `pnpm lighthouse` | meets decision #33 — **manual, median of 3** | public pages **100 / 100 / 100 / 100**; `/stocks` **100**; `/stocks/us/AAPL` **83** local, **64** on the deployed preview. **Below the 90 target, and BLOCKED rather than merely unfinished.** The 84→90 work was attempted and is recorded: F-019 took a third off the page with no score movement, F-020 (split hydration) made it worse and was reverted, and F-021 found that **neither available measurement is trustworthy** — three consecutive preview runs gave 370/540/990 ms of blocking time, and no external lab tool can reach a page behind sign-in. ⚠️ **This row cannot be ticked by more optimisation; it needs an instrument.** Owner decision pending on real-user monitoring. The reliable evidence is the byte count above |
 | ⬜ | Launch-gate table re-verified | every row's evidence current, not from 2026-08-02 | — |
@@ -488,7 +488,7 @@ run after every revert. Exit codes measured **without a pipe** — see the metho
 | `check:page-weight` | budget a route that 308s (`/methodology`) | **1** ✅ | `redirected to / — that is not the page this budget describes` |
 | `check:page-weight` | budget a route that barely loads (`/robots.txt`) | **1** ✅ | `transferred only 1 KB over 0 requests — it did not load` (the 14g floor) |
 
-**All eight `check:*` guards are now proven able to fail.** The three added 2026-08-23
+**All eight `check:*` guards are now proven able to fail.** *(⚠️ Corrected 2026-08-25: there are **nine**. `check:engine-drift` was never in this table and was proven separately that day — see the merge-gate row.)* The three added 2026-08-23
 needed a production build on `:3200` and a running server; the CSP one needed two full
 rebuilds, because the header is set in `proxy.ts`, which Next compiles at build time —
 editing the source and re-running the guard would have measured the previous build
@@ -978,7 +978,7 @@ every delisting. It will not self-heal and nothing will ever say so.
 ✅ **A working replacement exists and it is one line.** The directory behind the ASX's own site —
 `https://asx.api.markitdigital.com/asx-research/1.0/companies/directory/file?access_token=…` —
 returns `text/csv` with the **identical** `"ASX code","Company name"` header the current parser
-already looks for. Pointed at it, the **unchanged** `fetch_au()` reads **1,841 symbols**, with
+already looks for. Pointed at it, the **unchanged** `fetch_au()` reads **~1,810 symbols**, with
 BHP, CBA, A2M, VUL and TUA all present. The URL is already env-overridable (`ASX_LISTINGS_URL`),
 so this is a constant, not a rewrite.
 
@@ -1019,7 +1019,7 @@ genuine cold start — is correctly quiet.
 | | result |
 |---|---|
 | sabotage — `ASX_LISTINGS_URL` pointed back at the dead address | `au LISTINGS REGRESSION: pulled 0, we already had 1981 active` · `::error::` annotation · **exit code 2** · nothing written |
-| the fix — the working address | **1,841 symbols**, `regressed=[]`, **exit 0** |
+| the fix — the working address | **1,841 symbols**, `regressed=[]`, **exit 0** *(1,810 an hour later — the file moves)* |
 
 ⚠️ **The exit code had to be read without a pipe.** My first reading was `exit=0` because the
 command was piped through `grep | tail` and I had read *tail's* status. An exit code you have not
@@ -1027,8 +1027,8 @@ actually observed is exactly what this whole finding is about.
 
 #### ⚠️ And the fix would have caused a WORSE bug — caught by a dry run before anything was written
 
-The replacement source is **not a superset**. It carries 1,841 of the 1,981 symbols we hold, and
-the 158 it omits are **not all delistings**. Two of them are companies we actively cover, with
+The replacement source is **not a superset**. It carries ~1,810 of the 1,999 symbols we hold, and
+the ~190 it omits are **not all delistings**. Two of them are companies we actively cover, with
 current price data: **QUB.AX (Qube Holdings, an ASX 200 constituent) and CVW.AX**. 27 of 29
 well-known ASX codes are present; those two simply are not in the file, and the file is not
 truncated — it runs alphabetically to `ZNO`.
@@ -1037,13 +1037,22 @@ So applying the URL fix alone would have let the delisting sweep mark **158 live
 known listing"** — turning a source that returned *nothing* into one that returned something
 *wrong*, which is worse, because the second looks like it is working.
 
+⚠️ **And the count MOVES, which is a finding in its own right.** The first measurement read
+**1,841**; the GitHub run an hour later read **1,810**, and a simultaneous re-fetch from a second
+machine also read 1,810 — so it is the ASX directory changing during the day, not a difference
+between an Australian and an American IP. Any single number here is a snapshot, and that is
+exactly why the guard is a **proportion** rather than a symbol count: a fixed threshold would need
+re-tuning every time the source breathes. `analytics/tests/test_listings_regression.py` asserts
+**both** measurements, because a rule that only survives one snapshot of a moving source is not a
+rule.
+
 **The asymmetry decides it.** Leaving a delisted company in the menu costs a reader one failed
 request, which `drain_requests` already handles by marking it `unsupported`. Removing a **live**
 company tells them their real stock does not exist, and nothing ever corrects it. So
 `is_safe_to_deactivate` refuses the sweep when a pull would retire more than **2%** of a market —
 ordinary churn is a handful of companies a week, well under 1%.
 
-⚠️ **Two rules, not one, and they are independent.** 1,841 against 1,981 is nowhere near a
+⚠️ **Two rules, not one, and they are independent.** ~1,810 against 1,999 is nowhere near a
 regression — the market did not collapse — and yet its omissions must not delist anyone. A single
 threshold would have had to choose between crying wolf on a healthy pull and silently delisting
 QUB. The set difference is also counted **per symbol** rather than inferred from the totals,
@@ -1078,7 +1087,8 @@ behaviour.
 
 The method singles out *"a `.V` ticker — the one case where a URL collision would silently serve
 one company's data under another's name."* There are **zero** `.V` rows anywhere: not in `stocks`
-(871), not in `listings` (9,136), not in `ticker_requests`.
+(871), not in `listings` (9,136 at the time — 10,611 now that venture is on), not in
+`ticker_requests`.
 
 The reason is explicit and deliberate. `analytics/listings/sources.py` fetches **TSX only**, and
 says so: *"This is now a PRODUCT choice, not a technical block — the routing limitation this
@@ -1432,7 +1442,7 @@ survived. Losing that line would not error — it would silently stop `/account`
 ### Recorded, no action
 
 `stocks` is **871 rows** — 129 from PostgREST's silent 1000-row truncation, and the universe
-grows on every reader's ticker request (#16). `listings` is **9,134**, i.e. already far past it,
+grows on every reader's ticker request (#16). `listings` is **10,611** (9,134 before TSX Venture was turned on), i.e. already far past it,
 so `selectAll()` is load-bearing today rather than prophylactic. Both are covered by
 `pnpm check:data-integrity`, which Layer 0 proved able to fail.
 
