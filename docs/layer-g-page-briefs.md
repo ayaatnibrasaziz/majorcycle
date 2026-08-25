@@ -281,6 +281,29 @@ click and return.
 > will be better to post what has happened in the week so that it ranks better for SEO as it
 > is saying the latest news that people would want to read."*
 >
+> **Decided 2026-08-26 — four answers, three settled and one deferred:**
+>
+> | | Decision |
+> |---|---|
+> | **Length** | **800–1,200 words.** Long enough to rank and to say something real; short enough to review every week without it becoming a burden |
+> | **Naming stocks** | **Yes**, with the disclaimer already used across the site. Naming companies is most of the search value. We never say buy or sell — locked decision #2 and the ASIC posture (#24) apply here exactly as they do in the product |
+> | **Workflow** | **I draft → I fact-check my own draft and hand over a SOURCE LIST WITH LINKS → the owner cross-checks → the owner publishes.** The source list is a deliverable, not a courtesy: it is what makes the owner's review a real check rather than a rubber stamp |
+> | **Angle** | ⏸ **Deferred to the next session.** What an article is mostly *about* — this week's movers read through our data, straight market news, one company in depth, or genuinely whatever the week gives — is the decision the rest hangs on |
+>
+> ⚠️ **The source list has a wrinkle worth solving before the first draft, not during it.**
+> Two kinds of claim go into one of these pieces and only one of them has a URL:
+>
+> - **Events** — why gold moved, what a company announced. These have real sources and get
+>   real links.
+> - **Our own figures** — prices, weekly moves, drawdowns, P/E, margins. These come from our
+>   database. There is no external page to link to, and *"trust our database"* is exactly the
+>   kind of unverifiable claim the owner asked to be able to cross-check.
+>
+> **Proposed and NOT yet agreed:** every figure from our own data is listed with the value,
+> the date it is as at, and a **public cross-check link** (the exchange's or a quote site's
+> page for that ticker) so the owner can confirm it independently in one click. That keeps
+> the promise honest rather than circular. Confirm at the start of the next session.
+>
 > **Next step, agreed:** draft one article as a **markdown file** against a real week, settle
 > the shape on that, and only then design the page. The storyboard published on 2026-08-25
 > (`claude.ai/code/artifact/24903b9d`) drew the OLD template and is superseded.
