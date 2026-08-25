@@ -873,7 +873,8 @@ must run against a deployment.
 | Layer 3 — the wire sweep | ✅ 50 checks on the deployed preview, clean |
 | Layer 3b — the platform sweep | ✅ live Supabase / Vercel / Stripe / Actions |
 | F-024 + F-025 | ✅ both fixed and guarded, 2026-08-25 |
-| Layer 4 — the data sweep | ✅ live DB + on-screen, 2026-08-25 — **4 findings**, one of them 🟠 |
+| Layer 4 — the data sweep | ✅ live DB + on-screen, 2026-08-25 — 4 findings, **all four now fixed** |
+| F-026 · F-027 · F-028 · F-029 | ✅ all applied 2026-08-25 after owner decisions; the listings alarm proven on GitHub in both directions |
 | **Layer 5a — my visual sweep** | ⬜ **next** |
 | Layer 5b — the owner's judgement sweep | ⬜ |
 
@@ -902,10 +903,12 @@ must run against a deployment.
 
 | | Decision |
 |---|---|
-| ~~**F-027**~~ | ✅ **Answered "fix both" and done, 2026-08-25.** New source live (AU 1,981 → 1,999 active), regression alarm wired through the workflow, delisting sweep made safe after a dry run found it would have retired 158 live companies |
-| **F-028** | Is TSX Venture (`.V`) in scope for launch? The code handles it; the product ships no data for it |
-| **F-029** | Folds into the already-open bare-`$` question on the Results table — one answer should cover both |
-| **F-026** | The Supabase default grants on the other 11 tables, and `authenticated`'s `DELETE`/`TRUNCATE` |
+| ~~**F-027**~~ | ✅ **"Fix both", done 2026-08-25.** New source live, and the alarm **proven on GitHub** — a dispatched run with the dead URL went red at the gate, a control run with the real one went green with the gate skipped. The delisting sweep was made safe after a dry run found it would have retired 158 live companies |
+| ~~**F-028**~~ | ✅ **Yes, done.** TSX Venture on; Canada's menu 1,235 → 2,692 |
+| ~~**F-029**~~ | ✅ **Stock Detail only, done.** Owner: *"we can fix the stock detail page for this but not the results tab"* — the Results table's bare `$` stays as it is, by decision |
+| ~~**F-026**~~ | ✅ **Done.** Both public roles now hold exactly the verbs their row policies allow, and nothing on the nine server-only tables |
+
+**Nothing from Layers 3b or 4 is now waiting on the owner.**
 
 5. **Layer 5a** — my visual sweep. Next.
 
@@ -1071,7 +1074,7 @@ step id — but GitHub Actions cannot be run from here, so its first real exerci
 nightly run. `steps.<id>.outcome` under `continue-on-error` is documented behaviour, not measured
 behaviour.
 
-### F-028 🔵 The `.V` case cannot be checked against live data — the product deliberately ships none
+### F-028 ✅ TSX Venture turned on — 2026-08-25, owner approved
 
 The method singles out *"a `.V` ticker — the one case where a URL collision would silently serve
 one company's data under another's name."* There are **zero** `.V` rows anywhere: not in `stocks`
@@ -1082,25 +1085,80 @@ says so: *"This is now a PRODUCT choice, not a technical block — the routing l
 comment used to cite was fixed on 2026-08-04."* Turning TSX Venture on is one line.
 
 So the collision CLAUDE.md #14 warns about is handled in code (`MARKET_SUFFIXES`, plus
-`analytics/tests/test_market_inference.py`) and **has no data behind it**. Recorded as **not
-checked**, not as passed — per the method's rule that an unreachable case becomes an accepted risk
-with the owner's name on it rather than a silent pass. **Owner's call** whether TSX Venture is in
-scope for launch.
+`analytics/tests/test_market_inference.py`) and **had no data behind it**.
 
-### F-029 🔵 Insider transaction values print a bare `$` on every non-US stock — and may not be in that stock's currency
+#### What was done — owner said yes, 2026-08-25
+
+`fetch_ca` now pulls both boards, as two independent calls so a TSXV outage cannot take TSX with
+it. Canada's requestable menu went **1,235 → 2,692**: 1,235 TSX plus **1,457 TSX Venture**, live
+in `listings` and confirmed in the database with `exchange = 'TSXV'`.
+
+⚠️ **The collision the rule exists for does not occur today** — checked rather than assumed: zero
+roots are listed on both boards, so no `ABC.V`/`ABC.TO` pair exists in the current universe. The
+rule still holds (`.V` keeps its suffix in the URL, and `e2e/ticker-routing.spec.ts` already
+asserts the round trip), but it is protecting against a future case rather than a present one.
+That is worth writing down so the next reader does not mistake "no collisions" for "the rule was
+exercised".
+
+### F-029 ✅ Insider values printed a bare `$` on every non-US stock — FIXED on Stock Detail, 2026-08-25
 
 `fmtValue()` in `components/stocks/SmartMoneyActivity.tsx` hard-codes `$` and **takes no currency
 argument at all** — it cannot know which currency it is printing.
 
-Seen live on BHP.AX, a stock the same page prices at **A$67.67**: *"64 shares · $1K"*. The stored
-row is `value: 1304.0` with `"Stock Award(Grant) at price 0.00 - 40.74 per share"` — that is the
-**US ADR** price, so the figure is US dollars, three screens below a price in Australian ones.
-Read as A$1,304 for 64 shares it implies A$20 a share, which contradicts the page itself.
+Seen live on BHP.AX, a stock the same page prices at **A$67.67**: *"64 shares · $1K"*.
 
-This is the same class as the **already-open** bare-`$` decision on the Results table
-(`docs/roadmap.md`), and it breaks the same rule (#13, prices in the stock's home currency).
-**Recorded, not fixed** — it belongs to that same decision, and a real defect does not entitle me
-to widen the job (CLAUDE.md 11l).
+#### ⚠️ A correction to my own first report of this, and it changed the fix
+
+I wrote that the value "may not even be in the stock's currency", from BHP's stored row —
+`value: 1304.0`, `"at price 0.00 - 40.74 per share"`, which is clearly the **US ADR** price. That
+observation was correct about BHP and **wrong as a generalisation**, and I had drawn it from one
+stock.
+
+Measured properly across **4,539 AU and CA transactions**, comparing each implied per-share price
+against that stock's own 52-week range:
+
+| | transactions | implied price sits inside the local range |
+|---|---|---|
+| AU | 2,258 | **2,138 — 94.7%** |
+| CA | 2,281 | **2,213 — 97.0%** |
+
+So the values *are* in the local currency for the overwhelming majority; BHP is the exception
+because it is dual-listed with a US ADR and yfinance surfaces the US filing. **This mattered:**
+had the first claim stood, the honest fix would have been to strip the value or leave it
+unlabelled. The measurement is what made labelling it the right answer — a bare `$` is read as US
+dollars by convention, so it was wrong on 100% of those pages, where the local symbol is right on
+~95%.
+
+#### What was done — Stock Detail only, 2026-08-25
+
+Owner's instruction: *"we can fix the stock detail page for this but not the results tab."*
+So `SmartMoneyActivity` gains a **required** `currency` prop — required rather than defaulting to
+`'USD'`, because a default lets the next caller forget it and silently reproduce this exact
+defect, and the type error is the only thing that makes an omission visible.
+
+⚠️ **The private formatter was DELETED, not corrected** (CLAUDE.md 11c-viii). `lib/format.ts`
+already exports `fmtCompact(value, currency)`, which does the same K/M/B job currency-aware, so
+`fmtValue` is now a two-line wrapper that keeps the `" · "` separator and calls it. Writing a
+fourth private money formatter would have reset the clock rather than closed the hole.
+
+⚠️ **And a second hard-coded `$` was found in the same file while fixing the first** — the Smart
+Money chart's crosshair tooltip printed `$${price.toFixed(2)}` for the *share price*. Same
+component, same defect, and it would have survived a fix aimed only at the insider values. Now
+`fmtPrice(price, currency)`.
+
+⚠️ **This is the third instance of this precise defect.** `fmtPerShare` in `lib/format.ts` says in
+its own docstring that it exists "mainly to fix the hardcoded '$' in
+EarningsHistory/DividendHistory so AUD/CAD render A$/CA$". The fix reached those two components
+and never reached this one — 11c-iv, the rule that one consumer never received.
+
+**Guarded** by `e2e/stock-currency.spec.ts`: an ASX page must show `A$` and must contain no bare
+`$`, **with a US control** that must NOT say `A$` — because every Australian assertion is equally
+satisfied by a formatter hard-coded to `A$`, which is a different bug of the same size. It also
+carries a loud precondition that insider rows with values actually rendered, since a page with no
+transactions would pass every assertion having measured nothing.
+
+**Still open, and unchanged:** the Results table's bare `$`, which the owner has deliberately left
+alone.
 
 ### F-030 🔵 Five index members are not fetchable companies
 
@@ -1301,7 +1359,7 @@ catch, invisibly. That is why the merge-gate table below now carries an owner-on
 re-read the six live figures at merge, rather than leaving it to memory. Last read by hand
 2026-08-24 (Layer 3b): all six matched.
 
-### F-026 🟡 The same over-grant is on all 12 tables, and `authenticated` still holds DELETE and TRUNCATE — owner's call
+### F-026 ✅ The same over-grant was on all 12 tables — FIXED 2026-08-25, owner approved
 
 **Found while fixing F-024, by asking a wider question of the same catalog.** F-024 was written
 as a `profiles`-and-`anon` problem. It is not: it is the stock Supabase posture on **every**
@@ -1334,12 +1392,42 @@ whose failure mode is a broken production app the owner cannot debug, and the ap
 `anon` on `profiles`. Recording a defect I am not authorised to fix, rather than quietly
 widening the change and calling it tidying, is the rule set by CLAUDE.md 11l.
 
-**What a fix would look like, if the owner wants one:** for the eight policy-less tables, revoke
-everything from both roles (they already get nothing); for the four with policies, grant back
-only the verbs the policies actually exercise; and revoke `TRUNCATE`/`TRIGGER`/`REFERENCES`
-everywhere. Each step is independently reversible, and `e2e/db-grants.spec.ts` already has the
-shape the guard would take — including the control that proves the app's real writes still work,
-which is the assertion that separates a tightening from an outage.
+#### What was done — 2026-08-25
+
+Migration `20260825010000_least_privilege_public_roles.sql`, applied live. Every grant was
+derived from `pg_policy` and from a sweep of **every** `.from('<table>')` call site in the app,
+not from memory.
+
+| | `anon` | `authenticated` |
+|---|---|---|
+| the **nine** policy-less tables | *(nothing)* | *(nothing)* |
+| `analysis_runs` | `SELECT` | `SELECT, INSERT` |
+| `referrals` | `SELECT` | `SELECT, INSERT` |
+| `profiles` | `SELECT` | `SELECT` + `UPDATE(display_name, country, acknowledged_disclaimer_at)` |
+
+The three policy tables now grant exactly what their policies allow — `SELECT + INSERT` on own
+rows for `analysis_runs` and `referrals`, `SELECT + UPDATE` on own row for `profiles` — and
+nothing else. `DELETE`, `TRUNCATE`, `TRIGGER` and `REFERENCES` are gone from both roles
+everywhere.
+
+**Why the nine were safe to strip:** they carry no policy, so both public roles were already
+getting nothing through the API. Verified before writing, not assumed — every read of `stocks`,
+`price_bars`, `listings`, `ticker_requests`, `universe_log`, `index_membership`, `split_events`,
+`stripe_events` and `trial_tombstones` goes through `createAdminClient()`. The only
+session-client reads and writes in the entire app are on the three tables above.
+
+**Why `anon` keeps `SELECT` on those three**, the same reasoning as F-024: a cookie-bound server
+client whose JWT has just expired falls back to `anon`, and "0 rows" is an answer every caller
+already handles, where a permission error would break a paying customer's page mid-request. RLS
+returns nothing to an anonymous caller either way.
+
+⚠️ **`REVOKE ALL` also drops `profiles`' three-column UPDATE**, which is why the migration
+re-grants it explicitly and the catalog was re-read afterwards to confirm all three columns
+survived. Losing that line would not error — it would silently stop `/account` saving.
+
+**Guarded** by nine new cases in `e2e/db-grants.spec.ts` (suite 5 → 15), each asserting the
+*message* rather than the code, plus a control proving the same client can still reach
+`analysis_runs` — without which a broken key would satisfy all nine refusals.
 
 ### Recorded, no action
 

@@ -348,6 +348,7 @@ export function ReportDocument({ data }: { data: ReportData }) {
               insiderTransactions={stock.insiderTransactions}
               analystUpgradesDowngrades={stock.analystUpgradesDowngrades}
               priceBars={stock.priceBars}
+              currency={stock.fundamentals.currency}
             />
           </ReportSection>
           <ReportSection>

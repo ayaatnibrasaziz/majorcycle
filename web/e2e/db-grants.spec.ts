@@ -113,6 +113,69 @@ test.describe('an anonymous caller cannot write profiles', () => {
   }
 });
 
+/**
+ * The server-only tables are server-only (audit F-026).
+ *
+ * Nine of the twelve public tables carry no row policy at all — they are read and
+ * written with the service-role key, which bypasses row-level security — so the
+ * two public roles were already getting nothing through the API. They nonetheless
+ * held every privilege on all of them, `DELETE` and `TRUNCATE` included, because
+ * that is what Supabase grants on a new public table.
+ *
+ * ⚠️ `TRUNCATE` is why this is worth a test rather than a shrug: **row-level
+ * security does not apply to it.** RLS governs SELECT/INSERT/UPDATE/DELETE; no
+ * policy filters a TRUNCATE. For that one verb the layer everything else on this
+ * page rests on was simply absent.
+ *
+ * As with F-024, the assertion is on the MESSAGE. Before the revoke these reads
+ * answered `200` with an empty array — a refusal indistinguishable from "no rows
+ * matched" — and after it they say "permission denied for table". A test that
+ * accepted an empty array would pass in both worlds.
+ */
+test.describe('the server-only tables refuse the public roles outright', () => {
+  test.skip(
+    !SUPABASE_URL || !ANON_KEY,
+    'set NEXT_PUBLIC_SUPABASE_URL + NEXT_PUBLIC_SUPABASE_ANON_KEY to run',
+  );
+
+  const SERVER_ONLY = [
+    'stocks',
+    'price_bars',
+    'listings',
+    'ticker_requests',
+    'universe_log',
+    'index_membership',
+    'split_events',
+    'stripe_events',
+    'trial_tombstones',
+  ];
+
+  for (const table of SERVER_ONLY) {
+    test(`anon cannot even read ${table}`, async () => {
+      const { error } = await anonClient().from(table).select('*').limit(1);
+      expect(
+        error,
+        `${table} answered without an error. It has no row policy, so it used to ` +
+          'return an empty array — which looks identical to "nothing matched". If ' +
+          'this is green with no error, a migration re-granted the public roles ' +
+          `access to ${table} (audit F-026).`,
+      ).not.toBeNull();
+      expect(error!.code).toBe('42501');
+      expect(error!.message).toMatch(/permission denied for table/i);
+    });
+  }
+
+  test('CONTROL — the same client CAN still reach a table it is meant to', async () => {
+    // Without this, a broken client or a bad key would satisfy all nine refusals
+    // above. `analysis_runs` keeps `anon` SELECT on purpose (an expired JWT falls
+    // back to this role, and "no rows" is a safer answer than an error on a paying
+    // customer's page), so it must succeed AND return nothing.
+    const { data, error } = await anonClient().from('analysis_runs').select('id').limit(1);
+    expect(error, 'the anon client must still work — otherwise the nine refusals prove nothing').toBeNull();
+    expect(data, 'row-level security must still hide every row from an anonymous reader').toEqual([]);
+  });
+});
+
 test.describe('a signed-in customer can still edit their own profile', () => {
   let admin: SupabaseClient;
   let userId: string;

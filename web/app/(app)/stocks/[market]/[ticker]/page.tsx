@@ -458,6 +458,7 @@ export default async function StockDetailPage({
             insiderTransactions={stock.insiderTransactions}
             analystUpgradesDowngrades={stock.analystUpgradesDowngrades}
             priceBars={stock.priceBars}
+            currency={stock.fundamentals.currency}
           />
           <OwnershipStructure
             topHolders={stock.topHolders}

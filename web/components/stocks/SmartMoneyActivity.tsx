@@ -14,8 +14,8 @@ import {
   type Time,
 } from 'lightweight-charts';
 
-import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
-import type { AnalystUpgrade, InsiderTransaction, PriceBar } from '@/lib/types';
+import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, fmtPrice } from '@/lib/format';
+import type { AnalystUpgrade, Currency, InsiderTransaction, PriceBar } from '@/lib/types';
 import { INK } from '@/lib/ink';
 
 type Range = '1y' | '3y' | 'all';
@@ -25,6 +25,13 @@ interface Props {
   insiderTransactions?: InsiderTransaction[];
   analystUpgradesDowngrades?: AnalystUpgrade[];
   priceBars?: PriceBar[];
+  /**
+   * The stock's own trading currency. REQUIRED, not optional with a `'USD'`
+   * default: a default would let a caller forget it and silently reproduce the
+   * exact defect this prop was added to fix (audit F-029), and the TypeScript
+   * error is the only thing that makes the omission visible.
+   */
+  currency: Currency;
 }
 
 /* ── Helpers ─────────────────────────────────────────────────── */
@@ -106,12 +113,33 @@ function fmtDate(iso: string): string {
   return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: '2-digit' });
 }
 
-function fmtValue(v: number | null): string {
+/**
+ * The dollar value of an insider trade, in the stock's OWN currency.
+ *
+ * ⚠️ This used to hard-code `$` and take no currency argument at all — it could
+ * not have printed the right symbol (audit F-029). So every Australian and
+ * Canadian stock showed something like "64 shares · $1K" three screens below a
+ * price of "A$67.67", breaking CLAUDE.md #13, and a bare `$` reads as US dollars
+ * by convention — wrong on every one of those pages.
+ *
+ * ⚠️ **The third time this exact defect has been found in this codebase.**
+ * `fmtPerShare` in lib/format.ts says in its own docstring that it exists "mainly
+ * to fix the hardcoded '$' in EarningsHistory/DividendHistory so AUD/CAD render
+ * A$/CA$". The fix was applied to those two components and not to this one — one
+ * rule, one place, and this was the place that never received it (11c-iv). Hence
+ * `fmtCompact` is CALLED here rather than a fourth private formatter written: the
+ * copy is deleted, not corrected (11c-viii).
+ *
+ * ⚠️ Is the value really in the stock's own currency? Measured, not assumed,
+ * because an earlier reading of one stock (BHP.AX, which has a US ADR and whose
+ * insider data comes from the US filing) suggested it might not be. Across **4,539
+ * AU and CA transactions**, the implied per-share price falls inside the stock's
+ * own 52-week range for **94.7% of AU** and **97.0% of CA**. The local currency is
+ * right for the overwhelming majority; a bare `$` was right for none of them.
+ */
+function fmtValue(v: number | null, currency: Currency): string {
   if (!v) return '';
-  if (v >= 1e9) return ` · $${(v / 1e9).toFixed(2)}B`;
-  if (v >= 1e6) return ` · $${(v / 1e6).toFixed(1)}M`;
-  if (v >= 1e3) return ` · $${(v / 1e3).toFixed(0)}K`;
-  return ` · $${v.toFixed(0)}`;
+  return ` · ${fmtCompact(v, currency)}`;
 }
 
 function escapeHtml(s: string): string {
@@ -242,8 +270,9 @@ function clampPanelPos(x: number, y: number): { left: number; top: number } {
   return { left, top };
 }
 
-function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
+function SmartMoneyChart({ priceBars, txs, upgrades, range, visible, currency }: {
   priceBars: PriceBar[]; txs: InsiderTransaction[]; upgrades: AnalystUpgrade[]; range: Range; visible: Visibility;
+  currency: Currency;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const tipRef       = useRef<HTMLDivElement>(null);
@@ -356,7 +385,7 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
         const glyph = t.type === 'Purchase' ? '▲' : t.type === 'Sale' ? '▼' : '●';
         rows.push(`<div class="smart-tip-row"><span style="color:${s.dot}">${glyph}</span> `
           + `<b>${s.label}</b> · ${escapeHtml(t.insider)}`
-          + `<span class="smart-tip-meta">${(t.shares ?? 0).toLocaleString()} sh${fmtValue(t.value)}</span></div>`);
+          + `<span class="smart-tip-meta">${(t.shares ?? 0).toLocaleString()} sh${fmtValue(t.value, currency)}</span></div>`);
       }
       for (const a of analysts) {
         const cls = classifyAction(a.action);
@@ -370,7 +399,7 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
       }
 
       let html = `<div class="smart-tip-date">${fmtDate(key)}</div>`
-        + `<div class="smart-tip-price">$${price.toFixed(2)}</div>`
+        + `<div class="smart-tip-price">${escapeHtml(fmtPrice(price, currency))}</div>`
         + rows.slice(0, HOVER_PREVIEW_CAP).join('');
       if (rows.length > HOVER_PREVIEW_CAP) {
         html += `<div class="smart-tip-more">+${rows.length - HOVER_PREVIEW_CAP} more — click to see all</div>`;
@@ -418,7 +447,11 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
         chartRef.current = null;
       }
     };
-  }, [model]);
+    // `currency` is read inside the crosshair tooltip. It never changes for a
+    // mounted page — a stock has one trading currency — but it is listed rather
+    // than suppressed, because an exhaustive-deps warning left in place is how the
+    // next genuinely stale closure gets waved through (non-negotiable #18).
+  }, [model, currency]);
 
   // ── React to preset-range changes without rebuilding ──
   useEffect(() => { applyRange(range); }, [range, applyRange]);
@@ -501,7 +534,7 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible }: {
                   <span className="smart-day-panel-glyph" style={{ color: s.dot }}>{glyph}</span>
                   <div>
                     <div><span className="smart-day-panel-label">{s.label}</span> · <span className="smart-day-panel-name">{t.insider}</span></div>
-                    <div className="smart-day-panel-meta">{t.position} · {(t.shares ?? 0).toLocaleString()} sh{fmtValue(t.value)}</div>
+                    <div className="smart-day-panel-meta">{t.position} · {(t.shares ?? 0).toLocaleString()} sh{fmtValue(t.value, currency)}</div>
                   </div>
                 </div>
               );
@@ -583,7 +616,7 @@ function ChartLegend({ visible, toggle }: { visible: Visibility; toggle: (k: key
 
 /* ── Main component ──────────────────────────────────────────── */
 
-export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngrades, priceBars }: Props) {
+export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngrades, priceBars, currency }: Props) {
   const [range, setRange] = useState<Range>('1y');
   const [visible, setVisible] = useState<Visibility>({ buy: true, sell: true, other: true, analyst: true });
   const toggleSeries = (k: keyof Visibility) => setVisible(v => ({ ...v, [k]: !v[k] }));
@@ -648,7 +681,7 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
         {hasChart && (
           <div style={{ marginBottom: 16 }}>
             <div className="chart-canvas-wrap chart-h-md">
-              <SmartMoneyChart priceBars={bars} txs={txs} upgrades={upgrades} range={range} visible={visible} />
+              <SmartMoneyChart priceBars={bars} txs={txs} upgrades={upgrades} range={range} visible={visible} currency={currency} />
             </div>
             <ChartLegend visible={visible} toggle={toggleSeries} />
           </div>
@@ -684,7 +717,7 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
                         </div>
                         <div className="smart-event-meta">
                           <span className="smart-event-meta-mono">{(tx.shares ?? 0).toLocaleString()}</span>
-                          {' '}shares{fmtValue(tx.value)}
+                          {' '}shares{fmtValue(tx.value, currency)}
                         </div>
                       </div>
                       <div className="smart-event-date">{fmtDate(tx.date)}</div>
