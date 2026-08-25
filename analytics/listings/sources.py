@@ -35,11 +35,18 @@ _UA = "Mozilla/5.0 (compatible; MajorCycleBot/1.0; +https://majorcycle.com)"
 _TIMEOUT = 30
 
 # --- Source URLs (env-overridable) ------------------------------------------
-_NASDAQ_LISTED_URL = os.environ.get(
-    "NASDAQ_LISTED_URL", "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
+#
+# ⚠️ `os.environ.get(k) or default`, never `os.environ.get(k, default)`. The second
+# form returns the EMPTY STRING when the variable exists and is blank — which is
+# exactly what a GitHub workflow input that nobody filled in looks like — and an
+# empty URL would blank the source rather than fall back to it. That is the same
+# family as the failure this file already documents below: a source that stops
+# working without anything going wrong.
+_NASDAQ_LISTED_URL = os.environ.get("NASDAQ_LISTED_URL") or (
+    "https://www.nasdaqtrader.com/dynamic/SymDir/nasdaqlisted.txt"
 )
-_NASDAQ_OTHER_URL = os.environ.get(
-    "NASDAQ_OTHER_URL", "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt"
+_NASDAQ_OTHER_URL = os.environ.get("NASDAQ_OTHER_URL") or (
+    "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt"
 )
 # ⚠️ The obvious address — https://www.asx.com.au/asx/research/ASXListedCompanies.csv
 # — STOPPED WORKING on 2026-07-24 and nobody noticed for a month (audit F-027). It
@@ -55,13 +62,12 @@ _NASDAQ_OTHER_URL = os.environ.get(
 #
 # This is the directory the ASX's own website reads, and it returns the identical
 # `"ASX code","Company name"` header, so the parser below is unchanged.
-_ASX_URL = os.environ.get(
-    "ASX_LISTINGS_URL",
+_ASX_URL = os.environ.get("ASX_LISTINGS_URL") or (
     "https://asx.api.markitdigital.com/asx-research/1.0/companies/directory/file"
-    "?access_token=83ff96335c2d45a094df02a206a39ff4",
+    "?access_token=83ff96335c2d45a094df02a206a39ff4"
 )
-_TMX_URL = os.environ.get(
-    "TMX_DIRECTORY_URL", "https://www.tsx.com/json/company-directory/search"
+_TMX_URL = os.environ.get("TMX_DIRECTORY_URL") or (
+    "https://www.tsx.com/json/company-directory/search"
 )
 
 # NASDAQ otherlisted exchange codes we keep (primary common-stock venues). P/Z/V
@@ -198,15 +204,25 @@ def _fetch_tmx_exchange(exchange: str, *, venture: bool) -> list[ListingRow]:
 
 
 def fetch_ca() -> list[ListingRow]:
-    # TSX only. This is now a PRODUCT choice, not a technical block — the routing
-    # limitation this comment used to cite was fixed on 2026-08-04: `.V` classifies
-    # as `ca` in web/lib/ticker.ts, both `_infer_market`s, and the Results columns,
-    # and venture symbols keep their suffix in the URL (`/stocks/ca/ABC.V`) so they
-    # can't collide with `ABC.TO`.
+    # TSX **and** TSX Venture. Venture was off until 2026-08-25, by an explicit
+    # product choice rather than a technical block — the routing limitation the old
+    # comment here used to cite was fixed on 2026-08-04: `.V` classifies as `ca` in
+    # web/lib/ticker.ts, in both `_infer_market`s and in the Results columns, and a
+    # venture symbol KEEPS its suffix in the URL (`/stocks/ca/ABC.V`) so it can
+    # never collide with `ABC.TO` (CLAUDE.md #14).
     #
-    # Turning venture on is one line — `_fetch_tmx_exchange("tsxv", venture=True)` —
-    # but it roughly doubles the CA request menu with micro-caps, so it needs an
-    # owner decision, not a quiet flip.
-    rows = dedupe(_fetch_tmx_exchange("tsx", venture=False))
-    logger.info("CA listings: %d symbols (TSX)", len(rows))
+    # Turned on by owner decision (audit F-028). The audit's data sweep is what
+    # prompted the question: the method calls for checking a `.V` ticker end to end,
+    # and there were **zero** in `stocks`, in all 9,136 `listings` rows, and in the
+    # request queue — so a whole documented code path had no data behind it and
+    # could not be checked at all. It roughly doubles the Canadian request menu
+    # with micro-caps; that is the intended trade.
+    #
+    # Fetched as two independent calls so a TSXV outage cannot take TSX with it —
+    # `_fetch_tmx_exchange` already swallows per-query failures for the same reason.
+    rows = dedupe(
+        _fetch_tmx_exchange("tsx", venture=False)
+        + _fetch_tmx_exchange("tsxv", venture=True)
+    )
+    logger.info("CA listings: %d symbols (TSX + TSX Venture)", len(rows))
     return rows

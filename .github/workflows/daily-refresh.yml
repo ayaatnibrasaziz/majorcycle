@@ -12,7 +12,25 @@ name: Daily Data Refresh (US + CA)
 on:
   schedule:
     - cron: '30 22 * * *'
-  workflow_dispatch:        # allow manual trigger from Actions tab for testing
+  # Manual trigger from the Actions tab. The two inputs exist so the LISTINGS ALARM
+  # can be proven end to end without waiting for a real outage and without touching
+  # prices — the alarm's whole job is to fire on a day nobody is watching, so it has
+  # to be exercisable on a day somebody is.
+  #
+  # ⚠️ Both defaults are the safe ones, and the polarity matters: a scheduled run
+  # sends no inputs at all, so the guards below are written to RUN unless a manual
+  # dispatch explicitly says otherwise. A guard that skipped work when an input was
+  # absent would silently gut every nightly run.
+  workflow_dispatch:
+    inputs:
+      run_prices:
+        description: 'Run the full price refresh (leave ticked for a normal run)'
+        type: boolean
+        default: true
+      asx_url_override:
+        description: 'TESTING ONLY — point the ASX listings source somewhere else, to prove the alarm fires. Leave blank.'
+        type: string
+        default: ''
 
 jobs:
   refresh:
@@ -56,6 +74,11 @@ jobs:
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Blank on every scheduled run. `sources.py` reads this with
+          # `os.environ.get(k) or <default>` precisely so an empty value falls back
+          # to the real URL instead of blanking it — `.get(k, default)` would hand
+          # the fetcher an empty string and break the nightly job for everyone.
+          ASX_LISTINGS_URL: ${{ inputs.asx_url_override }}
         run: python -m analytics.cron.refresh_listings
 
       # Refresh index membership (S&P 500 / ASX 200 / S&P/TSX 60) from official ETF
@@ -64,6 +87,7 @@ jobs:
       # directly here (audited in universe_log as added_by='index_membership' — NOT a
       # user request). continue-on-error so a flaky source never blocks the price refresh.
       - name: Refresh index membership
+        if: github.event_name != 'workflow_dispatch' || inputs.run_prices
         continue-on-error: true
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
@@ -72,6 +96,7 @@ jobs:
 
       # Drain the user-requested-ticker queue (fetch each into the universe).
       - name: Drain ticker-request queue
+        if: github.event_name != 'workflow_dispatch' || inputs.run_prices
         continue-on-error: true
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
@@ -82,6 +107,7 @@ jobs:
       # refreshed with the AU equities so the benchmark and the stocks it is
       # compared against always come from the same completed session.
       - name: Run daily refresh (US + CA)
+        if: github.event_name != 'workflow_dispatch' || inputs.run_prices
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -113,9 +139,11 @@ jobs:
       # are unlimited on a public repo — and it adds no mail on a good night, which
       # is what the owner asked for: no email unless something is actually wrong.
       #
-      # It is the LAST step on purpose, so failing it cannot skip any work. The
-      # data has already been written and is untouched by the red X — the red
+      # It runs AFTER the refresh on purpose, so failing it cannot skip any work.
+      # The data has already been written and is untouched by the red X — the red
       # means "tonight's numbers are suspect", not "the refresh didn't happen".
+      # (It was the last step until 2026-08-25; the listings gate is now last, for
+      # the same reason and with the same guarantee.)
       #
       # ⚠️ NO Resend email here, deliberately (owner decision, 2026-08-06). It used
       # to also send one via `--email`. Proven dead on 2026-08-06: both crons were
@@ -133,6 +161,7 @@ jobs:
       # destination is visible (Settings > Notifications, ayaatnibrasaziz@gmail.com,
       # "Failed workflows only") rather than sealed inside a write-only secret.
       - name: Check fundamentals field units
+        if: github.event_name != 'workflow_dispatch' || inputs.run_prices
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -152,12 +181,14 @@ jobs:
       # than remembered: it calls `calculate_cycle_metrics`, which cannot return a
       # rating, a health score or a valuation (CLAUDE.md 11b).
       - name: Rebuild the landing snapshot
+        if: github.event_name != 'workflow_dispatch' || inputs.run_prices
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python -m analytics.cron.build_landing_snapshot
 
       - name: Commit the landing snapshot if it moved
+        if: github.event_name != 'workflow_dispatch' || inputs.run_prices
         run: |
           set -e
           if git diff --quiet -- web/app/landing-snapshot.json; then
