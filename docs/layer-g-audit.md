@@ -873,8 +873,8 @@ must run against a deployment.
 | Layer 3 — the wire sweep | ✅ 50 checks on the deployed preview, clean |
 | Layer 3b — the platform sweep | ✅ live Supabase / Vercel / Stripe / Actions |
 | F-024 + F-025 | ✅ both fixed and guarded, 2026-08-25 |
-| **Layer 4 — the data sweep** | ⬜ **next** |
-| Layer 5a — my visual sweep | ⬜ |
+| Layer 4 — the data sweep | ✅ live DB + on-screen, 2026-08-25 — **4 findings**, one of them 🟠 |
+| **Layer 5a — my visual sweep** | ⬜ **next** |
 | Layer 5b — the owner's judgement sweep | ⬜ |
 
 **Owner decision, 2026-08-24 — the next session did, in order:**
@@ -890,11 +890,172 @@ must run against a deployment.
    `authenticated` still holds `DELETE` and `TRUNCATE`. Unreachable today, recorded rather than
    fixed: the approved scope was `anon` on `profiles`, and revoking across twelve tables is a
    change whose failure mode is a broken app (CLAUDE.md 11l). **Owner's call.**
-4. **Layer 4** — the data sweep. Next.
+4. **Layer 4** ✅ — the data sweep, run against the live database and the rendered page. The bulk
+   is clean, including the three nightly invariants (proven able to fail, with a control) and the
+   reporting-currency note verified **on screen** in all seven currencies. Four findings:
+   **F-027** 🟠 the ASX listings source has answered nothing for a month behind an HTTP 200,
+   **F-028** 🔵 the `.V` case has no live data to check, **F-029** 🔵 insider values print a bare
+   `$`, **F-030** 🔵 five index members are not fetchable companies. **Three of the four need an
+   owner decision** — see the table below.
+
+**Waiting on the owner, from Layers 3b and 4:**
+
+| | Decision |
+|---|---|
+| **F-027** | Point the ASX listings source at the working URL (one line, proven to read 1,841 symbols with the parser unchanged) — **and/or** make an empty pull for a market that previously had thousands of rows fail LOUDLY. The second is the mechanism; the first buys a month |
+| **F-028** | Is TSX Venture (`.V`) in scope for launch? The code handles it; the product ships no data for it |
+| **F-029** | Folds into the already-open bare-`$` question on the Results table — one answer should cover both |
+| **F-026** | The Supabase default grants on the other 11 tables, and `authenticated`'s `DELETE`/`TRUNCATE` |
+
+5. **Layer 5a** — my visual sweep. Next.
 
 ⚠️ Real-user monitoring is **deferred, not dropped**. Until it exists, decision #33's merge-gate
 row stays **red**, and the reason is written into that row so nobody reads it as unfinished work
 and repeats F-019 → F-021.
+
+---
+
+## Layer 4 — the data sweep
+
+**Run 2026-08-25 against the LIVE database**, per the approved method: *"Only this layer can catch
+a number that is plausible and wrong. Run against the live database, not fixtures… Every check
+asserts the field is present before judging it, because 'I could not read it' has been reported
+here as 'clean' before."*
+
+Half of it is in the database and half is on the screen, and 14d is why both halves are needed:
+the reporting-currency fix once shipped **inert** — code, tests and guards all green while every
+page still printed `A$` — and only a screenshot caught it. So the currency work below was checked
+in the database *and* read off the rendered page.
+
+### Verified clean
+
+| Check | Result |
+|---|---|
+| Nightly units + invariants, live | **39 fields across 867 stocks, every median in band.** The log names the invariants — *zero-margin sentinel, cross-currency fcf_yield_pct, financial_currency coverage* — rather than counting them (the 14g fix) |
+| …and **proven able to fail** | all three sabotaged: a single `0.0` margin, one cross-currency `fcf_yield_pct`, and the `financial_currency` field wiped. Each went red naming the row. **With a control**: 4 rows missing out of 100 stays correctly quiet, because that invariant is a *proportion* — a check that cries wolf gets ignored |
+| Seven reporting currencies | **USD 599 · AUD 200 · CAD 54 · NZD 10 · EUR 2 · SGD 1 · TWD 1**, plus 4 with none (the benchmark indexes, which have no financial statements) |
+| Cross-currency withholding | **79** cross-currency stocks. `fcf_yield_pct` present on **0 of 79** and on **713 of 788** same-currency stocks — a positive control, not merely an absence (14g) |
+| The currency note, **on screen** | rendered verbatim for USD-in-AUD (BHP.AX), USD-in-CAD (AMD.TO), NZD (A2M.AX), EUR (ASML), SGD (TUA.AX), TWD (TSM) — *"Figures reported in US dollars (USD) — the company's reporting currency, not its share price currency (AUD)."* — and correctly **absent** on the two same-currency controls, AAPL and CBA.AX |
+| Bank zero-margin sentinel | `gross_margin` and `ebitda_margin` are **null** for all seven banks probed (C, WFC, SYF, JPM, BAC, EQB.TO, CBA.AX) while `operating_margin` and `net_margin` carry real figures. Across all 871 rows, **zero** exact `0.0` in any of the four margins |
+| Stocks paying no dividend | **197** rows store `null`, **zero** store `0.0` — so a non-payer is absent rather than a real 0%. `payout_ratio_pct` meanwhile has **199 genuine zeros**, which is correct: 14b covers only the four margins |
+| The ASX date bug (14a) | **0 Saturdays and 0 Sundays** across all **6.6M** bars in all three markets, with Fridays in normal proportion. The bug produced 273,700 Sundays and 0 Fridays |
+| Three markets, all current | US 4,688,581 bars / 542 tickers · AU 1,409,011 / 250 · CA 504,616 / 79. Last bar 2026-08-25 (AU and US), 2026-08-24 (CA) |
+| The four index rows | `market = 'index'`, excluded from Browse by `.neq('market','index')` and unreachable through the ticker router, which knows only `us`/`au`/`ca` |
+| Truncation headroom (14c) | `stocks` **871** — 129 from PostgREST's silent 1000-row cap; `listings` **9,136**, i.e. long past it. `selectAll()` is load-bearing today, not prophylactic |
+| Request-a-Ticker queue | 8 fetched, 1 correctly marked `unsupported` after 3 attempts. No stuck rows |
+
+### F-027 🟠 The ASX listings source has returned nothing for a month — and the failure wears an HTTP 200
+
+`listings` rows for `au` are stamped **2026-07-24**. The `us` and `ca` rows are stamped
+**2026-08-24**. The nightly job fetches all three markets every night, so AU has been failing
+silently for a month.
+
+**Run by hand, it is unambiguous:** `sources.fetch_au()` returns **0 symbols**, logging
+*"ASX CSV: no 'ASX code' header row found"*.
+
+⚠️ **And here is why nothing was ever red.** The ASX now sits behind Imperva bot protection, and
+what it returns is:
+
+    status   : 200
+    type     : text/html
+    bytes    : 379
+    <html><head><title>Request Rejected</title></head>…
+
+**A rejection wearing a success code.** `requests.get` does not raise, `raise_for_status()` would
+pass, and only the *content* is wrong. `refresh_listings` then treats an empty pull as a
+deliberate **soft failure** — warn, skip the upsert, and specifically *do not* deactivate the
+market, which is the right call for a format change — so the workflow **succeeds**, and GitHub's
+failed-workflow email, which is the only alerting channel this project has, never fires.
+
+**What it costs a reader, in the owner's own market:** any ASX ticker outside the 250 already
+covered is refused by Request-a-Ticker as *"not a known US/AU/CA listed stock"*, and
+`/api/listings/search` serves a month-old ASX menu — missing every new listing and still offering
+every delisting. It will not self-heal and nothing will ever say so.
+
+✅ **A working replacement exists and it is one line.** The directory behind the ASX's own site —
+`https://asx.api.markitdigital.com/asx-research/1.0/companies/directory/file?access_token=…` —
+returns `text/csv` with the **identical** `"ASX code","Company name"` header the current parser
+already looks for. Pointed at it, the **unchanged** `fetch_au()` reads **1,841 symbols**, with
+BHP, CBA, A2M, VUL and TUA all present. The URL is already env-overridable (`ASX_LISTINGS_URL`),
+so this is a constant, not a rewrite.
+
+⚠️ **Not applied.** Two reasons, and they are the owner's to weigh: it swaps one undocumented
+third-party endpoint for another, and the *mechanism* — a partial refresh failing silently — is
+already an open owner decision (`docs/roadmap.md`, cron alerting). **This finding is what that
+pending decision costs.** Fixing the URL without fixing the silence buys a month until the next
+source changes.
+
+**Siblings swept.** The class is *a third-party fetch that fails with a success code*. The US
+(`nasdaqtrader.com`, two files) and CA (`tsx.com`) sources are the same shape and are working
+today — proven by their `updated_at`, not assumed. `index_membership` is fresh (2026-08-24) and
+complete for all three indexes.
+
+### F-028 🔵 The `.V` case cannot be checked against live data — the product deliberately ships none
+
+The method singles out *"a `.V` ticker — the one case where a URL collision would silently serve
+one company's data under another's name."* There are **zero** `.V` rows anywhere: not in `stocks`
+(871), not in `listings` (9,136), not in `ticker_requests`.
+
+The reason is explicit and deliberate. `analytics/listings/sources.py` fetches **TSX only**, and
+says so: *"This is now a PRODUCT choice, not a technical block — the routing limitation this
+comment used to cite was fixed on 2026-08-04."* Turning TSX Venture on is one line.
+
+So the collision CLAUDE.md #14 warns about is handled in code (`MARKET_SUFFIXES`, plus
+`analytics/tests/test_market_inference.py`) and **has no data behind it**. Recorded as **not
+checked**, not as passed — per the method's rule that an unreachable case becomes an accepted risk
+with the owner's name on it rather than a silent pass. **Owner's call** whether TSX Venture is in
+scope for launch.
+
+### F-029 🔵 Insider transaction values print a bare `$` on every non-US stock — and may not be in that stock's currency
+
+`fmtValue()` in `components/stocks/SmartMoneyActivity.tsx` hard-codes `$` and **takes no currency
+argument at all** — it cannot know which currency it is printing.
+
+Seen live on BHP.AX, a stock the same page prices at **A$67.67**: *"64 shares · $1K"*. The stored
+row is `value: 1304.0` with `"Stock Award(Grant) at price 0.00 - 40.74 per share"` — that is the
+**US ADR** price, so the figure is US dollars, three screens below a price in Australian ones.
+Read as A$1,304 for 64 shares it implies A$20 a share, which contradicts the page itself.
+
+This is the same class as the **already-open** bare-`$` decision on the Results table
+(`docs/roadmap.md`), and it breaks the same rule (#13, prices in the stock's home currency).
+**Recorded, not fixed** — it belongs to that same decision, and a real defect does not entitle me
+to widen the job (CLAUDE.md 11l).
+
+### F-030 🔵 Five index members are not fetchable companies
+
+| Index | Members | In `stocks` | Missing |
+|---|---|---|---|
+| sp500 | 509 | 505 | `FDXF`, `HONA`, `HONIV`, `Q` |
+| asx200 | 208 | 207 | `CNIXX.AX` |
+| tsx60 | 60 | 60 | — |
+
+The four US ones are when-issued and spin-off lines (FedEx Freight, two Honeywell lines);
+`CNIXX.AX` is a cash-sweep line in the IOZ holdings. None has a single price bar and none was ever
+queued as a ticker request. A reader running the "S&P 500" basket therefore sees four tickers come
+back unavailable with no explanation. The fix would be filtering the ETF holdings to real equity
+lines. Low severity, recorded.
+
+### ⚠️ Four instrument errors of mine in this layer — every one caught by checking
+
+The audit's own rule is that a guard which has never failed proves nothing; the same applies to a
+probe written five minutes ago (11p). All four of these produced confident, plausible, wrong
+output.
+
+1. **I searched `fundamentals` for `financialCurrency`. The key is `financial_currency`.** The
+   result read *"0 of 871 rows carry the reporting currency"* — which would have been a
+   catastrophic finding (14g's exact shape: the invariant's own field wiped out). It was a wrong
+   needle. Same failure as Layer 3's escaped-quote search, one day later.
+2. **I looked for `pe_history` inside `fundamentals`.** It is a top-level column on `stocks`. My
+   probe reported it as absent on every row in the universe.
+3. **A regex reported BHP.AX as missing its reporting-currency note.** It requires three letters
+   after "reported in", and the real sentence is *"reported in US dollars"* — two. The note is
+   there, verbatim, twice on the page. It matched NZD only because `New` is three letters.
+4. **`waitUntil: 'load'` read four ticker pages as "thin"** (under 2,000 characters) and I nearly
+   filed them as failing to render. Waiting on a positive signal — the Key Metrics heading —
+   showed all four render in full (11q: *wait for a positive signal, not a plateau*).
+
+**The habit that caught all four is the same one:** print what the system actually returned before
+concluding anything from it.
 
 ---
 
