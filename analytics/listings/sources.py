@@ -41,8 +41,24 @@ _NASDAQ_LISTED_URL = os.environ.get(
 _NASDAQ_OTHER_URL = os.environ.get(
     "NASDAQ_OTHER_URL", "https://www.nasdaqtrader.com/dynamic/SymDir/otherlisted.txt"
 )
+# ⚠️ The obvious address — https://www.asx.com.au/asx/research/ASXListedCompanies.csv
+# — STOPPED WORKING on 2026-07-24 and nobody noticed for a month (audit F-027). It
+# did not start failing; it started lying. The ASX put Imperva bot protection in
+# front of it, and it now answers:
+#
+#     HTTP 200 · text/html · 379 bytes
+#     <html><head><title>Request Rejected</title></head>…
+#
+# A rejection wearing a success code. `raise_for_status()` passes, nothing raises,
+# and only the CONTENT is wrong — so `parse_asx_csv` found no header row, returned
+# an empty list, and the nightly job logged a warning and carried on green.
+#
+# This is the directory the ASX's own website reads, and it returns the identical
+# `"ASX code","Company name"` header, so the parser below is unchanged.
 _ASX_URL = os.environ.get(
-    "ASX_LISTINGS_URL", "https://www.asx.com.au/asx/research/ASXListedCompanies.csv"
+    "ASX_LISTINGS_URL",
+    "https://asx.api.markitdigital.com/asx-research/1.0/companies/directory/file"
+    "?access_token=83ff96335c2d45a094df02a206a39ff4",
 )
 _TMX_URL = os.environ.get(
     "TMX_DIRECTORY_URL", "https://www.tsx.com/json/company-directory/search"

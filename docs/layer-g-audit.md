@@ -893,16 +893,16 @@ must run against a deployment.
 4. **Layer 4** ✅ — the data sweep, run against the live database and the rendered page. The bulk
    is clean, including the three nightly invariants (proven able to fail, with a control) and the
    reporting-currency note verified **on screen** in all seven currencies. Four findings:
-   **F-027** 🟠 the ASX listings source has answered nothing for a month behind an HTTP 200,
-   **F-028** 🔵 the `.V` case has no live data to check, **F-029** 🔵 insider values print a bare
-   `$`, **F-030** 🔵 five index members are not fetchable companies. **Three of the four need an
-   owner decision** — see the table below.
+   **F-027** 🟠 the ASX listings source had answered nothing for a month behind an HTTP 200
+   (**fixed the same day** — owner chose "fix both"), **F-028** 🔵 the `.V` case has no live data
+   to check, **F-029** 🔵 insider values print a bare `$`, **F-030** 🔵 five index members are not
+   fetchable companies. **Three still need an owner decision** — see the table below.
 
 **Waiting on the owner, from Layers 3b and 4:**
 
 | | Decision |
 |---|---|
-| **F-027** | Point the ASX listings source at the working URL (one line, proven to read 1,841 symbols with the parser unchanged) — **and/or** make an empty pull for a market that previously had thousands of rows fail LOUDLY. The second is the mechanism; the first buys a month |
+| ~~**F-027**~~ | ✅ **Answered "fix both" and done, 2026-08-25.** New source live (AU 1,981 → 1,999 active), regression alarm wired through the workflow, delisting sweep made safe after a dry run found it would have retired 158 live companies |
 | **F-028** | Is TSX Venture (`.V`) in scope for launch? The code handles it; the product ships no data for it |
 | **F-029** | Folds into the already-open bare-`$` question on the Results table — one answer should cover both |
 | **F-026** | The Supabase default grants on the other 11 tables, and `authenticated`'s `DELETE`/`TRUNCATE` |
@@ -944,7 +944,7 @@ in the database *and* read off the rendered page.
 | Truncation headroom (14c) | `stocks` **871** — 129 from PostgREST's silent 1000-row cap; `listings` **9,136**, i.e. long past it. `selectAll()` is load-bearing today, not prophylactic |
 | Request-a-Ticker queue | 8 fetched, 1 correctly marked `unsupported` after 3 attempts. No stuck rows |
 
-### F-027 🟠 The ASX listings source has returned nothing for a month — and the failure wears an HTTP 200
+### F-027 ✅ The ASX listings source returned nothing for a month — FIXED 2026-08-25, both halves
 
 `listings` rows for `au` are stamped **2026-07-24**. The `us` and `ca` rows are stamped
 **2026-08-24**. The nightly job fetches all three markets every night, so AU has been failing
@@ -979,16 +979,97 @@ already looks for. Pointed at it, the **unchanged** `fetch_au()` reads **1,841 s
 BHP, CBA, A2M, VUL and TUA all present. The URL is already env-overridable (`ASX_LISTINGS_URL`),
 so this is a constant, not a rewrite.
 
-⚠️ **Not applied.** Two reasons, and they are the owner's to weigh: it swaps one undocumented
-third-party endpoint for another, and the *mechanism* — a partial refresh failing silently — is
-already an open owner decision (`docs/roadmap.md`, cron alerting). **This finding is what that
-pending decision costs.** Fixing the URL without fixing the silence buys a month until the next
-source changes.
-
 **Siblings swept.** The class is *a third-party fetch that fails with a success code*. The US
 (`nasdaqtrader.com`, two files) and CA (`tsx.com`) sources are the same shape and are working
 today — proven by their `updated_at`, not assumed. `index_membership` is fresh (2026-08-24) and
 complete for all three indexes.
+
+#### What was done — owner chose "fix both", 2026-08-25
+
+**Half one — the address.** `_ASX_URL` now points at the directory the ASX's own site reads. The
+parser is unchanged.
+
+**Half two — the alarm, and this is where it got interesting.** My first plan was to make
+`refresh_listings` exit non-zero. ⚠️ **That would have been a fix that changes nothing anybody
+ever sees.** The workflow step runs `continue-on-error: true` — deliberately, so a flaky listings
+source can never block the nightly price refresh — which means a non-zero exit is **recorded and
+ignored**. There were *three* stacked silences, not two, and removing any two of them leaves it
+silent:
+
+1. the URL answering `200` with an error page,
+2. `run()`'s soft-failure policy (correct, but not a signal),
+3. `continue-on-error` swallowing the exit code.
+
+So the exit code is paired with a **gate step at the end of the workflow** — placed last, after
+the prices, the units check and the landing snapshot, for the same reason the units check is last:
+failing must not skip any work. It reads `steps.listings.outcome`, which is the step's own result
+*before* `continue-on-error` rewrites it (`conclusion` would always read success and the gate
+would never fire), and fails the job — firing GitHub's failed-workflow email, the only channel
+this project has ever proven to work.
+
+**The rule itself compares against what we already hold**, not a magic per-market constant: a pull
+under **half** the stored active count is a regression, and a market with nothing stored — a
+genuine cold start — is correctly quiet.
+
+**Proven both ways, against the real dead URL:**
+
+| | result |
+|---|---|
+| sabotage — `ASX_LISTINGS_URL` pointed back at the dead address | `au LISTINGS REGRESSION: pulled 0, we already had 1981 active` · `::error::` annotation · **exit code 2** · nothing written |
+| the fix — the working address | **1,841 symbols**, `regressed=[]`, **exit 0** |
+
+⚠️ **The exit code had to be read without a pipe.** My first reading was `exit=0` because the
+command was piped through `grep | tail` and I had read *tail's* status. An exit code you have not
+actually observed is exactly what this whole finding is about.
+
+#### ⚠️ And the fix would have caused a WORSE bug — caught by a dry run before anything was written
+
+The replacement source is **not a superset**. It carries 1,841 of the 1,981 symbols we hold, and
+the 158 it omits are **not all delistings**. Two of them are companies we actively cover, with
+current price data: **QUB.AX (Qube Holdings, an ASX 200 constituent) and CVW.AX**. 27 of 29
+well-known ASX codes are present; those two simply are not in the file, and the file is not
+truncated — it runs alphabetically to `ZNO`.
+
+So applying the URL fix alone would have let the delisting sweep mark **158 live companies "not a
+known listing"** — turning a source that returned *nothing* into one that returned something
+*wrong*, which is worse, because the second looks like it is working.
+
+**The asymmetry decides it.** Leaving a delisted company in the menu costs a reader one failed
+request, which `drain_requests` already handles by marking it `unsupported`. Removing a **live**
+company tells them their real stock does not exist, and nothing ever corrects it. So
+`is_safe_to_deactivate` refuses the sweep when a pull would retire more than **2%** of a market —
+ordinary churn is a handful of companies a week, well under 1%.
+
+⚠️ **Two rules, not one, and they are independent.** 1,841 against 1,981 is nowhere near a
+regression — the market did not collapse — and yet its omissions must not delist anyone. A single
+threshold would have had to choose between crying wolf on a healthy pull and silently delisting
+QUB. The set difference is also counted **per symbol** rather than inferred from the totals,
+because a source that adds 200 and drops 158 nets out to a comfortable-looking number while still
+retiring 158 live companies.
+
+⚠️ It logs a **warning**, not a workflow failure: this state persists while two sources disagree,
+and a red X every night for something nobody can act on is how people learn to ignore red.
+
+**Live result** — the fix applied to production the same day:
+
+    AU listings: 1841 symbols (ASX)
+    au: skipping the delisting sweep — this pull would retire 158 of 1999 symbols (7.9%) …
+    counts={'au': 1841} refreshed=['au'] failed=[] regressed=[]      exit 0
+
+`listings` AU went **1,981 → 1,999 active**, 18 added, **none removed**. Verified in the database:
+BHP, CBA and VUL carry today's timestamp; **QUB.AX and CVW.AX kept their old one and are still
+active.**
+
+Guarded by `analytics/tests/test_listings_regression.py` — 18 cases across both rules, including
+the ones that must stay **quiet** (a cold start, an ordinary 8%-smaller month, exactly half
+surviving), because a rule that answers "yes" to everything satisfies every must-fire case and
+fails the product.
+
+⚠️ **One thing is NOT verified end to end and should not be read as if it were:** the workflow gate
+step itself has never executed. The YAML parses, the step is last, and the `if` names the right
+step id — but GitHub Actions cannot be run from here, so its first real exercise will be the next
+nightly run. `steps.<id>.outcome` under `continue-on-error` is documented behaviour, not measured
+behaviour.
 
 ### F-028 🔵 The `.V` case cannot be checked against live data — the product deliberately ships none
 

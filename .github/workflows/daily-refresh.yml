@@ -51,6 +51,7 @@ jobs:
       # (no API key). continue-on-error so a flaky source never blocks the price
       # refresh below — the cached `listings` table stays usable.
       - name: Refresh ticker listings
+        id: listings
         continue-on-error: true
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
@@ -170,3 +171,45 @@ jobs:
           git add web/app/landing-snapshot.json
           git commit -m "chore(landing): nightly snapshot [skip ci]"
           git push
+
+      # ── The listings alarm (audit F-027, 2026-08-25) ───────────────────────
+      #
+      # The AU listings source returned ZERO symbols every night from 2026-07-24
+      # and nothing said so for a month. THREE silences were stacked, and removing
+      # any two of them would have left it silent:
+      #
+      #   1. The ASX URL began answering HTTP 200 with an HTML rejection page, so
+      #      nothing raised — the failure wore a success code. (Fixed at the source
+      #      in analytics/listings/sources.py.)
+      #   2. `refresh_listings` treats an empty pull as a soft failure, warning and
+      #      carrying on. That is CORRECT — a bad night must never wipe a market's
+      #      menu — but it is not a signal.
+      #   3. And this: the step above runs `continue-on-error: true`, deliberately,
+      #      so a flaky listings source can never block the nightly price refresh.
+      #      Which means the script exiting non-zero is RECORDED AND IGNORED.
+      #
+      # ⚠️ So the script's exit code alone would have been a fix that changes
+      # nothing anybody ever sees — the shape of defect this project keeps meeting.
+      # This step is the half that is actually visible: it reads the recorded
+      # outcome and fails the job, which fires GitHub's failed-workflow email — the
+      # single alerting channel this project has, and the only one ever proven to
+      # work (the Resend key has been dead since 2026-07-02).
+      #
+      # It is placed LAST, after the prices, the units check and the landing
+      # snapshot, for exactly the reason the units check is last: failing here must
+      # not skip any work. Everything above has already run and is untouched. A red
+      # X here means "a market's menu is going stale", never "the refresh didn't
+      # happen".
+      #
+      # `outcome` is the step's own result BEFORE continue-on-error rewrites it;
+      # `conclusion` would always read success and this gate would never fire.
+      - name: Fail the run if a listings market collapsed
+        if: steps.listings.outcome == 'failure'
+        run: |
+          echo "::error::The ticker listings refresh reported a problem. The site is"
+          echo "::error::still serving the previous menu — it was NOT overwritten — but"
+          echo "::error::that menu is going stale and will not repair itself."
+          echo "::error::Read the 'Refresh ticker listings' step above for which market"
+          echo "::error::and how many symbols it pulled. A source answering HTTP 200"
+          echo "::error::with an error page is the known cause (audit F-027)."
+          exit 1

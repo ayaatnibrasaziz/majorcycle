@@ -363,6 +363,32 @@ normalised to yfinance format, and refreshed by the daily cron. This is what the
 "Request a Ticker" search reads — it is **not** the analysed universe (a row here
 only becomes analysable once the cron has fetched its data into `stocks`).
 
+**Two safety rules live in `refresh_listings`, both added 2026-08-25 after the AU
+source returned zero symbols every night for a month with nothing red (audit
+F-027, CLAUDE.md 11z).**
+
+*The alarm.* A pull under **half** a market's stored active count is a regression:
+the job logs it, exits `2`, and a **gate step at the end of
+`daily-refresh.yml`** turns that into a failed run. Both halves are required — the
+listings step runs `continue-on-error: true` on purpose, so that a flaky source can
+never block the nightly price refresh, which means an exit code alone is recorded
+and ignored. The gate reads `steps.listings.outcome`, the result *before*
+`continue-on-error` rewrites it; `conclusion` would always read success. It is the
+**last** step for the same reason the units check is: failing must not skip work.
+
+*The delisting sweep refuses to run when it would retire more than **2%** of a
+market in one night* — measured as a per-symbol set difference, not inferred from
+totals. A source that "works" can still be **incomplete**: the current ASX
+directory carries 1,841 of our 1,999 symbols and omits QUB.AX and CVW.AX, both
+live and both covered. Leaving a delisted name in the menu costs one failed request
+that `drain_requests` already resolves as `unsupported`; removing a live one tells
+a customer their real stock does not exist. A warning, not a red run — the state
+persists while two sources disagree.
+
+⚠️ **The AU sweep is refused today** (7.9% missing), so genuine ASX delistings will
+linger in the menu until the source gap closes. Deliberate, and the cheaper of the
+two errors.
+
 ```sql
 CREATE TABLE listings (
   symbol      text PRIMARY KEY,            -- yfinance format: 'AAPL', 'BHP.AX', 'SHOP.TO'
