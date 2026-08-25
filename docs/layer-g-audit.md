@@ -463,7 +463,7 @@ merge. An empty number is an unticked box.
 | ⬜ | Move hosting off the free tier | It forbids commercial use — this blocks taking payment, not just launch |
 | ⬜ | Submit the sitemap, **after** deploy | Submitting while it still redirects teaches the crawler to distrust it |
 | ⬜ | Re-read the **six LIVE Stripe prices** and check them against `PRICE_TABLE` | `e2e/pricing-parity.spec.ts` closed F-025 for test mode only. Test and live are separate objects sharing a `lookup_key`, and CI holds only the restricted test key — so a live-mode price edit is invisible to every check we own. Last read by hand 2026-08-24: all six matched |
-| ⬜ | Rule on **F-026** — the Supabase default grants on the other 11 tables, and `authenticated`'s `DELETE`/`TRUNCATE` | Unreachable today (PostgREST never issues `TRUNCATE`; neither role can log in). But `TRUNCATE` is the one verb row-level security does not govern, so for it the layer everything rests on is absent |
+| ⬜ | **Re-run the listings refresh after merge** | The TSX Venture rows (F-028) and the ASX menu (F-027) were written from this branch. Tonight's scheduled run checks out `main`, whose delisting sweep has no churn guard and knows nothing about TSXV — so it will mark all 1,457 venture rows inactive. Harmless and reversible (deactivated, never deleted), and the first post-merge run restores them. This is CLAUDE.md 14g, and it is on this list precisely because it looks like nothing happened |
 
 ---
 
