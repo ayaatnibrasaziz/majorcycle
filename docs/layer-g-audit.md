@@ -462,6 +462,8 @@ merge. An empty number is an unticked box.
 | ⬜ | Flip apex → `www` from a temporary to a permanent redirect | Search engines consolidate ranking only across a permanent one, and Layer G declares `www` canonical in ten places |
 | ⬜ | Move hosting off the free tier | It forbids commercial use — this blocks taking payment, not just launch |
 | ⬜ | Submit the sitemap, **after** deploy | Submitting while it still redirects teaches the crawler to distrust it |
+| ⬜ | Re-read the **six LIVE Stripe prices** and check them against `PRICE_TABLE` | `e2e/pricing-parity.spec.ts` closed F-025 for test mode only. Test and live are separate objects sharing a `lookup_key`, and CI holds only the restricted test key — so a live-mode price edit is invisible to every check we own. Last read by hand 2026-08-24: all six matched |
+| ⬜ | Rule on **F-026** — the Supabase default grants on the other 11 tables, and `authenticated`'s `DELETE`/`TRUNCATE` | Unreachable today (PostgREST never issues `TRUNCATE`; neither role can log in). But `TRUNCATE` is the one verb row-level security does not govern, so for it the layer everything rests on is absent |
 
 ---
 
@@ -870,18 +872,25 @@ must run against a deployment.
 | Layer 2 — the machine sweep | ✅ 16 of 16 gates; Playwright **597** |
 | Layer 3 — the wire sweep | ✅ 50 checks on the deployed preview, clean |
 | Layer 3b — the platform sweep | ✅ live Supabase / Vercel / Stripe / Actions |
-| **Layer 4 — the data sweep** | ⬜ **next, after the two fixes below** |
+| F-024 + F-025 | ✅ both fixed and guarded, 2026-08-25 |
+| **Layer 4 — the data sweep** | ⬜ **next** |
 | Layer 5a — my visual sweep | ⬜ |
 | Layer 5b — the owner's judgement sweep | ⬜ |
 
-**Owner decision, 2026-08-24 — the next session does, in order:**
+**Owner decision, 2026-08-24 — the next session did, in order:**
 
-1. **F-024** — revoke `anon`'s `UPDATE`/`INSERT` grants on `profiles`, with a guard so a future
-   migration cannot widen them back in silence. Proven non-exploitable today; it is the missing
-   layer, not a hole.
-2. **F-025** — tie the price the site shows to the price Stripe charges, with the limit stated
-   plainly: a CI guard can only see the **sandbox**, so the live figures are re-read at merge.
-3. **Layer 4** — the data sweep.
+1. **F-024** ✅ — `anon`'s write grants on `profiles` revoked (migration `20260825000000`,
+   applied live). Guarded by `e2e/db-grants.spec.ts` (5 tests), broken on purpose by re-granting
+   the privilege and confirmed red at the right assertion.
+2. **F-025** ✅ — `PRICE_TABLE` now asserted against Stripe's actual prices by
+   `e2e/pricing-parity.spec.ts` (3 tests), broken on purpose three ways. The stated limit stands:
+   a CI guard sees only the **sandbox**, so the six live figures are re-read at merge — now a row
+   in the owner-only table above rather than a memory.
+3. **F-026** 🟡 **new, found while fixing F-024** — the same over-grant is on all 12 tables, and
+   `authenticated` still holds `DELETE` and `TRUNCATE`. Unreachable today, recorded rather than
+   fixed: the approved scope was `anon` on `profiles`, and revoking across twelve tables is a
+   change whose failure mode is a broken app (CLAUDE.md 11l). **Owner's call.**
+4. **Layer 4** — the data sweep. Next.
 
 ⚠️ Real-user monitoring is **deferred, not dropped**. Until it exists, decision #33's merge-gate
 row stays **red**, and the reason is written into that row so nobody reads it as unfinished work
@@ -917,7 +926,7 @@ own row on top of that.
 | Account purge | scheduled in `web/vercel.json` (`0 3 * * *`); **0 profiles overdue** past the 30-day promise (1 scheduled, none stale) |
 | Hosting plan | **hobby** — the launch blocker, re-verified live rather than remembered |
 
-### F-024 🟡 `anon` can still write every profile column — proven harmless, still a missing layer
+### F-024 ✅ `anon` could write every profile column — FIXED 2026-08-25
 
 `authenticated` was deliberately narrowed to three columns. **`anon` was not**: it retains
 `UPDATE` and `INSERT` on all 20 columns of `profiles`, `subscription_status` included.
@@ -933,7 +942,62 @@ It is still the shape this project has been bitten by four times: **a rule appli
 consumer and not its sibling** (CLAUDE.md 11c-iv). One `revoke` closes it, plus a guard so a
 future migration cannot widen it back in silence.
 
-### F-025 🟡 The price a customer is CHARGED and the price they are SHOWN have no automated link
+#### What was done — 2026-08-25
+
+`supabase/migrations/20260825000000_revoke_anon_writes_on_profiles.sql`, applied live:
+`REVOKE ALL ON public.profiles FROM anon;` then `GRANT SELECT ON public.profiles TO anon;`
+
+⚠️ **It had to be table-level.** Postgres does not let a column-level REVOKE subtract from a
+table-level GRANT — a trap already documented at length inside `20260726010000`, in the same
+comment that said of this very grant *"Tightening that grant is tracked separately."* **A
+sentence in a comment is not a gate** (CLAUDE.md 11f); it sat there for a month.
+
+**Measured at the wire, before and after, with the same probe:**
+
+| anon, on `profiles` | before | after |
+|---|---|---|
+| UPDATE `subscription_status` | `200`, no error, **0 rows** | `42501 permission denied for table profiles` |
+| INSERT a profile | `42501` — *"violates row-level security policy"* | `42501 permission denied for table profiles` |
+| DELETE a profile | `200`, no error, **0 rows** | `42501 permission denied for table profiles` |
+| CONTROL — SELECT | `200`, 0 rows | `200`, 0 rows *(unchanged)* |
+
+⚠️ **The refusal becoming VISIBLE is the part that made this testable.** Before, a refusal and
+a client that silently did nothing were the same response. That is the same silence documented
+in `app/(app)/actions.ts`, where an early browser-side write "returned NO error: a silent
+non-save".
+
+⚠️ **And it is why the guard cannot assert on the error code alone.** INSERT *already* answered
+42501 before the fix — from the row policy. A test matching `42501` would have passed on the
+broken state and proved nothing. `web/e2e/db-grants.spec.ts` asserts the **message** in both
+directions: it must say *"permission denied for table"* and must **not** say *"row-level
+security"*.
+
+**Why SELECT was deliberately kept.** Every server read of `profiles` runs on a cookie-bound
+client, and a client whose JWT has just expired falls back to `anon`. Today that read answers
+"0 rows", which callers treat as "no entitlement" — the safe direction. Without the grant it
+would answer an error, and a page whose token expired mid-request would break for a paying
+customer. RLS already returns nothing, so the grant buys an attacker nothing and costs us a
+failure mode. Writes have no such caller: every profile write in the app is preceded by
+`getUser()` bailing out when there is no user, so it always runs as `authenticated` — checked
+across all 34 `from('profiles')` call sites, including `proxy.ts`, which reads only when a
+`userId` already exists.
+
+**The guard — `web/e2e/db-grants.spec.ts`, 5 tests, broken on purpose.** It reads the running
+database, not the migration (CLAUDE.md 11d: a migration file is a claim that someone once tried
+to change something). Sabotage: `GRANT UPDATE ON public.profiles TO anon` put the defect back
+and the UPDATE test went red at the right assertion; the grant was restored and the catalog
+re-read to confirm `anon` holds `SELECT` and nothing else.
+
+Two controls, and the second is the one that matters most:
+
+- the anon key must still **read** successfully and get zero rows — otherwise a wrong URL or a
+  revoked key would satisfy every refusal above for entirely the wrong reason;
+- a real signed-in account (throwaway, created and deleted in the spec) must still be able to
+  save `display_name` and `country`, and must still be refused `subscription_status`. **A
+  database that refuses everyone passes every other assertion in the file** — and would surface
+  not as a red test but as a customer unable to save their own name.
+
+### F-025 ✅ The price shown and the price charged now have a link — FIXED 2026-08-25, sandbox only
 
 Checked by hand, and every figure agrees — Stripe live, `PRICE_TABLE` in `lib/pricing.ts`, and
 locked decision #18:
@@ -954,6 +1018,86 @@ a number stated in one place and enforced in another, which is where copies go t
 **sandbox** prices — which catches the common case of someone editing the table, and cannot see
 a live-mode change at all. Worth building with that limit stated, with the live figures re-read
 at merge. Owner's call.
+
+#### What was done — 2026-08-25
+
+`web/e2e/pricing-parity.spec.ts`, 3 tests. It imports the real `PRICE_TABLE` and the real
+`PLAN_LOOKUP_KEYS` and asks Stripe what it charges, rather than restating either — a test
+carrying its own copy of the numbers would be a **third** copy to drift, which is the defect
+and not the guard (CLAUDE.md 11c iii).
+
+Per plan (`majorcycle_monthly`, `majorcycle_annual`) it asserts:
+
+- **exactly one** active price for the lookup key — zero would make every comparison below
+  vacuous and pass having compared nothing (14g); more than one means checkout picks whichever
+  Stripe happens to list first;
+- the billing **interval** — a right amount on a wrong interval is the expensive version of
+  this bug, and nothing about the sticker would look wrong;
+- every currency the site advertises **exists** in Stripe's `currency_options` — otherwise a
+  customer is shown a price Checkout cannot charge;
+- and each amount **equals** `PRICE_TABLE`, in minor units.
+
+A third test ties the annual figures to locked decision #18's *"Annual ~30% off"* by asserting
+the relationship through `annualSavingPercent()` — the same function the "Save N%" badge
+renders — rather than adding a fourth copy of the numbers.
+
+⚠️ **`currency_options` is not returned unless expanded**, and that is guarded as a control on
+the *instrument*: without `expand`, every amount reads `undefined` and the natural failure says
+*"Stripe has no USD amount"* — true of the response, false about Stripe, and it would send the
+reader to the dashboard instead of to the request. An explicit assertion now fails first,
+naming the real cause.
+
+**Broken on purpose, three ways, each red with the right message:** an edited `PRICE_TABLE`
+(*"AUD monthly: the site shows 18, Stripe charges 19"*); the `expand` deleted (*"the request is
+missing expand: ['data.currency_options']"*); a lookup key that does not exist (*"expected
+exactly one active Stripe price…"*).
+
+⚠️ **THE LIMIT IS NOT A FOOTNOTE — this suite is blind to live mode.** Test and live are
+separate objects that merely share a `lookup_key`, and CI holds only the restricted test key.
+So an edit made in the **live** dashboard produces exactly the mismatch this file exists to
+catch, invisibly. That is why the merge-gate table below now carries an owner-only row to
+re-read the six live figures at merge, rather than leaving it to memory. Last read by hand
+2026-08-24 (Layer 3b): all six matched.
+
+### F-026 🟡 The same over-grant is on all 12 tables, and `authenticated` still holds DELETE and TRUNCATE — owner's call
+
+**Found while fixing F-024, by asking a wider question of the same catalog.** F-024 was written
+as a `profiles`-and-`anon` problem. It is not: it is the stock Supabase posture on **every**
+table in `public`.
+
+Supabase grants `ALL` privileges on a new public table to both `anon` and `authenticated`, and
+safety then rests entirely on row-level security. Measured across all 12 tables on 2026-08-25,
+both roles hold `SELECT, INSERT, UPDATE, DELETE, REFERENCES, TRIGGER, TRUNCATE` on every one —
+with exactly two exceptions, both deliberate: `authenticated`'s UPDATE on `profiles`, narrowed
+to three columns in July, and `anon` on `profiles`, narrowed to `SELECT` today.
+
+⚠️ **`TRUNCATE` is the one that deserves naming, because row-level security does not apply to
+it.** RLS governs `SELECT`/`INSERT`/`UPDATE`/`DELETE`; a `TRUNCATE` is not filtered by a policy
+at all. So the layer everything else in this table rests on is, for that one verb, absent.
+
+**It is not reachable, and that was checked rather than assumed:**
+
+- PostgREST only ever issues `SELECT`/`INSERT`/`UPDATE`/`DELETE` and function calls. It has no
+  path that emits `TRUNCATE`.
+- `anon` and `authenticated` both have **`rolcanlogin = false`** — nobody can connect to
+  Postgres directly as either. Only `authenticator` can log in, and it switches into them.
+- Eight of the twelve tables carry **no policy at all**, so every ordinary verb is already
+  denied to both roles through the API.
+
+So: no hole today. But "unreachable today" is precisely where F-024 started, and the missing
+verb here is the one RLS was never going to catch.
+
+⚠️ **Deliberately NOT fixed in this session.** Revoking grants across twelve tables is a change
+whose failure mode is a broken production app the owner cannot debug, and the approved scope was
+`anon` on `profiles`. Recording a defect I am not authorised to fix, rather than quietly
+widening the change and calling it tidying, is the rule set by CLAUDE.md 11l.
+
+**What a fix would look like, if the owner wants one:** for the eight policy-less tables, revoke
+everything from both roles (they already get nothing); for the four with policies, grant back
+only the verbs the policies actually exercise; and revoke `TRUNCATE`/`TRIGGER`/`REFERENCES`
+everywhere. Each step is independently reversible, and `e2e/db-grants.spec.ts` already has the
+shape the guard would take — including the control that proves the app's real writes still work,
+which is the assertion that separates a tightening from an outage.
 
 ### Recorded, no action
 
