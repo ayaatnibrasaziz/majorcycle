@@ -1,28 +1,30 @@
-"""A provider that omits a value must never DELETE the value we already hold.
+"""The market cap we store is the provider's answer, whatever it is.
 
-THE BUG THESE GUARD (2026-08-27). yfinance's `info` blob omitted `marketCap` for
-15 of 863 companies on one nightly run — Salesforce, Lowe's and Micron among
-them. The refresh wrote that None straight into `stocks.market_cap`, blanking a
-good figure for each, and `fcf_yield_pct` (computed from the cap, and an input to
-Financial Health) went with it.
+TWO RULES ARE TESTED HERE, AND THEY PULL IN OPPOSITE DIRECTIONS ON PURPOSE.
 
-⚠️ NOTHING WENT RED, AND NOTHING COULD HAVE. There was no error to catch: the key
-was absent, the value was None, the write succeeded. A null cap renders as a
-blank cell and drops the company out of any size-ranked cohort in silence. It was
-found two days later, from the outside, because a study that ranks companies by
-size produced a figure that would not reproduce — the S&P 500 "largest 60" median
-came out -18.7 where -19.0 had been published, purely because the 15 had fallen
-out of the ranking.
+  1. Ask the provider properly. yfinance's `info` blob intermittently omits
+     `marketCap` for a large, actively-traded company — 15 of 863 on the run of
+     2026-08-27, Salesforce, Lowe's and Micron among them. `fast_info` is a
+     second endpoint on the same object and carried a cap for all 15, so the
+     provider is asked that way before we give up. This is not a substitute
+     figure: measured across 15 stocks in all three markets the two endpoints
+     agree to a median of 0.000%, worst case 0.85% on a moving price.
 
-Two independent fixes, tested here, because either alone leaves a hole:
+  2. Never invent one. When neither endpoint has a cap, we write null. An
+     earlier version omitted the column so the stored figure survived a bad
+     night; the owner rejected that on 2026-08-29, because it also survives a
+     BAD MONTH — serving a months-old market cap as though it were current.
+     A blank cell is a visible gap; a stale number is an invisible lie, and the
+     reader cannot tell it from a fresh one.
 
-  · the PROVIDER asks `fast_info` when `info` has no cap (it carried one for all
-    15), so we are less often empty-handed in the first place; and
-  · the WRITER omits the column entirely when we have nothing, so being
-    empty-handed can no longer destroy anything.
-
-The second is the load-bearing one: it holds whatever the next upstream failure
-turns out to be. The first only reduces how often we reach for it.
+⚠️ RULE 2 IS WHY THE INCIDENT ABOVE COULD HAPPEN, AND IT IS STILL RIGHT.
+Writing the null is what blanked those 15 companies, silently: a null cap
+renders as an empty cell, drops the company out of any size-ranked cohort
+without an error, and takes `fcf_yield_pct` with it. What makes it acceptable
+is not the write, it is the two things around it — the fallback that makes a
+genuine null rare, and the >0.5%-missing invariant in `check_field_units.py`
+that makes one loud. The write is self-correcting; a preserved value is not,
+because nothing about it ever looks wrong.
 """
 
 from __future__ import annotations
@@ -50,27 +52,33 @@ def test_a_real_cap_is_written() -> None:
     assert row["market_cap"] == 207_437_152_511.0
 
 
-def test_a_missing_cap_leaves_the_key_absent_not_null() -> None:
-    """The whole fix, in one assertion.
+def test_a_missing_cap_is_written_through_as_null() -> None:
+    """The owner's rule, in one assertion.
 
-    `market_cap: None` and *no* `market_cap` key are the same value in Python and
-    opposite instructions to Postgres: the first overwrites the stored figure
-    with NULL, the second leaves it alone. So this asserts absence, never `is
-    None` — a test written the loose way would pass on the broken code.
+    `market_cap: None` and *no* `market_cap` key are the same value in Python
+    and opposite instructions to Postgres: the first overwrites the stored
+    figure with NULL, the second leaves it alone. So the key must be PRESENT —
+    asserting `is None` alone would pass on a payload that silently kept
+    yesterday's number, which is the behaviour this replaced.
     """
     row = _with_market_cap(_row(), _Fund(None))
 
-    assert "market_cap" not in row
+    assert "market_cap" in row
+    assert row["market_cap"] is None
 
 
-def test_no_fundamentals_at_all_also_leaves_the_key_absent() -> None:
-    """A provider call that failed outright must not blank the column either."""
-    assert "market_cap" not in _with_market_cap(_row(), None)
+def test_no_fundamentals_at_all_is_also_written_through() -> None:
+    """A provider call that failed outright says the same thing: we have no
+    figure today. It must not leave an old one standing in for a new one."""
+    row = _with_market_cap(_row(), None)
+
+    assert "market_cap" in row
+    assert row["market_cap"] is None
 
 
 def test_the_rest_of_the_row_is_untouched() -> None:
-    """Control. A helper that returned an empty dict would satisfy the two
-    absence assertions above while destroying every other column."""
+    """Control. A helper that returned a bare {"market_cap": None} would satisfy
+    both assertions above while destroying every other column."""
     row = _with_market_cap(_row(), _Fund(None))
 
     assert row["ticker"] == "CRM"
