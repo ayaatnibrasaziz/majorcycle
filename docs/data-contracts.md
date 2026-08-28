@@ -1287,6 +1287,56 @@ forever, and wrong from tomorrow, with nothing going red.
 
 ---
 
+## 7c. The Articles registry (`web/lib/articles.ts`) — Layer G
+
+The second content registry, and structurally a twin of `7b`: no React, `satisfies`
+rather than an annotation, bodies keyed by slug in `app/(public)/articles/content.tsx`,
+and `lib/seo.ts` deriving every `/articles/<slug>` entry from it.
+
+**Why two registries rather than a `kind` field on the Learn one.** They answer
+different questions and age differently. A Learn article explains a term and does not
+expire, so `/learn` groups by subject and shows no dates. An article here reports a
+**measurement taken on a stated day** — every one will be overtaken, and saying when
+it was taken is half of being honest about it. One list would force one shape onto
+both, and the shape that loses is the dated one: a date column on an explainer implies
+a shelf life it does not have.
+
+| Field | Meaning |
+|---|---|
+| `slug`, `title`, `question`, `answer`, `summary` | As `LearnArticle`. `answer` is required so a piece cannot be published without one, and `articles.spec.ts` caps its length — an over-long answer is the only thing that can push the compliance notice below the fold at 375px |
+| `kind` | `analysis` · `commentary` · `how-to` — the three kinds the section's lead sentence promises |
+| `deck` | The featured card's body. Separate from `summary` because they are written for different readers: the summary is what a stranger sees under a blue link on Google, the deck is what a reader sees having already decided to look |
+| `finding` | The index row's one line — the piece's FINDING, never a summary. Owner's design decision: on this site the number is what a reader scans, and it is what replaces the thumbnail every competitor leads with |
+| `facts` | Up to three figures for the featured card's pills |
+| `region` | The row's trailing chip |
+| `published` / `reviewed` / `minutes` | As `LearnArticle`. `minutes` is a claim ABOUT the prose, so `articles.spec.ts` counts the words on the RENDERED page and fails beyond ±2 |
+
+**`RichPart[]` — prose as data.** `deck` and `finding` both need a bolded figure
+inside a sentence, and this file may not import React. So they are segments —
+`string`, `{ strong }`, `{ figure }` — rendered by the one component
+`components/articles/RichText.tsx`. ⚠️ `figure` marks a **number**, not merely bold
+text: the renderer sets it in the mono face with `tabular-nums` so a column of
+findings lines up on the digits. Using `strong` for a number looks almost right and
+quietly breaks that alignment.
+
+**`PLANNED_ARTICLES` is plain data, deliberately not `Article`s** — same reasoning as
+`LEARN_THEMES[].upcoming`. The moment a promise becomes a registry entry it acquires a
+URL, a sitemap row, a middleware allow-list entry and a canonical tag, and
+`content.tsx` must hold a body for it. A promise about a future piece must cost none
+of that, and `articles.spec.ts` asserts a planned row is never — and never *contains*
+— a link.
+
+⚠️ **AN ARTICLE'S FIGURES ARE FROZEN, WHICH IS THE OPPOSITE OF THE LEARN RULE.**
+`learn/content.tsx` reads every number from the nightly snapshot, because an explainer
+describes how the product behaves *today*. An article is a record of one day, so a
+live read would leave the drawing disagreeing with the prose beside it the first time
+a price moved. The guarantee is a **workbook** instead —
+`reference/how-far-do-asx-shares-fall-WORKING.xlsx`, every published figure a live
+formula over the underlying rows — so each one can be re-derived rather than taken on
+trust. Re-taking a measurement is an edit to the article, never a data refresh (11k).
+
+---
+
 ## 8. Currency Display Rules
 
 **Stock prices:** always in the stock's home currency, identified by `fundamentals.currency`. Display the currency symbol or code.

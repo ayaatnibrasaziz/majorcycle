@@ -1966,3 +1966,36 @@ This is already recorded in CLAUDE.md 11z as a footnote from the listings work; 
 because it recurred within a fortnight, in a different context, and cost a wrong "all gates pass"
 that was one sentence from being reported to the owner. **Read the summary line, never the exit
 code, whenever a command is piped** — which is the same habit as 11i's *reconcile the count*.
+
+---
+
+## 41. When measurements of a layout disagree, stop reading geometry and change one thing
+
+**2026-08-29.** The owner asked for space around the `·` in "26 August 2026 · 6 min
+read". It was implemented and never took effect, and three instruments gave three
+different answers before that was established:
+
+| Instrument | Said | Why it was useless here |
+|---|---|---|
+| `getComputedStyle(sep).padding` | `0px 7px` | True, and irrelevant: the element was absolutely positioned, so its padding affected nothing around it |
+| `Range` over the sibling text nodes | boxes that **overlapped** | Incoherent, and incoherent output is a signal about the instrument, not the page |
+| Remove the padding, measure the line, restore | width **unchanged**, both times | The answer |
+
+The cause was a class-name collision: the separator span was `.art-dot`, and forty
+lines earlier in the same stylesheet `.art-dot` was the chart's end-point marker
+(`position:absolute; width:7px; height:7px; border-radius:50%`).
+
+**The habits worth keeping:**
+
+- **A controlled experiment beats a geometry read.** Changing one property and
+  watching a single number move is unambiguous; a rect is the product of a dozen
+  rules and can be read wrong in several directions at once.
+- **Write the guard as the experiment.** `articles.spec.ts` removes the padding and
+  asserts the line narrows, because the geometry read is the thing that failed to see
+  the defect. A test built on the instrument that missed it inherits the blind spot.
+- **`display: block` computed on a `<span>` whose siblings compute `inline` is a
+  tell.** A blockified inline is almost always another rule reaching it — a flex or
+  grid parent, or a name used twice.
+- **And a class name is an identifier.** Reusing one inside a single stylesheet is a
+  collision, not a shorthand, and it is invisible whenever both meanings happen to
+  render something plausible.

@@ -1256,7 +1256,7 @@ Pattern: red-tint card + 16px title + body explanation + CTA to retry or contact
 
 ---
 
-### The Articles index — DESIGNED 2026-08-26, not yet built (`/articles`)
+### The Articles index — BUILT 2026-08-29 (`/articles`, `/articles/[slug]`)
 
 **Chosen from three directions drawn in the design artifact** (`claude.ai/code/artifact/fd8cbcdc`),
 the same way the Learn index was decided. The owner took **A**; B (data-as-art) and C
@@ -1285,7 +1285,7 @@ one thing on the page a competitor cannot copy.
 | Row content | Date · title · **the article's FINDING**, not a summary. On this site the number is the thing worth scanning |
 | Planned pieces | Recede by **WEIGHT and COLOUR, never `opacity`** — 400/`--text-muted` against a published row's 600/`--text-primary`. Same rule the Learn upcoming rows learned when `opacity:.7` rendered at 3.38:1 while the contrast guard read 6.81 (CLAUDE.md 11q). Verified: `byOpacity: false` |
 | Chart legend | **HTML list under the plot — swatch, name, figures — never floating labels inside it.** The first version put "ASX 200" and "S&P 500" in the plot area where neither sat near its own line, and the owner could not tell which was which. Swatch colours are asserted against the line strokes so they cannot drift |
-| Series colours | ASX `--brand-mid`, S&P `--text-muted`, TSX `#0E7C8B` — the Learn illustrations' established teal (§11). ⚠️ **None may be a DIRECTION colour**: green and red mean up and down everywhere else on this site and must not be spent on series identity |
+| Series colours | ASX `--brand-mid`, S&P `--text-muted`, TSX `#0E7C8B` — the Learn illustrations' established teal (§11). ⚠️ **None may be a DIRECTION colour**: green and red mean up and down everywhere else on this site and must not be spent on series identity. ⚠️ **The teal has an INK for its label** — `#0C6E7B`. This is `lib/ink.ts`'s rule applied to a series palette: a stroke has no contrast requirement, a 12px label has a 4.5:1 one, and `#0E7C8B` measured **4.45:1** on the briefing card's ground — five hundredths under, caught by the contrast guard the moment the page became measurable. It passes on WHITE (4.91), which is the trap the signed-in palette work already paid for: **measure a colour where it sits, and take a margin.** The ink clears 5.32:1 against the worst of the three grounds the label can land on |
 
 **Heading and lead.** *"What's happening, and what it means"* over a lead naming all three
 kinds of piece and reusing Learn's *"nothing you need an account to read."* ⚠️ Two earlier
@@ -1296,6 +1296,59 @@ measurements, when it also carries market commentary and how-to pieces.
 **The article page itself gets no new design** (owner, 2026-08-26): the live Learn article
 pages already show it, so `/articles/[slug]` reuses **`ArticleDoc`** and **`LegalNotice`** —
 same card, same `.doc-scale`, no third disclaimer copy.
+
+⚠️ **Reusing it meant WIDENING it, not copying it.** `ArticleDoc` was typed to
+`LearnArticle` and hard-coded the "Learn · <topic>" breadcrumb, the related list's
+`learnPath()` and the closing invitation. It now takes a four-field `DocArticle`, a
+`section` link and a `footerNote`, and both sections hand it their own. A second card
+built to the same spec would have been a copy free to drift — and the drift would be
+invisible, because both pages would go on rendering perfectly (11c).
+
+---
+
+#### What the BUILD had to change, and why — read before comparing against the artifact
+
+Four deviations from the approved storyboard. None is a matter of taste; each was
+forced by a rule the artifact's own preview does not have to obey.
+
+| The artifact | The live page | Why |
+|---|---|---|
+| Featured title **23px**, rows 15.5px, findings 12.5px, chips 10.5px | `--pub-h` **17px**, rows and findings both `--pub-body` **13px**, chips `--pub-label` **12px** | The artifact is a PREVIEW carrying its own scale (36/26/20/17). The live public site has exactly one (24/17/13/12), and porting an artifact's pixel sizes literally is how the fourth type scale appeared on `/learn` (**11c-vi**). 23px would also have sat one point under the page's own h1. Title and finding are separated by **weight and colour** instead — the rule `/learn`'s article rows already state |
+| Chart labels as `<text>` at 8–9px inside the viewBox | **HTML labels at 12px** over a `preserveAspectRatio="none"` plot | Text inside a scaled `<svg>` scales with it. Measured: 12.5 user units in a 300-unit box reads 12.5px on a desktop and **10.78px at 375px**, where the card's padding leaves the block 258.6px. **A floor that holds on one screen and not another is not a floor.** This is the pattern every Learn figure already uses, and its consequences follow — `vector-effect="non-scaling-stroke"` on every line, and HTML dots, because a `<circle>` under a non-uniform transform is an ellipse |
+| Axis captions in spaced small caps | Lower case | Uppercase is ~28% wider. At 375px the plot is 86.6px across and the two captions, centred on points that far apart, **cleared each other by 0.48px**. Lower case makes them 72px and 62px, clearing by 16px on a phone and 58px on a desktop |
+| Plot geometry as literal coordinates | Computed from the numbers | **11k.** The storyboard's `y="173.4"` was right on the day it was taken and silently detached from the data afterwards — the same defect as the landing's ruler markers. Change a figure in `SERIES` and the drawing, the labels and the `aria-label` all move together |
+
+⚠️ **THREE LABEL COLLISIONS WERE FOUND BY MEASURING, AND NONE IS VISIBLE.** The end
+labels of the two closest series cleared by 1.2px; the axis captions by 0.5px; the
+deepest left-hand label sat 2.1px above the caption beneath it. Every one looked fine
+in the browser and fine in a screenshot. `articles.spec.ts` now asserts a **3px
+margin** between every pair of labels at three widths — a margin, not the absence of
+overlap, because `> 0` scores a 1px accident as a pass (**11i-b**).
+
+⚠️ **AND A CLASS-NAME COLLISION HID AN OWNER-REQUESTED CHANGE IN PLAIN SIGHT.** The
+owner asked for space around the `·` in "26 August 2026 · 6 min read". The separator
+span was named `.art-dot` — which is *also* the chart's end-point class in the same
+stylesheet — so it inherited `position:absolute; width:7px; height:7px;
+border-radius:50%` and rendered as a positioned circle contributing nothing to
+layout. The padding had no effect at all, and nothing looked wrong: the `·` still
+painted roughly where a reader expects one. ⚠️ **Three measurements disagreed with
+each other before this was settled** — `getComputedStyle` reported the padding as
+present, a `Range` over the text nodes returned overlapping boxes, and only a
+controlled experiment (remove the padding, measure the line, restore it) showed the
+width never moved. **A class name is an identifier; reusing one inside a single
+stylesheet is a collision, not a shorthand.** The separator is now `.art-sep`, and
+`articles.spec.ts` asserts it as the same experiment rather than as a geometry read.
+
+⚠️ **Tables needed a component, and the Learn rule had to be re-decided rather than
+inherited.** `learn/content.tsx` forbids `<table>` outright, correctly: `.reading` has
+no table rules at all, so one renders as browser default in the middle of a designed
+page. That is right for explainers, which do not need tables, and wrong for this
+section, where reporting a measurement IS the job. So the styles are defined once
+(`.art-table` in `articles.css`) and reached through
+`components/articles/DataTable.tsx`; an article never writes its own. A numeric column
+is **declared, not sniffed** — detecting digits would work until a piece printed "60"
+as a company count in a text column, and the failure would be a subtly misaligned
+table nobody reports.
 
 ---
 

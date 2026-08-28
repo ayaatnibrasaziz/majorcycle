@@ -1954,14 +1954,28 @@ size-ranked cohort silently, and `fcf_yield_pct` - computed from the cap, and an
 Financial Health - went null with it on all 15. It took a study that ranks *by* market cap, run
 three days later by someone checking arithmetic, to surface it.
 
+**REVERSED IN PART BY THE OWNER, 2026-08-29 - and the reversal is the lesson.**
+The first fix had the writer OMIT the column when the provider had nothing, so the
+stored figure survived a bad night. The owner's objection: that also survives a bad
+MONTH. If yfinance stops returning a cap for a company we would go on showing a
+months-old market cap as though it were current, and nothing about it would look
+wrong to anyone. "I don't want to manipulate anything. Just show what the provider
+give to us."
+
+That is right, and it generalises past this field: **a null renders as an empty cell,
+which a reader can see and a check can alarm on; a stale number renders as a
+plausible one, which nobody can see.** Of the two ways to be wrong, prefer the
+visible one. `_with_market_cap` now writes the provider's answer through, null
+included.
+
 **Fixed on both sides, because either alone leaves a hole:**
 
 - **Provider** - `_extract_fundamentals` falls back to `fast_info` when `info` has no cap. That
   endpoint carried one for all 15, so we are less often empty-handed.
-- **Writer** - `_with_market_cap()` adds the column **only** when there is a value. An upsert
-  builds its `SET` list from the columns present, so omitting the key preserves what is stored
-  while sending `None` deletes it. This is the load-bearing half: it holds whatever the next
-  upstream failure turns out to be.
+- **Writer** - `_with_market_cap()` writes what the provider answered, null included (see the
+  reversal above). An upsert builds its `SET` list from the columns present, so `market_cap:
+  None` and a missing key are opposite instructions to Postgres while being one value in Python
+  - which is why the test asserts the key is PRESENT and null, not merely that it "is None".
 
 **And a nightly invariant, because the fix should not have to be the only thing watching.**
 `check_invariants()` now fails when more than **0.5%** of rows lack a cap. WARNING: **that floor
@@ -1969,10 +1983,17 @@ was measured, not chosen.** The real event was 15 of 871 - **1.7%** - so the 2% 
 first would have passed the very incident the check is named after. *A guard tuned above the
 defect it exists for is worse than no guard: it reports "clean" with authority.*
 
-Guarded by `analytics/tests/test_market_cap_preserved.py` (9 tests), broken on purpose in both
-directions. The load-bearing assertion is `"market_cap" not in row` - **absence, never `is
-None`** - because in Python those are one value and to Postgres they are opposite instructions,
-and a test written the loose way passes on the broken code.
+Guarded by `analytics/tests/test_market_cap_from_provider.py` (9 tests), broken on purpose and
+confirmed red for the right reason: restoring the preserve behaviour fails the two write-through
+assertions and nothing else. The load-bearing assertion is that the key is **present AND null** -
+`is None` alone would pass on a payload that silently kept yesterday's number.
+
+WARNING: **THE INCIDENT RECURRED WHILE THE FIX SAT UNMERGED.** The 2026-08-28 run blanked 13
+companies - AutoZone, Kroger, Lowe's and Micron among them again - because a scheduled workflow
+checks out the **default branch** and `feat/layer-g` is not it (14g). Checked by hand the same
+day, BOTH endpoints carried a cap for all 13, which is the evidence that the omission is
+transient and per-RUN rather than per-company: the fallback would have caught every one. All 13
+repaired; they revert nightly until merge.
 
 **Data repaired:** all 15 refetched through the real provider (so `normalise_fundamentals` runs
 and a cross-currency FCF yield is still withheld) and written with `UPDATE`, not upsert - a repair

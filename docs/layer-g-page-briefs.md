@@ -267,6 +267,40 @@ click and return.
 
 ## 6. Articles — `/articles` index + one permanent page per article
 
+> ✅ **BUILT 2026-08-29.** `/articles` renders the approved direction A — featured
+> card, "Coming next", published rows — and `/articles/[slug]` reuses `ArticleDoc`.
+> The first article is live on the branch. Guarded by `e2e/articles.spec.ts` (15
+> tests), and covered by the existing SEO, render-mode, contrast and auth guards,
+> each of which had to be told the new routes exist.
+>
+> ⚠️ **The first article's mining claim was WRONG and the owner caught it.** The
+> draft said mining is *"a quarter of the ASX 200, fifty companies out of two
+> hundred"*, and the owner asked the right question: is every Basic Materials
+> company a mining company? **No.** Six of the fifty make steel, recycle metal, make
+> fibre cement, make building products or make explosives — the last two sell *to*
+> miners. Meanwhile six real miners (three thermal coal, three uranium) sit under
+> **Energy**. The count of fifty survived by coincidence; the reasoning did not.
+>
+> ⚠️ **And the same check found a larger defect the owner had not asked about.** The
+> sector table compares Basic Materials across three markets, and the three columns
+> do not hold the same kind of company: the S&P 500's Basic Materials sector is
+> **20 companies of which 2 are miners**, the rest chemicals, fertiliser, paint,
+> cement and packaging. So the article's *"Australian miners fall roughly half as far
+> again as American ones"* was comparing Australian miners with American chemical
+> companies. Rewritten as a composition argument — a quarter of the Australian index
+> is mining against four in a thousand of the American one — which is both true and a
+> **stronger** version of the point the article was already making.
+>
+> **The rule for every future piece: a provider's SECTOR label is a classification,
+> not a description.** A claim about what companies *do* cannot be read off one.
+> Where an article characterises a group ("miners", "banks", "tech"), name the
+> exclusions and let the reader check them — which is what sheet 9 of the workbook
+> now does.
+>
+> ⚠️ **No italics in a body** (owner, 2026-08-29): long runs of italic prose read as
+> machine-written. Emphasis is `<strong>` and sentence construction, asserted on the
+> COMPUTED `font-style` because `<em>` is only one way to arrive at italics.
+
 > ⚠️ **SETTLED 2026-08-26. Everything below the horizontal rule is the brief approved on
 > 2026-08-07 and the re-scope of 2026-08-25; both are kept as history, not as the plan.**
 >
