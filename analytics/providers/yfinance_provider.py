@@ -686,6 +686,24 @@ class YFinanceProvider(DataProvider):
         financial_currency = str(fin_currency_raw) if fin_currency_raw else currency
 
         market_cap = _safe(g("marketCap"))
+        if market_cap is None:
+            # yfinance's `info` blob intermittently omits marketCap for a large,
+            # healthy, actively-traded company. Measured on the run of
+            # 2026-08-27: 15 of 863, among them Salesforce, Lowe's and Micron.
+            # Nothing errors — the key is simply absent — so the value arrives
+            # as None and (before the guard in daily_refresh) DELETED a good
+            # stored figure. `fast_info` is a different endpoint on the same
+            # object and carried a cap for all 15, so ask it before giving up.
+            fast = self._safe_attr(ticker_obj, "fast_info")
+            if fast is not None:
+                for key in ("market_cap", "marketCap"):
+                    try:
+                        raw = fast.get(key) if hasattr(fast, "get") else getattr(fast, key, None)
+                    except Exception:
+                        raw = None
+                    market_cap = _safe(raw)
+                    if market_cap is not None:
+                        break
         total_revenue = _safe(g("totalRevenue"))
         ebitda = _safe(g("ebitda"))
         free_cashflow = _safe(g("freeCashflow"))

@@ -60,6 +60,35 @@ _SPLIT_RATIO_TOL = 0.20
 _SPLIT_PERSIST_BARS = 3
 
 
+def _with_market_cap(row: dict[str, Any], fund: Any) -> dict[str, Any]:
+    """Add `market_cap` to an upsert row ONLY when the provider gave us one.
+
+    ⚠️ THE ABSENCE OF THE KEY IS THE POINT. An upsert builds its UPDATE SET list
+    from the columns present in the payload, so leaving `market_cap` out keeps
+    whatever is already stored, while sending `None` overwrites it with NULL.
+
+    THE BUG THIS EXISTS FOR (2026-08-27). yfinance's `info` blob omitted
+    `marketCap` for 15 of 863 companies on one nightly run — Salesforce, Lowe's
+    and Micron among them, all large and actively traded. Nothing raised: the key
+    was simply absent, the value arrived as None, and the refresh DELETED a good
+    stored figure for each. The damage was silent and second-order — a null cap
+    renders as a blank cell, drops the company out of any size-ranked cohort
+    without an error, and takes `fcf_yield_pct` (computed from it, and an input
+    to Financial Health) down with it. It surfaced two days later only because a
+    study that ranks by size produced a figure that would not reproduce: -18.7
+    where -19.0 had been published.
+
+    ⚠️ The identical rule was ALREADY in this function, ten lines below, guarding
+    `news`: "Only overwrite when we actually got items, so a transient yfinance
+    hiccup never wipes the previously-stored news." It was never given to
+    `market_cap`. CLAUDE.md 11c-iv — the rule existed, and one of its consumers
+    never received it.
+    """
+    if fund is not None and getattr(fund, "market_cap", None) is not None:
+        row["market_cap"] = fund.market_cap
+    return row
+
+
 def _jsonb(obj: Any) -> Any:
     return json.loads(json.dumps(obj, default=str))
 
@@ -614,10 +643,11 @@ def run(
                     "industry":     fund.industry if fund else None,
                     "currency":     fund.currency if fund else "USD",
                     "exchange":     fund.exchange if fund else None,
-                    "market_cap":   fund.market_cap if fund else None,
                     "fundamentals": _jsonb(fund_dict),
                     "updated_at":   now,
                 }
+
+                _with_market_cap(stock_row, fund)
 
                 # News is time-sensitive, so refresh it on every run rather than
                 # only on the (≈quarterly) enriched-data cadence. It's one cheap

@@ -96,9 +96,14 @@ def check_invariants(rows: list[dict[str, Any]]) -> list[str]:
     zero_margins: dict[str, list[str]] = {}
     fcf_mixed: list[str] = []
     missing_fin_cur: list[str] = []
+    missing_cap: list[str] = []
     for r in rows:
         f = r.get("fundamentals") or {}
         ticker = str(r.get("ticker", "?"))
+        # Index tickers (^GSPC and friends) are price-only rows and never carry a
+        # cap; counting them would put a permanent floor under the proportion.
+        if not ticker.startswith("^") and f.get("market_cap") is None:
+            missing_cap.append(ticker)
         if not f.get("financial_currency"):
             missing_fin_cur.append(ticker)
         for name in ("gross_margin", "operating_margin", "net_margin", "ebitda_margin"):
@@ -123,6 +128,35 @@ def check_invariants(rows: list[dict[str, Any]]) -> list[str]:
             f"in the reporting currency and market cap in the price currency "
             f"(e.g. {', '.join(sorted(fcf_mixed)[:5])})"
         )
+
+    # market_cap coverage. A missing cap is not a cosmetic gap: the screener
+    # ranks by it, `fcf_yield_pct` is computed from it, and Financial Health
+    # consumes that. It is also SILENT — a null renders as a blank cell and
+    # drops the company out of any size-ranked cohort without an error.
+    #
+    # On 2026-08-27 the nightly refresh blanked 15 of 863 (yfinance's `info`
+    # omitted the key) and nobody noticed for two days, until a study that ranks
+    # by size produced a figure that would not reproduce. The write path now
+    # refuses to overwrite a stored cap with nothing, and the provider falls back
+    # to `fast_info` — this asserts the OUTCOME, so it stays valid whatever the
+    # next cause turns out to be (14e-3: assert the invariant on the DATA).
+    #
+    # ⚠️ THE FLOOR IS 0.5%, NOT THE 5% USED BELOW, AND THAT WAS MEASURED RATHER
+    # THAN CHOSEN. The real incident was 15 rows of 871 — **1.7%** — so a 2%
+    # threshold (the first value written here) would have passed the very event
+    # this check exists to catch. A guard tuned above the defect it is named
+    # after is worse than no guard: it reports "clean" with authority.
+    # 0.5% is ~4 rows, which leaves room for a couple of genuinely capless
+    # tickers without crying wolf, and fires on anything resembling 2026-08-27.
+    if rows:
+        cap_share = len(missing_cap) / len(rows)
+        if cap_share > 0.005:
+            problems.append(
+                f"market_cap: missing on {len(missing_cap)} of {len(rows)} row(s) "
+                f"({cap_share:.0%}) — these drop out of every size-ranked cohort "
+                f"and lose fcf_yield_pct with it, silently "
+                f"(e.g. {', '.join(sorted(missing_cap)[:5])})"
+            )
 
     # Coverage, checked LAST because it explains the two checks above.
     #

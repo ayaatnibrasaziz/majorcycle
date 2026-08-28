@@ -18,6 +18,14 @@ def _universe(**fields: float) -> list[dict[str, Any]]:
 
 
 class TestCohortCheck:
+    """⚠️ Every fixture below carries `market_cap`, including the ones testing
+    something else entirely. `check_invariants` runs the WHOLE invariant set on
+    whatever it is handed, and the market_cap rule is a proportion — so a partial
+    row reads as 100% missing and trips a check the test is not about. Completing
+    the rows is the right response: making the invariant stand down on small
+    universes would be the "unmeasurable counts as clean" failure it exists to
+    prevent (14g).
+    """
     def test_healthy_universe_passes(self) -> None:
         breaches, _thin, checked = check(
             _universe(dividend_yield_pct=2.4, payout_ratio_pct=34.0, debt_to_equity=0.64)
@@ -55,7 +63,7 @@ class TestCohortCheck:
         wolf — a check that fires on nothing gets ignored, and then it is not a
         check any more."""
         rows: list[dict[str, Any]] = [
-            {"ticker": "A", "fundamentals": {"dividend_yield_pct": 0.0001}}
+            {"ticker": "A", "fundamentals": {"market_cap": 1.0, "dividend_yield_pct": 0.0001}}
         ]
         breaches, thin, checked = check(rows)
         assert breaches == []
@@ -71,11 +79,11 @@ class TestCohortCheck:
 
     def test_a_clean_universe_trips_no_invariant(self) -> None:
         rows = [
-            {"ticker": "AAPL", "fundamentals": {
+            {"ticker": "AAPL", "fundamentals": {"market_cap": 1.0, 
                 "currency": "USD", "financial_currency": "USD",
                 "gross_margin": 48.6, "fcf_yield_pct": 2.4,
             }},
-            {"ticker": "BHP.AX", "fundamentals": {
+            {"ticker": "BHP.AX", "fundamentals": {"market_cap": 1.0, 
                 "currency": "AUD", "financial_currency": "USD",
                 "gross_margin": 83.1, "fcf_yield_pct": None,
             }},
@@ -85,7 +93,7 @@ class TestCohortCheck:
     def test_a_stored_zero_margin_is_reported(self) -> None:
         """The sentinel must never come back — it is worth four customer-facing
         rating labels."""
-        rows = [{"ticker": "JPM", "fundamentals": {
+        rows = [{"ticker": "JPM", "fundamentals": {"market_cap": 1.0, 
             "currency": "USD", "financial_currency": "USD", "gross_margin": 0,
         }}]
         problems = check_invariants(rows)
@@ -96,7 +104,7 @@ class TestCohortCheck:
         """This one was live AFTER the fix: normalising on the Python read path
         left the TypeScript reader — and so the Key Metrics table — untouched.
         Checking the DATA covers every reader at once."""
-        rows = [{"ticker": "ABX.TO", "fundamentals": {
+        rows = [{"ticker": "ABX.TO", "fundamentals": {"market_cap": 1.0, 
             "currency": "CAD", "financial_currency": "USD", "fcf_yield_pct": 6.12,
         }}]
         problems = check_invariants(rows)
@@ -112,9 +120,9 @@ class TestCohortCheck:
         reads was gone. An unmeasurable row must never count as a clean one.
         """
         rows = [
-            {"ticker": f"T{i}", "fundamentals": {"currency": "USD"}} for i in range(70)
+            {"ticker": f"T{i}", "fundamentals": {"market_cap": 1.0, "currency": "USD"}} for i in range(70)
         ] + [
-            {"ticker": f"OK{i}", "fundamentals": {
+            {"ticker": f"OK{i}", "fundamentals": {"market_cap": 1.0, 
                 "currency": "AUD", "financial_currency": "AUD",
             }} for i in range(30)
         ]
@@ -127,11 +135,64 @@ class TestCohortCheck:
         """Some tickers legitimately have no `financialCurrency` upstream. A check
         that fires on those gets ignored, and then it is not a check any more."""
         rows = [
-            {"ticker": f"OK{i}", "fundamentals": {
+            {"ticker": f"OK{i}", "fundamentals": {"market_cap": 1.0, 
                 "currency": "USD", "financial_currency": "USD",
             }} for i in range(98)
         ] + [
-            {"ticker": f"GAP{i}", "fundamentals": {"currency": "USD"}} for i in range(2)
+            {"ticker": f"GAP{i}", "fundamentals": {"market_cap": 1.0, "currency": "USD"}} for i in range(2)
+        ]
+        assert check_invariants(rows) == []
+
+    def test_the_real_market_cap_incident_would_now_be_caught(self) -> None:
+        """⚠️ THE NUMBERS ARE THE ACTUAL EVENT, NOT A ROUND ILLUSTRATION.
+
+        On 2026-08-27 the nightly refresh blanked `market_cap` on 15 of 871 rows
+        because yfinance's `info` omitted the key. That is **1.7%** — and the
+        first threshold written for this check was 2%, which would have passed
+        the very incident it is named after. A guard tuned above its own defect
+        is worse than none: it reports "clean" with authority. The floor is 0.5%.
+        """
+        rows = [
+            {"ticker": f"GONE{i}", "fundamentals": {
+                "currency": "USD", "financial_currency": "USD",
+            }} for i in range(15)
+        ] + [
+            {"ticker": f"OK{i}", "fundamentals": {
+                "market_cap": 1.0, "currency": "USD", "financial_currency": "USD",
+            }} for i in range(856)
+        ]
+        problems = check_invariants(rows)
+        assert len(problems) == 1
+        assert "market_cap" in problems[0]
+        assert "15 of 871" in problems[0]
+
+    def test_a_couple_of_genuinely_capless_tickers_do_not_cry_wolf(self) -> None:
+        """Control. Without this the check could be set to fire on any missing
+        cap at all, which is how a check stops being read."""
+        rows = [
+            {"ticker": f"OK{i}", "fundamentals": {
+                "market_cap": 1.0, "currency": "USD", "financial_currency": "USD",
+            }} for i in range(869)
+        ] + [
+            {"ticker": f"GAP{i}", "fundamentals": {
+                "currency": "USD", "financial_currency": "USD",
+            }} for i in range(2)
+        ]
+        assert check_invariants(rows) == []
+
+    def test_index_rows_are_not_counted_as_missing_caps(self) -> None:
+        """`^GSPC` and friends are price-only rows that never carry a cap.
+        Counting them would put a permanent floor under the proportion and the
+        check would either fire forever or have to be loosened to tolerate them —
+        which would then hide a real loss of that size."""
+        rows = [
+            {"ticker": f"^IDX{i}", "fundamentals": {
+                "currency": "USD", "financial_currency": "USD",
+            }} for i in range(4)
+        ] + [
+            {"ticker": f"OK{i}", "fundamentals": {
+                "market_cap": 1.0, "currency": "USD", "financial_currency": "USD",
+            }} for i in range(96)
         ]
         assert check_invariants(rows) == []
 
@@ -139,7 +200,7 @@ class TestCohortCheck:
         assert check_invariants([]) == []
 
     def test_a_same_currency_fcf_yield_is_fine(self) -> None:
-        rows = [{"ticker": "AAPL", "fundamentals": {
+        rows = [{"ticker": "AAPL", "fundamentals": {"market_cap": 1.0, 
             "currency": "USD", "financial_currency": "USD", "fcf_yield_pct": 2.4,
         }}]
         assert check_invariants(rows) == []
