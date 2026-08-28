@@ -117,3 +117,134 @@ export function accessDenialReason(
 
   return 'no_subscription';
 }
+
+// ─── The viewer record, and the two decisions that hang off a failed read ────
+
+/**
+ * Everything a signed-in surface needs to know about the current viewer.
+ *
+ * Lives HERE rather than in `entitlement.server.ts` so the pure decisions below can
+ * be driven by a credential-free Playwright spec. `entitlement.server.ts` carries
+ * `import 'server-only'`, and importing that from a spec takes the whole suite down.
+ */
+export interface ViewerEntitlement {
+  /** Null when signed out. */
+  userId: string | null;
+  entitled: boolean;
+  /** Null when entitled; otherwise why not — drives the locked panel's copy. */
+  reason: AccessDenialReason | null;
+  /** True when the account is mid-deletion; callers must send these to /reactivate. */
+  deletionScheduled: boolean;
+  /** Present so callers needing onboarding state don't re-query. */
+  acknowledgedDisclaimerAt: string | null;
+  subscriptionStatus: string | null;
+  /**
+   * Dispute lock. Exposed separately from `subscriptionStatus` because it is an
+   * orthogonal dimension — a disputed account keeps its Stripe status — and any
+   * surface that DISPLAYS the status must say "on hold" instead of announcing the
+   * stale "Active" to someone who is locked out.
+   */
+  billingBlocked: boolean;
+  /** Shown on the header account menu. */
+  email: string | null;
+  /** Prefills the in-app support form, so a locked reader retypes nothing. */
+  displayName: string | null;
+  /**
+   * TRUE when we hold a valid session but could not read that session's profile row.
+   *
+   * ⚠️ This is the field the onboarding bug of 2026-08-27 needed and did not have.
+   * `null` on every other field then meant two irreconcilable things at once — "we
+   * read your row and this is empty" and "we never got your row" — and the two want
+   * OPPOSITE handling. For entitlement, unreadable must deny (fail closed). For the
+   * disclaimer, unreadable must NOT re-prompt, because re-prompting overwrites the
+   * acknowledgement it was wrongly asking for. One boolean separates them.
+   */
+  profileUnreadable: boolean;
+}
+
+export const SIGNED_OUT_VIEWER: ViewerEntitlement = {
+  userId: null,
+  entitled: false,
+  reason: 'no_subscription',
+  deletionScheduled: false,
+  acknowledgedDisclaimerAt: null,
+  subscriptionStatus: null,
+  billingBlocked: false,
+  email: null,
+  displayName: null,
+  profileUnreadable: false,
+};
+
+/** The columns `getViewerEntitlement` selects. */
+export interface ViewerProfileRow {
+  email?: string | null;
+  display_name?: string | null;
+  subscription_status?: string | null;
+  grace_until?: string | null;
+  billing_blocked?: boolean | null;
+  acknowledged_disclaimer_at?: string | null;
+  deletion_scheduled_at?: string | null;
+}
+
+/**
+ * Turn one profile read into a viewer record — CLAUDE.md 11e, applied to the row
+ * every signed-in page depends on.
+ *
+ * ⚠️ A NULL ROW HERE ALWAYS MEANS "COULD NOT READ", NEVER "NO SUCH USER". Every
+ * account gets its `profiles` row from the `on_auth_user_created` trigger
+ * (migration 20260614030000), verified against the live database on 2026-08-28:
+ * 7 auth users, 7 profiles, none missing. So if the caller already holds a verified
+ * `userId`, that row exists by construction, and a read that comes back empty did
+ * not see it — an expired-JWT fallback to `anon` (which RLS answers with zero rows,
+ * measured: HTTP 406 / PGRST116), a statement timeout, or a transient network fault.
+ *
+ * Entitlement still FAILS CLOSED on that path, unchanged and deliberate. The only
+ * thing that changes is that the caller can now tell the difference.
+ */
+export function viewerFromProfileRead(
+  userId: string,
+  profile: ViewerProfileRow | null | undefined,
+): ViewerEntitlement {
+  if (!profile) {
+    return { ...SIGNED_OUT_VIEWER, userId, profileUnreadable: true };
+  }
+
+  const entitlementFields: EntitlementProfile = {
+    subscription_status: profile.subscription_status,
+    grace_until: profile.grace_until,
+    billing_blocked: profile.billing_blocked,
+  };
+
+  return {
+    userId,
+    entitled: hasAccess(entitlementFields),
+    reason: accessDenialReason(entitlementFields),
+    deletionScheduled: !!profile.deletion_scheduled_at,
+    acknowledgedDisclaimerAt: profile.acknowledged_disclaimer_at ?? null,
+    subscriptionStatus: profile.subscription_status ?? null,
+    billingBlocked: !!profile.billing_blocked,
+    email: profile.email ?? null,
+    displayName: profile.display_name ?? null,
+    profileUnreadable: false,
+  };
+}
+
+/**
+ * Should the first-login disclaimer modal be shown to this viewer?
+ *
+ * Two conditions, not one — and the second is the whole fix. Asking an unreadable
+ * viewer to acknowledge is not a harmless extra prompt: the only button on that
+ * modal WRITES, so a false prompt destroys the original acknowledgement date. That
+ * happened on the live site to the owner's own account on 2026-08-27, replacing a
+ * June record with an August one.
+ *
+ * A viewer we cannot read is therefore shown the app, not the gate. They may see a
+ * locked/free view for that one render — the existing fail-closed behaviour, which
+ * is recoverable — and the next request, whose token has been refreshed by the
+ * proxy, renders correctly. Nothing is written, so nothing can be lost.
+ */
+export function shouldShowOnboarding(viewer: ViewerEntitlement): boolean {
+  if (!viewer.userId) return false;
+  if (viewer.profileUnreadable) return false;
+  return !viewer.acknowledgedDisclaimerAt;
+}

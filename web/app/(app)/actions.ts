@@ -23,10 +23,48 @@ export async function acknowledgeDisclaimer(): Promise<{ ok: boolean }> {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false };
 
+  // ── The acknowledgement is WRITE-ONCE ───────────────────────────────────────
+  // It is a compliance record (locked decisions #23/#24): the date on which this
+  // person was shown the methodology and the disclaimer. Re-stamping it does not
+  // add information, it destroys the only copy of it.
+  //
+  // That is not hypothetical. On 2026-08-27 a failed profile read put the modal in
+  // front of an account that had acknowledged on 2026-06-15; pressing the only
+  // button on it replaced the June date with that day's, and the original is gone.
+  // The read is fixed in lib/entitlement.ts, and this is the second layer: if the
+  // gate is ever wrong again, being wrong costs nothing.
+  const { data: existing, error: readError } = await supabase
+    .from('profiles')
+    .select('acknowledged_disclaimer_at')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  // Never write blind. An unreadable row here is the same failure that produces a
+  // false prompt in the first place, so writing anyway would be writing on exactly
+  // the evidence we know to be untrustworthy. The user gets "please try again",
+  // which is honest and recoverable; a lost date is neither.
+  if (readError || !existing) {
+    console.error('acknowledgeDisclaimer: could not read the row before writing', {
+      userId: user.id,
+      code: readError?.code ?? 'zero_rows',
+    });
+    return { ok: false };
+  }
+
+  if (existing.acknowledged_disclaimer_at) {
+    // Already acknowledged. The modal should not have been shown — report success
+    // so the router refresh clears it rather than trapping the reader behind an
+    // error they cannot act on.
+    return { ok: true };
+  }
+
   const { error } = await supabase
     .from('profiles')
+    // `.is(...)` repeats the check as a WHERE clause so two tabs racing cannot both
+    // write. Postgres decides it, not the gap between our read and our write.
     .update({ acknowledged_disclaimer_at: new Date().toISOString() })
-    .eq('id', user.id);
+    .eq('id', user.id)
+    .is('acknowledged_disclaimer_at', null);
   if (error) {
     console.error('acknowledgeDisclaimer: update failed', error);
     return { ok: false };

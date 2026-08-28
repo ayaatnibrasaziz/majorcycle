@@ -4,10 +4,10 @@ import { redirect } from 'next/navigation';
 import { cache } from 'react';
 
 import {
-  hasAccess,
-  accessDenialReason,
-  type AccessDenialReason,
-  type EntitlementProfile,
+  SIGNED_OUT_VIEWER,
+  viewerFromProfileRead,
+  type ViewerEntitlement,
+  type ViewerProfileRow,
 } from '@/lib/entitlement';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -25,41 +25,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
  * Fails CLOSED: no session, no profile row, or a failed read all yield `entitled:
  * false`. See lib/entitlement.ts for why this is the opposite of trialGuard's posture.
  */
-export interface ViewerEntitlement {
-  /** Null when signed out. */
-  userId: string | null;
-  entitled: boolean;
-  /** Null when entitled; otherwise why not — drives the locked panel's copy. */
-  reason: AccessDenialReason | null;
-  /** True when the account is mid-deletion; callers must send these to /reactivate. */
-  deletionScheduled: boolean;
-  /** Present so callers needing onboarding state don't re-query. */
-  acknowledgedDisclaimerAt: string | null;
-  subscriptionStatus: string | null;
-  /**
-   * Dispute lock. Exposed separately from `subscriptionStatus` because it is an
-   * orthogonal dimension — a disputed account keeps its Stripe status — and any
-   * surface that DISPLAYS the status must say "on hold" instead of announcing the
-   * stale "Active" to someone who is locked out.
-   */
-  billingBlocked: boolean;
-  /** Shown on the header account menu. */
-  email: string | null;
-  /** Prefills the in-app support form, so a locked reader retypes nothing. */
-  displayName: string | null;
-}
-
-const SIGNED_OUT: ViewerEntitlement = {
-  userId: null,
-  entitled: false,
-  reason: 'no_subscription',
-  deletionScheduled: false,
-  acknowledgedDisclaimerAt: null,
-  subscriptionStatus: null,
-  billingBlocked: false,
-  email: null,
-  displayName: null,
-};
+export type { ViewerEntitlement } from '@/lib/entitlement';
 
 export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> => {
   const supabase = await createServerSupabaseClient();
@@ -67,35 +33,34 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
   // round-trip, matching the pattern in app/(app)/layout.tsx and the proxy.
   const { data: claimsData } = await supabase.auth.getClaims();
   const userId = claimsData?.claims?.sub ?? null;
-  if (!userId) return SIGNED_OUT;
+  if (!userId) return SIGNED_OUT_VIEWER;
 
-  const { data: profile } = await supabase
+  // maybeSingle(), not single(): `single()` raises PGRST116 for zero rows, so a
+  // genuine failure and an RLS-filtered read were already indistinguishable — and
+  // the error was being discarded anyway. maybeSingle() hands back both, and
+  // `viewerFromProfileRead` treats an empty row as unreadable rather than as a user
+  // who has never agreed to anything.
+  const { data: profile, error } = await supabase
     .from('profiles')
     .select(
       'email, display_name, subscription_status, grace_until, billing_blocked, acknowledged_disclaimer_at, deletion_scheduled_at',
     )
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
-  if (!profile) return { ...SIGNED_OUT, userId };
+  if (!profile) {
+    // The whole reason the 2026-08-27 incident could not be diagnosed after the
+    // fact: this read failed, said nothing, and the user simply saw a first-login
+    // modal. `error` is null when RLS filtered the row to nothing (the expired-JWT
+    // fallback to `anon`), which is itself the signal worth recording.
+    console.error('getViewerEntitlement: profile unreadable for a verified session', {
+      userId,
+      code: error?.code ?? 'zero_rows',
+      message: error?.message ?? 'RLS returned no row for a session we just verified',
+    });
+  }
 
-  const entitlementFields: EntitlementProfile = {
-    subscription_status: profile.subscription_status,
-    grace_until: profile.grace_until,
-    billing_blocked: profile.billing_blocked,
-  };
-
-  return {
-    userId,
-    entitled: hasAccess(entitlementFields),
-    reason: accessDenialReason(entitlementFields),
-    deletionScheduled: !!profile.deletion_scheduled_at,
-    acknowledgedDisclaimerAt: profile.acknowledged_disclaimer_at ?? null,
-    subscriptionStatus: profile.subscription_status ?? null,
-    billingBlocked: !!profile.billing_blocked,
-    email: profile.email ?? null,
-    displayName: profile.display_name ?? null,
-  };
+  return viewerFromProfileRead(userId, profile as ViewerProfileRow | null);
 });
 
 /**
