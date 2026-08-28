@@ -1,14 +1,33 @@
 import Link from 'next/link';
 
-import {
-  LEARN_INDEX_PATH,
-  LEARN_THEMES,
-  type LearnArticle,
-  learnDate,
-  learnPath,
-} from '@/lib/learn';
+import { learnDate } from '@/lib/learn';
 import { LegalNotice } from './LegalNotice';
 import { PageFrame } from './PageFrame';
+
+/**
+ * The minimum an article must carry to be rendered here.
+ *
+ * ⚠️ **Structural, not a convenience.** This component was typed to
+ * `LearnArticle` until 2026-08-29, when `/articles` was built and the owner's
+ * instruction was that the article page "gets no new design" — the live Learn
+ * pages already show it. Reusing the component is the only way to honour that:
+ * a second card built to the same spec is a copy free to drift (CLAUDE.md 11c),
+ * and the drift would be invisible, because both pages would keep rendering
+ * perfectly. So the type widened to the four fields the card actually reads,
+ * and the two sections differ only in the data they hand it.
+ */
+export interface DocArticle {
+  readonly title: string;
+  readonly answer: string;
+  readonly published: string;
+  readonly reviewed: string;
+}
+
+/** A link out of the article, for the breadcrumb and the related list. */
+export interface DocLink {
+  readonly href: string;
+  readonly label: string;
+}
 
 /**
  * One Learn article.
@@ -55,16 +74,22 @@ import { PageFrame } from './PageFrame';
  */
 export function ArticleDoc({
   article,
+  section,
   related,
+  footerNote,
   children,
 }: {
-  article: LearnArticle;
-  /** Other articles under the same theme. May be empty — the library is new. */
-  related: readonly LearnArticle[];
+  article: DocArticle;
+  /** Where this article belongs — the breadcrumb, and the crawler's only signal
+   *  that the page is part of a section. */
+  section: DocLink;
+  /** Sibling articles. May be empty — a section starts with one piece. */
+  related: readonly DocLink[];
+  /** The closing invitation. Supplied by the section, because Learn's wording
+   *  ("browse the rest of the library") is wrong for a dated article list. */
+  footerNote: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const theme = LEARN_THEMES.find((t) => t.id === article.theme);
-
   return (
     <PageFrame width="prose">
       <article className="doc-scale overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-sm)]">
@@ -79,10 +104,10 @@ export function ArticleDoc({
                 this is also the only internal link telling a crawler that the
                 article belongs to a section. */}
             <Link
-              href={LEARN_INDEX_PATH}
+              href={section.href}
               className="micro no-underline text-[var(--text-secondary)]"
             >
-              Learn{theme ? ` · ${theme.label}` : ''}
+              {section.label}
             </Link>
 
             <h1 className="mt-[6px]">{article.title}</h1>
@@ -154,8 +179,8 @@ export function ArticleDoc({
                 <p className="micro text-[var(--text-secondary)]">Related</p>
                 <ul className="mt-2.5 list-none pl-0">
                   {related.map((r) => (
-                    <li key={r.slug} className="mt-0">
-                      <Link href={learnPath(r.slug)}>{r.title}</Link>
+                    <li key={r.href} className="mt-0">
+                      <Link href={r.href}>{r.label}</Link>
                     </li>
                   ))}
                 </ul>
@@ -167,9 +192,7 @@ export function ArticleDoc({
                 offer is here because it would be strange to hide it, not because
                 the article is bait. */}
             <p className={`small text-[var(--text-secondary)]${related.length > 0 ? ' mt-6' : ''}`}>
-              MajorCycle runs this analysis on listed companies across the US,
-              Australia and Canada. <Link href="/">See how it works</Link>, or{' '}
-              <Link href={LEARN_INDEX_PATH}>browse the rest of the library</Link>.
+              {footerNote}
             </p>
           </footer>
         </div>

@@ -208,6 +208,7 @@ const PAGE_FILE = {
   '/pricing': 'app/(public)/pricing/page.tsx',
   '/contact': 'app/(public)/contact/page.tsx',
   '/learn': 'app/(public)/learn/page.tsx',
+  '/articles': 'app/(public)/articles/page.tsx',
   '/disclaimer': 'app/(public)/disclaimer/page.tsx',
   '/terms': 'app/(public)/terms/page.tsx',
   '/privacy': 'app/(public)/privacy/page.tsx',
@@ -283,49 +284,75 @@ for (const page of pages ?? []) {
 const stripComments = (src) =>
   src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
-const LEARN_ROUTE = 'app/(public)/learn/[slug]/page.tsx';
-const learnRouteRaw = read(LEARN_ROUTE);
-const learnRoute = learnRouteRaw ? stripComments(learnRouteRaw) : learnRouteRaw;
-check();
-if (!learnRoute) {
-  fail(`${LEARN_ROUTE} is missing, but lib/learn.ts registers articles that derive their public paths from it.`);
-} else {
+/**
+ * ⚠️ **A LOOP, NOT A SECOND COPY.** `/articles/[slug]` arrived on 2026-08-29 with
+ * exactly the same requirements as `/learn/[slug]`, and the cheapest thing to
+ * type would have been to paste this block and change the paths. That is the
+ * defect CLAUDE.md 11c keeps naming: two checks that agree today, one of which
+ * quietly stops being updated — and the symptom is a whole section of the site
+ * silently unguarded while the script still prints a pass.
+ */
+const DYNAMIC_SECTIONS = [
+  {
+    route: 'app/(public)/learn/[slug]/page.tsx',
+    registry: 'lib/learn.ts',
+    array: 'LEARN_ARTICLES',
+    type: 'LearnArticle',
+    spread: /\.\.\.LEARN_ARTICLES\.map\(/,
+  },
+  {
+    route: 'app/(public)/articles/[slug]/page.tsx',
+    registry: 'lib/articles.ts',
+    array: 'ARTICLES',
+    type: 'Article',
+    spread: /\.\.\.ARTICLES\.map\(/,
+  },
+];
+
+for (const sec of DYNAMIC_SECTIONS) {
+  const routeRaw = read(sec.route);
+  const route = routeRaw ? stripComments(routeRaw) : routeRaw;
   check();
-  if (!/pageMetadata\(\{/.test(learnRoute)) {
-    fail(`${LEARN_ROUTE}: metadata must come from pageMetadata() like every other public page, or articles ship with no canonical and no Open Graph — on the pages whose entire job is to be found.`);
+  if (!route) {
+    fail(`${sec.route} is missing, but ${sec.registry} registers entries that derive their public paths from it.`);
+    continue;
   }
   check();
-  if (!/generateStaticParams/.test(learnRoute)) {
-    fail(`${LEARN_ROUTE}: must export generateStaticParams so every registered article is pre-rendered rather than built on first request.`);
+  if (!/pageMetadata\(\{/.test(route)) {
+    fail(`${sec.route}: metadata must come from pageMetadata() like every other public page, or these pages ship with no canonical and no Open Graph — on the pages whose entire job is to be found.`);
+  }
+  check();
+  if (!/generateStaticParams/.test(route)) {
+    fail(`${sec.route}: must export generateStaticParams so every registered entry is pre-rendered rather than built on first request.`);
   }
   // The soft-404 guard. A dynamic route that answers 200 with an empty shell for
   // any URL typed at it is read far more harshly by Google than an honest 404,
   // and it is completely silent — the page looks fine, it just says nothing.
   check();
-  if (!/notFound\(\)/.test(learnRoute)) {
-    fail(`${LEARN_ROUTE}: an unregistered slug must call notFound(). A dynamic route that renders a blank page for any URL is a soft-404 farm.`);
+  if (!/notFound\(\)/.test(route)) {
+    fail(`${sec.route}: an unregistered slug must call notFound(). A dynamic route that renders a blank page for any URL is a soft-404 farm.`);
   }
-}
 
-// The registry itself must stay free of React, because lib/seo.ts imports it and
-// proxy.ts imports lib/seo.ts — so anything pulled in here is pulled into the
-// MIDDLEWARE bundle, which runs on every request to the site.
-const learnLibRaw = read('lib/learn.ts');
-const learnLib = learnLibRaw ? stripComments(learnLibRaw) : learnLibRaw;
-check();
-if (!learnLib) {
-  fail('lib/learn.ts is missing — it is the source PUBLIC_PAGES derives every article path from.');
-} else {
+  // The registry itself must stay free of React, because lib/seo.ts imports it
+  // and proxy.ts imports lib/seo.ts — so anything pulled in here joins the
+  // MIDDLEWARE bundle, which runs on every request to the site.
+  const libRaw = read(sec.registry);
+  const lib = libRaw ? stripComments(libRaw) : libRaw;
   check();
-  if (/from\s+'react'|\.tsx'|next\/link/.test(learnLib)) {
-    fail('lib/learn.ts must stay free of React and component imports. lib/seo.ts imports it and proxy.ts imports lib/seo.ts, so a component here joins the middleware bundle that runs on every request.');
+  if (!lib) {
+    fail(`${sec.registry} is missing — it is the source PUBLIC_PAGES derives every one of those paths from.`);
+    continue;
   }
-  // `satisfies`, not an annotation — an explicit `: readonly LearnArticle[]`
-  // widens every slug to `string`, which silently destroys the compile-time
-  // check that every registered article has a body in content.tsx.
   check();
-  if (!/\]\s*as const satisfies readonly LearnArticle\[\]/.test(learnLib)) {
-    fail('lib/learn.ts: LEARN_ARTICLES must end `] as const satisfies readonly LearnArticle[]`. An explicit type annotation widens slug to `string`, and the Record<LearnSlug, …> body map then stops requiring a body per article — the guard evaporates and the first symptom is a blank page.');
+  if (/from\s+'react'|\.tsx'|next\/link/.test(lib)) {
+    fail(`${sec.registry} must stay free of React and component imports. lib/seo.ts imports it and proxy.ts imports lib/seo.ts, so a component here joins the middleware bundle that runs on every request.`);
+  }
+  // `satisfies`, not an annotation — an explicit `: readonly X[]` widens every
+  // slug to `string`, which silently destroys the compile-time check that every
+  // registered entry has a body in content.tsx.
+  check();
+  if (!new RegExp(`\\]\\s*as const satisfies readonly ${sec.type}\\[\\]`).test(lib)) {
+    fail(`${sec.registry}: ${sec.array} must end \`] as const satisfies readonly ${sec.type}[]\`. An explicit type annotation widens slug to \`string\`, and the Record<Slug, …> body map then stops requiring a body per entry — the guard evaporates and the first symptom is a blank page.`);
   }
 }
 
@@ -337,9 +364,11 @@ if (!learnLib) {
 // the check that exists to catch it earlier said nothing.
 const seoCode = stripComments(seo);
 
-check();
-if (!/\.\.\.LEARN_ARTICLES\.map\(/.test(seoCode)) {
-  fail('lib/seo.ts: PUBLIC_PAGES must spread the Learn registry. Typed out by hand, an article can be live and absent from the sitemap, absent from the middleware allow-list, and rejected by pageMetadata() — while rendering perfectly.');
+for (const sec of DYNAMIC_SECTIONS) {
+  check();
+  if (!sec.spread.test(seoCode)) {
+    fail(`lib/seo.ts: PUBLIC_PAGES must spread ${sec.array} from ${sec.registry}. Typed out by hand, an entry can be live and absent from the sitemap, absent from the middleware allow-list, and rejected by pageMetadata() — while rendering perfectly.`);
+  }
 }
 
 // ── 3b. a retired route still answers ───────────────────────────────────────

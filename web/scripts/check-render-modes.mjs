@@ -55,6 +55,9 @@ const MUST_BE_STATIC = [
   ['/disclaimer', 'disclaimer.html'],
   ['/contact', 'contact.html'],
   ['/learn/what-is-a-drawdown', join('learn', 'what-is-a-drawdown.html')],
+  ['/articles', 'articles.html'],
+  ['/articles/how-far-do-asx-shares-fall',
+    join('articles', 'how-far-do-asx-shares-fall.html')],
 ];
 
 /**

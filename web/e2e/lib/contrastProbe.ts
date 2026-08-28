@@ -239,6 +239,23 @@ export const SENTINEL = {
 export const MIN_MEASURED = {
   reading: 20,
   landing: 120,
+  /**
+   * `/articles`, which is laid out like the landing page but is nowhere near as
+   * dense — so it needs its own floor rather than the landing's.
+   *
+   * ⚠️ MEASURED, not guessed, and grounded the same way `app` below is: the page
+   * carries **65** measurable elements, of which the public header and footer are
+   * **19**. A page that rendered nothing but its chrome therefore measures 19, and
+   * 40 sits comfortably above that while leaving 25 of slack for ordinary content
+   * edits.
+   *
+   * ⚠️ Sharing `landing: 120` is what this replaced, and the failure is worth
+   * naming: the assertion did not report a contrast problem, it reported "rendered
+   * too little to measure". A floor calibrated for a different page fails on a page
+   * that is entirely correct — and the tempting fix is to lower the shared number,
+   * which would quietly weaken the landing's control at the same time.
+   */
+  articles: 40,
   form: 15,
   /**
    * The signed-in pages. Real sizes, not round guesses, and each is a floor the

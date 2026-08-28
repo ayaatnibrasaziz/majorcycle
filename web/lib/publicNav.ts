@@ -1,3 +1,4 @@
+import { ARTICLES_INDEX_PATH } from '@/lib/articles';
 import { PUBLIC_PAGES } from '@/lib/seo';
 
 /**
@@ -28,9 +29,19 @@ import { PUBLIC_PAGES } from '@/lib/seo';
  */
 export const HOW_IT_WORKS_HREF = '/#how-it-works';
 
-/** The header's links. Kept short on purpose — the footer carries the long tail. */
+/**
+ * The header's links. Kept short on purpose — the footer carries the long tail.
+ *
+ * ⚠️ Articles sits BEFORE Learn, which is the reverse of the order they were
+ * built in. The two sections answer different questions and the first is the one
+ * a stranger arriving from a search result is more likely to want: Articles is
+ * what we found, Learn is what the words mean. A reader who needs the
+ * vocabulary first is one click away either way; a reader who wants the finding
+ * should not have to go through a glossary to reach it.
+ */
 export const NAV_LINKS = [
   { href: HOW_IT_WORKS_HREF, label: 'How it works' },
+  { href: ARTICLES_INDEX_PATH, label: 'Articles' },
   { href: '/learn', label: 'Learn' },
   { href: '/pricing', label: 'Pricing' },
 ] as const;
@@ -65,6 +76,7 @@ export const LEGAL_DOCS = [
 export const FOOTER_LINKS = [
   { href: '/', label: 'Home' },
   { href: HOW_IT_WORKS_HREF, label: 'How it works' },
+  { href: ARTICLES_INDEX_PATH, label: 'Articles' },
   { href: '/learn', label: 'Learn' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/contact', label: 'Contact' },

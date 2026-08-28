@@ -23,6 +23,7 @@ const BUILT_PUBLIC_PAGES = [
   '/privacy',
   '/contact',
   '/learn',
+  '/articles',
 ];
 
 test.describe('unauthenticated gating', () => {

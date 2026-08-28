@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 
+import { ARTICLES, articlePath } from '../lib/articles';
 import { LEARN_ARTICLES, learnPath } from '../lib/learn';
 // ⚠️ The probe, the sentinels and `measure()` live in ONE module, shared with
 // `app-contrast.spec.ts` (the signed-in pages). They were inlined here until
@@ -91,6 +92,11 @@ const READING_PAGES = [
   '/privacy',
   '/learn',
   ...LEARN_ARTICLES.map((a) => learnPath(a.slug)),
+  // The article PAGES are prose in the same card as a legal document, so they
+  // belong here. The `/articles` INDEX is a laid-out page like the landing and is
+  // measured by `LAID_OUT_PAGES` below — same probe, same floor, different
+  // sentinel, because `measure()` waits on `.reading` computing to 17px.
+  ...ARTICLES.map((a) => articlePath(a.slug)),
 ];
 
 /**
@@ -106,7 +112,7 @@ const READING_PAGES = [
  * Same probe, same floor, same KNOWN_DEFERRED. Only the proof-the-stylesheet-is-
  * live sentinel differs, and the sticky header is a stronger one here anyway.
  */
-const LAID_OUT_PAGES = ['/'];
+const LAID_OUT_PAGES = ['/', '/articles'];
 
 /**
  * The other six public pages — the ones a reader OPERATES rather than reads.
@@ -210,17 +216,24 @@ for (const path of READING_PAGES) {
 
 for (const path of LAID_OUT_PAGES) {
   test(`${path} — every readable element clears the WCAG floor`, async ({ page }) => {
-    const probe = await measure(page, path, 'chrome', MIN_MEASURED.landing);
+    // ⚠️ EACH LAID-OUT PAGE CARRIES ITS OWN FLOOR. They share a sentinel, not a
+    // size: the landing runs to ~290 measurable elements and `/articles` to 65, so
+    // one number cannot be a meaningful control for both. Sharing the landing's 120
+    // failed `/articles` on a page that was entirely correct — and the tempting
+    // fix, lowering the shared number, would have weakened the landing's control
+    // without anyone noticing.
+    const floor = path === '/articles' ? MIN_MEASURED.articles : MIN_MEASURED.landing;
+    const probe = await measure(page, path, 'chrome', floor);
 
-    // The control, at the landing page's own scale: it carries far MORE text than
-    // an article, so a low floor here would be meaningless. Eight sections, a
-    // ten-column table and two rulers put this well over 200 elements.
+    // The control, at each page's own scale. Both floors are measured rather than
+    // guessed, and both sit well above what the shared chrome alone can produce —
+    // 19 elements — so a page that failed to render can never satisfy either.
     expect(
       probe.measured,
       `${path} rendered too little to measure — skipped ${JSON.stringify(probe.skipped)}. ` +
         'A high `transparent` count means the text is there but dimmed to nothing ' +
         '(an un-fired reveal), NOT that the page failed to render.',
-    ).toBeGreaterThanOrEqual(MIN_MEASURED.landing);
+    ).toBeGreaterThanOrEqual(floor);
 
     expect(
       unexpected(probe),

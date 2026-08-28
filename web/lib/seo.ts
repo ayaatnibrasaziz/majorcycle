@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ARTICLES, articlePath } from '@/lib/articles';
 import { LEARN_ARTICLES, learnPath } from '@/lib/learn';
 import { SITE_ORIGIN } from '@/lib/url';
 
@@ -97,6 +98,11 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   { path: '/pricing', index: true },
   { path: '/contact', index: true },
   { path: '/learn', index: true },
+  // ⚠️ A LITERAL, not `ARTICLES_INDEX_PATH`. `scripts/check-seo.mjs` parses this
+  // block as TEXT, so a constant here is invisible to it — the page would drop
+  // out of the guard's page count and its pageMetadata() call would stop being
+  // checked, while everything still rendered (14g).
+  { path: '/articles', index: true },
   { path: '/disclaimer', index: true },
   { path: '/terms', index: true },
   { path: '/privacy', index: true },
@@ -122,6 +128,18 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   // sitemap.xml. A static guard that cannot see the thing it guards is worse
   // than none, because it reports success (CLAUDE.md 14g).
   ...LEARN_ARTICLES.map((a) => ({ path: learnPath(a.slug), index: true })),
+
+  // ── Every ARTICLE, derived the same way, for the same reasons ─────────────
+  //
+  // ⚠️ Two registries, one derivation each, and neither may be typed out by
+  // hand. The failure this prevents is the quiet one: a piece that renders
+  // perfectly, is reachable if you know the URL, and is missing from the
+  // sitemap, missing from the middleware allow-list, and rejected by
+  // `pageMetadata()` at build time. `check:seo` parses this block with a regex
+  // and cannot see a spread at all, so `e2e/articles.spec.ts` asserts the
+  // rendered outcome instead — every registered article answering 200, with its
+  // own canonical, and present in the real sitemap.xml (CLAUDE.md 14g).
+  ...ARTICLES.map((a) => ({ path: articlePath(a.slug), index: true })),
 
   // ── Crawlable but NOT indexable ────────────────────────────────────────────
   // A sign-in form is not a search result. `/deletion-requested` additionally

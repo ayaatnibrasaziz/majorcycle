@@ -1,8 +1,16 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { ArticleDoc } from '@/components/ArticleDoc';
-import { LEARN_ARTICLES, articlesByTheme, findArticle, learnPath } from '@/lib/learn';
+import {
+  LEARN_ARTICLES,
+  LEARN_INDEX_PATH,
+  LEARN_THEMES,
+  articlesByTheme,
+  findArticle,
+  learnPath,
+} from '@/lib/learn';
 import { pageMetadata } from '@/lib/seo';
 import { articleJsonLd, jsonLdScript } from '@/lib/jsonld';
 import { JsonLd } from '@/components/JsonLd';
@@ -79,7 +87,10 @@ export default async function LearnArticlePage({
   // completely deliberate (11j).
   if (!Body) notFound();
 
-  const related = articlesByTheme(article.theme).filter((a) => a.slug !== article.slug);
+  const related = articlesByTheme(article.theme)
+    .filter((a) => a.slug !== article.slug)
+    .map((a) => ({ href: learnPath(a.slug), label: a.title }));
+  const theme = LEARN_THEMES.find((t) => t.id === article.theme);
 
   return (
     <>
@@ -89,8 +100,26 @@ export default async function LearnArticlePage({
           suddenly shared 20+ eight-word runs reading "context https schema org
           graph type article headline". A `<script>` is invisible on screen and
           very much visible to anything that reads text out of the DOM. */}
-      <JsonLd json={jsonLdScript([articleJsonLd(article)])} />
-      <ArticleDoc article={article} related={related}>
+      <JsonLd
+        json={jsonLdScript([
+          articleJsonLd(article, learnPath(article.slug), theme?.label),
+        ])}
+      />
+      <ArticleDoc
+        article={article}
+        section={{
+          href: LEARN_INDEX_PATH,
+          label: `Learn${theme ? ` · ${theme.label}` : ''}`,
+        }}
+        related={related}
+        footerNote={
+          <>
+            MajorCycle runs this analysis on listed companies across the US, Australia
+            and Canada. <Link href="/">See how it works</Link>, or{' '}
+            <Link href={LEARN_INDEX_PATH}>browse the rest of the library</Link>.
+          </>
+        }
+      >
         <Body />
       </ArticleDoc>
     </>

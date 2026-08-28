@@ -1,4 +1,3 @@
-import { LEARN_THEMES, type LearnArticle } from '@/lib/learn';
 import { OG_IMAGE, pageUrl } from '@/lib/seo';
 import { SITE_ORIGIN } from '@/lib/url';
 
@@ -62,15 +61,37 @@ export function websiteJsonLd(): Record<string, unknown> {
 }
 
 /**
- * One Learn article.
+ * One article — from either section.
  *
  * ⚠️ `dateModified` is the registry's `reviewed`, not `published`. That field
  * already means "last checked against the running product", which is exactly
  * what `dateModified` is for — and it means a re-verified article tells Google
  * so, rather than looking abandoned.
+ *
+ * ⚠️ **THE PATH IS DERIVED FROM THE ARTICLE, NEVER TEMPLATED HERE.** This built
+ * its URL as `/learn/${slug}` until 2026-08-29, which was correct while one
+ * section existed and would have published `/learn/how-far-do-asx-shares-fall`
+ * as the `@id` and `url` of a page living at `/articles/...` — a JSON-LD block
+ * pointing at a 404, disagreeing with the canonical tag on the same page, and
+ * rendering perfectly for anyone looking at it. A hard-coded section prefix in a
+ * shared helper is the "one rule, one place" defect waiting for its second
+ * caller (CLAUDE.md 11c-iv).
  */
-export function articleJsonLd(article: LearnArticle): Record<string, unknown> {
-  const url = pageUrl(`/learn/${article.slug}`);
+export interface JsonLdArticle {
+  readonly title: string;
+  readonly summary: string;
+  readonly published: string;
+  readonly reviewed: string;
+}
+
+export function articleJsonLd(
+  article: JsonLdArticle,
+  /** The page's own path — the same value its canonical tag carries. */
+  path: string,
+  /** `articleSection`. Optional: a section with no sub-grouping omits it. */
+  section?: string,
+): Record<string, unknown> {
+  const url = pageUrl(path);
   return {
     '@type': 'Article',
     headline: article.title,
@@ -80,7 +101,7 @@ export function articleJsonLd(article: LearnArticle): Record<string, unknown> {
     datePublished: article.published,
     dateModified: article.reviewed,
     inLanguage: 'en-AU',
-    articleSection: LEARN_THEMES.find((t) => t.id === article.theme)?.label,
+    articleSection: section,
     image: [OG_IMAGE.url],
     author: { '@id': ORG_ID },
     publisher: { '@id': ORG_ID },
