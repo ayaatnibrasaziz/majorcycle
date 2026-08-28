@@ -1864,4 +1864,123 @@ page *plus* full-suite parallel load. The verification is therefore the whole su
 
 ---
 
+## Two live defects reported by the OWNER, 2026-08-28
+
+Neither came from this audit. Both were found by a person using the product and noticing
+something odd, which is worth recording on its own: the suite was green, every gate passed, and
+both bugs were sitting in merged, production code.
+
+### F-031 (RED) A failed profile read was shown to the customer as "you have never agreed" - and the only way past it DESTROYED the record - FIXED 2026-08-28
+
+**What the owner saw.** Signed in on a laptop, went to `majorcycle.com`, was redirected to
+`/stocks` and met the first-login disclaimer gate - on an account created 2026-06-15 that had
+acknowledged months earlier. They pressed *Agree*. Hours later, on a second laptop, the gate
+appeared again; they closed the tab instead, reopened the site, and went straight through.
+
+**The defect.** `getViewerEntitlement` read the caller's `profiles` row and discarded the error:
+
+```ts
+const { data: profile } = await supabase.from('profiles')...   // no `error`
+if (!profile) return { ...SIGNED_OUT, userId };                // "no row" === "unreadable"
+```
+
+Every field then came back null, `acknowledgedDisclaimerAt` among them, and `app/(app)/layout.tsx`
+gated the modal on that field alone. So one unreadable read presented as *this person has never
+agreed to anything*.
+
+WARNING: **A FALSE PROMPT IS NOT A COSMETIC FAULT WHEN THE PROMPT WRITES.** The modal has one
+button and it stamps `acknowledged_disclaimer_at = now()`. Confirmed on the live database: the
+account created `2026-06-15 12:54:52` carried an acknowledgement of `2026-08-27 04:09:48`, while
+its sibling created a day later still showed its own, three minutes after signup. **A compliance
+record under locked decisions #23/#24 was overwritten by the bug's own remedy.**
+
+**Why a null row here always means "unreadable".** `on_auth_user_created` (migration
+`20260614030000`) creates the row for every account; verified live, 7 auth users and 7 profiles.
+So for a caller holding a verified `userId`, the row exists by construction and an empty read did
+not see it. Reproduced against the live project: the expired-JWT fallback to `anon` answers
+**HTTP 406 / PGRST116, "0 rows"** - an *error*, discarded. Corroborating: the owner's
+`last_sign_in_at` was **2026-08-12**, fifteen days before the incident, so the access token was
+certainly stale.
+
+WARNING: **The `anon` SELECT grant that produces this is deliberate and stays** (F-024, the RLS
+section above). Its justification was that a 0-row read is *"the safe direction"* - true for
+entitlement, and exactly backwards for the disclaimer flag, where empty means "prompt them, then
+write". **One reading of the same value was safe and the other was destructive, and only
+entitlement had been considered.**
+
+**Fixed in three places, because the gate and the write fail differently:**
+
+| Layer | Change |
+|---|---|
+| Meaning | `viewerFromProfileRead()` sets `profileUnreadable`; unreadable is no longer the same value as never-agreed |
+| Gate | `shouldShowOnboarding()` needs the timestamp absent **and** the row readable |
+| Write | `acknowledgeDisclaimer()` is write-once - it reads first, returns early if a date exists, and repeats the check as an `.is(..., null)` filter on the UPDATE so two tabs cannot race |
+
+Entitlement still **fails closed** on an unreadable read, unchanged and deliberate; the guard
+asserts that as a control, because a fix that quietly opened the paywall would pass every other
+assertion. The mapping moved to `lib/entitlement.ts` (pure) so it can be driven by a
+credential-free spec - `lib/entitlement.server.ts` carries `import 'server-only'`, which takes the
+whole suite down rather than failing one file. Guarded by `web/e2e/onboarding-gate.spec.ts`
+(7 tests), broken on purpose in both directions first: restoring the bare null check went red, and
+so did an over-correction that never prompts anyone.
+
+**Data.** The destroyed date is not recoverable. Reconstructed to `2026-06-15T12:54:52.172869Z` -
+the account's own creation instant - because that is the last timestamp still provable and it
+invents no precision. Recorded in `architecture.md` 6.6 as a reconstruction, so it is never
+mistaken for a measurement.
+
+### F-032 (RED) A nightly refresh DELETED 15 market caps because the provider omitted one field - FIXED 2026-08-28
+
+Found while building the article's verification workbook: a published figure would not reproduce.
+The S&P 500 "largest 60" median came out **-18.7%** against the **-19.0%** printed two days
+earlier, on identical code and an identical method.
+
+**The cause was not the study.** The refresh of 2026-08-27 wrote `market_cap = NULL` for 15 of 863
+companies - Salesforce, Lowe's, Micron, AutoZone, Kroger among them, all large and actively
+traded - because yfinance's `info` blob simply did not contain `marketCap` that night. Nothing
+raised. The value arrived as `None`, and:
+
+```python
+"market_cap": fund.market_cap if fund else None,   # overwrites a good figure with nothing
+```
+
+WARNING: **THE IDENTICAL RULE WAS ALREADY IN THAT FUNCTION, TEN LINES BELOW, GUARDING `news`:**
+*"Only overwrite when we actually got items, so a transient yfinance hiccup never wipes the
+previously-stored news for a ticker."* It was never given to `market_cap`. **11c-iv, in the same
+function as its own precedent.**
+
+**Why it was invisible.** A null cap is a blank cell, not an error. It drops a company out of any
+size-ranked cohort silently, and `fcf_yield_pct` - computed from the cap, and an input to
+Financial Health - went null with it on all 15. It took a study that ranks *by* market cap, run
+three days later by someone checking arithmetic, to surface it.
+
+**Fixed on both sides, because either alone leaves a hole:**
+
+- **Provider** - `_extract_fundamentals` falls back to `fast_info` when `info` has no cap. That
+  endpoint carried one for all 15, so we are less often empty-handed.
+- **Writer** - `_with_market_cap()` adds the column **only** when there is a value. An upsert
+  builds its `SET` list from the columns present, so omitting the key preserves what is stored
+  while sending `None` deletes it. This is the load-bearing half: it holds whatever the next
+  upstream failure turns out to be.
+
+**And a nightly invariant, because the fix should not have to be the only thing watching.**
+`check_invariants()` now fails when more than **0.5%** of rows lack a cap. WARNING: **that floor
+was measured, not chosen.** The real event was 15 of 871 - **1.7%** - so the 2% threshold written
+first would have passed the very incident the check is named after. *A guard tuned above the
+defect it exists for is worse than no guard: it reports "clean" with authority.*
+
+Guarded by `analytics/tests/test_market_cap_preserved.py` (9 tests), broken on purpose in both
+directions. The load-bearing assertion is `"market_cap" not in row` - **absence, never `is
+None`** - because in Python those are one value and to Postgres they are opposite instructions,
+and a test written the loose way passes on the broken code.
+
+**Data repaired:** all 15 refetched through the real provider (so `normalise_fundamentals` runs
+and a cross-currency FCF yield is still withheld) and written with `UPDATE`, not upsert - a repair
+names the columns it changes. 0 of 871 now missing; the nightly invariants run clean against the
+live universe. WARNING: **the repair holds only until the next US+CA refresh (22:30 UTC) unless
+this branch is merged** - a scheduled workflow checks out the default branch, so it will run the
+old code (14g).
+
+---
+
 *Log continues as the audit proceeds.*

@@ -148,6 +148,8 @@ These rules cannot be bent. If a task seems to require breaking one, **stop and 
 
 7. **Never put HTML comments (`<!-- -->`) inside JavaScript template literals.** Browser parser breaks.
 
+    ⚠️ **A BACKTICK is the same defect and easier to type by accident** (2026-08-26). A CSS comment inside a template literal — `` /* .briefing is `display:flex` */ `` — terminates the literal there; the rest of the file becomes invalid syntax and the page renders **nothing at all**. Not a broken page, an *empty* one, from a line that reads as a comment. Use straight quotes inside any comment that lives in a template literal. ⚠️ And when you fix it, prove the script **ran** — the console buffer survives navigation, so a stale `SyntaxError` sits there looking current while the page works (`coding-standards.md` §38).
+
 8. **CrosshairPlugin must guard against radar/doughnut/pie chart types** in `afterDraw` and `afterEvent` callbacks.
 
 9. **DataProvider interface is sacred.** No code outside `analytics/providers/` may import `yfinance` directly. Phase 2 FMP migration must be a one-file change.
@@ -251,6 +253,26 @@ Fixed with `.figure-list` (`design-system.md` §11), the same opt-out shape as `
 11d. **A second BUILD of the same components is a second product — test the artifact, never the source it came from.** The offline report (`web/report-bundle/`) is compiled by **esbuild**, not Next, from the same `.tsx` files the site uses. So `pnpm typecheck`, `pnpm lint` and every source-reading guard can be green while the thing a customer downloads is a **blank page** — which it was, for every stock, from **2026-08-01 to 2026-08-05**. The file was flawless on inspection (correct title, 2.6 MB payload, 1.09 MB script) and threw `ReferenceError: process is not defined` on load. **The cause was not in the report code at all**: `KpiStrip` → `PremiumLock` → `UpgradeDialog` → `next/link` pulled Next's client router in, and its module scope reads `process.env.__NEXT_ROUTER_BASEPATH`. esbuild's `define` rewrites only the **exact** string given, so the existing `process.env.NODE_ENV` entry left 14 siblings intact. Note the shape: **an import three components away, in a file nobody editing the report would open.** Fixed with a `process` shim in the bundle banner — a shim, not more `define` entries, so the next stray import *degrades* rather than blanks. The real protection is **`web/e2e/report-download.spec.ts`**, which downloads the actual file and opens it over `file://`, asserting it mounts, throws nothing and draws its charts — the **outcome**, so it stays valid when the next breakage is some other import. ⚠️ **It must be `file://`**: a blob URL in an iframe inherits the site's CSP, which blocks the inline script and blanks the page for a completely unrelated reason — an hour lost to a false positive. And e2e had *always* covered the report **route** (which returns JSON and was fine); covering a URL is not covering an artifact.
 
 11e. **"I could not read it" and "it does not exist" are different answers — never let one return value mean both.** `fetchStockDetail` funnelled all four of its read-failure paths into the same `return null` that means *not in our universe*, and every caller then did the only thing that value permits: `notFound()` on the page, `404 Not found` from the report route. So a Supabase timeout reached a **paying subscriber as "Stock not found"** — a permanent answer to a transient problem, nothing logged, nothing to retry, and the owner cannot debug it from the outside. Fixed 2026-08-07: read failures throw `StockReadError` (carrying the PostgREST error as `cause`, so it survives into the Vercel logs), `null` keeps exactly one meaning, the route answers **503 + `Retry-After`** and the page reaches the existing "Try again" boundary. ⚠️ **Catch it in route handlers rather than letting it throw** — an uncaught error yields a 500 whose headers we don't set, and every response there is per-viewer (11a). **The second cost is worse than the first: it blinds you.** An intermittent 404 on an *entitled* viewer's report was read as an entitlement fault for an entire session, because the true cause was being swallowed one layer below where anyone was looking — the same shape as `check_invariants()` reporting zero violations over a universe missing the field it reads (14g). **An unreadable answer reported as a clean one is the most expensive kind of lie a program can tell.** Guarded by `web/e2e/stock-read-errors.spec.ts`, which drives the real `readStockRow`/`loadPriceBars` with a stub client — pure, credential-free, and carrying **controls** proving a genuine absence is still `null`, since "throw on everything" would otherwise pass every test.
+
+**A THIRD TIME, 2026-08-27, AND THIS TIME THE WRONG ANSWER WROTE TO THE DATABASE.**
+`getViewerEntitlement` funnelled its `profiles` read the same way — `const { data: profile }`,
+error discarded, `if (!profile)` — so an unreadable row produced `acknowledgedDisclaimerAt: null`,
+and `(app)/layout.tsx` gated the first-login disclaimer on that field alone. The owner, signed in
+on an account that had acknowledged in **June**, was shown the onboarding gate. ⚠️ **The gate has
+one button and it WRITES.** Pressing it stamped `now()` over the June date, and the original — a
+compliance record under #23/#24 — is gone. Confirmed on the live DB: created `2026-06-15 12:54`,
+acknowledged `2026-08-27 04:09`, while a sibling account created a day later still shows its own
+three minutes after signup. ⚠️ **The generalisation is not "distinguish the two answers" — 11e
+already said that. It is: ASK WHAT THE FALSE ANSWER LETS THE USER DO.** A wrong "not found" is
+recoverable by reloading; a wrong "you have never agreed" hands the reader a button that destroys
+the evidence they had. **Where a false negative leads to a WRITE, the write needs its own guard as
+well as the read** — `acknowledgeDisclaimer` is now write-once (read first, plus `.is(…, null)` on
+the UPDATE so two tabs cannot race), so being wrong costs nothing next time. ⚠️ And note where the
+null came from: the `anon` SELECT grant kept deliberately in 11y, whose justification was that a
+0-row read is *"the safe direction"*. **True for entitlement, exactly backwards for a flag whose
+empty value means "prompt them, then write".** One value, two readers, opposite safe directions —
+and only one reader had been considered. Guarded by `e2e/onboarding-gate.spec.ts`, whose control is
+that entitlement still fails CLOSED on the same unreadable read.
 
 **It happened again on 2026-08-23, and a FLAKY TEST is what exposed it** — the most ignorable result a suite can give. `/api/request-ticker` destructured only `data` from both of its lookups and discarded `error`, so a transient read failure was indistinguishable from an absent row. The two failures point opposite ways and **the second one writes**: a `listings` error told a reader their real stock was "not a known US/AU/CA listed stock", while a `stocks` error fell through to the upsert and **queued a request for a ticker we already cover**, which the nightly cron would then go and re-fetch — nothing errored, nothing logged, and the row was indistinguishable from a genuine reader request. Both now check `error` first and answer **503 + `Retry-After`**. ⚠️ Note it had **no tests at all** until that morning: the route was written, worked, and was never looked at again. `const { data } = await ...` is the shape to grep for.
 
@@ -419,6 +441,11 @@ These were agreed during planning. Do not relitigate.
 - Why the ticker page's Lighthouse target is BLOCKED rather than unfinished, and what is trustworthy instead → `architecture.md` §7.2d + audit F-019/F-020/F-021
 - What Layer 3 (the wire sweep) and Layer 3b (the platform sweep) actually proved, and why neither can run on localhost → `docs/layer-g-audit.md`
 - Security headers, `poweredByHeader`, why there is no `images` config, and the CSP — ENFORCING since 2026-08-23, a per-request nonce where the route already renders per request and `'unsafe-inline'` on the seven prerendered pages → `architecture.md` §7 (F0.5 posture) + `lib/csp.ts` + `pnpm check:csp`
+- How far back `price_bars` really goes — a **different hard floor per market** (US 1962, AU **1988**, CA 1995), why a pile-up of identical first-bar dates is the tell, and why any cross-market measurement needs a common window → `data-contracts.md` (`PriceBar`)
+- `/articles` — what an article IS (three genres, **not weekly**), the AU-led/three-market rule, the source-list method, and the first four pieces → `layer-g-page-briefs.md` §6
+- Why the first-login gate must never appear on a failed profile read, and why the acknowledgement is WRITE-ONCE → `lib/entitlement.ts` (`shouldShowOnboarding`) + `e2e/onboarding-gate.spec.ts` + audit F-031
+- Why a missing market cap is never written as NULL, the `fast_info` fallback, and the 0.5% nightly floor → `analytics/cron/daily_refresh.py` (`_with_market_cap`) + `analytics/tests/test_market_cap_preserved.py` + audit F-032
+- The Articles INDEX design — why the competitors' flat list is wrong at four pieces a month, why there are no thumbnails, and the featured card that REUSES the landing page's analyst briefing → `design-system.md` § The Articles index
 
 ---
 

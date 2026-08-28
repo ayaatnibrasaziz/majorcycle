@@ -64,6 +64,14 @@ class FundamentalsSnapshot:
     financial_currency: Optional[str] = None  # currency of the STATEMENTS — see below
     exchange: Optional[str] = None
     market_cap: Optional[float] = None
+    # ⚠️ NEVER WRITTEN AS NULL OVER A STORED VALUE. yfinance's `info` intermittently
+    # omits `marketCap` for a large, actively-traded company (15 of 863 on
+    # 2026-08-27), so the provider falls back to `fast_info`, and `daily_refresh`
+    # adds the column to its upsert ONLY when it has a value — omitting a key
+    # preserves the stored figure, sending None deletes it. A null cap is silent:
+    # it renders as a blank cell, drops the company out of every size-ranked
+    # cohort, and takes `fcf_yield_pct` with it. Audit F-032; guard is the
+    # >0.5%-missing invariant in check_field_units.py.
 
     # Profitability
     gross_margin: Optional[float] = None          # %
@@ -633,6 +641,45 @@ export interface StockRecord {
   enrichedUpdatedAt?: string | null;
 }
 ```
+
+#### How far back `price_bars` actually goes — a HARD FLOOR per market
+
+⚠️ **Our history does not begin when a company listed. It begins where the data
+provider's coverage begins, and that date is different in every market.** Measured
+2026-08-26 across all 871 stocks:
+
+| Market | Floor | Stocks whose first bar is that exact day |
+|---|---|---|
+| US | **1962-01-02** | 24 (plus a second pile-up of 63 on 1980-03-17) |
+| AU | **1988-01-29** | **39** — including BHP, ANZ, NAB, Rio Tinto, Wesfarmers, Amcor |
+| CA | **1995-01-12** | 28 |
+
+BHP has traded on the ASX since 1885 and our first bar for it is 1988. That is not
+history; it is where yfinance starts.
+
+⚠️ **The tell is a PILE-UP.** Real listing dates are spread across the calendar. When
+dozens of unrelated companies share one first-bar date to the day, that date is a
+coverage boundary, not an event. Any analysis that reports "N years of history"
+must check for it — the naive reading of the AU median first bar (`2004-06-30`)
+suggests thin coverage, while the actual constraint is the 1988 floor underneath it.
+
+**Above the floor the dates are genuinely right**, which is why this is easy to miss:
+CBA `1991-09-30` (floated 1991 ✅), Telstra `1997-11-28` (T1 float Nov 1997 ✅),
+Woolworths `1993-07-30` ✅, Qantas `1995-07-31` ✅. The data is accurate; it is just
+truncated, and truncation is invisible unless you go looking for it.
+
+**Consequences for anything that measures across markets:**
+
+1. **Never state a history length the floor cannot support.** Only 56% of the ASX 200
+   has 20+ years; the US figure is 78%, Canada 76%.
+2. **A cross-market comparison needs a COMMON window, or it is comparing eras rather
+   than markets.** `2000-01-01` is the first year clean for all three, and it still
+   covers the dot-com crash, the GFC and COVID.
+3. **A market-by-market average over each stock's own available history is not a
+   like-for-like number**, because the three markets are averaging different spans.
+
+Found while measuring drawdown depth for the first `/articles` piece, which would
+otherwise have claimed twenty years of ASX history it does not have.
 
 **Conversion rule:** Python uses `snake_case`, TypeScript uses `camelCase`. The Python script writes snake_case JSON to Supabase. The frontend has a small `web/lib/case.ts` utility that converts snake_case → camelCase on read. Never store camelCase keys in the DB.
 

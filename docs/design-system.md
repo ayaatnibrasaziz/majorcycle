@@ -1256,6 +1256,49 @@ Pattern: red-tint card + 16px title + body explanation + CTA to retry or contact
 
 ---
 
+### The Articles index — DESIGNED 2026-08-26, not yet built (`/articles`)
+
+**Chosen from three directions drawn in the design artifact** (`claude.ai/code/artifact/fd8cbcdc`),
+the same way the Learn index was decided. The owner took **A**; B (data-as-art) and C
+(typographic) were deleted. Structure: **featured article · coming next · published list.**
+
+⚠️ **THE COMPETITORS' LAYOUT IS THE WRONG ONE HERE, and the reason is volume.** Checked
+directly: Simply Wall St (`/news`) and Motley Fool AU both run a flat vertical list, no
+featured item, a thumbnail per row, 22 and 40+ to a page. Correct for them — they publish
+dozens a day, so the reader's job is scanning. **We publish about four a month**, and that
+layout at n=4 reads as abandoned. This is the trap the Learn index already documented:
+*"a card grid needs roughly nine articles before it stops looking abandoned."* A **lead
+article carrying real weight, then rows** reads as a front page at n=1 and degrades upward.
+
+⚠️ **And no thumbnails, deliberately.** Every competitor leads with a picture. We have none,
+each would be a cost we can never re-roll (§11, the Learn masters), and it creates a
+permanent per-article obligation. **Numbers do the work images do elsewhere** — every
+article here reports a measurement, so the finding is the art. Free, repeatable, and the
+one thing on the page a competitor cannot copy.
+
+| Element | Rule |
+|---|---|
+| Featured card | **The landing page's analyst briefing, REUSED** — the shared `.briefing` / `.bt` / `.btxt` / `.bp` components, not a copy. Owner: *"the same vibe like the analyst briefing in the landing page … that will look consistent."* Verified in-browser: all 11 card properties plus title, body and pill type computed **identical** to the landing's |
+| The figure slot | The briefing's 56px score ring is replaced by the article's own figure. Same row, same `flex:none`, same gap |
+| Figure optionality | **Optional by construction.** Owner: *"the article may or may not have any figures."* The figure is a flex **child**, so an article without one omits the element and the body takes the full width. ⚠️ Never a declared grid track — that is the `/learn` defect where a two-column track stayed declared with the image gone, leaving a 532px column beside 588px of empty page |
+| Rows, not cards | A row costs one line per article, so the page never has a hole in it — the failure mode a grid has at small n |
+| Row content | Date · title · **the article's FINDING**, not a summary. On this site the number is the thing worth scanning |
+| Planned pieces | Recede by **WEIGHT and COLOUR, never `opacity`** — 400/`--text-muted` against a published row's 600/`--text-primary`. Same rule the Learn upcoming rows learned when `opacity:.7` rendered at 3.38:1 while the contrast guard read 6.81 (CLAUDE.md 11q). Verified: `byOpacity: false` |
+| Chart legend | **HTML list under the plot — swatch, name, figures — never floating labels inside it.** The first version put "ASX 200" and "S&P 500" in the plot area where neither sat near its own line, and the owner could not tell which was which. Swatch colours are asserted against the line strokes so they cannot drift |
+| Series colours | ASX `--brand-mid`, S&P `--text-muted`, TSX `#0E7C8B` — the Learn illustrations' established teal (§11). ⚠️ **None may be a DIRECTION colour**: green and red mean up and down everywhere else on this site and must not be spent on series identity |
+
+**Heading and lead.** *"What's happening, and what it means"* over a lead naming all three
+kinds of piece and reusing Learn's *"nothing you need an account to read."* ⚠️ Two earlier
+drafts were rejected for leaning on **process** (*"the method shown, every figure sourced"*)
+rather than telling the reader what they get — and for assuming the section is only
+measurements, when it also carries market commentary and how-to pieces.
+
+**The article page itself gets no new design** (owner, 2026-08-26): the live Learn article
+pages already show it, so `/articles/[slug]` reuses **`ArticleDoc`** and **`LegalNotice`** —
+same card, same `.doc-scale`, no third disclaimer copy.
+
+---
+
 ### The Learn library — BUILT 2026-08-15 (`/learn`, `/learn/[slug]`)
 
 **Chosen from three directions drawn in the design artifact.** The owner rejected a plain

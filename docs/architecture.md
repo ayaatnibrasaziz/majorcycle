@@ -512,7 +512,7 @@ live-check Session 1):
 | Page | Purpose | Note |
 |---|---|---|
 | `/` | The landing page — the argument, a worked screener run, and how it works | ⚠️ **This table listed every public page except the front door until 2026-08-22** — an omission that renders perfectly (11j). Rebuilt to the approved storyboard in G3.8, eight sections. It is in **`SIGNED_OUT_ONLY_PATHS`**: a signed-in reader goes to `/stocks`. Its figures come from `web/app/landing-snapshot.json` + `mag7-snapshot.json`, committed files rebuilt nightly, so no DB read sits in the front door's critical path. Lighthouse **100/100/96/100** |
-| `/articles` · `/articles/[?]` | Weekly, human-written articles on what actually happened that week, plus their archive | ⛔ **NOT BUILT — and re-scoped 2026-08-25.** Called the "weekly market note" until then, with a fixed five-part template; the owner dropped both the name and the template. It is now **articles**: each one written to whatever shape that week's story needs, aimed squarely at search visibility. Structure is being settled in a following session, drafted as **markdown first** and only then given a UI. ⚠️ **The per-article URL shape is NOT yet decided** — a dated path (`/articles/2026-08-28`) was the old brief's, a topic slug (`/articles/gold-miners-swept-the-week`) is far better for search. Written as `[?]` on purpose so nobody reads a placeholder as a decision. Still deliberately not part of `/learn` — an explainer is durable, an article about this week is dated |
+| `/articles` · `/articles/[slug]` | The articles section and its index. **Three kinds of piece**: our own measurements, market commentary, and how-to explainers | ⛔ **NOT BUILT — content plan and index design SETTLED 2026-08-26; the first article is written, fact-checked and owner-approved.** ⚠️ **Two decisions previously marked locked have changed.** The **weekly cadence is dropped** (owner: *"the articles doesn't need to be per week"*) — publish when there is something worth publishing; **never automated**, which is the half that keeps us outside Google's scaled-content policy. And it is **not one genre** any more. **The URL shape IS now decided: a topic slug, no date in the path** — a dated URL makes a quarterly-refreshed piece look stale. Australia leads every article with the US and Canada inside it as the comparison. Still deliberately not part of `/learn` — an explainer is durable, an article is dated. Design: `design-system.md` § The Articles index; brief: `layer-g-page-briefs.md` §6 |
 | `/login` · `/signup` | Sign in, create a free account | Signed-in users are bounced to `/stocks` by the proxy (`SIGNED_OUT_ONLY_PATHS`). Signup takes **no card** (§7.2) |
 | `/reset-password` | Request a reset link | **Deliberately NOT bounced** for a signed-in reader — asking for a reset link is a legitimate thing to do while signed in (e.g. on a shared machine, or a Google-only account adding a password). Verified live 2026-08-02: it renders rather than redirecting. The doc previously grouped it with `/login`·`/signup` and was wrong |
 | `/pricing` | The signed-out shop window: both plans, local currency | A **signed-in** visitor is redirected to `/account` — they are a customer, not a shopper |
@@ -1273,8 +1273,23 @@ itself depends on (11q).
 
 ### 7.3 Onboarding is a gate, not an overlay
 
-When `acknowledged_disclaimer_at` is null, `app/(app)/layout.tsx` returns the disclaimer
-modal **alone** and never renders `children`. Two reasons:
+⚠️ **`acknowledged_disclaimer_at` on the owner's own row is a RECONSTRUCTION, not a
+measurement (2026-08-28).** A failed profile read showed the first-login gate to an account that
+had acknowledged on 2026-06-15, and the gate's only button overwrote the date with
+`2026-08-27 04:09` (audit F-031). The original is unrecoverable. It was reset to
+`2026-06-15T12:54:52.172869Z` — the account's own creation instant — because that is the last
+timestamp still provable and it invents no precision beyond the date, which the onboarding gate
+itself guarantees (the product is unusable until acknowledged, and the account has been in use
+since). Every other row is a genuine measurement.
+
+When `shouldShowOnboarding(viewer)` is true, `app/(app)/layout.tsx` returns the disclaimer
+modal **alone** and never renders `children`.
+
+⚠️ **The condition is that predicate, not a bare null check on `acknowledged_disclaimer_at`** —
+it requires the timestamp to be absent **and** the profile row to have been READ. A bare null
+check cannot tell "has never agreed" from "we could not read the row", and on 2026-08-27 it
+showed the gate to an account that had agreed in June (audit F-031). Two reasons for rendering
+the modal alone:
 
 - **Correctness.** Radix writes `aria-hidden` directly onto sibling DOM nodes when a modal
   opens — a DOM mutation, not a render. App Router hydrates progressively, so on first
@@ -1864,14 +1879,29 @@ remains is the landing page, the twelve-article `/learn` library (complete and
 owner-approved), and the **articles** section at `/articles`, which is the last page type
 Layer G still has to build.
 
-⚠️ **Re-scoped by the owner on 2026-08-25**, after a storyboard for the earlier design:
-the "weekly market note" — a fixed five-part template — is **replaced by articles**, each
-written to whatever shape that week's story needs. The reasoning is SEO: a piece that reads
-as *what happened this week* is what someone actually searches for, and a rigid template
-makes every week look the same to a reader and to a crawler. Cadence stays **weekly and
-human-written**; nothing here becomes automated. The structure itself is deliberately still
-open — the next session drafts one in **markdown** and settles the shape before any UI is
-built.
+⚠️ **Re-scoped twice by the owner.** On **2026-08-25**, after a storyboard for the earlier
+design: the "weekly market note" — a fixed five-part template — was **replaced by
+articles**, each written to whatever shape its story needs, because a rigid template makes
+every piece look the same to a reader and to a crawler.
+
+⚠️ **Then again on 2026-08-26, and this one reverses a decision that had been marked
+LOCKED.** The **weekly cadence is dropped** — owner: *"I think the articles doesn't need to
+be per week."* Publish when there is something worth publishing. **Human-written and never
+automated still stands**, and that is the half that keeps us outside Google's
+scaled-content policy. The section also stopped being one genre: it carries **measurements,
+market commentary and how-to pieces**, so the page design has to hold all three.
+
+**Settled the same day:** Australia leads every article with the US and Canada inside it as
+the comparison · `/articles/<topic-slug>`, **no date in the path** · 800–1,200 words · four
+articles in the first 30 days, limited by the owner's review time · and the workflow is
+draft → self-fact-check → **hand over 8–10 spot-checks with public links** → owner
+cross-checks → owner publishes.
+
+⚠️ **The running order is evergreen-first, because the site is DARK.** `majorcycle.com`
+still serves the login page, so nothing written now can be indexed, and an event piece
+written today is worthless by the time we launch. Event-driven content is the month-two
+engine. **The first article is written, fact-checked and owner-approved**; the index design
+is settled (`design-system.md` § The Articles index). What remains is building the pages.
 
 This reverses the earlier plan to index Stock Detail as a "free tier shop window". Do not
 re-propose it.

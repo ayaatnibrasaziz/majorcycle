@@ -42,14 +42,15 @@
 > artifact, not to §1's prose), §3 the Learn index, §4 the Learn article template — twelve
 > articles, all read through and approved by the owner on 2026-08-21 and 2026-08-22.
 >
-> **What is still owed: §6 — and it was RE-SCOPED on 2026-08-25.** It is no longer the
-> "weekly market note" at `/notes` with a fixed five-part template. It is **`/articles`**:
-> weekly, human-written pieces on **what actually happened that week**, each shaped by that
-> week's story rather than poured into a form. The owner's reasoning is search visibility —
-> *"the latest news that people would want to read"* — and that a rigid template makes every
-> week look identical to a reader and to a crawler. §6 below is kept as the historical
-> record of what was approved on 2026-08-07 and is **no longer the plan**; read it for the
-> parts that survived, which are listed at the top of it.
+> **What is still owed: §6, `/articles` — SETTLED 2026-08-26, not yet built.** It began as
+> the "weekly market note" at `/notes` with a fixed five-part template; the name and the
+> template went on 2026-08-25, and on **2026-08-26 the weekly cadence went too** (owner:
+> *"the articles doesn't need to be per week"*). It is now **`/articles`** — measurements,
+> market commentary and how-to pieces, human-written and **never automated**, published when
+> there is something worth publishing. The first article is written, fact-checked and
+> owner-approved; the index design is chosen. **What remains is building the pages.** The
+> settled brief is at the top of §6; everything below its horizontal rule is kept as the
+> historical record of 2026-08-07 and is **no longer the plan**.
 >
 > It is still the last page type in Layer G.
 
@@ -264,50 +265,121 @@ click and return.
 
 ---
 
-## 6. Articles — `/articles` (archive) + one page per week
+## 6. Articles — `/articles` index + one permanent page per article
 
-> ⚠️ **RE-SCOPED 2026-08-25. Everything below the line is the brief approved on 2026-08-07
-> and is kept as history, not as the plan.** Read it for what survived, which is this:
+> ⚠️ **SETTLED 2026-08-26. Everything below the horizontal rule is the brief approved on
+> 2026-08-07 and the re-scope of 2026-08-25; both are kept as history, not as the plan.**
 >
-> | Still true | Changed |
+> ### What an article IS (owner, 2026-08-26)
+>
+> Not one genre. The section carries **three** kinds of piece, and the design has to hold
+> all of them:
+>
+> | Kind | Example |
 > |---|---|
-> | **Weekly, human-written.** Not automated, not daily | The **name**: "weekly market note" → **articles** |
-> | **Its own section**, separate from `/learn` | The **fixed five-part shape** is dropped — each piece is shaped by that week's story |
-> | **One permanent page each**, never one page rewritten | The **framing**: from a structured column to *what actually happened this week* |
-> | **Byline: MajorCycle**, no invented author | The **URL shape** is reopened — dated path vs topic slug, undecided |
-> | **Never retro-edit a published piece's figures** | The **purpose** leans harder on search visibility |
+> | **Measurement** — we run our own numbers and report what came back | *How far do ASX shares actually fall?* |
+> | **Market commentary** — what happened and what it means | a results season, a rate decision |
+> | **How-to** — doing a specific thing | reading a cash-flow statement |
 >
-> **Owner's reasoning:** *"I don't like the idea of having a consistent format. I think it
-> will be better to post what has happened in the week so that it ranks better for SEO as it
-> is saying the latest news that people would want to read."*
+> Owner's wording: *"this is the article sections where we sometimes do calculations or just
+> talk about what's happening in the market or just talk about how to do certain stuffs."*
 >
-> **Decided 2026-08-26 — four answers, three settled and one deferred:**
+> ⚠️ **CADENCE IS NO LONGER WEEKLY, and that reverses a decision previously marked LOCKED.**
+> Owner, 2026-08-26: *"I think the articles doesn't need to be per week."* Publish when
+> there is something worth publishing. **Nothing here becomes automated** — that part of the
+> old decision stands, and it is what keeps us outside Google's scaled-content policy.
+>
+> ### Decisions
 >
 > | | Decision |
 > |---|---|
-> | **Length** | **800–1,200 words.** Long enough to rank and to say something real; short enough to review every week without it becoming a burden |
-> | **Naming stocks** | **Yes**, with the disclaimer already used across the site. Naming companies is most of the search value. We never say buy or sell — locked decision #2 and the ASIC posture (#24) apply here exactly as they do in the product |
-> | **Workflow** | **I draft → I fact-check my own draft and hand over a SOURCE LIST WITH LINKS → the owner cross-checks → the owner publishes.** The source list is a deliverable, not a courtesy: it is what makes the owner's review a real check rather than a rubber stamp |
-> | **Angle** | ⏸ **Deferred to the next session.** What an article is mostly *about* — this week's movers read through our data, straight market news, one company in depth, or genuinely whatever the week gives — is the decision the rest hangs on |
+> | **Length** | 800–1,200 words |
+> | **Naming stocks** | Yes, with the site's existing disclaimer. Never buy/sell (#2, #24) |
+> | **Market** | **Australia leads every piece; the US and Canada appear inside it as the comparison.** Owner: *"prioritise AU but also include US and CA."* One clear topical identity, three markets of substance |
+> | **URL** | `/articles/<topic-slug>` — **no date in the path**. Article 3 is refreshed quarterly and a dated URL makes an updated page look stale |
+> | **Volume** | 4 articles in the first 30 days. The limit is the owner's review time, not drafting |
+> | **Workflow** | I draft → I fact-check my own draft → I hand over a **source list plus 8–10 spot-checks with public links** → owner cross-checks → owner publishes |
+> | **Go-live** | Owner, 2026-08-26: *"we will merge it after we are done with auditing layer G."* Nothing is indexed before then |
 >
-> ⚠️ **The source list has a wrinkle worth solving before the first draft, not during it.**
-> Two kinds of claim go into one of these pieces and only one of them has a URL:
+> ⚠️ **THE SOURCE-LIST WRINKLE IS SOLVED.** Two kinds of claim go into a piece and only one
+> has a URL. Events get real links. **Our own figures cannot** — *"trust our database"* is
+> exactly the unverifiable claim the owner asked to be able to check. The answer is not to
+> link every number: it is to publish the method, then hand over **8–10 spot-checks the
+> owner can confirm on a public site in a few minutes**. Nobody can verify two hundred
+> figures; ten is a real audit, and if ten are right the method is right.
 >
-> - **Events** — why gold moved, what a company announced. These have real sources and get
->   real links.
-> - **Our own figures** — prices, weekly moves, drawdowns, P/E, margins. These come from our
->   database. There is no external page to link to, and *"trust our database"* is exactly the
->   kind of unverifiable claim the owner asked to be able to cross-check.
+> ### Why the site being DARK changes the running order
 >
-> **Proposed and NOT yet agreed:** every figure from our own data is listed with the value,
-> the date it is as at, and a **public cross-check link** (the exchange's or a quote site's
-> page for that ticker) so the owner can confirm it independently in one click. That keeps
-> the promise honest rather than circular. Confirm at the start of the next session.
+> `majorcycle.com` still serves the login page, so nothing written now can be indexed. An
+> event piece written while the site is dark is **wasted** — *"what the September Fed
+> decision meant"* is worthless in November — while an evergreen piece is just as good then.
+> **So: evergreen first, event-driven once we are live.** The owner's instinct that events
+> drive search is right; it is the month-two engine, not the month-one one.
 >
-> **Next step, agreed:** draft one article as a **markdown file** against a real week, settle
-> the shape on that, and only then design the page. The storyboard published on 2026-08-25
-> (`claude.ai/code/artifact/24903b9d`) drew the OLD template and is superseded.
-
+> ⚠️ And the *obvious* event article is the most crowded thing on the internet. Motley Fool
+> AU publishes dozens of "reporting season winners and losers". The winnable version is the
+> second-order question only we can answer cheaply — *which ASX 200 stocks are still 20%
+> below their own highs after reporting season?* Same hook, different competitive field.
+>
+> ### The first four
+>
+> | # | Article | Status |
+> |---|---|---|
+> | 1 | **How far do ASX shares actually fall?** | ✅ **Written, fact-checked, owner-approved 2026-08-26.** 1,200 words |
+> | 2 | How long does an ASX share take to recover? | Planned |
+> | 3 | Which ASX 200 shares sit furthest below their own highs | Planned — refreshed quarterly |
+> | 4 | Do bank shares fall differently to mining shares? | Planned |
+>
+> **The anti-cannibalisation rule:** `/learn` answers *"what does this mean?"* — timeless,
+> no stock names. `/articles` answers *"what does the data say?"* — named companies, real
+> figures, dated. Two pages competing for one keyword is a real own-goal, and this is the
+> line that prevents it.
+>
+> ### What the competitors do, and why we do not copy it
+>
+> Checked directly, 2026-08-26. **Simply Wall St** (`/news`): flat vertical list, 22 a page,
+> thumbnail + ticker + category + date + summary, **no featured item**. **Motley Fool AU**:
+> the same shape, 40+ a page, no summary. Two blocked automated fetching.
+>
+> They converge completely — and **it is the wrong pattern for us.** They publish dozens a
+> day, so the reader's job is scanning volume. We publish about four a month, and that same
+> layout at n=4 reads as abandoned. `/learn` already paid for this lesson: *"a card grid
+> needs roughly nine articles before it stops looking abandoned."*
+>
+> ⚠️ **And no thumbnails.** Every competitor leads with a picture. We have none, each would
+> be a real cost we can never re-roll (`design-system.md` §11), and it creates a permanent
+> per-article obligation. **Numbers do the work images do elsewhere** — every article here
+> is a measurement, so the finding is the art. Free, repeatable, and the one thing on the
+> page a competitor cannot copy.
+>
+> ### The index page — settled 2026-08-26
+>
+> Structure, owner-approved: **featured article · coming next · published list.** Direction
+> A of three drawn in `claude.ai/code/artifact/fd8cbcdc`; B and C deleted.
+>
+> - **The featured block IS the landing page's analyst briefing**, reused — the shared
+>   `.briefing` / `.bt` / `.btxt` / `.bp` components, not a copy. Owner: *"the same vibe like
+>   the analyst briefing in the landing page … that will look consistent."* Verified in the
+>   browser: all 11 card properties and the title, text and pill type identical. The 56px
+>   score ring's slot carries the article's figure instead.
+> - **The figure is OPTIONAL.** Owner: *"the article may or may not have any figures."* It is
+>   a flex **child**, so an article without one omits the element and the body takes the full
+>   width — no declared track holding an empty column open, which is the `/learn` bug.
+> - **Unwritten pieces recede by WEIGHT and COLOUR, never `opacity`** — the rule `/learn`'s
+>   upcoming rows learned when `opacity:.7` rendered at 3.38:1 while the guard read 6.81.
+> - **Rows, not cards**, so the page never has a hole in it. Each row leads with its
+>   **finding**, not a summary.
+> - Heading: *"What's happening, and what it means"*, over a lead naming all three kinds of
+>   piece and reusing Learn's *"nothing you need an account to read."*
+>
+> **The article page itself needs no design** — owner, 2026-08-26: the live Learn article
+> pages already show it. `/articles/[slug]` reuses `ArticleDoc` and `LegalNotice`.
+>
+> ### Next session
+>
+> Owner reviews the approved article and the index design, gives feedback, **then we build.**
+> The storyboard at `claude.ai/code/artifact/24903b9d` drew the OLD weekly-note template and
+> is superseded — it carries a banner saying so.
 ---
 
 **Purpose.** Give the site a reason to be visited again, and a reason to earn an email
@@ -349,7 +421,7 @@ sheet.
 | Landing stock | **Fixed — Apple.** Not rotating: alive is not worth an unwatched awkward figure on the front page |
 | About | Trust list is **sufficient** without a name |
 | Learn articles | Target the **newcomer**, not the paying buyer |
-| Weekly note *(now **articles**)* | **Own section**, one permanent page per week, with an archive. ⚠️ Re-scoped 2026-08-25: `/articles`, weekly and human-written but with **no fixed template**, framed as what happened that week. §6 has what survived and what changed |
+| Weekly note *(now **articles**)* | **Own section**, one permanent page each, with an index. ⚠️ Re-scoped twice — 2026-08-25 dropped the name and the fixed template; **2026-08-26 dropped the weekly cadence** and widened it from one genre to three (measurements, market commentary, how-to). Human-written and never automated still stands. §6 has the settled brief |
 
 **Still to approve: the layout stage.** These briefs fix *what each page is for*. What it
 looks like comes next, and is a separate approval.

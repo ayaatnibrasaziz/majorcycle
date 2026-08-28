@@ -1862,6 +1862,107 @@ asserted, and that the run failed for the reason you intended** (§14 items 26 a
 
 ---
 
+### 37. "The first one" is not "the one you meant" — three times in one session (2026-08-26)
+
+`document.querySelector('.eyebrow')` returns the first match **in the document**, not the
+first match in the thing you are looking at. On a page that renders eight mockups into one
+DOM, that is almost never the element under test. It cost three separate wrong conclusions
+in one afternoon:
+
+1. A probe compared a "planned" article row against `.ax-rt` — which matched a *planned*
+   row, so it compared the row with itself and reported the two states as identical.
+2. A contrast sweep reported `.eyebrow` and `.lead` at `opacity: 0`. They were the
+   **landing page's**, resting at zero until their scroll-reveal fires. The page under test
+   was fine. This is 11q's lesson arriving by a different door.
+3. `s.replace(old, new, 1)` in a patch script edited the **landing page's**
+   `class="briefing-body"`, because the landing appears earlier in the file than the page
+   being patched. An assertion caught it before the write; without one it would have
+   silently corrupted a finished page while appearing to fix another.
+
+**Scope every probe and every patch to the subtree or byte-range you actually mean** —
+`section.querySelector(...)`, or slice the block out, edit it, and splice it back. And when
+a measurement says two things are identical, check you did not measure one thing twice.
+
+---
+
+### 38. A backtick in a CSS comment can delete an entire page (2026-08-26)
+
+Non-negotiable #7 forbids HTML comments inside JavaScript template literals. A backtick is
+the same class of defect and it is easier to type by accident:
+
+```js
+add('articles', …, `
+  <style>
+  /* ⚠️ .briefing is `display:flex` with no wrap … */     ← terminates the literal
+```
+
+The template literal ended at that backtick, the rest of the page became invalid syntax,
+and the app rendered **zero** pages — not a broken page, an empty one. Nothing in the file
+looks wrong: it is a comment, and prose in comments naturally wants to quote code.
+
+⚠️ **And the console lies about it afterwards.** After the fix, the error was still listed
+— the console buffer persists across navigations, so a stale `SyntaxError` sat there while
+the page worked perfectly. What settled it was a positive signal (`8 pages registered`),
+not the absence of a red line. **Prove the script RAN; do not infer it from a quiet
+console.**
+
+Use straight quotes inside any comment that lives in a template literal.
+
 ---
 
 **End of coding-standards.md.**
+
+### 39. A provider that omits a field must not be able to DELETE the field (2026-08-28)
+
+**2026-08-27.** yfinance's `info` blob did not contain `marketCap` on one nightly run. For 15 of
+863 companies — Salesforce, Lowe's, Micron, AutoZone, Kroger — the value arrived as `None`, and
+`daily_refresh` wrote it:
+
+```python
+"market_cap": fund.market_cap if fund else None,
+```
+
+An upsert builds its `SET` list from the columns present in the payload. Sending `None` is an
+instruction to overwrite; **omitting the key is an instruction to leave it alone.** In Python those
+are one value; to Postgres they are opposites.
+
+⚠️ **THE RULE WAS ALREADY IN THAT FUNCTION, TEN LINES BELOW.** `news` is guarded with a comment
+that states the principle exactly — *"Only overwrite when we actually got items, so a transient
+yfinance hiccup never wipes the previously-stored news for a ticker"* — and `market_cap` never
+received it. This is 11c-iv (the rule exists, one consumer never got it) at its shortest possible
+range: same file, same function, same loop body.
+
+**Why nothing went red.** A null is not an error. The write succeeded, the row still rendered, the
+cell was simply blank. The loss was second-order: a capless company drops out of every size-ranked
+cohort *silently*, and `fcf_yield_pct` (computed from the cap, and an input to Financial Health)
+went null with it. It surfaced three days later, from outside the system, because a study that
+ranks *by* market cap produced a published figure that would not reproduce — −18.7% where −19.0%
+had been printed.
+
+**The three-part fix, and why one part is not enough:**
+
+| | |
+|---|---|
+| Source | The provider falls back to `fast_info` when `info` has no cap — it carried one for all 15 |
+| Write | `_with_market_cap()` adds the column only when there is a value. **Load-bearing**: it holds for whatever the next upstream failure is, not just this one |
+| Data | A nightly invariant fails when >0.5% of rows lack a cap, so a recurrence is caught by the data rather than by an arithmetic check three days later |
+
+⚠️ **THE THRESHOLD WAS MEASURED, NOT CHOSEN — AND THE FIRST VALUE WAS WRONG.** The incident was 15
+of 871, **1.7%**. The 2% floor written first would have passed the exact event the check is named
+after. *A guard tuned above the defect it exists for is worse than none: it reports "clean" with
+authority.* Always run the new guard against the real numbers of the incident before trusting it.
+
+⚠️ **And the test must assert ABSENCE, not `is None`.** `assert row["market_cap"] is None` passes on
+the broken code. `assert "market_cap" not in row` is the only form that distinguishes them. When two
+states are identical in your language and opposite in the system you are writing to, the assertion
+has to be written in the system's terms.
+
+### 40. `$?` after a pipe is the pipe's status — a failing gate can report success (2026-08-28)
+
+Running `pnpm gates 2>&1 | tail -30` returned **exit code 0** while the gate run had **FAILED at
+ruff**. `tail` succeeded, so the pipeline succeeded. The failure was visible only in the text.
+
+This is already recorded in CLAUDE.md 11z as a footnote from the listings work; it is repeated here
+because it recurred within a fortnight, in a different context, and cost a wrong "all gates pass"
+that was one sentence from being reported to the owner. **Read the summary line, never the exit
+code, whenever a command is piped** — which is the same habit as 11i's *reconcile the count*.
