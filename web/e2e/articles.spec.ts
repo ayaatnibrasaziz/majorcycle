@@ -8,6 +8,8 @@ import {
   featuredArticle,
   richText,
 } from '../lib/articles';
+import { PREFERRED_SOURCE } from '../lib/preferredSource';
+import { expectNoLostSpaces } from './lib/proseSpacing';
 
 /**
  * The Articles section — `/articles` and `/articles/[slug]`.
@@ -202,6 +204,45 @@ test.describe('the Articles section', () => {
     }
   });
 
+  test('the featured figure ends level with the link beside it', async ({ page }) => {
+    // Owner, 2026-08-29. Before the fix the drawing hung 100px below the card's
+    // own call to action, which is the kind of thing a screenshot shows and no
+    // assertion was looking for.
+    //
+    // ⚠️ SIDE-BY-SIDE WIDTHS ONLY. Below 760px the card stacks, the figure sits
+    // ABOVE the text, and the two are 347px apart by design — asserting equality
+    // there would be asserting the wrong layout. The stacked case has its own
+    // control below: the page must still not scroll sideways.
+    for (const width of [1280, 900, 800]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(ARTICLES_INDEX_PATH);
+      await ready(page);
+      const delta = await page.evaluate(() => {
+        const card = document.querySelector('.briefing.art-brief')!;
+        const fig = card.querySelector('.art-fig')!.getBoundingClientRect();
+        const read = card.querySelector('.art-read')!.getBoundingClientRect();
+        return fig.bottom - read.bottom;
+      });
+      expect(
+        Math.abs(delta),
+        `at ${width}px the figure ends ${delta.toFixed(1)}px from the link`,
+      ).toBeLessThanOrEqual(1);
+    }
+
+    await page.setViewportSize({ width: 375, height: 900 });
+    await page.goto(ARTICLES_INDEX_PATH);
+    await ready(page);
+    const stacked = await page.evaluate(() => ({
+      scrollW: document.documentElement.scrollWidth,
+      clientW: document.documentElement.clientWidth,
+      column: getComputedStyle(document.querySelector('.briefing.art-brief')!).flexDirection,
+    }));
+    expect(stacked.column, 'the card should stack on a phone').toBe('column');
+    expect(stacked.scrollW, 'the card widened the page at 375px').toBeLessThanOrEqual(
+      stacked.clientW,
+    );
+  });
+
   test('no two labels in the featured figure overlap', async ({ page }) => {
     // ⚠️ A MARGIN, not the absence of a collision. `> 0` scores a 1px near-miss
     // as a pass and proves nothing about the next figure (CLAUDE.md 11i-b).
@@ -251,11 +292,28 @@ test.describe('the Articles section', () => {
       await page.goto(ARTICLES_INDEX_PATH);
       await page.waitForSelector('.art-lab');
 
-      const sizes = await page.evaluate(() =>
-        [...document.querySelectorAll('.art-lab, .art-cap, .art-fignote')].map((n) => ({
-          text: (n.textContent ?? '').slice(0, 30),
-          px: parseFloat(getComputedStyle(n).fontSize),
-        })),
+      // ⚠️ EVERY SELECTOR MUST STILL MATCH SOMETHING. `.art-fignote` was in this
+      // list until the caption was removed on 2026-08-29, and a selector that
+      // matches nothing does not fail — it quietly shrinks what the guard looks
+      // at while the total stays above the floor. Same shape as 14g: a check
+      // that cannot see a thing reports what a clean system reports.
+      const SELECTORS = ['.art-lab', '.art-cap'];
+      const counts = await page.evaluate(
+        (sels) => sels.map((s) => document.querySelectorAll(s).length),
+        SELECTORS,
+      );
+      SELECTORS.forEach((s, i) => {
+        expect(counts[i], `${s} matched nothing at ${width}px — the guard is not looking at it`)
+          .toBeGreaterThan(0);
+      });
+
+      const sizes = await page.evaluate(
+        (sels) =>
+          [...document.querySelectorAll(sels.join(', '))].map((n) => ({
+            text: (n.textContent ?? '').slice(0, 30),
+            px: parseFloat(getComputedStyle(n).fontSize),
+          })),
+        SELECTORS,
       );
       expect(sizes.length, `no figure text at ${width}px`).toBeGreaterThan(4);
       for (const size of sizes) {
@@ -276,6 +334,89 @@ test.describe('the Articles section', () => {
       await ready(page);
       const words = await page.locator('[data-article-body]').innerText();
       expect(words.split(/\s+/).length, `${path} has almost no body`).toBeGreaterThan(300);
+    }
+  });
+
+  test('no word runs into a bold one', async ({ page }) => {
+    // The owner found two of these by reading the page. Both were present in
+    // the source and destroyed by the compiler — see `lib/proseSpacing.ts` for
+    // the measurement. Nothing else on this page can see it: the paragraph
+    // renders, wraps and measures normally, and only the boundary between the
+    // element and the text beside it is wrong.
+    for (const path of PATHS) {
+      await page.goto(path);
+      await ready(page);
+      await expectNoLostSpaces(page, '[data-article-body]', path);
+    }
+  });
+
+  test('every article closes with the account offer', async ({ page }) => {
+    for (const path of PATHS) {
+      await page.goto(path);
+      await ready(page);
+
+      const cta = page.locator('[data-article-cta]');
+      await expect(cta, `${path} has no closing call to action`).toHaveCount(1);
+      await expect(cta.locator('a[href="/signup"]')).toHaveCount(1);
+
+      // ⚠️ OUTSIDE the body container, and this is the assertion that keeps it
+      // there. Inside, the reading-time check would count its words on every
+      // article and the duplicate-prose check would see every pair of articles
+      // sharing a long identical run — both would be measuring furniture. It
+      // renders in the same place on screen either way, so nothing but this can
+      // tell the difference.
+      const inside = await page.evaluate(() => {
+        const body = document.querySelector('[data-article-body]');
+        const el = document.querySelector('[data-article-cta]');
+        return !!(body && el && body.contains(el));
+      });
+      expect(inside, `${path}: the CTA is inside [data-article-body]`).toBe(false);
+    }
+  });
+
+  test('the Preferred Sources button ships nothing while it is switched off', async ({
+    page,
+  }) => {
+    // ⚠️ A DISABLED FEATURE MUST COST NOTHING, and "nothing" here has two halves
+    // that fail independently: the markup, and the Content-Security-Policy.
+    // Granting `news.google.com` while no page draws the button would be an
+    // exemption outliving its reason (CLAUDE.md 11t), and nothing would ever go
+    // red for it. Both are asserted against the same flag, so whichever way this
+    // is next edited, the two cannot drift apart.
+    const path = PATHS[0]!;
+    const res = await page.goto(path);
+    const csp = res?.headers()['content-security-policy'] ?? '';
+    expect(csp, 'no CSP on an article page').not.toBe('');
+
+    const thirdParty = await page.evaluate(() =>
+      [...document.querySelectorAll('script[src]')]
+        .map((s) => (s as HTMLScriptElement).src)
+        .filter((src) => !src.includes('/_next/')),
+    );
+    const slot = await page.locator('[data-preferred-source-slot]').count();
+
+    if (PREFERRED_SOURCE.enabled) {
+      expect(slot, 'enabled, but no slot rendered').toBe(1);
+      expect(thirdParty.join(' '), 'enabled, but the script is absent').toContain(
+        'news.google.com',
+      );
+      // Both directives, because the script loads and is then refused at the
+      // iframe — measured, see `lib/preferredSource.ts`.
+      expect(csp).toContain(`script-src`);
+      for (const directive of ['script-src', 'frame-src']) {
+        const part = csp.split(';').find((d) => d.trim().startsWith(directive)) ?? '';
+        expect(part, `${directive} does not allow the button's origin`).toContain(
+          PREFERRED_SOURCE.origin,
+        );
+      }
+    } else {
+      expect(slot, 'switched off, but the slot is in the page').toBe(0);
+      expect(thirdParty.join(' '), 'switched off, but the script is loaded').not.toContain(
+        'news.google.com',
+      );
+      expect(csp, 'switched off, but the policy still grants the origin').not.toContain(
+        PREFERRED_SOURCE.origin,
+      );
     }
   });
 

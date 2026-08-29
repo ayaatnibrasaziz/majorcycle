@@ -77,6 +77,7 @@ export function ArticleDoc({
   section,
   related,
   footerNote,
+  cta,
   children,
 }: {
   article: DocArticle;
@@ -88,6 +89,19 @@ export function ArticleDoc({
   /** The closing invitation. Supplied by the section, because Learn's wording
    *  ("browse the rest of the library") is wrong for a dated article list. */
   footerNote: React.ReactNode;
+  /**
+   * The closing offer, rendered AFTER the body and OUTSIDE
+   * `[data-article-body]`. Optional: Learn pages pass nothing.
+   *
+   * ⚠️ **Outside the body container is the whole point, for the same reason the
+   * JSON-LD block sits outside it.** Two guards read that container's TEXT — the
+   * reading-time check and the duplicate-prose check — so an identical block
+   * inside every article would inflate every stated reading time and make every
+   * pair of articles look like they share long runs of copy. It renders in the
+   * same visual position either way; only the guards can tell the difference,
+   * which is exactly the kind of thing that is discovered three months later.
+   */
+  cta?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -170,6 +184,8 @@ export function ArticleDoc({
           <div data-article-body className="mt-8">
             {children}
           </div>
+
+          {cta}
 
           <hr className="mt-10 border-0 border-t border-[var(--border)]" />
 

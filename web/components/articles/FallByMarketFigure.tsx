@@ -48,7 +48,7 @@
  * The gutters, in PIXELS, because the labels are pixels.
  *
  * Sized from the widest label actually rendered — "−21.7%" on the left, "ASX 200
- * −18.4%" on the right — plus the gap, plus room for the wider glyphs Linux
+ * −18.5%" on the right — plus the gap, plus room for the wider glyphs Linux
  * gives the same font. That allowance is not theoretical: a 2px difference
  * between Windows and CI is what turned the equivalent Learn guard red once.
  */
@@ -115,6 +115,15 @@ interface Series {
  * first time a price moved. Re-taking the measurement is an edit to the article,
  * not a data refresh.
  *
+ * ⚠️ And "frozen" now means a FILE rather than a promise:
+ * `reference/how-far-do-asx-shares-fall-DATA.json` holds every input these
+ * numbers were derived from, and the workbook rebuilds them from it with no
+ * database at all. That file exists because one input was still live — market
+ * cap, which decides which sixty companies are "the largest sixty". The ASX
+ * figure here was −18.4% for four hours; a nightly refresh re-ranked the sixty
+ * and the same code then said −18.5%. Neither was wrong, and nothing about
+ * either looked odd, which is the whole problem (CLAUDE.md 11k).
+ *
  * ⚠️ The TSX 60's two values are identical BY CONSTRUCTION — it holds sixty
  * companies, so its largest sixty are all of them. That makes it the figure's
  * own control: a chart in which every line moved would be much harder to trust.
@@ -126,7 +135,7 @@ interface Series {
 const SERIES: readonly Series[] = [
   { id: 'ca', name: 'TSX 60', whole: -15.7, largest60: -15.7, colour: '#0E7C8B', ink: '#0C6E7B' },
   { id: 'us', name: 'S&P 500', whole: -18.9, largest60: -19.2, colour: 'var(--text-muted)' },
-  { id: 'au', name: 'ASX 200', whole: -21.7, largest60: -18.4, colour: 'var(--brand-mid)' },
+  { id: 'au', name: 'ASX 200', whole: -21.7, largest60: -18.5, colour: 'var(--brand-mid)' },
 ];
 
 const pct = (v: number) => `−${Math.abs(v).toFixed(1)}%`;
@@ -229,10 +238,19 @@ export function FallByMarketFigure() {
           <span className="art-cap art-cap-r">largest 60</span>
         </div>
       </div>
-      <figcaption className="art-fignote">
-        The TSX 60 does not move because it already holds only sixty companies — it is
-        its own control.
-      </figcaption>
+      {/* ⚠️ NO VISIBLE CAPTION (owner, 2026-08-29). It read "The TSX 60 does not
+          move because it already holds only sixty companies — it is its own
+          control", which is a note to a statistician rather than to a reader
+          deciding whether to open the article, and it was the reason the figure
+          column hung below the card's own call to action.
+
+          ⚠️ The explanation is NOT lost, because it never lived here: the same
+          sentence is generated into `description` above from the same numbers,
+          and that is what the `aria-label` carries. A reader on a screen reader
+          still hears "The TSX 60 stays at −15.7%, because it already holds only
+          sixty companies." Deleting a visible caption that duplicates the
+          accessible name costs nothing; deleting the accessible name would have
+          broken #12, so the two are deliberately not the same string. */}
     </figure>
   );
 }

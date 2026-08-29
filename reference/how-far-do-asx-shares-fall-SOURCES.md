@@ -197,3 +197,104 @@ Bank as a financial — and produced −14.5% where the live data gives −14.8%
 own scripts disagreed by 0.3 of a point for exactly that reason. The rule that settled
 it: **every input to a figure comes from the same moment.** The three sit in "(not
 classified)" and are named here rather than left to be noticed.
+
+---
+
+## H. Owner review, 29 August 2026 — what changed and why
+
+Nine pieces of feedback. Five changed the article.
+
+### H1. Two sectors were missing from the comparison table
+
+Utilities and Communication Services. Neither was excluded for a reason — the
+table simply stopped at nine rows. Both are now in it:
+
+| Sector | ASX 200 | S&P 500 | TSX 60 |
+|---|---|---|---|
+| Communication Services | −20.3% (n=12) | −21.4% (n=24) | — (n=3) |
+| Utilities | — (n=3) | −14.8% (n=31) | — (n=4) |
+
+A dash still means fewer than five companies, the rule the table already used.
+Utilities is printed last because the column the table is sorted on — Australia —
+is the one it cannot answer.
+
+⚠️ It changed a sentence: the article said Australia was shallower "in property
+and consumer cyclicals". Communication Services is a third.
+
+### H2. "Australian and American banks are the same" was about SECTORS, not banks
+
+The owner asked for the same check the mining claim got. It does not survive it.
+
+`Financial Services` is **28 companies** in the ASX 200 and **70** in the S&P 500.
+Seven and fourteen of those are banks. The rest are insurers, fund managers,
+exchanges, payment networks, a share registry, a buy-now-pay-later lender and
+Berkshire Hathaway. Counted as banks alone, on the provider's finer `industry`
+label:
+
+| Index | Banks | Typical fall |
+|---|---|---|
+| ASX 200 | 7 of 201 | **−15.6%** |
+| S&P 500 | 14 of 500 | **−20.2%** |
+| S&P/TSX 60 | 5 of 60 | **−14.0%** |
+
+So Australian banks fall about four and a half points **less** than American
+ones — the opposite of what the sector row implies, and a stronger version of the
+article's own argument. Sheet 10 of the workbook lists every one of the 110
+Financial Services companies with its industry label, so the classification can
+be checked rather than trusted.
+
+**Two names are arguable and both are named in the article.** Macquarie is filed
+under Capital Markets, Judo Capital under Banks - Regional. The Australian median
+is NAB at −15.6% either way, so the finding does not rest on that call.
+
+**One company is missing and the article says so.** National Bank of Canada has
+no sector or industry in our data today (the provider stopped returning them —
+see §G), so Canada's row is five banks, not six. Including it at −12.9% gives
+−13.7%; Canadian banks are the shallowest of the three either way. The workbook
+asserts both figures.
+
+This is CLAUDE.md **14h** a second time, on the same article: a provider's sector
+is a classification, not a description.
+
+### H3. The size-matched Australian figure moved: −18.4% → −18.5%
+
+Found by the workbook refusing to build, four hours after the article was
+written. Not a market move — a **re-ranking**. `market_cap` was the one input
+still read live, and it decides which sixty companies are "the largest sixty", so
+the nightly refresh quietly changed the membership of the group the figure
+describes. Both numbers were correct on their own inputs and neither looked odd.
+
+Fixed properly rather than re-pinned: **`how-far-do-asx-shares-fall-DATA.json`**
+now sits beside this file and holds every input the article's figures come from —
+871 companies, with drawdowns, market cap, sector, industry and name captured
+once. The workbook reads only that file — no database, no credentials — so the
+figures cannot move again, and every one of them can be re-derived from a file
+that ships beside the article.
+
+### H4. Three presentation fixes
+
+- **A space after bold text was disappearing.** Not a typo — the compiler.
+  SWC drops the leading whitespace of a JSX text node when the node spans more
+  than one line *and* contains an HTML entity, so `reverses.` and `miners` were
+  welded to the words after them. The article bodies now use the real characters
+  (’ “ ”) instead of entities, and a test asserts the outcome on the rendered
+  page for every article here and in `/learn`.
+- **The featured figure hung 100px below the card's own link.** The columns now
+  end level.
+- **The figure's explanatory caption is gone** — the same sentence is still
+  generated into the chart's accessible description, so nothing was lost for a
+  reader using a screen reader.
+
+### H5. Every article now closes with an offer
+
+An account is free and takes no card, which is what the block says. Google's
+Preferred Sources button is built beside it and switched **off** until
+majorcycle.com is confirmed in Google's own source-preferences tool — the button
+renders on any domain, including ones Google has never heard of, so its
+appearance proves nothing.
+
+### The count
+
+**69 figures** are now re-derived and asserted by the workbook, up from 64. The
+closing line counts them rather than restating a number; it had gone on printing
+"64" while ten more checks were running underneath it.

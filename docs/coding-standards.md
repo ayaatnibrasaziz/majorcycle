@@ -1999,3 +1999,34 @@ lines earlier in the same stylesheet `.art-dot` was the chart's end-point marker
 - **And a class name is an identifier.** Reusing one inside a single stylesheet is a
   collision, not a shorthand, and it is invisible whenever both meanings happen to
   render something plausible.
+
+## §42 — HTML entities in JSX prose
+
+**Do not write `&rsquo;`, `&ldquo;`, `&amp;` and friends in article or Learn
+prose. Type the real character.**
+
+SWC drops the **leading whitespace of a JSX text node when the node spans more
+than one line and contains an HTML entity.** Measured against
+`next/dist/build/swc`, everything else held equal:
+
+| source | emitted |
+|---|---|
+| `</strong> Aussie sixty
+  biggest.` | `" Aussie sixty biggest."` |
+| `</strong> Aussie&rsquo;s sixty
+  biggest.` | `"Aussie’s sixty biggest."` ← space gone |
+| `</strong> Aussie&rsquo;s sixty biggest.` (one line) | `" Aussie’s sixty biggest."` |
+
+One line is safe. No entity is safe. Both together lose the space. Trailing
+whitespace is unaffected; a literal `’` is unaffected; a bare `&` (as in
+`S&P 500`) is left alone by the parser and is fine.
+
+The owner found two of these by reading the page. Nothing else could: the
+paragraph renders, wraps and measures normally.
+
+**The guard is `e2e/lib/proseSpacing.ts`**, used by `articles.spec.ts` and
+`learn.spec.ts`. It asserts the rendered DOM, not the source, so it survives the
+next cause. It skips elements whose parent computes to `flex` or `grid`, where
+the space between children is `gap` and no whitespace in the DOM is correct —
+without that it flags every legend swatch on the site.
+

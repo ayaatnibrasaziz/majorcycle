@@ -88,15 +88,16 @@ export default function ArticlesIndexPage() {
             Articles
           </p>
           <h1 className="mt-[10px]">What&rsquo;s happening, and what it means</h1>
-          {/* Names all three kinds of piece. Two earlier drafts were rejected for
-              leaning on PROCESS ("the method shown, every figure sourced")
-              rather than telling the reader what they get, and for assuming the
-              section is only measurements when it also carries commentary and
-              how-to pieces. The closing clause is Learn's, reused on purpose. */}
+          {/* Owner's wording, 2026-08-29. Three earlier drafts were rejected: two
+              for leaning on PROCESS ("the method shown, every figure sourced")
+              rather than telling the reader what they get, and one for listing
+              the kinds of piece — which reads as a table of contents and dates
+              the moment a fourth kind appears. This one names the READER
+              instead, which nothing we publish later can falsify. The closing
+              clause is Learn's, reused on purpose. */}
           <p className="lead mt-[14px] text-[var(--text-secondary)]">
-            Market analysis, our own measurements and the occasional how-to — in plain
-            English, with real numbers from real companies and nothing you need an
-            account to read.
+            Written for anyone following the market — no jargon, real numbers from
+            real companies, and nothing you need an account to read.
           </p>
         </header>
 
@@ -211,10 +212,16 @@ export default function ArticlesIndexPage() {
           </>
         )}
 
+        {/* ⚠️ This used to promise that "every figure here is measured with the
+            same code the product runs, over the same price history" — true of
+            the first article and a claim about EVERY future one, made on a page
+            whose whole purpose is to fill up with pieces nobody has written yet
+            (owner, 2026-08-29). An article may quote a regulator, a company
+            filing or a study we did not run. What can be promised for all of
+            them is that each one says where its numbers came from. */}
         <p className="small mt-12 max-w-[720px] text-[var(--text-secondary)]">
-          Every figure here is measured with the same code the product runs, over the
-          same price history. Where an article quotes a number it says which day it
-          was taken. If you want the terms explained first,{' '}
+          Every article says where its figures came from and which day they were
+          taken. If you want the terms explained first,{' '}
           <Link href="/learn">start with the Learn library</Link>.
         </p>
       </div>

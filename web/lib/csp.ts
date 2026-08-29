@@ -158,10 +158,26 @@ export function contentSecurityPolicy({
   dev,
   supabaseUrl,
   siteOrigin,
+  preferredSourceOrigin = null,
 }: {
   nonce: string | null;
   dev: boolean;
   supabaseUrl: string | undefined;
+  /**
+   * `https://news.google.com` on the `/articles` pages that draw Google's
+   * Preferred Sources button, and `null` — the default — everywhere else.
+   *
+   * ⚠️ **Scoped on purpose, and passed IN rather than read here.** The button
+   * appears on public, prerendered, session-free pages; granting its origins
+   * site-wide would also grant them on `/login`, `/account` and the signed-in
+   * product, which never draw it. Same principle as the nonce split above: the
+   * strongest policy stays where a session lives. It arrives as an argument
+   * because this file has no imports by design — see `siteOrigin`.
+   *
+   * Both directives are needed and no others; that was measured rather than
+   * guessed, and `lib/preferredSource.ts` records how.
+   */
+  preferredSourceOrigin?: string | null;
   /**
    * `SITE_ORIGIN` from `lib/url.ts`, passed IN rather than imported. This file is
    * loaded three ways — by the Edge middleware, by Playwright, and by
@@ -178,11 +194,16 @@ export function contentSecurityPolicy({
     ...(dev ? ["'unsafe-eval'"] : []),
     'https://accounts.google.com',
     'https://apis.google.com',
+    ...(preferredSourceOrigin ? [preferredSourceOrigin] : []),
   ];
 
+  const base = directives(supabaseOriginForCsp(supabaseUrl), siteOrigin);
   const all: Record<string, string[]> = {
-    ...directives(supabaseOriginForCsp(supabaseUrl), siteOrigin),
+    ...base,
     'script-src': script,
+    ...(preferredSourceOrigin
+      ? { 'frame-src': [...base['frame-src']!, preferredSourceOrigin] }
+      : {}),
   };
 
   // Stable order so a diff of two policies reads as a diff of intent.

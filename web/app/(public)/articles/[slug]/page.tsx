@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { ArticleDoc } from '@/components/ArticleDoc';
+import { ArticleCta } from '@/components/articles/ArticleCta';
 import { JsonLd } from '@/components/JsonLd';
 import {
   ARTICLES,
@@ -12,6 +13,7 @@ import {
   findArticle,
 } from '@/lib/articles';
 import { articleJsonLd, jsonLdScript } from '@/lib/jsonld';
+import { PREFERRED_SOURCE } from '@/lib/preferredSource';
 import { pageMetadata } from '@/lib/seo';
 import { ARTICLE_BODIES } from '../content';
 import '../articles.css';
@@ -93,18 +95,33 @@ export default async function ArticlePage({
           article headline". A `<script>` is invisible on screen and very much
           visible to anything reading text out of the DOM. */}
       <JsonLd json={jsonLdScript([articleJsonLd(article, articlePath(article.slug))])} />
+      {/* Google's publisher script, only when the button is switched on — a
+          script tag for a control nobody renders is a third party watching a
+          page for no reason. `async` and plain `<script>`, as Google documents:
+          it is judged by its URL against `script-src`, so it needs no nonce, and
+          these pages are prerendered and carry none. */}
+      {PREFERRED_SOURCE.enabled && (
+        <script async src={PREFERRED_SOURCE.scriptSrc} />
+      )}
       <ArticleDoc
         article={article}
         section={{ href: ARTICLES_INDEX_PATH, label: 'Articles' }}
         related={related}
         footerNote={
+          // ⚠️ This promised that "every figure here is measured with the same
+          // code the product runs" — true of the first piece, and a claim about
+          // every future one (owner, 2026-08-29). An article may quote a
+          // regulator, a filing or a study we did not run. The same sentence was
+          // on the index; both were changed together, because a claim fixed on
+          // one surface and left on another is CLAUDE.md 11c in miniature.
           <>
-            Every figure here is measured with the same code the product runs.{' '}
-            <Link href={ARTICLES_INDEX_PATH}>See the other articles</Link>, or{' '}
-            <Link href="/learn">start with the Learn library</Link> if you want the
-            terms explained first.
+            This article says where its figures came from and which day they were
+            taken. <Link href={ARTICLES_INDEX_PATH}>See the other articles</Link>,
+            or <Link href="/learn">start with the Learn library</Link> if you want
+            the terms explained first.
           </>
         }
+        cta={<ArticleCta />}
       >
         <Body />
       </ArticleDoc>

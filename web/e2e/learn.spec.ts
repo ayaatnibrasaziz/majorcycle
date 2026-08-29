@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
 import { LEARN_ARTICLES, LEARN_INDEX_PATH, LEARN_THEMES, learnPath } from '../lib/learn';
+import { expectNoLostSpaces } from './lib/proseSpacing';
 
 /**
  * The Learn library — `/learn` and `/learn/[slug]`.
@@ -307,6 +308,20 @@ test.describe('the Learn library', () => {
     // owner would only find by clicking it.
     for (const href of hrefs) {
       expect(ARTICLE_PATHS, `the index links to ${href}, which is not in the registry`).toContain(href);
+    }
+  });
+
+  test('no word runs into a bold one, in any article', async ({ page }) => {
+    // ⚠️ THIS FILE IS WHERE THE DEFECT IS MOST LIKELY TO APPEAR NEXT, even though
+    // it was found on `/articles`. SWC drops the leading space of a JSX text node
+    // that is both multi-line and carries an HTML entity, and `learn/content.tsx`
+    // holds 151 entities — every one of them a latent instance, waiting for
+    // somebody to put a bold phrase in front of it. Twelve articles are cheap to
+    // walk and the failure is invisible to read (`lib/proseSpacing.ts`).
+    for (const path of ARTICLE_PATHS) {
+      await page.goto(path);
+      await ready(page);
+      await expectNoLostSpaces(page, '[data-article-body]', path);
     }
   });
 

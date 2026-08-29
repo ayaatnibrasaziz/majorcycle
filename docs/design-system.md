@@ -2172,3 +2172,45 @@ inbox. That wrapper is the single source of chrome for any future app-sent HTML 
 ---
 
 **End of design-system.md.**
+
+### The end-of-article call to action (2026-08-29)
+
+Every `/articles` piece closes with one block: a short line, a primary button to
+`/signup`, and "Free, and it takes no card." — a claim the free tier honours.
+Owner's request. It sits in a `--brand-light` panel at the end of the argument
+rather than interrupting it, which is the brief's "a quiet invitation, never a
+wall".
+
+⚠️ **It renders OUTSIDE `[data-article-body]`**, passed to `ArticleDoc` as a
+`cta` prop. Two guards read that container's text — the reading-time check and
+the duplicate-prose check — so an identical block inside every article would
+inflate every stated reading time and make every pair of articles look like they
+share long runs of copy. On screen the position is the same either way; only the
+guards can tell the difference.
+
+⚠️ **The heading is a `<p>`, not an `<h2>`.** A heading here would put "Try it
+yourself" into the document outline beside "What we measured" — which is what a
+screen-reader user navigates by and what a crawler reads as the page's structure.
+
+**Google's Preferred Sources button** sits in the same block and is switched off
+(`lib/preferredSource.ts`). It costs exactly two CSP origins, measured rather
+than guessed, and they are granted only on `/articles` — never site-wide, and not
+at all while the flag is false.
+
+### The featured card's two columns end together (2026-08-29)
+
+Owner: the figure "should end there in terms of height of the container". It hung
+100px below the card's own link.
+
+⚠️ **The obvious fix was the wrong one.** Shrinking the plot to match needs it at
+~120px, and the two closest right-hand labels sit 13.3% of the plot's height
+apart: measured, they clear by 14.7px at 220px and 2.2px at 120px, under the 3px
+margin the guard demands. The safe floor is 132px with no headroom, and font
+metrics differ between a Windows machine and CI.
+
+So the TEXT stretches instead: `align-items: stretch` on the card, the body a
+flex column, and the link pushed down with `margin-top: auto`. Measured at 0.0px
+difference at 1280, 900 and 800px; below 760px the card stacks and the two are
+correctly 347px apart. `align-items` is the one property where this card
+deliberately differs from the landing page's briefing.
+

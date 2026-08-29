@@ -171,7 +171,7 @@ export const ARTICLES = [
     title: 'How far do ASX shares actually fall?',
     question: 'How much does an Australian share normally fall?',
     answer:
-      'The typical ASX 200 company falls about 21.7% in an ordinary pullback, against 18.9% in the S&P 500. That gap is about company size rather than about Australia: compare the sixty largest in each and Australia is the shallower of the two, 18.4% against 19.2%.',
+      'The typical ASX 200 company falls about 21.7% in an ordinary pullback, against 18.9% in the S&P 500. That gap is about company size rather than about Australia: compare the sixty largest in each and Australia is the shallower of the two, 18.5% against 19.2%.',
     // ⚠️ 147 characters, and it is the META DESCRIPTION as well as the index
     // summary — `seo.spec.ts` caps it at 155 because Google truncates near there.
     // The first version ran to 179 and lost the finding, which is the only part a
@@ -193,7 +193,7 @@ export const ARTICLES = [
     facts: [
       { value: '761', label: 'companies' },
       { value: '−21.7%', label: 'whole ASX 200' },
-      { value: '−18.4%', label: 'largest 60 only' },
+      { value: '−18.5%', label: 'largest 60 only' },
     ],
     region: 'Australia',
     // ⚠️ 26 August until 2026-08-29, which had become impossible: after the study
@@ -202,12 +202,18 @@ export const ARTICLES = [
     // rests on saying when it was measured cannot claim to predate its own data.
     published: '2026-08-29',
     reviewed: '2026-08-29',
-    // 1,430 words with its figure captions — measured on the rendered page, not
-    // estimated. Re-measure rather than re-estimate whenever the prose is
-    // touched: four of the eight Learn articles were a minute out at their first
-    // audit, all inside the guard's tolerance, purely from re-rounding a number
-    // that had already been rounded once.
-    minutes: 6,
+    // 1,561 words — measured on the rendered page, not estimated. It was 6 at
+    // 1,430 words; the banks section added 131 and pushed the honest figure to 8.
+    // Re-measure rather than re-estimate whenever the prose is touched: four of
+    // the eight Learn articles were a minute out at their first audit, all inside
+    // the guard's tolerance, purely from re-rounding a number that had already
+    // been rounded once.
+    //
+    // ⚠️ The measurement excludes the closing call to action, which is why that
+    // block is rendered outside `[data-article-body]` — see `ArticleDoc`. Counted
+    // in, every article's stated reading time would drift up by the same 40 words
+    // of furniture.
+    minutes: 8,
   },
 ] as const satisfies readonly Article[];
 

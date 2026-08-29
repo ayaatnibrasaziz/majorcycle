@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { DELETION_NOTICE_COOKIE, DELETION_NOTICE_PATH } from '@/lib/account';
 import { PW_RECOVERY_COOKIE, PW_RECOVERY_ALLOWED_PATHS } from '@/lib/authRecovery';
 import { contentSecurityPolicy, createNonce, usesNonce } from '@/lib/csp';
+import { PREFERRED_SOURCE, usesPreferredSource } from '@/lib/preferredSource';
 import { accessDenialReason, hasAccess } from '@/lib/entitlement';
 import { INTERNAL_HEADER, hasInternalSecret } from '@/lib/internalAuth';
 import { PUBLIC_ENDPOINTS, PUBLIC_PAGES } from '@/lib/seo';
@@ -89,6 +90,9 @@ export async function proxy(request: NextRequest) {
     dev: process.env.NODE_ENV !== 'production',
     supabaseUrl: process.env['NEXT_PUBLIC_SUPABASE_URL'],
     siteOrigin: SITE_ORIGIN,
+    // `null` unless this is an /articles page AND the button is switched on, so
+    // a disabled feature widens nothing anywhere (lib/preferredSource.ts).
+    preferredSourceOrigin: usesPreferredSource(pathname) ? PREFERRED_SOURCE.origin : null,
   });
 
   // The nonce reaches the renderer on the REQUEST, not the response: Next parses

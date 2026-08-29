@@ -34,6 +34,41 @@
 .art-figblock { flex: none; width: 300px; }
 .art-body { flex: 1; min-width: 0; }
 
+/* ── The two columns end together ───────────────────────────────────────────
+   Owner, 2026-08-29: "ensure the featured section graph align well with the
+   Read the analysis. It should end there in terms of height of the container."
+
+   Measured before choosing a fix: at 1155px the figure is 274px tall and the
+   text column 173.6px, so the drawing hung 100px below the card's own call to
+   action.
+
+   ⚠️ THE OBVIOUS FIX WAS THE WRONG ONE. Shrinking the plot to match would need
+   it at ~120px, and the two closest right-hand labels — ASX 200 and S&P 500,
+   0.8 of a percentage point apart — sit 13.3% of the plot's height from each
+   other. Measured at 220px they clear by 14.7px; at 120px that becomes 2.2px,
+   under the 3px margin `articles.spec.ts` demands, and the safe floor is 132px
+   with NO headroom at all. Font metrics differ between this machine and CI
+   (CLAUDE.md 11i), so a fix whose correctness rests on a label being exactly as
+   tall as it is here is a fix that goes red on somebody else's computer.
+
+   So the TEXT stretches instead of the drawing shrinking: the columns are the
+   same height, and the link is pushed to the bottom of its own column. The two
+   now end on the same line at every width, the plot keeps its 14.7px of label
+   clearance, and nothing about the figure had to be re-tuned.
+
+   ⚠️ `align-items` is the one property where this card deliberately differs
+   from the landing page's briefing. That is what `flex: none` on a 56px score
+   ring never needed. `articles.spec.ts` compares the two cards on background,
+   border, radius, padding, shadow, display and gap — the properties that make
+   it the same component — and this is not one of them. */
+.briefing.art-brief { align-items: stretch; }
+.art-brief .art-body { display: flex; flex-direction: column; }
+/* The auto margin only does anything when the column has been stretched. When
+   the text is the taller of the two — a narrow window, a longer headline — it
+   collapses to nothing and the pills' own margin keeps the gap it always had. */
+.art-brief .briefing-pills { margin-bottom: 13px; }
+.art-brief .art-read { margin-top: auto; }
+
 .art-fig { margin: 0; }
 .art-plotouter { position: relative; width: 100%; }
 .art-plot { position: relative; width: 100%; }

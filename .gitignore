@@ -80,3 +80,7 @@ skills-lock.json
 #
 # Ignored, not deleted. Back it up with the owner's own files, not with git.
 reference/learn-masters/
+
+# Excel writes a lock file beside any workbook it has open. The article working
+# file is reviewed while it is being rebuilt, so this appears and disappears.
+~$*
