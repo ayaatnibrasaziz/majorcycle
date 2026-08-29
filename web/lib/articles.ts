@@ -171,7 +171,7 @@ export const ARTICLES = [
     title: 'How far do ASX shares actually fall?',
     question: 'How much does an Australian share normally fall?',
     answer:
-      'The typical ASX 200 company falls about 21.7% in an ordinary pullback, against 18.9% in the S&P 500. That gap is about company size rather than about Australia: compare the sixty largest in each and Australia is the shallower of the two, 18.4% against 19.0%.',
+      'The typical ASX 200 company falls about 21.7% in an ordinary pullback, against 18.9% in the S&P 500. That gap is about company size rather than about Australia: compare the sixty largest in each and Australia is the shallower of the two, 18.4% against 19.2%.',
     // ⚠️ 147 characters, and it is the META DESCRIPTION as well as the index
     // summary — `seo.spec.ts` caps it at 155 because Google truncates near there.
     // The first version ran to 179 and lost the finding, which is the only part a
@@ -196,7 +196,11 @@ export const ARTICLES = [
       { value: '−18.4%', label: 'largest 60 only' },
     ],
     region: 'Australia',
-    published: '2026-08-26',
+    // ⚠️ 26 August until 2026-08-29, which had become impossible: after the study
+    // was re-run so every figure shares ONE as-at date, the price window ends on
+    // 27 August — a day AFTER the stated publication. A piece whose credibility
+    // rests on saying when it was measured cannot claim to predate its own data.
+    published: '2026-08-29',
     reviewed: '2026-08-29',
     // 1,430 words with its figure captions — measured on the rendered page, not
     // estimated. Re-measure rather than re-estimate whenever the prose is

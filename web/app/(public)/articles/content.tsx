@@ -25,7 +25,7 @@ import type { ArticleSlug } from '@/lib/articles';
  * quietly go stale. An article is the other thing: a measurement taken on a
  * stated day, published with that day beside it. If these figures moved with the
  * market the piece would stop being a record of anything — and the sentence
- * "as at 26 August 2026" would become false while every number still looked
+ * "as at 27 August 2026" would become false while every number still looked
  * plausible.
  *
  * ⚠️ So the guarantee is different in kind, and it is a WORKBOOK rather than a
@@ -41,7 +41,7 @@ import type { ArticleSlug } from '@/lib/articles';
 
 /** The window every figure in the first article is measured over. */
 const STUDY_START = '1 January 2000';
-const STUDY_END = '26 August 2026';
+const STUDY_END = '27 August 2026';
 
 export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
   'how-far-do-asx-shares-fall': () => (
@@ -103,7 +103,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         rows={[
           { cells: { index: 'ASX 200', fall: '−21.7%' }, emphasis: true },
           { cells: { index: 'S&P 500', fall: '−18.9%' } },
-          { cells: { index: 'S&P/TSX 60', fall: '−15.8%' } },
+          { cells: { index: 'S&P/TSX 60', fall: '−15.7%' } },
         ]}
       />
       <p>
@@ -128,8 +128,8 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         ]}
         rows={[
           { cells: { index: 'ASX 200', fall: '−18.4%' }, emphasis: true },
-          { cells: { index: 'S&P 500', fall: '−19.0%' } },
-          { cells: { index: 'S&P/TSX 60', fall: '−15.8%' } },
+          { cells: { index: 'S&P 500', fall: '−19.2%' } },
+          { cells: { index: 'S&P/TSX 60', fall: '−15.7%' } },
         ]}
       />
       <p>
@@ -156,8 +156,8 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
           { key: 'ca', label: 'TSX 60', numeric: true },
         ]}
         rows={[
-          { cells: { sector: 'Real Estate', au: '−16.0%', us: '−17.4%', ca: '—' } },
-          { cells: { sector: 'Financial Services', au: '−18.5%', us: '−18.4%', ca: '−14.6%' } },
+          { cells: { sector: 'Real Estate', au: '−16.0%', us: '−17.3%', ca: '—' } },
+          { cells: { sector: 'Financial Services', au: '−18.5%', us: '−18.3%', ca: '−14.8%' } },
           { cells: { sector: 'Healthcare', au: '−19.1%', us: '−18.5%', ca: '—' } },
           { cells: { sector: 'Consumer Cyclical', au: '−19.7%', us: '−21.7%', ca: '−16.3%' } },
           { cells: { sector: 'Consumer Defensive', au: '−20.4%', us: '−15.0%', ca: '−13.4%' } },
@@ -171,7 +171,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         ]}
       />
       <p>
-        Australian and American banks are, to a tenth of a point, the same. Elsewhere
+        Australian and American banks are, to within a fifth of a point, the same. Elsewhere
         Australia runs a little deeper — two to five points across most sectors, and
         shallower in property and consumer cyclicals. Ordinary differences.
       </p>

@@ -1,6 +1,7 @@
 # Fact-check sheet — "How far do ASX shares actually fall?"
 
-All figures **as at 26 August 2026**. Draft v2 — every figure asserted against the data.
+All figures from **one study run, prices through 27 August 2026**, published 29 August 2026.
+Draft v3 — every figure asserted against the data.
 
 ---
 
@@ -34,7 +35,7 @@ Also confirmed, and it changed the article (see §D):
 ## B. Our own figures — method
 
 - **Universe:** current members of the ASX 200 (201), S&P 500 (500) and S&P/TSX 60 (60) — **761 companies**.
-- **Window:** 1 Jan 2000 → 26 Aug 2026.
+- **Window:** 1 Jan 2000 → 27 Aug 2026.
 - **"Typical fall":** the product's own `typical_drawdown` — the average depth of every pullback deeper than 5%, measured from the company's highest high in the previous 252 trading days. Computed by the *same code the site runs* (`analytics/major_cycle.py`), not a separate calculation.
 - **Preset:** Medium (−5% / +5% / 252 bars), the product default.
 
@@ -46,7 +47,7 @@ Also confirmed, and it changed the article (see §D):
 
 ## C. Verification run
 
-**51 automated checks** against the study data — every index median, every sector figure, all 14 rows of the bank and miner tables, both medians, the ratio, and the two US controls. **All pass.**
+**All 64 article figures** are re-derived by the workbook builder and asserted against what the article prints — every index median, every sector figure, all 14 rows of the bank and miner tables, both medians, the ratio, and the two US controls. **All pass**, and the build refuses to write the file if any one of them disagrees.
 
 Spot-checks you can confirm publicly in a few minutes:
 
@@ -151,3 +152,48 @@ concrete statement of that than a sector median was.
 not a description, and a claim about what companies *do* cannot be read off one. Where
 an article characterises a group ("miners", "banks", "tech"), name the exclusions and
 let the reader check them — which is what the table above is for.
+
+---
+
+## G. Re-run on ONE date — 29 August 2026
+
+The first draft mixed two moments: the drawdowns were measured on a run of 26 August
+and the *size ranking* was captured on 28 August, when the market caps were repaired.
+Nothing was wrong with either, and a piece whose credibility rests on saying when it
+was measured should not need two dates to say it. The owner asked for one run, so the
+whole study was re-run and every figure re-derived from it.
+
+**Six figures moved. Fifty-eight did not.**
+
+| Figure | Was | Now | Why |
+|---|---|---|---|
+| TSX 60, whole index | −15.8% | **−15.7%** | −15.75 became −15.74 — a rounding boundary |
+| TSX 60, largest 60 | −15.8% | **−15.7%** | the same value; the TSX 60's largest sixty ARE its sixty |
+| S&P 500, largest 60 | −19.0% | **−19.2%** | Micron back inside the top sixty |
+| S&P Real Estate | −17.4% | **−17.3%** | one more trading day |
+| S&P Financial Services | −18.4% | **−18.3%** | one more trading day |
+| TSX Financial Services | −14.6% | **−14.8%** | National Bank of Canada now has no sector (below) |
+
+Every one of the 28 company-level figures — all 14 banks, all 14 miners, both medians,
+and the mining counts — is unchanged to the tenth of a point. The per-company change in
+"typical fall" across all 871 companies has a **median of 0.0000** points and a maximum
+of 0.63. That is what a 26-year average does with one extra day, and it is why only the
+*rankings* moved rather than the measurements.
+
+### Three companies our data source no longer classifies
+
+`sector` comes from the provider and is written through nightly, so when the provider
+stops returning one, ours goes blank. Today that is true of three index members:
+
+| Ticker | Company | Effect |
+|---|---|---|
+| NA.TO | National Bank of Canada | Drops out of the TSX 60's Financial Services row: −14.6% becomes −14.8%, over 12 companies instead of 13 |
+| FISV | Fiserv | Already unclassified when the article was written; in no sector row |
+| SGH.AX | SGH Limited | Same |
+
+⚠️ **The workbook uses the sector the database holds TODAY, not a remembered one.**
+An earlier build read the sector frozen into the study record, which still had National
+Bank as a financial — and produced −14.5% where the live data gives −14.8%. Two of my
+own scripts disagreed by 0.3 of a point for exactly that reason. The rule that settled
+it: **every input to a figure comes from the same moment.** The three sit in "(not
+classified)" and are named here rather than left to be noticed.

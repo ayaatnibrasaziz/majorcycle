@@ -107,7 +107,7 @@ interface Series {
 }
 
 /**
- * As at 26 August 2026, from the same study the article reports.
+ * As at 27 August 2026, from the same study the article reports.
  *
  * ⚠️ These are FROZEN, and deliberately not read from the database. The article
  * states the day its measurement was taken, so the picture must show that day —
@@ -118,13 +118,14 @@ interface Series {
  * ⚠️ The TSX 60's two values are identical BY CONSTRUCTION — it holds sixty
  * companies, so its largest sixty are all of them. That makes it the figure's
  * own control: a chart in which every line moved would be much harder to trust.
- * (It measured −15.9% on 2026-08-29 purely because one Canadian company had lost
- * its market cap overnight and dropped out of the ranking — an artifact of our
- * data, not a fact about Canada, and the reason the published value stands.)
+ * ⚠️ It read −15.9% once, on a day when one Canadian company had lost its market
+ * cap overnight and dropped out of the ranking of sixty. That was an artifact of
+ * OUR data, not a fact about Canada — and it is the reason every figure in this
+ * article now comes from one complete run rather than two partial ones.
  */
 const SERIES: readonly Series[] = [
-  { id: 'ca', name: 'TSX 60', whole: -15.8, largest60: -15.8, colour: '#0E7C8B', ink: '#0C6E7B' },
-  { id: 'us', name: 'S&P 500', whole: -18.9, largest60: -19.0, colour: 'var(--text-muted)' },
+  { id: 'ca', name: 'TSX 60', whole: -15.7, largest60: -15.7, colour: '#0E7C8B', ink: '#0C6E7B' },
+  { id: 'us', name: 'S&P 500', whole: -18.9, largest60: -19.2, colour: 'var(--text-muted)' },
   { id: 'au', name: 'ASX 200', whole: -21.7, largest60: -18.4, colour: 'var(--brand-mid)' },
 ];
 
