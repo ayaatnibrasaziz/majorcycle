@@ -2208,26 +2208,32 @@ moving the one element on the card that should not move. *"I don't want you to
 move Read the analysis down, I want the graph to be of less height."* **Making
 two things line up is not the same as making the wrong one move.**
 
-So the plot is 40px shorter (220 → 180) and everything else sits where it always
-did. The figure still ends 61px below the link, and that is as far as it can go:
-the two closest labels — ASX 200 at −18.5% and S&P 500 at −19.2% — sit 11.7% of
-the plot's height apart, and shrinking the plot squeezes them.
+⚠️ **The second attempt was still tuning the wrong number.** The plot went 220 →
+180, which was as short as it could go: the ASX 200 and S&P 500 end labels are
+0.7 of a point apart out of a 6.0 point range — a ninth of the plot — so
+shrinking the plot squeezes them, and 155px was the hard floor.
 
 | plot height | label clearance |
 |---|---|
 | 220px | 10.1px |
-| 190px | 7.4px |
-| **180px** | **6.2px** |
-| 170px | 5.0px |
+| 180px | 6.2px |
 | 160px | 3.9px |
 | 150px | 2.7px — under the guard |
+| 120px | −0.6px — they overlap |
 
-Swept in the browser, not reasoned about. `articles.spec.ts` demands 3px; 180
-keeps double, which matters because the same font renders up to 2px taller on CI
-than on Windows. The guard is a **ratchet** — the plot may get shorter and can
-never quietly grow back — and it asserts the link's position from the other side
-too, since only that distinguishes "the figure got shorter" from "the text got
-taller".
+The owner then sent a mock-up of the size they wanted, and it was **120px** —
+below the floor. So the height stopped being the thing to tune. `declutter()`
+spaces colliding labels apart at a fixed pixel pitch, the dot and the line stay
+exactly where the data puts them, and the plot is free to be whatever the layout
+wants. The figure now ends **0.9px** from the link at 1280px, the link has not
+moved (13px under the pills, as always), and clearance is a constant **7.2px at
+every width** rather than something that shrank with the plot.
+
+⚠️ **The cost is that a label sits up to 5.3px off its own dot**, and that is a
+real trade rather than a free win: fine at a few pixels, a lie at twenty, because
+the reader would read the wrong number against the wrong line. `articles.spec.ts`
+bounds it at 10px, and the figure looks perfectly tidy whether the bound holds or
+not — which is why it needs a test rather than an eye.
 
 ### Two tables a reader compares must share their columns (2026-08-29)
 

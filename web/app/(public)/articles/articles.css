@@ -102,11 +102,6 @@
 .art-cap-l { left: 0; }
 .art-cap-r { left: 100%; }
 
-.art-fignote {
-  margin: 4px 0 0; font-size: var(--pub-label); line-height: 1.45;
-  color: var(--text-secondary);
-}
-
 /* ── The featured card's own furniture ──────────────────────────────────── */
 .art-head {
   display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 7px;

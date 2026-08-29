@@ -56,24 +56,39 @@ const LEFT_GUTTER_PX = 56;
 const RIGHT_GUTTER_PX = 116;
 
 /**
- * ⚠️ A MEASURED MINIMUM, not a taste. The two closest end labels are about a
- * ninth of the plot apart, so this height is what decides whether they collide.
- * `articles.spec.ts` asserts 3px between every pair of labels at three widths,
- * so it cannot be trimmed in silence.
+ * The plot's height, which is what makes the figure end level with the card's
+ * own link (owner's mock-up, 2026-08-29).
  *
- * ⚠️ 220 until 2026-08-29, when the owner asked for a shorter figure. Swept in
- * the browser rather than reasoned about, at 1280px:
+ * ⚠️ **220, then 180, then 120 — and the last step needed a different fix.**
+ * Sweeping the height at 1280px showed why:
  *
- *     220px → 10.1px clear     180px →  6.2px clear
- *     200px →  8.5px clear     170px →  5.0px clear
- *     190px →  7.4px clear     160px →  3.9px clear
- *                              150px →  2.7px clear  ← under the guard
+ *     220px → 10.1px clear     170px →  5.0px clear
+ *     200px →  8.5px clear     160px →  3.9px clear
+ *     190px →  7.4px clear     150px →  2.7px clear  ← under the guard
+ *     180px →  6.2px clear     120px → −0.6px: they OVERLAP
  *
- * 180 is as short as this can go and still keep double the guard's margin. The
- * doubling is not caution for its own sake: the same font renders up to 2px
- * taller on CI than on Windows, and 160 would pass here and fail there.
+ * The ASX 200 and S&P 500 end labels are 0.7 of a point apart out of a 6.0
+ * point range — a ninth of the plot — so shrinking the plot squeezes them, and
+ * 155px was the floor. Below that, no height is safe.
+ *
+ * So the height stopped being the thing to tune: `declutter()` now spaces
+ * COLLIDING labels apart instead, and the plot is free to be whatever the
+ * layout wants. 120 is the height at which the figure's total — padding, plot,
+ * axis captions — matches the text column beside it, which is what the owner
+ * drew.
  */
-const PLOT_H_PX = 180;
+const PLOT_H_PX = 120;
+
+/**
+ * The minimum distance between the CENTRES of two stacked labels.
+ *
+ * ⚠️ Deliberately generous: 18px of label plus 4px of air, where the label
+ * measures 14.6px here. The slack is for CI, whose fonts render up to 2px
+ * taller than this machine's — the difference that has turned an equivalent
+ * Learn guard red before (CLAUDE.md 11i). A minimum expressed in the units the
+ * guard measures cannot drift with the plot's height.
+ */
+const LABEL_PITCH_PX = 22;
 
 /** Room above, so a label centred on the topmost point cannot clip. */
 const PLOT_PAD_TOP_PX = 14;
@@ -152,12 +167,59 @@ const SERIES: readonly Series[] = [
 
 const pct = (v: number) => `−${Math.abs(v).toFixed(1)}%`;
 
+/**
+ * Push stacked labels apart so none is closer than `LABEL_PITCH_PX` to its
+ * neighbour, keeping the group centred on where it wanted to be.
+ *
+ * ⚠️ **This is what replaced tuning the plot's height, and it is worth being
+ * clear about the trade.** Two of the six labels mark points a ninth of the plot
+ * apart, so at any height small enough to suit the card they overlap. Until now
+ * the answer was a taller plot, which is a whole drawing bent around two words.
+ * Now the label moves — at 120px each of the crowded pair sits about 4px from
+ * its own dot — and the dot, the line and the axis stay exactly where the data
+ * puts them. A label a few pixels off its point still reads as belonging to it;
+ * two labels on top of each other read as a defect.
+ *
+ * ⚠️ **A pixel value, deliberately, on a plot measured in percentages.** The
+ * thing being avoided is text overlapping text, and text is sized in pixels: a
+ * percentage-based rule would tighten every time the plot got shorter, which is
+ * the bug this exists to end.
+ *
+ * The pass is order-independent: sort, spread forward, then re-centre, so the
+ * group's midpoint is unchanged and nothing drifts toward one end.
+ */
+function declutter(points: readonly number[], pitch: number): number[] {
+  const order = points.map((v, i) => ({ v, i })).sort((a, b) => a.v - b.v);
+  let prev = -Infinity;
+  for (const p of order) {
+    p.v = Math.max(p.v, prev + pitch);
+    prev = p.v;
+  }
+  const before = points.reduce((a, b) => a + b, 0) / points.length;
+  const after = order.reduce((a, b) => a + b.v, 0) / order.length;
+  const shift = before - after;
+  const out = new Array<number>(points.length);
+  for (const p of order) out[p.i] = p.v + shift;
+  return out;
+}
+
 export function FallByMarketFigure() {
   const depths = SERIES.flatMap((s) => [Math.abs(s.whole), Math.abs(s.largest60)]);
   const shallowest = Math.min(...depths);
   const deepest = Math.max(...depths);
   /** Depth to a percentage down the plot. Deeper is lower. */
   const y = (v: number) => ((Math.abs(v) - shallowest) / (deepest - shallowest)) * 100;
+  /** The same, in pixels — what the labels are laid out in. */
+  const yPx = (v: number) => (y(v) / 100) * PLOT_H_PX;
+
+  // Each side is decluttered on its own: the two columns are far apart
+  // horizontally and cannot collide with each other.
+  const rightTops = declutter(SERIES.map((s) => yPx(s.largest60)), LABEL_PITCH_PX);
+  const movers = SERIES.map((s, i) => (s.whole === s.largest60 ? null : i)).filter(
+    (i): i is number => i !== null,
+  );
+  const leftSpread = declutter(movers.map((i) => yPx(SERIES[i]!.whole)), LABEL_PITCH_PX);
+  const leftTops = new Map(movers.map((i, k) => [i, leftSpread[k]!]));
 
   // Built from the same numbers the drawing uses, so a screen reader and a
   // sighted reader can never be told different things.
@@ -211,7 +273,7 @@ export function FallByMarketFigure() {
             ))}
           </svg>
 
-          {SERIES.map((s) => (
+          {SERIES.map((s, i) => (
             <div key={s.id}>
               {/* Round dots as HTML — a `<circle>` under a non-uniform scale is
                   an ellipse, and it would flatten differently at every width. */}
@@ -230,7 +292,7 @@ export function FallByMarketFigure() {
               {s.whole !== s.largest60 && (
                 <span
                   className="art-lab art-lab-l art-sfg"
-                  style={{ top: `${y(s.whole)}%`, color: s.ink ?? s.colour }}
+                  style={{ top: `${leftTops.get(i)}px`, color: s.ink ?? s.colour }}
                 >
                   {pct(s.whole)}
                 </span>
@@ -238,7 +300,7 @@ export function FallByMarketFigure() {
 
               <span
                 className="art-lab art-lab-r"
-                style={{ top: `${y(s.largest60)}%`, color: s.ink ?? s.colour }}
+                style={{ top: `${rightTops[i]}px`, color: s.ink ?? s.colour }}
               >
                 <span className="art-snm">{s.name}</span>
                 <span className="art-sfg">{pct(s.largest60)}</span>

@@ -212,9 +212,7 @@ test.describe('the Articles section', () => {
     // instead.
     //
     // ⚠️ A RATCHET, not a target. Today's height is the ceiling, so the figure
-    // can get shorter and can never quietly grow back. It cannot go much below
-    // this: the two closest labels clear by 6.2px at 180 and 2.7px at 150,
-    // against a 3px floor (`FallByMarketFigure.tsx` carries the sweep).
+    // can get shorter and can never quietly grow back.
     //
     // ⚠️ And the link's position is asserted from the OTHER side: it must sit
     // directly under the pills, not at the bottom of a stretched column. Only
@@ -231,7 +229,7 @@ test.describe('the Articles section', () => {
         const read = card.querySelector('.art-read')!.getBoundingClientRect();
         return { plotH: plot.height, gap: read.top - pills.bottom };
       });
-      expect(m.plotH, `at ${width}px the plot is ${m.plotH}px tall`).toBeLessThanOrEqual(180);
+      expect(m.plotH, `at ${width}px the plot is ${m.plotH}px tall`).toBeLessThanOrEqual(120);
       expect(
         m.gap,
         `at ${width}px the link sits ${m.gap.toFixed(1)}px under the pills — it has been pushed down`,
@@ -250,6 +248,50 @@ test.describe('the Articles section', () => {
     expect(stacked.scrollW, 'the card widened the page at 375px').toBeLessThanOrEqual(
       stacked.clientW,
     );
+  });
+
+  test('a label never wanders far from the point it names', async ({ page }) => {
+    // The figure spaces colliding labels apart so the plot can be short enough
+    // for the card (`declutter` in FallByMarketFigure.tsx). That buys clearance
+    // by moving a label off its own dot, which is fine at a few pixels and a
+    // LIE at twenty — the reader would read the wrong number against the wrong
+    // line, on a page whose whole argument is those numbers.
+    //
+    // Today the worst offset is 5.3px. 10 is the bound: enough that the data
+    // may move a little, tight enough that a label always sits on its point.
+    // Nothing else can see this — the figure looks perfectly tidy either way,
+    // which is exactly why the crowding was allowed to be fixed this way.
+    for (const width of [1280, 375]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(ARTICLES_INDEX_PATH);
+      await ready(page);
+
+      const offsets = await page.evaluate(() => {
+        const plot = document.querySelector('.art-plot')!;
+        const pb = plot.getBoundingClientRect();
+        const mid = (r: DOMRect) => r.y + r.height / 2 - pb.y;
+        const dots = [...plot.querySelectorAll('.art-dot')].map((d) => {
+          const r = d.getBoundingClientRect();
+          return { x: r.x + r.width / 2 - pb.x, y: mid(r) };
+        });
+        return [...plot.querySelectorAll('.art-lab')].map((l) => {
+          const r = l.getBoundingClientRect();
+          const right = l.classList.contains('art-lab-r');
+          const side = dots.filter((d) => (right ? d.x > pb.width / 2 : d.x < pb.width / 2));
+          const near = side.reduce((a, b) =>
+            Math.abs(b.y - mid(r)) < Math.abs(a.y - mid(r)) ? b : a,
+          );
+          return { text: (l.textContent ?? '').trim(), off: Math.abs(mid(r) - near.y) };
+        });
+      });
+
+      // The control: six labels, or the loop below proves nothing (14g).
+      expect(offsets.length, `no labels found at ${width}px`).toBeGreaterThanOrEqual(5);
+      for (const o of offsets) {
+        expect(o.off, `at ${width}px "${o.text}" sits ${o.off.toFixed(1)}px from its dot`)
+          .toBeLessThanOrEqual(10);
+      }
+    }
   });
 
   test('no two labels in the featured figure overlap', async ({ page }) => {
