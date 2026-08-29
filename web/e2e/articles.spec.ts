@@ -204,29 +204,38 @@ test.describe('the Articles section', () => {
     }
   });
 
-  test('the featured figure ends level with the link beside it', async ({ page }) => {
-    // Owner, 2026-08-29. Before the fix the drawing hung 100px below the card's
-    // own call to action, which is the kind of thing a screenshot shows and no
-    // assertion was looking for.
+  test('the featured figure stays short, and the link stays put', async ({ page }) => {
+    // Owner, 2026-08-29, in two passes. The drawing hung 100px below the card's
+    // own call to action. My first fix stretched the text column and pushed the
+    // link down to meet it; the owner reversed that — the call to action is the
+    // one thing on the card that should not move — and asked for a shorter plot
+    // instead.
     //
-    // ⚠️ SIDE-BY-SIDE WIDTHS ONLY. Below 760px the card stacks, the figure sits
-    // ABOVE the text, and the two are 347px apart by design — asserting equality
-    // there would be asserting the wrong layout. The stacked case has its own
-    // control below: the page must still not scroll sideways.
+    // ⚠️ A RATCHET, not a target. Today's height is the ceiling, so the figure
+    // can get shorter and can never quietly grow back. It cannot go much below
+    // this: the two closest labels clear by 6.2px at 180 and 2.7px at 150,
+    // against a 3px floor (`FallByMarketFigure.tsx` carries the sweep).
+    //
+    // ⚠️ And the link's position is asserted from the OTHER side: it must sit
+    // directly under the pills, not at the bottom of a stretched column. Only
+    // that distinguishes "the figure got shorter" from "the text got taller",
+    // which is the change that was reversed.
     for (const width of [1280, 900, 800]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(ARTICLES_INDEX_PATH);
       await ready(page);
-      const delta = await page.evaluate(() => {
+      const m = await page.evaluate(() => {
         const card = document.querySelector('.briefing.art-brief')!;
-        const fig = card.querySelector('.art-fig')!.getBoundingClientRect();
+        const plot = card.querySelector('.art-plot')!.getBoundingClientRect();
+        const pills = card.querySelector('.briefing-pills')!.getBoundingClientRect();
         const read = card.querySelector('.art-read')!.getBoundingClientRect();
-        return fig.bottom - read.bottom;
+        return { plotH: plot.height, gap: read.top - pills.bottom };
       });
+      expect(m.plotH, `at ${width}px the plot is ${m.plotH}px tall`).toBeLessThanOrEqual(180);
       expect(
-        Math.abs(delta),
-        `at ${width}px the figure ends ${delta.toFixed(1)}px from the link`,
-      ).toBeLessThanOrEqual(1);
+        m.gap,
+        `at ${width}px the link sits ${m.gap.toFixed(1)}px under the pills — it has been pushed down`,
+      ).toBeLessThanOrEqual(20);
     }
 
     await page.setViewportSize({ width: 375, height: 900 });
@@ -417,6 +426,44 @@ test.describe('the Articles section', () => {
       expect(csp, 'switched off, but the policy still grants the origin').not.toContain(
         PREFERRED_SOURCE.origin,
       );
+    }
+  });
+
+  test('the bank and miner tables line up column for column', async ({ page }) => {
+    // The prose says "And then the miners, on the same scale". A browser sizes
+    // columns to their content, so the two tables sized themselves separately
+    // and put Typical fall 43.6px apart — because "Mineral Resources — median"
+    // is longer than "Bendigo & Adelaide". Each table is individually perfect,
+    // which is why nothing looked wrong; the eye just cannot run down the two
+    // columns. Found by the owner reading the page.
+    //
+    // ⚠️ Asserted at 375px too. The alignment comes from percentage widths, and
+    // percentages are exactly where two tables can agree at one width and part
+    // company at another.
+    for (const width of [1280, 375]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(articlePath('how-far-do-asx-shares-fall'));
+      await ready(page);
+
+      const cols = await page.evaluate(() => {
+        const pick = (needle: string) =>
+          [...document.querySelectorAll('table.art-table')].find((t) =>
+            (t.querySelector('caption')?.textContent ?? '').startsWith(needle),
+          );
+        const xs = (t: Element | undefined) =>
+          t ? [...t.querySelectorAll('thead th')].map((h) => h.getBoundingClientRect().x) : [];
+        return { banks: xs(pick('Australian banks')), miners: xs(pick('Australian miners')) };
+      });
+
+      // The control: three columns each. Without it, two empty lists compare
+      // equal and the test passes having looked at nothing (CLAUDE.md 14g).
+      expect(cols.banks.length, `banks table not found at ${width}px`).toBe(3);
+      expect(cols.miners.length, `miners table not found at ${width}px`).toBe(3);
+
+      for (let i = 0; i < 3; i++) {
+        const delta = Math.abs(cols.banks[i]! - cols.miners[i]!);
+        expect(delta, `at ${width}px column ${i + 1} is ${delta.toFixed(1)}px out`).toBeLessThan(1);
+      }
     }
   });
 

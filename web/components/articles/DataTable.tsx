@@ -27,6 +27,21 @@ export interface DataColumn {
   readonly label: string;
   /** Mono, tabular figures, right-aligned. See the warning above. */
   readonly numeric?: boolean;
+  /**
+   * A CSS width for this column, e.g. `'27%'`.
+   *
+   * ⚠️ **Only for tables a reader is meant to compare with each other.** A
+   * browser sizes columns to their content, which is right for a table read on
+   * its own and wrong for two stacked tables the prose calls "the same scale":
+   * the article's bank and miner tables had their Typical fall columns **43.6px
+   * apart**, because "Mineral Resources — median" is longer than "Bendigo &
+   * Adelaide". Nothing about that looks like a defect — each table is
+   * individually perfect — and the eye simply cannot run down the two columns.
+   *
+   * Setting a width on any column switches the table to `table-layout: fixed`,
+   * so give every column one or the remainder is shared arbitrarily.
+   */
+  readonly width?: string;
 }
 
 export interface DataRow {
@@ -45,16 +60,38 @@ export function DataTable({
   caption,
   columns,
   rows,
+  minWidth,
 }: {
   /** Rendered as the table's accessible name. Never decorative. */
   caption: string;
   columns: readonly DataColumn[];
   rows: readonly DataRow[];
+  /**
+   * The narrowest the table may be squeezed before the wrapper scrolls instead.
+   *
+   * Only meaningful with column widths: percentages shrink forever, and a
+   * header that cannot wrap (`.art-table thead th` is `nowrap`) then overflows
+   * its own cell. Measured for the bank/miner pair — the longest name is 186px,
+   * the widest header 117px, so 440px is the point below which something has to
+   * give.
+   */
+  minWidth?: string;
 }) {
+  const fixed = columns.some((c) => c.width);
   return (
     <div className="art-tablewrap">
-      <table className="art-table">
+      <table
+        className={fixed ? 'art-table art-table--fixed' : 'art-table'}
+        style={minWidth ? { minWidth } : undefined}
+      >
         <caption className="art-table-cap">{caption}</caption>
+        {fixed && (
+          <colgroup>
+            {columns.map((c) => (
+              <col key={c.key} style={c.width ? { width: c.width } : undefined} />
+            ))}
+          </colgroup>
+        )}
         <thead>
           <tr>
             {columns.map((c) => (

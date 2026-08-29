@@ -56,12 +56,24 @@ const LEFT_GUTTER_PX = 56;
 const RIGHT_GUTTER_PX = 116;
 
 /**
- * ⚠️ A MEASURED MINIMUM, not a taste. The two closest end labels are a tenth of
- * the plot apart, so this height is what decides whether they collide.
+ * ⚠️ A MEASURED MINIMUM, not a taste. The two closest end labels are about a
+ * ninth of the plot apart, so this height is what decides whether they collide.
  * `articles.spec.ts` asserts 3px between every pair of labels at three widths,
  * so it cannot be trimmed in silence.
+ *
+ * ⚠️ 220 until 2026-08-29, when the owner asked for a shorter figure. Swept in
+ * the browser rather than reasoned about, at 1280px:
+ *
+ *     220px → 10.1px clear     180px →  6.2px clear
+ *     200px →  8.5px clear     170px →  5.0px clear
+ *     190px →  7.4px clear     160px →  3.9px clear
+ *                              150px →  2.7px clear  ← under the guard
+ *
+ * 180 is as short as this can go and still keep double the guard's margin. The
+ * doubling is not caution for its own sake: the same font renders up to 2px
+ * taller on CI than on Windows, and 160 would pass here and fail there.
  */
-const PLOT_H_PX = 220;
+const PLOT_H_PX = 180;
 
 /** Room above, so a label centred on the topmost point cannot clip. */
 const PLOT_PAD_TOP_PX = 14;

@@ -2197,20 +2197,49 @@ screen-reader user navigates by and what a crawler reads as the page's structure
 than guessed, and they are granted only on `/articles` — never site-wide, and not
 at all while the flag is false.
 
-### The featured card's two columns end together (2026-08-29)
+### The featured figure is SHORT; the link does not move (2026-08-29)
 
-Owner: the figure "should end there in terms of height of the container". It hung
-100px below the card's own link.
+The drawing hung 100px below the card's own call to action.
 
-⚠️ **The obvious fix was the wrong one.** Shrinking the plot to match needs it at
-~120px, and the two closest right-hand labels sit 13.3% of the plot's height
-apart: measured, they clear by 14.7px at 220px and 2.2px at 120px, under the 3px
-margin the guard demands. The safe floor is 132px with no headroom, and font
-metrics differ between a Windows machine and CI.
+⚠️ **My first fix was reversed by the owner, and the reversal is the lesson.** I
+stretched the text column and pushed "Read the analysis" to the bottom so the two
+ended level. It worked — 0.0px at three widths — and it solved the problem by
+moving the one element on the card that should not move. *"I don't want you to
+move Read the analysis down, I want the graph to be of less height."* **Making
+two things line up is not the same as making the wrong one move.**
 
-So the TEXT stretches instead: `align-items: stretch` on the card, the body a
-flex column, and the link pushed down with `margin-top: auto`. Measured at 0.0px
-difference at 1280, 900 and 800px; below 760px the card stacks and the two are
-correctly 347px apart. `align-items` is the one property where this card
-deliberately differs from the landing page's briefing.
+So the plot is 40px shorter (220 → 180) and everything else sits where it always
+did. The figure still ends 61px below the link, and that is as far as it can go:
+the two closest labels — ASX 200 at −18.5% and S&P 500 at −19.2% — sit 11.7% of
+the plot's height apart, and shrinking the plot squeezes them.
 
+| plot height | label clearance |
+|---|---|
+| 220px | 10.1px |
+| 190px | 7.4px |
+| **180px** | **6.2px** |
+| 170px | 5.0px |
+| 160px | 3.9px |
+| 150px | 2.7px — under the guard |
+
+Swept in the browser, not reasoned about. `articles.spec.ts` demands 3px; 180
+keeps double, which matters because the same font renders up to 2px taller on CI
+than on Windows. The guard is a **ratchet** — the plot may get shorter and can
+never quietly grow back — and it asserts the link's position from the other side
+too, since only that distinguishes "the figure got shorter" from "the text got
+taller".
+
+### Two tables a reader compares must share their columns (2026-08-29)
+
+The article says *"And then the miners, on the same scale"*, and the two tables
+sized themselves independently: **Typical fall landed 43.6px apart**, because
+"Mineral Resources — median" is longer than "Bendigo & Adelaide". Each table was
+individually perfect, which is why nothing looked wrong — the eye simply cannot
+run down two columns that do not line up. The owner found it by reading.
+
+`DataTable` columns now take an optional `width`, which switches the table to
+`table-layout: fixed`. Both tables declare 46/27/27 and a 440px `minWidth` —
+derived from the widest content either one holds (a 186px name, a 117px header),
+below which a header that cannot wrap would overflow its own cell. Asserted at
+1280px **and** 375px, because percentages are exactly where two tables agree at
+one width and part company at another.

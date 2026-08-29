@@ -277,11 +277,16 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       <h2>Banks and miners, side by side</h2>
       <p>The clearest view is inside Australia alone. First the banks:</p>
       <DataTable
+        // ⚠️ The SAME widths as the miners table below, and that is the point:
+        // the prose says "on the same scale", and a reader cannot run their eye
+        // down two columns that do not line up. Left to size themselves, these
+        // two put Typical fall 43.6px apart.
+        minWidth="440px"
         caption="Australian banks, typical fall and worst fall since 2000"
         columns={[
-          { key: 'name', label: 'Bank' },
-          { key: 'typical', label: 'Typical fall', numeric: true },
-          { key: 'worst', label: 'Worst since 2000', numeric: true },
+          { key: 'name', label: 'Bank', width: '46%' },
+          { key: 'typical', label: 'Typical fall', numeric: true, width: '27%' },
+          { key: 'worst', label: 'Worst since 2000', numeric: true, width: '27%' },
         ]}
         rows={[
           { cells: { name: 'Commonwealth Bank', typical: '−14.3%', worst: '−52.7%' } },
@@ -298,11 +303,13 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       />
       <p>And then the miners, on the same scale:</p>
       <DataTable
+        // The same three widths as the banks table above — see the note there.
+        minWidth="440px"
         caption="Australian miners, typical fall and worst fall since 2000"
         columns={[
-          { key: 'name', label: 'Miner' },
-          { key: 'typical', label: 'Typical fall', numeric: true },
-          { key: 'worst', label: 'Worst since 2000', numeric: true },
+          { key: 'name', label: 'Miner', width: '46%' },
+          { key: 'typical', label: 'Typical fall', numeric: true, width: '27%' },
+          { key: 'worst', label: 'Worst since 2000', numeric: true, width: '27%' },
         ]}
         rows={[
           { cells: { name: 'BHP', typical: '−16.9%', worst: '−57.2%' } },
