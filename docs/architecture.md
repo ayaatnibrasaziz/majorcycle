@@ -778,7 +778,7 @@ build advertising profiles" is comfortably true, which is worth knowing before
 anyone proposes adding a tag manager.
 
 📄 **The gaps this exposed in the published pages, with proposed wording, are in
-`docs/legal-audit.md` — PROPOSED, not applied, awaiting the owner.**
+`docs/legal-audit.md` — ✅ **ALL SEVEN APPLIED, 2026-08-15**, on owner instruction.**
 
 ## 7. API Surface
 

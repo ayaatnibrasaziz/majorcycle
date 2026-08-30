@@ -642,6 +642,52 @@ test.describe('the Articles section', () => {
   });
 
 
+  test('no ranked-table cell wraps at the reading width', async ({ page }) => {
+    // ⚠️ Owner review, 2026-08-30: "it looks very squished". The Canadian table's
+    // last column holds sector NAMES where the AU and US tables hold dates —
+    // "Communication Services" needs 165px against "Nov 2024"'s 76px — so the
+    // shared 20% width broke TELUS's label over two lines and pushed "Consumer
+    // Cyclical" against the edge.
+    //
+    // ⚠️ A wrapped cell is not an ERROR, which is why nothing caught it: the table
+    // renders, scrolls correctly, clips nothing, and passes every other assertion
+    // in this file. It just looks cramped. So the assertion has to be on the
+    // rendered LINE COUNT, and it is measured on content height rather than box
+    // height — a cell carries 9px of padding top and bottom, so measuring the box
+    // scores every single-line cell as two and reports a defect on every table.
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    let checked = 0;
+    for (const path of PATHS.filter((p) => p.includes('furthest-below-their-highs'))) {
+      await page.goto(path);
+      await ready(page);
+      const wrapped = await page.evaluate(() => {
+        const t = [...document.querySelectorAll('.art-table')].find((x) =>
+          x.querySelector('.art-right'),
+        );
+        if (!t) return null;
+        const lines = (el: HTMLElement) => {
+          const cs = getComputedStyle(el);
+          const inner =
+            el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+          return Math.round(inner / parseFloat(cs.lineHeight));
+        };
+        return [...t.querySelectorAll('tbody th, tbody td')]
+          .filter((c) => lines(c as HTMLElement) > 1)
+          .map((c) => (c.textContent ?? '').trim());
+      });
+      expect(wrapped, `${path}: no table carries an alignRight column`).not.toBeNull();
+      expect(
+        wrapped,
+        `${path}: these cells wrap onto a second line at the reading width — the column is too narrow`,
+      ).toEqual([]);
+      checked += 1;
+    }
+    // The control: three ranked articles, three tables measured. Without it, a
+    // renamed slug would empty the filter and this would pass having checked
+    // nothing (CLAUDE.md 14g).
+    expect(checked, 'no ranked tables were measured — the slug filter is stale').toBe(3);
+  });
+
   test('a table scrolls inside its own box — the page never does', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
     for (const path of [ARTICLES_INDEX_PATH, ...PATHS]) {

@@ -1076,14 +1076,43 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       <h2>The ten that are down more than 20%</h2>
       <DataTable
         wrapHeaders
-        minWidth="560px"
+        minWidth="600px"
         caption="Every S&P/TSX 60 company more than 20% below its own one-year high. Nothing else in the index qualifies."
+        /* ⚠️ THE ONE RANKED TABLE WITH ITS OWN WIDTHS, and the reason is data, not
+           taste. Its last column holds sector NAMES where the AU and US tables hold
+           dates: "Communication Services" needs 165px against "Nov 2024"'s 76px, so
+           the shared 20% (123px at the 614px reading width) broke TELUS's label over
+           two lines and left "Consumer Cyclical" hard against the edge. Owner review,
+           2026-08-30: "it looks very squished".
+
+           Re-allocated from MEASUREMENT rather than by trying percentages until it
+           looked right. Every column's true need, at the 614px reading width:
+
+             #        27px    Company  176px   (Constellation Software)
+             1-year  101px    best     123px   (both bound by their HEADER, not their
+             Sector  165px            figures: -35.8% is 61px, but "Below its best
+                                      since 2000" only fits two lines from 111px)
+
+           So the slack was never in the sector column — it was the two percentage
+           columns holding 270px for content needing 61px each. 5/29/17/21/28 gives
+           every column its measured need plus a margin.
+
+           ⚠️ Shortening the headers would have been the easy fix and is forbidden:
+           they are the words the piece was approved with, and this file already
+           records that trade-off being refused once.
+
+           minWidth 600px, not 614px: at the reading width the table fills its
+           wrapper, and a minWidth ABOVE that would make the table scroll on a full
+           desktop — the exact defect wrapHeaders was added to cure. At 600px the
+           sector column still clears its 165px; "Constellation Software" wraps to two
+           lines, which is ordinary for a company name on a phone and is not what was
+           being complained about. */
         columns={[
-          { key: 'rank', label: '#', width: '7%' },
+          { key: 'rank', label: '#', width: '5%' },
           { key: 'name', label: 'Company', width: '29%' },
-          { key: 'y1', label: 'Below its 1-year high', numeric: true, width: '20%' },
-          { key: 'all', label: 'Below its best since 2000', numeric: true, width: '24%' },
-          { key: 'sector', label: 'Sector label', alignRight: true, width: '20%' },
+          { key: 'y1', label: 'Below its 1-year high', numeric: true, width: '17%' },
+          { key: 'all', label: 'Below its best since 2000', numeric: true, width: '21%' },
+          { key: 'sector', label: 'Sector label', alignRight: true, width: '28%' },
         ]}
         rows={[
           { cells: { rank: '1', name: 'Thomson Reuters', y1: '−39.1%', all: '−49.3%', sector: 'Industrials' } },
