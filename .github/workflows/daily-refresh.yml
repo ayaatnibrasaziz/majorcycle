@@ -36,7 +36,15 @@ jobs:
   refresh:
     name: Run daily pipeline (US + CA)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # 90, not 60, since 2026-08-30. The refresh now runs its ticker loop a second
+    # time over whatever failed, after a five-minute wait (see
+    # daily_refresh._RETRY_PASS_DELAY), and the staleness sweep at the end reads
+    # every ticker's newest bar. Neither is large — a typical night has 3 failures
+    # in 620 — but the old ceiling had no measured headroom above it, and a job
+    # that dies on `timeout-minutes` dies MID-WRITE, which is a worse outcome than
+    # any it was protecting against. Actions minutes are unlimited on a public
+    # repo, so the extra 30 costs nothing.
+    timeout-minutes: 90
     # `contents: write` so the landing snapshot can be committed back. Nothing
     # else in this workflow writes to the repo.
     permissions:
@@ -234,13 +242,63 @@ jobs:
       #
       # `outcome` is the step's own result BEFORE continue-on-error rewrites it;
       # `conclusion` would always read success and this gate would never fire.
-      - name: Fail the run if a listings market collapsed
-        if: steps.listings.outcome == 'failure'
+      # ── The staleness + delisting sweep (roadmap item 4, 2026-08-30) ───────
+      #
+      # A ticker the provider quietly stops serving is invisible: the refresh logs
+      # it as failed and exits 0, the page keeps rendering, and the stored price
+      # simply stops moving. Eleven companies were stale on 2026-08-30, one by four
+      # months, and every night had reported success.
+      #
+      # This also applies the three-source delisting test and marks (never deletes)
+      # anything all three agree has stopped trading. It runs LAST among the data
+      # steps, after every write, so failing it can skip no work.
+      #
+      # `continue-on-error` + an id, so its result reaches the ONE gate below
+      # rather than ending the job here. The owner's requirement was explicit: one
+      # email when something is wrong, not one per problem.
+      - name: Check for stale and delisted tickers
+        id: staleness
+        continue-on-error: true
+        if: github.event_name != 'workflow_dispatch' || inputs.run_prices
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m analytics.cron.check_stale_tickers
+
+      # ── The ONE gate: one red X, one email, however many things went wrong ──
+      #
+      # GitHub sends a failed-workflow notification once per failed RUN, not per
+      # failed step, so folding both alarms into a single gate is what keeps that
+      # promise. Adding a second failing step would not have sent a second email —
+      # but it would have made the run's status depend on which alarm fired first,
+      # and the log would stop at the first one.
+      #
+      # ⚠️ `outcome` is each step's own result BEFORE `continue-on-error` rewrites
+      # it. `conclusion` always reads success for those steps and this gate would
+      # never fire — the exact trap that made audit F-027's first proposed fix a
+      # no-op (see analytics/cron/refresh_listings.py).
+      #
+      # ⚠️ `always()` so this still runs when an earlier step already failed the
+      # job. Without it, a hard failure above would skip the gate and the log would
+      # never say which alarms were also ringing.
+      - name: Fail the run if anything above needs attention
+        if: always() && (steps.listings.outcome == 'failure' || steps.staleness.outcome == 'failure')
         run: |
-          echo "::error::The ticker listings refresh reported a problem. The site is"
-          echo "::error::still serving the previous menu — it was NOT overwritten — but"
-          echo "::error::that menu is going stale and will not repair itself."
-          echo "::error::Read the 'Refresh ticker listings' step above for which market"
-          echo "::error::and how many symbols it pulled. A source answering HTTP 200"
-          echo "::error::with an error page is the known cause (audit F-027)."
+          if [ "${{ steps.listings.outcome }}" = "failure" ]; then
+            echo "::error::LISTINGS — the ticker listings refresh reported a problem."
+            echo "::error::The site is still serving the previous menu — it was NOT"
+            echo "::error::overwritten — but that menu is going stale and will not"
+            echo "::error::repair itself. Read the 'Refresh ticker listings' step for"
+            echo "::error::which market and how many symbols it pulled. A source"
+            echo "::error::answering HTTP 200 with an error page is the known cause"
+            echo "::error::(audit F-027)."
+          fi
+          if [ "${{ steps.staleness.outcome }}" = "failure" ]; then
+            echo "::error::STALENESS — an unusual number of tickers stopped receiving"
+            echo "::error::prices, or a delisting sweep was refused for safety. Read"
+            echo "::error::the 'Check for stale and delisted tickers' step for the"
+            echo "::error::market and the names. NOTE: a handful of chronically slow"
+            echo "::error::tickers does NOT trigger this — it takes an outbreak, so"
+            echo "::error::suspect tonight's run, the provider, or the network."
+          fi
           exit 1

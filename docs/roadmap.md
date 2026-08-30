@@ -9,7 +9,7 @@
 ## 0. Phase Definitions
 
 - **Phase 0** — Setup. Accounts, repo scaffolding, foundational docs. ✅ **COMPLETE**
-- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited. Layer G is in its last stretch, all of it inside PR #89, deliberately unmerged until the layer is finished.** Done: **G1** SEO plumbing · **G2** design foundations · **G3** public chrome · **G3.5** the auth net · **G3.7** the legal documents (owner-accepted 2026-08-13; their TEXT is still `BASELINE CONTENT` awaiting professional review before wide launch) · the **legal compliance audit**, all 7 findings applied · **G3.8** the landing page rebuilt to the approved storyboard and `/methodology` folded into it · **G3.9** the render-mode fix (every public page now prerendered) · **G4** the twelve-article `/learn` library, **all three topics read through and approved by the owner** (2026-08-21/22) · **G5** Lighthouse, accessibility, structured data and the config review · **G6** the colour review (the ink layer, two rating colours, three faded-text defects, and the reference HTML demoted from contract to mock-up). · **G7** the CSP flip — enforcing at last, with a per-request nonce wherever a session lives. **Remaining in Layer G, as of 2026-08-29:** (1) ~~`/articles`~~ — **BUILT 2026-08-29**: `/articles` (the approved direction A) and `/articles/[slug]` (reusing `ArticleDoc`), the first article ported, 15 new Playwright tests, and both routes prerendered. What is left in this item is only the owner's final read of the page. The plan and the design were settled on 2026-08-26. ⚠️ **Two previously "locked" decisions changed on 2026-08-26 and both came from the owner.** The **weekly cadence is dropped** (*"the articles doesn't need to be per week"*) — publish when there is something worth publishing; nothing becomes automated, which is the half that keeps us outside Google's scaled-content policy. And the section is **not one genre**: it carries measurements, market commentary *and* how-to pieces, so the design has to hold all three. Settled with it: Australia leads every piece with the US and Canada inside it as the comparison; `/articles/<topic-slug>` with **no date in the path**; four articles in the first 30 days, limited by the owner's review time rather than drafting; and the workflow is I draft → I fact-check → **I hand over 8–10 spot-checks with public links** → owner cross-checks → owner publishes. That last part solves the wrinkle flagged on 2026-08-25: our own figures have no URL to cite, and the answer is not to link every number but to publish the method and hand over ten checks a human can actually do. ⚠️ **The running order changed because the site is DARK** — `majorcycle.com` still serves the login page, so nothing written now can be indexed and an event piece written today is worthless by the time we launch. **Evergreen first; event-driven once live.** ⚠️ **And the competitors' pattern is the wrong one for us**: Simply Wall St and Motley Fool AU both run a flat list with no featured item and a thumbnail per row, which is right at 40 articles a day and reads as abandoned at four a month — the same trap `/learn` documented. The index is therefore a **featured article + list**, with numbers rather than pictures doing the work, and the featured block **reuses the landing page's analyst briefing components** rather than resembling them (owner's call, verified identical in the browser). Direction A of three drawn in `claude.ai/code/artifact/fd8cbcdc`; B and C deleted. **The article page itself needs no design** — the live Learn pages already show it, so `/articles/[slug]` reuses `ArticleDoc` and `LegalNotice`. **Next session: the owner reviews the article and the index, gives feedback, then we build.** The 2026-08-25 storyboard (`claude.ai/code/artifact/24903b9d`) drew the OLD weekly-note template and is superseded — it carries a banner saying so, because an artifact that looks approved is exactly how a stale design gets built (CLAUDE.md 11j). (2) a **bundle-size audit** — unused dependencies, never done; then (3) finishing the Layer G audit before merge. ⚠️ **The ticker page's 84 → 90 is no longer on this list, and it was not dropped — it is BLOCKED.** Attempted 2026-08-24: `/api/benchmarks` took a third off the document with **no score movement** (F-019); splitting hydration made it **worse** and was reverted (F-020); and measuring the deployed preview — to test the theory that the local number was unfairly penalised by Australia→`us-east-1` latency — returned **64**, disproving it (F-021). Neither available measurement is trustworthy, and no external lab tool can reach a page behind sign-in. It waits on **real-user monitoring, which the owner deferred on 2026-08-24**; the merge-gate row stays red. The byte counts, which ARE reliable, improved twice and are ratcheted into `check:page-weight`. **Audit progress:** step zero, Layers 0, 1, 2, 3 (the wire sweep — 50 checks, clean) and 3b (the platform sweep) are done, and **F-024 + F-025 were both applied and guarded on 2026-08-25** (Playwright 597 → **617**). F-024 revoked `anon`'s write grants on `profiles` — it had held `UPDATE`/`INSERT`/`DELETE` on all 20 columns for a year, blocked only by row-level security, and the fix's real value is that the refusal became *visible* (`200`/0 rows → `permission denied`), which is what made it testable at all. F-025 ties `PRICE_TABLE` to Stripe's actual prices, **for test mode only** — CI holds no live key, so the six live figures are re-read by hand at merge, which is now a row in the merge-gate table rather than a memory. **A new finding came out of F-024: F-026** — the same Supabase default grants sit on all 12 tables and `authenticated` still holds `DELETE`/`TRUNCATE`; unreachable today, recorded rather than fixed because the approved scope was `anon` on `profiles`. **Owner's call.** **Layer 4 — the data sweep — is also done (2026-08-25)**, against the live database and the rendered page. The bulk is clean: the three nightly invariants pass and were proven able to fail (with a control showing the coverage one is a proportion), all seven reporting currencies are present and the "figures reported in…" note was verified **on screen** for USD-in-AUD, USD-in-CAD, NZD, EUR, SGD and TWD with two same-currency controls showing none — the check that once shipped inert. Zero weekend bars across all 6.6M price rows. 🟠 **The one serious finding, F-027: the ASX listings source has returned NOTHING for a month, and the failure wears an HTTP 200** — the ASX now sits behind bot protection that answers 200 with an HTML rejection page, the parser finds no rows, and the nightly job treats an empty pull as a soft failure, so the workflow goes green and nothing alerts. The cost is in the owner's own market: any ASX ticker outside the 250 already covered is refused as "not a known listed stock". **Owner chose "fix both" and it shipped the same day.** New source live (AU listings 1,981 → 1,999 active), and the alarm wired all the way through — which mattered, because the obvious fix would have done nothing: the workflow step runs `continue-on-error`, so a non-zero exit is *recorded and ignored*. There were three stacked silences, not two. ⚠️ **And a dry run before writing anything caught that the fix would have caused a worse bug**: the replacement source is not a superset, and the delisting sweep would have marked 158 live companies "not a known listing", including Qube Holdings (ASX 200) which we actively cover. The sweep now refuses to retire more than 2% of a market in one night — leaving a delisted company in the menu costs one failed request; removing a live one tells a customer their real stock does not exist. **All four owner decisions were answered the same day and applied:** **F-028** TSX Venture is on (Canada's requestable menu 1,235 → **2,692**, and the `.V` code path finally has data behind it); **F-029** insider values on **Stock Detail** now carry the stock's own currency — owner explicitly kept the Results table's bare `$` as it is — and a *second* hard-coded `$` turned up in the same component's chart tooltip while fixing the first; **F-026** both public database roles now hold exactly the verbs their row policies allow and nothing on the nine server-only tables, which removes `TRUNCATE`, the one verb row-level security never governed. ⚠️ **A correction:** I first reported that insider values "may not be in the stock's currency", generalising from BHP. Measured across **4,539** AU and CA transactions, the implied price sits inside the stock's own 52-week range **94.7%** and **97.0%** of the time — the local currency is right for nearly all of them, and BHP is the dual-listed exception. That correction is what made labelling the right fix rather than stripping the figure. **F-030** (five index members are not fetchable companies) remains recorded, no action. **Next: 5a (my visual sweep), then 5b (the owner's judgement sweep).** **At merge, and only the owner can do them:** flip the apex→`www` redirect from **307 to 308** (re-measured 2026-08-23, still 307 — the highest-value SEO item in the layer), and submit the sitemap in Search Console *after* deploy (`/sitemap.xml` still answers 307 on production, and submitting a redirect teaches Google to distrust it). **One decision is genuinely still open:** whether to lift the public documents' 13px body size — it moves the legal pages, the auth cards and the articles together, so no page opts out alone. 🔴 **Two live defects were reported by the OWNER on 2026-08-28, and both were in merged production code with a green suite.** **F-031:** a failed `profiles` read was presented to the customer as *"you have never agreed"*, showing the first-login disclaimer gate to an account that acknowledged in June — and the gate's only button then **overwrote the June date**, destroying a compliance record under #23/#24. Fixed in three places (unreadable is now its own state; the gate needs the row to have been read; the acknowledgement is write-once), with entitlement still failing CLOSED as the control. The owner's date was reconstructed to the account's creation instant and is documented as a reconstruction, not a measurement. **F-032:** the nightly refresh **deleted** `market_cap` for 15 of 863 companies because yfinance's `info` omitted the key that night — a null is not an error, so nothing went red, and the loss was silent: those companies drop out of every size-ranked cohort and lose `fcf_yield_pct` with them. It surfaced three days later only because the article's verification workbook produced a figure that would not reproduce. ⚠️ **The identical rule was already in that function ten lines below, guarding `news`** — 11c-iv at its shortest possible range. Fixed at the source (`fast_info` fallback), in the data (a nightly invariant, whose floor had to be re-tuned from 2% to 0.5% because the real event was 1.7% and the first threshold would have passed it) — and at the write, **where the owner reversed my first fix on 2026-08-29 and was right to.** I had the writer OMIT the column so the stored figure survived a bad night; that also survives a bad MONTH, serving a months-old market cap as though it were current. *"I don't want to manipulate anything. Just show what the provider give to us."* **Of two ways to be wrong, prefer the visible one:** a null is an empty cell a reader can see and an alarm can fire on; a stale number is a plausible one nobody can see. The writer now passes the provider's answer through, null included, and the fallback plus the invariant are what make that safe. ⚠️ **The incident then recurred on 2026-08-28 — 13 companies blanked — because a scheduled workflow checks out the DEFAULT branch and the fix is on `feat/layer-g`** (14g). Both endpoints carried a cap for all 13 when checked by hand, which is the evidence the omission is transient and per-run rather than per-company. All repaired; **they revert nightly until merge.** ⛔ `/about` and `/glossary` are **dropped** (owner, 2026-08-22) — About may return later, the glossary is permanently cancelled; `llms.txt` dropped on the same day.
+- **Phase 1** — Launch. Everything currently in `/reference/original-design.html` minus Smart Money Activity, plus auth, payments, static content pages. ⬅️ **YOU ARE HERE — Layers A–F all built, merged, live and audited. Layer G is in its last stretch, all of it inside PR #89, deliberately unmerged until the layer is finished.** Done: **G1** SEO plumbing · **G2** design foundations · **G3** public chrome · **G3.5** the auth net · **G3.7** the legal documents (owner-accepted 2026-08-13; their TEXT is still `BASELINE CONTENT` awaiting professional review before wide launch) · the **legal compliance audit**, all 7 findings applied · **G3.8** the landing page rebuilt to the approved storyboard and `/methodology` folded into it · **G3.9** the render-mode fix (every public page now prerendered) · **G4** the twelve-article `/learn` library, **all three topics read through and approved by the owner** (2026-08-21/22) · **G5** Lighthouse, accessibility, structured data and the config review · **G6** the colour review (the ink layer, two rating colours, three faded-text defects, and the reference HTML demoted from contract to mock-up). · **G7** the CSP flip — enforcing at last, with a per-request nonce wherever a session lives. **Remaining in Layer G, as of 2026-08-29:** (1) ~~`/articles`~~ — **BUILT 2026-08-29**: `/articles` (the approved direction A) and `/articles/[slug]` (reusing `ArticleDoc`), the first article ported, 15 new Playwright tests, and both routes prerendered. ⚠️ **UPDATED 2026-08-30 — the remaining four articles are written, owner-approved and WIRED UP**, so the section now carries five pieces: the opening measurement, a recovery study, and one ranked piece per market, all sharing one as-at date (27 August 2026) and one frozen input file. "Coming next" is down to one row and the two it lost were both kept. The lead is now **declared** (`FEATURED_SLUG`) rather than "whichever is newest" — owner: *"keep the featured article as is"* — which is also structurally right, because the lead card is the only place a figure is drawn and only the first piece has one. ⚠️ **Wiring them exposed a defect in the article ALREADY SHIPPED**: a bare `td` selector in `globals.css`, written for the signed-in screener, was setting every article data cell to **11.5px mono — under the public site's own 12px reading floor** — beside a row header at 13px. Invisible for the section's whole life because the first article has no text columns for the inherited `nowrap` to break. ⚠️ **And the number audit the owner asked for found something much larger than the articles**: our stored prices were never re-adjusted for dividends, so every drawdown on the site read up to two points too deep (see `Stale prices + dead tickers` above and `architecture.md` §4a). Fixed at source, the whole universe re-pulled, and **81 of the 464 asserted figures moved** — the articles were re-derived from the corrected data before the owner's review, and the "our prices lag" disclosure was deleted from all four fact-check sheets because there is no longer anything to disclose. What is left in this item is only the owner's final read of the four new pages. The plan and the design were settled on 2026-08-26. ⚠️ **Two previously "locked" decisions changed on 2026-08-26 and both came from the owner.** The **weekly cadence is dropped** (*"the articles doesn't need to be per week"*) — publish when there is something worth publishing; nothing becomes automated, which is the half that keeps us outside Google's scaled-content policy. And the section is **not one genre**: it carries measurements, market commentary *and* how-to pieces, so the design has to hold all three. Settled with it: Australia leads every piece with the US and Canada inside it as the comparison; `/articles/<topic-slug>` with **no date in the path**; four articles in the first 30 days, limited by the owner's review time rather than drafting; and the workflow is I draft → I fact-check → **I hand over 8–10 spot-checks with public links** → owner cross-checks → owner publishes. That last part solves the wrinkle flagged on 2026-08-25: our own figures have no URL to cite, and the answer is not to link every number but to publish the method and hand over ten checks a human can actually do. ⚠️ **The running order changed because the site is DARK** — `majorcycle.com` still serves the login page, so nothing written now can be indexed and an event piece written today is worthless by the time we launch. **Evergreen first; event-driven once live.** ⚠️ **And the competitors' pattern is the wrong one for us**: Simply Wall St and Motley Fool AU both run a flat list with no featured item and a thumbnail per row, which is right at 40 articles a day and reads as abandoned at four a month — the same trap `/learn` documented. The index is therefore a **featured article + list**, with numbers rather than pictures doing the work, and the featured block **reuses the landing page's analyst briefing components** rather than resembling them (owner's call, verified identical in the browser). Direction A of three drawn in `claude.ai/code/artifact/fd8cbcdc`; B and C deleted. **The article page itself needs no design** — the live Learn pages already show it, so `/articles/[slug]` reuses `ArticleDoc` and `LegalNotice`. **Next session: the owner reviews the article and the index, gives feedback, then we build.** The 2026-08-25 storyboard (`claude.ai/code/artifact/24903b9d`) drew the OLD weekly-note template and is superseded — it carries a banner saying so, because an artifact that looks approved is exactly how a stale design gets built (CLAUDE.md 11j). (2) ~~a **bundle-size audit** — unused dependencies, never done~~ ✅ **DONE 2026-08-30: nothing to remove.** All 30 declared packages (17 runtime, 13 dev) are genuinely used. ⚠️ The probe was proven able to fail before its result was believed — a fake package added to `package.json` was correctly reported unused, and `package.json` restored unchanged; a clean sweep from an unproven probe is what a broken probe also returns (CLAUDE.md 11p). ⚠️ It deliberately searches config files, workflows and `scripts` as well as imports, because four kinds of real usage are invisible to an import grep — subpath imports, PostCSS/ESLint/Tailwind plugin strings, CLI binaries (`playwright`, `lighthouse`, `esbuild`, `tsc`), and framework-implicit packages (`react-dom`, `@types/*`) — and each would have produced a confident false 'unused' on something load-bearing. The *shipped* half of bundle size is separately covered by `check:page-weight`, already ratcheted 1400 → 1250 → 1150 KB. Then (3) finishing the Layer G audit before merge. ⚠️ **The ticker page's 84 → 90 is no longer on this list, and it was not dropped — it is BLOCKED.** Attempted 2026-08-24: `/api/benchmarks` took a third off the document with **no score movement** (F-019); splitting hydration made it **worse** and was reverted (F-020); and measuring the deployed preview — to test the theory that the local number was unfairly penalised by Australia→`us-east-1` latency — returned **64**, disproving it (F-021). Neither available measurement is trustworthy, and no external lab tool can reach a page behind sign-in. It waits on **real-user monitoring, which the owner deferred on 2026-08-24**; the merge-gate row stays red. The byte counts, which ARE reliable, improved twice and are ratcheted into `check:page-weight`. **Audit progress:** step zero, Layers 0, 1, 2, 3 (the wire sweep — 50 checks, clean) and 3b (the platform sweep) are done, and **F-024 + F-025 were both applied and guarded on 2026-08-25** (Playwright 597 → **617**). F-024 revoked `anon`'s write grants on `profiles` — it had held `UPDATE`/`INSERT`/`DELETE` on all 20 columns for a year, blocked only by row-level security, and the fix's real value is that the refusal became *visible* (`200`/0 rows → `permission denied`), which is what made it testable at all. F-025 ties `PRICE_TABLE` to Stripe's actual prices, **for test mode only** — CI holds no live key, so the six live figures are re-read by hand at merge, which is now a row in the merge-gate table rather than a memory. **A new finding came out of F-024: F-026** — the same Supabase default grants sit on all 12 tables and `authenticated` still holds `DELETE`/`TRUNCATE`; unreachable today, recorded rather than fixed because the approved scope was `anon` on `profiles`. **Owner's call.** **Layer 4 — the data sweep — is also done (2026-08-25)**, against the live database and the rendered page. The bulk is clean: the three nightly invariants pass and were proven able to fail (with a control showing the coverage one is a proportion), all seven reporting currencies are present and the "figures reported in…" note was verified **on screen** for USD-in-AUD, USD-in-CAD, NZD, EUR, SGD and TWD with two same-currency controls showing none — the check that once shipped inert. Zero weekend bars across all 6.6M price rows. 🟠 **The one serious finding, F-027: the ASX listings source has returned NOTHING for a month, and the failure wears an HTTP 200** — the ASX now sits behind bot protection that answers 200 with an HTML rejection page, the parser finds no rows, and the nightly job treats an empty pull as a soft failure, so the workflow goes green and nothing alerts. The cost is in the owner's own market: any ASX ticker outside the 250 already covered is refused as "not a known listed stock". **Owner chose "fix both" and it shipped the same day.** New source live (AU listings 1,981 → 1,999 active), and the alarm wired all the way through — which mattered, because the obvious fix would have done nothing: the workflow step runs `continue-on-error`, so a non-zero exit is *recorded and ignored*. There were three stacked silences, not two. ⚠️ **And a dry run before writing anything caught that the fix would have caused a worse bug**: the replacement source is not a superset, and the delisting sweep would have marked 158 live companies "not a known listing", including Qube Holdings (ASX 200) which we actively cover. The sweep now refuses to retire more than 2% of a market in one night — leaving a delisted company in the menu costs one failed request; removing a live one tells a customer their real stock does not exist. **All four owner decisions were answered the same day and applied:** **F-028** TSX Venture is on (Canada's requestable menu 1,235 → **2,692**, and the `.V` code path finally has data behind it); **F-029** insider values on **Stock Detail** now carry the stock's own currency — owner explicitly kept the Results table's bare `$` as it is — and a *second* hard-coded `$` turned up in the same component's chart tooltip while fixing the first; **F-026** both public database roles now hold exactly the verbs their row policies allow and nothing on the nine server-only tables, which removes `TRUNCATE`, the one verb row-level security never governed. ⚠️ **A correction:** I first reported that insider values "may not be in the stock's currency", generalising from BHP. Measured across **4,539** AU and CA transactions, the implied price sits inside the stock's own 52-week range **94.7%** and **97.0%** of the time — the local currency is right for nearly all of them, and BHP is the dual-listed exception. That correction is what made labelling the right fix rather than stripping the figure. **F-030** (five index members are not fetchable companies) remains recorded, no action. **Next: 5a (my visual sweep), then 5b (the owner's judgement sweep).** **At merge, and only the owner can do them:** flip the apex→`www` redirect from **307 to 308** (re-measured 2026-08-23, still 307 — the highest-value SEO item in the layer), and submit the sitemap in Search Console *after* deploy (`/sitemap.xml` still answers 307 on production, and submitting a redirect teaches Google to distrust it). **One decision is genuinely still open:** whether to lift the public documents' 13px body size — it moves the legal pages, the auth cards and the articles together, so no page opts out alone. 🔴 **Two live defects were reported by the OWNER on 2026-08-28, and both were in merged production code with a green suite.** **F-031:** a failed `profiles` read was presented to the customer as *"you have never agreed"*, showing the first-login disclaimer gate to an account that acknowledged in June — and the gate's only button then **overwrote the June date**, destroying a compliance record under #23/#24. Fixed in three places (unreadable is now its own state; the gate needs the row to have been read; the acknowledgement is write-once), with entitlement still failing CLOSED as the control. The owner's date was reconstructed to the account's creation instant and is documented as a reconstruction, not a measurement. **F-032:** the nightly refresh **deleted** `market_cap` for 15 of 863 companies because yfinance's `info` omitted the key that night — a null is not an error, so nothing went red, and the loss was silent: those companies drop out of every size-ranked cohort and lose `fcf_yield_pct` with them. It surfaced three days later only because the article's verification workbook produced a figure that would not reproduce. ⚠️ **The identical rule was already in that function ten lines below, guarding `news`** — 11c-iv at its shortest possible range. Fixed at the source (`fast_info` fallback), in the data (a nightly invariant, whose floor had to be re-tuned from 2% to 0.5% because the real event was 1.7% and the first threshold would have passed it) — and at the write, **where the owner reversed my first fix on 2026-08-29 and was right to.** I had the writer OMIT the column so the stored figure survived a bad night; that also survives a bad MONTH, serving a months-old market cap as though it were current. *"I don't want to manipulate anything. Just show what the provider give to us."* **Of two ways to be wrong, prefer the visible one:** a null is an empty cell a reader can see and an alarm can fire on; a stale number is a plausible one nobody can see. The writer now passes the provider's answer through, null included, and the fallback plus the invariant are what make that safe. ⚠️ **The incident then recurred on 2026-08-28 — 13 companies blanked — because a scheduled workflow checks out the DEFAULT branch and the fix is on `feat/layer-g`** (14g). Both endpoints carried a cap for all 13 when checked by hand, which is the evidence the omission is transient and per-run rather than per-company. All repaired; **they revert nightly until merge.** ✅ **2026-08-30, later the same day — the owner asked for the stale-price / dead-ticker work ("Item 4") and for corporate actions to be split by kind, and both are BUILT**: `check_stale_tickers.py` (three-source delisting test, session-relative staleness, a 2%-per-market retire cap), a second retry pass in `daily_refresh.run`, `stocks.is_active` (marked, never deleted) wired through the cron universe, the screener and the peer medians, a `dividend_events` table separate from `split_events`, and one step + one gate in each nightly workflow so there is still exactly one email. Migration applied to the live database and verified (871 active, 0 inactive, new table empty, RLS on, no public grants). Playwright unchanged; pytest 230. **Three things building it found that the plan did not**: the Stooq fallback is measured **dead** in every market and widening it as planned would have re-created the dividend defect; my first two staleness designs were each wrong in a way unit tests could not see, the second producing a **247-ticker false alarm on the ASX** that only the live database exposed; and a documented claim in the plan — *"BK survives the three-source test"* — is **no longer true**, with the real evidence for unanimity turning out to be three live S&P 500 companies (`EA`, `EQR`, `AVB`) that both reference tables mark inactive. Two open items were added for the owner (replace the Stooq source? what to do with 120 `split_events` rows the dividend catch-up created?). ⛔ `/about` and `/glossary` are **dropped** (owner, 2026-08-22) — About may return later, the glossary is permanently cancelled; `llms.txt` dropped on the same day.
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.
 - **Phase 3+** — TBD. Discussed post-launch based on actual user behaviour.
@@ -580,6 +580,261 @@ list instead of hardcoding six paths.
 > and looked at — three by rendering pages, and the blank report **by the owner asking the
 > right question**. The automated checks are good at guarding *known* failures and poor at
 > finding *new* ones. Plan verification accordingly.
+
+### Stale prices + dead tickers — 2026-08-30 ✅ BUILT
+
+> Designed with the owner on 2026-08-30 while the dividend re-adjustment was being fixed,
+> and **built the same day** on the owner's instruction ("Do Item 4"). The dividend fix
+> (`_recent_dividends`, `--repull-prices`) is a separate thing — it corrects prices we
+> HAVE; this is about prices we stopped getting.
+>
+> **Where it lives:** `analytics/cron/check_stale_tickers.py` (new),
+> `daily_refresh.run` (the second pass), `_load_universe` (skips retired),
+> `web/lib/universe.server.ts` + `medians.server.ts` (leave the screener),
+> both nightly workflows (one step, one gate, one email),
+> `supabase/migrations/20260830000000_dividend_events_and_delisting.sql`,
+> `analytics/tests/test_stale_tickers.py` (20 tests, six sabotages).
+> Documented in `architecture.md` §4b.
+
+**How it surfaced.** I reported that the 28 August refresh had "stopped halfway, 260
+companies missing". ⚠️ **That was wrong** — the run log says `617 succeeded, 3 failed`, and
+what I had measured was a timing accident: I looked before the American session had been
+stored. Checking properly, by asking every one of the 871 tickers for its newest bar, found
+a real and smaller problem: **11 companies are stale, one by four months**, and every night
+the job logs them as failed and exits 0.
+
+**The header shows `stocks.updated_at` — when we last RAN, not the date of the bar shown.**
+So Equity Residential reads a green *"Updated Aug 30"* above a price from **21 August**.
+
+⚠️ **I proposed changing this to the price's own date and the owner rejected it, with a
+better argument than mine (2026-08-30).** The badge says the *snapshot* was generated then,
+and that is **true** — we did run, the provider simply returned no newer bar. It is also not
+only about price: fundamentals are refreshed in the same pass and may genuinely have moved
+while the price did not, so the price's date would be the wrong label for the thing being
+stamped. Owner's words: *"We are being honest here as we try to do it and nothing changed in
+terms of price; however, the financials might change… it's not that important if some of
+them are wrong due to staleness. Our provider is slow, not us."*
+
+**Decision: the header stays exactly as it is.** Recorded because the reasoning is the
+valuable part — my framing ("the page claims the stale price is current") was an
+overstatement, and the distinction that settles it is *what the timestamp is a claim about*.
+Do not re-propose this without new evidence that a reader is actually misled.
+
+**⚠️ "Stale" does NOT mean "delisted", and the owner was right to insist on checking.**
+Measured against yfinance, the `listings` directory and `index_membership`:
+
+| | n | Which |
+|---|---|---|
+| Gone from all three sources | 3 | Insignia Financial, Coterra, Australian Unity Office |
+| **Renamed — the company is alive** | 1 | `BK` → **`BNY`**, trading at $162.50 |
+| Mixed signals | 1 | EchoStar — no quote, `listings.is_active=false`, still in the S&P 500 file |
+| Still listed, the provider is not serving bars | 5 | Electronic Arts, Qube, Equity Residential, AvalonBay, Clearview |
+| Not actually stale | 1 | Teck — our data was simply behind |
+
+**⚠️ `BK` — THE CASE THAT MOTIVATED THE DESIGN.** *(Read the correction below before
+citing this: the two other sources have since followed the rename, so BK no longer
+survives the three-source test — correctly, and the real evidence for unanimity turned
+out to be EA/EQR/AVB.)* Yahoo answers `404 Quote not found` for
+Bank of New York Mellon — one of the largest banks in America — because it changed its
+ticker. A symbol that has *never existed* returns the **identical** answer (verified with
+`ZZQQ9`), so "the provider has no data" cannot tell *delisted* from *renamed* from *typo*.
+Auto-deleting on that signal would have destroyed 54 years of history for a live S&P 500
+company. We currently hold it **twice**: `BNY` 1973 → 28 Aug 2026 (current, already fetched
+by the index-membership job), and `BK` 1972 → 17 Jul 2026 (frozen, still on the site).
+
+**The agreed design — four parts (one of the original five was rejected). ALL FOUR BUILT.**
+
+1. **Retry properly.** ✅ **Confirmed by the owner, 2026-08-30**, after they had already
+   approved it once — worth re-stating because the same message that rejected part 4 read as
+   though it might drop this too, and the reasoning in it was entirely about the DISPLAY. A
+   failed price fetch is retried, and the **Stooq fallback already sitting in
+   `yfinance_provider.py`** is actually used for it instead of being decorative.
+   ⚠️ **Evidence it is worth having, from that same evening's re-pull:** `ASK.AX` failed once
+   in the catch-up and is otherwise perfectly current — a transient miss, indistinguishable
+   from a delisting to anything that only looks at one night. It would also have quietly put
+   that company's history on a mixed adjustment basis had the run been the nightly one.
+2. **Decide dead from THREE sources agreeing** — no quote from the provider, absent from the
+   exchange symbol directory, absent from every index we track. All three are already
+   fetched nightly, so this needs no new source and **no waiting period**. One source alone
+   is what would have killed `BK`.
+3. **Mark, never delete.** ⚠️ Once a ticker 404s its history cannot be re-fetched from
+   anywhere — four delisted tickers already cost 30,784 unrecoverable bars (`project_asx_friday_date_bug`).
+   A marked company stops being refreshed, leaves the screener, and keeps its data.
+4. ~~**Show the price's own date.**~~ ❌ **REJECTED by the owner, 2026-08-30** — see above.
+   The header keeps `updated_at`. Nothing to build.
+5. **ONE email.** ⚠️ There is **no app-sent nightly email to merge into** — the Resend alert
+   was proven dead and removed on 2026-08-06, and GitHub's failed-workflow notification is
+   the only channel. It fires **once per failed run regardless of how many steps failed**,
+   so the staleness check becomes one more step in the same workflow: one email when
+   something is wrong, none when it is not, no new service, no cost.
+
+**Open, for the owner** (unchanged by the build — the mechanism exists, these are
+judgement calls it deliberately does not make):
+
+- **Whether to replace the Stooq fallback source** now that it is measured dead.
+~~**Whether `CTRA` (Coterra) is really gone**~~ — ✅ **CHECKED AGAINST THE OUTSIDE WORLD,
+2026-08-30, and every stale name turned out to be explainable.** The owner asked for this
+to be verified rather than assumed, and it was worth doing: **all five retirement
+candidates are real corporate events, and three are renames or mergers with a LIVE
+successor** — the exact shape that makes a delisting sweep dangerous.
+
+| Ticker | What actually happened | Our last bar | Sweep verdict | Right? |
+|---|---|---|---|---|
+| `CTRA` | Merged into **Devon Energy**, delisted from NYSE **7 May 2026** | 2026-05-07 | retire | ✅ our last bar IS the delisting date |
+| `BK` | Renamed **BNY** | 2026-07-17 | retire | ✅ ticker gone |
+| `SATS` | Renamed **ECHO**, 24 Jun 2026 | 2026-07-17 | retire | ✅ ticker gone |
+| `EA` | Taken private ($55bn PIF/Silver Lake/Affinity), delisted **4 Aug 2026** | 2026-08-10 | **keep** | ⚠️ see below |
+| `EQR` / `AVB` | Merged with each other, closed ~17 Aug 2026; EQR survives | 21 / 24 Aug | keep | ✅ still quoted, in transition |
+
+**⚠️ The check that mattered was not "is it dead?" but "do we still cover the company?"**
+A rename destroys nothing if the successor is in the universe, and every one of them is,
+current to 28 August: **DVN, ECHO, BNY and EQR are all held and refreshing.** No customer
+loses a company. That happens automatically because each successor is an S&P 500 member
+and the nightly index-membership job fetches constituents we do not yet have.
+
+**⚠️ `EA` is the informative failure, and it fails in the RIGHT direction.** It was
+genuinely delisted on 4 August, yet yfinance still answers with a quote — our stored
+history even runs to 10 August, *after* the delisting. So the provider serves phantom data
+for a company that no longer trades, and the sweep therefore **keeps** EA rather than
+retiring it. That is the conservative error the unanimity rule exists to produce: we hold
+a dead ticker one cycle too long instead of destroying a live one. It also shows the
+three-source test cannot be tightened by trusting the provider more.
+
+**⚠️ AND A DOCUMENTED CLAIM IN THIS SECTION TURNED OUT TO BE FALSE — corrected.** The
+note above said *"`BK` IS THE CASE THAT DECIDES THE DESIGN"* because the exchange
+directory and the S&P 500 file still carried it while Yahoo did not. **They no longer
+do.** Re-measured on the live database while dry-running the sweep: `BK` is absent from
+`listings` and absent from `index_membership`, both of which now carry `BNY` instead —
+the rename has propagated. So all three sources agree, and the sweep retires `BK`, which
+is **correct**: the ticker genuinely does not trade. Nothing is lost — its 13,485 bars
+are kept and we separately hold `BNY` complete, 13,444 bars from 1973 to current.
+
+**The rule is right; the reason given for it was wrong**, and the real evidence is
+stronger: **`EA`, `EQR` and `AVB` — three trading S&P 500 companies — are
+`is_active = false` in `listings` AND `false` in `index_membership`.** Two of three
+sources call them dead. Only the live quote keeps them, so a two-of-three rule would have
+retired three live large caps on its first night. That is why the test is unanimous. The
+protection for the BK case is part 3 (mark, never delete), not part 2 — attributing it to
+the three-source test is CLAUDE.md 14f, a mechanism that is present but not the one
+responsible.
+
+**⚠️ WHAT THE FIRST REAL RUN WILL DO — dry-run against the live database, 2026-08-30,
+nothing written.** 871 tickers checked in 347 seconds; **9 stale (AU 3 of 250 = 1.2%,
+US 6 of 538 = 1.1%)**, both under the 5% alarm line, so the run is **green** and simply
+lists them:
+
+| Ticker | Newest bar | Behind | Verdict |
+|---|---|---|---|
+| `IFL.AX` Insignia Financial | 2026-04-29 | 60 sessions | **retire** — gone from all three |
+| `AOF.AX` Australian Unity Office | 2026-06-10 | 56 | **retire** — gone from all three |
+| `CTRA` Coterra | 2026-05-07 | 60 | **retire** — gone from all three (see above) |
+| `SATS` EchoStar | 2026-07-17 | 30 | **retire** — gone from all three |
+| `BK` → BNY | 2026-07-17 | 30 | **retire** — renamed; `BNY` held complete |
+| `QUB.AX` Qube | 2026-08-18 | 7 | **keep** — still quoted + listed |
+| `EA` | 2026-08-10 | 14 | **keep** — quote only |
+| `EQR` | 2026-08-21 | 5 | **keep** — quote only |
+| `AVB` | 2026-08-24 | 4 | **keep** — quote only |
+
+5 retirements against a US cap of 10 and an AU cap of 5, so the safety cap is not hit.
+⚠️ `QUB.AX` is the ASX 200 name the F-027 dry run nearly retired; it survives here for
+the right reason, from a different mechanism, which is the check worth keeping.
+
+**⚠️ WHAT BUILDING IT FOUND — four things the plan did not anticipate.**
+
+**(1) The Stooq fallback the plan wanted to "actually use" is dead, and widening it would
+have been a defect.** Part 1 read *"the Stooq fallback already sitting in
+`yfinance_provider.py` is actually used for it instead of being decorative."* Driven
+through our own `_download_stooq`, it returns None for **every ticker in every market**,
+AAPL included: Stooq now answers **404 with no User-Agent — which is exactly what our
+code sends — and HTTP 200 with a 796-byte "this site requires JavaScript" challenge page
+with one.** F-027's shape in a second source. ⚠️ **And measuring changed the design.** The
+plan assumed the fix was to let it fire on the nightly incremental path; it is the
+opposite. Stooq's bars are not on Yahoo's `auto_adjust` basis, so splicing them into a
+Yahoo series would put one company's history on **two adjustment bases** — the exact
+defect fixed hours earlier (11ae), deliberately reintroduced. It stays restricted to full
+pulls, now logs the difference between "the source refused us" and "this ticker isn't on
+Stooq", and the real answer to a transient miss is the second pass. **Open for the owner:
+whether to replace the fallback source at all.** One stated limit: measured from one
+machine in Australia, and a block can be IP-dependent, so GitHub's US runners may see
+something else.
+
+**(2) My first calendar design was blind in the only case that matters.** Ranking
+staleness needs a session calendar, and the first version derived one from the newest-bar
+dates of the tickers being checked. With 869 companies current and one straggler, that
+produces exactly **two** dates, so the straggler ranks *one session behind* and passes.
+The check would have been blindest in the ordinary case. Fixed by reading the market's
+benchmark index (`^GSPC`/`^AXJO`/`^GSPTSE`), which has a bar for every session.
+
+**(3) And the fix had its own bug, which only LIVE DATA found — a whole-market false
+alarm.** Ranking by looking each date up in the calendar reported **247 ASX stocks as "60
+sessions behind"** because they hold a bar for 28 August while `^AXJO` reaches only the
+27th: being one day *more* current than the benchmark scored as maximally stale. Every
+unit test passed. It is now asked as *"how many sessions are strictly newer than this
+bar?"*, which needs no special case and fails in the safe direction — a lagging benchmark
+makes the check lenient, never falsely alarming. **Two tests were added for it, and both
+go red when the old ranking is put back.**
+
+**(5) ⚠️ AND RUNNING THE PIPELINE FOR REAL CAUGHT A DEFECT MY OWN UNIT TESTS HAD
+BLESSED.** The retry pass carries a time-budget guard: skip the second pass if too much
+failed, because re-fetching hundreds of tickers cannot fit in the workflow's remaining
+minutes and the job would die mid-write. I expressed it purely as a **share** (>25% of the
+run) — and wrote a unit test asserting that a one-ticker run therefore gets no retry, with
+a paragraph explaining why that was fine. Driving the real pipeline with
+`--only AAPL,ZZQQ9` showed it is not: one failure in two is 50%, so the guard **refused to
+retry a single ticker** — the cheapest possible retry, on exactly the kind of hand-run
+somebody is sitting and watching. **A time budget depends on how many tickers must be
+re-fetched, not on what fraction of the run they were.** Fixed with an absolute floor
+(`_RETRY_MIN_ALWAYS = 25`); the share still governs above it. ⚠️ The lesson is not the
+threshold, it is that **a unit test written by the same person who wrote the rule can only
+confirm the rule, never the reasoning behind it** — the test was green, well-commented and
+wrong, and only an end-to-end run disagreed.
+
+**(4) ⚠️ A LIVE FINDING NOT IN THIS PLAN — found, reported, and CLOSED the same day on
+the owner's instruction.** `split_events` held **8 rows** until 2026-08-30, because only
+splits inside the nightly one-month window were ever detected. `--repull-prices` asked for
+`period="max"` on all 871 tickers, so every split any company has ever had — back to
+1962 — arrived as a fresh detection: **1,754 rows in one evening.** 1,634 verified clean
+immediately. **120 did not**, and would have re-pulled a whole company history every night
+for 30 days before flipping to `failed`. 116 of the 120 have ratios between 0.79 and 1.29,
+where `_verify_split_resolved`'s cliff tolerance overlaps ordinary daily volatility — the
+same false-positive mechanism `_MIN_SPLIT_DEVIATION` guards against, one notch above its
+0.10 threshold. Nothing was wrong with the prices; the cost was needless work and 120 rows
+that would read as "broken" in a month.
+
+**Owner: *"could you please manually delete all of them?"* — done, 2026-08-30.** All
+**1,754** rows removed (120 pending + 1,634 resolved), scoped by `detected_at::date =
+'2026-08-30'`. ⚠️ **Scoped by detection date, not by status or ratio**, because one of the
+8 genuine pre-existing rows is `resolved` exactly like 1,634 of the deleted ones — status
+could not have separated them. The 8 survivors are every case the docs name: `DD`, `FDX`,
+`MNST`, `HON`, `KLAC`, `CRWD`, `AVB`, `PDI.AX`. Backed up first to
+`reference/split-events-backup-2026-08-30.json` (776 KB) even though these are derived
+rows a re-pull would regenerate — "probably regenerable" is not "reversible". Verified
+after: 8 rows remain, **0 pending**, `price_bars` unchanged at 6,605,410 and `stocks` at
+871 active — the control being that deleting a *log* must leave the data it describes
+untouched. ⚠️ Safe to delete outright because **no deleted row's `split_date` falls inside
+the nightly detection window** — the newest is 2026-05-08, 114 days back — so nothing
+re-appears tonight.
+
+**And the CAUSE is now closed, which the deletion alone would not have done.** A second
+`--repull-prices` would have recreated all 1,754 and the same 120 stuck rows. The dividend
+side already had the right rule ("only nightly detections are recorded"); splits did not,
+and that asymmetry was the whole defect. Both now consume one named, tested predicate,
+`_should_record_corporate_actions(first_fetch, repull_prices)` — CLAUDE.md 11c, one rule
+in one place with both consumers actually consuming it. Nothing is lost by skipping: a
+`max` pull is already fully re-adjusted, so there is no discontinuity to record, and a
+carried-over `pending` split is still verified during a re-pull because `pending` is
+loaded from the table rather than from the fetched window. Guarded by four tests in
+`test_dividend_readjust.py`, with **each half of the condition broken separately** and
+each failing its own test. ⚠️ The underlying `_verify_split_resolved` tolerance is
+**untouched** — it is a change to a working pipeline that nothing now depends on, since no
+historical split is ever recorded again.
+
+**⚠️ What this section is NOT.** The dividend re-adjustment (`_recent_dividends`,
+`--repull-prices`) was designed and shipped in the same conversation and is **already
+built** — see `architecture.md` §4a and CLAUDE.md 11ae. It corrects prices we HAVE. Nothing
+in this section is written yet; it is about prices we stopped RECEIVING. Two neighbouring
+problems with the same symptom (a wrong-looking number that nothing flags) and completely
+different fixes.
 
 ### Layer G: SEO + Performance (target: 3-4 days)
 

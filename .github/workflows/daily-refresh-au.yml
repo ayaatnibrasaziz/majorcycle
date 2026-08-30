@@ -25,7 +25,15 @@ jobs:
   refresh:
     name: Run daily pipeline (AU)
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # 90, not 60, since 2026-08-30. The refresh now runs its ticker loop a second
+    # time over whatever failed, after a five-minute wait (see
+    # daily_refresh._RETRY_PASS_DELAY), and the staleness sweep at the end reads
+    # every ticker's newest bar. Neither is large — a typical night has 3 failures
+    # in 620 — but the old ceiling had no measured headroom above it, and a job
+    # that dies on `timeout-minutes` dies MID-WRITE, which is a worse outcome than
+    # any it was protecting against. Actions minutes are unlimited on a public
+    # repo, so the extra 30 costs nothing.
+    timeout-minutes: 90
     env:
       PYTHONPATH: .
 
@@ -79,3 +87,25 @@ jobs:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python -m analytics.cron.check_field_units
+
+      # The staleness + delisting sweep, for the same reason the units check runs
+      # here as well: it reads the WHOLE universe, so running it in both workflows
+      # halves the worst-case window in which a market can quietly stop receiving
+      # prices — 8 hours instead of 24.
+      #
+      # ⚠️ It measures each ticker against ITS OWN market's session calendar, not
+      # against the clock, so running at 08:00 UTC — while New York is closed and
+      # its newest bars are from the previous session — cannot make US tickers look
+      # stale. That is why staleness is defined relative to the market rather than
+      # in calendar days.
+      #
+      # No `continue-on-error`, matching the units check above and for the same
+      # reason: this is the last step, so failing it skips no work, and a green
+      # tick must never be able to mean "a problem was found but you weren't told".
+      # GitHub's failed-workflow email is the only alert channel, it fires once per
+      # failed run, and its destination is one we have actually seen.
+      - name: Check for stale and delisted tickers
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m analytics.cron.check_stale_tickers

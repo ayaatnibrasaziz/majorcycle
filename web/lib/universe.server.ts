@@ -58,6 +58,13 @@ async function _fetchUniverseIndex(): Promise<UniverseStock[]> {
       .from('stocks')
       .select('ticker,market,name,sector,industry,currency,market_cap')
       .neq('market', 'index')
+      // A company three sources agree has stopped trading leaves the screener.
+      // Its history is kept and its page still renders — it just stops being
+      // offered as something to analyse, because its "current" price is frozen
+      // at the day it stopped trading and every cycle figure derived from it
+      // would be a measurement of a company that no longer exists.
+      // See analytics/cron/check_stale_tickers.py.
+      .eq('is_active', true)
       .order('market_cap', { ascending: false, nullsFirst: false })
       .order('ticker', { ascending: true })
       .range(from, from + PAGE_SIZE - 1);

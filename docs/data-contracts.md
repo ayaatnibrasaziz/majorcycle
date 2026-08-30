@@ -546,6 +546,33 @@ export interface PriceBar {
    * New York are different instants and would never match.
    */
   date: string;
+  /**
+   * ⚠️ EVERY PRICE HERE IS SPLIT- AND DIVIDEND-ADJUSTED (`auto_adjust=True`), and
+   * that makes an old bar's value a function of what the company has done SINCE.
+   *
+   * Each time a company goes ex-dividend the provider divides its whole prior
+   * series by a new factor. So a refresh that fetches only a recent window stores
+   * the new bars on the new basis and silently leaves every older bar — the peak
+   * included — on the old one. Splits had a full re-pull for this from the start;
+   * DIVIDENDS DID NOT, until 2026-08-30.
+   *
+   * The cost, measured on the live database: the ratio between a stored close and
+   * a fresh pull was a CONSTANT on every bar before that company's last ex-dividend
+   * date and exactly 1.0000 after it — CBA 1.0169, GPT 1.0062-1.0244 (several
+   * dividends, so several steps), MSFT 1.0019. A drawdown therefore read up to two
+   * points deeper than the truth, on the site and in a published article, and
+   * nothing anywhere failed: a slightly-too-deep fall is a perfectly plausible
+   * number. Found only by comparing our figures against a fresh pull.
+   *
+   * `_recent_dividends` in `daily_refresh.py` now triggers the same full re-pull a
+   * split does — roughly 6-9 tickers a night. `--repull-prices` re-pulls the whole
+   * universe, which is how the accumulated drift was cleared.
+   *
+   * ⚠️ **Do not "fix" this by storing unadjusted prices.** The adjustment is
+   * deliberate and load-bearing: it is what makes a return comparable across time
+   * and what lets "back to the old price" mean "back to where you started,
+   * including the income" (CLAUDE.md 14f).
+   */
   open: number;
   high: number;
   low: number;
@@ -1391,6 +1418,47 @@ same cron run (via `daily_refresh.run`) and audited in `universe_log` as
 (that queue is for the user-facing Request-a-Ticker page only; cron-added
 constituents never appear there). A name with no data simply isn't added and is
 retried next run.
+
+**`dividend_events` table** — one row per ex-dividend date per ticker, recording why
+a company's full price history was re-fetched. **A record, not a state machine** — which
+is exactly why it is a separate table from `split_events` rather than a `kind` column on
+it (owner's request, 2026-08-30):
+
+```sql
+dividend_events (
+  id          uuid primary key,
+  ticker      text references stocks(ticker) on delete cascade,
+  ex_date     date,          -- the ex-dividend date yfinance reported
+  amount      numeric,       -- per-share, in the stock's own currency
+  detected_at timestamptz,   -- when the nightly run first saw it
+  repulled_at timestamptz,   -- when the full re-adjusted history was fetched
+  unique (ticker, ex_date)
+)
+```
+
+A split can leave a **real** price cliff when the provider's own history is internally
+inconsistent (MNST, audit F-030), so it is re-pulled **and verified** and needs
+`status` / `cliff_date` / `cliff_ratio` / `repull_count` to run that cycle. A dividend
+adjustment is a smooth rescale of the whole prior series — it either happened or it did
+not, and leaves no signature to check afterwards. All six of those columns would be
+permanently NULL on a dividend row.
+
+⚠️ **`repulled_at` NULL is the state that matters**: *"we saw this dividend and the
+history was NOT re-adjusted for it"* — the condition that was invisible for a year and
+left every drawdown on the site up to two points too deep (CLAUDE.md 11ae). The row is
+therefore written **before** the re-pull, so a re-pull that dies mid-way still leaves the
+evidence.
+
+⚠️ **Only nightly detections are recorded**, never the dividends seen during a
+`period="max"` pull. A full pull sees every dividend a company has ever paid; recording
+those would put ~150,000 backfill rows in a table meant to answer *"what happened last
+night?"*.
+
+Written **only by `analytics/cron/daily_refresh.py`**, from the provider's
+`df.attrs['recent_dividend_events']` = `[{date, amount}]`. ⚠️ That attr is deliberately
+**separate** from `df.attrs['recent_dividends']` (dates only), which is what actually
+triggers the re-pull: the trigger is load-bearing and its failure is silent, so a change
+made for the record's sake must not be able to break it.
 
 **`split_events` table** — dated state for the smart stock-split pipeline, giving
 the owner backend visibility into what the nightly refresh did with each split:

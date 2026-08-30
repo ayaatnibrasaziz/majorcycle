@@ -71,6 +71,23 @@ flowchart TB
 4. **Smart split verification + dated state on price bars.** yfinance returns split- and dividend-adjusted prices relative to the *latest* bar, so a split that happens *after* a ticker's initial `max` pull would leave the already-stored older bars on the pre-split scale — a permanent fake one-day crash that corrupts the cycle bounds. The provider surfaces yfinance's **authoritative split-actions calendar** with the split ratio (`df.attrs['recent_split_events']` = `[{date, ratio}]`, not a price heuristic — a normal price move never appears there). It also applies a **sanity floor** (`_MIN_SPLIT_DEVIATION = 0.10`): any "split" whose ratio is within ~10% of 1.0 is **ignored at the source**, because a genuine split is never that small (the smallest real ones we see — e.g. FDX `1.241`, HON `0.5` — are well clear of it) and yfinance occasionally emits a spurious near-1.0 value (e.g. **SPGI `1.057`** on 2026-07-01). Recording one would create a `pending` row the resolver can **never** clear — its ±20% cliff tolerance (`1/ratio ≈ 0.95`) overlaps ordinary daily volatility, so it perpetually "matches" a normal down-day and churns until it ages out of the 1-month detection window. Covered by `analytics/tests/test_yfinance_provider.py`. On detecting a split, `daily_refresh` records a **`pending` row in `split_events`**, re-pulls the **full** `max` history, then **verifies the discontinuity is actually gone** (`_verify_split_resolved` scans a ±10-bar window around the split date for a leftover cliff matching the expected unadjusted factor `1/ratio` within ±20%; split-ratio-specific, so a real crash never false-fires). A matched step must **also be a *persistent* scale shift** — the median close just-before vs just-after the step must match the split factor (`_SPLIT_PERSIST_BARS` window) — so a **transient one-day dip that bounces back** (FDX 2026-06-10, −3.8% then +5.9%, which matched a dubious yfinance `1.241` "split" by coincidence) is **not** misread as a leftover cliff (it self-heals to `resolved`):
    - **Resolved** (yfinance back-adjusted correctly) → `status='resolved'`, and it **stops re-pulling** (the re-pull set is driven by the `split_events` pending rows, not the 1-month window, so a fixed split is never touched again).
    - **Still discontinuous** → stays `pending`, retried nightly; **after 30 days still broken → `status='failed'`** (e.g. **DD** — yfinance lists the split but never back-adjusts the prices, leaving a ~3× cliff a fresh `max` pull still returns). This is DB-record-only (no email — the `failed` row is the flag); the owner reads `split_events` for backend visibility. The provider also **drops glitch bars with a non-positive close** (yfinance occasionally serves a lone `$0` close, which would read as a −100% drawdown). One-off repair of already-corrupted tickers: `analytics/cron/fix_split_history.py` (`--ticker` / `--tickers` / `--all`).
+4a. **A DIVIDEND re-adjusts the history too, and for a year nothing here knew that** (fixed 2026-08-30). Point 4 above says it in its own first sentence — yfinance returns "split- **and dividend**-adjusted prices relative to the *latest* bar" — and only the split half was ever acted on. Each time a company goes ex-dividend the provider divides its entire prior series by a new factor, so a `period="1mo"` refresh stored the new month on the new basis and left every older bar, **the peak included**, on the old one. Measured against a fresh pull on the live database: the ratio was a **constant** on every bar before that company's last ex-dividend date and exactly `1.0000` after it — CBA `1.0169`, GPT `1.0062–1.0244` (several dividends, so several steps), MSFT `1.0019`. A drawdown therefore read **up to two points deeper than the truth**, on the site and in a published article, and **nothing failed in any direction**: a slightly-too-deep fall is a perfectly plausible number. It was found only by comparing our figures against a fresh pull while auditing an article — a question nobody had asked before. The provider now surfaces `df.attrs['recent_dividends']` and `daily_refresh` re-pulls the full `max` history exactly as it does for a split (~6–9 tickers a night). ⚠️ **There is deliberately no verify step.** A split can leave a real cliff when the provider's own history is internally inconsistent (MNST, audit F-030), which is why splits carry a pending/resolve cycle; a dividend adjustment is a smooth rescale of the whole series — the re-pull either happened or it did not, and there is no signature left in the data to check. Guarded by `analytics/tests/test_dividend_readjust.py`, broken three ways before being trusted. The accumulated drift was cleared once with **`--repull-prices`**, a flag on this same pipeline rather than a one-off script, so the write path, chunking, pacing and failure handling are the ones already proven nightly.
+4b. **A ticker that stops RECEIVING prices, and how a dead one is told from a renamed one** (built 2026-08-30; roadmap "Stale prices + dead tickers"). Point 4a is about prices we *have*; this is about prices we stopped *getting*. A ticker the provider quietly stops serving is invisible — the refresh logs it as failed and exits 0, the page keeps rendering, and the stored price simply stops moving. Eleven companies were stale on 2026-08-30, one by four months, and every night had reported success. Three parts:
+
+   - **A second pass.** The provider already retries three times, but those attempts span about seven seconds of backoff — a rate limit or a brief outage sails through all three. `daily_refresh.run` now runs its whole loop twice, the second time over only what failed, after `_RETRY_PASS_DELAY` (5 minutes). ⚠️ The cost of a transient miss is not just a missing day: a ticker skipped tonight is fetched tomorrow on a one-month window, so if it went ex-dividend in between, the re-pull trigger of 4a has already scrolled out of view and its history is left on two adjustment bases, permanently. Evidence it happens: `ASK.AX` failed once during the 2026-08-30 catch-up and is otherwise perfectly current.
+
+   - **The three-source test** (`analytics/cron/check_stale_tickers.py`). ⚠️ **Yahoo answers `404 Quote not found` for `BK` — Bank of New York Mellon — because it renamed its ticker to BNY, and a symbol that has never existed answers identically (verified with `ZZQQ9`).** So "the provider has no data" cannot tell delisted from renamed from typo. A ticker is marked dead only when **all three** agree: no provider quote, absent from the exchange symbol directory (`listings`), and in no index we track (`index_membership`). All three are already fetched nightly, so this needs no new source and no waiting period. An **empty** reference set raises rather than voting — if `listings` came back short, every ticker would look absent from it and the three-source test would silently become the one-source test it exists to avoid (14g).
+
+     ⚠️ **The live evidence for unanimity is not BK, and the difference matters (checked 2026-08-30).** The design note claimed BK survives because the other two sources still carry it; they no longer do — the rename has propagated, both reference tables now carry `BNY` instead, all three agree, and BK is correctly retired because the ticker really has stopped trading. Nothing is lost: its 13,485 bars are kept and `BNY` is held separately and complete from 1973. **What the unanimity rule actually saves is better evidence than BK ever was: `EA`, `EQR` and `AVB` — three trading S&P 500 companies — are `is_active = false` in `listings` AND `false` in `index_membership`.** Two of three sources call them dead; only the live quote keeps them, so a majority vote would have retired three live large caps that night. Our reference tables go stale in exactly the way that makes a majority dangerous. The protection for the BK case is *mark, never delete* — do not re-attribute it (14f).
+
+   - **Marked, never deleted.** `stocks.is_active = false` stops the refresh and removes the company from the screener and the peer medians; every bar is kept and the detail page still renders. A per-market cap refuses to retire more than 2% in one night — **leaving a dead company in the universe costs one failed fetch; removing a live one destroys history that cannot be re-fetched**, the same asymmetry the listings sweep settled after a dry run showed it would have retired 158 live companies (audit F-027).
+
+   **Staleness is measured in SESSIONS, against the market's own calendar** — read from that market's benchmark index (`^GSPC` / `^AXJO` / `^GSPTSE`), which has a bar for every session. Not calendar days, which would report every market stale each Easter and Christmas; and not a calendar derived from the tickers being checked, which was the first implementation and was blind in the ordinary case: with 869 companies current and one straggler, only two dates are in evidence, so the straggler ranks *one* session behind and passes. ⚠️ And "how far behind" is asked as **how many sessions are strictly newer**, never as a lookup — running the lookup version against the live database reported **247 ASX stocks as 60 sessions behind for being one day MORE current than `^AXJO`**, a whole-market false alarm on the owner's own market, which no unit test had caught.
+
+   **What is red, and what is only printed.** A handful of chronically slow tickers is not actionable — the owner's ruling is that a slow provider is the provider's problem — and "a red X every night for something nobody can act on is how people learn to ignore red" (F-027). So the run goes red only on a **proportion** (>5% of a market stale = an outbreak) or on the retire cap being hit; everything else is listed in the log on a green run. **One email**: the sweep is one more step in the existing workflow and shares the existing gate, because GitHub's failed-workflow notification fires once per failed *run* however many steps failed. There is no app-sent nightly email to merge into — the Resend key has been dead since 2026-07-02.
+
+   ⚠️ **The Stooq fallback is decoration, not protection** (measured 2026-08-30). Driven through our own `_download_stooq` from Australia it returns None for every ticker in every market, AAPL included: Stooq now sits behind a JavaScript bot check answering **404 with no User-Agent (which is what our code sends) and HTTP 200 with a 796-byte challenge page with one** — F-027's shape exactly. It fails safe (HTML does not parse into OHLCV) and now logs the difference between "the source refused us" and "this ticker isn't on Stooq". ⚠️ **It must stay restricted to full pulls.** The original plan was to widen it to the nightly incremental path; measuring says the opposite, because Stooq's bars are not on Yahoo's `auto_adjust` basis and splicing them into a Yahoo series would put one company's history on two adjustment bases — the 4a defect, deliberately reintroduced. Replacing the source is an open decision for the owner.
+
 5. Always upserts `stocks` (fundamentals refreshed daily) and `price_bars`; enriched columns only written when the staleness check fires
 6. Logs runtime metrics and failures; emails owner on any failures via Resend
 
@@ -268,6 +285,11 @@ CREATE TABLE stocks (
   enriched_updated_at  timestamptz,           -- when enriched data was last fetched
   next_earnings_date   date,                  -- next scheduled earnings from yfinance t.calendar
 
+  -- Delisting. MARKED, never deleted — see §4b and check_stale_tickers.py
+  is_active            boolean NOT NULL DEFAULT true,
+  inactive_since       date,
+  inactive_reason      text,
+
   CONSTRAINT valid_market CHECK (market IN ('us', 'au', 'ca'))
 );
 
@@ -276,7 +298,18 @@ CREATE INDEX idx_stocks_sector ON stocks (sector);
 CREATE INDEX idx_stocks_updated ON stocks (updated_at);
 CREATE INDEX idx_stocks_next_earnings_date ON stocks (next_earnings_date);
 CREATE INDEX idx_stocks_enriched_updated_at ON stocks (enriched_updated_at);
+CREATE INDEX idx_stocks_inactive ON stocks (ticker) WHERE is_active = false;
 ```
+
+**`is_active = false` means three independent sources agree the company stopped
+trading.** Such a row keeps every bar it ever had, stops being refreshed, and leaves the
+screener and the peer medians. Its detail page still renders. ⚠️ **Never `DELETE`**: once
+a ticker 404s at the provider its history cannot be re-fetched from anywhere, and four
+delisted tickers have already cost 30,784 bars that exist in no copy we can reach. The
+three readers that filter on it are `daily_refresh._load_universe`,
+`web/lib/universe.server.ts` and `web/lib/medians.server.ts` — a delisted company's
+frozen fundamentals would otherwise drag a live sector's median toward a snapshot of the
+past. See §4b.
 
 **Statement storage format:** Financial statements (income, balance sheet, cash flow) are stored as JSONB objects with the shape `{"labels": ["2024-12-31", "2023-12-31", ...], "total_revenue": [145000000, 120000000, ...], ...}`. The `labels` array contains the period-end dates; every other key is a snake_case row name with a parallel array of values. This lets charts iterate directly over the arrays without re-pivoting.
 
@@ -482,6 +515,87 @@ CREATE INDEX idx_split_events_ticker  ON split_events (ticker);
 
 **RLS enabled with no policies** — server-only (cron service client), like `stocks` /
 `price_bars` / `index_membership`. No new env vars or notification channel (DB-record-only).
+
+⚠️ **A full price re-pull used to flood this table — fixed 2026-08-30, and the incident
+is why the rule exists.** It held **8 rows** until that day, because only splits inside
+the nightly one-month window were ever detected. The `--repull-prices` catch-up that
+fixed the dividend drift asked for `period="max"` on all 871 tickers, so every split any
+company has ever had — back to 1962 — arrived as a fresh detection: **1,754 rows in one
+evening.** 1,634 verified clean immediately; **120 stuck in `pending`** and would have
+re-pulled a whole company history nightly for 30 days before reading as `failed`. Their
+ratios cluster at 0.79–1.29, where `_verify_split_resolved`'s cliff tolerance overlaps
+ordinary daily volatility.
+
+All 1,754 were deleted on the owner's instruction (scoped by `detected_at`, not by status
+— one of the 8 genuine rows is `resolved` exactly like 1,634 of the deleted ones; backed
+up to `reference/split-events-backup-2026-08-30.json` first). **And the cause is closed**:
+`_should_record_corporate_actions(first_fetch, repull_prices)` now gates BOTH this table
+and `dividend_events`, so a bulk backfill is never recorded as "what happened last night".
+The dividend side already had that rule and splits did not — the asymmetry was the defect.
+Nothing is lost by skipping: a `max` pull is already fully re-adjusted, so there is no
+discontinuity to record, and a carried-over `pending` split is still verified during a
+re-pull because `pending` is loaded from the table rather than from the fetched window.
+
+### `dividend_events` — one table per KIND of corporate action
+
+One row per ex-dividend date per ticker. Written **only by the cron**, read for backend
+visibility into why a company's full history was re-fetched.
+
+```sql
+CREATE TABLE dividend_events (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ticker      text NOT NULL REFERENCES stocks(ticker) ON DELETE CASCADE,
+  ex_date     date NOT NULL,      -- the ex-dividend date yfinance reported
+  amount      numeric,            -- per-share, in the stock's own currency
+  detected_at timestamptz NOT NULL DEFAULT now(),
+  repulled_at timestamptz,        -- when the full re-adjusted history was fetched
+  CONSTRAINT uq_dividend_ticker_date UNIQUE (ticker, ex_date)
+);
+
+CREATE INDEX idx_dividend_events_ticker ON dividend_events (ticker, ex_date DESC);
+```
+
+**Why it exists (owner's request, 2026-08-30).** The owner read the tables and said
+dividends and splits were sharing one, with no way to tell them apart. ⚠️ **Measured
+first, and the diagnosis was half right in a way that made the request stronger, not
+weaker.** `split_events` contains only splits — every one of its 1,762 rows carries a
+split ratio and nothing has ever written a dividend there. What *was* true is the thing
+behind the observation: **dividends had no table at all.** A dividend forces a full price
+re-pull exactly as a split does (CLAUDE.md 11ae), and until now that re-pull left no
+record anywhere — you could not answer *"why was this company re-fetched last night?"*
+from the database, only from a log line that ages out. Reading the two side by side is
+what makes an asymmetry look like a merge.
+
+**⚠️ Why it is NOT `split_events` with a `kind` column.** That would be one table serving
+two mechanisms with different columns and different lifecycles:
+
+| | split | dividend |
+|---|---|---|
+| Adjusts prior bars | yes | yes |
+| Triggers a full re-pull | yes | yes |
+| **Can leave a real price cliff** | **yes** (MNST, audit F-030 — the provider's own history can be internally inconsistent) | **no** — a smooth rescale of the whole series |
+| Needs verifying afterwards | yes, hence `status`/`cliff_date`/`cliff_ratio`/`repull_count` and a pending→resolved cycle | nothing to check: it either happened or it did not |
+
+All six of those columns would be permanently NULL on a dividend row, and a column that
+is null for half a table invites being read wrong. **`split_events` is a state machine;
+`dividend_events` is a record.** A future action kind — a spin-off, a capital return —
+gets its own table for the same reason.
+
+**`repulled_at` is the load-bearing column.** A row where it is NULL means *"we saw this
+dividend and the history was NOT re-adjusted for it"* — which is precisely the state that
+was invisible for a year and made every drawdown on the site up to two points too deep.
+The record is written **before** the re-pull, so a re-pull that dies mid-way still leaves
+that evidence. Writing it afterwards would lose it in the one case that matters.
+
+**Only nightly detections are recorded.** A `period="max"` pull sees every dividend a
+company has ever paid; writing those would put roughly 150,000 backfill rows in a table
+meant to answer *"what happened last night?"* — the same flood that put 1,754 rows into
+`split_events` in one evening.
+
+**RLS enabled with no policies**, and `REVOKE ALL` from `anon` + `authenticated` at
+creation rather than retrofitted — audit F-026's rule applied up front, because Supabase
+grants every privilege on a new public table to both roles, `TRUNCATE` included, and no
+row policy governs `TRUNCATE`.
 
 ---
 
