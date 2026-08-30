@@ -25,8 +25,24 @@
 export interface DataColumn {
   readonly key: string;
   readonly label: string;
-  /** Mono, tabular figures, right-aligned. See the warning above. */
+  /** Mono, tabular figures, right-aligned, nowrap. See the warning above. */
   readonly numeric?: boolean;
+  /**
+   * Right-align this column WITHOUT the numeric treatment.
+   *
+   * ⚠️ **Alignment and the figure face are two decisions, and `numeric` bundles
+   * four.** Owner review, 2026-08-30: the last column of each ranked table — the
+   * peak dates in the AU and US pieces, the sector names in the Canadian one —
+   * should sit right-aligned like the percentages beside it, so the table has one
+   * clean right edge instead of a ragged column hanging off the end.
+   *
+   * Reaching for `numeric` would have done that and three other things: set
+   * "Sep 2025" and "Communication Services" in the mono FIGURE face, apply
+   * `tabular-nums` to words, and forbid wrapping on the one column that needs it
+   * (a sector name is far wider than its column). Hence a separate opt-in — the
+   * alignment only.
+   */
+  readonly alignRight?: boolean;
   /**
    * A CSS width for this column, e.g. `'27%'`.
    *
@@ -54,6 +70,18 @@ export interface DataRow {
    * card that already has a ground, and a second one reads as a selected row.
    */
   readonly emphasis?: boolean;
+}
+
+/**
+ * The classes for one column's cells — used for the header AND the body, so the
+ * two can never drift apart. `numeric` already right-aligns, so pairing it with
+ * `alignRight` is harmless rather than an error worth throwing over.
+ */
+function cellClass(c: DataColumn): string | undefined {
+  const cls = [c.numeric ? 'art-num' : '', c.alignRight ? 'art-right' : '']
+    .filter(Boolean)
+    .join(' ');
+  return cls || undefined;
 }
 
 export function DataTable({
@@ -116,7 +144,7 @@ export function DataTable({
         <thead>
           <tr>
             {columns.map((c) => (
-              <th key={c.key} scope="col" className={c.numeric ? 'art-num' : undefined}>
+              <th key={c.key} scope="col" className={cellClass(c)}>
                 {c.label}
               </th>
             ))}
@@ -131,7 +159,7 @@ export function DataTable({
                     {r.cells[c.key] ?? ''}
                   </th>
                 ) : (
-                  <td key={c.key} className={c.numeric ? 'art-num' : undefined}>
+                  <td key={c.key} className={cellClass(c)}>
                     {r.cells[c.key] ?? ''}
                   </td>
                 ),

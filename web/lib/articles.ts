@@ -302,7 +302,7 @@ export const ARTICLES = [
   },
   {
     slug: 'tsx-60-shares-furthest-below-their-highs',
-    title: 'Which TSX 60 shares sit furthest below their own highs',
+    title: 'Which S&P/TSX 60 shares sit furthest below their own highs',
     question: 'Which Canadian shares have fallen the most?',
     answer:
       'Ten of the 60 companies in the S&P/TSX 60 sit more than 20% below their own one-year high, and not one is down more than 40%. Canada is by a wide margin the calmest of the three markets we cover, and almost all of its damage is in a single sector.',

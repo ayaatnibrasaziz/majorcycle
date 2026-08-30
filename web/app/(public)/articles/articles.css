@@ -314,6 +314,19 @@ a.art-row:hover .art-t { color: var(--brand-mid); }
   text-align: right; white-space: nowrap;
 }
 .art-table thead .art-num { font-family: 'Sora', sans-serif; }
+/* Right-aligned WITHOUT the figure face — the peak-date and sector columns at the
+   end of the ranked tables (owner review, 2026-08-30). The table then has one
+   clean right edge rather than a ragged last column.
+
+   ⚠️ Specificity is the whole risk here, and this file already records the same
+   trap costing a half-fix that looked like a fix (see `.art-table--wrapth`
+   above). `.art-table td` is (0,1,1) and sets `text-align: left`; this rule is
+   (0,2,0), so it wins on class count. Verified by reading the COMPUTED value off
+   a rendered page, not by counting selectors twice.
+
+   No `nowrap`, deliberately: unlike a percentage, "Communication Services" is
+   wider than its column and must be allowed to wrap. */
+.art-table .art-right { text-align: right; }
 /* The row the prose is about. Weight and colour only — a background tint would
    read as a selected row inside a card that already has its own ground. */
 .art-table .art-tr-em th, .art-table .art-tr-em td {

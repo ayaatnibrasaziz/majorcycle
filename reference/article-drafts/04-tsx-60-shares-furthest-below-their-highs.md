@@ -9,8 +9,8 @@
 | Field | Value |
 |---|---|
 | **URL** | `/articles/tsx-60-shares-furthest-below-their-highs` |
-| **Title tag** | Which TSX 60 shares sit furthest below their own highs (54 chars) |
-| **H1** | Which TSX 60 shares sit furthest below their own highs |
+| **Title tag** | Which S&P/TSX 60 shares sit furthest below their own highs (58 chars) |
+| **H1** | Which S&P/TSX 60 shares sit furthest below their own highs |
 | **Meta description** | Every S&P/TSX 60 company ranked by how far it sits below its own one-year high, as at 27 August 2026. Not one is down more than 40%. (130 chars) |
 | **Kind** | Analysis |
 | **Region pill** | Canada |

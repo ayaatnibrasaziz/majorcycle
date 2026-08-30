@@ -588,6 +588,60 @@ test.describe('the Articles section', () => {
     }
   });
 
+  test('a column declared alignRight really is right-aligned on screen', async ({ page }) => {
+    // ⚠️ THE MEASUREMENT IS THE POINT, not the declaration. `.art-table td` sets
+    // `text-align: left` and this file already records the identical specificity
+    // trap costing a half-fix that LOOKED like a fix: `.art-table--wrapth thead
+    // th` loses to `.art-num` on class count, so two headers silently stayed
+    // nowrap and the table still ran off the page while rendering perfectly
+    // ordinarily. Counting selectors twice is what produced that. So this reads
+    // the COMPUTED value off a rendered page instead.
+    //
+    // Owner review, 2026-08-30: the last column of each ranked table — peak dates
+    // in the AU and US pieces, sector names in the Canadian one — sits
+    // right-aligned like the percentages beside it.
+    const measured = new Map<string, number>();
+    for (const path of PATHS) {
+      await page.goto(path);
+      await ready(page);
+      const cells = await page.evaluate(() =>
+        [...document.querySelectorAll('.art-table .art-right')].map((el) => ({
+          text: (el.textContent ?? '').trim().slice(0, 24),
+          align: getComputedStyle(el).textAlign,
+          // The face must stay Sora: `numeric` would have set dates and sector
+          // names in the mono FIGURE face, which is the thing alignRight exists
+          // to avoid.
+          mono: getComputedStyle(el).fontFamily.toLowerCase().includes('mono'),
+        })),
+      );
+      for (const c of cells) {
+        expect(c.align, `${path}: "${c.text}" is ${c.align}, not right`).toBe('right');
+        expect(c.mono, `${path}: "${c.text}" is set in the mono figure face`).toBe(false);
+      }
+      measured.set(path, cells.length);
+    }
+
+    // ⚠️ THE CONTROL, and my first version of it was a nullity. It asserted the
+    // registry still holds three ranked articles — which says nothing about
+    // whether any column is aligned. Delete every `alignRight: true` and the loop
+    // above measures ZERO cells, passes, and that check passes too: a green run
+    // having looked at nothing (CLAUDE.md 14g).
+    //
+    // So the floor is asserted on what was actually MEASURED, per page. Each
+    // ranked table has fifteen rows plus its header; ten is clear of the header
+    // count without being a restatement of the row count, which would then need
+    // editing every time a row moved.
+    const ranked = ARTICLES.filter((a) => a.slug.includes('furthest-below-their-highs'));
+    expect(ranked.length, 'no ranked articles matched — the filter is stale').toBe(3);
+    for (const a of ranked) {
+      expect(
+        measured.get(articlePath(a.slug)) ?? 0,
+        `${a.slug}: no right-aligned cells were measured, so the assertions above proved nothing`,
+      ).toBeGreaterThanOrEqual(10);
+    }
+  });
+
+
   test('a table scrolls inside its own box — the page never does', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
     for (const path of [ARTICLES_INDEX_PATH, ...PATHS]) {

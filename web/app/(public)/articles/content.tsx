@@ -676,7 +676,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
           { key: 'name', label: 'Company', width: '29%' },
           { key: 'y1', label: 'Below its 1-year high', numeric: true, width: '20%' },
           { key: 'all', label: 'Below its best since 2000', numeric: true, width: '24%' },
-          { key: 'when', label: 'That peak was', width: '20%' },
+          { key: 'when', label: 'That peak was', alignRight: true, width: '20%' },
         ]}
         rows={[
           { cells: { rank: '1', name: 'Tuas', y1: '−74.0%', all: '−74.0%', when: 'Sep 2025' } },
@@ -869,7 +869,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
           { key: 'name', label: 'Company', width: '29%' },
           { key: 'y1', label: 'Below its 1-year high', numeric: true, width: '20%' },
           { key: 'all', label: 'Below its best since 2000', numeric: true, width: '24%' },
-          { key: 'when', label: 'That peak was', width: '20%' },
+          { key: 'when', label: 'That peak was', alignRight: true, width: '20%' },
         ]}
         rows={[
           { cells: { rank: '1', name: 'The Trade Desk', y1: '−76.2%', all: '−90.5%', when: 'Dec 2024' } },
@@ -1083,7 +1083,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
           { key: 'name', label: 'Company', width: '29%' },
           { key: 'y1', label: 'Below its 1-year high', numeric: true, width: '20%' },
           { key: 'all', label: 'Below its best since 2000', numeric: true, width: '24%' },
-          { key: 'sector', label: 'Sector label', width: '20%' },
+          { key: 'sector', label: 'Sector label', alignRight: true, width: '20%' },
         ]}
         rows={[
           { cells: { rank: '1', name: 'Thomson Reuters', y1: '−39.1%', all: '−49.3%', sector: 'Industrials' } },
