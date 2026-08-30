@@ -1281,6 +1281,7 @@ one thing on the page a competitor cannot copy.
 | Featured card | **The landing page's analyst briefing, REUSED** — the shared `.briefing` / `.bt` / `.btxt` / `.bp` components, not a copy. Owner: *"the same vibe like the analyst briefing in the landing page … that will look consistent."* Verified in-browser: all 11 card properties plus title, body and pill type computed **identical** to the landing's |
 | The figure slot | The briefing's 56px score ring is replaced by the article's own figure. Same row, same `flex:none`, same gap |
 | Figure optionality | **Optional by construction.** Owner: *"the article may or may not have any figures."* The figure is a flex **child**, so an article without one omits the element and the body takes the full width. ⚠️ Never a declared grid track — that is the `/learn` defect where a two-column track stayed declared with the image gone, leaving a 532px column beside 588px of empty page |
+| Which article leads | **Declared, not dated** (`FEATURED_SLUG` in `lib/articles.ts`, owner instruction 2026-08-30: *"keep the featured article as is"*). It was `articlesNewestFirst()[0]`, which was the same thing while there was one piece; publishing four more would have moved the lead by arithmetic. Two reasons this is the right shape rather than a workaround — the lead card is the only place a **figure** is drawn and only the first piece has one (`FIGURES` is `Partial` on purpose), so a dated rotation would silently empty it; and a front page choosing its own lead is what a front page is. ⚠️ It falls back to the newest when the slug matches nothing, so `articles.spec.ts` asserts the declared slug **resolves** — otherwise a rename in one place produces a perfectly good page leading with the wrong article |
 | Rows, not cards | A row costs one line per article, so the page never has a hole in it — the failure mode a grid has at small n |
 | Row content | Date · title · **the article's FINDING**, not a summary. On this site the number is the thing worth scanning |
 | Planned pieces | Recede by **WEIGHT and COLOUR, never `opacity`** — 400/`--text-muted` against a published row's 600/`--text-primary`. Same rule the Learn upcoming rows learned when `opacity:.7` rendered at 3.38:1 while the contrast guard read 6.81 (CLAUDE.md 11q). Verified: `byOpacity: false` |
@@ -1349,6 +1350,29 @@ section, where reporting a measurement IS the job. So the styles are defined onc
 is **declared, not sniffed** — detecting digits would work until a piece printed "60"
 as a company count in a text column, and the failure would be a subtly misaligned
 table nobody reports.
+
+⚠️ **AND A BARE `td` IN `globals.css` WAS REACHING INTO EVERY ONE OF THEM — found
+2026-08-30.** The signed-in terminal's table styling includes an element selector,
+`td { white-space: nowrap; font-family: 'JetBrains Mono'; font-size: 11.5px }`. An
+element selector has no scope, so it applied to every data cell in every public
+article: measured on the live first article, **every cell rendered at 11.5px** — under
+the public site's own 12px reading floor — beside a row header at 13px. Two sizes in
+one row, and a size the design system does not contain.
+
+It survived the article's whole life because that piece's every non-first column is
+`numeric`, and `.art-num` re-states the mono face, so the cells read as deliberate.
+The three ranked tables added on 2026-08-30 are the first with a **text** column, and
+the inherited `nowrap` is what pushed them off the side of the reading column. Same
+shape as **11c-vii**: a component dropped into prose inherits whatever the page
+stylesheet has to say about its tags — and nothing goes red, because a wrong font size
+is a perfectly plausible font size. `.art-table th, .art-table td` now states its own
+font, size and wrapping.
+
+| Rule | Why |
+|---|---|
+| `wrapHeaders` on `DataTable` | Headers are `nowrap` by default, which is right at two or three columns and is exactly what puts a five-column table off the side. Measured: the ranked tables needed **689px inside a 614px** reading column, so a reader on a full desktop had to scroll sideways on the one table the piece exists to show. Wrapping the header costs one line of height. Body cells never wrap — a percentage split over two lines is unreadable, which is why `.art-num` keeps its own `nowrap` |
+| ⚠️ The half-fix looked like the fix | `.art-table .art-num` is (0,2,0) and `.art-table--wrapth thead th` is (0,1,2), so the numeric rule **wins on class count**. The three text headers wrapped, the two percentage headers did not, and the table still ran off the side by exactly those two columns — rendering as a perfectly ordinary table. Only measuring `scrollWidth` against `clientWidth` per cell said otherwise |
+| Column `width` on the ranked tables | `table-layout: fixed` is the only way to stop the browser spending 208px on a column holding `−48.0%`. Paired with `minWidth`, so a fixed table cannot be squeezed to nonsense on a phone — it scrolls inside its own wrapper instead |
 
 ---
 

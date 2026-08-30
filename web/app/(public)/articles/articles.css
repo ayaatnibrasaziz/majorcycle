@@ -262,15 +262,47 @@ a.art-row:hover .art-t { color: var(--brand-mid); }
   caption-side: top; text-align: left; font-size: var(--pub-label);
   color: var(--text-secondary); padding-bottom: 8px;
 }
+/* ⚠️ THE FONT AND THE WRAPPING ARE STATED, AND THAT IS A BUG FIX, NOT TIDYING.
+   `globals.css` carries a BARE `td { white-space: nowrap; font-family: 'JetBrains
+   Mono'; font-size: 11.5px }` for the signed-in terminal's tables — an element
+   selector, so it reaches every `<td>` on the site, including the ones in a
+   public article. Measured on the live first article: every data cell rendered at
+   **11.5px**, under the public site's own 12px reading floor, in the mono face,
+   beside a row header at 13px. Two sizes in one row and a size the design system
+   does not have.
+
+   It was invisible for the article's whole life because every non-first column in
+   that piece is `numeric`, and `.art-num` re-states the mono face — so the cells
+   looked deliberate. The three ranked tables added on 2026-08-30 are the first
+   with a TEXT column, and the inherited `nowrap` is what pushed them off the side
+   of the reading column. Same shape as CLAUDE.md 11c-vii: a component dropped
+   into prose inherits whatever the page stylesheet has to say about its tags. */
 .art-table th, .art-table td {
   padding: 9px 12px 9px 0; text-align: left; vertical-align: baseline;
   border-bottom: 1px solid var(--border);
+  font-family: 'Sora', sans-serif; font-size: var(--pub-body); white-space: normal;
 }
 .art-table th:last-child, .art-table td:last-child { padding-right: 0; }
 .art-table thead th {
   font-size: var(--pub-label); font-weight: 600; color: var(--text-secondary);
   border-bottom: 2px solid var(--brand-deep); white-space: nowrap;
 }
+/* A header allowed to wrap, opted into per table by `DataTable`'s `wrapHeaders`.
+   A nowrap header is right for a two- or three-column table and is what forces a
+   FIVE-column one off the side of the page: the ranked tables in the three
+   "furthest below their own highs" pieces needed 689px inside a 614px reading
+   column, so a reader on a full desktop had to scroll a table sideways to reach
+   the column the article is about. Wrapping the header costs one line of height
+   and keeps the whole table on screen. Body cells are untouched — a percentage
+   broken across two lines is unreadable, which is why `.art-num` keeps nowrap. */
+.art-table--wrapth thead th,
+/* ⚠️ The `.art-num` half is load-bearing, and leaving it out looked like it
+   worked. `.art-table .art-num` is (0,2,0) and `.art-table--wrapth thead th` is
+   (0,1,2), so the numeric rule WINS on class count: the three text headers
+   wrapped, the two percentage headers stayed on one line, and the table still
+   ran off the side by exactly those two columns. The half-fix renders as a
+   perfectly ordinary table — measured, not eyeballed. */
+.art-table--wrapth thead th.art-num { white-space: normal; }
 .art-table tbody th { font-weight: 400; color: var(--text-primary); }
 .art-table tbody tr:last-child th, .art-table tbody tr:last-child td {
   border-bottom: 0;

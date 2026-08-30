@@ -61,6 +61,7 @@ export function DataTable({
   columns,
   rows,
   minWidth,
+  wrapHeaders,
 }: {
   /** Rendered as the table's accessible name. Never decorative. */
   caption: string;
@@ -76,14 +77,34 @@ export function DataTable({
    * give.
    */
   minWidth?: string;
+  /**
+   * Let the column headers wrap onto a second line.
+   *
+   * ⚠️ **Not a style preference — it is what keeps a five-column table on the
+   * screen.** Headers are `nowrap` by default, which is right for the two- and
+   * three-column tables and is exactly what pushed the ranked tables in the
+   * three "furthest below their own highs" articles to 689px inside a 614px
+   * reading column. The table then scrolled sideways on a full desktop, on the
+   * one table each of those pieces exists to show.
+   *
+   * The alternative was to shorten the headers, which loses the words the piece
+   * was approved with. This costs one line of height and nothing else. Body
+   * cells never wrap: a percentage split across two lines is unreadable, which
+   * is why `.art-num` keeps its own `nowrap`.
+   */
+  wrapHeaders?: boolean;
 }) {
   const fixed = columns.some((c) => c.width);
+  const cls = [
+    'art-table',
+    fixed ? 'art-table--fixed' : '',
+    wrapHeaders ? 'art-table--wrapth' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
   return (
     <div className="art-tablewrap">
-      <table
-        className={fixed ? 'art-table art-table--fixed' : 'art-table'}
-        style={minWidth ? { minWidth } : undefined}
-      >
+      <table className={cls} style={minWidth ? { minWidth } : undefined}>
         <caption className="art-table-cap">{caption}</caption>
         {fixed && (
           <colgroup>

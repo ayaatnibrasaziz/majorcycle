@@ -84,3 +84,28 @@ reference/learn-masters/
 # Excel writes a lock file beside any workbook it has open. The article working
 # file is reviewed while it is being rebuilt, so this appears and disappears.
 ~$*
+
+# The UNCOMPRESSED copy of an article's frozen study data (2026-08-30). The
+# committed form is the `.json.gz` beside it — same keys, same values, same row
+# order, 2.47 MB down to 0.38 MB, which is smaller than the plain file already
+# committed for the first article.
+#
+# Nothing reads this path: `reference/article-drafts/verify/_data.py` is the one
+# place that knows how the data is stored, and every audit script asks IT rather
+# than opening a file. Unzip a readable copy whenever you want one —
+# `python _data.py out.json` — and it lands here, ignored, instead of doubling
+# the size of the repo.
+reference/drawdown-recovery-*-DATA.json
+
+# A one-time safety net, kept on disk and out of the repo. Taken immediately
+# before deleting the 1,754 split_events rows the 2026-08-30 --repull-prices
+# catch-up created (see roadmap "Stale prices + dead tickers", finding 4). These
+# are DERIVED rows — a log of what the split pipeline did, computed by nothing —
+# so a re-pull regenerates them and 776 KB of dead log does not belong in git.
+# Safe to delete once the deletion is confirmed good.
+reference/split-events-backup-*.json
+
+# Working files for the one-off `--repull-prices` catch-up (2026-08-30): the
+# ticker slices handed to each parallel worker and their logs. The flag is part
+# of the pipeline and stays; these are just what one run of it was given.
+.repull/

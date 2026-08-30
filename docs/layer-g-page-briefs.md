@@ -267,6 +267,40 @@ click and return.
 
 ## 6. Articles — `/articles` index + one permanent page per article
 
+> ✅ **THE FIRST FIVE ARE PUBLISHED — the last four wired up 2026-08-30.** The
+> section now carries the opening measurement plus a recovery study and one ranked
+> piece per market, all five sharing a single as-at date of 27 August 2026 and one
+> frozen input file (`reference/drawdown-recovery-2026-08-27-DATA.json.gz`). "Coming
+> next" is down to one row, and the two promises it lost were both kept.
+>
+> ⚠️ **The lead is now DECLARED rather than dated** — `FEATURED_SLUG`, owner
+> instruction: *"keep the featured article as is."* See `design-system.md` for why
+> that is the right shape and not a workaround.
+>
+> ⚠️ **Wiring the four exposed a defect in the SHIPPED article.** A bare `td`
+> selector in `globals.css` — the signed-in terminal's table styling — was setting
+> every article data cell to 11.5px mono, under the public site's 12px reading
+> floor, from the day the section was built. Invisible because the first piece has
+> no text columns for the inherited `nowrap` to break. Fixed and documented in
+> `design-system.md`.
+>
+> ⚠️ **AND THE NUMBER AUDIT FOUND SOMETHING BIGGER THAN THE ARTICLES.** Asked to
+> confirm every figure, the third audit layer — re-fetching the named companies from
+> outside our own database — disagreed on four of 76, all Australian, all high-yield,
+> all in the same direction. That was not an article problem: **our stored prices had
+> never been re-adjusted for dividends**, so every drawdown on the whole site read up
+> to two points too deep (`architecture.md` §4a, CLAUDE.md 11ae). The owner chose to
+> fix it rather than disclose it. Cause fixed, all 871 companies re-pulled, verified
+> on 24 random companies across three markets (253,000 prices, zero still drifting),
+> and the study re-derived: **81 of the 464 asserted figures moved.** The articles
+> were rewritten from that list before review, and the "our prices lag" row was
+> deleted from all four fact-check sheets.
+>
+> ⚠️ **Two things worth carrying forward.** The assertion suite became the WORKLIST —
+> it named every figure that had changed, so nothing was corrected by eye. And two of
+> the audit scripts were themselves wrong, each having restated a number it existed to
+> check, so both would have failed on a correct system (CLAUDE.md 11c).
+>
 > ✅ **BUILT 2026-08-29.** `/articles` renders the approved direction A — featured
 > card, "Coming next", published rows — and `/articles/[slug]` reuses `ArticleDoc`.
 > The first article is live on the branch. Guarded by `e2e/articles.spec.ts` (15

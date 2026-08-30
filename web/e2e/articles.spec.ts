@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import {
   ARTICLES,
   ARTICLES_INDEX_PATH,
+  FEATURED_SLUG,
   PLANNED_ARTICLES,
   articlePath,
   featuredArticle,
@@ -70,7 +71,7 @@ test.describe('the Articles section', () => {
     ).toBeGreaterThan(0);
   });
 
-  test('the index leads with the newest article and names it', async ({ page }) => {
+  test('the index leads with the DECLARED article, and that slug is real', async ({ page }) => {
     await page.goto(ARTICLES_INDEX_PATH);
     await ready(page);
 
@@ -79,10 +80,24 @@ test.describe('the Articles section', () => {
     await expect(card).toHaveCount(1);
     await expect(card.locator('.art-h')).toHaveText(featured.title);
 
-    // The lead is the most recent piece, not the first array element. Asserting
-    // the title alone would pass on an array that happens to be in order today.
-    const newest = [...ARTICLES].sort((a, b) => b.published.localeCompare(a.published))[0]!;
-    expect(featured.slug).toBe(newest.slug);
+    // ⚠️ THE CONTROL, and it is the whole point of this assertion. `featuredArticle()`
+    // falls back to the newest piece when `FEATURED_SLUG` matches nothing — so a
+    // slug renamed in one place and not the other produces a perfectly good index
+    // page leading with the wrong article, and every other test here still passes.
+    // Only checking that the declared slug RESOLVES can tell the two apart.
+    expect(
+      ARTICLES.some((a) => a.slug === FEATURED_SLUG),
+      `FEATURED_SLUG is "${FEATURED_SLUG}", which is not a registered article — the index is silently leading with whatever is newest`,
+    ).toBe(true);
+    expect(featured.slug).toBe(FEATURED_SLUG);
+
+    // And the rows are the rest, newest first — the lead is chosen, the list is dated.
+    const rows = await page.locator('a.art-row .art-t').allInnerTexts();
+    const expected = [...ARTICLES]
+      .filter((a) => a.slug !== FEATURED_SLUG)
+      .sort((a, b) => b.published.localeCompare(a.published))
+      .map((a) => a.title);
+    expect(rows).toEqual(expected);
   });
 
   test('the featured card IS the product briefing, not a lookalike', async ({ page }) => {
@@ -552,6 +567,24 @@ test.describe('the Articles section', () => {
         box!.y + box!.height,
         `${path}: the disclaimer sits below the fold`,
       ).toBeLessThanOrEqual(667);
+    }
+  });
+
+  test('the answer stays short enough to be an answer', async () => {
+    // The same editorial rule `learn.spec.ts` enforces, and for the same reason:
+    // the disclaimer renders directly under the answer, so the ONLY thing that
+    // can push it below a 375px fold is an answer that has grown into an essay.
+    // Capping it here means a future piece fails on the rule itself with a clear
+    // message, instead of failing the fold test with a geometry error that names
+    // nothing. Bounded on both sides — a one-line answer that restates the title
+    // answers nothing, and a bound on one side only tests the direction that was
+    // never the risk (CLAUDE.md 11i).
+    for (const a of ARTICLES) {
+      expect(
+        a.answer.length,
+        `${a.slug}: the answer is ${a.answer.length} characters. It renders directly above the disclaimer, so it has to stay an answer — move the detail into the body.`,
+      ).toBeLessThanOrEqual(320);
+      expect(a.answer.length, `${a.slug}: the answer is too short to be one`).toBeGreaterThan(80);
     }
   });
 
