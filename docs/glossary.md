@@ -30,7 +30,7 @@
 
 ## C
 
-**Canonical URL** — The one address we declare to be a page's *real* address, so search engines don't treat `majorcycle.com/pricing` and `www.majorcycle.com/pricing` as two competing pages and split the credit between them. Ours is always `https://www.majorcycle.com/…`, absolute (Google warns relative ones "cause problems in the long run"), self-referencing on every public page, and generated from the single `SITE_ORIGIN` constant in `web/lib/url.ts`. ⚠️ A canonical is a *statement*, not an instruction — the server must agree with it. As of 2026-08-07 the bare domain still 307s (**temporarily**) to `www`, which tells Google the opposite; see `roadmap.md` Layer G. See `architecture.md` §11.
+**Canonical URL** — The one address we declare to be a page's *real* address, so search engines don't treat `majorcycle.com/pricing` and `www.majorcycle.com/pricing` as two competing pages and split the credit between them. Ours is always `https://www.majorcycle.com/…`, absolute (Google warns relative ones "cause problems in the long run"), self-referencing on every public page, and generated from the single `SITE_ORIGIN` constant in `web/lib/url.ts`. ⚠️ A canonical is a *statement*, not an instruction — the server must agree with it. The bare domain 307'd (**temporarily**) to `www` until 2026-08-31, telling Google the opposite of our canonical for the site's whole life; it now **308s**, and the sitemap was submitted only after that was true. See `architecture.md` §11.
 
 **Card** — The standard UI container: white surface, subtle border, slight shadow. See `design-system.md` §9.
 

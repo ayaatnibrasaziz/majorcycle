@@ -402,3 +402,95 @@ fix, and stays silent on genuine source errors - proven both ways.
 ⚠️ **Neither defect was in the product.** Both were in the instrument used to check the product,
 which is why they had to be fixed before a six-pass sweep leaned on it. **A sweep is only as
 honest as the tool that reports it** (14g).
+
+---
+
+# Final plan review — the loop, 2026-08-31
+
+⚠️ **The owner asked me to keep interrogating the plan until I was genuinely happy rather than
+declaring it.** Eight questions, eight answers, six changes. Written down because *"I reviewed it
+and it's fine"* is the sentence that preceded both earlier P0 failures.
+
+### Q1 · Will I re-report things the owner has already ruled on?
+**Yes, without this list — and that is the fastest way to waste their time.** Six audits' worth of
+accepted debt is scattered across two long documents. **These are KNOWN and must never appear as a
+5a finding:**
+
+| Known · accepted · do NOT re-raise | Where it goes |
+|---|---|
+| 375px overflow in the signed-in shell (~130px, the sidebar) | **Layer H** |
+| Direction colours used as text (the remaining six) | **Layer H** |
+| `[data-legacy-contrast]` on the screener score chips | **Layer H** |
+| Ticker page Lighthouse 83–84 vs the 90 target | **F-021 — blocked on an instrument** |
+| Vercel Hobby → Pro | Deferred, owner |
+| Four thin subscription states showing "no subscription" | **F-005 → Layer 5b** |
+| Five index members that are not fetchable companies | **F-030 — recorded, no action** |
+| Legal page TEXT is `BASELINE CONTENT` pending professional review | Owner |
+| Results table's bare `$` for USD/AUD/CAD | **Owner explicitly kept it** |
+| `/about` and `/glossary` | Dropped 2026-08-22 |
+| The public documents' 13px body size | **Genuinely open** — owner decision |
+| Replace the dead Stooq source? · the 120 `split_events` rows | **Genuinely open** — owner decision |
+
+**If I find one of these again, the correct action is silence, not a finding.**
+
+### Q2 · Is "22 routes × 14 states" executable? — **No. 308 combinations is not a plan.**
+And most are meaningless: a public page renders identically in `active` and `past_due`. Scoped by
+**what actually varies**:
+
+| Group | Axis that matters | Checks |
+|---|---|---|
+| 13 public pages | signed-out vs signed-in (redirect behaviour only) | ~26 |
+| `/account/update-password` · `/reactivate` · `/deletion-requested` | their own confinement state, plus a stranger and a stale marker | ~9 |
+| `/account` | **all 14** — it is the only page that renders billing | 14 |
+| `/run` · `/results` | entitled vs **each denial reason** — where the paywall decision lives | ~12 |
+| `/stocks` · `/stocks/[m]/[t]` · `/request` | entitled vs not, plus the 7 edge tickers | ~16 |
+
+**≈ 77 meaningful checks, not 308** — and each of the 231 dropped is dropped *because the page
+cannot vary on that axis*, which is a reason, not a shortcut.
+
+### Q3 · Could a later pass invalidate an earlier one? — **Yes, and it would have.**
+P5 re-derives the landing's 16 frozen claims. Regenerating that snapshot is a **content change**
+(11k): new numbers, possibly a new tier colour, possibly moved Opportunity-Map labels. Doing it
+after P1/P2 would invalidate both on the most-viewed page.
+**→ Change: re-derive the landing figures FIRST, as step P5a, before P1 opens a page.**
+
+### Q4 · What happens after I fix something? — **Nothing was defined.**
+**→ Change: any fix re-runs the passes already completed *for that page*, and `pnpm gates`
+locally before any push.** A public mobile fix in P8 can move the colour ground measured in P2.
+
+### Q5 · Am I missing a whole pass? — **No, but I was about to trespass.**
+`roadmap.md` shows **Layer H sits between G and launch and owns 375px, accessibility,
+cross-browser and Sentry.** So: deep a11y, other browsers and error monitoring are **H's, not
+mine**. 5a runs the existing a11y suites as a regression check (P7) and stops there.
+⚠️ **This also corrects my own launch-readiness note**, which said *"nothing watches the web app
+for errors"* as though it were an oversight. **It is planned — Sentry, Layer H.** Still true that
+it is absent at launch if H is skipped; not true that nobody thought of it.
+
+### Q6 · Who does what? — **Undefined.**
+**→ Change:** I do the measuring and the fixing of measurable defects on **public** surfaces. The
+owner rules on anything touching a **paid** surface (11l), anything that is a matter of taste, and
+the four dashboard items. 5b is theirs entirely.
+
+### Q7 · How do findings reach the owner? — **Undefined, and they are non-technical.**
+**→ Change: report per PASS, not per finding.** Each report: what was checked, what was found,
+severity, and **one recommended action per finding**. Anything blocking launch is raised
+immediately rather than held for the pass summary.
+
+### Q8 · Is this sized for 2–4 sessions? — **Now, roughly.**
+P5a + P1 + P2 is a session. P3 + P4 is a session. P5–P7 is a session. P8 plus fixes and
+re-verification is a session. **If it runs longer I say so rather than thinning the checks** —
+this project's own history is that a sweep quietly narrowed is worse than one openly unfinished.
+
+---
+
+## The revised pass order
+
+`P5a` re-derive the landing's 16 figures → `P1` renders + compliant → `P2` colour →
+`P3` interaction → `P4` data edge cases → `P5` remaining content, copy, links →
+`P6` not-the-screen → `P7` the three unrun gates + a11y regression → `P8` 375px public
+
+**Am I 100% happy now?** With the plan, yes — every set in it is derived from something
+executable, its scope is bounded by a stated reason, and it says who does what and what it cannot
+see. **Not with my record**: I have said "complete" three times today and been wrong twice. So the
+plan carries one last rule — **P1's first finding of a page section absent from the manifest means
+the manifest was still incomplete, and P0 reopens.**

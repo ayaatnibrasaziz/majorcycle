@@ -407,6 +407,10 @@ These were agreed during planning. Do not relitigate.
 | 29 | Phase 1 launch scope | All 14 Stock Detail sections from current HTML + 3 existing tabs + Methodology/Contact/Disclaimer/Terms + Auth |
 | 30 | Phase 2 | Smart Money Activity, watchlists, alerts, sector heatmaps, FMP migration |
 | 31 | Repo structure | Monorepo: `/web` + `/analytics` + `/docs` + `/reference` |
+⚠️ **CI COSTS GITHUB MINUTES** (owner, 2026-08-31). Batch commits and run `pnpm gates` locally
+(`--no-e2e` for docs-only work); push when something meaningful is finished, not after every edit.
+A push runs the full Playwright suite, so four doc commits cost roughly an hour of Actions time.
+
 | 32 | Cron schedule | **Two daily runs — AU 08:00 UTC, US+CA 22:30 UTC.** This cell read "Daily 23:00 UTC (after all three markets close)" until 2026-08-04; the parenthetical was never achievable. The ASX starts taking next-day orders at 07:00 Sydney (20:00–21:00 UTC) and New York closes at 20:00–21:00 UTC, so **no single time is after every close** — the one run landed inside the ASX pre-open and stored partial bars. Owner-approved split; don't re-merge them |
 | 33 | Performance target | Lighthouse 90+ on per-ticker pages |
 | 34 | Methodology content | Generated post-build from Python logic, owner refines |
@@ -449,6 +453,9 @@ These were agreed during planning. Do not relitigate.
 - The price we SHOW vs the price Stripe CHARGES, and the live-mode half no test can see → `e2e/pricing-parity.spec.ts` + audit F-025
 - The listings menu — why a pull can succeed and be empty, why the alarm needs a workflow gate as well as an exit code, and why the delisting sweep refuses to retire more than 2% of a market → `analytics/cron/refresh_listings.py` + `analytics/tests/test_listings_regression.py` + audit F-027
 - What the test suite does NOT cover, enumerated route by route and state by state → `docs/layer-g-coverage-map.md`
+- **Layer 5a — the pre-launch sweep**: the ten passes, the method, what it CANNOT check, and the execution guide (named tickers per edge case, the three surfaces, how to reach each state) → `docs/layer-g-5a-sweep.md`; what must be on every page in each of the **14** viewer states → `docs/layer-g-5a-manifest.md`. ⚠️ **The known-and-accepted list lives in the sweep doc** — twelve items already ruled on (375px signed-in, direction-as-text, legacy contrast, F-005, F-030, Hobby→Pro…). Re-reporting one of them as a finding wastes the owner's time; the correct action is silence
+- Why a tooltip is the one surface no guard could see, and the eight advice-shaped phrases now swept for → `e2e/no-advice-copy.spec.ts` + audit F-001. ⚠️ Reported at step zero and still live **eight days later**, because a `title` attribute appears only on hover: no screenshot, no a11y scan, and the compliance guard asserts only that the disclaimer is *present*
+- Why a failing `pnpm gates` used to be undiagnosable, and the generated file that can fail a gate in code no human wrote → `scripts/gates.mjs` + `coding-standards.md` §40b/§43. ⚠️ **Never pipe `pnpm gates` through `head`/`tail`** — `$?` is the pipe's last stage, so a FAILED run reports success, and the pipe also discards the part naming the failure
 - Why every public page is PRERENDERED, which four must never be, and the `s-maxage` finding that came with it → `architecture.md` §7.2c + `pnpm check:render-modes`
 - The three Learn skies, and why image 3 is the untouched original → `design-system.md`
 - Lighthouse: how to run it, why never against `:3000`, the median-of-3 rule, and the 588 KB every reader was paying → `architecture.md` §7.2d + `pnpm lighthouse`
