@@ -311,6 +311,32 @@ three readers that filter on it are `daily_refresh._load_universe`,
 frozen fundamentals would otherwise drag a live sector's median toward a snapshot of the
 past. See §4b.
 
+⚠️ **That list was incomplete for one day, twice over, and both gaps were found by the
+Layer G Layer 4 delta on 2026-08-31 rather than by reading the code.**
+
+**(a) `check_field_units` judged retired tickers** (audit F-036). It is not a reader of the
+universe in the product sense, so it never appeared on any list of them — but every invariant
+it applies has the same implicit remedy, *tonight's refresh will repair this*, and for a ticker
+that is never refreshed again that remedy does not exist. A retired row with a blank market cap
+would have become a **permanent nightly failure nobody could act on**, and a red X that fires
+every night for something unfixable is how people learn to ignore red (11z). It now filters
+`is_active`, **defaults to keeping**, and **prints the held-back count on every run including
+when it is zero** — an exclusion that only shows up when non-empty is one nobody notices
+growing (14g).
+
+**(b) The detail page never filtered it either** (audit F-035), which was deliberate — the page
+is *supposed* to render — but nothing on it said the figures had stopped moving. Measured on
+the preview: `/stocks/us/BK` answered **200** with a full page and a **$157.13** price frozen
+five weeks earlier, presented identically to a live stock. `readStockRow` does `select('*')`, so
+`is_active` was already in the row with nothing reading it. `DelistedNotice` now renders above
+everything on the page **and in the downloadable report**, which is the artifact that outlives
+the page and travels without it. See `docs/design-system.md` for the copy decision.
+
+**So the honest count is five consumers**: the cron universe, Browse, the peer medians, the
+nightly invariants, and the detail page — plus `/api/request-ticker` and `/api/listings/status`,
+which filter it for their own reasons. Whenever a sixth appears, ask what "this ticker is never
+refreshed again" does to it.
+
 **Statement storage format:** Financial statements (income, balance sheet, cash flow) are stored as JSONB objects with the shape `{"labels": ["2024-12-31", "2023-12-31", ...], "total_revenue": [145000000, 120000000, ...], ...}`. The `labels` array contains the period-end dates; every other key is a snake_case row name with a parallel array of values. This lets charts iterate directly over the arrays without re-pivoting.
 
 ### `price_bars` — daily OHLCV history
@@ -343,14 +369,46 @@ CREATE TABLE profiles (
   subscription_status text,                   -- 'trialing' | 'active' | 'past_due' | 'canceled'
   subscription_plan text,                     -- 'monthly' | 'annual'
   created_at      timestamptz NOT NULL DEFAULT now(),
-  acknowledged_disclaimer_at timestamptz       -- first-login modal acceptance
+  acknowledged_disclaimer_at timestamptz       -- first-login modal acceptance (WRITE-ONCE, see below)
 );
 
 -- Row Level Security: users can only read/update their own row
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "users read own profile" ON profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "users update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+
+-- The acknowledgement is WRITE-ONCE in the database (20260831000000, audit F-034).
+CREATE TRIGGER profiles_acknowledgement_write_once
+  BEFORE UPDATE ON profiles FOR EACH ROW
+  EXECUTE FUNCTION enforce_acknowledgement_write_once();
 ```
+
+**`acknowledged_disclaimer_at` cannot be changed once set** — by `anon` or `authenticated`.
+`NULL -> value` stays legal in every role; only a change to an existing value is refused, with
+`23514` and a message naming the record.
+
+⚠️ **Why the database and not just the code.** It was already enforced in TypeScript, twice
+over (audit F-031 then F-033): the read no longer reports an unreadable row as "never agreed",
+and the write reads first, refuses on an unreadable row, skips when a date exists, and carries
+`.is(..., null)` so two tabs cannot race. But `authenticated` holds a **column-level UPDATE
+grant** on this column — necessarily, because the server action runs *as* the user through the
+cookie-bound client — under an `auth.uid() = id` policy. So until 2026-08-31 a signed-in reader
+could rewrite or clear their own compliance record from the browser console, and every
+protection we had lived one layer above that.
+
+⚠️ **`service_role` is exempt, deliberately.** The threat is a viewer editing their own record,
+not our own backend, which already holds every key; enforcing it there would break six e2e
+specs that seed a throwaway account's acknowledgement through the admin client. This is 11y's
+rule applied a second time — *know which caller each grant serves* — rather than revoking
+broadly and discovering the answer in production.
+
+⚠️ **The proof needed real JWT claims, and the first attempt measured nothing.** Run as
+`authenticated` with no `sub`, RLS matches **zero rows**: the UPDATE succeeds having changed
+nothing, the trigger never fires, and the probe reports the fix as broken. That is the same
+"no error, no rows, indistinguishable from success" that made F-024 invisible for a year. With
+claims set and `GET DIAGNOSTICS row_count`: overwrite and clear both **refused**; first write,
+`display_name`, and a `service_role` correction all allowed at **1 row** — the last two being
+the controls, since a database that refuses everybody passes every refusal test.
 
 ### `analysis_runs` — user-triggered Run Analysis history (for "Last Analysis" card)
 

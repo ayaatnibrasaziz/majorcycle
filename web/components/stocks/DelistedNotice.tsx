@@ -27,12 +27,35 @@ import type { StockRecord } from '@/lib/types';
  * would throw away history a reader may legitimately want — the whole reason the
  * bars are kept. The notice keeps both: the data, and the truth about it.
  *
- * ── Two deliberate choices in how it looks ──────────────────────────────────
- * **No new colour.** The site has no warning token, and inventing one would put a
- * colour outside `check:tier-palette`'s reach on a page it already polices. This
- * reuses the established `role="note"` card — the same pattern as "Major Cycle —
- * not available at this horizon", which is the closest existing case: a card whose
- * job is to explain why the data is not what a reader expects. The words carry it.
+ * ── How it looks, and who decided ───────────────────────────────────────────
+ * **A slim RED banner, by owner decision 2026-08-31.** My first build was a full
+ * card in the neutral `role="note"` style, on the argument that the site owns no
+ * warning colour and inventing one would put a hue outside `check:tier-palette`'s
+ * reach. The owner looked at it and said *"I don't like how it looks, can't you
+ * just make it a notice in red?"*, then sent the checkout-cancelled banner from
+ * `/account` as the shape they wanted.
+ *
+ * ⚠️ **That reference answered the objection instead of overriding it.** The banner
+ * in `SubscriptionCard` is already built from the RATING TIER tokens — tier 3, the
+ * neutral amber — used purely as a UI tint with no rating meaning. So the red here
+ * is `--c-tier-5-ink` / `--tint-tier-5`, the same established set one hue over: no
+ * new colour, no literal hex, nothing the palette guard cannot see, and a shape the
+ * product already uses for exactly this job. Measured before it was written:
+ * **8.06:1** on a white card and **7.32:1** on the page ground, against a 4.5 floor
+ * — a margin rather than a boundary (11l).
+ *
+ * ⚠️ **`role="note"`, NOT `role="alert"`** — the one place this departs from the
+ * banner it copies. `alert` is an ARIA live region for messages that ARRIVE; this
+ * is static page content present on first paint, and announcing it as an
+ * interruption is a misuse that also makes the page noisier for a screen-reader
+ * user on every visit.
+ *
+ * ⚠️ **The icon is an inline SVG, not `lucide-react`.** No component the REPORT
+ * renders imports lucide today — the four that do are all page-only — so importing
+ * it here would pull that library into the esbuild bundle for the first time. That
+ * bundle rendered a blank page for every stock for four days when `next/link`
+ * arrived through a component three imports away (11d), and six lines of SVG buys
+ * the same picture with none of that risk.
  *
  * **It renders in the REPORT too**, not only on the page. The download is the
  * artifact that outlives the page and travels without it, so a reader opening it
@@ -118,16 +141,30 @@ export function DelistedNotice({ stock }: { stock: StockRecord }) {
    * are old, from this date — and every extra line makes those two harder to find.
    */
   return (
-    <div className="card card--stack-base" role="note" data-testid="delisted-notice">
-      <div className="card-header">
-        <div className="card-title">{stock.name ?? stock.ticker} no longer trades</div>
-      </div>
-      <div className="card-body">
-        <p className="text-[13px] leading-[1.6] text-[var(--text-secondary)]">
-          <strong className="text-[var(--text-primary)]">Every figure below is frozen</strong>
-          {frozen ? <> at {frozen}</> : null} and is not current.
-        </p>
-      </div>
+    <div
+      role="note"
+      data-testid="delisted-notice"
+      className="flex items-start gap-2 text-[12px] text-[var(--c-tier-5-ink)] bg-[var(--tint-tier-5)] border border-[var(--tint-tier-5-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
+    >
+      {/* Inline, not lucide — see the note at the top of this file on the report
+          bundle. Same glyph as the banner this copies: ring, stem, dot. */}
+      <svg
+        className="w-4 h-4 flex-shrink-0 mt-px"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="8" x2="12" y2="12" />
+        <line x1="12" y1="16" x2="12.01" y2="16" />
+      </svg>
+      <span className="leading-relaxed">
+        <strong>{stock.name ?? stock.ticker} no longer trades.</strong> Every figure
+        below is frozen{frozen ? <> at {frozen}</> : null} and is not current.
+      </span>
     </div>
   );
 }

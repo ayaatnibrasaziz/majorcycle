@@ -651,6 +651,15 @@ export interface StockRecord {
   fundamentals: FundamentalsSnapshot;
   news: NewsItem[];
   updatedAt: string;
+  // Delisting. Optional because a row written before the column existed has none, and
+  // the safe reading of "unknown" is ACTIVE — only an explicit `false` announces that a
+  // company has stopped trading. Added to the type on 2026-08-31 (audit F-035); the
+  // VALUES had been arriving since 2026-08-30, because `readStockRow` does `select('*')`
+  // and `shallowCamel` renames every key, so `isActive` sat in memory with nothing
+  // reading it while `/stocks/us/BK` rendered a five-week-old price as though current.
+  isActive?: boolean | null;
+  inactiveSince?: string | null;   // 'YYYY-MM-DD', the day the sweep retired it
+  inactiveReason?: string | null;  // internal; never rendered verbatim
   // Enriched fields — present when enriched data has been fetched (optional until first enrich run)
   companyOverview?: string | null;
   incomeStatementAnnual?: FinancialStatement;

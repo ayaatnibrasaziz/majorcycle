@@ -2236,7 +2236,7 @@ offering (their price history is kept, and the flag is reversible). It is also t
 prove the **workflow step** end to end, the way F-027's alarm was proven on GitHub in both arms.
 Not done without a decision.
 
-### F-034 🟡 The acknowledgement is write-once in the APPLICATION and not in the database
+### F-034 ✅ The acknowledgement is write-once in the APPLICATION and not in the database — FIXED 2026-08-31
 
 Found while reading the column grants for the check above.
 
@@ -2341,7 +2341,7 @@ went green rather than because anything was hidden.
 `main`, and the AU 250 repaired again only if this branch is merged. The fix is proven; it is
 just not deployed.
 
-### F-035 🔵 A retired ticker's page shows a frozen price and says nothing — OWNER'S CALL
+### F-035 ✅ A retired ticker's page shows a frozen price and says nothing — FIXED 2026-08-31
 
 Measured on the deployed preview, signed in:
 
@@ -2391,6 +2391,110 @@ across 862 ACTIVE stocks … 5 retired ticker(s) held back."*
 Guarded by three tests driving the real `_load_fundamentals` with a stub client, **broken two
 ways**: removing the exclusion (2 red) and flipping the default to drop an unknown row (1 red).
 
+## F-034 and F-035 — both APPLIED 2026-08-31, before merge
+
+Owner: *"lets first fix the disclaimer date and retired-ticker page … Once done, we will merge
+it … This way all things will run based on the updated code."* The sequencing is the point:
+the remaining layers measure what ships, not what shipped yesterday.
+
+### F-034 ✅ The acknowledgement is now write-once in Postgres
+
+Migration `20260831000000_acknowledgement_write_once.sql`, applied live. A `BEFORE UPDATE`
+trigger refuses any change to a non-null `acknowledged_disclaimer_at` made by `anon` or
+`authenticated`. `NULL -> value` stays legal in every role — that is what write-once means.
+
+⚠️ **`service_role` is exempt, deliberately.** The threat is a viewer editing their OWN
+compliance record, not our backend, which already holds every key. Enforcing it there would
+break six e2e specs that seed a throwaway account's acknowledgement through the admin client.
+11y is both the precedent and the warning: ask which caller each grant serves *before*
+revoking, rather than finding out in production.
+
+⚠️ **MY FIRST PROOF MEASURED NOTHING, and it is the trap 11y already documents.** I ran the
+sabotage as `authenticated` with no JWT. RLS matched **zero rows**, the UPDATE succeeded having
+changed nothing, the trigger never fired, and the probe printed `ALLOWED <-- FAIL` on all five
+cases — reading exactly like a broken fix. Re-run with real JWT claims and
+`GET DIAGNOSTICS row_count`:
+
+| | Result |
+|---|---|
+| owner overwrites their own date | **REFUSED** `23514` |
+| owner clears their own date | **REFUSED** `23514` |
+| genuine first write (`null -> value`) | allowed, **1 row** |
+| customer saves `display_name` | allowed, **1 row** |
+| `service_role` corrects a row | allowed, **1 row** |
+
+The last two are the controls 11y insists on: **a database that refuses everybody passes every
+refusal test in the file.** The whole probe was wrapped in a `RAISE` so it rolled back, and all
+four profiles were read back afterwards unchanged.
+
+### F-035 ✅ A retired ticker now says so — on the page AND in the report
+
+`components/stocks/DelistedNotice.tsx`, rendered above everything on Stock Detail and at the
+top of `ReportDocument`. Verified on the deployed preview, signed in: notice count **1** on
+`/stocks/us/BK`, **0** on `/stocks/us/AAPL`.
+
+**A notice rather than a 404**, because 404 is also honest and throws away the history that is
+the entire reason those bars are kept. **No new colour** — the site has no warning token and
+inventing one would put a colour outside `check:tier-palette`'s reach, so it reuses the
+`role="note"` card that *"Major Cycle — not available at this horizon"* already uses.
+
+⚠️ **Two traps avoided in the writing.** `<ReportSection>` always emits its wrapper div, so
+wrapping a component that returns null for 866 of 871 stocks would have put an **empty padded
+box at the top of almost every report ever downloaded** — a defect introduced by the fix for
+another one. And the default is **ACTIVE**: only an explicit `false` announces a delisting,
+because telling a customer a healthy company has stopped trading is worse than the status quo.
+
+### ⚠️ Three defects of MINE in this fix, all caught before the owner saw the result
+
+**(i) The notice stated the wrong date, and shipped that way for one preview build.** It
+printed `inactiveSince` — the day the sweep *noticed* — under the words *"every figure on this
+page is frozen as at"*. On BK that read **2026-08-31** while `StockHeader`, two inches below,
+read **Updated Jul 23**, with a five-week-old $157.13 between them. Both dates are real; they
+answer different questions; the one a reader is asking is when the **data** stops. Nothing
+errored and nothing looked odd — the sentence was fluent, specific and wrong, on the one panel
+whose entire purpose is to say the figures are old. **Only looking at the rendered page found
+it** (11k). Now `updatedAt`, the same value `StockHeader` formats: one fact, one source.
+
+**(ii) The first wiring test was worthless in a way that looked fine.** Written signed-out it
+fetched `/stocks/us/AAPL`, was redirected to `/login`, found no notice in the sign-in page and
+passed — and went on passing under a sabotage that announced **every stock in the universe** as
+delisted, because it had never loaded a stock page. It signs in now and asserts `#sec-thesis`
+is visible *before* believing anything absent from the page. 14g, in a test I had just written.
+
+**(iii) A sabotage of mine proved nothing and I nearly counted it.** Flipping the default to
+`!== true` leaves AAPL (`isActive: true`) unaffected, so the green run was green for the wrong
+reason. The sabotage that discriminates is `return true`, which turns the wiring test red
+because the notice really does render on a real ticker page — which is also the only automated
+evidence that the PRESENCE path works.
+
+### The copy — one sentence, owner-agreed before it was written
+
+The first version ran to four paragraphs. Owner: *"I still feel it is way too much."* and
+*"First agree with me what you will show and than update."* Agreed by `AskUserQuestion`, then
+built:
+
+> **BANK OF NEW YORK MELLON CORP NO LONGER TRADES**
+> Every figure below is frozen at 23 Jul 2026 and is not current.
+
+⚠️ Everything cut was **us explaining ourselves** rather than telling the reader anything they
+need: how the three-source test works, the date the sweep noticed, why the history is kept, the
+ways a company can stop trading. All true, none load-bearing. A reader needs two facts — this
+is dead, and the numbers below are old, from this date — and every extra line made those two
+harder to find.
+
+⚠️ **The date is formatted from the STRING, never through `new Date()`.**
+`new Date('2026-07-23')` parses as UTC midnight, so anywhere west of Greenwich it renders as
+the 22nd — the same off-by-one-day class that stored every ASX bar a day early (14a). A value
+test cannot catch that here because **CI runs in UTC, where the buggy and correct
+implementations agree**, so the spec asserts the absence of the call, with comments stripped
+and a control proving it read the real file. Weaker than the rest of the file, and it says so.
+
+**Guards:** `e2e/delisted-notice.spec.ts`, 12 tests — the decision, the frozen-at date (a
+fixture whose two dates are five weeks apart, so a wrong field cannot coincidentally pass), the
+formatter, and the signed-in wiring. Broken on purpose four ways: `return true`, the default
+flip, the shipped date defect restored verbatim, and an off-by-one month index (silent
+otherwise — every month would simply be wrong by one and still read as a real date).
+
 ### Where the delta leaves the audit
 
 | Stage | Status |
@@ -2399,8 +2503,8 @@ ways**: removing the exclusion (2 red) and flipping the default to drop an unkno
 | Layer 1 delta — re-measure the coverage map | ✅ `layer-g-coverage-map.md`, 4 findings, all 4 applied |
 | Layer 2 delta — the machine sweep | ✅ Playwright **687**, pytest **244**, typecheck/lint clean, all guards green on a fresh production build |
 | Layer 3 delta — the wire sweep | ✅ **55 checks, clean, run TWICE** — on `fbf97fc` and again on `cc7e09e` after the delta fixes shipped. Zero premium keys in 8 denied states; the entitled control carries all 9. Two wrong results of mine, both caught before reporting |
-| Layer 3b delta — the platform sweep | ✅ **clean.** 13 tables RLS-on with exactly the intended grants; advisors INFO-only; both crons green on `main`. Staleness sweep DRY-RUN against live data: 5 dead, 4 live ones correctly protected. 🔵 a real run is the owner's call; 🟡 F-034 recorded |
-| Layer 4 delta — the data sweep | ✅ **clean on the data.** Dividend re-adjustment held (ratio 1.00000 vs a fresh pull); 0 weekend bars in 6.6M; cross-currency withholding proven with a positive control. The market-cap breach is 14g, confirmed three ways. **F-036 fixed** (invariants judged tickers they can never repair); **F-035 🔵 owner's call** (a retired ticker's page shows a frozen price and says nothing) |
+| Layer 3b delta — the platform sweep | ✅ **clean.** 13 tables RLS-on with exactly the intended grants; advisors INFO-only; both crons green on `main`. Staleness sweep DRY-RUN against live data: 5 dead, 4 live ones correctly protected. the sweep was then RUN for real (871 -> 866 active, 5 retired, price bars unchanged) and both new nightly steps proven on GitHub. **F-034 fixed** |
+| Layer 4 delta — the data sweep | ✅ **clean on the data.** Dividend re-adjustment held (ratio 1.00000 vs a fresh pull); 0 weekend bars in 6.6M; cross-currency withholding proven with a positive control. The market-cap breach is 14g, confirmed three ways. **F-036 fixed** (invariants judged tickers they can never repair); **F-035 fixed** (a retired ticker now says so, on the page and in the report) |
 | **Layer 5a — my visual sweep** | ⬜ **next** |
 | Layer 5b — the owner's judgement sweep | ⬜ |
 
