@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { LegalDoc } from '@/components/LegalDoc';
 
-export const metadata: Metadata = { title: 'Disclaimer' };
+export const metadata: Metadata = pageMetadata({
+  path: '/disclaimer',
+  title: 'Disclaimer',
+  description:
+    'MajorCycle is an educational analysis tool, not financial advice. How our ratings and third-party data work, and what remains your own responsibility.',
+});
 
 // BASELINE CONTENT — owner to review and, if needed, have checked against ASIC
 // guidance before wide launch. Educational/informational posture per CLAUDE.md #24.
@@ -84,7 +90,7 @@ export default function DisclaimerPage() {
           body: (
             <p>
               Questions about this disclaimer can be sent to{' '}
-              <a href="mailto:support@majorcycle.com" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">support@majorcycle.com</a>.
+              <a href="mailto:support@majorcycle.com">support@majorcycle.com</a>.
             </p>
           ),
         },

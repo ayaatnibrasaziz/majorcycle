@@ -10,6 +10,18 @@ import type { Market, TickerRequest } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * These routes sit behind the sign-in gate (they are not in `PUBLIC_PATHS`), and Next
+ * attaches NO `Cache-Control` to route handlers — a habit formed on pages does not carry
+ * over (CLAUDE.md 11a). Measured on the wire 2026-08-23: the signed-OUT refusal was
+ * correctly `private, no-store` because the proxy sets it on its own 307, while the
+ * signed-IN 200 said nothing at all. Nothing was exposed, because Vercel shared-caches
+ * only on `s-maxage` — which is precisely 11a's complaint: safe by someone else's
+ * default rather than because we said so.
+ */
+const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
+
+
 interface RawRequestRow {
   symbol: string;
   market: Market;
@@ -36,33 +48,61 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { symbol?: unknown } | null;
   const symbol = typeof body?.symbol === 'string' ? body.symbol.trim().toUpperCase() : '';
   if (!symbol) {
-    return NextResponse.json({ error: 'Missing symbol' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing symbol' }, { status: 400, headers: NO_STORE });
   }
 
   const admin = createAdminClient();
 
+  // ⚠️ Both reads below check `error` BEFORE `data`, and the reason is CLAUDE.md
+  // 11e: "I could not read it" and "it does not exist" must never share a return
+  // value. Until 2026-08-23 both destructured only `data`, so a failed query was
+  // indistinguishable from an absent row — and the two failures pointed opposite
+  // ways. A `listings` error told a reader their real stock was "not a known
+  // US/AU/CA listed stock", which is merely wrong. A `stocks` error was worse: it
+  // fell through to the upsert and QUEUED A REQUEST for a ticker we already cover,
+  // so the nightly cron would go and re-fetch it. Nothing errored, nothing logged,
+  // and the row looked exactly like a genuine reader request.
+  //
+  // Found while writing this route's first tests: the 409 case failed once under
+  // full-suite load and passed in isolation, which is what a swallowed transient
+  // read error looks like from the outside.
+
   // Choose-only guard: the symbol MUST be a real, active US/AU/CA listing.
-  const { data: listing } = await admin
+  const { data: listing, error: listingErr } = await admin
     .from('listings')
     .select('symbol,market')
     .eq('symbol', symbol)
     .eq('is_active', true)
     .maybeSingle();
+  if (listingErr) {
+    console.error('request-ticker: listings lookup failed', symbol, listingErr);
+    return NextResponse.json(
+      { error: 'Could not check coverage right now' },
+      { status: 503, headers: { ...NO_STORE, 'Retry-After': '5' } },
+    );
+  }
   if (!listing) {
     return NextResponse.json(
       { error: 'Not a known US/AU/CA listed stock' },
-      { status: 404 },
+      { status: 404, headers: NO_STORE },
     );
   }
 
   // Already analysable → nothing to queue.
-  const { data: stock } = await admin
+  const { data: stock, error: stockErr } = await admin
     .from('stocks')
     .select('ticker')
     .eq('ticker', symbol)
     .maybeSingle();
+  if (stockErr) {
+    console.error('request-ticker: stocks lookup failed', symbol, stockErr);
+    return NextResponse.json(
+      { error: 'Could not check coverage right now' },
+      { status: 503, headers: { ...NO_STORE, 'Retry-After': '5' } },
+    );
+  }
   if (stock) {
-    return NextResponse.json({ error: 'Already in coverage' }, { status: 409 });
+    return NextResponse.json({ error: 'Already in coverage' }, { status: 409, headers: NO_STORE });
   }
 
   const supabase = await createServerSupabaseClient();
@@ -91,9 +131,9 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (error || !upserted) {
-    return NextResponse.json({ error: 'Could not queue request' }, { status: 500 });
+    return NextResponse.json({ error: 'Could not queue request' }, { status: 500, headers: NO_STORE });
   }
-  return NextResponse.json({ request: toTickerRequest(upserted as RawRequestRow) });
+  return NextResponse.json({ request: toTickerRequest(upserted as RawRequestRow) }, { headers: NO_STORE });
 }
 
 export async function GET() {
@@ -108,5 +148,5 @@ export async function GET() {
     .order('requested_at', { ascending: false })
     .limit(50);
   const requests = ((data ?? []) as RawRequestRow[]).map(toTickerRequest);
-  return NextResponse.json({ requests });
+  return NextResponse.json({ requests }, { headers: NO_STORE });
 }

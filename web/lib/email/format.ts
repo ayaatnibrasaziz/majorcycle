@@ -5,10 +5,14 @@
  * paragraph / button / greeting styling stays identical across every app email.
  */
 
+import { SITE_ORIGIN } from '@/lib/url';
+
 export const FONT =
   "'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
-export const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.majorcycle.com';
+// Origin comes from lib/url.ts — the single home for it (rule 11c). This file used
+// to re-type the literal, which is how the three copies drifted apart.
+export const SITE = process.env.NEXT_PUBLIC_SITE_URL || SITE_ORIGIN;
 
 /** Escape any user-controlled value (display name, email, message) before interpolating. */
 export function escapeHtml(value: string): string {

@@ -583,6 +583,45 @@ class YFinanceProvider(DataProvider):
             # daily refresh uses this to trigger a full re-adjusted re-pull — a real
             # price move never appears here, so it can't false-fire like a price-ratio
             # heuristic would.
+            # Dividends in this window, captured for the SAME reason splits are.
+            #
+            # ⚠️ **A dividend re-adjusts every EARLIER bar, not just today's.** With
+            # `auto_adjust=True` yfinance divides the whole prior series by a factor
+            # that changes each time the company goes ex-dividend. So a refresh that
+            # only fetches a recent window stores today's bars on the NEW basis and
+            # leaves years of older bars on the OLD one — the peak included. Measured
+            # 2026-08-29 across the companies named in the articles: the ratio between
+            # our stored history and a fresh pull is a CONSTANT 1.017-1.035 on every
+            # bar before the company's last ex-dividend date and exactly 1.0000 after
+            # it. Nothing errors, nothing looks odd, and a fall reads up to 2 points
+            # deeper than it was — a perfectly plausible number that is simply wrong.
+            #
+            # ⚠️ Unlike a split there is nothing to VERIFY afterwards. A split can
+            # leave a visible cliff if the provider's own history is inconsistent
+            # (see MNST, audit F-030), which is why splits get a pending/resolve
+            # cycle. A dividend adjustment is a smooth rescale of the whole series:
+            # either the re-pull happened or it did not. So this attr only triggers
+            # the re-pull, and carries no ratio and no event record.
+            #
+            # Two attrs, for the same reason splits have two: `recent_dividends`
+            # is the RE-PULL TRIGGER (dates only, and the refresh reads nothing
+            # else from it), `recent_dividend_events` is the RECORD written to
+            # `dividend_events` so the database can answer "why was this company
+            # re-fetched last night?". Keeping the trigger a bare list of dates
+            # means the thing the pipeline depends on cannot be broken by adding
+            # a field to the record.
+            div_dates: list[str] = []
+            div_events: list[dict[str, Any]] = []
+            if "Dividends" in df.columns:
+                dv = df["Dividends"].fillna(0)
+                for d in df.index[dv != 0]:
+                    iso = d.strftime("%Y-%m-%d")
+                    div_dates.append(iso)
+                    # Per-share, in the stock's own currency. Recorded for
+                    # visibility only — nothing computes with it, so a provider
+                    # oddity here can never move a published figure.
+                    div_events.append({"date": iso, "amount": float(dv[d])})
+
             split_dates: list[str] = []
             split_events: list[dict[str, Any]] = []
             if "Stock Splits" in df.columns:
@@ -614,15 +653,72 @@ class YFinanceProvider(DataProvider):
                 return None, None
             df.attrs["recent_splits"] = split_dates
             df.attrs["recent_split_events"] = split_events
+            df.attrs["recent_dividends"] = div_dates
+            df.attrs["recent_dividend_events"] = div_events
             return df, t
         except Exception as e:
             logger.debug("yfinance error for %s: %s", ticker_str, e)
             return None, None
 
     def _download_stooq(self, ticker_str: str) -> tuple[Optional[pd.DataFrame], None]:
+        """Last-resort price source when Yahoo has failed every retry.
+
+        ⚠️ **MEASURED DEAD, 2026-08-30, and the failure wears a success code.**
+        Driven through this very function from Australia, it returns None for
+        every ticker in every market — AAPL included. Stooq now sits behind a
+        JavaScript bot check:
+
+            no User-Agent (what this code sends) → HTTP 404, an HTML page
+            browser User-Agent                   → HTTP 200, 796 bytes of
+                                                   "This site requires JavaScript
+                                                   to verify your browser"
+
+        That is audit F-027's shape exactly — the ASX listings source did the same
+        thing and returned nothing for a month while the workflow stayed green.
+        The difference is that this one fails SAFE: HTML does not parse into OHLCV
+        columns, so it returns None rather than garbage. It is decoration, not
+        protection, and the log line below is there so nobody reads a silent None
+        as "the fallback tried and this ticker simply isn't on Stooq".
+
+        Whether to replace the source is the owner's call — recorded, not decided
+        here. One limit on the measurement, stated rather than buried: it was taken
+        from one machine in Australia. A block can be IP-dependent, and GitHub
+        Actions runs from Azure US addresses, so the nightly job may see something
+        different. The `content-type` check below is what would tell us.
+
+        ⚠️ **And it must stay restricted to FULL pulls — do not widen it to the
+        nightly incremental path.** The roadmap's part-1 plan assumed that widening
+        was the fix; measuring says the opposite. Yahoo's bars are
+        `auto_adjust=True` (split- and dividend-adjusted relative to the latest
+        bar); Stooq's are not on that basis. Splicing Stooq bars into a Yahoo
+        series would put one company's history on two adjustment bases — which is
+        precisely the defect fixed on 2026-08-30 after it made every drawdown on
+        the site up to two points too deep for a year (CLAUDE.md 11ae). A whole
+        series from one source is self-consistent; a spliced one is not. The real
+        answer to a transient miss is the two-pass retry in `daily_refresh.run`,
+        not a second source stitched into the middle of a series.
+        """
         try:
+            # ⚠️ `.us` is hard-coded and only correct for US tickers — `BHP.AX`
+            # becomes the meaningless `bhp.ax.us`. Left as-is rather than guessed
+            # at: Stooq's own AU/CA suffixes could not be confirmed, because every
+            # probe hit the bot wall above. Fixing a symbol map against a source
+            # that answers nothing would be inventing a contract (CLAUDE.md 11g).
             url = f"https://stooq.com/q/d/l/?s={ticker_str.lower()}.us&i=d"
             resp = requests.get(url, timeout=15)
+            ctype = resp.headers.get("content-type", "")
+            if "html" in ctype.lower():
+                # A success code carrying an error page. Say so loudly and
+                # distinctly: "the fallback source refused us" and "the fallback
+                # has no data for this ticker" are different facts, and letting
+                # them share one silent None is how a source stays dead for a
+                # month (F-027).
+                logger.warning(
+                    "stooq: HTTP %d but content-type %r for %s — the fallback source is "
+                    "serving a page, not data. The Yahoo fallback is NOT working.",
+                    resp.status_code, ctype, ticker_str,
+                )
+                return None, None
             if resp.status_code != 200 or len(resp.text) < 100:
                 return None, None
             df = pd.read_csv(StringIO(resp.text))
@@ -686,6 +782,24 @@ class YFinanceProvider(DataProvider):
         financial_currency = str(fin_currency_raw) if fin_currency_raw else currency
 
         market_cap = _safe(g("marketCap"))
+        if market_cap is None:
+            # yfinance's `info` blob intermittently omits marketCap for a large,
+            # healthy, actively-traded company. Measured on the run of
+            # 2026-08-27: 15 of 863, among them Salesforce, Lowe's and Micron.
+            # Nothing errors — the key is simply absent — so the value arrives
+            # as None and (before the guard in daily_refresh) DELETED a good
+            # stored figure. `fast_info` is a different endpoint on the same
+            # object and carried a cap for all 15, so ask it before giving up.
+            fast = self._safe_attr(ticker_obj, "fast_info")
+            if fast is not None:
+                for key in ("market_cap", "marketCap"):
+                    try:
+                        raw = fast.get(key) if hasattr(fast, "get") else getattr(fast, key, None)
+                    except Exception:
+                        raw = None
+                    market_cap = _safe(raw)
+                    if market_cap is not None:
+                        break
         total_revenue = _safe(g("totalRevenue"))
         ebitda = _safe(g("ebitda"))
         free_cashflow = _safe(g("freeCashflow"))

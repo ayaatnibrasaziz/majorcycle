@@ -1,0 +1,345 @@
+{
+ "as_at": "2026-08-27",
+ "sample": "the 40 largest ASX 200 companies by market cap",
+ "companies_compared": 39,
+ "recovered_with_dividends_pct": 86.7,
+ "recovered_price_only_pct": 81.8,
+ "median_years_with_dividends": 0.81,
+ "median_years_price_only": 0.97,
+ "westpac_with_dividends_years": 2.091,
+ "westpac_price_only_years": 5.123,
+ "zero_dividend_controls": [
+  {
+   "ticker": "XYZ.AX",
+   "identical": true
+  },
+  {
+   "ticker": "LYC.AX",
+   "identical": true
+  },
+  {
+   "ticker": "XRO.AX",
+   "identical": true
+  },
+  {
+   "ticker": "CSC.AX",
+   "identical": true
+  }
+ ],
+ "controls_all_passed": true,
+ "note": "Article 2's dividend comparison. The control is that a company which has never paid a dividend must give identical results on both series.",
+ "rows": [
+  {
+   "ticker": "BHP.AX",
+   "dividends_total": 35.8972,
+   "recovered_with_dividends": 1.0,
+   "recovered_price_only": 1.0,
+   "median_yrs_with_dividends": 0.901,
+   "median_yrs_price_only": 1.175
+  },
+  {
+   "ticker": "RIO.AX",
+   "dividends_total": 90.6117,
+   "recovered_with_dividends": 1.0,
+   "recovered_price_only": 1.0,
+   "median_yrs_with_dividends": 0.456,
+   "median_yrs_price_only": 1.103
+  },
+  {
+   "ticker": "CBA.AX",
+   "dividends_total": 86.8136,
+   "recovered_with_dividends": 0.8571428571428571,
+   "recovered_price_only": 0.8333333333333334,
+   "median_yrs_with_dividends": 1.456,
+   "median_yrs_price_only": 2.329
+  },
+  {
+   "ticker": "NEM.AX",
+   "dividends_total": 3.7613,
+   "recovered_with_dividends": 0.75,
+   "recovered_price_only": 0.75,
+   "median_yrs_with_dividends": 0.194,
+   "median_yrs_price_only": 0.194
+  },
+  {
+   "ticker": "WBC.AX",
+   "dividends_total": 35.1625,
+   "recovered_with_dividends": 0.8333333333333334,
+   "recovered_price_only": 0.75,
+   "median_yrs_with_dividends": 2.091,
+   "median_yrs_price_only": 5.123
+  },
+  {
+   "ticker": "WES.AX",
+   "dividends_total": 50.708,
+   "recovered_with_dividends": 0.8,
+   "recovered_price_only": 0.8571428571428571,
+   "median_yrs_with_dividends": 1.337,
+   "median_yrs_price_only": 2.202
+  },
+  {
+   "ticker": "XYZ.AX",
+   "dividends_total": 0.0,
+   "recovered_with_dividends": 0.5,
+   "recovered_price_only": 0.5,
+   "median_yrs_with_dividends": 0.079,
+   "median_yrs_price_only": 0.079
+  },
+  {
+   "ticker": "WDS.AX",
+   "dividends_total": 36.8947,
+   "recovered_with_dividends": 0.8571428571428571,
+   "recovered_price_only": 0.8,
+   "median_yrs_with_dividends": 1.661,
+   "median_yrs_price_only": 0.639
+  },
+  {
+   "ticker": "FMG.AX",
+   "dividends_total": 15.32,
+   "recovered_with_dividends": 0.9411764705882353,
+   "recovered_price_only": 0.9333333333333333,
+   "median_yrs_with_dividends": 0.248,
+   "median_yrs_price_only": 0.296
+  },
+  {
+   "ticker": "RMD.AX",
+   "dividends_total": 2.361,
+   "recovered_with_dividends": 0.9166666666666666,
+   "recovered_price_only": 0.9230769230769231,
+   "median_yrs_with_dividends": 0.813,
+   "median_yrs_price_only": 0.683
+  },
+  {
+   "ticker": "ALL.AX",
+   "dividends_total": 8.2365,
+   "recovered_with_dividends": 0.9,
+   "recovered_price_only": 0.9,
+   "median_yrs_with_dividends": 1.004,
+   "median_yrs_price_only": 1.071
+  },
+  {
+   "ticker": "NST.AX",
+   "dividends_total": 2.705,
+   "recovered_with_dividends": 0.9411764705882353,
+   "recovered_price_only": 0.9444444444444444,
+   "median_yrs_with_dividends": 0.367,
+   "median_yrs_price_only": 0.365
+  },
+  {
+   "ticker": "EVN.AX",
+   "dividends_total": 1.146,
+   "recovered_with_dividends": 0.8888888888888888,
+   "recovered_price_only": 0.8888888888888888,
+   "median_yrs_with_dividends": 0.323,
+   "median_yrs_price_only": 0.331
+  },
+  {
+   "ticker": "SIG.AX",
+   "dividends_total": 0.9039,
+   "recovered_with_dividends": 0.8,
+   "recovered_price_only": 0.8,
+   "median_yrs_with_dividends": 0.688,
+   "median_yrs_price_only": 0.688
+  },
+  {
+   "ticker": "AMC.AX",
+   "dividends_total": 61.9647,
+   "recovered_with_dividends": 0.8,
+   "recovered_price_only": 0.75,
+   "median_yrs_with_dividends": 1.046,
+   "median_yrs_price_only": 3.317
+  },
+  {
+   "ticker": "BXB.AX",
+   "dividends_total": 8.0169,
+   "recovered_with_dividends": 0.8333333333333334,
+   "recovered_price_only": 0.8,
+   "median_yrs_with_dividends": 2.444,
+   "median_yrs_price_only": 5.752
+  },
+  {
+   "ticker": "NWS.AX",
+   "dividends_total": 2.051,
+   "recovered_with_dividends": 0.8333333333333334,
+   "recovered_price_only": 0.8333333333333334,
+   "median_yrs_with_dividends": 1.456,
+   "median_yrs_price_only": 1.456
+  },
+  {
+   "ticker": "JHX.AX",
+   "dividends_total": 7.9316,
+   "recovered_with_dividends": 0.9166666666666666,
+   "recovered_price_only": 0.9166666666666666,
+   "median_yrs_with_dividends": 0.587,
+   "median_yrs_price_only": 0.587
+  },
+  {
+   "ticker": "S32.AX",
+   "dividends_total": 1.2919,
+   "recovered_with_dividends": 1.0,
+   "recovered_price_only": 0.75,
+   "median_yrs_with_dividends": 1.27,
+   "median_yrs_price_only": 1.27
+  },
+  {
+   "ticker": "REA.AX",
+   "dividends_total": 19.5,
+   "recovered_with_dividends": 0.9230769230769231,
+   "recovered_price_only": 0.9230769230769231,
+   "median_yrs_with_dividends": 0.532,
+   "median_yrs_price_only": 0.623
+  },
+  {
+   "ticker": "FPH.AX",
+   "dividends_total": 4.376,
+   "recovered_with_dividends": 1.0,
+   "recovered_price_only": 1.0,
+   "median_yrs_with_dividends": 1.599,
+   "median_yrs_price_only": 1.758
+  },
+  {
+   "ticker": "ORG.AX",
+   "dividends_total": 6.9706,
+   "recovered_with_dividends": 0.875,
+   "recovered_price_only": 0.8333333333333334,
+   "median_yrs_with_dividends": 0.278,
+   "median_yrs_price_only": 0.19
+  },
+  {
+   "ticker": "SUN.AX",
+   "dividends_total": 22.79,
+   "recovered_with_dividends": 0.8333333333333334,
+   "recovered_price_only": 0.6666666666666666,
+   "median_yrs_with_dividends": 2.004,
+   "median_yrs_price_only": 1.502
+  },
+  {
+   "ticker": "PME.AX",
+   "dividends_total": 2.7725,
+   "recovered_with_dividends": 0.9285714285714286,
+   "recovered_price_only": 0.9230769230769231,
+   "median_yrs_with_dividends": 0.325,
+   "median_yrs_price_only": 0.317
+  },
+  {
+   "ticker": "AAI.AX",
+   "dividends_total": 1.1272,
+   "recovered_with_dividends": 0.5,
+   "recovered_price_only": 0.5,
+   "median_yrs_with_dividends": 0.968,
+   "median_yrs_price_only": 0.972
+  },
+  {
+   "ticker": "SCG.AX",
+   "dividends_total": 2.8237,
+   "recovered_with_dividends": 1.0,
+   "recovered_price_only": 0.0,
+   "median_yrs_with_dividends": 7.893,
+   "median_yrs_price_only": null
+  },
+  {
+   "ticker": "PLS.AX",
+   "dividends_total": 0.25,
+   "recovered_with_dividends": 0.9,
+   "recovered_price_only": 0.875,
+   "median_yrs_with_dividends": 0.643,
+   "median_yrs_price_only": 1.48
+  },
+  {
+   "ticker": "SOL.AX",
+   "dividends_total": 13.315,
+   "recovered_with_dividends": 1.0,
+   "recovered_price_only": 1.0,
+   "median_yrs_with_dividends": 1.079,
+   "median_yrs_price_only": 0.742
+  },
+  {
+   "ticker": "LYC.AX",
+   "dividends_total": 0.0,
+   "recovered_with_dividends": 0.8888888888888888,
+   "recovered_price_only": 0.8888888888888888,
+   "median_yrs_with_dividends": 1.067,
+   "median_yrs_price_only": 1.067
+  },
+  {
+   "ticker": "SGH.AX",
+   "dividends_total": 7.04,
+   "recovered_with_dividends": 0.8888888888888888,
+   "recovered_price_only": 0.8888888888888888,
+   "median_yrs_with_dividends": 0.571,
+   "median_yrs_price_only": 0.601
+  },
+  {
+   "ticker": "XRO.AX",
+   "dividends_total": 0.0,
+   "recovered_with_dividends": 0.8571428571428571,
+   "recovered_price_only": 0.8571428571428571,
+   "median_yrs_with_dividends": 0.601,
+   "median_yrs_price_only": 0.601
+  },
+  {
+   "ticker": "QAN.AX",
+   "dividends_total": 3.9357,
+   "recovered_with_dividends": 0.8888888888888888,
+   "recovered_price_only": 0.8888888888888888,
+   "median_yrs_with_dividends": 0.831,
+   "median_yrs_price_only": 1.065
+  },
+  {
+   "ticker": "APA.AX",
+   "dividends_total": 9.5915,
+   "recovered_with_dividends": 1.0,
+   "recovered_price_only": 0.8571428571428571,
+   "median_yrs_with_dividends": 0.563,
+   "median_yrs_price_only": 0.819
+  },
+  {
+   "ticker": "WTC.AX",
+   "dividends_total": 0.9311,
+   "recovered_with_dividends": 0.875,
+   "recovered_price_only": 0.875,
+   "median_yrs_with_dividends": 0.5,
+   "median_yrs_price_only": 0.5
+  },
+  {
+   "ticker": "MPL.AX",
+   "dividends_total": 1.522,
+   "recovered_with_dividends": 1.0,
+   "recovered_price_only": 1.0,
+   "median_yrs_with_dividends": 0.591,
+   "median_yrs_price_only": 0.978
+  },
+  {
+   "ticker": "MIN.AX",
+   "dividends_total": 11.662,
+   "recovered_with_dividends": 0.9230769230769231,
+   "recovered_price_only": 0.9090909090909091,
+   "median_yrs_with_dividends": 0.411,
+   "median_yrs_price_only": 0.387
+  },
+  {
+   "ticker": "CSC.AX",
+   "dividends_total": 0.0,
+   "recovered_with_dividends": 0.5,
+   "recovered_price_only": 0.5,
+   "median_yrs_with_dividends": 1.317,
+   "median_yrs_price_only": 1.317
+  },
+  {
+   "ticker": "AIA.AX",
+   "dividends_total": 2.4483,
+   "recovered_with_dividends": 0.8333333333333334,
+   "recovered_price_only": 0.8,
+   "median_yrs_with_dividends": 0.385,
+   "median_yrs_price_only": 1.403
+  },
+  {
+   "ticker": "RHC.AX",
+   "dividends_total": 17.529,
+   "recovered_with_dividends": 0.8333333333333334,
+   "recovered_price_only": 0.8,
+   "median_yrs_with_dividends": 1.607,
+   "median_yrs_price_only": 1.726
+  }
+ ]
+}

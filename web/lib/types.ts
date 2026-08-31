@@ -293,6 +293,29 @@ export interface StockRecord {
   fundamentals: FundamentalsSnapshot;
   news: NewsItem[];
   updatedAt: string;
+  /**
+   * False when three independent sources agree the ticker no longer trades — no
+   * provider quote, absent from the exchange directory, absent from every index
+   * we track (`analytics/cron/check_stale_tickers.py`).
+   *
+   * ⚠️ These three fields were already arriving on the row and typed nowhere.
+   * `readStockRow` does `select('*')` and `shallowCamel` renames every key, so
+   * `isActive` has been present in memory since the column was added on
+   * 2026-08-30 — and nothing read it. Browse, the peer medians, the ticker-request
+   * route and the listings-status route all filter on it; the detail page did not,
+   * so `/stocks/us/BK` rendered a price frozen at delisting exactly as if it were
+   * live (audit F-035). Declaring them is what let the notice be written.
+   *
+   * Optional because a row written before the column existed has no value, and the
+   * safe reading of "unknown" is ACTIVE — the same default `daily_refresh` and
+   * `check_field_units` take, so a schema slip cannot silently mark the universe
+   * dead.
+   */
+  isActive?: boolean | null;
+  /** The date the sweep retired it. Null while it is trading. */
+  inactiveSince?: string | null;
+  /** Why the sweep retired it — shown to the reader verbatim is NOT intended. */
+  inactiveReason?: string | null;
   companyOverview?: string | null;
   incomeStatementAnnual?: FinancialStatement;
   incomeStatementQuarterly?: FinancialStatement;

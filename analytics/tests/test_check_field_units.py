@@ -6,7 +6,12 @@ stocks, no breaches.
 
 from typing import Any
 
-from analytics.cron.check_field_units import _MIN_SAMPLE, check, check_invariants
+from analytics.cron.check_field_units import (
+    _MIN_SAMPLE,
+    _load_fundamentals,
+    check,
+    check_invariants,
+)
 
 
 def _universe(**fields: float) -> list[dict[str, Any]]:
@@ -18,6 +23,14 @@ def _universe(**fields: float) -> list[dict[str, Any]]:
 
 
 class TestCohortCheck:
+    """⚠️ Every fixture below carries `market_cap`, including the ones testing
+    something else entirely. `check_invariants` runs the WHOLE invariant set on
+    whatever it is handed, and the market_cap rule is a proportion — so a partial
+    row reads as 100% missing and trips a check the test is not about. Completing
+    the rows is the right response: making the invariant stand down on small
+    universes would be the "unmeasurable counts as clean" failure it exists to
+    prevent (14g).
+    """
     def test_healthy_universe_passes(self) -> None:
         breaches, _thin, checked = check(
             _universe(dividend_yield_pct=2.4, payout_ratio_pct=34.0, debt_to_equity=0.64)
@@ -55,7 +68,7 @@ class TestCohortCheck:
         wolf — a check that fires on nothing gets ignored, and then it is not a
         check any more."""
         rows: list[dict[str, Any]] = [
-            {"ticker": "A", "fundamentals": {"dividend_yield_pct": 0.0001}}
+            {"ticker": "A", "fundamentals": {"market_cap": 1.0, "dividend_yield_pct": 0.0001}}
         ]
         breaches, thin, checked = check(rows)
         assert breaches == []
@@ -71,11 +84,11 @@ class TestCohortCheck:
 
     def test_a_clean_universe_trips_no_invariant(self) -> None:
         rows = [
-            {"ticker": "AAPL", "fundamentals": {
+            {"ticker": "AAPL", "fundamentals": {"market_cap": 1.0, 
                 "currency": "USD", "financial_currency": "USD",
                 "gross_margin": 48.6, "fcf_yield_pct": 2.4,
             }},
-            {"ticker": "BHP.AX", "fundamentals": {
+            {"ticker": "BHP.AX", "fundamentals": {"market_cap": 1.0, 
                 "currency": "AUD", "financial_currency": "USD",
                 "gross_margin": 83.1, "fcf_yield_pct": None,
             }},
@@ -85,7 +98,7 @@ class TestCohortCheck:
     def test_a_stored_zero_margin_is_reported(self) -> None:
         """The sentinel must never come back — it is worth four customer-facing
         rating labels."""
-        rows = [{"ticker": "JPM", "fundamentals": {
+        rows = [{"ticker": "JPM", "fundamentals": {"market_cap": 1.0, 
             "currency": "USD", "financial_currency": "USD", "gross_margin": 0,
         }}]
         problems = check_invariants(rows)
@@ -96,7 +109,7 @@ class TestCohortCheck:
         """This one was live AFTER the fix: normalising on the Python read path
         left the TypeScript reader — and so the Key Metrics table — untouched.
         Checking the DATA covers every reader at once."""
-        rows = [{"ticker": "ABX.TO", "fundamentals": {
+        rows = [{"ticker": "ABX.TO", "fundamentals": {"market_cap": 1.0, 
             "currency": "CAD", "financial_currency": "USD", "fcf_yield_pct": 6.12,
         }}]
         problems = check_invariants(rows)
@@ -112,9 +125,9 @@ class TestCohortCheck:
         reads was gone. An unmeasurable row must never count as a clean one.
         """
         rows = [
-            {"ticker": f"T{i}", "fundamentals": {"currency": "USD"}} for i in range(70)
+            {"ticker": f"T{i}", "fundamentals": {"market_cap": 1.0, "currency": "USD"}} for i in range(70)
         ] + [
-            {"ticker": f"OK{i}", "fundamentals": {
+            {"ticker": f"OK{i}", "fundamentals": {"market_cap": 1.0, 
                 "currency": "AUD", "financial_currency": "AUD",
             }} for i in range(30)
         ]
@@ -127,11 +140,64 @@ class TestCohortCheck:
         """Some tickers legitimately have no `financialCurrency` upstream. A check
         that fires on those gets ignored, and then it is not a check any more."""
         rows = [
-            {"ticker": f"OK{i}", "fundamentals": {
+            {"ticker": f"OK{i}", "fundamentals": {"market_cap": 1.0, 
                 "currency": "USD", "financial_currency": "USD",
             }} for i in range(98)
         ] + [
-            {"ticker": f"GAP{i}", "fundamentals": {"currency": "USD"}} for i in range(2)
+            {"ticker": f"GAP{i}", "fundamentals": {"market_cap": 1.0, "currency": "USD"}} for i in range(2)
+        ]
+        assert check_invariants(rows) == []
+
+    def test_the_real_market_cap_incident_would_now_be_caught(self) -> None:
+        """⚠️ THE NUMBERS ARE THE ACTUAL EVENT, NOT A ROUND ILLUSTRATION.
+
+        On 2026-08-27 the nightly refresh blanked `market_cap` on 15 of 871 rows
+        because yfinance's `info` omitted the key. That is **1.7%** — and the
+        first threshold written for this check was 2%, which would have passed
+        the very incident it is named after. A guard tuned above its own defect
+        is worse than none: it reports "clean" with authority. The floor is 0.5%.
+        """
+        rows = [
+            {"ticker": f"GONE{i}", "fundamentals": {
+                "currency": "USD", "financial_currency": "USD",
+            }} for i in range(15)
+        ] + [
+            {"ticker": f"OK{i}", "fundamentals": {
+                "market_cap": 1.0, "currency": "USD", "financial_currency": "USD",
+            }} for i in range(856)
+        ]
+        problems = check_invariants(rows)
+        assert len(problems) == 1
+        assert "market_cap" in problems[0]
+        assert "15 of 871" in problems[0]
+
+    def test_a_couple_of_genuinely_capless_tickers_do_not_cry_wolf(self) -> None:
+        """Control. Without this the check could be set to fire on any missing
+        cap at all, which is how a check stops being read."""
+        rows = [
+            {"ticker": f"OK{i}", "fundamentals": {
+                "market_cap": 1.0, "currency": "USD", "financial_currency": "USD",
+            }} for i in range(869)
+        ] + [
+            {"ticker": f"GAP{i}", "fundamentals": {
+                "currency": "USD", "financial_currency": "USD",
+            }} for i in range(2)
+        ]
+        assert check_invariants(rows) == []
+
+    def test_index_rows_are_not_counted_as_missing_caps(self) -> None:
+        """`^GSPC` and friends are price-only rows that never carry a cap.
+        Counting them would put a permanent floor under the proportion and the
+        check would either fire forever or have to be loosened to tolerate them —
+        which would then hide a real loss of that size."""
+        rows = [
+            {"ticker": f"^IDX{i}", "fundamentals": {
+                "currency": "USD", "financial_currency": "USD",
+            }} for i in range(4)
+        ] + [
+            {"ticker": f"OK{i}", "fundamentals": {
+                "market_cap": 1.0, "currency": "USD", "financial_currency": "USD",
+            }} for i in range(96)
         ]
         assert check_invariants(rows) == []
 
@@ -139,7 +205,7 @@ class TestCohortCheck:
         assert check_invariants([]) == []
 
     def test_a_same_currency_fcf_yield_is_fine(self) -> None:
-        rows = [{"ticker": "AAPL", "fundamentals": {
+        rows = [{"ticker": "AAPL", "fundamentals": {"market_cap": 1.0, 
             "currency": "USD", "financial_currency": "USD", "fcf_yield_pct": 2.4,
         }}]
         assert check_invariants(rows) == []
@@ -151,3 +217,85 @@ class TestCohortCheck:
         rows[0]["fundamentals"]["dividend_yield_pct"] = 35.48
         breaches, _thin, _ = check(rows)
         assert breaches == []
+
+
+class TestRetiredTickersAreHeldBack:
+    """A ticker we have stopped refreshing must not be judged by these invariants.
+
+    ⚠️ WHY THIS EXISTS. `is_active` arrived on 2026-08-30 and `daily_refresh` was
+    taught to skip a retired ticker; this checker was not (CLAUDE.md 11c-iv — the
+    rule existed and a second consumer never received it). Every invariant here has
+    one implicit remedy, *tonight's refresh repairs it*, and for a ticker that is
+    never refreshed again that remedy does not exist — so a retired row with a blank
+    market cap becomes a permanent nightly breach nobody can act on, which is how a
+    red X stops being read at all (11z). Found latent by the Layer G Layer 4 delta
+    on 2026-08-31 and closed before it fired.
+    """
+
+    class _Res:
+        def __init__(self, data: list[dict[str, Any]]) -> None:
+            self.data = data
+
+    class _Table:
+        """The smallest stub that behaves like the PostgREST builder chain."""
+
+        def __init__(self, rows: list[dict[str, Any]]) -> None:
+            self._rows = rows
+
+        def select(self, _cols: str) -> "TestRetiredTickersAreHeldBack._Table":
+            return self
+
+        def neq(self, _col: str, _val: str) -> "TestRetiredTickersAreHeldBack._Table":
+            return self
+
+        def range(self, lo: int, hi: int) -> "TestRetiredTickersAreHeldBack._Table":
+            self._slice = (lo, hi)
+            return self
+
+        def execute(self) -> "TestRetiredTickersAreHeldBack._Res":
+            lo, hi = self._slice
+            return TestRetiredTickersAreHeldBack._Res(self._rows[lo : hi + 1])
+
+    class _Client:
+        def __init__(self, rows: list[dict[str, Any]]) -> None:
+            self._rows = rows
+
+        def table(self, _name: str) -> "TestRetiredTickersAreHeldBack._Table":
+            return TestRetiredTickersAreHeldBack._Table(self._rows)
+
+    def _rows(self) -> list[dict[str, Any]]:
+        return [
+            {"ticker": "AAPL", "fundamentals": {"market_cap": 1.0}, "is_active": True},
+            {"ticker": "BK", "fundamentals": {"market_cap": None}, "is_active": False},
+            {"ticker": "CTRA", "fundamentals": {"market_cap": None}, "is_active": False},
+            {"ticker": "CBA.AX", "fundamentals": {"market_cap": 2.0}, "is_active": True},
+        ]
+
+    def test_a_retired_ticker_is_excluded_and_counted(self) -> None:
+        rows, retired = _load_fundamentals(self._Client(self._rows()))  # type: ignore[arg-type]
+        assert [r["ticker"] for r in rows] == ["AAPL", "CBA.AX"]
+        # Counted, not silently dropped — an exclusion nobody can see is how
+        # "unmeasured" starts reading as "clean" (14g).
+        assert retired == 2
+
+    def test_an_active_ticker_is_still_checked(self) -> None:
+        """The control. A function returning nothing at all passes the test above."""
+        rows, retired = _load_fundamentals(self._Client(self._rows()))  # type: ignore[arg-type]
+        assert len(rows) == 2
+        assert retired + len(rows) == 4
+        # The fundamentals must survive the filter, not just the ticker — this
+        # function's whole output is what every invariant then reads.
+        assert rows[0]["fundamentals"] == {"market_cap": 1.0}
+
+    def test_a_row_with_no_is_active_column_is_kept(self) -> None:
+        """Defaults to keeping, matching daily_refresh._load_universe.
+
+        Failing the other way would let a schema slip silently empty this check's
+        universe — and a check that runs on nothing reports exactly what a clean
+        one reports.
+        """
+        rows, retired = _load_fundamentals(
+            self._Client([{"ticker": "NEW", "fundamentals": {"market_cap": 3.0}}])  # type: ignore[arg-type]
+        )
+        assert [r["ticker"] for r in rows] == ["NEW"]
+        assert retired == 0

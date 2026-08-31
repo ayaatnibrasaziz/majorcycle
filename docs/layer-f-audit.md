@@ -83,7 +83,7 @@ checks 1–6 for that surface; the audit adds 7–11.
 | 9 | `/signup` | `app/(public)/signup/page.tsx` | F-A2 | S1 | ⬜ |
 | 10 | `/reset-password` | `app/(public)/reset-password/page.tsx` | F-A2 | S1 | ⬜ |
 | 11 | `/account/update-password` | `app/(public)/account/update-password/page.tsx` | F-A2 | S1 (recovery confinement) | ⬜ |
-| 12 | `GoogleSignIn` + One Tap | `components/GoogleSignIn.tsx` | F-A2 | F1 live-verify | ⬜ |
+| 12 | `GoogleSignIn` + One Tap | `components/GoogleSignIn.tsx` | F-A2 | F1 live-verify | ✅ live 2026-07-08, re-verified 2026-08-12 |
 | 13 | `auth/callback` `auth/confirm` `auth/recovery-done` `auth/signout` | `app/auth/*/route.ts` | F-A2 | S1 | ✅ S1 |
 | 14 | `/account` shell | `app/(app)/account/page.tsx` | F-A3 | S1 (9 states) | ⬜ |
 | 15 | `SubscriptionCard` (7 rows) | `components/account/SubscriptionCard.tsx` | F-A3 | S1 + S3 | ⬜ |
@@ -331,9 +331,13 @@ closed rather than merely being written to.
 
 ## Known carry-over (recorded, not fixed in this audit)
 
-- **CSP is still `Content-Security-Policy-Report-Only`** (`web/next.config.ts:42`). Flipping it
-  to enforcing was always a tracked follow-up from F0.5 and is a launch decision, not an audit
-  finding.
+- ~~**CSP is still `Content-Security-Policy-Report-Only`**~~ ✅ **CLOSED 2026-08-23 (Layer G,
+  G7): the policy enforces.** A per-request nonce on the routes that already render per
+  request, `'unsafe-inline'` on the seven prerendered public pages. ⚠️ The line reference in
+  the original note (`web/next.config.ts:42`) is now doubly wrong — the policy no longer
+  lives in that file at all; it is built in `lib/csp.ts` and applied in `proxy.ts`. **Cite a
+  file and a symbol, never a line number**; a line number is stale the next time anyone edits
+  above it. See `architecture.md` §7 for the posture and `pnpm check:csp` for the proof.
 - **375px mobile** → Layer H (already triaged and measured there: 130px overflow, root-caused to
   the `(app)` shell, not to Layer F components).
 - **Lighthouse / SEO / sitemap / robots** → Layer G.
@@ -435,14 +439,14 @@ present. **No findings.**
 ### F-A3 — `/account` + paywall surfaces (2026-08-02) — **in progress**
 
 **`PremiumLockPage` denial copy — ✅ pass, and the correctness is structural, not just written.**
-Each of the four `AccessDenialReason` values gets its own message, each naming the caller's real
+Each `AccessDenialReason` value (four at the time; **six since 2026-08-23**) gets its own message, each naming the caller's real
 situation and the real remedy: `canceled` reassures that browsing and financials remain free;
 `payment_failed` says update the card rather than buy a new plan; `billing_blocked` names the
 dispute. `no_subscription` is deliberately `null` — a first-time free viewer has had nothing go
 wrong, so a warning banner would read as a telling-off.
 
 **Why it cannot silently rot:** `DENIAL_COPY` is typed `Record<AccessDenialReason, …>`, so adding
-a fifth denial reason **fails the build** until its copy exists. That is the same principle as the
+a fifth denial reason **fails the build** until its copy exists. ⚠️ **That held — tested on 2026-08-23**, when the union grew to **six** (`setup_incomplete`, `subscription_paused`; audit F-005): deleting one entry made `tsc` name the missing key. What the type could NOT catch is the defect that prompted it — four Stripe statuses were *mapped* to an existing reason rather than left unmapped, so every key was present and the copy was simply wrong for those readers. That is the same principle as the
 CI guards — the property is enforced by the toolchain rather than by remembering. Worth recording
 as a strength, given this is precisely the surface where two real copy defects have already
 occurred.
@@ -605,7 +609,9 @@ Full code + platform security audit; runbook `plan-mode-auth-virtual-ladybug.md`
       client-immutable; RLS policies rewritten `(select auth.uid())`. Verified via column_privileges.
 - [x] **FK covering indexes** — migration `20260705032503` (advisor M); advisor WARNs cleared
 - [x] **Security headers** — `web/next.config.ts`: X-Frame-Options, nosniff, Referrer-Policy,
-      Permissions-Policy + CSP **report-only** (flip to enforcing is a tracked follow-up)
+      Permissions-Policy + CSP **report-only** (flip to enforcing is a tracked follow-up).
+      ✅ **The follow-up shipped 2026-08-23** — the CSP enforces and has moved out of
+      `next.config.ts` into `lib/csp.ts` + `proxy.ts`; the four flat headers stay where they are.
 - [x] **DMARC hardened** — `_dmarc` `p=none` → `p=reject` (strict alignment + rua/ruf reporting);
       safe because all `@majorcycle.com` mail is Resend-signed `d=majorcycle.com`. Verified live.
 - Declined/deferred: leaked-password protection (Supabase Pro-only — skipped for an info product);
@@ -2008,6 +2014,12 @@ only on Stripe's side, so the only way to learn them is to be refused. Suite is 
       **Owner live-verified 2026-07-08:** email + Google sign-in fast, One Tap popup shows for a
       non-cooled-down session, console clean. (A "skipped" One Tap moment on the owner's device was
       Google's post-dismissal cooldown, not a defect — confirmed via the GIS moment API.)
+      **Re-verified live 2026-08-12** on the Layer G code: button *and* One Tap both complete
+      on `www.majorcycle.com`. ⚠️ Note for whoever reads this next — the cooldown finding on the
+      line above was re-derived from scratch in a Layer G session because nobody grepped this
+      file first. It also masked a real fault that day: One Tap and the button were failing
+      *together* on a Vercel preview, from ONE cause (`origin_mismatch` — an unregistered
+      JavaScript origin; Google allows no wildcards, so previews never work). See CLAUDE.md 11h.
 
 **Verification:**
 - Full signup → trial → paid conversion flow tested with Stripe test mode

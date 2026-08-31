@@ -104,6 +104,8 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
   const buttonRef = useRef<HTMLDivElement>(null);
   const rawNonceRef = useRef<string>('');
   const initializedRef = useRef(false);
+  const apiRef = useRef<GoogleIdApi | null>(null);
+  const lastWidthRef = useRef(0);
   const [scriptReady, setScriptReady] = useState(false);
   // True from the moment a Google credential arrives (One Tap or the button) until
   // the redirect fires — drives a "Signing you in…" state so the token-exchange
@@ -152,6 +154,51 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
     labelRef.current = label;
   });
 
+  /**
+   * Draw (or REDRAW) Google's button at the container's current width.
+   *
+   * Google's rendered button takes a fixed pixel `width` and lives in a
+   * cross-origin frame, so it cannot be styled and — crucially — it does not
+   * reflow. The width was measured once at mount and never again, which broke
+   * two ways, both reported by the owner and both reproduced:
+   *
+   *  1. Open the page wide, then narrow the window (or rotate a phone): the
+   *     button keeps its original width. Measured 375px of button inside a 289px
+   *     card at 375px viewport — it bled past both edges of the card.
+   *  2. Below ~366px the old `Math.max(240, …)` floor was itself wider than the
+   *     container (240 vs 234 at a 320px viewport), so it overflowed on a fresh
+   *     load too.
+   *
+   * 200–400px is Google's own documented range for this option, so the floor is
+   * theirs rather than one of ours that happens to be too big.
+   *
+   * ⚠️ This re-renders the BUTTON only. It never re-runs `initialize()` or
+   * `prompt()` — repeated initialisation is what aborts in-flight FedCM requests
+   * (see the effect below), and the callback, nonce and token exchange are
+   * untouched by this.
+   */
+  const drawButton = useCallback(() => {
+    const api = apiRef.current;
+    const host = buttonRef.current;
+    if (!api || !host) return;
+    const measured = Math.floor(host.getBoundingClientRect().width) || 400;
+    const width = Math.max(200, Math.min(measured, 400));
+    // The guard that makes the ResizeObserver below safe: drawing a button also
+    // changes the host's HEIGHT, which fires the observer again. Same width in,
+    // nothing done, no loop.
+    if (width === lastWidthRef.current) return;
+    lastWidthRef.current = width;
+    api.renderButton(host, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: labelRef.current,
+      shape: 'pill',
+      logo_alignment: 'center',
+      width,
+    });
+  }, []);
+
   // Fallback only — classic redirect flow when no client ID is configured yet.
   const handleRedirectFallback = useCallback(async () => {
     const supabase = createBrowserClient();
@@ -191,16 +238,8 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
         // suppressed. Non-FedCM browsers use this path; FedCM ones ignore it.
         itp_support: true,
       });
-      const width = Math.max(240, Math.min(buttonRef.current.offsetWidth || 400, 400));
-      api.renderButton(buttonRef.current, {
-        type: 'standard',
-        theme: 'outline',
-        size: 'large',
-        text: labelRef.current,
-        shape: 'pill',
-        logo_alignment: 'center',
-        width,
-      });
+      apiRef.current = api;
+      drawButton();
       // One Tap. Under FedCM (now mandatory) this rejects when there is no
       // eligible Google session; it degrades to the button above, and the benign
       // GSI_LOGGER line it emits is dropped by installGsiLogFilter().
@@ -209,7 +248,19 @@ export function GoogleSignIn({ next, onError, disabled, label = 'continue_with' 
     return () => {
       cancelled = true;
     };
-  }, [clientId, scriptReady]);
+  }, [clientId, scriptReady, drawButton]);
+
+  // Redraw when the card changes width — a window resize, a phone rotating, or
+  // the browser's own text-size zoom. Observing the CONTAINER rather than
+  // listening for `resize` also catches the cases where the viewport is
+  // unchanged but the column is not.
+  useEffect(() => {
+    const host = buttonRef.current;
+    if (!clientId || !host || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => drawButton());
+    ro.observe(host);
+    return () => ro.disconnect();
+  }, [clientId, drawButton]);
 
   // No client ID yet → safe fallback button (redirect flow, keeps sign-in live).
   if (!clientId) {

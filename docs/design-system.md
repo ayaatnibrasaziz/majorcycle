@@ -1,21 +1,122 @@
 # Design System
 
-> **Purpose:** Defines every visual primitive — colours, fonts, spacing, components, chart standards, labels — used in `MajorCycle`. Read this before any UI task. Pair it with the visual parity rule from CLAUDE.md and the reference HTML.
+> **Purpose:** Defines every visual primitive — colours, fonts, spacing, components, chart standards, labels — used in `MajorCycle`. **This file, not the mock-up, is the record of what the live site does and why.** Read it before any UI task.
 >
-> See also: `CLAUDE.md`, `/reference/original-design.html`.
+> See also: `CLAUDE.md` (non-negotiable #1), and `/reference/original-design.html` for the owner's original intent.
 
 ---
 
-## 1. The Visual Parity Rule (Repeat, Important)
+## 1. The Reference HTML — What It Is, and What It Is Not
 
-Every UI section that has an equivalent in `/reference/original-design.html` MUST visually match it: same layout, same spacing, same hover behaviour, same tooltips, same colours. Before building any UI component:
+`/reference/original-design.html` is the **mock-up the owner built to show what they
+had in mind** before any code existed. It is a reference. It is not a contract, and
+the live site does not have to match it.
 
-1. Open `/reference/original-design.html`
-2. Locate the equivalent section (search for distinctive text or class names)
-3. Inspect its HTML structure, CSS values, and behaviour
-4. Replicate in React + Tailwind
+**Use it for intent.** When you are about to build a screen that exists there, open
+it and read what the owner was reaching for: the density, the rhythm of the sections,
+which numbers sit next to which, what the hover reveals. That is information you
+cannot get anywhere else, and it is still the fastest way to understand a screen.
 
-The new build's job is to **rebuild the same product on a modern foundation**, not to redesign it. Where reference exists, reference wins.
+**Do not use it as evidence.** "The reference does it this way" is not an argument
+that the live site is right, and it is not a reason to keep something. If the only
+defence of what is on screen is the mock-up, that is the moment to **ask the owner**,
+not the moment to close the question.
+
+> ⚠️ **This section said the opposite until 2026-08-22** — *"Where reference exists,
+> reference wins"* — and the cost was a category of question that could never be
+> asked. A design review flagged the 3px accent stripes on "Why Attractive" and "Key
+> Risks"; the answer was "they are in the reference at lines 744 and 746", which is
+> true and settles nothing. A mock-up can tell you what someone drew once. It cannot
+> tell you whether the decision is still right.
+
+**Where decisions are recorded now:** here. Every deviation, every deliberate choice,
+every measurement that forced one — this document. The brand decisions in `CLAUDE.md`
+(#25 colours, #26 fonts, #2 rating labels) still bind, and accessibility (#12) is a
+floor rather than a preference. What changed is only which document wins when the
+screen and the mock-up disagree: **the owner does.**
+
+---
+
+### 1a. Decisions taken about the live site
+
+Recorded here because §1 above no longer lets the mock-up answer for them.
+
+**The accent stripes stay** (owner, 2026-08-22). The 3px coloured bar down the
+left of the "Why Attractive" and "Key Risks" card headers, and the 2px one on the
+italic caveat block beneath each insight. A design review flagged them twice as a
+generic template look; the case for keeping them is that the stripe is the only
+thing that says, before a word is read, which of two facing cards is the good news
+and which is the caution. That is information, not decoration, and the criticism
+is aimed at decoration. Their colours moved to the ink layer the same day so they
+clear the contrast floor a graphic owes (the gold measured 2.38:1).
+
+⚠️ **This was previously "settled" by pointing at the reference HTML**, which
+settled nothing — see the box in §1. It is now a decision with a reason, and the
+reason is arguable on its own terms, which is the difference.
+
+**All five of the design linter's `side-tab` findings, and what each one is** —
+written out because the config that used to silence them was deleted on the same
+day, so they surface on every edit to `globals.css` and someone will otherwise
+re-litigate them one at a time:
+
+| | Selector | Verdict |
+|---|---|---|
+| 1 | `.card-header--accent-buy` (3px) | **Stays** — "Why Attractive", the reason above |
+| 2 | `.card-header--accent-hold` (3px) | **Stays** — "Key Risks", the reason above |
+| 3 | `.insight-invalidation` (2px) | **Stays** — the italic caveat under each insight |
+| 4 | `.kpi-card::before` (3px) | **Not a stripe.** `left:0; right:0; height:3px` is a rule across the **top** of the card. The rule's own wording — "a thick coloured border on ONE SIDE" — does not describe it. A misread, not a finding |
+| 5 | `.card--verdict::before` (5px) | **Stays** — it *is* the rating. `VerdictCard.tsx` sets `--verdict-color` from `RATING_TIER_HEX`, so the edge runs High Conviction green → Bearish red, gradient to a 62%-darkened end. Information, same as 1 and 2 |
+
+⚠️ **On entry 5, I got it wrong on 2026-08-23 and the owner caught it.** I read
+`var(--verdict-color, #1E5CB3)` in `globals.css`, drew the **fallback**, and graded the
+stripe as decoration on the grounds that navy said nothing the card wasn't already
+saying — recommending its removal. The fallback never renders: `VerdictCard.tsx` always
+sets the variable. **A CSS custom property's default is not evidence about what the page
+shows** — the answer is in whichever component sets it, and a mockup built from the
+stylesheet alone will faithfully reproduce a colour no user has ever seen. Note also
+that `--verdict-color` is not only the stripe: it drives the heading, the score numeral,
+the ring stroke and the status dot (`globals.css` lines 570–618), which is why the
+2026-08-22 contrast fix reached this card at all.
+
+⚠️ **Waived per-LINE on 2026-08-23, at the owner's instruction, after they had ruled on
+the same five findings three times in one session.** Each of the five carries an
+`impeccable-disable-line side-tab: <reason>` comment naming *why that particular one* is
+approved. **Per-line, not per-file, was the owner's own framing** — *"turn it off for the
+things I approve on … that way it will flag for the right reasons all the time"* — and it
+is the right shape: a file-wide waiver would also silence a genuinely bad stripe added to
+`globals.css` tomorrow, which is precisely the blindness the paragraph below warns about.
+Five named lines cannot grow into a blanket.
+
+✅ **Proven both ways, 2026-08-23**, by driving the real Stop hook rather than waiting to
+see whether it went quiet:
+
+| | State of the file | Hook says |
+|---|---|---|
+| Control | one **new, unwaived** stripe appended | **1 finding, at its line** — and none of the five |
+| Test | the five waived stripes only | **silence** (zero bytes) |
+
+The control is what makes the silence mean anything: the same command, the same seeded
+session, minutes apart. ⚠️ **Three instrument faults had to be cleared first, and each
+produced a convincing false pass.** (i) The detector CLI scans `.css` with the text engine,
+but `side-tab` lives in the browser engine — so scanning the stylesheet directly reported
+nothing, *including on a file written to fail*. (ii) The Stop hook scans a per-session
+cache of touched files, so invoking it without a `session_id` scanned nothing at all.
+(iii) Seeding that cache by hand, my own shell escaping ate the backslashes and wrote
+`C:UsersAyaat…` — a path that does not exist, so the hook dutifully scanned an empty set
+and said nothing. **All three look identical to "clean".** The fix was to lift the real
+path key out of the real session rather than retype it (CLAUDE.md 11o, and the repo's own
+heredoc-mangling lesson). ⚠️ And note the cache keys findings as `rule:line`: the waivers
+sit on the *same* lines they waive, so a stale cache entry could have faked the pass on
+its own. Each run used a fresh session id with an empty finding list.
+
+⚠️ **The paragraph below is the reasoning it replaces, kept because the risk did not go
+away — it was accepted:**
+
+⚠️ **No exemption has been filed, deliberately.** The last one was verified once,
+quietly stopped applying, and nobody noticed for four days — so the honest state is
+a warning we have decided against, written down here, rather than a silence resting
+on a reason nobody re-checks. A fresh exception carrying the real reason can be
+filed on request.
 
 ---
 
@@ -42,7 +143,17 @@ The new build's job is to **rebuild the same product on a modern foundation**, n
   --text-primary:   #0F1923;
   --text-secondary: #4A5568;
   --text-muted:     #8A97A8;
-  --text-white:     #FFFFFF;
+  /* NO `--text-white`. It was listed here until 2026-08-07 and has NEVER existed
+     in globals.css — a documented nickname for a colour nothing defines. Removed
+     because it is a landmine, not because anything was broken: `var(--text-white)`
+     appears in zero files, and white text (buttons, badges, checkmarks) uses
+     Tailwind's own `text-white` utility, which is unrelated and works.
+     ⚠️ Why it matters — an UNDEFINED custom property does not fall back, it voids
+     the whole declaration. `color: var(--text-white)` on a navy button yields
+     inherited colour, i.e. plausibly navy-on-navy: invisible text that reads as a
+     rendering glitch rather than a typo. Same mechanism cost an hour the same day,
+     when the design gallery rendered entirely in Times New Roman while labelled
+     Sora, because `--font-sans` sat in `@theme inline` rather than `:root`. */
 
   /* Borders */
   --border:        #E2E8F0;
@@ -50,18 +161,49 @@ The new build's job is to **rebuild the same product on a modern foundation**, n
   --border-faint:        rgba(26,58,110,.08);
   --border-faint-strong: rgba(26,58,110,.10);
 
-  /* Rating tier semantic colours (the underlying hex values do not change,
-     only the label text changes — see section 4 below) */
-  --c-tier-1:      #006400;  /* High Conviction */
-  --c-tier-2:      #228B22;  /* Constructive */
-  --c-tier-3:      #D4A017;  /* Neutral */
-  --c-tier-4:      #FF4500;  /* Cautious */
-  --c-tier-5:      #B22222;  /* Bearish */
+  /* Rating tier semantic colours — OUR JUDGEMENT, and NOT the direction colours.
+     ⚠️ This block said "the underlying hex values do not change" until 2026-08-22.
+     They changed twice that day and the sentence was simply wrong afterwards, in
+     the one document a reader consults to find out what the palette is. Four of
+     the five moved; `globals.css` carries the measurements and the reasons. */
+  --c-tier-1:      #065F46;  /* High Conviction — was #006400; see below */
+  --c-tier-2:      #1E7C1E;  /* Constructive   — was #228B22, 4.39:1 under white */
+  --c-tier-3:      #72696D;  /* Neutral        — #D4A017 → #87660F → grey, see below */
+  --c-tier-4:      #C73600;  /* Cautious       — was #FF4500, 3.44:1 under white */
+  --c-tier-5:      #8B1414;  /* Bearish        — was #B22222; see below */
+
+  /* ⚠️ Tier 1 is a deep PINE, not a darker grass green, and the hue is the point.
+     The two greens sat 8.2 apart — closer than the red pair below — and Constructive
+     could not move (4.80 as text is exactly the palette's margin), so the gap had to
+     come from High Conviction. A pine is almost exactly as LIGHT as #006400, so the
+     top chip does not become heavier than the four beneath it, and separating by hue
+     as well as weight takes the colour-blind gap from 8.6 to 24.6 (a plain darker
+     green reached 14.1). 8.2 → 17.1. Owner-approved 2026-08-22.
+
+     ⚠️ Tier 5 moved for a reason that is NOT contrast — it already passed at 6.68.
+     Darkening Cautious out of orange put it beside Bearish: 10.7 apart on the
+     standard perceptual scale, and 10.0 to a red-green colour-blind reader, who is
+     roughly one man in twelve. #8B1414 takes those to 16.3 and 16.1. Owner-approved.
+     The lesson is in `check-tier-palette.mjs` check 4: a colour fixed in isolation
+     can break a SET, and no per-colour assertion can see it. */
 
   /* Ink shades — for text on tinted backgrounds */
   --c-tier-2-ink:  #0D5C0D;
-  --c-tier-5-ink:  #8B1414;
-  --c-tier-3-ink:  #8A6710;
+  --c-tier-5-ink:  #8B1414;  /* same value as the tier now; separate token */
+  --c-tier-3-ink:  #81600F;  /* was #8A6710 — 4.32:1 on --bg-page */
+  --c-tier-4-ink:  #B23A00;
+
+  /* ── SEMANTIC INK — the direction palette, for when the colour is TEXT ──────
+     A colour that is a line, a candle, a dot or a bar keeps the value it has
+     always had (§5 below). The same colour used as WORDS points at one of these.
+     Added 2026-08-22: the direction palette turned out to be 57 pieces of TEXT on
+     one stock page, worst 2.11:1. Mirrored in `lib/ink.ts` for the chart props
+     that cannot read a CSS variable; `pnpm check:tier-palette` keeps them in step
+     and measures each against the darkest ground it was OBSERVED on. */
+  --c-up-ink:      #1B741B;  /* was #228B22 as text */
+  --c-neutral-ink: #81600F;  /* was #D4A017 / #9A7010 / #B58800 as text */
+  --c-warn-ink:    #C73600;  /* was #FF4500 as text */
+  --c-brand-ink:   #1E5CB3;  /* was #2E7DE8 as text on its own tint */
 
   /* Tint scale — 10/12% alpha for pills, cells, hover states */
   --tint-tier-2:        rgba(34,139,34,.10);
@@ -81,7 +223,7 @@ The new build's job is to **rebuild the same product on a modern foundation**, n
 > palette moves every panel's background and leaves thirteen borders on the old blue. **If you
 > introduce a colour that pairs with an existing token, tokenise it in the same commit.**
 
-These are exposed as Tailwind v4 theme tokens in `tailwind.config.ts`:
+These are exposed as Tailwind v4 theme tokens in the **`@theme inline` block at the top of `web/app/globals.css`** — Tailwind v4 is CSS-first and this project has **no `tailwind.config.ts`** (the doc named one until 2026-08-22; nobody had gone looking for it):
 
 ```ts
 theme: {
@@ -115,6 +257,130 @@ theme: {
 
 **Rule:** Every numeric value uses JetBrains Mono. Every word uses Sora. No exceptions.
 
+### ⚠️ TWO scales, not one — the table above is the APP scale (added 2026-08-07)
+
+The sizes above are correct for the signed-in terminal: it is **scanned**, density is a
+feature, and 11–14px reads as professional in a data grid. They are wrong for a page that
+is **read**, and they have leaked onto the public pages.
+
+Measured on the live `/methodology` at 1440×900:
+
+| | Measured | Reading norm |
+|---|---|---|
+| Body text | **13px** | 16–18px |
+| Smallest text on the page | **8px** (×5 elements) | ≥12px |
+| Distinct font sizes on one page | **9** (8 · 9 · 10.5 · 11 · 11.5 · 12 · 13 · 14 · 24) | ~5–6 steps |
+| Diagrams explaining a visual idea | **0** | — |
+
+`/login` renders 8 distinct sizes and `/pricing` 11 — inside cards a few hundred pixels
+wide. ⚠️ **Sizes half a pixel apart do not read as hierarchy, they read as
+inconsistency**, because the eye cannot resolve 10.5 vs 11 as intent. Collapse
+near-duplicates rather than adding steps.
+
+**The fix is NOT to enlarge the app.** The terminal stays as it is. Layer G adds a second,
+generous **reading scale** used only by public/content pages — the same split Stripe and
+Linear run between their docs and their dashboards. A component that appears in both
+(buttons, badges) keeps one size per context, chosen by the frame it sits in, never by a
+one-off override.
+
+#### The reading scale — BUILT 2026-08-08 (G2 step 1)
+
+Seven steps, defined once as tokens in `web/app/globals.css` and applied once through
+`.reading`. **A page never types a px value**; it asks for an element or a class.
+
+| Token | Size | Use |
+|---|---|---|
+| `--rd-micro` | 12px | Eyebrows and labels — uppercase, tracked, never a sentence |
+| `--rd-small` | 14px | Captions, meta, footnotes |
+| `--rd-body` | 17px | Body copy |
+| `--rd-lead` | 20px | Lead paragraph and `h3` (separated by weight, not a fourth size) |
+| `--rd-h2` | 26px | Section heading |
+| `--rd-h1` | 36px | Page title |
+| `--rd-display` | 48px | Landing hero only |
+
+Line lengths are tokens too: `--measure-narrow` 440px (auth cards), `--measure-prose`
+680px (~68 characters at `--rd-body`), `--measure-wide` 1120px (landing). A page picks
+one via `<PageFrame width="narrow|prose|wide">`; the public layout owns the header and
+footer so widening a page cannot fork the chrome (11c).
+
+⚠️ **`--rd-micro` is a FLOOR.** Nothing on a reading page goes below 12px, and
+`e2e/contrast.spec.ts` fails the build if one does. 8px uppercase is decoration wearing
+the costume of information. ❌ **That test used to name `/methodology`, which no longer
+exists** — it was folded into the landing as `#how-it-works` (2026-08-13). The floor check
+moved to `/terms` and the five-tier legibility check moved to `/`, because those are where
+those things now render. **When a page is deleted, its guards do not delete themselves;
+they either move to the surface that inherited the job or they quietly stop checking.**
+
+⚠️ **`.reading` lives in `@layer base`.** Unlayered, `.reading a { color }` (0,1,1) beat
+Tailwind's `.text-white` (0,1,0) and painted a call-to-action brand-blue on a brand-blue
+button — 1.0:1, invisible. Same mechanism as the note above the reset in `globals.css`.
+Any new scoped-typography rule goes in the same layer or it will outrank the utilities
+that are supposed to override it.
+
+#### `--pub-*` — the signed-out site's own scale (added 2026-08-13)
+
+`/disclaimer`, `/terms` and `/privacy` do **not** use the reading sizes: owner instruction
+was that the legal pages match the rest of the public site rather than sit a step above it.
+`AuthCard` — login, signup, contact, reset-password, deletion-requested, pricing — reads
+the same tokens, so the two families cannot drift apart.
+
+| Token | Size | What it is |
+|---|---|---|
+| `--pub-title` | 24px | Page title. `AuthCard` h1 from 640px up; the legal masthead, the Learn index and Learn articles always (via `.doc-scale`) |
+| `--pub-title-sm` | 22px | `AuthCard`'s phone step-down. The legal masthead does **not** step |
+| `--pub-h` | 17px | Legal clause heading (`= --rd-body`) |
+| `--pub-body` | 13px | Body text on every public page |
+| `--pub-label` | 12px | Labels and meta (`= --rd-micro`, the floor) |
+
+**This is not a third scale.** Every value is a size that was already rendering on a live
+public page; the tokens exist so the choice is made in one place instead of being typed
+into each component. Heading-over-body on a legal page is 17/13 = **1.31**. (Round 1's
+26/17 was 1.53, which is why the clauses read as headlines; 20/13 would have been 1.54.)
+
+⚠️ **Named `--pub-*`, not `--doc-*`.** They were introduced for the legal documents, but a
+token called "doc" that the sign-in card reads is precisely the misleading name this repo
+keeps getting caught by. If a seventh public surface appears, it reads these too.
+
+⚠️ **`--pub-title-sm` is not tidiness — it is the trap.** `AuthCard` rendered
+`text-[22px] sm:text-[24px]`; swapping that for `--pub-title` in one step would have
+**grown every form title on a phone by 2px**, invisibly, with nothing watching. Whenever a
+hand-typed value is replaced by a token, check whether the value was *responsive* first.
+
+⚠️ **Guarded by measurement, not by inspection.** `e2e/legal-doc.spec.ts` loads
+`/contact` and `/terms` in a real browser at 1280 and 375 and fails if their title or body
+sizes disagree. Asserting the CSS variable would prove nothing: a typo'd `var(--pub-bdy)`
+resolves to nothing and silently inherits, leaving the token correct and the pixels wrong.
+
+⚠️ **Specificity is load-bearing.** `.reading .doc-title` is (0,2,0) and beats
+`.reading h1` (0,1,1) *including* the ≤640px block, because media queries add no
+specificity. So the mobile step-down does not apply to a legal page and these sizes must
+stand alone at 375px. They do: 24/17/13.
+
+#### The landing page has its OWN sizes, in its own file — and that is deliberate
+
+`/` is not a reading page and not a form; it is a **composition**, closer to a chart than
+to an article. Its type lives in `web/app/(public)/landing.css`, every rule scoped under
+`.lp`, running from 9px on a ruler tick to `clamp(30px, 4.6vw, 50px)` on the hero. It does
+**not** read `--rd-*` or `--pub-*`.
+
+The reason is that those two scales exist to make *running text* consistent, and almost
+nothing here is running text: axis ticks, ruler labels, table cells, badge captions and a
+display headline all answer to the composition around them rather than to a shared step.
+Forcing them onto a seven-step scale would either coarsen the drawing or push a fourth set
+of tokens into `globals.css` that only one page ever reads.
+
+⚠️ **The bargain is that the scope must actually hold.** Everything is under `.lp`, so
+nothing here can reach another page — which `e2e/contrast.spec.ts` checks from the other
+direction by measuring `/` as a laid-out page in its own right. And the 12px floor does
+**not** apply: this page draws chart furniture, where 9px tick labels are the convention
+(§14 lists the equivalent app-side exemptions by name). Body copy on `/` is 15px.
+
+⚠️ **The root font-size is 14px, so `rem` and Tailwind's spacing scale do not agree with
+your intuition.** Tailwind `px-5` is `1.25rem` = **17.5px**, not 20. The landing's
+full-bleed band is written `margin: -1.75rem -1.25rem -2.5rem` in **rem for exactly this
+reason**; typed in px to match the numbers the layout "looked like" it used, the dark band
+hung 2.5px proud of the viewport edge and produced a horizontal scrollbar at 375px.
+
 ---
 
 ## 4. Rating Tier Labels — THE Most Important Spec
@@ -123,11 +389,37 @@ The five composite rating tiers display as **neutral, advice-free language**. Th
 
 | Score Range | Label (use exactly this text) | Colour Token | Semantic |
 |---|---|---|---|
-| 80–100 | **High Conviction** | `--c-tier-1` (#006400) | Best-in-class opportunity |
-| 65–79 | **Constructive** | `--c-tier-2` (#228B22) | Favourable setup |
-| 50–64 | **Neutral** | `--c-tier-3` (#D4A017) | Mixed signal |
-| 35–49 | **Cautious** | `--c-tier-4` (#FF4500) | Elevated risk |
-| 0–34 | **Bearish** | `--c-tier-5` (#B22222) | Significant concerns |
+| 80–100 | **High Conviction** | `--c-tier-1` (#065F46) | Best-in-class opportunity |
+| 65–79 | **Constructive** | `--c-tier-2` (#1E7C1E) | Favourable setup |
+| 50–64 | **Neutral** | `--c-tier-3` (#72696D) | Mixed signal |
+| 35–49 | **Cautious** | `--c-tier-4` (#C73600) | Elevated risk |
+| 0–34 | **Bearish** | `--c-tier-5` (#8B1414) | Significant concerns |
+
+⚠️ **Neutral is a true grey as of 2026-08-23**, and it took three attempts to get
+there. `#D4A017` measured **2.38:1** under white — illegible for the life of the
+product. Darkening it to `#87660F` fixed that one colour and broke the *set*: with
+tiers 2, 3 and 4 each darkened to just clear the floor they landed at 5.31 / 5.33 /
+5.31, practically one lightness, and adjacent tiers became hard to tell apart —
+worse for a colour-blind reader than what it replaced (CLAUDE.md 11t). Gold was then
+proven unsalvageable (15,866 candidates searched; the best managed 12.9) and yellow
+impossible, because the binding constraint is the colour's use **as text**, not as a
+background. **Owner chose a true grey**, which is also what the word means.
+
+⚠️ **Never hand-type one of these.** They were written out 247 times across 26
+files before 2026-08-22, and three of them were illegible under white text for the
+life of the product. Use `tierColorVar()` / `scoreColor()` where CSS can reach, and
+`RATING_TIER_HEX` where it cannot (the `.xlsx` workbook, a Recharts prop, an SVG
+attribute). `pnpm check:tier-palette` fails the build on a fresh copy.
+
+⚠️ **… and “hand-type” includes formats the guard cannot read.** It hunts stray
+copies **by hex**, so `compositionRamp()` — which held the same five colours as
+`r,g,b` strings for the score micro-bar — was invisible to it and sat on the
+**pre-2026-08-22** values for a month, painting the bar in the old palette directly
+beneath a chip using the new one. Nobody saw it, because the change was a darkening
+rather than a hue swap. Found 2026-08-23 (audit F-009) and fixed by **deleting the
+copy**, not correcting it: the triplet is now computed from `RATING_TIER_HEX`.
+**When you find a second copy of the palette, ask whether you can delete it rather
+than update it** — correcting the values leaves the mechanism and resets the clock.
 
 **Forbidden everywhere in our scoring outputs:** Buy, Sell, Strong Buy, Hold, Avoid, Recommend, Outperform, Underperform, Overweight, Underweight.
 
@@ -154,11 +446,14 @@ score tier (one colour per label, so a label never shows two colours):
 
 | Score | Valuation label | Tier colour |
 |---|---|---|
-| 80–100 | Compelling | `#006400` |
-| 65–79 | Attractive | `#228B22` |
-| 50–64 | Reasonable | `#D4A017` |
-| 35–49 | Elevated | `#FF4500` |
-| 0–34 | Expensive | `#B22222` |
+| 80–100 | Compelling | `--c-tier-1` |
+| 65–79 | Attractive | `--c-tier-2` |
+| 50–64 | Reasonable | `--c-tier-3` |
+| 35–49 | Elevated | `--c-tier-4` |
+| 0–34 | Expensive | `--c-tier-5` |
+
+(Tokens rather than hexes, deliberately: this ladder IS the rating ladder, and
+writing the values here a second time is how the two would come to disagree.)
 
 The **Cycle Position** column shows just the 0–100 reading (gauge + number, coloured
 by `cyclePositionColor`). The zone words are *not* rendered in that cell — they're
@@ -171,9 +466,10 @@ via `ZONE_TIER`/`ZONE_DISPLAY` and is the only place the Deep Value…Stretched 
 appear with their zone-tier colour.)
 
 The **Health** column has only THREE labels (Healthy ≥80 · Adequate ≥60 · At Risk
-below 60), so it is coloured by `healthColor` — **one colour per tier**: green
-`#006400` / gold `#D4A017` / red `#B22222` — applied to BOTH the number badge and
-the label. It deliberately does NOT use the 5-tier `scoreColor` ladder (which would
+below 60), so it is coloured by `healthColor` — **one colour per tier**:
+`--c-tier-1` green / `--c-tier-3` gold / `--c-tier-5` red — applied to BOTH the
+number badge and the label. It reads the tokens, so the 2026-08-22 palette change
+reached this column and the Valuation ladder above without either being edited. It deliberately does NOT use the 5-tier `scoreColor` ladder (which would
 paint "Adequate" and "At Risk" rows several different shades for the same word).
 Valuation keeps the 5-tier ladder above because it genuinely has five labels.
 
@@ -183,14 +479,29 @@ Valuation keeps the 5-tier ladder above because it genuinely has five labels.
 
 Every chart MUST follow these. Hard rule.
 
-| Direction / Meaning | Fill | Border |
-|---|---|---|
-| Positive / up / profit / good | `#228B22` | `#006400` |
-| Negative / down / drawdown / bad | `#B22222` | `#8B0000` |
-| Neutral / informational | `#1E5CB3` | `#1A3A6E` |
-| Highlight / cursor / focus | `#2E7DE8` | `#1A3A6E` |
-| Grid lines | `#E2E8F0` (10% alpha for major, 5% for minor) | — |
-| Axis labels | `#8A97A8` | — |
+| Direction / Meaning | Fill | Border | As TEXT |
+|---|---|---|---|
+| Positive / up / profit / good | `#228B22` | `#006400` | `--c-up-ink` |
+| Negative / down / drawdown / bad | `#B22222` | `#8B0000` | `#B22222` (already 6.68) |
+| Neutral / mixed / average | `#D4A017` | — | `--c-neutral-ink` |
+| Neutral / informational | `#1E5CB3` | `#1A3A6E` | `#1E5CB3` |
+| Highlight / cursor / focus | `#2E7DE8` | `#1A3A6E` | `--c-brand-ink` |
+| Grid lines | `#E2E8F0` (10% alpha for major, 5% for minor) | — | — |
+| Axis labels | `#8A97A8` | — | — |
+
+⚠️ **The fills and borders are unchanged and must stay that way** — green-for-up is
+the convention every trading tool follows. The fourth column exists because the
+same colours were also painting *words*: 57 of them on one stock page, worst 2.11:1
+(the "Key Risks" heading, Current Drawdown, the analyst consensus figure, every
+beat/miss and dividend streak). Import `INK` from `lib/ink.ts`; do not hand-type
+either column.
+
+⚠️ **ONE EXCEPTION, and it is a Recharts fact rather than a choice: a legend entry
+is painted in its series' own colour**, so for a series the fill and the words are
+one value and cannot diverge. Two series therefore carry their ink value rather
+than their fill value — the ASX 200 line in Relative Performance (its gold measured
+2.38, failing even the 3.0 a plain graphic owes) and the Cash & Equivalents bar in
+Balance Sheet. Where you add a legended series, check the label, not just the mark.
 
 ### Candlestick colours (Lightweight Charts config)
 
@@ -241,14 +552,39 @@ Tailwind defaults work but the reference uses these specific values for cards an
 ## 8. Shadows
 
 ```css
---shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
---shadow-md: 0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
---shadow-lg: 0 10px 30px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
+--shadow-sm:   0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+--shadow-md:   0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+--shadow-lift: 0 10px 30px rgba(15,25,35,.08), 0 3px 10px rgba(15,25,35,.05);  /* Layer G */
+--shadow-lg:   0 10px 30px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
 ```
 
-- `sm`: default for cards, sidebar
+- `sm`: default for cards in a stack, sidebar
 - `md`: hover state on cards, dropdowns
+- **`lift`**: a card **floating alone on the page ground** — the sign-in card, the
+  pricing card, the 404. Added in Layer G because there were three roles and only
+  two names: this step had been hand-typed as a 60px ambient blur in four separate
+  files (`AuthCard`, `LegalDoc`, `PricingPlans`, `/methodology`), which is why
+  signing in read as a different product from the terminal you were signing into.
+  Navy-tinted rather than neutral black, because it falls on `--bg-page`, which is
+  blue-grey.
 - `lg`: modals, popovers, tooltips
+
+⚠️ A long-form DOCUMENT takes `--shadow-sm`, not `--shadow-lift`, even though it
+also sits alone on the page: `/terms` is the page rather than an object on it, and
+a heavy ambient blur under 2,000 words looks like it is about to slide off.
+
+❌ **This rule was written down and the code did something else** — `LegalDoc`
+carried **no shadow at all**, with a comment arguing that `--shadow-sm` "still
+reads as" a floating object. So the auth card floated and the document was
+perfectly flat, and one click between them read as two products rather than two
+weights of one. Corrected 2026-08-15 on the owner's instruction, after the gap
+was found by measuring both cards side by side rather than by reading either.
+The original concern was reasonable and turned out not to apply: `--shadow-sm` is
+1–3px, and at the document's real height (1,502px on `/terms`) the bottom edge
+reads as resting, not sliding. **Note the shape — a doc and its code disagreeing,
+with the doc right and no test in between.** Both card families' padding and
+radius are now compared to each other in `e2e/public-chrome.spec.ts`; the shadows
+are deliberately *not* compared, because differing is the point.
 
 ---
 
@@ -278,6 +614,30 @@ White surface, subtle border, slight shadow. Standard wrapper for any data secti
 }
 .card-body { padding: 14px 18px; }
 ```
+
+#### `.card-note` — the second line in a card header (added 2026-08-15)
+
+A provenance or scope line sitting beside `.card-title`: *"Medium preset · as at 13 Aug"*.
+
+```
+.card-note {
+  font-size: var(--rd-micro);      /* 12px — the floor */
+  color: var(--text-secondary);    /* NOT --text-muted, which is 2.69:1 */
+  font-weight: 400;
+  text-transform: none;            /* it is a sentence, not a label */
+  letter-spacing: normal;
+}
+```
+
+⚠️ **This class was USED before it was DEFINED, and nothing anywhere went red.** The
+landing page's markup asked for `.card-note` on every provenance line while `globals.css`
+had no such rule, so each one inherited its parent's 15px full-strength ink and read as a
+second title rather than a footnote. **An undefined class is not an error in CSS — it is
+silence**, and it renders as a perfectly plausible page. There is no console warning, no
+build failure and no visual "gap" to notice; the type is simply wrong. It was found by
+diffing *computed* styles against the design-system artifact, not by reading either file.
+`text-transform` and `letter-spacing` are reset explicitly for the same reason: the class
+sits inside a header whose sibling is uppercase and tracked.
 
 ### Stat Pill
 
@@ -354,7 +714,7 @@ The Smart Money Activity chart is the one **non-candlestick chart built on Light
 
 The Stock Scorecard plots the five Financial-Health pillars (Recharts `RadarChart`) plus a right-hand bar list. Conventions (S9):
 
-- **Pillar colours are score-based, by the rating tiers** — this **deliberately deviates from the reference**, which used fixed per-axis identity colours (so "Shareholder" rendered red even at 100, falsely reading as "bad"). Each bar fill, score number, and radar vertex dot is coloured by `tierColor(score)`: ≥80 `#006400` · ≥65 `#228B22` · ≥50 `#D4A017` · ≥35 `#FF4500` · <35 `#B22222`. Colour now *means* "strong → weak". The connecting polygon stroke/fill stays brand blue (`#1E5CB3` / `rgba(30,92,179,.15)`) as the neutral "shape".
+- **Pillar colours are score-based, by the rating tiers** — this **deliberately deviates from the reference**, which used fixed per-axis identity colours (so "Shareholder" rendered red even at 100, falsely reading as "bad"). Each bar fill, score number, and radar vertex dot is coloured by `tierColor(score)`, i.e. by `--c-tier-1` … `--c-tier-5` at the 80/65/50/35 bands. (This line named the five hexes until 2026-08-22 and every one of them was stale within hours of the palette change — the tokens are the only safe way to write it down.) Colour now *means* "strong → weak". The connecting polygon stroke/fill stays brand blue (`#1E5CB3` / `rgba(30,92,179,.15)`) as the neutral "shape".
 - **Full 0–100 radius scale** (a maxed pillar reaches the outer grid ring). The **angle-axis labels sit in the margin *outside* the grid ring** — the custom `AngleAxisTick` anchors each label *outward* (right→`start`, left→`end`, top/bottom→`middle`) with a small radial nudge. `outerRadius` is ~52% and the radar column is widened (`.radar-grid` `340px 1fr`) so the long names ("Balance Sheet", "Shareholder") clear without clipping.
 - **A11y:** the chart wrapper carries `role="img"` + a dynamic `aria-label` summarising the plotted pillars (reflects only the real pillars, so a withheld-pillar stock reads fewer).
 - **Weighting is explained, not shown per-bar:** the Health Score is the *weighted* mean (Profitability 30 / Balance Sheet 25 / Growth 20 / Cash Flow 15 / Shareholder 10); the weights live in the card-title `InfoTip` only (a per-bar weight column was tried and removed as too busy). Subtitle is just `Health Score N/100`.
@@ -367,7 +727,7 @@ Real yfinance values can be absurd (a near-zero denominator gives P/E 3,500×, R
 - **`MetricDef.cap`** (Key Metrics, `MetricsTable.tsx`): a per-metric cap. Beyond `±cap` the cell shows `>+cap` / `<−cap`, and the **true value goes in the hover tooltip** ("Actual … — capped for display"). Current caps: P/E 150x · EV/EBITDA 150x · PEG 25 · FCF Yield 100% · Op/Net Margin 300% · ROE 300% · ROA 300% · D/E 25 · Current Ratio 25 · Revenue/Earnings Growth 300%.
 - **Median hygiene:** the same bounds are mirrored in `medians.server.ts` `OUTLIER_BOUND` so capped outliers don't skew the peer median (bump the cache key when you change them).
 - **Peer comparison columns:** Key Metrics shows three relative columns — **vs Industry**, **vs Sector**, **vs Market** — ordered most-specific → broadest (industry ⊂ sector ⊂ market). Each cell is coloured green/red/grey by whether the stock beats / trails / matches that peer group's median. `medians.server.ts` (`fetchMetricMedians`, cache key `metric-medians-v5`) groups the whole universe by industry, sector, and market in one daily-cached scan. **Industry peer floor:** industries are small (~126 across 719 stocks), so a group needs **≥ 5 stocks** (`INDUSTRY_PEER_FLOOR`) before its median is trusted; below that the industry is omitted and the cell falls back to "—" rather than showing a one- or two-peer median.
-- **Distress flag (not a cap):** where a high number is *bad* (a trailing dividend yield > 20% almost always means a collapsed price / imminent cut), show the **real** value but recolour it amber (`#D4A017`, not reassuring green) + a ⚠ + a caution tooltip — capping it would read as "good".
+- **Distress flag (not a cap):** where a high number is *bad* (a trailing dividend yield > 20% almost always means a collapsed price / imminent cut), show the **real** value but recolour it amber (`INK.neutral`, not reassuring green) + a ⚠ + a caution tooltip — capping it would read as "good".
 - **`fmtCapped(value, cap, decimals)`** (`web/lib/format.ts`) is the shared helper for **prose** numbers — the same cap pattern for values interpolated into sentences rather than table cells. Used by the Thesis narrative (`VerdictCard` `bestStrength`/`topRisk`, `ThesisInsights` `buildAttractive`/`buildRisks`): ROE/margins/growth 300, FCF Yield 100, D/E & PEG 25. Beyond the cap it renders ">cap" inline (e.g. "an exceptional >300% return on equity").
 - These are **display-only**: the cycle math and FH pillars already clamp their inputs, so ratings are untouched.
 
@@ -671,6 +1031,155 @@ the *output* of a screener run, so it is empty for a new or free account. The si
 point is `POST_AUTH_HOME` in `web/lib/url.ts`; every auth email inherits it via
 `safeNextPath()`, so no email template hard-codes a landing path.
 
+### Public chrome — the header and footer every public page wears (Layer G)
+
+Defined **once**, in `components/PublicHeader.tsx` and `components/PublicFooter.tsx`,
+both reading one list from `lib/publicNav.ts`. Before Layer G the landing page had a
+nav and the other twelve public pages had a logo and a "Markets · Live" pill — so a
+reader on `/terms` could not reach pricing and could not sign in.
+
+| Part | Spec |
+|---|---|
+| Header | `position: sticky; top: 0`, height `--header-h` (58px), `rgba(255,255,255,.9)` + `backdrop-blur(12px)`, 1px bottom border |
+| Lockup | 34px logo (8px radius) + "MajorCycle" 13px bold `--brand-deep` + "FINANCIAL TERMINAL" 9px `--text-muted` (hidden < 520px) |
+| Nav | `--rd-small`, `--text-secondary`; current page `--brand-mid` + 600 and `aria-current="page"`. Hidden < 900px — the footer carries the same links |
+| Actions | `Button variant="outline"` (Sign in) + `variant="primary"` (Create free account), both `h-9` |
+| Footer | `--bg-surface`, 1px top border, centred link row at `--rd-small`, then the disclaimer and the copyright |
+
+**Three rules that are not cosmetic:**
+
+1. **The header is SESSION-UNAWARE.** It renders identical links for everyone and
+   never reads the session. A header that varies by viewer makes the whole page vary
+   by viewer (rule 11a), and reading the session in the public layout would put an
+   Auth round-trip on the sign-in path. The pages where "Sign in" would actually
+   mislead a signed-in reader (`/`, `/login`, `/signup`, `/deletion-requested`,
+   `/pricing`) all redirect them away in `proxy.ts` before the header renders.
+2. **The call-to-action matching the current page is hidden** — but on `/signup`,
+   where the primary is the hidden one, "Sign in" must NOT also collapse below
+   520px, or a 375px header offers no action at all.
+3. **Session-confined pages get the logo alone**, and the logo is not a link.
+   `/account/update-password` (a recovery session) and `/reactivate` (deletion
+   scheduled) are pinned there by `proxy.ts`, so every nav link and every footer
+   link bounces straight back. This is derived from `PUBLIC_PAGES`
+   (`showsFullChrome`), never listed again — the header and the footer must ask the
+   same function, which `e2e/public-chrome.spec.ts` asserts.
+
+**The disclaimer line is `--text-secondary`, never `--text-muted`** — see §14.
+
+#### Why `outline` is a fifth Button variant and not a tweak to `secondary` (2026-08-15)
+
+The two differ on **exactly one property, their ink**: `secondary` is
+`--text-secondary`, `outline` is `--brand-mid`. Everything else — surface, border, hover
+— is identical. The approved design system draws the public pages' second action in brand
+blue, because there it is an *offer* sitting beside another offer; `secondary` is grey
+because in the app it is the quieter of two things you might do.
+
+⚠️ **Widening `secondary` would have been one character and would have repainted five
+buttons nobody asked about**, `GoogleButton` among them — putting brand-blue ink beside
+Google's own multicoloured mark on the sign-in page. **When a shared component is wrong
+for a NEW caller, add a variant for that caller rather than re-tuning it for everyone**
+(the same rule that governed the scroll-spy's opt-in option — coding-standards §14).
+`secondary`'s four existing app call sites are byte-identical to before.
+
+---
+
+### Legal documents — `/disclaimer`, `/terms`, `/privacy` (Layer G, rebuilt 2026-08-13)
+
+One component, `components/LegalDoc.tsx`. These are **documents, not pages with a lot
+of text on them**, and the distinction is the whole design.
+
+**Rebuilt twice in one day, and the second round is the one that stuck.** Round 1 fixed
+the layout — it was a rounded, shadowed card **2,223px tall** using 53% of a viewport
+whose header spans all of it, with 600px empty beside it, and `h2` at 26px introducing
+clauses averaging 45 words so the page read as a stack of headlines. Round 2 fixed the
+sizes, after the owner looked at the result and said it still ran larger than the rest of
+the site.
+
+| | `/contact` | Round 1 | **Now** |
+|---|---|---|---|
+| Title | 24px | 26px | **24px** |
+| Clause heading | — | 20px | **17px** |
+| Body | 13px | 17px | **13px** |
+| Meta / labels | 11–13px | 12 / 14px | **12px** |
+| Column | 440px | 680px | 680px |
+
+**The measurement that reframed the request.** Asked to make the public pages
+"consistent", I measured every one of them first. `/pricing` renders **nine** distinct
+text sizes in `<main>` (9.5 · 11 · 11.5 · 12 · 12.5 · 13 · 14 · 24 · 38) and `/signup`
+eight, with steps a quarter of a pixel apart — exactly what §3 warns reads as
+inconsistency rather than hierarchy. The legal pages were already the most disciplined
+pages on the site at five. **The inconsistency was never here.** The owner's instruction
+stood regardless and was scoped explicitly to these three pages, so that is what changed.
+
+**The spec:**
+
+| Part | Spec |
+|---|---|
+| Frame | `PageFrame width="wide"` + `.legal-layout doc-scale`. ≥1024px: `grid-template-columns: 200px var(--measure-doc)`, 48px gap, centred as a pair (measured: `200px 560px`, total 1120 = `--measure-wide`). Below: block flow |
+| Document | `--bg-surface`, 1px border, `--radius` 10px, **`--shadow-sm`**, capped at `--measure-doc` (560px), padding **30px 32px** desktop / **24px 20px** ≤640px |
+| Type | **`.doc-scale`** — `--pub-title` 24 · `--pub-h` 17 · `--pub-body` 13 · `--pub-label` 12 (see §3). Since 2026-08-15 this is a class in its own right, not a rule welded to `.legal-layout`, so the Learn pages get the same scale without the contents-rail grid |
+| Heading rhythm | **`.reading h2:not(:first-child) { margin-top: 1.75em }` + `margin-bottom: 0.5em`, shared by the legal documents and the Learn articles** (owner: they should be the same). Added 2026-08-17 — `.reading` had described the space between paragraphs, around lists and after a list, and **never around a heading**, because no `.reading` prose had ever contained one: LegalDoc marks its own headings up as `.doc-h` and positions them with the section's flex gap. An article body is authored as bare `<h2>`, so it was the first prose to need it, and it got **0px above and below** — less room than two ordinary paragraphs (14.3px). ⚠️ `:not(:first-child)` is what keeps this ONE rule: every LegalDoc section OPENS with its heading inside a `gap-8` flex column, and in a flex container a child's margin ADDS to the gap, so a blanket margin-top would silently double-space all three legal pages. The 0.5em below sits just under LegalDoc's own `mt-2.5` (8.5 vs 8.75px), so adjacent margins collapse to the larger and the legal pages keep the exact gap they had — **verified by measuring, and by a control at 3em proving the rule does reach them** |
+| `.heading-flush` | The opt-out, for a heading that is a **label rather than prose** — today the Learn index's topic titles, which sit in a flex row beside a number and a pill that the ROW positions. ⚠️ Not hypothetical: applying the rule above without it pushed each band down 29.75px and threw the "01" **10.6px** off its heading's centre, because `items-center` centres the MARGIN box. Written `.reading h2.heading-flush` at (0,2,1) — the obvious `.reading .heading-flush` is (0,2,0) and **loses to `.reading h2:not(:first-child)`**, since `:not()` contributes its argument's specificity. The first attempt made the misalignment *worse* (10.6 → 14.9px) for exactly that reason. Guarded by `learn.spec.ts` |
+| Masthead | Title + "Last updated …" + a hairline rule. No eyebrow, no date pill |
+| Clause heading | `.doc-h` with a `.doc-num` numeral **in Sora, inheriting colour** |
+| Contents | Sticky rail ≥1024px (`LegalContentsRail`), inline two-column list below |
+| Notice | "Information only — not financial advice" at the top, `--bg-stripe` in a hairline box |
+
+⚠️ **The clause numeral is Sora and sets no colour of its own.** It was JetBrains Mono in
+`--brand-mid`, on the reasoning that §3 says every number uses the mono face. That rule is
+about **values** — a price, a score, a percentage — where monospace aligns digits into a
+column and signals "this is data". A clause ordinal is part of the heading's own sentence,
+and two typefaces in one line reads as a mistake. Declaring no colour is what makes one
+rule correct in two places: black beside a heading, body-coloured in the contents list.
+
+⚠️ **The rail lists this document's clauses and nothing else.** It briefly carried an
+"Other documents" group linking the other two policies — which duplicated the footer of
+the same page, making a third copy of a list that exists once. **A rail is for where you
+are, not for where else you could be.**
+
+⚠️ **What makes the rail stick is the rail's own `max-height`, not `align-items: start`.**
+A grid item stretches to the row height by default and a sticky element as tall as its
+scroll range never moves. Measured (rail top at scrollY 700, 1280×900): `start` + clamp →
+pinned at 82 · `stretch` + clamp → **still** pinned at 82 · `stretch`, no clamp → −765.
+Either protection alone suffices; both are kept, because the clamp exists to stop a long
+list overflowing the viewport and someone removing it as redundant must not silently
+un-stick the rail. The first version of this note asserted the opposite.
+
+⚠️ **Smaller type made the page shorter, which broke the rail — a second-order effect
+worth expecting.** At 13px the whole of `/terms` is ~1.9 screens, so clauses 05–08 sit
+where no scrolling can bring them to the offset line, and `useScrollSpy`'s bottom-of-page
+rule reported the **last** clause whichever one was clicked. Click "Acceptable use", the
+rail lights up "Contact". Fixed with an opt-in `keepClickedAtPageEnd` so the Stock Detail
+subnav and the offline report keep byte-identical behaviour.
+
+✅ **The column was narrowed to suit the smaller type (owner-approved, same day).** At 13px
+the old 680px box ran **~91 characters per line** against the 45–75 band — the width had
+been chosen for 17px body, and smaller letters simply mean more of them per line. A new
+`--measure-doc` (**560px**) brings it to **67–74**, measured on all three pages.
+
+⚠️ **It could not reuse `--measure-prose`.** That token is 680px *because* it holds ~68
+characters at `--rd-body` — narrowing the shared token would have fixed one page by
+breaking another. (The other page at the time was `/methodology`, retired 2026-08-13; the
+token is now held for `/learn`, so the reasoning stands and its example has moved.)
+
+⚠️ **The guard counts CHARACTERS, not pixels.** A column can be the right width and the
+wrong measure; that is exactly what happened here, with no width having changed at all.
+`legal-doc.spec.ts` walks a DOM Range along a real paragraph to find where it wraps, and
+bounds it on **both** sides — an over-narrow column that breaks every few words is just as
+unreadable and would satisfy a one-sided bound.
+
+**Wording is presentation-only.** Four clauses that were single sentences carrying five and
+six semicolon-separated items are lists (Terms "Acceptable use"; Privacy "Information we
+collect", "How we use it", "Service providers"), with every item's wording unchanged. The
+trial clause is four short sentences in one paragraph, down from one 60-word sentence
+carrying six commitments. No obligation was added, removed or altered, and the disclaimer
+notice is untouched. **All three remain `BASELINE CONTENT` pending a professional review.**
+
+Guarded by `e2e/legal-doc.spec.ts` (**12** tests): the measure at six widths, one contents
+list visible at a time, the notice above the fold at 375px, every rail entry resolving to a
+real section, the rail staying pinned, and every clause click marking the clause it names.
+All broken on purpose — see `coding-standards.md` §14 for the three traps that surfaced.
+
 ---
 
 ## 10. Responsive Breakpoints
@@ -747,6 +1256,499 @@ Pattern: red-tint card + 16px title + body explanation + CTA to retry or contact
 
 ---
 
+### The Articles index — BUILT 2026-08-29 (`/articles`, `/articles/[slug]`)
+
+**Chosen from three directions drawn in the design artifact** (`claude.ai/code/artifact/fd8cbcdc`),
+the same way the Learn index was decided. The owner took **A**; B (data-as-art) and C
+(typographic) were deleted. Structure: **featured article · coming next · published list.**
+
+⚠️ **THE COMPETITORS' LAYOUT IS THE WRONG ONE HERE, and the reason is volume.** Checked
+directly: Simply Wall St (`/news`) and Motley Fool AU both run a flat vertical list, no
+featured item, a thumbnail per row, 22 and 40+ to a page. Correct for them — they publish
+dozens a day, so the reader's job is scanning. **We publish about four a month**, and that
+layout at n=4 reads as abandoned. This is the trap the Learn index already documented:
+*"a card grid needs roughly nine articles before it stops looking abandoned."* A **lead
+article carrying real weight, then rows** reads as a front page at n=1 and degrades upward.
+
+⚠️ **And no thumbnails, deliberately.** Every competitor leads with a picture. We have none,
+each would be a cost we can never re-roll (§11, the Learn masters), and it creates a
+permanent per-article obligation. **Numbers do the work images do elsewhere** — every
+article here reports a measurement, so the finding is the art. Free, repeatable, and the
+one thing on the page a competitor cannot copy.
+
+| Element | Rule |
+|---|---|
+| Featured card | **The landing page's analyst briefing, REUSED** — the shared `.briefing` / `.bt` / `.btxt` / `.bp` components, not a copy. Owner: *"the same vibe like the analyst briefing in the landing page … that will look consistent."* Verified in-browser: all 11 card properties plus title, body and pill type computed **identical** to the landing's |
+| The figure slot | The briefing's 56px score ring is replaced by the article's own figure. Same row, same `flex:none`, same gap |
+| Figure optionality | **Optional by construction.** Owner: *"the article may or may not have any figures."* The figure is a flex **child**, so an article without one omits the element and the body takes the full width. ⚠️ Never a declared grid track — that is the `/learn` defect where a two-column track stayed declared with the image gone, leaving a 532px column beside 588px of empty page |
+| Which article leads | **Declared, not dated** (`FEATURED_SLUG` in `lib/articles.ts`, owner instruction 2026-08-30: *"keep the featured article as is"*). It was `articlesNewestFirst()[0]`, which was the same thing while there was one piece; publishing four more would have moved the lead by arithmetic. Two reasons this is the right shape rather than a workaround — the lead card is the only place a **figure** is drawn and only the first piece has one (`FIGURES` is `Partial` on purpose), so a dated rotation would silently empty it; and a front page choosing its own lead is what a front page is. ⚠️ It falls back to the newest when the slug matches nothing, so `articles.spec.ts` asserts the declared slug **resolves** — otherwise a rename in one place produces a perfectly good page leading with the wrong article |
+| Rows, not cards | A row costs one line per article, so the page never has a hole in it — the failure mode a grid has at small n |
+| Row content | Date · title · **the article's FINDING**, not a summary. On this site the number is the thing worth scanning |
+| Planned pieces | Recede by **WEIGHT and COLOUR, never `opacity`** — 400/`--text-muted` against a published row's 600/`--text-primary`. Same rule the Learn upcoming rows learned when `opacity:.7` rendered at 3.38:1 while the contrast guard read 6.81 (CLAUDE.md 11q). Verified: `byOpacity: false` |
+| Chart legend | **HTML list under the plot — swatch, name, figures — never floating labels inside it.** The first version put "ASX 200" and "S&P 500" in the plot area where neither sat near its own line, and the owner could not tell which was which. Swatch colours are asserted against the line strokes so they cannot drift |
+| Series colours | ASX `--brand-mid`, S&P `--text-muted`, TSX `#0E7C8B` — the Learn illustrations' established teal (§11). ⚠️ **None may be a DIRECTION colour**: green and red mean up and down everywhere else on this site and must not be spent on series identity. ⚠️ **The teal has an INK for its label** — `#0C6E7B`. This is `lib/ink.ts`'s rule applied to a series palette: a stroke has no contrast requirement, a 12px label has a 4.5:1 one, and `#0E7C8B` measured **4.45:1** on the briefing card's ground — five hundredths under, caught by the contrast guard the moment the page became measurable. It passes on WHITE (4.91), which is the trap the signed-in palette work already paid for: **measure a colour where it sits, and take a margin.** The ink clears 5.32:1 against the worst of the three grounds the label can land on |
+
+**Heading and lead.** *"What's happening, and what it means"* over a lead naming all three
+kinds of piece and reusing Learn's *"nothing you need an account to read."* ⚠️ Two earlier
+drafts were rejected for leaning on **process** (*"the method shown, every figure sourced"*)
+rather than telling the reader what they get — and for assuming the section is only
+measurements, when it also carries market commentary and how-to pieces.
+
+**The article page itself gets no new design** (owner, 2026-08-26): the live Learn article
+pages already show it, so `/articles/[slug]` reuses **`ArticleDoc`** and **`LegalNotice`** —
+same card, same `.doc-scale`, no third disclaimer copy.
+
+⚠️ **Reusing it meant WIDENING it, not copying it.** `ArticleDoc` was typed to
+`LearnArticle` and hard-coded the "Learn · <topic>" breadcrumb, the related list's
+`learnPath()` and the closing invitation. It now takes a four-field `DocArticle`, a
+`section` link and a `footerNote`, and both sections hand it their own. A second card
+built to the same spec would have been a copy free to drift — and the drift would be
+invisible, because both pages would go on rendering perfectly (11c).
+
+---
+
+#### What the BUILD had to change, and why — read before comparing against the artifact
+
+Four deviations from the approved storyboard. None is a matter of taste; each was
+forced by a rule the artifact's own preview does not have to obey.
+
+| The artifact | The live page | Why |
+|---|---|---|
+| Featured title **23px**, rows 15.5px, findings 12.5px, chips 10.5px | `--pub-h` **17px**, rows and findings both `--pub-body` **13px**, chips `--pub-label` **12px** | The artifact is a PREVIEW carrying its own scale (36/26/20/17). The live public site has exactly one (24/17/13/12), and porting an artifact's pixel sizes literally is how the fourth type scale appeared on `/learn` (**11c-vi**). 23px would also have sat one point under the page's own h1. Title and finding are separated by **weight and colour** instead — the rule `/learn`'s article rows already state |
+| Chart labels as `<text>` at 8–9px inside the viewBox | **HTML labels at 12px** over a `preserveAspectRatio="none"` plot | Text inside a scaled `<svg>` scales with it. Measured: 12.5 user units in a 300-unit box reads 12.5px on a desktop and **10.78px at 375px**, where the card's padding leaves the block 258.6px. **A floor that holds on one screen and not another is not a floor.** This is the pattern every Learn figure already uses, and its consequences follow — `vector-effect="non-scaling-stroke"` on every line, and HTML dots, because a `<circle>` under a non-uniform transform is an ellipse |
+| Axis captions in spaced small caps | Lower case | Uppercase is ~28% wider. At 375px the plot is 86.6px across and the two captions, centred on points that far apart, **cleared each other by 0.48px**. Lower case makes them 72px and 62px, clearing by 16px on a phone and 58px on a desktop |
+| Plot geometry as literal coordinates | Computed from the numbers | **11k.** The storyboard's `y="173.4"` was right on the day it was taken and silently detached from the data afterwards — the same defect as the landing's ruler markers. Change a figure in `SERIES` and the drawing, the labels and the `aria-label` all move together |
+
+⚠️ **THREE LABEL COLLISIONS WERE FOUND BY MEASURING, AND NONE IS VISIBLE.** The end
+labels of the two closest series cleared by 1.2px; the axis captions by 0.5px; the
+deepest left-hand label sat 2.1px above the caption beneath it. Every one looked fine
+in the browser and fine in a screenshot. `articles.spec.ts` now asserts a **3px
+margin** between every pair of labels at three widths — a margin, not the absence of
+overlap, because `> 0` scores a 1px accident as a pass (**11i-b**).
+
+⚠️ **AND A CLASS-NAME COLLISION HID AN OWNER-REQUESTED CHANGE IN PLAIN SIGHT.** The
+owner asked for space around the `·` in "26 August 2026 · 6 min read". The separator
+span was named `.art-dot` — which is *also* the chart's end-point class in the same
+stylesheet — so it inherited `position:absolute; width:7px; height:7px;
+border-radius:50%` and rendered as a positioned circle contributing nothing to
+layout. The padding had no effect at all, and nothing looked wrong: the `·` still
+painted roughly where a reader expects one. ⚠️ **Three measurements disagreed with
+each other before this was settled** — `getComputedStyle` reported the padding as
+present, a `Range` over the text nodes returned overlapping boxes, and only a
+controlled experiment (remove the padding, measure the line, restore it) showed the
+width never moved. **A class name is an identifier; reusing one inside a single
+stylesheet is a collision, not a shorthand.** The separator is now `.art-sep`, and
+`articles.spec.ts` asserts it as the same experiment rather than as a geometry read.
+
+⚠️ **Tables needed a component, and the Learn rule had to be re-decided rather than
+inherited.** `learn/content.tsx` forbids `<table>` outright, correctly: `.reading` has
+no table rules at all, so one renders as browser default in the middle of a designed
+page. That is right for explainers, which do not need tables, and wrong for this
+section, where reporting a measurement IS the job. So the styles are defined once
+(`.art-table` in `articles.css`) and reached through
+`components/articles/DataTable.tsx`; an article never writes its own. A numeric column
+is **declared, not sniffed** — detecting digits would work until a piece printed "60"
+as a company count in a text column, and the failure would be a subtly misaligned
+table nobody reports.
+
+⚠️ **AND A BARE `td` IN `globals.css` WAS REACHING INTO EVERY ONE OF THEM — found
+2026-08-30.** The signed-in terminal's table styling includes an element selector,
+`td { white-space: nowrap; font-family: 'JetBrains Mono'; font-size: 11.5px }`. An
+element selector has no scope, so it applied to every data cell in every public
+article: measured on the live first article, **every cell rendered at 11.5px** — under
+the public site's own 12px reading floor — beside a row header at 13px. Two sizes in
+one row, and a size the design system does not contain.
+
+It survived the article's whole life because that piece's every non-first column is
+`numeric`, and `.art-num` re-states the mono face, so the cells read as deliberate.
+The three ranked tables added on 2026-08-30 are the first with a **text** column, and
+the inherited `nowrap` is what pushed them off the side of the reading column. Same
+shape as **11c-vii**: a component dropped into prose inherits whatever the page
+stylesheet has to say about its tags — and nothing goes red, because a wrong font size
+is a perfectly plausible font size. `.art-table th, .art-table td` now states its own
+font, size and wrapping.
+
+| Rule | Why |
+|---|---|
+| `wrapHeaders` on `DataTable` | Headers are `nowrap` by default, which is right at two or three columns and is exactly what puts a five-column table off the side. Measured: the ranked tables needed **689px inside a 614px** reading column, so a reader on a full desktop had to scroll sideways on the one table the piece exists to show. Wrapping the header costs one line of height. Body cells never wrap — a percentage split over two lines is unreadable, which is why `.art-num` keeps its own `nowrap` |
+| ⚠️ The half-fix looked like the fix | `.art-table .art-num` is (0,2,0) and `.art-table--wrapth thead th` is (0,1,2), so the numeric rule **wins on class count**. The three text headers wrapped, the two percentage headers did not, and the table still ran off the side by exactly those two columns — rendering as a perfectly ordinary table. Only measuring `scrollWidth` against `clientWidth` per cell said otherwise |
+| Column `width` on the ranked tables | `table-layout: fixed` is the only way to stop the browser spending 208px on a column holding `−48.0%`. Paired with `minWidth`, so a fixed table cannot be squeezed to nonsense on a phone — it scrolls inside its own wrapper instead |
+| `alignRight` — alignment WITHOUT the figure face (owner review, 2026-08-30) | The last column of each ranked table sits right-aligned like the percentages beside it, so the table has **one clean right edge** rather than a ragged column hanging off the end: peak dates in the AU and US pieces, sector names in the Canadian one. ⚠️ **`numeric` would have been the wrong tool, and it is the obvious one.** It bundles four decisions — mono figure face, `tabular-nums`, right-align, `nowrap` — so reaching for it would have set `Sep 2025` and `Communication Services` in the FIGURE face, applied tabular figures to words, and forbidden wrapping on the one column that needs it. Alignment and typeface are two decisions; the opt-in carries only the first |
+| The Canadian table has its OWN widths (5/29/17/21/28, `minWidth` 600px) | ⚠️ **Data, not taste.** Its last column holds sector NAMES where the AU and US tables hold dates: "Communication Services" needs **165px** against "Nov 2024"'s **76px**, so the shared 20% — 123px at the 614px reading width — broke TELUS's label over two lines and left "Consumer Cyclical" hard against the edge. Owner: *"it looks very squished"*. ⚠️ **The slack was never in the sector column.** Measured, every column's true need is `#` 27px · Company 176px · 1-year **101px** · best **123px** · Sector 165px — and the two percentage columns were holding **270px for content needing 61px each**, because each is bound by its HEADER (`Below its best since 2000` only fits two lines from 111px), not by `−35.8%`. Re-allocating from those numbers fixes it with margin everywhere. ⚠️ Shortening the headers would have been the easy fix and is refused for the second time in this table: they are the words the piece was approved with. ⚠️ `minWidth` is 600px and not 614px because a minWidth **above** the reading width makes the table scroll on a full desktop — the very defect `wrapHeaders` was added to cure |
+| ⚠️ A cramped column is not an ERROR, which is why nothing caught it | The table rendered, scrolled correctly, clipped nothing and passed every other assertion in the file. It just looked cramped, and only a human reading the page said so. The guard therefore asserts the rendered **line count** of every body cell at the reading width — measured on CONTENT height, since a cell's 9px of vertical padding otherwise scores every single-line cell as two and reports a defect on every table in the section. Broken twice first: the sector column returned to 20%, and the Company column squeezed instead |
+| ⚠️ Verified by measurement, because this table records the same trap one row up | `.art-table td` is (0,1,1) and sets `text-align: left`; `.art-table .art-right` is (0,2,0) and wins on class count. That is exactly the reasoning that produced the half-fix above, so it was checked by reading the **computed** `textAlign` off a rendered page rather than by counting selectors again. Guarded in `articles.spec.ts`, broken three ways first: `alignRight` deleted, the CSS flipped to `left`, and `numeric` used instead (which right-aligns correctly and fails on the mono face). ⚠️ **The first version of that guard's control was a nullity** — it asserted the registry still holds three ranked articles, which says nothing about whether a column is aligned, so deleting every `alignRight` would have measured zero cells and passed. The floor is now asserted on the cells actually measured |
+
+---
+
+### The Learn library — BUILT 2026-08-15 (`/learn`, `/learn/[slug]`)
+
+**Chosen from three directions drawn in the design artifact.** The owner rejected a plain
+themed list and chose **theme bands**: one illustration per topic, alternating left and
+right, with the article titles listed beside it. Heading is the owner's — *"Before you buy
+anything"*.
+
+⚠️ **Direction B — a picture per ARTICLE — is the better browsing experience and was
+deliberately DEFERRED, not rejected.** A card grid needs roughly nine articles before it
+stops reading as abandoned, and the library has one. Bands never look half-built: another
+article makes a list one line longer. Revisit at ~12 articles; the data shape supports it.
+
+| Part | Spec |
+|---|---|
+| Index frame | `PageFrame width="wide"` + `.doc-scale`. Prose held to `max-w-[720px]` — the frame is wide for the pictures, not for the words |
+| Article frame | `PageFrame width="prose"` (680px) + `.doc-scale`, in the same card as a legal document (`--radius`, 1px border, `--shadow-sm`, 30/32 desktop · 24/20 phone) |
+| Type | **Identical to the legal documents** — 24 / 17 / 13 / 12 |
+| Band | 2-col grid ≥1024px (`minmax(0,1fr) minmax(0,1.05fr)`, 30px gap), alternating via `lg:order-first` on odd bands. Single column below, **picture always first**. ⚠️ The grid track is **conditional on `theme.image`** — see the warning below |
+| Topic image | **1600 × 1000 (16:10)** PNG in `public/learn/`, cropped from a 4K generated master (§11 above; the masters are outside git and cannot be regenerated). `LEARN_THEMES[].image` is **optional**; a topic without one drops the second column and holds the header's 720px measure. ⚠️ `sizes` states **560px**, not 532 — the grid is `1fr / 1.05fr`, so the columns measure 531.7 and 558.3 and the bands alternate. `sizes` is a promise about the LARGEST box, so it takes the wider one; claiming 532 handed a 532px file to a 558px box (a ~5% upscale, soft on non-retina) |
+| Figure labels | Every piece of text inside a figure's drawing is compared with every other, on every article, at six widths — `learn.spec.ts`, "no two labels overlap". ⚠️ It replaced three narrower checks (marker-vs-marker on the analyst figure, tick-vs-tick on two others) that were each blind to the defect actually shipping: "Lowest $82" sat on the "$80" **axis tick**, 12px of overlap at every width including 1280, for the life of the figure. A guard scoped to one KIND of label is as narrow as one scoped to one page. ⚠️ **It asserts a MARGIN of 2px, not the absence of overlap** (CLAUDE.md 11i-b): `> 1` passed anything that merely failed to touch, and this suite went green on Windows while CI failed by **2px**, because Linux gives the same font slightly wider glyphs. The library clears 2px everywhere by at least 3px, measured. ⚠️ Two lines of ONE label touch by design, so a wrapper carrying **`data-label-group`** tells the guard they are one thing — the analyst markers and the rating figure's pillar rows both need it. Without that, the margin rule flags correct behaviour, which is how a guard gets deleted |
+| Plot gutter | Every drawing sits inside **`Plot`** (chartPrimitives): an outer box carrying **`AXIS_GUTTER_PX` = 44px** on the left for the axis labels and **`PLOT_RIGHT_PAD_PX` = 22px** on the right for half of a label centred on the final point, and an inner box that is the plot. `rx()` spans the whole inner box. ⚠️ Both pads were **viewBox units** until 2026-08-21 — a percentage of whatever the panel measured — which is right at 375px and wrong everywhere else: the left one held a 29px number in **172px** of margin at 1280px, so every chart began a sixth of the way in from its own card, and the right one was 10px on the dip/correction figure's half-width panels, where the "today" label duly hung 5px outside the drawing. **A gutter exists to fit a label, and a label does not get wider when the screen does.** ⚠️ **Two boxes, not one:** an absolutely-positioned child lays out against its ancestor's *padding* box, so padding alone leaves `inset-0` spanning the gutter. ⚠️ **Every overlay must be inside the same `Plot` as the drawing it annotates** — the dividend figure's shared time axis is a sibling of its two panels, so when they moved inside the gutter it stayed at the card edge and each year marker sat 44px from the data it labels, still rendering perfectly (11c-iv again). ⚠️ **A pad is also a height change**: narrowing the box shortens it through the aspect ratio, and the price panel's four axis labels closed to 2px apart as a result — a stack of labels is a pixel requirement that anything touching the box's WIDTH can break |
+| Axis labels | Right-anchored to the axis, `AXIS_LABEL_GAP_PX` = 8px, in `AxisLabels` / `XTickRow`. ⚠️ They were `left: 0` until 2026-08-21, which pins a label's *start* and lets its end land wherever the text runs out — so the distance to the axis was a side effect of how many characters the number had: **57px on nine figures against 12px on two**. ⚠️ The offset is a **margin, never padding**: `getBoundingClientRect()` includes padding, so a padded gap reads to every measuring tool as a label flush against the plot. ⚠️ Tick marks are **HTML** (`stub` on `AxisLabels`), not a `<line>` at `PLOT_L - 2` — that x is off the viewBox now the plot starts at its own left edge, and would be clipped silently rather than drawn short |
+| Labels on a plot | **Nothing is ever drawn behind a label, and no label leaves its plot.** A halo — the panel's ground painted behind the text — was built and rejected on sight: it interrupts the very curve the figure is about, and on `dip-correction-crash` it erased a length of the dashed rule the figure exists to explain. So does a rule computing which side of a point has free space: it worked, went stale-prone, and swapped one collision for another. **The fix belongs upstream** — shape the paths so troughs are separated (`indexGeometry.ts`), give a narrow screen more plot HEIGHT, and where a phrase will not fit at all, give it a **short form below `sm`** (`PinnedLabel`'s `short`, and the dividend figure's crossing label). If a label has nowhere to go, the figure is too busy; that is information, not a styling problem. Guarded by `learn.spec.ts` **"no chart label hangs outside its own plot"**, which bounds each side by its own allowance — **zero into the left gutter, `PLOT_RIGHT_PAD_PX` on the right, read off the element rather than hard-coded**. ⚠️ Its first version allowed 4px of slack so an end label could overhang, and 4px is exactly what let the real defect through: the dividend label escaped by **3px** and CI still failed. **A guard's slack is where its defects live** |
+| Annotation rules vs prose | **A rule drawn across a figure may cross the drawing and never the words.** The limits figure's dashed "today" line ran the full height of the panel, so it struck through three row headings and three notes; the owner read it as a print defect (2026-08-22). The halo that would hide it is already rejected (row above), so the rule is drawn in **segments, one per bar track**, and the axis label carries the meaning at the bottom. ⚠️ **Segmenting creates a second way to be wrong that a single line could not have:** three dashes at three x positions read as noise while every other assertion still passes. `learn.spec.ts` therefore asserts both halves — every segment shares one x to within 0.5px, **and** no segment's x falls inside any text rectangle in the drawing. Both were broken on purpose and named the real defect |
+| Two labels on one row | Where a figure puts two labels on the same row, **horizontal distance between their anchors is the only thing keeping them apart** — there is no second row to fall back on, so the clearance is measured at 360px, not assumed at 1280. The analyst figure's "Today" and "Average" were on two rows until the owner asked for one (2026-08-22). ⚠️ **The obvious lever is the wrong one.** Widening the gap by moving one endpoint — raising the consensus target from 124 to 136 — bought 12px and silently changed what the figure claimed: consensus upside went 24% → 36% against an unchanged 96% spread, so the picture argued 2.7× where the prose argues 4×, and the spread guard went red. **Take the room from the LABEL, not from the data**: "Average target" (91px) became "Average" (52px), which also made it the third one-word position name beside "Lowest" and "Highest" |
+| Heading and its note | In a figure whose rows are labelled, the bold heading and the sentence explaining it sit **together, above the drawing** — never with the bar between them. Owner feedback, 2026-08-22: separated, they read as two unrelated pieces of furniture rather than a caption and its subject |
+| Year markers | `yearTick()` in `chartPrimitives`, never a local template. Singular at one, and **never `3y`** — a digit butted against a letter is the shape of a lost JSX space and the run-on guard cannot tell one from an axis label. Three figures grew a year axis in one week and the second printed "1 yrs" |
+| Figure lists | Any `<ul>`/`<ol>` inside a `<figure>` wears **`.figure-list`** (`.reading ul.figure-list`, specificity (0,2,1), the same shape as `.heading-flush`). ⚠️ Added 2026-08-20 after the limits figure was measured: `.reading ul` sets `padding-left: 1.35em`, so every bar inside the list started **17.55px** right of where its own percentage said, while the dashed "today" rule — a sibling outside the list — kept the full width. The one line that figure exists to draw sat 17px from the bar it marks. Nothing errored and the offset read as a deliberate gap; every other figure's list had the same inset and only got away with it because nothing was aligned to them. Guarded by `learn.spec.ts`, which asserts the computed padding is 0 **and** that both rows meet the rule |
+| Article row | Title `--pub-body` semibold; reading time `--pub-label` in JetBrains Mono, `--text-secondary`. Title and blurb are the SAME size — weight and colour separate them, not a 1px step |
+| "Coming soon" row | Same row shape, `--text-secondary` at **full strength and normal weight**, **no `<a>` anywhere in it**. Announced titles live in `LEARN_THEMES[].upcoming` as plain strings — see `data-contracts.md` §7b. ⚠️ It was `--text-secondary` at **70% opacity** until 2026-08-17, which rendered at **3.38:1** against a 4.5 floor — and the contrast guard scored it 6.81, because it could not see `opacity` at all (CLAUDE.md 11q). **Recede with weight and colour, never with transparency:** a token can be measured, an opacity could not |
+| Topic number (`01`/`02`/`03`) | `--pub-h` — the **same size as the heading beside it** (owner, 2026-08-17). It was `--pub-label` against a 17px title and read as a superscript rather than as part of "01 Falls and recoveries". JetBrains Mono (it is a value), `--brand-mid` at full strength — **not black**, which would compete with the title. Carries `.heading-flush` on the `<h2>`; see the heading-rhythm note below |
+| Topic pill | `--pub-label` **12px, which is a FLOOR and not a preference** — `contrast.spec.ts` enforces it and this element was already raised from 11px once. Asked to make it smaller (2026-08-17), the answer is that it cannot be; it was made *quieter* instead — semibold rather than bold, `px-[8px] py-[2px]` rather than 10/3 — and reads smaller anyway now the number beside it is 17px |
+| Article answer block | Tinted panel: `--bg-stripe`, 1px border, `border-left: 3px var(--brand-mid)`, `--radius-sm`, 14/12 padding, text at **body size** in `--text-primary`. ⚠️ It was a bare 2px rule around `.lead` (17px) and the owner's note was that it "reads too big". The instinct to reach for a size between 17 and 13 must be refused — the public site has exactly FOUR sizes and inventing a fifth is how the stray scale appeared (11c-vi). **The emphasis moved off the type and onto the container.** Deliberately the same device the Methodology modal uses on Stock Detail, so a reader meets one pattern, not two |
+| Count pill | `--pub-label`, `--brand-light` fill, `--brand-light-border`. States what is **readable** — "1 article", or "Coming soon" when nothing in the topic is written yet. Never counts promises |
+| Article answer | `.lead` (17px) in a `border-l-2 --brand-mid` block, directly under the h1 and **above** the disclaimer |
+| Disclaimer | `LegalNotice` — the same component the legal pages use, so the sentence exists once |
+
+⚠️ **No placeholder boxes for a missing image, deliberately.** A dashed "1600 × 1000 goes
+here" panel is exactly the kind of thing that reaches production because everyone assumed
+somebody else would spot it — on the page whose job is to make a stranger trust us. The
+band degrades to text instead.
+
+⚠️ **And that degradation did not work for the first day it existed (fixed 2026-08-16).**
+The two-column track was declared **unconditionally**, so a topic with no picture kept both
+columns and its text landed in the first: measured at 1280px, **532px of content beside
+588px of empty page**, on every band. `lib/learn.ts` had documented the opposite from the
+day it was written. Nothing errored, typecheck was green, and below 1024px it looked
+perfect because there is only ever one column there. **An absent grid child is not a fault
+— it is a hole, and a hole renders.** Graceful degradation is a claim about rendered
+output, so it is only ever established by rendering it. Guarded twice in `learn.spec.ts`:
+one test measures every rendered band, and one asserts in the source that the track is
+governed by `theme.image` — the second is not decoration, because no topic without a
+picture is currently rendered, so it is the only half that can see a revert.
+
+⚠️ **Two of the first values broke the 12px floor** (`--rd-micro` is a FLOOR on a reading
+page, not a suggestion): the count pill and the reading time were 11px. `contrast.spec.ts`
+enforces it, so these fail the build rather than merely looking small. A third value —
+the topic blurb — had landed exactly ON the floor via `.small`, which under `.doc-scale`
+maps to `--pub-label`. Right for a date stamp, wrong for a sentence somebody reads to
+decide whether a topic is for them.
+
+> #### The fourth type scale, and how it got there (2026-08-15)
+>
+> The owner said the Learn pages "looked inconsistent". Measured at 1280px on the built
+> pages, they were right, and it was structural rather than cosmetic:
+>
+> | Page | h1 | h2 | lead | body |
+> |---|---|---|---|---|
+> | `/learn`, `/learn/[slug]` | **36** | **26** | **20** | — |
+> | `/terms` | 24 | 17 | — | 13 |
+> | `/contact`, `/pricing` | 24 | — | — | 13 |
+> | `/` | 50 | 34 | 18 | 12.5 |
+>
+> Crossing from `/contact` into `/learn` was a **50% jump in heading size** for no reason a
+> reader could perceive.
+>
+> **Cause: the scale was welded to `.legal-layout`**, the class that also builds the legal
+> contents-rail grid. A document wanting the scale without the grid could not have it, so
+> the Learn pages fell back to `.reading`'s own 36/26/20. Nobody wrote anything wrong —
+> `.reading` is the correct default for a long page, and the legal pages had opted out
+> through a class the new pages had no reason to wear. **CLAUDE.md 11c-iv: the rule existed
+> and one of its consumers never received it.**
+>
+> Fixed by extracting **`.doc-scale`**. It uses element selectors as well as the `.doc-*`
+> helpers, because an article body is authored as plain `<h2>` — prose in a content file
+> should not have to know the design system's class names.
+>
+> ⚠️ **This reversed an earlier decision of mine**, which had argued an article is read top
+> to bottom while a legal page is scanned, so it should keep 17px. Sound in the abstract;
+> what it produced was the table above.
+>
+> ⚠️ **Open, and the owner's to decide: 13px is small for 900 words of newcomer prose.** The
+> fix is to lift `--pub-*` one step, which moves the legal pages, the auth cards and the
+> articles **together**. An article page does not get to opt out on its own — that is
+> exactly how the fourth scale appeared.
+
+### h3 in the document scale — FIXED 2026-08-19
+
+The document scale is **24 / 17 / 13 / 12**, and until this date `.doc-scale` set **both**
+h2 and h3 to `--pub-h` (17px). The base `.reading` scale never did that — there h2 takes
+`--rd-h2` and h3 the smaller `--rd-lead` — so the document scale was the anomaly.
+
+⚠️ **It went unnoticed because no `.doc-scale` page had ever used an h3.** All three legal
+pages are h2-only (verified: zero `<h3>` in `terms`, `privacy`, `disclaimer`). The first
+Learn article to need subsections became the first consumer of a rule written for documents
+that never had any — CLAUDE.md 11c-iv again.
+
+**The symptom was the invisible kind.** Eight h2s and four h3s rendered at the same size,
+the same colour and the same 29.75px above, separated only by 700 vs 600 weight. Every size
+was still on the scale, so the type-scale guard passed and an audit of *sizes* reported the
+page clean. The owner read it and said the sizes looked wrong; only comparing headings
+against each other showed why.
+
+| | Was | Now |
+|---|---|---|
+| h2 | 17px / 700 / mt 29.75 | unchanged |
+| h3 | **17px / 600 / mt 29.75** | **13px / 700 / mt 20.8** |
+
+⚠️ **No fifth size** (11c-vi). h3 takes `--pub-body`, which the body already uses, and earns
+its heading role from weight 700 and from being a block — `strong` is 600 and inline, so the
+two cannot be confused. The step is 17 → 13, the same direction the base scale steps.
+
+⚠️ **The margin steps too, and that is half the fix.** A subsection belongs to the section
+above it and should sit nearer to it than a new section does. Spacing carries hierarchy at
+least as much as size.
+
+⚠️ **The legal pages are byte-identical after the change** — measured, not assumed: `/terms`
+reports the same 24×1 / 17×20 / 13×37 / 12×25 before and after. Guarded by
+`learn.spec.ts`, which asserts the *relationship* (h3 smaller than h2, and tucked closer)
+rather than either number, so it survives a future retune of the scale. Broken on purpose:
+reverting h3 to 17px fails with *"subsection headings render at 17px and section headings at
+17px."*
+
+### Figures inside an article — `components/Figure.tsx` (2026-08-19)
+
+> ⚠️ **Owner redirection, same day, and it improved the work.** The first pass drew
+> these as price-line schematics of my own invention. The owner's note was *"can't you
+> draw a similar graph shown in the stock detail page for this? this will be more clear
+> that way"* — and it is, for a reason worth keeping: **the article teaches a term the
+> reader will next meet inside the product, so the picture that teaches it should be the
+> picture they will see.** That is CLAUDE.md 11m applied to an explainer rather than to a
+> marketing page. The two schematics are now drawn in `DrawdownOverlay.tsx`'s idiom — the
+> fall hangs BELOW a 0% line, `#1E5CB3` curve, the same red tint, a gold `Avg` rule and a
+> firebrick `Low` rule — and the rolling-peak maths is a port of that component's own
+> `computeDrawdown`.
+>
+> ⚠️ **Ported, not imported, and the cost is named.** The real overlay is `'use client'`
+> on `lightweight-charts` and eats `PriceBar[]`. Importing it would put a charting library
+> and a hydration cost on a prerendered public page and leave a no-JS reader with nothing.
+> So the formula is duplicated and `learn.spec.ts` pins the copy to the independently
+> derived percentages, which is the 11c-iii discipline: where you must duplicate, make a
+> test hold the two together.
+>
+> ⚠️ **It also fixed a real defect.** The owner's other note — *"negative should be down
+> not up"* — was correct. The price line was oriented properly, but each percentage sat on
+> a rule at the PEAK, so a negative number floated at the top of the chart while the fall
+> ran downwards. In drawdown space the direction stops being something to remember: zero is
+> the top of the box and a fall has nowhere to go but down. **Measured, not assumed:** all
+> four drawn curves have zero points above their zero line, with a control confirming the
+> probe catches a forced violation.
+>
+> ⚠️ **And the schematic's own history had to get richer.** The product overlays "Avg" and
+> "Low", and those say nothing when a stock's falls are all the same depth — the first path
+> gave Avg −31.0% against Low −32.0%, two rules a millimetre apart. The stretch before the
+> zoom window now carries several falls of different depths (Avg −28.7%, Low −35.6%), while
+> everything from the zoom boundary onwards is byte-identical so the prose example
+> ($100 / $90 / $80) still matches the picture.
+
+The drawdown article needed three diagrams, and the decision worth recording is that
+they are **hand-authored SVG and HTML, not generated pictures**. Three reasons, each
+learned here rather than assumed:
+
+1. **Generated images cannot draw exact geometry.** §11 already records that four
+   candidates came back *with no share price falling in any of them*. Every figure this
+   article needs is precise — a specific path, specific peaks, measured distances.
+2. **Generated attempts produced a compliance problem** — green/red arrows, embedded
+   text and "PROFIT INCREASE" beside coins, on a not-financial-advice product (#24).
+3. **A picture per ARTICLE is a deliberate deferral** ("revisit at ~12 articles"), and
+   commissioning one now would reverse an owner-level decision by the back door.
+
+Cost: **$0**, reproducible, editable in seconds, and testable — none of which is true of
+an irreproducible 4K master.
+
+| Rule | Why |
+|---|---|
+| `Figure` owns the shell — framed panel, optional legend, caption | `CycleDiagram` invented this shell and three more figures needed it. Four copies of "what a figure looks like" is 11c waiting: one gets improved, the others quietly do not, and every figure still renders |
+| `caption` is a **required prop** | A diagram with no caption is the accessibility failure that looks perfect in review — sighted readers infer the point, everyone else gets nothing |
+| Legend **below** the drawing, never inside | In-chart captions cleared the price line at one aspect ratio and collided at another; keeping them legible meant hand-tuning per breakpoint, i.e. a second copy of the layout |
+| **Server components. No interactivity** | A toggle would ship JS and a hydration cost on a page whose speed was bought by prerendering, and a no-JS reader would lose the figure entirely. These are schematics — there is nothing to explore |
+| Schematic, never a plausible chart | No ticks, no dates, no dollar axis (#24). A realistic line reads as a real security's history and implies a claim we do not make |
+| Labels are **HTML**, never SVG `<text>` | SVG text scales with the viewBox: a 12px label in a 680-wide drawing is ~6px on a 375px phone. Same reason the "today" marker is an HTML dot — `preserveAspectRatio="none"` distorts shape, and `vector-effect` rescues stroke width only |
+| On-chart labels **hide below `sm`**; the legend carries them | Measured: at 375px both schematics correctly show zero labels and the legend carries 2 and 3 percentages respectively. Progressive disclosure, not a second diagram |
+| One `INSET` constant governs SVG geometry **and** the HTML overlay | Otherwise the marker sits a few pixels off the line it marks — which reads as a rendering glitch rather than a bug and survives review indefinitely |
+
+⚠️ **The two schematics are ONE path, and the second is DERIVED from the first**
+(`drawdownGeometry.ts`). The article shows the same imaginary stock zoomed in and pulled
+back, and the argument depends on those being the same stock. Two hand-tuned paths would
+make that a promise nobody checks — nudge one, the other stays put, both still render,
+and the figures quietly describe different companies (11c-iii). **Every percentage is
+computed from the path too**, so a label cannot contradict the line beside it.
+
+⚠️ **The module hands components NAMED LANDMARKS, not an array to index into.** The first
+version reached for `ZOOMED[3]` to find the last local top — correct until somebody adds
+a vertex, then silently the wrong point, with no error and a plausible picture.
+`recentView()` finds it by what it *is* (the highest price after the trough).
+
+⚠️ **A colour that draws a LINE is not automatically a colour you can WRITE in.** WCAG
+asks **3:1** of a graphical object and **4.5:1** of text, so `--brand-bright` is fine as a
+1.5px dashed rule and fails as a 12px label — measured at **3.85:1** on `--bg-stripe`,
+caught by `contrast.spec.ts` on the first full run, not by looking at it. Each horizon
+therefore carries two colours: `color` strokes the line, `ink` writes the label one shade
+darker. This is CLAUDE.md 11l from the other side — there, one function could not answer
+both "what colour is this?" and "what can sit behind white text?"; here one colour has to
+identify a line *and* be read as a word, and only one of those clears 4.5.
+
+⚠️ **A figure drawing REAL data reads it, never types it.** Figure 3's three values come
+from the nightly snapshot, and its bar widths derive from the same values as its labels —
+measured at 375px, `fill/track` equals `pct/deepest` to three decimals on all three rows,
+so the caption's "the bars share one scale" is verifiably true rather than merely
+claimed.
+
+### The shared chart furniture — `components/learn/chartPrimitives.tsx` (2026-08-19)
+
+Extracted when the second article ("Dip, correction, crash") needed the same axis frame,
+palette, zero line, dashed level rules and "today" dot. Copying them would have been the
+cheapest thing to type and exactly the defect 11c names: two sets of chart furniture
+drifting apart, so the pictures teaching a reader what our product looks like slowly stop
+agreeing with each other, with every version still rendering perfectly.
+
+⚠️ **`TodayDot` takes an optional `id`, and that is not decoration — it makes the dot
+MEASURABLE.** A guard that measures the printed label instead is measuring something that
+is `display:none` below `sm`, and a hidden element reports a zero-sized rect at the
+document origin: a confident number about an element nobody can see (14g in miniature).
+
+### Two panels, ONE scale — the comparison figure (2026-08-19)
+
+`TwoRecordsFigure` shows two imaginary companies **at the identical depth** so their own
+records can disagree about what that depth means. Three things make that claim true rather
+than merely drawn:
+
+1. **Today's fall is constructed, not tuned.** `endingAt()` solves the final vertex against
+   the trailing-year peak, so both panels land on `TODAY_PCT` by arithmetic.
+   ⚠️ Its first version took the peak from `peakYFrom` (which walks path *vertices*) while
+   the curve is built by *sampling* — the high at x=68 fell between samples at 67.5 and
+   68.33, so one panel drew **−23.5% under a label reading −25%** beside a panel at exactly
+   −25%. A comparison figure whose halves are not comparable, and nothing errored. The
+   target is now solved against the same function that draws the curve (11c-iii).
+2. **One vertical scale across both panels.** Given its own axis each panel would fill its
+   own box, the markers would land at different heights, and the argument would evaporate
+   while both panels still looked beautiful. Guarded by measuring the two dots.
+3. **Every other number is derived** — each company's average fall and deepest-before-today
+   come from `seriesStats` over its own curve, and the article's prose renders those same
+   values, so reshaping a path restates the sentence instead of contradicting the picture.
+
+⚠️ **The markers show on phones here, unlike the drawdown article's** (`hidden sm:block`
+there). The number *is* the argument in this figure, and hiding it left a phone reader with
+two dots and no way to see they match. It shifts to the left of the dot below `sm`, because
+centred it overhangs a 269px panel by ~6px.
+
+### Candlesticks in a Learn figure — 52 weekly candles (2026-08-19)
+
+`WeekHighFigure` is the only Learn schematic drawn as candlesticks, at the owner's
+direction, and it is the better picture: a candle draws the article's whole distinction
+by itself. The **body** is open-to-close, the **wick** is everything traded, and the
+quoted 52-week high and low are the tips of two wicks that no close ever reached. A line
+chart could only assert that in a caption.
+
+**The palette is the product's**, lifted from `components/stocks/PriceChart.tsx` rather
+than chosen here — `#228B22` up, `#B22222` down, `#006400` / `#8B0000` for wicks and
+borders — because a reader who signs up meets that chart (11m).
+
+⚠️ **Weekly, not daily, and the granularity IS the readability.** 260 daily candles in a
+570px panel is ~2px each and ~1px on a phone: a smear. One candle per week gives exactly
+52 of them, which is literally the window the article is about — measured at **11px per
+candle at 1280px and 2.5px at 375px**, with wicks visible at both.
+
+⚠️ **Two tuning faults, both found by measuring rather than looking.** (i) The first
+version put the up-spike where an ordinary week already held the high, so both extremes
+landed in the same week and the gap collapsed to **0.78%** — about two pixels, with the
+markers overlapping. (ii) The down-wick was first placed mid-range, where an *ordinary*
+week's wick still set the 52-week low: the figure was correct and demonstrated nothing.
+**An extreme has to be made by an extreme**, which is now asserted rather than eyeballed.
+
+⚠️ **Labels anchor to their RULE, not to their marker.** The two extremes fall at opposite
+ends of the plot, so a label pinned to each marker puts one hard against the right edge at
+narrow widths. Anchored to the rule, both stay inside the panel at every width and the
+rule carries the eye across to the wick that set it.
+
+### The Learn illustrations — REGENERATED 2026-08-16
+
+Three topic pictures, one per band. **Generated on `google/gemini-3-pro-image` ("Nano Banana
+Pro") at 4K via Vercel AI Gateway**, then cropped to the shipping size.
+
+⚠️ **This replaced a hand-authored SVG set built earlier the same day.** The owner's brief
+was a picture in the register of a reference image they had generated themselves —
+populated, atmospheric, human — which is not what hand-drawn geometry produces. The SVG set
+was accurate and lifeless; the section below used to describe it, and every value in it was
+correct and is now historical.
+
+| Rule | Value |
+|---|---|
+| Master | **5056 × 3392 lossless PNG** in `reference/learn-masters/` — gitignored, ~47 MB, **irreplaceable** |
+| Shipped crop | **1600 × 1000 (16:10)**, identical on all three. Three bands stack down one page; one odd shape makes a different band height |
+| Ground | Deep navy mass carrying **stepped horizontal strata** — flat contour bands, crisp straight edges, each a step lighter than the one below |
+| Accent | `#0E7C8B` teal — **every share-price line, always** |
+| Warmth | Gold, **lit windows only**. Never a teal window |
+| Figure | A small navy-suited person **seen from behind**, in all three. The recurring human anchor |
+| Words | **None.** Text in an image is unreadable at 335px, invisible to a screen reader, and stale the moment a heading is reworded |
+
+**Two semantic rules hold the set together.** *Teal is always the share price; navy is
+always the company.* And **no green, no red anywhere** — the product tints a **deeper**
+price fall *green*, because deeper is more cyclically favourable, so a picture using the
+conventional green-up/red-down would contradict the tool one click away. It is also the one
+colour pair a colour-blind reader cannot separate. **No arrows**, either: an arrowhead is
+the visual grammar of a forecast, and this product does not forecast.
+
+⚠️ **THE MASTERS CANNOT BE RECREATED, and that governs every decision about them.** The same
+prompt returns a *different* picture — different skyline, different valley shapes, a
+differently posed figure. The prompts are stored beside the masters and document *intent*;
+they are not a recipe for getting these images back. Two consequences that have already
+bitten: **render at the maximum size you will ever need** (4K is the Gateway's ceiling — no
+model there offers 8K), and **fix colour by correcting the file, never by re-rolling.**
+
+⚠️ **FOUR PROMPT INSTRUCTIONS ARE LOAD-BEARING.** Each was learned from a roll that failed
+without it, and each fails *silently* — the picture comes back plausible and wrong:
+
+1. **"SOLID FILLED SHAPES … absolutely NOT line art, no thin stroke outlines."** Without it
+   the model returns white boxes with teal outlines — a visibly different illustrator from
+   the rest of the set.
+2. **"PLAIN LINES with blunt flat ends — no arrowheads, no pointed tips, no triangles."**
+   Saying *"no arrows"* is **not enough**; it drew arrowheads anyway. The prohibition needs
+   a positive description of what the ending *is*.
+3. **"at least three times taller than it is wide"** for towers. *"Tall office building"*
+   yields squat six-storey blocks.
+4. **"the ground surface is completely plain — no plazas, no steps, no trapezoids"**, stated
+   **separately** from the strata. ⚠️ And do not then also say *"stepped bands"* in the same
+   paragraph: image 2 shipped with a physical stepped plinth because the brief asked for
+   both, and the model resolved the contradiction by building stairs.
+
+⚠️ **Describe the SCENE, not the LAYOUT.** Image 3 kept coming back with a hard vertical
+seam at exactly 50% because the brief said *"left side … right side"*. Told there are two
+sides, the model draws the border between them. Rewritten as **one continuous landscape in
+thickening fog**, never naming a region, the seam fell from Δ3.23 to Δ0.51 against a 0.25
+baseline.
+
+⚠️ **Match the pale areas to `--bg-page` `#F0F4F8`, and measure it.** Image 3 is the only one
+with a large flat pale area meeting the page, and at RGB distance **16–21** it read as a
+panel sitting *on* the background rather than part of it — where images 1 and 2 sit at 4–6
+and 11–13. Corrected with a **lightness-weighted** shift of `(+16, +4, −3)`: full strength on
+the background, zero below L=0.72, so the navy and teal came out byte-identical (asserted,
+not assumed). Right edge now measures **1**.
+
+⚠️ **A composition approved on the cheap model is not guaranteed by the expensive one.**
+Drafts ran on `gemini-3.1-flash-image-lite` ($0.034, ~4s); finals on Pro ($0.24 at 4K).
+Pro **reframed image 2** and ran both price lines off the top edge — two teal pipes hanging
+from the sky, the fall invisible, the picture's whole argument gone. Always re-verify the
+finals; the draft only settles the idea. *(And check the uncropped master before blaming
+your own crop — that was the first thing ruled out.)*
+
+⚠️ **Neither Canva nor an image generator could produce the ORIGINAL geometric set**, which
+is why it was hand-drawn: Canva's generator arranges layouts and cannot be handed geometry,
+and four candidates came back with no share price falling in any of them. The owner's own
+generated attempt had the right *composition* — and doors and windows, which is what turns a
+stack of slabs into a building — but shipped green/red arrows, embedded text, and "PROFIT
+INCREASE" beside piles of coins: a compliance problem for a not-financial-advice product
+(decision #24) rather than a matter of taste. **The composition was adopted; the execution
+was rebuilt** — first as SVG, then, with the house style above pinning the palette and the
+bans, as generated artwork that keeps the compliance posture intact.
+
 ## 12. Animations
 
 Subtle, fast, purposeful. No bouncy easings.
@@ -760,6 +1762,92 @@ Subtle, fast, purposeful. No bouncy easings.
 | Chart updates | 300ms | `ease-out` (built into chart libs) |
 
 Use `prefers-reduced-motion` to disable on user request.
+
+### The three Learn skies — and why image 3 is the UNTOUCHED original (2026-08-18)
+
+All three illustrations share one sky family: a cool blue-white. The measurement is
+the **blue cast**, `B − R` on the sky band, plus that sky's distance from
+`--bg-page` (`#F0F4F8`):
+
+| Image | Sky | Blue cast | Distance from page bg | Provenance |
+|---|---|---|---|---|
+| 1 · Falls and recoveries | `#ECF5F9` | +13 | 4 | untouched |
+| 2 · Judging the business | `#E6F0F9` | +19 | 11 | untouched |
+| 3 · Using MajorCycle | `#E2ECF6` | +20 | 16 | **untouched** |
+
+**All three are now the raw generated images. No colour editing survives on any of
+them, and that is the point.**
+
+⚠️ **The history is worth keeping, because two edits were made and both were wrong.**
+On 2026-08-16 image 3's background was shifted toward `--bg-page` because it read as
+a visible panel on the page. That shift also **stripped its blue** — it went to
+`#F1F0F3`, a cast of **+2** against its siblings' +13 and +19, i.e. grey. No guard
+covers image colour, and each picture looks fine *on its own*; the owner found it only
+by comparing the three. On 2026-08-18 it was re-tinted to image 1's exact sky, which
+fixed the colour and cost a little fidelity (193 of 31,717 distinct colours, 0.6%) for
+a defect that was mine to begin with.
+
+**The owner's call, and it was the right one: put the original back.** The shipped
+crop is recoverable from the master exactly — `extract({ left: 0, top: 116, width:
+5056, height: 3160 })` then `resize(1600, 1000)`, established by scoring three
+candidate crops against the shipped file on dark pixels only (centred **0.83** mean
+absolute difference out of 255, against 23.5 top-aligned and 12.8 bottom-aligned). So
+image 3 is now regenerated straight from `reference/learn-masters/`, never
+colour-edited and never re-encoded from an edited file. At +20 it sits **closer to
+image 2 (+19) than any edited version ever did.**
+
+⚠️ **The residual, accepted knowingly:** image 3's sky is 16 from `--bg-page` against
+image 2's 11, so it has slightly more edge against the page than its siblings. That is
+the thing the 2026-08-16 edit set out to remove, and two attempts at removing it cost
+more than it did. **Fidelity beat blending.**
+
+⚠️ **If any of these is ever regenerated or re-edited, re-measure all three skies and
+compare them TO EACH OTHER.** A single image that looks right in isolation is exactly
+what this defect looked like for two days.
+
+### Scroll-reveal on the landing page — BUILT 2026-08-15
+
+Three moments, all on `/`, all specified by the approved storyboard: the **ruler fills**
+grow from 0 to their real width, the **Opportunity Map bubbles** fade in, and the
+**briefing ring** sweeps to its arc. `components/landing/LandingMotion.tsx` (client) runs
+one `IntersectionObserver` at `rootMargin: '0px 0px -12% 0px'` and **only ever adds** the
+`.in` class — it never removes one, so nothing can re-hide as you scroll back up.
+
+⚠️ **The server renders the FINAL state; JavaScript arms the initial one.** `LandingMotion`
+sets `data-motion="on"` on the `.lp` root, and every "hidden" rule is scoped behind it:
+
+```css
+.lp .ruler-fill                          { width: var(--w, 0); }   /* final */
+.lp[data-motion] .ruler-fill:not(.in)    { width: 0; }             /* armed */
+```
+
+**Written the other way round — hide in CSS, reveal in JS — a hydration error or a stalled
+bundle strands the whole page, with no error anywhere.** Reduced motion reveals everything
+immediately rather than animating it fast.
+
+⚠️ **Do not over-claim what this buys, because measuring it turned up something else.**
+A reader with scripting fully **off** currently sees "Loading…" on `/` regardless, because
+⚠️ **RESOLVED 2026-08-18 — `app/loading.tsx` was deleted; this paragraph is the history.**
+It *used to* wrap every route in a Suspense boundary, and React defers any page whose
+HTML overruns the first flush — `/` and the three legal documents all do. That is an open,
+recorded finding (coding-standards §14 item 11), not something the motion design can fix.
+What this pattern *does* protect against is the far likelier case: JavaScript that loads
+and then fails — a hydration mismatch, a thrown effect, an observer that never fires. In
+all of those the CSS never arms, and the page stands.
+
+Guarded by `e2e/landing.spec.ts`: the server payload must contain every section and no
+`data-motion`, and stripping the flag in-browser must leave every section at `opacity: 1;
+transform: none`. ⚠️ `toBeVisible()` is **not** sufficient — Playwright counts an
+`opacity: 0` element as visible, and eight such assertions stayed green through a
+deliberate break.
+
+⚠️ **Publish an animated value as a CUSTOM PROPERTY, never as an inline `style`.** The
+fills first shipped as `style={{ width: '61%' }}`, which is (1,0,0,0) and out-specifies
+*any* class rule — so the armed `width: 0` never applied and each bar animated from its
+final value to its final value. It looked like the animation had simply not been wired
+up. `--w` carries the number and the stylesheet owns the property, so the cascade works
+normally. **A visibly absent animation is more often a specificity loss than a missing
+listener.**
 
 ---
 
@@ -786,6 +1874,156 @@ Phase 1 minimums (not aspirations — requirements):
 
 - All interactive elements have `:focus-visible` ring (2px brand-bright outline)
 - Contrast ratio ≥ 4.5:1 for body text, ≥ 3:1 for large text
+
+> ### ⚠️ MEASURED 2026-08-07 — the contrast floor above is currently BREACHED
+>
+> Read off the live `/methodology` at 1440×900 with the WCAG relative-luminance formula
+> computed in-page (not estimated). **8 elements fail.** Two of them are material rather
+> than cosmetic:
+>
+> | Element | Ratio | Needs | Status |
+> |---|---|---|---|
+> | **Rating tier badges** — white on `--c-tier-3` / `--c-tier-4` | **2.38 : 1** | 4.5 : 1 | ✅ **fixed 2026-08-08 — now 4.73 : 1 worst case** |
+> | **"Full disclaimer" link** (`--text-muted` on `--bg-page`) | **2.69 : 1** | 4.5 : 1 | ✅ **fixed 2026-08-08 — now 6.8 : 1** |
+> | "Financial Terminal" wordmark, 9px | 2.69 : 1 | 4.5 : 1 | ⏭️ Layer H (shared header) |
+
+### The brand lockup is ONE component
+
+`components/BrandLockup.tsx` — the mark, the wordmark and the "Financial Terminal"
+subtitle. Rendered by **both** the public header and the signed-in sidebar.
+
+It was two hand-maintained copies until 2026-08-18, and they had drifted on three
+things nobody lists when comparing two files:
+
+| | Sidebar | Public header |
+|---|---|---|
+| `leading-none` | on the **wordmark** | on the **wrapper** — inherited, so it crushed the subtitle's line box too |
+| logo `flex-shrink-0` | yes | no |
+| lockup gap | `gap-[10px]` | `gap-[10px]` when linked, **`gap-2.5` = 8.75px** on the two confinement pages |
+
+⚠️ **None of those is a wrong line.** Each file is internally coherent and reads
+correctly on its own; the defect existed only in the COMPARISON, which is why review
+never caught it and the owner putting two screens side by side did. That is CLAUDE.md
+11c — extracting the shared piece is the fix, and "I'll just make the second one match"
+is how you get a third copy later.
+
+The **gap lives inside the component**, not on the callers' containers: a shared
+component whose spacing is still supplied by two different parents has only moved the
+drift somewhere less visible.
+
+> ⚠️ **The 9px subtitle was the named `KNOWN_DEFERRED` exemption in `contrast.spec.ts`.**
+> Resolved in the 2026-08-22 sweep; that array is now empty and there are no deferred
+> contrast failures left on any public page.
+>
+> ⚠️ The guard that asserts the 10px gap now measures the **rendered distance** between
+> the mark and the wordmark, not `gap` on a named element. The old form went red on this
+> refactor while nothing on screen had changed by a pixel — a guard that names an
+> IMPLEMENTATION breaks on refactors and teaches you to loosen it (CLAUDE.md 11i-b).
+>
+> **How the tier badges were fixed, and why it is not a colour change.** `/methodology`
+> painted white on the SOLID tier fill. The five `.tier-badge--N` classes the product
+> actually uses are tint-plus-ink and already cleared 4.5:1 — so the page now renders the
+> real component. It is both legible and pedagogically right: the reader learns the badge
+> they will actually meet. **No locked tier colour was touched** (decision #25).
+>
+> **Measured after: 8 failures → 1**, the deferred wordmark. `e2e/contrast.spec.ts`
+> measures every public page on every run, and the exemption is listed BY TEXT so it cannot
+> quietly widen to cover a second element. *(The list read `/`, `/methodology`,
+> `/disclaimer`, `/terms`, `/privacy` when this was written. `/methodology` retired, and
+> the spec now covers the three legal pages as `READING_PAGES`, `/` as a `LAID_OUT_PAGES`
+> entry with its own sentinel, and the four form pages as `FORM_PAGES` — together every
+> entry in `PUBLIC_PAGES`.)*
+>
+> ⚠️ **A state that cannot be REACHED cannot be MEASURED — the auth error banner
+> (2026-08-12).** The red `role="alert"` shared by all four auth forms and `/contact`
+> (`--c-tier-5-ink` on `--tint-tier-5`) had never been contrast-checked by anything,
+> because it does not exist in the DOM until something fails, and a page is only measured
+> in the state it is loaded in. So the one element a reader is guaranteed to be squinting
+> at, in the moment they are most stuck, was the one with no evidence. The dead-link notice
+> gave it a URL that renders it **on load**, so `/login?error=auth_confirm_failed` is now in
+> `FORM_PAGES` and the banner is measured every run. It passes; washing its text to
+> `#c9c9c9` makes the guard name it at **1.4:1**, which is how we know it is genuinely being
+> measured rather than silently absent. **Generalise this:** if a state can only be produced
+> by an interaction, give it a URL, or accept that no page-level guard will ever see it.
+>
+> The first is **§4 of this document — "THE Most Important Spec"**. The five tier labels
+> are the product's entire vocabulary and they are the hardest text on the page to read.
+> The second is **compliance-adjacent** (CLAUDE.md #4/#12): a legally material link must
+> not be the faintest thing on the page.
+>
+> **Scope, decided with the owner:** the Layer G plan puts accessibility fixes in Layer H,
+> and that still holds for the signed-in app. **These two are fixed inside Layer G**,
+> because they sit on pages G is redesigning anyway and "we rebuilt this page and left the
+> illegible badge" is not defensible. The remaining six go to H with the rest of the sweep.
+>
+> ✅ **Overtaken on 2026-08-22: the owner brought the whole sweep forward**, signed-in app
+> included, rather than launch with known failures. The scope note above is the state at
+> the time it was written, and the reasoning in it is still the right reasoning — it is only
+> the boundary that moved.
+>
+> ⚠️ **`--text-muted` (#8A97A8) is 2.69:1 on `--bg-page` and 2.97:1 on `--bg-surface`
+> wherever it appears** — it is not a `/methodology` problem, it is a token problem.
+> Before using it for anything a reader must actually read, check the pairing. It is
+> fine for genuinely decorative text.
+>
+> ### Layer G, commit group 1 (2026-08-12) — the guard was extended and found six more
+>
+> The measurement had only ever run on the five READING pages. Extending it to the six
+> form pages (`/login`, `/signup`, `/reset-password`, `/contact`, `/pricing`,
+> `/deletion-requested`) found six failures that had been there since those pages were
+> built, all `--text-muted` at **2.97:1**, all now `--text-secondary`:
+>
+> | Element | Where | Why it counts as material |
+> |---|---|---|
+> | Every form field label ("Email", "Password", "Name", "Message") | `ui/label.tsx` — one fix, ~20 labels app-wide | §14 lists "all form inputs have a visible label" as a Phase 1 floor; 2.97:1 is only nominally visible |
+> | "or continue with" | `AuthDivider` | The only thing saying the Google button is an alternative, not an extra step |
+> | "/month", "USD", "Billed monthly", "Already have an account?", "No refunds — cancel any time…" | `/pricing` | These are the TERMS OF THE DEAL on the page where somebody hands over a card |
+> | "Our ratings… nothing is charged until day 7" | `/signup` | The sentence that stops "free account" being read as "free trial, card required" |
+>
+> Scope is unchanged: the muted sweep is still Layer H **except on pages Layer G is
+> rebuilding**. These are on the sign-in and payment path, and every fix was a single
+> colour token — no size, weight or spacing moved.
+>
+> **State after the 2026-08-22 sweep, measured on every public page at 1280px and 375px:**
+> **zero failures at either width.** The 9px "Financial Terminal" wordmark, the last
+> deferral, is fixed; `KNOWN_DEFERRED` is an empty array and stays that way.
+>
+> #### The second deferral — the product's score palette, on the landing page (2026-08-15)
+>
+> The landing's worked run draws the screener's `.score-num` chips with the screener's own
+> colours: **white numerals on `scoreColor()`**. Three of the five tier fills are far too
+> light to sit behind white — **Neutral measures 2.38:1**, the identical figure G2 fixed on
+> the tier *badges*. This had never been caught because the contrast guard walks **public**
+> routes and the screener is gated, so `/` was the first measured page ever to draw one.
+>
+> ⚠️ **It was deferred by owner decision, not by oversight.** The instruction was *"whatever
+> is present on the live site, the color should exactly match that"* — a landing page that
+> quietly repaints a paid surface is a scope breach, however real the defect. The debt was
+> carried in the open instead, via a `[data-legacy-contrast]` marker on `Mag7Table`'s
+> wrapper: excluded from pass/fail but **counted**, bounded at 42, and required to be
+> non-empty so it could not sit there excusing nothing (14g).
+>
+> ✅ **PAID OFF 2026-08-22.** The owner authorised the palette change; three of the five
+> tier fills were darkened by the minimum factor that clears white text, and the marker was
+> deleted. It no longer exists in any markup.
+>
+> **Record a defect you are not authorised to fix; do not fix it quietly and call it
+> tidying.** An exemption with no ceiling and no floor is a blindfold, not a decision —
+> and one that outlives its defect is worse, because it goes on excusing whatever wanders
+> into it.
+>
+> ⚠️ **Two more measurement lessons from the same sweep.** (i) The Neutral badge scores
+> 4.73:1 on white and **4.32:1** on `--bg-page` — the badge did not change, what sat behind
+> it did. Composited colours must be measured where they actually sit. (ii) The dark
+> honesty band reported *every* line failing at ~1.1:1, on a band that is obviously navy —
+> the gradient-shorthand bug below, one level up.
+>
+> ⚠️ **A gradient button reports NO background colour.** `bg-gradient-to-br` paints via
+> `background-image`, leaving the computed `background-color` transparent — so any tool
+> asking the DOM what is behind a white label reads straight through to the page and
+> scores ~1:1. `Button`'s `primary` variant therefore also declares
+> `[background-color:var(--brand-mid)]`, the gradient's lighter stop, so the element
+> reports its own worst case (6.7:1). Visually a no-op; both stops are opaque.
 - All charts have a `aria-label` describing their data
 - All form inputs have a visible `<label>`
 - Keyboard navigable: Tab moves through everything in document order
@@ -818,7 +2056,14 @@ Disclaimers are mandatory on any page showing a rating. Visual style:
 - **Footer (every page):** Full disclaimer block, 12px muted text, with link to `/disclaimer`.
 - **First-login modal:** Modal with full methodology + disclaimer summary, "I understand and acknowledge" checkbox required to proceed.
 - **Methodology modal (in-app):** The primary scoring explainer is a modal opened from the "Methodology" button in the Stock Detail subnav — visual parity with the reference methodology modal (`reference/original-design.html:794`), content corrected to the current engine, formula blocks included (it's behind sign-up). It carries its own footer disclaimer. See `web/components/stocks/MethodologyModal.tsx`.
-- **Methodology page (public, deferred):** A separate **high-level, no-formula** public page for first-time visitors (before sign-up) is a later Layer F item — distinct from the in-app modal; do not expose the full formula detail publicly.
+- **Public methodology — now `/#how-it-works`, not a page (2026-08-13).** The
+  **high-level, no-formula** explainer for first-time visitors lives in sections ⑤+⑥ of
+  the landing page. The standing rule is unchanged: **do not expose the full formula
+  detail publicly** — the formulas stay in the in-app modal, behind sign-up. ❌ This entry
+  used to describe a separate `/methodology` page as "a later Layer F item"; that page was
+  built, then folded into `/` and retired with a 308 carrying the fragment. The reason was
+  that the two competed for the same search intent while neither was the page we most want
+  to rank.
 
 Wording must include: "Information only", "Not financial advice", "Past performance does not indicate future results", "Conduct your own research".
 
@@ -836,8 +2081,10 @@ The reference Run tab (two co-equal cards: a large **CSV upload** drop-zone + a
 raw **Analysis Settings** card, plus a cosmetic clock-based progress bar) is a
 power-user layout. It fails our **mass-retail beginner** audience: the blank-canvas
 problem ("I have no tickers.csv and can't name 50 tickers"), over-promoted CSV,
-and intimidating raw thresholds. Layer D **deviates from #1 visual parity for this
-tab only**, keeping all brand tokens/typography, and reframes it as a single
+and intimidating raw thresholds. Layer D **departs from the mock-up for this tab only**
+(a deviation that needed defending under the old #1; since 2026-08-22 the mock-up is a
+reference rather than a contract, so this is simply a recorded decision), keeping all
+brand tokens/typography, and reframes it as a single
 **"Build your analysis"** flow (`web/components/run/`):
 
 - **Choose what to analyse** — ready-made **baskets** lead (`BasketPicker`: index /
@@ -953,3 +2200,145 @@ inbox. That wrapper is the single source of chrome for any future app-sent HTML 
 ---
 
 **End of design-system.md.**
+
+### The end-of-article call to action (2026-08-29)
+
+Every `/articles` piece closes with one block: a short line, a primary button to
+`/signup`, and "Free, and it takes no card." — a claim the free tier honours.
+Owner's request. It sits in a `--brand-light` panel at the end of the argument
+rather than interrupting it, which is the brief's "a quiet invitation, never a
+wall".
+
+⚠️ **It renders OUTSIDE `[data-article-body]`**, passed to `ArticleDoc` as a
+`cta` prop. Two guards read that container's text — the reading-time check and
+the duplicate-prose check — so an identical block inside every article would
+inflate every stated reading time and make every pair of articles look like they
+share long runs of copy. On screen the position is the same either way; only the
+guards can tell the difference.
+
+⚠️ **The heading is a `<p>`, not an `<h2>`.** A heading here would put "Try it
+yourself" into the document outline beside "What we measured" — which is what a
+screen-reader user navigates by and what a crawler reads as the page's structure.
+
+**Google's Preferred Sources button** sits in the same block and is switched off
+(`lib/preferredSource.ts`). It costs exactly two CSP origins, measured rather
+than guessed, and they are granted only on `/articles` — never site-wide, and not
+at all while the flag is false.
+
+### The featured figure is SHORT; the link does not move (2026-08-29)
+
+The drawing hung 100px below the card's own call to action.
+
+⚠️ **My first fix was reversed by the owner, and the reversal is the lesson.** I
+stretched the text column and pushed "Read the analysis" to the bottom so the two
+ended level. It worked — 0.0px at three widths — and it solved the problem by
+moving the one element on the card that should not move. *"I don't want you to
+move Read the analysis down, I want the graph to be of less height."* **Making
+two things line up is not the same as making the wrong one move.**
+
+⚠️ **The second attempt was still tuning the wrong number.** The plot went 220 →
+180, which was as short as it could go: the ASX 200 and S&P 500 end labels are
+0.7 of a point apart out of a 6.0 point range — a ninth of the plot — so
+shrinking the plot squeezes them, and 155px was the hard floor.
+
+| plot height | label clearance |
+|---|---|
+| 220px | 10.1px |
+| 180px | 6.2px |
+| 160px | 3.9px |
+| 150px | 2.7px — under the guard |
+| 120px | −0.6px — they overlap |
+
+The owner then sent a mock-up of the size they wanted, and it was **120px** —
+below the floor. So the height stopped being the thing to tune. `declutter()`
+spaces colliding labels apart at a fixed pixel pitch, the dot and the line stay
+exactly where the data puts them, and the plot is free to be whatever the layout
+wants. The figure now ends **0.9px** from the link at 1280px, the link has not
+moved (13px under the pills, as always), and clearance is a constant **7.2px at
+every width** rather than something that shrank with the plot.
+
+⚠️ **The cost is that a label sits up to 5.3px off its own dot**, and that is a
+real trade rather than a free win: fine at a few pixels, a lie at twenty, because
+the reader would read the wrong number against the wrong line. `articles.spec.ts`
+bounds it at 10px, and the figure looks perfectly tidy whether the bound holds or
+not — which is why it needs a test rather than an eye.
+
+### Two tables a reader compares must share their columns (2026-08-29)
+
+The article says *"And then the miners, on the same scale"*, and the two tables
+sized themselves independently: **Typical fall landed 43.6px apart**, because
+"Mineral Resources — median" is longer than "Bendigo & Adelaide". Each table was
+individually perfect, which is why nothing looked wrong — the eye simply cannot
+run down two columns that do not line up. The owner found it by reading.
+
+`DataTable` columns now take an optional `width`, which switches the table to
+`table-layout: fixed`. Both tables declare 46/27/27 and a 440px `minWidth` —
+derived from the widest content either one holds (a 186px name, a 117px header),
+below which a header that cannot wrap would overflow its own cell. Asserted at
+1280px **and** 375px, because percentages are exactly where two tables agree at
+one width and part company at another.
+
+---
+
+## The delisting notice — `DelistedNotice`
+
+A slim red banner above everything else on a retired ticker's Stock Detail page, and at the
+top of the downloadable report. Added 2026-08-31 (audit F-035).
+
+> ⓘ  **Bank of New York Mellon Corp no longer trades.** Every figure below is frozen at
+> 23 Jul 2026 and is not current.
+
+**One sentence, and red — both owner decisions, both taken before the code was written the
+second time.**
+
+The copy went first. The original ran to four paragraphs: the three-source test, the date the
+sweep noticed, why the history is kept, the ways a company can stop trading. Owner: *"I still
+feel it is way too much"*, then *"First agree with me what you will show and than update."*
+⚠️ **Everything cut was us explaining OURSELVES**, not telling the reader anything they need.
+All true, none load-bearing. A reader needs two facts — this is dead, and the numbers below
+are old, from this date — and every extra line made those two harder to find. Worth holding as
+a general habit for this product: **the reason we did something belongs in the code and the
+docs, not on the page.**
+
+Then the look. My build was a full card in the neutral `role="note"` style, argued for on the
+grounds that the site owns no warning colour and inventing one would put a hue outside
+`check:tier-palette`'s reach. Owner: *"I don't like how it looks, can't you just make it a
+notice in red?"* — with the checkout-cancelled banner from `/account` as the shape.
+
+⚠️ **The reference answered my objection rather than overriding it, and that is the lesson.**
+That banner (`SubscriptionCard`) is already built from the **rating tier tokens** — tier 3, the
+neutral amber — used purely as a UI tint with no rating meaning. So the red here is
+`--c-tier-5-ink` / `--tint-tier-5`: the same established set, one hue over. No new colour, no
+literal hex, nothing the palette guard cannot see, and a shape the product already uses for
+this exact job. **The objection was sound and the answer was already in the codebase**; I had
+reached for "invent or refuse" without looking for the third option.
+
+**Contrast measured before it was written**, on the grounds it actually sits on: **8.06:1** on
+a white card, **7.32:1** on the page ground, against a 4.5 floor. A margin, not a boundary —
+this repo once solved a colour against white and shipped 4.41 (11l).
+
+⚠️ **`role="note"`, not `role="alert"`** — the one place it departs from the banner it copies.
+`alert` is an ARIA live region for messages that *arrive*; this is static content present on
+first paint, and announcing it as an interruption makes the page noisier for a screen-reader
+user on every visit.
+
+⚠️ **The icon is an inline SVG, not `lucide-react`.** No component the report renders imports
+lucide today — the four that do are page-only — so importing it here would pull that library
+into the esbuild bundle for the first time. That bundle rendered a blank page for every stock
+for four days when `next/link` arrived through a component three imports away (11d).
+
+⚠️ **NOT wrapped in `<ReportSection>`.** That helper always emits its wrapper div whatever it
+is given, so wrapping a component which returns null for 866 of 871 stocks would have put an
+empty padded box at the top of almost every report ever downloaded — a defect introduced by the
+fix for another one.
+
+⚠️ **The date is the point of the component, and the first build printed the wrong one.** It
+showed `inactiveSince` — the day the sweep *noticed* — under *"every figure is frozen at"*,
+reading **2026-08-31** while `StockHeader` two inches below read **Updated Jul 23**. Both dates
+are real and answer different questions. It now uses `updatedAt`, the same value the header
+formats, so one page cannot state one fact two ways (11c). The formatter parses the **string**
+and never calls `new Date()`: `new Date('2026-07-23')` is UTC midnight and renders as the 22nd
+west of Greenwich — the off-by-one-day class of 14a.
+
+**Default is ACTIVE.** Only an explicit `is_active === false` renders it. Telling a customer
+that a healthy company has stopped trading is worse than the status quo it replaced.

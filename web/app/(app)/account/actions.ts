@@ -1,5 +1,6 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 
@@ -8,7 +9,11 @@ import { getStripe } from '@/lib/stripe';
 import { sendDeletionScheduledEmail } from '@/lib/email/accountEmails';
 import { sendReferralEmail } from '@/lib/email/referralEmails';
 import { sendTrialEndingEmail } from '@/lib/email/billingEmails';
-import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
+import {
+  ACCOUNT_DELETION_GRACE_DAYS,
+  DELETION_NOTICE_COOKIE,
+  deletionNoticeCookieOptions,
+} from '@/lib/account';
 
 /**
  * Stripe fires the one-time `trial_will_end` reminder ~3 days before a trial ends, and
@@ -176,6 +181,17 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
   // account's sessions on EVERY device, not just the one that requested it
   // (unlike the normal Sign-out button, which is local — see auth/signout).
   await supabase.auth.signOut({ scope: 'global' });
+
+  // Mark THIS browser as the one that just did it, so the confirmation page can
+  // tell this reader from a stranger who typed the URL (see DELETION_NOTICE_COOKIE).
+  // Set AFTER the sign-out, because signOut writes its own cookie mutations and
+  // this must not be caught up in them; set BEFORE redirect(), which throws.
+  //
+  // ⚠️ Idempotency note: the marker is written on EVERY call, including the
+  // already-scheduled path that skips the email. That is correct — someone who
+  // re-submits is still entitled to see the confirmation.
+  (await cookies()).set(DELETION_NOTICE_COOKIE, '1', deletionNoticeCookieOptions());
+
   redirect('/deletion-requested');
 }
 

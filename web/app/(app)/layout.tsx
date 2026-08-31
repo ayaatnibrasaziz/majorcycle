@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { shouldShowOnboarding } from '@/lib/entitlement';
 import { getViewerEntitlement } from '@/lib/entitlement.server';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
@@ -68,7 +69,13 @@ export default async function AppLayout({
   // finishes hydrating whenever it finishes; upgrading @radix-ui/react-dialog to
   // 1.1.23 didn't help either (radix-ui/primitives#1386, still open). With no page
   // rendered behind the dialog there is nothing to race.
-  if (!viewer.acknowledgedDisclaimerAt) {
+  //
+  // ⚠️ The condition is `shouldShowOnboarding`, not a bare null check on the
+  // timestamp. A bare null check cannot tell "this reader has never agreed" from
+  // "we could not read this reader's row", and on 2026-08-27 it showed the gate to
+  // an account that had agreed in June — whose only way past it then OVERWROTE the
+  // June record with an August one. See lib/entitlement.ts.
+  if (shouldShowOnboarding(viewer)) {
     return (
       <div className="min-h-screen bg-[var(--bg-page)]">
         <OnboardingModal />

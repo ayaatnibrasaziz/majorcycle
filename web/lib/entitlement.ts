@@ -47,7 +47,9 @@ export type AccessDenialReason =
   | 'no_subscription'
   | 'canceled'
   | 'payment_failed'
-  | 'billing_blocked';
+  | 'billing_blocked'
+  | 'setup_incomplete'
+  | 'subscription_paused';
 
 /** Statuses that carry full access with no further checks. */
 const LIVE_STATES = new Set(['active', 'trialing']);
@@ -95,5 +97,213 @@ export function accessDenialReason(
   const status = profile?.subscription_status ?? null;
   if (status === 'past_due') return 'payment_failed';
   if (status === 'canceled') return 'canceled';
+
+  // ⚠️ Stripe has EIGHT statuses and this function knew four. The other four all
+  // fell through to `no_subscription` below, which shows a reader with a stuck
+  // subscription the same screen as someone who has never subscribed — "you don't
+  // have a subscription" to a person who does, and who in three of these cases has
+  // already tried to pay us. Found by the Layer G coverage map (F-005):
+  // `incomplete_expired` had never appeared in a single test, the other three once
+  // or twice. **The access decision was always right; only the sentence was wrong**,
+  // which is why nothing was failing and nobody noticed.
+  //
+  // `unpaid` deliberately REUSES `payment_failed` rather than getting its own copy:
+  // it is what `past_due` becomes once Stripe stops retrying, so the reader's
+  // situation and their next action — update the card — are identical. A separate
+  // reason would be a distinction that exists in Stripe's model and not in theirs.
+  if (status === 'unpaid') return 'payment_failed';
+  if (status === 'incomplete' || status === 'incomplete_expired') return 'setup_incomplete';
+  if (status === 'paused') return 'subscription_paused';
+
   return 'no_subscription';
+}
+
+// ─── The viewer record, and the two decisions that hang off a failed read ────
+
+/**
+ * Everything a signed-in surface needs to know about the current viewer.
+ *
+ * Lives HERE rather than in `entitlement.server.ts` so the pure decisions below can
+ * be driven by a credential-free Playwright spec. `entitlement.server.ts` carries
+ * `import 'server-only'`, and importing that from a spec takes the whole suite down.
+ */
+export interface ViewerEntitlement {
+  /** Null when signed out. */
+  userId: string | null;
+  entitled: boolean;
+  /** Null when entitled; otherwise why not — drives the locked panel's copy. */
+  reason: AccessDenialReason | null;
+  /** True when the account is mid-deletion; callers must send these to /reactivate. */
+  deletionScheduled: boolean;
+  /** Present so callers needing onboarding state don't re-query. */
+  acknowledgedDisclaimerAt: string | null;
+  subscriptionStatus: string | null;
+  /**
+   * Dispute lock. Exposed separately from `subscriptionStatus` because it is an
+   * orthogonal dimension — a disputed account keeps its Stripe status — and any
+   * surface that DISPLAYS the status must say "on hold" instead of announcing the
+   * stale "Active" to someone who is locked out.
+   */
+  billingBlocked: boolean;
+  /** Shown on the header account menu. */
+  email: string | null;
+  /** Prefills the in-app support form, so a locked reader retypes nothing. */
+  displayName: string | null;
+  /**
+   * TRUE when we hold a valid session but could not read that session's profile row.
+   *
+   * ⚠️ This is the field the onboarding bug of 2026-08-27 needed and did not have.
+   * `null` on every other field then meant two irreconcilable things at once — "we
+   * read your row and this is empty" and "we never got your row" — and the two want
+   * OPPOSITE handling. For entitlement, unreadable must deny (fail closed). For the
+   * disclaimer, unreadable must NOT re-prompt, because re-prompting overwrites the
+   * acknowledgement it was wrongly asking for. One boolean separates them.
+   */
+  profileUnreadable: boolean;
+}
+
+export const SIGNED_OUT_VIEWER: ViewerEntitlement = {
+  userId: null,
+  entitled: false,
+  reason: 'no_subscription',
+  deletionScheduled: false,
+  acknowledgedDisclaimerAt: null,
+  subscriptionStatus: null,
+  billingBlocked: false,
+  email: null,
+  displayName: null,
+  profileUnreadable: false,
+};
+
+/** The columns `getViewerEntitlement` selects. */
+export interface ViewerProfileRow {
+  email?: string | null;
+  display_name?: string | null;
+  subscription_status?: string | null;
+  grace_until?: string | null;
+  billing_blocked?: boolean | null;
+  acknowledged_disclaimer_at?: string | null;
+  deletion_scheduled_at?: string | null;
+}
+
+/**
+ * Turn one profile read into a viewer record — CLAUDE.md 11e, applied to the row
+ * every signed-in page depends on.
+ *
+ * ⚠️ A NULL ROW HERE ALWAYS MEANS "COULD NOT READ", NEVER "NO SUCH USER". Every
+ * account gets its `profiles` row from the `on_auth_user_created` trigger
+ * (migration 20260614030000), verified against the live database on 2026-08-28:
+ * 7 auth users, 7 profiles, none missing. So if the caller already holds a verified
+ * `userId`, that row exists by construction, and a read that comes back empty did
+ * not see it — an expired-JWT fallback to `anon` (which RLS answers with zero rows,
+ * measured: HTTP 406 / PGRST116), a statement timeout, or a transient network fault.
+ *
+ * Entitlement still FAILS CLOSED on that path, unchanged and deliberate. The only
+ * thing that changes is that the caller can now tell the difference.
+ */
+export function viewerFromProfileRead(
+  userId: string,
+  profile: ViewerProfileRow | null | undefined,
+): ViewerEntitlement {
+  if (!profile) {
+    return { ...SIGNED_OUT_VIEWER, userId, profileUnreadable: true };
+  }
+
+  const entitlementFields: EntitlementProfile = {
+    subscription_status: profile.subscription_status,
+    grace_until: profile.grace_until,
+    billing_blocked: profile.billing_blocked,
+  };
+
+  return {
+    userId,
+    entitled: hasAccess(entitlementFields),
+    reason: accessDenialReason(entitlementFields),
+    deletionScheduled: !!profile.deletion_scheduled_at,
+    acknowledgedDisclaimerAt: profile.acknowledged_disclaimer_at ?? null,
+    subscriptionStatus: profile.subscription_status ?? null,
+    billingBlocked: !!profile.billing_blocked,
+    email: profile.email ?? null,
+    displayName: profile.display_name ?? null,
+    profileUnreadable: false,
+  };
+}
+
+/**
+ * Should the first-login disclaimer modal be shown to this viewer?
+ *
+ * Two conditions, not one — and the second is the whole fix. Asking an unreadable
+ * viewer to acknowledge is not a harmless extra prompt: the only button on that
+ * modal WRITES, so a false prompt destroys the original acknowledgement date. That
+ * happened on the live site to the owner's own account on 2026-08-27, replacing a
+ * June record with an August one.
+ *
+ * A viewer we cannot read is therefore shown the app, not the gate. They may see a
+ * locked/free view for that one render — the existing fail-closed behaviour, which
+ * is recoverable — and the next request, whose token has been refreshed by the
+ * proxy, renders correctly. Nothing is written, so nothing can be lost.
+ */
+export function shouldShowOnboarding(viewer: ViewerEntitlement): boolean {
+  if (!viewer.userId) return false;
+  if (viewer.profileUnreadable) return false;
+  return !viewer.acknowledgedDisclaimerAt;
+}
+
+/** What `acknowledgeDisclaimer` should do once it has read the row. */
+export type AcknowledgeWriteAction =
+  | 'refuse_unreadable'
+  | 'skip_already_acknowledged'
+  | 'write';
+
+/**
+ * The write half of the 2026-08-27 incident — and the half that had no test until
+ * the Layer G delta audit on 2026-08-31 (finding F-033).
+ *
+ * ⚠️ **`shouldShowOnboarding` above and this function fail in OPPOSITE directions,
+ * which is exactly why testing one proves nothing about the other.** A wrong
+ * *read* shows the gate to somebody who already agreed — annoying, recoverable, and
+ * visible. A wrong *write* destroys the only record that they ever agreed, which is
+ * a compliance record under decisions #23/#24, silent, and unrecoverable. That is
+ * not hypothetical: on 2026-08-27 an unreadable profile put the modal in front of an
+ * account that acknowledged on 2026-06-15, and the modal's only button replaced the
+ * June date with that day's.
+ *
+ * ⚠️ **Extracted so it can be driven by a credential-free spec.** The rule lived
+ * inside a `'use server'` action that builds its own Supabase client, so no test
+ * could reach it without a real database and a real session — which is why four
+ * genuine protections sat unexercised. Same move, same reason, as
+ * `viewerFromProfileRead` above.
+ *
+ * ⚠️ **Deliberately does NOT cover "is there a session".** That guard stays one line
+ * above the call site, because the read cannot even be issued without a user id —
+ * putting it here as well would be a second copy of one rule, which is the drift
+ * this codebase keeps paying for (CLAUDE.md 11c). What is here is every decision
+ * taken *after* the row comes back.
+ *
+ * @param profile    the `profiles` row, or null/undefined when the read returned none
+ * @param readFailed true when the read itself errored
+ */
+export function acknowledgeWriteDecision(
+  profile: { acknowledged_disclaimer_at?: string | null } | null | undefined,
+  readFailed: boolean,
+): AcknowledgeWriteAction {
+  // Never write blind. An unreadable row here is the SAME failure that produces a
+  // false prompt in the first place, so writing anyway would be writing on exactly
+  // the evidence we already know to be untrustworthy. "Please try again" is honest
+  // and recoverable; a lost date is neither.
+  //
+  // ⚠️ `readFailed` and a missing row are one outcome on purpose, and that is the
+  // opposite of 11e's usual advice to separate them. Here they genuinely warrant the
+  // same handling: every account gets its row from the `on_auth_user_created`
+  // trigger, so for a caller holding a verified session the row exists by
+  // construction — an empty read did not see it, it did not discover an absence.
+  if (readFailed || !profile) return 'refuse_unreadable';
+
+  // Already acknowledged. The modal should not have been shown at all, so report
+  // success rather than an error: the router refresh then clears it, instead of
+  // trapping the reader behind a failure they cannot act on. Critically, this
+  // returns WITHOUT writing — it is what makes the acknowledgement write-once.
+  if (profile.acknowledged_disclaimer_at) return 'skip_already_acknowledged';
+
+  return 'write';
 }

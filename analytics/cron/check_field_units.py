@@ -55,27 +55,60 @@ INVARIANT_RULES = (
 
 
 def _get_supabase() -> Client:
-    return create_client(
-        os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-    )
+    # Accept either name — see the same note in daily_refresh.py. The workflow sets
+    # SUPABASE_URL; a hand-run off .env.local has only NEXT_PUBLIC_SUPABASE_URL.
+    url = os.environ.get("SUPABASE_URL") or os.environ["NEXT_PUBLIC_SUPABASE_URL"]
+    return create_client(url, os.environ["SUPABASE_SERVICE_ROLE_KEY"])
 
 
-def _load_fundamentals(supabase: Client) -> list[dict[str, Any]]:
-    """Every non-index stock's fundamentals, paginated (PostgREST caps at 1000)."""
+def _load_fundamentals(supabase: Client) -> tuple[list[dict[str, Any]], int]:
+    """Every ACTIVE non-index stock's fundamentals, paginated (PostgREST caps at 1000).
+
+    Returns the rows plus how many retired tickers were held back, because the count
+    is the thing that stops this exclusion going quiet.
+
+    ⚠️ **`is_active` was added on 2026-08-30 and this reader never received it** — found
+    by the Layer G Layer 4 delta on 2026-08-31. `daily_refresh` skips a retired ticker,
+    so its fundamentals are frozen from that day on; this check went on judging them.
+    That is CLAUDE.md 11c-iv exactly: the rule existed, and a second consumer simply was
+    not given it.
+
+    ⚠️ **Why it matters is the ALARM, not the arithmetic.** Every invariant here has the
+    same implicit remedy — *tonight's refresh will repair it* — and for a ticker that is
+    never refreshed again that remedy does not exist. So a retired ticker whose cap is
+    ever blank becomes a permanent nightly breach nobody can act on, and a red X that
+    fires every night for something unfixable is how people learn to ignore red (11z).
+    It had not bitten yet: all five retired rows still carry complete fundamentals, so
+    this is a latent defect closed before it fired rather than after.
+
+    ⚠️ **Counted, not silently dropped.** An exclusion that stops reporting is how
+    unmeasured starts reading as clean (14g), and this file exists because that already
+    happened once — `check_invariants` reported zero violations over a universe missing
+    the very field it reads. The caller prints the held-back count on every run.
+
+    ⚠️ **Defaults to KEEPING**, matching `daily_refresh._load_universe`: a row whose
+    `is_active` is somehow absent is treated as active and checked. Failing the other way
+    would let a schema slip silently empty this check's universe.
+    """
     rows: list[dict[str, Any]] = []
+    retired = 0
     start = 0
     while True:
         res = (
             supabase.table("stocks")
-            .select("ticker,fundamentals")
+            .select("ticker,fundamentals,is_active")
             .neq("market", "index")
             .range(start, start + _PAGE - 1)
             .execute()
         )
         batch = cast(list[dict[str, Any]], res.data or [])
-        rows.extend(batch)
+        for r in batch:
+            if r.get("is_active", True):
+                rows.append({"ticker": r["ticker"], "fundamentals": r.get("fundamentals")})
+            else:
+                retired += 1
         if len(batch) < _PAGE:
-            return rows
+            return rows, retired
         start += _PAGE
 
 
@@ -95,9 +128,14 @@ def check_invariants(rows: list[dict[str, Any]]) -> list[str]:
     zero_margins: dict[str, list[str]] = {}
     fcf_mixed: list[str] = []
     missing_fin_cur: list[str] = []
+    missing_cap: list[str] = []
     for r in rows:
         f = r.get("fundamentals") or {}
         ticker = str(r.get("ticker", "?"))
+        # Index tickers (^GSPC and friends) are price-only rows and never carry a
+        # cap; counting them would put a permanent floor under the proportion.
+        if not ticker.startswith("^") and f.get("market_cap") is None:
+            missing_cap.append(ticker)
         if not f.get("financial_currency"):
             missing_fin_cur.append(ticker)
         for name in ("gross_margin", "operating_margin", "net_margin", "ebitda_margin"):
@@ -122,6 +160,35 @@ def check_invariants(rows: list[dict[str, Any]]) -> list[str]:
             f"in the reporting currency and market cap in the price currency "
             f"(e.g. {', '.join(sorted(fcf_mixed)[:5])})"
         )
+
+    # market_cap coverage. A missing cap is not a cosmetic gap: the screener
+    # ranks by it, `fcf_yield_pct` is computed from it, and Financial Health
+    # consumes that. It is also SILENT — a null renders as a blank cell and
+    # drops the company out of any size-ranked cohort without an error.
+    #
+    # On 2026-08-27 the nightly refresh blanked 15 of 863 (yfinance's `info`
+    # omitted the key) and nobody noticed for two days, until a study that ranks
+    # by size produced a figure that would not reproduce. The write path now
+    # refuses to overwrite a stored cap with nothing, and the provider falls back
+    # to `fast_info` — this asserts the OUTCOME, so it stays valid whatever the
+    # next cause turns out to be (14e-3: assert the invariant on the DATA).
+    #
+    # ⚠️ THE FLOOR IS 0.5%, NOT THE 5% USED BELOW, AND THAT WAS MEASURED RATHER
+    # THAN CHOSEN. The real incident was 15 rows of 871 — **1.7%** — so a 2%
+    # threshold (the first value written here) would have passed the very event
+    # this check exists to catch. A guard tuned above the defect it is named
+    # after is worse than no guard: it reports "clean" with authority.
+    # 0.5% is ~4 rows, which leaves room for a couple of genuinely capless
+    # tickers without crying wolf, and fires on anything resembling 2026-08-27.
+    if rows:
+        cap_share = len(missing_cap) / len(rows)
+        if cap_share > 0.005:
+            problems.append(
+                f"market_cap: missing on {len(missing_cap)} of {len(rows)} row(s) "
+                f"({cap_share:.0%}) — these drop out of every size-ranked cohort "
+                f"and lose fcf_yield_pct with it, silently "
+                f"(e.g. {', '.join(sorted(missing_cap)[:5])})"
+            )
 
     # Coverage, checked LAST because it explains the two checks above.
     #
@@ -200,13 +267,20 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     logging.basicConfig(level=logging.INFO, format="%(message)s")
 
-    rows = _load_fundamentals(_get_supabase())
+    rows, retired = _load_fundamentals(_get_supabase())
     breaches, thin, checked = check(rows)
     invariants = check_invariants(rows)
 
     logger.info(
-        "check_field_units: %d field(s) checked across %d stocks; invariants: %s",
+        "check_field_units: %d field(s) checked across %d ACTIVE stocks; invariants: %s",
         checked, len(rows), ", ".join(INVARIANT_RULES),
+    )
+    # Printed every run, including when it is zero. An exclusion that only shows up
+    # when it is non-empty is one nobody notices growing (14g).
+    logger.info(
+        "check_field_units: %d retired ticker(s) held back — they are no longer "
+        "refreshed, so no invariant here has a remedy for them",
+        retired,
     )
     for t in thin:
         logger.info("  thin sample, skipped — %s", t)

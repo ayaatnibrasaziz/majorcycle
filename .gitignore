@@ -51,3 +51,61 @@ Thumbs.db
 # They live on the owner's machine only. See memory: project_business_setup.
 BUSINESS_SETUP_GUIDE.md
 SETUP_ONE_PAGER.md
+
+# Design/AI tooling installed 2026-08-09 (taste-skill + impeccable).
+# Mine, not the product: ~470 files, 10 MB. .claude/* is already ignored above.
+.agents/
+.codex/
+skills-lock.json
+.github/agents/
+.github/hooks/
+.github/skills/
+
+# The impeccable detector's own config + cache. Same reasoning as .agents/ above:
+# the tool is mine, not the product. The DECISIONS it records (which findings are
+# accepted and why) live in docs/roadmap.md GA-2, which is committed — so the
+# reasoning survives even though the machine-readable file does not.
+.impeccable/
+
+# The 4K masters behind the three /learn illustrations (2026-08-16). ~47 MB of
+# lossless PNG, too heavy for git, and the site ships the 1600x1000 crops in
+# web/public/learn/ instead.
+#
+# ⚠️ IRREPLACEABLE, and that is the whole reason they are kept at all. These are
+# generated images and generation is NOT reproducible: the prompts are stored
+# beside them and re-running one returns a DIFFERENT picture, not this one. So
+# if this folder is lost, the only remaining copies of these exact images are
+# the cropped, colour-corrected 1600x1000 versions that are committed — fine for
+# the Learn bands, useless for a hero, a share card, a reframe or print.
+#
+# Ignored, not deleted. Back it up with the owner's own files, not with git.
+reference/learn-masters/
+
+# Excel writes a lock file beside any workbook it has open. The article working
+# file is reviewed while it is being rebuilt, so this appears and disappears.
+~$*
+
+# The UNCOMPRESSED copy of an article's frozen study data (2026-08-30). The
+# committed form is the `.json.gz` beside it — same keys, same values, same row
+# order, 2.47 MB down to 0.38 MB, which is smaller than the plain file already
+# committed for the first article.
+#
+# Nothing reads this path: `reference/article-drafts/verify/_data.py` is the one
+# place that knows how the data is stored, and every audit script asks IT rather
+# than opening a file. Unzip a readable copy whenever you want one —
+# `python _data.py out.json` — and it lands here, ignored, instead of doubling
+# the size of the repo.
+reference/drawdown-recovery-*-DATA.json
+
+# A one-time safety net, kept on disk and out of the repo. Taken immediately
+# before deleting the 1,754 split_events rows the 2026-08-30 --repull-prices
+# catch-up created (see roadmap "Stale prices + dead tickers", finding 4). These
+# are DERIVED rows — a log of what the split pipeline did, computed by nothing —
+# so a re-pull regenerates them and 776 KB of dead log does not belong in git.
+# Safe to delete once the deletion is confirmed good.
+reference/split-events-backup-*.json
+
+# Working files for the one-off `--repull-prices` catch-up (2026-08-30): the
+# ticker slices handed to each parallel worker and their logs. The flag is part
+# of the pipeline and stays; these are just what one run of it was given.
+.repull/

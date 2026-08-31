@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/seo';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -6,11 +7,12 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
 import { PricingPlans } from './PricingPlans';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: '/pricing',
   title: 'Pricing',
   description:
     'Start a 7-day free trial of MajorCycle. Monthly or annual — cancel anytime, no charge until day 7. Educational analysis only, not financial advice.',
-};
+});
 
 export const dynamic = 'force-dynamic';
 

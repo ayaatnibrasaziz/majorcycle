@@ -1,0 +1,56 @@
+-- F-024 — `anon` may read `profiles` (row-level security answers nothing) and may
+-- write NOTHING.
+--
+-- ── What was here before ────────────────────────────────────────────────────
+-- Supabase grants every privilege on a new public table to `anon` and
+-- `authenticated` by default, and safety then rests entirely on row-level
+-- security. On 2026-07-05 the UPDATE grant for `authenticated` was narrowed to
+-- three harmless columns (see 20260705032433). `anon` was not narrowed, so it kept
+-- table-level INSERT, UPDATE, DELETE and TRUNCATE on all 20 columns —
+-- `subscription_status` included.
+--
+-- ⚠️ It was NOT exploitable, and that was measured rather than assumed: an
+-- anonymous client pointed at a real throwaway profile and told to set
+-- `subscription_status = 'active'` came back HTTP 200, no error, 0 rows changed,
+-- with a control proving the same row was writable by the service role. The
+-- "users update own profile" policy compares `auth.uid() = id`, and for an
+-- anonymous caller `auth.uid()` is NULL, which is never true.
+--
+-- So this is the missing LAYER, not a hole — and it is the shape that has bitten
+-- this project repeatedly: a rule applied to one consumer and not its sibling
+-- (CLAUDE.md 11c-iv). It was even written down. 20260726010000 says of this exact
+-- grant: "Tightening that grant is tracked separately." A sentence in a comment is
+-- not a gate (CLAUDE.md 11f); this migration is.
+--
+-- ── Why SELECT stays ────────────────────────────────────────────────────────
+-- Deliberate, and not timidity. Every server read of `profiles` runs on a
+-- cookie-bound client, and when a JWT has just expired that client falls back to
+-- the `anon` role. Today such a read answers "0 rows", which the callers treat as
+-- "no entitlement" — the safe direction. Without the SELECT grant it would answer
+-- an ERROR, and a page whose token expired mid-request would break for a paying
+-- customer. Row-level security already returns nothing, so the grant buys an
+-- attacker nothing and costs us a failure mode. Writes have no such caller: every
+-- profile write in the app is preceded by `getUser()` bailing out when there is no
+-- user, so it always runs as `authenticated`.
+--
+-- ── The visible consequence, which is the point ─────────────────────────────
+-- Before: an anonymous UPDATE or DELETE answered 200 / no error / 0 rows —
+-- indistinguishable from "the row is not yours" and from a client that silently
+-- did nothing. After: 42501, "permission denied for table profiles". The refusal
+-- becomes observable, which is what makes it testable —
+-- `web/e2e/db-grants.spec.ts` asserts the message, not just the code, because
+-- 42501 is ALSO what the row policy already returned for INSERT.
+--
+-- ⚠️ Table-level, not column-level, and that matters: Postgres does not let a
+-- column-level REVOKE subtract from a table-level GRANT (the trap documented at
+-- length in 20260726010000). REVOKE ALL then GRANT back the one privilege we
+-- want is the only form that actually lands.
+--
+-- ⚠️ NOT in scope, recorded as audit F-026 for the owner: the same Supabase
+-- defaults are still in place on the other 11 public tables, and `authenticated`
+-- still holds table-level DELETE and TRUNCATE on `profiles`. All of it is
+-- unreachable today — eight of those tables carry no policy at all, and PostgREST
+-- never issues TRUNCATE — but "unreachable" is where this finding started.
+
+REVOKE ALL ON public.profiles FROM anon;
+GRANT SELECT ON public.profiles TO anon;

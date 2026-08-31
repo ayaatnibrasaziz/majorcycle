@@ -58,7 +58,20 @@ export function RunAnalysis({
 }) {
   const router = useRouter();
   const analysis = useAnalysis();
-  const { progress, results, unavailable, runMeta, lastRun, run, cancel } = analysis;
+  const { progress, results, unavailable, runMeta, lastRun, run, cancel, refreshLastRun } =
+    analysis;
+
+  /*
+   * Ask for the last run's history here rather than in the provider.
+   *
+   * It used to be fetched on the provider's mount, and the provider wraps every
+   * signed-in page — so Browse and Stock Detail both paid for the Supabase client
+   * and a database round trip to populate a card only this screen renders
+   * (audit F-022). This component is the only consumer of `lastRun`.
+   */
+  useEffect(() => {
+    void refreshLastRun();
+  }, [refreshLastRun]);
 
   const [selected, setSelected] = useState<string[]>([]);
   const [horizon, setHorizon] = useState<HorizonValue>(DEFAULT_HORIZON);

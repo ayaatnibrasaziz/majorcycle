@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
@@ -219,15 +220,23 @@ export function OpportunityMap({
             </p>
             <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 300 }}>
               <ScatterChart margin={{ top: 14, right: 18, bottom: 26, left: 6 }}>
-                {/* Quadrant tints */}
+                {/* Quadrant tints.
+                    ⚠️ The four LABELS are solid ink, not a tinted colour at 70–80%
+                    alpha as they were until 2026-08-22. Fading a label is the
+                    instinctive way to say "this is background furniture", and it
+                    measured 3.15 / 3.40 / 3.81 against a 4.5 floor on the paid
+                    screener. The AREA fills still carry their alpha — they are
+                    decoration and have no contrast duty. Recede with a colour,
+                    never with transparency (CLAUDE.md 11q): a token can be
+                    measured, an alpha silently dilutes whatever it is given. */}
                 <ReferenceArea x1={SPLIT} x2={100} y1={SPLIT} y2={100} fill="#006400" fillOpacity={0.07} stroke="none"
                   label={{ value: 'Opportunity Zone', position: 'insideTopRight', fill: '#006400', fontSize: 10, fontWeight: 700 }} />
                 <ReferenceArea x1={SPLIT} x2={100} y1={0} y2={SPLIT} fill="#D4A017" fillOpacity={0.06} stroke="none"
-                  label={{ value: 'Healthy, fully priced', position: 'insideBottomRight', fill: 'rgba(154,112,16,.8)', fontSize: 9.5, fontWeight: 600 }} />
+                  label={{ value: 'Healthy, fully priced', position: 'insideBottomRight', fill: '#7A5B0E', fontSize: 9.5, fontWeight: 600 }} />
                 <ReferenceArea x1={0} x2={SPLIT} y1={SPLIT} y2={100} fill="#1E5CB3" fillOpacity={0.05} stroke="none"
-                  label={{ value: 'Weak but cheap', position: 'insideTopLeft', fill: 'rgba(30,92,179,.7)', fontSize: 9.5, fontWeight: 600 }} />
+                  label={{ value: 'Weak but cheap', position: 'insideTopLeft', fill: 'var(--brand-deep)', fontSize: 9.5, fontWeight: 600 }} />
                 <ReferenceArea x1={0} x2={SPLIT} y1={0} y2={SPLIT} fill="#B22222" fillOpacity={0.06} stroke="none"
-                  label={{ value: 'Weak & expensive', position: 'insideBottomLeft', fill: 'rgba(178,34,34,.7)', fontSize: 9.5, fontWeight: 600 }} />
+                  label={{ value: 'Weak & expensive', position: 'insideBottomLeft', fill: 'var(--c-tier-5-ink)', fontSize: 9.5, fontWeight: 600 }} />
                 <ReferenceLine x={SPLIT} stroke="rgba(138,151,168,.45)" strokeDasharray="4 4" />
                 <ReferenceLine y={SPLIT} stroke="rgba(138,151,168,.45)" strokeDasharray="4 4" />
 
@@ -237,10 +246,10 @@ export function OpportunityMap({
                   name="Financial Health"
                   domain={[0, 100]}
                   ticks={[0, 25, 50, 65, 75, 100]}
-                  tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
+                  tick={{ fill: CHART_INK, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={false}
                   tickLine={false}
-                  label={{ value: 'Financial Health →', position: 'insideBottom', offset: -14, fill: '#8A97A8', fontSize: 10 }}
+                  label={{ value: 'Financial Health →', position: 'insideBottom', offset: -14, fill: CHART_INK, fontSize: 10 }}
                 />
                 <YAxis
                   type="number"
@@ -248,11 +257,11 @@ export function OpportunityMap({
                   name="Valuation"
                   domain={[0, 100]}
                   ticks={[0, 25, 50, 65, 75, 100]}
-                  tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
+                  tick={{ fill: CHART_INK, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={false}
                   tickLine={false}
                   width={34}
-                  label={{ value: 'Valuation →', angle: -90, position: 'insideLeft', fill: '#8A97A8', fontSize: 10 }}
+                  label={{ value: 'Valuation →', angle: -90, position: 'insideLeft', fill: CHART_INK, fontSize: 10 }}
                 />
                 {/* Smaller bubble range so a 100–200 stock run doesn't crowd: with
                     lower opacity, overlapping points at the same grid cell read as a

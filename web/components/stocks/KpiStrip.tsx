@@ -1,6 +1,9 @@
+import { CHART_INK } from '@/lib/chartTheme';
 import { isFullCycle, type CycleAnalysis, type CycleAnalysisFree } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
+import { RATING_TIER_HEX, tierFromScore } from '@/lib/ratings';
 import { PremiumLockKpi } from '@/components/stocks/PremiumLock';
+import { INK } from '@/lib/ink';
 
 interface Props {
   cycle: CycleAnalysis | CycleAnalysisFree;
@@ -18,19 +21,42 @@ interface Props {
   entitled: boolean;
 }
 
+// ⚠️ A third copy of the rating ladder — hexes AND thresholds — until 2026-08-22.
+// Now derived, so the KPI strip cannot disagree with the chip, the badge, the
+// radar or the workbook about what a 62 looks like.
 function ratingColor(rating: number): string {
-  if (rating >= 80) return '#006400';
-  if (rating >= 65) return '#228B22';
-  if (rating >= 50) return '#D4A017';
-  if (rating >= 35) return '#FF4500';
-  return '#B22222';
+  return RATING_TIER_HEX[tierFromScore(rating)];
 }
 
+// ⚠️ NOT a rating, despite sharing four of the same hexes: this ranks how DEEP a
+// drawdown is, and deeper is more cyclically favourable. It keeps its own
+// thresholds and its own tokens for that reason — reaching for RATING_TIER_HEX
+// here would say something about our judgement of the stock that we do not mean.
+//
+// ⚠️ THESE ARE TEXT. `accentColor` lands on `--kpi-value-color`, which globals.css
+// uses as `color:` on `.kpi-value`, at 22px/600. WCAG counts "large text" from
+// 24px, or 18.66px at weight **700**; 600 is not bold, so the floor is the full
+// 4.5 and three of the four rungs were under it on --bg-page:
+//
+//     dd <= -10  #006400  6.73  ✓  unchanged
+//     dd <=  -5  #228B22  3.97  ✗  → INK.up       4.80
+//     dd <=  -2  #D4A017  2.15  ✗  → INK.neutral  4.82   ← every view, every stock
+//     else       #FF4500  3.11  ✗  → INK.warn     4.81
+//
+// I wrote "every one of these clears 4.5" in this comment before measuring it, and
+// it was wrong by a factor of two. Fixed 2026-08-22 with the owner's approval of
+// the ink layer; the ramp's DIRECTION is untouched, only its legibility.
+//
+// ⚠️ The bottom rung is here because it is the same ramp, not because anything
+// measured it: a stock has to be within 2% of its high to render #FF4500, and the
+// page this was audited on sat 24.6% down. Three rungs measured, one reasoned —
+// leaving the fourth illegible because the sample stock happened not to show it
+// would be the same mistake one level down (CLAUDE.md 14g).
 function drawdownColor(dd: number): string {
   if (dd <= -10) return '#006400';
-  if (dd <= -5)  return '#228B22';
-  if (dd <= -2)  return '#D4A017';
-  return '#FF4500';
+  if (dd <= -5)  return INK.up;
+  if (dd <= -2)  return INK.neutral;
+  return INK.warn;
 }
 
 function fmt(n: number, decimals = 1): string {
@@ -107,7 +133,7 @@ export function KpiStrip({ cycle, entitled }: Props) {
           accentColor={
             scored.financialHealthScore != null
               ? ratingColor(scored.financialHealthScore)
-              : '#8A97A8'
+              : CHART_INK
           }
           tipBody="How financially strong the business is (0–100), based on profitability, a safe balance sheet, and steady cash generation. 80+ = very healthy · 60–79 = adequate · below 60 = elevated risk."
         />

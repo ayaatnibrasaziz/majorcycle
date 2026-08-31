@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -22,6 +23,7 @@ import {
 } from '@/lib/chartSync';
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { CycleAnalysisFree, PriceBar } from '@/lib/types';
+import { INK } from '@/lib/ink';
 
 type Mode = 'drawdown' | 'profit';
 
@@ -152,7 +154,7 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       height: 200,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#8A97A8',
+        textColor: CHART_INK,
         fontFamily: "'JetBrains Mono', monospace",
       },
       grid: {
@@ -166,7 +168,7 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       },
       rightPriceScale: {
         borderColor: '#E2E8F0',
-        textColor: '#8A97A8',
+        textColor: CHART_INK,
         minimumWidth: CHART_RIGHT_AXIS_WIDTH,
       },
       // Pin both edges so this overlay (and the Price chart, which does the same)
@@ -195,7 +197,9 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
 
     if (typLine !== null) {
       chart.addLineSeries({
-        color: '#D4A017',
+        // Lightweight Charts paints the price-scale label in the series colour,
+        // so this is a dashed line AND its own text. 2.38:1 either way.
+        color: INK.neutral,
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         priceLineVisible: false,
@@ -369,9 +373,15 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
           </div>
           <div
             className="stat-pill"
+            // The bounds are the EXTREMES of the recorded history, not a band a live
+            // move stays inside — so neither may claim the level is rarely breached.
+            // This said "Stocks rarely breach this level", which is the same factual
+            // error PR #90 corrected on the Results table tooltips; one screen was
+            // fixed and this one was not (CLAUDE.md 11c). The two screens keep their
+            // own voice by owner decision — only the factual clause is shared.
             title={isDD
-              ? 'Lower Bound — The deepest drawdown ever recorded for this stock across all historical cycles. Stocks rarely breach this level. If Current approaches Lower Bound, risk/reward is very favourable.'
-              : 'Upper Bound — The highest profit recovery peak ever recorded across all historical cycles. If Current approaches Upper Bound, consider taking profits.'}
+              ? 'Lower Bound — The deepest drawdown ever recorded for this stock across all historical cycles. A still-forming dip can run below it. If Current approaches Lower Bound, risk/reward is very favourable.'
+              : 'Upper Bound — The highest profit recovery peak ever recorded across all historical cycles. A still-forming rally can run above it. If Current approaches Upper Bound, the stock is near the top of its historical range.'}
           >
             <div className="stat-pill-label">{isDD ? 'Lower Bound' : 'Upper Bound'}</div>
             <div className={`stat-pill-val ${isDD ? 'red' : 'green'}`}>{boundVal !== null ? `${fmt(boundVal)}%` : '—'}</div>

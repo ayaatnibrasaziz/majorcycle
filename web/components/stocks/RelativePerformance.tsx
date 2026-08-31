@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { CHART_INK } from '@/lib/chartTheme';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Area,
@@ -14,27 +15,56 @@ import {
   YAxis,
 } from 'recharts';
 
-import { BENCHMARKS, type BenchmarkSeries } from '@/lib/benchmarks';
+import { BENCHMARKS, trimBenchmarks, type BenchmarkSeries } from '@/lib/benchmarks';
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { Market, PriceBar } from '@/lib/types';
 import { tickerToUrlParts } from '@/lib/ticker';
+import { INK, SERIES_TEAL } from '@/lib/ink';
 
 interface Props {
   ticker: string;
   market: Market;
   priceBars: PriceBar[];
-  benchmarks: BenchmarkSeries;
+  /**
+   * The index series, supplied directly.
+   *
+   * ⚠️ OPTIONAL, and the two callers differ deliberately — this is not drift.
+   * The Stock Detail page omits it, so the chart fetches `/api/benchmarks` once
+   * and the browser reuses that response on every other ticker page; embedding it
+   * in the document instead cost 1,011 KB of HTML per page, a third of the whole
+   * document, re-sent every time (audit F-019).
+   *
+   * `ReportDocument` still passes it, because it must: the offline report is an
+   * esbuild bundle opened from a file with no server and no network behind it
+   * (CLAUDE.md 11d). A fetch there would draw an empty chart in the one build
+   * nobody watches.
+   */
+  benchmarks?: BenchmarkSeries;
+  /**
+   * How far back this stock's chart should reach. Only consulted when the series
+   * is fetched — `/api/benchmarks` serves one shared window for cacheability, so
+   * the per-stock trim the server used to do has to happen here instead. Ignored
+   * when `benchmarks` is supplied, which is already trimmed.
+   */
+  benchSince?: string;
 }
 
 type Range = '1y' | '3y' | 'max';
 const RANGE_LABELS: Record<Range, string> = { '1y': '1Y', '3y': '3Y', 'max': 'Max' };
 
 const STOCK_COLOR = '#1E5CB3';
+/* ⚠️ Recharts paints a legend entry in its series' OWN colour, so the line and
+   the words naming it are one value by construction — which makes each of these
+   a chart line AND 10px text at the same time. Two failed: the ASX gold measured
+   2.38:1, under even the 3.0 a plain graphic owes, and the TSX teal cleared the
+   graphic floor at 3.30 while failing as a label. Both now carry their ink value,
+   so each legend entry still matches the line it names. The grey and the violet
+   were already legible (5.70 for the violet) and are untouched. */
 const BENCH_COLOR: Record<string, string> = {
-  '^GSPC': '#8A97A8',   // S&P 500 — neutral grey
-  '^IXIC': '#7C3AED',   // Nasdaq — violet
-  '^AXJO': '#D4A017',   // ASX 200 — gold
-  '^GSPTSE': '#0E9F8E', // S&P/TSX — teal
+  '^GSPC': CHART_INK,      // S&P 500 — neutral grey
+  '^IXIC': '#7C3AED',      // Nasdaq — violet
+  '^AXJO': INK.neutral,    // ASX 200 — gold
+  '^GSPTSE': SERIES_TEAL,  // S&P/TSX — teal
 };
 
 function toTs(d: string): number {
@@ -131,7 +161,125 @@ function fmtPct(v: number): string {
   return `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`;
 }
 
-export function RelativePerformance({ ticker, market, priceBars, benchmarks }: Props) {
+/**
+ * The index series, from whichever source this build has.
+ *
+ * ⚠️ A failed fetch resolves to `{}` rather than an error state, and that is the
+ * SAME degradation as before this route existed: `_loadOneBenchmark` already
+ * swallowed a per-index read failure and returned an empty array, which drops the
+ * line from `activeBenchTickers`. So a benchmark that cannot be loaded has always
+ * meant "one fewer line", and moving the fetch has not introduced a new way to
+ * fail — it moved an existing one. The stock's own line is unaffected either way.
+ */
+function useBenchmarkSeries(
+  supplied: BenchmarkSeries | undefined,
+  since: string | undefined,
+): { series: BenchmarkSeries; hostRef: React.RefObject<HTMLDivElement | null> } {
+  const [fetched, setFetched] = useState<BenchmarkSeries | null>(null);
+  const [armed, setArmed] = useState(false);
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const needsFetch = supplied === undefined;
+
+  /**
+   * ⚠️ WAIT before asking for it. This payload is ~900 KB, and firing it from a
+   * bare effect means it competes with the page the reader is actually waiting
+   * on — the same argument `StockSubnav` makes for the report bundle.
+   *
+   * That is not a theory here, it is what happened: moving these series out of the
+   * document and fetching them on mount made the document a third smaller and made
+   * Largest Contentful Paint WORSE (1.7s → 2.2s), because the bytes had not gone
+   * away, they had merely moved into the load. Speed Index improved at the same
+   * time, which is the tell — the document really was lighter; the fetch was
+   * spending the win.
+   *
+   * Whichever comes first:
+   *   - the browser goes idle, or
+   *   - the chart comes within 600px of the viewport (it sits well below the fold,
+   *     so on most visits idle wins and the data is there long before anyone
+   *     scrolls to it).
+   */
+  useEffect(() => {
+    if (!needsFetch || armed) return;
+
+    let fired = false;
+    const fire = () => {
+      if (fired) return;
+      fired = true;
+      setArmed(true);
+    };
+
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let cancelIdle: (() => void) | undefined;
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(fire, { timeout: 5_000 });
+      cancelIdle = () => w.cancelIdleCallback?.(id);
+    } else {
+      const t = setTimeout(fire, 2_000);
+      cancelIdle = () => clearTimeout(t);
+    }
+
+    let io: IntersectionObserver | undefined;
+    if (hostRef.current && typeof IntersectionObserver === 'function') {
+      io = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) fire();
+        },
+        { rootMargin: '600px' },
+      );
+      io.observe(hostRef.current);
+    }
+
+    return () => {
+      cancelIdle?.();
+      io?.disconnect();
+    };
+  }, [needsFetch, armed]);
+
+  useEffect(() => {
+    if (!needsFetch || !armed) return;
+    let cancelled = false;
+    (async () => {
+      let data: BenchmarkSeries = {};
+      try {
+        const res = await fetch('/api/benchmarks');
+        if (res.ok) {
+          const body = (await res.json()) as { benchmarks?: BenchmarkSeries };
+          data = body.benchmarks ?? {};
+        }
+      } catch {
+        // Left as {} — see the note above: one fewer line, never a broken chart.
+      }
+      if (!cancelled) setFetched(data);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [needsFetch, armed]);
+
+  const series = useMemo(() => {
+    if (supplied !== undefined) return supplied;
+    return fetched === null ? {} : trimBenchmarks(fetched, since);
+  }, [supplied, fetched, since]);
+
+  return { series, hostRef };
+}
+
+export function RelativePerformance({
+  ticker,
+  market,
+  priceBars,
+  benchmarks,
+  benchSince,
+}: Props) {
+  // Renders immediately with the stock's own line and draws the index lines when
+  // they arrive. Deliberately NOT a skeleton: the chart box is a fixed height, so
+  // lines appearing inside it shifts nothing, while swapping a placeholder for a
+  // chart is exactly the kind of reflow that turns a CLS of 0 into a score.
+  const { series, hostRef } = useBenchmarkSeries(benchmarks, benchSince);
+
   const [range, setRange] = useState<Range>('1y');
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const toggle = (k: string) =>
@@ -142,7 +290,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
       return next;
     });
 
-  const { rows, spanDays, activeBenchTickers } = useChartData(priceBars, benchmarks, range);
+  const { rows, spanDays, activeBenchTickers } = useChartData(priceBars, series, range);
 
   // Home-market index drives the summary strip (return / alpha).
   const homeMeta = BENCHMARKS.find((b) => b.market === market) ?? BENCHMARKS[0]!;
@@ -158,7 +306,10 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
   const outperf = alpha !== null ? alpha >= 0 : null;
 
   return (
-    <div className="card card--stack-base fade-in">
+    // `hostRef` is what the IntersectionObserver watches, so a reader who scrolls
+    // straight here does not wait on the idle callback. Unused in the offline
+    // report, which is handed its series directly and never observes anything.
+    <div ref={hostRef} className="card card--stack-base fade-in">
       <div className="card-header">
         <div className="card-title">
           Relative Performance vs Benchmarks
@@ -198,7 +349,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                   scale="time"
                   domain={['dataMin', 'dataMax']}
                   tickFormatter={(ts: number) => fmtTick(ts, spanDays)}
-                  tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: 'Sora' }}
+                  tick={{ fill: CHART_INK, fontSize: 10, fontFamily: 'Sora' }}
                   axisLine={false}
                   tickLine={false}
                   minTickGap={28}
@@ -207,7 +358,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                   orientation="right"
                   width={CHART_RIGHT_AXIS_WIDTH}
                   tickMargin={6}
-                  tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
+                  tick={{ fill: CHART_INK, fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
                   tickFormatter={(v: number) => `${v - 100 >= 0 ? '+' : ''}${(v - 100).toFixed(0)}%`}
                   axisLine={false}
                   tickLine={false}
@@ -219,7 +370,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                     const ts = payload[0]!.payload.ts as number;
                     return (
                       <div style={{ background: '#1A1A1B', border: '1px solid #2E3347', borderRadius: 6, padding: '8px 12px', fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
-                        <div style={{ color: '#8A97A8', marginBottom: 4 }}>
+                        <div style={{ color: CHART_INK, marginBottom: 4 }}>
                           {new Date(ts).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </div>
                         {payload
@@ -267,7 +418,7 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
                     dataKey={t}
                     name={BENCHMARKS.find((b) => b.ticker === t)?.label ?? t}
                     type="monotone"
-                    stroke={BENCH_COLOR[t] ?? '#8A97A8'}
+                    stroke={BENCH_COLOR[t] ?? CHART_INK}
                     strokeWidth={1.75}
                     dot={false}
                     isAnimationActive={false}
@@ -284,25 +435,25 @@ export function RelativePerformance({ ticker, market, priceBars, benchmarks }: P
           <div className="summary-strip">
             <div className="summary-strip-item" title="Stock Return (%) — how much this stock gained or lost over the selected period, indexed from 100.">
               <div className="summary-strip-label">Stock Return</div>
-              <div className="summary-strip-val" style={{ color: stockReturn >= 0 ? '#228B22' : '#B22222' }}>
+              <div className="summary-strip-val" style={{ color: stockReturn >= 0 ? INK.up : INK.down }}>
                 {stockReturn >= 0 ? '+' : ''}{stockReturn.toFixed(1)}%
               </div>
             </div>
             <div className="summary-strip-item" title={`${homeMeta.label} Return (%) — the benchmark's return over the same period.`}>
               <div className="summary-strip-label">{homeMeta.label} Return</div>
-              <div className="summary-strip-val" style={{ color: (homeIdxReturn ?? 0) >= 0 ? '#228B22' : '#B22222' }}>
+              <div className="summary-strip-val" style={{ color: (homeIdxReturn ?? 0) >= 0 ? INK.up : INK.down }}>
                 {homeIdxReturn !== null ? `${homeIdxReturn >= 0 ? '+' : ''}${homeIdxReturn.toFixed(1)}%` : '—'}
               </div>
             </div>
             <div className="summary-strip-item" title="Alpha (%) — Stock Return minus benchmark Return. Positive = beat the market.">
               <div className="summary-strip-label">Alpha</div>
-              <div className="summary-strip-val" style={{ color: (alpha ?? 0) >= 0 ? '#228B22' : '#B22222' }}>
+              <div className="summary-strip-val" style={{ color: (alpha ?? 0) >= 0 ? INK.up : INK.down }}>
                 {alpha !== null ? `${alpha >= 0 ? '+' : ''}${alpha.toFixed(1)}%` : '—'}
               </div>
             </div>
             <div className="summary-strip-item" title="Whether the stock outperformed or underperformed its home-market index over the period.">
               <div className="summary-strip-label">Verdict</div>
-              <div className="summary-strip-val" style={{ color: outperf ? '#228B22' : '#B22222', fontSize: 13 }}>
+              <div className="summary-strip-val" style={{ color: outperf ? INK.up : INK.down, fontSize: 13 }}>
                 {outperf === null ? '—' : outperf ? '▲ Outperforming' : '▼ Underperforming'}
               </div>
             </div>

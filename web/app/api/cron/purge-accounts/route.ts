@@ -5,8 +5,17 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { getStripe } from '@/lib/stripe';
 import { sendAccountDeletedEmail } from '@/lib/email/accountEmails';
 import { recordTrialConsumed } from '@/lib/trialGuard';
+import { isAuthorisedCronCall, selectDueForPurge } from '@/lib/purge';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Every response here is operational detail about one deployment's deletion queue,
+ * and Next attaches NO `Cache-Control` to route handlers (CLAUDE.md 11a). This route
+ * said nothing at all until 2026-08-23 — including on its 401, which is the response
+ * an unauthorised caller actually receives.
+ */
+const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
 
 /**
  * Immediately cancel any live Stripe subscription for a to-be-purged account, so none
@@ -52,34 +61,25 @@ async function cancelStripeForRow(row: {
  * analysis_runs (CASCADE); universe_log + ticker_requests are SET NULL.
  */
 export async function GET(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  const auth = request.headers.get('authorization');
-  if (!secret || auth !== `Bearer ${secret}`) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  // The comparison lives in `lib/purge.ts` as a pure function so it can be tested
+  // without the real secret ever entering a test process — see the note there.
+  if (!isAuthorisedCronCall(request.headers.get('authorization'), process.env.CRON_SECRET)) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401, headers: NO_STORE });
   }
 
   const admin = createAdminClient();
   const nowIso = new Date().toISOString();
 
-  // Explicitly one page, oldest first. Filtering by `deletion_scheduled_at`
-  // narrows the rows but does not bound them, and PostgREST caps a response at
-  // 1000 with no error — so without this the 1001st due account would simply
-  // never be read, and never purged. Paging is the wrong tool here because the
-  // rows are DELETED as they are handled, which shifts every later offset: a
-  // single bounded batch that self-drains on the next daily run is correct.
-  // Anything approaching the batch size means accounts are queueing up.
-  const PURGE_BATCH = 500;
-  const { data: due, error } = await admin
-    .from('profiles')
-    .select('id, email, display_name, stripe_subscription_id, stripe_customer_id')
-    .not('deletion_scheduled_at', 'is', null)
-    .lte('deletion_scheduled_at', nowIso)
-    .order('deletion_scheduled_at', { ascending: true })
-    .range(0, PURGE_BATCH - 1);
+  // Which rows may be deleted lives in `lib/purge.ts` — one page, oldest first,
+  // bounded, and only accounts whose 30-day grace has actually elapsed. It is a
+  // separate function so a stub client can assert those three properties without
+  // deleting anything, which is the only way this route can be tested at all
+  // (there is no test Supabase). See `e2e/purge-cron.spec.ts`.
+  const { data: due, error } = await selectDueForPurge(admin, nowIso);
 
   if (error) {
     console.error('purge-accounts: query failed', error);
-    return NextResponse.json({ error: 'query_failed' }, { status: 500 });
+    return NextResponse.json({ error: 'query_failed' }, { status: 500, headers: NO_STORE });
   }
 
   let purged = 0;
@@ -111,5 +111,8 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ purged, failed: failed.length, checkedAt: nowIso });
+  return NextResponse.json(
+    { purged, failed: failed.length, checkedAt: nowIso },
+    { headers: NO_STORE },
+  );
 }

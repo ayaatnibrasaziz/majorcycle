@@ -1,45 +1,25 @@
 import type { NextConfig } from "next";
 
-// ── Security headers (F0.5 finding F) ────────────────────────────────────────
-// Vercel already sends HSTS. We add clickjacking / MIME / referrer / permissions
-// protections plus a Content-Security-Policy.
+// ── Security headers (F0.5 finding F) ───────────────────────────────
+// Vercel already sends HSTS. These four are flat strings that are the same on
+// every response, so they belong here.
 //
-// The CSP is shipped as **Report-Only** first: it does NOT block anything yet, it
-// only reports what WOULD be blocked. This is deliberate — it lets us confirm the
-// Google Identity Services popup, the Supabase auth calls, and Next.js's own
-// inline hydration scripts all still work before we switch it to enforcing in a
-// later change. Flip `Content-Security-Policy-Report-Only` → `Content-Security-Policy`
-// only after verifying the browser console shows no blocking violations (and,
-// for scripts, after adding a nonce or `'unsafe-inline'` as needed).
-const supabaseOrigin = (() => {
-  const url = process.env['NEXT_PUBLIC_SUPABASE_URL'];
-  try {
-    return url ? new URL(url).origin : 'https://*.supabase.co';
-  } catch {
-    return 'https://*.supabase.co';
-  }
-})();
-
-const csp = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-  "script-src 'self' https://accounts.google.com https://apis.google.com",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://www.majorcycle.com",
-  "font-src 'self'",
-  `connect-src 'self' ${supabaseOrigin} https://accounts.google.com`,
-  "frame-src https://accounts.google.com",
-].join('; ');
-
+// ⚠️ **The Content-Security-Policy is NOT here — it lives in `proxy.ts`.** It
+// stopped being one string on 2026-08-23: a route rendered per request now carries
+// a per-request nonce and a prerendered one carries `'unsafe-inline'`, and only
+// middleware knows which request it is looking at. `lib/csp.ts` builds both forms
+// and explains why the split is a fact about this site rather than a compromise.
+//
+// The consequence to know: middleware does not run for `_next/static`, `_next/image`
+// or image files (see the matcher at the foot of `proxy.ts`), so those responses
+// carry these four headers and no CSP. That is correct rather than tolerated — a
+// CSP governs the DOCUMENT that loads a subresource, not the subresource itself,
+// and every document on this site goes through the middleware.
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-  { key: 'Content-Security-Policy-Report-Only', value: csp },
 ];
 
 // ── Build output directory (live-check Session 2, finding C) ─────────────────
@@ -57,10 +37,61 @@ const securityHeaders = [
 // Both paths are gitignored (`.next*` — see .gitignore).
 const distDir = process.env.NODE_ENV === 'development' ? '.next-dev' : '.next';
 
+// ── Retired routes ───────────────────────────────────────────────────────────
+// `/methodology` was a public page of its own until Layer G; its content is now
+// the `#how-it-works` section of the landing page. It is in the sitemap Google
+// has already fetched, and it was linked from the header, the footer and the
+// landing hero, so it cannot simply 404.
+//
+// 308 rather than 307: permanent, and it tells a search engine to transfer the
+// page's accumulated credit to the new address instead of holding both.
+//
+// ⚠️ The destination is a LITERAL. Never derive a redirect target from the
+// request (a query parameter, a header) — that is an open redirect.
+//
+// ⚠️ Ordering is the thing to prove, not assume. This has to fire BEFORE
+// `proxy.ts`, or a signed-out reader gets 307 → /login (the middleware bounces
+// anything not in PUBLIC_PATHS, and /methodology has just been removed from that
+// list). Measured on the wire by e2e/how-it-works.spec.ts, which asserts the
+// status is 308 and that the fragment survives into the Location header — the
+// fragment is the whole point, since without it the reader lands at the top of a
+// long page with no idea what they were sent to see.
+const retiredRoutes = [
+  { source: '/methodology', destination: '/#how-it-works', permanent: true },
+];
+
 const nextConfig: NextConfig = {
   distDir,
+
+  // ── Config review, Layer G, 2026-08-22 ─────────────────────────────────────
+  // Three settings the roadmap flagged as "never consciously decided". Each is
+  // now decided, and the two that stay at their defaults say so, because
+  // "nobody chose this" and "we chose the default" look identical from outside
+  // and this repo has been bitten four times by the difference (CLAUDE.md 11a).
+  //
+  // ⚠️ **1. `poweredByHeader: false`.** Next sends `X-Powered-By: Next.js` on
+  // every response — verified on the wire, not assumed. It tells an attacker
+  // which framework's advisories to read and buys us nothing.
+  poweredByHeader: false,
+  //
+  // ⚠️ **2. No `images` block, deliberately.** Every image on the site is local
+  // (`/logo.png`, the three `/learn` illustrations). Leaving `remotePatterns`
+  // unset is not an omission — it is the setting that stops our own image
+  // optimiser being used as an open proxy for arbitrary URLs. Adding a pattern
+  // is a security decision, not a convenience one.
+  //
+  // ⚠️ **3. The CSP is ENFORCING, and it is built in `proxy.ts`.** It was
+  // `Report-Only` until 2026-08-23. The flip was scoped by measuring 22 pages on
+  // the production build: 186 violations, every single one `script-src-elem ::
+  // inline` — Next's own hydration bootstraps — and zero for every other
+  // directive. See `lib/csp.ts` for the two forms and `pnpm check:csp` for the
+  // proof, which reads the headers and the rendered HTML off a real server rather
+  // than trusting this file.
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
+  },
+  async redirects() {
+    return retiredRoutes;
   },
 };
 

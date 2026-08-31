@@ -1,5 +1,6 @@
 'use client';
 
+import { CHART_INK } from '@/lib/chartTheme';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Area,
@@ -13,6 +14,7 @@ import {
 
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { PeHistoryItem } from '@/lib/types';
+import { INK } from '@/lib/ink';
 
 interface Props {
   peHistory: PeHistoryItem[];
@@ -71,8 +73,8 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
 
   function verdictColor(): string {
     if (vsAvg === null) return 'var(--text-muted)';
-    if (vsAvg > 15)  return '#D4A017';
-    if (vsAvg < -10) return '#228B22';
+    if (vsAvg > 15)  return INK.neutral;
+    if (vsAvg < -10) return INK.up;
     return 'var(--text-primary)';
   }
 
@@ -123,7 +125,7 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
                 >
                   <XAxis
                     dataKey="label"
-                    tick={{ fill: '#8A97A8', fontSize: 10, fontFamily: 'Sora' }}
+                    tick={{ fill: CHART_INK, fontSize: 10, fontFamily: 'Sora' }}
                     axisLine={false}
                     tickLine={false}
                     interval="preserveStartEnd"
@@ -131,7 +133,7 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
                   <YAxis
                     orientation="right"
                     tick={{
-                      fill: '#8A97A8',
+                      fill: CHART_INK,
                       fontSize: 10,
                       fontFamily: "'JetBrains Mono', monospace",
                     }}
@@ -165,19 +167,19 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
                   {avg !== null && (
                     <ReferenceLine
                       y={avg}
-                      stroke="#D4A017"
+                      stroke={INK.neutral}
                       strokeWidth={2}
                       strokeDasharray="6 4"
-                      label={{ value: `Avg ${avg}x`, position: 'insideBottomRight', fill: '#D4A017', fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
+                      label={{ value: `Avg ${avg}x`, position: 'insideBottomRight', fill: INK.neutral, fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
                     />
                   )}
                   {curr !== null && (
                     <ReferenceLine
                       y={curr}
-                      stroke="#2E7DE8"
+                      stroke={INK.brand}
                       strokeWidth={2}
                       strokeDasharray="3 3"
-                      label={{ value: `Current ${curr.toFixed(1)}x`, position: 'insideTopRight', fill: '#2E7DE8', fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
+                      label={{ value: `Current ${curr.toFixed(1)}x`, position: 'insideTopRight', fill: INK.brand, fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
                     />
                   )}
                   <Area
@@ -205,7 +207,7 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
               </div>
               <div className="summary-strip-item" title="Current P/E vs Historical Average — negative = cheaper than usual.">
                 <div className="summary-strip-label">vs Average</div>
-                <div className="summary-strip-val" style={{ color: vsAvg !== null ? (vsAvg > 15 ? '#D4A017' : vsAvg < -10 ? '#228B22' : 'var(--text-primary)') : 'var(--text-muted)' }}>
+                <div className="summary-strip-val" style={{ color: vsAvg !== null ? (vsAvg > 15 ? INK.neutral : vsAvg < -10 ? INK.up : 'var(--text-primary)') : 'var(--text-muted)' }}>
                   {vsAvg !== null ? `${vsAvg >= 0 ? '+' : ''}${vsAvg}%` : '—'}
                 </div>
               </div>

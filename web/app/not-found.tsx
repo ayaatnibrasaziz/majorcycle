@@ -1,48 +1,68 @@
 import Link from 'next/link';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { Button } from '@/components/ui/button';
 
 /**
- * Auth-aware 404. A logged-out visitor who hits a bad/unbuilt URL is sent back to
- * sign-in (the old hard-coded "Back to Results" bounced them straight into a
- * /login redirect); a logged-in user still gets "Back to Results". Server
- * component so it can read the session.
+ * The 404 — SESSION-UNAWARE, and that is what makes the public site fast.
+ *
+ * This used to be an async server component calling `supabase.auth.getUser()` so
+ * it could offer "Back to Browse" to a signed-in reader and "Back to sign in" to
+ * everyone else. It worked, and it cost more than it was worth: the root
+ * not-found boundary sits in **every route's tree**, so one session read here
+ * made the ENTIRE site render on demand. Proven by experiment 2026-08-18 —
+ * swapping in a session-unaware version turns `/`, `/contact`, `/disclaimer`,
+ * `/learn`, `/privacy` and `/terms` from `ƒ` into `○` prerendered.
+ *
+ * That matters because of how Next prefetches: *"Static Route: the full route is
+ * prefetched. Dynamic Route: prefetching is skipped."* Measured on our own pages,
+ * the prefetch payload for `/learn` is **210 bytes dynamic against 667 static**,
+ * and the click that follows costs **674ms against 109ms** on Fast 3G.
+ *
+ * ⚠️ **No feature was lost, because the destination already knows.** `/` is in
+ * `SIGNED_OUT_ONLY_PATHS` (proxy.ts), so a signed-in reader who lands there is
+ * redirected to `/stocks` — exactly where "Back to Browse" sent them. The rule
+ * lives in ONE place (the middleware) instead of being asked again here, which is
+ * CLAUDE.md 11c: a second copy of "is this reader signed in?" is a second copy
+ * that can drift. A signed-out reader gets the landing page, which carries "Sign
+ * in" and "Create free account" in its header.
+ *
+ * ⚠️ **Do not reintroduce a session read here to personalise a label.** It is not
+ * a local change: it silently un-statics every public page on the site, and
+ * nothing goes red when it happens.
  */
-export default async function NotFound() {
-  let signedIn = false;
-  try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    signedIn = !!user;
-  } catch {
-    signedIn = false;
-  }
-
-  const href = signedIn ? '/stocks' : '/login';
-  const label = signedIn ? 'Back to Browse' : 'Back to sign in';
+export default function NotFound() {
+  // One destination, correct for both readers — resolved by the middleware, not
+  // by a second session lookup. See the note above before changing it.
+  const href = '/';
+  const label = 'Back to MajorCycle';
 
   return (
+    // Standalone chrome on purpose. This is the ROOT not-found, so it also catches
+    // unmatched paths inside the signed-in app — where a "Sign in / Create free
+    // account" header would be nonsense. It borrows the public pages' card
+    // language (same radius, border, surface and lift) without their nav.
     <div className="min-h-screen bg-[var(--bg-page)] flex items-center justify-center p-6">
-      <div className="text-center max-w-sm">
-        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--bg-stripe)] border border-[var(--border)] flex items-center justify-center">
+      <div className="w-full max-w-[var(--measure-narrow)] bg-[var(--bg-surface)] border border-[var(--border)] rounded-[var(--radius)] shadow-[var(--shadow-lift)] px-7 py-10 sm:px-9 text-center">
+        <div className="w-12 h-12 mx-auto mb-5 rounded-full bg-[var(--bg-stripe)] border border-[var(--border)] flex items-center justify-center">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.35-4.35M11 8v3M11 14h.01" />
           </svg>
         </div>
-        <h1 className="text-[16px] font-bold text-[var(--text-primary)] mb-2">
+        <h1 className="text-[22px] font-bold text-[var(--text-primary)] tracking-[-0.4px] leading-[1.2]">
           Page not found
         </h1>
-        <p className="text-[12px] text-[var(--text-muted)] mb-5 leading-relaxed">
+        {/* --text-secondary, not --text-muted: muted is 2.9:1 on this surface and
+            this is the only sentence explaining what happened. */}
+        <p className="mt-2 mb-7 text-[13px] text-[var(--text-secondary)] leading-relaxed">
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
-        <Link
-          href={href}
-          className="inline-flex items-center gap-1.5 bg-gradient-to-br from-[var(--brand-mid)] to-[var(--brand-deep)] text-white text-[12px] font-semibold px-4 py-2 rounded-[var(--radius-sm)] shadow-[0_2px_8px_rgba(30,92,179,.25)] hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(30,92,179,.35)] transition-all"
-        >
-          {label}
-        </Link>
+        {/* href and label are asserted by e2e/auth.spec.ts, for BOTH readers — a
+            signed-out one lands on the landing page, a signed-in one is bounced
+            on to /stocks by the middleware. Changing either without that test is
+            how the redirect silently stops being checked. */}
+        <Button asChild variant="primary" size="lg" className="w-full">
+          <Link href={href}>{label}</Link>
+        </Button>
       </div>
     </div>
   );

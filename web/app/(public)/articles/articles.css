@@ -1,0 +1,334 @@
+/* ============================================================================
+   /articles — the index.
+   Ported from the approved design artifact (claude.ai/code/artifact/fd8cbcdc,
+   direction A: featured article · coming next · published list).
+
+   ⚠️ WHAT IS NOT IN THIS FILE IS THE POINT. The featured card is the LANDING
+   PAGE'S analyst briefing — `.briefing` / `.briefing-body` / `.briefing-head` /
+   `.briefing-title` / `.briefing-text` / `.briefing-pills` / `.b-pill` /
+   `.briefing-disclaimer`, all of which live in `globals.css` and are the
+   product's own chrome. Owner's instruction was "the same vibe like the analyst
+   briefing in the landing page … that will look consistent", and the way to
+   guarantee that is to use the component rather than to resemble it. Everything
+   below is either the figure slot the score-ring used to occupy, or the rows
+   underneath.
+   ============================================================================ */
+
+/* ── The figure slot ────────────────────────────────────────────────────────
+   Sits exactly where the briefing puts its 56px score ring: same row, same gap,
+   `flex: none`.
+
+   ⚠️ OPTIONAL BY CONSTRUCTION, and never a declared grid track. Owner: "the
+   article may or may not have any figures." Because the figure is a flex CHILD,
+   an article without one simply omits the element and the body takes the full
+   width. A grid track is what produced the `/learn` defect where a two-column
+   layout stayed declared after the picture was gone, leaving 532px of text
+   beside 588px of empty page. An absent flex child is not a hole; an absent
+   grid child is. */
+/* 300px, and it must match `VIEW_W` in FallByMarketFigure.tsx — see the
+   warning there. The 1:1 unit-to-pixel mapping is what keeps the drawing's
+   labels at the site's 12px floor. */
+/* 300px on a desktop. Unlike the first build, nothing depends on that number
+   matching a viewBox: the labels are HTML and the plot's height is fixed, so the
+   drawing squeezes and the words do not. */
+.art-figblock { flex: none; width: 300px; }
+.art-body { flex: 1; min-width: 0; }
+
+/* ── The figure is SHORTER; the link stays where it was ─────────────────────
+   Owner, 2026-08-29, second pass: "I don't want you to move Read the analysis
+   down, I want the graph to be of less height."
+
+   ⚠️ The first attempt stretched the text column and pushed the link to the
+   bottom so the two ended level. That was reversed — it moved the call to
+   action, which is the one thing on the card that should not move. The plot is
+   40px shorter instead (`PLOT_H_PX`, 220 → 180), and everything else on the
+   card sits exactly where it always did.
+
+   ⚠️ **180 is a floor, not a preference, and it was measured rather than
+   chosen.** The two closest labels — ASX 200 at −18.5% and S&P 500 at −19.2% —
+   sit 11.7% of the plot's height apart, so shrinking the plot squeezes them:
+
+       220px → 10.1px clear      180px →  6.2px clear
+       200px →  8.5px clear      170px →  5.0px clear
+       190px →  7.4px clear      160px →  3.9px clear
+                                 150px →  2.7px clear  ← under the guard
+
+   `articles.spec.ts` demands 3px. 180 keeps double that, which matters because
+   font metrics differ between this machine and CI by up to 2px (CLAUDE.md 11i)
+   — a height whose correctness rests on a label being exactly as tall as it is
+   here goes red on somebody else's computer. */
+
+.art-fig { margin: 0; }
+.art-plotouter { position: relative; width: 100%; }
+.art-plot { position: relative; width: 100%; }
+.art-plot-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+.art-ax { stroke: var(--border-strong); stroke-width: 1; }
+.art-ln { stroke-width: 2.4; fill: none; stroke-linecap: round; }
+
+/* End points. HTML, because a `<circle>` inside a non-uniformly scaled SVG is
+   an ellipse — and it would flatten by a different amount at every width. */
+.art-dot {
+  position: absolute; width: 7px; height: 7px; border-radius: 50%;
+  transform: translate(-50%, -50%); pointer-events: none;
+}
+
+/* ⚠️ THE LABELS ARE PAGE TEXT, NOT SVG TEXT. That is what holds them at the
+   site's 12px reading floor no matter how narrow the plot gets. The first build
+   set them in user units inside the viewBox, which measured 12.5px on a desktop
+   and 10.78px at 375px — a floor that only holds on one screen is not a floor. */
+.art-lab {
+  position: absolute; white-space: nowrap; transform: translateY(-50%);
+  font-size: var(--pub-label); line-height: 1.15; display: inline-flex;
+  align-items: baseline; gap: 6px;
+}
+.art-lab-l { right: 100%; margin-right: 9px; }
+.art-lab-r { left: 100%; margin-left: 9px; }
+.art-snm { font-weight: 700; }
+.art-sfg { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* The two ends of the x axis, named under their own verticals.
+
+   ⚠️ NOT uppercase, and that is a measurement rather than a preference. The
+   artifact set these as spaced small caps, which is ~28% wider: at 375px the
+   plot is only 86.6px across, and two labels centred on points that far apart
+   cleared each other by 0.48px. Lower case makes them 72px and 62px and the
+   pair clears by 16px on a phone and 58px on a desktop. Uppercase would have
+   needed the plot to be wider than the card can give it. */
+.art-cap {
+  position: absolute; top: 100%; margin-top: 17px; transform: translateX(-50%);
+  white-space: nowrap; font-size: var(--pub-label); color: var(--text-secondary);
+}
+.art-cap-l { left: 0; }
+.art-cap-r { left: 100%; }
+
+/* ── The featured card's own furniture ──────────────────────────────────── */
+.art-head {
+  display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 7px;
+}
+.art-head .briefing-title { margin-bottom: 0; }
+.art-when { font-size: var(--pub-label); color: var(--text-secondary); }
+.art-when .art-when-d {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+}
+/* The separator is a span rather than a bare character, so the space around it is
+   a design decision that survives copy-paste instead of two literal spaces that a
+   formatter is free to collapse.
+
+   ⚠️ NAMED `.art-sep`, AND IT USED TO BE `.art-dot` — WHICH IS ALSO THE CHART'S
+   END-POINT CLASS. One name, two meanings, in one stylesheet: the separator
+   silently inherited `position:absolute; width:7px; height:7px; border-radius:50%`
+   and rendered as a positioned circle that contributed nothing to layout, so the
+   padding here had no effect at all. The owner had asked for exactly this spacing
+   and it was never applied. ⚠️ It was invisible in every ordinary check — the `·`
+   still painted roughly where a reader expects one — and three measurements
+   disagreed with each other before a controlled experiment (remove the padding,
+   measure, restore) showed the wrapper's width never moved. **A class name is an
+   identifier; reusing one inside a single stylesheet is a collision, not a
+   shorthand.** */
+.art-when .art-sep { padding: 0 7px; }
+
+/* ⚠️ 17px (`--pub-h`), NOT the artifact's 23px — and the difference is the whole
+   of CLAUDE.md 11c-vi. The design artifact is a PREVIEW with its own type scale
+   (36/26/20/17); the live public site has exactly one (24/17/13/12), and the
+   fourth scale that appeared on `/learn` got there by porting an artifact's
+   pixel sizes literally. 23px would have sat one point under the page's own h1
+   and invented a fifth step to do it. The featured title keeps its prominence
+   from the card's tinted ground and its weight, not from its size. */
+.art-h {
+  font-size: var(--pub-h); font-weight: 700; line-height: 1.3; letter-spacing: -.012em;
+  margin: 0 0 8px; text-wrap: balance;
+}
+.art-h a { color: var(--text-primary); text-decoration: none; }
+.art-h a:hover { color: var(--brand-mid); }
+
+.art-read {
+  display: inline-flex; align-items: center; gap: 7px; margin-top: 13px;
+  font-size: var(--pub-body); font-weight: 700; color: var(--brand-mid); text-decoration: none;
+}
+.art-read:hover { color: var(--brand-deep); }
+.art-read svg { transition: transform .25s var(--ease); }
+.art-read:hover svg { transform: translateX(3px); }
+
+/* `.briefing` is `display:flex` with no wrap — right for a 56px ring, wrong for
+   a 250px chart, so the card stacks before the two squeeze each other. */
+@media (max-width: 760px) {
+  .briefing.art-brief { flex-direction: column; }
+  .art-figblock { width: 100%; max-width: 320px; align-self: center; }
+  /* No type step-down here. The artifact dropped its 23px title to 20 on a
+     phone; `--pub-h` is 17px at every width, so there is nothing to step. */
+}
+@media (prefers-reduced-motion: reduce) { .art-read svg { transition: none; } }
+
+/* ── Section headers and rows ───────────────────────────────────────────── */
+.art-secn {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  margin-top: 40px; padding-bottom: 11px; border-bottom: 2px solid var(--brand-deep);
+}
+ /* An h2 under `.doc-scale` is already 17px — the same step `/learn` gives its
+    topic headings, which is the point: the two index pages are siblings and a
+    reader crossing between them should not meet a different hierarchy. */
+.art-secn h2 { font-weight: 700; margin: 0; letter-spacing: -.012em; }
+.art-secn .art-secn-c { font-size: var(--pub-label); color: var(--text-secondary); }
+
+/* Rows, not cards. A row costs one line per article, so the page never has a
+   hole in it — which is the failure mode a card grid has at small n, and we
+   publish about four a month rather than dozens a day. */
+.art-row {
+  display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 20px;
+  align-items: start; padding: 17px 2px; border-bottom: 1px solid var(--border);
+  text-decoration: none;
+}
+.art-row:last-of-type { border-bottom: 0; }
+.art-d {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: var(--pub-label); color: var(--text-secondary); line-height: 1.6;
+}
+.art-d .art-rt {
+  display: block; font-family: 'Sora', sans-serif; font-size: var(--pub-label);
+  margin-top: 2px;
+}
+/* ⚠️ TITLE AND FINDING ARE THE SAME SIZE. Weight and colour separate them, never
+   a one-point step — the same rule `/learn` states for its article rows. A 15.5
+   against 12.5 pair, as the artifact drew it, is two more sizes on a site that
+   has four. */
+.art-t {
+  font-size: var(--pub-body); font-weight: 600; color: var(--text-primary);
+  line-height: 1.45;
+}
+.art-f {
+  font-size: var(--pub-body); color: var(--text-secondary); line-height: 1.6;
+  margin-top: 5px;
+}
+/* A finding's numbers, set to line up down the column. */
+.art-f .art-fig, .briefing-text .art-fig {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-weight: 600; color: var(--text-primary);
+}
+.art-kk {
+  font-size: var(--pub-label); font-weight: 600; color: var(--text-secondary);
+  background-color: var(--bg-stripe); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 3px 9px; white-space: nowrap;
+}
+a.art-row:hover .art-t { color: var(--brand-mid); }
+
+/* ⚠️ A PLANNED ROW RECEDES BY WEIGHT AND COLOUR, NEVER BY `opacity`.
+   The Learn index's "coming soon" rows were `--text-secondary` at 70% opacity
+   until 2026-08-17, which rendered at 3.38:1 against a 4.5 floor — and the
+   contrast guard scored them 6.81, because it could not see `opacity` at all
+   (CLAUDE.md 11q). A token can be measured; a transparency could not. */
+.art-row.art-soon .art-t { font-weight: 400; color: var(--text-secondary); }
+.art-row.art-soon .art-f, .art-row.art-soon .art-d { color: var(--text-secondary); }
+.art-soonk {
+  font-size: var(--pub-label); font-weight: 600; color: var(--text-secondary);
+  border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+  padding: 3px 9px; white-space: nowrap; background-color: transparent;
+}
+.art-note { margin-top: 14px; color: var(--text-secondary); }
+
+@media (max-width: 760px) {
+  .art-row { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+  .art-d { grid-column: 1 / -1; order: -1; display: flex; gap: 10px; align-items: center; }
+  .art-d .art-rt { display: inline; margin-top: 0; }
+}
+
+/* ── Tables inside an article body ──────────────────────────────────────────
+   `.reading` styles paragraphs, headings and lists and has NO table rules, so a
+   `<table>` in a body renders as an unstyled browser default in the middle of a
+   designed page — which is why the Learn content module forbids them outright.
+   These pieces need them, so the styles are defined once here and reached
+   through `components/articles/DataTable.tsx`. An article never writes its own.
+
+   ⚠️ The wrapper scrolls, never the page. A table wider than the reading column
+   must take its overflow inside its own box; a table that widens the document
+   pushes every paragraph sideways, which is the one layout failure a reader on a
+   phone cannot work around. */
+.art-tablewrap {
+  overflow-x: auto;
+  margin: 1.6em 0;
+  /* The scroll container is also a focus target for keyboard users, who
+     otherwise have no way to reach the hidden columns. */
+  scrollbar-width: thin;
+}
+.art-table {
+  width: 100%; border-collapse: collapse; font-size: var(--pub-body);
+  line-height: 1.5;
+}
+/* Two tables a reader is meant to compare column-for-column. See DataTable's
+   `width` doc: without this the browser sizes each one to its own content and
+   the two Typical fall columns land 43.6px apart. */
+.art-table--fixed { table-layout: fixed; }
+.art-table-cap {
+  caption-side: top; text-align: left; font-size: var(--pub-label);
+  color: var(--text-secondary); padding-bottom: 8px;
+}
+/* ⚠️ THE FONT AND THE WRAPPING ARE STATED, AND THAT IS A BUG FIX, NOT TIDYING.
+   `globals.css` carries a BARE `td { white-space: nowrap; font-family: 'JetBrains
+   Mono'; font-size: 11.5px }` for the signed-in terminal's tables — an element
+   selector, so it reaches every `<td>` on the site, including the ones in a
+   public article. Measured on the live first article: every data cell rendered at
+   **11.5px**, under the public site's own 12px reading floor, in the mono face,
+   beside a row header at 13px. Two sizes in one row and a size the design system
+   does not have.
+
+   It was invisible for the article's whole life because every non-first column in
+   that piece is `numeric`, and `.art-num` re-states the mono face — so the cells
+   looked deliberate. The three ranked tables added on 2026-08-30 are the first
+   with a TEXT column, and the inherited `nowrap` is what pushed them off the side
+   of the reading column. Same shape as CLAUDE.md 11c-vii: a component dropped
+   into prose inherits whatever the page stylesheet has to say about its tags. */
+.art-table th, .art-table td {
+  padding: 9px 12px 9px 0; text-align: left; vertical-align: baseline;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Sora', sans-serif; font-size: var(--pub-body); white-space: normal;
+}
+.art-table th:last-child, .art-table td:last-child { padding-right: 0; }
+.art-table thead th {
+  font-size: var(--pub-label); font-weight: 600; color: var(--text-secondary);
+  border-bottom: 2px solid var(--brand-deep); white-space: nowrap;
+}
+/* A header allowed to wrap, opted into per table by `DataTable`'s `wrapHeaders`.
+   A nowrap header is right for a two- or three-column table and is what forces a
+   FIVE-column one off the side of the page: the ranked tables in the three
+   "furthest below their own highs" pieces needed 689px inside a 614px reading
+   column, so a reader on a full desktop had to scroll a table sideways to reach
+   the column the article is about. Wrapping the header costs one line of height
+   and keeps the whole table on screen. Body cells are untouched — a percentage
+   broken across two lines is unreadable, which is why `.art-num` keeps nowrap. */
+.art-table--wrapth thead th,
+/* ⚠️ The `.art-num` half is load-bearing, and leaving it out looked like it
+   worked. `.art-table .art-num` is (0,2,0) and `.art-table--wrapth thead th` is
+   (0,1,2), so the numeric rule WINS on class count: the three text headers
+   wrapped, the two percentage headers stayed on one line, and the table still
+   ran off the side by exactly those two columns. The half-fix renders as a
+   perfectly ordinary table — measured, not eyeballed. */
+.art-table--wrapth thead th.art-num { white-space: normal; }
+.art-table tbody th { font-weight: 400; color: var(--text-primary); }
+.art-table tbody tr:last-child th, .art-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+/* A declared numeric column — mono and tabular so the digits line up down the
+   column, which is the entire reason a reader scans a table rather than prose. */
+.art-table .art-num {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  text-align: right; white-space: nowrap;
+}
+.art-table thead .art-num { font-family: 'Sora', sans-serif; }
+/* Right-aligned WITHOUT the figure face — the peak-date and sector columns at the
+   end of the ranked tables (owner review, 2026-08-30). The table then has one
+   clean right edge rather than a ragged last column.
+
+   ⚠️ Specificity is the whole risk here, and this file already records the same
+   trap costing a half-fix that looked like a fix (see `.art-table--wrapth`
+   above). `.art-table td` is (0,1,1) and sets `text-align: left`; this rule is
+   (0,2,0), so it wins on class count. Verified by reading the COMPUTED value off
+   a rendered page, not by counting selectors twice.
+
+   No `nowrap`, deliberately: unlike a percentage, "Communication Services" is
+   wider than its column and must be allowed to wrap. */
+.art-table .art-right { text-align: right; }
+/* The row the prose is about. Weight and colour only — a background tint would
+   read as a selected row inside a card that already has its own ground. */
+.art-table .art-tr-em th, .art-table .art-tr-em td {
+  font-weight: 700; color: var(--text-primary);
+}

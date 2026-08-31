@@ -6,6 +6,7 @@ import { Suspense } from 'react';
 import { AnalystTargetTrack } from '@/components/stocks/AnalystTargetTrack';
 import { BalanceSheet } from '@/components/stocks/BalanceSheet';
 import { CompanyOverview } from '@/components/stocks/CompanyOverview';
+import { DelistedNotice } from '@/components/stocks/DelistedNotice';
 import { DividendHistory } from '@/components/stocks/DividendHistory';
 import { DrawdownOverlay } from '@/components/stocks/DrawdownOverlay';
 import { EarningsHistory } from '@/components/stocks/EarningsHistory';
@@ -26,7 +27,7 @@ import { TechnicalLevels } from '@/components/stocks/TechnicalLevels';
 import { StockSubnav } from '@/components/stocks/StockSubnav';
 import { ValuationHistory } from '@/components/stocks/ValuationHistory';
 import { VerdictCard } from '@/components/stocks/VerdictCard';
-import { fetchBenchmarks } from '@/lib/benchmarks.server';
+import { benchmarkSinceFor } from '@/lib/benchmarks';
 import { fetchCycleAnalysis, type CycleSpec } from '@/lib/cycle';
 import { getViewerEntitlement } from '@/lib/entitlement.server';
 import {
@@ -39,7 +40,7 @@ import { parseSpec, isValidMarket, horizonQuery, type RouteSearch } from '@/lib/
 import { fetchMetricMedians } from '@/lib/medians.server';
 import { fetchStockDetail } from '@/lib/stocks';
 import { urlPartsToTicker, tickerDisplay, tickerToUrlParts } from '@/lib/ticker';
-import { isFullCycle, type FundamentalsSnapshot, type Market, type PriceBar } from '@/lib/types';
+import { isFullCycle, type FundamentalsSnapshot, type PriceBar } from '@/lib/types';
 
 type RouteParams = { market: string; ticker: string };
 
@@ -228,28 +229,6 @@ async function CycleDrawdown({
   return cycle ? <DrawdownOverlay priceBars={priceBars} cycle={cycle} /> : null;
 }
 
-async function RelativePerformanceSection({
-  ticker,
-  market,
-  priceBars,
-  benchSince,
-}: {
-  ticker: string;
-  market: Market;
-  priceBars: PriceBar[];
-  benchSince: string | undefined;
-}) {
-  const benchmarks = benchSince ? await fetchBenchmarks(benchSince) : {};
-  return (
-    <RelativePerformance
-      ticker={ticker}
-      market={market}
-      priceBars={priceBars}
-      benchmarks={benchmarks}
-    />
-  );
-}
-
 export async function generateMetadata({
   params,
 }: {
@@ -318,14 +297,11 @@ export default async function StockDetailPage({
   const reportTitle = `${tickerDisplay(stored)} — ${stock.name ?? stored} · MajorCycle report`;
   const reportHorizonQuery = horizonQuery(sp);
 
-  // Benchmark index series for the Relative Performance chart. Capped to the
-  // later of the stock's first bar and ~20 years ago, so we never pull decades
-  // of unneeded index history (the chart's Max range tops out around 20Y).
-  const twentyYearsAgo = new Date();
-  twentyYearsAgo.setFullYear(twentyYearsAgo.getFullYear() - 20);
-  const benchFloor = twentyYearsAgo.toISOString().slice(0, 10);
-  const firstBar = stock.priceBars[0]?.date;
-  const benchSince = firstBar ? (firstBar > benchFloor ? firstBar : benchFloor) : undefined;
+  // How far back the Relative Performance chart should reach for this stock.
+  // The chart fetches the index series itself from /api/benchmarks — one shared,
+  // browser-cached window rather than 1,011 KB baked into every page (F-019) —
+  // so this date is all the page still needs to send.
+  const benchSince = benchmarkSinceFor(stock.priceBars[0]?.date);
 
   return (
     <div className="-mt-2">
@@ -339,6 +315,11 @@ export default async function StockDetailPage({
       />
 
       <div className="pt-5 space-y-[18px]">
+        {/* FIRST, above everything, and rendered server-side rather than inside a
+            Suspense boundary: a reader must not scroll to learn that every figure
+            below is frozen. Returns null for the 866 stocks still trading. */}
+        <DelistedNotice stock={stock} />
+
         {/* Read-only note when a non-default horizon was chosen on Browse.
             (No horizon selector lives on the detail page by design.) */}
         {spec.preset !== 'medium' && (
@@ -426,14 +407,12 @@ export default async function StockDetailPage({
           />
         )}
         {stock.priceBars.length > 0 && (
-          <Suspense fallback={<SectionSkeleton className="h-[300px]" />}>
-            <RelativePerformanceSection
-              ticker={stored}
-              market={market}
-              priceBars={stock.priceBars}
-              benchSince={benchSince}
-            />
-          </Suspense>
+          <RelativePerformance
+            ticker={stored}
+            market={market}
+            priceBars={stock.priceBars}
+            benchSince={benchSince}
+          />
         )}
         </section>
         <section id="sec-fundamentals" className="scroll-mt-[120px] space-y-[18px]">
@@ -485,6 +464,7 @@ export default async function StockDetailPage({
             insiderTransactions={stock.insiderTransactions}
             analystUpgradesDowngrades={stock.analystUpgradesDowngrades}
             priceBars={stock.priceBars}
+            currency={stock.fundamentals.currency}
           />
           <OwnershipStructure
             topHolders={stock.topHolders}

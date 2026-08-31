@@ -251,6 +251,36 @@ const PREMIUM_KEYS = [
       );
     }
   }
+  // The check above only proves the CONSTANT is still declared. It would pass while a
+  // newly added branch returned without it — which is exactly how `/api/portal` and
+  // `/api/checkout` came to send no Cache-Control at all (CLAUDE.md 11a, fourth time).
+  // So count instead, the same way the billing-endpoints section does: EVERY response
+  // this route can emit is per-viewer, so the number of responses carrying NO_STORE
+  // must EQUAL the number of responses, with no exceptions to argue about.
+  const reportCode = reportData
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('*') && !l.trim().startsWith('//') && !l.trim().startsWith('/*'))
+    .join('\n');
+  const responses = (reportCode.match(/NextResponse\.json\(/g) ?? []).length;
+  // Matches `headers: NO_STORE` and `headers: { ...NO_STORE, … }` alike.
+  const guarded = (reportCode.match(/headers:\s*(?:\{\s*\.\.\.)?NO_STORE/g) ?? []).length;
+  if (responses === 0 || guarded !== responses) {
+    fail(
+      `the report route has ${responses} responses but only ${guarded} carry NO_STORE`,
+      'One unguarded branch is the whole hole. Every response here varies by viewer —\n' +
+        '  the 200 is the scorecard, the 402/403/503 name this caller\'s own reason.',
+    );
+  }
+  // Added 2026-08-07. A failed database read used to arrive here as `null` and be
+  // answered 404 "Not found" — telling a paying subscriber their stock does not exist
+  // because Supabase timed out. Permanent answer, transient problem, nothing logged.
+  if (!/StockReadError/.test(reportCode) || !/status:\s*503/.test(reportCode)) {
+    fail(
+      'the report route no longer answers 503 on a failed read',
+      'A read failure is not a missing stock. 404 tells the customer to stop asking;\n' +
+        '  503 + Retry-After tells them to come back, which is the true answer.',
+    );
+  }
 }
 
 // ── 6. the entitlement rule must stay fail-closed ────────────────────────────
@@ -392,10 +422,32 @@ const PREMIUM_KEYS = [
 // these are POSTs carrying none — which is exactly the objection. That is "safe by
 // someone else's default", the failure CLAUDE.md 11a records THREE times, and the rule
 // it now states is "say it AND guard it". This is the guard.
+//
+// ⚠️ **A FIFTH time, 2026-08-23, and this one was found by ASKING A DIFFERENT QUESTION.**
+// The Layer G audit was building a test-coverage map, not hunting headers — and the five
+// routes below turned out to have no test AND no `Cache-Control`, because this section
+// listed the two endpoints that had bitten us and stopped there. A guard scoped to the
+// last defect is silent, not clean, about everything outside it (14g). Measured on the
+// wire: `/api/search`, `/api/listings/*` and `/api/request-ticker` all answered a
+// signed-in 200 with no header at all, while their signed-OUT refusals looked correct —
+// because the PROXY sets `private, no-store` on its own 307 before any handler runs, so
+// reading the refusal told you nothing about the response that carries the data. The
+// purge cron said nothing on its 401 either.
+//
+// Stakes are lower than the billing pair — ticker names, identical for every signed-in
+// reader — but all five sit BEHIND the sign-in gate, so a shared cache storing one would
+// serve gated content at a URL a signed-out reader can type. The purge cron is listed
+// because it is the account-deletion trigger and its responses describe one deployment's
+// deletion queue.
 {
   for (const [label, file] of [
     ['app/api/portal/route.ts', ['app', 'api', 'portal', 'route.ts']],
     ['app/api/checkout/route.ts', ['app', 'api', 'checkout', 'route.ts']],
+    ['app/api/search/route.ts', ['app', 'api', 'search', 'route.ts']],
+    ['app/api/listings/search/route.ts', ['app', 'api', 'listings', 'search', 'route.ts']],
+    ['app/api/listings/status/route.ts', ['app', 'api', 'listings', 'status', 'route.ts']],
+    ['app/api/request-ticker/route.ts', ['app', 'api', 'request-ticker', 'route.ts']],
+    ['app/api/cron/purge-accounts/route.ts', ['app', 'api', 'cron', 'purge-accounts', 'route.ts']],
   ]) {
     const src = read(...file);
     // Strip comments so the prose above (which quotes the directives) can't satisfy
@@ -425,13 +477,74 @@ const PREMIUM_KEYS = [
     // Every return must carry it — a single unguarded branch is the whole hole, and
     // the refusals are exactly the branches people forget.
     const returns = code.match(/return NextResponse\.(json|redirect)\(/g) ?? [];
-    const guarded = code.match(/headers:\s*NO_STORE/g) ?? [];
+    // ⚠️ Matches `headers: NO_STORE` AND `headers: { ...NO_STORE, … }`. The second
+    // form is how a response adds `Retry-After` to a 503 while keeping the private
+    // posture, and this pattern missed it until 2026-08-23 — so a correctly
+    // guarded 503 read as an UNguarded response and the check went red for the
+    // wrong reason. The report-route section a few checks above already matched
+    // both; the two had simply drifted (11c). Widening here is not a loosening:
+    // the spread still sets the header, and the sabotage below proves a genuinely
+    // missing one is still caught.
+    const guarded = code.match(/headers:\s*(?:\{\s*\.\.\.)?NO_STORE/g) ?? [];
     if (returns.length === 0) {
       fail(`${label} has no NextResponse returns to check`, 'The scan below cannot be trusted; update this guard.');
     } else if (guarded.length < returns.length) {
       fail(
         `${label} has ${returns.length} responses but only ${guarded.length} carry NO_STORE`,
         'Every branch, including the 4xx/5xx refusals, must send `private, no-store`.',
+      );
+    }
+  }
+}
+
+// ── /api/benchmarks: the ONE gated route allowed to be cacheable, bounded ──────
+// Every other gated endpoint above must say `private, no-store`. This one says
+// `private, max-age=86400`, deliberately, and the exception is the feature: the
+// four benchmark index series used to be baked into every Stock Detail page —
+// 1,011 KB, a third of the whole document, re-sent on every ticker a reader opened
+// (audit F-019). Serving them once and letting the browser keep them is the entire
+// point, and `no-store` would undo it.
+//
+// ⚠️ The exemption is bounded on BOTH sides (CLAUDE.md 11t), so it cannot quietly
+// grow into permission to share-cache something that matters:
+//   - `private` is still MANDATORY here. It forbids shared caches outright, so
+//     11a's failure — Vercel's edge keying on the URL alone and handing one
+//     viewer's response to the next — remains impossible. Only the reader's own
+//     browser may reuse it.
+//   - every shared-cache directive is still forbidden, exactly as elsewhere.
+//   - and the carve-out names `max-age` specifically. Anything else has to come
+//     back here and be argued for.
+//
+// It is safe to reuse because the payload has no viewer dimension at all: four
+// public stock-market indices, identical bytes for a free account and a
+// subscriber, on a chart that is free-tier visible. There is no premium field and
+// no personalisation to leak to the reader's future self.
+{
+  const label = 'app/api/benchmarks/route.ts';
+  const code = read('app', 'api', 'benchmarks', 'route.ts')
+    .split('\n')
+    .filter((l) => {
+      const t = l.trim();
+      return !t.startsWith('*') && !t.startsWith('//') && !t.startsWith('/*');
+    })
+    .join('\n');
+
+  if (!/'Cache-Control':\s*['"`]private,\s*max-age=\d+['"`]/.test(code)) {
+    fail(
+      `${label} no longer declares \`private, max-age=<n>\``,
+      'This route is the one cacheable gated endpoint and `private` is what makes\n' +
+        '  that safe. If caching is no longer wanted, use `private, no-store` and move\n' +
+        '  this file into the no-store list above rather than leaving it unasserted.',
+    );
+  }
+  for (const bad of ['s-maxage', 'stale-while-revalidate', 'public,', 'no-store']) {
+    if (code.includes(bad)) {
+      fail(
+        `${label} sends \`${bad}\``,
+        bad === 'no-store'
+          ? 'Then it is not cacheable, and it belongs in the no-store list above.'
+          : 'A shared cache keys on the URL alone. This route may be reused by the\n' +
+            '  reader who fetched it and by nobody else.',
       );
     }
   }

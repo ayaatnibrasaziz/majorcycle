@@ -7,6 +7,7 @@ import {
 } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
 import { fmtCapped, fmtPrice } from '@/lib/format';
+import { INK } from '@/lib/ink';
 
 interface Props {
   /**
@@ -145,8 +146,8 @@ function buildRisks(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapsho
 
 function CheckIcon() {
   return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="#228B22" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="8" cy="8" r="7" stroke="#228B22" strokeOpacity={0.35} />
+    <svg viewBox="0 0 16 16" fill="none" stroke={INK.up} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="8" cy="8" r="7" stroke={INK.up} strokeOpacity={0.35} />
       <path d="m5 8 2 2 4-4" />
     </svg>
   );
@@ -154,10 +155,10 @@ function CheckIcon() {
 
 function WarnIcon() {
   return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="#B58800" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg viewBox="0 0 16 16" fill="none" stroke={INK.neutral} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M8 2 1.5 13.5h13L8 2Z" />
       <path d="M8 6.5v3.2" />
-      <circle cx="8" cy="11.6" r="0.6" fill="#B58800" stroke="none" />
+      <circle cx="8" cy="11.6" r="0.6" fill={INK.neutral} stroke="none" />
     </svg>
   );
 }

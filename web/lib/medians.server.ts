@@ -139,6 +139,11 @@ async function _fetchMetricMedians(): Promise<MedianTables> {
       .from('stocks')
       .select('market,sector,industry,fundamentals')
       .neq('market', 'index')
+      // Delisted companies are excluded from every peer median. Their
+      // fundamentals are frozen at the day they stopped trading, so leaving them
+      // in would quietly drag a live sector's median toward a snapshot of the
+      // past — a wrong number that looks entirely ordinary.
+      .eq('is_active', true)
       .order('ticker', { ascending: true })
       .range(from, to),
   );

@@ -1,7 +1,22 @@
-'use client';
-
-import { useMemo } from 'react';
-
+// NOT a client component — deliberately, since 2026-08-24.
+//
+// This table has no state, no effects and no event handlers. Its only claim on
+// the client was a `useMemo` around the row build, and a memo is not
+// interactivity: it caches a pure computation across re-renders that never
+// happen here. The props arrive fixed from the server and nothing on the page
+// changes them, so the memo saved nothing while the directive cost ~255 lines of
+// client bundle and React's hydration pass over every row.
+//
+// The rows are now built directly in the render. Same function, same inputs, same
+// output — the only thing removed is a cache for a recomputation that cannot occur.
+//
+// InfoTip stays a client component and hydrates on its own; a server component may
+// render one.
+//
+// ⚠️ Must stay HOOK-FREE. ReportDocument renders this same component in the offline
+// report, an esbuild bundle with no server (CLAUDE.md 11d). Hook-free works in both
+// builds; a hook would be legal there and illegal here, and the report only fails
+// when a customer opens it.
 import type { FundamentalsSnapshot } from '@/lib/types';
 import type { MedianTables, MetricKey, MetricMedians } from '@/lib/medians.server';
 import { InfoTip } from '@/components/ui/InfoTip';
@@ -163,23 +178,21 @@ export function MetricsTable({ fundamentals, industry, sector, market, medians }
   const sectorLabel = sector ?? 'Sector';
   const marketLabel = MARKET_LABEL[market] ?? 'Market';
 
-  const rows: BuiltRow[] = useMemo(() => {
-    const f = fundamentals as unknown as Record<MetricKey, number | null>;
-    return METRICS.flatMap((def) => {
-      const value = f[def.key];
-      if (value === null || value === undefined || !Number.isFinite(value)) return [];
-      const capped = def.cap !== undefined && Math.abs(value) > def.cap;
-      return [{
-        def,
-        value,
-        disp: fmtVal(value, def.unit, def.cap),
-        valueTitle: capped ? `Actual ${fmtVal(value, def.unit)} — capped for display` : undefined,
-        industryCmp: compare(def, value, industryGroup, industryLabel),
-        sectorCmp: compare(def, value, sectorGroup, sectorLabel),
-        marketCmp: compare(def, value, marketGroup, marketLabel),
-      }];
-    });
-  }, [fundamentals, industryGroup, sectorGroup, marketGroup, industryLabel, sectorLabel, marketLabel]);
+  const f = fundamentals as unknown as Record<MetricKey, number | null>;
+  const rows: BuiltRow[] = METRICS.flatMap((def) => {
+    const value = f[def.key];
+    if (value === null || value === undefined || !Number.isFinite(value)) return [];
+    const capped = def.cap !== undefined && Math.abs(value) > def.cap;
+    return [{
+      def,
+      value,
+      disp: fmtVal(value, def.unit, def.cap),
+      valueTitle: capped ? `Actual ${fmtVal(value, def.unit)} — capped for display` : undefined,
+      industryCmp: compare(def, value, industryGroup, industryLabel),
+      sectorCmp: compare(def, value, sectorGroup, sectorLabel),
+      marketCmp: compare(def, value, marketGroup, marketLabel),
+    }];
+  });
 
   if (rows.length === 0) {
     return (

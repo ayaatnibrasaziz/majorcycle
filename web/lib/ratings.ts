@@ -9,6 +9,38 @@
 import { tickerToUrlParts } from '@/lib/ticker';
 import type { CycleAnalysis, OverallLabel, ValuationZone } from '@/lib/types';
 
+/**
+ * The five rating-tier hexes, for the surfaces that CANNOT read a CSS variable.
+ *
+ * Three of them exist: the `.xlsx` workbook (ExcelJS wants ARGB), a Recharts
+ * `fill`/`stroke` prop, and an inline SVG attribute. Everything that can reach the
+ * stylesheet must use `tierColorVar()` / `scoreColor()` instead — a hex written
+ * into a component is a copy, and this palette had **247** copies across 26 files
+ * before 2026-08-22 (CLAUDE.md 11c).
+ *
+ * ⚠️ THIS IS THE SECOND COPY OF `--c-tier-*`, and it cannot be the first: CSS
+ * cannot be imported into TypeScript, and the workbook is generated with no DOM to
+ * resolve a variable against. Two copies of a rule drift, so the drift is made
+ * impossible instead of merely discouraged — `pnpm check:tier-palette` parses both
+ * `app/globals.css` and this object and fails the build if any value disagrees.
+ * That guard was broken on purpose (one digit changed, in each file in turn) before
+ * being trusted.
+ *
+ * ⚠️ These are RATING colours — our judgement about a stock. They are NOT the
+ * direction colours. A candlestick's green, a beat/miss green, a "bullish" green
+ * and a buy-marker green are a separate rule that merely shares a hue; those kept
+ * their original values when these were darkened for contrast (see globals.css).
+ * Reaching for `RATING_TIER_HEX[2]` to colour a rising price would silently
+ * couple two things that must be free to move apart.
+ */
+export const RATING_TIER_HEX: Readonly<Record<1 | 2 | 3 | 4 | 5, string>> = {
+  1: '#065F46',
+  2: '#1E7C1E',
+  3: '#72696D',
+  4: '#C73600',
+  5: '#8B1414',
+} as const;
+
 /** Tier index 1 (strongest) … 5 (weakest) for a 0–100 score. */
 export function tierFromScore(score: number): 1 | 2 | 3 | 4 | 5 {
   if (score >= 80) return 1;
@@ -49,6 +81,7 @@ export function scoreColor(score: number | null): string {
   if (score == null) return 'var(--text-muted)';
   return tierColorVar(tierFromScore(score));
 }
+
 
 /**
  * Financial-Health colour — ONE colour per FH tier so the cell colour matches its
@@ -298,30 +331,58 @@ export function downloadCsv(filename: string, csv: string): void {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * The engine's Overall Rating weights, as percentages.
+ *
+ * ⚠️ Mirrors `_RATING_WEIGHTS` in `analytics/scoring/overall.py`, and is the ONE
+ * place the TypeScript side spells them. They were written as bare `0.4 / 0.35 /
+ * 0.25` inside `ratingComposition` until 2026-08-20, when the Learn article
+ * explaining the rating needed the same three numbers — which would have made a
+ * third copy, in prose, of a constant that already existed twice (CLAUDE.md
+ * 11c-v). Anything that states the weights now reads them from here.
+ */
+export const RATING_WEIGHTS = { health: 40, valuation: 35, payoff: 25 } as const;
+
 /** Convenience: the OverallRating composition (engine weights 40/35/25). */
 export function ratingComposition(r: CycleAnalysis): { health: number; valuation: number; payoff: number } {
   return {
-    health: (r.financialHealthScore ?? 0) * 0.4,
-    valuation: r.valuationScore * 0.35,
-    payoff: r.cyclePayoffScore * 0.25,
+    health: (r.financialHealthScore ?? 0) * (RATING_WEIGHTS.health / 100),
+    valuation: r.valuationScore * (RATING_WEIGHTS.valuation / 100),
+    payoff: r.cyclePayoffScore * (RATING_WEIGHTS.payoff / 100),
   };
+}
+
+/** `#RRGGBB` → `"r,g,b"`, so an `rgba()` can be built from the one palette. */
+function hexToRgbTriplet(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
 }
 
 /**
  * Three shades of a score's tier colour — for the Overall composition micro-bar
  * (Health / Valuation / Cycle Payoff segments), mirroring the reference's
  * `zoneRamp`. Darkest → lightest.
+ *
+ * ── ⚠️ DERIVED, not a second copy of the palette (audit F-009) ──────────────
+ * This held its own table of the five tier colours as `r,g,b` strings, and they
+ * were the **pre-2026-08-22** ones. The G6 contrast fix moved the palette and
+ * never reached here, so for a month the micro-bar under every Overall score was
+ * painted in the old colours while the chip directly above it used the new ones.
+ * Nobody saw it because the change was a darkening, not a hue swap.
+ *
+ * ⚠️ **The guard that exists for exactly this could not see it.** `check:tier-palette`
+ * walks 278 files hunting stray copies of the palette — by **hex**. A copy written
+ * as `212,160,23` is invisible to it, so the one control against this drift had a
+ * blind spot the width of a format change. Fixing the literals would have left that
+ * blind spot intact and simply reset the clock.
+ *
+ * So the copy is gone. `RATING_TIER_HEX` is the single source and the triplet is
+ * computed from it — CLAUDE.md **11c (iii)**: when a rule is shared, make the second
+ * consumer *derive* from the first rather than restate it, because two things that
+ * merely agree today will not agree forever.
  */
 export function compositionRamp(score: number): [string, string, string] {
-  const t = tierFromScore(score);
-  const rgb: Record<1 | 2 | 3 | 4 | 5, string> = {
-    1: '0,100,0',
-    2: '34,139,34',
-    3: '212,160,23',
-    4: '255,69,0',
-    5: '178,34,34',
-  };
-  const c = rgb[t];
+  const c = hexToRgbTriplet(RATING_TIER_HEX[tierFromScore(score)]);
   return [`rgba(${c},0.85)`, `rgba(${c},0.55)`, `rgba(${c},0.30)`];
 }
 

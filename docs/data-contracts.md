@@ -64,6 +64,14 @@ class FundamentalsSnapshot:
     financial_currency: Optional[str] = None  # currency of the STATEMENTS — see below
     exchange: Optional[str] = None
     market_cap: Optional[float] = None
+    # ⚠️ NEVER WRITTEN AS NULL OVER A STORED VALUE. yfinance's `info` intermittently
+    # omits `marketCap` for a large, actively-traded company (15 of 863 on
+    # 2026-08-27), so the provider falls back to `fast_info`, and `daily_refresh`
+    # adds the column to its upsert ONLY when it has a value — omitting a key
+    # preserves the stored figure, sending None deletes it. A null cap is silent:
+    # it renders as a blank cell, drops the company out of every size-ranked
+    # cohort, and takes `fcf_yield_pct` with it. Audit F-032; guard is the
+    # >0.5%-missing invariant in check_field_units.py.
 
     # Profitability
     gross_margin: Optional[float] = None          # %
@@ -121,6 +129,15 @@ class FundamentalsSnapshot:
     num_analyst_opinions: Optional[int] = None
 
     # Price / Technicals
+    # ⚠️ INTRADAY extremes, NOT closing prices, and NOT derived from our own bars.
+    # Straight from the provider's fiftyTwoWeekHigh / fiftyTwoWeekLow: the highest
+    # and lowest anyone paid at any instant. So a chart line drawn from CLOSES can
+    # never reach week52_high — measured 2026-08-19 across all three markets, the
+    # quoted high sat 0.5%–2.8% above our own highest close for 8 of 8 tickers,
+    # while agreeing with our highest intraday HIGH to within 0.6%. That gap is the
+    # year's biggest intraday spike, not an error, and 14f is why we do not
+    # "correct" it. The range gauge's tooltip said "closing prices" until this was
+    # measured; it now says "prices traded".
     week52_high: Optional[float] = None
     week52_low: Optional[float] = None
     week52_change_pct: Optional[float] = None
@@ -529,6 +546,33 @@ export interface PriceBar {
    * New York are different instants and would never match.
    */
   date: string;
+  /**
+   * ⚠️ EVERY PRICE HERE IS SPLIT- AND DIVIDEND-ADJUSTED (`auto_adjust=True`), and
+   * that makes an old bar's value a function of what the company has done SINCE.
+   *
+   * Each time a company goes ex-dividend the provider divides its whole prior
+   * series by a new factor. So a refresh that fetches only a recent window stores
+   * the new bars on the new basis and silently leaves every older bar — the peak
+   * included — on the old one. Splits had a full re-pull for this from the start;
+   * DIVIDENDS DID NOT, until 2026-08-30.
+   *
+   * The cost, measured on the live database: the ratio between a stored close and
+   * a fresh pull was a CONSTANT on every bar before that company's last ex-dividend
+   * date and exactly 1.0000 after it — CBA 1.0169, GPT 1.0062-1.0244 (several
+   * dividends, so several steps), MSFT 1.0019. A drawdown therefore read up to two
+   * points deeper than the truth, on the site and in a published article, and
+   * nothing anywhere failed: a slightly-too-deep fall is a perfectly plausible
+   * number. Found only by comparing our figures against a fresh pull.
+   *
+   * `_recent_dividends` in `daily_refresh.py` now triggers the same full re-pull a
+   * split does — roughly 6-9 tickers a night. `--repull-prices` re-pulls the whole
+   * universe, which is how the accumulated drift was cleared.
+   *
+   * ⚠️ **Do not "fix" this by storing unadjusted prices.** The adjustment is
+   * deliberate and load-bearing: it is what makes a return comparable across time
+   * and what lets "back to the old price" mean "back to where you started,
+   * including the income" (CLAUDE.md 14f).
+   */
   open: number;
   high: number;
   low: number;
@@ -607,6 +651,15 @@ export interface StockRecord {
   fundamentals: FundamentalsSnapshot;
   news: NewsItem[];
   updatedAt: string;
+  // Delisting. Optional because a row written before the column existed has none, and
+  // the safe reading of "unknown" is ACTIVE — only an explicit `false` announces that a
+  // company has stopped trading. Added to the type on 2026-08-31 (audit F-035); the
+  // VALUES had been arriving since 2026-08-30, because `readStockRow` does `select('*')`
+  // and `shallowCamel` renames every key, so `isActive` sat in memory with nothing
+  // reading it while `/stocks/us/BK` rendered a five-week-old price as though current.
+  isActive?: boolean | null;
+  inactiveSince?: string | null;   // 'YYYY-MM-DD', the day the sweep retired it
+  inactiveReason?: string | null;  // internal; never rendered verbatim
   // Enriched fields — present when enriched data has been fetched (optional until first enrich run)
   companyOverview?: string | null;
   incomeStatementAnnual?: FinancialStatement;
@@ -625,7 +678,67 @@ export interface StockRecord {
 }
 ```
 
+#### How far back `price_bars` actually goes — a HARD FLOOR per market
+
+⚠️ **Our history does not begin when a company listed. It begins where the data
+provider's coverage begins, and that date is different in every market.** Measured
+2026-08-26 across all 871 stocks:
+
+| Market | Floor | Stocks whose first bar is that exact day |
+|---|---|---|
+| US | **1962-01-02** | 24 (plus a second pile-up of 63 on 1980-03-17) |
+| AU | **1988-01-29** | **39** — including BHP, ANZ, NAB, Rio Tinto, Wesfarmers, Amcor |
+| CA | **1995-01-12** | 28 |
+
+BHP has traded on the ASX since 1885 and our first bar for it is 1988. That is not
+history; it is where yfinance starts.
+
+⚠️ **The tell is a PILE-UP.** Real listing dates are spread across the calendar. When
+dozens of unrelated companies share one first-bar date to the day, that date is a
+coverage boundary, not an event. Any analysis that reports "N years of history"
+must check for it — the naive reading of the AU median first bar (`2004-06-30`)
+suggests thin coverage, while the actual constraint is the 1988 floor underneath it.
+
+**Above the floor the dates are genuinely right**, which is why this is easy to miss:
+CBA `1991-09-30` (floated 1991 ✅), Telstra `1997-11-28` (T1 float Nov 1997 ✅),
+Woolworths `1993-07-30` ✅, Qantas `1995-07-31` ✅. The data is accurate; it is just
+truncated, and truncation is invisible unless you go looking for it.
+
+**Consequences for anything that measures across markets:**
+
+1. **Never state a history length the floor cannot support.** Only 56% of the ASX 200
+   has 20+ years; the US figure is 78%, Canada 76%.
+2. **A cross-market comparison needs a COMMON window, or it is comparing eras rather
+   than markets.** `2000-01-01` is the first year clean for all three, and it still
+   covers the dot-com crash, the GFC and COVID.
+3. **A market-by-market average over each stock's own available history is not a
+   like-for-like number**, because the three markets are averaging different spans.
+
+Found while measuring drawdown depth for the first `/articles` piece, which would
+otherwise have claimed twenty years of ASX history it does not have.
+
 **Conversion rule:** Python uses `snake_case`, TypeScript uses `camelCase`. The Python script writes snake_case JSON to Supabase. The frontend has a small `web/lib/case.ts` utility that converts snake_case → camelCase on read. Never store camelCase keys in the DB.
+
+#### Reader contract — `fetchStockDetail(ticker): Promise<StockDetail | null>`
+
+`StockDetail = StockRecord & { priceBars: PriceBar[] }`, from `web/lib/stocks.ts`.
+
+⚠️ **`null` has exactly ONE meaning: the ticker is not in our universe.** Every read
+*failure* throws **`StockReadError`** instead, carrying the originating PostgREST error as
+`cause`. An empty history is `[]`, not `null` — "this stock has no bars" is a real answer;
+"I could not read the bars" is not.
+
+This was one return value until 2026-08-07, so a database timeout was indistinguishable from
+a missing stock and rendered as **"Stock not found"** to paying subscribers (CLAUDE.md 11e).
+Callers must keep the two apart: the Stock Detail page lets the throw reach
+`app/(app)/error.tsx` ("Try again"), while `/report` catches it and answers **503**.
+
+React `cache()` memoises the rejection as well as the value, so a page and its
+`generateMetadata` see one consistent outcome from a single attempt.
+
+`readStockRow` and `loadPriceBars` are exported **solely** so
+`web/e2e/stock-read-errors.spec.ts` can drive the real functions with a stub client; both
+take their client as an argument for that reason. Do not inline them.
 
 ---
 
@@ -831,7 +944,18 @@ interface AnalysisRunRecord {
 - `401` — not logged in (enforced by `proxy.ts`), or the internal secret is absent/wrong
   (`analyze.py` re-checks the header the proxy injects)
 - `402` — **no live subscription** (F3 Step 10). Body `{ error: 'Payment Required', reason }`
-  with `reason` ∈ `no_subscription` / `canceled` / `payment_failed` / `billing_blocked`
+  with `reason` ∈ `no_subscription` / `canceled` / `payment_failed` / `billing_blocked` /
+  `setup_incomplete` / `subscription_paused`.
+  ⚠️ **The last two were added 2026-08-23 (audit F-005).** Stripe has eight subscription
+  statuses and this mapping knew four; the other four all fell through to `no_subscription`,
+  so a reader whose subscription was *stuck* was told they did not have one — and three of
+  the four had already tried to pay us. `incomplete` and `incomplete_expired` →
+  `setup_incomplete`; `paused` → `subscription_paused`; **`unpaid` → `payment_failed`
+  deliberately**, because it is what `past_due` becomes once Stripe stops retrying, so the
+  reader's situation and their next action are identical and a separate reason would be a
+  distinction that exists in Stripe's model and not in theirs. The access *decision* was
+  correct throughout and is unchanged — only the sentence was wrong, which is why nothing
+  ever failed.
 - `403` — **account scheduled for deletion** (live-check S3, 2026-08-01). Body
   `{ error: 'Account scheduled for deletion', reason: 'account_deleting' }`, issued by
   `proxy.ts` **before** the entitlement check, mirroring the page order (`requirePremiumPage`
@@ -1026,6 +1150,229 @@ PRESETS = {
 
 ---
 
+## 7a. The two committed landing snapshots (Layer G)
+
+Neither is a database table and neither is fetched at request time. Both are **JSON files
+committed to the repo and statically imported**, so the front door never touches Postgres
+and Lighthouse has nothing to wait on. Architecture §7.1 explains why the Mag 7 one is a
+deliberate, bounded exception to the paywall; this section is the shape.
+
+### `web/app/landing-snapshot.json` — one stock, rebuilt nightly
+
+Written by `analytics/cron/build_landing_snapshot.py` at the end of the US+CA refresh,
+committed back with `[skip ci]`. Read through `web/lib/landing.ts`.
+
+```typescript
+interface LandingSnapshot {
+  ticker: string;            // fixed — Apple. A rotating example means the page a reader
+  name: string;              // shares is not the page their friend opens.
+  currency: string;
+  price: number;
+
+  // The falling half of the cycle. All negative.
+  currentDrawdownPct: number;
+  typicalDrawdownPct: number;
+  deepestDrawdownPct: number;
+  pullbackEvents: number;
+
+  // The recovery half. All positive. Added 2026-08-13 for the storyboard's
+  // second distribution bar — no new maths, calculate_cycle_metrics already
+  // returned all four and the allow-list simply never asked.
+  currentProfitPct: number;
+  typicalRecoveryPct: number;
+  largestRecoveryPct: number;
+  recoveryEvents: number;
+
+  asOf: string;              // exchange calendar date of the last bar (14a)
+  generatedAt: string;       // ISO instant the file was written
+}
+```
+
+⚠️ **Every field is cycle GEOMETRY.** The generator calls `calculate_cycle_metrics`, which
+has no rating, health score or valuation to return — so there is no code path from this
+file to a premium field. That is structurally stronger than remembering to strip one (11b).
+
+### `web/app/mag7-snapshot.json` — seven stocks, FROZEN
+
+Written by `analytics/cron/build_mag7_snapshot.py`, which calls `analyze_ticker` — the
+**same** function the screener runs, not the three scoring functions recomposed. Read
+through `web/lib/mag7.ts`. Regenerated **only on request** (owner, 2026-08-13).
+
+```typescript
+interface Mag7Snapshot {
+  preset: string;            // "medium"
+  asOf: string;              // exchange calendar date — 2026-08-13
+  generatedAt: string;
+  rows: Mag7Row[];           // exactly 7, allow-listed tickers
+}
+
+interface Mag7Row {
+  ticker: string;
+  name: string;              // full legal name; lib/mag7.ts shortName() for prose
+  currency: string;
+
+  // ⚠️ PREMIUM everywhere else on the site. Bounded exception — architecture §7.1.
+  overallRating: number;     // 0–100
+  overallLabel: OverallLabel;
+  healthScore: number;
+  valuationScore: number;
+  cyclePayoffScore: number;  // the rating's third component, 25% of the weight
+  valuationZone: string;
+
+  currentDrawdownPct: number;   // negative
+  typicalDrawdownPct: number;   // negative
+  lowerBoundPct: number;        // negative — deepest in the record
+  pullbackEvents: number;
+}
+```
+
+⚠️ **`cyclePayoffScore` exists so the table can draw the product's composition micro-bar
+from the real 40/35/25 split.** Deriving it back out of the rounded total would be a
+second implementation of `ratingComposition` (11c iii). **The allow-list is a whitelist of
+keys, not a blacklist** — a field `CycleAnalysis` grows next does not appear here by
+default, which is the point.
+
+### The invariant BETWEEN them
+
+Apple appears in **both** files, so they must carry the **same `asOf`**. The first run left
+them a day apart and the landing page printed −12.2% in section ⑤'s rulers and −11.3% in
+section ④'s table, three screens up — both real, one current. `e2e/landing.spec.ts` fails
+if the two disagree on any shared field.
+
+⚠️ **Regenerating `mag7-snapshot.json` is a CONTENT change, not a data refresh.** The page
+states things *about* this run in prose. Every such claim is derived in `mag7Facts()` and
+asserted against the rows, and the Opportunity Map's label placement is tuned to one set
+of coordinates — re-run `e2e/landing.spec.ts` and re-read the callout copy. See 11k.
+
+---
+
+## 7b. The Learn registry (`web/lib/learn.ts`) — Layer G
+
+Not a database table. It is a **compile-time registry**, and it belongs here because five
+other things derive from it and none of them may be written by hand.
+
+```ts
+export interface LearnThemeMeta {
+  readonly id: 'cycles' | 'quality' | 'using-it';
+  readonly label: string;
+  readonly blurb: string;
+  /** Topic illustration, 1600 × 1000 (16:10), cropped from a 4K master kept
+   *  outside git in reference/learn-masters/. OPTIONAL — without it the band
+   *  drops its second column and holds the header's 720px measure.
+   *  ⚠️ The crop is EXACT and was recovered on 2026-08-18 by scoring candidates
+   *  against the shipped file on dark pixels: from the 5056 × 3392 master,
+   *  `extract({ left: 0, top: 116, width: 5056, height: 3160 })` then
+   *  `resize(1600, 1000)` — centred, mean abs difference 0.83/255 against
+   *  23.50 top-aligned and 12.78 bottom-aligned. Regenerate a shipped image
+   *  with those numbers and it lands on the same pixels.
+   *  ⚠️ All three ship as the RAW generated crop — no colour editing survives on
+   *  any of them. Two attempts at tinting image 3 to blend with `--bg-page` are
+   *  recorded in design-system.md; both were reverted. Fidelity beat blending.
+   *  ⚠️ `alt` describes THIS picture. Replacing the artwork without rewriting
+   *  the alt leaves a description of a different image, which is worse for a
+   *  screen-reader user than no description at all — it happened on all three
+   *  when the set was regenerated on 2026-08-16. */
+  readonly image?: { readonly src: string; readonly alt: string };
+  /** Announced-but-unwritten titles, rendered as inert "Coming soon" rows. */
+  readonly upcoming?: readonly string[];
+}
+
+export interface LearnArticle {
+  readonly slug: string;      // never changed once published — a changed slug is a dead link
+  readonly title: string;
+  readonly question: string;  // the question a real person types, in their words
+  readonly answer: string;    // ≤320 chars, rendered above the disclaimer (see below)
+  readonly summary: string;   // meta description + JSON-LD only — NEVER rendered on screen
+  readonly theme: LearnTheme;
+  readonly published: string; // ISO
+  readonly reviewed: string;  // ISO — when it was last checked against the running product
+  readonly minutes: number;   // reading time
+}
+```
+
+**Five fields carry rules that are enforced rather than documented:**
+
+| Field | Rule | Why, and what enforces it |
+|---|---|---|
+| `summary` | **70–155 characters**, and it appears **nowhere on the page** | Two consumers, both invisible: the `<meta name="description">` and the JSON-LD `description`. Checked 2026-08-22 — the Learn index renders only `title` and `minutes`, so editing `summary` changes what Google shows and nothing a reader sees on the site. That is why five of them could be trimmed without touching approved copy. The bounds are Google's display window: past ~155 it is truncated mid-clause, under ~70 the result looks abandoned. `e2e/seo.spec.ts` asserts it on the **rendered** tag, because the landing interpolates a live count, articles come from this registry and the sign-in pages inherit the root layout — three routes to one tag, and only the wire sees all three. The floor applies to indexable pages only: a `noindex` page never gets a snippet |
+| `answer` | **80–320 characters** | It renders directly above the "not financial advice" notice, so an over-long answer is the only thing that can push a legally-required disclaimer below a 375px fold. The lower bound stops a one-liner that restates the title. `e2e/learn.spec.ts` |
+| `minutes` | within **±2** of the rendered body at 200 wpm | A second copy of a fact about the body (11k) — edit the prose and it stays put, plausible and quietly wrong. The bodies are React components so there is nothing to count at build time; the test counts words on the **rendered** page |
+
+⚠️ **Figure captions and legends count toward `minutes`.** They are inside `[data-article-body]`, which is what the test measures, so adding a diagram to an article raises its reading time — the drawdown article's three figures contribute roughly 150 words. This is correct rather than a quirk: a caption is read. But it means `minutes` has to be re-checked when a figure is added, not only when prose is.
+| `slug` | must have a body in `ARTICLE_BODIES` | `Record<LearnSlug, …>` makes a missing body a **compile error** rather than a blank page (11j). Depends on `LEARN_ARTICLES` ending `as const satisfies readonly LearnArticle[]` — an explicit annotation widens `slug` to `string` and the check silently evaporates. Guarded by `check:seo` |
+| `upcoming` | plain **strings**, never `LearnArticle`s | A registry entry acquires a URL, a sitemap row, a middleware allow-list entry, a canonical tag, and a compile error until a body exists. A promise about a future article must cost none of that — so an announced title is a string, and there is nothing there that *can* become a link. `learn.spec.ts` asserts each is named on the page, is **not** reachable as a link, and is absent from `LEARN_ARTICLES`. ⚠️ **Every list is now empty** (2026-08-20 — all twelve announced titles are written), so the guard's old vacuity assertion `announced.length > 0` went red on the day the last promise was kept. It was right about the risk and wrong to treat "nothing announced" as impossible. It now checks the OTHER state instead of skipping: with nothing announced, the index must carry no "Coming soon" row at all — a leftover row surviving an emptied list is exactly the kind of thing that renders perfectly (11j) |
+
+⚠️ **The count pill states what is READABLE, never what is promised.** "1 article" above
+four Coming soon rows — not "5 articles". A pill counting promises is a lie a reader checks
+in one glance, on the page whose whole job is being trusted by a stranger. A topic with
+articles shows its count; a topic with only announcements shows "Coming soon".
+
+⚠️ **The ratio was a merge decision, and it is now settled.** One written piece beside
+eleven promises reads as a shell rather than a growing library; that was the open question
+while the library was being built. **Resolved 2026-08-20 by writing all eleven** — the
+library ships as twelve articles and zero promises, so no reader meets a "Coming soon" row.
+The mechanism stays in the type for the next time a title is announced ahead of its body.
+
+⚠️ **No React in this file.** `lib/seo.ts` imports it and `proxy.ts` imports `lib/seo.ts`,
+so a component here joins the **middleware** bundle that runs on every request to the site.
+Bodies live in `app/(public)/learn/content.tsx`. Guarded by `check:seo`.
+
+⚠️ **Worked examples read the nightly landing snapshot (§7a), never hard-coded numbers**
+(11k). "Apple has fallen 11.3%" typed into prose is a sentence that is true today, fluent
+forever, and wrong from tomorrow, with nothing going red.
+
+---
+
+## 7c. The Articles registry (`web/lib/articles.ts`) — Layer G
+
+The second content registry, and structurally a twin of `7b`: no React, `satisfies`
+rather than an annotation, bodies keyed by slug in `app/(public)/articles/content.tsx`,
+and `lib/seo.ts` deriving every `/articles/<slug>` entry from it.
+
+**Why two registries rather than a `kind` field on the Learn one.** They answer
+different questions and age differently. A Learn article explains a term and does not
+expire, so `/learn` groups by subject and shows no dates. An article here reports a
+**measurement taken on a stated day** — every one will be overtaken, and saying when
+it was taken is half of being honest about it. One list would force one shape onto
+both, and the shape that loses is the dated one: a date column on an explainer implies
+a shelf life it does not have.
+
+| Field | Meaning |
+|---|---|
+| `slug`, `title`, `question`, `answer`, `summary` | As `LearnArticle`. `answer` is required so a piece cannot be published without one, and `articles.spec.ts` caps its length — an over-long answer is the only thing that can push the compliance notice below the fold at 375px |
+| `kind` | `analysis` · `commentary` · `how-to` — the three kinds the section's lead sentence promises |
+| `deck` | The featured card's body. Separate from `summary` because they are written for different readers: the summary is what a stranger sees under a blue link on Google, the deck is what a reader sees having already decided to look |
+| `finding` | The index row's one line — the piece's FINDING, never a summary. Owner's design decision: on this site the number is what a reader scans, and it is what replaces the thumbnail every competitor leads with |
+| `facts` | Up to three figures for the featured card's pills |
+| `region` | The row's trailing chip |
+| `published` / `reviewed` / `minutes` | As `LearnArticle`. `minutes` is a claim ABOUT the prose, so `articles.spec.ts` counts the words on the RENDERED page and fails beyond ±2 |
+
+**`RichPart[]` — prose as data.** `deck` and `finding` both need a bolded figure
+inside a sentence, and this file may not import React. So they are segments —
+`string`, `{ strong }`, `{ figure }` — rendered by the one component
+`components/articles/RichText.tsx`. ⚠️ `figure` marks a **number**, not merely bold
+text: the renderer sets it in the mono face with `tabular-nums` so a column of
+findings lines up on the digits. Using `strong` for a number looks almost right and
+quietly breaks that alignment.
+
+**`PLANNED_ARTICLES` is plain data, deliberately not `Article`s** — same reasoning as
+`LEARN_THEMES[].upcoming`. The moment a promise becomes a registry entry it acquires a
+URL, a sitemap row, a middleware allow-list entry and a canonical tag, and
+`content.tsx` must hold a body for it. A promise about a future piece must cost none
+of that, and `articles.spec.ts` asserts a planned row is never — and never *contains*
+— a link.
+
+⚠️ **AN ARTICLE'S FIGURES ARE FROZEN, WHICH IS THE OPPOSITE OF THE LEARN RULE.**
+`learn/content.tsx` reads every number from the nightly snapshot, because an explainer
+describes how the product behaves *today*. An article is a record of one day, so a
+live read would leave the drawing disagreeing with the prose beside it the first time
+a price moved. The guarantee is a **workbook** instead —
+`reference/how-far-do-asx-shares-fall-WORKING.xlsx`, every published figure a live
+formula over the underlying rows — so each one can be re-derived rather than taken on
+trust. Re-taking a measurement is an edit to the article, never a data refresh (11k).
+
+---
+
 ## 8. Currency Display Rules
 
 **Stock prices:** always in the stock's home currency, identified by `fundamentals.currency`. Display the currency symbol or code.
@@ -1080,6 +1427,47 @@ same cron run (via `daily_refresh.run`) and audited in `universe_log` as
 (that queue is for the user-facing Request-a-Ticker page only; cron-added
 constituents never appear there). A name with no data simply isn't added and is
 retried next run.
+
+**`dividend_events` table** — one row per ex-dividend date per ticker, recording why
+a company's full price history was re-fetched. **A record, not a state machine** — which
+is exactly why it is a separate table from `split_events` rather than a `kind` column on
+it (owner's request, 2026-08-30):
+
+```sql
+dividend_events (
+  id          uuid primary key,
+  ticker      text references stocks(ticker) on delete cascade,
+  ex_date     date,          -- the ex-dividend date yfinance reported
+  amount      numeric,       -- per-share, in the stock's own currency
+  detected_at timestamptz,   -- when the nightly run first saw it
+  repulled_at timestamptz,   -- when the full re-adjusted history was fetched
+  unique (ticker, ex_date)
+)
+```
+
+A split can leave a **real** price cliff when the provider's own history is internally
+inconsistent (MNST, audit F-030), so it is re-pulled **and verified** and needs
+`status` / `cliff_date` / `cliff_ratio` / `repull_count` to run that cycle. A dividend
+adjustment is a smooth rescale of the whole prior series — it either happened or it did
+not, and leaves no signature to check afterwards. All six of those columns would be
+permanently NULL on a dividend row.
+
+⚠️ **`repulled_at` NULL is the state that matters**: *"we saw this dividend and the
+history was NOT re-adjusted for it"* — the condition that was invisible for a year and
+left every drawdown on the site up to two points too deep (CLAUDE.md 11ae). The row is
+therefore written **before** the re-pull, so a re-pull that dies mid-way still leaves the
+evidence.
+
+⚠️ **Only nightly detections are recorded**, never the dividends seen during a
+`period="max"` pull. A full pull sees every dividend a company has ever paid; recording
+those would put ~150,000 backfill rows in a table meant to answer *"what happened last
+night?"*.
+
+Written **only by `analytics/cron/daily_refresh.py`**, from the provider's
+`df.attrs['recent_dividend_events']` = `[{date, amount}]`. ⚠️ That attr is deliberately
+**separate** from `df.attrs['recent_dividends']` (dates only), which is what actually
+triggers the re-pull: the trigger is load-bearing and its failure is silent, so a change
+made for the record's sake must not be able to break it.
 
 **`split_events` table** — dated state for the smart stock-split pipeline, giving
 the owner backend visibility into what the nightly refresh did with each split:
@@ -1259,12 +1647,24 @@ the internal secret). See `architecture.md` §7.1 for the full rule and the two 
 Report" fetches this JSON and wraps it with the prebuilt offline bundle into a single
 self-contained `.html`. It is the report's **only** surface (the on-screen preview page was
 removed on 2026-07-29 — nothing linked to it). Being a route handler it is *not* wrapped by
-the `(app)` layout, so it gates itself: **401** signed out, **402** unentitled (body names
-the `reason`), **404** unknown market/ticker, **200** + `ReportData` otherwise. Every branch
-sends `Cache-Control: private, no-store` — the 200 carries the full scorecard and even the
-402 names the caller's own denial reason, and a shared cache keys on the URL alone
-(CLAUDE.md 11a). It sent **no** `Cache-Control` at all until 2026-07-29; the gap was found
-by e2e, not by reading the code, and `check:entitlement-gates` now pins it.
+the `(app)` layout, so it gates itself: **401** signed out, **403** `account_deleting`,
+**402** unentitled (body names the `reason`), **404** unknown market/ticker, **503**
+`read_failed` when the database read fails, **200** + `ReportData` otherwise.
+
+⚠️ **404 and 503 are different answers and must stay different.** Until 2026-08-07 a failed
+Supabase read arrived here as `null`, indistinguishable from a ticker we genuinely do not
+carry, and was answered **404** — telling a subscriber their stock does not exist because
+the database timed out. `buildReportData` now propagates `StockReadError` and this route
+catches it, answering `503` with `Retry-After: 5`. 404 tells the caller to stop asking; 503
+tells them to come back. See CLAUDE.md 11e.
+
+Every branch sends `Cache-Control: private, no-store` — the 200 carries the full scorecard
+and even the 402 names the caller's own denial reason, and a shared cache keys on the URL
+alone (CLAUDE.md 11a). It sent **no** `Cache-Control` at all until 2026-07-29; the gap was
+found by e2e, not by reading the code. `check:entitlement-gates` now **counts**: the number
+of responses declaring `NO_STORE` must equal the number of `NextResponse` returns, because
+the earlier check only proved the constant was still *declared* and would have passed while
+the newly added 503 branch shipped without it.
 
 ### Supporting tables (server-only — RLS on, no policies)
 
@@ -1295,6 +1695,25 @@ by e2e, not by reading the code, and `check:entitlement-gates` now pins it.
   postal-fail Radar rules. So the originally reserved `card_fingerprint` column + its index were
   **dropped as dead** (`20260720120000_drop_trial_tombstones_card_fingerprint`; never written or
   read, and the index was flagged unused by the Supabase performance advisor).
+
+  ⚠️ **PRIVACY CONSEQUENCE, added 2026-08-15.** "Must survive account deletion" is written
+  above as an anti-abuse requirement, and it is also a **retention** decision: something
+  derived from a deleted account's email address is kept indefinitely. The hash is one-way
+  and strongly pseudonymised, so this is defensible — but the published privacy policy says
+  data is "deleted or anonymised", which does not describe it. See `docs/legal-audit.md`
+  finding 3 (proposed, not applied).
+
+- **`referrals`** (`id`, `referrer_id` → `auth.users` **ON DELETE CASCADE**, `friend_email text`,
+  `message text`, `created_at`) — Refer-a-Friend (F2). Written by `sendReferral` in
+  `app/(app)/account/actions.ts` **after** `sendReferralEmail` succeeds, and rate-limited per
+  referrer with a duplicate check on `(referrer_id, friend_email)`.
+
+  ⚠️ **This is the ONLY table holding personal information about someone who is not a user.**
+  `friend_email` belongs to a third party who never visited the site and never agreed to
+  anything, and we **send them an email**. Under APP 5 that collection has to be disclosed;
+  the privacy policy currently does not mention the feature at all. `message` is free text a
+  user typed, so treat it as unvalidated personal data. See `docs/legal-audit.md` finding 1
+  (proposed, not applied) and `architecture.md` §6.6.
 
 ### Webhook events handled (`/api/stripe/webhook`) — BUILT (F3 step 4, `ec0b441`)
 

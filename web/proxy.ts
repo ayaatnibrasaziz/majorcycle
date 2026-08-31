@@ -1,8 +1,13 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { DELETION_NOTICE_COOKIE, DELETION_NOTICE_PATH } from '@/lib/account';
 import { PW_RECOVERY_COOKIE, PW_RECOVERY_ALLOWED_PATHS } from '@/lib/authRecovery';
+import { contentSecurityPolicy, createNonce, usesNonce } from '@/lib/csp';
+import { PREFERRED_SOURCE, usesPreferredSource } from '@/lib/preferredSource';
 import { accessDenialReason, hasAccess } from '@/lib/entitlement';
 import { INTERNAL_HEADER, hasInternalSecret } from '@/lib/internalAuth';
+import { PUBLIC_ENDPOINTS, PUBLIC_PAGES } from '@/lib/seo';
+import { SITE_ORIGIN } from '@/lib/url';
 
 /** Internal-only analysis endpoint — secret-gated, never session-gated. */
 const CYCLE_PATH = '/api/cycle';
@@ -38,47 +43,106 @@ const PREMIUM_API_PATHS = ['/api/analyze', '/api/analyze-dev'];
  * caller is redirected to /stocks. See the guard near the end of `proxy` for why this
  * is a list rather than a condition per page.
  */
-const SIGNED_OUT_ONLY_PATHS = ['/login', '/signup', '/deletion-requested'];
+const SIGNED_OUT_ONLY_PATHS = ['/', '/login', '/signup', '/deletion-requested'];
 
+/**
+ * Everything reachable without a session: the public PAGES plus the machine
+ * endpoints, both from lib/seo.ts.
+ *
+ * DERIVED, not re-typed. The page half also drives sitemap.xml, robots.txt and each
+ * page's canonical tag, so a second copy here would be a fourth place for the same
+ * rule to drift (11c) — and the failure would be silent in the worst direction: a
+ * page listed in the sitemap that answers Google with a redirect to /login.
+ *
+ * ⚠️ Post-deletion confirmation `/deletion-requested` is public because the user has
+ * just been signed out — but it is ALSO in SIGNED_OUT_ONLY_PATHS below: reachable
+ * without a session, and *only* without one. (The reactivation page stays gated.)
+ *
+ * ⚠️ /api/cycle is deliberately absent. It used to be listed, which made the entire
+ * analysis engine a free, unauthenticated, unthrottled public API. It is now handled
+ * by its own branch below — exempt from the auth *redirect* (the internal fetch
+ * carries no cookies, so a redirect would blank every Stock Detail page) but
+ * requiring the internal shared secret instead. See CYCLE_PATH above.
+ */
 const PUBLIC_PATHS = [
-  '/login',
-  '/signup',
-  '/reset-password',
-  '/auth/callback',
-  '/auth/confirm',
-  '/methodology',
-  '/disclaimer',
-  '/terms',
-  '/privacy',
-  '/pricing',
-  '/contact',
-  // Post-deletion confirmation — the user has just been signed out, so it must be
-  // reachable without a session (the reactivation page /reactivate stays gated).
-  // Also in SIGNED_OUT_ONLY_PATHS: reachable without a session, but *only* without one.
-  '/deletion-requested',
-  // Well-known URIs (RFC 8615) — e.g. /.well-known/security.txt. Must be publicly
-  // reachable by security scanners/researchers without an auth redirect.
-  '/.well-known',
-  // NOTE: /api/cycle is deliberately NOT listed here. It used to be, which made the
-  // entire analysis engine a free, unauthenticated, unthrottled public API. It is now
-  // handled by its own branch below — exempt from the auth *redirect* (the internal
-  // fetch carries no cookies, so a redirect would blank every Stock Detail page) but
-  // requiring the internal shared secret instead. See CYCLE_PATH below.
-  // Cron endpoints run without a user session (Vercel Cron sends a Bearer secret,
-  // not cookies). They must bypass the auth redirect; each route enforces its own
-  // CRON_SECRET check, so opening them at the middleware is safe.
-  '/api/cron',
-  // Stripe posts webhook events server-to-server (no cookies). The route verifies
-  // every request with the Stripe signature secret, so opening it at the middleware
-  // is safe — an unsigned/forged POST is rejected 400 inside the handler.
-  '/api/stripe/webhook',
+  ...PUBLIC_PAGES.map((page) => page.path),
+  ...PUBLIC_ENDPOINTS,
 ];
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  // ── Content-Security-Policy ─────────────────────────────────────────────────
+  // The policy is built HERE rather than in `next.config.ts` because it is no
+  // longer one string: a route rendered per request gets a per-request nonce, a
+  // prerendered one cannot (lib/csp.ts explains why at length). Only middleware
+  // knows which request it is looking at.
+  //
+  // ⚠️ Every response this function returns must carry it — including the
+  // refusals and the redirects. Next attaches NO `Cache-Control` to route
+  // handlers and it attaches no CSP either; "I didn't see a missing header" is
+  // not the same as "the header is there", and this repo has been bitten four
+  // times by exactly that (11a). Hence `send()`, which every `return` goes
+  // through, and `check:csp`, which reads them off the wire.
+  const nonce = usesNonce(pathname) ? createNonce() : null;
+  const policy = contentSecurityPolicy({
+    nonce,
+    dev: process.env.NODE_ENV !== 'production',
+    supabaseUrl: process.env['NEXT_PUBLIC_SUPABASE_URL'],
+    siteOrigin: SITE_ORIGIN,
+    // `null` unless this is an /articles page AND the button is switched on, so
+    // a disabled feature widens nothing anywhere (lib/preferredSource.ts).
+    preferredSourceOrigin: usesPreferredSource(pathname) ? PREFERRED_SOURCE.origin : null,
+  });
+
+  // The nonce reaches the renderer on the REQUEST, not the response: Next parses
+  // an incoming `Content-Security-Policy` for a `'nonce-…'` source and stamps it
+  // onto every script tag it emits (`get-script-nonce-from-header.js`).
+  //
+  // ⚠️ Built only when there IS a nonce. Handing Next modified request headers is
+  // a signal in its own right, and the seven prerendered routes must keep being
+  // served from their prebuilt files — that is the 77ms click. Nothing changes
+  // for them here at all.
+  // ⚠️ Built fresh on every call, never once and reused. `setAll` below writes the
+  // refreshed session onto `request.cookies` and then re-derives the response; a
+  // header snapshot taken up here would still hold the OLD cookie and hand the
+  // renderer a stale session — on precisely the nonce'd routes, which are the
+  // signed-in ones. Cloning costs nothing; being wrong here costs a sign-in.
+  const nonceHeaders = () => {
+    if (!nonce) return null;
+    const headers = new Headers(request.headers);
+    headers.set('content-security-policy', policy);
+    headers.set('x-nonce', nonce);
+    return headers;
+  };
+
+  const passThrough = (extraHeaders?: Headers) => {
+    const headers = extraHeaders ?? nonceHeaders();
+    return headers
+      ? NextResponse.next({ request: { headers } })
+      : NextResponse.next({ request });
+  };
+
+  // ⚠️ The SAME string goes on the response as went on the request, and that is a
+  // safety property rather than tidiness. Next's Node server copies every
+  // middleware response header back onto the request before rendering
+  // (`resolve-routes.js` — `resHeaders[key] = value; req.headers[key] = value`),
+  // so locally the response wins and the two can never be seen to disagree.
+  // Vercel's edge is not obliged to do that. Deriving the response from a second
+  // `createNonce()` would therefore pass every local check and ship a page whose
+  // header names a nonce its own HTML does not carry — every script refused, the
+  // page rendering and then doing nothing, in production only. Measured: that is
+  // exactly what a prerendered route with a nonce policy does (14 violations on
+  // `/terms`, zero nonce attributes in the document). One string, used twice.
+  const send = <T extends NextResponse>(response: T): T => {
+    response.headers.set('Content-Security-Policy', policy);
+    return response;
+  };
+
   // Dev-only bypass: skip auth so the local preview server can render pages
   // without a Supabase session. NODE_ENV guard ensures this never fires in prod.
   if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {
-    return NextResponse.next({ request });
+    return send(passThrough());
   }
 
   // /api/cycle — internal only. Checked FIRST, before the Supabase client is even
@@ -92,17 +156,17 @@ export async function proxy(request: NextRequest) {
   //
   // This is the edge half of the gate; api/cycle.py re-checks the same header and is
   // the authority. (F3 Step 10 audit, finding B2.)
-  if (request.nextUrl.pathname === CYCLE_PATH) {
+  if (pathname === CYCLE_PATH) {
     if (hasInternalSecret(request.headers.get(INTERNAL_HEADER))) {
-      return NextResponse.next({ request });
+      return send(passThrough());
     }
-    return NextResponse.json(
+    return send(NextResponse.json(
       { error: 'unauthorized' },
       { status: 401, headers: NO_STORE },
-    );
+    ));
   }
 
-  let response = NextResponse.next({ request });
+  let response = passThrough();
 
   const supabase = createServerClient(
     process.env['NEXT_PUBLIC_SUPABASE_URL']!,
@@ -116,7 +180,7 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          response = NextResponse.next({ request });
+          response = passThrough();
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
@@ -134,7 +198,6 @@ export async function proxy(request: NextRequest) {
   const claims = claimsData?.claims ?? null;
   const userId = claims?.sub ?? null;
 
-  const pathname = request.nextUrl.pathname;
   const isPublicPath = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith(p + '/')
   );
@@ -148,7 +211,7 @@ export async function proxy(request: NextRequest) {
     // were the reported gap, but their signed-out bounce came from here and was
     // equally silent. Harmless today (a cached bounce would deny a signed-in user,
     // not leak to them) and still worth stating rather than assuming.
-    return NextResponse.redirect(loginUrl, { headers: NO_STORE });
+    return send(NextResponse.redirect(loginUrl, { headers: NO_STORE }));
   }
 
   // Recovery-session confinement: a session that arrived via a password-reset
@@ -168,9 +231,9 @@ export async function proxy(request: NextRequest) {
     recoveryMarker?.value === userId &&
     !PW_RECOVERY_ALLOWED_PATHS.includes(pathname)
   ) {
-    return NextResponse.redirect(new URL('/account/update-password', request.url), {
+    return send(NextResponse.redirect(new URL('/account/update-password', request.url), {
       headers: NO_STORE,
-    });
+    }));
   }
 
   // ── Premium API gate ────────────────────────────────────────────────────────
@@ -202,22 +265,22 @@ export async function proxy(request: NextRequest) {
     // they may already have paid. Placed before hasAccess so the reason is never
     // mistaken for a billing problem.
     if (profile?.deletion_scheduled_at) {
-      return NextResponse.json(
+      return send(NextResponse.json(
         { error: 'Account scheduled for deletion', reason: 'account_deleting' },
         { status: 403, headers: NO_STORE },
-      );
+      ));
     }
 
     if (!hasAccess(profile)) {
-      return NextResponse.json(
+      return send(NextResponse.json(
         { error: 'Payment Required', reason: accessDenialReason(profile) },
         { status: 402, headers: NO_STORE },
-      );
+      ));
     }
 
-    const headers = new Headers(request.headers);
+    const headers = nonceHeaders() ?? new Headers(request.headers);
     headers.set(INTERNAL_HEADER, process.env.CYCLE_INTERNAL_SECRET ?? '');
-    return NextResponse.next({ request: { headers } });
+    return send(passThrough(headers));
   }
 
   // Pages that only make sense to a SIGNED-OUT reader. Being in PUBLIC_PATHS only
@@ -234,10 +297,25 @@ export async function proxy(request: NextRequest) {
     // Per-viewer for the same reason as the bounce above: /login answers a signed-in
     // caller with a redirect and a signed-out one with the page. A shared cache keyed
     // on the URL alone could not tell them apart.
-    return NextResponse.redirect(new URL('/stocks', request.url), { headers: NO_STORE });
+    return send(NextResponse.redirect(new URL('/stocks', request.url), { headers: NO_STORE }));
   }
 
-  return response;
+  // The deletion confirmation is for ONE reader: the person whose browser just
+  // completed the request. Being signed-out-only (above) answers "should a
+  // signed-in reader see this?", never "is this signed-out reader the right
+  // one?" — so until now any stranger typing the URL was told their account was
+  // scheduled for permanent deletion. `requestAccountDeletion` drops the marker
+  // (lib/account.ts) immediately before redirecting here.
+  //
+  // Deliberately placed AFTER the signed-out-only bounce, so a signed-in reader
+  // still goes to /stocks exactly as before and this can only ever narrow the
+  // signed-out case. /login is the right destination: the deletion flow has just
+  // signed them out globally, and it is where the page's own button points.
+  if (pathname === DELETION_NOTICE_PATH && !request.cookies.get(DELETION_NOTICE_COOKIE)) {
+    return send(NextResponse.redirect(new URL('/login', request.url), { headers: NO_STORE }));
+  }
+
+  return send(response);
 }
 
 export const config = {

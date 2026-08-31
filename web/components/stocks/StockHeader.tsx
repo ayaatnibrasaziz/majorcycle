@@ -155,7 +155,13 @@ export function StockHeader({ stock, badgeSlot }: Props) {
         )}
         {upsideText && (
           <div
-            className="text-[11px] font-semibold mt-[3px] tracking-[0.3px] uppercase opacity-90"
+            /* ⚠️ `opacity-90` here until 2026-08-22. It dimmed a tier colour that clears the
+               floor on its own (4.80) down to 4.03 -- a real WCAG failure produced by
+               nothing but a utility class, and invisible to anyone reading the token.
+               Recede with a COLOUR, never with transparency (CLAUDE.md 11q): a token
+               can be measured, an opacity could not be until the probe learned to
+               composite it. */
+            className="text-[11px] font-semibold mt-[3px] tracking-[0.3px] uppercase"
             style={{ color: upsideColor ?? 'var(--text-muted)' }}
           >
             {upsideText}
@@ -231,7 +237,13 @@ export function BadgeRow({
               what CLAUDE.md #2 forbids. Colour and a hover title are not enough — the
               tooltip is invisible on touch, and the entitled view is the one where the
               chip has our labels to be mistaken for. Six characters, no ambiguity. */}
-          <span className="opacity-70">Analysts:&nbsp;</span>
+          {/* ⚠️ `opacity-70` until 2026-08-22 -- took --text-secondary from 7.53 to 3.07. Same
+              rule as the upside line above: dim with a token, not with transparency.
+              --text-secondary, not --text-muted: this label sits on a GREY chip
+              (#DCE1E7), where muted measures 4.10 and secondary 5.72. The right
+              token depends on the ground, which is why it was measured there
+              rather than picked by name. */}
+          <span style={{ color: 'var(--text-secondary)' }}>Analysts:&nbsp;</span>
           {analystRecommendation}
         </span>
       )}
