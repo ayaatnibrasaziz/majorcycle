@@ -2256,6 +2256,102 @@ alter it.
 schema decision on a compliance path and belongs to the owner (11l — a real defect does not
 entitle me to widen scope).
 
+## Layer 4 delta — the data sweep, 2026-08-31
+
+Run against the **live database** and, for the last finding, the **rendered page on the
+deployed preview** — the two halves 14d says are both needed.
+
+### Verified clean
+
+| Check | Result |
+|---|---|
+| Dividend re-adjustment held | **Ratio 1.00000 across 399 bars** against a *fresh* provider pull, for MSFT, AAPL, JNJ, KO and SHOP.TO. This is the exact comparison that found 11ae, where the ratio was a **constant** before the last ex-dividend date and 1.0 after it. No step, anywhere |
+| Weekend bars (14a) | **0** across **6,605,568** bars |
+| Cross-currency withholding | **79** cross-currency stocks, `fcf_yield_pct` on **0** of them and on **725** same-currency ones — a positive control, not merely an absence |
+| Bank zero-margin sentinel (14b) | **0** exact `0.0` gross margins across the universe |
+| Truncation headroom (14c) | `stocks` **871** — 129 from PostgREST's silent 1000-row cap; `listings` **10,621**, long past it, so pagination there is load-bearing today |
+| `dividend_events` | 1 row, `repulled_at` set; `split_events` **8** — the 1,754 rows the catch-up created have not returned |
+
+⚠️ **My comparison probe printed `nan` and I nearly filed the result anyway.** `min()`/`max()`
+ignore NaN silently, so a spread of `0.0000%` sat next to `newest=nan` and still read as a pass.
+The NaN was the provider's incomplete current-session bar, and `if theirs[d]` does not exclude it
+because **NaN is truthy**. Fixed to count dropped pairs explicitly: exactly 1 per US/CA ticker,
+which is the current session and nothing else. **A number printed beside a `nan` is not a
+measurement**; the discipline is the same one 11p records for the seam detector.
+
+### ⚠️ The market-cap breach: 14g, confirmed rather than assumed
+
+The nightly invariant fired — `market_cap` missing on **25 of 867 (3%)**, over the 0.5% floor.
+That is F-032 recurring for the reason 11aa already names: the fix is on this branch and a
+**scheduled** workflow checks out the default branch, so `main`'s old code keeps blanking them.
+
+Confirmed three ways rather than assumed: every blanked row's `updated_at` is a **cron
+timestamp** (AU 13:25–13:29 on the 30th, US+CA 00:49–01:00 on the 31st); **none of the retired
+tickers is among them**; and the branch's fallback was driven against the live provider for
+four of the affected names and returned a cap for **all four**, agreeing with `info` to
+**0.02%** and **0.000002%**.
+
+⚠️ **And that check nearly produced a false alarm of its own — a "dead fallback" report.**
+`fast_info.get("market_cap")` returns **None** for every one of them; `fast_info.get("marketCap")`
+returns the value. The provider code tries **both spellings**, second one first-to-succeed, and
+that two-key loop is what makes the fallback work at all. My first probe used only the snake_case
+key and would have reported the F-032 fix as decorative — 11ag's shape (a fallback that has never
+fired), except it was my instrument that was broken. **Anyone "simplifying" that loop to one key
+silently kills the fallback**, and nothing would go red until the next mass-blanking.
+
+**Live proof it works:** with the dispatched AU run writing through the branch's code, the missing
+count fell from **24 → 18** mid-sweep.
+
+### F-035 🔵 A retired ticker's page shows a frozen price and says nothing — OWNER'S CALL
+
+Measured on the deployed preview, signed in:
+
+```
+/stocks/us/BK      status=200  2,317,955 B  first price $157.13  says-not-trading=false
+/stocks/us/AAPL    status=200  2,065,991 B  first price $319.70  says-not-trading=false
+```
+
+`BK` was retired hours earlier. Its page renders **identically to a live stock** — full chart,
+full analysis, a price frozen at its last trading day, and no notice anywhere. A repo-wide grep
+finds **no UI string** about a company having stopped trading; the only mention of "delisted" is
+a comment in `medians.server.ts`.
+
+⚠️ **This is the owner's own rule from 11aa pointed at a new surface:** *of two ways to be wrong,
+prefer the visible one — a stale number that looks current is one nobody can see.* Browse, the
+peer medians, the ticker-request route and the listings status route **all** filter `is_active`;
+`lib/stocks.ts` does not, so the detail page is the one door left open. That is 11c-iv again —
+four consumers received the rule and the fifth did not — and `readStockRow` does `select('*')`,
+so `is_active` **is already in the row**. Nothing reads it.
+
+**Reachability is bounded**: not in Browse, not in search, so it takes a direct URL or an old
+bookmark. It is not a data defect — the frozen history is deliberate and the bars are kept on
+purpose.
+
+**Recorded, not fixed, because the two sensible answers are product decisions:** answer 404 and
+lose the history a reader may legitimately want, or render it with a dated notice. Both change
+what a customer sees, which is Layer 5b territory (11l).
+
+### F-036 ✅ The nightly invariants judged tickers they can never repair — FIXED
+
+`daily_refresh` skips a retired ticker; `check_field_units` did not, and went on applying
+invariants to rows that will never be refreshed again.
+
+⚠️ **Every invariant in that file has one implicit remedy — *tonight's refresh will fix it*.**
+For a ticker that is never refreshed, that remedy does not exist, so a retired row with a blank
+cap becomes a **permanent nightly failure nobody can act on**, and a red X that fires every night
+for something unfixable is precisely how people learn to ignore red (11z). It had **not** bitten
+yet — all five retired rows still carry complete fundamentals — so this is a latent defect closed
+before it fired rather than after.
+
+Fixed by filtering on `is_active`, **defaulting to KEEP** (matching `daily_refresh._load_universe`,
+so a schema slip cannot silently empty the check's universe), and **counting and printing** the
+held-back rows on every run including when the count is zero — an exclusion that only appears
+when non-empty is one nobody notices growing (14g). Live run after the fix: *"39 field(s) checked
+across 862 ACTIVE stocks … 5 retired ticker(s) held back."*
+
+Guarded by three tests driving the real `_load_fundamentals` with a stub client, **broken two
+ways**: removing the exclusion (2 red) and flipping the default to drop an unknown row (1 red).
+
 ### Where the delta leaves the audit
 
 | Stage | Status |
@@ -2265,8 +2361,8 @@ entitle me to widen scope).
 | Layer 2 delta — the machine sweep | ✅ Playwright **687**, pytest **244**, typecheck/lint clean, all guards green on a fresh production build |
 | Layer 3 delta — the wire sweep | ✅ **55 checks, clean, run TWICE** — on `fbf97fc` and again on `cc7e09e` after the delta fixes shipped. Zero premium keys in 8 denied states; the entitled control carries all 9. Two wrong results of mine, both caught before reporting |
 | Layer 3b delta — the platform sweep | ✅ **clean.** 13 tables RLS-on with exactly the intended grants; advisors INFO-only; both crons green on `main`. Staleness sweep DRY-RUN against live data: 5 dead, 4 live ones correctly protected. 🔵 a real run is the owner's call; 🟡 F-034 recorded |
-| **Layer 4 delta — the data sweep** | ⬜ **next.** Predates the dividend re-pull of the whole universe |
-| Layer 5a — my visual sweep | ⬜ |
+| Layer 4 delta — the data sweep | ✅ **clean on the data.** Dividend re-adjustment held (ratio 1.00000 vs a fresh pull); 0 weekend bars in 6.6M; cross-currency withholding proven with a positive control. The market-cap breach is 14g, confirmed three ways. **F-036 fixed** (invariants judged tickers they can never repair); **F-035 🔵 owner's call** (a retired ticker's page shows a frozen price and says nothing) |
+| **Layer 5a — my visual sweep** | ⬜ **next** |
 | Layer 5b — the owner's judgement sweep | ⬜ |
 
 ⚠️ **The nightly staleness step has never executed anywhere.** It is on this branch, and a

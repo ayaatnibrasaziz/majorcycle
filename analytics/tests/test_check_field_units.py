@@ -6,7 +6,12 @@ stocks, no breaches.
 
 from typing import Any
 
-from analytics.cron.check_field_units import _MIN_SAMPLE, check, check_invariants
+from analytics.cron.check_field_units import (
+    _MIN_SAMPLE,
+    _load_fundamentals,
+    check,
+    check_invariants,
+)
 
 
 def _universe(**fields: float) -> list[dict[str, Any]]:
@@ -212,3 +217,85 @@ class TestCohortCheck:
         rows[0]["fundamentals"]["dividend_yield_pct"] = 35.48
         breaches, _thin, _ = check(rows)
         assert breaches == []
+
+
+class TestRetiredTickersAreHeldBack:
+    """A ticker we have stopped refreshing must not be judged by these invariants.
+
+    ⚠️ WHY THIS EXISTS. `is_active` arrived on 2026-08-30 and `daily_refresh` was
+    taught to skip a retired ticker; this checker was not (CLAUDE.md 11c-iv — the
+    rule existed and a second consumer never received it). Every invariant here has
+    one implicit remedy, *tonight's refresh repairs it*, and for a ticker that is
+    never refreshed again that remedy does not exist — so a retired row with a blank
+    market cap becomes a permanent nightly breach nobody can act on, which is how a
+    red X stops being read at all (11z). Found latent by the Layer G Layer 4 delta
+    on 2026-08-31 and closed before it fired.
+    """
+
+    class _Res:
+        def __init__(self, data: list[dict[str, Any]]) -> None:
+            self.data = data
+
+    class _Table:
+        """The smallest stub that behaves like the PostgREST builder chain."""
+
+        def __init__(self, rows: list[dict[str, Any]]) -> None:
+            self._rows = rows
+
+        def select(self, _cols: str) -> "TestRetiredTickersAreHeldBack._Table":
+            return self
+
+        def neq(self, _col: str, _val: str) -> "TestRetiredTickersAreHeldBack._Table":
+            return self
+
+        def range(self, lo: int, hi: int) -> "TestRetiredTickersAreHeldBack._Table":
+            self._slice = (lo, hi)
+            return self
+
+        def execute(self) -> "TestRetiredTickersAreHeldBack._Res":
+            lo, hi = self._slice
+            return TestRetiredTickersAreHeldBack._Res(self._rows[lo : hi + 1])
+
+    class _Client:
+        def __init__(self, rows: list[dict[str, Any]]) -> None:
+            self._rows = rows
+
+        def table(self, _name: str) -> "TestRetiredTickersAreHeldBack._Table":
+            return TestRetiredTickersAreHeldBack._Table(self._rows)
+
+    def _rows(self) -> list[dict[str, Any]]:
+        return [
+            {"ticker": "AAPL", "fundamentals": {"market_cap": 1.0}, "is_active": True},
+            {"ticker": "BK", "fundamentals": {"market_cap": None}, "is_active": False},
+            {"ticker": "CTRA", "fundamentals": {"market_cap": None}, "is_active": False},
+            {"ticker": "CBA.AX", "fundamentals": {"market_cap": 2.0}, "is_active": True},
+        ]
+
+    def test_a_retired_ticker_is_excluded_and_counted(self) -> None:
+        rows, retired = _load_fundamentals(self._Client(self._rows()))  # type: ignore[arg-type]
+        assert [r["ticker"] for r in rows] == ["AAPL", "CBA.AX"]
+        # Counted, not silently dropped — an exclusion nobody can see is how
+        # "unmeasured" starts reading as "clean" (14g).
+        assert retired == 2
+
+    def test_an_active_ticker_is_still_checked(self) -> None:
+        """The control. A function returning nothing at all passes the test above."""
+        rows, retired = _load_fundamentals(self._Client(self._rows()))  # type: ignore[arg-type]
+        assert len(rows) == 2
+        assert retired + len(rows) == 4
+        # The fundamentals must survive the filter, not just the ticker — this
+        # function's whole output is what every invariant then reads.
+        assert rows[0]["fundamentals"] == {"market_cap": 1.0}
+
+    def test_a_row_with_no_is_active_column_is_KEPT(self) -> None:
+        """Defaults to keeping, matching daily_refresh._load_universe.
+
+        Failing the other way would let a schema slip silently empty this check's
+        universe — and a check that runs on nothing reports exactly what a clean
+        one reports.
+        """
+        rows, retired = _load_fundamentals(
+            self._Client([{"ticker": "NEW", "fundamentals": {"market_cap": 3.0}}])  # type: ignore[arg-type]
+        )
+        assert [r["ticker"] for r in rows] == ["NEW"]
+        assert retired == 0
