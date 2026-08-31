@@ -32,7 +32,7 @@
  *         pnpm gates --no-e2e   skip the Playwright suite, and say so
  */
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const WEB = resolve(import.meta.dirname, '..');
@@ -113,6 +113,132 @@ console.log(`pnpm gates — ${planned.length} gate(s), stopping at the first fai
 
 const results = [];
 let failedAt = null;
+let failureLog = null;
+let artifactHint = null;
+
+/* ── keeping a failure diagnosable ───────────────────────────────────────────
+ *
+ * ⚠️ **A FAILING GATE ONCE BECAME UNDIAGNOSABLE, and it is the reason this code
+ * exists (2026-08-31).** A `pnpm gates` run failed at `e2e`; two later runs and CI
+ * were green; and the failing test could never be named, because the evidence had
+ * been thrown away at the moment it was produced. Three separate things went wrong
+ * and ANY ONE of them alone loses the diagnosis:
+ *
+ *   1. Nothing was written to disk. The only copy of the output was in a terminal.
+ *   2. The order was `stdout` then `stderr`. For Playwright, the failure summary is
+ *      at the END of stdout and stderr is a wall of dev-server noise — so the one
+ *      thing you need was buried hundreds of lines above the last thing printed.
+ *   3. The reader had piped the command through `tail`, which kept the noise and
+ *      discarded the summary. (It also returned `tail`'s exit status, so a FAILED
+ *      run reported success — a separate lesson, CLAUDE.md 11z's footnote.)
+ *
+ * So: **the full output always goes to a file**, and the excerpt printed to the
+ * terminal is the part that names the failure, printed LAST. A gate that fails
+ * without saying what failed is a gate you cannot act on — and the one thing worse
+ * than a red run is a red run you have to reproduce before you can read it.
+ */
+const FAILURE_LOG = resolve(WEB, 'gates-failure.log');
+
+/** Everything the gate emitted, verbatim, so nothing depends on scrollback. */
+function writeFailureLog(gate, r) {
+  const parts = [
+    `# pnpm gates — ${gate.name} FAILED (exit ${r.status})`,
+    `# command: ${gate.cmd}`,
+    `# cwd:     ${gate.cwd}`,
+    `# when:    ${new Date().toISOString()}`,
+    '',
+    '───── stdout ─────',
+    r.stdout || '(empty)',
+    '',
+    '───── stderr ─────',
+    r.stderr || '(empty)',
+  ];
+  try {
+    writeFileSync(FAILURE_LOG, parts.join('\n'), 'utf8');
+    return FAILURE_LOG;
+  } catch {
+    // Never let a logging problem mask the failure being logged.
+    return null;
+  }
+}
+
+/**
+ * Is this failure the BUILD ARTIFACT rather than the code?
+ *
+ * ⚠️ **This is a real defect that cost a whole diagnosis on 2026-08-31**, and it is
+ * invisible unless you know it exists. `pnpm gates` failed at `typecheck` with:
+ *
+ *     .next-dev/dev/types/routes.d.ts(118,1): error TS1160: Unterminated template literal.
+ *
+ * Nobody wrote that file. Next generates it, and `next-env.d.ts` — also generated, also
+ * gitignored — pulls it in with a bare `import "./.next-dev/dev/types/routes.d.ts"`. **An
+ * import bypasses `exclude` entirely**, which is why `tsconfig.json` lists `.next-dev`
+ * under `exclude` and that entry does nothing at all.
+ *
+ * How it gets corrupted: the e2e gate boots `next dev`, which writes that file and is then
+ * killed abruptly by Playwright. `reuseExistingServer` is deliberately **false**, so every
+ * Playwright run starts a fresh server — and on Windows a previous one can still be exiting.
+ * Two servers writing one file interleave: the recovered copy had the same interface block
+ * **twice** with a stray `({ id })` between them. Not truncation — concurrent writes.
+ *
+ * The result is a gate failing on a path that looks like it should be ignorable, in code no
+ * human touched, with a green CI (which never has a `.next-dev` at all). **Proven by a clean
+ * A/B: corrupt file present → 3 errors; moved aside → exit 0, same command, nothing else
+ * changed.**
+ *
+ * So: when EVERY error names a generated dist directory, say so and give the one-line fix.
+ * Deliberately does NOT delete anything by itself — the owner's standing rule is to ask
+ * before deleting, and a tool that silently removes build output to make itself pass is the
+ * wrong instinct anyway.
+ *
+ * ⚠️ **Only fires when ALL error lines are generated paths.** One real source error alongside
+ * them means it is a code problem that happens to also touch generated types, and this notice
+ * would send you the wrong way — the failure mode of a helpful hint is confident misdirection.
+ */
+const GENERATED_DIRS = ['.next-dev/', '.next-dev\\', '.next/', '.next\\'];
+
+function generatedArtifactDiagnosis(r) {
+  const body = `${r.stdout || ''}\n${r.stderr || ''}`;
+  const errorLines = body
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => /error\s+TS\d+|error[: ]/i.test(l) && !/^\[ELIFECYCLE\]/.test(l));
+  if (errorLines.length === 0) return null;
+  const generated = errorLines.filter((l) => GENERATED_DIRS.some((d) => l.includes(d)));
+  if (generated.length !== errorLines.length) return null;
+  const dirs = [...new Set(generated.map((l) => (l.includes('.next-dev') ? '.next-dev' : '.next')))];
+  return [
+    '',
+    '  ⚠️  EVERY error above is in a GENERATED file, not in your code.',
+    `      Next writes ${dirs.join(' and ')} itself; \`next-env.d.ts\` imports the route types from`,
+    '      there, and an import bypasses tsconfig\'s `exclude`. Two overlapping `next dev`',
+    '      servers (the e2e gate starts one) can interleave their writes and leave it invalid.',
+    '',
+    `      Fix — it regenerates on the next dev/build, so removing it is safe:`,
+    ...dirs.map((d) => `          rm -rf web/${d}/dev/types web/${d}/types`),
+    '',
+    '      Then re-run. If it comes back, two Next processes are running at once.',
+  ].join('\n');
+}
+
+/**
+ * The part a human needs, and nothing else.
+ *
+ * Prefers the tail of stdout, where every runner here puts its summary. stderr is
+ * shown only when stdout is empty — a gate that crashed before printing anything —
+ * because otherwise dev-server noise drowns the answer. The full text is in the log
+ * file either way, so this is allowed to be lossy; what it must not do is be lossy
+ * about the SUMMARY.
+ */
+function excerpt(r, lines = 40) {
+  const out = (r.stdout || '').trimEnd();
+  const err = (r.stderr || '').trimEnd();
+  const body = out || err;
+  if (!body) return '(the gate produced no output at all)';
+  const all = body.split('\n');
+  const tail = all.slice(-lines).join('\n');
+  return all.length > lines ? `… ${all.length - lines} earlier lines are in the log file\n${tail}` : tail;
+}
 
 for (const gate of planned) {
   process.stdout.write(`  ${gate.name.padEnd(26)} `);
@@ -132,9 +258,11 @@ for (const gate of planned) {
   console.log(ok ? `ok    ${secs}s` : `FAIL  ${secs}s`);
   if (!ok) {
     failedAt = gate;
+    failureLog = writeFailureLog(gate, r);
     console.log(`\n───── ${gate.name} failed (exit ${r.status}) ─────`);
-    console.log((r.stdout || '').trimEnd());
-    console.error((r.stderr || '').trimEnd());
+    console.log(excerpt(r));
+    artifactHint = generatedArtifactDiagnosis(r);
+    if (artifactHint) console.log(artifactHint);
     break;
   }
 }
@@ -155,7 +283,17 @@ if (failedAt) {
 
 console.log('');
 if (failedAt) {
-  console.error(`pnpm gates — FAILED at ${failedAt.name} (${passed} of ${ran} ran clean)`);
+  // The log path goes on the VERDICT line, not somewhere above it. The whole
+  // failure mode this guards against is a reader who only ever sees the last line.
+  console.error(
+    `pnpm gates — FAILED at ${failedAt.name} (${passed} of ${ran} ran clean)` +
+      (failureLog ? ` — full output: ${failureLog}` : ''),
+  );
+  // Repeated on the verdict line too: a reader who sees only the last lines must still
+  // learn that the failure was a build artifact rather than their own code.
+  if (artifactHint) console.error('  ⚠️  …and every error was in a GENERATED file — see the note above.');
+  console.error('  ⚠️  do not pipe this command through `head`/`tail`: $? is the pipe’s last stage,');
+  console.error('      so a FAILED run reports success. Redirect instead:  pnpm gates > gates.log 2>&1');
   process.exit(1);
 }
 console.log(`pnpm gates — ${passed} of ${planned.length} gates passed`);

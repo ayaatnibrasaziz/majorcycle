@@ -1969,6 +1969,29 @@ code, whenever a command is piped** — which is the same habit as 11i's *reconc
 
 ---
 
+## 40b. It happened a THIRD time, and writing the rule down is what failed
+
+**2026-08-31**, three days after §40 was written. `pnpm gates ... | tail -60` again returned
+success on a run that had **FAILED at e2e** — and this time the harness surfaced it as a
+notification reading "exit code 0", which is considerably easier to believe than a shell prompt.
+Two things follow, and the second cost more than the first.
+
+**(i) Having written the rule down did not stop me repeating it.** That is the honest state of any
+rule which depends on a human remembering at the moment of typing. So the fix moved into the tool:
+the verdict line of a failed `pnpm gates` now *tells you not to pipe it* and prints the redirect to
+use instead. **When a trap depends on someone remembering, spend the effort and make it
+structural** (CLAUDE.md 11o).
+
+**(ii) The pipe destroyed the EVIDENCE, which was the real damage.** `tail` kept the last 60 lines
+— for a Playwright failure that is dev-server noise from **stderr**, which the gate runner printed
+*after* the summary — and discarded the part naming the failing test. The run was never diagnosable
+again: two later runs and CI were green, so there was nothing left to reproduce. **A wrong exit
+code is recoverable by looking; a discarded log is not.** `scripts/gates.mjs` now always writes the
+failing gate's full output to `gates-failure.log` and prints that path *on the verdict line*, so
+the diagnosis survives a reader who sees only the last line.
+
+---
+
 ## 41. When measurements of a layout disagree, stop reading geometry and change one thing
 
 **2026-08-29.** The owner asked for space around the `·` in "26 August 2026 · 6 min
@@ -2030,3 +2053,44 @@ next cause. It skips elements whose parent computes to `flex` or `grid`, where
 the space between children is `gap` and no whitespace in the DOM is correct —
 without that it flags every legend swatch on the site.
 
+
+---
+
+## 43. A gate can fail on a file no human wrote, and it looks like your bug
+
+**2026-08-31.** `pnpm gates` failed at `typecheck` with three errors in
+`.next-dev/dev/types/routes.d.ts`, a file **Next generates**. Nobody had touched it, nothing in
+the source was wrong, and CI was green on the same commit.
+
+**Why it is reachable at all.** `tsconfig.json` lists `.next-dev` under `exclude`, so the obvious
+conclusion is that the directory is not typechecked. It is. `next-env.d.ts` -- also generated,
+also gitignored -- carries a bare `import "./.next-dev/dev/types/routes.d.ts"`, and **an import
+bypasses `exclude` entirely**: `exclude` filters the *root file list*, never a file that something
+included pulls in. That exclude entry does nothing whatsoever. Measured rather than reasoned:
+removing the two `.next-dev/**` entries from `include` changed **nothing**, which is what sent the
+search to `next-env.d.ts`.
+
+**Why it was corrupt.** Not truncation -- the recovered file held the same interface block
+**twice**, with a stray `({ id })` between them. That is two processes interleaving writes. The
+`e2e` gate boots `next dev`; `reuseExistingServer` is deliberately `false` so every Playwright run
+starts a fresh server; and on Windows the previous one can still be exiting. Five Playwright runs
+in quick succession preceded the failure.
+
+**Why CI never sees it.** A fresh checkout has no `.next-dev`, and `next build` writes `.next`. So
+this is a purely local failure -- which makes it worse rather than better: it is exactly the shape
+that gets dismissed as "works on CI, broken on my machine".
+
+**Established by a clean A/B**, and the cleanliness matters given 11i's fifth item, where a stale
+build cache sat underneath *both arms* of an experiment: corrupt file present -> 3 errors; the same
+file moved aside -> exit 0. Only the artifact changed, and the command was identical.
+
+**The fix is a diagnosis, not a deletion.** `scripts/gates.mjs` now detects the case where **every**
+error line names a generated dist directory, says so, and prints the one-line command that clears
+it. It deliberately does not delete anything itself: the owner's standing rule is to ask before
+deleting, and a tool that quietly removes build output until it passes is the wrong instinct
+regardless.
+
+**The control is the half that makes it trustworthy.** It fires on the real corrupt artifact and
+stays **silent** on a genuine `lib/pricing.ts` type error -- because a hint that appears on a real
+code error is worse than no hint at all: it sends you off deleting caches while your own bug sits
+untouched. Proven in both directions before being trusted (26).

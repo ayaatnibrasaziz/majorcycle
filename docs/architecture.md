@@ -1812,6 +1812,41 @@ real defect**; and a **green CI run whose count was two short of local** (275 + 
 277) because a measurement's precondition proved the stylesheet had applied but not that
 the column had taken its width or the webfont had loaded.
 
+### Layer 5a preparation — what changed on 2026-08-31
+
+Recorded here because three of them are facts about the **running system**, not the code.
+
+**Every deny-all table now says so.** Migration `20260831010000` gives all ten policy-less public
+tables a comment stating what they hold **and** that their `rls_enabled_no_policy` advisor notice
+is deliberate (audit F-004). The risk was never the warning; it was a future reader "fixing" it by
+adding a policy and opening a server-only table. Comments only — the grant posture was re-read
+afterwards and is unchanged. ⚠️ It was **eight** tables needing one, not the seven recorded eight
+days earlier: `dividend_events` was created in between and inherited the same silence. The list is
+derived from `pg_class`/`pg_policy`, never from the doc.
+
+**The apex is a permanent redirect at last.** `majorcycle.com` → `https://www.majorcycle.com` now
+answers **308**, changed in **Vercel** — the redirect was always Vercel's own (`Server: Vercel`),
+never Cloudflare's, and assuming the registrar would have edited the wrong system entirely.
+Verified on the wire, with the check that matters: a **deep path carries across**. A redirect that
+flattens every link onto the homepage still reports 308 and would silently discard the ranking of
+every article. The sitemap was submitted only afterwards — 25 pages, read successfully.
+
+**Three tooltips stopped giving advice** (audit F-001). `DrawdownOverlay`'s Lower Bound and both
+of `VerdictCard`'s entry-zone tiles stated a judgement about the trade rather than a fact about
+the number, breaching #12/#24 and, in one case, #16's ban on Buy/Sell framing. They survived eight
+days *after being reported* because all three live in `title`/tooltip props: no screenshot shows
+them, no accessibility scan reads them, and the compliance guard asserts only that the disclaimer
+is present — which it was. **There was no check that could have gone red.** Now guarded by
+`e2e/no-advice-copy.spec.ts`, whose load-bearing control is that every pattern must match the real
+string it was written from, because a typo'd regex matches nothing and reports a clean sweep.
+
+**`pnpm gates` can no longer fail undiagnosably.** A failing gate now writes its full output to
+`gates-failure.log`, prints that path *on the verdict line*, shows the tail of **stdout** (where
+every runner here puts its summary) rather than the dev-server noise on stderr, and recognises the
+case where every error is in a **generated** file — `.next-dev/dev/types/routes.d.ts`, which
+`next-env.d.ts` imports and which two overlapping `next dev` servers can corrupt. See
+`coding-standards.md` §43.
+
 **Auth branding (de-Supabase-ification, Layer F0):** the auth surface is skinned to read as `majorcycle.com`, not a Supabase project. Google sign-in uses **Google Identity Services + `supabase.auth.signInWithIdToken`** (`web/components/GoogleSignIn.tsx`) instead of the redirect-based `signInWithOAuth`, so Google returns the ID token directly to the page and the browser never routes through `*.supabase.co` (no address-bar flash); it falls back to the redirect flow when `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is unset. Auth emails go through **Supabase Custom SMTP → Resend** (`noreply@majorcycle.com`) with branded templates that use the **token-hash** pattern (`{{ .SiteURL }}/auth/confirm?token_hash=…`) verified by `web/app/auth/confirm/route.ts` (mirrors `auth/callback`), so email links live on `majorcycle.com`. Redirect targets are pinned to the production origin via `getSiteURL()` (`web/lib/url.ts`). All six auth templates **plus the seven Supabase "security" notification emails** (password / email-address / phone-number changed, sign-in-method linked/removed, MFA method added/removed) are branded with the same slim header (transparent `email-icon.png` + Sora wordmark on a navy gradient) and a shared grey footer (`#f8fafc`) — see `design-system.md` §17. The notification emails are toggle-only in Supabase (no HTML editor in the list view; each is edited at its own `/auth/templates/<slug>` URL) and each carries a "didn't do this? — `security@majorcycle.com`" callout. The password-reset flow lands on the branded `web/app/(public)/account/update-password` page (moved out of the `(app)` shell in F0.5 — see Security posture above). **Free-plan caveat:** the anon Supabase URL is still visible in DevTools/Network (every DB/auth call uses `NEXT_PUBLIC_SUPABASE_URL`) and in the JWT `iss` claim — only the paid Supabase custom auth domain changes that; no user-facing surface exposes it. Full runbook: `plan-mode-auth-virtual-ladybug.md`.
 
 **⚠️ Google's AUTHORISED JAVASCRIPT ORIGINS admit no wildcards — so Google sign-in works on

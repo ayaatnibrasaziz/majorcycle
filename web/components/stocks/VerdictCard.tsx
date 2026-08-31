@@ -202,6 +202,24 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
 
   // ── Band tiles ───────────────────────────────────────────────────────────
   let bandTiles: React.ReactNode;
+  /**
+   * ⚠️ THE ENTRY-ZONE TOOLTIPS ARE A MATCHED PAIR — change one, change both.
+   *
+   * Both described the same band and, until 2026-08-31 (audit F-001), both did it as
+   * advice: "Historically attractive buy band" and "a pullback to here would
+   * historically offer better risk/reward". The second is a recommendation to buy and
+   * the first says "buy" outright, which decision #16 bans in our own outputs and
+   * non-negotiable #12 / decision #24 rule out generally.
+   *
+   * They now state only what the number IS, in one voice, so the same band cannot end
+   * up described two different ways depending on where the price happens to sit — which
+   * is the drift CLAUDE.md 11c is about, and it very nearly happened here: the fix was
+   * first scoped to the "waiting" tile alone because that was the one reported.
+   *
+   * Guarded by `e2e/no-advice-copy.spec.ts`, which reads these strings out of the
+   * source. Nothing else does — a tooltip lives in a `title`/prop, so it is invisible
+   * to screenshots, to visual review, and to every other check we own.
+   */
   if (inEntryZone) {
     bandTiles = (
       <>
@@ -210,7 +228,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
           label="Entry Zone · Active"
           value={`${fmtPrice(bandLower, currency)} – ${fmtPrice(bandUpper, currency)}`}
           sub={`Currently in zone · top ${fmtPrice(typicalPrice, currency)}`}
-          tooltip="Entry Zone (Active) — Historically attractive buy band, derived from the typical drawdown ±half the distance to the deepest historical drawdown. Current price is inside this band."
+          tooltip="Entry Zone — Built from this stock's typical historical drawdown. Current price sits inside it."
         />
         <BandTile
           label="Reload Level"
@@ -259,7 +277,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
           label="Wait for Entry Zone"
           value={`${fmtPrice(bandLower, currency)} – ${fmtPrice(bandUpper, currency)}`}
           sub={`Top ${fmtPrice(typicalPrice, currency)} · ${premiumPct}% below current`}
-          tooltip="Target Entry Zone — The historically attractive buy band. Current price is above this zone — a pullback to here would historically offer better risk/reward."
+          tooltip="Target Entry Zone — Built from this stock's typical historical drawdown. Current price sits above it, by the percentage shown."
         />
         <BandTile
           label="Typical Dip Price"
