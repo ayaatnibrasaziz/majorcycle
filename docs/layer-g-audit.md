@@ -2302,6 +2302,45 @@ silently kills the fallback**, and nothing would go red until the next mass-blan
 **Live proof it works:** with the dispatched AU run writing through the branch's code, the missing
 count fell from **24 → 18** mid-sweep.
 
+### ✅ The two new nightly steps, PROVEN ON GITHUB — and an accidental A/B on the market-cap fix
+
+Dispatched on `feat/layer-g` (run `33361310993`), because a **scheduled** run checks out the
+default branch, so neither step had executed anywhere. Read step by step rather than by the
+green tick:
+
+```
+5. Run daily refresh (AU)                    success
+6. Check fundamentals field units            success
+7. Check for stale and delisted tickers      success
+```
+
+**Step 7 — the staleness sweep, first execution on GitHub:** *"5 stale, 0 retired, 66s"*, with
+`QUB.AX`, `CVW.AX`, `EA`, `EQR` and `AVB` all reported **STALE BUT ALIVE**. Zero retired is the
+correct answer — the five dead names had been marked an hour earlier — so this run proves the
+step is wired, runs, reads the whole universe and **retires nothing when there is nothing to
+retire**. A sweep that retires something every time it runs would be the more alarming result.
+
+**Step 6 — and the thing nobody planned.** The units check **passed** on GitHub minutes after
+failing locally on the market-cap invariant. It was not flaky: the AU refresh in step 5 ran the
+**branch's** code and repaired the caps. Measured immediately after:
+
+| Market | Missing `market_cap` | Last written by |
+|---|---|---|
+| **AU** | **0 of 250** | the dispatched run — **branch code, with the `fast_info` fallback** |
+| CA | 2 of 79 | the nightly on `main` — the old code |
+| US | 2 of 538 | the nightly on `main` — the old code |
+
+⚠️ **That is a controlled A/B nobody set up: the same night, the same provider, one universe,
+two code paths.** The branch repaired **all 18** AU blanks; `main` left four. It is the
+strongest evidence the F-032 fix works that this audit has produced — better than the local
+probe, because it is the real workflow, the real environment and the real data, and the control
+arm is running beside it. 4 of 867 is 0.46%, just under the 0.5% floor, which is why the check
+went green rather than because anything was hidden.
+
+⚠️ **And it re-dates 14g rather than repeating it:** those four will be blanked again tonight by
+`main`, and the AU 250 repaired again only if this branch is merged. The fix is proven; it is
+just not deployed.
+
 ### F-035 🔵 A retired ticker's page shows a frozen price and says nothing — OWNER'S CALL
 
 Measured on the deployed preview, signed in:
