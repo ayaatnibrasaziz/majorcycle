@@ -10,7 +10,7 @@
 > It bit this project once already. Three documents said the landing page was finished, all
 > three were true about what they measured, and the page was missing **twelve** sections.
 
-**Status: P0 complete, 2026-08-31.** Sources are named per page. Where an approved artifact
+**Status: P0 complete, 2026-08-31 — REVISED the same day after self-review; see "P0 SELF-REVIEW" below.** Sources are named per page. Where an approved artifact
 exists it wins over any prose brief — the brief records *why*, the artifact records *what the
 owner said yes to* (11j).
 
@@ -35,7 +35,7 @@ subscriber — and both render perfectly.
 ## `/` — the landing
 
 **Source: the approved artifact** *"MajorCycle — every public page, one design system"*
-(`fd8cbcdc…`, updated 2026-08-28), read in full for this manifest. Nine sections.
+(`fd8cbcdc…`, updated 2026-08-28). ⚠️ **My first pass read only its rendered text and missed the design system in its script/style blocks — see the self-review below.** Nine sections.
 
 | # | Section | Must contain |
 |---|---|---|
@@ -75,6 +75,63 @@ not a data refresh.
 
 ---
 
+## ⚠️ P0 SELF-REVIEW, 2026-08-31 — the first version of this manifest was wrong
+
+The owner asked whether I was 100% happy with P0. I was not, and checking found two real errors.
+
+**(1) I claimed to have read the approved artifact "in full". I had not.** I extracted its text
+with a script that **stripped `<script>` and `<style>` blocks as noise** — and the design system,
+which is the artifact's actual subject, lives inside them. The tool result had even told me the
+head was not the whole artifact and to read all 1,932 lines. I skipped that and reported
+completeness. **A probe that cannot see the thing returned a confident, tidy, incomplete answer**
+— the same failure as the SMTP finding two hours earlier, in the same session, after I had
+written it up as a lesson.
+
+**(2) Consequently I used the artifact for ONE page and the source code for the other twelve.**
+The artifact is not a landing storyboard. It is a **numbered deck of eight approved pages** —
+Landing · Sign in · Sign up · Pricing · Terms (legal) · Contact · Learn · Articles — each with
+its exact copy, fields and buttons, plus one shared chrome. Deriving those pages from the code
+answers *"what does it do?"*, never *"what did the owner say yes to?"* — which is **11j**, the
+rule I quoted at the top of this file while breaking it.
+
+### The sourcing rule, corrected
+
+| From the artifact | NOT from the artifact |
+|---|---|
+| Layout, section order, chrome | Any **number** |
+| **UI copy** — headings, labels, button text, helper text | Any **list of live content** |
+| Which fields a form has, and in what order | Any **date** |
+
+⚠️ **Its sample data is sample data.** The Articles deck lists *"Do bank shares fall differently
+to mining shares?"* dated **14 Sep 2026** — a date two weeks in the *future* — and shows two
+published articles where five shipped. Treating that as a spec would have raised three false
+findings. Same trap as the landing's figures (5A-007), now generalised: **copy the artifact's
+structure and words; re-derive everything that is data.**
+
+---
+
+## The shared public chrome — one definition, worn by all 13 public pages
+
+From the artifact's design-system layer, which the first version of this manifest omitted
+entirely.
+
+| Element | Must be |
+|---|---|
+| **Header** | ONE header on every page. The brand lockup. **No "Markets · Live" pill** — removed by owner decision, and its CSS with it |
+| **Footer** | ONE definition, links in this order: **How it works · Learn · Pricing · Contact · Disclaimer · Terms · Privacy** |
+| **Cards** | ONE language: **10px radius + 1px border**. ⚠️ Explicitly *not* the old 12px radius with a 60px ambient shadow — that is what made signing in feel like a different product from the thing you were signing into. Floating cards keep a lift; cards inside a page use the whisper |
+| **Buttons** | ONE primary: the **navy gradient**, not a flat fill. ⚠️ `.topnav a` outranks `.btn-primary` on specificity, so without `:not(.btn)` the sign-up button renders grey-on-blue — **invisible, and silent** |
+| **Disclaimer chip** | Required **above the fold** (#4 / #12) |
+| **Anchors** | `scroll-margin-top` on the targets, so a jump does not land under the 58px sticky header |
+| **Texture** | The public-page texture, on the landing too |
+| **Theme** | Committed to **light in both themes**, deliberately — the product is a light terminal |
+
+⚠️ **No `overflow-x` on the page shell.** `overflow-x:hidden` makes an element a scroll
+container, and a sticky descendant then offsets from *it* rather than the viewport — the header
+rendered 46px too low and content slid underneath. The clipping belongs on `<body>`.
+
+---
+
 ## Public pages
 
 | Route | Must contain | State rule |
@@ -86,7 +143,7 @@ not a data refresh.
 | `/articles` | `<h1>` "What's happening, and what it means" · **"Published"** section listing **5** articles · **"Coming next"** section · the featured card | Public |
 | `/articles/[slug]` ×5 | Title · date · frozen figures · ranked tables with correct alignment · custom figures · disclaimer | Public |
 | `/terms` `/privacy` `/disclaimer` | Contents rail · scroll-spy highlighting the right clause · `.doc-scale` type · **the three live constants stated correctly** (25/day free cap, 30-day deletion window, 3-day payment grace) | Public |
-| `/login` `/signup` `/reset-password` | The real form **in the HTML with JavaScript disabled** · `role="alert"` error region · Google sign-in button · links between the three | Signed-in → redirect to `/stocks`. `force-dynamic` |
+| `/login` `/signup` `/reset-password` | The real form **in the HTML with JavaScript disabled** · `role="alert"` error region · Google sign-in button · links between the three. **Approved copy below** | Signed-in → redirect to `/stocks`. `force-dynamic` |
 | `/account/update-password` | Password form · **logo-only chrome** (no nav, no footer links) | Only in `password-recovery`. A stale marker with no session must **not** trap the visitor |
 | `/deletion-requested` | The deletion notice | **Marker-gated.** A stranger typing the URL must not see it |
 | `/reactivate` | Reactivate control · **logo-only chrome** | Only in `deletion-scheduled` |
@@ -156,3 +213,64 @@ expected values. They are the *design*, taken on a different day — copying the
 the page "wrong" against a spec that was never shipped, and made a real staleness problem
 invisible behind a fake one. **Copy the artifact's layout and wording; re-derive its numbers**
 (11k).
+
+---
+
+## The approved copy — verbatim from the deck
+
+⚠️ These are **words**, so they are a spec. Any number or list inside them is sample data and is
+re-derived (see the sourcing rule above).
+
+### 2 · `/login` — "Sign in"
+- Title **"Welcome back"**, subtitle **"Sign in to continue to your terminal."**
+- Fields, in order: **Email** · **Password**
+- **"Forgot password?"** link, right-aligned above the button
+- Primary **"Sign in"** · divider **"or continue with"** · ghost **"Continue with Google"**
+- Rule, then **"New to MajorCycle?"** → **"Create a free account"**
+
+### 3 · `/signup` — "Sign up"
+- Title **"Create your free account"**
+- Subtitle: *"No card required. Charts, drawdown cycles and company financials are free — our
+  ratings are the paid part."* ⚠️ This is the free/paid promise stated to a customer; it must
+  agree with `PREMIUM_UNLOCKS` (11c — a sentence that states a rule is a copy of that rule)
+- Fields: **Email** · **Password**
+- Primary **"Create account"** · **"or continue with"** · **"Continue with Google"**
+- Consent line: *"By creating an account you agree to our **Terms** and **Privacy Policy**."*
+- Rule, then **"Already have an account?"** → **"Sign in"**
+
+### 4 · `/pricing`
+- Title **"Start your 7-day free trial"**
+- Subtitle: *"Full access for 7 days. Your card is required upfront and isn't charged until the
+  trial ends — cancel any time before then and you pay nothing."*
+- **Monthly | Annual** toggle, **"SAVE 30%"** on annual
+- Price + **"/month"**, then *"Billed monthly. Prices shown in your local currency at checkout."*
+- Five bullets: Overall Rating and Health Score on every stock · the full Verdict, five-pillar
+  scorecard and valuation zone · screen hundreds at once — rank, filter and export · download a
+  complete report · cancel anytime, no charge until day 7
+- CTA **"Start 7-day free trial"**, then the *"create a free account — no card needed"* escape
+- Footnote: no refunds, plan runs to the end of the paid period, educational analysis only
+
+### 6 · `/contact`
+- Title **"Contact us"**, subtitle *"Questions, feedback, or an issue to report? Send us a
+  message and we'll reply by email."*
+- Fields: **Your email** · **Subject** · **Message** · button **"Send message"**
+- Footnote: *"We reply from a monitored address, usually within two business days. We can't give
+  personal financial advice."*
+
+### 5 · `/terms` (and the legal doc shell)
+- `legalDoc(title, effective-date, intro, clauses[])` — title, a **dated** effective line, an
+  intro paragraph, then numbered clauses with the contents rail
+- ⚠️ The artifact shows **5 July 2026**. That is sample data: check the **live** date is the real
+  one, not that it equals the artifact's
+
+### 7 · `/learn`
+- **Three themes**, each a heading + one-line description + its articles with read times:
+  **Falls and recoveries** (5) · **Judging the business** (4) · **Using MajorCycle** (3)
+- Total **12**, and the page states the total — so the stated total must equal the rendered count
+
+### 10 · `/articles`
+- Two sections: **Published** and **Coming next**
+- The featured card **reuses the landing's briefing component** (`.briefing / .bt / .btxt / .bp`)
+  so it renders byte-identical rather than merely similar
+- Its market series use **teal and two non-direction tones** — ⚠️ green and red mean up and down
+  everywhere else on this site and must never be spent on series identity
