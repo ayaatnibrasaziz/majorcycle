@@ -2160,6 +2160,102 @@ run that crashed at sign-in. The owner's two personal accounts were never writte
 three profiles read back `subscription_status: null`, `grace_until: null`,
 `billing_blocked: false`, no deletion scheduled, and every `acknowledged_disclaimer_at` intact.
 
+### Layer 3 delta, second run — against the CURRENT code · ✅ CLEAN
+
+The run above measured `fbf97fc`. The four delta fixes were then committed (`cc7e09e`) and
+pushed, and the sweep re-run against that preview: **55/55 again, control passing, zero premium
+keys in all 8 denied states, every response `private`.** The scope gap is closed — the sweep
+now describes the code on the branch rather than the code before the day's work.
+
+CI for `cc7e09e`: **687 Playwright · 244 pytest**, matching the local counts exactly, zero
+failed / flaky / skipped. A run was confirmed to EXIST for that SHA before its colour was read.
+
+---
+
+## Layer 3b delta — the platform sweep, 2026-08-31
+
+Run against the live Supabase project, the live Vercel project and the real Actions history.
+
+### The database — clean
+
+| Check | Result |
+|---|---|
+| RLS | **on for all 13 tables** |
+| `dividend_events` (new) | RLS on, **0 policies, 0 grants** to `anon` or `authenticated` at table *or* column level — F-026's rule applied at creation rather than retrofitted |
+| The other 9 server-only tables | unchanged: RLS on, no policies, no public grants |
+| `profiles` | `anon` SELECT only; `authenticated` SELECT plus **column-level UPDATE on exactly `display_name`, `country`, `acknowledged_disclaimer_at`** |
+| Supabase security advisors | **only INFO**, all `rls_enabled_no_policy` on the 10 server-only tables — the intended state, named as such in the migration. No WARN, no ERROR |
+| `stocks` | 871 rows, **871 active / 0 inactive**; `is_active`, `inactive_since`, `inactive_reason` present |
+| `split_events` | **8 rows** — the 1,754 rows the `--repull-prices` catch-up created are gone and have not come back |
+| `dividend_events` | 1 row, `repulled_at` set — the end-to-end proof from 2026-08-30, still the only row |
+| Newest price bar | **2026-08-28 in all four markets** |
+
+⚠️ **The newest-bar figure looked like a three-day staleness finding and is not one.**
+2026-08-28 is a **Friday** and the sweep ran on Monday the 31st; all four markets agree at 5
+sessions in the last 10 days. This is exactly why `check_stale_tickers` counts **sessions
+against a benchmark index** rather than calendar days — a calendar reading would call every
+market on the site stale every Monday.
+
+⚠️ **And my first grants query could not see the thing that matters.** It read
+`information_schema.role_table_grants`, which lists **table-level** grants only, so `profiles`
+came back as `SELECT` for `authenticated` and the three-column UPDATE was invisible. Reported
+as-is that is a headline finding — *"the line 11y warns about has been lost, and `/account`
+silently cannot save"* — and it would have been false. **A grant you cannot see is not a grant
+that is absent**; `column_privileges` is the table that answers the question.
+
+### The pipeline — green, and provably not running the new code
+
+Both nightly workflows are **success** on their last four runs, and every one of them ran on
+**`main`**. That is 14g stated as an observation rather than a warning: the retry pass, the
+dividend re-pull and the staleness sweep are all on this branch and **none of them has executed
+once**, nor will they until merge.
+
+### The staleness sweep — proven against live data, not yet run for real
+
+`check_stale_tickers.py --dry-run` against the live database, 356s, **nothing written**:
+
+**9 stale · 5 would be retired · 4 correctly protected.**
+
+| Verdict | Tickers | Why |
+|---|---|---|
+| DEAD | `AOF.AX` `IFL.AX` `BK` `CTRA` `SATS` | no provider quote **and** absent from the exchange directory **and** in no index — unanimous |
+| **STALE BUT ALIVE** | `QUB.AX` `EA` `EQR` `AVB` | still quoted, so **not** retired |
+
+⚠️ **The four protected names are the whole argument for unanimity, and they are real.** `QUB.AX`
+is in the ASX 200 and we cover it; `EA`, `EQR` and `AVB` are trading S&P 500 companies that
+**both** reference tables mark inactive. A majority vote would have retired all four and told
+four sets of customers their real stock does not exist. The rule was designed from that
+observation; this run is the first time it has been watched doing its job on live data.
+
+Retirement rate: **0.8% of AU (2/250) and 0.56% of US (3/538)** — both far under the 2%-per-market
+cap, so the cap is not what is holding this run back; the evidence is.
+
+🔵 **OWNER DECISION — running it for real.** The dry run is the half that can be taken
+unilaterally. Applying it marks five companies inactive, which removes them from the product's
+offering (their price history is kept, and the flag is reversible). It is also the only way to
+prove the **workflow step** end to end, the way F-027's alarm was proven on GitHub in both arms.
+Not done without a decision.
+
+### F-034 🟡 The acknowledgement is write-once in the APPLICATION and not in the database
+
+Found while reading the column grants for the check above.
+
+`authenticated` holds column-level `UPDATE` on `acknowledged_disclaimer_at`, and the row policy
+is `auth.uid() = id`. The grant is **necessary** — `acknowledgeDisclaimer` runs as the user
+through the cookie-bound client, so removing it stops acknowledgement working altogether (11y's
+lesson: know which caller each grant serves). But it means the write-once rule proven in
+`e2e/onboarding-gate.spec.ts` is enforced **only by our code**: a signed-in reader can rewrite
+or clear their own acknowledgement date from the browser.
+
+⚠️ **Scope is bounded and worth stating precisely** — a user can only reach their own row, so
+this is not a route to anyone else's data, and it is not a paywall issue. What it touches is the
+*evidential* value of a compliance record under decisions #23/#24: the subject of the record can
+alter it.
+
+**Recorded, not fixed.** The fix is a trigger rejecting a change to a non-null value, which is a
+schema decision on a compliance path and belongs to the owner (11l — a real defect does not
+entitle me to widen scope).
+
 ### Where the delta leaves the audit
 
 | Stage | Status |
@@ -2167,9 +2263,9 @@ three profiles read back `subscription_status: null`, `grace_until: null`,
 | Layer 0 delta — prove the new instruments | ✅ 5 guards, 7 sabotages, each with a control |
 | Layer 1 delta — re-measure the coverage map | ✅ `layer-g-coverage-map.md`, 4 findings, all 4 applied |
 | Layer 2 delta — the machine sweep | ✅ Playwright **687**, pytest **244**, typecheck/lint clean, all guards green on a fresh production build |
-| Layer 3 delta — the wire sweep | ✅ **55 checks on the deployed preview, clean.** Zero premium keys in 8 denied states; the entitled control carries all 9. Two wrong results of mine, both caught before reporting |
-| **Layer 3b delta — the platform sweep** | ⬜ **next.** New table, new columns, new nightly step never run on GitHub |
-| **Layer 4 delta — the data sweep** | ⬜ predates the dividend re-pull of the whole universe |
+| Layer 3 delta — the wire sweep | ✅ **55 checks, clean, run TWICE** — on `fbf97fc` and again on `cc7e09e` after the delta fixes shipped. Zero premium keys in 8 denied states; the entitled control carries all 9. Two wrong results of mine, both caught before reporting |
+| Layer 3b delta — the platform sweep | ✅ **clean.** 13 tables RLS-on with exactly the intended grants; advisors INFO-only; both crons green on `main`. Staleness sweep DRY-RUN against live data: 5 dead, 4 live ones correctly protected. 🔵 a real run is the owner's call; 🟡 F-034 recorded |
+| **Layer 4 delta — the data sweep** | ⬜ **next.** Predates the dividend re-pull of the whole universe |
 | Layer 5a — my visual sweep | ⬜ |
 | Layer 5b — the owner's judgement sweep | ⬜ |
 
