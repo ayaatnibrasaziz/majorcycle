@@ -161,7 +161,7 @@ without the owner ruling on it first (11l).
 preview, and the LIVE site in Claude in Chrome** (method note 10). A pass is not finished when
 it is clean locally.
 
-- [ ] **P0 · Build the expected-content manifest, BEFORE looking at anything.** One line per
+- [x] **P0 ✅ DONE 2026-08-31 — `docs/layer-g-5a-manifest.md`.** Built from the approved artifact (read in full) plus the route sources; every entry is checkable by anchor, testid or exact heading, and says which viewer states require each section. Surfaced two ✅ and two ⚠️ before a single page was opened — see the manifest's closing section. **Build the expected-content manifest, BEFORE looking at anything.** One line per
       route naming the sections that must be present. Method note 6 is not optional: a missing
       section renders perfectly, so "look at the page and see if anything is wrong" cannot find
       one. **This has to be written first or P1 is just browsing.**
@@ -361,7 +361,8 @@ code review would ever surface.*
 | ~~5A-002~~ | P9 | ❌ **WITHDRAWN — my error** | Stripe account | Statement descriptor was set during business setup: **`WWW.MAJORCYCLE.COM`**, shortened **`MAJORCYCLE`**, with the support phone deliberately hidden from receipts | Withdrawn 2026-08-31 |
 | **5A-003** | P9 | 🟡 **To confirm** | Stripe + Supabase | Two-factor auth. The owner said an *authenticator app* is not set up; `layer-f-audit.md` records them typing a 2FA code to change a live Stripe key, so **some** second factor exists on Stripe. **Confirm what is actually enabled where** rather than assert — my last three assertions here were wrong | Open — owner to check |
 | ~~5A-004~~ | P9 | ❌ **WITHDRAWN — my error** | Stripe | Disputes are handled in CODE, which is stronger than an email: `charge.dispute.*` → `billing_blocked` + cancel-on-lost, live-verified in F3 S3 against a real chargeback. Stripe's "Successful payments" email is also already on | Withdrawn 2026-08-31 |
-| **5A-005** | P5 | 🟡 **To confirm** | `/` landing | Published counts and rankings are frozen at **`asOf: 2026-08-13`**, 18 days old. 11k records the same snapshot going false in six days. **Not yet confirmed false — must be re-derived before launch** | Open — P5 |
+| **5A-005** | P0→P5 | 🟡 **To confirm** | `/` landing | **16 frozen claims**, all `asOf: 2026-08-13` (18 days old) — enumerated in the manifest: the 5-of-7 count, GOOGL as top pick, Tesla's rank and 34.1% fall, Apple's price / 9.1% / 24.7% / 81.4% / 609 falls / 630 recoveries, and "nothing in the Opportunity Zone". 11k records this same run going false in **six** days. ✅ Both snapshots share one `asOf` (the 11k two-dates trap held) and `universeCount` 866 matches the live DB exactly. **Not yet confirmed false — P5 re-derives all 16** | Open — P5 |
+| **5A-007** | P0 | 🟡 **Method note** | `/` landing | The approved artifact states **7 Aug 2026**; the shipped snapshot states **13 Aug 2026**. Different runs. I nearly adopted the artifact's figures as the expected values — which would have marked the page wrong against a spec never shipped, and hidden the real staleness behind a fake one. **Copy the artifact's layout and wording; re-derive its numbers** | Recorded |
 | **5A-006** | P9 | 🟢 **Opportunity** | Vercel | **Speed Insights closes F-021.** Real-user p75 per route, reaches signed-in pages, immune to a single unlucky run — the instrument the audit said decision #33 was blocked on | **Owner decision.** Turn on before launch, since it needs traffic to report |
 
 ---
