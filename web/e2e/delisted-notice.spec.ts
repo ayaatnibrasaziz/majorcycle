@@ -37,7 +37,11 @@
 
 import { expect, test } from '@playwright/test';
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import {
+  formatFrozenDate,
   frozenAsAtDate,
   shouldShowDelistedNotice,
 } from '../components/stocks/DelistedNotice';
@@ -155,5 +159,59 @@ test.describe('the frozen-at date is the DATA date, not the day we noticed', () 
   test('a missing date degrades to no date, never to a wrong one', () => {
     expect(frozenAsAtDate({ updatedAt: undefined as unknown as string })).toBeNull();
     expect(frozenAsAtDate(null)).toBeNull();
+  });
+});
+
+test.describe('the frozen date reads the way the owner asked', () => {
+  /**
+   * Owner decision 2026-08-31: `23 Jul 2026`, and the notice is ONE sentence. The
+   * first version ran to four paragraphs explaining our own method — owner: *"I
+   * still feel it is way too much."*
+   */
+  test('it renders as 23 Jul 2026', () => {
+    expect(formatFrozenDate('2026-07-23')).toBe('23 Jul 2026');
+  });
+
+  test('no leading zero on the day, and every month maps', () => {
+    expect(formatFrozenDate('2026-07-05')).toBe('5 Jul 2026');
+    expect(formatFrozenDate('2026-01-01')).toBe('1 Jan 2026');
+    expect(formatFrozenDate('2026-12-31')).toBe('31 Dec 2026');
+    // Off-by-one in the month lookup is the obvious bug here and it is silent:
+    // every month would simply be wrong by one, which still reads as a real date.
+    expect(formatFrozenDate('2026-02-09')).toBe('9 Feb 2026');
+    expect(formatFrozenDate('2026-11-30')).toBe('30 Nov 2026');
+  });
+
+  test('anything unparseable degrades to nothing, never to a wrong date', () => {
+    expect(formatFrozenDate(null)).toBeNull();
+    expect(formatFrozenDate('')).toBeNull();
+    expect(formatFrozenDate('2026-07-23T04:11:00.000Z')).toBeNull();
+    expect(formatFrozenDate('23/07/2026')).toBeNull();
+    expect(formatFrozenDate('2026-13-01')).toBeNull();
+  });
+
+  test('it does not go through new Date()', () => {
+    /**
+     * ⚠️ A SOURCE assertion, and weaker than the rest of this file — said plainly
+     * rather than counted as equal coverage (11c-ix).
+     *
+     * `new Date('2026-07-23')` parses as UTC midnight, so anywhere west of
+     * Greenwich it formats as the 22nd — the same off-by-one-day class that stored
+     * every ASX bar a day early (14a). A value test cannot catch it here because
+     * CI runs in UTC, where the buggy and correct implementations agree. The only
+     * thing that separates them without a second machine is the absence of the
+     * call, so that is what is asserted, with comments stripped first.
+     */
+    const src = readFileSync(
+      join(__dirname, '..', 'components', 'stocks', 'DelistedNotice.tsx'),
+      'utf8',
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+    expect(src).not.toContain('new Date(');
+    expect(src).not.toContain('toLocaleDateString');
+    // Control: prove the file was really read and the stripping did not eat it.
+    expect(src).toContain('export function formatFrozenDate');
   });
 });

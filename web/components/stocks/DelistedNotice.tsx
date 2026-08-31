@@ -82,52 +82,50 @@ export function frozenAsAtDate(
   return stock?.updatedAt?.slice(0, 10) ?? null;
 }
 
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+] as const;
+
+/**
+ * `2026-07-23` -> `23 Jul 2026`.
+ *
+ * ⚠️ Formatted from the STRING, never through `new Date()`. `new Date('2026-07-23')`
+ * is parsed as UTC midnight, so anywhere west of Greenwich it formats as the 22nd —
+ * the same class of off-by-one-day defect that stored every ASX bar a day early
+ * (CLAUDE.md 14a). There is no timezone in a date this precise, so none is applied.
+ */
+export function formatFrozenDate(iso: string | null): string | null {
+  const m = iso?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const month = MONTHS[Number(m[2]) - 1];
+  return month ? `${Number(m[3])} ${month} ${m[1]}` : null;
+}
+
 export function DelistedNotice({ stock }: { stock: StockRecord }) {
   if (!shouldShowDelistedNotice(stock)) return null;
 
-  const lastBar = frozenAsAtDate(stock);
+  const frozen = formatFrozenDate(frozenAsAtDate(stock));
 
+  /**
+   * ⚠️ ONE SENTENCE, by owner decision 2026-08-31 — and the first version had four
+   * paragraphs. Owner: *"I still feel it is way too much."*
+   *
+   * Everything cut was us explaining OURSELVES rather than telling the reader
+   * anything they need: how the three-source test works, the date our sweep noticed,
+   * why we keep the history, the ways a company can stop trading. All true, none of
+   * it load-bearing. A reader needs two facts — this is dead, and the numbers below
+   * are old, from this date — and every extra line makes those two harder to find.
+   */
   return (
     <div className="card card--stack-base" role="note" data-testid="delisted-notice">
       <div className="card-header">
         <div className="card-title">{stock.name ?? stock.ticker} no longer trades</div>
       </div>
-      <div className="card-body text-[13px] leading-[1.6] text-[var(--text-secondary)]">
-        <p>
-          Three independent checks agree this listing has stopped trading: it returns no
-          price from our data provider, and it is absent from both its exchange&rsquo;s
-          directory and every index we track.
-        </p>
-        <p className="mt-2">
-          {/* ⚠️ THE DATE IS THE POINT OF THE WHOLE COMPONENT, and the first version
-              printed the WRONG ONE. It showed `inactiveSince` — the day our sweep
-              NOTICED the listing was gone — under the words "every figure is frozen
-              as at". On BK that read "frozen as at 2026-08-31" while the header two
-              inches below said "Updated Jul 23" and the price was five weeks old.
-              Both dates are real, they answer different questions, and the one a
-              reader needs is when the DATA stops. Caught only by looking at the
-              rendered page: the sentence was fluent, specific and wrong (11k).
-
-              So this uses `updatedAt`, which is the same value StockHeader prints —
-              one fact, one source, so the notice and the header cannot disagree. */}
-          <strong className="text-[var(--text-primary)]">
-            Every figure on this page is frozen
-          </strong>
-          {lastBar ? <> at our last update on {lastBar}</> : <> at our last update</>}.
-          Nothing here is being updated, and the prices are not current. We keep the
-          history because it cannot be re-fetched once a symbol is withdrawn.
-        </p>
-        {stock.inactiveSince && (
-          <p className="mt-2">
-            We marked this listing inactive on {stock.inactiveSince}, which is when our
-            checks first agreed it had stopped trading &mdash; not the date it stopped.
-          </p>
-        )}
-        <p className="mt-2">
-          A company can stop trading for many reasons &mdash; it may have been acquired,
-          taken private, renamed, or moved to another exchange. This page does not say
-          which, and a ticker that has been renamed will have its history under the new
-          symbol.
+      <div className="card-body">
+        <p className="text-[13px] leading-[1.6] text-[var(--text-secondary)]">
+          <strong className="text-[var(--text-primary)]">Every figure below is frozen</strong>
+          {frozen ? <> at {frozen}</> : null} and is not current.
         </p>
       </div>
     </div>
