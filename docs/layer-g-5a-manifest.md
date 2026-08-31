@@ -354,3 +354,81 @@ is always present, which is what makes it useless as evidence.**
 the **code** what the real set was — `check-report-sections.mjs` for the sections,
 `lib/entitlement.ts` for the states. Both had the right answer the whole time. **When a manifest
 states a set, derive that set from something executable, never from recollection.**
+
+---
+
+# Execution guide — how to actually run this sweep
+
+⚠️ **Added 2026-08-31 after the owner asked whether anyone could pick this plan up and execute
+it.** They could not have. Everything above said *what* to check and almost nothing about *how*:
+no URLs, no credentials, no commands, and every data edge case named in the abstract ("a bank",
+"a cross-currency stock") with no ticker attached. **A checklist whose steps cannot be performed
+is a wish.** Everything below was verified against the live systems, not recalled.
+
+## 1 · The three surfaces
+
+| Surface | How to start it | Sign in | Limits |
+|---|---|---|---|
+| **Local** `:3200` | `cd web && pnpm start:fresh` (**builds first** — `:3200` cannot serve stale code). Never `:3000` | `.env.local` holds `E2E_EMAIL` / `E2E_PASSWORD` | ⚠️ **`/api/cycle` does not run.** The whole cycle block is empty for everyone — no rating, no verdict, not even the free "Current Drawdown" |
+| **Vercel preview** | Pushed branches auto-deploy. Get the URL from `list_deployments`; the preview is SSO-gated, so mint a share link with `get_access_to_vercel_url` | same credentials | Reflects the **last pushed** commit, not your working tree |
+| **Live** `https://www.majorcycle.com` | Already deployed | a real account, in **Claude in Chrome** | Live Stripe. **You cannot induce a failed payment here** |
+
+## 2 · Named test data — every edge case has a ticker now
+
+Queried from the live database, 2026-08-31.
+
+| Edge case | Use | Note |
+|---|---|---|
+| **Retired** (delisting banner) | `BK` `CTRA` `SATS` `AOF.AX` `IFL.AX` | Exactly 5 of 871. ⚠️ **Absent from Browse** (`is_active` filter) but their URLs still resolve — correct, and worth checking both halves |
+| **Cross-currency** | `A2M.AX` (AUD price / **NZD** accounts) · `ABX.TO` (CAD/USD) · `360.AX` (AUD/USD) | **79 stocks**, matching the documented figure. `A2M.AX` is the odd one — NZD |
+| **Bank** (zero-margin sentinel) | `AIG` `ACGL` `AFL` `AEF.AX` | Margins arrive as `0.0` meaning *not reported* |
+| **No analyst coverage** | `ADD.AX` | 16 rows, 4 of which are indices |
+| **TSX Venture** | any `.V` ticker | ⚠️ **Keeps its suffix in the URL** (`/stocks/ca/ABC.V`) — Canada has two suffixes, and stripping `.V` would collide `ABC.V` with `ABC.TO` |
+| **Index rows** | `^GSPC` `^AXJO` `^GSPTSE` `^IXIC` | ⚠️ **A fourth market, `market='index'`.** Excluded from Browse and from peer medians by explicit `.neq('market','index')`. **Check `/stocks/index/^GSPC` and `/stocks/us/^GSPC` both refuse** — this was never on the plan |
+| ~~No fundamentals~~ | — | **Does not exist**: 0 rows. Drop it from the plan rather than "checking" it |
+
+## 3 · Reaching the 14 states — and the four you cannot
+
+| States | How |
+|---|---|
+| `signed-out` · `free` | A fresh account; no card |
+| `trialing` · `active` | Stripe **sandbox** checkout |
+| `past_due` in grace · past grace · `canceled` | Stripe **test clocks** — the full lifecycle was driven this way in F3 Session 3 |
+| `deletion-scheduled` | Press delete on a throwaway account |
+| `password-recovery` | Request a reset; the marker is httpOnly, path-scoped, 30 minutes |
+| **`unpaid` · `paused` · `incomplete` · `incomplete_expired`** | ⚠️ **Not reachable by ordinary use.** They arrive from Stripe-side conditions we cannot trigger on demand. **This is finding F-005** — those four fall through to a screen saying "no subscription", which is untrue. Check them by setting `subscription_status` directly in the database on a throwaway account, and say that is what was done |
+
+⚠️ **None of the payment-failure states can be produced on the LIVE site**, because that needs a
+real card to really fail. Live checks are limited to signed-out / free / trialing / active.
+**Say which surface each state was checked on** — a matrix that hides this reads as full coverage.
+
+## 4 · Commands
+
+```
+cd web && pnpm start:fresh          # :3200, builds first
+pnpm gates                          # all 16 (~15 min).  NEVER pipe it — see §40b
+pnpm gates --no-e2e                 # 15, fast, for docs-only changes
+pnpm check:page-weight              # needs :3200 running
+pnpm check:csp                      # needs :3200 + a real session
+pnpm lighthouse                     # needs :3200, median of 3, ~6 min
+node scripts/check-report-sections.mjs   # prints the 23-section count
+```
+
+⚠️ **CI costs GitHub minutes** (owner, 2026-08-31): batch commits and run gates locally. Push
+when something meaningful is finished, not per edit.
+
+## 5 · What the connectors can answer
+
+All four work; the startup notice claiming otherwise was wrong (verified 2026-08-31).
+
+| Connector | Use it for |
+|---|---|
+| **Supabase** | `execute_sql` for edge-case tickers and state setup; `get_advisors` for security/performance (both currently INFO-only) |
+| **Stripe** | live prices, the live webhook's API version and event list; sandbox for test clocks |
+| **Vercel** | `list_deployments` for the preview URL; `get_access_to_vercel_url` for a share link past the SSO gate |
+| **Resend** | domain `majorcycle.com` **verified, sending enabled, receiving disabled** — inbound is Cloudflare Email Routing, so a contact-form *reply* is not a Resend test |
+
+⚠️ **Account configuration is not in the repo.** Supabase custom SMTP, the Stripe statement
+descriptor and the dispute settings all live in dashboards — grepping the codebase for them
+returns "not found" whether they exist or not. That mistake cost three false findings today.
+**Ask the vendor's API, or grep our own docs.**
