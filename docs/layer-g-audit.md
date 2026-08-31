@@ -126,7 +126,7 @@ level is rarely breached would hold this fix. **Not built:** the owner asked for
 and adding a test unasked is the scope-widening this log already records me doing once. Raised
 for decision instead.
 
-### F-002 🟡 Signed-out visitors kept a write permission that signed-in users had removed
+### F-002 ✅ Signed-out visitors kept a write permission that signed-in users had removed — FIXED 2026-08-25 (as F-024)
 
 **Found:** the platform sweep, while checking whether a customer can grant themselves premium.
 
@@ -161,8 +161,21 @@ policy to `profiles` makes the wide grant live, and nothing would go red.
 
 **Proposed fix:** `REVOKE UPDATE ON public.profiles FROM anon;` — anon has no legitimate reason
 to write any profile column. Plus a guard asserting the privilege posture, so it cannot widen
-silently. **Not applied:** it is a live-database change, and the owner asked to be consulted
-before anything is removed.
+silently.
+
+✅ **FIXED 2026-08-25, and this section said "Not applied" for six days after it was.** The work
+landed as **F-024** — migration `20260825000000_revoke_anon_writes_on_profiles.sql`, plus
+`e2e/db-grants.spec.ts` — and F-026 then closed the same over-grant on all twelve tables. Verified
+live on 2026-08-31: `anon` holds **SELECT and nothing else** on `profiles`, `analysis_runs` and
+`referrals`, and nothing at all on the ten policy-less tables.
+
+⚠️ **Recording this correction rather than quietly deleting the stale sentence, because the stale
+sentence is the finding.** F-002 was reported, fixed under a different number, and never linked
+back — so for six days the audit's own log said a live database still carried a permission it had
+not carried since the 25th. Anyone reading top-to-bottom would have gone to re-do closed work, or
+worse, believed the system was in a state it was not. That is CLAUDE.md **11j** turned on the
+audit: a document that is out of date in a way that reads as current. **When a finding is closed
+under another number, close it HERE too, in the same commit.**
 
 ### F-003 🟡 The stock universe is 129 rows from a silent truncation limit
 
@@ -172,7 +185,7 @@ every time a reader requests a ticker, so this arrives with *growth*, not with a
 `selectAll()` / `_select_all()` and `pnpm check:data-integrity` exist to prevent it. **Layer 0
 proves that guard can actually fail** rather than assuming it.
 
-### F-004 ℹ️ Seven tables cannot tell a reader that their configuration is deliberate
+### F-004 ✅ Seven tables cannot tell a reader that their configuration is deliberate — FIXED 2026-08-31 (and it was eight)
 
 Nine tables have row-level security enabled with **no policies** — the correct, deny-all posture
 for server-only tables, and the reason the database's own advisor lists nine notices. Two
@@ -180,6 +193,21 @@ for server-only tables, and the reason the database's own advisor lists nine not
 The other seven do not, so the next person to read the advisor output cannot distinguish
 *deliberate* from *forgotten* — and will either re-investigate it or, worse, "fix" it.
 One-line comment each.
+
+✅ **FIXED 2026-08-31** — migration `20260831010000_document_deny_all_tables.sql`, applied live.
+Every policy-less table now says what it holds AND that the advisor notice is intentional, in the
+same shape the two existing comments already used. **Comments only**: no grant, policy, column or
+row was touched, and the control re-read the grant posture afterwards to prove it — `anon` still
+holds SELECT on exactly three tables and nothing on these ten.
+
+⚠️ **It was EIGHT tables, not seven, and the number aged in the six days between writing this
+finding and fixing it.** `dividend_events` was created on 2026-08-30 (11af) and inherited the same
+silence, because nothing in the repo says "a new deny-all table needs a comment". **A count in a
+document is a measurement with a date on it, not a fact** (11k) — so the fix re-derived the list
+from `pg_class`/`pg_policy` at the moment of writing rather than trusting the seven recorded here.
+⚠️ Note also what this finding is *for*: the comments protect against a future reader "fixing" the
+advisor warning by adding a policy, which would open a server-only table. The risk was never the
+warning; it was the plausible, well-meant repair.
 
 ### F-005 🔵 Four subscription states show a screen that does not describe them
 
@@ -440,20 +468,20 @@ merge. An empty number is an unticked box.
 
 | | Gate | Required | Last reading |
 |---|---|---|---|
-| ✅ | `pnpm typecheck` | zero errors | **0 errors** — Layer 2, 2026-08-24 |
-| ✅ | `pnpm lint` | zero errors | **0 errors** — Layer 2, 2026-08-24 |
-| ✅ | `pnpm build` | succeeds | **succeeds**, compiled in 37.5s — Layer 2, 2026-08-24 |
-| ✅ | `pnpm e2e` | 0 failed, 0 skipped, count reconciled with CI | **617 passed, 0 failed, 0 flaky, 0 skipped** — CI run `32847359890` on `bc7672e`, matching the 617 collected locally. Grew 589 → 617 across the fixes: +7 benchmark-cache, +1 run-history, +15 db-grants, +3 pricing-parity, +2 stock-currency. ⚠️ Earlier in the layer this was **reconciled with CI by TITLE, not by count** — 588 of 589 identical, the 589th differing only by GitHub's redaction (F-017) — and that remains the method whenever the two disagree |
-| ✅ | `pytest analytics/` | all pass | **189 passed** — 153 at step zero, +17 in Layer 1, +19 for the listings regression rules (F-027/F-028) |
-| ✅ | `mypy analytics/` | no issues | **43 files, no issues** — 42 at step zero, +2 new tests −1 deleted script |
+| ✅ | `pnpm typecheck` | zero errors | **0 errors** — CI *Frontend checks* job, CI run `33368520554` on `f1b6d4d` — the **post-merge** run on `main`, so it measures what is actually deployed |
+| ✅ | `pnpm lint` | zero errors | **0 errors** — CI *Frontend checks* job, CI run `33368520554` on `f1b6d4d` — the **post-merge** run on `main`, so it measures what is actually deployed |
+| ✅ | `pnpm build` | succeeds | **succeeds** — CI *Frontend checks* job, CI run `33368520554` on `f1b6d4d` — the **post-merge** run on `main`, so it measures what is actually deployed |
+| ✅ | `pnpm e2e` | 0 failed, 0 skipped, count reconciled with CI | **699 passed, 0 failed, 0 flaky, 0 skipped** — CI run `33368520554` on `f1b6d4d` — the **post-merge** run on `main`, so it measures what is actually deployed. Re-read 2026-08-31: grepping the whole log for `failed`/`skipped`/`flaky` returns **zero lines**, and 699 reconciles with the 699 collected locally before merge. ⚠️ **This row cited 617 on `bc7672e` until 2026-08-31 — a reading a week old, taken before 73 files moved.** The gate was genuinely green at merge; the *table* had aged, which is the same defect the audit filed as F-006 against the launch gate. A cited SHA is what stops a number ageing invisibly, and it only works if the SHA is re-cited. *Historical:* 617 on `bc7672e`, matching the 617 collected locally at the time. Grew 589 → 617 across the fixes: +7 benchmark-cache, +1 run-history, +15 db-grants, +3 pricing-parity, +2 stock-currency. ⚠️ Earlier in the layer this was **reconciled with CI by TITLE, not by count** — 588 of 589 identical, the 589th differing only by GitHub's redaction (F-017) — and that remains the method whenever the two disagree |
+| ✅ | `pytest analytics/` | all pass | **247 passed** — CI run `33368520554` on `f1b6d4d` — the **post-merge** run on `main`, so it measures what is actually deployed. Grew 153 (step zero) → 189 (Layer 1 + the listings rules) → **247** across the delta: the dividend re-adjustment, the staleness sweep, the market-cap fallback and the delisting rules |
+| ✅ | `mypy analytics/` | no issues | **no issues** — CI *Python checks* job, CI run `33368520554` on `f1b6d4d` — the **post-merge** run on `main`, so it measures what is actually deployed |
 | ✅ | `ruff check analytics/` **and** `cd web && ruff check _engine/ api/` | zero errors | **both clean.** ⚠️ Added to this table on 2026-08-24 because Layer 2 originally omitted it and CI caught 6 errors on the first push — F-016. A gate absent from the list is a gate nobody runs |
 | ✅ | The **nine** `check:*` guards | all green, **each proven able to fail** | **all 9 proven able to fail** ✅ — eight in Layer 0 (2026-08-23, 13 sabotages each with a control) and the ninth on 2026-08-25. ⚠️ **This row said "eight" until then, and there were nine.** `check:engine-drift` had never been broken on purpose, so the row read as "all of them" while one was unproven — the audit's own rule 3 turned on the audit. Sabotaged by appending a line to `web/_engine/major_cycle.py`: it names the file, explains the fix, and **exits 1** (read without a pipe — `$?` after a pipe is `tail`'s). **All 9 green on a fresh production build** ✅ |
 | ✅ | `pnpm check:page-weight` | within budget — **manual, production build** | all 6 within budget ✅ **re-taken 2026-08-24 after F-019**; heaviest `/stocks/us/AAPL` **1079 / 1250 KB** (was 1222 / 1400 — the four index series left the document, and the ceiling was ratcheted so the saving cannot be given back). Re-taken again at merge |
 | 🔴 | `pnpm lighthouse` | meets decision #33 — **manual, median of 3** | public pages **100 / 100 / 100 / 100**; `/stocks` **100**; `/stocks/us/AAPL` **83** local, **64** on the deployed preview. **Below the 90 target, and BLOCKED rather than merely unfinished.** The 84→90 work was attempted and is recorded: F-019 took a third off the page with no score movement, F-020 (split hydration) made it worse and was reverted, and F-021 found that **neither available measurement is trustworthy** — three consecutive preview runs gave 370/540/990 ms of blocking time, and no external lab tool can reach a page behind sign-in. ⚠️ **This row cannot be ticked by more optimisation; it needs an instrument.** Owner decision pending on real-user monitoring. The reliable evidence is the byte count above |
-| ⬜ | Launch-gate table re-verified | every row's evidence current, not from 2026-08-02 | — |
-| ⬜ | Deferred list GA-1…GA-5 re-verified | closed *today*, not closed *once* | — |
+| ✅ | Launch-gate table re-verified | every row's evidence current, not from 2026-08-02 | **done.** `roadmap.md` §3 now cites readings from 2026-08-22 / 08-25 / 08-31 rather than the single 2026-08-02 sweep F-006 flagged. Three rows stay deliberately un-green and each names what is missing rather than hedging: *signup → paid with a real card* (**cannot** be executed — Stripe's terms forbid live-mode testing, so the evidence is test clocks plus a real `cs_live_` session), *375px mobile* (Layer H, already triaged and measured), and *Vercel Hobby → Pro* (the launch blocker, owner's call). **A row that cannot be proven says so; it is not ticked on a technicality** |
+| ✅ | Deferred list GA-1…GA-5 re-verified | closed *today*, not closed *once* | **all six closed** (GA-1, GA-1b, GA-2, GA-3, GA-4, GA-5), each with its evidence written into `roadmap.md` rather than a tick. Re-read 2026-08-31. ⚠️ **GA-2 is the one to actually re-read**, because it did not stay closed the way it was filed: its design-linter suppression went obsolete, was found to be **excusing a defect that no longer existed for a reason that had never been true**, and was **deleted** rather than re-tuned (CLAUDE.md 11t). That is precisely the difference between *closed once* and *closed today* — and it is why this row exists |
 | 🟡 | Layer 1 coverage map | built, and the uncovered list ruled on by the owner | map built 2026-08-23 → `docs/layer-g-coverage-map.md`; owner ruled on all 8 the same day and **all 8 acted on** ✅ — five defects found (F-005, F-009, F-011, F-012, and 11a's fifth instance) |
-| ⬜ | All findings resolved | passed / fixed+guarded / accepted with sign-off. **Zero unknown** | — |
+| 🟡 | All findings resolved | passed / fixed+guarded / accepted with sign-off. **Zero unknown** | **35 of 36 settled; one open, and zero unknown — which is the part this row actually asks.** Open: **F-001**, two Stock Detail tooltips that still read as advice (non-negotiable #12 / decision #24) — reported at step zero, fixed on one screen by PR #90 and never on the other, wording with the owner 2026-08-31. Parked by decision, not by drift: **F-005** (four thin subscription states → Layer 5b), **F-030** (five index members that are not fetchable companies → recorded, low severity), **F-021** (the ticker page's Lighthouse score → **blocked on an instrument, not on effort**). ⚠️ **F-002, F-004 and F-007 were closed in code and left OPEN in this log** — for six days, eight days and eight days. All three are now corrected in place, with the staleness recorded as part of the finding, because a log that lags the system is the thing an audit exists to prevent |
 
 **At merge, owner-only:**
 
@@ -462,8 +490,8 @@ merge. An empty number is an unticked box.
 | ⬜ | Flip apex → `www` from a temporary to a permanent redirect | Search engines consolidate ranking only across a permanent one, and Layer G declares `www` canonical in ten places |
 | ⬜ | Move hosting off the free tier | It forbids commercial use — this blocks taking payment, not just launch |
 | ⬜ | Submit the sitemap, **after** deploy | Submitting while it still redirects teaches the crawler to distrust it |
-| ⬜ | Re-read the **six LIVE Stripe prices** and check them against `PRICE_TABLE` | `e2e/pricing-parity.spec.ts` closed F-025 for test mode only. Test and live are separate objects sharing a `lookup_key`, and CI holds only the restricted test key — so a live-mode price edit is invisible to every check we own. Last read by hand 2026-08-24: all six matched |
-| ⬜ | **Re-run the listings refresh after merge** | The TSX Venture rows (F-028) and the ASX menu (F-027) were written from this branch. Tonight's scheduled run checks out `main`, whose delisting sweep has no churn guard and knows nothing about TSXV — so it will mark all 1,457 venture rows inactive. Harmless and reversible (deactivated, never deleted), and the first post-merge run restores them. This is CLAUDE.md 14g, and it is on this list precisely because it looks like nothing happened |
+| ✅ | Re-read the **six LIVE Stripe prices** and check them against `PRICE_TABLE` | **All six match, read live 2026-08-31 on `acct_1TrdaxK8OQZXQEmi` with `livemode: true`.** Monthly US$15 / A$19 / C$20 · annual US$126 / A$159 / C$168, against `PRICE_TABLE` in `lib/pricing.ts`. **Both controls the finding demands also pass:** `has_more: false` with **exactly one** active price per `lookup_key` (zero or two would make every comparison vacuous — it would compare nothing and report a match), and the **interval** is `month`/1 and `year`/1 respectively (a right amount on the wrong interval is the expensive version of this bug, and the sticker looks perfect). ⚠️ `e2e/pricing-parity.spec.ts` closed F-025 for **test mode only** — test and live are separate objects sharing a `lookup_key`, and CI holds only the restricted test key — so this row is the live half and it stays a **recurring manual check**, not a solved problem |
+| ✅ | **Re-run the listings refresh after merge** | **Closed BY the merge — no action needed, and the reason is worth keeping.** This row existed because a scheduled workflow checks out the **default branch** (14g): while the churn guard and TSXV support sat on `feat/layer-g`, the next nightly run would have used `main`'s older sweep and marked all 1,457 venture rows inactive. Merging at 07:28 UTC on 2026-08-31 put both on `main` **before** either cron next fired, so the window closed rather than being survived. Live state re-read the same day: `listings` **au 2,018 · ca 2,720 · us 5,883**, `stocks` **866 active / 5 retired** — the venture rows are present and the five genuine delistings are intact. ⚠️ Tonight's runs (AU 08:00, US+CA 22:30 UTC — GitHub delays the AU one by anywhere from 30 min to 11 h) are the **first ever** to execute the dividend re-pull, the retry pass, the staleness sweep and the market-cap fallback on a schedule. Verify tomorrow: this is the row that looks like nothing happened either way |
 
 ---
 
@@ -530,7 +558,7 @@ numbers were **identical to the clean run** — which is what gave it away. Had 
 verified. Changing both copies exercised it properly. This is CLAUDE.md **11u**: a break that
 fails in an unexpected way is a finding about your model, not a verdict on the test.
 
-### F-007 🟡 `check:report-sections` is blind to a commented-out section
+### F-007 ✅ `check:report-sections` is blind to a commented-out section — FIXED
 
 The guard collects components imported from `@/components/stocks/…`, then tests whether
 `<Name` appears anywhere in the file. **It never strips comments**, so
@@ -545,9 +573,23 @@ silently lose a section a paying customer downloads, with the guard green.
 failed on the very sentence documenting the fix. The lesson was learned in one guard and not
 carried to this one — **11c-iv** again.
 
-**Not fixed:** it is a CI guard change and the owner asked to see changes before they land.
 **Proposed:** strip block and line comments before matching, and prove it by re-running the
 comment-out sabotage — which must then exit 1.
+
+✅ **FIXED, and this section said "Not fixed" until 2026-08-31.** `scripts/check-report-sections.mjs`
+now runs the render test against source with comments removed (`stripComments()`), and the file's
+own header records the proof: *"broken it both ways: deletion exited 1, comment-out exited 0"*
+before the fix, and both exit 1 after.
+
+⚠️ **One detail in that fix is worth carrying, because it is the kind of over-correction that
+creates a new defect.** Line comments are stripped **only when `//` opens the line**. A mid-line
+`//` is far more often a URL (`https://…`) than a comment, and blindly cutting from `//` to
+end-of-line would silently truncate every line containing a link — turning a guard against
+invisible loss into a cause of it. **A stripper written for one language feature has to know what
+else wears the same characters.**
+
+⚠️ Same lesson as F-002 above: this was closed in code and left open in the log. **The audit is
+not finished when the fix ships; it is finished when the record says so.**
 
 ### F-008 🟡 Two adjacent rating tiers are near-indistinguishable to a red-blind reader
 
@@ -2507,6 +2549,27 @@ otherwise — every month would simply be wrong by one and still read as a real 
 | Layer 4 delta — the data sweep | ✅ **clean on the data.** Dividend re-adjustment held (ratio 1.00000 vs a fresh pull); 0 weekend bars in 6.6M; cross-currency withholding proven with a positive control. The market-cap breach is 14g, confirmed three ways. **F-036 fixed** (invariants judged tickers they can never repair); **F-035 fixed** (a retired ticker now says so, on the page and in the report) |
 | **Layer 5a — my visual sweep** | ⬜ **next** |
 | Layer 5b — the owner's judgement sweep | ⬜ |
+
+### The post-merge pass — 2026-08-31, after `f1b6d4d`
+
+Prompted by the owner asking the one question that catches a premature "done": *"confirm you are
+100% happy with the audit so far and there is nothing left apart from 5a and 5b?"* The honest
+answer was **no**, and checking rather than recalling is what produced this list.
+
+| | Item | Outcome |
+|---|---|---|
+| 🟠 | **F-001 still live on the paid page** | Two Stock Detail tooltips still read as advice. Reported at step zero, fixed on one screen by PR #90, never on the other — and never mentioned again in this log. **Nothing had gone red, because no check reads a `title` attribute.** Wording with the owner |
+| ✅ | F-002 and F-007 recorded as open, fixed in code | Corrected in place; the staleness kept as part of each finding rather than tidied away |
+| ✅ | F-004 seven tables → **eight** | Fixed live; the count had aged in six days |
+| ✅ | Merge-gate + launch-gate numbers | Re-cited against `f1b6d4d`: **699 / 247** |
+| ✅ | Six live Stripe prices | All match, both controls pass |
+| ✅ | Listings refresh after merge | Closed by the merge itself — the window shut rather than being survived |
+
+⚠️ **Three of the six were the audit's own record being wrong about the audit's own work**, in the
+direction that reads as more work remaining, not less. That is the benign direction and it is still
+a defect: it sends the next reader to re-do closed work, and it makes the one genuinely open finding
+harder to see among three false ones. **A log is not a by-product of an audit. It is the audit's
+output, and it decays the moment a fix lands under a different number.**
 
 ⚠️ **The nightly staleness step has never executed anywhere.** It is on this branch, and a
 scheduled run checks out the default branch (14g), so it stays unproven until merge unless it
