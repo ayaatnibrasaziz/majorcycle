@@ -287,7 +287,7 @@ class TestRetiredTickersAreHeldBack:
         # function's whole output is what every invariant then reads.
         assert rows[0]["fundamentals"] == {"market_cap": 1.0}
 
-    def test_a_row_with_no_is_active_column_is_KEPT(self) -> None:
+    def test_a_row_with_no_is_active_column_is_kept(self) -> None:
         """Defaults to keeping, matching daily_refresh._load_universe.
 
         Failing the other way would let a schema slip silently empty this check's
