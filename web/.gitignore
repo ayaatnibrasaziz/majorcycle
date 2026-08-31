@@ -60,3 +60,6 @@ app/dev-fixtures/
 # Generated design-system gallery (rendering of globals.css, never a source of truth)
 design-system-build/
 lighthouse-report/
+
+# pnpm gates writes a failing gate's full output here (see scripts/gates.mjs)
+gates-failure.log

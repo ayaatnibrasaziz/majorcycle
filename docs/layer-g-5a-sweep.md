@@ -153,4 +153,29 @@ to rule on.*
 
 | Session | Date | Passes covered | Findings |
 |---|---|---|---|
-| 1 | 2026-08-31 | *(setting up — gates re-run in progress)* | — |
+| 1 | 2026-08-31 | Setup + tooling. F-001 fixed and guarded; F-002/F-004/F-007 records closed; merge-day items done. **The local `pnpm gates` was found to be genuinely broken and was fixed** (below). Sweep passes P1-P6 not yet started | 2 tooling defects, both fixed |
+
+### Session 1 - why the sweep did not start
+
+The owner asked for the gates to be made to work properly before the sweep began, and they were
+right to: **a run had failed and could not be diagnosed.** Two separate defects, both now closed
+and both recorded in `coding-standards.md` (SS 40b and 43).
+
+**(a) A failing gate destroyed its own evidence.** The output had been piped through `tail`, which
+returned *tail's* exit status (so a FAILED run reported success) **and** discarded the part naming
+the failing test, keeping only dev-server noise. By the time anyone looked, two later runs and CI
+were green and there was nothing left to reproduce. `gates.mjs` now always writes the failing
+gate's full output to a file, prints that path on the verdict line, shows the tail of **stdout**
+(where every runner here puts its summary) rather than stderr, and warns against piping.
+
+**(b) The actual cause: a corrupt file that Next generates.**
+`.next-dev/dev/types/routes.d.ts` had the same interface block written into it **twice** - two
+`next dev` servers interleaving writes, which happens because the e2e gate starts a fresh server
+every run and on Windows the previous one may still be exiting. `typecheck` reads it because
+`next-env.d.ts` **imports** it, and an import bypasses `tsconfig`'s `exclude`. CI never sees this;
+a fresh checkout has no `.next-dev`. `gates.mjs` now recognises the case and prints the one-line
+fix, and stays silent on genuine source errors - proven both ways.
+
+⚠️ **Neither defect was in the product.** Both were in the instrument used to check the product,
+which is why they had to be fixed before a six-pass sweep leaned on it. **A sweep is only as
+honest as the tool that reports it** (14g).
