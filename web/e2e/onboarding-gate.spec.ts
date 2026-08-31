@@ -31,9 +31,13 @@
  * failing one file. That is why the decision lives in the pure module.
  */
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { expect, test } from '@playwright/test';
 
 import {
+  acknowledgeWriteDecision,
   shouldShowOnboarding,
   viewerFromProfileRead,
   SIGNED_OUT_VIEWER,
@@ -145,5 +149,107 @@ test.describe('onboarding gate — unreadable is not "never agreed"', () => {
     });
     expect(disputed.entitled).toBe(false);
     expect(disputed.billingBlocked).toBe(true);
+  });
+});
+
+/**
+ * ── The WRITE half — finding F-033, Layer G delta audit, 2026-08-31 ──────────
+ *
+ * Everything above guards the READ: whether the modal is shown. Until this block
+ * existed, nothing guarded what happens when the reader presses the button.
+ *
+ * ⚠️ **The two halves fail in opposite directions, which is why the tests above
+ * proved nothing about this one.** A wrong read shows the gate to somebody who has
+ * already agreed — annoying, visible, recoverable by reloading. A wrong write
+ * destroys the record that they agreed at all — silent, and gone. The 2026-08-27
+ * incident needed BOTH to go wrong: the read put the modal up, and the write took
+ * the June date. Fixing and guarding only the read leaves the expensive half of
+ * that pair unprotected.
+ *
+ * ⚠️ **`acknowledgeWriteDecision` was extracted so this could exist.** The rules
+ * lived inside a `'use server'` action that builds its own Supabase client, so no
+ * credential-free spec could reach them — four real protections, zero tests, on the
+ * one path already known to destroy a compliance record. The behaviour is unchanged;
+ * only its address is.
+ */
+test.describe('the acknowledgement is write-once', () => {
+  test('an unreadable row is REFUSED, never written', () => {
+    // The exact 2026-08-27 shape: a verified session, a row that did not come back.
+    expect(acknowledgeWriteDecision(null, false)).toBe('refuse_unreadable');
+    expect(acknowledgeWriteDecision(undefined, false)).toBe('refuse_unreadable');
+  });
+
+  test('a FAILED read is refused even when a row comes back with it', () => {
+    // Defensive, and deliberately not just a duplicate of the case above: a client
+    // that returns both an error and a stale/partial row must not be read as
+    // permission to write. The error wins.
+    expect(acknowledgeWriteDecision({ acknowledged_disclaimer_at: null }, true)).toBe(
+      'refuse_unreadable',
+    );
+  });
+
+  test('an EXISTING date is never overwritten — the whole point', () => {
+    // The June record the incident destroyed. This is the single most important
+    // assertion in the file: if it ever fails, the same date is lost again.
+    expect(
+      acknowledgeWriteDecision({ acknowledged_disclaimer_at: '2026-06-15T12:57:00.000Z' }, false),
+    ).toBe('skip_already_acknowledged');
+  });
+
+  test('a genuine first acknowledgement DOES write', () => {
+    /**
+     * ⚠️ **The control, and the file is worthless without it.** Every assertion
+     * above is satisfied by a function that refuses everything — `return
+     * 'refuse_unreadable'` would pass all three and would also mean no reader could
+     * ever get past the modal. A guard has to prove the door opens as well as that
+     * it shuts (the same reason `db-grants.spec.ts` asserts a real account can still
+     * save its name).
+     */
+    expect(acknowledgeWriteDecision({ acknowledged_disclaimer_at: null }, false)).toBe('write');
+    expect(acknowledgeWriteDecision({}, false)).toBe('write');
+  });
+
+  test('an empty-string date is treated as no date, not as a record', () => {
+    // Postgres cannot produce this, but a mapping layer could. It must fall to
+    // 'write' rather than being read as an acknowledgement that never happened —
+    // the safe direction here is the opposite of the one above, because a spurious
+    // "already acknowledged" would lock a real reader behind a modal that can
+    // never clear.
+    expect(acknowledgeWriteDecision({ acknowledged_disclaimer_at: '' }, false)).toBe('write');
+  });
+
+  test('the UPDATE still carries its race clause', () => {
+    /**
+     * ⚠️ **A source check, which is weaker than everything else in this file, and
+     * it says so rather than passing itself off as equivalent.**
+     *
+     * Three of the four protections are decisions and are driven for real above.
+     * The fourth is a property of the QUERY — `.is('acknowledged_disclaimer_at',
+     * null)` on the UPDATE, so that two tabs racing cannot both write and Postgres
+     * decides it rather than the gap between our read and our write. That cannot be
+     * exercised without a real database, and this project has no test database
+     * (the same reason a valid purge-cron call is never driven).
+     *
+     * So the honest options were: assert the source, or leave the protection
+     * completely unguarded and say nothing. This asserts the source and states the
+     * limit — it would not catch a Supabase client that silently stopped applying
+     * `.is()`, only somebody deleting the line. Comments are stripped first, because
+     * this file's own prose names the clause and a guard that reads its own
+     * documentation is testing the documentation (the mistake `check-seo.mjs`
+     * records making four times).
+     */
+    const src = readFileSync(join(__dirname, '..', 'app', '(app)', 'actions.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+    expect(
+      src,
+      'acknowledgeDisclaimer must keep .is(…, null) on the UPDATE — without it two ' +
+        'tabs can both write and the first acknowledgement date is overwritten',
+    ).toContain(".is('acknowledged_disclaimer_at', null)");
+
+    // The control for the check itself: prove we are reading the real file and that
+    // the comment-stripping did not eat the code with the prose.
+    expect(src).toContain('export async function acknowledgeDisclaimer');
   });
 });

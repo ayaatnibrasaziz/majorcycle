@@ -248,3 +248,62 @@ export function shouldShowOnboarding(viewer: ViewerEntitlement): boolean {
   if (viewer.profileUnreadable) return false;
   return !viewer.acknowledgedDisclaimerAt;
 }
+
+/** What `acknowledgeDisclaimer` should do once it has read the row. */
+export type AcknowledgeWriteAction =
+  | 'refuse_unreadable'
+  | 'skip_already_acknowledged'
+  | 'write';
+
+/**
+ * The write half of the 2026-08-27 incident — and the half that had no test until
+ * the Layer G delta audit on 2026-08-31 (finding F-033).
+ *
+ * ⚠️ **`shouldShowOnboarding` above and this function fail in OPPOSITE directions,
+ * which is exactly why testing one proves nothing about the other.** A wrong
+ * *read* shows the gate to somebody who already agreed — annoying, recoverable, and
+ * visible. A wrong *write* destroys the only record that they ever agreed, which is
+ * a compliance record under decisions #23/#24, silent, and unrecoverable. That is
+ * not hypothetical: on 2026-08-27 an unreadable profile put the modal in front of an
+ * account that acknowledged on 2026-06-15, and the modal's only button replaced the
+ * June date with that day's.
+ *
+ * ⚠️ **Extracted so it can be driven by a credential-free spec.** The rule lived
+ * inside a `'use server'` action that builds its own Supabase client, so no test
+ * could reach it without a real database and a real session — which is why four
+ * genuine protections sat unexercised. Same move, same reason, as
+ * `viewerFromProfileRead` above.
+ *
+ * ⚠️ **Deliberately does NOT cover "is there a session".** That guard stays one line
+ * above the call site, because the read cannot even be issued without a user id —
+ * putting it here as well would be a second copy of one rule, which is the drift
+ * this codebase keeps paying for (CLAUDE.md 11c). What is here is every decision
+ * taken *after* the row comes back.
+ *
+ * @param profile    the `profiles` row, or null/undefined when the read returned none
+ * @param readFailed true when the read itself errored
+ */
+export function acknowledgeWriteDecision(
+  profile: { acknowledged_disclaimer_at?: string | null } | null | undefined,
+  readFailed: boolean,
+): AcknowledgeWriteAction {
+  // Never write blind. An unreadable row here is the SAME failure that produces a
+  // false prompt in the first place, so writing anyway would be writing on exactly
+  // the evidence we already know to be untrustworthy. "Please try again" is honest
+  // and recoverable; a lost date is neither.
+  //
+  // ⚠️ `readFailed` and a missing row are one outcome on purpose, and that is the
+  // opposite of 11e's usual advice to separate them. Here they genuinely warrant the
+  // same handling: every account gets its row from the `on_auth_user_created`
+  // trigger, so for a caller holding a verified session the row exists by
+  // construction — an empty read did not see it, it did not discover an absence.
+  if (readFailed || !profile) return 'refuse_unreadable';
+
+  // Already acknowledged. The modal should not have been shown at all, so report
+  // success rather than an error: the router refresh then clears it, instead of
+  // trapping the reader behind a failure they cannot act on. Critically, this
+  // returns WITHOUT writing — it is what makes the acknowledgement write-once.
+  if (profile.acknowledged_disclaimer_at) return 'skip_already_acknowledged';
+
+  return 'write';
+}

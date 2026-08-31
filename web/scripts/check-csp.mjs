@@ -57,6 +57,28 @@ const ROUTES = [
   ['/', false, false, 'the landing — prerendered, the first page a stranger meets'],
   ['/learn', false, false, 'the library index — prerendered'],
   ['/learn/pe-ratio', false, false, 'an article — prerendered, and it embeds JSON-LD'],
+  /**
+   * ⚠️ **Added 2026-08-31 by the Layer G delta audit. `/articles` was absent from
+   * this list, and of everything absent from it these two matter most.**
+   *
+   * Every other public page gets the same policy, so a sibling route standing in
+   * for it is a fair approximation. These are the ONLY routes on the site whose
+   * policy can legitimately differ: `lib/preferredSource.ts` can add
+   * `https://news.google.com` to `script-src` AND `frame-src`, and `proxy.ts`
+   * passes that origin in **only** when `usesPreferredSource(pathname)` is true.
+   * So the one page whose CSP is allowed to change was the one page this guard
+   * never read the CSP from.
+   *
+   * It is switched off today (`PREFERRED_SOURCE.enabled === false`), which bounds
+   * the exposure without closing it — and is exactly the state in which an absent
+   * check is easiest to keep. When the owner flips it on, these two rows are what
+   * turn "we widened the policy on some pages" into a measured fact: the index
+   * must stay narrow, and an article page must gain those origins and nothing
+   * else. Both are prerendered, so both take `'unsafe-inline'` and NO nonce — a
+   * nonce on a prerendered page kills every script on it (G7, measured).
+   */
+  ['/articles', false, false, 'the articles index — prerendered'],
+  ['/articles/how-far-do-asx-shares-fall', false, false, 'an article — prerendered, embeds JSON-LD, and the only page family whose policy can gain Google News origins'],
   ['/terms', false, false, 'a legal page — prerendered'],
   ['/contact', false, false, 'prerendered, and it posts a form'],
   ['/login', true, false, 'per-request, and it loads Google Identity Services'],

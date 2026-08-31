@@ -24,6 +24,7 @@
     "check:page-weight": "node scripts/check-page-weight.mjs",
     "check:csp": "node scripts/check-csp.mjs",
     "check:engine-drift": "node scripts/check-engine-drift.mjs",
+    "audit:wire-sweep": "node scripts/audit-wire-sweep.mjs",
     "gates": "node scripts/gates.mjs"
   },
   "dependencies": {

@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 
+import { ARTICLES, articlePath } from '../lib/articles';
 import { LEARN_ARTICLES, learnPath } from '../lib/learn';
 
 /**
@@ -44,6 +45,28 @@ const PUBLIC_PATHS = [
   // One article stands for the twelve — they share a template, and the sweep
   // below drives every one of them for the rules that CAN differ per page.
   learnPath(LEARN_ARTICLES[0]!.slug),
+
+  /**
+   * ⚠️ **`/articles` was absent from this list for the section's whole life**,
+   * found by the Layer G delta audit on 2026-08-31. Two new public routes and
+   * five published pieces had never been in front of axe — and an unscanned page
+   * reports exactly what a clean one reports (CLAUDE.md 14g). Colour contrast
+   * *was* covered, by `contrast.spec.ts`, which is precisely what made this easy
+   * to miss: a section with some accessibility evidence looks like a section with
+   * accessibility evidence.
+   *
+   * ⚠️ **DERIVED, not hand-listed, and deliberately unlike the Learn line above.**
+   * That line picks one article of twelve because the twelve genuinely share a
+   * template. These do not: the featured piece draws an inline SVG figure, three
+   * of the others are ranked data tables, and table markup is exactly where axe
+   * has the most to say (header scope, caption, reading order). So "one stands
+   * for the rest" would be false here. Deriving also means the NEXT article is
+   * scanned before anyone remembers to think about it — the same reasoning
+   * `contrast.spec.ts` records for the same registry, after a hand-written list
+   * there sat at 1 of 3 articles while its own comment claimed completeness.
+   */
+  '/articles',
+  ...ARTICLES.map((a) => articlePath(a.slug)),
 ];
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];

@@ -62,6 +62,30 @@ const BUDGETS = [
   // enough that the original bug still passes is decoration.
   ['/', 360, false, 'the landing — the first thing a stranger meets'],       // 277
   ['/learn', 380, false, 'the library index'],                              // 288
+  // ⚠️ **Added 2026-08-31 by the Layer G delta audit, because this list is a
+  // hand-written one and `/articles` had never been on it.** Two public routes and
+  // five published pieces shipped while this guard reported "every page within
+  // budget" — which it did, truthfully, about the six pages it knew about. A guard
+  // scoped to a list is silent about everything outside it, and silence reads
+  // exactly like a pass (CLAUDE.md 14g, and 11c-iv for the rule a new consumer
+  // never received).
+  //
+  // ⚠️ **And the measurement corrected the assumption that prompted it.** The audit
+  // predicted these would be the heaviest public pages we ship — they carry frozen
+  // datasets, ranked tables and an inline SVG figure. Measured, they are among the
+  // LIGHTEST: 268 and 272 KB against /learn's 288 and the landing's 277. The tables
+  // are HTML and the figure is inline SVG, so the content that felt heavy costs
+  // almost nothing to send. The finding (a guard that cannot see them) was right;
+  // the reason given for its urgency was wrong, and it is corrected here rather
+  // than left to look confirmed.
+  //
+  // Two entries, not five: the featured piece is the heaviest article and carries
+  // the figure, so it is the one a shared-bundle regression shows up in first. The
+  // three ranked pieces measured 267 KB, within 5 KB of it. Each figure was taken
+  // three consecutive times and did not move by a single KB, so the ~28% headroom
+  // is headroom rather than noise.
+  ['/articles', 340, false, 'the articles index'],                          // 268
+  ['/articles/how-far-do-asx-shares-fall', 350, false, 'the featured article — the heaviest of the five, and the only one with a figure'], // 272
   ['/pricing', 350, false, 'the page a reader is on when deciding to pay'], // 267
   ['/login', 430, false, 'the sign-in path, plus Google Identity Services'],// 332
   // Ratcheted 500 → 400 on 2026-08-24 (F-022): the Supabase client stopped being

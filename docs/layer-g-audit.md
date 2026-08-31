@@ -875,7 +875,7 @@ must run against a deployment.
 | F-024 + F-025 | ✅ both fixed and guarded, 2026-08-25 |
 | Layer 4 — the data sweep | ✅ live DB + on-screen, 2026-08-25 — 4 findings, **all four now fixed** |
 | F-026 · F-027 · F-028 · F-029 | ✅ all applied 2026-08-25 after owner decisions; the listings alarm proven on GitHub in both directions |
-| **Layer 5a — my visual sweep** | ⬜ **next** |
+| **Layer 5a — my visual sweep** | ⬜ *(⚠️ this table is the 2026-08-24 state. The branch has moved 73 files since; see **The delta audit — 2026-08-31** at the end of this file for what still needs re-running)* |
 | Layer 5b — the owner's judgement sweep | ⬜ |
 
 **Owner decision, 2026-08-24 — the next session did, in order:**
@@ -2001,6 +2001,182 @@ names the columns it changes. 0 of 871 now missing; the nightly invariants run c
 live universe. WARNING: **the repair holds only until the next US+CA refresh (22:30 UTC) unless
 this branch is merged** - a scheduled workflow checks out the default branch, so it will run the
 old code (14g).
+
+---
+
+## The delta audit — 2026-08-31
+
+**Why there is one.** Layers 0–4 finished on **2026-08-25**. Between then and 2026-08-30 the
+branch gained **73 files and ~28,500 lines** — two new public routes, five published
+articles, a rewrite of the function every signed-in page uses to decide entitlement, a new
+database table, three new columns and a new nightly job. The owner asked whether the new work
+needs the same audit as the old. It does, and this section is that answer measured rather
+than asserted.
+
+⚠️ **The earlier layers' evidence describes a version of the site that no longer exists.**
+That is not a criticism of them — it is what a dated measurement *is*. The failure mode to
+avoid is treating "Layer 3 passed" as a property of the branch rather than of the commit it
+was taken on.
+
+### ⚠️ A claim of mine, corrected before any work was done on it
+
+I reported that Layer 3 (the wire sweep) was **blocked**, because the Vercel connector showed
+an authorisation banner at session start. The owner's instruction — *"Do not assume that
+vercel is not working. First try and confirm"* — is what settled it: the connector answered on
+the first call, listed the team and project, found a **READY** preview for `fbf97fc`, and
+returned the real `/articles` page through the SSO gate (`<title>Articles | MajorCycle</title>`).
+
+**A stated limitation is a claim like any other, and a claim about a tool you can simply run is
+the cheapest kind to check** (CLAUDE.md 11af, recorded about Supabase five days earlier, and
+committed again here against a different connector). Layer 3 is not blocked.
+
+### Layer 0 delta — the guards, and the three that could not see the new section
+
+Full record in `layer-g-coverage-map.md` § *Layer 1 · the delta re-run*. In summary: five
+guards proven able to fail against the new work (seven sabotages, each with a control), and
+**three guards found silent about `/articles` rather than clean about it** —
+`check:page-weight`, `check:csp` and `e2e/a11y.spec.ts`, each carrying a hand-written list of
+pages that the new section had never been added to. All three closed the same day, each new
+row broken on purpose before it was believed.
+
+⚠️ **The shape is the one this repo keeps paying for**: 14g (unmeasured is indistinguishable
+from clean) wearing 11c-iv's clothes (a rule exists and a new consumer never received it).
+Note also which one was hardest to see — colour contrast *did* cover the articles, because
+`contrast.spec.ts` derives them from the registry. **A section with some accessibility
+evidence looks like a section with accessibility evidence.**
+
+### F-033 🔴 The acknowledgement WRITE had four protections and no test — FIXED 2026-08-31
+
+**Found:** the delta coverage map, by asking which halves of the F-031 fix were guarded.
+
+F-031 was fixed in three places on 2026-08-28. The **read** half — whether the first-login
+modal is shown — got `e2e/onboarding-gate.spec.ts`, 7 tests. The **write** half,
+`acknowledgeDisclaimer` in `app/(app)/actions.ts`, got nothing: no session, read-before-write,
+already-acknowledged, and a `.is(…, null)` race clause, four distinct protections, none
+exercised.
+
+⚠️ **The two halves fail in opposite directions, which is exactly why guarding one did not
+guard the other.** A broken read shows the gate to somebody who has already agreed — visible,
+annoying, recoverable by reloading. A broken write destroys the record that they agreed at
+all — silent, and gone. The 2026-08-27 incident needed both: the read raised the modal, and the
+write took the June date. **Fixing and guarding only the visible half leaves the expensive half
+of the pair unprotected**, and nothing about the codebase says so.
+
+⚠️ **Why it had no test, precisely — and it is not the reason I first assumed.** I expected
+`import 'server-only'`; `lib/supabase/server.ts` carries no such import. The real blocker is
+that the action *builds* its Supabase client rather than receiving one, so a credential-free
+spec has nothing to substitute. Worth stating because the two diagnoses lead to different
+fixes.
+
+**Fixed** by extracting `acknowledgeWriteDecision` into `lib/entitlement.ts`, beside
+`shouldShowOnboarding`, and having the action consume it — one copy of the rule, not two
+(11c). Behaviour unchanged: same three outcomes, same order, same logging. Six new tests,
+four sabotages.
+
+⚠️ **The load-bearing sabotage is the control.** Every refusal test above is satisfied by a
+function that returns `refuse_unreadable` for everyone — which would also mean no reader could
+ever clear the modal. Making the function refuse everything turns **three** tests red,
+including *a genuine first acknowledgement DOES write*. A guard has to prove the door opens as
+well as that it shuts (the same argument `db-grants.spec.ts` makes for a database that refuses
+everybody).
+
+⚠️ **And one of the six is weaker than the others, in the file and in this log.** The
+`.is(…, null)` race clause is a property of the QUERY rather than a decision, and there is no
+test database here — the same reason a valid purge-cron call is never driven. It is asserted
+against the **source**, comments stripped. It catches somebody deleting the line; it does not
+catch a client that silently stops applying `.is()`. Named as a limit rather than counted as
+equivalent coverage (11c-ix — where a guard sees only half a thing, say which half).
+
+### Layer 3 delta — the wire sweep, re-run 2026-08-31 · ✅ CLEAN
+
+**55 checks: 11 billing states × 5 premium surfaces**, against the deployed preview for
+`fbf97fc`. Up from the original 50 — `billing_blocked` is now driven as its own state rather
+than folded in, because a dispute lock is an orthogonal dimension to the Stripe status.
+
+| | |
+|---|---|
+| **Control** | entitled ticker page carries all **9** premium fields — the search works |
+| **Leaks** | **zero** premium keys in the raw body across all **8** denied states |
+| Report download | 200 for `active` / `trialing` / `past_due` in grace; **402** for all 8 denied |
+| `/api/analyze` | 200 for the 3 entitled; **402** for all 8 denied |
+| `/api/cycle` direct | **401 in every state** — the internal-secret gate holds |
+| `/run` | ~216 KB entitled vs ~28 KB denied — the locked panel, not the screener |
+| Cache headers | `private, no-store` or `private, no-cache, no-store` on **all 55**; no `public`, no `s-maxage`, no `stale-while-revalidate` |
+
+**Why it was re-run.** The 2026-08-24 sweep was taken before `getViewerEntitlement` was
+rewritten (commit `9a5b510`) — the function every signed-in surface calls to decide what a
+viewer may see. A leak sweep whose evidence predates a rewrite of the entitlement reader is
+evidence about a different program.
+
+⚠️ **The harness had to be rebuilt, because the original was never committed.** Every
+protection F-023 bought is reproduced in it: refuses localhost, parses the needles out of
+`PREMIUM_FIELDS` at run time rather than restating them, searches both `"key"` and `\"key\"`,
+and fails loudly if the entitled control comes back empty. The localhost refusal was **proven**
+before the real run (exit 2, naming F-023).
+
+✅ **Committed at the owner's instruction, 2026-08-31, as `web/scripts/audit-wire-sweep.mjs`
+(`pnpm audit:wire-sweep`)** — because rebuilding it from prose was the alternative, and that
+had already happened once. It is **deliberately NOT in `pnpm gates`** and **refuses to run in
+CI**: it writes to a real account's billing state, and nothing that mutates a live row belongs
+in an automatic gate. Both refusals — CI and localhost — were proven on the committed copy,
+which is how a broken string literal in the CI message was caught before it shipped.
+
+### ⚠️ Two wrong results of MINE in this sweep, both caught before they were reported
+
+**(i) A red run that was red for my reason — except it wasn't.** The first complete run
+returned **six problems**, all on `/api/analyze`: `public, max-age=0, must-revalidate` on a
+premium endpoint, in the three *entitled* states. That is a `public` shared-cache directive on
+the screener, which would have been a serious 11a finding — the sixth instance.
+
+It was my harness. `/api/analyze` implements **only `do_POST`**; I sent GET, which reaches
+Python's `BaseHTTPRequestHandler` default and answers **501** with a header our code never
+wrote, on a response that never carries data. Corrected, the endpoint answers **200 ·
+`private, no-store`** entitled and **402 · `private, no-store`** denied, on every state.
+
+**The tell was in the row I nearly skimmed past: the status was 501.** Our code has no 501.
+⚠️ **The method is part of the surface** — a sweep that gets it wrong does not fail, it
+measures a different endpoint and reports the platform's defaults as ours.
+
+**(ii) A failure I nearly recorded as a finding.** The first attempt died at sign-in on the
+very first state, having navigated `/login → /login?` — which reads exactly like an auth
+regression on the preview. A direct probe immediately afterwards signed in fine and reached
+`/stocks`. The cause was a **cold deployment**: the auth route had never been invoked and the
+POST timed out. Re-running before concluding is what separated those (11i). The harness now
+retries sign-in once and says so in a comment, so the next person does not re-derive it.
+
+⚠️ **Note both errors point the same way** — a sweep can report a defect that is really its own
+reflection. The positive control protects against a *false clean*; nothing but reading each row
+protects against a *false finding*, and a false finding costs the owner's trust in every clean
+row beside it.
+
+### What the sweep touched, and the proof it was put back
+
+It drives the **test account only** (`e2e@majorcycle.com`) through 11 billing states by writing
+`profiles`, and restores the original values in a `finally` — which fired correctly even on the
+run that crashed at sign-in. The owner's two personal accounts were never written to.
+
+⚠️ **Restore verified independently through the Supabase connector, not from the script's own
+"restored" line** — an instrument's report on itself is the one thing it cannot check. All
+three profiles read back `subscription_status: null`, `grace_until: null`,
+`billing_blocked: false`, no deletion scheduled, and every `acknowledged_disclaimer_at` intact.
+
+### Where the delta leaves the audit
+
+| Stage | Status |
+|---|---|
+| Layer 0 delta — prove the new instruments | ✅ 5 guards, 7 sabotages, each with a control |
+| Layer 1 delta — re-measure the coverage map | ✅ `layer-g-coverage-map.md`, 4 findings, all 4 applied |
+| Layer 2 delta — the machine sweep | ✅ Playwright **687**, pytest **244**, typecheck/lint clean, all guards green on a fresh production build |
+| Layer 3 delta — the wire sweep | ✅ **55 checks on the deployed preview, clean.** Zero premium keys in 8 denied states; the entitled control carries all 9. Two wrong results of mine, both caught before reporting |
+| **Layer 3b delta — the platform sweep** | ⬜ **next.** New table, new columns, new nightly step never run on GitHub |
+| **Layer 4 delta — the data sweep** | ⬜ predates the dividend re-pull of the whole universe |
+| Layer 5a — my visual sweep | ⬜ |
+| Layer 5b — the owner's judgement sweep | ⬜ |
+
+⚠️ **The nightly staleness step has never executed anywhere.** It is on this branch, and a
+scheduled run checks out the default branch (14g), so it stays unproven until merge unless it
+is dispatched deliberately — which is exactly how the F-027 listings alarm was proven, in both
+arms. That belongs in the Layer 3b delta.
 
 ---
 

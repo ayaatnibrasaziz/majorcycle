@@ -2624,9 +2624,12 @@ Order of priority TBD based on user feedback. Candidate features:
 ✅ Phase 1 Layer F: Static Pages + Subscription  (built + merged PR #72 + live 2026-08-01)
    ✅  └─ production-readiness audit F-A1…F-A6 COMPLETE 2026-08-02 → docs/layer-f-audit.md
    ↓
-🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1–G7 done; the audit is through
-                                              Layer 4; only /articles + the visual
-                                              sweep remain; PR #89 open, unmerged)
+🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1–G7 and /articles done. The audit
+                                              ran Layers 0-4 on 2026-08-25, then the
+                                              branch moved 73 files, so 2026-08-31 added
+                                              a DELTA audit: Layers 0-2 re-run and clean,
+                                              4 findings all applied. Layers 3 / 3b / 4
+                                              delta + 5a + 5b remain; PR #89 unmerged)
    ↓
    Phase 1 Layer H: Hardening (Phase 1.5)  — owns 375px, a11y, cross-browser, Sentry
    ↓

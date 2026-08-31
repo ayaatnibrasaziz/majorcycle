@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { acknowledgeWriteDecision } from '@/lib/entitlement';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 /**
@@ -39,11 +40,15 @@ export async function acknowledgeDisclaimer(): Promise<{ ok: boolean }> {
     .eq('id', user.id)
     .maybeSingle();
 
-  // Never write blind. An unreadable row here is the same failure that produces a
-  // false prompt in the first place, so writing anyway would be writing on exactly
-  // the evidence we know to be untrustworthy. The user gets "please try again",
-  // which is honest and recoverable; a lost date is neither.
-  if (readError || !existing) {
+  // ⚠️ The DECISION lives in lib/entitlement.ts, not here, and that is the whole
+  // point of finding F-033: while these rules sat inside this action they could not
+  // be tested at all. This file builds its own Supabase client, so no spec could
+  // substitute a stub, and four real protections went unexercised on the one path
+  // that has already destroyed a compliance record. `acknowledgeWriteDecision` is
+  // pure, so `e2e/onboarding-gate.spec.ts` drives every branch with no credentials.
+  const decision = acknowledgeWriteDecision(existing, !!readError);
+
+  if (decision === 'refuse_unreadable') {
     console.error('acknowledgeDisclaimer: could not read the row before writing', {
       userId: user.id,
       code: readError?.code ?? 'zero_rows',
@@ -51,12 +56,7 @@ export async function acknowledgeDisclaimer(): Promise<{ ok: boolean }> {
     return { ok: false };
   }
 
-  if (existing.acknowledged_disclaimer_at) {
-    // Already acknowledged. The modal should not have been shown — report success
-    // so the router refresh clears it rather than trapping the reader behind an
-    // error they cannot act on.
-    return { ok: true };
-  }
+  if (decision === 'skip_already_acknowledged') return { ok: true };
 
   const { error } = await supabase
     .from('profiles')
