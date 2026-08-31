@@ -61,10 +61,31 @@ export function shouldShowDelistedNotice(
   return stock?.isActive === false;
 }
 
+/**
+ * The date to print after "every figure on this page is frozen".
+ *
+ * ⚠️ **Exported only so the one defect this component has already had can be
+ * guarded.** The first version printed `inactiveSince` here — the day the sweep
+ * NOTICED the listing was gone. On BK that rendered "frozen as at 2026-08-31" two
+ * inches above a header reading "Updated Jul 23", with a five-week-old price
+ * between them. Both dates are real and they answer different questions; the one a
+ * reader needs is when the DATA stopped, which is `updatedAt` — the same value
+ * `StockHeader` prints, so the two lines cannot disagree (11c: one fact, one
+ * source).
+ *
+ * It was caught by looking at the rendered page, not by review: the sentence was
+ * fluent, specific, and wrong.
+ */
+export function frozenAsAtDate(
+  stock: Pick<StockRecord, 'updatedAt'> | null | undefined,
+): string | null {
+  return stock?.updatedAt?.slice(0, 10) ?? null;
+}
+
 export function DelistedNotice({ stock }: { stock: StockRecord }) {
   if (!shouldShowDelistedNotice(stock)) return null;
 
-  const lastBar = stock.updatedAt?.slice(0, 10) ?? null;
+  const lastBar = frozenAsAtDate(stock);
 
   return (
     <div className="card card--stack-base" role="note" data-testid="delisted-notice">
@@ -78,21 +99,30 @@ export function DelistedNotice({ stock }: { stock: StockRecord }) {
           directory and every index we track.
         </p>
         <p className="mt-2">
-          {/* The date is the point of the whole component. A reader who takes one
-              thing away should take away that the figures below are old. */}
+          {/* ⚠️ THE DATE IS THE POINT OF THE WHOLE COMPONENT, and the first version
+              printed the WRONG ONE. It showed `inactiveSince` — the day our sweep
+              NOTICED the listing was gone — under the words "every figure is frozen
+              as at". On BK that read "frozen as at 2026-08-31" while the header two
+              inches below said "Updated Jul 23" and the price was five weeks old.
+              Both dates are real, they answer different questions, and the one a
+              reader needs is when the DATA stops. Caught only by looking at the
+              rendered page: the sentence was fluent, specific and wrong (11k).
+
+              So this uses `updatedAt`, which is the same value StockHeader prints —
+              one fact, one source, so the notice and the header cannot disagree. */}
           <strong className="text-[var(--text-primary)]">
             Every figure on this page is frozen
-          </strong>{' '}
-          {stock.inactiveSince ? (
-            <>as at {stock.inactiveSince}</>
-          ) : lastBar ? (
-            <>as at {lastBar}</>
-          ) : (
-            <>at the last session we recorded</>
-          )}
-          . Nothing here is being updated, and the prices are not current. We keep the
+          </strong>
+          {lastBar ? <> at our last update on {lastBar}</> : <> at our last update</>}.
+          Nothing here is being updated, and the prices are not current. We keep the
           history because it cannot be re-fetched once a symbol is withdrawn.
         </p>
+        {stock.inactiveSince && (
+          <p className="mt-2">
+            We marked this listing inactive on {stock.inactiveSince}, which is when our
+            checks first agreed it had stopped trading &mdash; not the date it stopped.
+          </p>
+        )}
         <p className="mt-2">
           A company can stop trading for many reasons &mdash; it may have been acquired,
           taken private, renamed, or moved to another exchange. This page does not say

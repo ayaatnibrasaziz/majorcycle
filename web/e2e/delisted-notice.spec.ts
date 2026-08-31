@@ -37,7 +37,10 @@
 
 import { expect, test } from '@playwright/test';
 
-import { shouldShowDelistedNotice } from '../components/stocks/DelistedNotice';
+import {
+  frozenAsAtDate,
+  shouldShowDelistedNotice,
+} from '../components/stocks/DelistedNotice';
 
 const EMAIL = process.env.E2E_EMAIL;
 const PASSWORD = process.env.E2E_PASSWORD;
@@ -110,5 +113,47 @@ test.describe('a live stock is never accused of delisting', () => {
 
     await expect(page.getByTestId('delisted-notice')).toHaveCount(0);
     expect(await page.content()).not.toContain('no longer trades');
+  });
+});
+
+test.describe('the frozen-at date is the DATA date, not the day we noticed', () => {
+  /**
+   * ⚠️ The defect this component actually shipped, for one preview build. The
+   * notice printed `inactiveSince` — when the sweep first agreed the listing was
+   * gone — under the words "every figure on this page is frozen as at". On BK that
+   * read **2026-08-31** while `StockHeader`, two inches below, read **Updated Jul
+   * 23**, with a five-week-old price between them.
+   *
+   * Both dates are true. They answer different questions, and only one of them is
+   * the question a reader is asking. Nothing errored, nothing looked odd, and it
+   * took reading the rendered page to see it (11k — a number inside a design is
+   * data, and it expires).
+   */
+  const RETIRED = {
+    updatedAt: '2026-07-23T04:11:00.000Z',
+    inactiveSince: '2026-08-31',
+  };
+
+  test('it reports when the DATA stops', () => {
+    expect(frozenAsAtDate(RETIRED)).toBe('2026-07-23');
+  });
+
+  test('it is NOT the day the sweep marked it', () => {
+    // The assertion that would have failed on the shipped version. Value-sensitive
+    // on purpose: the two dates are five weeks apart in the fixture, so a function
+    // reading the wrong field cannot coincidentally pass.
+    expect(frozenAsAtDate(RETIRED)).not.toBe(RETIRED.inactiveSince);
+    expect(frozenAsAtDate(RETIRED)).not.toContain('08-31');
+  });
+
+  test('it agrees with what StockHeader prints', () => {
+    // One fact, one source. StockHeader formats `stock.updatedAt`; so does this.
+    // If either ever stops doing so, the page states one date twice, differently.
+    expect(frozenAsAtDate(RETIRED)).toBe(RETIRED.updatedAt.slice(0, 10));
+  });
+
+  test('a missing date degrades to no date, never to a wrong one', () => {
+    expect(frozenAsAtDate({ updatedAt: undefined as unknown as string })).toBeNull();
+    expect(frozenAsAtDate(null)).toBeNull();
   });
 });
