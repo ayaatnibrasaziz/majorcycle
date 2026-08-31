@@ -89,7 +89,30 @@ but never `opacity` (text seen at 3.38:1 scored 6.81), and once measuring 47 ele
 carrying 291 and calling it clean (11q). So the comparison with the owner is a **test of the
 instrument**, and it is written into the plan rather than left as a courtesy.
 
-**9 · Fix nothing on a paid surface without a ruling** (11l). A real defect does not license
+**10 · EVERY PAGE IS SEEN ON THREE SURFACES, AND THE LIVE SITE IS ONE OF THEM.** ⚠️ Owner
+instruction, 2026-08-31: *"check in Claude browser, Vercel preview and the live website using
+Claude in Chrome and ensure you are 100% happy with each and every page — accuracy, correctness,
+visually correct, aesthetically pleasing. Basically launch ready."*
+
+| Surface | Driven with | What only IT can show |
+|---|---|---|
+| **Local production build** (`:3200`) | Claude browser | The fast loop. Lets a fix be tried and re-measured in seconds. **Cannot serve `/api/cycle`**, so the paid analysis is invisible here (11v) |
+| **Vercel preview** | Claude browser (via a share link) | The Python function runs, so the paid analysis exists. Real edge, real headers, real CSP. **The first surface where a Stock Detail page is a whole page** |
+| **The LIVE site** | **Claude in Chrome** | Production data, production env vars, the real domain, the real cache, a real signed-in session in a real browser profile. **The only surface a customer will ever see** |
+
+⚠️ **Why all three and not just the last.** They disagree, and each disagreement is a finding:
+a defect on preview but not live means the branch is about to break something; live but not
+preview means an environment variable or a cache, not the code. The three of them together are
+what makes a difference *diagnosable* rather than merely visible. And the local loop is what
+makes fixing cheap — without it every iteration costs a deploy.
+
+⚠️ **"Aesthetically pleasing" is a judgement, and I will not pretend it is a measurement.**
+Alignment, spacing, contrast, rhythm and overflow can be measured, and will be. Whether a page
+*looks good* is the owner's call, which is what Layer 5b is for. My job in 5a is to make sure
+nothing reaches 5b that is measurably wrong — and to say plainly which of my remarks are numbers
+and which are opinions.
+
+**11 · Fix nothing on a paid surface without a ruling** (11l). A real defect does not license
 widening scope — that is the mistake the owner reversed once already, when a genuine contrast
 finding turned into an unasked repaint of the screener.
 
@@ -133,6 +156,10 @@ finding turned into an unasked repaint of the screener.
 
 Each pass produces findings in the ledger below. Nothing on a paid surface is changed
 without the owner ruling on it first (11l).
+
+⚠️ **Every pass that looks at a page runs on all three surfaces — local `:3200`, the Vercel
+preview, and the LIVE site in Claude in Chrome** (method note 10). A pass is not finished when
+it is clean locally.
 
 - [ ] **P0 · Build the expected-content manifest, BEFORE looking at anything.** One line per
       route naming the sections that must be present. Method note 6 is not optional: a missing
@@ -204,9 +231,9 @@ verified against the real accounts in this session; ⬜ are open; ⚠️ are the
 | ✅ | Keys rotated before go-live | Live `rk_live_` rolled 2026-08-02 |
 | ✅ | Live prices exist and match the sticker | All six, both intervals, 2026-08-31 |
 | ⚠️ | **Two-factor auth on the Stripe account** | The owner stated on 2026-08-31 it is **not set up**. Stripe's account checklist puts this first, and it guards live keys, payouts and customer data |
-| ⚠️ | **Statement descriptor** | Not yet checked. This is the text on a customer's card statement; Stripe names a missing or confusing descriptor as a direct cause of **disputes**. A subscription customer who cannot recognise the charge disputes it |
-| ⬜ | Email notifications for successful charges and disputes | Stripe recommends both at minimum. A dispute has a response deadline — missing the email means losing by default |
-| ⬜ | Webhook handles **delayed**, **duplicate** and **out-of-order** delivery | Duplicates are covered by the `stripe_events` idempotency ledger. Delayed and out-of-order are **not knowingly tested** |
+| ✅ | **Statement descriptor** | **Already set** — `WWW.MAJORCYCLE.COM` / `MAJORCYCLE`, support phone hidden from receipts. Done during business setup |
+| ✅ | Email notifications for successful charges and disputes | "Successful payments" already on. Disputes are handled **in code** (`charge.dispute.*` → `billing_blocked` + cancel-on-lost), live-verified against a real chargeback |
+| ✅ | Webhook handles **delayed**, **duplicate** and **out-of-order** delivery | All three, deliberately. Duplicates: the `stripe_events` idempotency ledger. Out-of-order: documented **order-safety guards** — failure/recovery act only on the sub currently on file, and `subscription.deleted` lapses only on a matching sub id, so a late event cannot dun, recover or cancel a newer subscription |
 | ⬜ | Logs contain no card data or PII | Stripe's checklist asks for this explicitly; we have never audited our log lines for it |
 | ⬜ | Restricted-business check | We publish financial *analysis*, not advice — almost certainly fine, and cheap to confirm rather than assume |
 
@@ -217,33 +244,47 @@ verified against the real accounts in this session; ⬜ are open; ⚠️ are the
 | ✅ | RLS enabled on every table | 13/13, verified |
 | ✅ | Security Advisor | **INFO only** — the ten deny-all notices, each now carrying a comment saying it is deliberate (F-004) |
 | ✅ | Performance Advisor | **INFO only** — unused indexes on low-traffic tables, and a connection-strategy note that matters only when scaling the instance |
-| 🔴 | **Custom SMTP for auth emails — NOT configured** | See below. The single most launch-affecting thing this review found |
+| ✅ | **Custom SMTP for auth emails** | **Configured since Layer F0** — Supabase Custom SMTP → Resend, `noreply@majorcycle.com`, 13 branded templates, token-hash links on `majorcycle.com`. My "finding" was wrong; see the correction below |
 | ⚠️ | MFA on the Supabase account | Same gap as Stripe. This account is the database |
 | ⬜ | SSL enforcement · network restrictions | Both recommended, neither confirmed |
 | ⬜ | Email confirmations on; OTP expiry ≤ 1 hour | Not confirmed |
 | ⬜ | Free-plan projects can be **paused** for inactivity | Worth knowing before launch day, not after |
 
-### 🔴 The finding: sign-up and password-reset emails go through Supabase's default SMTP
+### ❌ THE CORRECTION: three of my six P9 findings were wrong, and the cause matters
 
-Nothing in the repo or `supabase/` configures SMTP, so **auth emails use Supabase's built-in
-sender**. Supabase's own production checklist says not to do this in production, for two reasons
-that both bite on day one:
+**Withdrawn 2026-08-31**, after the owner said *"read what we have done previously before
+suggesting these checks because I believe few of these are already done."* They were right.
 
-- **It is rate limited to a handful of emails per hour.** If launch brings more sign-ups than
-  that in one hour, confirmation emails simply stop arriving. Nothing errors on our side; the
-  customer just never receives it, and concludes the product is broken.
-- **The mail comes from a Supabase domain, not `majorcycle.com`.** For a financial product
-  asking for a card, an unrecognised sender is a trust problem before it is a deliverability one.
+| I claimed | The truth | Where it was already written |
+|---|---|---|
+| Auth emails use Supabase's default SMTP | **Custom SMTP → Resend since Layer F0**, `noreply@majorcycle.com`, 13 branded templates, token-hash links on our own domain | `architecture.md` §Auth branding; `design-system.md` §17; a Resend key literally named **`supabase-smtp`** |
+| No statement descriptor | **`WWW.MAJORCYCLE.COM` / `MAJORCYCLE`**, phone hidden from receipts | `project_business_setup` memory |
+| No dispute notification | Disputes handled **in code**, live-verified against a real chargeback | `architecture.md` §`/api/stripe/webhook` |
+| Out-of-order webhooks untested | **Order-safety guards** designed in and documented | same line of `architecture.md` |
 
-⚠️ **Note how this hid.** We *do* send our own branded transactional email through Resend, with a
-verified domain — the billing and lifecycle mails were all built and verified. So "do our emails
-work?" has always been answered yes. **The two emails a customer meets FIRST are the two nobody
-built**, because Supabase provides them for free and they work fine at development volumes. This
-is 11c-iv in a different clothing: the rule reached every consumer except the one that came with
-a default.
+⚠️ **THE CAUSE, and it is the exact failure this whole sweep is built to avoid.** I checked for
+SMTP by grepping the **repository**. Supabase Custom SMTP is configured in the Supabase
+**dashboard** — there is no `config.toml` for a hosted project — so my search could not have
+found it whether it existed or not. **A probe that cannot see the thing returned "not found", and
+I reported that as "not done"** (14g). Method note 7 says a probe you just wrote has never been
+observed failing; I wrote one and trusted it immediately.
 
-**The fix is small** — point Supabase's auth SMTP at Resend, which is already live with a verified
-domain — and it needs an owner decision, so it is recorded here rather than done.
+⚠️ **And note WHERE it happened: in the pass I had just added specifically because "the vendors'
+checklists ask questions the repo cannot answer about itself."** I wrote that sentence and then
+answered one of those questions with a grep of the repo. The lesson is not "read the docs first"
+— it is that **the search has to run where the answer lives**, and for account configuration that
+is the vendor's own API or dashboard, never the codebase.
+
+⚠️ **The habit that would have caught it costs 30 seconds:** this project keeps a written record
+of everything it has built, and `architecture.md` had the answer in one line. **Grep the docs
+before reporting an absence** — already recorded as CLAUDE.md 11h ("grep the audit docs before
+re-deriving a diagnosis") and now demonstrated a second time.
+
+**What survives of P9:** the four verified-good rows above, `5A-003` (2FA, downgraded to *confirm*
+rather than asserted — the audit log shows the owner typing a 2FA code for Stripe, so something
+exists), `5A-005` (the landing's 18-day-old figures) and `5A-006` (Speed Insights). **Two real
+items out of six.** Recorded in full rather than quietly deleted, because a withdrawn finding is
+evidence about the method, and this one says my method had a hole in it.
 
 ### Vercel
 
@@ -316,10 +357,10 @@ code review would ever surface.*
 
 | # | Pass | Severity | Where | Finding | Status |
 |---|---|---|---|---|---|
-| **5A-001** | P9 | 🔴 **High** | Supabase auth | **Sign-up confirmation and password-reset emails go through Supabase's default SMTP.** Rate limited to a few per hour, and sent from a Supabase domain rather than `majorcycle.com`. Supabase's own production checklist says not to ship this. The two emails a customer meets FIRST are the two nobody built, because they came free with a default and work fine at development volumes | **Owner decision.** Fix is to point Supabase auth SMTP at Resend, which is already live with a verified domain |
-| **5A-002** | P9 | 🟠 **Medium** | Stripe account | **No statement descriptor check.** This is the text on a customer's card statement; Stripe names a missing or confusing descriptor as a direct cause of disputes | Open — read it in the dashboard before launch |
-| **5A-003** | P9 | 🟠 **Medium** | Stripe + Supabase | **Two-factor auth is not enabled** on either account (owner stated, 2026-08-31). Both hold live keys, customer data and payouts | **Owner action.** Both vendors put it first on their own checklists |
-| **5A-004** | P9 | 🟠 **Medium** | Stripe | **No email notification configured for disputes.** A dispute carries a response deadline; missing the notification loses it by default | Open |
+| ~~5A-001~~ | P9 | ❌ **WITHDRAWN — my error** | Supabase auth | I reported auth emails as going through Supabase's default SMTP. **They do not.** Custom SMTP → Resend (`noreply@majorcycle.com`) was built in Layer F0, with 13 branded templates, and Resend holds an API key literally named `supabase-smtp`. See the correction below | Withdrawn 2026-08-31 |
+| ~~5A-002~~ | P9 | ❌ **WITHDRAWN — my error** | Stripe account | Statement descriptor was set during business setup: **`WWW.MAJORCYCLE.COM`**, shortened **`MAJORCYCLE`**, with the support phone deliberately hidden from receipts | Withdrawn 2026-08-31 |
+| **5A-003** | P9 | 🟡 **To confirm** | Stripe + Supabase | Two-factor auth. The owner said an *authenticator app* is not set up; `layer-f-audit.md` records them typing a 2FA code to change a live Stripe key, so **some** second factor exists on Stripe. **Confirm what is actually enabled where** rather than assert — my last three assertions here were wrong | Open — owner to check |
+| ~~5A-004~~ | P9 | ❌ **WITHDRAWN — my error** | Stripe | Disputes are handled in CODE, which is stronger than an email: `charge.dispute.*` → `billing_blocked` + cancel-on-lost, live-verified in F3 S3 against a real chargeback. Stripe's "Successful payments" email is also already on | Withdrawn 2026-08-31 |
 | **5A-005** | P5 | 🟡 **To confirm** | `/` landing | Published counts and rankings are frozen at **`asOf: 2026-08-13`**, 18 days old. 11k records the same snapshot going false in six days. **Not yet confirmed false — must be re-derived before launch** | Open — P5 |
 | **5A-006** | P9 | 🟢 **Opportunity** | Vercel | **Speed Insights closes F-021.** Real-user p75 per route, reaches signed-in pages, immune to a single unlucky run — the instrument the audit said decision #33 was blocked on | **Owner decision.** Turn on before launch, since it needs traffic to report |
 
