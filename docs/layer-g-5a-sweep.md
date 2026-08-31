@@ -129,7 +129,7 @@ finding turned into an unasked repaint of the screener.
 
 ---
 
-## The nine passes — P0 to P8
+## The ten passes — P0 to P9
 
 Each pass produces findings in the ledger below. Nothing on a paid surface is changed
 without the owner ruling on it first (11l).
@@ -180,6 +180,96 @@ without the owner ruling on it first (11l).
       is a gate nobody runs** (F-016, the reason `pnpm gates` exists at all). This is the sweep
       that runs them.
 - [ ] **P8 · 375px.** Public = fix. Signed-in = note only.
+- [ ] **P9 · The three platforms' own go-live checklists.** ⚠️ **ADDED 2026-08-31 after reading
+      Stripe's, Supabase's and Vercel's current docs via their MCP servers.** Every pass above
+      asks *"is our code right?"*. None asked *"is the ACCOUNT configured for production?"* —
+      and the three vendors each publish a checklist of things that are invisible from inside
+      the repo. Detail in the section below; **two are launch-affecting and one closes a
+      finding the audit had recorded as blocked.**
+
+---
+
+## P9 · What the platforms' own checklists say — checked, 2026-08-31
+
+Read from the live docs (Stripe *Go-live* + *Account* checklists, Supabase *Production
+Checklist*, Vercel observability/rollback docs) rather than from memory. Items marked ✅ were
+verified against the real accounts in this session; ⬜ are open; ⚠️ are the ones that matter.
+
+### Stripe
+
+| | Item | State |
+|---|---|---|
+| ✅ | Live webhook registered, one endpoint, `status: enabled`, correct `www` host | `we_1TzaT1K8OQZXQEmi…`, 13 events, livemode |
+| ✅ | **API version pinned and aligned** | Endpoint `2026-06-24.dahlia` matches the SDK's `stripe-version`. Stripe's checklist opens with this because webhook payloads are shaped by the account version unless the endpoint sets one — ours sets one |
+| ✅ | Keys rotated before go-live | Live `rk_live_` rolled 2026-08-02 |
+| ✅ | Live prices exist and match the sticker | All six, both intervals, 2026-08-31 |
+| ⚠️ | **Two-factor auth on the Stripe account** | The owner stated on 2026-08-31 it is **not set up**. Stripe's account checklist puts this first, and it guards live keys, payouts and customer data |
+| ⚠️ | **Statement descriptor** | Not yet checked. This is the text on a customer's card statement; Stripe names a missing or confusing descriptor as a direct cause of **disputes**. A subscription customer who cannot recognise the charge disputes it |
+| ⬜ | Email notifications for successful charges and disputes | Stripe recommends both at minimum. A dispute has a response deadline — missing the email means losing by default |
+| ⬜ | Webhook handles **delayed**, **duplicate** and **out-of-order** delivery | Duplicates are covered by the `stripe_events` idempotency ledger. Delayed and out-of-order are **not knowingly tested** |
+| ⬜ | Logs contain no card data or PII | Stripe's checklist asks for this explicitly; we have never audited our log lines for it |
+| ⬜ | Restricted-business check | We publish financial *analysis*, not advice — almost certainly fine, and cheap to confirm rather than assume |
+
+### Supabase
+
+| | Item | State |
+|---|---|---|
+| ✅ | RLS enabled on every table | 13/13, verified |
+| ✅ | Security Advisor | **INFO only** — the ten deny-all notices, each now carrying a comment saying it is deliberate (F-004) |
+| ✅ | Performance Advisor | **INFO only** — unused indexes on low-traffic tables, and a connection-strategy note that matters only when scaling the instance |
+| 🔴 | **Custom SMTP for auth emails — NOT configured** | See below. The single most launch-affecting thing this review found |
+| ⚠️ | MFA on the Supabase account | Same gap as Stripe. This account is the database |
+| ⬜ | SSL enforcement · network restrictions | Both recommended, neither confirmed |
+| ⬜ | Email confirmations on; OTP expiry ≤ 1 hour | Not confirmed |
+| ⬜ | Free-plan projects can be **paused** for inactivity | Worth knowing before launch day, not after |
+
+### 🔴 The finding: sign-up and password-reset emails go through Supabase's default SMTP
+
+Nothing in the repo or `supabase/` configures SMTP, so **auth emails use Supabase's built-in
+sender**. Supabase's own production checklist says not to do this in production, for two reasons
+that both bite on day one:
+
+- **It is rate limited to a handful of emails per hour.** If launch brings more sign-ups than
+  that in one hour, confirmation emails simply stop arriving. Nothing errors on our side; the
+  customer just never receives it, and concludes the product is broken.
+- **The mail comes from a Supabase domain, not `majorcycle.com`.** For a financial product
+  asking for a card, an unrecognised sender is a trust problem before it is a deliverability one.
+
+⚠️ **Note how this hid.** We *do* send our own branded transactional email through Resend, with a
+verified domain — the billing and lifecycle mails were all built and verified. So "do our emails
+work?" has always been answered yes. **The two emails a customer meets FIRST are the two nobody
+built**, because Supabase provides them for free and they work fine at development volumes. This
+is 11c-iv in a different clothing: the rule reached every consumer except the one that came with
+a default.
+
+**The fix is small** — point Supabase's auth SMTP at Resend, which is already live with a verified
+domain — and it needs an owner decision, so it is recorded here rather than done.
+
+### Vercel
+
+| | Item | State |
+|---|---|---|
+| ⬜ | Post-deploy verification | `vercel logs --environment production --level error --since 5m` after any production deploy |
+| ⬜ | **Rollback path exercised once** | `vercel promote <deployment-url>` restores a previous deployment. Knowing it works is cheaper than discovering it does not |
+| ⬜ | Firewall / bot protection reviewed | Available on the platform; never looked at |
+| 🟢 | **Speed Insights answers F-021** | See below |
+
+### 🟢 Vercel Speed Insights is the missing instrument for decision #33
+
+The audit recorded F-021 as **blocked, not unfinished**: the ticker page's Lighthouse target had
+no trustworthy measurement — three consecutive preview runs gave 370 / 540 / 990 ms of blocking
+time, and no external lab tool can reach a page behind sign-in. The row was left red with
+*"owner decision pending on real-user monitoring."*
+
+**Vercel Speed Insights is exactly that**, and it is a platform feature rather than a new
+dependency: real-user p75 LCP / INP / CLS, **grouped by route**, readable from the CLI. It solves
+the two problems that made the local number worthless — it measures **real visitors on real
+devices**, so a single unlucky run cannot dominate, and it reaches **signed-in pages**, which no
+lab tool can.
+
+⚠️ It reports on traffic, so it produces nothing until there are visitors. That is an argument for
+turning it on **before** launch rather than after: this project's own history is that a number
+nobody can measure gets optimised against anyway (11w).
 
 ---
 
@@ -218,13 +308,20 @@ ever surface them — and each is the kind of thing that is only noticed once it
 
 ## Findings ledger
 
-*Nothing recorded yet — the sweep has not started. Findings are numbered `5A-nnn` and each
-carries: what was measured, what it should be, and whether it is mine to fix or the owner's
-to rule on.*
+*Findings are numbered `5A-nnn`. The first six come from **P9**, which was added on 2026-08-31
+after reading the three platforms' current go-live checklists — before passes P0–P8 have run at
+all. That ordering is itself worth noting: **the vendors' checklists ask questions the repo
+cannot answer about itself**, and four of the six are account configuration that no amount of
+code review would ever surface.*
 
 | # | Pass | Severity | Where | Finding | Status |
 |---|---|---|---|---|---|
-| — | — | — | — | *(none yet)* | — |
+| **5A-001** | P9 | 🔴 **High** | Supabase auth | **Sign-up confirmation and password-reset emails go through Supabase's default SMTP.** Rate limited to a few per hour, and sent from a Supabase domain rather than `majorcycle.com`. Supabase's own production checklist says not to ship this. The two emails a customer meets FIRST are the two nobody built, because they came free with a default and work fine at development volumes | **Owner decision.** Fix is to point Supabase auth SMTP at Resend, which is already live with a verified domain |
+| **5A-002** | P9 | 🟠 **Medium** | Stripe account | **No statement descriptor check.** This is the text on a customer's card statement; Stripe names a missing or confusing descriptor as a direct cause of disputes | Open — read it in the dashboard before launch |
+| **5A-003** | P9 | 🟠 **Medium** | Stripe + Supabase | **Two-factor auth is not enabled** on either account (owner stated, 2026-08-31). Both hold live keys, customer data and payouts | **Owner action.** Both vendors put it first on their own checklists |
+| **5A-004** | P9 | 🟠 **Medium** | Stripe | **No email notification configured for disputes.** A dispute carries a response deadline; missing the notification loses it by default | Open |
+| **5A-005** | P5 | 🟡 **To confirm** | `/` landing | Published counts and rankings are frozen at **`asOf: 2026-08-13`**, 18 days old. 11k records the same snapshot going false in six days. **Not yet confirmed false — must be re-derived before launch** | Open — P5 |
+| **5A-006** | P9 | 🟢 **Opportunity** | Vercel | **Speed Insights closes F-021.** Real-user p75 per route, reaches signed-in pages, immune to a single unlucky run — the instrument the audit said decision #33 was blocked on | **Owner decision.** Turn on before launch, since it needs traffic to report |
 
 ---
 
