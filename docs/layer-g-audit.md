@@ -32,7 +32,7 @@ same failure this audit exists to catch, one level up.
 
 ## Findings
 
-### F-001 🔴 The bounds are described two different ways on two screens, and one of them is advice
+### F-001 ✅ The bounds are described two different ways on two screens, and one of them is advice — FIXED 2026-08-31
 
 **Found:** step zero, by asking what else PR #90's correction touched.
 
@@ -71,6 +71,57 @@ plain English does not exempt it.
 on hover: no automated check reads them, no screenshot shows them, and a visual review never
 triggers them. The compliance guard asserts the *disclaimer is present*, which it is — the
 page is compliant everywhere except inside a tooltip nobody measured.
+
+✅ **FIXED 2026-08-31, owner-approved wording, and guarded by `e2e/no-advice-copy.spec.ts`.**
+
+| Where | Was | Is |
+|---|---|---|
+| `DrawdownOverlay` · Lower Bound | *"…risk/reward is very favourable."* | *"…the stock is near the deepest point of its recorded history."* |
+| `VerdictCard` · Entry Zone (in zone) | *"Historically attractive buy band…"* | *"Entry Zone — Built from this stock's typical historical drawdown. Current price sits inside it."* |
+| `VerdictCard` · Target Entry Zone | *"…a pullback to here would historically offer better risk/reward."* | *"…Current price sits above it, by the percentage shown."* |
+
+⚠️ **IT SAT HERE, CORRECTLY DESCRIBED, FOR EIGHT DAYS AFTER BEING FOUND — and that is the
+finding behind the finding.** It was reported at step zero, written up in full, and then
+every subsequent layer measured something else. Nothing re-read it because **a log entry
+reads as a to-do, and a to-do reads as handled.** It surfaced only when the owner asked
+*"are you 100% happy… is there nothing left?"* and the answer had to be checked rather than
+recalled. **The one question that catches a premature "done" is the one nobody asks of their
+own work.**
+
+⚠️ **The fix was nearly HALF a fix, twice over.** (i) The owner reported the *"waiting"* tile;
+its sibling — the same band, described the same wrong way, shown when the price is *inside*
+the zone — sat two dozen lines above and was not mentioned. (ii) That is precisely how the
+first copy came to exist: PR #90 corrected the Results table tooltips and left the chart. **A
+defect reported at one instance is a claim about one instance, never about the class.** Both
+Entry Zone tooltips now share one voice, and a comment above them says they are a matched pair.
+
+⚠️ **An unintended benefit worth recording, because it argues for the owner's wording over my
+first draft.** The Lower Bound and Upper Bound strings are the two branches of one ternary. The
+Upper Bound had *always* been phrased as position — *"near the top of its historical range"* —
+and only the Lower Bound editorialised. The approved wording makes them symmetric, so the
+asymmetry that hid the defect is gone as well as the defect. **When two strings are branches of
+the same expression, a difference in their VOICE is itself a smell.**
+
+⚠️ **The guard, and the two things it deliberately does not do.** `no-advice-copy.spec.ts`
+sweeps `components/stocks/` and `components/results/` for eight advice-shaped phrases, with
+comments stripped (this repo has twice had a guard fail on its own documentation). Its
+load-bearing control is that **every pattern must match the real string it was written from** —
+a typo'd regex matches nothing and reports a clean sweep, which is what a clean system reports
+(14g). Broken on purpose three ways: the real Lower Bound string restored → red naming the
+file; *"attractive buy band"* put into the **unreported** sibling tooltip → red on two patterns;
+one regex blunted by a single character → the self-test red. It does **not** scan `/learn` or
+`/articles`, which legitimately ask *"is a falling stock a good time to buy?"* in order to
+answer it, nor the analyst-consensus map, which renders Buy/Hold/Sell verbatim by decision #17.
+
+🔵 **Two strings referred to the owner rather than changed.** A ninth pattern — a bare
+`favourable` — found `KpiStrip` (*"Higher is more favourable. Information only — not advice."*)
+and `ThesisInsights` (*"the current setup looks favourable… Observations, not a recommendation
+to buy."*). Both describe what **our score** means rather than telling anyone to act, and each
+carries its own disclaimer in the same sentence. ✅ **Owner ruled 2026-08-31: leave both as they
+are.** The pattern was **removed** rather than
+exempted — a guard that cries wolf gets skipped, and an exemption list is a second copy of the
+rule that rots when the copy is reworded (11t). **Rewording a paid surface because my own regex
+disliked it is the overreach the owner already reversed once** (11l).
 
 ### ⚠️ Two errors of MINE in the first report of F-001, both corrected before any code changed
 
@@ -481,15 +532,15 @@ merge. An empty number is an unticked box.
 | ✅ | Launch-gate table re-verified | every row's evidence current, not from 2026-08-02 | **done.** `roadmap.md` §3 now cites readings from 2026-08-22 / 08-25 / 08-31 rather than the single 2026-08-02 sweep F-006 flagged. Three rows stay deliberately un-green and each names what is missing rather than hedging: *signup → paid with a real card* (**cannot** be executed — Stripe's terms forbid live-mode testing, so the evidence is test clocks plus a real `cs_live_` session), *375px mobile* (Layer H, already triaged and measured), and *Vercel Hobby → Pro* (the launch blocker, owner's call). **A row that cannot be proven says so; it is not ticked on a technicality** |
 | ✅ | Deferred list GA-1…GA-5 re-verified | closed *today*, not closed *once* | **all six closed** (GA-1, GA-1b, GA-2, GA-3, GA-4, GA-5), each with its evidence written into `roadmap.md` rather than a tick. Re-read 2026-08-31. ⚠️ **GA-2 is the one to actually re-read**, because it did not stay closed the way it was filed: its design-linter suppression went obsolete, was found to be **excusing a defect that no longer existed for a reason that had never been true**, and was **deleted** rather than re-tuned (CLAUDE.md 11t). That is precisely the difference between *closed once* and *closed today* — and it is why this row exists |
 | 🟡 | Layer 1 coverage map | built, and the uncovered list ruled on by the owner | map built 2026-08-23 → `docs/layer-g-coverage-map.md`; owner ruled on all 8 the same day and **all 8 acted on** ✅ — five defects found (F-005, F-009, F-011, F-012, and 11a's fifth instance) |
-| 🟡 | All findings resolved | passed / fixed+guarded / accepted with sign-off. **Zero unknown** | **35 of 36 settled; one open, and zero unknown — which is the part this row actually asks.** Open: **F-001**, two Stock Detail tooltips that still read as advice (non-negotiable #12 / decision #24) — reported at step zero, fixed on one screen by PR #90 and never on the other, wording with the owner 2026-08-31. Parked by decision, not by drift: **F-005** (four thin subscription states → Layer 5b), **F-030** (five index members that are not fetchable companies → recorded, low severity), **F-021** (the ticker page's Lighthouse score → **blocked on an instrument, not on effort**). ⚠️ **F-002, F-004 and F-007 were closed in code and left OPEN in this log** — for six days, eight days and eight days. All three are now corrected in place, with the staleness recorded as part of the finding, because a log that lags the system is the thing an audit exists to prevent |
+| ✅ | All findings resolved | passed / fixed+guarded / accepted with sign-off. **Zero unknown** | **All 36 settled, zero unknown.** **F-001 closed 2026-08-31** — owner-approved wording on all three tooltips, guarded by `no-advice-copy.spec.ts`, broken on purpose three ways. Parked by decision, not by drift: **F-005** (four thin subscription states → Layer 5b), **F-030** (five index members that are not fetchable companies → recorded, low severity), **F-021** (the ticker page's Lighthouse score → **blocked on an instrument, not on effort**). ⚠️ **F-002, F-004 and F-007 were closed in code and left OPEN in this log** — for six days, eight days and eight days. All three are now corrected in place, with the staleness recorded as part of the finding, because a log that lags the system is the thing an audit exists to prevent |
 
 **At merge, owner-only:**
 
 | | Action | Why it matters |
 |---|---|---|
-| ⬜ | Flip apex → `www` from a temporary to a permanent redirect | Search engines consolidate ranking only across a permanent one, and Layer G declares `www` canonical in ten places |
-| ⬜ | Move hosting off the free tier | It forbids commercial use — this blocks taking payment, not just launch |
-| ⬜ | Submit the sitemap, **after** deploy | Submitting while it still redirects teaches the crawler to distrust it |
+| ✅ | Flip apex → `www` from a temporary to a permanent redirect | **DONE 2026-08-31.** Changed in **Vercel**, not Cloudflare — the 307 came from Vercel's own domain redirect (`Server: Vercel`, `X-Vercel-Id`), and assuming the registrar would have edited the wrong system entirely. **Verified on the wire, not on the dashboard** (11d — guard the artifact): `majorcycle.com` → **308**, and `/articles/how-far-do-asx-shares-fall` → 308 carrying **its own path**. That second check is the one that matters: a redirect which flattens every deep link onto the homepage still reports "308" and would silently discard the ranking of every article we just published. Control: `www` itself still answers 200, so there is no loop. ⚠️ One misstep — the first click missed the dropdown and toggled a DNS panel instead; with a red **Remove** button an inch away the fix was to target the element directly rather than re-aim by eye |
+| 🔵 | Move hosting off the free tier | It forbids commercial use — this blocks taking payment, not just launch. ⚠️ **DEFERRED by the owner 2026-08-31**, deliberately: it is a launch-day action, not an audit action, and paying for Pro before there is a customer buys nothing. **It stays on this list rather than being closed** — a deferred blocker that drops off the page becomes a forgotten one, and this is the single item standing between the product and taking money |
+| ✅ | Submit the sitemap, **after** deploy | **DONE 2026-08-31**, in that order. Submitted to the `sc-domain:majorcycle.com` property as `https://www.majorcycle.com/sitemap.xml` — the **`www`** form, which serves directly, rather than the apex which now 308s. ⚠️ **Google's green "Sitemap submitted successfully" banner sat directly on top of a red "Couldn't fetch" row.** The banner means the submission was ACCEPTED, not that the file was read — two different claims, one screen. Reloading gave the real answer: **Status Success · 25 discovered pages · last read Aug 31**, and 25 matches the sitemap exactly. Also fetched as Googlebot (200, `application/xml`, 2,036 bytes) and confirmed `robots.txt` already declares it. **A success banner is not a result** |
 | ✅ | Re-read the **six LIVE Stripe prices** and check them against `PRICE_TABLE` | **All six match, read live 2026-08-31 on `acct_1TrdaxK8OQZXQEmi` with `livemode: true`.** Monthly US$15 / A$19 / C$20 · annual US$126 / A$159 / C$168, against `PRICE_TABLE` in `lib/pricing.ts`. **Both controls the finding demands also pass:** `has_more: false` with **exactly one** active price per `lookup_key` (zero or two would make every comparison vacuous — it would compare nothing and report a match), and the **interval** is `month`/1 and `year`/1 respectively (a right amount on the wrong interval is the expensive version of this bug, and the sticker looks perfect). ⚠️ `e2e/pricing-parity.spec.ts` closed F-025 for **test mode only** — test and live are separate objects sharing a `lookup_key`, and CI holds only the restricted test key — so this row is the live half and it stays a **recurring manual check**, not a solved problem |
 | ✅ | **Re-run the listings refresh after merge** | **Closed BY the merge — no action needed, and the reason is worth keeping.** This row existed because a scheduled workflow checks out the **default branch** (14g): while the churn guard and TSXV support sat on `feat/layer-g`, the next nightly run would have used `main`'s older sweep and marked all 1,457 venture rows inactive. Merging at 07:28 UTC on 2026-08-31 put both on `main` **before** either cron next fired, so the window closed rather than being survived. Live state re-read the same day: `listings` **au 2,018 · ca 2,720 · us 5,883**, `stocks` **866 active / 5 retired** — the venture rows are present and the five genuine delistings are intact. ⚠️ Tonight's runs (AU 08:00, US+CA 22:30 UTC — GitHub delays the AU one by anywhere from 30 min to 11 h) are the **first ever** to execute the dividend re-pull, the retry pass, the staleness sweep and the market-cap fallback on a schedule. Verify tomorrow: this is the row that looks like nothing happened either way |
 
@@ -2558,7 +2609,7 @@ answer was **no**, and checking rather than recalling is what produced this list
 
 | | Item | Outcome |
 |---|---|---|
-| 🟠 | **F-001 still live on the paid page** | Two Stock Detail tooltips still read as advice. Reported at step zero, fixed on one screen by PR #90, never on the other — and never mentioned again in this log. **Nothing had gone red, because no check reads a `title` attribute.** Wording with the owner |
+| ✅ | **F-001 was still live on the paid page** | Three tooltips read as advice — reported at step zero, fixed on one screen by PR #90, never on the other, and never mentioned again in this log for eight days. **Nothing had gone red, because no check reads a `title` attribute.** Now fixed on owner-approved wording and guarded. ⚠️ The guard immediately found **two more** `favourable` strings that turned out to be legitimate — referred to the owner, and the over-broad pattern removed rather than exempted |
 | ✅ | F-002 and F-007 recorded as open, fixed in code | Corrected in place; the staleness kept as part of each finding rather than tidied away |
 | ✅ | F-004 seven tables → **eight** | Fixed live; the count had aged in six days |
 | ✅ | Merge-gate + launch-gate numbers | Re-cited against `f1b6d4d`: **699 / 247** |

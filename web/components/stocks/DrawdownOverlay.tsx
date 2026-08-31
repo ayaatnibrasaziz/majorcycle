@@ -379,8 +379,17 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
             // error PR #90 corrected on the Results table tooltips; one screen was
             // fixed and this one was not (CLAUDE.md 11c). The two screens keep their
             // own voice by owner decision — only the factual clause is shared.
+            //
+            // ⚠️ AND IT WAS WRONG A SECOND WAY, for a further eight days (audit F-001).
+            // The last clause read "risk/reward is very favourable" — a recommendation
+            // to buy, breaching non-negotiable #12 / decision #24. It now says where the
+            // price SITS and stops. Note the two branches are finally symmetric: deepest
+            // point of its recorded history / top of its historical range. The Upper
+            // Bound had always been phrased that way; only the Lower one editorialised,
+            // which is why nothing looked odd — a tooltip that gives advice reads as
+            // helpful, and no guard reads a `title` attribute. See no-advice-copy.spec.ts.
             title={isDD
-              ? 'Lower Bound — The deepest drawdown ever recorded for this stock across all historical cycles. A still-forming dip can run below it. If Current approaches Lower Bound, risk/reward is very favourable.'
+              ? 'Lower Bound — The deepest drawdown ever recorded for this stock across all historical cycles. A still-forming dip can run below it. If Current approaches Lower Bound, the stock is near the deepest point of its recorded history.'
               : 'Upper Bound — The highest profit recovery peak ever recorded across all historical cycles. A still-forming rally can run above it. If Current approaches Upper Bound, the stock is near the top of its historical range.'}
           >
             <div className="stat-pill-label">{isDD ? 'Lower Bound' : 'Upper Bound'}</div>
