@@ -5,6 +5,7 @@ import { useRef } from 'react';
 import { AnalystTargetTrack } from '@/components/stocks/AnalystTargetTrack';
 import { BalanceSheet } from '@/components/stocks/BalanceSheet';
 import { CompanyOverview } from '@/components/stocks/CompanyOverview';
+import { DelistedNotice } from '@/components/stocks/DelistedNotice';
 import { DividendHistory } from '@/components/stocks/DividendHistory';
 import { DrawdownOverlay } from '@/components/stocks/DrawdownOverlay';
 import { EarningsHistory } from '@/components/stocks/EarningsHistory';
@@ -179,6 +180,18 @@ export function ReportDocument({ data }: { data: ReportData }) {
       <ReportNav />
 
       <div className="report-body">
+        {/* Above the header, for the same reason as on the page — and with more
+            force here. The download travels away from the site and outlives it:
+            somebody opening this file months later has no other way to learn that
+            the figures inside stopped moving. Renders nothing for a live stock.
+
+            ⚠️ NOT wrapped in <ReportSection>, deliberately. That helper always
+            emits `<div class="report-section">` whatever it is given, so wrapping a
+            component that returns null for 866 of 871 stocks would have put an empty
+            padded box at the top of almost every report ever downloaded — a defect
+            introduced by the fix for another one. The notice brings its own card. */}
+        <DelistedNotice stock={stock} />
+
         <section id="sec-thesis" className="report-group">
           <ReportSection>
             <StockHeader

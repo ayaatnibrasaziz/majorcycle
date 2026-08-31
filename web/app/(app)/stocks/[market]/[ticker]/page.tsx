@@ -6,6 +6,7 @@ import { Suspense } from 'react';
 import { AnalystTargetTrack } from '@/components/stocks/AnalystTargetTrack';
 import { BalanceSheet } from '@/components/stocks/BalanceSheet';
 import { CompanyOverview } from '@/components/stocks/CompanyOverview';
+import { DelistedNotice } from '@/components/stocks/DelistedNotice';
 import { DividendHistory } from '@/components/stocks/DividendHistory';
 import { DrawdownOverlay } from '@/components/stocks/DrawdownOverlay';
 import { EarningsHistory } from '@/components/stocks/EarningsHistory';
@@ -314,6 +315,11 @@ export default async function StockDetailPage({
       />
 
       <div className="pt-5 space-y-[18px]">
+        {/* FIRST, above everything, and rendered server-side rather than inside a
+            Suspense boundary: a reader must not scroll to learn that every figure
+            below is frozen. Returns null for the 866 stocks still trading. */}
+        <DelistedNotice stock={stock} />
+
         {/* Read-only note when a non-default horizon was chosen on Browse.
             (No horizon selector lives on the detail page by design.) */}
         {spec.preset !== 'medium' && (
