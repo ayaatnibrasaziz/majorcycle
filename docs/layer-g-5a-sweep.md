@@ -80,6 +80,19 @@ it by name, rather than looking at the page and asking whether anything is wrong
 **7 · A guard/probe written five minutes ago has never been observed failing**, so a pass
 from it carries no information. Give it the case that must fail first (11p).
 
+**8 · When the owner's reading and mine disagree, THAT is the finding.** ⚠️ Added on review.
+The owner has already seen colour defects and has not said which. If my measured pass misses
+something they spotted by looking, the conclusion is not "one more colour to fix" — it is that
+**the method has a blind spot**, and the blind spot will be hiding other things too. The
+contrast probe has been wrong in exactly this way twice: once compositing a colour's own alpha
+but never `opacity` (text seen at 3.38:1 scored 6.81), and once measuring 47 elements on a page
+carrying 291 and calling it clean (11q). So the comparison with the owner is a **test of the
+instrument**, and it is written into the plan rather than left as a courtesy.
+
+**9 · Fix nothing on a paid surface without a ruling** (11l). A real defect does not license
+widening scope — that is the mistake the owner reversed once already, when a genuine contrast
+finding turned into an unasked repaint of the screener.
+
 ---
 
 ## Route inventory — derived from the filesystem, not from memory
@@ -116,24 +129,90 @@ from it carries no information. Give it the case that must fail first (11p).
 
 ---
 
-## The six passes
+## The nine passes — P0 to P8
 
 Each pass produces findings in the ledger below. Nothing on a paid surface is changed
 without the owner ruling on it first (11l).
 
-- [ ] **P1 · Renders, in every state.** 9 viewer states × every route.
+- [ ] **P0 · Build the expected-content manifest, BEFORE looking at anything.** One line per
+      route naming the sections that must be present. Method note 6 is not optional: a missing
+      section renders perfectly, so "look at the page and see if anything is wrong" cannot find
+      one. **This has to be written first or P1 is just browsing.**
+- [ ] **P1 · Renders, in every state — and is COMPLIANT in each.** 9 viewer states × every
+      route, checked against the P0 manifest. ⚠️ **Non-negotiable #4 is checked here, not
+      assumed:** every page showing a rating, score or signal must carry the disclaimer
+      *visible without scrolling*. That is a legal requirement, it is per-STATE (a locked-out
+      viewer sees a different page from a subscriber), and no existing guard asserts the
+      "without scrolling" half.
 - [ ] **P2 · Colour, measured.** Tier palette across all 4 surfaces; 3-tier health ramp; the
       drawdown tint that runs green for a deeper fall; direction-as-text; the legacy-contrast
       subtree; the new red delisting banner.
 - [ ] **P3 · It works when used.** Every form, every control, keyboard-only, the screener end
-      to end, sign-up → sign-out.
+      to end, sign-up → sign-out. Plus the **first-login disclaimer gate** (#23) on a genuinely
+      new account — it is the one screen with a button that WRITES a compliance record, and it
+      has already destroyed one (F-031).
 - [ ] **P4 · Data edge cases.** No cycle at horizon · cross-currency · a bank · no dividend ·
       no analyst coverage · no insider activity · retired ticker · unknown ticker/market/slug ·
-      empty results · a brand-new account with no history.
-- [ ] **P5 · Not-the-screen.** The downloadable report (a separate esbuild build — it shipped
-      blank for four days once, 11d) · every email · metadata + share cards · robots/sitemap/
-      canonicals · security headers.
-- [ ] **P6 · 375px.** Public = fix. Signed-in = note only.
+      empty results · a brand-new account with no history. Plus a **sanity check on the
+      analysis itself** for one stock per market: does the drawdown the page states match the
+      chart it draws, and the price history behind it? Every guard we own checks that numbers
+      are *present and consistent*; none checks that they are *right*.
+- [ ] **P5 · Content, claims and copy.** ⚠️ **ADDED on review, and it is the gap I am least
+      comfortable had been missing.**
+      · **Re-derive every published number.** The landing states counts, ranks and superlatives
+        from a snapshot frozen at **2026-08-13** — 18 days old at the time of writing. CLAUDE.md
+        **11k** records that re-running that same snapshot **six days** later made two of its
+        sentences false (*"5 rate Constructive or better"* → four; Tesla *"still comes sixth"* →
+        seventh). Nothing errors, nothing looks stale: the sentences stay fluent, specific and
+        wrong. Launching on an 18-day-old claim is the single most likely way this site ships a
+        confident lie.
+      · The five long articles' frozen figures, against their verification workbook.
+      · **Proofread.** 12 Learn articles, 5 long articles, the landing, the legal pages and the
+        UI strings. The owner found a missing space that every test agreed was present (11ac) —
+        prose defects are found by reading, and by nothing else.
+      · **Every link, internal and external.** Cheap to check, embarrassing on launch day.
+- [ ] **P6 · Not-the-screen.** The downloadable report (a separate esbuild build — it shipped
+      blank for four days once, 11d) · every transactional email, rendered · metadata + share
+      cards · robots/sitemap/canonicals · security headers **in production, not preview**.
+- [ ] **P7 · The three gates that never run automatically.** ⚠️ **ADDED on review.**
+      `check:page-weight`, `check:csp` and `lighthouse` each need a production server on
+      `:3200`, so `pnpm gates` prints them as NOT RUN — every single time. **A gate nobody runs
+      is a gate nobody runs** (F-016, the reason `pnpm gates` exists at all). This is the sweep
+      that runs them.
+- [ ] **P8 · 375px.** Public = fix. Signed-in = note only.
+
+---
+
+## ⚠️ What this sweep CANNOT check — stated before it starts, not after
+
+Added on review. **A sweep that does not name its blind spots reports the same thing as a
+complete one** (14g), and a "clean" verdict is worth nothing until you know what it covered.
+
+| Cannot check | Why | What is done instead |
+|---|---|---|
+| Some billing states on production | `past_due`, `unpaid`, `paused`, `incomplete` cannot be induced on a live Stripe account without a real failed payment | Drive them on **Stripe test clocks** in the sandbox, and say which surface was checked where. The four thin states are also F-005, already the owner's to rule on |
+| The paid analysis, locally | `/api/cycle` is a Python function `next start` does not serve — locally the whole cycle block renders nothing **for everyone** | Deployed preview only (11v) |
+| Live-mode Stripe price edits | CI holds only the restricted test key; test and live are separate objects sharing a `lookup_key` | Read the live prices by hand via MCP, as on 2026-08-31 |
+| Real-user performance | Decision #33's target has no trustworthy instrument — three consecutive preview runs gave 370 / 540 / 990 ms of blocking time, and no external lab tool can reach a page behind sign-in (F-021) | Report byte counts, which are exact, and leave the row honestly red |
+| Anything but Chromium | The suite runs Chromium only | Spot-check the public pages in a second engine and **say it is a spot check**, not coverage |
+| Whether a person understands it | Comprehension is not a measurable property | That is Layer 5b, the owner's pass — and it is the reason 5b exists |
+
+---
+
+## Launch readiness — NOT sweep items, but they belong on this page
+
+⚠️ **Added on review.** These are not "is the page correct?" questions, so no pass above would
+ever surface them — and each is the kind of thing that is only noticed once it is needed.
+
+- **If the site breaks on launch day, how does the owner find out?** Cron failures reach GitHub's
+  failed-workflow email. **Nothing watches the web app.** Sentry is a Phase 2 decision and is not
+  installed. A 500 on the ticker page would be discovered by a customer, not by us.
+- **Is the data current on the day?** Both crons must have run successfully the night before, and
+  the market-cap invariant must be clean. Worth a one-command check on the morning.
+- **What is the rollback?** Vercel keeps prior deployments and can promote one; that path has
+  never been exercised. Knowing it works is cheaper than discovering it does not.
+- **Vercel Hobby → Pro**, deferred by the owner, still the one thing between the product and
+  taking money.
 
 ---
 
