@@ -21,10 +21,31 @@ owner said yes to* (11j).
 Each row is checkable, not descriptive. Prefer, in order: a **section anchor** (`#sec-…`), a
 `data-testid`, then **exact heading text**. "Looks right" is not an entry.
 
-**The nine viewer states** every page is checked in (P1):
+**The viewer states** every page is checked in (P1). ⚠️ **This list said NINE until the P0
+self-review; it was wrong.** The eight Stripe statuses the billing layer actually maps are in
+`lib/entitlement.ts`, and I had omitted four of them plus the dispute state entirely — while
+`F-005` is *specifically* the finding that four thin states show a screen that does not describe
+them. **A state I forget to list is a state nobody looks at.**
 
-`signed-out` · `free` · `trialing` · `active` · `past_due` · `grace` · `locked` ·
-`deletion-scheduled` · `password-recovery`
+| # | State | Note |
+|---|---|---|
+| 1 | `signed-out` | |
+| 2 | `free` (no subscription) | |
+| 3 | `trialing` | |
+| 4 | `active` | |
+| 5 | `past_due` → within grace | still entitled |
+| 6 | `past_due` → grace expired | hard lock |
+| 7 | `unpaid` | **F-005** — falls through to "no subscription" |
+| 8 | `paused` | **F-005** |
+| 9 | `incomplete` | **F-005** |
+| 10 | `incomplete_expired` | **F-005** |
+| 11 | `canceled` | |
+| 12 | `billing_blocked` (dispute) | omitted from my first list entirely |
+| 13 | `deletion-scheduled` | confined to `/reactivate` |
+| 14 | `password-recovery` | confined to `/account/update-password` |
+
+**Fourteen**, which is also the size of the subscription matrix the Layer F audit drove on live —
+a number already in the docs while I was writing nine.
 
 ⚠️ **A section being ABSENT is correct in some states and a defect in others.** The manifest
 says which, because "the rating is missing" is right for a free viewer and wrong for a
@@ -166,6 +187,28 @@ Five subnav anchors, **all five must be present and must scroll to their section
 
 `#sec-thesis` · `#sec-scorecard` · `#sec-cycle` · `#sec-fundamentals` · `#sec-sentiment`
 
+⚠️ **THE ANCHORS ARE NOT ENOUGH, and the first version of this manifest stopped at them.** They
+are five containers holding **23 analytical sections**. Remove `DividendHistory` and
+`#sec-fundamentals` still renders, still scrolls, still looks finished — which is precisely the
+defect P0 exists to catch, left uncaught on the most valuable page we ship. The authority is
+`scripts/check-report-sections.mjs`, which derives the list from the page's own imports and
+asserts the report renders a superset; it reports **23 sections in sync**.
+
+**All 23 must be present** (alphabetical, as the guard derives them):
+
+`AnalystTargetTrack` · `BadgeRow` · `BalanceSheet` · `CompanyOverview` · `DelistedNotice` ·
+`DividendHistory` · `DrawdownOverlay` · `EarningsHistory` · `KpiStrip` · `MetricsTable` ·
+`NewsFeed` · `OwnershipStructure` · `PriceChart` · `QuarterlyFinancials` · `RelativePerformance` ·
+`ShortInterest` · `SmartMoneyActivity` · `SnowflakeRadar` · `StockHeader` · `TechnicalLevels` ·
+`ThesisInsights` · `ValuationHistory` · `VerdictCard`
+
+Plus three **page-only** chrome components that must NOT appear in the report:
+`StockSubnav` · `PremiumLockCard` · `PremiumLockInlineCta`
+
+⚠️ `DelistedNotice` counts as a section but renders for **5 of 871** stocks. Its absence on
+AAPL is correct; its absence on `BK` is a defect. **A conditional section needs a named case,
+not a tick.**
+
 **Free viewer must SEE** (the data is free): price chart · full price history · drawdown overlay
 **with its cycle bands** · Current Drawdown · every fundamentals section · every sentiment
 section · analyst targets and consensus verbatim · the disclaimer.
@@ -274,3 +317,40 @@ re-derived (see the sourcing rule above).
   so it renders byte-identical rather than merely similar
 - Its market series use **teal and two non-direction tones** — ⚠️ green and red mean up and down
   everywhere else on this site and must never be spent on series identity
+
+---
+
+## ⚠️ Pages with NO approved design — named, not silently derived
+
+The deck covers eight. These are the public routes it does **not** cover, so their manifest
+entries come from the code and the design system, and are therefore weaker evidence. Said out
+loud rather than left to look equal (11c-ix):
+
+`/reset-password` · `/deletion-requested` · `/reactivate` · `/account/update-password` ·
+`/learn/[slug]` (the article template) · `/articles/[slug]` · `/privacy` · `/disclaimer`
+
+⚠️ The last two inherit the **legal template** (deck §6), so they have a design; only their
+*content* is uncovered. The first four are the confinement and recovery screens — **the pages a
+distressed customer sees**, and the ones with no approved design at all. That is worth knowing
+before 5b, not after.
+
+---
+
+## P0 second self-review — what the owner's re-ask found
+
+Asked "are you happy with P0?" a second time, I checked instead of answering. Two more errors:
+
+| | Was | Is |
+|---|---|---|
+| **Viewer states** | I listed **nine** | **Fourteen.** I had omitted `unpaid`, `paused`, `incomplete`, `incomplete_expired` — which are *exactly* F-005, the finding that says those four show a screen that does not describe them — and `billing_blocked` (dispute) entirely. The Layer F audit had already driven a **14-state** matrix on live; the number was in our own docs while I wrote nine |
+| **Stock Detail** | I listed **5 anchors** | **23 analytical sections** inside them, plus 3 page-only chrome. Removing `DividendHistory` leaves `#sec-fundamentals` rendering, scrolling and looking finished |
+
+⚠️ **Both errors have one shape: I recorded the container and called it the contents.** Five
+anchors for 23 sections; nine buckets for 14 states. In each case the list I wrote would have
+produced a confident green P1 across a page or a state that was never examined — **the container
+is always present, which is what makes it useless as evidence.**
+
+⚠️ And note how each was found: not by re-reading my manifest, which looked fine, but by asking
+the **code** what the real set was — `check-report-sections.mjs` for the sections,
+`lib/entitlement.ts` for the states. Both had the right answer the whole time. **When a manifest
+states a set, derive that set from something executable, never from recollection.**
