@@ -2282,34 +2282,50 @@ one width and part company at another.
 
 ## The delisting notice — `DelistedNotice`
 
-Shown above everything else on a retired ticker's Stock Detail page, and at the top of the
-downloadable report. Added 2026-08-31 (audit F-035).
+A slim red banner above everything else on a retired ticker's Stock Detail page, and at the
+top of the downloadable report. Added 2026-08-31 (audit F-035).
 
-> **BANK OF NEW YORK MELLON CORP NO LONGER TRADES**
-> Every figure below is frozen at 23 Jul 2026 and is not current.
+> ⓘ  **Bank of New York Mellon Corp no longer trades.** Every figure below is frozen at
+> 23 Jul 2026 and is not current.
 
-**One sentence, and that was an owner decision taken before it was written.** The first
-version ran to four paragraphs — the three-source test, the date the sweep noticed, why the
-history is kept, the ways a company can stop trading. Owner: *"I still feel it is way too
-much"*, and then *"First agree with me what you will show and than update."*
+**One sentence, and red — both owner decisions, both taken before the code was written the
+second time.**
 
-⚠️ **Everything cut was us explaining OURSELVES rather than telling the reader anything they
-need.** All of it was true; none of it was load-bearing. A reader needs two facts — this is
-dead, and the numbers below are old, from this date — and every extra line made those two
-harder to find. Worth remembering as a general habit for this product: the reason we did
-something belongs in the code and the docs, not on the page.
+The copy went first. The original ran to four paragraphs: the three-source test, the date the
+sweep noticed, why the history is kept, the ways a company can stop trading. Owner: *"I still
+feel it is way too much"*, then *"First agree with me what you will show and than update."*
+⚠️ **Everything cut was us explaining OURSELVES**, not telling the reader anything they need.
+All true, none load-bearing. A reader needs two facts — this is dead, and the numbers below
+are old, from this date — and every extra line made those two harder to find. Worth holding as
+a general habit for this product: **the reason we did something belongs in the code and the
+docs, not on the page.**
 
-**No new colour, deliberately.** The site has no warning token, and inventing one would put a
-colour on a page `check:tier-palette` already polices, outside anything it can see. It reuses
-the `role="note"` card that *"Major Cycle — not available at this horizon"* uses — the closest
-existing case, a card whose job is to explain why the data is not what a reader expects. The
-words carry it.
+Then the look. My build was a full card in the neutral `role="note"` style, argued for on the
+grounds that the site owns no warning colour and inventing one would put a hue outside
+`check:tier-palette`'s reach. Owner: *"I don't like how it looks, can't you just make it a
+notice in red?"* — with the checkout-cancelled banner from `/account` as the shape.
 
-**It renders in the report too.** The download travels away from the site and outlives it, so
-somebody opening the file months later has no other way to learn the figures stopped moving.
-That also satisfies `check:report-sections`, which requires the report to render a superset of
-the page's analytical sections; adding it to `PAGE_ONLY` would have been the wrong answer to
-the right question.
+⚠️ **The reference answered my objection rather than overriding it, and that is the lesson.**
+That banner (`SubscriptionCard`) is already built from the **rating tier tokens** — tier 3, the
+neutral amber — used purely as a UI tint with no rating meaning. So the red here is
+`--c-tier-5-ink` / `--tint-tier-5`: the same established set, one hue over. No new colour, no
+literal hex, nothing the palette guard cannot see, and a shape the product already uses for
+this exact job. **The objection was sound and the answer was already in the codebase**; I had
+reached for "invent or refuse" without looking for the third option.
+
+**Contrast measured before it was written**, on the grounds it actually sits on: **8.06:1** on
+a white card, **7.32:1** on the page ground, against a 4.5 floor. A margin, not a boundary —
+this repo once solved a colour against white and shipped 4.41 (11l).
+
+⚠️ **`role="note"`, not `role="alert"`** — the one place it departs from the banner it copies.
+`alert` is an ARIA live region for messages that *arrive*; this is static content present on
+first paint, and announcing it as an interruption makes the page noisier for a screen-reader
+user on every visit.
+
+⚠️ **The icon is an inline SVG, not `lucide-react`.** No component the report renders imports
+lucide today — the four that do are page-only — so importing it here would pull that library
+into the esbuild bundle for the first time. That bundle rendered a blank page for every stock
+for four days when `next/link` arrived through a component three imports away (11d).
 
 ⚠️ **NOT wrapped in `<ReportSection>`.** That helper always emits its wrapper div whatever it
 is given, so wrapping a component which returns null for 866 of 871 stocks would have put an
@@ -2317,12 +2333,12 @@ empty padded box at the top of almost every report ever downloaded — a defect 
 fix for another one.
 
 ⚠️ **The date is the point of the component, and the first build printed the wrong one.** It
-showed `inactiveSince` — the day the sweep *noticed* — under *"every figure is frozen as at"*,
+showed `inactiveSince` — the day the sweep *noticed* — under *"every figure is frozen at"*,
 reading **2026-08-31** while `StockHeader` two inches below read **Updated Jul 23**. Both dates
 are real and answer different questions. It now uses `updatedAt`, the same value the header
 formats, so one page cannot state one fact two ways (11c). The formatter parses the **string**
 and never calls `new Date()`: `new Date('2026-07-23')` is UTC midnight and renders as the 22nd
 west of Greenwich — the off-by-one-day class of 14a.
 
-**Default is ACTIVE.** Only an explicit `is_active === false` renders the notice. Telling a
-customer that a healthy company has stopped trading is worse than the status quo it replaced.
+**Default is ACTIVE.** Only an explicit `is_active === false` renders it. Telling a customer
+that a healthy company has stopped trading is worse than the status quo it replaced.

@@ -2625,11 +2625,13 @@ Order of priority TBD based on user feedback. Candidate features:
    ✅  └─ production-readiness audit F-A1…F-A6 COMPLETE 2026-08-02 → docs/layer-f-audit.md
    ↓
 🔨 Phase 1 Layer G: SEO + Performance      ← NOW (G1–G7 and /articles done. The audit
-                                              ran Layers 0-4 on 2026-08-25, then the
-                                              branch moved 73 files, so 2026-08-31 added
-                                              a DELTA audit: Layers 0-2 re-run and clean,
-                                              4 findings all applied. Layers 3 / 3b / 4
-                                              delta + 5a + 5b remain; PR #89 unmerged)
+                                              ran Layers 0-4 on 2026-08-25; the branch
+                                              then moved 73 files, so 2026-08-31 re-ran
+                                              the lot as a DELTA audit. Layers 0-4 all
+                                              re-run and clean, 8 findings applied
+                                              (F-033..F-036 + 3 silent guards). ONLY 5a
+                                              and 5b remain. Merging before them, by
+                                              owner decision, so they measure what ships)
    ↓
    Phase 1 Layer H: Hardening (Phase 1.5)  — owns 375px, a11y, cross-browser, Sentry
    ↓
