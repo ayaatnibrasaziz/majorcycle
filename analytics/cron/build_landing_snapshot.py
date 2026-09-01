@@ -18,7 +18,47 @@ in order of importance:
 
 Reads the SITE's own price history from Supabase rather than re-fetching from the
 provider, so the figure on the landing page is the same figure the stock page
-shows. Run nightly, after `daily_refresh.py`; the committed JSON is what ships.
+shows.
+
+⚠️ **THREE FILES, TWO LIFECYCLES — and the split exists because one file carrying
+two rules shipped a defect (finding 5A-013, 2026-09-01).**
+
+Written on **every** run:
+
+* ``universe-count.json`` — a plain FACT about the product, how many companies we
+  cover. It must always be true. The universe auto-expands on every reader's
+  ticker request (#16), so a stale count is a number the product is actively
+  working to falsify (11c-v).
+* ``learn-snapshot.json`` — Apple's cycle figures for the ``/learn`` explainers.
+  **Live by owner decision**, restated 2026-09-01: *"keep the learn articles as
+  is ... keep it separate."* An explainer describes how the product behaves
+  **today**, and each article prints its own as-of date.
+
+Written only with ``--worked-example``:
+
+* ``landing-snapshot.json`` — the landing page's dated WORKED EXAMPLE, the same
+  Apple figures with a different job. The page writes prose *about* these numbers
+  and puts them beside the frozen Mag 7 table, so it is **frozen** too.
+
+⚠️ **``learn-snapshot.json`` and ``landing-snapshot.json`` hold the same shape and
+are written from ONE computation, so they can never disagree at the moment they
+are both written — they diverge only as the frozen one ages, which is the point.**
+
+**Why they cannot share a lifecycle.** Apple appears in this file AND in the
+Mag 7 table above it on the same page. While this one rebuilt nightly and the
+Mag 7 table stayed frozen, the two drifted apart — and the live page printed
+Apple at **-11.3%** in the table and **"8.0% below its high"** three screens
+later. Both correct for their own date; together they read as a mistake, on the
+page whose whole promise is careful measurement. That is CLAUDE.md **11k**
+verbatim: *two snapshots describing the same subject must carry the same date.*
+
+So: **regenerate the two worked examples together, or not at all.**
+
+    python -m analytics.cron.build_landing_snapshot --worked-example
+    python -m analytics.cron.build_mag7_snapshot
+
+and then RE-READ the surrounding copy, because the page states relationships
+between these rows, not just the rows (finding 5A-014).
 
 ⚠️ The cycle maths is imported from `analytics/major_cycle.py`, never restated.
 An algorithm reimplemented for a second surface is the defect that put three
@@ -28,6 +68,7 @@ different roundings of one number on the page, the .csv and the .xlsx
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from datetime import datetime, timezone
@@ -48,7 +89,14 @@ TICKER = "AAPL"
 DISPLAY_NAME = "Apple"
 PRESET = "medium"
 
-OUT = Path(__file__).resolve().parents[2] / "web" / "app" / "landing-snapshot.json"
+_APP = Path(__file__).resolve().parents[2] / "web" / "app"
+#: The dated worked example — FROZEN. Only written with ``--worked-example``.
+OUT = _APP / "landing-snapshot.json"
+#: The live company count — rewritten and committed every night.
+COUNT_OUT = _APP / "universe-count.json"
+#: Apple's cycle figures for the /learn explainers — rewritten every night.
+#: Same shape as OUT, different LIFECYCLE. See the module docstring.
+LEARN_OUT = _APP / "learn-snapshot.json"
 _PAGE = 1000  # PostgREST caps a request at 1000 rows and says nothing (14c).
 
 
@@ -121,16 +169,38 @@ def _load_bars(supabase: Client, ticker: str) -> pd.DataFrame:
     )
 
 
-def main() -> None:
-    supabase = _supabase()
+def _write_universe_count(supabase: Client) -> int:
+    """The nightly half: one fact, always current.
 
+    Deliberately a separate FILE rather than a key inside the frozen snapshot.
+    A reader opening either file can tell from its name which lifecycle it has;
+    a single file with one live key among ten frozen ones cannot say that, and
+    the next person to regenerate it would have no way to know which is which.
+    """
+    count = _universe_count(supabase)
+    COUNT_OUT.write_text(
+        json.dumps(
+            {
+                "universeCount": count,
+                "generatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            },
+            indent=2,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    print(f"{COUNT_OUT.name}: {count} companies")
+    return count
+
+
+def _build_apple_snapshot(supabase: Client) -> dict[str, Any]:
+    """Apple's cycle geometry, freshly computed. Used by BOTH output files."""
     row = supabase.table("stocks").select("ticker,name,currency").eq("ticker", TICKER).execute()
     if not row.data:
         raise SystemExit(f"{TICKER} is not in the universe")
     stock = cast(list[dict[str, Any]], row.data)[0]
     currency = stock.get("currency") or "USD"
 
-    universe_count = _universe_count(supabase)
     df = _load_bars(supabase, TICKER)
     p = PRESETS[PRESET]
     metrics = calculate_cycle_metrics(
@@ -141,7 +211,6 @@ def main() -> None:
             lookback_bars=int(p["lookback_bars"]),
         ),
     )
-
     # An explicit allow-list, not a blocklist. A blocklist silently ships whatever
     # field is added upstream next; this can only ever emit these keys.
     #
@@ -156,11 +225,6 @@ def main() -> None:
         "ticker": TICKER,
         "name": DISPLAY_NAME,
         "currency": currency,
-        # How many companies we cover. Read from the DB every night rather than
-        # typed into the copy, because the universe auto-expands on every reader's
-        # ticker request (#16) — a literal here is a number the product actively
-        # works to falsify (11c-v).
-        "universeCount": universe_count,
         "price": metrics["current_close"],
         # ── how far it falls ──
         "currentDrawdownPct": metrics["current_drawdown_pct"],
@@ -180,7 +244,6 @@ def main() -> None:
     # renders as "null%" or an empty bar — plausible-looking and wrong — and the
     # storyboard's copy states these numbers in words as well as in the chart.
     required = (
-        "universeCount",
         "price",
         "currentDrawdownPct",
         "typicalDrawdownPct",
@@ -193,14 +256,57 @@ def main() -> None:
     if missing:
         raise SystemExit(f"Refusing to write a snapshot missing {missing}")
 
-    OUT.write_text(json.dumps(snapshot, indent=2) + "\n", encoding="utf-8")
-    print(
-        f"{OUT.name}: {snapshot['universeCount']} companies · "
-        f"{OUT.name}: {TICKER} {currency} {snapshot['price']:.2f} · "
-        f"now {snapshot['currentDrawdownPct']:.1f}% · "
-        f"usually {snapshot['typicalDrawdownPct']:.1f}% "
-        f"over {snapshot['pullbackEvents']} pullbacks · as of {snapshot['asOf']}"
+    # Deliberately writes NOTHING. `main()` decides which files receive this, and
+    # the two files it can go to have different lifecycles — a builder that also
+    # wrote one of them would make the nightly path capable of touching the frozen
+    # one by accident, which is the whole defect this split exists to prevent.
+    return snapshot
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--worked-example",
+        action="store_true",
+        help=(
+            "Also rebuild the FROZEN landing-snapshot.json (the landing page's dated "
+            "worked example). Regenerate build_mag7_snapshot.py in the same sitting "
+            "and re-read the landing copy - the page states relationships between "
+            "those rows, not just the rows."
+        ),
     )
+    args = parser.parse_args()
+
+    supabase = _supabase()
+
+    # Always: the count is a fact about the product and must never go stale.
+    _write_universe_count(supabase)
+
+    # Apple's cycle geometry, computed ONCE and written to one or two files. Both
+    # hold the same shape; what differs is their lifecycle.
+    snapshot = _build_apple_snapshot(supabase)
+
+    def _write(path: Path) -> None:
+        path.write_text(json.dumps(snapshot, indent=2) + "\n", encoding="utf-8")
+        print(
+            f"{path.name}: {snapshot['ticker']} {snapshot['currency']} "
+            f"{snapshot['price']:.2f} - now {snapshot['currentDrawdownPct']:.1f}% - "
+            f"usually {snapshot['typicalDrawdownPct']:.1f}% over "
+            f"{snapshot['pullbackEvents']} pullbacks - as of {snapshot['asOf']}"
+        )
+
+    # NIGHTLY. The /learn explainers describe how the product behaves TODAY, so
+    # their figures stay live. Owner decision, restated 2026-09-01 when the landing
+    # page's example was frozen: "keep the learn articles as is ... keep it separate".
+    _write(LEARN_OUT)
+
+    if not args.worked_example:
+        return
+
+    # ON REQUEST ONLY. The landing page writes prose ABOUT these numbers and shares
+    # Apple with the frozen Mag 7 table beside it, so this file moves when a person
+    # decides it should - never at 22:30 UTC (finding 5A-013).
+    _write(OUT)
 
 
 if __name__ == "__main__":

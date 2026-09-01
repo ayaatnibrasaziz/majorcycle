@@ -2268,9 +2268,19 @@ redirects rather than quietly reporting a bounce as a page. This also satisfies 
   one. `og:image` is now stated explicitly from one `OG_IMAGE` constant in `lib/seo.ts`.
 
 - **Landing page live figures.** `/` shows one real stock with real numbers, read from
-  `web/app/landing-snapshot.json` — a committed file, not a query. Rebuilt nightly by
-  `analytics/cron/build_landing_snapshot.py` at the end of the US+CA refresh workflow,
-  which commits it back with `[skip ci]`.
+  `web/app/landing-snapshot.json` — a committed file, not a query. **FROZEN since
+  2026-09-01** (finding 5A-013): rebuilt only by `build_landing_snapshot.py
+  --worked-example`, by hand, in the same sitting as `build_mag7_snapshot.py`, because
+  the two share Apple and must carry one date. The nightly cron rebuilds only
+  `web/app/universe-count.json` — the live company count — and commits it with
+  `[skip ci]`.
+
+  ⚠️ **`[skip ci]` is why the guard could not save us, and it is why the fix had to be
+  structural.** `e2e/landing.spec.ts` has always asserted the two snapshots share an
+  `asOf`. That assertion is correct and it never ran on the commit that broke it, because
+  a cron commit skips CI by design (to save Actions minutes). Running CI nightly is the
+  wrong trade; **taking the snapshots out of the cron's reach entirely** is the right one.
+  A guard cannot cover a write that is committed past it.
 
   ⚠️ **It cannot leak a paid field, structurally.** The generator calls
   `calculate_cycle_metrics`, which returns cycle geometry and has no rating, health score

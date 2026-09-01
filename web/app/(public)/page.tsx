@@ -5,7 +5,7 @@ import { pageMetadata } from '@/lib/seo';
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from '@/lib/jsonld';
 import { JsonLd } from '@/components/JsonLd';
 import { LANDING, UNIVERSE_COUNT, depth, price } from '@/lib/landing';
-import { MAG7, cardinal, mag7Facts, pct1, shortName } from '@/lib/mag7';
+import { MAG7, mag7Facts, pct1, shortName } from '@/lib/mag7';
 import { tierFromLabel } from '@/lib/ratings';
 import { Button } from '@/components/ui/button';
 import { CycleRulers } from '@/components/landing/CycleRulers';
@@ -387,16 +387,41 @@ export default function LandingPage() {
                 </p>
                 <div className="callout" style={{ marginTop: '24px' }}>
                   <div className="h">What this particular run is telling you</div>
+                  {/*
+                    ⚠️ Every figure here is COMPUTED from the snapshot, and that is not
+                    enough on its own — finding 5A-014, 2026-09-01.
+
+                    The previous wording said "{deepestFall} has fallen furthest … ITS
+                    Financial Health is {weakest.healthScore}", which silently attributed
+                    one company's health score to another the moment those two rows stopped
+                    being the same company. On the 13 Aug data they were both Tesla, so it
+                    read correctly for the file's whole life. On the 31 Aug data the deepest
+                    faller is Meta — and the sentence would have printed Tesla's 49.8 under
+                    Meta's name, then called a Constructive, financially healthy company
+                    "the weakest business on the list".
+
+                    The lesson, which is the one worth carrying: computing a figure from
+                    data protects the FIGURE, never an argument built on a RELATIONSHIP
+                    between figures. This wording therefore names both companies explicitly
+                    and asserts only what the numbers say — two similar falls, opposite
+                    verdicts — and `e2e/landing-copy.spec.ts` fails if that premise stops
+                    holding, so the next regeneration is TOLD rather than expected to notice.
+                  */}
                   <p>
                     <strong>
-                      {shortName(f.deepestFall.name)} has fallen furthest of the{' '}
-                      {cardinal(f.total)} — {pct1(f.deepestFall.currentDrawdownPct)} — and
-                      still comes {f.deepestFallRank}.
+                      {shortName(f.deepestFall.name)} and {shortName(f.weakest.name)} have
+                      fallen almost exactly the same distance —{' '}
+                      {pct1(f.deepestFall.currentDrawdownPct)} and{' '}
+                      {pct1(f.weakest.currentDrawdownPct)}.
                     </strong>{' '}
-                    Its Financial Health is {f.weakest.healthScore.toFixed(1)} against{' '}
-                    {shortName(f.healthiest.name)}&rsquo;s {f.healthiest.healthScore.toFixed(1)}. That&rsquo;s exactly the trap the
-                    second question exists to catch: the biggest discount on the list belongs
-                    to the weakest business on it.
+                    The ranking puts {shortName(f.deepestFall.name)} {f.deepestFallRank} and{' '}
+                    {shortName(f.weakest.name)} {f.weakestRank}.{' '}
+                    {shortName(f.deepestFall.name)}&rsquo;s Financial Health is{' '}
+                    {f.deepestFall.healthScore.toFixed(1)}; {shortName(f.weakest.name)}
+                    &rsquo;s is {f.weakest.healthScore.toFixed(1)}. The same discount,
+                    opposite verdicts — which is exactly what the second question exists to
+                    catch. The size of the fall told you nothing about which one was worth
+                    owning.
                   </p>
                   <p style={{ marginTop: '11px' }}>
                     Now look at what <em>isn&rsquo;t</em> here.{' '}

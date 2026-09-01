@@ -188,27 +188,44 @@ jobs:
       # ⚠️ The script emits FREE-tier fields only, and that is structural rather
       # than remembered: it calls `calculate_cycle_metrics`, which cannot return a
       # rating, a health score or a valuation (CLAUDE.md 11b).
-      - name: Rebuild the landing snapshot
+      # ⚠️ NO `--worked-example` here, and that flag's absence is load-bearing
+      # (finding 5A-013, 2026-09-01). This step writes the two LIVE files:
+      #
+      #   universe-count.json  — how many companies we cover. A fact; never stale.
+      #   learn-snapshot.json  — Apple's figures for the /learn explainers, which
+      #                          describe how the product behaves TODAY (owner
+      #                          decision: "keep the learn articles as is").
+      #
+      # It must NOT write `landing-snapshot.json`. Those same Apple figures do a
+      # different job on the landing page: it writes prose ABOUT them and sits them
+      # beside the FROZEN Mag 7 table. While this job rebuilt that file nightly the
+      # two drifted apart, and the live page printed Apple at -11.3% in the table
+      # and "8.0% below its high" three screens later. Regenerating a worked example
+      # is a CONTENT change that needs the surrounding copy re-read, so it is done
+      # by hand, both files together — never by a cron at 22:30 UTC.
+      - name: Rebuild the live figures (count + /learn)
         if: github.event_name != 'workflow_dispatch' || inputs.run_prices
         env:
           SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python -m analytics.cron.build_landing_snapshot
 
-      - name: Commit the landing snapshot if it moved
+      - name: Commit the live figures if they moved
         if: github.event_name != 'workflow_dispatch' || inputs.run_prices
         run: |
           set -e
-          if git diff --quiet -- web/app/landing-snapshot.json; then
-            echo "landing snapshot unchanged — nothing to commit"
+          if git diff --quiet -- web/app/universe-count.json web/app/learn-snapshot.json; then
+            echo "live figures unchanged — nothing to commit"
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # ONLY this file. `git commit -a` here would sweep up anything else a
-          # future step happens to leave in the tree.
-          git add web/app/landing-snapshot.json
-          git commit -m "chore(landing): nightly snapshot [skip ci]"
+          # ONLY these two files, named explicitly. `git commit -a` here would sweep
+          # up anything else a future step leaves in the tree — and in particular it
+          # must never pick up `landing-snapshot.json` or `mag7-snapshot.json`, the
+          # two frozen worked examples this job is deliberately unable to write.
+          git add web/app/universe-count.json web/app/learn-snapshot.json
+          git commit -m "chore(landing): nightly live figures [skip ci]"
           git push
 
       # ── The listings alarm (audit F-027, 2026-08-25) ───────────────────────

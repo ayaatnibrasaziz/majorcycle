@@ -1077,8 +1077,19 @@ test.describe('the drawdown article figures', () => {
 
     // The control: the three record rows must actually name the snapshot fields.
     // Without this, deleting the rows entirely would satisfy the check above (14g).
+    //
+    // ⚠️ Matched by FIELD, not by the object's name. This asserted the literal
+    // `LANDING.currentDrawdownPct` until 2026-09-01, and went red when the import
+    // was renamed to `LEARN_FIGURES` — a rename that changed nothing a reader can
+    // see. That is CLAUDE.md 11i-b: *a guard that names an IMPLEMENTATION fails on
+    // refactors and teaches you to loosen it.* What this guard actually cares about
+    // is that the number is READ off a snapshot object rather than typed, so it now
+    // says exactly that and survives the object being renamed again.
     for (const field of ['currentDrawdownPct', 'typicalDrawdownPct', 'deepestDrawdownPct']) {
-      expect(src, `the record figure no longer reads LANDING.${field}`).toContain(`LANDING.${field}`);
+      expect(
+        src,
+        `the record figure no longer reads .${field} off a snapshot object`,
+      ).toMatch(new RegExp(`\\b[A-Za-z_$][\\w$]*\\.${field}\\b`));
     }
   });
 

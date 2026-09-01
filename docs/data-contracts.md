@@ -1150,17 +1150,72 @@ PRESETS = {
 
 ---
 
-## 7a. The two committed landing snapshots (Layer G)
+## 7a. The four committed landing files (Layer G)
 
-Neither is a database table and neither is fetched at request time. Both are **JSON files
+None is a database table and none is fetched at request time. All are **JSON files
 committed to the repo and statically imported**, so the front door never touches Postgres
 and Lighthouse has nothing to wait on. Architecture §7.1 explains why the Mag 7 one is a
 deliberate, bounded exception to the paywall; this section is the shape.
 
-### `web/app/landing-snapshot.json` — one stock, rebuilt nightly
+⚠️ **TWO LIFECYCLES, AND THE SPLIT IS THE CONTRACT** (finding 5A-013, 2026-09-01).
 
-Written by `analytics/cron/build_landing_snapshot.py` at the end of the US+CA refresh,
-committed back with `[skip ci]`. Read through `web/lib/landing.ts`.
+| File | Kind | Rebuilt | Read by |
+|---|---|---|---|
+| `universe-count.json` | a **fact** — how many companies we cover | **nightly**, committed | the landing hero, stats band, free-tier list |
+| `learn-snapshot.json` | **live** Apple figures | **nightly**, committed | `/learn` explainers |
+| `landing-snapshot.json` | a dated **worked example** — Apple | **by hand**, `--worked-example` | the landing's "the idea" section |
+| `mag7-snapshot.json` | a dated **worked example** — the Mag 7 run | **by hand** | the landing's ranked table + callout |
+
+⚠️ **`learn-snapshot.json` and `landing-snapshot.json` hold the SAME SHAPE and are written
+from ONE computation** — they cannot disagree at the moment both are written, and diverge
+only as the frozen one ages. That is deliberate: an explainer describes how the product
+behaves *today*, while a worked example is a dated argument. Owner decision, 2026-09-01:
+*"keep the learn articles as is ... keep it separate."*
+
+**A fact must never be stale; a worked example must never disagree with the one beside
+it.** Those are different rules, and for one file they were in conflict. Apple appears in
+`landing-snapshot.json` AND in the Mag 7 table on the same page; while the first rebuilt
+nightly and the second stayed frozen, they drifted 18 days apart and the live page printed
+Apple at **−11.3%** in the table and **"8.0% below its high"** three screens later — both
+correct for their own date, together indistinguishable from a mistake. CLAUDE.md 11k.
+
+**Regenerate the two worked examples together, or not at all**, and re-read the copy
+afterwards — the page states relationships between the rows, not just the rows (5A-014):
+
+```
+python -m analytics.cron.build_landing_snapshot --worked-example
+python -m analytics.cron.build_mag7_snapshot
+pnpm exec playwright test e2e/landing-copy.spec.ts e2e/landing.spec.ts
+```
+
+### `web/app/universe-count.json` — the live company count
+
+```typescript
+interface UniverseCount {
+  universeCount: number;   // `stocks` where market <> 'index', counted exactly (14c)
+  generatedAt: string;
+}
+```
+
+Written on **every** nightly run and committed with `[skip ci]`. It is a separate file
+rather than a key inside the snapshot so that a reader can tell the two lifecycles apart
+by name; one live key hidden among ten frozen ones is exactly the ambiguity that produced
+the defect. Read through `UNIVERSE_COUNT` in `web/lib/landing.ts`.
+
+### `web/app/landing-snapshot.json` — one stock, FROZEN
+
+Written by `analytics/cron/build_landing_snapshot.py --worked-example` — never by the
+nightly path, which does not even load Apple's bars. Read through `web/lib/landing.ts`.
+
+⚠️ **Nothing else may read this file.** `learn/content.tsx` and
+`components/learn/DrawdownFigures.tsx` read `learn-snapshot.json` through
+`lib/learn-figures.ts` instead, because they need the LIVE figures. Freezing this one was
+never meant to freeze them.
+
+**The residual, stated rather than hidden:** a reader moving from the landing to a Learn
+article can meet two different Apple drawdowns. Both are labelled with their date, and they
+sit on **different pages** — which is what makes it acceptable where the same thing three
+screens apart on ONE page was not (5A-013).
 
 ```typescript
 interface LandingSnapshot {
@@ -1317,7 +1372,7 @@ The mechanism stays in the type for the next time a title is announced ahead of 
 so a component here joins the **middleware** bundle that runs on every request to the site.
 Bodies live in `app/(public)/learn/content.tsx`. Guarded by `check:seo`.
 
-⚠️ **Worked examples read the nightly landing snapshot (§7a), never hard-coded numbers**
+⚠️ **Worked examples read the landing snapshot (§7a), never hard-coded numbers**
 (11k). "Apple has fallen 11.3%" typed into prose is a sentence that is true today, fluent
 forever, and wrong from tomorrow, with nothing going red.
 
@@ -1363,10 +1418,11 @@ of that, and `articles.spec.ts` asserts a planned row is never — and never *co
 — a link.
 
 ⚠️ **AN ARTICLE'S FIGURES ARE FROZEN, WHICH IS THE OPPOSITE OF THE LEARN RULE.**
-`learn/content.tsx` reads every number from the nightly snapshot, because an explainer
-describes how the product behaves *today*. An article is a record of one day, so a
-live read would leave the drawing disagreeing with the prose beside it the first time
-a price moved. The guarantee is a **workbook** instead —
+`learn/content.tsx` reads every number from the **nightly** `learn-snapshot.json` (§7a),
+because an explainer describes how the product behaves *today*. ⚠️ That file was split out
+of `landing-snapshot.json` on 2026-09-01 (finding 5A-013) precisely so this rule could
+survive the landing page's example being frozen. An article is a record of one day, so a live read would leave the
+drawing disagreeing with the prose beside it the first time a price moved. The guarantee is a **workbook** instead —
 `reference/how-far-do-asx-shares-fall-WORKING.xlsx`, every published figure a live
 formula over the underlying rows — so each one can be re-derived rather than taken on
 trust. Re-taking a measurement is an edit to the article, never a data refresh (11k).

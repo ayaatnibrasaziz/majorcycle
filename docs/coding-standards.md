@@ -1781,8 +1781,11 @@ derived from the constant at render time and guarded, or (b) genuinely fixed (th
 Flagged rather than fixed in the first pass, because approved storyboard copy is a
 design decision rather than a typo fix (11l) — the owner then asked for it, and the
 count turned out to be **866 in the database against 863 on the page**. It now comes
-from `landing-snapshot.json`, written nightly by the cron that already commits that
-file, so the page keeps its static prerender and the number keeps itself honest.
+from a committed file rather than the copy, so the page keeps its static prerender and
+the number keeps itself honest. ⚠️ **It moved to its own file, `universe-count.json`, on
+2026-09-01** (finding 5A-013): a count is a FACT that must never be stale, while the
+snapshot beside it is a dated worked example that must never disagree with the Mag 7 table
+sharing its page. One file could not carry both rules, and the wrong one won.
 
 ⚠️ Two details worth carrying forward. **Count with `count="exact"`, never
 `len(rows)`** — PostgREST's silent 1000-row cap (14c) would have made the figure

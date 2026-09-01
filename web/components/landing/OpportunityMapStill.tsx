@@ -56,13 +56,23 @@ const diameter = (overall: number): number =>
  * review and unremarkable in a screenshot — two short labels touching at the
  * corner — so `e2e/landing.spec.ts` walks every pair of labels and captions and
  * fails on any intersection. Re-run it after any `build_mag7_snapshot` run.
+ *
+ * ⚠️ **It expired a SECOND time on 2026-09-01, exactly as predicted**, which is
+ * the argument for keeping the guard rather than trusting this note. Regenerating
+ * the snapshot moved Nvidia's Valuation 0.6 → 14.1 and Apple's 29.6 → 18.2,
+ * closing the gap between them from 29 points to 4; Nvidia's label hung left and
+ * Apple's hung right, so the two pointed into the same shrinking corridor and
+ * met. `NVDA` moved to the right — away from Apple, and it is the rightmost point
+ * on the map, so nothing sits beyond it. The guard found it in 20 seconds; a
+ * screenshot would not have, and neither did I when I predicted the collision but
+ * guessed the wrong pair (I expected Apple ↔ Amazon).
  */
 const SIDE: Record<string, 'l' | 'r' | 'u' | 'd'> = {
   GOOGL: 'r',
   META: 'l',
   MSFT: 'r',
   AAPL: 'r',
-  NVDA: 'l',
+  NVDA: 'r',
   TSLA: 'r',
   AMZN: 'u',
 };
