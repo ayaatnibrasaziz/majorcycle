@@ -139,7 +139,7 @@ entirely.
 | Element | Must be |
 |---|---|
 | **Header** | ONE header on every page. The brand lockup. **No "Markets · Live" pill** — removed by owner decision, and its CSS with it |
-| **Footer** | ONE definition, links in this order: **How it works · Learn · Pricing · Contact · Disclaimer · Terms · Privacy** |
+| **Footer** | ONE definition. **Measured live 2026-09-01 (P1):** *Home · How it works · Articles · Learn · Pricing · Contact · Disclaimer · Terms · Privacy* — nine links. The artifact's seven are all present **in the artifact's order**; `Home` and `Articles` were added afterwards, and `/articles` did not exist when the artifact was drawn (5A-007, 5A-017). Recorded as the live truth; `Home` is pending owner confirmation |
 | **Cards** | ONE language: **10px radius + 1px border**. ⚠️ Explicitly *not* the old 12px radius with a 60px ambient shadow — that is what made signing in feel like a different product from the thing you were signing into. Floating cards keep a lift; cards inside a page use the whisper |
 | **Buttons** | ONE primary: the **navy gradient**, not a flat fill. ⚠️ `.topnav a` outranks `.btn-primary` on specificity, so without `:not(.btn)` the sign-up button renders grey-on-blue — **invisible, and silent** |
 | **Disclaimer chip** | Required **above the fold** (#4 / #12) |
