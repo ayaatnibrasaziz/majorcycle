@@ -1150,6 +1150,10 @@ PRESETS = {
 
 ---
 
+> ⚠️ **`AE.V` (American Eagle Gold) is the universe's first and only TSX Venture stock**, added
+> 2026-09-02 through the real request queue so rule #14's `.V` carve-out finally has data behind
+> it. Before that, 1,454 `.V` symbols were requestable and none was covered. See 5A-033/5A-034.
+
 ## 7a. The four committed landing files (Layer G)
 
 None is a database table and none is fetched at request time. All are **JSON files
