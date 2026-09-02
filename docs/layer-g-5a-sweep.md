@@ -577,6 +577,58 @@ this project's own history is that a sweep quietly narrowed is worse than one op
 
 ---
 
+## P2 — the owner's decisions, 2026-09-02
+
+Taken before any code was written. Each was put with the measurements behind it.
+
+| # | Decision | Owner's answer |
+|---|---|---|
+| 1 | **A caution colour** | **Yes — a traffic light: green / yellow / red.** ⚠️ The owner overruled my recommendation to keep amber out of the ratings, and the reasoning is better than mine: *“it is not about visibility, it's about common sense. Traffic lights are typically used to say between good, neutral and bad… going from green, grey and red doesn't make sense.”* |
+| 2 | **Which colours may move** | **All five.** *“You are free to move any colors in the rating band.”* |
+| 3 | **Yellow, given it cannot be legible text** | **Badge bright, text dark.** The true traffic-light yellow on every chip, bar, dot and gauge; a dark mustard only where a tier must render as bare text |
+| 4 | **Brand fit** | **Tuned to the navy brand**, not stock traffic-light colours. Exact swatches + measurements to the owner before anything ships |
+| 5 | **The fall percentage** | **Coloured by the stock's VALUATION tier**, because the drawdown is what the valuation is computed from. It stops being green merely for being deep |
+| 6 | **Rollout** | **Names first, colours after.** New tokens point at today's exact values so nothing moves visually; every colour change lands afterwards as its own reviewable step |
+| 7 | **Dark mode** | **Structure now, no theme.** Build so a dark theme is later a config change, ship nothing dark, and fix the missing `color-scheme` which costs something today |
+
+### The measurements these rest on
+
+**Yellow cannot be a legible word on a light page.** Searched the whole yellow band
+(hue 38–66, saturation ≥ .45) for anything reaching 4.5:1 on **both** white and
+`--bg-page`: the lightest that qualifies is **`#876B33`**, a dark mustard. Yellow is
+intrinsically light, so darkening it to legibility turns it brown. **This is physics,
+not taste**, and it is why the August search concluded gold was unsalvageable.
+
+**As a CHIP it works.** `#FACC15` carrying `#713F12` text measures **5.66:1**, and a
+five-rung chip ladder separates by **18.5 at worst** including protanopia and
+deuteranopia — comfortably past the 16 floor. ⚠️ **This is only possible because the
+chip colour and the text colour are different tokens**, which is exactly what the
+split in *A palette per job* creates. The architecture work is what unlocks the
+owner's traffic light.
+
+**Why amber at *Neutral* failed when Cautious was fixed:** `#B45309` beside the
+orange-red `#C73600` measures **0.5** to a deuteranope — the same colour. Freeing all
+five (decision 2) is what makes the ladder solvable.
+
+### ⚠️ One consequence to settle before building — the fall % is a FREE field
+
+Decision 5 colours the fall percentage by the **Valuation tier**. Valuation is
+**premium** (`PREMIUM_FIELDS`), and *Current Drawdown* is **free** — deliberately, and
+it is the field every paywall test uses as its readiness signal.
+
+**So colouring a free number by a paid rating leaks the paid rating through colour.**
+It is CLAUDE.md **11b** in a new form: the value is withheld from the DOM and its
+*meaning* is published anyway, in a channel no entitlement guard inspects. A free
+reader could read the Valuation tier off five stocks by eye.
+
+**Proposed resolution, for the owner:** the fall % takes the valuation tier colour
+**only for an entitled viewer**; for everyone else it renders in plain text. That keeps
+decision 5 intact where it was aimed (the paid analysis) and keeps the paywall whole.
+`check:entitlement-gates` to gain an assertion that no free surface carries a
+tier colour.
+
+---
+
 ## A palette per job — the P2 proposal
 
 ⚠️ **Written 2026-09-02, at the owner's direction, and NOT yet applied.** The question was:
