@@ -425,6 +425,13 @@ code review would ever surface.*
 | **5A-066** | P2 | 🟢 **Legal pages and `/contact` are clean** | `/terms`, `/privacy`, `/disclaimer`, `/contact` | Every semantically-coloured element is brand blue or navy. No rating colours, no direction colours, nothing a reader could misread as a signal on a page that must not carry one | **Pass 2026-09-02** |
 | **5A-067** | P2 | 🟢 **Forbidden vocabulary in CSS class names** | `globals.css` | `.card-header--accent-buy` and `.card-header--accent-hold` carry *Buy* and *Hold* — words CLAUDE.md #2 forbids in our scoring outputs. **Not a compliance breach**: a class name is never rendered. Worth renaming with the P2 work, because the names also map a **rating** idea onto **direction** ink (`--c-up-ink` / `--c-neutral-ink`), which is 5A-057's confusion written into the stylesheet | Recorded |
 | **5A-068** | P2 | ⚠️ **Instrument — the scan count earned its keep** | method | I probed `/learn/how-long-do-recoveries-actually-take` and it returned almost nothing. Under the old probe that would have read as *a clean page*; with the scan count it read as **6 text nodes**, which is not an article — it was the **404 page**, because I had guessed the slug. **The fix from 5A-055 caught a second false clean within one session** | Recorded |
+| **5A-069** | P2 | 🔴 **`/results` reached — and it confirms the drift LIVE** | `/results` | Screener driven end to end (Magnificent Seven, entitled throwaway). ⚠️ **It does not navigate**: the run completes on `/run` and the reader must go to `/results` themselves, which is why three earlier attempts looked like a hang. On the rendered table: the **High Conviction badge sits on the retired `#006400`** and **Constructive on the retired `#228B22`** while their text uses the current pine and green — 5A-044 on the most valuable premium surface. ⚠️ **New here:** the drawdown column uses the **rating** colours, so a stock that has barely fallen (`-0.2%`) is painted **Bearish red** and one down 26.6% is painted **High Conviction green**. The red does not mean “bad company” — it means “has not fallen far” — and nothing on the page says so | Open — owner's call |
+| **5A-070** | P2 | 🔴 **One palette is doing at least TWELVE unrelated jobs** | sitewide | The rating tokens (`--c-tier-*`, i.e. *our five-tier judgement of a stock*) are referenced in **30+ files**, most of which are not about rating a stock: **delete-account danger** (`DeleteAccountCard`), **form errors and the saved tick** (`ProfileForm`, `PasswordForm`), **CSV import ok/warn/error** (`CsvImport`), **run-progress counts** (`RunProgress` Scored/Skipped), **short-interest bands** (`ShortInterest`), **billing status** (`SubscriptionCard`), **drawdown depth**, **cycle position**, **health**, **valuation**, the **delisting banner** and the **onboarding modal**. ⚠️ **Consequence, in one sentence:** retune *Cautious* because a rating chip looked wrong and you also repaint CSV warnings, skipped-ticker counts, billing warnings and short-interest bands — none of which you were thinking about. This is the owner's question answered: **yes, they must be separated** | Open — the P2 fix |
+| **5A-071** | P2 | 🟠 **58 distinct colours exist in no palette at all** | sitewide | 145 occurrences across `components/`, `app/` and `lib/`, excluding comments and the token block itself. Heaviest: `globals.css` (32), `landing.css` (12), `OpportunityMap.tsx` (11), `brandEmail.ts` (10), `EarningsHistory.tsx` (8). These are the colours a palette change can never reach, and each is a place a dark mode would have to be fixed by hand | Open — the P2 fix |
+| **5A-072** | P2 | 🔴 **The product already needed AMBER twice, and invented it locally both times** | `PremiumLockPage`, Smart Money | The design system has no amber (5A-046) — so where one was genuinely needed, it was written by hand from Tailwind's palette instead: the premium-lock notice uses `#FCD34D` border / `#FFFBEB` fill / `#92400E` text, and `.smart-pill.is-initiate` uses `#D97706` on `rgba(217,119,6,.10)`. **Five stray amber values, two components, none in any token.** ⚠️ This is the strongest evidence for 5A-046: the gap is not theoretical, it has already been filled twice, inconsistently, by whoever hit it | Open — the P2 fix |
+| **5A-073** | P2 | 🟡 **Ten hand-typed colours in the transactional emails** | `lib/email/brandEmail.ts` | An email cannot use a CSS custom property, so literals are unavoidable **in kind** — but they are currently typed rather than imported, so the branded emails will silently keep the old brand colours through any palette change. Needs a shared exported constant, the same argument as `lib/ink.ts` | Open — the P2 fix |
+| **5A-074** | P2 | 🟡 **The Opportunity Map keeps a private palette** | `/results`, landing | `#1A1A1B`, `#2E3347`, `#E8EAF0`, `#94A3B8` appear only there (plus the still image's copies). It is the one premium chart whose colours are defined nowhere else, so it will not follow a palette change and will need bespoke work for dark mode | Open — the P2 fix |
+| **5A-075** | P2 | 🟢 **Checked and CLEAR — the retired muted grey is never text** | sitewide | `#8A97A8` — the pre-2026-08-22 `--text-muted`, which measured **2.97:1** — survives in six places. All six are **strokes, borders or fills** (`OpportunityMap` reference lines, a landing border, a fade gradient, the `.mt-cat-market` chip's wash), and the chip's own text is `#4A5568`. **No contrast regression.** Recorded because a stale value that once failed accessibility is exactly the thing to check rather than assume | **Pass 2026-09-02** |
 | **5A-006** | P9 | 🟢 **Opportunity** | Vercel | **Speed Insights closes F-021.** Real-user p75 per route, reaches signed-in pages, immune to a single unlucky run — the instrument the audit said decision #33 was blocked on | **Owner decision.** Turn on before launch, since it needs traffic to report |
 
 ---
@@ -433,6 +440,7 @@ code review would ever surface.*
 
 | Session | Date | Passes covered | Findings |
 |---|---|---|---|
+| 9 | 2026-09-02 | **`/results` finished, and the token architecture question answered.** The screener was driven end to end — it does **not** navigate to `/results`, which is why it looked like a hang — and the rendered table confirms the badge drift on the most valuable paid surface. Then the owner's question: **one palette is serving at least twelve unrelated jobs across 30+ files**, 58 colours exist in no palette at all, and the missing amber has **already been invented twice by hand**. Proposal in *A palette per job* below | 5A-069…5A-075 |
 | 8 | 2026-09-02 | **P2 deepened at the owner's direction — read the CODE, not just the screen.** The class they named turned out to be real and large: **four groups of tokens hold the same value today**, three of which put the rating palette and the direction palette on one colour, so choosing the wrong name is undetectable until one moves. Also: **no `--c-down-ink` exists** while its four siblings do; ~100 hard-typed literals duplicate a token; **two range gauges on one page run opposite gradients**; a drawdown percentage has **three** colours across the site; and the Cycle Position column is a coloured number whose documented legend **does not exist** and whose colour cut-points disagree with its own zones | 5A-057…5A-068 |
 | 7 | 2026-09-02 | **P2 continued — `/account` × 10 states, the delisting banner, the public pages.** The finding that matters: the **`warn` tone on `/account` is grey**, so *Payment due* / *Access paused* / *On hold* are the most neutral thing on the screen — the palette moved under them in August and nothing traced it. Also named the root of 5A-041: **two colour conventions for a drawdown both ship**. Public pages are clean. ⚠️ One probe defect reported a clean result across **sixteen** pages before it was caught, and `/results` is honestly unfinished | 5A-050…5A-056 |
 | 6 | 2026-09-02 | **P2 started — the palette layer and the paid page.** Nine findings: two places where one figure carries two opposite colours, a “middling” grey 9.5 from the “no data” grey against guarded floors of 16–34, a tint layer never re-based, a third party's rating in our verdict colour, and the design question under them all — **the site has no amber words**. One candidate investigated and **withdrawn** as deliberate. **Nothing changed on any paid surface** (11l). Still to sweep: screener + results, `/account` states, public pages, the delisting banner, Learn/Articles figures | 5A-041…5A-049 |
@@ -544,6 +552,65 @@ immediately rather than held for the pass summary.
 P5a + P1 + P2 is a session. P3 + P4 is a session. P5–P7 is a session. P8 plus fixes and
 re-verification is a session. **If it runs longer I say so rather than thinning the checks** —
 this project's own history is that a sweep quietly narrowed is worse than one openly unfinished.
+
+---
+
+## A palette per job — the P2 proposal
+
+⚠️ **Written 2026-09-02, at the owner's direction, and NOT yet applied.** The question was:
+*do we need to separate the colour variables per case?* The measured answer is yes — 5A-070
+found one palette serving twelve jobs, 5A-057 found four groups of tokens holding the same
+value, and 5A-072 found the missing amber already invented by hand twice.
+
+**The failure this prevents.** Today, retuning *Cautious* because a rating chip looks wrong
+also repaints CSV import warnings, skipped-ticker counts, billing warnings and short-interest
+bands. Nothing links those to the rating, nothing warns you, and every one of them still
+renders perfectly afterwards.
+
+### Two layers, and only the bottom one knows a hue
+
+| Layer | What it is | Who reads it |
+|---|---|---|
+| **Primitives** | the raw ramps — `--green-700`, `--red-800`, `--amber-600`, `--grey-500`, `--blue-600` … | **nothing in a component, ever** |
+| **Semantic** | what the colour MEANS in one domain — `--rating-4`, `--status-warning`, `--dir-down` | every component |
+
+A dark mode then re-points the semantic layer at different primitives. **That is the whole
+reason for the split**, and it is why a hard-typed literal (5A-071: 58 of them) is not a
+tidiness problem — it is a colour that cannot be re-pointed.
+
+### The domains, each with its own names
+
+| Domain | Tokens | Why it cannot share |
+|---|---|---|
+| **Brand** | `--brand-deep / mid / bright / light`, `--brand-ink` | identity, not meaning |
+| **Surface** | `--surface-page / card / raised / sunken / hover / stripe / inverse` | the three whites are one token today by accident |
+| **Border** | `--border-subtle / default / strong / focus` | — |
+| **Text** | `--text-primary / secondary / muted / disabled / on-dark / link` | — |
+| **Rating** (our judgement, 5) | `--rating-1…5` + `-ink`, `-tint`, `-tint-strong` | THE product opinion; must move alone |
+| **Health** (3) | `--health-good / adequate / at-risk` | three tiers, not five — aliasing rating is why *Adequate* is grey |
+| **Cycle depth** | `--cycle-deep / typical / shallow` | 5A-069: “barely fallen” is painted **Bearish red** today. It is not a verdict |
+| **Direction** | `--dir-up / down / flat` + `-ink`, `-tint` | market movement, not our opinion |
+| **Analyst (third party)** | `--analyst-positive / neutral / negative` | 5A-045: a Yahoo *Sell* must never wear our Bearish colour |
+| **Status / feedback** | `--status-success / warning / danger / info` + `-ink`, `-tint` | forms, CSV import, run progress, toasts |
+| **Billing** | `--billing-ok / attention / blocked / inactive` | 5A-050: the warning went grey because it borrowed a rating token |
+| **Data state** | `--data-missing` | 5A-043: must be visibly distinct from *Neutral*, which it is not (ΔE 9.5) |
+| **Chart** | `--chart-grid / axis / crosshair`, `--series-1…n` | 5A-074: the Opportunity Map has a private palette |
+| **Notice** | `--notice-info / warning / critical` | the delisting banner, premium-lock notices |
+
+⚠️ **Several will START as aliases of the same hue, and that is correct** — the point is not
+that they look different on day one, it is that each can be changed without touching the
+others. A shared *value* is fine; a shared *name* is the defect.
+
+### What has to be true when it is done
+
+1. No component references a primitive; no component hard-types a colour a token could supply.
+2. `check:tier-palette` extended to every domain, and it must read **`rgba()` as well as hex** —
+   the format blind spot that hid `compositionRamp` for a month (11c-viii) and hides the tier-1
+   and tier-4 badge backgrounds today (5A-044).
+3. A guard asserting **no two semantic tokens in DIFFERENT domains share a value silently** —
+   or, where they must, that the sharing is declared in one place (5A-057).
+4. `design-system.md` §2 regenerated FROM `globals.css` rather than maintained beside it, since
+   it has been wrong in five places since August (5A-048).
 
 ---
 
