@@ -60,11 +60,37 @@ const STOCK_COLOR = '#1E5CB3';
    graphic floor at 3.30 while failing as a label. Both now carry their ink value,
    so each legend entry still matches the line it names. The grey and the violet
    were already legible (5.70 for the violet) and are untouched. */
+/* ⚠️ REWORKED 2026-09-02 — audit 5A-089 / 5A-090, and this was the site's one
+   genuine WCAG 1.4.1 exposure. Three defects in four values:
+
+     · `^GSPC` was CHART_INK — the token for axis ticks, legends and watermarks.
+       The S&P 500 line and the chart's own furniture were the IDENTICAL colour
+       (ΔE 0.0), so the benchmark could not be told from the grid labelling.
+     · `^AXJO` was INK.neutral, and the comment beside it still said "gold" —
+       that token stopped being gold in August. So two of the four series were
+       grey: 8.8 apart in normal vision, 7.1 to a protanope.
+     · `^AXJO` against `^GSPTSE` measured **2.6** to a protanope — indistinguishable.
+
+   A line chart conveys series identity through colour and a legend cannot
+   disambiguate two series that ARE the same colour. Four distinct hues now, none
+   within 15 of the furniture — AND a distinct dash per series, so colour is never
+   the only channel. The dash is the part that actually satisfies 1.4.1: the
+   weakest colour pair here is still 5.9 (violet against the stock's brand blue to
+   a protanope), and no five-line palette clears 16 everywhere without turning to
+   mud. Give a new benchmark its own dash as well as its own hue. */
 const BENCH_COLOR: Record<string, string> = {
-  '^GSPC': CHART_INK,      // S&P 500 — neutral grey
-  '^IXIC': '#7C3AED',      // Nasdaq — violet
-  '^AXJO': INK.neutral,    // ASX 200 — gold
+  '^GSPC': '#6D28D9',      // S&P 500 — violet
+  '^IXIC': '#A21C6B',      // Nasdaq — magenta
+  '^AXJO': '#9A6A05',      // ASX 200 — amber
   '^GSPTSE': SERIES_TEAL,  // S&P/TSX — teal
+};
+
+/** The second channel. The stock's own line stays solid; every benchmark differs. */
+const BENCH_DASH: Record<string, string> = {
+  '^GSPC': '7 4',
+  '^IXIC': '2 3',
+  '^AXJO': '9 3 2 3',
+  '^GSPTSE': '14 5',
 };
 
 function toTs(d: string): number {
@@ -419,6 +445,7 @@ export function RelativePerformance({
                     name={BENCHMARKS.find((b) => b.ticker === t)?.label ?? t}
                     type="monotone"
                     stroke={BENCH_COLOR[t] ?? CHART_INK}
+                    strokeDasharray={BENCH_DASH[t]}
                     strokeWidth={1.75}
                     dot={false}
                     isAnimationActive={false}

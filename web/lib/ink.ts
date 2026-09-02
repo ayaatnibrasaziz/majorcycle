@@ -53,4 +53,37 @@ export const INK = {
  * never mind as text; the TSX teal passed as a line (3.30) and failed as a label.
  * Darkening both keeps each legend entry matched to the line it names.
  */
-export const SERIES_TEAL = '#0A7065';
+/**
+ * THIRD-PARTY analyst opinion — Wall Street's Buy / Hold / Sell, shown verbatim
+ * (CLAUDE.md #17). Mirrors `--analyst-*` in globals.css.
+ *
+ * ⚠️ NOT our rating colours, and not the direction colours either. A Yahoo *Sell*
+ * chip drawn in `--c-tier-5` reads as OUR conclusion about the stock — which is
+ * exactly what the pills did until 2026-09-02, hard-typing `#8B1414` (audit
+ * 5A-045). On a product whose whole compliance posture is "information only", the
+ * line between what we say and what we are reporting has to be visible. Measured
+ * 16.8 from Constructive and 12.6 from Bearish, and every chip still carries the
+ * word itself, so nothing rests on the colour alone.
+ */
+export const ANALYST = {
+  positive: '#2E6B57',
+  neutral: '#4A5568',
+  negative: '#7A2F3F',
+} as const;
+
+export const SERIES_TEAL = '#00695C';
+
+/**
+ * The teal the Learn and Articles figures draw a PRICE LINE in.
+ *
+ * ⚠️ A SECOND TEAL, AND IT MUST STAY ONE. `SERIES_TEAL` above is a chart series
+ * colour and free to move; this one is welded to the three `/learn`
+ * illustrations, whose teal is baked into the image files. Those images cannot
+ * be regenerated — the same prompt returns a different picture, so the committed
+ * file is the only copy that will ever exist (CLAUDE.md 11p). Change this and the
+ * figures stop matching the artwork beside them.
+ *
+ * It was hand-typed in `FallByMarketFigure` and `PeFigure` and existed in no
+ * palette at all (audit 5A-095); naming it is what stops a third copy appearing.
+ */
+export const FIGURE_TEAL = '#0E7C8B';

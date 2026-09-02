@@ -191,7 +191,7 @@ filed on request.
   --c-tier-2-ink:  #0D5C0D;
   --c-tier-5-ink:  #8B1414;  /* same value as the tier now; separate token */
   --c-tier-3-ink:  #895001;  /* the tier x 0.88; was #6B6266 while Neutral was grey */
-  --c-tier-4-ink:  #B23A00;
+  --c-tier-4-ink:  #A83600;  /* was #B23A00 — 4.81 on its own tint, ON the 4.8 floor */
 
   /* ── SEMANTIC INK — the direction palette, for when the colour is TEXT ──────
      A colour that is a line, a candle, a dot or a bar keeps the value it has
@@ -424,6 +424,54 @@ worse for a colour-blind reader than what it replaced (CLAUDE.md 11t). Gold was 
 proven unsalvageable (15,866 candidates searched; the best managed 12.9) and yellow
 impossible, because the binding constraint is the colour's use **as text**, not as a
 background. **Owner chose a true grey**, which is also what the word means.
+
+### The domains that are NOT a rating — added 2026-09-02
+
+The rating palette was doing **twelve unrelated jobs** (audit 5A-070), and four groups of
+tokens held the same value with nothing able to tell a wrong choice from a right one
+(5A-057). Retuning *Cautious* for a rating reason also repainted CSV import warnings,
+billing notices and short-interest bands. Each domain now has its own names:
+
+| Domain | Tokens | Why it cannot share |
+|---|---|---|
+| **Rating** (ours) | `--c-tier-1…5` + `-ink`, `-tint`, `-tint-strong` | the product opinion; must move alone |
+| **Health** (3 rungs) | `--health-good / -adequate / -at-risk` | ⚠️ deliberate **aliases** of tiers 1/3/5 — see below |
+| **Status** | `--status-warning` + `-ink`, `-tint`, `-tint-strong`, `-surface`, `-border` | forms, CSV import, run progress, billing |
+| **Analyst** (third party) | `--analyst-positive / -neutral / -negative` | a Yahoo *Sell* must never wear our Bearish colour |
+| **Direction** | `--c-up-ink`, `--c-down-ink`, `--c-neutral-ink`, `--c-warn-ink`, `--c-brand-ink` | market movement, not our opinion |
+| **Data state** | `--data-missing` | must stay distinct from a *middling* value |
+| **Series** | `SERIES_TEAL`, `FIGURE_TEAL`, `DRAWDOWN`, `BENCH_COLOR` (`lib/ink.ts`, `lib/chartTheme.ts`) | chart props cannot read a variable |
+| **Gauge** | `--gauge-1…4` | a position ramp, not a verdict |
+
+**A shared value is fine; a shared NAME is the defect.** Several of these start life as the
+same colour. That is the point — each can now move without the others, which is also what
+makes a dark theme a re-pointing job rather than a rewrite.
+
+⚠️ **Health is the one place aliasing is right**, and it is worth saying because it is the
+opposite of every other row. Green/amber/red for good/adequate/at-risk is genuinely the
+*same design decision* as the rating ladder's, so two golds that merely matched today would
+drift the next time one moved (11c-viii). Pointing at the tier makes that impossible.
+
+⚠️ **`pnpm check:tier-palette` check 6** measures every non-rating token on the ground it
+really sits on, and asserts a distance floor between the analyst palette and our verdict
+colours. Broken on purpose three ways before it was trusted.
+
+### What is never coloured — owner decision, 2026-09-02
+
+**A raw market number is not coloured by our opinion of it.** A fall of −25% was painted
+three different ways across the site: green on the landing (deeper = more opportunity), red
+on Stock Detail (negative = bad) and blue in the Learn article teaching a reader what a
+drawdown *is*. All three shipped. Both conventions are defensible; together they are not,
+because nothing tells the reader which one a given colour belongs to.
+
+So Current Drawdown, Cycle Position and both range gauges now make no claim. Colour is
+reserved for **our ratings**, **status and warnings**, and **identifying a line on a chart**.
+The judgement about a fall is the Valuation score — which is the paid analysis, so
+colouring the free number was also quietly publishing the paid one.
+
+⚠️ Both range gauges were the concrete case: `WeekRangeGauge` ran green-at-the-low-end
+("cheap is good") and `.target-track` ran red-at-the-low-end ("high is good"), on the same
+page, in the same widget shape, with no label on either (5A-060).
 
 ⚠️ **Never hand-type one of these.** They were written out 247 times across 26
 files before 2026-08-22, and three of them were illegible under white text for the

@@ -461,11 +461,14 @@ for (const [role, [ground, where]] of Object.entries(INK_GROUND)) {
   if (r < FLOOR) {
     fail.push(`INK.${role} (${hex}) scores ${r.toFixed(2)} on ${ground}, under ${FLOOR} — ${where}.`);
   }
-  /* ⚠️ `down` has no CSS twin ON PURPOSE, and this says so out loud rather than
-     skipping quietly: it did not change, so no stylesheet rule needed rewriting.
-     It exists in INK only so a call site writing `up ? … : down` imports both
-     rather than hand-typing one of them (CLAUDE.md 11c). */
-  if (role === 'down') continue;
+  /* ⚠️ `down` DID get its CSS twin, on 2026-09-02, and this check exists because
+     it had none for the life of the product. Four of the five direction inks had
+     a token and this one did not, so every stylesheet and component needing "a
+     loss, in words" hand-typed `#B22222` — in 20 places (audit 5A-058). That made
+     the one direction colour carrying the most weight in a finance product the
+     only member of the set a palette change could not reach by editing one line.
+     It is now checked like its four siblings; the old "no CSS twin on purpose"
+     note here is what made the gap look deliberate. */
   if (!(role in inkFromCss)) {
     fail.push(`--c-${role}-ink is missing from globals.css, but INK.${role} exists`);
   } else if (inkFromCss[role] !== hex) {
@@ -482,6 +485,72 @@ for (const role of Object.keys(inkFromCss)) {
   fail.push(`--c-${role}-ink exists in globals.css with no INK.${role} and no recorded ground`);
 }
 
+
+// ── 6 · the domains that are NOT ratings ────────────────────────────────────
+/*
+ * ⚠️ EVERY ASSERTION ABOVE JUDGES THE RATING PALETTE, and for most of 2026 that
+ * was the only palette anything checked. The P2 sweep found one palette doing
+ * twelve unrelated jobs (5A-070) and four groups of tokens holding the same value
+ * with nothing able to tell a wrong choice from a right one (5A-057). The fix was
+ * to give each domain its own names; this is what stops them rotting.
+ *
+ * Each row is a colour that is NOT our judgement about a stock, with the ground it
+ * really sits on. They were measured when they were introduced — this is what
+ * makes the measurement outlive the session that took it.
+ */
+const DOMAIN = [
+  // token, ground, floor, what it is
+  ['--status-warning', '#F0F4F8', 3.0, 'a warning border/icon on the page (non-text)'],
+  ['--status-warning-ink', '#F0F4F8', FLOOR, '"Payment due" / "Access paused" as words'],
+  ['--analyst-positive', '#F0F4F8', FLOOR, "a third party's Buy, as words"],
+  ['--analyst-neutral', '#F0F4F8', FLOOR, "a third party's Hold, as words"],
+  ['--analyst-negative', '#F0F4F8', FLOOR, "a third party's Sell, as words"],
+  ['--data-missing', '#F0F4F8', FLOOR, 'the em dash where we have no value'],
+  ['--c-down-ink', '#F0F4F8', FLOOR, 'a loss, in words'],
+];
+const domainVal = {};
+for (const [token, ground, floor, what] of DOMAIN) {
+  const m = css.match(new RegExp(`${token}\\s*:\\s*(#[0-9A-Fa-f]{6})\\s*;`));
+  if (!m) {
+    fail.push(`${token} is missing from globals.css — check 6 cannot measure it, and an unmeasurable token reads as a clean one.`);
+    continue;
+  }
+  const hex = m[1].toUpperCase();
+  domainVal[token] = hex;
+  const r = ratio(hex, ground);
+  note.push(`  ${token.padEnd(22)} ${hex}   ${r.toFixed(2)} on ${ground}   (${what})`);
+  if (r < floor) fail.push(`${token} (${hex}) scores ${r.toFixed(2)} on ${ground}, under ${floor} — ${what}.`);
+}
+
+/*
+ * ⚠️ AND THE POINT OF SEPARATE NAMES IS THAT THEY LOOK SEPARATE. A third party's
+ * *Sell* wearing our Bearish colour reads as OUR conclusion (5A-045), which is
+ * what shipped until 2026-09-02. Distance is the only thing that can assert it —
+ * two tokens with different names and the same value are indistinguishable to
+ * every other kind of check.
+ */
+const SEPARATE_FROM_RATING = [
+  ['--analyst-positive', '2', 12.0],
+  ['--analyst-negative', '5', 10.0],
+  ['--analyst-negative', '4', 12.0],
+];
+for (const [token, tier, floorD] of SEPARATE_FROM_RATING) {
+  const a = domainVal[token];
+  const b = fromCss[tier];
+  if (!a || !b) continue;
+  const d = Math.min(
+    deltaE(a, b),
+    deltaE(simulate(a, 'protan'), simulate(b, 'protan')),
+    deltaE(simulate(a, 'deutan'), simulate(b, 'deutan')),
+  );
+  note.push(`  ${token} vs tier ${tier}   ${d.toFixed(1)} apart (floor ${floorD})`);
+  if (d < floorD) {
+    fail.push(
+      `${token} (${a}) has moved to within ${d.toFixed(1)} of rating tier ${tier} (${b}), floor ${floorD}. ` +
+        `Third-party opinion must not look like our verdict — that is the whole reason these tokens exist.`,
+    );
+  }
+}
 
 // ── report ──────────────────────────────────────────────────────────────────
 console.log('Rating tier palette');

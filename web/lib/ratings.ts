@@ -163,14 +163,6 @@ export function cyclePosition(
   return Math.min(Math.max(ratio, 0), 1) * 100;
 }
 
-/** Colour for a cycle-position value: deeper in the dip = greener (more cyclically attractive). */
-export function cyclePositionColor(pos: number | null): string {
-  if (pos == null) return 'var(--text-muted)';
-  if (pos >= 66) return 'var(--c-tier-1)';
-  if (pos >= 33) return 'var(--cycle-typical)';
-  return 'var(--c-tier-5)';
-}
-
 // ── Analyst Briefing ────────────────────────────────────────────────────────
 // A plain-English summary of the run, built entirely from the in-memory results
 // (rating outputs — never read from the DB, CLAUDE.md #15). Strictly compliant

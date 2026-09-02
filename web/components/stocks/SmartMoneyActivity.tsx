@@ -16,7 +16,7 @@ import {
 
 import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, fmtPrice } from '@/lib/format';
 import type { AnalystUpgrade, Currency, InsiderTransaction, PriceBar } from '@/lib/types';
-import { INK } from '@/lib/ink';
+import { ANALYST, INK } from '@/lib/ink';
 
 type Range = '1y' | '3y' | 'all';
 const RANGE_LABELS: Record<Range, string> = { '1y': '1Y', '3y': '3Y', 'all': 'All' };
@@ -59,11 +59,11 @@ function classifyAction(action: string): { pill: string; label: string } {
 function gradeColor(grade: string | undefined): string {
   const g = (grade ?? '').toLowerCase().trim().replace(/-/g, ' ');
   if (g.includes('strong buy') || g === 'buy' || g.includes('outperform') || g.includes('overweight') || g === 'accumulate' || g === 'add' || g === 'positive' || g === 'long term buy')
-    return INK.up;
+    return ANALYST.positive;
   if (g.includes('sell') || g.includes('underperform') || g.includes('underweight') || g === 'reduce' || g === 'negative' || g === 'avoid')
-    return INK.down;
+    return ANALYST.negative;
   if (g === 'neutral' || g === 'hold' || g.includes('market perform') || g.includes('equal weight') || g.includes('peer perform') || g.includes('sector perform') || g.includes('market weight') || g.includes('in line') || g.includes('fair value'))
-    return INK.neutral;
+    return ANALYST.neutral;
   return INK.brand;
 }
 

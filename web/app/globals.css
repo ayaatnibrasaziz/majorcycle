@@ -311,7 +311,14 @@
      #B23A00 literal inside `.tier-badge--4`, where nothing else could reach it
      and no one would think to keep it in step with its four siblings. Same
      value, so this is a zero-pixel change. */
-  --c-tier-4-ink: #B23A00;
+  /* ⚠️ #B23A00 until 2026-09-02, which measured **4.81** where the badge really
+     draws it — its own 10% tint composited on --bg-page — against this repo's 4.8
+     floor. On the floor, not over it, and the guard could not see it: the guard
+     measures an ink on the PLAIN page, while `.tier-badge--4` draws it on a TINT,
+     which is darker (audit 5A-096, the same measurement that found Neutral's grey
+     badge at 4.59). Darkened by the smallest step that buys real margin.
+       page tint 5.27 · card tint 5.76 · plain page 5.95 */
+  --c-tier-4-ink: #A83600;
 
   /* Tier tints.
      ⚠️ DELIBERATELY still built from the PRE-2026-08-22 hues, and syncing them to
@@ -321,6 +328,25 @@
      4.73 → 4.49 on a card and 4.32 → 4.09 on --bg-page. The tiers changed because
      white text sits ON them; a tint has ink sitting on IT, so the same move runs
      the opposite way. Leave them. */
+  /* ⚠️ TIERS 1 AND 4 HAD NO TINT TOKEN AT ALL until 2026-09-02 — their badge
+     backgrounds were hand-typed inside `.tier-badge--N` as `rgba(0,100,0,.12)`
+     and `rgba(255,69,0,.10)`, i.e. mixed from the RETIRED `#006400` and `#FF4500`
+     (audit 5A-044). Written as `rgba()`, they were invisible to a guard that
+     hunts stray palette copies **by hex** — 11c-viii's exact mechanism, a second
+     time. Tier 1 was the one you could see: pine-green text on a grass-green
+     wash, ΔE 4.7.
+
+     Re-based onto their current hues, which the note below says to avoid — so:
+     that instruction was about TIER 3, whose ink had ~0.2 of margin and would
+     have gone under. These two were measured first and have room:
+       tier 1 ink on the new tint  6.36 card · 5.78 page
+       tier 4 ink on the new tint  5.65 card · 5.14 page   (floor 4.80)
+     Tiers 2 and 5 keep their ancestors: already tokenised, and their drift is
+     ΔE 1.4–2.0, at or below what an eye can see. Changing them would be churn. */
+  --tint-tier-1: rgba(6, 95, 70, 0.10);
+  --tint-tier-1-strong: rgba(6, 95, 70, 0.12);
+  --tint-tier-4: rgba(199, 54, 0, 0.09);
+  --tint-tier-4-strong: rgba(199, 54, 0, 0.10);
   --tint-tier-2: rgba(34, 139, 34, 0.10);
   --tint-tier-2-strong: rgba(34, 139, 34, 0.12);
   --tint-tier-5: rgba(178, 34, 34, 0.10);
@@ -338,6 +364,16 @@
   --tint-tier-3: rgba(212, 160, 23, 0.10);
   --tint-tier-3-strong: rgba(212, 160, 23, 0.12);
   --tint-brand: rgba(46, 125, 232, 0.10);
+
+  /* ⚠️ MOTION, not colour, and it belongs here because it was BROKEN the same
+     silent way — audit 5A-077. `articles.css` has always read
+     `transition: transform .25s var(--ease)` and nothing has ever defined
+     `--ease`. An invalid value inside a shorthand voids the whole declaration,
+     so the arrow on every article's *Read* link has had NO transition at all:
+     the hover translate simply snaps. Nothing errors, the link works, and that
+     is exactly why it went unnoticed. Same failure as `var(--c-mid)` in the news
+     pill (5A-076) — an undefined custom property does not fall back. */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* ── THINGS THAT ARE NOT A RATING BUT USED TO BORROW ONE ───────────────────
      Every token below held `var(--c-tier-3)` or `var(--c-tier-3-ink)` until
@@ -372,11 +408,53 @@
      question — rather than repainting a dozen surfaces as a side effect and
      calling it tidying (11l). */
 
-  /* Status / feedback — forms, CSV import, run progress, billing notices. */
-  --status-warning: #72696D;
-  --status-warning-ink: #6B6266;
-  --status-warning-tint: rgba(114, 105, 109, 0.10);
-  --status-warning-tint-strong: rgba(114, 105, 109, 0.12);
+  /* Status / feedback — forms, CSV import, run progress, billing notices.
+     ⚠️ AMBER SINCE 2026-09-02, and it is a FIX rather than a preference. These
+     held the rating's grey, so "Payment due", "Access paused" and "On hold" — the
+     three messages that exist to make a paying customer act — rendered as a grey
+     chip on a grey wash, while a healthy account was brand blue. Nobody wrote a
+     wrong line: the tone map was right, the token was right, and the warning
+     simply stopped being amber in August when the palette moved underneath it
+     (audit 5A-050).
+
+     ⚠️ THE VALUES ARE NOT NEW. The product had already needed an amber twice and
+     invented one by hand both times — `#D97706` in the Smart Money "initiate"
+     pill and `#92400E`/`#FCD34D`/`#FFFBEB` in the premium-lock notice, five stray
+     literals across two components, none of them in any token (5A-072). This
+     consolidates them instead of adding a sixth.
+
+       --status-warning      as a border/icon on the page   4.54  (non-text floor 3.0)
+       --status-warning-ink  as text on the page            6.42  (floor 4.80)
+       --status-warning-ink  on its own tint, card / page   6.00 / 5.49
+
+     ⚠️ IT SITS CLOSE TO *Cautious* AND THAT IS ACCEPTED, NOT MISSED. `#92400E`
+     measures 1.8 from `--c-tier-4` to a colour-blind reader, because our rating
+     ramp already occupies the whole warm range and any legible dark amber lands
+     in it. It was searched: the only ambers that separate cleanly stop looking
+     like an amber at all. What makes it safe is that the two never appear as peer
+     chips — warnings live on /account and /run, ratings on /results and Stock
+     Detail — and every warning carries its own words. Do not "fix" this by
+     tinting a warning toward yellow without re-measuring it against the gold. */
+  --status-warning: #B45309;
+  --status-warning-ink: #92400E;
+  --status-warning-tint: rgba(180, 83, 9, 0.10);
+  --status-warning-tint-strong: rgba(180, 83, 9, 0.12);
+  /* The pale notice PANEL — a warmer, opaque ground with its own border. Both
+     were hand-typed in `PremiumLockPage` as `#fffbeb` / `#fcd34d`, two of the
+     five stray amber literals 5A-072 counted. */
+  --status-warning-surface: #FFFBEB;
+  --status-warning-border: #FCD34D;
+
+  /* Third-party analyst consensus — Yahoo's Buy / Hold / Sell, shown verbatim
+     (CLAUDE.md #17). ⚠️ These must NOT be our rating colours: a Yahoo *Sell* drawn
+     in `--c-tier-5` reads as OUR conclusion about the stock rather than someone
+     else's, on a product whose whole compliance posture is "information only"
+     (5A-045). Deliberately quieter and cooler than the rating ramp — measured 16.8
+     from Constructive and 12.6 from Bearish, so they read as a different kind of
+     thing, while every chip still carries the word itself. */
+  --analyst-positive: #2E6B57;
+  --analyst-neutral: #4A5568;
+  --analyst-negative: #7A2F3F;
 
   /* Financial Health has THREE rungs, not five — see `healthColor()`. It must
      never use the 5-tier score ladder, or one label ("Adequate") would come out
@@ -404,8 +482,6 @@
   --health-adequate: var(--c-tier-3);
   --health-at-risk: var(--c-tier-5);
 
-  /* Where a stock sits in its own cycle. A position, not a verdict. */
-  --cycle-typical: #72696D;
 
   /* Third-party analyst data: price is above the average target. */
   --analyst-downside: #72696D;
@@ -477,6 +553,23 @@
   --c-neutral-ink: #6B6266;
   --c-warn-ink: #C73600;
   --c-brand-ink: #1E5CB3;
+  /* ⚠️ THE FIFTH INK, MISSING UNTIL 2026-09-02 — audit 5A-058. Four of the five
+     direction inks had a token and `down` did not, so every stylesheet and
+     component needing "a loss, in words" hand-typed `#B22222`, which it did in 20
+     places. That made the one direction colour carrying the most weight in a
+     finance product the only member of the set a palette change could not reach
+     by editing one line. Same value as `INK.down`, which existed all along —
+     the gap was only ever on the CSS side. */
+  --c-down-ink: #B22222;
+
+  /* "We have no value for this." ⚠️ It must stay visibly distinct from a
+     MIDDLING value, and for most of 2026 it was not: `--c-tier-3` was a grey
+     `#72696D` and this is `#626B77` — 9.5 apart, where the palette guard demands
+     16–34 between things a reader must tell apart (5A-043). A Health score of 65
+     and a Health score we do not have looked nearly the same. Neutral moving to
+     gold fixed that pair outright; this token exists so the *concept* has a name
+     and the next middling grey cannot quietly collide with it again. */
+  --data-missing: #626B77;
 
   /* Chart heights */
   --chart-h-sm: 200px;
@@ -575,6 +668,17 @@
 
   html {
     font-size: 14px;
+    /* ⚠️ THIS COSTS SOMETHING TODAY, which is why it is not a dark-mode
+       preparation — audit 5A-081. The site commits to a light palette in both
+       OS themes, and until 2026-09-02 it never SAID so. The parts of the page
+       the browser paints itself do not read our CSS: scrollbars, the native
+       `<select>` popup this app uses for its screener filters, autofill
+       backgrounds and form-control internals all follow the OPERATING SYSTEM.
+       So a visitor whose device is in dark mode could get a dark dropdown list
+       over a light page, and none of it is reachable from a stylesheet or
+       visible in a screenshot. One line fixes it, and it is also the line a
+       future dark theme flips. */
+    color-scheme: light;
   }
 
   body {
@@ -585,6 +689,16 @@
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* The text cursor followed the browser default (its own blue), not ours. */
+    caret-color: var(--brand-mid);
+  }
+
+  /* Selected text used the browser's default blue on every surface — small, and
+     the kind of thing that reads as unfinished on a premium product (5A-084).
+     A 22% brand wash keeps the text itself legible rather than reversing it. */
+  ::selection {
+    background: rgba(46, 125, 232, 0.22);
+    color: var(--text-primary);
   }
 
   /* Focus ring — accessibility floor */
@@ -621,10 +735,15 @@
   font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
   white-space: nowrap;
 }
-.tier-badge--1 { background: rgba(0,100,0,0.12);              color: var(--c-tier-1); }
+/* ⚠️ Tiers 1 and 4 had their tint hand-typed here rather than tokenised, and both
+   were mixed from the PRE-2026-08 rating colours — `#006400` and `#FF4500` — so
+   they never followed the palette when it moved (audit 5A-044). Tier 1 was the
+   visible one: pine-green text on a grass-green wash, ΔE 4.7. Now tokens, like
+   their three siblings, and reachable by anything that changes the palette. */
+.tier-badge--1 { background: var(--tint-tier-1-strong);        color: var(--c-tier-1); }
 .tier-badge--2 { background: var(--tint-tier-2-strong);        color: var(--c-tier-2-ink); }
 .tier-badge--3 { background: var(--tint-tier-3-strong);        color: var(--c-tier-3-ink); }
-.tier-badge--4 { background: rgba(255,69,0,0.10);              color: var(--c-tier-4-ink); }
+.tier-badge--4 { background: var(--tint-tier-4-strong);        color: var(--c-tier-4-ink); }
 .tier-badge--5 { background: var(--tint-tier-5-strong);        color: var(--c-tier-5-ink); }
 .tier-badge--analyst { background: rgba(74,85,104,0.12);       color: #4A5568; }
 
@@ -1060,7 +1179,10 @@
   font-size: 15px; font-weight: 600; color: var(--text-primary);
 }
 .stat-pill-val.green { color: var(--c-up-ink); }
-.stat-pill-val.amber { color: var(--c-neutral-ink); }
+/* ⚠️ The class is called `.amber` and rendered GREY: it pointed at
+   `--c-neutral-ink`, which stopped being gold in August. A name that states a
+   colour is a claim, and this one had been false for months. */
+.stat-pill-val.amber { color: var(--status-warning-ink); }
 .stat-pill-val.red   { color: #B22222; }
 
 @media (max-width: 640px) {
@@ -1074,9 +1196,24 @@
    in /reference/original-design.html (CSS lines 603-612).
    ───────────────────────────────────────────────────────────────────────── */
 .target-track-wrap { padding: 8px 0 18px; overflow: visible; }
+/* ⚠️ NEUTRAL SINCE 2026-09-02, and the reason is that its twin disagreed with it.
+   This track ran `#B22222 → #FF4500 → #D4A017 → #228B22 → #006400` — red at the
+   low end, green at the high, i.e. "above the analyst target is good". Three
+   screens up, `WeekRangeGauge` ran the OPPOSITE way — green at the low end,
+   "cheap is good". Same page, same widget shape, opposite claim, no label on
+   either saying which is which (audit 5A-060).
+
+   Both readings are defensible and they cannot both be right, so the gauge now
+   makes no claim at all: it shows WHERE the price sits between two ends and
+   leaves the judgement to the reader — the same decision as uncolouring the fall
+   percentage, applied to a shape rather than a number.
+
+   ⚠️ It was also the largest surviving block of the pre-2026-08 rating palette
+   (5A-061): every one of those five stops is a retired rating colour, on a scale
+   that is not a rating. */
 .target-track {
   position: relative; height: 12px; border-radius: 30px;
-  background: linear-gradient(90deg, #B22222 0%, #FF4500 25%, #D4A017 50%, #228B22 75%, #006400 100%);
+  background: linear-gradient(90deg, var(--bg-stripe) 0%, var(--border-strong) 100%);
   margin: 20px 0 30px;
 }
 .target-marker {
@@ -1303,16 +1440,16 @@ td.num             { font-weight: 600; }
 .smart-legend                               { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .smart-legend-chip                          { display: inline-flex; align-items: center; gap: 5px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: .3px; }
 .smart-legend-chip-dot                      { width: 7px; height: 7px; border-radius: 50%; background: var(--lg, #1E5CB3); flex-shrink: 0; }
-.smart-pill.is-buy        { background: rgba(34,139,34,.12); color: #0D5C0D; border: 1px solid rgba(34,139,34,.25); }
+.smart-pill.is-buy        { background: rgba(46,107,87,.12); color: var(--analyst-positive); border: 1px solid rgba(46,107,87,.26); }
 /* ⚠️ #8B1414 here is the DIRECTION red darkened for a tinted ground, and it has
    held that value since long before --c-tier-5 arrived at the same one in 2026-08.
    Two rules, one hex, no relationship — do not "unify" them (CLAUDE.md 11c cuts
    both ways: a shared value is not evidence of a shared rule). */
-.smart-pill.is-sell       { background: rgba(178,34,34,.10); color: #8B1414; border: 1px solid rgba(178,34,34,.22); }
-.smart-pill.is-upgrade    { background: rgba(34,139,34,.12); color: #0D5C0D; border: 1px solid rgba(34,139,34,.25); }
-.smart-pill.is-downgrade  { background: rgba(178,34,34,.10); color: #8B1414; border: 1px solid rgba(178,34,34,.22); }
+.smart-pill.is-sell       { background: rgba(122,47,63,.10); color: var(--analyst-negative); border: 1px solid rgba(122,47,63,.24); }
+.smart-pill.is-upgrade    { background: rgba(46,107,87,.12); color: var(--analyst-positive); border: 1px solid rgba(46,107,87,.26); }
+.smart-pill.is-downgrade  { background: rgba(122,47,63,.10); color: var(--analyst-negative); border: 1px solid rgba(122,47,63,.24); }
 .smart-pill.is-reiterate  { background: var(--tint-brand); color: var(--brand-deep); border: 1px solid rgba(46,125,232,.22); }
-.smart-pill.is-initiate   { background: rgba(217,119,6,.10); color: #D97706; border: 1px solid rgba(217,119,6,.30); }
+.smart-pill.is-initiate   { background: var(--status-warning-tint); color: var(--status-warning-ink); border: 1px solid rgba(180,83,9,.28); }
 
 /* Insider activity timeline */
 .smart-timeline                             { position: relative; padding: 2px 0 2px 18px; }
@@ -1575,7 +1712,18 @@ td.num             { font-weight: 600; }
   transition: all .2s; box-shadow: 0 2px 8px rgba(30, 92, 179, .25);
 }
 .btn-run:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(30, 92, 179, .35); }
-.btn-run:disabled { background: var(--border-strong); box-shadow: none; cursor: not-allowed; }
+/* ⚠️ White on --border-strong measured **1.48:1** — the label on the screener's
+   primary action could not be read while it waited for input (audit 5A-085).
+   WCAG exempts disabled controls, so this was never a conformance failure; it was
+   simply unreadable. A light fill with dark ink reaches 4.74 and still reads as
+   "not available", where white-on-grey only ever gets to ~3.0 before the button
+   stops looking disabled at all. Control: the same button enabled measures 6.49. */
+.btn-run:disabled {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  box-shadow: none;
+  cursor: not-allowed;
+}
 
 /* Progress */
 .progress-bar-wrap {
@@ -1954,9 +2102,13 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 .cyc-wrap { display: flex; align-items: center; gap: 7px; }
 /* Visible red→amber→green scale so the marker's position reads as "where in the
    drawdown band" (the old near-white track was invisible against the row). */
+/* Neutral for the same reason as `.target-track`, and built from the same three
+   retired rating colours before that (5A-061). The marker's POSITION is the
+   information; painting the track red-to-green added a verdict the cell's own
+   number never claimed. */
 .cyc-track {
   position: relative; width: 60px; height: 6px; border-radius: 3px;
-  background: linear-gradient(90deg, rgba(178,34,34,.35), rgba(212,160,23,.35), rgba(0,100,0,.35));
+  background: linear-gradient(90deg, var(--bg-stripe), var(--border-strong));
   border: 1px solid var(--border);
 }
 .cyc-marker {

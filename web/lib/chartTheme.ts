@@ -34,3 +34,30 @@ export const CHART_INK_STRONG = '#4A5568';
 
 /** Grid lines and axis rules. Mirrors `--border`. Decorative, never text. */
 export const CHART_GRID = '#E2E8F0';
+
+/**
+ * The drawdown overlay's palette — the price line, the shaded fall, the average
+ * rule and the lower-bound rule.
+ *
+ * ⚠️ IT EXISTED TWICE AND HAD ALREADY DRIFTED. `components/learn/chartPrimitives`
+ * carried its own `DD_LINE / DD_FILL / AVG_LINE / LOW_LINE` under a comment that
+ * named its source — *"the product's own drawdown palette"* — which is a copy by
+ * construction (audit 5A-064). The audit recorded the three shared values as
+ * still agreeing; checking the fourth showed they did not. The Learn figure drew
+ * its average line in `#D4A017`, the pre-August gold, while the product draws it
+ * in `INK.neutral` grey. So the article teaching a reader what a drawdown looks
+ * like had stopped matching the thing it describes, and nothing could see it.
+ *
+ * One definition now, and the Learn primitives consume it rather than restating
+ * it (CLAUDE.md 11c-x: make the second consumer derive from the first).
+ */
+export const DRAWDOWN = {
+  /** The price line while the overlay is in drawdown mode. `--brand-mid`. */
+  line: '#1E5CB3',
+  /** The wash under a fall. */
+  fill: 'rgba(178,34,34,.15)',
+  /** The "typical drawdown" rule. Mirrors `INK.neutral`. */
+  avg: '#6B6266',
+  /** The lower-bound rule — the deepest confirmed fall. Mirrors `INK.down`. */
+  bound: '#B22222',
+} as const;

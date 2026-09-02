@@ -672,6 +672,74 @@ documenting the fix contains the string — the same trap that has bitten this r
 guards twice (`public-chrome.spec.ts`, the artifact build). A scan over source text must
 strip comments or it will fail on its own documentation.
 
+### ✅ P2 APPLIED IN FULL — 2026-09-02
+
+Four editorial questions went to the owner with the measurements behind them, and all
+four were answered before any of this was written:
+
+| Question | Answer |
+|---|---|
+| A fall is coloured three different ways sitewide | **Never colour a raw market number.** Colour is for our ratings, for status, and for identifying a line on a chart |
+| Two range gauges on one page run opposite gradients | **Neutral track, marker only** — the gauge shows *where*, and makes no claim about whether that is good |
+| Billing warnings render grey on grey | **A proper amber, on its own token** |
+| Yahoo's *Sell* wears our Bearish colour | **Third-party data gets its own quiet palette** |
+
+**What that closed, and how.**
+
+*The colour language* (5A-041 · 042 · 051 · 060 · 062 · 063 · 069). The KPI drawdown ramp,
+the screener's Current DD%, the landing's worked run, the Cycle Position cell and both
+range gauges no longer carry a verdict. `drawdownColor()` and `cyclePositionColor()` were
+**deleted** rather than left unused, and `KpiCard.accentColor` became optional — so a card
+without one is a stated fact and a card with one is our judgement, enforced by the type.
+
+*The amber* (5A-046 · 050 · 072 · 079). `--status-warning` and its ink, tint, surface and
+border. The values are not new: the product had already needed an amber twice and invented
+one by hand both times — five stray literals across the Smart Money pill and the
+premium-lock notice — so this consolidates rather than adds. ⚠️ **It sits 1.8 from
+*Cautious* to a colour-blind reader and that is accepted, not missed**: the rating ramp
+already occupies the whole warm range, every legible dark amber lands in it, the two never
+appear as peer chips, and each warning carries its own words.
+
+*The analyst palette* (5A-045). `--analyst-positive / -neutral / -negative`, mirrored in
+`lib/ink.ts` for the chart props that cannot read a variable. Measured 16.8 from
+Constructive and 12.6 from Bearish, and **guarded** — check 6 fails if either drifts back.
+
+*The chart series* (5A-089 · 090 · 095). This was the site's one genuine WCAG 1.4.1
+exposure: `^GSPC` was painted in `CHART_INK`, the token for axis ticks — the S&P 500 line
+and the chart's own furniture were the identical colour — and `^AXJO` vs `^GSPTSE` measured
+2.6 to a protanope. Four distinct hues now, plus **a distinct dash per series**, so colour
+is never the only channel. ⚠️ The dash is what actually satisfies the rule: the weakest
+colour pair is still 5.9, and no five-line palette clears 16 everywhere without turning to
+mud (that search was run, twice).
+
+*The copies* (5A-059 · 064 · 073 · 076 · 077 · 095). The Learn drawdown palette now derives
+from `DRAWDOWN` in `chartTheme.ts` instead of restating it — and **it had already drifted**:
+its average line was `#D4A017`, the pre-August gold, while the product draws that rule in
+grey, so the figure teaching a reader what a drawdown looks like no longer matched the chart
+it describes. The audit had recorded the three shared values as still agreeing; checking the
+fourth showed they did not. Both teals are named (`SERIES_TEAL`, `FIGURE_TEAL` — the second
+is welded to the Learn illustrations, which cannot be regenerated). The ten email literals
+became one `EMAIL` object, and its footer went from **2.45:1 to 5.59:1**.
+
+*The browser-facing gaps* (5A-081 · 084 · 085). `color-scheme: light` — which costs
+something today rather than being dark-mode preparation: without it the native `<select>`
+popup the screener filters use, scrollbars and autofill follow the *operating system*, so a
+visitor in dark mode could get a dark dropdown over a light page. Plus `::selection`,
+`caret-color`, and disabled controls (the screener's primary action had a label at 1.48:1;
+now a light fill with dark ink at 4.74).
+
+**Guarded.** `check-tier-palette` gained **check 6** — every non-rating token measured on the
+ground it really sits on, plus a distance floor between the analyst palette and our verdict
+colours. Broken on purpose three ways before being trusted: the analyst red moved onto
+Bearish (caught, 0.0 apart), the warning ink lightened (caught, 2.06), and `--c-down-ink`
+deleted (caught twice, by two different assertions).
+
+⚠️ **Still open, and deliberately not done.** `--ease` is defined but the dead
+`.tier-legend-swatch` rule and its undefined `--tier` are left in place (5A-078) because the
+owner asks to be consulted before anything is deleted. The Opportunity Map's private palette
+(5A-074), the surface-scale ramp (5A-080), the hard-typed shadows (5A-083), Windows High
+Contrast (5A-082) and the landing's old-gold washes (5A-098) are recorded and untouched.
+
 ### 5A-096 · today's Neutral badge measured 4.59 on `--bg-page`, and the note claims 4.82
 
 Found while choosing the gold's ink. `.tier-badge--3` in grey composited to `#E1E3E7` on

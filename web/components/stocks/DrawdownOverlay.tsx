@@ -1,6 +1,6 @@
 'use client';
 
-import { CHART_INK } from '@/lib/chartTheme';
+import { CHART_INK, DRAWDOWN } from '@/lib/chartTheme';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -142,10 +142,13 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
 
     const isDD        = mode === 'drawdown';
     const series      = isDD ? ddSeries : prSeries;
-    const lineColor   = isDD ? '#1E5CB3' : '#228B22';
+    // Drawdown-mode colours come from the shared `DRAWDOWN` palette so the Learn
+    // figures that illustrate this chart cannot drift from it (audit 5A-064).
+    // Profit mode keeps its own direction greens — a separate rule (design-system §5).
+    const lineColor   = isDD ? DRAWDOWN.line : '#228B22';
     const topColor    = isDD ? 'rgba(178,34,34,.01)'  : 'rgba(34,139,34,.15)';
-    const bottomColor = isDD ? 'rgba(178,34,34,.15)' : 'rgba(34,139,34,.01)';
-    const boundColor  = isDD ? '#B22222' : '#006400';
+    const bottomColor = isDD ? DRAWDOWN.fill : 'rgba(34,139,34,.01)';
+    const boundColor  = isDD ? DRAWDOWN.bound : '#006400';
     const typLine     = isDD ? cycle.typicalDrawdown  : cycle.typicalProfit;
     const boundLine   = isDD ? cycle.lowerBound       : cycle.upperBound;
 
