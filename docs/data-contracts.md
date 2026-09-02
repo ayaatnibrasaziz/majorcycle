@@ -1153,6 +1153,10 @@ PRESETS = {
 > ⚠️ **`AE.V` (American Eagle Gold) is the universe's first and only TSX Venture stock**, added
 > 2026-09-02 through the real request queue so rule #14's `.V` carve-out finally has data behind
 > it. Before that, 1,454 `.V` symbols were requestable and none was covered. See 5A-033/5A-034.
+> ⚠️ **Exercising it immediately found a routing defect** — the market segment was never checked
+> against the market the ticker belongs to, so `AE.V` answered on all three markets and, more
+> widely, any fully-qualified ticker answered under `us` (`/stocks/us/BHP.AX`). Fixed in
+> `urlPartsToTicker`, which now returns `null` when the market does not own the ticker.
 
 ## 7a. The four committed landing files (Layer G)
 

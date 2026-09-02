@@ -240,6 +240,9 @@ export async function generateMetadata({
   if (!isValidMarket(market)) return { title: 'Stock not found' };
 
   const stored = urlPartsToTicker(market, ticker);
+  // null = this market does not own that ticker (e.g. `/stocks/us/AE.V`). Same
+  // answer as an unknown symbol, so the title must not differ either — 5A-034.
+  if (!stored) return { title: 'Stock not found' };
   const stock = await fetchStockDetail(stored);
   if (!stock) return { title: 'Stock not found' };
 
@@ -267,6 +270,9 @@ export default async function StockDetailPage({
   const { spec, label: horizonLabel } = parseSpec(sp);
 
   const stored = urlPartsToTicker(market, ticker);
+  // A ticker is reachable from exactly one market. Backstop only: the layout
+  // above already 404s this before anything streams (5A-034).
+  if (!stored) notFound();
   // Only the stock row + sector medians block the initial render — both are
   // fast. The slow cycle analysis and the benchmark series are streamed in via
   // Suspense below, so the bulk of the page paints without waiting on them.

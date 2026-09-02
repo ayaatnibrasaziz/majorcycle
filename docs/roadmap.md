@@ -25,12 +25,21 @@
 > about half of it was done — one entry after quoting the rule that a done row is a claim about
 > intent, not evidence. It was caught only because the owner asked whether anything was left.
 >
-> ⚠️ **P1 closed with one open item for the owner (5A-034, low):** a `.V` stock is reachable at
-> **two** URLs — `/stocks/us/AE.V` renders the Canadian stock, because `urlPartsToTicker()`
-> correctly returns early for a kept-suffix ticker and thereby ignores the market argument. The
-> page shows the right company, labels it CA, and stock pages are gated, so there is no SEO
-> duplicate and nothing a customer meets. One comparison in `layout.tsx` fixes it. Not applied —
-> paid surface, owner's call (11l).
+> ✅ **5A-034 FIXED 2026-09-02, on the owner's instruction** — and their reading of it was wider
+> and more accurate than mine. I reported ONE wrong URL (`/stocks/us/AE.V`); they observed that
+> **all three markets** answered, which is what an ignored parameter actually looks like. Chasing
+> that showed it was never about `.V`: `us` is the pass-through market, so **`/stocks/us/BHP.AX`
+> served the Australian company** too. Every other cross-market URL 404s *by accident* — the
+> reconstruction builds a ticker nobody owns. **The fix went in `lib/ticker.ts`, not `layout.tsx`
+> as I first proposed**, because `lib/report-data.ts` is a fourth consumer and a route handler
+> never renders through a layout — a layout-only fix would have left the **paid report**
+> downloadable at a wrong-market URL. Wire-proven with controls on both the page and the report;
+> guard broken on purpose first.
+>
+> ⚠️ **P1 was ALSO not complete when this file last said so** — a second time, same shape as
+> 5A-028. Reviewing the route inventory against the ledger (rather than re-reading the ledger)
+> found `/reset-password` never opened and **neither error boundary ever rendered**. Both closed
+> and clean: 5A-035, 5A-036.
 >
 > **Next: P2 colour** (run blind — the owner has seen defects and deliberately has not said which),
 > then P3 interaction · P4 data edge cases · P5 content · P6 not-the-screen · P7 the three unrun
