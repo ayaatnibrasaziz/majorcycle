@@ -191,7 +191,7 @@ export default function LandingPage() {
                     </b>
                   </span>
                   <span className="b-pill">
-                    <b className="b-pill-n" style={{ color: 'var(--c-tier-3-ink)' }}>
+                    <b className="b-pill-n" style={{ color: 'var(--accent-warm-ink)' }}>
                       {f.cautiousOrWorse}
                     </b>{' '}
                     Cautious / Bearish
@@ -479,7 +479,7 @@ export default function LandingPage() {
               </div>
               <div className="card">
                 <div className="card-body">
-                  <div className="idx" style={{ color: 'var(--c-tier-3-ink)' }}>
+                  <div className="idx" style={{ color: 'var(--accent-warm-ink)' }}>
                     25% OF THE RATING
                   </div>
                   <h3 style={{ marginTop: '6px' }}>Cycle Payoff</h3>

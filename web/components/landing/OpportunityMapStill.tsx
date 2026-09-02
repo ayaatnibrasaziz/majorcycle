@@ -94,7 +94,7 @@ const QUADRANTS = [
     cls: 'q-br',
     label: 'Healthy, fully priced',
     swatch: 'rgba(212,160,23,.20)',
-    ink: 'var(--c-tier-3-ink)',
+    ink: 'var(--accent-warm-ink)',
   },
   { cls: 'q-tl', label: 'Weak but cheap', swatch: 'rgba(30,92,179,.14)', ink: 'var(--brand-mid)' },
   {

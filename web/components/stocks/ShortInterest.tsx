@@ -27,13 +27,13 @@ const GAUGE_MAX = 20;
 // matching the reference short-interest bands (low / moderate / elevated).
 function gaugeColor(pct: number): string {
   if (pct < 5)  return 'var(--c-tier-2)';
-  if (pct < 15) return 'var(--c-tier-3)';
+  if (pct < 15) return 'var(--band-neutral)';
   return 'var(--c-tier-4)';
 }
 
 function signalInfo(pct: number): { label: string; color: string } {
   if (pct < 5)  return { label: 'Bullish', color: 'var(--c-tier-2)' };
-  if (pct < 15) return { label: 'Neutral', color: 'var(--c-tier-3)' };
+  if (pct < 15) return { label: 'Neutral', color: 'var(--band-neutral)' };
   return           { label: 'Bearish', color: 'var(--c-tier-4)' };
 }
 

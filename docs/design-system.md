@@ -168,7 +168,7 @@ filed on request.
      the five moved; `globals.css` carries the measurements and the reasons. */
   --c-tier-1:      #065F46;  /* High Conviction — was #006400; see below */
   --c-tier-2:      #1E7C1E;  /* Constructive   — was #228B22, 4.39:1 under white */
-  --c-tier-3:      #72696D;  /* Neutral        — #D4A017 → #87660F → grey, see below */
+  --c-tier-3:      #9C5B01;  /* Neutral        — #D4A017 → #87660F → grey → GOLD, see below */
   --c-tier-4:      #C73600;  /* Cautious       — was #FF4500, 3.44:1 under white */
   --c-tier-5:      #8B1414;  /* Bearish        — was #B22222; see below */
 
@@ -190,7 +190,7 @@ filed on request.
   /* Ink shades — for text on tinted backgrounds */
   --c-tier-2-ink:  #0D5C0D;
   --c-tier-5-ink:  #8B1414;  /* same value as the tier now; separate token */
-  --c-tier-3-ink:  #81600F;  /* was #8A6710 — 4.32:1 on --bg-page */
+  --c-tier-3-ink:  #895001;  /* the tier x 0.88; was #6B6266 while Neutral was grey */
   --c-tier-4-ink:  #B23A00;
 
   /* ── SEMANTIC INK — the direction palette, for when the colour is TEXT ──────
@@ -391,12 +391,32 @@ The five composite rating tiers display as **neutral, advice-free language**. Th
 |---|---|---|---|
 | 80–100 | **High Conviction** | `--c-tier-1` (#065F46) | Best-in-class opportunity |
 | 65–79 | **Constructive** | `--c-tier-2` (#1E7C1E) | Favourable setup |
-| 50–64 | **Neutral** | `--c-tier-3` (#72696D) | Mixed signal |
+| 50–64 | **Neutral** | `--c-tier-3` (#9C5B01) | Mixed signal |
 | 35–49 | **Cautious** | `--c-tier-4` (#C73600) | Elevated risk |
 | 0–34 | **Bearish** | `--c-tier-5` (#8B1414) | Significant concerns |
 
-⚠️ **Neutral is a true grey as of 2026-08-23**, and it took three attempts to get
-there. `#D4A017` measured **2.38:1** under white — illegible for the life of the
+⚠️ **Neutral is GOLD again as of 2026-09-02 — `#9C5B01`.** Owner decision, and the
+reasoning is about meaning rather than measurement: *"it is not about visibility,
+it's about common sense. Traffic lights are typically used to say between good,
+neutral and bad… going from green, grey and red doesn't make sense."* The August
+verdict below is still arithmetically true and was answering a different question —
+that search maximised **separation**, which walks any colour out of its own hue and
+returned a near-black brown. Ranked instead by *how gold it is*, under identical
+floors, `#9C5B01` clears both (5.37 with white on it, 4.86 as text) where the
+original `#D4A017` cleared neither, and sits at L\* 45.0 beside its neighbours' 45.3
+so the weight ramp is undisturbed. **The cost, measured and accepted:** to a
+red-green colour-blind reader it sits 5.7 from Constructive and 5.3 from Cautious,
+where the grey scored 22.0 and 24.6 — a grey wins there precisely because it has no
+colour to lose. Not a 1.4.1 failure (every chip carries its score, every badge its
+word), and three ways of buying the gap back were measured and all failed. The two
+ratchets in `check-tier-palette.mjs` were re-based deliberately; that file carries
+the numbers. ⚠️ **Separately: Constructive against Cautious measures 3.9 to a
+red-blind reader and always has** — worse than either pair above, invisible to the
+guard because it only compares *adjacent* tiers, and untouched by this change.
+
+⚠️ *Historic, and the reason the gold had to be re-argued rather than simply
+restored:* **Neutral was a true grey from 2026-08-23**, and it took three attempts to
+get there. `#D4A017` measured **2.38:1** under white — illegible for the life of the
 product. Darkening it to `#87660F` fixed that one colour and broke the *set*: with
 tiers 2, 3 and 4 each darkened to just clear the floor they landed at 5.31 / 5.33 /
 5.31, practically one lightness, and adjacent tiers became hard to tell apart —
@@ -466,11 +486,21 @@ via `ZONE_TIER`/`ZONE_DISPLAY` and is the only place the Deep Value…Stretched 
 appear with their zone-tier colour.)
 
 The **Health** column has only THREE labels (Healthy ≥80 · Adequate ≥60 · At Risk
-below 60), so it is coloured by `healthColor` — **one colour per tier**:
-`--c-tier-1` green / `--c-tier-3` gold / `--c-tier-5` red — applied to BOTH the
-number badge and the label. It reads the tokens, so the 2026-08-22 palette change
-reached this column and the Valuation ladder above without either being edited. It deliberately does NOT use the 5-tier `scoreColor` ladder (which would
-paint "Adequate" and "At Risk" rows several different shades for the same word).
+below 60), so it is coloured by `healthColor` — **one colour per tier**, via its own
+domain tokens `--health-good` / `--health-adequate` / `--health-at-risk`, applied to
+BOTH the number badge and the label. It deliberately does NOT use the 5-tier
+`scoreColor` ladder (which would paint "Adequate" and "At Risk" rows several different
+shades for the same word).
+
+⚠️ **Those three tokens are deliberate ALIASES of `--c-tier-1/3/5`**, and that is the
+only place in the token layer where aliasing is the right answer rather than the bug.
+Green/amber/red for good/adequate/at-risk is genuinely the *same design decision* as the
+rating ladder's, so two colours that merely happened to match would drift the next time
+one moved — and two slightly different golds on one screen is precisely the defect
+nobody spots (CLAUDE.md 11c-viii). Everything else that used to borrow a rating token
+was given its own literal instead, for the opposite reason. **Adequate was grey until
+2026-09-02** and is gold on owner instruction, having been shown it grey; it carries
+white numerals on the chip (5.37) and appears as `.score-tag` text on the page (4.86).
 Valuation keeps the 5-tier ladder above because it genuinely has five labels.
 
 ---

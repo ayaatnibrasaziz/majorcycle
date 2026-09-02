@@ -2,7 +2,6 @@ import {
   compositionRamp,
   healthColor,
   healthRatingLabel,
-  metricTintColor,
   scoreColor,
   tierFromLabel,
   valuationAppealLabel,
@@ -158,19 +157,17 @@ export function Mag7Table({ snapshot }: { snapshot: Mag7Snapshot }) {
                   </span>
                 </span>
               </td>
-              {/* Current DD% is the only tinted column in the product's Major
-                  Cycle band (`tint: 'drawdown'`), and it runs GREEN for a deeper
-                  dip — deeper is more cyclically favourable, which is the whole
-                  argument of this page. Tinting it red, as a first pass did, said
-                  the opposite. The other three carry no tint there, so they carry
-                  none here. */}
-              <td
-                className="text-right"
-                style={{
-                  color: metricTintColor('drawdown', r.currentDrawdownPct) ?? undefined,
-                  fontWeight: 600,
-                }}
-              >
+              {/* Current DD% carries NO colour, here or in the screener — owner
+                  decision, 2026-09-02. It used to run green for a deeper dip, on
+                  the reasoning that deeper is more cyclically favourable. That is
+                  the argument this page makes in words, and it is exactly why the
+                  colour had to go: the fall is a measured FACT, while whether a
+                  given fall is good news is our Valuation score, which is the
+                  paid product. Colouring the fact quietly published the verdict.
+                  A red ramp was considered and rejected for the mirror-image
+                  reason — it would have contradicted the analysis on the same
+                  page. The reader is left to judge the number. */}
+              <td className="text-right" style={{ fontWeight: 600 }}>
                 {signed1(r.currentDrawdownPct)}
               </td>
               <td className="text-right">{signed1(r.typicalDrawdownPct)}</td>

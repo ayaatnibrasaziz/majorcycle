@@ -229,7 +229,51 @@
      literal again. The direction colours are a different rule and keep theirs. */
   --c-tier-1: #065F46;
   --c-tier-2: #1E7C1E;
-  --c-tier-3: #72696D;
+  /* ⚠️ GOLD AGAIN SINCE 2026-09-02, and the reason it is possible now is not a
+     cleverer search — it is that the OWNER decided the ladder's meaning outranks
+     its separation score. Their words: *"it is not about visibility, it's about
+     common sense. Traffic lights are typically used to say between good, neutral
+     and bad… going from green, grey and red doesn't make sense."*
+
+     The August note above ("gold could not be rescued") is still arithmetically
+     true and was answering a different question. That search maximised
+     SEPARATION and returned #3E301E, a near-black brown — the same trap caught me
+     twice again this session, because an optimiser told to maximise distance will
+     always walk a colour out of its own hue. Ranking instead by *how gold it is*,
+     subject to the identical floors, the best available is #9C5B01: chroma 57.2
+     against the old gold's 49.1, and it clears both floors where the old #D4A017
+     cleared neither (2.38 and 2.15).
+
+     It also lands where the ramp needs it. L* 45.0, with Constructive and
+     Cautious both at 45.3 — so the middle chip is neither heavier nor lighter
+     than the two it sits between, which is what went wrong in August when three
+     tiers were flattened onto one lightness.
+
+       white text on it   5.37   (floor 4.80 — its neighbours are 5.31 and 5.32)
+       as TEXT on --bg-page 4.86 (floor 4.80)
+
+     ⚠️ WHAT IT COSTS, AND WHY IT WAS STILL THE RIGHT CALL. A traffic light is the
+     textbook hard case for colour blindness and this one is no exception: to a
+     red-blind reader gold sits 5.7 from Constructive, and to a green-blind reader
+     5.3 from Cautious. Grey scored 22.0 and 24.6, because a grey has no colour to
+     lose. Three ways of buying that back were measured and all three failed — a
+     darker gold reaches 9.2 only at #492A00 (a chocolate brown), a lighter one is
+     blocked by the white text above L* 47, and moving Constructive as well lifts
+     the floor to just 6.0 by turning it olive.
+
+     This is NOT a WCAG 1.4.1 failure: colour is never the only channel here.
+     Every chip carries its score and every badge its word, so a reader who cannot
+     separate the hues still reads "Neutral" and "62". Presented to the owner with
+     these exact numbers and approved on them, not on a picture.
+
+     ⚠️ AND THE PALETTE ALREADY HAD A WORSE PAIR THAT NOTHING HAS EVER MEASURED.
+     Constructive against Cautious is **3.9** to a red-blind reader — today, with
+     grey in place, and unchanged by any of this. Those are the two tiers that
+     carry the most weight for a reader. It survives because `check-tier-palette`
+     compares only ADJACENT tiers and those two are two apart, while a results
+     table puts all five on screen at once. Recorded as its own finding; not
+     caused by this change and not fixed by it. */
+  --c-tier-3: #9C5B01;
   --c-tier-4: #C73600;
   --c-tier-5: #8B1414;
 
@@ -242,7 +286,27 @@
      sat behind it did. Darkened ~6% so it clears on BOTH grounds (4.82 on the
      page tint, 5.25 on the card tint) rather than only the one a screenshot
      happened to catch it on. Measure a composited colour where it actually sits. */
-  --c-tier-3-ink: #6B6266;
+  /* Gold again, 2026-09-02, and built the way the August inks were: the base
+     scaled toward black by a fixed factor, so the ink's lineage to its tier is
+     reproducible rather than hand-picked. #9C5B01 × 0.88.
+
+     0.90 is the MINIMUM factor that clears the floor (4.89). 0.88 was taken
+     instead to buy margin — the previous ink shipped at 4.32 on a ground nobody
+     had measured it against, and a value sitting exactly on its floor is one
+     surface change away from being under it (CLAUDE.md 11i-b).
+
+       on the badge tint over a white card   5.95
+       on the badge tint over --bg-page      5.42
+       as plain text on --bg-page            5.92   (what the guard checks)
+
+     ⚠️ THAT IS BETTER THAN THE GREY IT REPLACES, WHICH WAS UNDER THE HOUSE FLOOR.
+     Measured this session, `.tier-badge--3` in grey scored **4.59** on --bg-page
+     — above WCAG's 4.5, below this repo's 4.8 — while the note above claims 4.82
+     for that exact pairing. The guard could not see it because it measures the
+     ink on the PLAIN page and the badge draws it on a TINT, which is darker.
+     Recorded as its own finding; Cautious sits at 4.81 on the same measurement
+     and wants the same look. */
+  --c-tier-3-ink: #895001;
   /* Cautious was the only tier whose ink had no token — it lived as a bare
      #B23A00 literal inside `.tier-badge--4`, where nothing else could reach it
      and no one would think to keep it in step with its four siblings. Same
@@ -261,9 +325,115 @@
   --tint-tier-2-strong: rgba(34, 139, 34, 0.12);
   --tint-tier-5: rgba(178, 34, 34, 0.10);
   --tint-tier-5-strong: rgba(178, 34, 34, 0.12);
-  --tint-tier-3: rgba(114, 105, 109, 0.10);
-  --tint-tier-3-strong: rgba(114, 105, 109, 0.12);
+  /* Tier 3's tint follows the same rule as 2 and 5 — it is built from the
+     PRE-darkening version of its own colour, which for this tier is the original
+     gold #D4A017. That is not a coincidence to tidy up later: a tint is a pale
+     wash carrying dark ink, so building it from the lighter ancestor gives the
+     ink more room, not less (5.42 on --bg-page against 5.06 if it were built
+     from #9C5B01).
+     ⚠️ It also puts the badge back in step with the LANDING PAGE, which has been
+     hand-washing `rgba(212,160,23,…)` and `#fdf9ef` since it was built — from the
+     days when this tier was gold — while the border and heading on top of those
+     washes had gone grey. That mismatch is live today. */
+  --tint-tier-3: rgba(212, 160, 23, 0.10);
+  --tint-tier-3-strong: rgba(212, 160, 23, 0.12);
   --tint-brand: rgba(46, 125, 232, 0.10);
+
+  /* ── THINGS THAT ARE NOT A RATING BUT USED TO BORROW ONE ───────────────────
+     Every token below held `var(--c-tier-3)` or `var(--c-tier-3-ink)` until
+     2026-09-02, and each is byte-identical to the value it inherited — this
+     block changes nothing on screen. It exists so that the NEXT sentence is
+     true, and it was not:
+
+       Retuning the rating tier *Neutral* must repaint rating surfaces and
+       nothing else.
+
+     ⚠️ WHY IT MATTERS RIGHT NOW. Neutral is about to stop being grey and become
+     gold. Before this block, that one edit would also have repainted a CSV
+     import warning, the "Skipped" count on a run, a billing warning on
+     /account, the trial modal's notice, the short-interest band, three Learn
+     figures, the 52-week gauge and four landing-page accents — none of which is
+     our judgement about a stock, none of which anybody asked to change, and
+     every one of which would still have rendered perfectly afterwards. That is
+     the failure mode this repo keeps meeting: **the defect is an omission, so it
+     looks deliberate** (CLAUDE.md 11c).
+
+     ⚠️ A SHARED VALUE IS FINE; A SHARED NAME IS THE DEFECT. Almost everything
+     here starts as the same grey. That is not duplication to be tidied away —
+     it is the point. Each can now move without the others, which is also what
+     makes a dark theme a re-pointing job rather than a rewrite.
+
+     ⚠️ NOT A DECISION ABOUT WHICH OF THESE SHOULD *ALSO* GO GOLD. Some plainly
+     want to (Financial Health's "Adequate" is a three-rung green/gold/red
+     ladder, and the comment beside it in `lib/ratings.ts` has said "→ gold"
+     since the day the palette was gold). Some plainly must not (a billing
+     warning is not a stock rating). Pinning all of them keeps this change to
+     what was actually approved and leaves each one a separate, visible
+     question — rather than repainting a dozen surfaces as a side effect and
+     calling it tidying (11l). */
+
+  /* Status / feedback — forms, CSV import, run progress, billing notices. */
+  --status-warning: #72696D;
+  --status-warning-ink: #6B6266;
+  --status-warning-tint: rgba(114, 105, 109, 0.10);
+  --status-warning-tint-strong: rgba(114, 105, 109, 0.12);
+
+  /* Financial Health has THREE rungs, not five — see `healthColor()`. It must
+     never use the 5-tier score ladder, or one label ("Adequate") would come out
+     in several different shades depending on the exact score.
+
+     ⚠️ THESE ARE ALIASES ON PURPOSE, WHICH IS THE OPPOSITE OF EVERY OTHER TOKEN
+     IN THIS BLOCK, so it needs saying. Everything else here was given its own
+     literal precisely so a rating change cannot leak into it. Health is
+     different: green/amber/red for good/adequate/at-risk IS the same design
+     decision as the rating ladder's, and the owner asked for Adequate to be the
+     gold on 2026-09-02, having seen it grey. Two golds that merely *happen* to
+     match today would drift the next time one moves, and a screen showing two
+     slightly different golds is exactly the kind of defect nobody spots
+     (CLAUDE.md 11c-viii). Pointing at the tier makes that drift impossible.
+
+     So the coupling is now DECLARED rather than accidental — which is the whole
+     difference from where this started, when `healthColor()` simply reached for
+     `var(--c-tier-3)` and no token named the health concept at all. If the two
+     ever need to part, these three lines are where it happens, and nothing else
+     has to change.
+
+     ⚠️ Adequate carries white numerals on the solid chip (5.37) and appears as
+     `.score-tag` text on the page (4.86) — both cleared by the gold. */
+  --health-good: var(--c-tier-1);
+  --health-adequate: var(--c-tier-3);
+  --health-at-risk: var(--c-tier-5);
+
+  /* Where a stock sits in its own cycle. A position, not a verdict. */
+  --cycle-typical: #72696D;
+
+  /* Third-party analyst data: price is above the average target. */
+  --analyst-downside: #72696D;
+
+  /* Middle band of a measured market statistic (short interest, and the
+     metric-category chips, which are a taxonomy rather than a score). */
+  --band-neutral: #72696D;
+  --band-neutral-ink: #6B6266;
+  --band-neutral-tint: rgba(114, 105, 109, 0.10);
+
+  /* The comparison series in a Learn/landing figure — "everyone else", "the
+     average of all falls", the analyst range. A reference line, not a rating. */
+  --series-reference: #72696D;
+  --series-reference-ink: #6B6266;
+
+  /* Landing-page warm accents. ⚠️ These sit on backgrounds already hand-typed
+     from the ORIGINAL gold #D4A017 (`rgba(212,160,23,…)` and `#fdf9ef`), so the
+     landing currently pairs a gold wash with a grey border and grey heading —
+     a mismatch that predates this change and is recorded, not fixed here. */
+  --accent-warm: #72696D;
+  --accent-warm-ink: #6B6266;
+
+  /* The 52-week position gauge: a green-to-red ramp showing where today's price
+     sits in its own yearly range. Its four stops read `--c-tier-1…4` today. */
+  --gauge-1: #065F46;
+  --gauge-2: #1E7C1E;
+  --gauge-3: #72696D;
+  --gauge-4: #C73600;
 
   /* ── SEMANTIC INK — the same meanings, for when the colour is TEXT ─────────
      A colour that is a line, a candle, a dot or a bar keeps the value it has
@@ -1095,7 +1265,7 @@ td.num             { font-weight: 600; }
 .mt-cat-pill        { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 4px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap; }
 .mt-cat-valuation   { background: var(--tint-brand);        color: var(--brand-deep);     border: 1px solid rgba(46,125,232,.22); }
 .mt-cat-growth      { background: var(--tint-tier-2);       color: var(--c-tier-2-ink);   border: 1px solid rgba(34,139,34,.22); }
-.mt-cat-profitability { background: var(--tint-tier-3);     color: var(--c-tier-3-ink);   border: 1px solid rgba(114,105,109,.28); }
+.mt-cat-profitability { background: var(--band-neutral-tint); color: var(--band-neutral-ink); border: 1px solid rgba(114,105,109,.28); }
 .mt-cat-balance     { background: rgba(74,85,104,.10);      color: #4A5568;               border: 1px solid rgba(74,85,104,.22); }
 .mt-cat-cashflow    { background: rgba(46,125,232,.08);     color: #1E5CB3;               border: 1px solid rgba(46,125,232,.18); }
 .mt-cat-income      { background: rgba(212,160,23,.08);     color: #8A6710;               border: 1px solid rgba(212,160,23,.22); }
@@ -1342,7 +1512,7 @@ td.num             { font-weight: 600; }
 .upload-zone:hover, .upload-zone.drag-over { border-color: var(--brand-bright); background: var(--brand-light); }
 .upload-zone svg { color: var(--text-muted); flex-shrink: 0; }
 .upload-zone.upload-valid { border-color: var(--c-tier-2); }
-.upload-zone.upload-warn  { border-color: var(--c-tier-3); }
+.upload-zone.upload-warn  { border-color: var(--status-warning); }
 .upload-zone.upload-error { border-color: var(--c-tier-5); }
 .upload-preview {
   margin-top: 8px; font-size: 11px; font-family: var(--font-mono);

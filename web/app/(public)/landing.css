@@ -6,8 +6,13 @@
  * globals.css — the same values the terminal renders. That is the point: the
  * front door and the product must not be two designs. Where the artifact used
  * short aliases (`--t3`, `--tint-t2-strong`) this file uses OUR canonical names
- * (`--c-tier-3`, `--tint-tier-2-strong`) rather than introducing a second set of
- * names for one palette (CLAUDE.md 11c).
+ * (`--accent-warm`, `--tint-tier-2-strong`) rather than introducing a second set
+ * of names for one palette (CLAUDE.md 11c).
+ *
+ * ⚠️ The warm accents here read `--accent-warm` / `--accent-warm-ink`, NOT the
+ * rating's Neutral, which they borrowed until 2026-09-02. They are decoration on
+ * a marketing page; Neutral is a verdict about a stock. Same value that day, and
+ * they part company the moment Neutral becomes gold.
  *
  * Why a stylesheet at all, on a Tailwind project: this page draws two measuring
  * rulers, a quadrant scatter plot and a ten-column table with a banded header.
@@ -582,7 +587,7 @@
 .lp .q-br .ql {
   right: 0;
   bottom: 0;
-  color: var(--c-tier-3-ink);
+  color: var(--accent-warm-ink);
   text-align: right;
 }
 .lp .q-tl {
@@ -752,7 +757,7 @@
 
 /* ── Callout ───────────────────────────────────────────────────────────── */
 .lp .callout {
-  border-left: 3px solid var(--c-tier-3);
+  border-left: 3px solid var(--accent-warm);
   background: #fdf9ef;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   padding: 16px 20px;
@@ -762,7 +767,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--c-tier-3-ink);
+  color: var(--accent-warm-ink);
 }
 .lp .callout p {
   font-size: 13.5px;

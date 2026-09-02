@@ -610,6 +610,103 @@ owner's traffic light.
 orange-red `#C73600` measures **0.5** to a deuteranope — the same colour. Freeing all
 five (decision 2) is what makes the ladder solvable.
 
+### ✅ APPLIED 2026-09-02 — Neutral is gold, the fall % has no colour
+
+Both approved by the owner on the measurements. Described below as three steps because
+that is the order they were built and verified in — but they landed as **one commit**,
+deliberately: `globals.css` and `lib/ratings.ts` each carry two of the three, so
+splitting them afterwards would have meant hand-reverting and re-applying colour values
+on a live palette. Commit tidiness is not worth that risk, and claiming a revert
+granularity that does not exist is worse than not having it.
+
+**Step 1 — the borrowers were pinned first, zero visual change.** Eighteen tokens were
+added, each holding *byte-identical* the value it had been inheriting, and fourteen
+files re-pointed at them. Without this, one edit to Neutral would also have repainted a
+CSV import warning, the "Skipped" count on a run, a billing warning on `/account`, the
+trial modal's notice, the short-interest band, three Learn figures, the 52-week gauge
+and four landing accents — none of them our judgement about a stock. Proven by asserting
+every new token's value equals the one it replaced before anything else moved.
+
+⚠️ **Pinning is NOT a decision that these should stay grey** — it makes each one a
+visible question instead of a side effect (11l). **The first was answered the same day:
+the owner asked for Financial Health's *Adequate* to be gold**, which is what the comment
+beside it in `lib/ratings.ts` had claimed since the palette was gold. The other twelve
+remain grey and unasked.
+
+⚠️ **Health is the one domain where ALIASING is right, and it is worth saying why**, since
+it is the exact opposite of what every other token in that block does.
+`--health-good/-adequate/-at-risk` point at `--c-tier-1/3/5` rather than holding their own
+literals: green/amber/red for good/adequate/at-risk is genuinely the *same* design
+decision as the rating ladder's, so two golds that merely matched today would drift the
+next time one moved — and two slightly different golds on one screen is precisely the
+defect nobody spots (11c-viii). The gain over where this started is still real: the health
+concept now has a **name**, where before `healthColor()` simply reached for
+`var(--c-tier-3)` and nothing recorded that a decision had been made. The coupling is
+declared instead of accidental, and three lines break it if the two ever need to part.
+
+**Step 2 — `--c-tier-3` `#72696D` → `#9C5B01`**, ink `#6B6266` → `#895001` (the tier ×
+0.88), tint rebuilt from the original gold `#D4A017` the way tiers 2 and 5 are built
+from their own pre-darkening ancestors. `RATING_TIER_HEX[3]` moved in the same commit;
+the two `SEPARATION` ratchets were re-based deliberately, with the reasoning in the
+guard.
+
+**Step 3 — Current DD% carries no colour**, in the screener and on the landing. The
+`'drawdown'` case was **deleted** from `metricTintColor` and from `TintKind` rather than
+left unused, so re-applying it is now a type error — the only thing that makes an
+omission visible.
+
+**Verified in the browser, not in the source** (`getComputedStyle` on a running server):
+tokens `#9c5b01` / `#895001` / `rgba(212,160,23,.12)`; the Neutral badge drawing
+`rgb(137,80,1)` on its gold tint; Neutral score chips `rgb(156,91,1)` under white; all
+eight pinned tokens still `#72696d`; every fall-% cell `rgb(15,25,35)`, no tint.
+`pnpm gates --no-e2e` 15/15.
+
+⚠️ **Two instrument failures on the way, both worth remembering.** (i) The first reading
+said the gold had not applied — `--c-tier-3` still `#72696d` and every new token empty. I
+blamed the `.next-dev` cache (11i), deleted it (3,671 files, confirmed gone) and got the
+*same* answer. Fetching the stylesheet the page had actually linked showed it contained
+the gold all along: **I was measuring a DOM rendered before the restart.** The boring
+explanation was one level more boring than the one I reached for. (ii) The undefined-token
+probe kept reporting `--c-mid` as missing *after* it was fixed, because the comment
+documenting the fix contains the string — the same trap that has bitten this repo's own
+guards twice (`public-chrome.spec.ts`, the artifact build). A scan over source text must
+strip comments or it will fail on its own documentation.
+
+### 5A-096 · today's Neutral badge measured 4.59 on `--bg-page`, and the note claims 4.82
+
+Found while choosing the gold's ink. `.tier-badge--3` in grey composited to `#E1E3E7` on
+the page ground and its `#6B6266` ink scored **4.59** — above WCAG's 4.5, below this
+repo's own 4.8 floor, and `globals.css` states 4.82 for that exact pairing. **The guard
+cannot see it**: it measures the ink on the *plain* page, while the badge draws it on a
+*tint*, which is darker. Cautious sits at **4.81** on the same measurement, i.e. also on
+its floor. Fixed for tier 3 as a side effect (the gold ink scores 5.42 there); tier 4 is
+**open**, and the general fix is to measure the ink where the badge actually draws it.
+
+### 5A-097 · Constructive vs Cautious is 3.9 to a red-blind reader, and nothing checks it
+
+The palette's weakest pair by a wide margin — worse than either pair the gold introduces
+— and it is **unchanged by any of this work**. It survives because `check-tier-palette`
+compares only ADJACENT tiers and those two are two apart, while a results table puts all
+five on screen at once, so every pair is a real comparison. Widening the check to all ten
+pairs would fail on the day it was written, which is how ratchets get loosened rather
+than obeyed; it needs its own decision. **Open.**
+
+### 5A-098 · the landing pairs an old-gold wash with a grey border and heading
+
+`.lp .callout` washes `#fdf9ef` and `.lp .q-br` washes `rgba(212,160,23,…)` — both from
+the days when this tier was gold — while the border and heading on top of them had gone
+grey in August. Live today. Those accents are now `--accent-warm`, pinned to grey, so the
+mismatch is *preserved* rather than fixed: repainting a marketing page was not what was
+approved. **Open** — one line each if the owner wants them warm again.
+
+### 5A-099 · `var(--ease)` is referenced and has never been defined
+
+`articles.css` sets `transition: transform .25s var(--ease)` on the read-more arrow. An
+undefined custom property does not fall back — it voids the whole declaration — so that
+transition has never run. Motion rather than colour, so deliberately left out of this
+change. **Open**, one line. Found by the same sweep that caught `--c-mid` in `NewsFeed`
+(fixed here: it had never existed, so the brand blue on the source pill never applied).
+
 ### ⚠️ One consequence to settle before building — the fall % is a FREE field
 
 Decision 5 colours the fall percentage by the **Valuation tier**. Valuation is

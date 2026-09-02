@@ -76,7 +76,13 @@ export function NewsFeed({ news }: Props) {
               <span style={{
                 fontSize: 10,
                 fontWeight: 700,
-                color: 'var(--c-mid)',
+                // ⚠️ `var(--c-mid)` until 2026-09-02 — a token that has never
+                // existed. An undefined custom property does not fall back, it
+                // voids the whole declaration, so this pill silently inherited
+                // its colour and the brand blue never applied. The ink token is
+                // the right one here because the text sits on a tint: 5.61 on a
+                // white card, 5.09 on --bg-page.
+                color: 'var(--c-brand-ink)',
                 background: 'rgba(30,92,179,.10)',
                 borderRadius: 4,
                 padding: '1px 6px',

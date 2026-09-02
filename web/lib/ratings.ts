@@ -36,7 +36,7 @@ import type { CycleAnalysis, OverallLabel, ValuationZone } from '@/lib/types';
 export const RATING_TIER_HEX: Readonly<Record<1 | 2 | 3 | 4 | 5, string>> = {
   1: '#065F46',
   2: '#1E7C1E',
-  3: '#72696D',
+  3: '#9C5B01',
   4: '#C73600',
   5: '#8B1414',
 } as const;
@@ -91,9 +91,9 @@ export function scoreColor(score: number | null): string {
  */
 export function healthColor(score: number | null): string {
   if (score == null) return 'var(--text-muted)';
-  if (score >= 80) return 'var(--c-tier-1)'; // Healthy  → green
-  if (score >= 60) return 'var(--c-tier-3)'; // Adequate → gold
-  return 'var(--c-tier-5)'; //                  At Risk  → red
+  if (score >= 80) return 'var(--health-good)'; //     Healthy  → green
+  if (score >= 60) return 'var(--health-adequate)'; // Adequate → gold
+  return 'var(--health-at-risk)'; //                   At Risk  → red
 }
 
 /** Financial-Health 3-tier label (matches healthColor): Healthy / Adequate / At Risk. */
@@ -167,7 +167,7 @@ export function cyclePosition(
 export function cyclePositionColor(pos: number | null): string {
   if (pos == null) return 'var(--text-muted)';
   if (pos >= 66) return 'var(--c-tier-1)';
-  if (pos >= 33) return 'var(--c-tier-3)';
+  if (pos >= 33) return 'var(--cycle-typical)';
   return 'var(--c-tier-5)';
 }
 
@@ -423,18 +423,12 @@ export function upsidePct(close: number | null, target: number | null): number |
  * threshold ladder.
  */
 export function metricTintColor(
-  kind: 'drawdown' | 'roe' | 'fcf' | 'de' | 'peg' | 'upside' | 'positive',
+  kind: 'roe' | 'fcf' | 'de' | 'peg' | 'upside' | 'positive',
   val: number | null,
 ): string | null {
   if (val == null || Number.isNaN(val)) return null;
   const tier = (n: 1 | 2 | 3 | 4 | 5) => tierColorVar(n);
   switch (kind) {
-    case 'drawdown': // deeper dip = more cyclically favourable (greener)
-      if (val <= -20) return tier(1);
-      if (val <= -10) return tier(2);
-      if (val <= -5) return tier(3);
-      if (val <= -2) return tier(4);
-      return tier(5);
     case 'roe':
       if (val >= 20) return tier(1);
       if (val >= 15) return tier(2);

@@ -65,7 +65,7 @@ export type BandKey =
 export type ViewMode = 'simple' | 'analyst' | 'full';
 export type FieldType = 'numeric' | 'categorical' | 'text';
 export type CellKind = 'ticker' | 'overall' | 'valuation' | 'health' | 'cyclePos' | 'analyst' | 'default';
-export type TintKind = 'drawdown' | 'roe' | 'fcf' | 'de' | 'peg' | 'upside' | 'positive';
+export type TintKind = 'roe' | 'fcf' | 'de' | 'peg' | 'upside' | 'positive';
 export type Fmt =
   | 'money2'
   | 'money0'
@@ -157,7 +157,7 @@ export const FIELDS: Field[] = [
   { key: 'analyst', label: 'Analyst', tip: 'Analyst Consensus|The consensus recommendation from Wall-Street analysts (third-party data, shown verbatim — not our rating).', type: 'text', band: 'price', cell: 'analyst', fmt: 'text', align: 'left', get: (r) => f(r)?.analystRecommendation ?? null, filterable: false },
 
   // Major Cycle
-  { key: 'currentDD', label: 'Current DD%', tip: 'Current Drawdown %|How far the stock is below its recent peak right now.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', tint: 'drawdown', get: (r) => r.currentDrawdownPct, filterable: true },
+  { key: 'currentDD', label: 'Current DD%', tip: 'Current Drawdown %|How far the stock is below its recent peak right now.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.currentDrawdownPct, filterable: true },
   { key: 'typicalDD', label: 'Typical DD%', tip: 'Typical Drawdown %|The average dip depth across the stock’s confirmed historical pullbacks.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.typicalDrawdown, filterable: true },
   { key: 'lowerBound', label: 'Lower Bound%', tip: 'Lower Bound %|The deepest confirmed fall in this stock’s whole history — the worst it has been, not a typical outcome. A still-forming dip can run below it.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.lowerBound, filterable: true },
   { key: 'pullbacks', label: 'Pullbacks', tip: 'Pullbacks|Number of confirmed pullback events found in the price history — more events = a more reliable typical-dip estimate.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'int', align: 'right', get: (r) => r.totalPullbackEvents, filterable: true },

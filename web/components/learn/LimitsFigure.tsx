@@ -35,7 +35,7 @@ import { BACKWARD, FORWARD, SPANS, TODAY_X, YEAR_TICKS, edgeLabel, xOf } from '.
  */
 
 const OURS = 'var(--brand-mid)';
-const THEIRS = 'var(--c-tier-3)';
+const THEIRS = 'var(--series-reference)';
 
 /** How far the open end fades in, in pixels. Enough to read as a fade, not a gap. */
 const FADE_PX = 40;

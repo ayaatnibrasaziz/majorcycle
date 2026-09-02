@@ -73,7 +73,7 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
             className="relative h-[5px] w-full rounded-full"
             style={{
               background:
-                'linear-gradient(90deg, var(--c-tier-1), var(--c-tier-2), var(--c-tier-3), var(--c-tier-4))',
+                'linear-gradient(90deg, var(--gauge-1), var(--gauge-2), var(--gauge-3), var(--gauge-4))',
             }}
             aria-hidden="true"
           />

@@ -345,11 +345,50 @@ for (const f of files) {
  * carries its score while every badge carries its word. It is a quality question,
  * and it belongs to the owner.
  */
+/*
+ * ⚠️ 2026-09-02 — THE TWO NEUTRAL PAIRS WERE LOWERED ON PURPOSE, WHICH IS THE ONE
+ * THING A RATCHET IS NOT SUPPOSED TO ALLOW. Read this before touching them again.
+ *
+ * The owner decided Neutral must be a traffic light's amber rather than a grey:
+ * *"it is not about visibility, it's about common sense. Traffic lights are
+ * typically used to say between good, neutral and bad… going from green, grey and
+ * red doesn't make sense."* Grey scored so well here precisely BECAUSE it is a
+ * grey — a near-neutral has almost no colour to lose, so it holds still under
+ * every simulation while its neighbours move around it. Any colour at all in that
+ * slot scores worse. Those floors were therefore not a safety bar that gold
+ * happens to fail; they were a measurement of what grey costs the design.
+ *
+ * What the colour was chosen against instead, all measured before it was offered:
+ *   · it clears both contrast floors (5.37 with white on it, 4.86 as text), where
+ *     the ORIGINAL gold #D4A017 cleared neither (2.38 and 2.15)
+ *   · L* 45.0 against its neighbours' 45.3 — it does not disturb the weight ramp
+ *   · it is the most chromatic gold available under those constraints, and three
+ *     attempts to buy the separation back all failed (a darker gold reaches 9.2
+ *     only by becoming a chocolate brown, a lighter one loses the white text, and
+ *     moving Constructive too reaches only 6.0 by turning it olive)
+ *
+ * Not a WCAG 1.4.1 failure — colour is never the sole channel on these surfaces:
+ * every chip carries its score and every badge its word. It is a quality
+ * trade-off, it belongs to the owner, and they took it on these numbers.
+ *
+ * ⚠️ THESE ARE STILL RATCHETS. They are today's measurement rounded down, so the
+ * next well-meant nudge that narrows either pair fails exactly as before. Lowering
+ * one again needs the same thing this needed: a measurement, a reason, and the
+ * owner.
+ *
+ * ⚠️ AND THE REAL WEAK PAIR IS NOT IN THIS TABLE AT ALL. Constructive against
+ * Cautious measures 3.9 to a protanope — worse than anything below, unchanged by
+ * this edit, and never once checked, because this table only holds ADJACENT pairs
+ * and those two are two apart. A results table shows all five at once, so every
+ * pair is a real comparison. Widening this to all ten pairs is its own decision
+ * (it would fail on the day it was written, which is how ratchets get loosened
+ * rather than obeyed) and is recorded as a finding instead.
+ */
 const SEPARATION = [
   // pair, plain, protanope, deuteranope
   [['1', '2'], 17.0, 18.0, 24.0], // measured 2026-08-22
-  [['2', '3'], 34.0, 25.0, 21.5], // re-based 2026-08-23 when Neutral became grey
-  [['3', '4'], 28.0, 26.5, 24.0], // re-based 2026-08-23
+  [['2', '3'], 40.0, 5.5, 7.0], // re-based 2026-09-02 when Neutral became gold
+  [['3', '4'], 16.5, 9.5, 5.0], // re-based 2026-09-02
   [['4', '5'], 16.0, 17.5, 16.0], // measured 2026-08-22
 ];
 for (const [[a, b], minPlain, minProtan, minDeutan] of SEPARATION) {

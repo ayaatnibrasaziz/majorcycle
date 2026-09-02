@@ -81,7 +81,7 @@ export function RunProgress({
           <Chip label="Processed" value={`${processed} / ${runMeta.tickerCount}`} />
           <Chip label="Scored" value={String(resultCount)} valueColor="var(--c-tier-2)" />
           {unavailableCount > 0 && (
-            <Chip label="Skipped" value={String(unavailableCount)} valueColor="var(--c-tier-3)" />
+            <Chip label="Skipped" value={String(unavailableCount)} valueColor="var(--status-warning)" />
           )}
         </div>
 

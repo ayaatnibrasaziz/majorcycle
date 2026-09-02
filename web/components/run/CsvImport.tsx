@@ -39,7 +39,7 @@ interface Preview {
 
 const PREVIEW_COLOR: Record<Preview['kind'], string> = {
   ok: 'var(--c-tier-2)',
-  warn: 'var(--c-tier-3)',
+  warn: 'var(--status-warning)',
   error: 'var(--c-tier-5)',
 };
 

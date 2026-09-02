@@ -98,7 +98,7 @@ export function StockHeader({ stock, badgeSlot }: Props) {
     ? null
     : upsidePct >= 0
       ? 'var(--c-tier-2)'
-      : 'var(--c-tier-3)';
+      : 'var(--analyst-downside)';
   const upsideText = upsidePct === null
     ? null
     : upsidePct >= 0

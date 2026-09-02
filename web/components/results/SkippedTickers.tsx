@@ -84,7 +84,7 @@ export function SkippedTickers({
   return (
     <div className={`skipped-strip${open ? ' is-open' : ''}`}>
       <button type="button" className="skipped-summary" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[var(--c-tier-3)]" />
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-[var(--status-warning)]" />
         <span>
           {unavailable.length} ticker{unavailable.length === 1 ? '' : 's'} couldn’t be scored
         </span>
