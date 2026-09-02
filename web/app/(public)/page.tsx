@@ -497,11 +497,13 @@ export default function LandingPage() {
               // public page, and it was 2.38:1 until G2. A class would do, but a
               // data attribute cannot be renamed by a styling change.
               data-tier-legend
-              // On the SURFACE, not the page ground. The Neutral badge is a gold
-              // tint over whatever is behind it: on white it measures 4.73:1 (the
-              // figure G2 fixed it to), on --bg-page 4.32:1 — under the floor. The
-              // badge did not change; the thing behind it did. Composited colours
-              // have to be measured where they actually sit.
+              // On the SURFACE, not the page ground, and that is load-bearing: a
+              // tier badge is an alpha tint over whatever is behind it, so its
+              // contrast changes with the ground rather than with the badge. When
+              // Neutral was grey this pair measured 4.73:1 on white and 4.32:1 on
+              // --bg-page — the badge had not changed, the thing behind it had.
+              // (Now gold: 5.95 and 5.42.) Composited colours have to be measured
+              // where they actually sit.
               className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3"
               style={{
                 marginTop: '26px',

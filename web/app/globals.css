@@ -2814,48 +2814,16 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   Tier legend — the five rating labels, shown to a reader who has not seen
-   the product yet.
+/* ⚠️ The `.tier-legend*` block was REMOVED on 2026-09-02 — audit 5A-078, widened.
+   It styled the five-rung legend on `/methodology`, and that page was deleted in
+   Layer G; nothing has rendered these classes since. Six rules and a media query
+   were still being compiled into every stylesheet the site and the offline report
+   ship. `.tier-legend-swatch` also read `background: var(--tier)`, a custom
+   property set nowhere — the third undefined-variable hit in this one file.
 
-   ⚠️ This renders the REAL `.tier-badge--N` component, deliberately. The
-   earlier version painted white on the solid tier fill, which measured
-   2.38:1 on --c-tier-3 (design-system §14) — the product's entire
-   vocabulary set in its least readable text. It also taught the wrong
-   picture: nothing in the app looks like that. Tint-plus-ink is what a
-   reader will actually meet, and it clears 4.5:1 on all five tiers.
-   ───────────────────────────────────────────────────────────────────────── */
-.tier-legend {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-.tier-legend-row {
-  display: grid;
-  grid-template-columns: 4px 84px 1fr;
-  align-items: center;
-  gap: 14px;
-  padding: 11px 16px 11px 0;
-  background: var(--bg-surface);
-}
-.tier-legend-row + .tier-legend-row { border-top: 1px solid var(--border); }
-.tier-legend-swatch { align-self: stretch; background: var(--tier); }
-.tier-legend-range {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: var(--rd-small);
-  font-weight: 600;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-/* The legend sits inside `.reading`, where 11px badge text would be the
-   smallest thing on the page again. One size per context, chosen by the
-   frame — never a one-off override (design-system §3). */
-.tier-legend .tier-badge { font-size: var(--rd-small); padding: 5px 12px; }
+   The landing page's legend, which is the only place all five tiers appear
+   publicly, uses its own inline layout and the real `.tier-badge--N`; the
+   contrast guard hooks it by the `data-tier-legend` ATTRIBUTE, deliberately, so a
+   styling change cannot rename it out from under the test. Nothing here was
+   load-bearing for that. */
 
-@media (max-width: 480px) {
-  .tier-legend-row { grid-template-columns: 4px 1fr; row-gap: 6px; padding-bottom: 12px; }
-  .tier-legend-range { grid-column: 2; }
-  .tier-legend .tier-badge { grid-column: 2; }
-}

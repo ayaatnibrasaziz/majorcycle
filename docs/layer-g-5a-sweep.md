@@ -734,9 +734,18 @@ colours. Broken on purpose three ways before being trusted: the analyst red move
 Bearish (caught, 0.0 apart), the warning ink lightened (caught, 2.06), and `--c-down-ink`
 deleted (caught twice, by two different assertions).
 
-⚠️ **Still open, and deliberately not done.** `--ease` is defined but the dead
-`.tier-legend-swatch` rule and its undefined `--tier` are left in place (5A-078) because the
-owner asks to be consulted before anything is deleted. The Opportunity Map's private palette
+⚠️ **5A-078 closed on the owner's word, and it was bigger than recorded.** The finding
+named one dead rule, `.tier-legend-swatch`, and its undefined `--tier`. Checking before
+deleting showed the **whole `.tier-legend*` block** was orphaned — six rules and a media
+query, left behind when `/methodology` was deleted in Layer G, still compiled into every
+stylesheet the site *and the offline report* ship. Nothing has rendered those classes
+since. ⚠️ The landing page's legend, which is the only place all five tiers appear
+publicly, was never a consumer: it uses its own inline layout and the real
+`.tier-badge--N`, and the contrast guard hooks it by the `data-tier-legend` **attribute**
+precisely so a styling change cannot rename it out from under the test. Verified before
+removal, not after.
+
+⚠️ **Still open, and deliberately not done.** The Opportunity Map's private palette
 (5A-074), the surface-scale ramp (5A-080), the hard-typed shadows (5A-083), Windows High
 Contrast (5A-082) and the landing's old-gold washes (5A-098) are recorded and untouched.
 
