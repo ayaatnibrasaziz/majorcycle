@@ -450,6 +450,68 @@ Worth recording because each would have been a confident false finding:
 I also nearly reported *"no error message when a value is invalid"* — there is one, "Min 21.",
 which my regex missed by looking for the words *must be / invalid / at least / between*.
 
+### P3 · session 2 — the Vercel preview, where the engine actually runs
+
+Deployment `dpl_5Us2…` for `678272e`, READY, `lambdaRuntimeStats {"nodejs":3,"python":2}` — both
+Python functions live, which is the whole reason this surface exists (method note 4).
+
+⚠️ **Both the Supabase and Vercel connectors worked on the first call**, having been listed as
+needing authorisation at session start. That is the third time a startup banner has been wrong
+about a tool that simply works (11af). **Try it before building around it.**
+
+**The screener, driven end to end for the first time by anything.** Magnificent Seven →
+Medium-Term → Run: **one POST, status 200**, a "View Full Results" button, a run snapshot in
+`sessionStorage`, and `/results` drawing 7 rows with real scores and correct labels — GOOGL 83
+High Conviction, AAPL 62 Neutral, TSLA 58 Neutral.
+
+⚠️ **That single request settles session 1's loudest reading.** Locally the same click produced
+**18** POSTs. It was never a defect: `next start` does not serve the Python function, every
+request 404s, and 404-everything is the worst case of a deliberate strategy — pre-warm chunk,
+worker pool, per-chunk retry, warm retry pass. On a working deployment it is one. **An
+implausible number under an artificial condition is evidence about the environment** (11i).
+
+**The results controls, none of which any spec drives.** View modes change the table:
+**Simple 9 columns → Analyst 23 → Full 38**. Search TSLA → 1 row. A row's tier badge filters
+7 → 2 (the two Neutrals) **and syncs the tier `select`** — one state, two controls, agreeing.
+
+**Stock Detail** (`/stocks/us/AAPL`) renders whole for the first time on a measurable surface:
+Overall Rating, Verdict, Current Drawdown, Financial Health, 4 KPI cards, 21 charts, 19 cards.
+
+**P2's colour work, confirmed where it could not previously be measured.** On the paid pages,
+not on a fixture: score chips are white on `rgb(156,91,1)` = the new gold; the Neutral badge is
+`#895001` ink on its own tint — both exactly what `check:tier-palette` check 7 predicted from
+the stylesheet. And the KPI strip carries the owner's decision literally:
+
+| KPI card | accent |
+|---|---|
+| Overall Rating 62 | `#9C5B01` — gold, our judgement |
+| Health Score 83 | `#065F46` — green, our judgement |
+| **Current Drawdown −5.6%** | **none at all** — a raw market number, uncoloured |
+| Typical Drawdown −24.6% | `#4A5568` — a neutral reference |
+
+**Sign-out** returns to `/login`, and `/results` afterwards re-gates rather than serving a
+stale shell.
+
+**No new defects found in this session.**
+
+⚠️ **Console errors on the preview are Vercel's own and do not exist in production.** Every one
+is `vercel.live/_next-live/feedback/feedback.js` refused by our CSP — the feedback widget
+Vercel injects into previews only. Reading them the other way round is the useful part: the
+policy is genuinely **enforcing**, the nonce is genuinely **per-request** (a different one in
+every message), and the prerendered pages fall back to `'unsafe-inline'` exactly as designed.
+
+⚠️ **Two more of my first readings were wrong, both the same mistake in different clothes.**
+Clicking Simple / Analyst / Full in one tick and measuring in the same tick reported "23
+columns, unchanged" — **a React click and a measurement in the same tick measure the previous
+render**; with waits between them it is 9 / 23 / 38. And clicking a control captioned "Neutral"
+filtered nothing, which looked like a broken filter and was me clicking the **Opportunity Map's
+legend** (`opp-legend-item`) instead of a row badge. That is now six wrong first readings across
+the two P3 sessions, every one caught by measuring again rather than by reporting.
+
+**Still outstanding for P3:** `/account`'s four cards · `/request` · advanced filters and the
+CSV import · the Stock Detail subnav and chart range buttons · the signed-in keyboard pass ·
+and the whole pass on the **live site** in Claude in Chrome (method note 10).
+
 ### What P3 still has to cover
 
 The screener's **execution** cannot be judged locally at all — `/api/analyze` is not served by
