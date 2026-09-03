@@ -512,6 +512,57 @@ the two P3 sessions, every one caught by measuring again rather than by reportin
 CSV import · the Stock Detail subnav and chart range buttons · the signed-in keyboard pass ·
 and the whole pass on the **live site** in Claude in Chrome (method note 10).
 
+### P3 · session 3 — `/account`, `/request`, Stock Detail, and the keyboard
+
+| | Finding | Status |
+|---|---|---|
+| **5A-104** | 🔴 **The ACTIVE Stock Detail sub-nav pill has an invisible focus ring.** Every inactive pill rings correctly in `--brand-bright`; the one carrying `aria-current="true"` computes `outline-color: rgb(255,255,255)` — **white** — at `outline-offset: 1.6px`, so the ring is drawn *outside* the blue pill onto the sticky bar, which is white at 92%. **White on white, ~1.0:1 against WCAG 1.4.11's 3.0 floor**, and confirmed in a screenshot: tab to the section you are already on and nothing appears | **Open** |
+| **5A-105** | 🟡 Three range selectors on one page, two words for one idea: Price Chart and Relative Performance say **Max**, Smart Money says **All**. Defensible (events vs a price series) and probably accidental. Paid surface, so it is a copy decision rather than mine | **Open — owner's call** |
+| **5A-106** | 🟡 **Carried to P4, not chased here.** `AMD.TO` is stored as *"Advanced Micro Devices, Inc."* in the **ca** market — its own 1,031-bar series at **CAD 82.64** against the US line's **USD 459.61**, so it is a real separately-priced security (the shape of a depositary receipt), not duplicated data. But a reader searching AMD meets two identical names 5.6× apart with nothing distinguishing them. ⚠️ **Ten name collisions exist and most are entirely legitimate** — real dual listings (News Corp, Amcor, Newmont, ResMed, Block, NexGen) and share classes (GOOG/GOOGL, FOX/FOXA). Only `AMD.TO` looks like a different KIND of instrument wearing the parent's name | **Open — P4** |
+
+⚠️ **5A-104's mechanism is NOT resolved, and saying so is the point.** The compiled stylesheet
+contains exactly **one** `outline-color` declaration in the entire file — `var(--brand-bright)` —
+so the white is not coming from our CSS, and Tailwind's preflight does not reset it either. The
+measurement is solid and reproducible; the cascade explanation is not. **A wrong reason is worse
+than no reason** (14f), so the recommendation is to give the active state its own explicit focus
+colour rather than to "fix" a mechanism nobody has identified.
+
+### Verified, with no defect found
+
+- **`/account`, all four cards.** Display name editable; email and country correctly **locked**
+  (country because the subscription is active); password and referral forms present, the
+  referral form carrying a `website` honeypot. The destructive and validating paths here are
+  already covered by `account.spec.ts`, so they were not re-driven.
+- **"Manage billing" refuses gracefully, in English.** The account's `subscription_status` is
+  `active` with **no Stripe customer** (I set the status by SQL), and the button answers
+  *"There's no billing to manage on your account yet."* in a `role="alert"` rather than erroring
+  or sending the reader to a broken Stripe page. ⚠️ Worth noting as a *positive*: status-without-
+  customer is exactly the shape a production data inconsistency would take, and it is handled.
+- **`/request` search.** `QUB` → *QUBE HOLDINGS LIMITED · ASX · **Covered***; `QUBT` → *Quantum
+  Computing Inc. · NASDAQ · **Request***. The recent-requests strip shows real statuses
+  including *Not supported*. This is the path that was silently broken for a month (11z).
+- **Chart range buttons** move the active state correctly (1Y → 3Y), alongside the 50D/200D
+  moving-average toggles.
+- **Focus rings** on every other stop measured: `:focus-visible` matches and the ring is
+  `--brand-bright`, 2px at 2px offset.
+
+### ⚠️ Two more instrument failures — nine across the three sessions
+
+7. **"Keyboard focus is trapped on the signed-in pages."** Seven consecutive Tabs all reported
+   the same element. `document.activeElement` was **`BODY` the whole time** — the synthetic Tab
+   keys were never reaching the page, and what I was reading was `body.textContent` truncated,
+   which happens to start with the brand lockup. Clicking into the page first fixed it and Tab
+   advanced normally. **Had I reported this it would have been a serious false alarm.**
+8. **The first "white ring" reading was of the wrong element.** Between measuring and
+   re-measuring, the scroll-spy moved `aria-current` to a different pill, so a follow-up read
+   showed a correct brand-blue ring and appeared to contradict the finding. Selecting the pill
+   **by its active state** rather than by name reproduced it exactly. The finding survived; the
+   first attempt to confirm it did not.
+
+**Still outstanding for P3:** the advanced filters and CSV import on the screener · the
+Opportunity Map's own controls · and the whole pass on the **live site** in Claude in Chrome
+(method note 10).
+
 ### What P3 still has to cover
 
 The screener's **execution** cannot be judged locally at all — `/api/analyze` is not served by
