@@ -442,6 +442,10 @@ billing notices and short-interest bands. Each domain now has its own names:
 | **Data state** | `--data-missing` | must stay distinct from a *middling* value |
 | **Series** | `SERIES_TEAL`, `FIGURE_TEAL`, `DRAWDOWN`, `BENCH_COLOR` (`lib/ink.ts`, `lib/chartTheme.ts`) | chart props cannot read a variable |
 | **Gauge** | `--gauge-1…4` | a position ramp, not a verdict |
+| **Surface** (elevation) | `--elev-sunken / -low / -mid / -high`, aliased by `--bg-page / -stripe / -hover / -surface / -sidebar / -header` | added 2026-09-03. Three levels are the same white today — deliberately: a sidebar, a header and a card are three elevations this theme paints alike, and naming them apart is what lets a dark theme separate them without touching a component |
+| **Zones** (Opportunity Map) | `--zone-good / -priced / -cheap / -worst-rgb`, `--zone-split`, mirrored by `OPPORTUNITY_ZONES` | one hue, three consumers: the paid chart, the landing page’s still of it, and `landing.css`. Stored as an RGB triplet so one value serves both the chart’s alphas and the legend’s heavier ones |
+| **Column bands** | `--band-verdict / -price / -growth / -ratios / -health` + `-bg`, `-ink` | the screener’s five subject areas. **Category** colours: green there means *price*, not *good*, which is why they must never borrow from the rating palette |
+| **Chart furniture** | `CHART_CHROME`, `CHART_TOOLTIP`, `CANDLE`, `BRAND`, `PROFIT` (`lib/chartTheme.ts`) | Lightweight Charts paints to a `<canvas>`, where there is no stylesheet and `var()` is an unparseable colour. ⚠️ Recharts is the OPPOSITE case — `var()` in a presentation attribute genuinely resolves, measured 2026-09-03; see `lib/ink.ts` |
 
 **A shared value is fine; a shared NAME is the defect.** Several of these start life as the
 same colour. That is the point — each can now move without the others, which is also what
@@ -455,6 +459,16 @@ drift the next time one moved (11c-viii). Pointing at the tier makes that imposs
 ⚠️ **`pnpm check:tier-palette` check 6** measures every non-rating token on the ground it
 really sits on, and asserts a distance floor between the analyst palette and our verdict
 colours. Broken on purpose three ways before it was trusted.
+
+⚠️ **And four more checks were added on 2026-09-03**, each because something had already
+slipped past the ones that existed: **check 5** now compares all **ten** tier pairs rather
+than the four adjacent ones (the site’s weakest pair, Constructive vs Cautious at 3.9 to a
+deuteranope, was not among the four); **check 7** measures each badge ink on the *tint it
+actually draws on* rather than a flat ground, which is how a 4.69 passed as clean; **check
+8/8b** hold the CSS and TypeScript copies of the zone and canvas palettes in step; and
+**check 9** asserts every selector inside the `forced-colors` block names something that
+exists — written because the first draft of that block hooked a class that did not, and a
+CSS selector matching nothing is completely silent.
 
 ### What is never coloured — owner decision, 2026-09-02
 
@@ -646,6 +660,25 @@ Tailwind defaults work but the reference uses these specific values for cards an
   Navy-tinted rather than neutral black, because it falls on `--bg-page`, which is
   blue-grey.
 - `lg`: modals, popovers, tooltips
+- **`marker` / `marker-sm`**: a small round marker raised off the track it slides along —
+  the analyst consensus dot (18px) and the 52-week position dot (9px). ⚠️ **TWO tokens,
+  and that is the point.** They are `0 2px 6px` and `0 1px 3px`; collapsing them into one
+  would have doubled the blur under the smaller marker on a Stock Detail card. A shared
+  *name* is the defect a palette needs fixing; a shared *value* is not something to
+  manufacture.
+- **`segment`**: the selected segment of a segmented control lifting off its own track.
+  Deliberately not `sm` — it sits on `--bg-stripe` rather than the page, and at 6% it
+  disappears.
+- **`--marker-ring`** (not a shadow, but it rides in the same declaration): the 1px ring
+  holding a marker off a coloured track. `--brand-deep` at 20%.
+- **`--track-tick`**: a hairline drawn ON a track — a bear/bull boundary. Ink over a
+  filled bar, so it must read on that bar’s lightest and darkest stops alike.
+
+⚠️ **A shadow is a colour too** (audit 5A-083). Every hard-typed `rgba(0,0,0,…)` is a place
+a dark theme has to be edited by hand, because a black shadow on a dark surface is
+invisible. The five that were left — the finding said fifteen; re-measuring found five,
+because the P2 gauge work had already removed the rest — became the tokens above on
+2026-09-03.
 
 ⚠️ A long-form DOCUMENT takes `--shadow-sm`, not `--shadow-lift`, even though it
 also sits alone on the page: `/terms` is the page rather than an object on it, and
@@ -663,6 +696,41 @@ reads as resting, not sliding. **Note the shape — a doc and its code disagreei
 with the doc right and no test in between.** Both card families' padding and
 radius are now compared to each other in `e2e/public-chrome.spec.ts`; the shadows
 are deliberately *not* compared, because differing is the point.
+
+---
+
+## 8b. Windows High Contrast (`forced-colors`) — added 2026-09-03
+
+The site had **zero** `forced-colors` rules until this date (audit 5A-082).
+
+In that mode the operating system throws away every author colour and substitutes its own
+small system palette: `color`, `background-color`, `border-color`, `fill` and `stroke` are
+all replaced, and `box-shadow` is **dropped entirely**. That is the right default for body
+copy — it is what the reader asked their OS for — and destructive for two things here.
+
+| What | Rule | Why |
+|---|---|---|
+| Charts, gauges, the Opportunity Map | `forced-color-adjust: none` | the colour **is** the data. Four benchmark lines forced to one system colour is not a high-contrast chart, it is an unreadable one |
+| Tinted chips — tier badges, Smart Money pills, metric tags, score chips | `border: 1px solid currentColor` | the wash is erased, and a chip with no wash and no border stops looking like a chip: it becomes a loose word in a table. Each carries its own text, so nothing is *lost* — the grouping is |
+| Cards | `border: 1px solid currentColor` | `box-shadow` is dropped, so a floating card and the page ground become one plane |
+| Focus ring | `outline: 2px solid Highlight` | `Highlight` is the system colour meaning “this is selected”. Without it the ring inherits a forced text colour and stops being distinguishable from a border |
+
+⚠️ **Relative Performance carries a distinct DASH per series as well as a hue** (5A-089/090).
+That is why the dash exists: even where a chart *did* collapse to one colour, the reader
+still has a second channel, which is what WCAG 1.4.1 actually asks for.
+
+⚠️ **Anything else needing the opt-out should carry `data-keep-colors`, not have a class
+invented for it.** The first draft of this block hooked `.wk-track` for the 52-week gauge —
+a class that does not exist, because that gauge is Tailwind utilities and an inline
+gradient. **A CSS selector matching nothing is completely silent:** the stylesheet stays
+valid, the build stays green, and the one element that most needed protecting is the one
+that does not get it. `check:tier-palette` check 9 now fails on a selector nothing uses.
+
+⚠️ **What is NOT verified.** There is no Windows High Contrast toggle on the development
+machine, so these rules are written from the specification and checked only as far as *“they
+parse, they apply, and they aim at elements that exist”* — read back off a running browser,
+not off the source. **Seeing this on a real Windows machine in High Contrast is an owner
+check**, and it belongs before launch rather than after.
 
 ---
 

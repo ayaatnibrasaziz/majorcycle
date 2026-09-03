@@ -415,7 +415,7 @@ code review would ever surface.*
 | **5A-056** | P2 | ⚠️ **NOT DONE — `/results` was not driven to completion** | `/run`, `/results` | Three attempts on the live site with an entitled throwaway. The basket picks and the real submit control (*“Run Analysis · 7”*) clicks, but the run did not reach a rendered results table inside four minutes, and I will not report a surface I did not see. ⚠️ **What IS covered, and why it is not nothing:** the landing's worked run deliberately reuses the product's own `ResultsTable` classes and helpers (`compositionRamp`, `healthColor`, `metricTintColor`) precisely so the two cannot drift (11m), so the results **colour vocabulary** was measured on the landing — score chips in all five tiers, the three-tier Health ramp, the five-tier Valuation ladder and the drawdown tint. **What is NOT covered is the live page**: column tints, zebra striping, the Opportunity Map's own bands, the export buttons and the skipped-ticker strip | Open — carry into the next session |
 | **5A-057** | P2 | 🔴 **Four groups of tokens hold the SAME colour today — the wrong one is invisible** | palette | Owner-named class: *“if 2 variables has the same color and you are using the wrong one, you won't be able to figure out what is right or wrong.”* Extracted every token from `globals.css` + `lib/ink.ts` and grouped by value. **Three collisions put the RATING palette and the DIRECTION palette on one value**, which `lib/ink.ts` explicitly forbids in its own header (*“separate on purpose”*): `--c-tier-4` **==** `--c-warn-ink` **==** `INK.warn` = `#C73600`; `--c-tier-3-ink` **==** `--c-neutral-ink` **==** `INK.neutral` = `#6B6266`; `--c-tier-5` **==** `--c-tier-5-ink` = `#8B1414` (the doc even notes it). A fourth is benign: `--brand-mid` == `--c-brand-ink` == `INK.brand`. ⚠️ **Nothing can detect a wrong choice while the values agree** — not review, not a screenshot, not a guard. The bug is created the day one of them moves, and it lands on whichever surface picked the wrong name months earlier | Open — owner's call |
 | **5A-058** | P2 | 🔴 **Four of the five direction inks have a CSS token. `down` does not.** | palette | `--c-up-ink`, `--c-neutral-ink`, `--c-warn-ink` and `--c-brand-ink` all exist in `:root`. There is **no `--c-down-ink`** — so every stylesheet and component that needs “a loss, in words” hand-types `#B22222`, which it does in **20 places**. This is the structural cause of drift for the one direction colour carrying the most weight in a finance product, and it is the only member of the set a future palette change cannot reach by editing one line | Open — owner's call |
-| **5A-059** | P2 | 🟠 **~100 hard-typed colour literals that duplicate a token** | components | Sweep of `components/`, `app/`, `lib/` for hex and `rgba()` literals matching a token value: `#1E5CB3` ×28, `#B22222` ×20, `#1A3A6E` ×18, `#E2E8F0` ×10, `#2E7DE8` ×10, `#F0F4F8` ×9, `#4A5568` ×8. ⚠️ **Most are legitimate in KIND** — a Recharts `fill` or a Lightweight-Charts option is an SVG attribute where `var()` does not resolve, which `lib/ink.ts` documents. **The defect is that they are hand-typed rather than imported**: `ink.ts` exists precisely so a chart prop can hold the value without copying it, and these bypass it. Same shape as 11c-viii | Open — owner's call |
+| **5A-059** | P2 | 🟠 **~100 hard-typed colour literals that duplicate a token** | components | Sweep of `components/`, `app/`, `lib/` for hex and `rgba()` literals matching a token value: `#1E5CB3` ×28, `#B22222` ×20, `#1A3A6E` ×18, `#E2E8F0` ×10, `#2E7DE8` ×10, `#F0F4F8` ×9, `#4A5568` ×8. ⚠️ **Most are legitimate in KIND** — a Recharts `fill` or a Lightweight-Charts option is an SVG attribute where `var()` does not resolve, which `lib/ink.ts` documents. **The defect is that they are hand-typed rather than imported**: `ink.ts` exists precisely so a chart prop can hold the value without copying it, and these bypass it. Same shape as 11c-viii | **Largely closed 2026-09-03** — chart props now import instead of hand-typing |
 | **5A-060** | P2 | 🔴 **Two range gauges on the SAME page run OPPOSITE gradients** | Stock Detail | Both are a horizontal track with a marker showing where the price sits in a range. **`WeekRangeGauge`** (52-week range) runs `--c-tier-1 → --c-tier-4`, i.e. **green at the LOW end, orange at the high** — cheap is good. **`.target-track`** (Analyst Price Target Range) runs `#B22222 → #006400`, i.e. **red at the LOW end, green at the high** — high is good. Same page, same widget shape, opposite colour direction, no label on either explaining which is which. This is 5A-051's two languages made concrete in two adjacent components | Open — owner's call |
 | **5A-061** | P2 | 🟠 **Two gauge gradients are built from the ENTIRE retired rating palette** | Stock Detail, Results | `.target-track` is `#B22222 → #FF4500 → #D4A017 → #228B22 → #006400` and `.cyc-track` is `rgba(178,34,34) → rgba(212,160,23) → rgba(0,100,0)` — every stop a pre-August rating colour. §5's “a fill keeps its value” covers the **direction** palette in charts; these two are **rating** scales (a score ramp and a cycle-position band), so the exemption does not obviously reach them. They are the largest surviving blocks of the old palette | Open — owner's call |
 | **5A-062** | P2 | 🔴 **A drawdown percentage has THREE colours across the site** | sitewide | Measured on live pages: **blue** on `/learn/what-is-a-drawdown` (`-20%` in `--brand-mid`), **green** on the landing (`−25.1%`, deeper-is-greener), **red** on Stock Detail (`CURRENT −5.6%`, negative-is-red). Three surfaces, one quantity, three colour languages — and the Learn article is where a new reader is being *taught* what a drawdown is | Open — owner's call |
@@ -427,19 +427,19 @@ code review would ever surface.*
 | **5A-068** | P2 | ⚠️ **Instrument — the scan count earned its keep** | method | I probed `/learn/how-long-do-recoveries-actually-take` and it returned almost nothing. Under the old probe that would have read as *a clean page*; with the scan count it read as **6 text nodes**, which is not an article — it was the **404 page**, because I had guessed the slug. **The fix from 5A-055 caught a second false clean within one session** | Recorded |
 | **5A-069** | P2 | 🔴 **`/results` reached — and it confirms the drift LIVE** | `/results` | Screener driven end to end (Magnificent Seven, entitled throwaway). ⚠️ **It does not navigate**: the run completes on `/run` and the reader must go to `/results` themselves, which is why three earlier attempts looked like a hang. On the rendered table: the **High Conviction badge sits on the retired `#006400`** and **Constructive on the retired `#228B22`** while their text uses the current pine and green — 5A-044 on the most valuable premium surface. ⚠️ **New here:** the drawdown column uses the **rating** colours, so a stock that has barely fallen (`-0.2%`) is painted **Bearish red** and one down 26.6% is painted **High Conviction green**. The red does not mean “bad company” — it means “has not fallen far” — and nothing on the page says so | Open — owner's call |
 | **5A-070** | P2 | 🔴 **One palette is doing at least TWELVE unrelated jobs** | sitewide | The rating tokens (`--c-tier-*`, i.e. *our five-tier judgement of a stock*) are referenced in **30+ files**, most of which are not about rating a stock: **delete-account danger** (`DeleteAccountCard`), **form errors and the saved tick** (`ProfileForm`, `PasswordForm`), **CSV import ok/warn/error** (`CsvImport`), **run-progress counts** (`RunProgress` Scored/Skipped), **short-interest bands** (`ShortInterest`), **billing status** (`SubscriptionCard`), **drawdown depth**, **cycle position**, **health**, **valuation**, the **delisting banner** and the **onboarding modal**. ⚠️ **Consequence, in one sentence:** retune *Cautious* because a rating chip looked wrong and you also repaint CSV warnings, skipped-ticker counts, billing warnings and short-interest bands — none of which you were thinking about. This is the owner's question answered: **yes, they must be separated** | Open — the P2 fix |
-| **5A-071** | P2 | 🟠 **58 distinct colours exist in no palette at all** | sitewide | 145 occurrences across `components/`, `app/` and `lib/`, excluding comments and the token block itself. Heaviest: `globals.css` (32), `landing.css` (12), `OpportunityMap.tsx` (11), `brandEmail.ts` (10), `EarningsHistory.tsx` (8). These are the colours a palette change can never reach, and each is a place a dark mode would have to be fixed by hand | Open — the P2 fix |
+| **5A-071** | P2 | 🟠 **58 distinct colours exist in no palette at all** | sitewide | 145 occurrences across `components/`, `app/` and `lib/`, excluding comments and the token block itself. Heaviest: `globals.css` (32), `landing.css` (12), `OpportunityMap.tsx` (11), `brandEmail.ts` (10), `EarningsHistory.tsx` (8). These are the colours a palette change can never reach, and each is a place a dark mode would have to be fixed by hand | **Largely closed 2026-09-03** — the drift-prone copies are named and guarded |
 | **5A-072** | P2 | 🔴 **The product already needed AMBER twice, and invented it locally both times** | `PremiumLockPage`, Smart Money | The design system has no amber (5A-046) — so where one was genuinely needed, it was written by hand from Tailwind's palette instead: the premium-lock notice uses `#FCD34D` border / `#FFFBEB` fill / `#92400E` text, and `.smart-pill.is-initiate` uses `#D97706` on `rgba(217,119,6,.10)`. **Five stray amber values, two components, none in any token.** ⚠️ This is the strongest evidence for 5A-046: the gap is not theoretical, it has already been filled twice, inconsistently, by whoever hit it | Open — the P2 fix |
 | **5A-073** | P2 | 🟡 **Ten hand-typed colours in the transactional emails** | `lib/email/brandEmail.ts` | An email cannot use a CSS custom property, so literals are unavoidable **in kind** — but they are currently typed rather than imported, so the branded emails will silently keep the old brand colours through any palette change. Needs a shared exported constant, the same argument as `lib/ink.ts` | Open — the P2 fix |
-| **5A-074** | P2 | 🟡 **The Opportunity Map keeps a private palette** | `/results`, landing | `#1A1A1B`, `#2E3347`, `#E8EAF0`, `#94A3B8` appear only there (plus the still image's copies). It is the one premium chart whose colours are defined nowhere else, so it will not follow a palette change and will need bespoke work for dark mode | Open — the P2 fix |
+| **5A-074** | P2 | 🟡 **The Opportunity Map keeps a private palette** | `/results`, landing | `#1A1A1B`, `#2E3347`, `#E8EAF0`, `#94A3B8` appear only there (plus the still image's copies). It is the one premium chart whose colours are defined nowhere else, so it will not follow a palette change and will need bespoke work for dark mode | **Closed 2026-09-03** — and it was 34 copies across 9 components, not one chart |
 | **5A-075** | P2 | 🟢 **Checked and CLEAR — the retired muted grey is never text** | sitewide | `#8A97A8` — the pre-2026-08-22 `--text-muted`, which measured **2.97:1** — survives in six places. All six are **strokes, borders or fills** (`OpportunityMap` reference lines, a landing border, a fade gradient, the `.mt-cat-market` chip's wash), and the chip's own text is `#4A5568`. **No contrast regression.** Recorded because a stale value that once failed accessibility is exactly the thing to check rather than assume | **Pass 2026-09-02** |
 | **5A-076** | P2 | 🔴 **A colour variable that does not exist — the documented landmine, live** | `NewsFeed` | `components/stocks/NewsFeed.tsx:79` sets `color: 'var(--c-mid)'`. **`--c-mid` is defined nowhere in the codebase** (the real token is `--brand-mid`). ⚠️ An undefined custom property does **not** fall back — it voids the whole declaration — so the source badge inherits its parent's colour instead of brand blue, on a `rgba(30,92,179,.10)` blue wash. design-system.md §2 documents this exact mechanism as the reason `--text-white` was deleted: *“invisible text that reads as a rendering glitch rather than a typo.”* Found by listing every `var(--x)` read and subtracting every `--x` defined — a check nothing in the repo performs | Open — the P2 fix |
 | **5A-077** | P2 | 🟠 **An undefined variable silently kills an animation** | `/articles` | `articles.css:150` — `transition: transform .25s var(--ease)` — and **`--ease` is defined nowhere.** An invalid value in a shorthand voids the declaration, so the arrow on every *Read* link has **no transition at all**; the hover translate happens instantly. Nothing errors and the link works, which is why it has never been noticed | Open — the P2 fix |
-| **5A-078** | P2 | 🟡 **Dead CSS pointing at a third undefined variable** | `globals.css` | `.tier-legend-swatch { background: var(--tier); }` — `--tier` is never set, **and no component ever renders that class.** Dead rule, so no live defect; listed because it is the third undefined-variable hit in one file and the class name suggests a tier legend somebody expected to exist | Open — delete |
+| **5A-078** | P2 | 🟡 **Dead CSS pointing at a third undefined variable** | `globals.css` | `.tier-legend-swatch { background: var(--tier); }` — `--tier` is never set, **and no component ever renders that class.** Dead rule, so no live defect; listed because it is the third undefined-variable hit in one file and the class name suggests a tier legend somebody expected to exist | **Closed 2026-09-02** — the whole .tier-legend block deleted |
 | **5A-079** | P2 | 🔴 **The alias bug is not a risk — it is already happening** | palette | `--c-warn-ink` is the ONLY colour token in `globals.css` that is **defined and never read**. It is also **exactly equal** to `--c-tier-4` (5A-057). So the correct token for *“the least favourable rung of a ramp, as text”* exists, is documented, and sits unused — while the **rating** token identical to it is used in its place across the app. ⚠️ This converts 5A-057 from a hazard into an observed fact: **somebody has already reached for the wrong name, and nothing could tell them.** The day *Cautious* moves for a rating reason, every one of those usages moves with it | Open — the P2 fix |
-| **5A-080** | P2 | 🟠 **The surface scale has no real steps, and two token pairs are visually identical** | palette | Measured every token pair in CIEDE2000. `--c-tier-3` vs `--c-tier-3-ink` = **ΔE 2.8**; `--c-tier-2` vs `--c-up-ink` = **ΔE 3.9** — so the *rating vs direction* separation the docs insist on **does not exist to the eye**, which is precisely why the wrong one gets used (5A-079). Worse for structure: **six surface tokens sit within ΔE 6 of each other** (`--bg-page` / `--bg-hover` 2.2, `--bg-stripe` / white 2.2, `--brand-light` / `--bg-hover` 3.6). There are **14 greys and 6 blues** with **no numeric ramp** — three of the greys are literally the same white (`--bg-surface`, `--bg-sidebar`, `--bg-header`). A dark theme needs elevation steps; there are none to invert | Open — the P2 fix |
+| **5A-080** | P2 | 🟠 **The surface scale has no real steps, and two token pairs are visually identical** | palette | Measured every token pair in CIEDE2000. `--c-tier-3` vs `--c-tier-3-ink` = **ΔE 2.8**; `--c-tier-2` vs `--c-up-ink` = **ΔE 3.9** — so the *rating vs direction* separation the docs insist on **does not exist to the eye**, which is precisely why the wrong one gets used (5A-079). Worse for structure: **six surface tokens sit within ΔE 6 of each other** (`--bg-page` / `--bg-hover` 2.2, `--bg-stripe` / white 2.2, `--brand-light` / `--bg-hover` 3.6). There are **14 greys and 6 blues** with **no numeric ramp** — three of the greys are literally the same white (`--bg-surface`, `--bg-sidebar`, `--bg-header`). A dark theme needs elevation steps; there are none to invert | **Closed 2026-09-03** — elevation ramp; values deliberately unchanged |
 | **5A-081** | P2 | 🔴 **No `color-scheme`, and that costs something TODAY** | sitewide | Zero occurrences of `color-scheme`, `prefers-color-scheme`, `light-dark()` in the app. The page commits to light in both themes (5A-038 verified the body does stay light) — **but it never tells the browser.** Without `color-scheme: light`, browser-painted UI follows the OS: scrollbars, the native `<select>` popup list (which this app uses for filters), autofill backgrounds and form-control internals can render **dark on a light page** for any visitor whose device is in dark mode. ⚠️ Stated as a known browser behaviour, **not** as something I measured — a native dropdown popup cannot be read from the page. One line fixes it | Open — the P2 fix |
-| **5A-082** | P2 | 🟡 **No Windows High Contrast support** | sitewide | Zero `forced-colors` / `-ms-high-contrast` rules. In forced-colors mode the OS replaces colours wholesale, and anything carrying meaning through a **background or a border** — the tier chips, the gauges, the tints — collapses. Not a WCAG failure on its own, and a real gap for the readers most likely to need it | Open — owner's call |
-| **5A-083** | P2 | 🟡 **Half the shadows are hard-typed black** | `globals.css` | 15 shadow declarations use a literal `rgba(0,0,0,…)` while 22 use a token. A shadow is a colour too: on a dark surface a black shadow is invisible, so every hard-typed one is a place a dark theme would need hand-editing (5A-071's argument, applied to depth rather than hue) | Open — the P2 fix |
+| **5A-082** | P2 | 🟡 **No Windows High Contrast support** | sitewide | Zero `forced-colors` / `-ms-high-contrast` rules. In forced-colors mode the OS replaces colours wholesale, and anything carrying meaning through a **background or a border** — the tier chips, the gauges, the tints — collapses. Not a WCAG failure on its own, and a real gap for the readers most likely to need it | **Closed 2026-09-03** — first forced-colors rules; owner to confirm on Windows |
+| **5A-083** | P2 | 🟡 **Half the shadows are hard-typed black** | `globals.css` | 15 shadow declarations use a literal `rgba(0,0,0,…)` while 22 use a token. A shadow is a colour too: on a dark surface a black shadow is invisible, so every hard-typed one is a place a dark theme would need hand-editing (5A-071's argument, applied to depth rather than hue) | **Closed 2026-09-03** — 5 literals, not 15; two marker shadows kept apart |
 | **5A-084** | P2 | 🟡 **No `::selection`, no `caret-color`** | sitewide | Neither is defined anywhere, so highlighting text and the text cursor both use the browser's default blue — which is not the brand blue. Small, cheap, and the kind of thing that reads as unfinished on a premium product | Open — the P2 fix |
 | **5A-085** | P2 | 🟡 **Disabled controls are unreadable** | `/run`, buttons | `.btn-run:disabled` puts white text on `--border-strong` = **1.48:1**. The shared `Button` uses `disabled:opacity-50`, which lands the label at **1.55:1**. ⚠️ **WCAG exempts disabled controls**, so this is not a conformance failure — but *Run Analysis* is the primary action on the screener and its label cannot be read while it waits for input. Control: the same button enabled measures **6.49:1** | Open — owner's call |
 | **5A-086** | P2 | 🟢 **The focus ring PASSES — and I nearly filed a false failure** | sitewide | Tabbed through `/login`, `/pricing` and `/`: the indicator is `--brand-bright`, 2px solid, `outline-offset: 2px`, consistent on every control, measuring **3.64–4.03:1** against the surface it sits on. Inputs have no outline but change border `--border-strong` → `--brand-bright` **plus** a 3px glow — a clear, sufficient indicator. ⚠️ **My first pass reported four primary CTAs FAILING at 1.61–1.99:1, and it was wrong twice over:** I sampled 120ms after Tab, mid-`transition-all`, which returned a blended colour and a half-animated offset; and I compared the ring to the button's **own** background when a 2px offset puts it on the **page**. Two independent errors pointing the same way. **Probe defect #11**, and the fix was to sample twice and require the two to agree | **Pass 2026-09-02** |
@@ -783,6 +783,139 @@ undefined custom property does not fall back — it voids the whole declaration 
 transition has never run. Motion rather than colour, so deliberately left out of this
 change. **Open**, one line. Found by the same sweep that caught `--c-mid` in `NewsFeed`
 (fixed here: it had never existed, so the brand blue on the source pill never applied).
+
+## ✅ P2 CLOSED IN FULL — 2026-09-03
+
+The five items the first pass recorded as *"still open, and deliberately not done"* are
+done, plus the three loose findings above. **Every one of them was measured before it was
+touched, and four of the five turned out to be materially different from what the ledger
+said.** That is the part worth reading.
+
+### The findings that were wrong, and how
+
+| Finding | What it recorded | What was measured |
+|---|---|---|
+| **5A-074** | the Opportunity Map's palette *"appears only there"* | the dark tooltip is hand-typed **34 times across 9 components** — Balance Sheet, Dividend History, Earnings History, Ownership Structure, Quarterly Financials, Relative Performance, Snowflake Radar, Valuation History and the map. It was never one chart's private palette; it is a site-wide surface that nine components each invented separately and identically. Only the four quadrant washes really were private |
+| **5A-083** | *"15 shadow declarations use a literal `rgba(0,0,0,…)`"* | **5**, in 3 files. The count was taken before the P2 gauge work, which had already removed most of them. Re-measuring is what stopped an afternoon being spent on ten that no longer existed |
+| **5A-097** | Constructive vs Cautious is *"3.9 to a protanope"* | 3.9 to a **deuteranope**; to a protanope they are **15.1** apart. The number was right and the reader it described was not — which would have sent anyone trying to fix it at the wrong axis. Deuteranopia is also the commoner of the two |
+| **5A-096** | tier 4's badge ink is *"open"* | already fixed as a side effect of the tier-4 ink change on 2026-09-02. Re-measured on the real tint: **5.14** on a table row, 5.65 on a card. What remained open was the *guard*, not the colour |
+| **5A-071** | 145 literal colours | **171** when re-counted — it had *grown* while the finding sat open. 135 after the chart sweep; the remainder are accounted for below |
+
+### And a defect the P2 work itself introduced
+
+⚠️ **The Smart Money chart's "Analyst Event" legend was showing three colours no marker on
+that chart used any more.** The 2026-09-02 change moved analyst events onto `ANALYST.*` so
+a third party's *Sell* would stop wearing our Bearish colour (5A-045); the markers moved,
+the legend beside them did not. It was hard-typed `#228B22 / #D4A017 / #B22222` — the
+**pre-August** direction palette — against markers now drawn in `#2E6B57 / #4A5568 /
+#7A2F3F`.
+
+Nothing errored. The legend looked completely normal, on a paid surface, and every gate was
+green. **It was found by a literal sweep, not by review** — which is 11c-iv again, the
+consumer that never received the rule, and a reminder that a change with a guard on it is
+not the same as a change that was finished. It is now **derived**: the three swatches ask
+`gradeColor()` the same question the markers ask, so a repeat is impossible rather than
+merely unlikely.
+
+### What was built
+
+**One dark tooltip** (`CHART_TOOLTIP`), **one candle pair** (`CANDLE`), **one set of chart
+furniture** (`CHART_CHROME` — grid, crosshair, crosshair label, axis, identical in all three
+Lightweight-Charts components and hand-typed in all three), **one brand triple** (`BRAND`),
+and **the profit half of the drawdown overlay** (`PROFIT`) — whose four values sat on the
+other branch of the same ternary, eight lines from the `DRAWDOWN` extraction that missed
+them.
+
+**The Opportunity Map's zones** now have one definition serving three consumers: the paid
+chart, the landing page's still of it, and `landing.css`. Stored as an RGB triplet
+(`--zone-good-rgb`) so one value covers both the chart's alphas and the legend's heavier
+ones. ⚠️ Two of the four are **retired rating hues** — the pre-August High Conviction green
+and the pre-August gold — and they are **named, not repainted**: `/results` is a paid
+surface (11l).
+
+**A surface elevation ramp** (`--elev-sunken / -low / -mid / -high`), which the six `--bg-*`
+names now alias. ⚠️ **The values are unchanged and that is deliberate.** 5A-080 measured
+every surface pair inside ΔE 5 with three at ΔE 0 and reported it as a defect; in a *light*
+theme it is not one — surfaces are separated by a border and a shadow, not by contrast, and
+spreading them apart would repaint the whole product to fix a number rather than a problem.
+What the finding is really about is the next theme: **a dark theme inverts by re-pointing
+elevation, and there was no elevation to re-point.** Three of the levels are the same white
+today, and naming them separately is exactly what lets a dark theme pull them apart without
+touching a single component.
+
+**Shadows and ticks** (5A-083): `--shadow-marker`, `--shadow-marker-sm`, `--marker-ring`,
+`--shadow-segment`, `--track-tick`. ⚠️ **Two marker shadows, not one.** My first pass
+collapsed them — they are `0 2px 6px` and `0 1px 3px`, for an 18px dot and a 9px one — which
+would have doubled the blur under the smaller marker on a Stock Detail card nobody asked me
+to touch. A shared *name* is the defect a palette needs fixing; a shared *value* is not
+something to manufacture.
+
+**The column-group band palette** (5A-071): the screener's five subject-area headers, which
+existed only inside `.results-table .band-*`. Measured before naming — ink on its own wash,
+9.76 / 8.15 / 8.66 / 5.99 / 8.24. They are **category** colours, not a ramp: green there
+means *price*, not *good*, which is why they must not borrow from the rating palette.
+
+**Windows High Contrast** (5A-082), the site's first `forced-colors` rules: charts and
+gauges opt out with `forced-color-adjust: none`, because the colour *is* the data; tinted
+chips gain a `currentColor` outline, because the wash is erased and a chip with no wash
+stops looking like a chip; cards gain an edge, because `box-shadow` is dropped entirely; the
+focus ring moves to the system `Highlight`. ⚠️ I have no Windows High Contrast toggle here,
+so this is written from the specification and verified only as far as *"the rules parse,
+apply, and aim at elements that exist"*. Seeing it on a real Windows machine is an owner
+check worth doing before launch rather than after.
+
+**`--ease`** (5A-099), one line. The read-more arrow's transition had never run.
+
+**The landing's warm accents** (5A-098), owner-approved as its own decision. `--accent-warm`
+and its ink now point at the rating gold, so the callout's rule and heading agree with the
+gold wash they sit on — a mismatch that had been live since August. Measured: `#895001` is
+6.22 on the callout wash, 6.54 on white and 5.92 on `--bg-page`, **better on every ground
+than the grey it replaces** (5.60 / 5.89 / 5.33), so this closes a visual mismatch and gains
+contrast rather than trading it away. It stays a separate name *pointing at* the rating gold
+rather than becoming it, so the next rating retune is a decision here and not a consequence.
+
+### The guard grew from five checks to nine
+
+| Check | What it asserts | Broken on purpose |
+|---|---|---|
+| **5** → all ten tier pairs | the six NON-adjacent pairs had never been measured, and the site's weakest pair (2–4, 3.9 to a deuteranope) was one of them. Ratcheted at today's numbers, so nothing is loosened and nothing can quietly get worse | nudging Cautious toward Constructive — caught on 3–4, **1–4 and 2–4**, the last two invisible before |
+| **7** badge ink on its real tint | every earlier check measures an ink on a FLAT ground; a badge draws on an alpha wash, which is darker | 4 ways, the first being tier 4's pre-fix ink: **caught at 4.69 while check 3 passed**, which is the entire argument for the check |
+| **8** the zone pair | the paid chart and the landing's still of it cannot draw different colours | — |
+| **8b** the canvas mirrors | `BRAND` and `CHART_CHROME` must equal their tokens. This is the 29-literal drift of August, one library along | 2 ways, and a third **through the new alias** — because "follows an alias" could equally have meant "returns null and passes" |
+| **9** the forced-colors block names real things | ⚠️ **written because I made this exact mistake.** My first draft listed `.wk-track` for the 52-week gauge; there is no such class. A CSS selector matching nothing is completely silent — the stylesheet is valid, the build is green, and the one chart element that most needed the opt-out is the one that did not get it. Found by reading the rule back off a running browser, which is the only place the difference shows | reintroducing `.wk-track` — caught by name |
+
+⚠️ **And check 8b went red the moment the elevation ramp landed**, because
+`--bg-page: var(--elev-sunken)` made the value unreadable to a token reader that skipped
+aliases. That is the right failure and the reason it says *"could not be read"* rather than
+passing: a reader that cannot see through the architecture goes blind exactly as the
+architecture improves (14g). It now resolves aliases, depth-limited, with a control proving
+it still catches drift *through* one.
+
+### A claim in our own docs, corrected by measurement
+
+`lib/ink.ts` said a Recharts `fill`/`stroke` prop *"is an SVG attribute, where `var(--x)` is
+not resolved"*. **Measured in Chrome: it resolves.** A presentation attribute is parsed as a
+CSS value, so `fill="var(--brand-deep)"` computes to `rgb(26, 58, 110)`, identical to the
+literal — and two Opportunity Map quadrant labels have been shipping exactly that.
+
+The line that IS true is the one the file actually rests on: **Lightweight Charts paints to
+a `<canvas>`**, where there is no stylesheet behind the colour string and `var()` is simply
+unparseable.
+
+⚠️ The same probe found the sharper reason to keep TypeScript constants for Recharts as
+well: an **undefined** custom property in a `fill` does not void the declaration the way it
+does in a CSS shorthand — it computes to **black**. `fill="var(--typo)"` paints a chart label
+plain black on a light chart, which reads as deliberate and errors nowhere. A mistyped
+TypeScript identifier is a build failure. *Where both routes work, take the one whose
+mistakes are loud.*
+
+### Still open, and why
+
+| Item | Why it is not done |
+|---|---|
+| **5A-097** · Constructive vs Cautious at 3.9 to a deuteranope | improving it means moving an owner-approved rating colour, which is not mine to do (11l). It is now **printed on every guard run** and ratcheted so it cannot worsen — a decision for the owner with the numbers in front of them, rather than a sentence in a document nobody re-reads |
+| **5A-071** · ~135 remaining literals | mostly alphas of the brand blue in shadows and chart fills — `rgba(30,92,179,.08 / .10 / .15 / .25 / .35)`. Each needs its own judgement about whether it is a tint, a shadow or a series fill, and none is a drift risk now that the palettes they orbit are named and guarded. The heavy, drift-prone copies are closed |
+| The `--elev-*` ramp having no dark values | that is the dark theme itself, and it is not in Phase 1 scope. The ramp exists so that work is a re-point rather than a rewrite |
 
 ### ⚠️ One consequence to settle before building — the fall % is a FREE field
 
