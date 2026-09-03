@@ -76,6 +76,11 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
                 'linear-gradient(90deg, var(--gauge-1), var(--gauge-2), var(--gauge-3), var(--gauge-4))',
             }}
             aria-hidden="true"
+            /* Keeps its own colours under Windows High Contrast: the OS would
+               flatten this gradient to one system colour, leaving the marker
+               sitting on a plain bar with nothing to sit BETWEEN. Decorative and
+               aria-hidden, so nothing is lost to a screen reader either way. */
+            data-keep-colors
           />
           <div
             className="absolute top-1/2 w-[9px] h-[9px] rounded-full bg-[var(--brand-mid)] border-2 border-white"
@@ -83,7 +88,7 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
               left: `${pct}%`,
               transform: 'translate(-50%, -50%)',
               boxShadow:
-                '0 1px 3px rgba(0,0,0,0.25), 0 0 0 1px rgba(26,58,110,0.20)',
+                'var(--shadow-marker-sm), var(--marker-ring)',
             }}
             /* ⚠️ `role="img"` is required, not decorative. `aria-label` is
                PROHIBITED on a plain <div>: a div has no implicit role, and ARIA

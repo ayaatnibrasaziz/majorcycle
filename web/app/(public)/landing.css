@@ -568,7 +568,7 @@
   top: 0;
   width: calc(100% - var(--split));
   height: calc(100% - var(--split));
-  background: rgba(0, 100, 0, 0.07);
+  background: rgba(var(--zone-good-rgb), 0.07);
 }
 .lp .q-tr .ql {
   right: 0;
@@ -582,7 +582,7 @@
   bottom: 0;
   width: calc(100% - var(--split));
   height: var(--split);
-  background: rgba(212, 160, 23, 0.06);
+  background: rgba(var(--zone-priced-rgb), 0.06);
 }
 .lp .q-br .ql {
   right: 0;
@@ -595,7 +595,7 @@
   top: 0;
   width: var(--split);
   height: calc(100% - var(--split));
-  background: rgba(30, 92, 179, 0.05);
+  background: rgba(var(--zone-cheap-rgb), 0.05);
 }
 .lp .q-tl .ql {
   left: 0;
@@ -607,7 +607,7 @@
   bottom: 0;
   width: var(--split);
   height: var(--split);
-  background: rgba(178, 34, 34, 0.06);
+  background: rgba(var(--zone-worst-rgb), 0.06);
 }
 .lp .q-bl .ql {
   left: 0;
@@ -617,7 +617,7 @@
 .lp .split-v,
 .lp .split-h {
   position: absolute;
-  border-color: rgba(138, 151, 168, 0.45);
+  border-color: var(--zone-split);
   border-style: dashed;
 }
 .lp .split-v {
@@ -758,6 +758,9 @@
 /* ── Callout ───────────────────────────────────────────────────────────── */
 .lp .callout {
   border-left: 3px solid var(--accent-warm);
+  /* The one remaining literal from the original gold. Kept as a value rather than
+     mixed from --c-tier-3, because a 4%-ish wash of the new gold is a different
+     colour and this one is approved. Its rule and heading are --accent-warm*. */
   background: #fdf9ef;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   padding: 16px 20px;

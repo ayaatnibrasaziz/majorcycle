@@ -97,12 +97,12 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
             <div style={{
               position: 'absolute', left: `${bearPosLeft}%`,
               top: -6, width: 2, height: 24,
-              background: 'rgba(0,0,0,.15)', borderRadius: 2,
+              background: 'var(--track-tick)', borderRadius: 2,
             }} />
             <div style={{
               position: 'absolute', left: `${bullPosLeft}%`,
               top: -6, width: 2, height: 24,
-              background: 'rgba(0,0,0,.15)', borderRadius: 2,
+              background: 'var(--track-tick)', borderRadius: 2,
             }} />
 
             {/* Consensus marker (gold, smaller) */}

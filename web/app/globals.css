@@ -53,13 +53,41 @@
      background and left thirteen borders on the old blue. Use this, not the hex. */
   --brand-light-border: #BFDBFE;
 
-  /* Surfaces */
-  --bg-page: #F0F4F8;
-  --bg-surface: #FFFFFF;
-  --bg-sidebar: #FFFFFF;
-  --bg-header: #FFFFFF;
-  --bg-hover: #F5F8FF;
-  --bg-stripe: #F8FAFC;
+  /* ── SURFACES — an elevation ramp, and then what each level is USED for ────
+     Audit 5A-080: fourteen greys, six blues and no numeric ramp, with three of the
+     greys being literally the same white. Measured 2026-09-03, every surface pair
+     sits inside ΔE 5 and three pairs are ΔE 0.
+
+     ⚠️ THAT IS NOT A DEFECT IN A LIGHT THEME AND THE VALUES ARE NOT CHANGED HERE.
+     Surfaces in a light UI are separated by a border and a shadow, not by
+     contrast; spreading them apart would repaint the entire product to fix a
+     number rather than a problem. What the finding is actually about is the next
+     theme: **a dark theme inverts by re-pointing elevation, and there was no
+     elevation to re-point** — six sibling names, no order between them, and no way
+     to say "a card sits above the page" other than by knowing which hex is which.
+
+     So the ramp below is ORDER, stated once. Levels 1–3 are the same white today
+     and that is deliberate rather than accidental: a sidebar, a header and a card
+     are three different elevations that this theme happens to paint alike, and
+     naming them separately is what lets a dark theme pull them apart without
+     touching a single component. Nothing below changes a pixel.
+
+     ⚠️ `--elev-*` is a PRIMITIVE. No component may read it — components read the
+     `--bg-*` names underneath, which say what a surface is FOR. That split is the
+     whole mechanism: a theme re-points the primitives, and every consumer follows
+     without knowing a hue exists (the "palette per job" proposal, two layers). */
+  --elev-sunken: #F0F4F8;  /* the page floor — what a card sits ON */
+  --elev-low: #F8FAFC;     /* a striped row: barely off the floor */
+  --elev-mid: #F5F8FF;     /* a hovered row: lifted, and faintly blue */
+  --elev-high: #FFFFFF;    /* a card, a panel, a modal: fully raised */
+
+  /* Surfaces — what each elevation is used for. These are what components read. */
+  --bg-page: var(--elev-sunken);
+  --bg-surface: var(--elev-high);
+  --bg-sidebar: var(--elev-high);
+  --bg-header: var(--elev-high);
+  --bg-hover: var(--elev-mid);
+  --bg-stripe: var(--elev-low);
 
   /* Text */
   --text-primary: #0F1923;
@@ -454,6 +482,10 @@
      thing, while every chip still carries the word itself. */
   --analyst-positive: #2E6B57;
   --analyst-neutral: #4A5568;
+  /* The wash behind a third-party consensus chip. Was hand-typed inside
+     `.tier-badge--analyst` as rgba(74,85,104,0.12) — the only tier badge whose
+     background could not be reached from the palette (audit 5A-071). */
+  --analyst-neutral-tint: rgba(74, 85, 104, 0.12);
   --analyst-negative: #7A2F3F;
 
   /* Financial Health has THREE rungs, not five — see `healthColor()`. It must
@@ -497,12 +529,81 @@
   --series-reference: #72696D;
   --series-reference-ink: #6B6266;
 
-  /* Landing-page warm accents. ⚠️ These sit on backgrounds already hand-typed
-     from the ORIGINAL gold #D4A017 (`rgba(212,160,23,…)` and `#fdf9ef`), so the
-     landing currently pairs a gold wash with a grey border and grey heading —
-     a mismatch that predates this change and is recorded, not fixed here. */
-  --accent-warm: #72696D;
-  --accent-warm-ink: #6B6266;
+  /* Landing-page warm accents — the callout rule and heading, the Mag 7 index
+     numerals, the "Healthy, fully priced" quadrant label.
+
+     ⚠️ THESE WERE GREY ON A GOLD GROUND FOR TWO WEEKS (audit 5A-098). The washes
+     under them are hand-typed from the original gold — `#fdf9ef` and
+     `rgba(212,160,23,…)` — and when the rating palette turned Neutral grey in
+     August these accents followed it while the washes did not. Nothing errored and
+     nothing looked broken; the landing simply had a gold panel with a grey rule
+     down its side. Neutral going gold again on 2026-09-02 did not fix it, because
+     this token had been PINNED to grey in that change specifically so a rating
+     decision would not silently repaint a marketing page.
+
+     Owner-approved 2026-09-03, as its own decision rather than as a side effect.
+     They now point at the rating gold, and the pairing is measured: `#895001` is
+     6.22 on the callout wash, 6.54 on white and 5.92 on `--bg-page` — better on
+     every ground than the grey it replaces (5.60 / 5.89 / 5.33), so this closes a
+     visual mismatch and gains contrast rather than trading it away.
+
+     ⚠️ STILL A SEPARATE NAME, and it must stay one. Pointing at `--c-tier-3` is
+     not the same as BEING it: a landing accent is not our verdict about a stock,
+     and the next time the rating gold is retuned this should be a decision, not a
+     consequence (the "palette per job" rule — a shared value is fine, a shared
+     name is the defect). */
+  --accent-warm: var(--c-tier-3);
+  --accent-warm-ink: var(--c-tier-3-ink);
+
+  /* ── COLUMN-GROUP BANDS — the screener's five subject areas ────────────────
+     The tinted header strip over each group of columns on `/results`, and over
+     the same groups in the landing page's Mag 7 table. Five washes, five inks.
+
+     ⚠️ These are CATEGORY colours, not a ramp and not a verdict: green here means
+     "price", not "good", and red means "health metrics", not "at risk". That is
+     the reason they must not borrow from the rating or direction palettes even
+     though four of the five are near a colour that exists there — a reader
+     scanning a results row must not read a green column header as an opinion.
+
+     ⚠️ They lived only inside `.results-table .band-*` (audit 5A-071, "58 colours
+     in no palette at all"). Measured 2026-09-03 before naming, ink on its own
+     wash: verdict 9.76, price 8.15, growth 8.66, ratios 5.99, health 8.24 — all
+     clear of the 4.8 floor, which is why nothing had ever forced them into view.
+     Ratios is the closest, and it is the one to watch if any of these move. */
+  --band-verdict-bg: #E8F0FB;
+  --band-price-bg: #E6F2EC;
+  --band-price-ink: #0F5132;
+  --band-growth-bg: #EDEAF6;
+  --band-growth-ink: #3C3489;
+  --band-ratios-bg: #FBF1DD;
+  --band-ratios-ink: #7A5500;
+  --band-health-bg: #FBEDE6;
+  --band-health-ink: #7A2E12;
+
+  /* ── OPPORTUNITY-MAP ZONES — four hues, two alphas, three consumers ────────
+     The quadrant washes on the paid Opportunity Map, on the landing page's still
+     of it, and behind the landing's legend swatches.
+
+     ⚠️ THE SAME FOUR HUES WERE HAND-TYPED IN THREE PLACES (audit 5A-074, widened
+     2026-09-03): `OpportunityMap.tsx` as hex, `landing.css` as `rgba()` at the
+     chart's alphas, and `OpportunityMapStill.tsx` as `rgba()` at heavier legend
+     alphas. Nothing linked them, so retuning the map would have repainted one of
+     three and left a marketing page illustrating a chart that no longer looks
+     like that — 11c-iv, and it renders perfectly either way.
+
+     Stored as an RGB TRIPLET rather than a hex so one definition serves both
+     alphas: `rgba(var(--zone-good-rgb), 0.07)`. `lib/chartTheme.ts` mirrors these
+     for the Recharts props, and `pnpm check:tier-palette` fails if they disagree.
+
+     ⚠️ TWO ARE RETIRED RATING HUES — good is the pre-2026-08 High Conviction
+     green, priced is the pre-2026-08 gold. Named, deliberately not repainted:
+     `/results` is a paid surface (CLAUDE.md 11l). */
+  --zone-good-rgb: 0, 100, 0;
+  --zone-priced-rgb: 212, 160, 23;
+  --zone-cheap-rgb: 30, 92, 179;
+  --zone-worst-rgb: 178, 34, 34;
+  /* The dashed cross-hairs splitting the four quadrants. */
+  --zone-split: rgba(138, 151, 168, 0.45);
 
   /* The 52-week position gauge: a green-to-red ramp showing where today's price
      sits in its own yearly range. Its four stops read `--c-tier-1…4` today. */
@@ -589,6 +690,30 @@
      from the terminal you were signing in to. Navy-tinted rather than neutral
      black, because it falls on --bg-page, which is blue-grey. */
   --shadow-lift: 0 10px 30px rgba(15, 25, 35, 0.08), 0 3px 10px rgba(15, 25, 35, 0.05);
+  /* A small round marker raised off the track it slides along — the analyst
+     consensus dot, the 52-week position dot. Much harder than the card shadows
+     because the object is 9–18px across: at --shadow-sm it reads as flat.
+     ⚠️ Audit 5A-083 — a shadow is a colour too, and every hard-typed one is a
+     place a dark theme has to be edited by hand, because a black shadow on a dark
+     surface is invisible. This was written out in two components and one rule
+     with three different opinions about the blur. */
+  --shadow-marker: 0 2px 6px rgba(0, 0, 0, 0.25);
+  /* The same object at half the size — the 9px 52-week dot against the 18px
+     analyst dot. ⚠️ TWO TOKENS, NOT ONE, AND THAT IS THE POINT: my first pass
+     collapsed them, which would have doubled the blur under the smaller marker on
+     a Stock Detail card nobody asked me to touch. A shared NAME is the defect a
+     palette needs fixing; a shared VALUE is not something to manufacture. */
+  --shadow-marker-sm: 0 1px 3px rgba(0, 0, 0, 0.25);
+  /* The 1px ring holding a marker off a coloured track. `--brand-deep` at 20%. */
+  --marker-ring: 0 0 0 1px rgba(26, 58, 110, 0.20);
+  /* The selected segment of a segmented control, lifting off its own track.
+     Deliberately NOT --shadow-sm: this sits on --bg-stripe rather than the page,
+     and at 6% it disappears. */
+  --shadow-segment: 0 1px 3px rgba(0, 0, 0, 0.12);
+  /* A hairline tick drawn ON a track — a bear/bull boundary. Not a shadow and
+     not a border token: it is ink laid over a filled bar, so it has to be dark
+     enough to read on the track's lightest and darkest stops alike. */
+  --track-tick: rgba(0, 0, 0, 0.15);
 
   /* Layout */
   --sidebar-w: 220px;
@@ -745,7 +870,7 @@
 .tier-badge--3 { background: var(--tint-tier-3-strong);        color: var(--c-tier-3-ink); }
 .tier-badge--4 { background: var(--tint-tier-4-strong);        color: var(--c-tier-4-ink); }
 .tier-badge--5 { background: var(--tint-tier-5-strong);        color: var(--c-tier-5-ink); }
-.tier-badge--analyst { background: rgba(74,85,104,0.12);       color: #4A5568; }
+.tier-badge--analyst { background: var(--analyst-neutral-tint); color: var(--analyst-neutral); }
 
 /* ─────────────────────────────────────────────────────────────────────────
    KPI strip — 4-card accent grid below the header strip.
@@ -1127,8 +1252,8 @@
    3.0 a graphic owes) and is deliberately left alone: darkening it would push it
    toward the 200 DMA's brand-deep and cost the reader the distinction the two
    lines exist to make. Border keeps the link, label becomes readable. */
-.ma-pill--50.active  { color: var(--c-brand-ink); border-color: #2E7DE8; background: rgba(46,125,232,.08); }
-.ma-pill--200.active { color: #1A3A6E; border-color: #1A3A6E; background: rgba(26,58,110,.10); }
+.ma-pill--50.active  { color: var(--c-brand-ink); border-color: var(--brand-bright); background: rgba(46,125,232,.08); }
+.ma-pill--200.active { color: var(--brand-deep); border-color: var(--brand-deep); background: rgba(26,58,110,.10); }
 .ma-pill--50.active:hover  { background: rgba(46,125,232,.14); }
 .ma-pill--200.active:hover { background: rgba(26,58,110,.16); }
 
@@ -1183,7 +1308,7 @@
    `--c-neutral-ink`, which stopped being gold in August. A name that states a
    colour is a claim, and this one had been false for months. */
 .stat-pill-val.amber { color: var(--status-warning-ink); }
-.stat-pill-val.red   { color: #B22222; }
+.stat-pill-val.red   { color: var(--c-down-ink); }
 
 @media (max-width: 640px) {
   .stats-row { grid-template-columns: repeat(2, 1fr); }
@@ -1220,7 +1345,7 @@
   position: absolute; top: 50%; transform: translate(-50%, -50%);
   width: 18px; height: 18px; border-radius: 50%;
   border: 3px solid white;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, .25);
+  box-shadow: var(--shadow-marker);
   z-index: 2;
 }
 .target-label {
@@ -1324,7 +1449,7 @@
 .period-toggle { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--bg-stripe); flex-shrink: 0; }
 .period-btn { padding: 4px 13px; font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; border: none; background: transparent; color: var(--text-muted); cursor: pointer; transition: all .15s; white-space: nowrap; }
 .period-btn + .period-btn { border-left: 1px solid var(--border); }
-.period-btn.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.period-btn.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: var(--shadow-segment); }
 .period-btn:hover:not(.active) { color: var(--brand-mid); }
 
 /* Summary strip under charts */
@@ -1384,7 +1509,7 @@ td.num             { font-weight: 600; }
 .km-value { font-size: 11.5px; font-weight: 600; color: var(--text-primary); }
 .km-cmp { font-size: 11.5px; font-weight: 600; cursor: help; }
 .km-cmp--better { color: var(--c-up-ink); }
-.km-cmp--worse  { color: #B22222; }
+.km-cmp--worse  { color: var(--c-down-ink); }
 .km-cmp--inline { color: var(--text-muted); }
 /* ⚠️ --border-strong (#CBD5E1) until 2026-08-22, i.e. a BORDER token used as ink:
    **1.48:1** on a white card and 1.42 on a striped row, where the floor is 4.5.
@@ -1403,10 +1528,10 @@ td.num             { font-weight: 600; }
 .mt-cat-valuation   { background: var(--tint-brand);        color: var(--brand-deep);     border: 1px solid rgba(46,125,232,.22); }
 .mt-cat-growth      { background: var(--tint-tier-2);       color: var(--c-tier-2-ink);   border: 1px solid rgba(34,139,34,.22); }
 .mt-cat-profitability { background: var(--band-neutral-tint); color: var(--band-neutral-ink); border: 1px solid rgba(114,105,109,.28); }
-.mt-cat-balance     { background: rgba(74,85,104,.10);      color: #4A5568;               border: 1px solid rgba(74,85,104,.22); }
-.mt-cat-cashflow    { background: rgba(46,125,232,.08);     color: #1E5CB3;               border: 1px solid rgba(46,125,232,.18); }
+.mt-cat-balance     { background: rgba(74,85,104,.10);      color: var(--text-secondary);  border: 1px solid rgba(74,85,104,.22); }
+.mt-cat-cashflow    { background: rgba(46,125,232,.08);     color: var(--c-brand-ink);     border: 1px solid rgba(46,125,232,.18); }
 .mt-cat-income      { background: rgba(212,160,23,.08);     color: #8A6710;               border: 1px solid rgba(212,160,23,.22); }
-.mt-cat-market      { background: rgba(138,151,168,.10);    color: #4A5568;               border: 1px solid rgba(138,151,168,.22); }
+.mt-cat-market      { background: rgba(138,151,168,.10);    color: var(--text-secondary);  border: 1px solid rgba(138,151,168,.22); }
 
 /* ============================================================
    Sentiment section — Ownership, Insider Activity, Short Interest
@@ -1439,7 +1564,7 @@ td.num             { font-weight: 600; }
 .smart-section-tag                          { font-family: 'Sora', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .2px; white-space: nowrap; padding: 2px 8px; border-radius: 4px; background: rgba(26,58,110,.06); }
 .smart-legend                               { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .smart-legend-chip                          { display: inline-flex; align-items: center; gap: 5px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: .3px; }
-.smart-legend-chip-dot                      { width: 7px; height: 7px; border-radius: 50%; background: var(--lg, #1E5CB3); flex-shrink: 0; }
+.smart-legend-chip-dot                      { width: 7px; height: 7px; border-radius: 50%; background: var(--lg, var(--brand-mid)); flex-shrink: 0; }
 .smart-pill.is-buy        { background: rgba(46,107,87,.12); color: var(--analyst-positive); border: 1px solid rgba(46,107,87,.26); }
 /* ⚠️ #8B1414 here is the DIRECTION red darkened for a tinted ground, and it has
    held that value since long before --c-tier-5 arrived at the same one in 2026-08.
@@ -2059,11 +2184,11 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 
 /* Band header tints (reuse the reference palette) */
 .results-table .band-identity { background: var(--bg-stripe); color: var(--text-secondary); }
-.results-table .band-verdict { background: #E8F0FB; color: var(--brand-deep); }
-.results-table .band-price { background: #E6F2EC; color: #0F5132; }
-.results-table .band-growth { background: #EDEAF6; color: #3C3489; }
-.results-table .band-ratios { background: #FBF1DD; color: #7A5500; }
-.results-table .band-health { background: #FBEDE6; color: #7A2E12; }
+.results-table .band-verdict { background: var(--band-verdict-bg); color: var(--brand-deep); }
+.results-table .band-price { background: var(--band-price-bg); color: var(--band-price-ink); }
+.results-table .band-growth { background: var(--band-growth-bg); color: var(--band-growth-ink); }
+.results-table .band-ratios { background: var(--band-ratios-bg); color: var(--band-ratios-ink); }
+.results-table .band-health { background: var(--band-health-bg); color: var(--band-health-ink); }
 .results-table .analyst-cell { font-family: 'Sora', sans-serif; font-weight: 400; color: var(--text-secondary); }
 /* Header InfoTip trigger sits inline with the column label (doesn't trigger sort). */
 .results-table thead .th-info { display: inline-flex; vertical-align: middle; margin-left: 3px; cursor: default; }
@@ -2827,3 +2952,75 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
    styling change cannot rename it out from under the test. Nothing here was
    load-bearing for that. */
 
+
+/* ══ WINDOWS HIGH CONTRAST / forced-colors ═══════════════════════════════════
+   Audit 5A-082. The site had ZERO `forced-colors` rules until 2026-09-03.
+
+   What the mode does: the operating system throws away every author colour and
+   substitutes its own small system palette. `color`, `background-color`,
+   `border-color`, `fill` and `stroke` are all replaced, and `box-shadow` is
+   dropped entirely. That is the right default for body copy — it is what the
+   reader asked their OS for — and it is destructive for two things here.
+
+   ⚠️ THE FIRST IS EVERY CHART, where the colour IS the data. Four benchmark
+   lines forced to one system colour is not a high-contrast chart, it is an
+   unreadable one. Those opt out with `forced-color-adjust: none`, which is the
+   documented use of that property and not a way of ignoring the mode.
+   ⚠️ Relative Performance carries a distinct DASH per series as well as a hue
+   (audit 5A-089/090), so even where a chart did collapse, the reader still has a
+   second channel. That is why the dash exists.
+
+   ⚠️ THE SECOND IS EVERY TINTED CHIP. A rating badge, a Smart Money pill, a
+   metric-category tag: each says what it means in a pale wash behind a coloured
+   word. Forced colours erase the wash, and a chip with no wash and no border
+   stops looking like a chip at all — it becomes a loose word in a table. Each of
+   these carries its own text, so nothing is LOST, but the grouping is, so they
+   get an outline in `currentColor`, which the OS then forces to its own text
+   colour. Borders are the one channel this mode preserves.
+
+   ⚠️ WHAT I COULD NOT VERIFY. I have no Windows High Contrast toggle here, so
+   this is written from the specification and asserted only as far as "the rules
+   parse and apply under an emulated `forced-colors: active`". Seeing it on a real
+   Windows machine in High Contrast is an owner check, and it is worth doing
+   before the launch rather than after. */
+@media (forced-colors: active) {
+  /* Charts and gauges: our palette, or no information at all. */
+  .chart-canvas-wrap canvas,
+  .recharts-wrapper svg,
+  .cyc-track,
+  .target-track,
+  [data-keep-colors] {
+    forced-color-adjust: none;
+  }
+  /* ⚠️ `[data-keep-colors]` is here because my first draft of this block listed
+     a `.wk-track` class that DOES NOT EXIST — the 52-week gauge is built from
+     Tailwind utilities and an inline gradient, with no stable class name to hook.
+     A CSS selector matching nothing is completely silent: the rule compiles, the
+     stylesheet is valid, and the element it was meant to protect simply is not
+     protected. Anything else needing this opt-out should carry the attribute
+     rather than have a class invented for it here. */
+
+  /* Chips: the wash is gone, so the shape has to come from an outline. */
+  .tier-badge,
+  .smart-pill,
+  .mt-cat-pill,
+  .score-num,
+  .stat-pill {
+    border: 1px solid currentColor;
+  }
+
+  /* A shadow is dropped in this mode, so anything that read as "raised" needs a
+     real edge — otherwise a floating card and the page ground become one plane. */
+  .card,
+  .kpi-card {
+    border: 1px solid currentColor;
+  }
+
+  /* The focus ring must survive: the OS forces the colour, and `Highlight` is the
+     system colour that means "this is selected". Without this the ring inherits a
+     forced text colour and stops being distinguishable from a border. */
+  *:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}

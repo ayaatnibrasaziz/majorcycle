@@ -89,18 +89,18 @@ const TIER_MIDS: Record<string, number> = {
 const TICKS = [0, 25, 50, 65, 75, 100];
 
 const QUADRANTS = [
-  { cls: 'q-tr', label: 'Opportunity Zone', swatch: 'rgba(0,100,0,.18)', ink: 'var(--c-tier-1)' },
+  { cls: 'q-tr', label: 'Opportunity Zone', swatch: 'rgba(var(--zone-good-rgb), .18)', ink: 'var(--c-tier-1)' },
   {
     cls: 'q-br',
     label: 'Healthy, fully priced',
-    swatch: 'rgba(212,160,23,.20)',
+    swatch: 'rgba(var(--zone-priced-rgb), .20)',
     ink: 'var(--accent-warm-ink)',
   },
-  { cls: 'q-tl', label: 'Weak but cheap', swatch: 'rgba(30,92,179,.14)', ink: 'var(--brand-mid)' },
+  { cls: 'q-tl', label: 'Weak but cheap', swatch: 'rgba(var(--zone-cheap-rgb), .14)', ink: 'var(--brand-mid)' },
   {
     cls: 'q-bl',
     label: 'Weak & expensive',
-    swatch: 'rgba(178,34,34,.16)',
+    swatch: 'rgba(var(--zone-worst-rgb), .16)',
     ink: 'var(--c-tier-5-ink)',
   },
 ] as const;
