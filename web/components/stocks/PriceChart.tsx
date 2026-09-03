@@ -1,6 +1,6 @@
 'use client';
 
-import { CHART_INK } from '@/lib/chartTheme';
+import { CANDLE, CHART_CHROME, CHART_INK } from '@/lib/chartTheme';
 import { useEffect, useRef, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -92,16 +92,16 @@ export function PriceChart({ priceBars, ticker }: Props) {
         fontFamily: "'JetBrains Mono', monospace",
       },
       grid: {
-        vertLines: { color: '#F0F4F8' },
-        horzLines: { color: '#F0F4F8' },
+        vertLines: { color: CHART_CHROME.grid },
+        horzLines: { color: CHART_CHROME.grid },
       },
       crosshair: {
         mode: CrosshairMode.Magnet,
-        vertLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
-        horzLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
+        vertLine: { color: CHART_CHROME.crosshair, width: 1, style: 2, labelBackgroundColor: CHART_CHROME.crosshairLabel },
+        horzLine: { color: CHART_CHROME.crosshair, width: 1, style: 2, labelBackgroundColor: CHART_CHROME.crosshairLabel },
       },
       rightPriceScale: {
-        borderColor: '#E2E8F0',
+        borderColor: CHART_CHROME.axis,
         textColor: CHART_INK,
         minimumWidth: CHART_RIGHT_AXIS_WIDTH,
       },
@@ -110,7 +110,7 @@ export function PriceChart({ priceBars, ticker }: Props) {
       // can't follow a range that runs into no-data space (setVisibleRange clamps
       // to the data edge), which desynced the two charts. Pinning both edges
       // keeps them locked together.
-      timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+      timeScale: { borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
     });
@@ -119,8 +119,8 @@ export function PriceChart({ priceBars, ticker }: Props) {
     // All candlestick data — no date filtering
     const candleSeries = chart.addCandlestickSeries({
       upColor: '#228B22', downColor: '#B22222',
-      borderUpColor: '#006400', borderDownColor: '#8B0000',
-      wickUpColor: '#006400', wickDownColor: '#8B0000',
+      borderUpColor: CANDLE.up, borderDownColor: CANDLE.down,
+      wickUpColor: CANDLE.up, wickDownColor: CANDLE.down,
       borderVisible: true, priceLineVisible: false,
     });
     candleSeries.setData(

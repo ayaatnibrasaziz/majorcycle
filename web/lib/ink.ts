@@ -17,11 +17,30 @@
  *
  * ⚠️ THIS IS THE SECOND COPY of the `--c-*-ink` custom properties in
  * `app/globals.css`, and it cannot be the first: CSS cannot be imported into
- * TypeScript, and a Recharts `fill`/`stroke` prop or a Lightweight-Charts series
- * option is an SVG **attribute**, where `var(--x)` is not resolved. Two copies of
- * a rule drift, so the drift is made impossible rather than discouraged —
- * `pnpm check:tier-palette` parses both files and fails the build if any value
- * disagrees. Same arrangement, and same reasoning, as `RATING_TIER_HEX`.
+ * TypeScript. Two copies of a rule drift, so the drift is made impossible rather
+ * than discouraged — `pnpm check:tier-palette` parses both files and fails the
+ * build if any value disagrees. Same arrangement, and same reasoning, as
+ * `RATING_TIER_HEX`.
+ *
+ * ⚠️ THIS BLOCK GAVE THE WRONG REASON UNTIL 2026-09-03, and a wrong reason is
+ * worse than none: it said a Recharts `fill`/`stroke` prop "is an SVG attribute,
+ * where `var(--x)` is not resolved". **Measured in Chrome — it resolves.** An SVG
+ * presentation attribute is parsed as a CSS value, so `fill="var(--brand-deep)"`
+ * computes to `rgb(26, 58, 110)`, identical to the literal. Two of the four
+ * Opportunity Map quadrant labels have been shipping exactly that.
+ *
+ * The line that IS true, and the one this file actually rests on: **Lightweight
+ * Charts paints to a `<canvas>`**, and a canvas takes a colour string with no
+ * stylesheet behind it, so `var()` there is simply an unparseable colour. Price
+ * Chart, the drawdown overlay and the Smart Money markers are all canvas.
+ *
+ * ⚠️ And there is a second, sharper reason to keep the TS constants even for
+ * Recharts, which the same measurement turned up: an **undefined** custom property
+ * in a `fill` does not void the declaration the way it does in CSS shorthand — it
+ * computes to **black**. `fill="var(--typo)"` paints a chart label in plain black
+ * on a light chart, which reads as a deliberate choice and errors nowhere. A
+ * mistyped TypeScript identifier is a build failure. Where both routes work, take
+ * the one whose mistakes are loud (CLAUDE.md 11q).
  *
  * ⚠️ These are DIRECTION colours, not RATING colours. `INK.up` means the number
  * went up; `--c-tier-2` means our judgement is Constructive. Several values

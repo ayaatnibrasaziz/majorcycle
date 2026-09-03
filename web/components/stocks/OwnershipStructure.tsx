@@ -5,6 +5,7 @@ import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 import type { FundamentalsSnapshot, TopHolder } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
 import { fmtCompact } from '@/lib/format';
+import { CHART_TOOLTIP } from '@/lib/chartTheme';
 
 interface Props {
   topHolders?: TopHolder[];
@@ -110,9 +111,9 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
                       if (!active || !payload?.length) return null;
                       const d = payload[0]!;
                       return (
-                        <div style={{ background: '#1A1A1B', border: '1px solid #2E3347', borderRadius: 6, padding: '6px 10px' }}>
-                          <div style={{ color: '#E8EAF0', fontSize: 11, fontFamily: 'Sora' }}>{String(d.name)}</div>
-                          <div style={{ color: '#94A3B8', fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>{Number(d.value).toFixed(1)}%</div>
+                        <div style={{ background: CHART_TOOLTIP.bg, border: `1px solid ${CHART_TOOLTIP.border}`, borderRadius: 6, padding: '6px 10px' }}>
+                          <div style={{ color: CHART_TOOLTIP.text, fontSize: 11, fontFamily: 'Sora' }}>{String(d.name)}</div>
+                          <div style={{ color: CHART_TOOLTIP.muted, fontSize: 11, fontFamily: "'JetBrains Mono', monospace" }}>{Number(d.value).toFixed(1)}%</div>
                         </div>
                       );
                     }}

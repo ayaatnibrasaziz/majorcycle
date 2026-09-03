@@ -1,6 +1,6 @@
 'use client';
 
-import { CHART_INK } from '@/lib/chartTheme';
+import { CHART_INK, CHART_TOOLTIP, OPPORTUNITY_ZONES } from '@/lib/chartTheme';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
@@ -229,16 +229,16 @@ export function OpportunityMap({
                     decoration and have no contrast duty. Recede with a colour,
                     never with transparency (CLAUDE.md 11q): a token can be
                     measured, an alpha silently dilutes whatever it is given. */}
-                <ReferenceArea x1={SPLIT} x2={100} y1={SPLIT} y2={100} fill="#006400" fillOpacity={0.07} stroke="none"
-                  label={{ value: 'Opportunity Zone', position: 'insideTopRight', fill: '#006400', fontSize: 10, fontWeight: 700 }} />
-                <ReferenceArea x1={SPLIT} x2={100} y1={0} y2={SPLIT} fill="#D4A017" fillOpacity={0.06} stroke="none"
-                  label={{ value: 'Healthy, fully priced', position: 'insideBottomRight', fill: '#7A5B0E', fontSize: 9.5, fontWeight: 600 }} />
-                <ReferenceArea x1={0} x2={SPLIT} y1={SPLIT} y2={100} fill="#1E5CB3" fillOpacity={0.05} stroke="none"
+                <ReferenceArea x1={SPLIT} x2={100} y1={SPLIT} y2={100} fill={OPPORTUNITY_ZONES.zoneGood} fillOpacity={0.07} stroke="none"
+                  label={{ value: 'Opportunity Zone', position: 'insideTopRight', fill: OPPORTUNITY_ZONES.zoneGood, fontSize: 10, fontWeight: 700 }} />
+                <ReferenceArea x1={SPLIT} x2={100} y1={0} y2={SPLIT} fill={OPPORTUNITY_ZONES.zonePricedWash} fillOpacity={0.06} stroke="none"
+                  label={{ value: 'Healthy, fully priced', position: 'insideBottomRight', fill: OPPORTUNITY_ZONES.zonePricedInk, fontSize: 9.5, fontWeight: 600 }} />
+                <ReferenceArea x1={0} x2={SPLIT} y1={SPLIT} y2={100} fill={OPPORTUNITY_ZONES.zoneCheapWash} fillOpacity={0.05} stroke="none"
                   label={{ value: 'Weak but cheap', position: 'insideTopLeft', fill: 'var(--brand-deep)', fontSize: 9.5, fontWeight: 600 }} />
-                <ReferenceArea x1={0} x2={SPLIT} y1={0} y2={SPLIT} fill="#B22222" fillOpacity={0.06} stroke="none"
+                <ReferenceArea x1={0} x2={SPLIT} y1={0} y2={SPLIT} fill={OPPORTUNITY_ZONES.zoneWorstWash} fillOpacity={0.06} stroke="none"
                   label={{ value: 'Weak & expensive', position: 'insideBottomLeft', fill: 'var(--c-tier-5-ink)', fontSize: 9.5, fontWeight: 600 }} />
-                <ReferenceLine x={SPLIT} stroke="rgba(138,151,168,.45)" strokeDasharray="4 4" />
-                <ReferenceLine y={SPLIT} stroke="rgba(138,151,168,.45)" strokeDasharray="4 4" />
+                <ReferenceLine x={SPLIT} stroke={OPPORTUNITY_ZONES.split} strokeDasharray="4 4" />
+                <ReferenceLine y={SPLIT} stroke={OPPORTUNITY_ZONES.split} strokeDasharray="4 4" />
 
                 <XAxis
                   type="number"
@@ -275,12 +275,12 @@ export function OpportunityMap({
                     const p = payload[0]?.payload as Point | undefined;
                     if (!p) return null;
                     return (
-                      <div style={{ background: '#1A1A1B', border: '1px solid #2E3347', borderRadius: 6, padding: '8px 12px' }}>
-                        <div style={{ color: '#E8EAF0', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, marginBottom: 4 }}>
+                      <div style={{ background: CHART_TOOLTIP.bg, border: `1px solid ${CHART_TOOLTIP.border}`, borderRadius: 6, padding: '8px 12px' }}>
+                        <div style={{ color: CHART_TOOLTIP.text, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, marginBottom: 4 }}>
                           {p.symbol}
-                          {p.name ? <span style={{ color: '#94A3B8', fontWeight: 400 }}> · {p.name}</span> : null}
+                          {p.name ? <span style={{ color: CHART_TOOLTIP.muted, fontWeight: 400 }}> · {p.name}</span> : null}
                         </div>
-                        <div style={{ color: '#94A3B8', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, lineHeight: 1.5 }}>
+                        <div style={{ color: CHART_TOOLTIP.muted, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, lineHeight: 1.5 }}>
                           Health {Math.round(p.health)} · Valuation {Math.round(p.valuation)}
                           <br />
                           Overall {Math.round(p.overall)} · click to open

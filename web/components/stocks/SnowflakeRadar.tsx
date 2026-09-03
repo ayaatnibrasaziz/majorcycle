@@ -12,6 +12,7 @@ import {
 
 import type { CycleAnalysis } from '@/lib/types';
 import { RATING_TIER_HEX, tierFromScore } from '@/lib/ratings';
+import { CHART_TOOLTIP } from '@/lib/chartTheme';
 import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
@@ -214,14 +215,14 @@ export function SnowflakeRadar({ cycle }: Props) {
                     [`${value ?? 0}/100`, (entry as { payload?: { subject?: string } }).payload?.subject ?? 'Score']
                   }
                   contentStyle={{
-                    background: '#1A1A1B',
-                    border: '1px solid #2E3347',
+                    background: CHART_TOOLTIP.bg,
+                    border: `1px solid ${CHART_TOOLTIP.border}`,
                     borderRadius: 6,
                     padding: '8px 12px',
                   }}
                   labelStyle={{ display: 'none' }}
                   itemStyle={{
-                    color: '#94A3B8',
+                    color: CHART_TOOLTIP.muted,
                     fontFamily: "'JetBrains Mono', monospace",
                     fontSize: 11,
                   }}

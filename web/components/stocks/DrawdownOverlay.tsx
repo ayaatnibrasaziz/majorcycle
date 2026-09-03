@@ -1,6 +1,6 @@
 'use client';
 
-import { CHART_INK, DRAWDOWN } from '@/lib/chartTheme';
+import { CHART_CHROME, CHART_INK, DRAWDOWN, PROFIT } from '@/lib/chartTheme';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -145,10 +145,10 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
     // Drawdown-mode colours come from the shared `DRAWDOWN` palette so the Learn
     // figures that illustrate this chart cannot drift from it (audit 5A-064).
     // Profit mode keeps its own direction greens — a separate rule (design-system §5).
-    const lineColor   = isDD ? DRAWDOWN.line : '#228B22';
-    const topColor    = isDD ? 'rgba(178,34,34,.01)'  : 'rgba(34,139,34,.15)';
-    const bottomColor = isDD ? DRAWDOWN.fill : 'rgba(34,139,34,.01)';
-    const boundColor  = isDD ? DRAWDOWN.bound : '#006400';
+    const lineColor   = isDD ? DRAWDOWN.line : PROFIT.line;
+    const topColor    = isDD ? 'rgba(178,34,34,.01)'  : PROFIT.fill;
+    const bottomColor = isDD ? DRAWDOWN.fill : PROFIT.fade;
+    const boundColor  = isDD ? DRAWDOWN.bound : PROFIT.bound;
     const typLine     = isDD ? cycle.typicalDrawdown  : cycle.typicalProfit;
     const boundLine   = isDD ? cycle.lowerBound       : cycle.upperBound;
 
@@ -161,23 +161,23 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
         fontFamily: "'JetBrains Mono', monospace",
       },
       grid: {
-        vertLines: { color: '#F0F4F8' },
-        horzLines: { color: '#F0F4F8' },
+        vertLines: { color: CHART_CHROME.grid },
+        horzLines: { color: CHART_CHROME.grid },
       },
       crosshair: {
         mode: CrosshairMode.Magnet,
-        vertLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
-        horzLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
+        vertLine: { color: CHART_CHROME.crosshair, width: 1, style: 2, labelBackgroundColor: CHART_CHROME.crosshairLabel },
+        horzLine: { color: CHART_CHROME.crosshair, width: 1, style: 2, labelBackgroundColor: CHART_CHROME.crosshairLabel },
       },
       rightPriceScale: {
-        borderColor: '#E2E8F0',
+        borderColor: CHART_CHROME.axis,
         textColor: CHART_INK,
         minimumWidth: CHART_RIGHT_AXIS_WIDTH,
       },
       // Pin both edges so this overlay (and the Price chart, which does the same)
       // can't scroll past the data into empty whitespace — that desynced the two
       // charts because setVisibleRange can't reproduce an out-of-data range.
-      timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+      timeScale: { borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
     });

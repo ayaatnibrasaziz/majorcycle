@@ -1,6 +1,6 @@
 'use client';
 
-import { CHART_INK } from '@/lib/chartTheme';
+import { CANDLE, CHART_INK, CHART_TOOLTIP } from '@/lib/chartTheme';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Bar,
@@ -182,15 +182,15 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
                   return (
                     <div
                       style={{
-                        background: '#1A1A1B',
-                        border: '1px solid #2E3347',
+                        background: CHART_TOOLTIP.bg,
+                        border: `1px solid ${CHART_TOOLTIP.border}`,
                         borderRadius: 6,
                         padding: '8px 12px',
                       }}
                     >
                       <div
                         style={{
-                          color: '#E8EAF0',
+                          color: CHART_TOOLTIP.text,
                           fontFamily: "'JetBrains Mono', monospace",
                           fontSize: 11,
                           fontWeight: 600,
@@ -201,7 +201,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
                       </div>
                       <div
                         style={{
-                          color: '#94A3B8',
+                          color: CHART_TOOLTIP.muted,
                           fontFamily: "'JetBrains Mono', monospace",
                           fontSize: 11,
                         }}
@@ -217,7 +217,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
                   <Cell
                     key={idx}
                     fill={row.isFirst ? '#1E5CB3' : row.isUp ? '#228B22' : '#B22222'}
-                    stroke={row.isFirst ? '#1A3A6E' : row.isUp ? '#006400' : '#8B0000'}
+                    stroke={row.isFirst ? '#1A3A6E' : row.isUp ? CANDLE.up : CANDLE.down}
                     strokeWidth={1.5}
                   />
                 ))}
