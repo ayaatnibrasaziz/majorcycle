@@ -181,7 +181,7 @@ it is clean locally.
       was missing); the legacy-contrast subtree (**removed in August, and there is now a guard
       that fails if it returns** — an exemption bounded on both sides, 11t); and the delisting
       banner (8.06 on a card, 7.32 on the page). Findings 5A-041…5A-100.
-- [ ] **P3 · It works when used.** Every form, every control, keyboard-only, the screener end
+- [~] **P3 · It works when used — STARTED 2026-09-03, not finished.** Every form, every control, keyboard-only, the screener end
       to end, sign-up → sign-out. Plus the **first-login disclaimer gate** (#23) on a genuinely
       new account — it is the one screen with a button that WRITES a compliance record, and it
       has already destroyed one (F-031).
@@ -373,6 +373,97 @@ ever surface them — and each is the kind of thing that is only noticed once it
   never been exercised. Knowing it works is cheaper than discovering it does not.
 - **Vercel Hobby → Pro**, deferred by the owner, still the one thing between the product and
   taking money.
+
+---
+
+## P3 · session 1 — the controls nothing drives
+
+⚠️ **P3 IS NOT FINISHED.** What was done and what was not is named at the end. Recording a
+partial pass as partial, because "P1 COMPLETE" was written here once when about half of it was
+done (5A-028).
+
+### The starting question, and the instrument for it
+
+The suite has 716 tests, so P3's value is not re-running them. The coverage map already named
+its own blind spot: *"a test that visits a page and checks it returns 200 counts the same here
+as one that drives a form."* So the pass opens by **enumerating every interactive control from
+the source** and asking which are actually driven.
+
+⚠️ **The first version of that inventory was worthless and said so loudly enough to catch.** It
+asked *"does any spec mention this COMPONENT NAME?"* and reported `ProfileForm`, `SignupForm`
+and `LoginForm` as undriven — all three are driven, through `#displayName` and `/signup`.
+Playwright targets a control by **what the user sees**, never by what the file is called. v2
+matches on the handles a component really exposes (ids, testids, aria-labels, placeholders,
+names, button text) and **carries those three files as controls that must come out DRIVEN** or
+the run aborts and prints that its numbers mean nothing.
+
+**Result: 51 files carry an interactive control; 16 are driven by nothing.** Nineteen of the
+undriven controls are the screener's entire input side — `HorizonSettings`, `BasketPicker`,
+`CsvImport`, `TickerSearchAdd`, `SelectedTickers`, `RunAnalysis`.
+
+⚠️ **And the reason is structural, not an oversight.** Every spec that visits `/run` — a11y,
+contrast, auth, entitlement, recovery, landing, seo — uses the shared E2E account, **which has
+no subscription**. `/run` correctly renders the upsell for it, so the screener's controls have
+**never once rendered inside a test**. `run-history.spec.ts` is the single exception and it
+creates its own entitled throwaway to get around exactly this.
+
+### Findings
+
+| | Finding | Status |
+|---|---|---|
+| **5A-101** | `HorizonSettings` sets `aria-invalid` and never points at the message saying what a valid value is. Its sibling `StockBrowser` does the same job and wires `aria-describedby` — **with a comment stating the rule** the other file never received (11c-iv), and a comment in another file is not a gate (11f) | ✅ **Fixed + guarded** |
+| **5A-102** | **There is no `--status-danger` token.** P2 built `--status-warning` and stopped, so form validation, CSV upload errors, the onboarding gate's error line, both error pages and two screener fields all paint errors in **`--c-tier-5` — the Bearish rating colour**, in 8 places. This is 5A-050's exact shape (a billing warning went grey when the rating palette moved) still live for errors | **Open — owner's call** |
+| **5A-103** | *"Error sending confirmation email"* reaches the reader as raw Supabase English — it falls through `friendlyAuthError`'s passthrough. **CLAUDE.md 11g, third instance**, and found the same way as the first two: by actually hitting it. It offers no advice, and the account is *not* created, so "try again" is the correct thing to say and nothing says it | **Open** |
+
+### Verified, with no defect found
+
+- **Focus.** Every stop on `/signup` shows a real indicator. The two text inputs replace the
+  outline with a brand-blue border plus a 3px ring: **4.03:1** against the field, **3.64:1** for
+  the link/button ring on the page ground, both over the 3.0 floor.
+- **The screener's custom horizon.** Every bound enforced, each with its own message, Run
+  disabled in every case: pullback −30…−1, profit ≥1, lookback 21…5040.
+- **The write-once acknowledgement**, driven as the app's own role **with a JWT claim set**,
+  because F-034 records that without one the UPDATE matches zero rows and a missing trigger
+  looks identical to a working one. Re-stamping an existing acknowledgement → **REFUSED
+  [23514]**. **Control:** a first acknowledgement → **ALLOWED, 1 row**. Both directions, so
+  F-031 is genuinely closed and no new customer is locked out.
+- **Signup rolls back cleanly when the confirmation email fails** — no account is left in limbo.
+
+### ⚠️ Three of my own readings were wrong, and measuring caught all three
+
+Worth recording because each would have been a confident false finding:
+
+1. **"No focus ring anywhere."** A scripted `el.focus()` does not put an element into
+   `:focus-visible`, so every element reported `outline-style: none`. A real Tab key gives
+   `focusVisible: true` and a 1.6px solid brand-bright ring. **Drive the keyboard with the
+   keyboard.**
+2. **"The focus border is a pale grey-blue and the ring is 0.29px."** Sampled mid-flight
+   through a `transition-all duration-150`. Two seconds later it is `rgb(46,125,232)` and 3px.
+   **A settled measurement, or none.**
+3. **"18 duplicate POSTs on a paid endpoint from one click."** Real count, wrong conclusion:
+   `/api/analyze` is a Vercel **Python** function that `next start` does not serve, so every
+   request 404s, and 404-everything is the worst case of a deliberate resilience strategy —
+   a pre-warm chunk, a worker pool, per-chunk retry and a **warm retry pass**. On a working
+   deployment this is 1–2 requests. **An implausible number under an artificial condition is
+   evidence about the environment** (11i).
+
+I also nearly reported *"no error message when a value is invalid"* — there is one, "Min 21.",
+which my regex missed by looking for the words *must be / invalid / at least / between*.
+
+### What P3 still has to cover
+
+The screener's **execution** cannot be judged locally at all — `/api/analyze` is not served by
+`next start`, so the run, the results, and what a reader is told when a run fails all have to
+be driven on the **Vercel preview** (method note 4). Also outstanding: `/results` and its
+toolbar, advanced filters and Opportunity Map controls · `/account`'s four cards ·
+`/request` · the Stock Detail subnav and chart range buttons · the keyboard pass on the
+signed-in pages · sign-out · and the whole pass on the **live site** in Claude in Chrome
+(method note 10).
+
+⚠️ **Test data note.** This pass set a known password on the throwaway
+`p2run2-…@example.com` and cleared, then re-set, the acknowledgement on
+`p1-finish-…@example.com`, both by direct SQL — the documented approach for states not
+reachable by ordinary use. Neither is the owner's account.
 
 ---
 
