@@ -819,6 +819,60 @@ if (!fcBlock) {
   }
 }
 
+// ── 10 · the design doc quotes the real values ──────────────────────────────
+/*
+ * `design-system.md` §2 reproduces the token block as a code fence. That fence is
+ * a COPY of `globals.css`, maintained by hand beside it, and it drifts.
+ *
+ * ⚠️ Audit 5A-048 found five stale values in it; **two were still stale six weeks
+ * later**, on 2026-09-03, including `--text-muted` — documented `#8A97A8` when the
+ * real token had been `#626B77` since August. That is not a trivia error: #8A97A8
+ * is the value that measured 2.97:1 and produced 258 failing elements on one page,
+ * so the doc was recommending, in a code fence, the exact colour the product had
+ * just been fixed to stop using. Anyone reading the design system to pick a muted
+ * grey would have picked the broken one.
+ *
+ * Reading the fence and comparing is the cheapest possible fix, and it makes the
+ * doc's §2 unable to lie about a value again (CLAUDE.md 11c — a rule in two places
+ * drifts; where the second copy must exist, check it rather than trust it).
+ */
+const DOC = join(ROOT, '..', 'docs', 'design-system.md');
+let docSrc = null;
+try {
+  docSrc = readFileSync(DOC, 'utf8');
+} catch {
+  fail.push('docs/design-system.md could not be read — check 10 cannot compare the documented palette with the real one.');
+}
+if (docSrc) {
+  const documented = new Map();
+  for (const m of docSrc.matchAll(/^\s*(--[a-z0-9-]+):\s*(#[0-9A-Fa-f]{6})\s*;/gm)) {
+    if (!documented.has(m[1])) documented.set(m[1], m[2].toUpperCase());
+  }
+  const drifted = [];
+  let compared = 0;
+  for (const [token, docHex] of documented) {
+    const realHex = readToken(token);
+    if (!realHex) continue; // documented but not a plain hex in globals.css — check 6/8b territory
+    compared++;
+    if (realHex !== docHex) drifted.push(`${token}: the doc says ${docHex}, globals.css says ${realHex}`);
+  }
+  note.push(`  design-system.md §2: ${compared} documented token values compared`);
+  // The control. Without it this passes on a doc whose code fence has been deleted.
+  if (compared < 20) {
+    fail.push(
+      `check 10 compared only ${compared} token values against docs/design-system.md — it expects at least 20. ` +
+        `Either the doc's palette fence has moved or its format changed, and the check is now measuring almost nothing.`,
+    );
+  }
+  if (drifted.length) {
+    fail.push(
+      `docs/design-system.md quotes ${drifted.length} value(s) the stylesheet disagrees with:\n    ` +
+        drifted.join('\n    ') +
+        `\n  The doc is what a person reads before picking a colour, so a stale value there is a recommendation to use the wrong one.`,
+    );
+  }
+}
+
 // ── report ──────────────────────────────────────────────────────────────────
 console.log('Rating tier palette');
 console.log(note.join('\n'));

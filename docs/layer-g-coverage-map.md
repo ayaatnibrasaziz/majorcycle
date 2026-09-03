@@ -461,6 +461,44 @@ comments stripped first. It would catch somebody deleting the line and would **n
 client that silently stopped applying `.is()`. Named as a limit rather than counted as
 equivalent coverage (11c-ix).
 
+---
+
+## The P3 delta — 2026-09-03 · what "covered" was hiding
+
+This map's own stated blind spot was **assertion quality**: *"a test that visits a page and
+checks it returns 200 counts the same here as one that drives a form."* P3 measured that gap
+directly by enumerating every interactive control from the source and asking which are driven.
+
+**51 files carry an interactive control. 16 are driven by nothing.**
+
+⚠️ **And the largest cluster is structural rather than accidental.** Nineteen of those controls
+are the screener's entire input side — `HorizonSettings`, `BasketPicker`, `CsvImport`,
+`TickerSearchAdd`, `SelectedTickers`, `RunAnalysis`. Every spec that visits `/run` (a11y,
+contrast, auth, entitlement, recovery, landing, seo) uses the **shared E2E account, which has no
+subscription**, so `/run` correctly renders the upsell and **those controls have never once
+rendered inside a test**. `run-history.spec.ts` is the single exception and it creates its own
+entitled throwaway precisely to get around this.
+
+So the `/run` row above — *8 spec files* — is true and misleading in exactly the way this
+document warned about: eight files reach the route, none reaches the product on it.
+
+⚠️ **The instrument that produced those numbers was wrong first, and said so.** v1 asked
+*"does any spec mention this COMPONENT NAME?"* and called `ProfileForm`, `SignupForm` and
+`LoginForm` undriven — all three are driven, through `#displayName` and `/signup`. Playwright
+targets a control by what the USER sees. v2 matches on the handles a component really exposes
+and carries those three files as **controls that must come out driven**, or it aborts and prints
+that its numbers mean nothing.
+
+**Suite: 716 → 717 tests in 40 files**, the addition being `e2e/form-errors.spec.ts` — pure,
+credential-free, source-reading: every component that flags a field `aria-invalid` must also
+point at the message saying what is wrong (audit 5A-101).
+
+**What P3 has driven since, and found:** the screener end to end on the Vercel preview (the only
+surface that runs the Python functions), `/results` view modes, search and tier filters,
+`/account`'s four cards, `/request`'s search, the Stock Detail range buttons, and the keyboard.
+One real defect: the **active** sub-nav pill's focus ring is white on a white bar (5A-104).
+Full record in `layer-g-5a-sweep.md`.
+
 ## Still open after this delta
 
 ⬜ **Layers 3, 3b and 4 need their own delta re-run.** The wire sweep predates the entitlement

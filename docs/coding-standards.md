@@ -431,13 +431,13 @@ the wrong shape is how a feature ends up with a green suite and a broken half.
 
 | Shape | Needs | Use it for | Examples |
 |---|---|---|---|
-| **Pure** — no browser, no network | nothing | A rule you can state as a function | `entitlement.spec.ts`, `export-parity.spec.ts`, `public-chrome.spec.ts`, `auth-contracts.spec.ts` |
+| **Pure** — no browser, no network | nothing | A rule you can state as a function, **or a rule about the source itself** | `entitlement.spec.ts`, `export-parity.spec.ts`, `public-chrome.spec.ts`, `auth-contracts.spec.ts`, `form-errors.spec.ts` |
 | **Credential-free browser** | the dev server | Anything you can reach signed out, incl. a state you can fake with a cookie | `auth.spec.ts`, `auth-forms.spec.ts`, `seo.spec.ts`, `contrast.spec.ts`, `legal-doc.spec.ts` |
 | **Throwaway account** | Supabase service key | A flow that must actually RUN, with side-effects too destructive for the shared login | `entitlement-routes.spec.ts`, `stripe-webhook.spec.ts`, `deletion-notice.spec.ts`, `recovery-confinement.spec.ts` |
 
 **The throwaway pattern** — `admin.auth.admin.createUser` in `beforeAll`,
 `admin.auth.admin.deleteUser` in `afterAll` (the `profiles` row follows via cascade),
-`@example.com` so no mail is deliverable, and usually
+`@example.com` so no mail is deliverable — ⚠️ **measured 2026-09-03, and the reason is sharper than "nobody reads it": Resend REFUSES the domain outright** with `550 Invalid to field — please use our testing email address instead of domains like example.com`. So signing a throwaway up through the UI fails at the confirmation email, and Supabase rolls the user back cleanly (no account is left in limbo, verified). A throwaway must therefore be created through the **admin API**, never through the form. And usually
 `test.describe.configure({ mode: 'serial' })` because every test mutates one row.
 `afterAll` runs even when the test fails, so a deliberately-broken run leaves nothing
 behind — worth verifying once after any session that adds one.

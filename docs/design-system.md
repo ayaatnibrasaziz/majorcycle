@@ -142,7 +142,11 @@ filed on request.
   /* Text */
   --text-primary:   #0F1923;
   --text-secondary: #4A5568;
-  --text-muted:     #8A97A8;
+  --text-muted:     #626B77;  /* ⚠️ #8A97A8 until 2026-08-22 — 2.97:1 on white against a
+                                 4.5 floor, and the single largest a11y defect the
+                                 product has had: 258 failing elements on Browse alone,
+                                 including the mandatory disclaimer. This doc still said
+                                 #8A97A8 until 2026-09-03 (audit 5A-048). */
   /* NO `--text-white`. It was listed here until 2026-08-07 and has NEVER existed
      in globals.css — a documented nickname for a colour nothing defines. Removed
      because it is a landmine, not because anything was broken: `var(--text-white)`
@@ -201,7 +205,8 @@ filed on request.
      that cannot read a CSS variable; `pnpm check:tier-palette` keeps them in step
      and measures each against the darkest ground it was OBSERVED on. */
   --c-up-ink:      #1B741B;  /* was #228B22 as text */
-  --c-neutral-ink: #81600F;  /* was #D4A017 / #9A7010 / #B58800 as text */
+  --c-neutral-ink: #6B6266;  /* was #D4A017 / #9A7010 / #B58800 as text; grey since
+                                2026-08-23. Documented as #81600F until 2026-09-03. */
   --c-warn-ink:    #C73600;  /* was #FF4500 as text */
   --c-brand-ink:   #1E5CB3;  /* was #2E7DE8 as text on its own tint */
 
@@ -440,7 +445,7 @@ billing notices and short-interest bands. Each domain now has its own names:
 | **Analyst** (third party) | `--analyst-positive / -neutral / -negative` | a Yahoo *Sell* must never wear our Bearish colour |
 | **Direction** | `--c-up-ink`, `--c-down-ink`, `--c-neutral-ink`, `--c-warn-ink`, `--c-brand-ink` | market movement, not our opinion |
 | **Data state** | `--data-missing` | must stay distinct from a *middling* value |
-| **Series** | `SERIES_TEAL`, `FIGURE_TEAL`, `DRAWDOWN`, `BENCH_COLOR` (`lib/ink.ts`, `lib/chartTheme.ts`) | chart props cannot read a variable |
+| **Series** | `SERIES_TEAL`, `FIGURE_TEAL`, `DRAWDOWN`, `PROFIT`, `BENCH_COLOR` (`lib/ink.ts`, `lib/chartTheme.ts`) | ⚠️ **NOT because "chart props cannot read a variable"** — that was this repo’s stated reason until 2026-09-03 and it is wrong for Recharts, where `fill="var(--brand-deep)"` resolves normally (measured). The real reason is **Lightweight Charts paints to a `<canvas>`**, which has no stylesheet behind it. TS constants are kept for Recharts too, because an UNDEFINED `var()` in a `fill` paints **black** rather than failing loudly, while a mistyped identifier is a build error |
 | **Gauge** | `--gauge-1…4` | a position ramp, not a verdict |
 | **Surface** (elevation) | `--elev-sunken / -low / -mid / -high`, aliased by `--bg-page / -stripe / -hover / -surface / -sidebar / -header` | added 2026-09-03. Three levels are the same white today — deliberately: a sidebar, a header and a card are three elevations this theme paints alike, and naming them apart is what lets a dark theme separate them without touching a component |
 | **Zones** (Opportunity Map) | `--zone-good / -priced / -cheap / -worst-rgb`, `--zone-split`, mirrored by `OPPORTUNITY_ZONES` | one hue, three consumers: the paid chart, the landing page’s still of it, and `landing.css`. Stored as an RGB triplet so one value serves both the chart’s alphas and the legend’s heavier ones |
@@ -537,8 +542,12 @@ score tier (one colour per label, so a label never shows two colours):
 (Tokens rather than hexes, deliberately: this ladder IS the rating ladder, and
 writing the values here a second time is how the two would come to disagree.)
 
-The **Cycle Position** column shows just the 0–100 reading (gauge + number, coloured
-by `cyclePositionColor`). The zone words are *not* rendered in that cell — they're
+The **Cycle Position** column shows just the 0–100 reading (gauge + number). ⚠️ **It is
+no longer COLOURED.** It was tinted by a `cyclePositionColor()` helper until 2026-09-02,
+when the owner ruled that a raw market reading never carries our colour — a cycle
+position is a fact about where a price sits, not a verdict on it. The helper was
+**deleted** rather than left unused, so nothing can quietly start calling it again; the
+marker is `--brand-mid` and a missing value is `--data-missing` (audit 5A-060/5A-062). The zone words are *not* rendered in that cell — they're
 described in its tooltip (75+ Deep Value · 50+ Value · 25+ Fair · below Stretched, as
 a rough guide) and remain available as a hidden filter / CSV field ("Cycle Position
 Zone"). A deeply-fallen but weak company therefore reads a low Valuation
@@ -579,7 +588,7 @@ Every chart MUST follow these. Hard rule.
 | Neutral / informational | `#1E5CB3` | `#1A3A6E` | `#1E5CB3` |
 | Highlight / cursor / focus | `#2E7DE8` | `#1A3A6E` | `--c-brand-ink` |
 | Grid lines | `#E2E8F0` (10% alpha for major, 5% for minor) | — | — |
-| Axis labels | `#8A97A8` | — | — |
+| Axis labels | `#626B77` (`CHART_INK`) | — | — |
 
 ⚠️ **The fills and borders are unchanged and must stay that way** — green-for-up is
 the convention every trading tool follows. The fourth column exists because the
