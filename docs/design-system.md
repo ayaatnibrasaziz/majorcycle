@@ -2452,12 +2452,29 @@ grounds that the site owns no warning colour and inventing one would put a hue o
 notice in red?"* — with the checkout-cancelled banner from `/account` as the shape.
 
 ⚠️ **The reference answered my objection rather than overriding it, and that is the lesson.**
-That banner (`SubscriptionCard`) is already built from the **rating tier tokens** — tier 3, the
-neutral amber — used purely as a UI tint with no rating meaning. So the red here is
+That banner (`SubscriptionCard`) was, in August, built from the **rating tier tokens** — tier 3,
+the neutral amber — used purely as a UI tint with no rating meaning. So the red here is
 `--c-tier-5-ink` / `--tint-tier-5`: the same established set, one hue over. No new colour, no
-literal hex, nothing the palette guard cannot see, and a shape the product already uses for
+literal hex, nothing the palette guard cannot see, and a shape the product already used for
 this exact job. **The objection was sound and the answer was already in the codebase**; I had
 reached for "invent or refuse" without looking for the third option.
+
+⚠️ **BOTH HALVES OF THAT ARGUMENT EXPIRED TWO DAYS LATER, AND THE PARAGRAPH ABOVE WENT ON
+STATING THEM** (found re-reading P2 on 2026-09-03, finding 5A-100). P2 gave the site a real
+warning palette — `--status-warning` with its own ink, tint, surface and border — so *"the
+site owns no warning colour"* stopped being true; and it moved `SubscriptionCard` onto that
+palette, so *"already built from the rating tier tokens"* stopped being true as well. The
+whole reason 5A-050 existed was that a billing warning borrowing tier 3 had turned **grey on
+grey** when the rating palette moved underneath it.
+
+**The banner is unchanged and stays unchanged** — red is an owner decision, a delisting is a
+terminal fact rather than a warning, and it measures 8.06 / 7.32. What changed is that its
+justification is now a historical note rather than a live argument. Anyone reading the old
+wording would have concluded the product still has no warning colour and reached for a rating
+token again. **A correct sentence describing superseded work is worse than no sentence,
+because it closes a question that is open** (CLAUDE.md 11ae). ⚠️ Note the shape: P2 moved one
+component and left the doc that REASONED ABOUT that component behind. Grep for what a change
+is cited by, not only for what it touches.
 
 **Contrast measured before it was written**, on the grounds it actually sits on: **8.06:1** on
 a white card, **7.32:1** on the page ground, against a 4.5 floor. A margin, not a boundary —

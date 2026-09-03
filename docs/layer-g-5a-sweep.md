@@ -172,13 +172,41 @@ it is clean locally.
       *visible without scrolling*. That is a legal requirement, it is per-STATE (a locked-out
       viewer sees a different page from a subscriber), and no existing guard asserts the
       "without scrolling" half.
-- [ ] **P2 · Colour, measured.** Tier palette across all 4 surfaces; 3-tier health ramp; the
-      drawdown tint that runs green for a deeper fall; direction-as-text; the legacy-contrast
-      subtree; the new red delisting banner.
+- [x] **P2 ✅ DONE 2026-09-03 · Colour, measured.** All six items closed and each verified
+      rather than assumed on the final re-read: the tier palette on **all four surfaces** (the
+      app, the offline report’s separate esbuild artifact, the `.xlsx` fills, the public pages
+      — enumerated in the closure section, since this line never named them); the 3-tier health
+      ramp; the drawdown tint that ran green for a deeper fall (now uncoloured — owner: never
+      colour a raw market number); direction-as-text (the ink layer, plus the fifth ink that
+      was missing); the legacy-contrast subtree (**removed in August, and there is now a guard
+      that fails if it returns** — an exemption bounded on both sides, 11t); and the delisting
+      banner (8.06 on a card, 7.32 on the page). Findings 5A-041…5A-100.
 - [ ] **P3 · It works when used.** Every form, every control, keyboard-only, the screener end
       to end, sign-up → sign-out. Plus the **first-login disclaimer gate** (#23) on a genuinely
       new account — it is the one screen with a button that WRITES a compliance record, and it
       has already destroyed one (F-031).
+- [ ] **P3b · THE COLOUR WALKTHROUGH — the owner’s pass, added 2026-09-03 at their request.**
+      Every component rendered in every state it can take a colour in, side by side, for the
+      owner to look at and sign off. ⚠️ **This slot did not exist**, and the omission is the
+      shape this sweep keeps finding: P2 measures colour, P1 checks a page renders, and
+      **nothing in the ten passes was the owner LOOKING at the palette in one sitting.** Every
+      colour decision so far has reached them one screenshot at a time, in the middle of a
+      change — which is how a repaint of a paid surface got past both of us once (11l).
+      **Placed after P3, deliberately, and this is the whole reason for the position:** P3 is
+      the last pass that can still MOVE a colour, because hover, focus, disabled, selected and
+      pressed are all colours (P2 already changed one — the screener’s disabled primary sat at
+      1.48:1). P4–P8 audit data, copy, weight and width; none of them repaints anything. So
+      after P3 one sitting covers everything and nothing signed off gets re-opened; before P3
+      it would have to be done twice.
+      **Built as a local-only gallery** (`app/dev-fixtures/`, gitignored, reached with
+      `DEV_BYPASS_AUTH`) rather than a tour of the live app, because the live app cannot show
+      five rating tiers side by side and cannot easily reach `past_due`, a delisted ticker, or
+      a stock with no analyst coverage.
+      ⚠️ **The state list will be INCOMPLETE until P4 has run.** Enumerating cases from memory
+      has under-counted before — the guided walkthrough found **7 reporting currencies, 4 of
+      which had never been checked**, because the data was never asked how many cases exist.
+      P4 asks the data. Anything it turns up is ADDED to the gallery, which is a top-up rather
+      than a re-review.
 - [ ] **P4 · Data edge cases.** No cycle at horizon · cross-currency · a bank · no dividend ·
       no analyst coverage · no insider activity · retired ticker · unknown ticker/market/slug ·
       empty results · a brand-new account with no history. Plus a **sanity check on the
@@ -908,6 +936,41 @@ does in a CSS shorthand — it computes to **black**. `fill="var(--typo)"` paint
 plain black on a light chart, which reads as deliberate and errors nowhere. A mistyped
 TypeScript identifier is a build failure. *Where both routes work, take the one whose
 mistakes are loud.*
+
+### 5A-100 · P2 moved a component and left the doc that REASONED about it
+
+Found on the final P2 re-read, 2026-09-03. `design-system.md`’s delisting-notice section
+justified using rating-tier tokens for a red banner on two grounds: that *“the site owns no
+warning colour”*, and that the banner it copies (`SubscriptionCard`) *“is already built from
+the rating tier tokens”*. **P2 falsified both, two days after they were written** — it created
+`--status-warning` and moved `SubscriptionCard` onto it, which was the entire point of 5A-050
+(a billing warning borrowing tier 3 had gone grey on grey when the rating palette moved).
+
+The banner itself needs no change: red is an owner decision, a delisting is a terminal fact
+rather than a warning, and it measures **8.06** on a card and **7.32** on the page. The defect
+is the paragraph — anyone reading it would conclude the product still has no warning colour
+and reach for a rating token again.
+
+⚠️ **The shape is worth more than the instance.** P2’s own doc updates were thorough about
+everything it TOUCHED; this is a doc that merely CITED one of the things it touched, three
+sections away in a different file. **Grep for what a change is cited by, not only for what it
+changes.** Same family as 11ae — a correct sentence describing superseded work closes a
+question that is open.
+
+### The four surfaces the tier palette is drawn on — all verified
+
+The P2 line says *“tier palette across all 4 surfaces”* and never named them. Enumerated and
+checked 2026-09-03:
+
+| Surface | How it was verified |
+|---|---|
+| The signed-in app | `check:tier-palette` (9 checks) + read back off a running browser |
+| The **offline report** | it is a SEPARATE esbuild build and has shipped broken before (11d), so the built artifact was grepped rather than the source: `report.css` carries the new gold, the elevation ramp, the zone triplets, the shadow tokens and the forced-colors block |
+| The **`.xlsx` export** | `TIER_ARGB` is derived from `RATING_TIER_HEX`, so it followed the gold with no edit. It writes **white bold text on the tier fill**, which is exactly the guard’s “white-on-it” column — lowest is 5.31. ⚠️ No guard reads a workbook’s fills, so the derivation IS the protection here |
+| The landing and public pages | 89 public-surface tests, plus the contrast guard’s “the public site still needs no exemption at all” |
+
+Two surfaces carry **no** tier colour and were checked rather than assumed: the transactional
+emails, and the `.csv` export (text only).
 
 ### Still open, and why
 
