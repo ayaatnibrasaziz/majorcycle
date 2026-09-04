@@ -58,9 +58,24 @@ export function Header({ lastRunAt, email }: HeaderProps) {
       role="banner"
     >
       <div>
-        <div className="text-[15px] font-bold text-[var(--text-primary)] tracking-[-0.3px]">
+        {/* ⚠️ An <h1>, not a <div> — audit 5A-114. Browse, Run, Results and Stock Detail
+            had NO heading of any level: every visible "heading" on them was a styled div,
+            so a screen-reader user got one flat run of text with no way to navigate the
+            page by structure. This element is already the page title, visibly and
+            semantically; it just was not marked as one.
+
+            Fixed HERE rather than on four pages because this header renders the title for
+            every signed-in route, so the pages cannot drift apart again (11c). `/account`
+            and `/request` had their own `sr-only` h1 and have had it removed — the page
+            title now comes from one place, and no page ends up with two h1s.
+
+            ⚠️ Invisible to the a11y guard by construction: `app-a11y.spec.ts` runs axe
+            with `wcag2a/2aa/21a/21aa`, and axe tags its heading rules `best-practice`, so
+            the scan was green and had never had an opinion. The tag list is a claim about
+            what the guard can see (14g). */}
+        <h1 className="text-[15px] font-bold text-[var(--text-primary)] tracking-[-0.3px]">
           {title}
-        </div>
+        </h1>
         <div className="text-[11px] text-[var(--text-muted)]">{subtitle}</div>
       </div>
 

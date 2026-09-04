@@ -125,6 +125,46 @@ test.describe('the signed-in product is accessible', () => {
     await signIn(page);
   });
 
+  /**
+   * Every signed-in page carries exactly one <h1>.
+   *
+   * ⚠️ AUDIT 5A-114. Browse, Run, Results and Stock Detail carried **no heading of any
+   * level** — not one h1..h6, not one role="heading". Every visible heading on them
+   * ("The Verdict", "Company Overview", "Technical Levels", the KPI captions) was a
+   * styled `div`, so a screen-reader user was handed one flat run of text with no way to
+   * navigate the page by structure. Found on the live site by counting, because there is
+   * nothing to see: the pages look perfectly well organised.
+   *
+   * ⚠️ WHY THE EXISTING SCAN COULD NOT SEE IT, which is the reusable part. The axe run
+   * above uses `TAGS = ['wcag2a','wcag2aa','wcag21a','wcag21aa']`, and axe tags
+   * `page-has-heading-one`, `empty-heading` and `heading-order` as **best-practice**, not
+   * WCAG. So the scan was green and had never had an opinion on headings at all. The tag
+   * list is a claim about what the guard can see, written in four strings nobody re-reads
+   * (14g). This test is deliberately NOT "add best-practice to TAGS": that would enable
+   * dozens of unrelated rules at once and the honest scope here is the defect that was
+   * found.
+   *
+   * Exactly one, not at least one: the fix moved the title into the shared `Header`, and
+   * `/account` and `/request` had their own `sr-only` h1 removed in the same change. An
+   * "at least one" assertion would pass on the duplicate state that fix had to avoid.
+   */
+  for (const path of APP_PATHS) {
+    test(`${path} has exactly one h1`, async ({ page }) => {
+      test.setTimeout(120_000);
+      await page.goto(path);
+      await page.waitForLoadState('domcontentloaded');
+      const h1 = page.locator('h1');
+      await expect(h1.first()).toBeAttached({ timeout: 20_000 });
+
+      const count = await h1.count();
+      const texts = await h1.allTextContents();
+      expect(count, `${path} has ${count} <h1> elements: ${JSON.stringify(texts)}`).toBe(1);
+
+      // The heading must say something — an empty h1 satisfies a count and helps nobody.
+      expect((texts[0] ?? '').trim().length, `${path}'s h1 is empty`).toBeGreaterThan(0);
+    });
+  }
+
   for (const path of APP_PATHS) {
     test(`${path} has no axe violations`, async ({ page }) => {
       test.setTimeout(120_000);

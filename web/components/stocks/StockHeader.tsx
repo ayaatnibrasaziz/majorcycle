@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { WeekRangeGauge } from '@/components/stocks/WeekRangeGauge';
 import { InfoTip } from '@/components/ui/InfoTip';
 import type { StockDetail } from '@/lib/stocks';
-import { fmtPrice } from '@/lib/format';
+import { fmtPrice, fmtPriceDelta } from '@/lib/format';
 import { marketLabel, tickerToUrlParts } from '@/lib/ticker';
 import type {
   AnalystRecommendation,
@@ -147,7 +147,7 @@ export function StockHeader({ stock, badgeSlot }: Props) {
           >
             <PriceArrow direction={change.pct >= 0 ? 'up' : 'down'} />
             {change.pct >= 0 ? '+' : '−'}
-            {fmtPrice(Math.abs(change.abs), currency)}
+            {fmtPriceDelta(Math.abs(change.abs), currentClose, currency)}
             {' ('}
             {change.pct >= 0 ? '+' : '−'}
             {Math.abs(change.pct).toFixed(2)}%{')'}

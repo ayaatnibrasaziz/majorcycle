@@ -1095,6 +1095,15 @@
 }
 .card-header {
   display: flex; align-items: center; justify-content: space-between;
+  /* ⚠️ `gap` matters here even though `justify-content: space-between` implies room —
+     audit 5A-120. Space-between distributes only the space that is LEFT OVER, so once
+     the title and its trailing hint together fill the row the gap collapses to nothing
+     and the two texts meet edge to edge. Measured at a 752px viewport on production:
+     0px between them on four cards — Opportunity Map, Valuation History, Smart Money
+     Activity and Stock Scorecard. `gap` is a floor that space-between cannot eat, and
+     `flex-wrap: wrap` lets the hint drop to its own line rather than be crushed once
+     even that floor cannot hold. */
+  gap: 8px 16px; flex-wrap: wrap;
   padding: 14px 18px 12px; border-bottom: 1px solid var(--border);
 }
 .card-title {
@@ -1641,12 +1650,43 @@ td.num             { font-weight: 600; }
 .si-grid                                    { display: grid; grid-template-columns: 200px 1fr; gap: 24px; align-items: start; }
 .si-arc-wrap                                { text-align: center; padding: 8px 0; }
 
+/* ⚠️ SHRINK PROTECTION IS UNCONDITIONAL — audit 5A-116.
+   These three rules used to live inside the `max-width: 600px` block below, under a
+   comment that named this exact failure ("let the column shrink so the holders table
+   scrolls within its wrapper instead of pushing the page"). The diagnosis was right and
+   the bound was wrong: the two-column layout needs roughly 900px of VIEWPORT to fit
+   beside the 220px sidebar, so every width between 601px and ~900px — iPad portrait at
+   768px included — got the desktop grid with no shrink protection, and a `1fr` track
+   whose automatic minimum is the table's min-content width pushed the whole PAGE
+   sideways. Measured on production: 263px of horizontal scroll at a 644px viewport,
+   135px at 772px, 0 at 921px.
+
+   A grid item's default `min-width: auto` is the mechanism; `min-width: 0` is what lets
+   the track shrink, and `overflow-x: auto` is what catches the table once it can. Both
+   are safe at every width — when the content fits, neither changes anything — so they
+   belong outside the media query, exactly as `.km-scroll` (line ~1490) has always done
+   it for the Key Metrics table. The media query keeps only what is genuinely a layout
+   CHOICE: stacking to one column.
+
+   The sibling grids get the same protection rather than a promise that they are fine:
+   they share the `200px 1fr` / `1.1fr 1fr` shape and only escaped because their content
+   happens to be narrower today (11c — check the siblings, do not assume them).
+
+   ⚠️ `.smart-event` is on the list because it was MEASURED to overflow, not assumed: with
+   the Ownership grid fixed, 4px of scroll remained at 640px and the culprit was
+   `.smart-event-date` ("Jun 25, 26") sitting at 644.5px. Its grid is `1fr auto`, so the
+   `auto` date track cannot shrink and the `1fr` track's min-content pushes it past the
+   edge. Same mechanism, three orders of magnitude smaller — and it only surfaced once the
+   loud one was gone. */
+.ownership-grid > *,
+.si-grid > *,
+.smart-money-grid > *,
+.smart-event > *                            { min-width: 0; }
+.table-wrapper                              { overflow-x: auto; }
+
 /* Responsive — stack single column on narrow screens */
 @media (max-width: 600px) {
   .ownership-grid                           { grid-template-columns: 1fr; }
-  /* Stacked: let the column shrink so the holders table scrolls within its wrapper instead of pushing the page */
-  .ownership-grid > *                       { min-width: 0; }
-  .table-wrapper                            { overflow-x: auto; }
   .si-grid                                  { grid-template-columns: 1fr; }
   .smart-money-grid                         { grid-template-columns: 1fr; }
   .smart-event                              { grid-template-columns: 1fr; row-gap: 3px; }

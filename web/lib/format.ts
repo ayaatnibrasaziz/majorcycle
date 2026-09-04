@@ -89,19 +89,51 @@ export const CHART_RIGHT_AXIS_WIDTH = 72;
  * "$0":  ≥ $1 → 2 dp · $0.10–$1 → ≤ 3 dp · $0.01–$0.10 → ≤ 4 dp · < $0.01 → ≤ 6 dp
  * (2 dp floor throughout; trailing zeros trimmed only below $1).
  */
+function priceDecimals(magnitude: number): number {
+  const a = Math.abs(magnitude);
+  if (a >= 1) return 2;
+  if (a >= 0.1) return 3;
+  if (a >= 0.01) return 4;
+  return 6;
+}
+
 export function fmtPrice(n: number, currency: Currency): string {
-  const a = Math.abs(n);
-  let maxFrac: number;
-  if (a >= 1) maxFrac = 2;
-  else if (a >= 0.1) maxFrac = 3;
-  else if (a >= 0.01) maxFrac = 4;
-  else maxFrac = 6;
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
     minimumFractionDigits: 2,
-    maximumFractionDigits: maxFrac,
+    maximumFractionDigits: priceDecimals(n),
   }).format(n);
+}
+
+/**
+ * A CHANGE in price — today's move, a gap, any delta — shown at the precision of the
+ * price it came from rather than its own.
+ *
+ * ⚠️ AUDIT 5A-111. The daily move used to go through `fmtPrice`, which picks decimals
+ * from the value's OWN magnitude. That rule is right for a price (a stock trading at
+ * $0.52 deserves more than two decimals) and wrong for a delta, because a delta is
+ * almost always smaller than $1 while the price it sits beneath is not. Measured on the
+ * live site: BHP showed `A$63.78` with `+A$0.522` directly under it — **the only one of
+ * twenty money figures on the page carrying three decimals**. The exchange quotes BHP in
+ * cents; a fifth of a cent is precision we invented.
+ *
+ * ⚠️ The irony is the point: `fmtPrice` exists, by its own docblock, "so a group of
+ * related prices never mixes precision" — and it produced exactly that mixing, because
+ * it judged the change ALONE rather than as a member of the group it is displayed in.
+ * Passing the reference price is what puts it back in the group.
+ *
+ * Deliberately NOT hard-coded to 2dp: a $0.40 stock that moves a third of a cent still
+ * needs its extra places, and it gets them, because the ladder is the same one — only
+ * the number it is asked about changes.
+ */
+export function fmtPriceDelta(delta: number, referencePrice: number, currency: Currency): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: priceDecimals(referencePrice),
+  }).format(delta);
 }
 
 /**
