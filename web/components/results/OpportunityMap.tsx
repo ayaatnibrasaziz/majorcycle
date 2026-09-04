@@ -306,7 +306,13 @@ export function OpportunityMap({
                               type="button"
                               className="opp-legend-item"
                               aria-pressed={!off}
-                              aria-label={`${off ? 'Show' : 'Hide'} ${e.value}`}
+                              // No aria-label: the accessible name is the visible tier
+                              // name, and `aria-pressed` alone carries shown/hidden. It
+                              // used to be `${off ? 'Show' : 'Hide'} ${e.value}`, which
+                              // announced "Hide Bearish, pressed" - an action and a state
+                              // pulling opposite ways, and the ARIA practice for a toggle
+                              // is explicit that the label must not change with the state
+                              // (audit 5A-109).
                               onClick={() => toggle(e.value)}
                             >
                               <span className="opp-legend-dot" style={{ background: e.color, opacity: off ? 0.4 : 1 }} />

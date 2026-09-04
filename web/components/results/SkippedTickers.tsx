@@ -41,6 +41,7 @@ export function SkippedTickers({
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [localStatus, setLocalStatus] = useState<Record<string, RequestStatus>>({});
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (unavailable.length === 0) return null;
 
@@ -61,17 +62,32 @@ export function SkippedTickers({
 
   const requestTicker = async (t: string) => {
     setPending((p) => new Set(p).add(t));
+    setNotice(null);
     try {
       const res = await fetch('/api/request-ticker', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbol: t }),
       });
-      if (res.ok) setLocalStatus((s) => ({ ...s, [t]: 'queued' }));
-      // A non-OK response (e.g. not a listed stock) leaves the ticker as-is — its
-      // smart chip ("Not covered") already conveys that it can't be requested.
+      if (res.ok) {
+        setLocalStatus((s) => ({ ...s, [t]: 'queued' }));
+      } else {
+        // ⚠️ AUDIT 5A-110. This was a bare `if (res.ok)` under the comment "a
+        // non-OK response (e.g. not a listed stock) leaves the ticker as-is — its
+        // smart chip already conveys that it can't be requested". True of the 404
+        // and of nothing else: the route answers 400, 404, 409, 500 and — since
+        // the 11e fix of 2026-08-23 — **503 with `Retry-After`** when a read
+        // fails transiently. The endpoint was taught to say "I could not read"
+        // rather than "it is not there", and this caller threw the distinction
+        // away: a reader pressed Request, watched the button flip back, and was
+        // told nothing while nothing had been queued. Its sibling
+        // `components/request/RequestTicker.tsx` — same endpoint, same POST — has
+        // always surfaced the server's own message (11c-iv).
+        const json = (await res.json().catch(() => null)) as { error?: string } | null;
+        setNotice(json?.error ?? 'Could not queue that ticker. Please try again.');
+      }
     } catch {
-      // non-fatal
+      setNotice('Could not queue that ticker. Please try again.');
     } finally {
       setPending((p) => {
         const n = new Set(p);
@@ -125,6 +141,25 @@ export function SkippedTickers({
                   />
                 ))}
               </span>
+            </div>
+          )}
+          {/* Reuses `/request`'s own notice treatment rather than inventing a
+              second one, so both surfaces that queue a ticker report failure the
+              same way (11c) — and neither needs an error colour, which this site
+              still does not have (5A-102). `role="status"`: the button flips back
+              to "Request" either way, so this text is the only thing that says
+              which of the two happened. */}
+          {notice && (
+            <div className="req-notice" role="status">
+              {notice}
+              <button
+                type="button"
+                className="req-notice-x"
+                onClick={() => setNotice(null)}
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
             </div>
           )}
         </div>

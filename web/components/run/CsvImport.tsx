@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Upload, Download } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -50,6 +50,7 @@ export function CsvImport({
   knownTickers: Set<string>;
   onAdd: (tickers: string[]) => void;
 }) {
+  const previewId = useId();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -130,6 +131,7 @@ export function CsvImport({
         role="button"
         tabIndex={0}
         aria-label="Import a CSV with a ticker column — activate to browse for a file"
+        aria-describedby={preview ? previewId : undefined}
         onClick={() => inputRef.current?.click()}
         onKeyDown={(e) => {
           // Keyboard users can't reach the display:none file input, so the zone
@@ -184,13 +186,22 @@ export function CsvImport({
       >
         <Download className="h-3 w-3" /> Download sample CSV
       </button>
-      {preview && (
-        <div className="upload-preview" style={{ color: PREVIEW_COLOR[preview.kind] }}>
-          {preview.lines.map((l, i) => (
-            <div key={i}>{l}</div>
-          ))}
-        </div>
-      )}
+      {/* The live region is ALWAYS mounted and only its CONTENTS change. A region
+          added to the DOM at the same moment as its text is routinely missed by
+          screen readers, which is the difference between announcing the result of
+          an import and announcing nothing — and this is the only feedback channel
+          the control has, errors included ("not a .csv file", "is empty", "No
+          tickers found"). `polite` rather than `alert`: the same node carries the
+          success summary, and one node cannot switch role mid-life reliably. */}
+      <div role="status" aria-live="polite" id={previewId}>
+        {preview && (
+          <div className="upload-preview" style={{ color: PREVIEW_COLOR[preview.kind] }}>
+            {preview.lines.map((l, i) => (
+              <div key={i}>{l}</div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

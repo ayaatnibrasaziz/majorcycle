@@ -85,4 +85,58 @@ test.describe('an invalid field says what is wrong', () => {
         'Give the message an id and point aria-describedby at it when the error is showing.',
     ).toEqual([]);
   });
+
+  /**
+   * AUDIT 5A-108 - the same defect one control over, found the same way: by
+   * asking what a screen reader is handed rather than by looking at the page.
+   *
+   * An upload surface reports its outcome in text that belongs to no form field,
+   * so `aria-describedby` alone cannot carry it - the message appears AFTER the
+   * action, while focus is still on the control. `CsvImport`'s preview strip is
+   * the ONLY feedback the import has: it names the file, the count, the
+   * duplicates, the tickers outside our coverage, and all three hard failures
+   * ("is not a .csv file", "is empty", "No tickers found in ..."). It rendered
+   * into a plain <div>, so a screen-reader user who dropped the wrong file was
+   * told nothing at all and had no way to know the import had not happened.
+   *
+   * The pattern was already in the codebase and this consumer never received it
+   * (11c-iv): `RunProgress` has `aria-live="polite"`, `ResultsToolbar` has
+   * `role="status"`. Nothing was red, because an unannounced message looks
+   * identical on screen to an announced one.
+   *
+   * WHICH HALF THIS COVERS: it asserts the region EXISTS on every upload surface.
+   * It cannot assert the region is always MOUNTED - so that a change of contents
+   * is what gets announced, rather than the node arriving alongside its own text.
+   * That is the part `CsvImport` gets right and only a real screen reader could
+   * confirm. Said out loud, because an unstated blind spot reads as coverage (14g).
+   */
+  test('an upload surface announces its result', () => {
+    const offenders: string[] = [];
+    const checked: string[] = [];
+
+    for (const file of files) {
+      const src = stripComments(readFileSync(file, 'utf8'));
+      // An upload surface: something a file can be dropped on, or a file picker.
+      if (!/onDrop=/.test(src) && !/type="file"/.test(src)) continue;
+      checked.push(relative(WEB, file).split(sep).join('/'));
+      if (!/aria-live=|role="status"|role="alert"/.test(src)) {
+        offenders.push(relative(WEB, file).split(sep).join('/'));
+      }
+    }
+
+    // The control, for the same reason as the one above: with no upload surface
+    // left in the codebase this would pass having looked at nothing (14g).
+    expect(
+      checked.length,
+      'no component accepts a file any more - this guard is now measuring nothing',
+    ).toBeGreaterThanOrEqual(1);
+
+    expect(
+      offenders,
+      'these report an upload result to nobody: ' +
+        offenders.join(', ') +
+        ' - put the message in a live region (role="status" aria-live="polite") ' +
+        'that is mounted before the message arrives.',
+    ).toEqual([]);
+  });
 });
