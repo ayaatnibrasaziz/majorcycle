@@ -72,7 +72,7 @@
 > `--status-danger` token, so form and upload errors paint in the **Bearish rating colour** in 8
 > places (5A-102, owner's call).
 >
-> **P3 INTERACTION — four sessions done; only the live-site pass remains.** It opened by
+> **P3 INTERACTION — COMPLETE 2026-09-04, five sessions.** It opened by
 > enumerating every interactive control from the source: **51 files carry one, 16 are driven by
 > nothing**, and nineteen of those are the screener's entire input side — structurally, because
 > every spec that visits `/run` uses the shared account, **which has no subscription**, so those
@@ -90,10 +90,10 @@
 > + guarded) the CSV import announced its result, all three hard errors included, to nobody;
 > **5A-110** (fixed) `/results`' Request button swallowed every failure — including the `503` the
 > endpoint had been taught to send in August, by the fix that stopped exactly this class of lie;
-> **5A-109** (fixed) a legend toggle whose label fought its own `aria-pressed`; **5A-104** (open)
-> the **active** Stock Detail sub-nav pill's focus ring is white on a white bar — tab to the section
-> you are on and nothing appears, ~1.0:1 against a 3.0 floor, mechanism deliberately **not** guessed
-> at; **5A-103** a Supabase send failure reaches the reader as raw English; **5A-105** three range
+> **5A-109** (fixed) a legend toggle whose label fought its own `aria-pressed`; ~~**5A-104**~~ (**WITHDRAWN**)
+> the active sub-nav pill's focus ring is *not* invisible — both readings were taken at t=0 of a
+> 150 ms transition on `outline-color`; settled it is 4.03:1. It had been reported to you as fact
+> and sat open for two sessions; **5A-103** a Supabase send failure reaches the reader as raw English; **5A-105** three range
 > selectors, two words; **5A-106** carried to P4. Suite **716 → 722**.
 >
 > ⚠️ **Nine of my own first readings across the browser sessions were wrong**, every one caught by
@@ -106,12 +106,42 @@
 > silent about it by accident — it was structurally incapable of an opinion (14g). It now matches on
 > *being an upload surface* rather than on the attribute the previous defect happened to use.
 >
-> **Still in P3:** the whole pass on the **live site** in Claude in Chrome — the owner's own browser
-> and a real production session, so it is booked with them rather than run unannounced. Then a new
-> **P3b — the owner's colour walkthrough**, placed after P3 because P3 is the last pass that can
-> still move a colour (hover, focus, disabled and selected are all colours), with the Windows High
-> Contrast check folded into the same sitting. Then P4 data edge cases · P5 content · P6
-> not-the-screen · P7 the three unrun gates · P8 375px. Ledger: `docs/layer-g-5a-sweep.md`.
+> **Session 5 — the LIVE site, and it was worth booking.** Driven by hand on
+> `www.majorcycle.com`, twice: first on the owner's own account, which holds **no plan**, and then
+> — at their instruction — with a subscription granted directly in Supabase so the real
+> screener, real results and a real report could be checked. The grant touched four columns, left
+> `stripe_customer_id` and `stripe_subscription_id` null so **nothing reached Stripe and no money
+> moved**, and every field was read, recorded and restored to its exact prior value. ⚠️
+> **I should have offered that in the first pass instead of working around NO PLAN** — half a
+> product measured and reported as a pass is 14g with a person in the loop.
+>
+> Six defects, all fixed: **5A-116** Stock Detail **scrolled sideways from ~601 to ~900 px** —
+> 263 px at 644, 135 px at iPad portrait — breaking non-negotiable #3, with the three correct
+> rules already present and bounded at 600 px under a comment naming this exact failure;
+> **5A-112** no dialog returned focus to what opened it, on the paywall-conversion surface, because
+> Radix restores to a `<DialogTrigger>` ref and **not one of the eight consumers uses one**;
+> **5A-114** the signed-in app had **zero headings** — which our axe run could never have seen,
+> since `page-has-heading-one` and `heading-order` are tagged `best-practice`, not WCAG, so the four
+> strings in the tag list were a claim about scope nobody re-read; **5A-111** a price *change* was
+> printed to a fifth of a cent by the very helper written so related prices never mix precision;
+> **5A-120** four card headers put their title and hint 0 px apart; **5A-115** two rendered sections
+> shared one id. Four new specs, the two riskiest proven red by sabotage; suite **722 → 734**. Still **open and yours**:
+> **5A-118** the two "potentially undervalued" tooltips (before/after presented, unchanged pending
+> your call) and **5A-119** an `aria-label` on a roleless `<svg>`. Deliberately **not** done:
+> Stock Detail's 14 card titles are still `div`s — giving them section headings is a real change
+> to a paid surface (11l).
+>
+> ⚠️ **Two ledger entries retracted this session, and that is the half worth reading.**
+> 5A-104 was measured at t=0 of a transition, twice, by two sessions — and its own write-up said
+> the mechanism was unexplained, which should have been the tell (11i). 5A-113 claimed the dialogs
+> lack `aria-modal`; Radix omits it deliberately and marks siblings `aria-hidden` instead, so I came
+> within one commit of "fixing" correct code. Four more instrument failures, 13 across the audit.
+>
+> **Next: P3b — the owner's colour walkthrough**, placed here because P3 was the last pass that
+> could still move a colour (hover, focus, disabled and selected are all colours), with the Windows
+> High Contrast check folded into the same sitting. Then P4 data edge cases · P5 content ·
+> P6 not-the-screen · P7 the three unrun gates · P8 375px.
+> Ledger: `docs/layer-g-5a-sweep.md`.
 
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.

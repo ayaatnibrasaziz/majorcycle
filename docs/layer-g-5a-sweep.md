@@ -516,16 +516,11 @@ and the whole pass on the **live site** in Claude in Chrome (method note 10).
 
 | | Finding | Status |
 |---|---|---|
-| **5A-104** | 🔴 **The ACTIVE Stock Detail sub-nav pill has an invisible focus ring.** Every inactive pill rings correctly in `--brand-bright`; the one carrying `aria-current="true"` computes `outline-color: rgb(255,255,255)` — **white** — at `outline-offset: 1.6px`, so the ring is drawn *outside* the blue pill onto the sticky bar, which is white at 92%. **White on white, ~1.0:1 against WCAG 1.4.11's 3.0 floor**, and confirmed in a screenshot: tab to the section you are already on and nothing appears | **Open** |
+| ~~**5A-104**~~ | ❌ **WITHDRAWN — my error, twice.** Reported as *"the ACTIVE sub-nav pill has an invisible focus ring"*: the pill carrying `aria-current="true"` measured `outline-color: rgb(255,255,255)` — white on a white sticky bar, ~1.0:1. **Both readings were taken at t≈0 of a 150 ms `transition-property: all`**, so what was measured was `currentColor` (the white label text) at the start of the animation. Sampled to settle it is `rgb(46,125,232)` from 151 ms, **4.03:1**, and plainly visible. See the retraction in *P3 · session 5* | **Withdrawn 2026-09-04** |
 | **5A-105** | 🟡 Three range selectors on one page, two words for one idea: Price Chart and Relative Performance say **Max**, Smart Money says **All**. Defensible (events vs a price series) and probably accidental. Paid surface, so it is a copy decision rather than mine | **Open — owner's call** |
 | **5A-106** | 🟡 **Carried to P4, not chased here.** `AMD.TO` is stored as *"Advanced Micro Devices, Inc."* in the **ca** market — its own 1,031-bar series at **CAD 82.64** against the US line's **USD 459.61**, so it is a real separately-priced security (the shape of a depositary receipt), not duplicated data. But a reader searching AMD meets two identical names 5.6× apart with nothing distinguishing them. ⚠️ **Ten name collisions exist and most are entirely legitimate** — real dual listings (News Corp, Amcor, Newmont, ResMed, Block, NexGen) and share classes (GOOG/GOOGL, FOX/FOXA). Only `AMD.TO` looks like a different KIND of instrument wearing the parent's name | **Open — P4** |
 
-⚠️ **5A-104's mechanism is NOT resolved, and saying so is the point.** The compiled stylesheet
-contains exactly **one** `outline-color` declaration in the entire file — `var(--brand-bright)` —
-so the white is not coming from our CSS, and Tailwind's preflight does not reset it either. The
-measurement is solid and reproducible; the cascade explanation is not. **A wrong reason is worse
-than no reason** (14f), so the recommendation is to give the active state its own explicit focus
-colour rather than to "fix" a mechanism nobody has identified.
+⚠️ **5A-104's "unresolved mechanism" WAS the finding, and that should have been the tell.** This paragraph used to say the cascade explanation was missing — the compiled stylesheet holds exactly one `outline-color` declaration, `var(--brand-bright)`, so the white was not coming from our CSS and Tailwind's preflight does not reset it — and then recommended giving the active state its own focus colour anyway. **A measurement no mechanism can explain is evidence against the measurement** (11i: an implausible mechanism is a reason to suspect the instrument, not a discovery). The value was mid-transition. Retracted 2026-09-04; the pill was correct all along.
 
 ### Verified, with no defect found
 
@@ -666,6 +661,135 @@ reachable by ordinary use. Neither is the owner's account.
 
 ---
 
+## P3 · session 5 — the LIVE site, free then entitled
+
+**Surface: `www.majorcycle.com`, driven by hand in Claude in Chrome.** The first pass of this
+audit against production. Ten findings, six fixed the same day, **two retractions of things
+already in this ledger** — and the retractions are the more useful half.
+
+⚠️ **Method, stated because it changes what the findings are worth.** The pass ran twice. First
+on the owner's own account, which holds **no plan**, so every paid surface was an upsell panel
+and the entire product went unchecked. The owner then asked for a subscription to be granted
+directly, and the second pass covered the real screener, real results and a real report. The
+grant was bounded and reversible — `subscription_status` / `subscription_plan` /
+`subscription_currency` / `current_period_end` only, with **`stripe_customer_id` and
+`stripe_subscription_id` left null so nothing reached Stripe and no money moved**. Every field
+was read and recorded before the write and restored to its exact prior value afterwards,
+verified by reading the row back. `acknowledged_disclaimer_at` — the June compliance record —
+was never touched. **No card number was entered anywhere.**
+
+⚠️ **I should have offered this in the first pass rather than working around NO PLAN.** The
+owner had to ask. Recording that, because half a product measured and reported as a pass is the
+14g failure with a person in the loop.
+
+### RETRACTIONS — both were in the ledger, both were wrong
+
+**5A-104 — "the active sub-nav pill has an invisible focus ring" — NOT A DEFECT.** The pill
+carries `transition-property: all; transition-duration: .15s`, so `outline-color` **animates**
+from its unfocused value — `currentColor`, the white label text — to `--brand-bright`. Sampled
+over time after a real Tab: `rgb(255,255,255)` at 0 ms, `rgb(109,164,239)` at 74 ms,
+**`rgb(46,125,232)` settled from 151 ms**. The settled ring measures **4.03:1** against the
+sticky bar (floor 3.0) and is plainly visible in a screenshot.
+
+⚠️ **Both readings that produced the finding were taken at t≈0**, and the second was mine, on
+live, an hour before catching it. The entry sat open in this ledger and in the roadmap for two
+sessions and **was reported to the owner as fact.** ⚠️ Session 1 had already written this trap
+down as instrument failure #2 — *"a settled measurement, or none"*. Writing a lesson down did
+not stop it recurring in the same audit, on a different property, four sessions later. The
+durable form is not another sentence: **a probe reading a computed style must sample until the
+value stops changing.**
+
+**5A-113 — "no dialog sets `aria-modal`" — NOT A DEFECT.** Radix omits it deliberately and marks
+every sibling of the content `aria-hidden="true"` instead, which is the stronger of the two
+mechanisms; verified on the live page, where the app root carries it while the dialog is open. I
+came within one commit of "fixing" correct code. Said out loud in `dialog-focus.spec.ts` so
+nobody does it later.
+
+### New findings — six of them fixed 2026-09-04
+
+| # | Finding |
+|---|---|
+| **5A-111** | 🟡 **A price CHANGE is printed to a fifth of a cent.** `StockHeader` passed the daily move through `fmtPrice`, which picks decimals from **the value's own magnitude**. Right for a penny stock's *price*, wrong for a *change*, whose precision belongs to the price it came from. On BHP **exactly one** of twenty money figures carried 3 decimals — `+A$0.522` — under `A$63.78`. Fires for any stock over $1 moving less than $1 in a day. ⚠️ `fmtPrice`'s own docblock says it exists *"so a group of related prices never mixes precision"*, and it produced that mixing: **a rule applied to the wrong subject.** Fixed with `fmtPriceDelta(delta, referencePrice, currency)`; guarded by `e2e/price-delta.spec.ts`, whose CONTROL is that a genuinely small-priced stock still gets its extra places — without it a hard-coded 2dp would pass and destroy what `fmtPrice` was built for |
+| **5A-112** | 🔴 **No dialog returns focus to what opened it.** Escape or "Not now" both leave `document.activeElement` as `BODY` (measured at a 1.5 s settle, so not a transition artefact). Radix restores to `context.triggerRef.current`, set by `<DialogTrigger>` — and **not one of the eight consumers uses one**; they all drive it with external `open`/`onOpenChange` state. So the ref is null everywhere and there is nothing to focus. A keyboard user is dropped at the top of the document, on the **paywall-conversion surface**. `grep` for `previousFocus`/`restoreFocus`/`returnFocus` across `components/`: **zero hits**. One fix in `ui/dialog.tsx`, eight surfaces |
+| **5A-113** | ❌ **WITHDRAWN — my error.** See the retraction above |
+| **5A-114** | 🔴 **The signed-in app had no headings at all.** `querySelectorAll('h1,h2,h3,h4,h5,h6,[role=heading]')` returned **0** on Stock Detail, Browse and `/run`. Every visible heading is a `div` styled bold, so a screen-reader user gets no heading list and the flagship page is one flat run of text. ⚠️ **Why no guard saw it:** `app-a11y.spec.ts` runs axe with `TAGS = ['wcag2a','wcag2aa','wcag21a','wcag21aa']`, and axe's heading rules — `page-has-heading-one`, `empty-heading`, `heading-order` — are tagged **`best-practice`**, not WCAG. The scan was green and had never had an opinion. **A guard's scope is a claim about what it can see** (14g), written in four strings nobody re-reads. Fixed at the shared `Header`, so every signed-in page gets one `h1`; the two pages that already had a correct `sr-only` one had it removed rather than duplicated. ⚠️ **NOT fixed, deliberately:** Stock Detail's 14 card titles are still `div`s. Giving them section-level headings is a real change to a paid surface and is the owner's call (11l) |
+| **5A-115** | 🟡 **Two rendered sections shared `id="sec-cycle"`** (1610 px and 132 px tall, same column — not a hidden responsive twin). `TechnicalLevels` declared it from when it *was* the whole Cycle section; the page later wrapped it in `<section id="sec-cycle">` and nobody removed the inner one, so the id existed twice, nested inside itself, on every stock page. Duplicate ids are invalid HTML and `href="#sec-cycle"` can only ever reach the first |
+| **5A-116** | 🔴 **Stock Detail scrolled SIDEWAYS from ~601 px to ~900 px**, breaking non-negotiable #3. Measured by actually scrolling: **263 px at 644, 135 px at 772, 0 at 921**. **772 px covers iPad portrait**, so this is a real device band. Cause pinned exactly: `.ownership-grid` computes `grid-template-columns: 200px 423.5px` in a **344 px** container — a grid item defaults to `min-width: auto`, so the `1fr` track takes the holders table's min-content width and refuses to shrink; `200 + 24 + 423.5` against 344 is the 263 px measured, to the pixel. ⚠️ **The fix already existed and was scoped too narrowly** — the three correct rules sat inside `@media (max-width: 600px)` under a comment naming this exact failure, while the layout needs ~900 px beside the 220 px sidebar. ⚠️ **The contrast with `.km-scroll` is the lesson**: Key Metrics solves this unconditionally at every width. One rule, two places, one of them conditional (11c). Shrink protection is now unconditional; the media query keeps only the genuine layout choice. Also confirmed **155 px at 752 px on the ENTITLED page** — the Ownership grid is free content, so it was never entitlement-dependent |
+| **5A-117** | ⚪ **Observation, not a diagnosis.** At 644 px `html` computes `overflow-x: visible` and `body` computes `overflow-x: hidden`, and the page still scrolled to `scrollX = 263.2`. The overflow itself is 5A-116 and fixing that is the real answer — but a rule that is present, looks protective and demonstrably is not should not be left unexamined (14f) |
+| **5A-118** | 🟡 **OPEN — owner's call.** *"potentially undervalued"* in two tooltips: `WeekRangeGauge.tsx:62` and the PEG column in `columns.ts:171`. Both are hedged and explain a metric rather than telling anyone what to do, and both sit **inside** `no-advice-copy.spec.ts`'s swept directories — the phrase simply is not on its banned list. Raised because #12/#24 make this the owner's judgement, not mine. Before/after presented 2026-09-04; **awaiting their decision, unchanged in the meantime.** ⚠️ Checked and clean: no tooltip or `title` text lives outside the two swept directories, so the guard has no scope gap here |
+| **5A-119** | 🟡 **OPEN — low priority.** The sidebar padlocks carry `aria-label="Requires a subscription"` on a bare `<svg>` with **no `role="img"`**. Chrome exposes it; an `aria-label` on a roleless element is not reliably announced across screen readers. ⚠️ Recorded as a **nuance rather than a confirmed break** — I have not driven a real screen reader, and saying which is which matters more than the finding. ⚠️ And as much a positive as a defect: the padlock IS labelled, the decorative icons beside it ARE `aria-hidden`, and the licence chip reads "No plan". Somebody thought about this surface |
+| **5A-120** | 🟡 **Four card headers put their title and hint 0 px apart** at 752 px — Opportunity Map, Valuation History, Smart Money Activity, Stock Scorecard. `.card-header` was `flex; nowrap` with **no `gap`**. ⚠️ **I first reported this as "overlapping text" from a screenshot and that was wrong.** Measured, `xOverlap = 0` — the edges are the same x. They touch; they do not overlap. The difference matters: "overlap" points at a stacking bug, "0 px gap" points at a missing `gap` on one shared class. **A downscaled screenshot is not a measurement** (11o) |
+
+⚠️ **Informational, so the next person measuring duplicate ids does not mistake them for ours:**
+`tv-attr-logo` ×2 (Lightweight Charts, one per instance) and `id="a"` ×3 (Recharts `<clipPath>`).
+Third-party, generated.
+
+### Verified on production, no defect
+
+**Free state.** The paywall holds **at the wire**: `POST /api/analyze` → **402** `no_subscription`,
+`GET /stocks/au/BHP/report` → **402**, `GET /api/cycle` → **401**, every one carrying
+`private, no-store`; `/api/portal` 303s to `/account?billing=none` without minting a Stripe
+session for an account with no customer. **No premium field name appears in the page HTML** —
+`overallRating`, `financialHealthScore`, `valuationScore`, `cyclePayoffScore`, `overallLabel`,
+`qualityFactor`, `fhSubscores`, `valuationScoreRaw`: 0 occurrences each, plain **and**
+backslash-escaped — ⚠️ with a **positive control**, since the free cycle fields
+(`currentDrawdownPct`, `typicalDrawdown`, `lowerBound`) are each present, so the search was
+demonstrably capable of finding cycle data in that document (11v). Browse filters reconcile
+exactly (US 535 + AU 249 + CA 80 = **864** unfiltered). Search works by ticker and by company
+name, and its no-match state names the term and offers Request a Ticker. The upgrade dialog
+lists exactly the four `PREMIUM_UNLOCKS`. **Console completely clean** on a full stock-page load.
+The sub-nav scroll-spy followed `aria-current` through all five links. Chart range and MA
+controls all carry correct `aria-pressed`. **`/request` works end to end on production** — the
+path that was silently dead for a month (11z). `/learn` and `/articles` are correct. **The
+sideways-scroll band is Stock Detail only** — `/stocks`, `/results`, `/account`, `/articles` all
+measured 0 at 772 px.
+
+**Entitled state.** The screener runs end to end on the real site: a 7-ticker Magnificent Seven
+basket at the medium horizon, **7 scored, runtime 22.3 s**, top pick GOOGL 83/100. `/results` is
+**structurally sound at narrow widths** — a 2,538 px table inside `.results-table-wrap` at
+`overflow-x: auto`, with a separate layout below the breakpoint and **0 px** of page-level
+scroll at 752 px; this is the pattern the Ownership grid should have had. The downloadable
+report is healthy **as an artifact** — captured in memory, 4.24 MB, valid doctype, every section
+present, disclaimer ×6 — and it carries **14 `process.env` references**, the exact shape of the
+bug that shipped a blank report for four days (11d), with the shim present. ⚠️ **What this did
+NOT do is render it**, deliberately: 11d records an hour lost to a blob URL in an iframe
+inheriting the site's CSP. The rendering half stays with `report-download.spec.ts` over
+`file://`. Saying which half was measured (14g).
+
+⚠️ **A live confirmation fell out of the grant for free:** `free_views_tickers` stayed at **2**
+across a whole entitled session of stock-page views. A subscriber really is not counted against
+the free cap, on production — which until now only a test had asserted.
+
+⚠️ **The signed-out public header on `/learn` while signed in is DELIBERATE**, not a finding:
+the public header is session-unaware by design so the public pages stay prerendered (11s). Noted
+so the next pass does not re-report it.
+
+### Instrument failures 10–13
+
+10. **"Search is broken — 0 results for BHP."** My probe set `input.value` through the native
+    setter and dispatched `input`. Real keystrokes returned the right row immediately. **A
+    synthetic event is not a keystroke** — the same family as a scripted `.focus()` not being
+    `:focus-visible` (session 1).
+11. **The 5A-104 retraction** — reading a transitioning property at t=0.
+12. **"The Opportunity Map header text is overlapping."** Read off a 0.6-scale screenshot.
+    Measured: 0 px gap, no overlap. See 5A-120.
+13. **"The report has no `process` shim."** My regex tested `var process` / `window.process` /
+    `process = {`. The real shim is `globalThis.process=globalThis.process||{env:{}}`, which
+    none of those match — so a **present** protection read as absent, on the one defect class
+    this artifact is known to have. **A needle that does not match is indistinguishable from the
+    thing not being there** (11v).
+
+### The four guards, two proven red by sabotage first
+
+| Spec | Proof |
+|---|---|
+| `app-responsive.spec.ts` | Sabotaged → *"/stocks/us/AAPL at 640px scrolled 223px"*, *"at 768px scrolled 95px"*. Restored → 4 passed. ⚠️ It asserts a real **scroll**, not `scrollWidth`: on the broken page `scrollWidth` was 907 against a 644 client width while an "which element overflows" probe returned **zero offenders**, because every offender sat inside a clip container |
+| `dialog-focus.spec.ts` | Sabotaged → *"focus did not return to the opener after Escape"*. Its CONTROL asserts the dialog took focus **first**, or a dialog that never opened would "return" focus trivially and pass |
+| `price-delta.spec.ts` | Pure and credential-free; imports the real formatters rather than restating them. CONTROL: a penny stock keeps its extra places |
+| `app-a11y.spec.ts` | Extended with one `h1` per page across six routes — the class axe's tag list could not see |
+
+---
+
 ## Findings ledger
 
 *Findings are numbered `5A-nnn`. The first six come from **P9**, which was added on 2026-08-31
@@ -778,6 +902,7 @@ code review would ever surface.*
 
 | Session | Date | Passes covered | Findings |
 |---|---|---|---|
+| 13 | 2026-09-04 | **P3 on the LIVE site, free then entitled** — the first pass of this audit against production. Stock Detail **scrolled sideways at iPad-portrait width** (263 px at 644, breaking #3) with the correct fix already present and bounded at 600 px; **no dialog returned focus to its opener**, on the paywall surface; the signed-in app had **zero headings**, which our axe run could never have seen because the heading rules are tagged `best-practice`, not WCAG. Six fixed, four guards, two proven red by sabotage. ⚠️ **Two ledger entries RETRACTED** — 5A-104 (read at t=0 of a transition; it had been reported to the owner as fact and sat open two sessions) and 5A-113 (Radix uses `aria-hidden` on siblings by design; I came within a commit of "fixing" correct code) | 5A-111…5A-120; 4 instrument failures (13 total) |
 | 11 | 2026-09-02 | **The five remaining audit questions, answered.** Two are serious: the **S&P 500 line is the same colour as the chart's own axis labels** (ΔE 0.0), and a second benchmark pair collapses to ΔE 2.6 for a colour-blind reader — the site's one real WCAG 1.4.1 exposure. The **transactional email footer measures 2.45:1**, because the August contrast fix never reached the separate email palette. Hover states, the Balance Sheet and Opportunity Map series all pass. ⚠️ The Learn illustrations were measured and the docs turned out to be **exactly right** — an accepted owner decision, deliberately NOT re-raised | 5A-089…5A-095 |
 | 10 | 2026-09-02 | **P2 audited as a design SYSTEM rather than a set of colours**, at the owner's direction. Three variables are **read and never defined** — one is a live rendering bug in `NewsFeed`, one silently kills an animation on `/articles`. `--c-warn-ink` is defined and **never used** while the rating token identical to it is used in its place, which proves the alias problem is already happening rather than merely possible. The surface scale has **no steps** (six tokens within ΔE 6) and there is **no `color-scheme`**, which costs something today. ⚠️ The focus ring **passes** — my first measurement said otherwise and was wrong two ways at once | 5A-076…5A-087 |
 | 9 | 2026-09-02 | **`/results` finished, and the token architecture question answered.** The screener was driven end to end — it does **not** navigate to `/results`, which is why it looked like a hang — and the rendered table confirms the badge drift on the most valuable paid surface. Then the owner's question: **one palette is serving at least twelve unrelated jobs across 30+ files**, 58 colours exist in no palette at all, and the missing amber has **already been invented twice by hand**. Proposal in *A palette per job* below | 5A-069…5A-075 |

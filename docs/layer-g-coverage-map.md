@@ -526,6 +526,44 @@ second test in `form-errors.spec.ts`. The filter guard was proven red on the unf
 and **which two of its four tests passed** is itself the finding: the control, and the default
 `+ Add filter` path — the two cases that could never have seen the bug.
 
+
+### Session 5 — the same question asked of PRODUCTION
+
+Sessions 1–4 ran locally and on the preview. Session 5 drove `www.majorcycle.com` by hand,
+free and then entitled, and every one of its six defects was outside what any existing guard
+could see — not missed by them, **outside them**.
+
+- **5A-116** — the responsive suite covered **public** pages only. No test had ever set a
+  viewport on a signed-in route, so a page that scrolled sideways at iPad-portrait width, breaking
+  non-negotiable #3, was never in scope. ⚠️ And the obvious instrument would have missed
+  it too: `documentElement.scrollWidth` read 907 against a 644 client width, while an "which
+  element overflows" probe returned **zero offenders**, because every offender sat inside a scroll
+  or clip container. `e2e/app-responsive.spec.ts` asserts a real `scrollX` after trying to scroll.
+- **5A-112** — **no test in the suite had ever asserted where focus goes.** Eight dialog
+  consumers, none restoring focus, `grep previousFocus|restoreFocus|returnFocus` across
+  `components/`: zero hits. `e2e/dialog-focus.spec.ts` covers both close paths, with a control
+  proving the dialog took focus first.
+- **5A-114** — 🔴 **the most important entry in this map.** `app-a11y.spec.ts` was
+  scanning the signed-in pages with axe and passing, on pages containing **zero headings of any
+  level**, because its `TAGS` list is `wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa` and axe tags
+  `page-has-heading-one`, `empty-heading` and `heading-order` as **`best-practice`**. The guard ran,
+  was green, and had never had an opinion. **Four strings in an array silently decided what an
+  entire tool was allowed to notice** (CLAUDE.md 11ap). The `h1` assertion is now its own test
+  rather than a hoped-for axe rule.
+- **5A-111**, **5A-120**, **5A-115** — a price change formatted to a fifth of a cent, four card
+  headers 0 px apart, and two rendered sections sharing one id. All three render perfectly; none is
+  the kind of thing a passing assertion can be absent *about*.
+
+⚠️ **Two entries in the audit ledger were RETRACTED this session**, and both had been
+carried as open defects. 5A-104 was a computed style read at t=0 of a 150 ms transition — twice,
+by two sessions — and 5A-113 claimed a missing `aria-modal` that Radix omits deliberately. The
+first had been reported to the owner as fact. Recorded here because a coverage map that only ever
+grows is not measuring itself.
+
+**Suite: 722 → 734 tests in 44 files** — `app-responsive.spec.ts`, `dialog-focus.spec.ts` and
+`price-delta.spec.ts` are new, plus six `h1` tests in `app-a11y.spec.ts`. The first two were proven
+red by sabotage before being trusted.
+
 ## Still open after this delta
 
 ⬜ **Layers 3, 3b and 4 need their own delta re-run.** The wire sweep predates the entitlement
