@@ -499,6 +499,33 @@ surface that runs the Python functions), `/results` view modes, search and tier 
 One real defect: the **active** sub-nav pill's focus ring is white on a white bar (5A-104).
 Full record in `layer-g-5a-sweep.md`.
 
+### Session 4 — the same question asked of the LOGIC, not the page
+
+Sessions 1–3 drove controls. Session 4 read the screener's own modules and drove the **real
+functions**, and found four more defects the browser could not have shown, because each is
+something that does not happen: a message not announced, a failure not reported, a row removed
+for a reason nobody stated. **A missing outcome renders perfectly** (11j).
+
+- **5A-107** a blank advanced-filter rule silently deleted every row with no value for that
+  field — measured on the real `advRulesPass`: blank `health ≥` kept **1 of 2**, blank
+  `sector is any of` kept **2 of 2**.
+- **5A-108** the CSV import's preview strip — its only feedback, three hard errors included —
+  was announced to nobody.
+- **5A-110** `/results`' Request button swallowed every non-OK answer, the **503 + `Retry-After`**
+  added by the 11e fix included, while its sibling `/request` has always surfaced the message.
+- **5A-109** a legend toggle whose `aria-label` changed with its own `aria-pressed`.
+
+⚠️ **The guard written in session 3 was structurally incapable of seeing session 4's twin of its
+own defect.** `form-errors.spec.ts` matched on `aria-invalid`; `CsvImport` sets none, so its
+silence was not a gap in the sweep — it was the guard's scope. It now matches on *being an upload
+surface* rather than on the attribute the previous defect happened to use. **A guard's scope is a
+claim about what it can see** (14g).
+
+**Suite: 717 → 722 tests in 41 files** — `e2e/screener-filters.spec.ts` (new, pure, 4 tests) and a
+second test in `form-errors.spec.ts`. The filter guard was proven red on the unfixed code first,
+and **which two of its four tests passed** is itself the finding: the control, and the default
+`+ Add filter` path — the two cases that could never have seen the bug.
+
 ## Still open after this delta
 
 ⬜ **Layers 3, 3b and 4 need their own delta re-run.** The wire sweep predates the entitlement

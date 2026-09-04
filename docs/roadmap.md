@@ -72,32 +72,46 @@
 > `--status-danger` token, so form and upload errors paint in the **Bearish rating colour** in 8
 > places (5A-102, owner's call).
 >
-> **P3 INTERACTION — IN PROGRESS, three sessions done, NOT finished.** It opened by enumerating
-> every interactive control from the source: **51 files carry one, 16 are driven by nothing**, and
-> nineteen of those are the screener's entire input side — structurally, because every spec that
-> visits `/run` uses the shared account, **which has no subscription**, so those controls had never
-> once rendered inside a test. Driven since, on the Vercel preview (the only surface that runs the
-> Python functions): the screener **end to end** for the first time, `/results` view modes, search
-> and tier filters, `/account`'s four cards, `/request`, the chart range buttons, and the keyboard.
+> **P3 INTERACTION — four sessions done; only the live-site pass remains.** It opened by
+> enumerating every interactive control from the source: **51 files carry one, 16 are driven by
+> nothing**, and nineteen of those are the screener's entire input side — structurally, because
+> every spec that visits `/run` uses the shared account, **which has no subscription**, so those
+> controls had never once rendered inside a test. Driven since, on the Vercel preview (the only
+> surface that runs the Python functions): the screener **end to end** for the first time,
+> `/results` view modes, search and tier filters, `/account`'s four cards, `/request`, the chart
+> range buttons, and the keyboard. Session 4 then read the screener's own logic and drove the real
+> functions, which is the instrument this class of defect needs — every one of its four findings is
+> something that does **not** happen, so there is nothing on screen to photograph.
 >
 > Findings: **5A-101** (fixed + guarded) a field flagged invalid never pointed at the message
-> saying why, while its sibling did, under a comment stating the rule; **5A-104** (open) the
-> **active** Stock Detail sub-nav pill's focus ring is white on a white bar — tab to the section
-> you are on and nothing appears, ~1.0:1 against a 3.0 floor, mechanism deliberately **not**
-> guessed at; **5A-103** a Supabase send failure reaches the reader as raw English; **5A-105**
-> three range selectors, two words; **5A-106** carried to P4. Suite **716 → 717**.
+> saying why, while its sibling did, under a comment stating the rule; **5A-107** (fixed + guarded)
+> a blank advanced-filter rule silently deleted every row with no value for that field — and the
+> first to go is always the cycle-only stock whose Financial Health *we* withheld; **5A-108** (fixed
+> + guarded) the CSV import announced its result, all three hard errors included, to nobody;
+> **5A-110** (fixed) `/results`' Request button swallowed every failure — including the `503` the
+> endpoint had been taught to send in August, by the fix that stopped exactly this class of lie;
+> **5A-109** (fixed) a legend toggle whose label fought its own `aria-pressed`; **5A-104** (open)
+> the **active** Stock Detail sub-nav pill's focus ring is white on a white bar — tab to the section
+> you are on and nothing appears, ~1.0:1 against a 3.0 floor, mechanism deliberately **not** guessed
+> at; **5A-103** a Supabase send failure reaches the reader as raw English; **5A-105** three range
+> selectors, two words; **5A-106** carried to P4. Suite **716 → 722**.
 >
-> ⚠️ **Nine of my own first readings across those sessions were wrong**, every one caught by
+> ⚠️ **Nine of my own first readings across the browser sessions were wrong**, every one caught by
 > measuring again — including "keyboard focus is trapped on every signed-in page" (the keys were
 > never reaching the page) and "18 duplicate requests on a paid endpoint" (one request, once the
 > endpoint existed). Recorded because the pattern, not the individual mistakes, is the lesson.
 >
-> **Still in P3:** the screener's advanced filters and CSV import, the Opportunity Map controls,
-> and the whole pass on the **live site**. Then a new **P3b — the owner's colour walkthrough**,
-> placed after P3 because P3 is the last pass that can still move a colour (hover, focus, disabled
-> and selected are all colours), with the Windows High Contrast check folded into the same sitting.
-> Then P4 data edge cases · P5 content · P6 not-the-screen · P7 the three unrun gates · P8 375px.
-> Ledger: `docs/layer-g-5a-sweep.md`.
+> ⚠️ **And the guard written in session 3 could not have seen session 4's twin of its own defect.**
+> `form-errors.spec.ts` matched on `aria-invalid`; `CsvImport` sets none, so the guard was not
+> silent about it by accident — it was structurally incapable of an opinion (14g). It now matches on
+> *being an upload surface* rather than on the attribute the previous defect happened to use.
+>
+> **Still in P3:** the whole pass on the **live site** in Claude in Chrome — the owner's own browser
+> and a real production session, so it is booked with them rather than run unannounced. Then a new
+> **P3b — the owner's colour walkthrough**, placed after P3 because P3 is the last pass that can
+> still move a colour (hover, focus, disabled and selected are all colours), with the Windows High
+> Contrast check folded into the same sitting. Then P4 data edge cases · P5 content · P6
+> not-the-screen · P7 the three unrun gates · P8 375px. Ledger: `docs/layer-g-5a-sweep.md`.
 
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.
 - **Phase 2** — Expansion. Smart Money Activity UI, watchlists, alerts, sector heatmaps, earnings calendar, FMP migration.

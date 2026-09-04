@@ -563,6 +563,92 @@ colour rather than to "fix" a mechanism nobody has identified.
 Opportunity Map's own controls · and the whole pass on the **live site** in Claude in Chrome
 (method note 10).
 
+### P3 · session 4 — the screener's own controls, read rather than clicked
+
+Four defects, all in code that no test drives and no screenshot can see. **Every one is an
+omission**, which is why P1 and P2 walked past them: the page renders, the control responds, and
+the wrong outcome is a plausible outcome (11j).
+
+| | Finding | Status |
+|---|---|---|
+| **5A-107** | 🔴 **A blank advanced-filter rule silently deletes rows.** `rulePasses()` tested the ROW's value for null *before* it tested whether the reader had typed anything, so a numeric rule with an empty box — which is what `+ Add filter` creates, and what exists for as long as it takes to pick a field — removed every stock with no value for that field. Half the field list is nullable (Health, Target, Upside%, P/E, PEG, ROE%, FCF Yld%, D/E…) and **the first row to vanish is always the cycle-only stock whose Financial Health we deliberately withheld**: a paid screen quietly dropped a company because *we* lack data on it, at a moment the reader had asked for nothing | ✅ **Fixed + guarded** |
+| **5A-108** | 🔴 **The CSV import reports its outcome to nobody.** The preview strip is the import's ONLY feedback — file name, ticker count, duplicates removed, tickers outside our coverage, and all three hard failures (*"is not a .csv file"*, *"is empty"*, *"No tickers found in …"*) — and it rendered into a plain `<div>`. Drop the wrong file with a screen reader and you are told **nothing**, with no way to know the import did not happen | ✅ **Fixed + guarded** |
+| **5A-109** | 🟡 **The Opportunity Map's legend toggles announced a contradiction.** `aria-pressed={!off}` (a state) sat beside `aria-label={off ? 'Show' : 'Hide'}` (an action), so a screen reader said *"Hide Bearish, toggle button, **pressed**"*. The ARIA practice for a toggle is explicit that the label must not change with the state | ✅ **Fixed** |
+| **5A-110** | 🔴 **`/results`' Request button swallowed every failure.** `if (res.ok)` and an empty `catch {}`, under a comment reasoning that a non-OK answer "leaves the ticker as-is — its smart chip already conveys that it can't be requested". True of the 404 and of nothing else: the route answers 400, 404, 409, 500 and — **since the 11e fix of 2026-08-23** — *503 with `Retry-After`* on a transient read failure. A reader pressed Request, watched the button flip back, and was told nothing while nothing had been queued | ✅ **Fixed** |
+
+⚠️ **5A-110 is 11e read from the other end, and that is the part worth keeping.** August's work
+taught `/api/request-ticker` to distinguish *"I could not read"* from *"it is not there"*, because
+collapsing the two had told a paying customer their real stock did not exist. The endpoint learned
+the distinction; **one of its two callers never did.** `components/request/RequestTicker.tsx` —
+same endpoint, same POST, written by the same hand — has always surfaced the server's own message.
+So the fix landed at the layer it was diagnosed at and stopped there (11c-iv). **When you teach a
+server to say two things, grep for everyone who listens.**
+
+⚠️ **And 5A-107 was hidden by a comment that was RIGHT about two thirds of its subject.** The line
+above the bug read *"no value yet = no constraint (matches between/categorical/text)"* — and
+categorical and text really do behave that way, so the sentence reads as a description of all
+three branches rather than an aspiration for one. Measured against the real function: a blank
+`health ≥` kept **1 of 2** rows where a blank `sector is any of` kept **2 of 2**. **A stated parity
+is a claim; two of the three arms happening to satisfy it is not evidence about the third.**
+
+⚠️ **Why the default path hid it, which is why it survived every earlier pass.** `+ Add filter`
+picks `sector` first (categorical, never null) and `Overall` second (numeric, always present), so
+clicking the button five times removes nothing and looks perfect. The defect needs one more action
+— *changing the field* — and changing a field is not stating a criterion, which is exactly the
+reader's mental model and exactly what the code disagreed with.
+
+### How these were found, and what it says about the instrument
+
+Sessions 1–3 drove controls in a browser. This one **read the source and then drove the real
+functions**, which turned out to be the right instrument for this class: all four defects are
+things that do not happen — a message not announced, a failure not reported, a row removed for a
+reason nobody stated. There is nothing on screen to photograph.
+
+`advRulesPass` was driven directly by bundling the real module with esbuild and feeding it two
+rows: one fully scored, one in the **withheld** state the product genuinely produces. That is the
+same posture as `export-parity.spec.ts` — import the real function, never restate it — and it is
+now a permanent guard rather than a one-off probe.
+
+**The guards, and which half each covers:**
+
+- **`e2e/screener-filters.spec.ts`** (new, pure, credential-free — 4 tests). Proven red on the
+  unfixed code first: **2 failed, 2 passed**, and *which* two passed is itself the finding — the
+  control and the default `+ Add filter` path, precisely the two cases that could never see the
+  bug. ⚠️ **Its load-bearing assertion is the CONTROL, not the blank case.** A `rulePasses()` that
+  returned `true` unconditionally sails through "a blank rule removes nothing" and destroys the
+  feature; so the file also asserts that `P/E ≤ 999` **still** excludes a stock with no P/E, and
+  that `health ≥ 90` still excludes the 83.
+- **`e2e/form-errors.spec.ts`** gains a second test: an upload surface must announce its result.
+  Broken on purpose — remove the live region and it names the file. It asserts the region
+  **exists**; it cannot assert the region is always **mounted** (so that a change of contents is
+  what gets announced, rather than the node arriving alongside its own text), which is the part
+  only a real screen reader could confirm. Said out loud, because an unstated blind spot reads as
+  coverage (14g).
+
+⚠️ **A guard's scope is a claim about what it can see.** `form-errors.spec.ts` was written last
+session around `aria-invalid`, and 5A-108 sat one directory away the whole time, completely outside
+it: `CsvImport` sets no `aria-invalid`, so the guard was not silent about it by accident — it was
+**structurally incapable** of an opinion. That is 14g again, and it is why the new test matches on
+*being an upload surface* rather than on the attribute the last defect happened to use.
+
+### Verified, with no defect found
+
+- **The cluster picker** (a click on stacked bubbles) closes on **Escape, outside-click, scroll
+  and resize**, with all four listeners torn down. This is the one control I expected to find
+  wanting, and it is the best-built thing in the file.
+- **`TickerSearchAdd`** implements the full combobox pattern — `role="combobox"`, `aria-expanded`,
+  `aria-controls`, `aria-autocomplete`, a `role="listbox"` with `aria-activedescendant` and
+  arrow-key navigation, and already-selected hits disabled.
+- **CSV parsing**, read end to end: header detected case-insensitively, a headerless file treated
+  as a single column, values upper-cased and trimmed, duplicates counted rather than dropped
+  silently, and unknown tickers **added** rather than discarded so they can be requested after the
+  run.
+- **`filters.ts` sorting** de-ranks Financial-Health-incomplete rows on the Overall sort in both
+  directions, and nulls sort last regardless of direction — both deliberate, both correct.
+
+**Still outstanding for P3:** the whole pass on the **live site** in Claude in Chrome (method note
+10). Every other P3 surface is now covered.
+
 ### What P3 still has to cover
 
 The screener's **execution** cannot be judged locally at all — `/api/analyze` is not served by
