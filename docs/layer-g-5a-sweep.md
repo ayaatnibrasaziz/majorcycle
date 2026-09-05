@@ -1942,6 +1942,14 @@ all. That ordering is itself worth noting: **the vendors' checklists ask questio
 cannot answer about itself**, and four of the six are account configuration that no amount of
 code review would ever surface.*
 
+⚠️ **This TABLE covers 5A-001 … 5A-127 only.** From P5 onward the passes record each
+finding as its own `###` section, in the pass's own part of this document — 5A-129 …
+5A-153, which is where P5's content sweep, P6's off-screen surfaces and P7's three unrun
+gates live. Nothing is missing; the format changed partway and the table was never
+back-filled. Said here because a ledger that stops without saying so reads as coverage
+(14g), which is the exact defect three of the findings below are about. **To find a
+finding, search the ID — do not scan the table and conclude it does not exist.**
+
 | # | Pass | Severity | Where | Finding | Status |
 |---|---|---|---|---|---|
 | ~~5A-001~~ | P9 | ❌ **WITHDRAWN — my error** | Supabase auth | I reported auth emails as going through Supabase's default SMTP. **They do not.** Custom SMTP → Resend (`noreply@majorcycle.com`) was built in Layer F0, with 13 branded templates, and Resend holds an API key literally named `supabase-smtp`. See the correction below | Withdrawn 2026-08-31 |

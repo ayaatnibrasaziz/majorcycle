@@ -694,6 +694,53 @@ filename in it. Comments are stripped now, as in every other source-reading guar
 repeated words, entities and punctuation on the rendered page. **It says nothing about whether
 the prose is right**, and no automated layer can. That read-through is the owner's.
 
+### P7 — three gates that ran nowhere, and two checkers that were not looking
+
+**The map's own question, asked of the gates rather than the tests.** Three checks —
+`check:page-weight`, `check:csp`, `lighthouse` — were printed as NOT RUN by `pnpm gates`
+every single time, and a grep of `ci.yml` found that **no workflow had ever mentioned any
+of them**. So they ran when somebody typed three commands, which the git history dates to
+audit passes and nothing else. `gates.mjs` also said NOT RUN with a production server
+actually up on `:3200` — a false statement about the world, not a caveat.
+
+⚠️ **And each gate walked its own hand-written route list, the shape this map has warned
+about since Layer 1.** Diffing every route against all three lists found **eight in none
+of them**: `/privacy`, `/disclaimer`, `/run`, `/results`, `/request` and the three
+confinement pages. Two are public legal pages a reader can be linked straight to; three
+are the screener, the part of the product a subscriber pays for. All eight measured clean
+— **this is protection, not a repair** — and the point is that nothing would have said
+otherwise. Same defect as `/articles` shipping unwatched while `check:page-weight`
+truthfully reported "every page within budget" about the six pages it knew.
+
+Now: a `server-gates` CI job runs two of them on every push; five routes were added to
+each list (13 weighed, 19 CSP, 12 Lighthouse); the three confinement pages are **named as
+unreachable** rather than quietly omitted, because each needs a one-shot session marker or
+a scheduled-deletion account (14g).
+
+⚠️ **Two checkers were blind to one defect in two different ways, and neither was
+misconfigured.** Three controls carried an `aria-label` that REPLACED their visible text,
+so a speech-input user reading the control aloud got nothing (WCAG 2.5.3, Level A).
+Lighthouse runs that audit and **weights it 0** — accessibility reported a clean 100 with
+a Level A failure inside it. axe carries the rule tagged `wcag21a`, which **is** in our
+tag list, and also `experimental`, which axe ships disabled — it appeared in **no bucket
+at all**. So the honest question a map like this must ask is never *"is the rule in our
+tags?"* but ***"did it run?"***, which `e2e/lib/axeRules.ts` now asserts for all five such
+rules.
+
+⚠️ **The third instance needed a PAID session to exist on the page at all.**
+`app-a11y.spec.ts` signs in with the shared account, which holds no subscription, so
+`/run` renders the upsell and the CSV upload zone is not on the page being scanned — its
+own comment had called an entitled scan "the obvious follow-up" for two weeks. It is now
+built, with a positive control so the run cannot pass by scanning the upsell instead of
+the product. **This is 5A-114's entry restated: a scan that signs in is not thereby
+scanning the product.**
+
+⚠️ **What P7 still cannot claim.** The three confinement pages are in none of the three
+gates and unreachable by them. `/results` is weighed **unentitled** — 428 KB is the upsell
+panel, not a 25-row screener table with charts. And `next start` does not serve the Vercel
+Python function, so the cycle block is absent from `/stocks/us/AAPL` in every one of these
+sweeps, locally and in CI alike (11v).
+
 ## Still open after this delta
 
 ⬜ **Layers 3, 3b and 4 need their own delta re-run.** The wire sweep predates the entitlement

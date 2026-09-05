@@ -1430,8 +1430,23 @@ it cannot outlive its subject (14g).
 account**, because the shared E2E account holds no subscription — so the Verdict card, the
 scorecard radar and the rating badges were invisible to every run for the life of the site.
 Measuring it entitled for the first time found `.verdict-thesis-num` drawing white numerals
-at 85% opacity, 5.31 → **4.31**. Extending `app-a11y.spec.ts` the same way is the open
-follow-up, and the file says so rather than implying a coverage it lacks.
+at 85% opacity, 5.31 → **4.31**. ✅ **`app-a11y.spec.ts` was extended the same way on
+2026-09-05 (P7)** — a throwaway entitled user, scanning `/stocks/us/AAPL`, `/run` and
+`/results`, with a positive control on `.verdict-thesis-num` so the run cannot pass by
+quietly scanning the upsell instead of the product. It is the only reason the third
+instance of 5A-151 was found: the CSV upload zone is not on `/run` for an unentitled
+reader, so no unentitled scan could ever have seen it.
+
+⚠️ **A rule can be in our tag list and still never run.** Five WCAG rules
+(`css-orientation-lock`, `label-content-name-mismatch`, `p-as-heading`,
+`table-fake-caption`, `td-has-header`) carry a tag we ask for **and** the tag
+`experimental`, which axe ships disabled — so they appeared in **no bucket at all**, and a
+rule that never ran returns exactly what a passing rule returns. `e2e/lib/axeRules.ts`
+now holds the tag list, enables those five specifically, and — the load-bearing part —
+`rulesThatDidNotRun()` fails the scan if any was not evaluated. Only those five are
+enabled, not every experimental rule: a noisy failure from a rule axe itself does not
+consider settled is how an option like this gets deleted (11t). Full account: CLAUDE.md
+11ax.
 
 ⚠️ **Scanned under `prefers-reduced-motion: reduce`, and that is a correctness decision.**
 Axe composites `opacity`, and the landing's below-fold sections rest at `opacity: 0` until an
