@@ -105,7 +105,7 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
   return (
     <section className="scroll-mt-[120px] card card--stack-snug">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Technical Levels
           <InfoTip title="Technical Levels">
             Reference prices traders watch. A &quot;moving average&quot; (DMA) is the
@@ -116,7 +116,7 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
             the signal simply reads &quot;Bullish&quot; or &quot;Bearish&quot; for the standing trend.
             Hover any tile for detail.
           </InfoTip>
-        </div>
+        </h3>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           Moving averages · Trend signal
         </div>

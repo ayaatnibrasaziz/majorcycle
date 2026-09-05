@@ -152,7 +152,7 @@ export function SnowflakeRadar({ cycle }: Props) {
   return (
     <section id="sec-scorecard" className="scroll-mt-[120px] card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Stock Scorecard
           <InfoTip title="Stock Scorecard">
             The company&apos;s financial health broken into five pillars, each scored
@@ -161,7 +161,7 @@ export function SnowflakeRadar({ cycle }: Props) {
             without enough data are left out rather than guessed (common for banks
             &amp; REITs) and the rest are reweighted.
           </InfoTip>
-        </div>
+        </h3>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           {financialHealthScore !== null
             ? `Health Score ${Math.round(financialHealthScore)}/100`

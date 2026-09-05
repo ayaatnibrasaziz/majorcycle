@@ -473,6 +473,58 @@
   --status-warning-surface: #FFFBEB;
   --status-warning-border: #FCD34D;
 
+  /* DANGER — an error, a refusal, or a destructive action. Added 2026-09-05,
+     owner-approved (audit 5A-102). P2 built the warning half of this palette and
+     stopped, so every error on the site — form validation, the CSV import, both
+     error pages, the onboarding gate's alert line, Delete account, the screener's
+     two numeric fields — was painted in `--c-tier-5`, i.e. **our Bearish rating
+     colour**. That is 5A-050's exact shape, still live: retune Bearish because a
+     rating chip looks wrong and you silently repaint every error message on the
+     product (5A-070, 5A-079).
+
+     ⚠️ THE VALUES ARE DELIBERATELY IDENTICAL TO THE RATING'S TODAY, so this change
+     is a rename and NOTHING moves on screen. Red is already the right answer for an
+     error; the defect was never the colour, it was that errors had no name of their
+     own and therefore no way to stop following a judgement about a stock. The point
+     is to make future divergence POSSIBLE, not to spend the owner's approval on an
+     unasked-for repaint (11l).
+
+     ⚠️ AND WHILE THE TWO HOLD THE SAME VALUE, NOTHING CAN SEE A WRONG CHOICE — that
+     is 5A-057, and it is why the separation is asserted rather than trusted:
+     `e2e/status-danger.spec.ts` reads the source of every error surface and fails if
+     one reaches for a rating token. Contrast is unchanged by construction, and is
+     re-measured by `check:tier-palette` either way. */
+  --status-danger: #8B1414;
+  --status-danger-ink: #8B1414;
+  --status-danger-tint: rgba(178, 34, 34, 0.10);
+  --status-danger-tint-strong: rgba(178, 34, 34, 0.12);
+
+  /* SUCCESS — an action of the reader's worked. Added 2026-09-05, owner-approved
+     (audit 5A-134), and it is the exact mirror of the danger block above. Closing
+     the error half is what surfaced it: the same six screens painted their "Saved"
+     confirmation in `--c-tier-2`, i.e. **our Constructive rating green**, and the
+     CSV import stated the whole defect in three lines — its `warn` moved to the
+     status palette in P2, its `error` moved with 5A-102, and its `ok` was still a
+     judgement about a stock.
+
+     ⚠️ THE VALUES ARE DELIBERATELY IDENTICAL TO THE RATING'S TODAY. Green is
+     already right for "that worked"; the defect was that success had no name of its
+     own, so retuning *Constructive* for a rating reason would silently repaint every
+     confirmation on the product. Nothing moves on screen (11l).
+
+     ⚠️ WHERE IT WENT is the half worth reading. Two of the nine sites are there for
+     COHERENCE rather than because they were listed: `.upload-zone.upload-valid`,
+     whose two siblings were already on this palette, and the run's "Scored" chip,
+     sitting next to a "Skipped" chip that moved in P2. A palette migration that
+     leaves one member of a pair behind has made the set less legible, not more
+     (11c-iv). Deliberately NOT migrated: the premium feature ticks in
+     `UpgradeDialog` / `SignupForm`'s plan list, which are marketing marks rather
+     than a report on something the reader just did. */
+  --status-success: #1E7C1E;
+  --status-success-ink: #0D5C0D;
+  --status-success-tint: rgba(34, 139, 34, 0.10);
+  --status-success-tint-strong: rgba(34, 139, 34, 0.12);
+
   /* Third-party analyst consensus — Yahoo's Buy / Hold / Sell, shown verbatim
      (CLAUDE.md #17). ⚠️ These must NOT be our rating colours: a Yahoo *Sell* drawn
      in `--c-tier-5` reads as OUR conclusion about the stock rather than someone
@@ -1772,7 +1824,7 @@ td.num             { font-weight: 600; }
   display: inline-flex; padding: 2px; border-radius: 4px; color: var(--text-muted);
   cursor: pointer; transition: all .12s;
 }
-.tk-chip-x:hover { background: var(--bg-stripe); color: var(--c-tier-5); }
+.tk-chip-x:hover { background: var(--bg-stripe); color: var(--status-danger); }
 .tk-tray {
   display: flex; flex-wrap: wrap; gap: 6px; max-height: 168px; overflow-y: auto;
   background: var(--bg-stripe); border: 1px solid var(--border);
@@ -1813,9 +1865,9 @@ td.num             { font-weight: 600; }
 }
 .upload-zone:hover, .upload-zone.drag-over { border-color: var(--brand-bright); background: var(--brand-light); }
 .upload-zone svg { color: var(--text-muted); flex-shrink: 0; }
-.upload-zone.upload-valid { border-color: var(--c-tier-2); }
+.upload-zone.upload-valid { border-color: var(--status-success); }
 .upload-zone.upload-warn  { border-color: var(--status-warning); }
-.upload-zone.upload-error { border-color: var(--c-tier-5); }
+.upload-zone.upload-error { border-color: var(--status-danger); }
 .upload-preview {
   margin-top: 8px; font-size: 11px; font-family: var(--font-mono);
   background: var(--bg-stripe); border: 1px solid var(--border);
@@ -1854,7 +1906,7 @@ td.num             { font-weight: 600; }
 }
 .set-field-input:focus { border-color: var(--brand-bright); }
 .set-field-input--error,
-.set-field-input--error:focus { border-color: var(--c-tier-5); }
+.set-field-input--error:focus { border-color: var(--status-danger); }
 .set-field-hint { font-size: 10px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
 
 /* Advanced toggle */
@@ -1922,7 +1974,7 @@ td.num             { font-weight: 600; }
   background: var(--bg-surface); border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm); padding: 6px 12px; color: var(--text-secondary); cursor: pointer;
 }
-.btn-cancel:hover { border-color: var(--c-tier-5); color: var(--c-tier-5); }
+.btn-cancel:hover { border-color: var(--status-danger); color: var(--status-danger); }
 
 /* Last-analysis card */
 .lastrun-card {
@@ -2323,7 +2375,7 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 .adv-cbd-opt:hover { background: var(--bg-stripe); }
 .adv-cbd-opt input { margin: 0; cursor: pointer; }
 .adv-rmv {
-  width: 22px; height: 22px; border: none; background: var(--bg-stripe); color: var(--c-tier-5);
+  width: 22px; height: 22px; border: none; background: var(--bg-stripe); color: var(--status-danger);
   border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 700; line-height: 1;
 }
 .adv-rmv:hover { background: rgba(178, 34, 34, .12); }

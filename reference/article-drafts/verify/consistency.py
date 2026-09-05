@@ -109,6 +109,37 @@ for n, t in F.items():
     body = t.split("## Body")[1].split("## Fact-check")[0]
     need(f"{n} no italics", not re.search(r"(?<![*_])[*_][^*_\n]{3,}[*_](?![*_])", body), "italic run found")
 
+# 8. A FIGURE RESTATED INSIDE ONE ARTICLE IS STILL A COPY OF IT.
+#
+# ⚠️ AUDIT 5A-129 (P5, 2026-09-05). This file exists for exactly this rule and had
+# only ever applied it ACROSS files. Article 01 states its headline never-recovered
+# rate three times — the bold sentence, the three-market table, and the
+# survivorship-bias caveat at the end — and the third one still read **12.8%** while
+# the other two read 12.4%. The 2026-08-30 dividend re-derivation moved 81 of the 464
+# asserted figures; this one was in no assertion, so it stayed where it was and the
+# article ended up contradicting itself about its own headline number.
+#
+# ⚠️ Nothing could have seen it. Both are plausible percentages, `assert_all.py`
+# checks the two that are asserted and has no opinion on prose, and a reader would
+# have to hold one figure in mind across 110 lines to notice. Only counting the
+# distinct values of the same claim inside one file finds it.
+NEVER_RATES = {
+    REC: ("12.4%", "never-recovered rate"),
+}
+for name, (expected, what) in NEVER_RATES.items():
+    # ⚠️ Whitespace-normalised FIRST. The markdown wraps at ~80 columns, so "worse
+    # than" and the figure it introduces sit on different lines — the first version
+    # of this check matched nothing at all and passed a deliberate sabotage. A regex
+    # over prose must not assume a sentence is one line (instrument failure P5-19).
+    body = re.sub(r"\s+", " ", F[name].split("## Body")[1].split("## Fact-check")[0])
+    # Every percentage stated in a sentence that is about falls still below the old
+    # price. Narrow on purpose: a wide sweep would catch every figure in the article.
+    stated = set(re.findall(r"(\d+\.\d)% of them", body))
+    stated |= set(re.findall(r"worse than (\d+\.\d)%", body))
+    need(f"{name} {what} stated once", stated == {expected.rstrip('%')},
+         f"the article states {sorted(stated)} where every one should be {expected}")
+
+
 print(f"cross-file checks: {'ALL PASS' if not fails else str(len(fails)) + ' FAILED'}")
 for f in fails:
     print("   FAIL:", f)

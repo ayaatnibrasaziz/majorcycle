@@ -1,6 +1,14 @@
 # MajorCycle security contact (RFC 9116 — https://securitytxt.org)
 # If you believe you've found a security issue, please email us.
+#
+# EXPIRES IS LOAD-BEARING. RFC 9116 makes this whole file INVALID once that
+# date passes, and a researcher who checks it will conclude we no longer take
+# reports. It is a date in a static file with nothing to renew it, which is
+# exactly the trap CLAUDE.md 11k describes -- so `pnpm check:seo` now fails the
+# build 90 days before it lapses, and again if anyone sets it more than a year
+# out (RFC 9116 section 2.5.5 says under a year). Bump this line; the guard
+# tells you when.
 Contact: mailto:security@majorcycle.com
-Expires: 2027-07-05T00:00:00.000Z
+Expires: 2027-09-05T00:00:00.000Z
 Preferred-Languages: en
 Canonical: https://www.majorcycle.com/.well-known/security.txt

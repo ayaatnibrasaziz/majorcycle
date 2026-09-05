@@ -66,7 +66,33 @@ export interface BrandEmailOptions {
   preheader?: string;
 }
 
-/** Render a full, Gmail/Outlook-safe HTML email in the MajorCycle brand chrome. */
+/**
+ * Render a full, Gmail/Outlook-safe HTML email in the MajorCycle brand chrome.
+ *
+ * ⚠️ THE FOOTER IS TWO SENTENCES, and it was one until 2026-09-05 (audit 5A-137).
+ * It read `&copy; MajorCycle provides educational information only` — a copyright
+ * symbol glued onto a sentence that is not a copyright notice, with no year, in
+ * every transactional email we send. Nothing could see it: the markup is valid, the
+ * email renders, and a footer is the last place anybody looks. It was found by
+ * rendering all seven emails and reading them, which had never been done.
+ *
+ * ⚠️ **AND IT CARRIES NO YEAR, WHICH REVERSES MY OWN FIX FROM AN HOUR EARLIER.**
+ * The first version computed `new Date().getFullYear()` — correct, and correct only
+ * here. This exact sentence also exists in **13 Supabase auth templates**, which are
+ * static HTML in somebody else's dashboard with no way to compute anything. So a
+ * year would have been right in one place and frozen at 2026 in thirteen others, and
+ * the two sets would part company on 1 January — a *new* instance of the drift this
+ * whole line was fixed to end (CLAUDE.md 11c).
+ *
+ * A year is conventional in a copyright notice, not required. **One string that is
+ * true everywhere beats a better string that is true in one place**, so the year
+ * goes and the two halves of the sentence stay separated by the `&middot;` — which
+ * is what was actually wrong with the original (audit 5A-137, 5A-147).
+ *
+ * ⚠️ **This string is duplicated into the Supabase dashboard and nothing can check
+ * that.** No test in this repo can see those 13 templates. If you change the line
+ * below, change it there too: Authentication → Emails → Templates, all 13.
+ */
 export function renderBrandEmail({ heading, bodyHtml, preheader }: BrandEmailOptions): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -102,7 +128,7 @@ ${bodyHtml}
           <tr>
             <td style="background:${EMAIL.footerBg};border-top:1px solid ${EMAIL.footerRule};padding:16px 28px;">
               <div style="font-family:${FONT_STACK};font-size:11px;color:${EMAIL.footer};line-height:1.5;">
-                &copy; MajorCycle provides educational information only &mdash; not financial advice.
+                &copy; MajorCycle &middot; Educational information only &mdash; not financial advice.
               </div>
             </td>
           </tr>

@@ -106,3 +106,20 @@ export const SERIES_TEAL = '#00695C';
  * palette at all (audit 5A-095); naming it is what stops a third copy appearing.
  */
 export const FIGURE_TEAL = '#0E7C8B';
+
+/**
+ * The third series in a comparison figure — the market being compared AGAINST,
+ * drawn quieter than the subject on purpose.
+ *
+ * ⚠️ It was `var(--text-muted)`, and that is why it needed a name (audit 5A-054).
+ * `--text-muted` is a **text** token, and it is also the value `--data-missing`
+ * holds, so a chart line was borrowing a colour whose job is "prose the reader can
+ * skip" and whose twin means "we have no figure for this". Nothing was wrong on
+ * screen — measured on the real ground it is ~4.9:1, above the 4.8 floor, and the
+ * "no data" meaning renders only in the signed-in results table, which no reader of
+ * `/articles` can see at the same time. The cost was that darkening `--text-muted`
+ * for a legibility reason would silently move a data series (5A-059).
+ *
+ * Same value as `--text-muted` today, and no longer tied to it.
+ */
+export const FIGURE_NEUTRAL = '#626B77';

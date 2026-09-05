@@ -66,14 +66,14 @@ export function PremiumLockCard({
   return (
     <div id={id} className="card card--stack-base scroll-mt-[120px]" role="note">
       <div className="card-header">
-        <div className="card-title flex items-center gap-[6px]">
+        <h3 className="card-title flex items-center gap-[6px]">
           <Lock
             className="w-[13px] h-[13px] text-[var(--text-muted)]"
             strokeWidth={2}
             aria-hidden="true"
           />
           {title}
-        </div>
+        </h3>
       </div>
       <div className="card-body">
         <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">

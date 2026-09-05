@@ -59,7 +59,7 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
        * A tooltip is where a reader goes when they want to know exactly what a
        * number means, so it is the worst place to be approximately right.
        */
-      title="52-Week Range Position — Shows where the current price sits between the lowest and highest prices traded over the past 52 weeks. Near the left edge (low) = potentially undervalued or beaten down. Near the right edge (high) = approaching resistance or extended."
+      title="52-Week Range Position — Shows where the current price sits between the lowest and highest prices traded over the past 52 weeks. Near the left edge means it is trading close to its 52-week low; near the right edge, close to its 52-week high."
     >
       <div className="flex items-center gap-[6px] w-full">
         <span className="text-[9px] font-bold tracking-[1.2px] uppercase text-[var(--text-muted)] whitespace-nowrap flex-shrink-0 leading-none">

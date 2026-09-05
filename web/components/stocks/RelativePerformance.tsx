@@ -337,14 +337,14 @@ export function RelativePerformance({
     // report, which is handed its series directly and never observes anything.
     <div ref={hostRef} className="card card--stack-base fade-in">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Relative Performance vs Benchmarks
           <InfoTip title="Relative Performance">
             How this stock&apos;s total return compares with major market indexes over
             the period. &quot;Alpha&quot; is how many percentage points the stock beat (or
             lagged) its home-market index.
           </InfoTip>
-        </div>
+        </h3>
         <div className="chart-controls" role="group" aria-label="Relative performance date range">
           {(['1y', '3y', 'max'] as Range[]).map((r) => (
             <button

@@ -165,6 +165,92 @@ test.describe('the signed-in product is accessible', () => {
     });
   }
 
+  /**
+   * Stock Detail's heading TREE, not just its h1.
+   *
+   * ⚠️ AUDIT 5A-114, option B (owner-approved 2026-09-04). One `h1` from the shared
+   * header, one `h2` per sub-nav group, one `h3` per card — so a screen-reader user
+   * gets the same five-part map the sticky sub-nav gives everyone else, instead of a
+   * single entry for a 7,700px page.
+   *
+   * ⚠️ The five h2s are `sr-only`, which is the reason this test has to exist. An
+   * invisible heading cannot be reviewed by looking: delete one and the page is
+   * pixel-identical, every other test still passes, and the group below it silently
+   * joins the group above. The same is true of the h3s — they render as they always
+   * did, because `.card-title` sets its own size and weight and Tailwind's preflight
+   * zeroes heading margins. **Measured, not assumed:** every card and title box was
+   * compared before and after on a clean production build, and all 40 are identical
+   * to the pixel, with `document.scrollHeight` 7700 in both arms.
+   *
+   * It asserts ORDER as well as presence: a tree that skips a level, or puts a card
+   * before the group heading that owns it, is a worse tree than a flat list because
+   * it asserts a structure that is wrong.
+   */
+  test('/stocks/us/AAPL has a full heading tree', async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.goto('/stocks/us/AAPL');
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.locator('h1')).toBeAttached({ timeout: 20_000 });
+    // The cards stream in; wait for the last group's heading rather than a timeout.
+    await expect(page.locator('h2', { hasText: /^Sentiment$/ })).toBeAttached({
+      timeout: 30_000,
+    });
+
+    const tree = await page.evaluate(() =>
+      [...document.querySelectorAll('h1,h2,h3,h4,h5,h6')].map((h) => ({
+        level: Number(h.tagName[1]),
+        text: (h.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 60),
+      })),
+    );
+
+    // The control. A page that failed to render has a perfect (empty) tree, and a
+    // selector typo returns [] just as convincingly (14g).
+    expect(tree.length, 'no headings found at all — the page did not render').toBeGreaterThan(15);
+
+    expect(tree.filter((h) => h.level === 1).length, 'expected exactly one h1').toBe(1);
+    expect(tree[0]!.level, `the first heading is an h${tree[0]!.level}, not the h1`).toBe(1);
+
+    // ⚠️ The h1 must name THIS stock. It read "Stock Detail" on all 863 tickers until
+    // 2026-09-04 — a heading that says which KIND of page this is and never which one,
+    // so a screen reader's page title was identical everywhere in the product. The
+    // company name was already on screen; it just was not the heading.
+    //
+    // Matching on "Apple" rather than merely "not empty" is what makes this sensitive
+    // to the value: a constant label satisfies a length check perfectly (14g).
+    expect(
+      tree[0]!.text,
+      `the h1 is "${tree[0]!.text}" — it must name the company, not the route`,
+    ).toMatch(/Apple/i);
+
+    const groups = tree.filter((h) => h.level === 2).map((h) => h.text);
+    expect(groups, 'the five sub-nav groups must each be a heading').toEqual([
+      'Thesis',
+      'Scorecard',
+      'Cycle',
+      'Fundamentals',
+      'Sentiment',
+    ]);
+
+    // No skipped level, in either direction.
+    const skips: string[] = [];
+    for (let i = 1; i < tree.length; i += 1) {
+      const jump = tree[i]!.level - tree[i - 1]!.level;
+      if (jump > 1) skips.push(`"${tree[i - 1]!.text}" (h${tree[i - 1]!.level}) → "${tree[i]!.text}" (h${tree[i]!.level})`);
+    }
+    expect(skips, `heading levels skip here:\n  ${skips.join('\n  ')}`).toEqual([]);
+
+    // Every card title is a heading — the defect was that none of them were.
+    const orphans = await page.evaluate(() =>
+      [...document.querySelectorAll('.card-title')]
+        .filter((el) => !/^H[1-6]$/.test(el.tagName))
+        .map((el) => `${el.tagName}: ${(el.textContent ?? '').trim().slice(0, 40)}`),
+    );
+    expect(
+      orphans,
+      `these card titles are still not headings:\n  ${orphans.join('\n  ')}`,
+    ).toEqual([]);
+  });
+
   for (const path of APP_PATHS) {
     test(`${path} has no axe violations`, async ({ page }) => {
       test.setTimeout(120_000);

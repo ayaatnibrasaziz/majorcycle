@@ -20,13 +20,13 @@ export function CompanyOverview({ overview }: Props) {
   return (
     <div className="card card--stack-base fade-in">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Company Overview
           <InfoTip title="Company Overview">
             A plain-language summary of what the company does and how it makes
             money — useful background before reading the numbers below.
           </InfoTip>
-        </div>
+        </h3>
       </div>
       <div className="card-body">
         <p className="overview-text">{text}</p>

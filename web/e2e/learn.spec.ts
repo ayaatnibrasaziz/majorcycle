@@ -786,11 +786,22 @@ test.describe('the drawdown article figures', () => {
      * rather than written here, so this test cannot drift with the data.
      *
      * It reads the JSON directly while the page reaches it through
-     * `lib/landing.ts` — two different routes to the same fact, so a bug in the
-     * module between them is visible rather than shared.
+     * `lib/learn-figures.ts` — two different routes to the same fact, so a bug in
+     * the module between them is visible rather than shared.
+     *
+     * ⚠️ **It read `landing-snapshot.json` until 2026-09-05 and passed anyway**, which
+     * is the whole of CLAUDE.md 11ai in one line. That file and `learn-snapshot.json`
+     * were split precisely because they have different lifecycles — the landing's
+     * worked example is FROZEN, these figures are NIGHTLY — but they were written
+     * from the same run and stayed byte-identical, so nothing could tell which one
+     * anything was reading. The first nightly rebuild after the split made them
+     * differ and this test failed immediately: the page said 5.6%, the frozen file
+     * said 8.0%. **Two files that agree cannot tell you which one you read**, so a
+     * guard pointed at the wrong one looks exactly like a guard pointed at the right
+     * one until the day the data moves.
      */
     const snapshot = JSON.parse(
-      readFileSync(join(__dirname, '..', 'app', 'landing-snapshot.json'), 'utf8'),
+      readFileSync(join(__dirname, '..', 'app', 'learn-snapshot.json'), 'utf8'),
     ) as Record<string, number>;
 
     const expected = {

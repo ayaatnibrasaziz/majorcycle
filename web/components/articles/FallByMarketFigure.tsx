@@ -44,7 +44,7 @@
  * (`design-system.md` §11), so it is already part of the house palette.
  */
 
-import { FIGURE_TEAL } from '@/lib/ink';
+import { FIGURE_NEUTRAL, FIGURE_TEAL } from '@/lib/ink';
 
 /**
  * The gutters, in PIXELS, because the labels are pixels.
@@ -163,7 +163,7 @@ interface Series {
  */
 const SERIES: readonly Series[] = [
   { id: 'ca', name: 'TSX 60', whole: -15.7, largest60: -15.7, colour: FIGURE_TEAL, ink: '#0C6E7B' },
-  { id: 'us', name: 'S&P 500', whole: -18.9, largest60: -19.2, colour: 'var(--text-muted)' },
+  { id: 'us', name: 'S&P 500', whole: -18.9, largest60: -19.2, colour: FIGURE_NEUTRAL },
   { id: 'au', name: 'ASX 200', whole: -21.7, largest60: -18.5, colour: 'var(--brand-mid)' },
 ];
 

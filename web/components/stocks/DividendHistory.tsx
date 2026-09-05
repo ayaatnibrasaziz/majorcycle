@@ -42,7 +42,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
     return (
       <div className="card card--stack-base">
         <div className="card-header">
-          <div className="card-title">Dividend History</div>
+          <h3 className="card-title">Dividend History</h3>
           <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
             Annual dividend per share
           </div>
@@ -80,7 +80,7 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
     return (
       <div className="card card--stack-base">
         <div className="card-header">
-          <div className="card-title">Dividend History</div>
+          <h3 className="card-title">Dividend History</h3>
           <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
             Annual dividend per share
           </div>
@@ -138,14 +138,14 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Dividend History
           <InfoTip title="Dividend History">
             A dividend is cash a company pays its shareholders, usually each year.
             This shows the dividend per share over time — green bars are increases,
             red are cuts. Many companies pay no dividend and reinvest instead.
           </InfoTip>
-        </div>
+        </h3>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           Annual dividend per share · Green = increase · Red = cut
         </div>

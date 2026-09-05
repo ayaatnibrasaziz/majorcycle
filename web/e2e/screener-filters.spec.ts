@@ -93,6 +93,8 @@ function rows(): ResultRow[] {
                   analystTargetPrice: null,
                   analystRecommendation: null,
                   numAnalystOpinions: null,
+                  week52High: null,
+                  historyHigh: null,
                 },
               }),
         },

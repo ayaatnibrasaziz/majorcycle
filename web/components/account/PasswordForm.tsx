@@ -147,7 +147,7 @@ export function PasswordForm({ email }: PasswordFormProps) {
           {error && (
             <div
               role="alert"
-              className="flex items-start gap-2 text-[12px] text-[var(--c-tier-5-ink)] bg-[var(--tint-tier-5)] border border-[var(--tint-tier-5-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
+              className="flex items-start gap-2 text-[12px] text-[var(--status-danger-ink)] bg-[var(--status-danger-tint)] border border-[var(--status-danger-tint-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
             >
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" />
               <span className="leading-relaxed">{error}</span>
@@ -157,7 +157,7 @@ export function PasswordForm({ email }: PasswordFormProps) {
           {done && (
             <div
               role="status"
-              className="flex items-start gap-2 text-[12px] text-[var(--c-tier-2)] bg-[var(--tint-tier-2)] border border-[var(--tint-tier-2-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
+              className="flex items-start gap-2 text-[12px] text-[var(--status-success)] bg-[var(--status-success-tint)] border border-[var(--status-success-tint-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
             >
               <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-px" strokeWidth={2} />
               <span className="leading-relaxed">

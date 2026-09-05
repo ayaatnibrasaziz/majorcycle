@@ -97,6 +97,17 @@ const BANNED: ReadonlyArray<{ pattern: RegExp; because: string; historical: stri
     because: 'a timing judgement',
     historical: 'now is a good time to buy',
   },
+  {
+    // ⚠️ Audit 5A-118, added 2026-09-04 on the owner's ruling. Both live instances sat
+    // INSIDE this file's swept directories the whole time — the phrase simply was not on
+    // the list, which is why a guard's coverage is its patterns and not its scope.
+    // Deliberately narrow: it matches the HEDGED valuation verdict, not the word
+    // "undervalued" on its own, so a future factual use ("the P/B says undervalued; the
+    // cash flow does not") is not banned by a rule written for a tooltip.
+    pattern: /potentially\s+(under|over)\s?valued/i,
+    because: 'calls a price cheap or dear — a valuation verdict, not a description',
+    historical: 'Near the left edge (low) = potentially undervalued or beaten down.',
+  },
 ];
 
 /**

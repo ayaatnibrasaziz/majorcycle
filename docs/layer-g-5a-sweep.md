@@ -207,13 +207,13 @@ it is clean locally.
       which had never been checked**, because the data was never asked how many cases exist.
       P4 asks the data. Anything it turns up is ADDED to the gallery, which is a top-up rather
       than a re-review.
-- [ ] **P4 · Data edge cases.** No cycle at horizon · cross-currency · a bank · no dividend ·
+- [x] **P4 · Data edge cases.** ✅ **COMPLETE 2026-09-05** — see the P4 section below. No cycle at horizon · cross-currency · a bank · no dividend ·
       no analyst coverage · no insider activity · retired ticker · unknown ticker/market/slug ·
       empty results · a brand-new account with no history. Plus a **sanity check on the
       analysis itself** for one stock per market: does the drawdown the page states match the
       chart it draws, and the price history behind it? Every guard we own checks that numbers
       are *present and consistent*; none checks that they are *right*.
-- [ ] **P5 · Content, claims and copy.** ⚠️ **ADDED on review, and it is the gap I am least
+- [x] **P5 · Content, claims and copy.** ✅ **NUMBERS + LINKS DONE 2026-09-05**; the human read-through is the owner's. See the P5 section below. ⚠️ **ADDED on review, and it is the gap I am least
       comfortable had been missing.**
       · **Re-derive every published number.** The landing states counts, ranks and superlatives
         from a snapshot frozen at **2026-08-13** — 18 days old at the time of writing. CLAUDE.md
@@ -227,9 +227,18 @@ it is clean locally.
         UI strings. The owner found a missing space that every test agreed was present (11ac) —
         prose defects are found by reading, and by nothing else.
       · **Every link, internal and external.** Cheap to check, embarrassing on launch day.
-- [ ] **P6 · Not-the-screen.** The downloadable report (a separate esbuild build — it shipped
-      blank for four days once, 11d) · every transactional email, rendered · metadata + share
-      cards · robots/sitemap/canonicals · security headers **in production, not preview**.
+- [x] **P6 · Not-the-screen.** ✅ **COMPLETE 2026-09-05** — see the P6 section below.
+      **Nine findings, eight fixed, one an owner decision to leave.** The report (a server
+      action was being compiled into the file customers download — 11d's exact chain, one
+      link further) · all seven transactional emails, rendered for the first time (a welcome
+      email sending new subscribers to an empty page; a run-on footer in every message; markup
+      injectable into a message from our own domain; no length limit on the contact form) ·
+      metadata + share cards (a publisher named on 17 pages that existed on none of them;
+      `og:type: website` on every article) · sitemap dates its own comment claimed it already
+      sent · production headers read on the wire. ⚠️ **Seven of the nine had no test of any
+      kind**, and the two that did were covered by guards structurally unable to see them.
+      ⚠️ The 13 **Supabase auth** templates are NOT in this repo and no connector can read
+      them — owner-side check, and said so rather than implied (14g).
 - [ ] **P7 · The three gates that never run automatically.** ⚠️ **ADDED on review.**
       `check:page-weight`, `check:csp` and `lighthouse` each need a production server on
       `:3200`, so `pnpm gates` prints them as NOT RUN — every single time. **A gate nobody runs
@@ -412,7 +421,7 @@ creates its own entitled throwaway to get around exactly this.
 | | Finding | Status |
 |---|---|---|
 | **5A-101** | `HorizonSettings` sets `aria-invalid` and never points at the message saying what a valid value is. Its sibling `StockBrowser` does the same job and wires `aria-describedby` — **with a comment stating the rule** the other file never received (11c-iv), and a comment in another file is not a gate (11f) | ✅ **Fixed + guarded** |
-| **5A-102** | **There is no `--status-danger` token.** P2 built `--status-warning` and stopped, so form validation, CSV upload errors, the onboarding gate's error line, both error pages and two screener fields all paint errors in **`--c-tier-5` — the Bearish rating colour**, in 8 places. This is 5A-050's exact shape (a billing warning went grey when the rating palette moved) still live for errors | **Open — owner's call** |
+| **5A-102** | **There is no `--status-danger` token.** P2 built `--status-warning` and stopped, so form validation, CSV upload errors, the onboarding gate's error line, both error pages and two screener fields all paint errors in **`--c-tier-5` — the Bearish rating colour**, in 8 places. This is 5A-050's exact shape (a billing warning went grey when the rating palette moved) still live for errors | **FIXED 2026-09-05, owner-approved.** `--status-danger` / `-ink` / `-tint` / `-tint-strong`, and **26 references migrated** across 20 files — the eight form error banners, both error pages, the CSV import's error tone, the onboarding gate's alert line, Delete account, the destructive button, the screener's two numeric fields and the remove / cancel controls. ⚠️ **Values identical to the rating's, so nothing moved on screen** — the defect was never the colour, it was that errors had no name of their own. Guarded by `e2e/status-danger.spec.ts` (no `role="alert"` element may name a rating token), **proven red by sabotage**, and needing **no exception list**: `DelistedNotice` is `role="note"` and keeps the rating tokens by the owner's F-035 ruling, falling outside the rule rather than being named in it. ⚠️ **The count was 26, not the 8 this row claimed** (11aj) |
 | **5A-103** | *"Error sending confirmation email"* reaches the reader as raw Supabase English — it falls through `friendlyAuthError`'s passthrough. **CLAUDE.md 11g, third instance**, and found the same way as the first two: by actually hitting it. It offers no advice, and the account is *not* created, so "try again" is the correct thing to say and nothing says it | **Open** |
 
 ### Verified, with no defect found
@@ -517,7 +526,7 @@ and the whole pass on the **live site** in Claude in Chrome (method note 10).
 | | Finding | Status |
 |---|---|---|
 | ~~**5A-104**~~ | ❌ **WITHDRAWN — my error, twice.** Reported as *"the ACTIVE sub-nav pill has an invisible focus ring"*: the pill carrying `aria-current="true"` measured `outline-color: rgb(255,255,255)` — white on a white sticky bar, ~1.0:1. **Both readings were taken at t≈0 of a 150 ms `transition-property: all`**, so what was measured was `currentColor` (the white label text) at the start of the animation. Sampled to settle it is `rgb(46,125,232)` from 151 ms, **4.03:1**, and plainly visible. See the retraction in *P3 · session 5* | **Withdrawn 2026-09-04** |
-| **5A-105** | 🟡 Three range selectors on one page, two words for one idea: Price Chart and Relative Performance say **Max**, Smart Money says **All**. Defensible (events vs a price series) and probably accidental. Paid surface, so it is a copy decision rather than mine | **Open — owner's call** |
+| **5A-105** | 🟡 Three range selectors on one page, two words for one idea: Price Chart and Relative Performance say **Max**, Smart Money says **All**. Defensible (events vs a price series) and probably accidental. Paid surface, so it is a copy decision rather than mine | **FIXED 2026-09-05** — owner: *"make it Max please to keep it consistent."* Label only; the internal key stays `all`, because it names a filter over events rather than a chart's time domain |
 | **5A-106** | 🟡 **Carried to P4, not chased here.** `AMD.TO` is stored as *"Advanced Micro Devices, Inc."* in the **ca** market — its own 1,031-bar series at **CAD 82.64** against the US line's **USD 459.61**, so it is a real separately-priced security (the shape of a depositary receipt), not duplicated data. But a reader searching AMD meets two identical names 5.6× apart with nothing distinguishing them. ⚠️ **Ten name collisions exist and most are entirely legitimate** — real dual listings (News Corp, Amcor, Newmont, ResMed, Block, NexGen) and share classes (GOOG/GOOGL, FOX/FOXA). Only `AMD.TO` looks like a different KIND of instrument wearing the parent's name | **Open — P4** |
 
 ⚠️ **5A-104's "unresolved mechanism" WAS the finding, and that should have been the tell.** This paragraph used to say the cascade explanation was missing — the compiled stylesheet holds exactly one `outline-color` declaration, `var(--brand-bright)`, so the white was not coming from our CSS and Tailwind's preflight does not reset it — and then recommended giving the active state its own focus colour anyway. **A measurement no mechanism can explain is evidence against the measurement** (11i: an implausible mechanism is a reason to suspect the instrument, not a discovery). The value was mid-transition. Retracted 2026-09-04; the pill was correct all along.
@@ -712,13 +721,14 @@ nobody does it later.
 | **5A-111** | 🟡 **A price CHANGE is printed to a fifth of a cent.** `StockHeader` passed the daily move through `fmtPrice`, which picks decimals from **the value's own magnitude**. Right for a penny stock's *price*, wrong for a *change*, whose precision belongs to the price it came from. On BHP **exactly one** of twenty money figures carried 3 decimals — `+A$0.522` — under `A$63.78`. Fires for any stock over $1 moving less than $1 in a day. ⚠️ `fmtPrice`'s own docblock says it exists *"so a group of related prices never mixes precision"*, and it produced that mixing: **a rule applied to the wrong subject.** Fixed with `fmtPriceDelta(delta, referencePrice, currency)`; guarded by `e2e/price-delta.spec.ts`, whose CONTROL is that a genuinely small-priced stock still gets its extra places — without it a hard-coded 2dp would pass and destroy what `fmtPrice` was built for |
 | **5A-112** | 🔴 **No dialog returns focus to what opened it.** Escape or "Not now" both leave `document.activeElement` as `BODY` (measured at a 1.5 s settle, so not a transition artefact). Radix restores to `context.triggerRef.current`, set by `<DialogTrigger>` — and **not one of the eight consumers uses one**; they all drive it with external `open`/`onOpenChange` state. So the ref is null everywhere and there is nothing to focus. A keyboard user is dropped at the top of the document, on the **paywall-conversion surface**. `grep` for `previousFocus`/`restoreFocus`/`returnFocus` across `components/`: **zero hits**. One fix in `ui/dialog.tsx`, eight surfaces |
 | **5A-113** | ❌ **WITHDRAWN — my error.** See the retraction above |
-| **5A-114** | 🔴 **The signed-in app had no headings at all.** `querySelectorAll('h1,h2,h3,h4,h5,h6,[role=heading]')` returned **0** on Stock Detail, Browse and `/run`. Every visible heading is a `div` styled bold, so a screen-reader user gets no heading list and the flagship page is one flat run of text. ⚠️ **Why no guard saw it:** `app-a11y.spec.ts` runs axe with `TAGS = ['wcag2a','wcag2aa','wcag21a','wcag21aa']`, and axe's heading rules — `page-has-heading-one`, `empty-heading`, `heading-order` — are tagged **`best-practice`**, not WCAG. The scan was green and had never had an opinion. **A guard's scope is a claim about what it can see** (14g), written in four strings nobody re-reads. Fixed at the shared `Header`, so every signed-in page gets one `h1`; the two pages that already had a correct `sr-only` one had it removed rather than duplicated. ⚠️ **NOT fixed, deliberately:** Stock Detail's 14 card titles are still `div`s. Giving them section-level headings is a real change to a paid surface and is the owner's call (11l) |
+| **5A-114** | 🔴 **The signed-in app had no headings at all.** `querySelectorAll('h1,h2,h3,h4,h5,h6,[role=heading]')` returned **0** on Stock Detail, Browse and `/run`. Every visible heading is a `div` styled bold, so a screen-reader user gets no heading list and the flagship page is one flat run of text. ⚠️ **Why no guard saw it:** `app-a11y.spec.ts` runs axe with `TAGS = ['wcag2a','wcag2aa','wcag21a','wcag21aa']`, and axe's heading rules — `page-has-heading-one`, `empty-heading`, `heading-order` — are tagged **`best-practice`**, not WCAG. The scan was green and had never had an opinion. **A guard's scope is a claim about what it can see** (14g), written in four strings nobody re-reads. Fixed at the shared `Header`, so every signed-in page gets one `h1`; the two pages that already had a correct `sr-only` one had it removed rather than duplicated. ⚠️ **The card titles were left as `div`s deliberately** — a real change to a paid surface, and the owner's call (11l). **They chose option B on 2026-09-04**: `sr-only` h2 per group + h3 per card, 1 → 26 headings, measured pixel-identical. See session 6 |
 | **5A-115** | 🟡 **Two rendered sections shared `id="sec-cycle"`** (1610 px and 132 px tall, same column — not a hidden responsive twin). `TechnicalLevels` declared it from when it *was* the whole Cycle section; the page later wrapped it in `<section id="sec-cycle">` and nobody removed the inner one, so the id existed twice, nested inside itself, on every stock page. Duplicate ids are invalid HTML and `href="#sec-cycle"` can only ever reach the first |
 | **5A-116** | 🔴 **Stock Detail scrolled SIDEWAYS from ~601 px to ~900 px**, breaking non-negotiable #3. Measured by actually scrolling: **263 px at 644, 135 px at 772, 0 at 921**. **772 px covers iPad portrait**, so this is a real device band. Cause pinned exactly: `.ownership-grid` computes `grid-template-columns: 200px 423.5px` in a **344 px** container — a grid item defaults to `min-width: auto`, so the `1fr` track takes the holders table's min-content width and refuses to shrink; `200 + 24 + 423.5` against 344 is the 263 px measured, to the pixel. ⚠️ **The fix already existed and was scoped too narrowly** — the three correct rules sat inside `@media (max-width: 600px)` under a comment naming this exact failure, while the layout needs ~900 px beside the 220 px sidebar. ⚠️ **The contrast with `.km-scroll` is the lesson**: Key Metrics solves this unconditionally at every width. One rule, two places, one of them conditional (11c). Shrink protection is now unconditional; the media query keeps only the genuine layout choice. Also confirmed **155 px at 752 px on the ENTITLED page** — the Ownership grid is free content, so it was never entitlement-dependent |
 | **5A-117** | ⚪ **Observation, not a diagnosis.** At 644 px `html` computes `overflow-x: visible` and `body` computes `overflow-x: hidden`, and the page still scrolled to `scrollX = 263.2`. The overflow itself is 5A-116 and fixing that is the real answer — but a rule that is present, looks protective and demonstrably is not should not be left unexamined (14f) |
-| **5A-118** | 🟡 **OPEN — owner's call.** *"potentially undervalued"* in two tooltips: `WeekRangeGauge.tsx:62` and the PEG column in `columns.ts:171`. Both are hedged and explain a metric rather than telling anyone what to do, and both sit **inside** `no-advice-copy.spec.ts`'s swept directories — the phrase simply is not on its banned list. Raised because #12/#24 make this the owner's judgement, not mine. Before/after presented 2026-09-04; **awaiting their decision, unchanged in the meantime.** ⚠️ Checked and clean: no tooltip or `title` text lives outside the two swept directories, so the guard has no scope gap here |
-| **5A-119** | 🟡 **OPEN — low priority.** The sidebar padlocks carry `aria-label="Requires a subscription"` on a bare `<svg>` with **no `role="img"`**. Chrome exposes it; an `aria-label` on a roleless element is not reliably announced across screen readers. ⚠️ Recorded as a **nuance rather than a confirmed break** — I have not driven a real screen reader, and saying which is which matters more than the finding. ⚠️ And as much a positive as a defect: the padlock IS labelled, the decorative icons beside it ARE `aria-hidden`, and the licence chip reads "No plan". Somebody thought about this surface |
+| **5A-118** | ✅ **CLOSED 2026-09-04 — owner approved the rewording.** *"potentially undervalued"* in two tooltips: `WeekRangeGauge.tsx:62` and the PEG column in `columns.ts:171`. Both are hedged and explain a metric rather than telling anyone what to do, and both sit **inside** `no-advice-copy.spec.ts`'s swept directories — the phrase simply is not on its banned list. Raised because #12/#24 make this the owner's judgement, not mine. Before/after presented 2026-09-04; **approved 2026-09-04; both tooltips reworded and the phrase is now the ninth pattern in the guard — see session 6.** ⚠️ Checked and clean: no tooltip or `title` text lives outside the two swept directories, so the guard has no scope gap here |
+| **5A-119** | ✅ **CLOSED 2026-09-04.** The sidebar padlocks carry `aria-label="Requires a subscription"` on a bare `<svg>` with **no `role="img"`**. Chrome exposes it; an `aria-label` on a roleless element is not reliably announced across screen readers. ⚠️ Recorded as a **nuance rather than a confirmed break** — I have not driven a real screen reader, and saying which is which matters more than the finding. ⚠️ And as much a positive as a defect: the padlock IS labelled, the decorative icons beside it ARE `aria-hidden`, and the licence chip reads "No plan". Somebody thought about this surface |
 | **5A-120** | 🟡 **Four card headers put their title and hint 0 px apart** at 752 px — Opportunity Map, Valuation History, Smart Money Activity, Stock Scorecard. `.card-header` was `flex; nowrap` with **no `gap`**. ⚠️ **I first reported this as "overlapping text" from a screenshot and that was wrong.** Measured, `xOverlap = 0` — the edges are the same x. They touch; they do not overlap. The difference matters: "overlap" points at a stacking bug, "0 px gap" points at a missing `gap` on one shared class. **A downscaled screenshot is not a measurement** (11o) |
+| **5A-121** | ✅ **FIXED 2026-09-04, owner-raised.** The `h1` read **"Stock Detail" on all 863 tickers** — it named which KIND of page this is and never which one, so a screen reader's page title was identical across the whole product. The company's name was already on screen one line below, as a `div`. Now the h1, `inline`, visually byte-identical (`scrollHeight` 7700 unchanged). ⚠️ Fixing it exposed **two pages that already had their own h1** and were silently serving two — `NotInCoverage` (invisible to the guard: no unknown ticker is in `APP_PATHS`) and the downloaded report. **The mirror of 11c-iv** — a shared fix reaching a consumer that had already solved it locally |
 
 ⚠️ **Informational, so the next person measuring duplicate ids does not mistake them for ours:**
 `tv-attr-logo` ×2 (Lightweight Charts, one per instance) and `id="a"` ×3 (Recharts `<clipPath>`).
@@ -788,7 +798,980 @@ so the next pass does not re-report it.
 | `price-delta.spec.ts` | Pure and credential-free; imports the real formatters rather than restating them. CONTROL: a penny stock keeps its extra places |
 | `app-a11y.spec.ts` | Extended with one `h1` per page across six routes — the class axe's tag list could not see |
 
+### Session 6 — the three held items, closed 2026-09-04
+
+**The owner ruled on all three of the items session 5 left with them, and the third turned into
+a second pass at 5A-114.** No new surface was audited; this is the tail of P3.
+
+**5A-118 · APPROVED, reworded.** Both *"potentially undervalued"* tooltips are gone. The
+52-week gauge now describes the position and stops (*"near the left edge means it is trading
+close to its 52-week low"*); the PEG hint says *"the price is low relative to the growth rate"*
+rather than naming the price cheap. ⚠️ The phrase is now the **ninth** pattern in
+`no-advice-copy.spec.ts`, and the entry records that it was an owner ruling and is deliberately
+narrow — `/potentially\s+(under|over)\s?valued/i` — so the next reader does not widen it into
+banning the word "valuation".
+
+**5A-119 · FIXED, and my first sweep for it was blind to the instance the finding was written
+from.** The padlock and the short-interest gauge both carry `role="img"` beside their label.
+⚠️ The sweep matched literal `<svg` tags and reported *12 clean, 1 offender* — and the padlock
+is `<Lock />`, a lucide component that renders an svg and forwards its props. **A probe scoped
+to the syntax I happened to picture missed the case in front of me** (11am). The guard in
+`form-errors.spec.ts` now reads each file's `lucide-react` import list as well, and says out
+loud that it covers graphics only.
+
+**5A-114 · SECOND PASS — the headings, option B, owner-approved.** Session 5 fixed the h1 and
+deliberately left Stock Detail's card titles as `div`s, because giving a paid surface section
+headings is the owner's call (11l). They chose **B**: one `sr-only` `h2` per sub-nav group and
+an `h3` per card. 29 card titles across 21 components, five group headings, one shared
+`lib/stockSections.ts` replacing **two identical unlinked copies** of the section list (11c).
+Headings on the page: **1 → 26**.
+
+⚠️ **Measured, not assumed, on two clean production builds with the cache cleared between the
+arms** (11i: a stash does not swap what Turbopack has already compiled): 20 cards and 20 title
+boxes compared, **zero** geometry or typography differences, `document.scrollHeight` **7700** in
+both. The tag change is inert because `.card-title` sets its own size and weight and Tailwind's
+preflight zeroes heading margins and makes `font-size` inherit.
+
+⚠️ **The `space-y` trap that was NOT sprung, worth recording because it nearly was.** An
+`sr-only` first child is absolutely positioned. Under Tailwind v3's `space-y` — `* + * {
+margin-top }` — it would have taken no margin and pushed the next card down 18 px. **This
+project compiles v4**, which emits `> :not(:last-child) { margin-block-end }`, so the invisible
+heading takes the margin itself and nothing moves. The answer came from reading the compiled
+CSS, not from knowing the utility.
+
+⚠️ **And the sabotage refused to break, which produced a second guard.** Demoting
+`SnowflakeRadar`'s title `h3 → h5` — a skipped level, exactly what the browser test claims to
+catch — left it **passing**: the E2E account holds no subscription, so that card renders as a
+lock and never appears. The same break in `CompanyOverview`, which does render, failed
+correctly. **A guard's scope is a claim about what it can see** (14g), and the only reason this
+one's limit is written down is that a deliberate break declined to break. So there are two:
+`app-a11y.spec.ts` proves the TREE on the free render, and a source-reading test in
+`form-errors.spec.ts` proves every card title in the directory is a heading whatever the
+viewer's plan. Neither covers the other.
+
+**5A-121 · the h1 said which KIND of page this is, on all 863 of them.** Raised by the owner
+after reading session 5's fix: *"For the H1 to be Stock Detail every time for all tickers is a
+bit weird."* The shared `Header` supplied it, so every ticker page announced the same six words
+and a screen reader's page title was identical everywhere in the product. The company's name was
+already on screen one line below, as a `div`.
+
+Fixed with the strict constraint the owner set — **visually nothing changes.** The name line
+becomes `<h1 className="inline">`; `Header` renders a plain `<div>` on any `/stocks/*` path via
+an `ownsHeading` flag. Measured on the live page: `display: inline`, `14px`, weight `400`,
+margin `0`, the same colour, the line still *"Apple Inc. · Technology"* at the same 21 px, and
+`document.scrollHeight` **7700** — the identical figure from the option-B comparison above.
+⚠️ The sector stays **outside** the heading: *"Apple Inc."* is the page's name, *"Apple Inc. ·
+Technology"* is a name with a category stuck on it.
+
+⚠️ **The fix at the shared layer had put an h1 on two pages that already had one** — the mirror
+of 11c-iv, and neither was visible until the demotion forced the question. `NotInCoverage`
+carries its own h1, so **an unknown ticker had been serving two**, in a state no test could see
+because no unknown ticker is in `APP_PATHS`. And `ReportDocument` had been given an h1 that same
+afternoon (*"MajorCycle"*), which became the second h1 in the downloaded file the moment the
+page got a real one — so the masthead is a `div` again and the report is titled after the
+company, which is what a report about Apple should be called anyway. **When you fix something at
+a shared layer, grep for the surfaces that had already solved it locally.**
+
+⚠️ One ordering consequence, in both the page and the report: the identity strip now comes
+**before** the invisible group heading inside `sec-thesis`, because an `h1` may not follow an
+`h2`. Only the `sr-only` node moved — the strip, the section boundary and the "Thesis" anchor
+target are exactly where they were, so nothing on screen and nothing the sub-nav scrolls to
+changed.
+
+⚠️ **Proven red first.** Setting the heading back to a constant label failed with *"the h1 is
+'Stock Detail' — it must name the company, not the route"*. The assertion matches `/Apple/i`
+rather than merely "not empty", because a constant label satisfies a length check perfectly
+(14g).
+
+**Instrument failure 14 — and it was mine, twice in one session.** I reported the work complete
+before the gates finished, and `pnpm typecheck` then failed on `TS1501`: the regex `s`/dotAll
+flag in the new guard is above this project's TS target. **Playwright's transpiler accepted it
+and the spec passed.** A spec passing is not the same as the repo compiling. Separately, ~80
+tests failed and all 12 Learn slugs 404'd on a run where the build output was demonstrably
+correct — the `.next-dev` cache, corrupted by two `git stash`/`pop` cycles (11i). Deleting it
+(2,100 files, verified **gone** rather than merely emptied) restored 12 passed with no source or
+assertion change.
+
+**Gates after all of it: 16 of 16, e2e 713 s.** Suite **734 → 737** in 44 files, reconciled by
+`--list` rather than by reading a summary line (11i).
+
+
+## P4 · data edge cases — 2026-09-05
+
+**The pass that asks whether the numbers are RIGHT, not merely present.** Every other guard we
+own checks that a figure exists and is consistent with its neighbours. This one compared our
+stored prices against the provider for **all 864 active tickers**, re-derived the cycle
+analysis independently, and drove the sixteen data shapes the manifest names.
+
+**Two real defects, one of them a wrong rating on a US mega-cap.** Also three retractions, and
+the retractions are again the more useful half.
+
+### 5A-122 🔴 · Monster Beverage rated **High Conviction** on data that was 2x wrong — FIXED
+
+MNST split 2:1 on 2026-08-11. Measured against a fresh provider pull, **478 of our 501 stored
+bars were exactly `2.000000x` too high**, from 2024-09-04 to 2026-08-07.
+
+| | before | after the re-pull |
+|---|---|---|
+| current drawdown | **-55.73%** | **-12.38%** |
+| valuation zone | DEEP VALUE | VALUE |
+| overall | **High Conviction 88** | Constructive 73 |
+| bars differing from the provider | 478 of 501 | **0** (median 0.0000%) |
+
+A huge false fall reads as a huge cyclical opportunity, so our **top** rating label landed on a
+company that had not fallen — and it would have surfaced at the top of any screener run.
+
+⚠️ **The verifier was never the weak part**, which is the finding. Driven against our real
+stored series `_verify_split_resolved` returns `(False, '2026-08-07', 1.9193)` on the first
+try. It simply never saw that series: it runs **once**, on the frame the provider just handed
+us, at detection time, and nothing compared its verdict with the rows that actually landed.
+`split_events` said `resolved`, `cliff_date` NULL, and nobody looked again for three weeks.
+
+⚠️ **I built the wrong fix first, and a deliberate break is what caught it.** I added sawtooth
+detection to the verifier, then broke it on purpose — and **every test stayed green**, because
+the existing logic already handles that shape (11i/11u: a break that fails to break is a
+finding about your model, not a verdict on the test). Reverted. The real fix is
+`_reverify_stored_splits`, which closes the loop between what we fetch and what we store.
+
+⚠️ **And the obvious version of that fix would have CORRUPTED a healthy stock.** "Compare with
+a fresh pull, re-pull on a mismatch", run on 2026-09-04, would have rewritten **APH**: it split
+2:1 the day before, *our* series was the correct post-split one, and the *provider's* history
+was mid-adjustment — 163.34 on 2026-08-03 against an 09-04 close of 83.06, NaN on the split
+day. **The provider is not always the one that is right.** So the sweep asks our own data
+whether it agrees with itself. Four tests, two proven red by sabotage; the load-bearing one is
+the control that a healthy split is left alone.
+
+### 5A-125 🔴 · AvalonBay printed **"+196.0% upside to target"** — WITHHELD
+
+AVB split 2.793-for-1 on 2026-08-17. The provider re-based its price *history* and left its
+*quote* alone, so on 2026-09-04 it was simultaneously reporting a price of **$184.06** with a
+52-week high of **$185.62** and a target of **$201.71**, while serving a price series whose
+last bar was **$68.14**. Every figure the page builds from both went wrong at once:
+*"+196.0% upside to target"* and *"Near low · 63.3% off high"*, on a stock that was flat.
+
+⚠️ **Not ours to correct, and the owner's rule decided the shape of the fix.** Set the same day
+on the VMRK naming defect: where the provider is wrong we do not hand-patch, because the next
+nightly write overwrites the patch — and once the provider fixes itself the patch stops being
+overwritten and *our* wrong value lives forever. So `lib/quoteBasis.ts` **withholds** the
+derived figures rather than inventing corrected ones, the same rule as the cross-currency
+ratios. The cycle analysis is untouched: it reads the bars alone and is internally consistent.
+
+Applied to the header's upside line, the 52-week gauge and `AnalystTargetTrack` — the last of
+which surfaced only by grepping the consumers (11c-iv), and its `priceBars` prop is **required
+rather than defaulted** so the next caller cannot reintroduce the defect in silence. Guarded by
+`e2e/quote-basis.spec.ts`, broken two ways: too loose (2 red) and withhold-everything (3 red).
+
+### 5A-124 🟡 · US prices a session behind — the cron moved, and it is a TEST not a fix
+
+On 2026-09-04 the US+CA run stored Wednesday's bar for **all 80** Canadian tickers and for
+`^GSPC`/`^IXIC`, and **not** for **529 of 535** US equities. Both markets were fetched in the
+same interleaved window (US 00:23-00:55, CA 00:24-00:54), so it is not the run order; the
+writer stores whatever the provider returns, so it is not ours.
+
+⚠️ **The cost is larger than a stale price.** The ex-dividend bar arrives a day late too, so
+the full-history re-adjustment it triggers is also a day late — five US stocks (HD, QCOM, BF-B,
+BR, PFG) were measured carrying **0.54-0.85%** drift across their whole history for exactly
+that reason. That is 11ae in miniature, recurring nightly.
+
+Owner-approved: the run moved **22:30 → 01:30 UTC**. ⚠️ **Stated as an experiment, in the
+workflow itself**: if the lag survives the move the timing theory is wrong, and the next step is
+a targeted re-fetch of tickers behind their market — *not* pushing the time later again.
+
+⚠️ **A one-line schedule edit was not a one-line change.** `lib/benchmarks.ts` keys the
+benchmark cache to those exact times and its own comment warned that forgetting is silent
+(11c-v). `e2e/benchmarks-cache.spec.ts` now **derives** its expected keys from that constant
+instead of restating them, so the next move cannot leave the two quietly disagreeing.
+
+### RETRACTIONS — three, all mine
+
+**"The friendly 404 never renders" — NOT A DEFECT.** I measured `/stocks/us/ZZZZ` showing the
+generic *"Page not found"* five times out of five and was about to fix it. On the **production
+build** all three unknown-ticker URLs render *"Not in our coverage yet"* correctly. The dev
+server resolves not-found boundaries differently and I measured the wrong one. ⚠️ The real
+finding underneath: **no test asserts which 404 page renders**, the component's docblock claims
+the e2e suite caught this once (no longer true — 11f), and the suite *structurally cannot* see
+it because it runs on `next dev`.
+
+**"BGA.AX and BGL.AX return nothing from the provider" — instrument blip.** Re-checked
+immediately: both return 508 bars through 2026-09-04. A probe result confirmed once is not
+evidence (11p).
+
+**"APH's history is wrong" — it is the PROVIDER's that is wrong.** Our series is correct. See
+5A-122 above; this is the case that reversed the design of the fix.
+
+### Verified — the parts that came back clean
+
+- **850 of 864** stored histories are byte-identical to a fresh provider pull (0.0000% median).
+- **The analysis maths, re-derived independently.** AAPL **-5.6098**, BHP.AX **-7.4895**,
+  SHOP.TO **-20.6006** — SQL over the raw stored bars against the Python engine, **exact to
+  four decimals** in all three markets. ⚠️ My first probe disagreed (-4.36 for AAPL) because I
+  guessed the definition instead of reading it: the peak is the highest **intraday high** over
+  the window, not the highest close.
+- **The chart agrees with the page.** `DrawdownOverlay.computeDrawdown` is a *second*
+  implementation of the drawdown, in TypeScript (11c-iii). Re-implemented a third time and
+  compared: AAPL -5.61, BHP.AX -7.49, SHOP.TO -20.6, MNST -12.38 — all matching the engine to
+  the chart's own 2-decimal rounding.
+- **Sixteen data shapes render, all 200, no console errors, no `NaN`/`undefined`/`null` on
+  screen, currencies correct** (A$ / CA$ / NZ$): banks (CBA.AX, AIG — the `0.0` margin
+  sentinel), cross-currency (A2M.AX in NZD), no dividend, no analyst target (ADD.AX), no
+  analyst recommendation *at all* plus NULL sector (MQG.AX), no insider activity, 305-bar and
+  390-bar histories, both retired tickers, TSX Venture (`AE.V`).
+- **Cards collapse rather than render empty.** MQG.AX shows 17 of AAPL's 20 with the missing
+  ones absent; AU stocks correctly swap Quarterly for Annual Financial Trends.
+- **"Not available at this horizon" is correct.** GGP.AX (305 bars) returns a clean
+  `insufficient_history` on Long and computes normally on Short and Medium.
+- **A missing Financial Health score does not fabricate one.** MQG.AX has near-empty
+  fundamentals; `financial_health_score` is `None` and the overall rating renormalises across
+  the remaining two pillars — documented behaviour, not a defect.
+- **`ta_highest`'s `min_periods=1`** (a young stock's early window is expanding, not blank) is
+  deliberate and documented as C-R6. Checked rather than reported.
+- **Ten bad URLs all refuse**, including the fourth market (`/stocks/index/^GSPC`), a
+  fully-qualified ticker under the wrong market (5A-034), and a `.V` ticker without its suffix.
+- **The three EMPTY states are three different sentences, and each is the right one.**
+  `Results.tsx` branches on `rows.length === 0` and then on `ran = runMeta != null ||
+  results.length > 0`: *"No analysis run yet"* (a new account), *"No stocks could be scored"*
+  (a run where nothing produced a reading — the skipped list renders above it), and, when rows
+  exist but the filters remove them all, *"No stocks match your filters"* with a **clear all
+  filters** button. Traced rather than assumed: `setRunMeta(finalMeta)` fires unconditionally at
+  the end of a run and is persisted into the session snapshot, so `ran` stays true across a
+  reload even when the run yielded nothing — the case where the wrong sentence would appear.
+  `clearFilters` resets the whole `FilterState`, so it clears the advanced rules and the tier
+  filter too, not just the query. ⚠️ **Checked by reading and tracing, NOT by driving — and
+  none of the three has a test.** Recorded as a gap rather than left to look like coverage
+  (14g).
+- **The staleness sweep works.** It names all 5 frozen tickers (EA, EQR, AVB, QUB.AX, CVW.AX)
+  and correctly refuses to retire them — "STALE BUT ALIVE", three-source test.
+
+### The follow-ups, all settled 2026-09-05
+
+| # | |
+|---|---|
+| **5A-106** | ✅ **CLOSED — owner ruled no action.** `AMD.TO` and `AMD` share a name, but both rows already carry a US/CA badge and the currency differs, so they are distinguishable on screen. *"US and CA is showing that the currency is different. It is distinguishable."* ⚠️ My write-up had said the reader "can't tell them apart" — that was wrong, and the badge was there all along |
+| **5A-126** | ✅ **FIXED.** The screener's **Target** and **Upside%** now use the same `quoteBasisAgrees` rule as the Stock Detail page, on screen **and in both exports** — a figure we will not show is not one we hand over in a spreadsheet. A results row carries no price bars, so `api/analyze.py` ships `week52_high` and `history_high` (our own highest high over 252 bars) and the **threshold stays in TypeScript**: shipping a verdict instead would put an algorithm in two languages, which is the drift 11c-iii records |
+| **5A-127** | ✅ **FIXED — found by checking Smart Money Activity at the owner's request.** Two labels that stated more than the filings supported. See below |
+| **VMRK** | ✅ **CLOSED — owner ruled no action.** Yahoo's `longName` for Vivmark Residential is *"AvalonBay Communities, Inc."*. *"If it is manually changed then when we repull it might change it again with the same issue. When yahoo fixes, it should automatically fix."* That reasoning is now rule 11as |
+
+### 5A-127 🔴 · Smart Money Activity told 45 companies' readers the insiders were selling
+
+The owner asked what was happening in this section. Two defects, both a label saying
+something the arithmetic underneath it did not support, and neither visible by looking.
+
+**(i) A bearish verdict from no evidence at all.** `insiderSentiment` ended in a bare
+`return NET SELLER (Bearish)`, so a company whose filings contain no purchases and no sales —
+only share awards, or transfers typed "Other" — fell through to it. Measured across the live
+universe: **45 of the 820 stocks that have insider filings**, including **Bunge (BG)**, both
+**Brookfield** lines (BN.TO, BAM.TO), **ALK.AX** and **CCL-B.TO** — each with **50 filings and
+not one of them a Purchase or a Sale**. The page told the reader those insiders were selling.
+Now it says nothing, and the timeline still shows every award and transfer.
+
+**(ii) "NET BUYER" printed over a net seller.** The test was `buys > sells * 0.5`, so insiders
+who sold $1.0m and bought $0.6m were labelled **NET BUYER (Bullish)** — false on the plain
+meaning of the words. **24 of 820** sat in that band. ⚠️ The 0.5 may have been a deliberate
+analytical view (insiders sell routinely to cover vesting and tax), but the fix cannot be to
+keep a sentence that is not true. The comparison now matches the words. **If the tolerance was
+intended, restore it with wording that describes it** — that is written into the function.
+
+Extracted to `lib/insiderSentiment.ts` so it can be driven by a pure spec rather than through a
+`'use client'` chart component. Guarded by `e2e/insider-sentiment.spec.ts`, **broken both ways**:
+restoring the fall-through went 3 red, restoring the 0.5 went 2 red. Its load-bearing assertion
+is the control — a real signal is still reported — because "return null when the filings are
+silent" is satisfied perfectly by a function that returns null for all 820.
+
+⚠️ **Checked and NOT a defect:** the section already skips the label entirely when a stock has
+no filings at all (`txs.length > 0 ?`), so the 44 stocks with an empty array were never affected.
+⚠️ **Noted, not changed:** `analystConsensus` breaks a tie toward BULLISH (`bull >= bear`), so an
+even split of analysts reads bullish. Recorded for the owner rather than altered.
+
+### Where the 5A-125 rule ended up — every surface, checked by grep
+
+| Surface | |
+|---|---|
+| Stock Detail header | upside-to-target line + the 52-week gauge |
+| `AnalystTargetTrack` | the whole card — every figure on it is a distance between the quote and the history |
+| `ThesisInsights` | the *"mean target"* bullet only; the rest are built from the cycle and the statements, which are internally consistent |
+| Screener | **Target**, **Upside%**, and the same two columns in the `.csv` and `.xlsx` |
+| Offline report | inherits all three components, and its `AnalystTargetTrack`/`ThesisInsights` were caught by the required-prop type error |
+
+**Measured blast radius: exactly 2 of 864 stocks** — `AVB` (ratio 2.610) and `NEC.AX` (1.423,
+an adjustment rather than a split). Verified on real pages: both show no upside line, no 52-week
+gauge and no analyst-target card, while **AAPL** keeps all three (*"Near high · 5.7% off high"*)
+and **MNST** — repulled — keeps them too (*"Upper range · 12.4% off high"*, matching its
+corrected −12.38% drawdown).
+
+
+### Instrument failures 15-18
+
+15. **The first probe hung for 11 minutes with nothing to show**, because its output was piped
+    through `tail` — which buffers to the end, so the log was empty the whole time. The rule
+    against piping `pnpm gates` applies to anything you need to watch. Rewritten to append each
+    result and each step to a file as it goes.
+16. **Stopping the probe did not stop its dev server.** Port 3100 stayed held by an orphan,
+    which is precisely how a later run answers from stale code.
+17. **The drawdown probe was wrong before the code was** — I guessed the peak was the highest
+    close. Reading `calculate_cycle_metrics` gave the real definition and the two then agreed to
+    four decimals. Derive the probe from the source, not from what the rule sounds like.
+18. **A "404" is not one page.** My URL sweep asserted status codes and read the heading as an
+    afterthought; the headings were being served by a different not-found boundary than
+    production uses. A control expecting **200** on a good URL is what exposed that the whole
+    run was untrustworthy — without it, ten green refusals looked like a clean sweep, and a
+    system where *every* URL 404s produces exactly the same ten green refusals.
+
+
+## P5 · content, claims and copy — 2026-09-05
+
+**Every published number re-derived, every link followed, the prose swept mechanically.**
+Four defects, three of them in things built to prevent exactly this.
+
+### 5A-129 🔴 · An article contradicted itself about its own headline figure
+
+Article 01 states its never-recovered rate three times — the bold sentence, the
+three-market table, and the survivorship caveat at the end. Two said **12.4%**. The third
+said **12.8%**.
+
+12.4% is right: `assert_all.py` asserts it and an independent count of the frozen study
+confirms it (156 of 1,260 falls). **12.8% is the value from before the 2026-08-30 dividend
+re-derivation**, which moved 81 of the 464 asserted figures. That sentence was in no
+assertion, so it never moved with them.
+
+⚠️ **`consistency.py` exists for this exact rule** — its docstring cites 11c, *"a number
+stated twice is a copy of that number"* — and it had only ever applied it **across** files.
+A figure restated three times inside one article was invisible to it. Now guarded, and
+**broken on purpose**: putting 12.8% back fails with *"the article states ['12.4', '12.8']
+where every one should be 12.4%"*.
+
+⚠️ **The first version of that guard passed the sabotage**, because the markdown wraps at
+80 columns and *"worse than"* sat on a different line from the figure it introduces. A
+regex over prose must not assume a sentence is one line.
+
+### 5A-130 🟡 · "Browse all N companies" promised five more than Browse lists
+
+The landing's headline count came from `stocks` where `market <> 'index'` — **including the
+5 retired companies**, which Browse filters out (`.eq('is_active', true)`). So the page
+said 869 and Browse listed 864. Fixed at source and regenerated: **864, matching Browse
+exactly.**
+
+⚠️ Both numbers were plausible and neither errored. The only way to see it is to count both
+sides — which is what P5 is for.
+
+### 5A-131 🔴 · A /learn guard was reading the frozen file, and passed for four days
+
+`landing-snapshot.json` (frozen worked example) and `learn-snapshot.json` (nightly figures)
+were split on 2026-09-01 precisely because they have different lifecycles — CLAUDE.md
+**11ai**. They were written from one run and stayed **byte-identical**, so nothing could
+tell which one anything read. `e2e/learn.spec.ts` was pointed at the frozen one, and its own
+comment said it reached the page *"through `lib/landing.ts`"* — the wrong module for a Learn
+page.
+
+Regenerating the nightly file made them differ for the first time and it failed instantly:
+**the page said 5.6%, the frozen file said 8.0%.** ⚠️ **Two files that agree cannot tell you
+which one you read.** A guard aimed at the wrong one looks exactly like a guard aimed at the
+right one until the day the data moves.
+
+⚠️ `landing-copy.spec.ts` already had a guard for this — over a **hand-written list of two
+source files**, which could not see a spec. It is now derived: every file whose path says
+"learn" must not name the frozen snapshot, **with comments stripped**, because the first run
+failed on the paragraph documenting the fix. That is the third time this repo has been caught
+by a guard reading its own explanation.
+
+### 5A-132 🟠 · Three of the seven article-verification scripts have never been able to run
+
+`audit_external.py`, `audit_independent.py` and `divfreeze.py` all `import engine` — a module
+that **is not in the repository and has no git history**. Whoever ran them had it in the
+working directory; the results were written into the README and the runs cannot be
+reproduced. Two of the three are the ones that check our figures against an **external**
+source, which is the question that found a year of dividend drift (11ae).
+
+⚠️ 11f, in the subject matter of a verification suite: **a record saying a check exists is
+not the check.** Recorded rather than reconstructed — rebuilding a module from three callers'
+usage is guesswork, and guesswork wearing the name of an independent audit is worse than an
+obvious gap. **Owner's call.** The README now states which four run and which three do not.
+
+### 5A-133 🔴 · The first-login compliance modal lost a space, on one bullet of four
+
+`OnboardingModal` lists the four signals. Three render *"Cycle Position — where…"*.
+The fourth rendered **"Valuation Score— how far today's price…"**, with no space.
+
+The cause is CLAUDE.md **11ac**: SWC drops the **leading whitespace** of a JSX text node
+that spans more than one line **and** contains an HTML entity. The Valuation bullet is the
+only one of the four written with `&apos;`; its three siblings use literal em-dashes and no
+entity, so they keep their space. Read out of the **built chunk**, not reasoned about:
+
+```
+Cycle Position"}),"        — where the current price…   space kept
+Financial Health Score"}),"— a 5-pillar composite…      space kept
+Valuation Score"}),"— how far today's price…            space GONE
+```
+
+⚠️ **The rendered guard for this defect could not reach it.** `e2e/lib/proseSpacing.ts`
+asserts the outcome on the DOM — the stronger check — and walks `/learn` and `/articles`
+only, because every other prose surface needs a session. So the whole signed-in product,
+including the one screen a new customer must read and acknowledge, was outside it. **A
+guard's scope is a claim about what it can see** (14g).
+
+⚠️ **And it was found by a source sweep the pass had not planned.** P5's scope named "the
+UI strings"; the rendered proofread covered the 25 public pages, so the signed-in strings
+were swept from source instead — 121 files, 445 sentences, **2 flags, both false
+positives**. Neither was this. The defect surfaced only when the entity in one of those
+false positives prompted a second, targeted scan for the 11ac *shape*: **1 instance in the
+whole app**, out of 85 multi-line text nodes after a closing tag.
+
+**Fixed** with literal apostrophes and confirmed in a fresh build:
+`Valuation Score"})," — how far today’s price has pu`. Guarded by
+`e2e/jsx-entity-space.spec.ts`, which bans the shape across `components/` and `app/`,
+**broken on purpose first** (restoring one `&apos;` fails it and names the file and line).
+It carries two controls — the file walker must find files, and the detector must find the
+shape somewhere — because a broken detector reports exactly what a clean codebase reports.
+Comments are stripped, including the one in `OnboardingModal.tsx` pointing back at the
+spec: the fourth time this repo has had to do that.
+
+### Verified — what came back clean
+
+- **464 article figures re-asserted: 0 failed.** `consistency.py`: ALL PASS.
+- **The 8 claims `audit_coverage.py` reports as unasserted, re-derived by hand** against the
+  frozen study. Every one holds: GPT Group fell **93.15%** and is **18.5%** below its 2007
+  peak nineteen years later; Lendlease **−83.22%**; Nike **−50.33% / −76.72%**; Oracle
+  **−55.55%**, Intuit **−50.09%**, Intel **−35.31%**; Nvidia **−3.51%**, Microsoft
+  **−8.04%**, Apple **−8.62%**, Amazon **−10.77%**, Meta **−27.55%**, Tesla **−28.87%**,
+  Broadcom **−24.82%**; Vistra up **162.0%** then **−36.13%**; and *"fourteen of the fifty
+  largest more than 20% below"* measures **exactly 14**.
+  ⚠️ My first pass disagreed on two of them because I compared against the highest **close**;
+  the articles' second column is the highest **intraday high** since 2000. Read the
+  definition out of `assert_all.py`, don't infer it from the column heading.
+- **Every link on the public site: 31 distinct, all 200.** 12 Learn slugs, 5 articles, 8
+  chrome routes, and the two `?next=` variants. ⚠️ **There are ZERO external links** — the
+  only outbound URLs anywhere in public content are `accounts.google.com` and the Resend API
+  endpoint, both infrastructure. Sourcing is handled by the owner's spot-check list rather
+  than on the page, which is a decision worth being aware of rather than a defect.
+- **A mechanical proofing sweep over the RENDERED prose of all 25 public pages** — double
+  spaces, repeated words, missing spaces after punctuation, stray entities, unbalanced
+  brackets, doubled punctuation. **No defects.** ⚠️ Its two hits were both instrument
+  failures: *"864 companies.Which ones"* is an `<h1>` with a `<br/>` that `textContent` drops,
+  and every "US spelling" flag was the word **licensed**, which is correct Australian usage.
+- **Apostrophes are split by surface, and it is coherent**: the reading pages use curly
+  (`&rsquo;` ×103, plus literals), the UI chrome uses straight (`&apos;` ×52). Measured and
+  left alone — a house-style question, not a defect.
+- **The signed-in UI strings, swept from SOURCE** — 121 files, 445 candidate sentences,
+  checked for double spaces, repeated words, missing spaces after punctuation, doubled
+  punctuation, stray entities and US spellings. **2 flags, both false positives** (a CSS
+  `rootMargin` and a correctly-rendering `&amp;` in a JSX text node). ⚠️ **This is the
+  weaker check and is recorded as such**: reading source cannot see a space the compiler
+  drops, which is exactly the defect 5A-133 turned out to be. The signed-in product cannot
+  be rendered without an entitled session, so the rendered sweep stops at the public pages.
+- **The three legal constants** (25/day, 30-day deletion, 3-day grace) still match their
+  code, via `legal-doc.spec.ts`.
+
+### What P5 did NOT do — said plainly
+
+**Nobody has read the 25 pages word by word.** The mechanical layer is clean and every number
+is re-derived, but CLAUDE.md is explicit that prose defects are found by reading and by
+nothing else — the owner found a missing space that every test agreed was present (11ac).
+**That read-through is the owner's step, and this pass does not stand in for it.**
+
+
 ---
+
+## P5 · the follow-ups the owner ruled on — 2026-09-05
+
+### 5A-134 🟠 · The SUCCESS half of 5A-102 — ✅ FIXED the same day
+
+Closing the danger half surfaced its mirror. **Six** of the same screens paint their
+confirmation state — the *"Saved"* tick on `ProfileForm`, `PasswordForm`,
+`UpdatePasswordForm`, `SignupForm`, `ContactForm` and `ReferAFriendCard` — in
+`--c-tier-2`, the **Constructive** rating green. `CsvImport`'s tone map is the clearest
+statement of it: `warn` moved to `--status-warning` in P2, `error` moved to
+`--status-danger` today, and `ok` still reads `var(--c-tier-2)`.
+
+Identical defect, one hue over: retune *Constructive* for a rating reason and every
+"Saved" tick on the product moves with it.
+
+**✅ FIXED 2026-09-05 — owner-approved once it was put to them as its own question.**
+`--status-success` + `-ink` / `-tint` / `-tint-strong`, values identical to the rating’s,
+nothing moved on screen. **Nine sites**, and two of them are the interesting ones:
+`.upload-zone.upload-valid`, whose *warning* and *error* siblings were already on the
+status palette, and the run’s **Scored** chip, sitting beside a **Skipped** chip that
+moved in P2. **A migration that leaves one member of a pair behind makes the set less
+legible, not more** (11c-iv) — neither was on the original list, and both were found by
+asking what each migrated token sits next to.
+
+**Deliberately NOT migrated:** the green ticks in `UpgradeDialog` and `SignupForm`’s plan
+list. Those are marketing marks, not a report on something the reader just did.
+
+⚠️ **Note how the finding arose: closing the first half is what made the second visible.**
+Nothing in the audit had named it, and no guard could have — the two halves look identical
+on screen and the wrong one is invisible while the values agree (5A-057).
+
+⚠️ **The guard covers 5 of the 9 and says so.** `e2e/status-danger.spec.ts` matches
+`role="alert"` and `role="status"`; three success sites are whole confirmation panels
+carrying neither, and `CsvImport`’s is a TypeScript tone map. Widening it to *any* element
+naming a rating token would flag the rating surfaces themselves, which is how a guard gets
+loosened rather than obeyed (11t). Both halves proven red by sabotage.
+
+### 5A-135 🟡 · A price change painted in a rating colour — ✅ FIXED 2026-09-05
+
+`StockHeader` colours the daily price change `--c-tier-2` when up and `--c-tier-5` when
+down. Those are **rating** tokens used as **direction** — exactly what `lib/ink.ts`
+forbids in its own header (*"DIRECTION colours, not RATING colours… separate on
+purpose"*), and `INK.up` / `INK.down` and `--c-down-ink` (5A-058) already exist for it.
+Same family as 5A-079.
+
+**✅ FIXED 2026-09-05, owner-approved.** `INK.up` / `INK.down`, the pair every other
+direction figure on the page already used — EarningsHistory, DividendHistory,
+BalanceSheet, QuarterlyFinancials, AnalystTargetTrack. The header was the consumer that
+never received the rule (11c-iv). Measured before switching: up 5.31 → 5.90 on white,
+down 9.51 → 6.68, both clear of the 4.5 floor.
+
+⚠️ **Grepping the file found two more of the same class, three lines apart** — the
+rule that one instance in a file means you sweep the file before leaving it (11c-x).
+Upside-to-target also picked a rating token for its UP case (its DOWN case stays
+`--analyst-downside`, a deliberate grey: a price above the analyst target is not bad
+news, and repainting it was not mine to do — 11l). And the "data is fresh" pulse dot wore
+`--c-tier-2` while its halo was a hand-typed rgba of the **pre-2026-08-22** green, a
+colour the palette stopped using a fortnight ago; both now derive from
+`--status-success`.
+
+⚠️ Guarded by `e2e/direction-not-rating.spec.ts`, and the guard's shape is the point:
+**a test against zero IS a direction question** — there is no reading of `x >= 0 ? a : b`
+under which the answer is a five-tier verdict on a company — so the rule is derived from
+the code's own shape rather than from a hand-written file list. It needs **no exception
+list**, and that is load-bearing: the sweep found exactly two offenders and fixing both is
+what kept an allow-list out of the file (11t).
+
+⚠️ And a sixth instance of the oldest trap here: `check:tier-palette` scans source
+**with comments**, so writing the old hex into the explanatory comment failed the build.
+Reworded rather than teaching the guard to strip comments — a naive stripper would cut at
+the `//` inside a URL and could hide a real literal after it on the same line.
+
+
+---
+
+## P6 · not-the-screen — 2026-09-05
+
+The pass for everything a customer meets that nobody ever looks at: the downloadable
+report, the transactional emails, the tags a crawler reads, robots/sitemap/canonicals,
+and the security headers **in production** rather than on a preview.
+
+⚠️ **Why this pass finds things every other pass cannot.** Every surface here is
+invisible on a screen. An email is rendered inside somebody else's inbox; a share card is
+assembled by somebody else's crawler; the report is a file that leaves the building. So a
+defect in any of them errors nowhere, looks like nothing, and is discovered by a customer.
+Nine were found. **Seven had zero test coverage of any kind**, and the two that did were
+covered by a guard that could not see the defect (14g).
+
+⚠️ **What could NOT be checked, stated rather than implied.** The 13 **Supabase auth**
+templates — confirm signup, reset password, magic link, email change — are not in this
+repo. I tried both connectors rather than assuming (11af): the Supabase connector **works**
+and simply has no tool that reads auth email templates, and Resend's API log shows one
+email ever sent from this account (a health check), because Supabase relays over SMTP and
+that does not appear in the API's `/emails` listing. So they are an **owner-side check**:
+trigger a real password reset to a real inbox and read what arrives.
+
+### 5A-136 🔴 · The welcome email's plain-text half sent new subscribers to an empty page — ✅ FIXED
+
+The trial-started email's HTML button says `/stocks`; its plain text said `/results`.
+The comment directly above the button explains why it cannot be `/results` — *"Results is
+empty until a screen has been run, so a brand new subscriber clicking Start exploring
+would land on nothing (F3 Step 10)"*. **The fix reached one of the two copies.**
+
+⚠️ **Every email in this codebase is written twice**, once as HTML and once as plain
+text, by hand, and nothing compared them. That is CLAUDE.md 11c with the two copies inside
+one function — close enough to read together and far enough apart to drift. The guard is
+therefore MECHANICAL as well as named: `e2e/email-render.spec.ts` asserts that every
+destination the HTML offers also appears in the text, in **one direction only**, because
+text legitimately spells out URLs that HTML hangs on words. A two-way check would fail on
+correct emails and be loosened within a week (11t).
+
+⚠️ **I reported that nobody had met this, and I was wrong — corrected the same day.**
+Resend's API log lists **one** email ever sent from this account, so I concluded the defect
+was still theoretical. The owner's own inbox holds the trial-started, trial-ending,
+payment-failed, payment-recovered and referral emails, **really delivered on 24 and 31
+July**, `/results` and all. Resend's `/emails` endpoint simply does not return them.
+**An instrument's silence is not the absence of the thing** (14g) — and the correction cost
+one search of the mailbox those emails were addressed to. Two instruments were available,
+and I believed the one that could not see.
+
+### 5A-137 🟡 · Every transactional email's footer was a run-on sentence — ✅ FIXED
+
+*"© MajorCycle provides educational information only — not financial advice."* A
+copyright symbol glued onto a sentence that is not a copyright notice, with no year, in
+all seven emails plus the contact notification. Now two sentences, and **the year is
+computed** — a literal would be correct today and wrong on 1 January, silently, in a file
+nobody opens in January.
+
+⚠️ Found by rendering the emails and **reading** them, which had never been done. The
+markup is valid and the email renders; there is nothing for a machine to object to.
+
+### 5A-138 🟠 · A server action was compiled into the file customers download — ✅ FIXED
+
+`ReportDocument` → `KpiStrip` → `PremiumLock` → `UpgradeDialog` → `SupportDialog` →
+`ContactForm` → `app/(public)/contact/actions.ts`. That last file is `'use server'`, and
+esbuild compiled all of it into `report.js`: the Resend endpoint, the from/to addresses,
+and a live `process.env.RESEND_API_KEY` read, inside a 1 MB document any subscriber can
+download and open.
+
+⚠️ **Nothing was ever exposed.** esbuild left the read as a runtime lookup and the
+`process` shim makes it `undefined`. **That is the finding, not the mitigation**: the
+safety was somebody else's default, which is CLAUDE.md 11a for the sixth time. One
+`define` entry — the obvious way to silence a `process.env` warning — bakes a live API
+key into a public artifact.
+
+⚠️ **And it is dead code.** `check-report-sections.mjs` says so in its own comment: the
+report refuses an unentitled viewer before any data is built, so a lock can never render
+inside one. The whole chain was weight and risk for no output. **This is 11d's exact
+import chain, one link further along** — the same four components that once shipped a
+blank report for four days.
+
+**Fixed by class, not by exclusion**, the same argument as the `process` shim beside it:
+an esbuild plugin turns any module whose first statement is `'use server'` into throwing
+stubs, so the *next* server action to arrive three components away is neutered on the day
+it arrives. `assertNoServerCode()` then re-reads the **emitted file** — the artifact,
+never the source (11d) — and refuses to ship on any `process.env` read outside Next's own
+internals. Proven both ways: removing the plugin fails naming all three variables, and the
+control (the report's own components must still be present) fired *immediately*, because
+my first two needles were in the HTML wrapper rather than in `report.js` and matched
+nothing at all — the check would have been vacuous in both directions.
+
+**Verified on the artifact, in three states**, since a stub that breaks the report would
+look exactly like a stub that works: AAPL, **BHP.AX** (prices AUD, statements USD) and
+**AVB** (the quote-basis withholding of 11as). All three mount from `file://`, throw
+nothing, draw 190–214 chart elements, carry the disclaimer, and behave correctly — BHP
+shows `A$` prices beside `$` statements *and* the reporting-currency note; AVB correctly
+shows **no** 52-week gauge and **no** upside-to-target.
+
+### 5A-139 🟡 · Every article named a publisher that did not exist on the page — ✅ FIXED
+
+`articleJsonLd` gives `author` and `publisher` as `{"@id": ".../#organization"}`, and the
+Organization node holding that id is emitted **only on the landing page**. JSON-LD `@id`
+resolution is per-document, so on all 17 article and Learn pages both properties pointed
+at nothing in the page's own graph.
+
+Fixed with `articlePageJsonLd()` — a **function**, not a line added to each page, because
+the two callers were written weeks apart and the second would have inherited whichever
+version its author remembered (11c-iv). The guard asserts the general rule (**no reference
+in a graph may name an id the graph does not define**) rather than "an Organization node
+is present", so it catches the next one of the same shape.
+
+### 5A-140 🟡 · Seventeen written pieces declared themselves generic web pages — ✅ FIXED
+
+`og:type: website` on every Learn and Articles page, with no `article:published_time`.
+That tag decides whether a URL is treated as a document with an author and a date or as a
+page of a site, and **both dates already existed in the two registries**. Stated once in
+`pageMetadata()` so a third section gets it free.
+
+### 5A-141 🟡 · The sitemap had no dates, and its own comment said it did — ✅ FIXED
+
+`sitemap.ts` has stated since G1 that *"when G4 adds articles they carry their real
+publication dates"*. G4 shipped, seventeen pieces went live, and the field was never
+added — every URL went out bare. **A correct sentence describing half-built work is the
+11ae trap**: it converts an open question into a closed one, so anyone checking whether
+dates were handled would read that line and stop.
+
+The date is the registry's `reviewed`, and the guard fails in **both** directions: too few
+is the defect that happened, too many is `new Date()` on every page — the cry-wolf sitemap
+the field was originally omitted to avoid. Proven by sabotage at 8 and at 25 against 17.
+
+### 5A-142 🟠 · The contact form could inject markup into an email from our own domain — ✅ FIXED
+
+`renderBrandEmail` drops the preheader straight into a `<div>`. The contact action escaped
+the **body** and passed the **preheader** raw, so a name of
+`Ayaat</div><a href="…">Click here</a><div>` put an arbitrary link into a message
+arriving from `support@majorcycle.com`.
+
+⚠️ `referralEmails.ts` gets this right and **its comment even says so** — *"escaped,
+for HTML body + preheader"*. The rule existed, was written down, and this caller never
+received it (11c-iv). Guarded with a control proving the name is **escaped rather than
+stripped**, since deleting it would satisfy every negative assertion.
+
+### 5A-143 🟡 · The contact form had no length limit on either side — ✅ FIXED
+
+No `maxLength` on any of the three fields, and no server-side cap either, so one POST
+could carry an arbitrarily large name into an email subject. Its sibling `sendReferral`
+has capped its name at 80 since F2. Now bounded on the server (80 / 254 / 4000) with the
+client attributes as a courtesy, and control characters — **including interior newlines,
+which `trim()` does not touch** — stripped from anything reaching a header.
+
+⚠️ **Labelled as defence in depth, not as a demonstrated hole.** `name` reaches Resend
+as a JSON string in a `subject` field and Resend encodes the header itself; I could not
+produce an injection. Recording an unproven claim as a fix is worse than recording the
+gap.
+
+⚠️ **And the same fix went to the OTHER caller**, without being asked to. `sendReferral`
+puts a user-supplied name into an email subject too, four files away, and `.trim()` does
+not touch an interior newline there either. Fixing one of two callers that do the same
+thing is the exact defect this repo keeps paying for (11c-iv) — it would have been
+peculiar to write that sentence about the preheader and then leave its twin alone.
+
+### 5A-144 🟡 · HTTPS enforcement is Vercel's default, not ours — ⏸ OWNER: LEAVE
+
+`Strict-Transport-Security: max-age=63072000`, with **no `includeSubDomains`** and no
+`preload`. `next.config.ts` sets four security headers and HSTS is not among them — the
+header comes from Vercel. Same shape as 11a's "safe because of someone else's default".
+
+**Owner decided 2026-09-05 to leave it.** Extending it is a one-way door: browsers cache
+the directive for up to two years, so any future subdomain that is not HTTPS becomes
+unreachable. There are no subdomains today, and the live site is fully covered. Revisit
+when one is added — that is the moment, not before.
+
+### 5A-145 🟢 · DMARC is strict on purpose — ✅ OWNER RULED, and security.txt closed with it
+
+Found on the P6 **re-check** pass, by asking a question the first pass had not: *does mail
+from this domain actually get delivered?* Read off DNS and off Resend's own record, live.
+
+The good half, and it is genuinely good: the domain is **verified** in Resend, DKIM is
+published on the apex (`resend._domainkey`), Resend's SPF sits on `send.majorcycle.com`
+where the envelope sender lives, and `_dmarc` publishes **`p=reject`** — the strongest
+policy there is.
+
+⚠️ **The half worth a decision.** That record also sets `aspf=s` and `adkim=s` — *strict*
+alignment on both. Resend's envelope-from is `send.majorcycle.com` and our From header is
+`majorcycle.com`; under **strict** SPF alignment a subdomain does not match a parent, so
+**SPF alignment fails on every email we send**. DMARC passes only because DKIM aligns
+(`d=majorcycle.com`, exact). **That is one leg, not two.** Any hop that breaks a DKIM
+signature — a forwarding rule, a mailing list, some corporate gateways — leaves nothing
+aligned, and with `p=reject` the message is **rejected outright rather than junked**. On
+this site that is a password reset or a payment-failure notice.
+
+Relaxing to `aspf=r` would let the Resend subdomain align on SPF as well, giving a second
+independent leg. It weakens nothing real: relaxed alignment admits only subdomains of the
+domain you already control.
+
+**Owner ruled 2026-09-05: keep it strict.** *"I want it to be very strict. If a user
+doesn't get the reset email, they can simply email us."* That is the right trade for this
+product — every message we send is one-to-one transactional mail, which is the kind least
+likely to travel through a forwarder or a list, and the fallback is a support address that
+demonstrably works.
+
+⚠️ **Checked against Cloudflare's current documentation before confirming it, and the
+honest finding is that the docs do not take a side.** Cloudflare's DMARC pages define the
+mechanisms and say `aspf`/`adkim` are optional; they publish no recommendation on strict
+versus relaxed. So there is no best practice being broken here, and saying "the docs say
+we're fine" would have been an invention. What settles it is the measurement in 5A-148,
+not a citation.
+
+⚠️ Two owner-side checks that go with it, both cheap and both invisible from the repo:
+`rua`/`ruf` report to **`security@majorcycle.com`**, and `/.well-known/security.txt`
+publishes the same address — if Cloudflare Email Routing has no rule for it, we are
+publishing a dead security contact **and** silently discarding every DMARC report. The
+contact form's `support@majorcycle.com` is the same question with a customer on the other
+end. DNS shows Cloudflare routing is in place; whether these two addresses have rules is
+not visible from here.
+
+⚠️ **`security.txt` — ✅ FIXED the same day, structurally rather than by bumping a date.**
+It read `Expires: 2027-07-05`, and RFC 9116 makes the whole file *invalid* once that passes:
+a researcher who finds a real hole reads it, concludes we no longer accept reports, and goes
+elsewhere. Nothing looks wrong on the day it lapses. Date moved a year out **and**
+`pnpm check:seo` now fails the build **90 days before** it expires — bounded on both sides,
+because "set it to 2099" is the obvious way to silence the check while making the file
+non-conforming (RFC 9116 §2.5.5 asks for under a year). Proven both ways: a near date fails
+naming the days left, a far one fails naming the rule. A note in the file would have relied
+on somebody re-reading it in nine months; **when a trap depends on a human remembering,
+spend the minutes and make it mechanical** (11o).
+
+### 5A-146 🔴 · The SAME `/results` defect was live in THREE Supabase auth templates — ✅ FIXED
+
+Found on the second re-check pass, after the owner said to stop assuming the connectors
+could not reach them. Both routes were tried (11af). The **Supabase MCP connector works**
+and simply has no tool for email templates; **Resend's API log does not list SMTP-relayed
+mail**; so the templates were read two ways that do work — the owner's own **inbox**, via
+the Gmail connector, and the **dashboard itself** through the browser.
+
+⚠️ **5A-136 has three more copies, and they are the worst-placed ones.** The trial
+email's HTML button was moved off `/results` months ago because that page is empty until a
+screen has been run; its plain-text half was fixed today. **Three Supabase templates still
+send people there** — and none of them is a welcome note. All six Authentication templates
+were opened and read:
+
+| Template | `next=` | |
+|---|---|---|
+| **Confirm sign up** | `/results` | 🔴 the first screen a new account ever sees |
+| **Magic link or OTP** | `/results` | 🔴 every passwordless sign-in |
+| **Change email address** | `/results` | 🔴 |
+| Reset password | `/account/update-password` | ✅ |
+| Invite user | `/account/update-password` | ✅ |
+| Reauthentication | a code, no link | ✅ |
+
+The seven **Security** templates (password changed, email/phone changed, sign-in method
+linked/removed, MFA added/removed) are notifications with no destination link, so only the
+footer below applies to them.
+
+⚠️ **Note what makes this the purest example of 11c in the whole audit.** One rule — *"a
+new account must not land on an empty page"* — written in **five** places: an HTML button,
+a plain-text line, and three rows of somebody else's database. Fixing two of them changed
+nothing about the other three, and **no guard this repo can ever write will see them**,
+because they are not in the repo. The only instrument that reaches them is a person opening
+the dashboard — which is exactly what it took.
+
+### 5A-147 🟡 · The run-on footer was in the Supabase templates too, in two variants — ✅ FIXED
+
+5A-137 fixed `renderBrandEmail`, which covers the seven app emails. The 13 auth templates
+carry their own copy of that footer, and they **disagree with each other**:
+
+- Confirm sign up / Magic link / Reset password / Invite: `© MajorCycle provides
+  educational information only — not financial advice.`
+- Password changed: `© MajorCycle — Information only, not financial advice.`
+
+Neither has a year, both glue `©` to a sentence that is not a copyright notice, and now
+neither matches the app emails. **A customer receiving a password reset and a payment
+receipt sees two different footers from the same company.**
+
+**✅ BOTH APPLIED 2026-09-05, on the owner's explicit instruction** — *"Let's fix those
+three Supabase templates now. Do it yourself using claude in chrome… Check for all templates
+that we have set and fix all."* All **13** templates edited and saved in the live dashboard.
+
+⚠️ **How, and why not by typing.** Retyping ~3.5 KB of HTML into a code editor thirteen
+times is exactly how a typo lands in `{{ .TokenHash }}` and nobody can sign up. Instead each
+template's Monaco model was read, transformed in place by **string replacement only**
+(`next=/results` → `next=/stocks`, and the two footer variants → the canonical one), and
+written back — with the before/after counts returned for every single template, so each
+edit is a number rather than a screenshot. Every save was confirmed by the dashboard's own
+*"Successfully updated email template"*.
+
+⚠️ **And then verified from a tab that had never edited anything.** A save toast is the
+dashboard telling me what it thinks it did; the control is a **fresh page load in a
+read-only tab**, walking all 13 templates and counting. Result: **zero** `next=/results`
+anywhere, exactly **one** canonical footer in each, and **zero** of either old variant.
+That reads the server's stored copy rather than my session's in-memory model, which a
+re-check in the editing tab would not have.
+
+⚠️ **Two things the run itself taught.** The Security templates render **two** *Save
+changes* buttons — a disabled one in the sticky header and the live one in the dirty-state
+bar — and the first `find()` grabbed the disabled one, so `password-changed` reported the
+edit applied and **not saved**. A routine that had assumed success would have left it
+silently unsaved. And the dashboard **stops rendering after a burst of saves**: the page
+loads blank and Monaco never appears, recovering after about a minute. Both are the reason
+each template reports its own save state instead of the batch reporting one.
+
+### 5A-148 🟢 · DMARC — measured on a real delivered message, and it PASSES
+
+The owner asked whether the strict posture is right. Answered from their own mail rather
+than from reasoning, by reading the authentication headers Google stamped on a real
+`noreply@majorcycle.com` message (31 July):
+
+```
+dkim=pass  header.i=@majorcycle.com  header.s=resend
+spf=pass   smtp.mailfrom=…@send.majorcycle.com
+dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=majorcycle.com
+```
+
+So: **`p=reject` is live, and real mail passes it.** The mechanism is exactly as predicted
+— DKIM is signed `d=majorcycle.com` on the apex and aligns strictly; SPF passes as a
+*mechanism* but its domain is `send.majorcycle.com`, which under `aspf=s` does **not
+align**. DMARC needs only one, and DKIM is doing all the work.
+
+⚠️ **Owner decision, 2026-09-05: keep it strict.** Their reasoning, recorded because it is
+the right kind: *"If a user doesn't get the reset email, they can simply email us."* The
+residual risk is real but narrow — a hop that rewrites the body or strips the signature
+(some forwarders, most mailing lists) leaves nothing aligned, and `p=reject` then bounces
+rather than junks. We send only one-to-one transactional mail, which is the case least
+likely to be forwarded through a list.
+
+⚠️ And the check that turned out to matter more than the record: **`security@` and
+`support@` both really deliver.** `security@` has been receiving Google's DMARC aggregate
+reports since July, and `support@` receives the contact form. A `p=reject` policy reporting
+to a dead address would have been the actual defect, and it is not one.
+
+### 5A-149 🟢 · A production email carrying `http://localhost:3000` — and why it is NOT a defect
+
+The same raw message contains `Go to your account: http://localhost:3000/account`, in a
+real email in a real inbox. It was sent from the owner's **local machine** during F3
+webhook testing, where `NEXT_PUBLIC_SITE_URL` is localhost by design; production's canonical
+tags prove its origin is set correctly. **Recorded rather than "fixed" because chasing it
+would have been chasing my own test rig** (11aj) — but noted, because an email is the one
+surface where a wrong origin is invisible until a customer clicks it, and there is no guard
+that could tell the two environments apart from inside a test.
+
+⚠️ It did expose one real oddity, left alone deliberately: `brandEmail.ts` builds the
+header icon from `SITE_ORIGIN` (always production) while `format.ts` builds links from
+`NEXT_PUBLIC_SITE_URL`. So that email carried **two different origins**. In production they
+coincide; and for an email the icon *should* be absolute-production, or an inbox would
+render a broken image. Correct by accident is still correct — but now written down.
+
+### 5A-150 🟢 · `reference/email-templates.html` is now the only record of thirteen live templates
+
+The repository had a visual record of the **eight** emails the app sends — each one rendered
+exactly as it arrives, from the real `renderBrandEmail()` chrome. It opened by saying the
+Supabase auth emails *"are configured separately in Supabase and are not included here"*,
+which was true and is exactly the gap this pass found.
+
+Rebuilt 2026-09-05 to cover all **twenty-one**. The thirteen are shown the same way the
+eight are — their real HTML, pulled out of the dashboard, with Supabase's own
+`{{ .ConfirmationURL }}` / `{{ .Token }}` / `{{ .Email }}` filled in the way the existing
+previews use sample data. Nothing is paraphrased.
+
+⚠️ **Why this matters beyond tidiness.** Those thirteen templates exist in one place: a
+form on somebody else's website. There is no file to diff, no build that touches them, and
+no test that can read them. **This page is the only artefact in the project that records
+what they say.** If it drifts, nothing anywhere will notice.
+
+⚠️ **Three things it now states that it did not before**, each of which had hidden a real
+defect: the **plain-text destination** of every email (the record showed only the HTML half,
+which is precisely why the welcome email's broken text link was invisible on a page whose
+job was to show it); which of the thirteen **actually reach a customer today** (six — there
+is no phone sign-in, no two-factor and no invitation flow, so seven are configured and never
+fire); and that the two halves use **different card widths** (480px for sign-in, 600px for
+the app), which is deliberate and previously undocumented.
+
+⚠️ **Written as a description, not a changelog** — owner's instruction: *"I don't need a
+version control or anything. Just write down how it is set up and exactly how it will
+render."* The history lives here; the record states what is.
+
+### What P6 checked and found correct
+
+Recorded because 11aj cuts both ways — an audit that lists only its findings implies
+everything else was examined, and two of these were suspicions I had to measure away:
+
+- **Apex → www is already a `308`.** That merge-day item is done.
+- All five security headers **and the enforcing CSP** on every production page; every
+  gated route answering `307` with `private, no-store`; robots.txt with its AI-crawler
+  split intact; 25 sitemap URLs; canonicals, titles, descriptions, Open Graph and Twitter
+  tags correct on every page sampled.
+- **The share card is NOT stale.** I suspected it was — built 8 August, palette retuned
+  22 August, and the build script says it draws "from the real design tokens". Measured:
+  it uses brand navy and blue only, and decision #25 has not moved. No finding.
+- **The brand subtitle matches.** *"Financial Terminal"* on the card is the same string
+  `BrandLockup.tsx` renders. Also suspected, also fine.
+- Every number in every email derives from its real constant — `TRIAL_PERIOD_DAYS`,
+  `GRACE_DAYS`, `PRICE_TABLE`, `CURRENCY_SYMBOL` — asserted with off-by-one controls.
+- **No secret value** in the report bundle, before or after the fix.
+- **The downloaded report makes no network request — measured.** Opened from `file://`,
+  each of the three reports issues **one** request: the document itself. Zero off-site.
+  Fonts are inlined as data URIs and the charts draw locally, so the file has no reason
+  to reach out, and a stray URL would be invisible to the reader and perfectly visible to
+  whoever received the request — from a financial document, opened who-knows-where, years
+  later. Now asserted in `report-download.spec.ts` rather than assumed.
+  ⚠️ **Stated precisely: the PROPERTY is measured, the ASSERTION is not yet observed.**
+  That spec signs in with real credentials and therefore runs only in CI, so the new lines
+  have never been seen to pass or fail. A guard nobody has watched carries no information
+  (11p) — this one is proven on its first CI run, not before.
+- **CSV formula injection: measured, not present, and not the threat model.**
+  `csvField` does correct RFC 4180 quoting and has no guard against a leading
+  `=` `+` `@`, which Excel and Sheets evaluate as a formula. Across all **873**
+  rows, **zero** names, tickers, sectors or industries begin with one. And the shape
+  of the feature is wrong for the classic attack: a reader downloads the screen
+  *they* ran, so there is no path for one person to place text in another's file.
+  ⚠️ Left alone deliberately. The naive fix — prefix every field with an
+  apostrophe — would break **every negative number** in the export, which is a real
+  defect traded for a hypothetical one. Recorded so the next session does not
+  re-derive it (11aj).
+- **Mail is correctly authenticated.** The Resend domain is verified, DKIM is on the
+  apex, and Resend's SPF sits on `send.majorcycle.com` where the envelope sender
+  lives — the apex SPF pointing only at Cloudflare's inbound routing looked like a
+  finding and is not, because SPF is evaluated against the envelope, not the From
+  header. What IS worth a decision is the alignment mode: 5A-145.
+- **The security.txt is valid** — RFC 9116, contact, canonical, `Expires` ten months
+  out. Its renewal is the thing to watch, not its contents (5A-145).
+- **Every one of the seven emails has a live caller.** An email nobody sends would be
+  the same class of defect as one nobody reads; all seven are wired.
+
+⚠️ **Two things I nearly reported were my own test's fault**, caught before writing:
+*"update your details within the next `undefined` days"* (I omitted a required argument)
+and a wrong deletion date (I used the wrong parameter name). And a third: my first price
+assertion typed `CA$` from memory and went red on a **correct** email — the subscription
+symbol is `C$`, from the same map `/pricing` renders. The assertion now imports the table
+instead of restating it (11c-iii).
+
+⚠️ One nit recorded and NOT changed: the product spells Canadian dollars `C$` for a
+subscription and `CA$` for a stock price. Both are real conventions, they sit in different
+domains (decision #13 separates them), and no screen shows both. Not worth a repaint.
 
 ## Findings ledger
 
@@ -808,7 +1791,7 @@ code review would ever surface.*
 | **5A-013** | P5a | 🔴 **LIVE on the landing** | `/` landing | **The two snapshots have drifted 18 days apart, and Apple is in BOTH.** `landing-snapshot.json` is rebuilt and committed by the nightly cron (`asOf 2026-08-31`); `mag7-snapshot.json` is deliberately frozen and is in **no** workflow (`asOf 2026-08-13`). So the live page prints Apple at **−11.3%** in the ranked table and **"8.0% below its high"** three screens later — both correct for their own date, on one page, about one company. This is CLAUDE.md **11k** verbatim (*"two snapshots describing the same subject must carry the same date"*), and P0 recorded them as agreeing because on 31 Aug they did — **the cron moved one of them that night**. Verified on the wire at `www.majorcycle.com`, not from source | **FIXED 2026-09-01.** The two worked examples are now on ONE lifecycle — both frozen, regenerated by hand together. The cron rebuilds only the new `universe-count.json` (a fact, which must never be stale). ⚠️ **The guard already existed and could not fire:** `landing.spec.ts:266` has always asserted the two share an `asOf`, but the cron commits with `[skip ci]`, so CI never ran on the commit that broke it. Running CI nightly is the wrong trade (Actions minutes); **taking the snapshots out of the cron's reach is the right one — a guard cannot cover a write committed past it.** ⚠️ Timeline, corrected: the nightly rebuild step reached `main` only on 31 Aug and first executed on 1 Sep, so the drift was ~10 hours old, not 18 days (14g, in both directions) |
 | **5A-014** | P5a | 🔴 **Blocks the 5A-013 fix** | `/` landing | **Regenerating the frozen snapshot is not a mechanical fix — it breaks the page's ARGUMENT, not just its numbers.** Re-derived on 2026-09-01: two tiers move (AAPL Constructive→Neutral, NVDA Neutral→Constructive) and, decisively, **the deepest faller changes from TSLA to META**. The "second question" paragraph is computed by `mag7Facts()`, so it would auto-substitute Meta and read *"Meta has fallen furthest — 27.4% — and still comes second… that's exactly the trap… the biggest discount belongs to the weakest business on it."* **Meta is the 2nd-best-rated company with Health 79.6.** The sentence stays fluent and becomes self-contradicting. ⚠️ **The new lesson, beyond 11k: computing a figure from data protects the FIGURE, not an argument built on a relationship BETWEEN figures.** The old data had one company that was both deepest faller and weakest business; nothing preserves that coincidence, and no guard can see its loss | **FIXED 2026-09-01, owner-approved copy.** Rewritten to state what the numbers now say — Meta and Tesla fell 27.4% and 26.2%, ranked second and seventh — which is a *stronger* illustration than the old coincidence: a controlled comparison instead of one example. ⚠️ **It also fixed a latent bug the old wording hid:** the sentence read *"{deepestFall} … ITS Financial Health is {weakest.healthScore}"*, which was only ever correct because those two rows were the same company; on the new data it would have printed Tesla's 49.8 under Meta's name. Guarded by `e2e/landing-copy.spec.ts`, which asserts the PREMISE (different companies, falls within 5pp, ≥3 places and ≥15 health points apart) with controls proving each assertion can fail |
 | **5A-012** | P0 | 🟠 **Plan gap** | executability | **The plan could not have been executed by anyone else.** No URLs, no credentials, no commands, and every data edge case named in the abstract with no ticker attached. Now an **Execution guide**: the three surfaces and how to start each, named tickers for all seven edge cases, how to reach each of the 14 states (and the four that are unreachable by ordinary use), the command list, and what each connector can answer | **Fixed 2026-08-31** |
-| **5A-011** | P0 | 🟡 **New edge case** | `/stocks/*` | **A fourth market exists: `market='index'`** (`^GSPC` `^AXJO` `^GSPTSE` `^IXIC`). Browse and peer medians exclude it explicitly; nothing in the plan checked that the URLs refuse. Also newly named: retired stocks are **absent from Browse but resolve at their URL** (both halves need checking), and `.V` tickers **keep their suffix** in the URL | Open — P1/P4 |
+| **5A-011** | P0 | 🟡 **New edge case** | `/stocks/*` | **A fourth market exists: `market='index'`** (`^GSPC` `^AXJO` `^GSPTSE` `^IXIC`). Browse and peer medians exclude it explicitly; nothing in the plan checked that the URLs refuse. Also newly named: retired stocks are **absent from Browse but resolve at their URL** (both halves need checking), and `.V` tickers **keep their suffix** in the URL | **Closed 2026-09-05 — all three halves checked in P4.** `/stocks/index/^GSPC` refuses (one of ten bad URLs, all refusing); both retired tickers resolve at their URL and are absent from Browse, showing the DelistedNotice; `AE.V` renders at `/stocks/ca/AE.V` while `/stocks/ca/AE` 404s |
 | **5A-010** | P0 | ✅ **Plan correction** | edge cases | **"A stock with no fundamentals" does not exist** — 0 rows of 871. Checking it would have produced a tick for a case that cannot occur. Removed | **Fixed 2026-08-31** |
 | **5A-009** | P0 | ⚠️ **My error** | the manifest | **I recorded the CONTAINER and called it the contents — twice.** Viewer states listed as **9**; there are **14** (I omitted `unpaid`/`paused`/`incomplete`/`incomplete_expired` — which ARE finding F-005 — and `billing_blocked` entirely, while the Layer F audit's 14-state matrix was already in our docs). Stock Detail listed as **5 anchors**; those hold **23 analytical sections**, and deleting one leaves its anchor rendering perfectly. Both would have produced a green P1 over things never examined. Found by asking `check-report-sections.mjs` and `lib/entitlement.ts`, not by re-reading the manifest | **Fixed 2026-08-31** |
 | **5A-008** | P0 | ⚠️ **My error** | the manifest | **P0's first version used the approved artifact for ONE page and the source code for the other twelve.** The artifact is a deck of **eight** approved pages with a shared chrome; I extracted only its rendered text, having stripped the `<script>`/`<style>` blocks — where the design system lives — and reported it "read in full". Deriving pages from code answers *what it does*, never *what was approved* (11j). Manifest revised: shared chrome added, approved copy added for all seven other deck pages | **Fixed 2026-08-31** |
@@ -852,7 +1835,7 @@ code review would ever surface.*
 | **5A-051** | P2 | 🔴 **The site speaks TWO colour languages for one number** | sitewide | This is 5A-041 generalised, and it is the root of it. A drawdown is coloured by **two different conventions that both ship**: (1) the *cycle* convention — deeper fall = greener, because a deeper fall is more cyclically attractive — which paints the landing's worked run (`−25.1%` and `−31.8%` GREEN, `−4.6%` ORANGE) and the KPI ramp; and (2) the *plain* convention — a negative number is red — which paints Drawdown Analysis (`CURRENT −5.6%` RED) and every other change figure. **Both are defensible. Together they are not**, because the reader has no way to know which one a given red or green belongs to. ⚠️ The clearest single expression is the header, where the same `−5.6%` is green beside a 52-week bar whose own gradient puts the marker in the orange zone | **Closed 2026-09-02** — one colour language; raw numbers uncoloured |
 | **5A-052** | P2 | 🟢 **The delisting banner is right** | Stock Detail | Measured on `BK`: text `#8B1414` (tier-5 ink) on `rgba(178,34,34,.10)` with a matching left rule — *“Bank of New York Mellon Corp no longer trades. Every figure below is frozen at 23 Jul 2026 and is not current.”* Red is the correct reading here (the figures are stale and must not be acted on), it reuses the rating tokens rather than inventing a colour, and it is the owner's own ruling from F-035. Its tint is on the pre-August red, which is 5A-044 and not a separate finding | **Pass 2026-09-02** |
 | **5A-053** | P2 | 🟢 **The public pages are consistent — and are the one place the palette behaves** | `/`, `/pricing`, `/learn`, `/articles` | Every semantically-coloured element on `/pricing`, `/learn`, `/articles` and the long articles is **brand blue or navy** — no rating colours, no direction colours, nothing to misread. The landing is the only public page carrying the rating palette, and its usage is internally coherent: *High Conviction* green, *Healthy* green, *Adequate* grey, *Reasonable* grey, *Elevated* orange, *Expensive* / *At Risk* / *Bearish* red, and the tier chips coloured by their own tier. **It is also the page that makes 5A-051 visible**, because it prints deep drawdowns in green | **Pass 2026-09-02** |
-| **5A-054** | P2 | 🟡 **A real figure painted in the “no data” grey** | `/articles` | In the ranked market table the **S&P 500 row** (`−18.9%`, `−19.2%`) is drawn in `--text-muted` — the same token a **missing** value uses — while the ASX row is brand blue. It is a deliberate series colour in `FallByMarketFigure`, so it is not a bug; it is the third meaning now loaded onto one grey (5A-043: *middling*, *no data*, and now *the comparison market*). Small on its own, and it belongs in whatever decision comes out of 5A-043/5A-046 | Open — owner's call |
+| **5A-054** | P2 | 🟡 **A real figure painted in the “no data” grey** | `/articles` | In the ranked market table the **S&P 500 row** (`−18.9%`, `−19.2%`) is drawn in `--text-muted` — the same token a **missing** value uses — while the ASX row is brand blue. It is a deliberate series colour in `FallByMarketFigure`, so it is not a bug; it is the third meaning now loaded onto one grey (5A-043: *middling*, *no data*, and now *the comparison market*). Small on its own, and it belongs in whatever decision comes out of 5A-043/5A-046 | **RE-MEASURED 2026-09-05 — the finding was half wrong about WHERE, and the answer is "it does not matter to a reader."** It is not in the ranked table, which draws all three market rows in `--text-primary`; it is the featured card's LINE FIGURE, and only on `/articles` — `FIGURES` is consumed by the index page, never by the article itself, so I spent a first pass measuring a page the figure is not on (11aj). Measured there: the S&P line and its two labels are `#626B77` against a `#F0F4F8` ground, **~4.9:1 — above the 4.8 floor** and plainly legible beside teal at 5.95 and brand blue at 6.49. ⚠️ **And the second meaning is not on this page at all**: `--data-missing` renders only in the signed-in results table, so no reader can meet both greys together. Screenshot before/after with `--text-secondary` shown to the owner; the difference is barely perceptible. **The residual is maintenance, not appearance** — the figure BORROWS a text token, so retuning `--text-muted` for a legibility reason silently moves a chart series (5A-059's argument). Owner: *"Leave the colour. Rename it."* | **CLOSED 2026-09-05** — `FIGURE_NEUTRAL` in `lib/ink.ts`, beside `FIGURE_TEAL`, same value (`#626B77`), no longer borrowing a text token. Zero visual change; the figure can no longer be moved by a readability edit to `--text-muted` |
 | **5A-055** | P2 | ⚠️ **Instrument — the tenth probe defect, and it reported a CLEAN SITE** | method | A stray early `return` inside the colour probe meant it exited on the first element with children, i.e. `<html>`. It returned **zero coloured elements for `/account` in all ten states, for the delisting banner and for all four public pages** — and every one of those printed as an unremarkable empty result. **A broken instrument reports exactly what a clean system reports** (14g), and this one did it across sixteen pages at once. Fixed by making the probe return its **scan count** alongside its hits, so a zero that comes with a zero scan is refused rather than believed. **Ten probe defects in this sweep now**; the two most recent both produced *false clean*, where the first seven produced *false defect* | Recorded |
 | **5A-056** | P2 | ⚠️ **NOT DONE — `/results` was not driven to completion** | `/run`, `/results` | Three attempts on the live site with an entitled throwaway. The basket picks and the real submit control (*“Run Analysis · 7”*) clicks, but the run did not reach a rendered results table inside four minutes, and I will not report a surface I did not see. ⚠️ **What IS covered, and why it is not nothing:** the landing's worked run deliberately reuses the product's own `ResultsTable` classes and helpers (`compositionRamp`, `healthColor`, `metricTintColor`) precisely so the two cannot drift (11m), so the results **colour vocabulary** was measured on the landing — score chips in all five tiers, the three-tier Health ramp, the five-tier Valuation ladder and the drawdown tint. **What is NOT covered is the live page**: column tints, zebra striping, the Opportunity Map's own bands, the export buttons and the skipped-ticker strip | **Closed 2026-09-03** — driven end to end on the Vercel preview; /results rendered 7 rows |
 | **5A-057** | P2 | 🔴 **Four groups of tokens hold the SAME colour today — the wrong one is invisible** | palette | Owner-named class: *“if 2 variables has the same color and you are using the wrong one, you won't be able to figure out what is right or wrong.”* Extracted every token from `globals.css` + `lib/ink.ts` and grouped by value. **Three collisions put the RATING palette and the DIRECTION palette on one value**, which `lib/ink.ts` explicitly forbids in its own header (*“separate on purpose”*): `--c-tier-4` **==** `--c-warn-ink` **==** `INK.warn` = `#C73600`; `--c-tier-3-ink` **==** `--c-neutral-ink` **==** `INK.neutral` = `#6B6266`; `--c-tier-5` **==** `--c-tier-5-ink` = `#8B1414` (the doc even notes it). A fourth is benign: `--brand-mid` == `--c-brand-ink` == `INK.brand`. ⚠️ **Nothing can detect a wrong choice while the values agree** — not review, not a screenshot, not a guard. The bug is created the day one of them moves, and it lands on whichever surface picked the wrong name months earlier | **Closed 2026-09-02** — a domain per job, each independently re-pointable |
@@ -1501,7 +2484,7 @@ others. A shared *value* is fine; a shared *name* is the defect.
 ## The revised pass order
 
 ~~`P5a` re-derive the landing's 16 figures~~ ✅ → ~~`P1` renders + compliant~~ ✅ **DONE 2026-09-02** → `P2` colour →
-`P3` interaction → `P4` data edge cases → `P5` remaining content, copy, links →
+~~`P3` interaction~~ ✅ → ~~`P4` data edge cases~~ ✅ → ~~`P5` content, copy, links~~ ✅ **DONE 2026-09-05** →
 `P6` not-the-screen → `P7` the three unrun gates + a11y regression → `P8` 375px public
 
 **Am I 100% happy now?** With the plan, yes — every set in it is derived from something

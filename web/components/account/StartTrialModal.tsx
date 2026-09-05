@@ -225,7 +225,7 @@ export function StartTrialModal({
             </Button>
 
             {error && (
-              <div className="mt-3 flex items-start gap-2 text-[12.5px] text-[var(--c-tier-5-ink)]">
+              <div className="mt-3 flex items-start gap-2 text-[12.5px] text-[var(--status-danger-ink)]">
                 <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2} aria-hidden />
                 <p>{error}</p>
               </div>

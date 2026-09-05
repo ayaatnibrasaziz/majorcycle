@@ -38,9 +38,9 @@ interface Preview {
 }
 
 const PREVIEW_COLOR: Record<Preview['kind'], string> = {
-  ok: 'var(--c-tier-2)',
+  ok: 'var(--status-success)',
   warn: 'var(--status-warning)',
-  error: 'var(--c-tier-5)',
+  error: 'var(--status-danger)',
 };
 
 export function CsvImport({

@@ -81,7 +81,7 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Valuation History — P/E Ratio
           <InfoTip title="P/E Ratio history">
             P/E (price-to-earnings) is the share price divided by earnings per share —
@@ -89,7 +89,7 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
             expensive. Plotting it over time shows whether the stock looks cheap or
             pricey versus its own past.
           </InfoTip>
-        </div>
+        </h3>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           Is the stock cheap or expensive vs its own history?
         </div>

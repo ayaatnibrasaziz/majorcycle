@@ -203,6 +203,19 @@ Stated so silence is not mistaken for a clean bill:
 - **The offline report artifact.** `report-download.spec.ts` is one test. Per 11d it is the
   right *kind* of test — it opens the built file over `file://` — but one is one.
 - **Data edge cases** (nulls, cross-currency, missing fields). Layer 4.
+- ~~**Everything that is not a route.**~~ ✅ **Closed by P6, 2026-09-05.** This map has
+  three dimensions — routes, viewer states, Python modules — and every one of them asks
+  about something *reachable from a URL*. Four whole surfaces therefore sat outside its
+  field of view and were reported as neither covered nor uncovered: the **seven
+  transactional emails** (zero tests of any kind since Layer F), the **tags a crawler
+  reads**, **robots/sitemap**, and the **production response headers**. P6 found nine
+  defects across them.
+  ⚠️ **The lesson is about the instrument, not the gap.** A coverage map indexed by
+  route cannot report a surface that has no route — it does not show it as a hole, it
+  simply never mentions it, which reads exactly like coverage (14g). Four specs now cover
+  it: `email-render.spec.ts`, `jsonld.spec.ts`, `direction-not-rating.spec.ts`, and the
+  network assertion added to `report-download.spec.ts`. **Ask what a map is indexed BY
+  before trusting what it says is missing.**
 
 ---
 
@@ -563,6 +576,123 @@ grows is not measuring itself.
 **Suite: 722 → 734 tests in 44 files** — `app-responsive.spec.ts`, `dialog-focus.spec.ts` and
 `price-delta.spec.ts` are new, plus six `h1` tests in `app-a11y.spec.ts`. The first two were proven
 red by sabotage before being trusted.
+
+### Session 6 — two guards where I expected one, and two h1s nobody could see
+
+No new surface. Closing the three items session 5 left with the owner produced three entries
+that belong in a coverage map rather than in a findings ledger.
+
+- **The sabotage that refused to break.** `app-a11y.spec.ts`'s heading-tree test claims to catch
+  a skipped level. Demoting `SnowflakeRadar`'s title `h3 → h5` left it **passing**, because the
+  E2E account holds no subscription and that card renders as a lock. The same break in
+  `CompanyOverview` failed correctly. **The browser guard cannot see any card that is behind the
+  paywall** — four of them — and the only reason that limit is now written down is that a
+  deliberate break declined to break. A second, source-reading test in `form-errors.spec.ts`
+  asserts every card title in `components/stocks/` is a heading whatever the viewer's plan.
+  Neither guard covers the other.
+- **A source sweep scoped to the syntax I pictured.** My first pass for 5A-119 matched literal
+  `<svg` tags and reported *12 clean, 1 offender* — while the padlock the finding was WRITTEN
+  from is `<Lock />`, a lucide component that renders an svg and forwards its props. The guard
+  now reads each file's `lucide-react` import list too, and states that it covers graphics only:
+  it has no opinion on `aria-label` on a `div`, where whether a role is needed depends on what
+  the component renders and no source scan can know.
+- **Two pages were serving two `h1`s and nothing could see either.** `NotInCoverage` carries its
+  own, so an unknown ticker had two — invisible because **no unknown ticker is in `APP_PATHS`**,
+  which is the same shape as the map's own standing warning about hand-written page lists. The
+  downloaded report had two the moment the page got a real one, and the report is a separate
+  esbuild build that no browser guard walks (11d). Both were found only because demoting the
+  shared header forced the question *"then who owns the h1 here?"* on every route.
+
+**Suite: 734 → 737 tests in 44 files** — the three new tests are the heading tree, every-card-
+title-is-a-heading, and a labelled-graphic-has-a-role; the h1 assertion added this session
+strengthened an existing test rather than adding one, and was proven red by sabotage.
+
+### P4 — four gaps that no guard could have had an opinion about
+
+The data pass. Every entry here is a class of defect where the code runs, the page renders and
+every number is plausible — so the only thing that can see it is a comparison against something
+outside the system.
+
+- **Nothing had ever compared our stored prices with the provider's.** That single question,
+  asked of all 864 active tickers, is what found MNST (478 of 501 bars exactly 2x too high, a
+  wrong rating on a US mega-cap for three weeks). There is still **no nightly check of this
+  kind**; what exists now is narrower and deliberately so — `_reverify_stored_splits` re-reads
+  the stored bars around a recently-resolved split. ⚠️ The broad version was considered and
+  **rejected with evidence**: run on 2026-09-04 it would have corrupted APH, whose stored series
+  was right while the provider's own history was mid-adjustment.
+- **A guard that runs once, at write time, is not a guard on what was written.**
+  `_verify_split_resolved` was correct and had simply never been shown the database. The gap was
+  not a missing assertion but a missing *subject*.
+- **No test asserts WHICH 404 page renders**, and the suite structurally cannot: it runs on
+  `next dev`, which resolves not-found boundaries differently from the production build. The
+  friendly "Not in our coverage yet" page is correct in production and generic in dev, so an
+  e2e assertion would fail for a reason that has nothing to do with the reader. ⚠️
+  `NotInCoverage`'s own docblock says the e2e suite caught this once — that is no longer true
+  (11f: a sentence in a comment is not a gate). It needs a production-server check, in the same
+  family as `check:page-weight` and `check:csp`.
+- **The screener's `Target` and `Upside%` columns** mixed the provider's quote with its price
+  history exactly as the Stock Detail header did (5A-126) — ✅ **closed 2026-09-05**, including
+  both export formats. The row carries no price bars, so the backend now ships the two numbers
+  and the threshold stays in one TypeScript function rather than being restated in Python.
+- **Nothing had ever checked that a LABEL matches the data under it.** Smart Money Activity told
+  45 companies' readers their insiders were selling when the filings held no purchases and no
+  sales, and called 24 more "NET BUYER" while they were net sellers (5A-127). Both labels render
+  identically to correct ones — the defect is only visible by counting across the universe, and
+  no guard in the suite had ever asked a question of that shape. `e2e/insider-sentiment.spec.ts`
+  now pins it, with the control that a real signal is still reported.
+
+⚠️ **And one about how the checks themselves were run.** My URL sweep asserted ten status codes
+and they were all correct; the *pages* behind them were not what production serves. The only
+reason that surfaced is a control expecting **200** on a good URL — without it, ten green
+refusals read as a clean sweep, and a system in which *every* URL 404s produces the identical
+ten green refusals (14g, again).
+
+**Suite: 737 → 748 tests in 46 files** — `quote-basis.spec.ts` and `insider-sentiment.spec.ts` are
+new, each broken two ways before being trusted. Pytest **230 → 253**, four of them driving `_reverify_stored_splits`
+against a stub client, two proven red by sabotage.
+
+### P5 — three guards that existed, ran, and were aimed at the wrong thing
+
+The content pass. Every entry is a check that was **present and green** while the thing it
+names went wrong.
+
+- **A guard over a hand-written list of two files.** `landing-copy.spec.ts` asserts that
+  /learn code reads the nightly snapshot rather than the frozen one — over two paths typed by
+  hand. `e2e/learn.spec.ts` was not among them, read the frozen file from the day the two were
+  split, and passed for four days because the files were byte-identical. **Two files that
+  agree cannot tell you which one you read.** Now derived from the path rather than listed.
+- **A cross-file rule that never looked inside a file.** `consistency.py` exists for
+  CLAUDE.md 11c — *a number stated twice is a copy of that number* — and applied it only
+  across the four drafts. One article stated its headline figure three times and disagreed
+  with itself; nothing in the suite could see it.
+- **Four scripts run, three cannot.** `audit_external.py`, `audit_independent.py` and
+  `divfreeze.py` import a module absent from the repository. The README recorded their
+  results as though they were repeatable. **A record saying a check exists is not the check**
+  (11f) — and the two that check our figures against an outside source are among the dead.
+- **Nothing counted the landing's own promise against the page it points at.** "Browse all N
+  companies" included five retired companies Browse hides. Both numbers are plausible; only
+  counting both sides finds it.
+
+⚠️ **And a guard failing on its own documentation, for the third time in this repo.** The
+first run of the new derived guard flagged `e2e/learn.spec.ts` — not because it reads the
+frozen file, but because the paragraph explaining that it *used to* reads better with the
+filename in it. Comments are stripped now, as in every other source-reading guard here.
+
+- **The rendered prose guard stops at the public pages.** `e2e/lib/proseSpacing.ts` walks
+  `/learn` and `/articles`, which is every prose surface it can reach without a session —
+  and the whole signed-in product, the first-login compliance modal included, was therefore
+  never checked for the defect it exists to catch. It was there (5A-133). The gap is now
+  half-covered by `e2e/jsx-entity-space.spec.ts`, which bans the *shape* in source across
+  `components/` and `app/`; that is weaker than asserting the rendered outcome and is
+  written down as weaker.
+- **`/results` has three empty states and none has a test.** "No analysis run yet", "No
+  stocks could be scored" and "No stocks match your filters" were traced and read in P4 and
+  are correct, including the `runMeta` persistence that keeps the middle one from
+  degenerating into the first after a reload. Reading is not driving.
+
+⚠️ **What this map still cannot claim about P5:** the mechanical proofread covers spacing,
+repeated words, entities and punctuation on the rendered page. **It says nothing about whether
+the prose is right**, and no automated layer can. That read-through is the owner's.
 
 ## Still open after this delta
 

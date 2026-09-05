@@ -12,18 +12,12 @@ import {
   prefetchReportData,
 } from '@/lib/report-download';
 import { useScrollSpy } from '@/lib/useScrollSpy';
+import {
+  STOCK_SECTIONS as SECTIONS,
+  STOCK_SECTION_IDS as SECTION_IDS,
+  type StockSectionId as SectionId,
+} from '@/lib/stockSections';
 
-const SECTIONS = [
-  { id: 'sec-thesis', label: 'Thesis' },
-  { id: 'sec-scorecard', label: 'Scorecard' },
-  { id: 'sec-cycle', label: 'Cycle' },
-  { id: 'sec-fundamentals', label: 'Fundamentals' },
-  { id: 'sec-sentiment', label: 'Sentiment' },
-] as const;
-
-const SECTION_IDS = SECTIONS.map((s) => s.id);
-
-type SectionId = (typeof SECTIONS)[number]['id'];
 
 /**
  * Sticky sub-navigation strip for the Stock Detail page. Five anchor pills +

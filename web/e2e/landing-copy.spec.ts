@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
@@ -102,6 +102,64 @@ test.describe('/learn reads the LIVE figures, not the frozen ones', () => {
       ).toEqual([]);
     });
   }
+
+  /**
+   * The same rule, derived rather than listed — audit 5A-131.
+   *
+   * ⚠️ The two entries above are a HAND-WRITTEN list, and `e2e/learn.spec.ts` was
+   * not on it. That spec read `landing-snapshot.json` from the day the two files
+   * were split and passed for four days, because both files were written from one
+   * run and stayed byte-identical: **two files that agree cannot tell you which one
+   * you read.** The first nightly rebuild made them differ and it failed instantly
+   * — the page said 5.6%, the frozen file said 8.0%.
+   *
+   * So this walks every file whose PATH says "learn" and asserts none of them names
+   * the frozen file at all. A list cannot go stale if nothing maintains it.
+   */
+  test('no file about /learn names the frozen landing snapshot', () => {
+    const roots = [
+      join(__dirname, '..', 'components', 'learn'),
+      join(__dirname, '..', 'app', '(public)', 'learn'),
+      __dirname,
+    ];
+    const offenders: string[] = [];
+    let checked = 0;
+
+    const walk = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, e.name);
+        if (e.isDirectory()) {
+          if (e.name !== 'node_modules') walk(full);
+          continue;
+        }
+        if (!/\.(ts|tsx)$/.test(e.name)) continue;
+        const rel = relative(join(__dirname, '..'), full).split(sep).join('/');
+        if (!/learn/i.test(rel)) continue;
+        checked += 1;
+        // ⚠️ COMMENTS STRIPPED, and this repo has now been caught by that three
+        // times. The first run of this guard failed on `e2e/learn.spec.ts` — not
+        // because it reads the frozen file, but because the paragraph explaining
+        // that it USED to reads better with the filename in it. A rule stated in
+        // prose must not satisfy, or violate, a check for the rule (11c-iv).
+        const src = readFileSync(full, 'utf8')
+          .replace(/\/\*[\s\S]*?\*\//g, ' ')
+          .replace(/(^|[^:])\/\/.*$/gm, '$1');
+        if (src.includes('landing-snapshot.json')) offenders.push(rel);
+      }
+    };
+    for (const r of roots) walk(r);
+
+    // The control: a renamed directory, or a typo in the path filter, makes this
+    // pass having looked at nothing — which is what a clean repo also reports (14g).
+    expect(checked, 'no /learn files were examined at all').toBeGreaterThanOrEqual(3);
+    expect(
+      offenders,
+      'these are about /learn and reference the FROZEN landing snapshot: ' +
+        offenders.join(', ') +
+        '. ' +
+        'Read app/learn-snapshot.json — the /learn figures are nightly, the landing worked example is frozen.',
+    ).toEqual([]);
+  });
 
   test('the two Apple files agree the day they are written', () => {
     // Both come from ONE computation in build_landing_snapshot.py, so on the day

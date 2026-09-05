@@ -907,8 +907,24 @@ interface ScreenerFundamentals {
   revenueGrowthYoy: number | null; shortPctOfFloat: number | null; shortRatio: number | null;
   analystTargetPrice: number | null; analystRecommendation: string | null;
   numAnalystOpinions: number | null;
+  // Not displayed. The provider's QUOTED 52-week high, and OUR highest high over the
+  // same 252 bars — shipped so the screener can ask `quoteBasisAgrees()` before
+  // printing Target / Upside% (audit 5A-126).
+  week52High: number | null; historyHigh: number | null;
 }
 ```
+
+> **Why two numbers and not a verdict (2026-09-05, audit 5A-126).** `analystTargetPrice`
+> is a provider **quote**; `currentClose` comes from its price **history**. Normally the
+> same basis — after a split they can be 2× apart for days, and Upside% then reads
+> **+196%** on a stock that is flat. A screener row carries no price bars, so the backend
+> sends the two figures and **the threshold that decides what counts as a disagreement
+> lives only in `web/lib/quoteBasis.ts`**, which the Stock Detail page already uses.
+> Computing the answer in Python would put an algorithm in two languages — the drift
+> CLAUDE.md 11c-iii records, where two implementations share a spec and still part
+> company. `history_high` is deliberately the last **252** bars, not the whole frame: a
+> 52-week quote compared against an all-time high would withhold figures from every stock
+> that has ever doubled.
 
 > **Run reliability (2026-06-17):** `/api/analyze` runs ≤2 tickers concurrently
 > (was 4) and retries the `get_price_bars_json` RPC before falling back to slow

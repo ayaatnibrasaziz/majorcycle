@@ -15,11 +15,16 @@ import {
 } from 'lightweight-charts';
 
 import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, fmtPrice } from '@/lib/format';
+import { insiderSentiment } from '@/lib/insiderSentiment';
 import type { AnalystUpgrade, Currency, InsiderTransaction, PriceBar } from '@/lib/types';
 import { ANALYST, INK } from '@/lib/ink';
 
 type Range = '1y' | '3y' | 'all';
-const RANGE_LABELS: Record<Range, string> = { '1y': '1Y', '3y': '3Y', 'all': 'All' };
+/* "Max", not "All" — the same word the Price Chart and Relative Performance use for
+   the same idea. Three range selectors on one page said it two ways (audit 5A-105,
+   owner: "make it Max please to keep it consistent"). The internal key stays `all`
+   because it names a filter over events rather than a chart's time domain. */
+const RANGE_LABELS: Record<Range, string> = { '1y': '1Y', '3y': '3Y', 'all': 'Max' };
 
 interface Props {
   insiderTransactions?: InsiderTransaction[];
@@ -74,16 +79,6 @@ function classifyGrade(grade: string | undefined): 'bull' | 'bear' | 'neut' {
   if (g.includes('sell') || g.includes('underperform') || g.includes('underweight') || g === 'reduce' || g === 'negative' || g === 'avoid')
     return 'bear';
   return 'neut';
-}
-
-function insiderSentiment(txs: InsiderTransaction[]): { label: string; color: string; bg: string } {
-  const buys  = txs.filter(t => t.type === 'Purchase').reduce((s, t) => s + (t.value ?? 0), 0);
-  const sells = txs.filter(t => t.type === 'Sale').reduce((s, t) => s + (t.value ?? 0), 0);
-  // `color` paints a `.smart-section-tag` — text sitting on `bg`, a 8-10% wash of
-  // the same hue. The tint is the darkest ground either colour meets, and it is
-  // what the ink values were solved against.
-  if (buys > sells * 0.5) return { label: 'NET BUYER (Bullish)',  color: INK.up,   bg: 'rgba(34,139,34,.10)' };
-  return                         { label: 'NET SELLER (Bearish)', color: INK.down, bg: 'rgba(178,34,34,.08)' };
 }
 
 // Computes overall analyst consensus from the most recent rating per firm.
@@ -641,13 +636,13 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
   const hasEvents = txs.length > 0 || upgrades.length > 0;
   const hasChart  = hasEvents && bars.length > 0;
 
-  const sentiment  = txs.length      > 0 ? insiderSentiment(txs)       : null;
+  const sentiment  = txs.length      > 0 ? insiderSentiment(txs, INK)  : null;
   const consensus  = upgrades.length  > 0 ? analystConsensus(upgrades)  : null;
 
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Smart Money Activity
           <InfoTip title="Smart Money Activity">
             Recent buying and selling by company insiders (executives and directors)
@@ -656,7 +651,7 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
             scroll to zoom. Insider buying can signal confidence; selling has many
             causes. Information, not advice.
           </InfoTip>
-        </div>
+        </h3>
         {hasChart && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <div className="smart-legend">

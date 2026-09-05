@@ -56,7 +56,13 @@ function ArcGauge({ pct }: { pct: number }) {
   const valD = `M ${cx - R} ${cy} A ${R} ${R} 0 0 1 ${x} ${y}`;
 
   return (
-    <svg viewBox="0 0 200 100" width="180" height="100" aria-label={`Short interest gauge: ${pct.toFixed(1)}%`}>
+    <svg
+      viewBox="0 0 200 100"
+      width="180"
+      height="100"
+      role="img"
+      aria-label={`Short interest gauge: ${pct.toFixed(1)}%`}
+    >
       <path d={bgD} fill="none" stroke="var(--border-strong)" strokeWidth={16} strokeLinecap="round" />
       {f > 0.01 && (
         <path d={valD} fill="none" stroke={color} strokeWidth={16} strokeLinecap="round" />
@@ -118,7 +124,7 @@ export function ShortInterest({ fundamentals }: Props) {
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Market Sentiment — Short Interest
           <InfoTip title="Short Interest">
             Short sellers borrow shares and sell them, betting the price will fall.
@@ -126,7 +132,7 @@ export function ShortInterest({ fundamentals }: Props) {
             signals bearish sentiment. &quot;Days to cover&quot; estimates how many trading
             days it would take shorts to buy back, based on normal volume.
           </InfoTip>
-        </div>
+        </h3>
       </div>
       <div className="card-body">
         <div className="si-grid">

@@ -315,7 +315,17 @@ export async function sendReferral(input: {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(friendEmail)) {
     return { ok: false, error: 'Enter a valid email address.' };
   }
-  const referrerName = input.referrerName.trim().slice(0, 80);
+  // `.trim()` does not touch an INTERIOR newline, and this value becomes an email
+  // SUBJECT (`"<name>" thought you'd like MajorCycle`). Control characters are
+  // stripped for the same reason as in the contact action (audit 5A-143), and with
+  // the same honesty about it: `name` reaches Resend as a JSON string and Resend
+  // encodes the header itself, so this is defence in depth, not a demonstrated hole.
+  // Fixed HERE as well because fixing one of two callers is the defect this repo
+  // keeps paying for (CLAUDE.md 11c-iv) — the contact form was the other one.
+  const referrerName = input.referrerName
+    .slice(0, 80)
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
+    .trim();
   if (!referrerName) {
     return { ok: false, error: 'Please add your name so your friend knows who invited them.' };
   }

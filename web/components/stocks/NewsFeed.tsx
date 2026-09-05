@@ -22,7 +22,7 @@ export function NewsFeed({ news }: Props) {
     return (
       <div className="card card--stack-base">
         <div className="card-header">
-          <div className="card-title">Latest News</div>
+          <h3 className="card-title">Latest News</h3>
         </div>
         <div className="card-body">
           <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>
@@ -36,13 +36,13 @@ export function NewsFeed({ news }: Props) {
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Latest News
           <InfoTip title="Latest News">
             Recent headlines about the company. Tap a card to read the full article
             at the source. Headlines are informational — not a signal to act.
           </InfoTip>
-        </div>
+        </h3>
         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
           {shown.length} {shown.length === 1 ? 'article' : 'articles'}
         </div>

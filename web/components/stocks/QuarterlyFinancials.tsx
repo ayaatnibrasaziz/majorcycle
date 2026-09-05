@@ -135,7 +135,7 @@ export function QuarterlyFinancials({
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           {isAnnual ? 'Annual' : 'Quarterly'} Financial Trends
           <InfoTip title="Financial Trends">
             The top-line story of the business over time: Revenue (total sales),
@@ -143,7 +143,7 @@ export function QuarterlyFinancials({
             costs) and Free Cash Flow (cash left after investment). Rising bars =
             a growing business. Switch between quarterly and annual views.
           </InfoTip>
-        </div>
+        </h3>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {hasQuarterly && hasAnnual && (
             <div className="period-toggle">

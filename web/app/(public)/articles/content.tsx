@@ -628,7 +628,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         did worse than the ones that stayed. So read this as “what the history of
         today’s large Australian companies looks like”, not as the odds facing any
         share you might buy. The true never-recovered figure across all Australian
-        shares is certainly worse than 12.8%.
+        shares is certainly worse than 12.4%.
       </p>
       <p>
         It is also a description of the past, and the past has no obligation to

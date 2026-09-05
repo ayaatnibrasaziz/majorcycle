@@ -68,14 +68,14 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Ownership Structure
           <InfoTip title="Ownership Structure">
             Who owns the company&apos;s shares: large institutions (funds, pensions),
             company insiders, and the public &quot;float&quot; held by everyone else. Heavy
             institutional ownership can mean steadier, better-researched demand.
           </InfoTip>
-        </div>
+        </h3>
       </div>
       <div className="card-body">
         <div className="ownership-grid">

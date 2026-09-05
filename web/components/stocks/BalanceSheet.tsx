@@ -122,14 +122,14 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Balance Sheet Health
           <InfoTip title="Balance Sheet Health">
             A snapshot of what the company owns versus what it owes. &quot;Net cash&quot;
             means it holds more cash than debt (resilient); &quot;net debt&quot; means the
             reverse. Lower debt relative to equity generally means lower financial risk.
           </InfoTip>
-        </div>
+        </h3>
         {hasChart && (
           <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
             Bars = Assets · Line = Debt

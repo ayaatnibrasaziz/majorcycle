@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react';
 
 import { fmtPrice } from '@/lib/format';
-import type { Currency, FundamentalsSnapshot } from '@/lib/types';
+import type { Currency, FundamentalsSnapshot, PriceBar } from '@/lib/types';
+import { quoteMatchesHistory } from '@/lib/quoteBasis';
 import { InfoTip } from '@/components/ui/InfoTip';
 import { INK } from '@/lib/ink';
 
@@ -9,6 +10,13 @@ interface Props {
   fundamentals: FundamentalsSnapshot;
   currentClose: number;
   currency: Currency;
+  /** ⚠️ REQUIRED, and not defaulted — audit 5A-125. This card plots the analyst
+   *  range (a provider QUOTE) against `currentClose` (its price HISTORY), so it
+   *  has the same split-basis exposure as the header's upside line and must be
+   *  able to answer the same question. A default would let the next caller
+   *  reintroduce the defect in silence; the type error is what makes an omission
+   *  visible (the same reasoning as `fmtPerShare`'s currency, CLAUDE.md 11c-x). */
+  priceBars: PriceBar[];
 }
 
 function signedPct(n: number, d = 1): string {
@@ -22,13 +30,24 @@ function labelStyle(pct: number): CSSProperties {
   return { left: `${pct}%`, transform: 'translateX(-50%)', textAlign: 'center' };
 }
 
-export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Props) {
+export function AnalystTargetTrack({
+  fundamentals,
+  currentClose,
+  currency,
+  priceBars,
+}: Props) {
   const {
     analystTargetPrice,
     analystLowPrice,
     analystHighPrice,
     numAnalystOpinions,
   } = fundamentals;
+
+  // Every figure below is a distance between the quote and the history. When a
+  // split has left those on different bases the card cannot say anything true, so
+  // it renders nothing rather than a dramatic wrong picture — AvalonBay would have
+  // drawn today's price far below an analyst range 2.8x away. See lib/quoteBasis.ts.
+  if (!quoteMatchesHistory(priceBars, fundamentals.week52High)) return null;
 
   if (
     analystTargetPrice === null ||
@@ -78,14 +97,14 @@ export function AnalystTargetTrack({ fundamentals, currentClose, currency }: Pro
   return (
     <div className="card card--stack-snug">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Analyst Price Target Range
           <InfoTip title="Analyst Price Target Range">
             Where professional Wall Street analysts think the price could trade over
             the next 12 months — their lowest, average and highest targets. This is
             third-party analyst data, shown as-is — not MajorCycle&apos;s view.
           </InfoTip>
-        </div>
+        </h3>
         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
           {numAnalystOpinions} analysts covering
         </div>

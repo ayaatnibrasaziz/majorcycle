@@ -5,6 +5,19 @@ import { renderBrandEmail } from '@/lib/email/brandEmail';
 /** Where contact-form submissions are emailed. Defaults to the live support@
  *  inbox (Cloudflare Email Routing → owner Gmail), overridable via env. */
 const CONTACT_TO = process.env.CONTACT_TO_EMAIL || 'support@majorcycle.com';
+
+/** Generous, and finite. Matches the referral note's own cap. */
+const MESSAGE_MAX = 4000;
+
+/** Trim, drop every control character, and cap. For anything reaching a header. */
+function oneLine(value: FormDataEntryValue | null, max: number): string {
+  return clamp(value, max).replace(/[\u0000-\u001F\u007F]/g, ' ').trim();
+}
+
+/** Trim and cap. For body text, where newlines are the point. */
+function clamp(value: FormDataEntryValue | null, max: number): string {
+  return (typeof value === 'string' ? value : '').trim().slice(0, max);
+}
 /** Sender for the contact-form notification. From support@ (a real, monitored
  *  inbox) rather than noreply@, since these are messages you actually reply to;
  *  reply-to is still the submitter, so hitting Reply reaches them. */
@@ -43,9 +56,20 @@ export async function sendContact(
     return { status: 'success' };
   }
 
-  const name = (formData.get('name') as string | null)?.trim() ?? '';
-  const email = (formData.get('email') as string | null)?.trim() ?? '';
-  const message = (formData.get('message') as string | null)?.trim() ?? '';
+  // Bounded, and bounded HERE. Audit 5A-143: there was no upper limit on any of
+  // the three, on the client or the server, so a single POST could carry an
+  // arbitrarily large name straight into an email subject. Its sibling
+  // `sendReferral` has capped its name at 80 since Layer F2 — this is the same
+  // rule, and this is the consumer that never received it (CLAUDE.md 11c-iv).
+  //
+  // `oneLine` also strips control characters, INCLUDING interior newlines, which
+  // `trim()` does not touch. That is defence in depth rather than a demonstrated
+  // hole: `name` reaches Resend as a JSON string in a `subject` field and Resend
+  // encodes the header itself, so I could not produce an injection. Saying which
+  // it is matters — an unproven claim recorded as a fix is worse than the gap.
+  const name = oneLine(formData.get('name'), 80);
+  const email = oneLine(formData.get('email'), 254);
+  const message = clamp(formData.get('message'), MESSAGE_MAX);
 
   if (name.length < 2 || !EMAIL_RE.test(email) || message.length < 10) {
     return {
@@ -68,7 +92,13 @@ export async function sendContact(
   const html = renderBrandEmail({
     heading: 'New contact message',
     bodyHtml,
-    preheader: `New contact message from ${name}`,
+    // escapeHtml, like the body two lines above. Audit 5A-142: this was the raw
+    // value, and `renderBrandEmail` drops the preheader straight into a <div> —
+    // so a name of `</div><a href=...>` injected arbitrary markup into an email
+    // arriving from support@majorcycle.com. `referralEmails.ts` gets this right
+    // and its comment even says "escaped, for HTML body + preheader"; the rule
+    // existed and this caller never received it (CLAUDE.md 11c-iv).
+    preheader: `New contact message from ${escapeHtml(name)}`,
   });
 
   try {

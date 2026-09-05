@@ -4,10 +4,12 @@ import {
   type CycleAnalysisFree,
   type Currency,
   type FundamentalsSnapshot,
+  type PriceBar,
 } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
 import { fmtCapped, fmtPrice } from '@/lib/format';
 import { INK } from '@/lib/ink';
+import { quoteMatchesHistory } from '@/lib/quoteBasis';
 
 interface Props {
   /**
@@ -20,6 +22,13 @@ interface Props {
   cycle: CycleAnalysis | CycleAnalysisFree;
   fundamentals: FundamentalsSnapshot;
   currency: Currency;
+  /** ⚠️ REQUIRED, not defaulted — audit 5A-125. One bullet prints the analyst mean
+   *  target, which is a provider QUOTE, beside a page whose prices come from the
+   *  provider's HISTORY. After a split those can be 2-3x apart, and the bullet then
+   *  reads "mean target $201.71" on a page showing $68.14. The bars are what let it
+   *  answer whether the two belong together; a default would let the next caller
+   *  reintroduce that in silence. */
+  priceBars: PriceBar[];
 }
 
 function fmt(n: number, d = 1): string {
@@ -38,7 +47,7 @@ interface Bullet {
  * `buildRisks`, and `riskInvalidation` in /reference/original-design.html
  * (lines 2126–2178). Educational signals only — no Buy/Sell verbs in our copy.
  */
-function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapshot, currency: Currency): Bullet[] {
+function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapshot, currency: Currency, priceBars: PriceBar[]): Bullet[] {
   const out: string[] = [];
   const dd = c.currentDrawdownPct;
   const tdd = c.typicalDrawdown;
@@ -69,7 +78,16 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
     out.push(`PEG of ${fmt(f.peg, 2)} — growing faster than the valuation implies`);
   if (c.totalPullbackEvents >= 10)
     out.push(`${c.totalPullbackEvents} confirmed pullback events — a well-calibrated signal`);
-  if (f.analystRecommendation === 'Strong Buy' && f.analystTargetPrice != null)
+  // ⚠️ The target is a QUOTE and every other price on this page comes from the price
+  // HISTORY. `quoteMatchesHistory` is false only when a split has left the two on
+  // different bases, in which case this line would print a target 3x the price shown
+  // three inches above it. The rest of the bullets are untouched — they are built
+  // from the cycle and the statements, which are internally consistent (5A-125).
+  if (
+    f.analystRecommendation === 'Strong Buy'
+    && f.analystTargetPrice != null
+    && quoteMatchesHistory(priceBars, f.week52High)
+  )
     out.push(`Analyst consensus is Strong Buy, mean target ${fmtPrice(f.analystTargetPrice, currency)}`);
 
   // Fallback when no genuine strength fired: a factual, non-asserting line (it never
@@ -176,22 +194,22 @@ function StrengthTag({ kind }: { kind: 'attr' | 'risk' }) {
   );
 }
 
-export function ThesisInsights({ cycle, fundamentals, currency }: Props) {
-  const attractive = buildAttractive(cycle, fundamentals, currency);
+export function ThesisInsights({ cycle, fundamentals, currency, priceBars }: Props) {
+  const attractive = buildAttractive(cycle, fundamentals, currency, priceBars);
   const risks = buildRisks(cycle, fundamentals);
 
   return (
     <div className="insight-grid fade-in">
       <div className="card">
         <div className="card-header card-header--accent-buy">
-          <div className="card-title">
+          <h3 className="card-title">
             Why Attractive
             <InfoTip title="Why Attractive">
               Plain-language reasons the current setup looks favourable, generated
               from the cycle position and the financial-health pillars. Observations,
               not a recommendation to buy.
             </InfoTip>
-          </div>
+          </h3>
         </div>
         <div className="card-body">
           {attractive.map((b, i) => (
@@ -208,13 +226,13 @@ export function ThesisInsights({ cycle, fundamentals, currency }: Props) {
 
       <div className="card">
         <div className="card-header card-header--accent-hold">
-          <div className="card-title">
+          <h3 className="card-title">
             Key Risks
             <InfoTip title="Key Risks">
               Things that could undermine the thesis — weak spots in the financials
               or a cycle read that may not repeat. Worth weighing before acting.
             </InfoTip>
-          </div>
+          </h3>
         </div>
         <div className="card-body">
           {risks.map((b, i) => (

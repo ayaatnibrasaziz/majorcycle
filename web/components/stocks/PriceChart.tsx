@@ -264,14 +264,14 @@ export function PriceChart({ priceBars, ticker }: Props) {
     return (
       <section className="card card--stack-snug">
         <div className="card-header">
-          <div className="card-title">
+          <h3 className="card-title">
             Price Chart — {tickerToUrlParts(ticker).symbol}
             <InfoTip title="Price Chart">
               Daily price drawn as candlesticks: each candle shows the open, high,
               low and close for a day. Green = the price rose that day, red = it fell.
               Toggle the 50- and 200-day average lines to see the trend.
             </InfoTip>
-          </div>
+          </h3>
         </div>
         <div className="card-body card-body--chart">
           <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '40px 0' }}>
@@ -285,14 +285,14 @@ export function PriceChart({ priceBars, ticker }: Props) {
   return (
     <section className="card card--stack-snug">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Price Chart — {tickerToUrlParts(ticker).symbol}
           <InfoTip title="Price Chart">
             Daily price drawn as candlesticks: each candle shows the open, high,
             low and close for a day. Green = the price rose that day, red = it fell.
             Toggle the 50- and 200-day average lines to see the trend.
           </InfoTip>
-        </div>
+        </h3>
         <div className="chart-controls">
           <button
             className={`ma-pill ma-pill--50${show50 ? ' active' : ''}`}

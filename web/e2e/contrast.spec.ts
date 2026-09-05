@@ -143,7 +143,8 @@ const FORM_PAGES = [
   // fails — and a page is only measured in the state it is loaded in. So the one
   // element a reader is guaranteed to be squinting at, in the moment they are
   // most stuck, was the one element with no contrast evidence. Its colours
-  // (--c-tier-5-ink on --tint-tier-5) are shared by all four auth forms plus
+  // (--status-danger-ink on --status-danger-tint, the rating's --c-tier-5 pair
+  // until 5A-102 gave errors a name of their own) are shared by all four auth forms plus
   // /contact, so measuring it once here covers every one of them.
   //
   // This URL exists only because the link-failure notice renders on load. Before

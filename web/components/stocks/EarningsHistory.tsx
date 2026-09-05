@@ -106,7 +106,7 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Earnings Performance
           <InfoTip title="Earnings Performance">
             Each quarter, companies report earnings per share (EPS) — profit divided
@@ -114,7 +114,7 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
             analysts expected: a green bar means the company beat expectations, red
             means it fell short.
           </InfoTip>
-        </div>
+        </h3>
         <div className="fin-tabs">
           <button className="fin-tab active" type="button">
             EPS

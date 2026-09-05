@@ -121,12 +121,21 @@ def _universe_count(supabase: Client) -> int:
 
     `market='index'` rows are benchmarks (^GSPC etc.), not companies a reader can
     browse — the same exclusion `fetchUniverseIndex` applies for /stocks and
-    `check_field_units.py` applies nightly.
+    `check_field_units.py` applies nightly. **Retired companies are excluded for the
+    same reason**: they are absent from Browse, so counting them made the landing's
+    "Browse all N companies" a promise Browse does not keep.
     """
     res = (
         supabase.table("stocks")
         .select("ticker", count=CountMethod.exact)
         .neq("market", "index")
+        # ⚠️ `is_active` too — audit 5A-130 (P5, 2026-09-05). Without it the count
+        # included the 5 RETIRED companies, which Browse filters out
+        # (`lib/universe.server.ts`, `.eq('is_active', true)`). The landing says
+        # "Browse all N companies" and the promise was five short of what Browse
+        # actually lists — 869 against 864. Nothing errored; both numbers are
+        # plausible, and the only way to see it is to count both sides.
+        .eq("is_active", True)
         .limit(1)
         .execute()
     )

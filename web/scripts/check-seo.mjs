@@ -595,6 +595,66 @@ if (robots && pages) {
   }
 }
 
+// ── 5. security.txt has not quietly expired ─────────────────────────────────
+//
+// RFC 9116 treats an `Expires` in the past as making the FILE invalid, not just
+// the date -- so a researcher who finds a real hole reads it, concludes we no
+// longer accept reports, and goes elsewhere. Nothing about the page looks wrong
+// on the day it lapses; it simply stops meaning anything.
+//
+// This is a date sitting in a static file with nothing to renew it (CLAUDE.md
+// 11k: a number inside a design is data with a shelf life). A note in the file
+// would rely on somebody re-reading it in nine months, so the trap is made
+// STRUCTURAL instead -- the build goes red 90 days out, while there is still
+// plenty of time to act (11o: when a trap depends on a human remembering, spend
+// the minutes and make it mechanical).
+//
+// Bounded on BOTH sides, deliberately. Too SOON is the lapse; too FAR is also
+// wrong -- RFC 9116 section 2.5.5 asks for less than a year, and "set it to
+// 2099" is the obvious way to silence this check while making the file
+// non-conforming.
+{
+  const RENEW_WITHIN_DAYS = 90;
+  const MAX_AHEAD_DAYS = 366;
+  const rel = 'public/.well-known/security.txt';
+  const src = read(rel);
+
+  check();
+  if (!src) {
+    fail(`${rel} is missing -- it is referenced by lib/seo.ts PUBLIC_ENDPOINTS and served in production.`);
+  } else {
+    const m = src.match(/^Expires:\s*(\S+)\s*$/m);
+    check();
+    if (!m) {
+      fail(`${rel}: no Expires field. RFC 9116 requires exactly one.`);
+    } else {
+      const days = (new Date(m[1]).getTime() - Date.now()) / 86_400_000;
+      check();
+      if (Number.isNaN(days)) {
+        fail(`${rel}: Expires "${m[1]}" is not a date this parser understands.`);
+      } else if (days < RENEW_WITHIN_DAYS) {
+        fail(
+          `${rel}: Expires is ${Math.round(days)} day(s) away. Past it the file is ` +
+          `INVALID under RFC 9116 and a security researcher reads it as "they no longer ` +
+          `take reports". Bump the date (about a year out) and re-run.`,
+        );
+      } else if (days > MAX_AHEAD_DAYS) {
+        fail(
+          `${rel}: Expires is ${Math.round(days)} day(s) away. RFC 9116 s2.5.5 asks for ` +
+          `less than a year -- a far-future date silences this check and makes the file ` +
+          `non-conforming at the same time.`,
+        );
+      }
+    }
+    // The rest of the file has to still be there: an Expires-only check would
+    // pass on a file that had lost the contact it exists to publish.
+    for (const field of ['Contact:', 'Canonical:']) {
+      check();
+      if (!src.includes(field)) fail(`${rel}: no ${field} field.`);
+    }
+  }
+}
+
 // ── report ──────────────────────────────────────────────────────────────────
 
 console.log(

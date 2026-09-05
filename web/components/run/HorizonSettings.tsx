@@ -145,7 +145,7 @@ export function HorizonSettings({
         <button
           type="button"
           onClick={() => setAdvOpen(true)}
-          className="mt-2 text-[11px] font-semibold text-[var(--c-tier-5)] underline"
+          className="mt-2 text-[11px] font-semibold text-[var(--status-danger)] underline"
         >
           A custom value is out of range — open Advanced to fix it.
         </button>
@@ -204,7 +204,7 @@ function Field({
         className={cn('set-field-input', error && 'set-field-input--error')}
       />
       {error && (
-        <p id={errorId} className="mt-1 text-[10.5px] font-semibold text-[var(--c-tier-5)]">
+        <p id={errorId} className="mt-1 text-[10.5px] font-semibold text-[var(--status-danger)]">
           {error}
         </p>
       )}
