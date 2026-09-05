@@ -786,11 +786,22 @@ test.describe('the drawdown article figures', () => {
      * rather than written here, so this test cannot drift with the data.
      *
      * It reads the JSON directly while the page reaches it through
-     * `lib/landing.ts` — two different routes to the same fact, so a bug in the
-     * module between them is visible rather than shared.
+     * `lib/learn-figures.ts` — two different routes to the same fact, so a bug in
+     * the module between them is visible rather than shared.
+     *
+     * ⚠️ **It read `landing-snapshot.json` until 2026-09-05 and passed anyway**, which
+     * is the whole of CLAUDE.md 11ai in one line. That file and `learn-snapshot.json`
+     * were split precisely because they have different lifecycles — the landing's
+     * worked example is FROZEN, these figures are NIGHTLY — but they were written
+     * from the same run and stayed byte-identical, so nothing could tell which one
+     * anything was reading. The first nightly rebuild after the split made them
+     * differ and this test failed immediately: the page said 5.6%, the frozen file
+     * said 8.0%. **Two files that agree cannot tell you which one you read**, so a
+     * guard pointed at the wrong one looks exactly like a guard pointed at the right
+     * one until the day the data moves.
      */
     const snapshot = JSON.parse(
-      readFileSync(join(__dirname, '..', 'app', 'landing-snapshot.json'), 'utf8'),
+      readFileSync(join(__dirname, '..', 'app', 'learn-snapshot.json'), 'utf8'),
     ) as Record<string, number>;
 
     const expected = {
@@ -1077,8 +1088,19 @@ test.describe('the drawdown article figures', () => {
 
     // The control: the three record rows must actually name the snapshot fields.
     // Without this, deleting the rows entirely would satisfy the check above (14g).
+    //
+    // ⚠️ Matched by FIELD, not by the object's name. This asserted the literal
+    // `LANDING.currentDrawdownPct` until 2026-09-01, and went red when the import
+    // was renamed to `LEARN_FIGURES` — a rename that changed nothing a reader can
+    // see. That is CLAUDE.md 11i-b: *a guard that names an IMPLEMENTATION fails on
+    // refactors and teaches you to loosen it.* What this guard actually cares about
+    // is that the number is READ off a snapshot object rather than typed, so it now
+    // says exactly that and survives the object being renamed again.
     for (const field of ['currentDrawdownPct', 'typicalDrawdownPct', 'deepestDrawdownPct']) {
-      expect(src, `the record figure no longer reads LANDING.${field}`).toContain(`LANDING.${field}`);
+      expect(
+        src,
+        `the record figure no longer reads .${field} off a snapshot object`,
+      ).toMatch(new RegExp(`\\b[A-Za-z_$][\\w$]*\\.${field}\\b`));
     }
   });
 

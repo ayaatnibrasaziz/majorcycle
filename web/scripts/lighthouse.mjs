@@ -63,8 +63,28 @@ const ORIGIN = process.env.LH_ORIGIN ?? 'http://localhost:3200';
 const OUT = 'lighthouse-report';
 
 /** Public pages a stranger can reach, plus the two gated ones decision #33 names. */
-const PUBLIC_ROUTES = ['/', '/learn', '/learn/what-is-a-drawdown', '/pricing', '/terms'];
-const GATED_ROUTES = ['/stocks', '/stocks/us/AAPL'];
+/**
+ * ⚠️ **AUDIT 5A-153, 2026-09-05 — five routes added.** A diff of every route
+ * against all three server gates found eight in none of them. Decision #33 names
+ * only per-ticker pages, so the rest of this list has always been a judgement
+ * call; the judgement was leaving out two public legal pages and the entire
+ * screener, which is the part of the product a subscriber actually pays for.
+ *
+ * ⚠️ **This makes a full run take roughly ten minutes rather than six** — twelve
+ * routes at three runs each. That is the price of the median, and the median is
+ * not optional here: the same unchanged page has scored 85, 81, 76, 63 and 62 on
+ * this machine. Use `LH_RUNS=1` for a quick look, never for a number to report.
+ */
+const PUBLIC_ROUTES = [
+  '/',
+  '/learn',
+  '/learn/what-is-a-drawdown',
+  '/pricing',
+  '/terms',
+  '/privacy',
+  '/disclaimer',
+];
+const GATED_ROUTES = ['/stocks', '/stocks/us/AAPL', '/run', '/results', '/request'];
 
 const CATEGORIES = ['performance', 'accessibility', 'best-practices', 'seo'];
 const RUNS = Number(process.env.LH_RUNS ?? 3);

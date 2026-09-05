@@ -203,6 +203,19 @@ Stated so silence is not mistaken for a clean bill:
 - **The offline report artifact.** `report-download.spec.ts` is one test. Per 11d it is the
   right *kind* of test — it opens the built file over `file://` — but one is one.
 - **Data edge cases** (nulls, cross-currency, missing fields). Layer 4.
+- ~~**Everything that is not a route.**~~ ✅ **Closed by P6, 2026-09-05.** This map has
+  three dimensions — routes, viewer states, Python modules — and every one of them asks
+  about something *reachable from a URL*. Four whole surfaces therefore sat outside its
+  field of view and were reported as neither covered nor uncovered: the **seven
+  transactional emails** (zero tests of any kind since Layer F), the **tags a crawler
+  reads**, **robots/sitemap**, and the **production response headers**. P6 found nine
+  defects across them.
+  ⚠️ **The lesson is about the instrument, not the gap.** A coverage map indexed by
+  route cannot report a surface that has no route — it does not show it as a hole, it
+  simply never mentions it, which reads exactly like coverage (14g). Four specs now cover
+  it: `email-render.spec.ts`, `jsonld.spec.ts`, `direction-not-rating.spec.ts`, and the
+  network assertion added to `report-download.spec.ts`. **Ask what a map is indexed BY
+  before trusting what it says is missing.**
 
 ---
 
@@ -460,6 +473,273 @@ a valid purge-cron call is never driven). So it is asserted against the **source
 comments stripped first. It would catch somebody deleting the line and would **not** catch a
 client that silently stopped applying `.is()`. Named as a limit rather than counted as
 equivalent coverage (11c-ix).
+
+---
+
+## The P3 delta — 2026-09-03 · what "covered" was hiding
+
+This map's own stated blind spot was **assertion quality**: *"a test that visits a page and
+checks it returns 200 counts the same here as one that drives a form."* P3 measured that gap
+directly by enumerating every interactive control from the source and asking which are driven.
+
+**51 files carry an interactive control. 16 are driven by nothing.**
+
+⚠️ **And the largest cluster is structural rather than accidental.** Nineteen of those controls
+are the screener's entire input side — `HorizonSettings`, `BasketPicker`, `CsvImport`,
+`TickerSearchAdd`, `SelectedTickers`, `RunAnalysis`. Every spec that visits `/run` (a11y,
+contrast, auth, entitlement, recovery, landing, seo) uses the **shared E2E account, which has no
+subscription**, so `/run` correctly renders the upsell and **those controls have never once
+rendered inside a test**. `run-history.spec.ts` is the single exception and it creates its own
+entitled throwaway precisely to get around this.
+
+So the `/run` row above — *8 spec files* — is true and misleading in exactly the way this
+document warned about: eight files reach the route, none reaches the product on it.
+
+⚠️ **The instrument that produced those numbers was wrong first, and said so.** v1 asked
+*"does any spec mention this COMPONENT NAME?"* and called `ProfileForm`, `SignupForm` and
+`LoginForm` undriven — all three are driven, through `#displayName` and `/signup`. Playwright
+targets a control by what the USER sees. v2 matches on the handles a component really exposes
+and carries those three files as **controls that must come out driven**, or it aborts and prints
+that its numbers mean nothing.
+
+**Suite: 716 → 717 tests in 40 files**, the addition being `e2e/form-errors.spec.ts` — pure,
+credential-free, source-reading: every component that flags a field `aria-invalid` must also
+point at the message saying what is wrong (audit 5A-101).
+
+**What P3 has driven since, and found:** the screener end to end on the Vercel preview (the only
+surface that runs the Python functions), `/results` view modes, search and tier filters,
+`/account`'s four cards, `/request`'s search, the Stock Detail range buttons, and the keyboard.
+One real defect: the **active** sub-nav pill's focus ring is white on a white bar (5A-104).
+Full record in `layer-g-5a-sweep.md`.
+
+### Session 4 — the same question asked of the LOGIC, not the page
+
+Sessions 1–3 drove controls. Session 4 read the screener's own modules and drove the **real
+functions**, and found four more defects the browser could not have shown, because each is
+something that does not happen: a message not announced, a failure not reported, a row removed
+for a reason nobody stated. **A missing outcome renders perfectly** (11j).
+
+- **5A-107** a blank advanced-filter rule silently deleted every row with no value for that
+  field — measured on the real `advRulesPass`: blank `health ≥` kept **1 of 2**, blank
+  `sector is any of` kept **2 of 2**.
+- **5A-108** the CSV import's preview strip — its only feedback, three hard errors included —
+  was announced to nobody.
+- **5A-110** `/results`' Request button swallowed every non-OK answer, the **503 + `Retry-After`**
+  added by the 11e fix included, while its sibling `/request` has always surfaced the message.
+- **5A-109** a legend toggle whose `aria-label` changed with its own `aria-pressed`.
+
+⚠️ **The guard written in session 3 was structurally incapable of seeing session 4's twin of its
+own defect.** `form-errors.spec.ts` matched on `aria-invalid`; `CsvImport` sets none, so its
+silence was not a gap in the sweep — it was the guard's scope. It now matches on *being an upload
+surface* rather than on the attribute the previous defect happened to use. **A guard's scope is a
+claim about what it can see** (14g).
+
+**Suite: 717 → 722 tests in 41 files** — `e2e/screener-filters.spec.ts` (new, pure, 4 tests) and a
+second test in `form-errors.spec.ts`. The filter guard was proven red on the unfixed code first,
+and **which two of its four tests passed** is itself the finding: the control, and the default
+`+ Add filter` path — the two cases that could never have seen the bug.
+
+
+### Session 5 — the same question asked of PRODUCTION
+
+Sessions 1–4 ran locally and on the preview. Session 5 drove `www.majorcycle.com` by hand,
+free and then entitled, and every one of its six defects was outside what any existing guard
+could see — not missed by them, **outside them**.
+
+- **5A-116** — the responsive suite covered **public** pages only. No test had ever set a
+  viewport on a signed-in route, so a page that scrolled sideways at iPad-portrait width, breaking
+  non-negotiable #3, was never in scope. ⚠️ And the obvious instrument would have missed
+  it too: `documentElement.scrollWidth` read 907 against a 644 client width, while an "which
+  element overflows" probe returned **zero offenders**, because every offender sat inside a scroll
+  or clip container. `e2e/app-responsive.spec.ts` asserts a real `scrollX` after trying to scroll.
+- **5A-112** — **no test in the suite had ever asserted where focus goes.** Eight dialog
+  consumers, none restoring focus, `grep previousFocus|restoreFocus|returnFocus` across
+  `components/`: zero hits. `e2e/dialog-focus.spec.ts` covers both close paths, with a control
+  proving the dialog took focus first.
+- **5A-114** — 🔴 **the most important entry in this map.** `app-a11y.spec.ts` was
+  scanning the signed-in pages with axe and passing, on pages containing **zero headings of any
+  level**, because its `TAGS` list is `wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa` and axe tags
+  `page-has-heading-one`, `empty-heading` and `heading-order` as **`best-practice`**. The guard ran,
+  was green, and had never had an opinion. **Four strings in an array silently decided what an
+  entire tool was allowed to notice** (CLAUDE.md 11ap). The `h1` assertion is now its own test
+  rather than a hoped-for axe rule.
+- **5A-111**, **5A-120**, **5A-115** — a price change formatted to a fifth of a cent, four card
+  headers 0 px apart, and two rendered sections sharing one id. All three render perfectly; none is
+  the kind of thing a passing assertion can be absent *about*.
+
+⚠️ **Two entries in the audit ledger were RETRACTED this session**, and both had been
+carried as open defects. 5A-104 was a computed style read at t=0 of a 150 ms transition — twice,
+by two sessions — and 5A-113 claimed a missing `aria-modal` that Radix omits deliberately. The
+first had been reported to the owner as fact. Recorded here because a coverage map that only ever
+grows is not measuring itself.
+
+**Suite: 722 → 734 tests in 44 files** — `app-responsive.spec.ts`, `dialog-focus.spec.ts` and
+`price-delta.spec.ts` are new, plus six `h1` tests in `app-a11y.spec.ts`. The first two were proven
+red by sabotage before being trusted.
+
+### Session 6 — two guards where I expected one, and two h1s nobody could see
+
+No new surface. Closing the three items session 5 left with the owner produced three entries
+that belong in a coverage map rather than in a findings ledger.
+
+- **The sabotage that refused to break.** `app-a11y.spec.ts`'s heading-tree test claims to catch
+  a skipped level. Demoting `SnowflakeRadar`'s title `h3 → h5` left it **passing**, because the
+  E2E account holds no subscription and that card renders as a lock. The same break in
+  `CompanyOverview` failed correctly. **The browser guard cannot see any card that is behind the
+  paywall** — four of them — and the only reason that limit is now written down is that a
+  deliberate break declined to break. A second, source-reading test in `form-errors.spec.ts`
+  asserts every card title in `components/stocks/` is a heading whatever the viewer's plan.
+  Neither guard covers the other.
+- **A source sweep scoped to the syntax I pictured.** My first pass for 5A-119 matched literal
+  `<svg` tags and reported *12 clean, 1 offender* — while the padlock the finding was WRITTEN
+  from is `<Lock />`, a lucide component that renders an svg and forwards its props. The guard
+  now reads each file's `lucide-react` import list too, and states that it covers graphics only:
+  it has no opinion on `aria-label` on a `div`, where whether a role is needed depends on what
+  the component renders and no source scan can know.
+- **Two pages were serving two `h1`s and nothing could see either.** `NotInCoverage` carries its
+  own, so an unknown ticker had two — invisible because **no unknown ticker is in `APP_PATHS`**,
+  which is the same shape as the map's own standing warning about hand-written page lists. The
+  downloaded report had two the moment the page got a real one, and the report is a separate
+  esbuild build that no browser guard walks (11d). Both were found only because demoting the
+  shared header forced the question *"then who owns the h1 here?"* on every route.
+
+**Suite: 734 → 737 tests in 44 files** — the three new tests are the heading tree, every-card-
+title-is-a-heading, and a labelled-graphic-has-a-role; the h1 assertion added this session
+strengthened an existing test rather than adding one, and was proven red by sabotage.
+
+### P4 — four gaps that no guard could have had an opinion about
+
+The data pass. Every entry here is a class of defect where the code runs, the page renders and
+every number is plausible — so the only thing that can see it is a comparison against something
+outside the system.
+
+- **Nothing had ever compared our stored prices with the provider's.** That single question,
+  asked of all 864 active tickers, is what found MNST (478 of 501 bars exactly 2x too high, a
+  wrong rating on a US mega-cap for three weeks). There is still **no nightly check of this
+  kind**; what exists now is narrower and deliberately so — `_reverify_stored_splits` re-reads
+  the stored bars around a recently-resolved split. ⚠️ The broad version was considered and
+  **rejected with evidence**: run on 2026-09-04 it would have corrupted APH, whose stored series
+  was right while the provider's own history was mid-adjustment.
+- **A guard that runs once, at write time, is not a guard on what was written.**
+  `_verify_split_resolved` was correct and had simply never been shown the database. The gap was
+  not a missing assertion but a missing *subject*.
+- **No test asserts WHICH 404 page renders**, and the suite structurally cannot: it runs on
+  `next dev`, which resolves not-found boundaries differently from the production build. The
+  friendly "Not in our coverage yet" page is correct in production and generic in dev, so an
+  e2e assertion would fail for a reason that has nothing to do with the reader. ⚠️
+  `NotInCoverage`'s own docblock says the e2e suite caught this once — that is no longer true
+  (11f: a sentence in a comment is not a gate). It needs a production-server check, in the same
+  family as `check:page-weight` and `check:csp`.
+- **The screener's `Target` and `Upside%` columns** mixed the provider's quote with its price
+  history exactly as the Stock Detail header did (5A-126) — ✅ **closed 2026-09-05**, including
+  both export formats. The row carries no price bars, so the backend now ships the two numbers
+  and the threshold stays in one TypeScript function rather than being restated in Python.
+- **Nothing had ever checked that a LABEL matches the data under it.** Smart Money Activity told
+  45 companies' readers their insiders were selling when the filings held no purchases and no
+  sales, and called 24 more "NET BUYER" while they were net sellers (5A-127). Both labels render
+  identically to correct ones — the defect is only visible by counting across the universe, and
+  no guard in the suite had ever asked a question of that shape. `e2e/insider-sentiment.spec.ts`
+  now pins it, with the control that a real signal is still reported.
+
+⚠️ **And one about how the checks themselves were run.** My URL sweep asserted ten status codes
+and they were all correct; the *pages* behind them were not what production serves. The only
+reason that surfaced is a control expecting **200** on a good URL — without it, ten green
+refusals read as a clean sweep, and a system in which *every* URL 404s produces the identical
+ten green refusals (14g, again).
+
+**Suite: 737 → 748 tests in 46 files** — `quote-basis.spec.ts` and `insider-sentiment.spec.ts` are
+new, each broken two ways before being trusted. Pytest **230 → 253**, four of them driving `_reverify_stored_splits`
+against a stub client, two proven red by sabotage.
+
+### P5 — three guards that existed, ran, and were aimed at the wrong thing
+
+The content pass. Every entry is a check that was **present and green** while the thing it
+names went wrong.
+
+- **A guard over a hand-written list of two files.** `landing-copy.spec.ts` asserts that
+  /learn code reads the nightly snapshot rather than the frozen one — over two paths typed by
+  hand. `e2e/learn.spec.ts` was not among them, read the frozen file from the day the two were
+  split, and passed for four days because the files were byte-identical. **Two files that
+  agree cannot tell you which one you read.** Now derived from the path rather than listed.
+- **A cross-file rule that never looked inside a file.** `consistency.py` exists for
+  CLAUDE.md 11c — *a number stated twice is a copy of that number* — and applied it only
+  across the four drafts. One article stated its headline figure three times and disagreed
+  with itself; nothing in the suite could see it.
+- **Four scripts run, three cannot.** `audit_external.py`, `audit_independent.py` and
+  `divfreeze.py` import a module absent from the repository. The README recorded their
+  results as though they were repeatable. **A record saying a check exists is not the check**
+  (11f) — and the two that check our figures against an outside source are among the dead.
+- **Nothing counted the landing's own promise against the page it points at.** "Browse all N
+  companies" included five retired companies Browse hides. Both numbers are plausible; only
+  counting both sides finds it.
+
+⚠️ **And a guard failing on its own documentation, for the third time in this repo.** The
+first run of the new derived guard flagged `e2e/learn.spec.ts` — not because it reads the
+frozen file, but because the paragraph explaining that it *used to* reads better with the
+filename in it. Comments are stripped now, as in every other source-reading guard here.
+
+- **The rendered prose guard stops at the public pages.** `e2e/lib/proseSpacing.ts` walks
+  `/learn` and `/articles`, which is every prose surface it can reach without a session —
+  and the whole signed-in product, the first-login compliance modal included, was therefore
+  never checked for the defect it exists to catch. It was there (5A-133). The gap is now
+  half-covered by `e2e/jsx-entity-space.spec.ts`, which bans the *shape* in source across
+  `components/` and `app/`; that is weaker than asserting the rendered outcome and is
+  written down as weaker.
+- **`/results` has three empty states and none has a test.** "No analysis run yet", "No
+  stocks could be scored" and "No stocks match your filters" were traced and read in P4 and
+  are correct, including the `runMeta` persistence that keeps the middle one from
+  degenerating into the first after a reload. Reading is not driving.
+
+⚠️ **What this map still cannot claim about P5:** the mechanical proofread covers spacing,
+repeated words, entities and punctuation on the rendered page. **It says nothing about whether
+the prose is right**, and no automated layer can. That read-through is the owner's.
+
+### P7 — three gates that ran nowhere, and two checkers that were not looking
+
+**The map's own question, asked of the gates rather than the tests.** Three checks —
+`check:page-weight`, `check:csp`, `lighthouse` — were printed as NOT RUN by `pnpm gates`
+every single time, and a grep of `ci.yml` found that **no workflow had ever mentioned any
+of them**. So they ran when somebody typed three commands, which the git history dates to
+audit passes and nothing else. `gates.mjs` also said NOT RUN with a production server
+actually up on `:3200` — a false statement about the world, not a caveat.
+
+⚠️ **And each gate walked its own hand-written route list, the shape this map has warned
+about since Layer 1.** Diffing every route against all three lists found **eight in none
+of them**: `/privacy`, `/disclaimer`, `/run`, `/results`, `/request` and the three
+confinement pages. Two are public legal pages a reader can be linked straight to; three
+are the screener, the part of the product a subscriber pays for. All eight measured clean
+— **this is protection, not a repair** — and the point is that nothing would have said
+otherwise. Same defect as `/articles` shipping unwatched while `check:page-weight`
+truthfully reported "every page within budget" about the six pages it knew.
+
+Now: a `server-gates` CI job runs two of them on every push; five routes were added to
+each list (13 weighed, 19 CSP, 12 Lighthouse); the three confinement pages are **named as
+unreachable** rather than quietly omitted, because each needs a one-shot session marker or
+a scheduled-deletion account (14g).
+
+⚠️ **Two checkers were blind to one defect in two different ways, and neither was
+misconfigured.** Three controls carried an `aria-label` that REPLACED their visible text,
+so a speech-input user reading the control aloud got nothing (WCAG 2.5.3, Level A).
+Lighthouse runs that audit and **weights it 0** — accessibility reported a clean 100 with
+a Level A failure inside it. axe carries the rule tagged `wcag21a`, which **is** in our
+tag list, and also `experimental`, which axe ships disabled — it appeared in **no bucket
+at all**. So the honest question a map like this must ask is never *"is the rule in our
+tags?"* but ***"did it run?"***, which `e2e/lib/axeRules.ts` now asserts for all five such
+rules.
+
+⚠️ **The third instance needed a PAID session to exist on the page at all.**
+`app-a11y.spec.ts` signs in with the shared account, which holds no subscription, so
+`/run` renders the upsell and the CSV upload zone is not on the page being scanned — its
+own comment had called an entitled scan "the obvious follow-up" for two weeks. It is now
+built, with a positive control so the run cannot pass by scanning the upsell instead of
+the product. **This is 5A-114's entry restated: a scan that signs in is not thereby
+scanning the product.**
+
+⚠️ **What P7 still cannot claim.** The three confinement pages are in none of the three
+gates and unreachable by them. `/results` is weighed **unentitled** — 428 KB is the upsell
+panel, not a 25-row screener table with charts. And `next start` does not serve the Vercel
+Python function, so the cycle block is absent from `/stocks/us/AAPL` in every one of these
+sweeps, locally and in CI alike (11v).
 
 ## Still open after this delta
 

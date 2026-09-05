@@ -52,4 +52,46 @@ test.describe('ticker <-> URL routing', () => {
     expect(urlPartsToTicker('ca', 'abc.v')).toBe('ABC.V');
     expect(urlPartsToTicker('au', 'bhp')).toBe('BHP.AX');
   });
+
+  /**
+   * Audit 5A-034 — owner-reported: a `.V` stock answered on ALL THREE markets.
+   *
+   * The mechanism: a kept-suffix symbol carries its own exchange, so the
+   * conversion returned before `market` was consulted. The same hole existed for
+   * any fully-qualified ticker under `us`, which is the pass-through market.
+   *
+   * ⚠️ Every OTHER cross-market URL 404s by ACCIDENT rather than by rule — the
+   * reconstruction builds a ticker nobody owns. The positive controls below are
+   * the load-bearing half: a conversion that refused everything would satisfy
+   * every refusal here and break the entire product.
+   */
+  test('a ticker is reachable from exactly ONE market', async () => {
+    // The reported defect, all three markets named explicitly.
+    expect(urlPartsToTicker('ca', 'AE.V')).toBe('AE.V');
+    expect(urlPartsToTicker('us', 'AE.V')).toBeNull();
+    expect(urlPartsToTicker('au', 'AE.V')).toBeNull();
+
+    // Wider than `.V`: `us` passes a symbol straight through, so a fully
+    // qualified AU/CA ticker used to resolve under it.
+    expect(urlPartsToTicker('us', 'BHP.AX')).toBeNull();
+    expect(urlPartsToTicker('us', 'SHOP.TO')).toBeNull();
+
+    // CONTROL — the ordinary paths must all still work, or this guard is
+    // passing because nothing resolves at all.
+    expect(urlPartsToTicker('us', 'AAPL')).toBe('AAPL');
+    expect(urlPartsToTicker('au', 'BHP')).toBe('BHP.AX');
+    expect(urlPartsToTicker('ca', 'SHOP')).toBe('SHOP.TO');
+    expect(urlPartsToTicker('us', 'BRK-B')).toBe('BRK-B');
+  });
+
+  test('every stored ticker resolves from its own market and no other', async () => {
+    const MARKETS = ['us', 'au', 'ca'] as const;
+    for (const [stored, market, symbol] of ROUND_TRIP) {
+      for (const m of MARKETS) {
+        const got = urlPartsToTicker(m, symbol);
+        if (m === market) expect(got, `${symbol} under /${m}/`).toBe(stored);
+        else expect(got, `${symbol} must not resolve under /${m}/`).not.toBe(stored);
+      }
+    }
+  });
 });

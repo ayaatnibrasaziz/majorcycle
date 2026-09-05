@@ -3,7 +3,6 @@ import { isFullCycle, type CycleAnalysis, type CycleAnalysisFree } from '@/lib/t
 import { InfoTip } from '@/components/ui/InfoTip';
 import { RATING_TIER_HEX, tierFromScore } from '@/lib/ratings';
 import { PremiumLockKpi } from '@/components/stocks/PremiumLock';
-import { INK } from '@/lib/ink';
 
 interface Props {
   cycle: CycleAnalysis | CycleAnalysisFree;
@@ -28,36 +27,31 @@ function ratingColor(rating: number): string {
   return RATING_TIER_HEX[tierFromScore(rating)];
 }
 
-// ⚠️ NOT a rating, despite sharing four of the same hexes: this ranks how DEEP a
-// drawdown is, and deeper is more cyclically favourable. It keeps its own
-// thresholds and its own tokens for that reason — reaching for RATING_TIER_HEX
-// here would say something about our judgement of the stock that we do not mean.
-//
-// ⚠️ THESE ARE TEXT. `accentColor` lands on `--kpi-value-color`, which globals.css
-// uses as `color:` on `.kpi-value`, at 22px/600. WCAG counts "large text" from
-// 24px, or 18.66px at weight **700**; 600 is not bold, so the floor is the full
-// 4.5 and three of the four rungs were under it on --bg-page:
-//
-//     dd <= -10  #006400  6.73  ✓  unchanged
-//     dd <=  -5  #228B22  3.97  ✗  → INK.up       4.80
-//     dd <=  -2  #D4A017  2.15  ✗  → INK.neutral  4.82   ← every view, every stock
-//     else       #FF4500  3.11  ✗  → INK.warn     4.81
-//
-// I wrote "every one of these clears 4.5" in this comment before measuring it, and
-// it was wrong by a factor of two. Fixed 2026-08-22 with the owner's approval of
-// the ink layer; the ramp's DIRECTION is untouched, only its legibility.
-//
-// ⚠️ The bottom rung is here because it is the same ramp, not because anything
-// measured it: a stock has to be within 2% of its high to render #FF4500, and the
-// page this was audited on sat 24.6% down. Three rungs measured, one reasoned —
-// leaving the fourth illegible because the sample stock happened not to show it
-// would be the same mistake one level down (CLAUDE.md 14g).
-function drawdownColor(dd: number): string {
-  if (dd <= -10) return '#006400';
-  if (dd <= -5)  return INK.up;
-  if (dd <= -2)  return INK.neutral;
-  return INK.warn;
-}
+/*
+ * ⚠️ THE DRAWDOWN RAMP IS GONE — owner decision, 2026-09-02, and it closes the
+ * biggest inconsistency the P2 sweep found.
+ *
+ * `drawdownColor()` ranked how DEEP a fall is and painted it green for deeper,
+ * because deeper is more cyclically favourable. That is a defensible reading and
+ * it is the argument this product makes. The problem was never this ramp on its
+ * own — it was that a SECOND, opposite convention shipped alongside it. The same
+ * −5.6% rendered GREEN here in the header and RED three screens down in Drawdown
+ * Analysis, and blue again in the Learn article teaching a reader what a drawdown
+ * is (audit 5A-041 / 5A-051 / 5A-062). Both conventions are defensible; together
+ * they are not, because nothing tells the reader which one a given colour belongs
+ * to.
+ *
+ * The rule now: **a raw market number is never coloured by our opinion of it.**
+ * The fall is a measured fact; whether a given fall is good news is the Valuation
+ * score, which is the paid analysis. Colour is reserved for our ratings, for
+ * status and warnings, and for identifying a line on a chart.
+ *
+ * ⚠️ The historic note is kept because it cost something to learn: three of the
+ * four rungs were illegible on --bg-page (3.97 / 2.15 / 3.11 against a 4.5 floor)
+ * and the comment here had claimed they all cleared it, unmeasured. If a ramp
+ * ever comes back to this strip, measure every rung including the one the sample
+ * stock happens not to show.
+ */
 
 function fmt(n: number, decimals = 1): string {
   return n.toFixed(decimals);
@@ -66,7 +60,13 @@ function fmt(n: number, decimals = 1): string {
 interface KpiCardProps {
   label: string;
   value: string;
-  accentColor: string;
+  /**
+   * Optional since 2026-09-02. A card WITHOUT one states a measured fact and is
+   * deliberately uncoloured (Current Drawdown, Typical Drawdown); a card WITH one
+   * is showing our own judgement, and the colour is part of that judgement.
+   * Leaving it off falls back to the ordinary text colour and the neutral rule.
+   */
+  accentColor?: string;
   tipBody: string;
   note?: string;
 }
@@ -74,8 +74,12 @@ interface KpiCardProps {
 function KpiCard({ label, value, accentColor, tipBody, note }: KpiCardProps) {
   return (
     <div
-      className="kpi-card kpi-card--accent"
-      style={{ '--kpi-accent': accentColor, '--kpi-value-color': accentColor } as React.CSSProperties}
+      className={`kpi-card${accentColor ? ' kpi-card--accent' : ''}`}
+      style={
+        accentColor
+          ? ({ '--kpi-accent': accentColor, '--kpi-value-color': accentColor } as React.CSSProperties)
+          : undefined
+      }
     >
       <div className="kpi-label">
         {label}
@@ -143,7 +147,6 @@ export function KpiStrip({ cycle, entitled }: Props) {
       <KpiCard
         label="Current Drawdown"
         value={`${fmt(currentDrawdownPct, 1)}%`}
-        accentColor={drawdownColor(currentDrawdownPct)}
         tipBody={`How far the price has fallen from its highest point over the last ${lookback} trading days. A bigger negative number means a deeper dip. Dips approaching the Typical Drawdown have historically been better entry zones for this stock.`}
       />
       <KpiCard

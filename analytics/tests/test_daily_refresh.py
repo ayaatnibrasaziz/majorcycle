@@ -8,6 +8,7 @@ post-re-pull verification (``_verify_split_resolved``) + a dated status machine
 """
 
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import pandas as pd
 
@@ -16,6 +17,7 @@ from analytics.cron.daily_refresh import (
     _classify_split,
     _recent_split_events,
     _recent_splits,
+    _reverify_stored_splits,
     _verify_split_resolved,
 )
 
@@ -118,6 +120,172 @@ def test_missing_ratio_falls_back_to_generic_cliff_scan() -> None:
 
     smooth = _closes([142.0, 143.0, 144.0, 143.5, 142.5, 143.0, 144.0])
     assert _verify_split_resolved(smooth, "2026-06-13", None)[0] is True
+
+
+
+def test_half_adjusted_series_is_unresolved() -> None:
+    """AUDIT 5A-122 — the shape our stored MNST history is actually in.
+
+    MNST split 2:1 on 2026-08-11. Our stored closes alternate between the two bases:
+
+        97.50 / 47.72 / 47.83 / 93.56 / 97.65 / 48.19 / 93.55 / 94.46 / 47.08 / 90.36
+
+    ⚠️ **This test passes on the code as it already stood, and that is the finding.**
+    Driven against the real stored series it returns (False, '2026-08-07', 1.9193) —
+    the verifier can see this perfectly well. What it never saw is the STORED series:
+    it runs once, on the freshly fetched frame, at detection time. The fetched frame
+    that night evidently looked clean, the split was written 'resolved', and nothing
+    ever compared the answer against what actually landed in the table. 478 of 501
+    bars stayed exactly 2x the truth for three weeks, and the page reported a 55.7%
+    fall on a stock that had fallen about 11% — rating it High Conviction.
+
+    ⚠️ I first "fixed" this by adding sawtooth detection to this function and reverted
+    it: a deliberate break of that new rule left every test green, which showed the
+    rule was addressing a shape the existing code already handled (CLAUDE.md 11i/11u).
+    The fix is `_reverify_stored_splits`, which closes the loop between what we fetch
+    and what we store. This test pins the shape so a later change to the tolerances
+    cannot quietly stop seeing it.
+    """
+    df = _closes(
+        [97.50, 47.72, 47.83, 93.56, 97.65, 48.19, 93.55, 94.46, 47.08, 90.36, 45.72],
+        start="2026-07-20",
+    )
+    resolved, cliff_date, cliff_ratio = _verify_split_resolved(df, "2026-08-04", 2.0)
+    assert resolved is False
+    assert cliff_date is not None and cliff_ratio is not None
+
+
+def test_clean_two_for_one_series_is_resolved() -> None:
+    """The control for the test above: a correctly back-adjusted 2:1 split leaves no
+    step anywhere near 0.5 or 2.0, so a clean series must resolve. Without this, a
+    verifier that returned False for everything would satisfy the test above."""
+    clean = [88.0, 88.6, 87.9, 89.1, 88.4, 89.5, 88.8, 90.0, 89.3, 90.4, 89.7]
+    resolved, cliff_date, cliff_ratio = _verify_split_resolved(
+        _closes(clean, start="2026-07-20"), "2026-07-28", 2.0
+    )
+    assert resolved is True
+    assert cliff_date is None and cliff_ratio is None
+
+
+
+# --- _reverify_stored_splits ---------------------------------------------------
+#
+# AUDIT 5A-122. The verifier was never wrong; it was never shown the stored series.
+# These drive the real function against a stub client, so they are pure and need no
+# credentials, and they carry the control that matters: a HEALTHY split must not be
+# reopened, or this sweep would re-pull every company's history every night.
+
+
+class _SplitStub:
+    """Minimal Supabase stand-in: two tables, and a record of what was written."""
+
+    def __init__(self, splits: list[dict[str, Any]], bars: list[dict[str, Any]]) -> None:
+        self._splits = splits
+        self._bars = bars
+        self.updates: list[tuple[str, dict[str, Any]]] = []
+
+    # -- query builder (every method returns self; execute() ends it) --
+    def table(self, name: str) -> "_SplitStub":
+        self._t = name
+        self._patch: dict[str, Any] | None = None
+        return self
+
+    def select(self, _cols: str) -> "_SplitStub":
+        return self
+
+    def eq(self, col: str, val: Any) -> "_SplitStub":
+        if col == "id" and self._patch is not None:
+            self.updates.append((str(val), self._patch))
+        return self
+
+    def gte(self, _c: str, _v: Any) -> "_SplitStub":
+        return self
+
+    def lte(self, _c: str, _v: Any) -> "_SplitStub":
+        return self
+
+    def order(self, _c: str) -> "_SplitStub":
+        return self
+
+    def update(self, patch: dict[str, Any]) -> "_SplitStub":
+        self._patch = patch
+        return self
+
+    def execute(self) -> Any:
+        rows = self._splits if self._t == "split_events" else self._bars
+        if self._patch is not None:
+            rows = []
+
+        class _Res:
+            data = rows
+
+        return _Res()
+
+
+def _bar_rows(prices: list[float], start: str = "2026-07-20") -> list[dict[str, Any]]:
+    idx = pd.date_range(start, periods=len(prices), freq="B")
+    return [{"date": d.strftime("%Y-%m-%d"), "close": p} for d, p in zip(idx, prices, strict=True)]
+
+
+_MNST_STORED = [97.50, 47.72, 47.83, 93.56, 97.65, 48.19, 93.55, 94.46, 47.08, 90.36, 45.72]
+_CLEAN_STORED = [88.0, 88.6, 87.9, 89.1, 88.4, 89.5, 88.8, 90.0, 89.3, 90.4, 89.7]
+
+
+def _split_row(**kw: Any) -> dict[str, Any]:
+    row = {
+        "id": "row-1",
+        "ticker": "MNST",
+        "split_date": (datetime.now(timezone.utc).date() - timedelta(days=3)).isoformat(),
+        "ratio": 2.0,
+        "repull_count": 1,
+    }
+    row.update(kw)
+    return row
+
+
+def test_reverify_reopens_a_resolved_split_whose_stored_bars_disagree() -> None:
+    """The defect: `resolved` written from a clean fetch, over a stored series that
+    is anything but. Nothing looked again for three weeks."""
+    start = (datetime.now(timezone.utc).date() - timedelta(days=10)).isoformat()
+    stub = _SplitStub([_split_row()], _bar_rows(_MNST_STORED, start=start))
+    reopened = _reverify_stored_splits(stub)  # type: ignore[arg-type]
+    assert reopened == ["MNST"]
+    assert len(stub.updates) == 1
+    _id, patch = stub.updates[0]
+    assert patch["status"] == "pending"
+    assert patch["cliff_date"] is not None
+    assert "resolved_at" not in patch
+
+
+def test_reverify_leaves_a_healthy_split_alone() -> None:
+    """THE control, and the load-bearing one. A sweep that reopened everything would
+    satisfy the test above perfectly while re-pulling every company's full history
+    every night — the exact churn that once put 120 rows into a 30-day retry loop."""
+    start = (datetime.now(timezone.utc).date() - timedelta(days=10)).isoformat()
+    stub = _SplitStub([_split_row()], _bar_rows(_CLEAN_STORED, start=start))
+    assert _reverify_stored_splits(stub) == []  # type: ignore[arg-type]
+    assert stub.updates == []
+
+
+def test_reverify_ignores_markets_it_was_not_asked_for() -> None:
+    """The AU run must not reopen a US split it is not about to re-pull."""
+    start = (datetime.now(timezone.utc).date() - timedelta(days=10)).isoformat()
+    stub = _SplitStub([_split_row()], _bar_rows(_MNST_STORED, start=start))
+    assert _reverify_stored_splits(stub, markets=["au"]) == []  # type: ignore[arg-type]
+    assert stub.updates == []
+    # ...and the control: asked for its own market, it still fires.
+    stub2 = _SplitStub([_split_row()], _bar_rows(_MNST_STORED, start=start))
+    assert _reverify_stored_splits(stub2, markets=["us"]) == ["MNST"]  # type: ignore[arg-type]
+
+
+def test_reverify_survives_a_database_error() -> None:
+    """A sweep that runs last must never take the whole refresh down with it."""
+
+    class _Boom:
+        def table(self, _n: str) -> Any:
+            raise RuntimeError("connection reset")
+
+    assert _reverify_stored_splits(_Boom()) == []  # type: ignore[arg-type]
 
 
 # --- _classify_split (dated status machine) ------------------------------------

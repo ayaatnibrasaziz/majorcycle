@@ -59,7 +59,7 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
        * A tooltip is where a reader goes when they want to know exactly what a
        * number means, so it is the worst place to be approximately right.
        */
-      title="52-Week Range Position — Shows where the current price sits between the lowest and highest prices traded over the past 52 weeks. Near the left edge (low) = potentially undervalued or beaten down. Near the right edge (high) = approaching resistance or extended."
+      title="52-Week Range Position — Shows where the current price sits between the lowest and highest prices traded over the past 52 weeks. Near the left edge means it is trading close to its 52-week low; near the right edge, close to its 52-week high."
     >
       <div className="flex items-center gap-[6px] w-full">
         <span className="text-[9px] font-bold tracking-[1.2px] uppercase text-[var(--text-muted)] whitespace-nowrap flex-shrink-0 leading-none">
@@ -73,9 +73,14 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
             className="relative h-[5px] w-full rounded-full"
             style={{
               background:
-                'linear-gradient(90deg, var(--c-tier-1), var(--c-tier-2), var(--c-tier-3), var(--c-tier-4))',
+                'linear-gradient(90deg, var(--gauge-1), var(--gauge-2), var(--gauge-3), var(--gauge-4))',
             }}
             aria-hidden="true"
+            /* Keeps its own colours under Windows High Contrast: the OS would
+               flatten this gradient to one system colour, leaving the marker
+               sitting on a plain bar with nothing to sit BETWEEN. Decorative and
+               aria-hidden, so nothing is lost to a screen reader either way. */
+            data-keep-colors
           />
           <div
             className="absolute top-1/2 w-[9px] h-[9px] rounded-full bg-[var(--brand-mid)] border-2 border-white"
@@ -83,7 +88,7 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
               left: `${pct}%`,
               transform: 'translate(-50%, -50%)',
               boxShadow:
-                '0 1px 3px rgba(0,0,0,0.25), 0 0 0 1px rgba(26,58,110,0.20)',
+                'var(--shadow-marker-sm), var(--marker-ring)',
             }}
             /* ⚠️ `role="img"` is required, not decorative. `aria-label` is
                PROHIBITED on a plain <div>: a div has no implicit role, and ARIA

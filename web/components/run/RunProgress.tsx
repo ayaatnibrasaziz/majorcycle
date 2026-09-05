@@ -79,9 +79,9 @@ export function RunProgress({
             value={progress.running && progress.done > 0 ? fmtSecs(eta) : '—'}
           />
           <Chip label="Processed" value={`${processed} / ${runMeta.tickerCount}`} />
-          <Chip label="Scored" value={String(resultCount)} valueColor="var(--c-tier-2)" />
+          <Chip label="Scored" value={String(resultCount)} valueColor="var(--status-success)" />
           {unavailableCount > 0 && (
-            <Chip label="Skipped" value={String(unavailableCount)} valueColor="var(--c-tier-3)" />
+            <Chip label="Skipped" value={String(unavailableCount)} valueColor="var(--status-warning)" />
           )}
         </div>
 

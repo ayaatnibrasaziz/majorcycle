@@ -9,6 +9,7 @@
 // returned with each result (web/api/analyze.py `_screener_fundamentals`). The
 // Analyst column shows the Wall-Street consensus verbatim (third-party data, #17).
 
+import { quoteBasisAgrees } from '@/lib/quoteBasis';
 import { tickerToUrlParts } from '@/lib/ticker';
 import type { Market, RunResult } from '@/lib/types';
 import {
@@ -65,7 +66,7 @@ export type BandKey =
 export type ViewMode = 'simple' | 'analyst' | 'full';
 export type FieldType = 'numeric' | 'categorical' | 'text';
 export type CellKind = 'ticker' | 'overall' | 'valuation' | 'health' | 'cyclePos' | 'analyst' | 'default';
-export type TintKind = 'drawdown' | 'roe' | 'fcf' | 'de' | 'peg' | 'upside' | 'positive';
+export type TintKind = 'roe' | 'fcf' | 'de' | 'peg' | 'upside' | 'positive';
 export type Fmt =
   | 'money2'
   | 'money0'
@@ -138,6 +139,31 @@ export const BAND_META: Record<BandKey, { label: string; tip: string; cssClass: 
 
 const f = (r: ResultRow) => r.fundamentals;
 
+/**
+ * The analyst target, unless it cannot be compared with this row's price.
+ *
+ * ⚠️ AUDIT 5A-126, the screener half of 5A-125. `analystTargetPrice` is the
+ * provider's QUOTE; `currentClose` comes from its price HISTORY. Normally the same
+ * basis. After a split they can part company for days — AvalonBay was quoted at
+ * $184.06 on 2026-09-04 while its own series ended at $68.14 — and Target then reads
+ * plausibly while Upside% reads **+196%**. Both are withheld together, because they
+ * share the one suspect input and a target with no upside beside it is worse than
+ * neither.
+ *
+ * The rule is `quoteBasisAgrees` — the same function the Stock Detail page uses, so
+ * the two surfaces cannot drift (11c). A screener row has no price bars, so the
+ * backend ships `historyHigh` for exactly this comparison.
+ *
+ * ⚠️ A row from an OLD sessionStorage snapshot has neither field, so the comparison
+ * answers "cannot tell" and the figures stay — the same choice as everywhere else
+ * here: unknown reads as ordinary, or a stale snapshot would silently lose columns.
+ */
+const targetIfComparable = (r: ResultRow): number | null => {
+  const fu = f(r);
+  if (!fu) return null;
+  return quoteBasisAgrees(fu.historyHigh, fu.week52High) ? fu.analystTargetPrice : null;
+};
+
 export const FIELDS: Field[] = [
   // Identity
   { key: 'ticker', label: 'Ticker', type: 'text', band: 'identity', cell: 'ticker', fmt: 'text', align: 'left', get: (r) => r.ticker, filterable: false },
@@ -152,12 +178,12 @@ export const FIELDS: Field[] = [
 
   // Price & Analyst Targets
   { key: 'close', label: 'Close', tip: 'Close|Most recent daily closing price, in the stock’s home currency.', type: 'numeric', band: 'price', cell: 'default', fmt: 'money2', align: 'right', get: (r) => r.currentClose, filterable: true },
-  { key: 'target', label: 'Target', tip: 'Analyst Price Target|Average 12-month Wall-Street price target (third-party data).', type: 'numeric', band: 'price', cell: 'default', fmt: 'money0', align: 'right', get: (r) => f(r)?.analystTargetPrice ?? null, filterable: true },
-  { key: 'upside', label: 'Upside%', tip: 'Upside to Target%|Percentage gain (or loss) from the current price to the average analyst target.', type: 'numeric', band: 'price', cell: 'default', fmt: 'pctSigned1', align: 'right', tint: 'upside', get: (r) => upsidePct(r.currentClose, f(r)?.analystTargetPrice ?? null), filterable: true },
+  { key: 'target', label: 'Target', tip: 'Analyst Price Target|Average 12-month Wall-Street price target (third-party data).', type: 'numeric', band: 'price', cell: 'default', fmt: 'money0', align: 'right', get: (r) => targetIfComparable(r), filterable: true },
+  { key: 'upside', label: 'Upside%', tip: 'Upside to Target%|Percentage gain (or loss) from the current price to the average analyst target.', type: 'numeric', band: 'price', cell: 'default', fmt: 'pctSigned1', align: 'right', tint: 'upside', get: (r) => upsidePct(r.currentClose, targetIfComparable(r)), filterable: true },
   { key: 'analyst', label: 'Analyst', tip: 'Analyst Consensus|The consensus recommendation from Wall-Street analysts (third-party data, shown verbatim — not our rating).', type: 'text', band: 'price', cell: 'analyst', fmt: 'text', align: 'left', get: (r) => f(r)?.analystRecommendation ?? null, filterable: false },
 
   // Major Cycle
-  { key: 'currentDD', label: 'Current DD%', tip: 'Current Drawdown %|How far the stock is below its recent peak right now.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', tint: 'drawdown', get: (r) => r.currentDrawdownPct, filterable: true },
+  { key: 'currentDD', label: 'Current DD%', tip: 'Current Drawdown %|How far the stock is below its recent peak right now.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.currentDrawdownPct, filterable: true },
   { key: 'typicalDD', label: 'Typical DD%', tip: 'Typical Drawdown %|The average dip depth across the stock’s confirmed historical pullbacks.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.typicalDrawdown, filterable: true },
   { key: 'lowerBound', label: 'Lower Bound%', tip: 'Lower Bound %|The deepest confirmed fall in this stock’s whole history — the worst it has been, not a typical outcome. A still-forming dip can run below it.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.lowerBound, filterable: true },
   { key: 'pullbacks', label: 'Pullbacks', tip: 'Pullbacks|Number of confirmed pullback events found in the price history — more events = a more reliable typical-dip estimate.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'int', align: 'right', get: (r) => r.totalPullbackEvents, filterable: true },
@@ -168,7 +194,7 @@ export const FIELDS: Field[] = [
 
   // Valuation Ratios
   { key: 'pe', label: 'P/E', tip: 'Price / Earnings|Share price ÷ earnings per share (trailing). Lower = cheaper relative to earnings.', type: 'numeric', band: 'ratios', cell: 'default', fmt: 'mult1', cap: 150, align: 'right', get: (r) => f(r)?.pe ?? null, filterable: true },
-  { key: 'peg', label: 'PEG', tip: 'PEG Ratio|P/E ÷ earnings growth. Below 1 = potentially undervalued for its growth; above ~2.5 getting expensive.', type: 'numeric', band: 'ratios', cell: 'default', fmt: 'ratio2', cap: 25, align: 'right', tint: 'peg', get: (r) => f(r)?.peg ?? null, filterable: true },
+  { key: 'peg', label: 'PEG', tip: 'PEG Ratio|P/E ÷ earnings growth. Below 1 means the price is low relative to the growth rate; above ~2.5 means it is high relative to growth.', type: 'numeric', band: 'ratios', cell: 'default', fmt: 'ratio2', cap: 25, align: 'right', tint: 'peg', get: (r) => f(r)?.peg ?? null, filterable: true },
 
   // Profitability & Health
   { key: 'roe', label: 'ROE%', tip: 'Return on Equity %|Net income ÷ shareholder equity. Above ~15% is generally strong.', type: 'numeric', band: 'health', cell: 'default', fmt: 'pct1', cap: 300, align: 'right', tint: 'roe', get: (r) => f(r)?.roe ?? null, filterable: true },
@@ -244,8 +270,10 @@ export const CSV_COLUMNS: ReadonlyArray<{
   { header: 'Cycle Position', get: (r) => r.cyclePos, xf: 'int' },
   { header: 'Cycle Position Zone', get: (r) => ZONE_DISPLAY[r.valuationZone] },
   { header: 'Close', get: (r) => r.currentClose, xf: 'num2' },
-  { header: 'Analyst Target', get: (r) => r.fundamentals?.analystTargetPrice ?? null, xf: 'num2' },
-  { header: 'Upside %', get: (r) => upsidePct(r.currentClose, r.fundamentals?.analystTargetPrice ?? null), xf: 'num2' },
+  // Withheld in the export exactly as on screen — a figure we will not show is not
+  // a figure we will hand over in a spreadsheet (11c: one rule, every surface).
+  { header: 'Analyst Target', get: (r) => targetIfComparable(r), xf: 'num2' },
+  { header: 'Upside %', get: (r) => upsidePct(r.currentClose, targetIfComparable(r)), xf: 'num2' },
   { header: 'Analyst Consensus', get: (r) => fmtAnalyst(r.fundamentals?.analystRecommendation ?? null) },
   { header: 'Current Drawdown %', get: (r) => r.currentDrawdownPct, xf: 'num2' },
   { header: 'Typical Drawdown %', get: (r) => r.typicalDrawdown, xf: 'num2' },

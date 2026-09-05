@@ -48,6 +48,11 @@ export async function buildReportData(
 ): Promise<ReportData | null> {
   const { spec, label: horizonLabel } = parseSpec(sp);
   const stored = urlPartsToTicker(market, urlTicker);
+  // ⚠️ Not a backstop here — this is the ONLY place the check runs for the
+  // report. A route handler does not render through `[ticker]/layout.tsx`, so
+  // without this line `/stocks/us/AE.V/report` would build the Canadian
+  // company's paid report at a US URL (5A-034). The caller 404s on null.
+  if (!stored) return null;
 
   const [stock, medians] = await Promise.all([
     fetchStockDetail(stored),

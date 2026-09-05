@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 
 import { WeekRangeGauge } from '@/components/stocks/WeekRangeGauge';
+import { INK } from '@/lib/ink';
+import { quoteMatchesHistory } from '@/lib/quoteBasis';
 import { InfoTip } from '@/components/ui/InfoTip';
 import type { StockDetail } from '@/lib/stocks';
-import { fmtPrice } from '@/lib/format';
+import { fmtPrice, fmtPriceDelta } from '@/lib/format';
 import { marketLabel, tickerToUrlParts } from '@/lib/ticker';
 import type {
   AnalystRecommendation,
@@ -42,6 +44,34 @@ function dailyChange(latest: number, previous: number): DailyChange {
 }
 
 /**
+ * The page's own heading — the company's name, in the place it already appeared.
+ *
+ * ⚠️ AUDIT 5A-114, second pass (owner, 2026-09-04). The h1 came from the shared
+ * header and read **"Stock Detail" on every one of the 863 tickers**, so a screen
+ * reader's page title said which KIND of page this is and never which one. The
+ * name was already on screen one line below it, as a `div`.
+ *
+ * ⚠️ Nothing moves. `<h1 className="inline">` inherits its size, weight and colour
+ * from the wrapper exactly as the text node did — Tailwind's preflight sets
+ * `font-size: inherit`, `font-weight: inherit` and no margin on headings, and
+ * `inline` restores the display the browser's own stylesheet would otherwise make
+ * `block`. The sector stays OUTSIDE the h1: "Apple Inc." is the page's name,
+ * "Apple Inc. · Technology" is a name with a category stuck on it.
+ *
+ * One component rather than a copy in each branch of `StockHeader` — the two
+ * differ only in whether a price is available, which is no reason for the heading
+ * to exist twice and drift (11c).
+ */
+function CompanyName({ stock }: { stock: StockDetail }) {
+  return (
+    <div className="text-[14px] text-[var(--text-secondary)] mt-[2px]">
+      <h1 className="inline">{stock.name ?? stock.ticker}</h1>
+      {stock.sector ? <span> · {stock.sector}</span> : null}
+    </div>
+  );
+}
+
+/**
  * The Stock Detail page's identity strip. Visual parity with `.detail-header` in
  * `/reference/original-design.html` (lines 356-381 for CSS, 2562-2618 for markup).
  *
@@ -72,10 +102,7 @@ export function StockHeader({ stock, badgeSlot }: Props) {
               {marketLabel(stock.market)}
             </span>
           </div>
-          <div className="text-[14px] text-[var(--text-secondary)] mt-[2px]">
-            {stock.name ?? stock.ticker}
-            {stock.sector ? <span> · {stock.sector}</span> : null}
-          </div>
+          <CompanyName stock={stock} />
           {badgeSlot}
         </div>
         <div className="ml-auto text-right min-w-[240px] flex flex-col items-end justify-center">
@@ -87,18 +114,41 @@ export function StockHeader({ stock, badgeSlot }: Props) {
 
   const currentClose = latestBar.close;
   const change = previousBar ? dailyChange(currentClose, previousBar.close) : null;
-  const changeColor = change && change.pct >= 0
-    ? 'var(--c-tier-2)'
-    : 'var(--c-tier-5)';
+  // ⚠️ AUDIT 5A-135. DIRECTION, not RATING. This read `--c-tier-2` / `--c-tier-5`
+  // -- our Constructive and Bearish *judgement of the stock* -- to say that a
+  // price ticked up or down today. Correct on screen and wrong in principle: the
+  // day somebody retunes a rating tier, yesterday's close moves with it, and
+  // nothing goes red (CLAUDE.md 11c). `lib/ink.ts` forbids exactly this in its own
+  // header and already holds the pair every other direction figure on this page
+  // uses -- EarningsHistory, DividendHistory, AnalystTargetTrack, BalanceSheet.
+  // Measured before switching: up 5.31 -> 5.90 on white, down 9.51 -> 6.68, so
+  // both clear the 4.5 floor and the red is the same firebrick the rest of the
+  // page already draws. Guarded by e2e/direction-not-rating.spec.ts.
+  const changeColor = change && change.pct >= 0 ? INK.up : INK.down;
+
+  // ⚠️ AUDIT 5A-125. The 52-week range and the analyst target come from the
+  // provider's QUOTE; `currentClose` comes from its price HISTORY. After a split
+  // those two can sit on different bases for days, and every figure below divides
+  // one by the other — AvalonBay printed "+196.0% upside to target" and "63.3% off
+  // high" on a stock that was flat. Both are withheld together because they share
+  // the one suspect input; the cycle analysis is untouched, because it reads the
+  // bars alone and is internally consistent. See lib/quoteBasis.ts.
+  const quoteUsable = quoteMatchesHistory(priceBars, fundamentals.week52High);
 
   // Upside-to-analyst-target (if target is available)
-  const target = fundamentals.analystTargetPrice;
+  const target = quoteUsable ? fundamentals.analystTargetPrice : null;
   const upsidePct = target ? ((target - currentClose) / currentClose) * 100 : null;
   const upsideColor = upsidePct === null
     ? null
     : upsidePct >= 0
-      ? 'var(--c-tier-2)'
-      : 'var(--c-tier-3)';
+      // Same defect as `changeColor` above, three lines apart, found by grepping the
+      // file rather than fixing only the line the audit named (CLAUDE.md 11c x).
+      // #1E7C1E -> #1B741B: imperceptible, and it takes the last rating token off a
+      // figure that is a direction. The DOWN case stays `--analyst-downside` on
+      // purpose -- a price above the analyst target is not bad news, so its grey is
+      // a deliberate choice and not a colour I am entitled to repaint (11l).
+      ? INK.up
+      : 'var(--analyst-downside)';
   const upsideText = upsidePct === null
     ? null
     : upsidePct >= 0
@@ -117,17 +167,29 @@ export function StockHeader({ stock, badgeSlot }: Props) {
             {marketLabel(stock.market)}
           </span>
         </div>
-        <div className="text-[14px] text-[var(--text-secondary)] mt-[2px]">
-          {stock.name ?? stock.ticker}
-          {stock.sector ? <span> · {stock.sector}</span> : null}
-        </div>
+        <CompanyName stock={stock} />
         <div
           className="inline-flex items-center gap-[6px] font-[var(--font-mono)] text-[10px] text-[var(--text-muted)] mt-1 tracking-[0.2px] cursor-help self-start"
-          title="Data Freshness — Stock prices and fundamentals refresh nightly at 23:00 UTC. This snapshot was generated then."
+          title="Data Freshness — Stock prices and fundamentals refresh overnight, after each market has closed. This shows when we last refreshed this stock, not the date of the price itself: the latest close a provider has published can be a session older."
         >
           <span
-            className="w-[6px] h-[6px] rounded-full bg-[var(--c-tier-2)] animate-[metaPulse_2.4s_ease-in-out_infinite]"
-            style={{ boxShadow: '0 0 0 3px rgba(34,139,34,0.15)' }}
+            /* A "data is fresh" light, which is neither a rating nor a direction --
+               it is the same "that worked" green as every Saved tick, so it takes
+               `--status-success` (5A-134). The DOT is byte-identical -- the two
+               tokens hold the same value, which is why nothing moves. (The hex is
+               deliberately NOT written here: `check:tier-palette` scans source
+               WITH comments, so spelling it out fails the build. That is the
+               fifth time this repo has been caught by a guard reading its own
+               documentation -- 11au. Left as a reword rather than teaching the
+               guard to strip comments, because a naive stripper would cut at the
+               `//` inside a URL and could hide a real literal after it.) The
+               HALO is not, and saying so matters: it was a hand-typed rgba of the
+               OLD pre-2026-08-22 green (34,139,34 at .15) -- a colour the palette
+               stopped using a fortnight ago -- and is now the token's own tint at
+               .10. On a 3px ring around a 6px dot that is imperceptible; the point
+               is that it can no longer drift from the dot it surrounds. */
+            className="w-[6px] h-[6px] rounded-full bg-[var(--status-success)] animate-[metaPulse_2.4s_ease-in-out_infinite]"
+            style={{ boxShadow: '0 0 0 3px var(--status-success-tint)' }}
             aria-hidden="true"
           />
           <span>Updated {formatUpdatedAt(stock.updatedAt)}</span>
@@ -147,7 +209,7 @@ export function StockHeader({ stock, badgeSlot }: Props) {
           >
             <PriceArrow direction={change.pct >= 0 ? 'up' : 'down'} />
             {change.pct >= 0 ? '+' : '−'}
-            {fmtPrice(Math.abs(change.abs), currency)}
+            {fmtPriceDelta(Math.abs(change.abs), currentClose, currency)}
             {' ('}
             {change.pct >= 0 ? '+' : '−'}
             {Math.abs(change.pct).toFixed(2)}%{')'}
@@ -167,7 +229,7 @@ export function StockHeader({ stock, badgeSlot }: Props) {
             {upsideText}
           </div>
         )}
-        {fundamentals.week52Low != null && fundamentals.week52High != null && (
+        {quoteUsable && fundamentals.week52Low != null && fundamentals.week52High != null && (
           <WeekRangeGauge
             low={fundamentals.week52Low}
             high={fundamentals.week52High}

@@ -52,7 +52,7 @@ export function UpdatePasswordForm() {
       <AuthCard title="Password updated">
         <div className="bg-gradient-to-br from-white to-[var(--brand-light)] border border-[var(--brand-light-border)] rounded-[var(--radius)] p-6 text-center">
           <div className="w-14 h-14 mx-auto rounded-full bg-white shadow-[var(--shadow-md)] flex items-center justify-center mb-4">
-            <CheckCircle2 className="w-7 h-7 text-[var(--c-tier-2)]" strokeWidth={2} />
+            <CheckCircle2 className="w-7 h-7 text-[var(--status-success)]" strokeWidth={2} />
           </div>
           <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">
             Your password has been changed. Taking you to your terminal…
@@ -99,7 +99,7 @@ export function UpdatePasswordForm() {
         {error && (
           <div
             role="alert"
-            className="flex items-start gap-2 text-[12px] text-[var(--c-tier-5-ink)] bg-[var(--tint-tier-5)] border border-[var(--tint-tier-5-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
+            className="flex items-start gap-2 text-[12px] text-[var(--status-danger-ink)] bg-[var(--status-danger-tint)] border border-[var(--status-danger-tint-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
           >
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" />
             <span className="leading-relaxed">{error}</span>

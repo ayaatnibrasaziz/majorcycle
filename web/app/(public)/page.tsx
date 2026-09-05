@@ -5,7 +5,7 @@ import { pageMetadata } from '@/lib/seo';
 import { jsonLdScript, organizationJsonLd, websiteJsonLd } from '@/lib/jsonld';
 import { JsonLd } from '@/components/JsonLd';
 import { LANDING, UNIVERSE_COUNT, depth, price } from '@/lib/landing';
-import { MAG7, cardinal, mag7Facts, pct1, shortName } from '@/lib/mag7';
+import { MAG7, mag7Facts, pct1, shortName } from '@/lib/mag7';
 import { tierFromLabel } from '@/lib/ratings';
 import { Button } from '@/components/ui/button';
 import { CycleRulers } from '@/components/landing/CycleRulers';
@@ -191,7 +191,7 @@ export default function LandingPage() {
                     </b>
                   </span>
                   <span className="b-pill">
-                    <b className="b-pill-n" style={{ color: 'var(--c-tier-3-ink)' }}>
+                    <b className="b-pill-n" style={{ color: 'var(--accent-warm-ink)' }}>
                       {f.cautiousOrWorse}
                     </b>{' '}
                     Cautious / Bearish
@@ -387,16 +387,41 @@ export default function LandingPage() {
                 </p>
                 <div className="callout" style={{ marginTop: '24px' }}>
                   <div className="h">What this particular run is telling you</div>
+                  {/*
+                    ⚠️ Every figure here is COMPUTED from the snapshot, and that is not
+                    enough on its own — finding 5A-014, 2026-09-01.
+
+                    The previous wording said "{deepestFall} has fallen furthest … ITS
+                    Financial Health is {weakest.healthScore}", which silently attributed
+                    one company's health score to another the moment those two rows stopped
+                    being the same company. On the 13 Aug data they were both Tesla, so it
+                    read correctly for the file's whole life. On the 31 Aug data the deepest
+                    faller is Meta — and the sentence would have printed Tesla's 49.8 under
+                    Meta's name, then called a Constructive, financially healthy company
+                    "the weakest business on the list".
+
+                    The lesson, which is the one worth carrying: computing a figure from
+                    data protects the FIGURE, never an argument built on a RELATIONSHIP
+                    between figures. This wording therefore names both companies explicitly
+                    and asserts only what the numbers say — two similar falls, opposite
+                    verdicts — and `e2e/landing-copy.spec.ts` fails if that premise stops
+                    holding, so the next regeneration is TOLD rather than expected to notice.
+                  */}
                   <p>
                     <strong>
-                      {shortName(f.deepestFall.name)} has fallen furthest of the{' '}
-                      {cardinal(f.total)} — {pct1(f.deepestFall.currentDrawdownPct)} — and
-                      still comes {f.deepestFallRank}.
+                      {shortName(f.deepestFall.name)} and {shortName(f.weakest.name)} have
+                      fallen almost exactly the same distance —{' '}
+                      {pct1(f.deepestFall.currentDrawdownPct)} and{' '}
+                      {pct1(f.weakest.currentDrawdownPct)}.
                     </strong>{' '}
-                    Its Financial Health is {f.weakest.healthScore.toFixed(1)} against{' '}
-                    {shortName(f.healthiest.name)}&rsquo;s {f.healthiest.healthScore.toFixed(1)}. That&rsquo;s exactly the trap the
-                    second question exists to catch: the biggest discount on the list belongs
-                    to the weakest business on it.
+                    The ranking puts {shortName(f.deepestFall.name)} {f.deepestFallRank} and{' '}
+                    {shortName(f.weakest.name)} {f.weakestRank}.{' '}
+                    {shortName(f.deepestFall.name)}&rsquo;s Financial Health is{' '}
+                    {f.deepestFall.healthScore.toFixed(1)}; {shortName(f.weakest.name)}
+                    &rsquo;s is {f.weakest.healthScore.toFixed(1)}. The same discount,
+                    opposite verdicts — which is exactly what the second question exists to
+                    catch. The size of the fall told you nothing about which one was worth
+                    owning.
                   </p>
                   <p style={{ marginTop: '11px' }}>
                     Now look at what <em>isn&rsquo;t</em> here.{' '}
@@ -454,7 +479,7 @@ export default function LandingPage() {
               </div>
               <div className="card">
                 <div className="card-body">
-                  <div className="idx" style={{ color: 'var(--c-tier-3-ink)' }}>
+                  <div className="idx" style={{ color: 'var(--accent-warm-ink)' }}>
                     25% OF THE RATING
                   </div>
                   <h3 style={{ marginTop: '6px' }}>Cycle Payoff</h3>
@@ -472,11 +497,13 @@ export default function LandingPage() {
               // public page, and it was 2.38:1 until G2. A class would do, but a
               // data attribute cannot be renamed by a styling change.
               data-tier-legend
-              // On the SURFACE, not the page ground. The Neutral badge is a gold
-              // tint over whatever is behind it: on white it measures 4.73:1 (the
-              // figure G2 fixed it to), on --bg-page 4.32:1 — under the floor. The
-              // badge did not change; the thing behind it did. Composited colours
-              // have to be measured where they actually sit.
+              // On the SURFACE, not the page ground, and that is load-bearing: a
+              // tier badge is an alpha tint over whatever is behind it, so its
+              // contrast changes with the ground rather than with the badge. When
+              // Neutral was grey this pair measured 4.73:1 on white and 4.32:1 on
+              // --bg-page — the badge had not changed, the thing behind it had.
+              // (Now gold: 5.95 and 5.42.) Composited colours have to be measured
+              // where they actually sit.
               className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3"
               style={{
                 marginTop: '26px',

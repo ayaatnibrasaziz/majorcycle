@@ -95,7 +95,12 @@ export async function sendTrialStartedEmail(opts: {
     `surprise.\n\n` +
     `You can change your plan or cancel anytime from your account — cancel before the trial ends and ` +
     `you won't be charged a cent: ${SITE}/account\n\n` +
-    `Start exploring: ${SITE}/results\n\n` +
+    // /stocks, matching the button above -- see the comment on it. This line said
+    // /results until 2026-09-05 (audit 5A-136): the fix that moved the BUTTON off an
+    // empty page never reached the plain-text copy of the SAME email, so every
+    // subscriber reading in plain text was still sent there. Each email in this file
+    // is written twice and nothing compared the halves until e2e/email-render.spec.ts.
+    `Start exploring: ${SITE}/stocks\n\n` +
     `Questions? Get in touch anytime at ${SITE}/contact`;
 
   return sendBrandEmail({

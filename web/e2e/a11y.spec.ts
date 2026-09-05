@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { ARTICLES, articlePath } from '../lib/articles';
 import { LEARN_ARTICLES, learnPath } from '../lib/learn';
+import { TAGS, RULE_OPTIONS, rulesThatDidNotRun } from './lib/axeRules';
 
 /**
  * Automated accessibility scan of the public site — axe-core, WCAG 2.1 A + AA.
@@ -69,7 +70,10 @@ const PUBLIC_PATHS = [
   ...ARTICLES.map((a) => articlePath(a.slug)),
 ];
 
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+// ⚠️ AUDIT 5A-152 — `TAGS` moved to `lib/axeRules.ts`, alongside the five
+// WCAG A/AA rules that axe marks `experimental` and therefore skips unless they
+// are enabled by name. A tag filter alone never reached them, and a rule that
+// never runs is indistinguishable from one that passes.
 
 /**
  * ⚠️ **Scanned with reduced motion, and that is a correctness decision rather
@@ -146,7 +150,11 @@ async function scan(page: Page, path: string) {
      with a control that proves it still covers exactly what it claims to, because
      an exemption that has outlived its defect excuses whatever moves under it
      next (14g). */
-  return new AxeBuilder({ page }).withTags(TAGS).analyze();
+  const results = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
+  // The control: a rule that never ran is indistinguishable from one that passed.
+  const missing = rulesThatDidNotRun(results);
+  expect(missing, `axe never evaluated ${missing.join(', ')} — the scan is blind to them`).toEqual([]);
+  return results;
 }
 
 test.describe('the public site is accessible', () => {
@@ -236,7 +244,7 @@ test.describe('the public site is accessible', () => {
     await expect(page.locator('main').first()).toBeVisible();
     await page.waitForLoadState('networkidle').catch(() => {});
 
-    const full = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+    const full = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
     const targets = full.violations.flatMap((v) =>
       v.nodes.map((n) => `${v.id} @ ${n.target.join(' ')}`),
     );

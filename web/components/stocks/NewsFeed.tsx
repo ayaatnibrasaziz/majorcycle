@@ -22,7 +22,7 @@ export function NewsFeed({ news }: Props) {
     return (
       <div className="card card--stack-base">
         <div className="card-header">
-          <div className="card-title">Latest News</div>
+          <h3 className="card-title">Latest News</h3>
         </div>
         <div className="card-body">
           <div style={{ color: 'var(--text-muted)', fontSize: 13, textAlign: 'center', padding: '24px 0' }}>
@@ -36,13 +36,13 @@ export function NewsFeed({ news }: Props) {
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Latest News
           <InfoTip title="Latest News">
             Recent headlines about the company. Tap a card to read the full article
             at the source. Headlines are informational — not a signal to act.
           </InfoTip>
-        </div>
+        </h3>
         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
           {shown.length} {shown.length === 1 ? 'article' : 'articles'}
         </div>
@@ -76,7 +76,13 @@ export function NewsFeed({ news }: Props) {
               <span style={{
                 fontSize: 10,
                 fontWeight: 700,
-                color: 'var(--c-mid)',
+                // ⚠️ `var(--c-mid)` until 2026-09-02 — a token that has never
+                // existed. An undefined custom property does not fall back, it
+                // voids the whole declaration, so this pill silently inherited
+                // its colour and the brand blue never applied. The ink token is
+                // the right one here because the text sits on a tint: 5.61 on a
+                // white card, 5.09 on --bg-page.
+                color: 'var(--c-brand-ink)',
                 background: 'rgba(30,92,179,.10)',
                 borderRadius: 4,
                 padding: '1px 6px',

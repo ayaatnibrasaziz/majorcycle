@@ -1,6 +1,6 @@
 'use client';
 
-import { CHART_INK } from '@/lib/chartTheme';
+import { CHART_INK, CHART_TOOLTIP } from '@/lib/chartTheme';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -60,11 +60,37 @@ const STOCK_COLOR = '#1E5CB3';
    graphic floor at 3.30 while failing as a label. Both now carry their ink value,
    so each legend entry still matches the line it names. The grey and the violet
    were already legible (5.70 for the violet) and are untouched. */
+/* ⚠️ REWORKED 2026-09-02 — audit 5A-089 / 5A-090, and this was the site's one
+   genuine WCAG 1.4.1 exposure. Three defects in four values:
+
+     · `^GSPC` was CHART_INK — the token for axis ticks, legends and watermarks.
+       The S&P 500 line and the chart's own furniture were the IDENTICAL colour
+       (ΔE 0.0), so the benchmark could not be told from the grid labelling.
+     · `^AXJO` was INK.neutral, and the comment beside it still said "gold" —
+       that token stopped being gold in August. So two of the four series were
+       grey: 8.8 apart in normal vision, 7.1 to a protanope.
+     · `^AXJO` against `^GSPTSE` measured **2.6** to a protanope — indistinguishable.
+
+   A line chart conveys series identity through colour and a legend cannot
+   disambiguate two series that ARE the same colour. Four distinct hues now, none
+   within 15 of the furniture — AND a distinct dash per series, so colour is never
+   the only channel. The dash is the part that actually satisfies 1.4.1: the
+   weakest colour pair here is still 5.9 (violet against the stock's brand blue to
+   a protanope), and no five-line palette clears 16 everywhere without turning to
+   mud. Give a new benchmark its own dash as well as its own hue. */
 const BENCH_COLOR: Record<string, string> = {
-  '^GSPC': CHART_INK,      // S&P 500 — neutral grey
-  '^IXIC': '#7C3AED',      // Nasdaq — violet
-  '^AXJO': INK.neutral,    // ASX 200 — gold
+  '^GSPC': '#6D28D9',      // S&P 500 — violet
+  '^IXIC': '#A21C6B',      // Nasdaq — magenta
+  '^AXJO': '#9A6A05',      // ASX 200 — amber
   '^GSPTSE': SERIES_TEAL,  // S&P/TSX — teal
+};
+
+/** The second channel. The stock's own line stays solid; every benchmark differs. */
+const BENCH_DASH: Record<string, string> = {
+  '^GSPC': '7 4',
+  '^IXIC': '2 3',
+  '^AXJO': '9 3 2 3',
+  '^GSPTSE': '14 5',
 };
 
 function toTs(d: string): number {
@@ -311,14 +337,14 @@ export function RelativePerformance({
     // report, which is handed its series directly and never observes anything.
     <div ref={hostRef} className="card card--stack-base fade-in">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Relative Performance vs Benchmarks
           <InfoTip title="Relative Performance">
             How this stock&apos;s total return compares with major market indexes over
             the period. &quot;Alpha&quot; is how many percentage points the stock beat (or
             lagged) its home-market index.
           </InfoTip>
-        </div>
+        </h3>
         <div className="chart-controls" role="group" aria-label="Relative performance date range">
           {(['1y', '3y', 'max'] as Range[]).map((r) => (
             <button
@@ -369,7 +395,7 @@ export function RelativePerformance({
                     if (!active || !payload?.length) return null;
                     const ts = payload[0]!.payload.ts as number;
                     return (
-                      <div style={{ background: '#1A1A1B', border: '1px solid #2E3347', borderRadius: 6, padding: '8px 12px', fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
+                      <div style={{ background: CHART_TOOLTIP.bg, border: `1px solid ${CHART_TOOLTIP.border}`, borderRadius: 6, padding: '8px 12px', fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
                         <div style={{ color: CHART_INK, marginBottom: 4 }}>
                           {new Date(ts).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </div>
@@ -419,6 +445,7 @@ export function RelativePerformance({
                     name={BENCHMARKS.find((b) => b.ticker === t)?.label ?? t}
                     type="monotone"
                     stroke={BENCH_COLOR[t] ?? CHART_INK}
+                    strokeDasharray={BENCH_DASH[t]}
                     strokeWidth={1.75}
                     dot={false}
                     isAnimationActive={false}

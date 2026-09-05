@@ -345,12 +345,72 @@ for (const f of files) {
  * carries its score while every badge carries its word. It is a quality question,
  * and it belongs to the owner.
  */
+/*
+ * ⚠️ 2026-09-02 — THE TWO NEUTRAL PAIRS WERE LOWERED ON PURPOSE, WHICH IS THE ONE
+ * THING A RATCHET IS NOT SUPPOSED TO ALLOW. Read this before touching them again.
+ *
+ * The owner decided Neutral must be a traffic light's amber rather than a grey:
+ * *"it is not about visibility, it's about common sense. Traffic lights are
+ * typically used to say between good, neutral and bad… going from green, grey and
+ * red doesn't make sense."* Grey scored so well here precisely BECAUSE it is a
+ * grey — a near-neutral has almost no colour to lose, so it holds still under
+ * every simulation while its neighbours move around it. Any colour at all in that
+ * slot scores worse. Those floors were therefore not a safety bar that gold
+ * happens to fail; they were a measurement of what grey costs the design.
+ *
+ * What the colour was chosen against instead, all measured before it was offered:
+ *   · it clears both contrast floors (5.37 with white on it, 4.86 as text), where
+ *     the ORIGINAL gold #D4A017 cleared neither (2.38 and 2.15)
+ *   · L* 45.0 against its neighbours' 45.3 — it does not disturb the weight ramp
+ *   · it is the most chromatic gold available under those constraints, and three
+ *     attempts to buy the separation back all failed (a darker gold reaches 9.2
+ *     only by becoming a chocolate brown, a lighter one loses the white text, and
+ *     moving Constructive too reaches only 6.0 by turning it olive)
+ *
+ * Not a WCAG 1.4.1 failure — colour is never the sole channel on these surfaces:
+ * every chip carries its score and every badge its word. It is a quality
+ * trade-off, it belongs to the owner, and they took it on these numbers.
+ *
+ * ⚠️ THESE ARE STILL RATCHETS. They are today's measurement rounded down, so the
+ * next well-meant nudge that narrows either pair fails exactly as before. Lowering
+ * one again needs the same thing this needed: a measurement, a reason, and the
+ * owner.
+ *
+ * ⚠️ THIS TABLE HELD ONLY ADJACENT PAIRS UNTIL 2026-09-03, AND THE SITE'S WEAKEST
+ * PAIR WAS NOT IN IT. A results table, the landing's legend and the screener all put
+ * all five tiers on screen at once, so every one of the ten pairs is a comparison a
+ * reader actually makes — while four of them were the only ones ever measured. All
+ * ten are now here.
+ *
+ * ⚠️ AND THE FINDING THAT PROMPTED IT NAMED THE WRONG DEFICIENCY. 5A-097 recorded
+ * Constructive vs Cautious as "3.9 to a protanope". Measured: to a protanope they are
+ * 15.1 apart, and it is a DEUTERANOPE who sees 3.9. Both are described loosely as
+ * "red-green colour blindness" and they are not the same simulation; deuteranopia is
+ * also the commoner of the two. The number was right and the reader it described was
+ * not — which would have sent anyone trying to fix it at the wrong axis.
+ *
+ * ⚠️ WHY THE NEW ROWS ARE TODAY'S NUMBERS AND NOT AN INVENTED FLOOR. 2-4 sits at
+ * 3.9 and 3-4 at 5.3 to a deuteranope. A guard that fails on the day it is written
+ * gets loosened rather than obeyed (CLAUDE.md 11t), and repainting an owner-approved
+ * rating colour is not mine to do (11l). So every floor below is the measurement,
+ * rounded down — which changes no pixel and buys the one thing that was missing:
+ * these six pairs can no longer get quietly WORSE, and the weak ones are now printed
+ * on every run instead of living in a document. Improving 2-4 is a colour decision
+ * for the owner, with these numbers in front of them.
+ */
 const SEPARATION = [
   // pair, plain, protanope, deuteranope
   [['1', '2'], 17.0, 18.0, 24.0], // measured 2026-08-22
-  [['2', '3'], 34.0, 25.0, 21.5], // re-based 2026-08-23 when Neutral became grey
-  [['3', '4'], 28.0, 26.5, 24.0], // re-based 2026-08-23
+  [['2', '3'], 40.0, 5.5, 7.0], // re-based 2026-09-02 when Neutral became gold
+  [['3', '4'], 16.5, 9.5, 5.0], // re-based 2026-09-02
   [['4', '5'], 16.0, 17.5, 16.0], // measured 2026-08-22
+  // the six non-adjacent pairs, ratcheted at their 2026-09-03 measurement
+  [['1', '3'], 39.5, 17.0, 29.5],
+  [['1', '4'], 54.0, 14.5, 26.5],
+  [['1', '5'], 53.0, 16.5, 19.0],
+  [['2', '4'], 60.0, 14.5, 3.5], // ⚠️ 3.9 to a deuteranope — the site's weakest pair
+  [['2', '5'], 62.0, 30.0, 14.0],
+  [['3', '5'], 24.5, 26.5, 20.5],
 ];
 for (const [[a, b], minPlain, minProtan, minDeutan] of SEPARATION) {
   const [x, y] = [fromCss[a], fromCss[b]];
@@ -422,11 +482,14 @@ for (const [role, [ground, where]] of Object.entries(INK_GROUND)) {
   if (r < FLOOR) {
     fail.push(`INK.${role} (${hex}) scores ${r.toFixed(2)} on ${ground}, under ${FLOOR} — ${where}.`);
   }
-  /* ⚠️ `down` has no CSS twin ON PURPOSE, and this says so out loud rather than
-     skipping quietly: it did not change, so no stylesheet rule needed rewriting.
-     It exists in INK only so a call site writing `up ? … : down` imports both
-     rather than hand-typing one of them (CLAUDE.md 11c). */
-  if (role === 'down') continue;
+  /* ⚠️ `down` DID get its CSS twin, on 2026-09-02, and this check exists because
+     it had none for the life of the product. Four of the five direction inks had
+     a token and this one did not, so every stylesheet and component needing "a
+     loss, in words" hand-typed `#B22222` — in 20 places (audit 5A-058). That made
+     the one direction colour carrying the most weight in a finance product the
+     only member of the set a palette change could not reach by editing one line.
+     It is now checked like its four siblings; the old "no CSS twin on purpose"
+     note here is what made the gap look deliberate. */
   if (!(role in inkFromCss)) {
     fail.push(`--c-${role}-ink is missing from globals.css, but INK.${role} exists`);
   } else if (inkFromCss[role] !== hex) {
@@ -443,6 +506,372 @@ for (const role of Object.keys(inkFromCss)) {
   fail.push(`--c-${role}-ink exists in globals.css with no INK.${role} and no recorded ground`);
 }
 
+
+// ── 6 · the domains that are NOT ratings ────────────────────────────────────
+/*
+ * ⚠️ EVERY ASSERTION ABOVE JUDGES THE RATING PALETTE, and for most of 2026 that
+ * was the only palette anything checked. The P2 sweep found one palette doing
+ * twelve unrelated jobs (5A-070) and four groups of tokens holding the same value
+ * with nothing able to tell a wrong choice from a right one (5A-057). The fix was
+ * to give each domain its own names; this is what stops them rotting.
+ *
+ * Each row is a colour that is NOT our judgement about a stock, with the ground it
+ * really sits on. They were measured when they were introduced — this is what
+ * makes the measurement outlive the session that took it.
+ */
+const DOMAIN = [
+  // token, ground, floor, what it is
+  ['--status-warning', '#F0F4F8', 3.0, 'a warning border/icon on the page (non-text)'],
+  ['--status-warning-ink', '#F0F4F8', FLOOR, '"Payment due" / "Access paused" as words'],
+  ['--analyst-positive', '#F0F4F8', FLOOR, "a third party's Buy, as words"],
+  ['--analyst-neutral', '#F0F4F8', FLOOR, "a third party's Hold, as words"],
+  ['--analyst-negative', '#F0F4F8', FLOOR, "a third party's Sell, as words"],
+  ['--data-missing', '#F0F4F8', FLOOR, 'the em dash where we have no value'],
+  ['--c-down-ink', '#F0F4F8', FLOOR, 'a loss, in words'],
+];
+const domainVal = {};
+for (const [token, ground, floor, what] of DOMAIN) {
+  const m = css.match(new RegExp(`${token}\\s*:\\s*(#[0-9A-Fa-f]{6})\\s*;`));
+  if (!m) {
+    fail.push(`${token} is missing from globals.css — check 6 cannot measure it, and an unmeasurable token reads as a clean one.`);
+    continue;
+  }
+  const hex = m[1].toUpperCase();
+  domainVal[token] = hex;
+  const r = ratio(hex, ground);
+  note.push(`  ${token.padEnd(22)} ${hex}   ${r.toFixed(2)} on ${ground}   (${what})`);
+  if (r < floor) fail.push(`${token} (${hex}) scores ${r.toFixed(2)} on ${ground}, under ${floor} — ${what}.`);
+}
+
+/*
+ * ⚠️ AND THE POINT OF SEPARATE NAMES IS THAT THEY LOOK SEPARATE. A third party's
+ * *Sell* wearing our Bearish colour reads as OUR conclusion (5A-045), which is
+ * what shipped until 2026-09-02. Distance is the only thing that can assert it —
+ * two tokens with different names and the same value are indistinguishable to
+ * every other kind of check.
+ */
+const SEPARATE_FROM_RATING = [
+  ['--analyst-positive', '2', 12.0],
+  ['--analyst-negative', '5', 10.0],
+  ['--analyst-negative', '4', 12.0],
+];
+for (const [token, tier, floorD] of SEPARATE_FROM_RATING) {
+  const a = domainVal[token];
+  const b = fromCss[tier];
+  if (!a || !b) continue;
+  const d = Math.min(
+    deltaE(a, b),
+    deltaE(simulate(a, 'protan'), simulate(b, 'protan')),
+    deltaE(simulate(a, 'deutan'), simulate(b, 'deutan')),
+  );
+  note.push(`  ${token} vs tier ${tier}   ${d.toFixed(1)} apart (floor ${floorD})`);
+  if (d < floorD) {
+    fail.push(
+      `${token} (${a}) has moved to within ${d.toFixed(1)} of rating tier ${tier} (${b}), floor ${floorD}. ` +
+        `Third-party opinion must not look like our verdict — that is the whole reason these tokens exist.`,
+    );
+  }
+}
+
+// ── 7 · the badge ink measured where the badge actually draws it ────────
+/*
+ * Every check above measures an ink against a FLAT ground. A rating badge does not
+ * sit on one: `.tier-badge--N` paints `--tint-tier-N-strong`, an alpha wash, and the
+ * ink lands on whatever that composites to — which differs on a card and on the page.
+ *
+ * ⚠️ THAT GAP SHIPPED. Audit 5A-096: the grey Neutral badge scored 4.59 composited
+ * on `--bg-page` while `globals.css` claimed 4.82 for the same pairing, and Cautious
+ * sat at 4.81, i.e. exactly on this repo's floor. Both readings were invisible here,
+ * because check 3 measured those inks on the plain page and passed. **A guard that
+ * measures the right colour against the wrong ground reports a clean page it has not
+ * looked at** — the same shape as 11l (ii), one layer down.
+ *
+ * Two grounds, because a badge appears on both and the page is the darker:
+ * `--bg-page` behind a badge in a table row, white behind one on a card.
+ *
+ * ⚠️ Tier 1 is deliberately the only row reading `--c-tier-N` rather than
+ * `--c-tier-N-ink`: `.tier-badge--1` is written that way in globals.css, and this
+ * table must describe the rule that ships, not the one it would be tidier to have.
+ * If that rule changes, this row has to change with it — which is why the token name
+ * is read from the stylesheet below rather than assumed.
+ */
+const BADGE_INK = { 1: '--c-tier-1', 2: '--c-tier-2-ink', 3: '--c-tier-3-ink', 4: '--c-tier-4-ink', 5: '--c-tier-5-ink' };
+const BADGE_GROUNDS = [[DARKEST_GROUND, 'a table row'], [WHITE, 'a card']];
+
+/* The declared value of a token, as a hex or as an rgba(). Deliberately line-based
+   rather than one clever expression: `--tint-tier-3` and `--tint-tier-3-strong` are
+   prefixes of one another, so a loose match reads the wrong one and every number
+   after it is confidently wrong. */
+const rawDeclaration = (token) => {
+  for (const line of css.split('\n')) {
+    const at = line.indexOf(token + ':');
+    if (at === -1) continue;
+    return line.slice(at + token.length + 1);
+  }
+  return null;
+};
+/*
+ * ⚠️ THIS FOLLOWS ALIASES, AND IT HAS TO. The surface tokens became a two-layer
+ * ramp on 2026-09-03 — `--bg-page: var(--elev-sunken)` — which is the point of
+ * the whole exercise, and the first version of this reader skipped any
+ * declaration containing `var()`. Check 8b went red immediately with "could not
+ * be read", which is the RIGHT failure and the reason it says that instead of
+ * quietly passing: a reader that cannot see through the architecture goes blind
+ * exactly as the architecture improves (CLAUDE.md 14g). Depth-limited so a
+ * circular alias stops rather than hangs.
+ */
+const declaration = (token, depth = 0) => {
+  const raw = rawDeclaration(token);
+  if (raw === null || depth > 4) return raw;
+  const alias = raw.match(/var\((--[a-z0-9-]+)/);
+  return alias ? declaration(alias[1], depth + 1) : raw;
+};
+const readToken = (token) => {
+  const d = declaration(token);
+  const m = d && d.match(/#[0-9A-Fa-f]{6}/);
+  return m ? m[0].toUpperCase() : null;
+};
+const readAlpha = (token) => {
+  const d = declaration(token);
+  const m = d && d.match(/rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([0-9.]+)\s*\)/);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])] : null;
+};
+/* Source-over: what an alpha wash actually becomes once the ground shows through it.
+   This is the whole point of check 7 — the tint is never the colour behind the ink. */
+const composite = ([r, g, b, a], groundHex) => {
+  const back = rgb(groundHex);
+  const mix = [r, g, b].map((c, i) => Math.round(c * a + back[i] * (1 - a)));
+  return '#' + mix.map((c) => c.toString(16).padStart(2, '0')).join('').toUpperCase();
+};
+
+/* Read the ink token each `.tier-badge--N` rule really names, so a change to that
+   rule cannot leave this check measuring a colour the badge stopped using. */
+for (const t of ['1', '2', '3', '4', '5']) {
+  const rule = css.match(new RegExp('\\.tier-badge--' + t + '\\s*\\{([^}]*)\\}'));
+  if (!rule) {
+    fail.push(`.tier-badge--${t} is not in globals.css — check 7 cannot measure it, and an unmeasurable badge reads as a clean one.`);
+    continue;
+  }
+  const colour = rule[1].match(/color:\s*var\((--[a-z0-9-]+)\)/);
+  if (!colour) {
+    fail.push(`.tier-badge--${t} no longer takes its colour from a token — check 7 can only follow a var().`);
+    continue;
+  }
+  if (colour[1] !== BADGE_INK[t]) {
+    fail.push(
+      `.tier-badge--${t} now draws its ink from ${colour[1]}, but check 7 is measuring ${BADGE_INK[t]}. ` +
+        `Update BADGE_INK deliberately — silently measuring the old token is how 5A-096 stayed invisible.`,
+    );
+    continue;
+  }
+  const inkHex = readToken(colour[1]);
+  const tint = readAlpha(`--tint-tier-${t}-strong`);
+  if (!inkHex || !tint) {
+    fail.push(`tier ${t}: could not read ${colour[1]} or --tint-tier-${t}-strong as a value check 7 can composite.`);
+    continue;
+  }
+  for (const [ground, where] of BADGE_GROUNDS) {
+    const behind = composite(tint, ground);
+    const r = ratio(inkHex, behind);
+    note.push(`  .tier-badge--${t}  ${inkHex} on ${behind}  ${r.toFixed(2)}  (tint over ${ground} — ${where})`);
+    if (r < FLOOR) {
+      fail.push(
+        `.tier-badge--${t} scores ${r.toFixed(2)} where it actually draws — ${inkHex} on ${behind}, ` +
+          `the tint composited over ${ground} (${where}). Floor ${FLOOR}. ` +
+          `Measuring that ink on the plain ground instead would have passed, which is the defect this check exists for.`,
+      );
+    }
+  }
+}
+
+// ── 8 · the Opportunity-Map zones: one hue, three consumers ─────────────────
+/*
+ * `--zone-*-rgb` in globals.css feeds `landing.css` (the still's quadrant washes)
+ * and the legend swatches; `OPPORTUNITY_ZONES` in `lib/chartTheme.ts` feeds the
+ * real chart's Recharts props. Same arrangement as `INK` / `--c-*-ink`, and the
+ * same reason: CSS cannot be imported into TypeScript, so there must be two
+ * copies and they must be unable to drift.
+ *
+ * ⚠️ There were THREE hand-typed copies before 2026-09-03 and nothing linked any
+ * of them, so retuning the paid chart would have repainted one and left a
+ * marketing page illustrating a chart that no longer looked like that.
+ */
+const ZONE_PAIRS = [
+  ['--zone-good-rgb', 'zoneGood'],
+  ['--zone-priced-rgb', 'zonePricedWash'],
+  ['--zone-cheap-rgb', 'zoneCheapWash'],
+  ['--zone-worst-rgb', 'zoneWorstWash'],
+];
+const chartThemeSrc = readFileSync(join(ROOT, 'lib', 'chartTheme.ts'), 'utf8');
+const zonesBlock = chartThemeSrc.match(/OPPORTUNITY_ZONES\s*=\s*\{([\s\S]*?)\}\s*as const/);
+if (!zonesBlock) {
+  fail.push('OPPORTUNITY_ZONES is gone from lib/chartTheme.ts — check 8 cannot compare the two copies, and an unmeasurable pair reads as a clean one.');
+} else {
+  for (const [token, key] of ZONE_PAIRS) {
+    const triplet = declaration(token);
+    const nums = triplet && triplet.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    const tsHex = zonesBlock[1].match(new RegExp(key + ":\\s*'(#[0-9A-Fa-f]{6})'"));
+    if (!nums || !tsHex) {
+      fail.push(`zone ${key}: could not read ${token} from globals.css or ${key} from chartTheme.ts — check 8 needs both.`);
+      continue;
+    }
+    const fromTriplet = '#' + [1, 2, 3].map((i) => Number(nums[i]).toString(16).padStart(2, '0')).join('').toUpperCase();
+    const fromChart = tsHex[1].toUpperCase();
+    note.push(`  zone ${key.padEnd(15)} ${fromChart}   ${token} = ${nums[1]},${nums[2]},${nums[3]}`);
+    if (fromTriplet !== fromChart) {
+      fail.push(
+        `zone ${key} disagrees between its two copies: ${token} is ${fromTriplet}, chartTheme.ts says ${fromChart}. ` +
+          `The paid Opportunity Map and the landing page's still of it would draw different colours, and both would look deliberate.`,
+      );
+    }
+  }
+}
+
+// ── 8b · the canvas mirrors: every TS copy still equals its token ───────────
+/*
+ * `BRAND` and `CHART_CHROME` in `lib/chartTheme.ts` are the values Lightweight
+ * Charts needs, and that library paints to a `<canvas>` where a CSS variable is
+ * simply an unparseable colour. So they must be literals, and a literal that
+ * mirrors a token is a copy — the same arrangement as `INK` / `--c-*-ink`,
+ * and it needs the same protection.
+ *
+ * ⚠️ THE COST OF NOT HAVING THIS IS ALREADY IN THE FILE'S OWN HISTORY: when
+ * `--text-muted` was darkened in August, 29 hand-typed chart literals stayed on
+ * the old value, so every axis label kept the exact 2.97:1 defect the token
+ * change had just fixed — while looking entirely deliberate.
+ */
+const MIRRORS = [
+  ['BRAND', 'deep', '--brand-deep'],
+  ['BRAND', 'mid', '--brand-mid'],
+  ['BRAND', 'bright', '--brand-bright'],
+  ['CHART_CHROME', 'grid', '--bg-page'],
+  ['CHART_CHROME', 'crosshairLabel', '--brand-deep'],
+  ['CHART_CHROME', 'axis', '--border'],
+];
+const objectBody = (name) => {
+  const m = chartThemeSrc.match(new RegExp('export const ' + name + '\\s*=\\s*\\{([\\s\\S]*?)\\}\\s*as const'));
+  return m ? m[1] : null;
+};
+for (const [obj, key, token] of MIRRORS) {
+  const body = objectBody(obj);
+  if (body === null) {
+    fail.push(`${obj} is gone from lib/chartTheme.ts — check 8b cannot compare it with ${token}.`);
+    continue;
+  }
+  const tsm = body.match(new RegExp(key + ":\\s*'(#[0-9A-Fa-f]{6})'"));
+  const cssHex = readToken(token);
+  if (!tsm || !cssHex) {
+    fail.push(`${obj}.${key} or ${token} could not be read — check 8b needs both, and an unmeasurable pair reads as a clean one.`);
+    continue;
+  }
+  const tsHex = tsm[1].toUpperCase();
+  if (tsHex !== cssHex) {
+    fail.push(
+      `${obj}.${key} is ${tsHex} but ${token} is ${cssHex}. The canvas charts would draw one colour and every CSS surface the other, ` +
+        `and both would look deliberate — this is the 29-literal drift of 2026-08, one library along.`,
+    );
+  }
+}
+note.push(`  chartTheme mirrors: ${MIRRORS.length} canvas literals checked against their tokens`);
+
+// ── 9 · the forced-colors block only names things that exist ────────────────
+/*
+ * Windows High Contrast support is a block of selectors nobody on this project
+ * can see working. That makes it the easiest kind of rule to get wrong and the
+ * hardest to notice: **a CSS selector matching nothing is completely silent.**
+ * The stylesheet stays valid, the build stays green, and the element the rule was
+ * written to protect is simply not protected.
+ *
+ * ⚠️ This is not hypothetical. The first draft of that block, written 2026-09-03,
+ * listed `.wk-track` for the 52-week gauge. There is no such class — the gauge is
+ * Tailwind utilities and an inline gradient — so the one chart element that most
+ * needed the opt-out was the one that did not get it, and every other check in
+ * this repo agreed the work was done. Found by reading the rule back off a
+ * running browser, which is the only place the difference shows.
+ *
+ * So: every class and attribute named inside `@media (forced-colors: active)`
+ * must appear somewhere else in the codebase. Not proof the rule is CORRECT —
+ * only a real Windows machine can say that — but proof it is aimed at something.
+ */
+const fcBlock = css.match(/@media \(forced-colors: active\) \{([\s\S]*)\n\}/);
+if (!fcBlock) {
+  fail.push('The @media (forced-colors: active) block is gone from globals.css — audit 5A-082 is reopened, silently.');
+} else {
+  const named = new Set();
+  for (const m of fcBlock[1].matchAll(/(?:^|[\s,])(\.[a-z][a-z0-9-]*|\[data-[a-z-]+\])/gim)) named.add(m[1]);
+  const haystack = files
+    .filter((p) => /\.(tsx|ts|css)$/.test(p) && !p.endsWith('globals.css'))
+    .map((p) => readFileSync(p, 'utf8'))
+    .join('\n');
+  const orphans = [];
+  for (const sel of named) {
+    const bare = sel.startsWith('[') ? sel.slice(1, -1) : sel.slice(1);
+    // globals.css may style it; something else must USE it.
+    if (!haystack.includes(bare)) orphans.push(sel);
+  }
+  note.push(`  forced-colors: ${named.size} selectors named, ${named.size - orphans.length} reachable`);
+  if (orphans.length) {
+    fail.push(
+      `the forced-colors block names ${orphans.join(', ')}, which nothing in the codebase uses. ` +
+        `A selector matching nothing is silent — the stylesheet stays valid and the element stays unprotected, ` +
+        `which is exactly how .wk-track shipped. Point it at a real class, or use [data-keep-colors].`,
+    );
+  }
+}
+
+// ── 10 · the design doc quotes the real values ──────────────────────────────
+/*
+ * `design-system.md` §2 reproduces the token block as a code fence. That fence is
+ * a COPY of `globals.css`, maintained by hand beside it, and it drifts.
+ *
+ * ⚠️ Audit 5A-048 found five stale values in it; **two were still stale six weeks
+ * later**, on 2026-09-03, including `--text-muted` — documented `#8A97A8` when the
+ * real token had been `#626B77` since August. That is not a trivia error: #8A97A8
+ * is the value that measured 2.97:1 and produced 258 failing elements on one page,
+ * so the doc was recommending, in a code fence, the exact colour the product had
+ * just been fixed to stop using. Anyone reading the design system to pick a muted
+ * grey would have picked the broken one.
+ *
+ * Reading the fence and comparing is the cheapest possible fix, and it makes the
+ * doc's §2 unable to lie about a value again (CLAUDE.md 11c — a rule in two places
+ * drifts; where the second copy must exist, check it rather than trust it).
+ */
+const DOC = join(ROOT, '..', 'docs', 'design-system.md');
+let docSrc = null;
+try {
+  docSrc = readFileSync(DOC, 'utf8');
+} catch {
+  fail.push('docs/design-system.md could not be read — check 10 cannot compare the documented palette with the real one.');
+}
+if (docSrc) {
+  const documented = new Map();
+  for (const m of docSrc.matchAll(/^\s*(--[a-z0-9-]+):\s*(#[0-9A-Fa-f]{6})\s*;/gm)) {
+    if (!documented.has(m[1])) documented.set(m[1], m[2].toUpperCase());
+  }
+  const drifted = [];
+  let compared = 0;
+  for (const [token, docHex] of documented) {
+    const realHex = readToken(token);
+    if (!realHex) continue; // documented but not a plain hex in globals.css — check 6/8b territory
+    compared++;
+    if (realHex !== docHex) drifted.push(`${token}: the doc says ${docHex}, globals.css says ${realHex}`);
+  }
+  note.push(`  design-system.md §2: ${compared} documented token values compared`);
+  // The control. Without it this passes on a doc whose code fence has been deleted.
+  if (compared < 20) {
+    fail.push(
+      `check 10 compared only ${compared} token values against docs/design-system.md — it expects at least 20. ` +
+        `Either the doc's palette fence has moved or its format changed, and the check is now measuring almost nothing.`,
+    );
+  }
+  if (drifted.length) {
+    fail.push(
+      `docs/design-system.md quotes ${drifted.length} value(s) the stylesheet disagrees with:\n    ` +
+        drifted.join('\n    ') +
+        `\n  The doc is what a person reads before picking a colour, so a stale value there is a recommendation to use the wrong one.`,
+    );
+  }
+}
 
 // ── report ──────────────────────────────────────────────────────────────────
 console.log('Rating tier palette');

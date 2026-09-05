@@ -129,7 +129,7 @@ const BLOCKED_META: StatusMeta = {
 
 const TONE_CLS: Record<StatusMeta['tone'], string> = {
   ok: 'bg-[var(--brand-light)] text-[var(--brand-mid)] border-[var(--brand-light-border)]',
-  warn: 'bg-[var(--tint-tier-3)] text-[var(--c-tier-3-ink)] border-[var(--tint-tier-3-strong)]',
+  warn: 'bg-[var(--status-warning-tint)] text-[var(--status-warning-ink)] border-[var(--status-warning-tint-strong)]',
   muted:
     'bg-[var(--bg-hover)] text-[var(--text-secondary)] border-[var(--border)]',
 };
@@ -196,7 +196,7 @@ export function SubscriptionCard({
         {notice && (
           <div
             role="alert"
-            className="mb-4 flex items-start gap-2 text-[12px] text-[var(--c-tier-3-ink)] bg-[var(--tint-tier-3)] border border-[var(--tint-tier-3-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
+            className="mb-4 flex items-start gap-2 text-[12px] text-[var(--status-warning-ink)] bg-[var(--status-warning-tint)] border border-[var(--status-warning-tint-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
           >
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" aria-hidden />
             <span className="leading-relaxed">{notice}</span>

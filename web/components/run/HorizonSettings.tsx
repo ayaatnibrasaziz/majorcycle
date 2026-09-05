@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
@@ -145,7 +145,7 @@ export function HorizonSettings({
         <button
           type="button"
           onClick={() => setAdvOpen(true)}
-          className="mt-2 text-[11px] font-semibold text-[var(--c-tier-5)] underline"
+          className="mt-2 text-[11px] font-semibold text-[var(--status-danger)] underline"
         >
           A custom value is out of range — open Advanced to fix it.
         </button>
@@ -169,6 +169,21 @@ function Field({
   error: string | null;
   onChange: (n: number) => void;
 }) {
+  /*
+   * ⚠️ `aria-invalid` ALONE TELLS A SCREEN-READER USER THE FIELD IS WRONG AND NEVER
+   * WHAT IS WRONG WITH IT. These bounds are terse on purpose — "Min 21." — so the
+   * message is the only thing that says what a valid value would be, and without
+   * this id the reader hears "invalid" and has to go hunting for it.
+   *
+   * ⚠️ The rule was already written down, in the sibling that does the same job:
+   * `StockBrowser`'s numeric filter carries the comment *"Link the inline error to
+   * the input so a screen reader announces the reason (not just `aria-invalid`)"*
+   * and wires exactly this. This component was written separately and never
+   * received it — 11c-iv, the consumer that never got the rule — and a comment in
+   * another file is not a gate (11f). Audit 5A-101, found by driving the control
+   * rather than by reading it: nothing renders differently either way.
+   */
+  const errorId = useId();
   return (
     <div>
       <div className="set-field-label">
@@ -181,6 +196,7 @@ function Field({
         step={step}
         aria-label={label}
         aria-invalid={error !== null}
+        aria-describedby={error ? errorId : undefined}
         onChange={(e) => {
           const n = Number(e.target.value);
           if (!Number.isNaN(n)) onChange(n);
@@ -188,7 +204,9 @@ function Field({
         className={cn('set-field-input', error && 'set-field-input--error')}
       />
       {error && (
-        <p className="mt-1 text-[10.5px] font-semibold text-[var(--c-tier-5)]">{error}</p>
+        <p id={errorId} className="mt-1 text-[10.5px] font-semibold text-[var(--status-danger)]">
+          {error}
+        </p>
       )}
     </div>
   );

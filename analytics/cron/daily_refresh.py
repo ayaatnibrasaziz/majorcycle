@@ -11,7 +11,7 @@ import logging
 import os
 import re
 import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional, cast
 
 import pandas as pd
@@ -86,6 +86,12 @@ _SPLIT_RATIO_TOL = 0.20
 # We compare the median close just-before vs just-after the step; only a sustained shift
 # matching the split factor counts. See C-R2 review (FDX false positive).
 _SPLIT_PERSIST_BARS = 3
+
+#: How far back the stored-series re-verification looks. A split older than this has
+#: had its chance; re-pulling ancient history every night is the failure mode that
+#: once left 120 rows churning for 30 days, so the sweep is bounded on BOTH sides —
+#: recent enough to matter, old enough to have settled.
+_SPLIT_REVERIFY_DAYS = 45
 
 
 def _with_market_cap(row: dict[str, Any], fund: Any) -> dict[str, Any]:
@@ -609,6 +615,124 @@ def _update_split_state(
     supabase.table("split_events").update(patch).eq("id", split_id).execute()
 
 
+def _reverify_stored_splits(
+    supabase: Client, markets: Optional[list[str]] = None
+) -> list[str]:
+    """Re-check recently-RESOLVED splits against the bars we actually STORED.
+
+    ── The gap this closes (audit 5A-122, 2026-09-04) ──────────────────────────
+    `_verify_split_resolved` is sound — driven against our real MNST history it
+    returns `(False, '2026-08-07', 1.9193)` on the first try. It simply never sees
+    that history. It runs **once**, on the frame the provider just handed us, at the
+    moment the split is detected; whatever lands in `price_bars` afterwards is never
+    compared with the answer. So a night when the fetched frame looked clean and the
+    stored result did not produces a row marked `resolved`, and nothing looks again.
+
+    The cost, measured on the live database three weeks later: **478 of MNST's 501
+    stored bars were exactly 2.0x the provider's**, so the page reported a **-55.7%**
+    fall on a stock that had fallen about **11%**, in DEEP VALUE, rated **High
+    Conviction 88/100**. Every individual bar is a plausible price, so nothing else
+    in the pipeline had an opinion — the score was wrong and nothing was red.
+
+    ⚠️ **Why this reads the DATABASE and not the provider.** The obvious sweep is
+    "compare our history with a fresh pull and re-pull on a mismatch". Run on
+    2026-09-04 that would have **corrupted APH**: it split 2:1 the day before, our
+    stored series is the correct post-split one, and the provider's own history was
+    still mid-adjustment — 163.34 on 2026-08-03 against a 09-04 close of 83.06, with
+    a NaN on the split day. The provider is not always the one that is right, so the
+    question this asks is the answerable one: **does our own stored series agree with
+    itself?**
+
+    Unresolved rows are put back to `pending`, which is all that is needed — the
+    existing machinery re-pulls a pending split's full history on the next run and
+    verifies it again. Returns the tickers it reopened, so the caller can name them.
+    """
+    since = (datetime.now(timezone.utc) - timedelta(days=_SPLIT_REVERIFY_DAYS)).date()
+    try:
+        res = (
+            supabase.table("split_events")
+            .select("id,ticker,split_date,ratio,repull_count")
+            .eq("status", "resolved")
+            .gte("split_date", since.isoformat())
+            .execute()
+        )
+        rows = cast(list[dict[str, Any]], res.data or [])
+    except Exception as e:  # a sweep must never take the refresh down with it
+        logger.warning("split re-verification: could not load rows — %s", e)
+        return []
+
+    if markets:
+        wanted = {m.strip().lower() for m in markets}
+        rows = [r for r in rows if _schedule_market(str(r["ticker"])) in wanted]
+
+    reopened: list[str] = []
+    now_iso = datetime.now(timezone.utc).isoformat()
+    for r in rows:
+        ticker = str(r["ticker"])
+        split_date = str(r["split_date"])
+        try:
+            # Enough bars either side to cover the ±10 verify window plus the
+            # persistence medians, without reading a whole history per split.
+            lo = (date.fromisoformat(split_date) - timedelta(days=90)).isoformat()
+            hi = (date.fromisoformat(split_date) + timedelta(days=90)).isoformat()
+            bar_res = (
+                supabase.table("price_bars")
+                .select("date,close")
+                .eq("ticker", ticker)
+                .gte("date", lo)
+                .lte("date", hi)
+                .order("date")
+                .execute()
+            )
+            bars = cast(list[dict[str, Any]], bar_res.data or [])
+            if len(bars) < 5:
+                continue
+            stored = pd.DataFrame(
+                {"Close": [float(b["close"]) for b in bars]},
+                index=pd.to_datetime([b["date"] for b in bars]),
+            )
+            ratio = float(r["ratio"]) if r.get("ratio") is not None else None
+            resolved, cliff_date, cliff_ratio = _verify_split_resolved(
+                stored, split_date, ratio
+            )
+            if resolved:
+                continue
+            _update_split_state(
+                supabase,
+                str(r["id"]),
+                status="pending",
+                now_iso=now_iso,
+                repull_count=int(r.get("repull_count") or 0),
+                cliff_date=cliff_date,
+                cliff_ratio=cliff_ratio,
+                resolved=False,
+            )
+            reopened.append(ticker)
+            logger.warning(
+                "%s: split %s was marked resolved but the STORED series still has a "
+                "cliff at %s (x%s) — reopened as pending, next run re-pulls it",
+                ticker,
+                split_date,
+                cliff_date,
+                cliff_ratio,
+            )
+        except Exception as e:
+            logger.warning("%s: split re-verification failed — %s", ticker, e)
+
+    if reopened:
+        logger.warning(
+            "Split re-verification reopened %d split(s): %s",
+            len(reopened),
+            ", ".join(sorted(set(reopened))),
+        )
+    else:
+        logger.info(
+            "Split re-verification: %d recent resolved split(s) checked, all consistent",
+            len(rows),
+        )
+    return reopened
+
+
 def _retry_targets(failed: list[str], universe_size: int) -> list[str]:
     """Which failed tickers the second pass should re-fetch — empty means skip it.
 
@@ -1100,6 +1224,11 @@ def run(
 
     if failed:
         logger.warning("Failed tickers (%d): %s", len(failed), ", ".join(failed))
+
+    # Last, because it reads back what this run wrote. A split marked resolved whose
+    # STORED bars still disagree with themselves goes back to pending, and tomorrow's
+    # run re-pulls it — see `_reverify_stored_splits`.
+    _reverify_stored_splits(supabase, markets)
 
 
 if __name__ == "__main__":

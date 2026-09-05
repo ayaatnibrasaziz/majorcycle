@@ -17,7 +17,7 @@ const buttonVariants = cva(
   // the class list looked right in source — only the computed style showed it.
   // Written as an arbitrary PROPERTY, the family lands in its own group and both
   // survive. Same reasoning as `[background-color:…]` on `primary` below.
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-sm)] font-semibold [font-family:var(--font-sans)] transition-all duration-200 cursor-pointer disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-bright)] active:translate-y-0',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-sm)] font-semibold [font-family:var(--font-sans)] transition-all duration-200 cursor-pointer disabled:pointer-events-none disabled:opacity-65 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--brand-bright)] active:translate-y-0',
   {
     variants: {
       variant: {
@@ -52,7 +52,7 @@ const buttonVariants = cva(
         // Same lift-on-hover interaction as `primary` (shadow grows + 1px rise),
         // red-tinted to stay destructive.
         destructive:
-          'bg-[var(--c-tier-5)] text-white shadow-[0_2px_8px_rgba(178,34,34,0.25)] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(178,34,34,0.40)]',
+          'bg-[var(--status-danger)] text-white shadow-[0_2px_8px_rgba(178,34,34,0.25)] hover:-translate-y-[1px] hover:shadow-[0_6px_18px_rgba(178,34,34,0.40)]',
       },
       size: {
         default: 'h-11 px-4 text-[13px]',

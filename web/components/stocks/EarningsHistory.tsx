@@ -1,6 +1,6 @@
 'use client';
 
-import { CHART_INK } from '@/lib/chartTheme';
+import { CANDLE, CHART_INK, CHART_TOOLTIP } from '@/lib/chartTheme';
 import { useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -43,8 +43,8 @@ interface ChartRow {
 }
 
 const TOOLTIP_DARK = {
-  background: '#1A1A1B',
-  border: '1px solid #2E3347',
+  background: CHART_TOOLTIP.bg,
+  border: `1px solid ${CHART_TOOLTIP.border}`,
   borderRadius: 6,
   padding: '8px 12px',
 };
@@ -106,7 +106,7 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Earnings Performance
           <InfoTip title="Earnings Performance">
             Each quarter, companies report earnings per share (EPS) — profit divided
@@ -114,7 +114,7 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
             analysts expected: a green bar means the company beat expectations, red
             means it fell short.
           </InfoTip>
-        </div>
+        </h3>
         <div className="fin-tabs">
           <button className="fin-tab active" type="button">
             EPS
@@ -155,7 +155,7 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
                     <div style={TOOLTIP_DARK}>
                       <div
                         style={{
-                          color: '#E8EAF0',
+                          color: CHART_TOOLTIP.text,
                           fontFamily: "'JetBrains Mono', monospace",
                           fontSize: 11,
                           fontWeight: 600,
@@ -168,7 +168,7 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
                         <div
                           key={String(p.dataKey)}
                           style={{
-                            color: '#94A3B8',
+                            color: CHART_TOOLTIP.muted,
                             fontFamily: "'JetBrains Mono', monospace",
                             fontSize: 11,
                           }}
@@ -236,7 +236,7 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
                   <Cell
                     key={idx}
                     fill={row.beat ? '#228B22' : '#B22222'}
-                    stroke={row.beat ? '#006400' : '#8B0000'}
+                    stroke={row.beat ? CANDLE.up : CANDLE.down}
                     strokeWidth={1.5}
                   />
                 ))}

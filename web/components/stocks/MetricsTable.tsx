@@ -197,7 +197,7 @@ export function MetricsTable({ fundamentals, industry, sector, market, medians }
   if (rows.length === 0) {
     return (
       <div className="card card--stack-base">
-        <div className="card-header"><div className="card-title">Key Metrics</div></div>
+        <div className="card-header"><h3 className="card-title">Key Metrics</h3></div>
         <div className="card-body">
           <div className="km-empty">No fundamental metrics available for this stock.</div>
         </div>
@@ -208,7 +208,7 @@ export function MetricsTable({ fundamentals, industry, sector, market, medians }
   return (
     <div className="card card--stack-base km-card">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Key Metrics
           <InfoTip title="Key Metrics">
             The headline numbers investors use, each compared with the typical
@@ -218,7 +218,7 @@ export function MetricsTable({ fundamentals, industry, sector, market, medians }
             enough close peers for a reliable comparison. Tap any metric name for a
             plain-English definition.
           </InfoTip>
-        </div>
+        </h3>
         <div className="km-subtitle">How it compares with its peers</div>
       </div>
       <div className="card-body card-body--bleed">

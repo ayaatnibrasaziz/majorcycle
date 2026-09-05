@@ -120,7 +120,6 @@ export function RequestTicker() {
 
   return (
     <div className="req-page">
-      <h1 className="sr-only">Request a Ticker</h1>
       <p className="mb-4 max-w-2xl text-[12px] leading-relaxed text-[var(--text-muted)]">
         Search every listed US, Australian, and Canadian stock. If we don’t cover one yet,
         request it — it’s fetched in our next daily update (within ~24&nbsp;hours), then

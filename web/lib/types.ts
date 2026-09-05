@@ -207,6 +207,18 @@ export interface ScreenerFundamentals {
   analystTargetPrice: number | null;
   analystRecommendation: string | null;
   numAnalystOpinions: number | null;
+  /**
+   * The provider's QUOTED 52-week high, and OUR highest high over the same window.
+   *
+   * ⚠️ Both, and only so the screener can ask `quoteBasisAgrees()` — audit 5A-126.
+   * `analystTargetPrice` is a quote and `currentClose` comes from the price history,
+   * so the Upside% column divides one basis by another; after a split those can be
+   * 2x apart and the column prints something like "+196%". A screener row carries no
+   * price bars, so the backend ships these two numbers and the shared TypeScript rule
+   * decides — rather than the threshold being written a second time in Python.
+   */
+  week52High: number | null;
+  historyHigh: number | null;
 }
 
 // One scored stock from a run: the CycleAnalysis plus the slim fundamentals

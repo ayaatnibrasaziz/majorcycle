@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
-import { LANDING, depth } from '@/lib/landing';
+import { depth } from '@/lib/landing';
+import { LEARN_FIGURES } from '@/lib/learn-figures';
 import type { LearnSlug } from '@/lib/learn';
 import { CUSTOM_PARAM_BOUNDS, PRESETS, PRESET_HORIZONS, PRESET_LABELS } from '@/lib/presets';
 import {
@@ -44,7 +45,7 @@ import { LOW_GAP_PCT } from '@/components/learn/weekHighGeometry';
  * string of markup for anything to be injected into.
  *
  * ⚠️ **Numbers come from the snapshot, never typed by hand** (CLAUDE.md 11k).
- * `LANDING` is the same nightly file the landing page reads, built through the
+ * `LEARN_FIGURES` is the same nightly file the landing page reads, built through the
  * canonical cycle maths, and it carries free-tier cycle geometry only — there is
  * no path from it to a rating or a health score. Hard-coding "Apple has fallen
  * 11.3%" would be a sentence that is true today, fluent forever, and wrong from
@@ -101,7 +102,7 @@ const MAX_BARS = CUSTOM_PARAM_BOUNDS.lookbackBars.max;
 const MIN_FALL = Math.abs(CUSTOM_PARAM_BOUNDS.pullbackThreshold.max);
 const MAX_FALL = Math.abs(CUSTOM_PARAM_BOUNDS.pullbackThreshold.min);
 
-const asOfWords = new Date(`${LANDING.asOf}T00:00:00Z`).toLocaleDateString('en-AU', {
+const asOfWords = new Date(`${LEARN_FIGURES.asOf}T00:00:00Z`).toLocaleDateString('en-AU', {
   day: 'numeric',
   month: 'long',
   year: 'numeric',
@@ -295,20 +296,20 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
 
       <h3>A worked example, using real figures</h3>
       <p>
-        Take {LANDING.name}, using its full price record to {asOfWords}, on the{' '}
+        Take {LEARN_FIGURES.name}, using its full price record to {asOfWords}, on the{' '}
         {PRESET_LABELS.medium.toLowerCase()} horizon.
       </p>
       <p>
-        It was recently <strong>{depth(LANDING.currentDrawdownPct)}</strong> below
+        It was recently <strong>{depth(LEARN_FIGURES.currentDrawdownPct)}</strong> below
         its one-year high. On its own, that sounds like a meaningful drop.
       </p>
       <p>
         Set against its own history, it is unremarkable. Across{' '}
-        {LANDING.pullbackEvents.toLocaleString('en-AU')} separate falls of more
+        {LEARN_FIGURES.pullbackEvents.toLocaleString('en-AU')} separate falls of more
         than {MEDIUM_FALL}% in its record, the average one ran to{' '}
-        <strong>{depth(LANDING.typicalDrawdownPct)}</strong>. Today&rsquo;s fall is
+        <strong>{depth(LEARN_FIGURES.typicalDrawdownPct)}</strong>. Today&rsquo;s fall is
         under half of that. And at its worst, the share has fallen{' '}
-        <strong>{depth(LANDING.deepestDrawdownPct)}</strong> from a high.
+        <strong>{depth(LEARN_FIGURES.deepestDrawdownPct)}</strong> from a high.
       </p>
 
       <OwnRecordFigure />
@@ -316,7 +317,7 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
       <p>
         That last number is the one worth sitting with — and it carries a caveat
         that matters. A record long enough to contain a fall of{' '}
-        {depth(LANDING.deepestDrawdownPct)} spans eras when the business, its
+        {depth(LEARN_FIGURES.deepestDrawdownPct)} spans eras when the business, its
         products and its finances looked nothing like they do now. The figure is
         real, and it is not a forecast.
       </p>
@@ -353,8 +354,8 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         it is the one that decides whether you could have held on.
       </p>
       <p>
-        A company that typically dips {depth(LANDING.typicalDrawdownPct)} and has
-        once fallen {depth(LANDING.deepestDrawdownPct)}{' '}
+        A company that typically dips {depth(LEARN_FIGURES.typicalDrawdownPct)} and has
+        once fallen {depth(LEARN_FIGURES.deepestDrawdownPct)}{' '}
         is not a company where &ldquo;it can&rsquo;t drop much further&rdquo; is
         supported by its own record. Knowing that in advance is worth more than any
         rating, because it is the number that tells you what you would need to be
@@ -378,7 +379,7 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         <li>
           <strong>Whether it will recover.</strong> Every past recovery in the
           record happened. That is not a promise about the next one. A share that
-          has fallen {depth(LANDING.typicalDrawdownPct)} nine times can fall 60% on
+          has fallen {depth(LEARN_FIGURES.typicalDrawdownPct)} nine times can fall 60% on
           the tenth.
         </li>
         <li>

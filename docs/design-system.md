@@ -142,7 +142,11 @@ filed on request.
   /* Text */
   --text-primary:   #0F1923;
   --text-secondary: #4A5568;
-  --text-muted:     #8A97A8;
+  --text-muted:     #626B77;  /* ⚠️ #8A97A8 until 2026-08-22 — 2.97:1 on white against a
+                                 4.5 floor, and the single largest a11y defect the
+                                 product has had: 258 failing elements on Browse alone,
+                                 including the mandatory disclaimer. This doc still said
+                                 #8A97A8 until 2026-09-03 (audit 5A-048). */
   /* NO `--text-white`. It was listed here until 2026-08-07 and has NEVER existed
      in globals.css — a documented nickname for a colour nothing defines. Removed
      because it is a landmine, not because anything was broken: `var(--text-white)`
@@ -168,7 +172,7 @@ filed on request.
      the five moved; `globals.css` carries the measurements and the reasons. */
   --c-tier-1:      #065F46;  /* High Conviction — was #006400; see below */
   --c-tier-2:      #1E7C1E;  /* Constructive   — was #228B22, 4.39:1 under white */
-  --c-tier-3:      #72696D;  /* Neutral        — #D4A017 → #87660F → grey, see below */
+  --c-tier-3:      #9C5B01;  /* Neutral        — #D4A017 → #87660F → grey → GOLD, see below */
   --c-tier-4:      #C73600;  /* Cautious       — was #FF4500, 3.44:1 under white */
   --c-tier-5:      #8B1414;  /* Bearish        — was #B22222; see below */
 
@@ -190,8 +194,8 @@ filed on request.
   /* Ink shades — for text on tinted backgrounds */
   --c-tier-2-ink:  #0D5C0D;
   --c-tier-5-ink:  #8B1414;  /* same value as the tier now; separate token */
-  --c-tier-3-ink:  #81600F;  /* was #8A6710 — 4.32:1 on --bg-page */
-  --c-tier-4-ink:  #B23A00;
+  --c-tier-3-ink:  #895001;  /* the tier x 0.88; was #6B6266 while Neutral was grey */
+  --c-tier-4-ink:  #A83600;  /* was #B23A00 — 4.81 on its own tint, ON the 4.8 floor */
 
   /* ── SEMANTIC INK — the direction palette, for when the colour is TEXT ──────
      A colour that is a line, a candle, a dot or a bar keeps the value it has
@@ -201,7 +205,8 @@ filed on request.
      that cannot read a CSS variable; `pnpm check:tier-palette` keeps them in step
      and measures each against the darkest ground it was OBSERVED on. */
   --c-up-ink:      #1B741B;  /* was #228B22 as text */
-  --c-neutral-ink: #81600F;  /* was #D4A017 / #9A7010 / #B58800 as text */
+  --c-neutral-ink: #6B6266;  /* was #D4A017 / #9A7010 / #B58800 as text; grey since
+                                2026-08-23. Documented as #81600F until 2026-09-03. */
   --c-warn-ink:    #C73600;  /* was #FF4500 as text */
   --c-brand-ink:   #1E5CB3;  /* was #2E7DE8 as text on its own tint */
 
@@ -391,12 +396,32 @@ The five composite rating tiers display as **neutral, advice-free language**. Th
 |---|---|---|---|
 | 80–100 | **High Conviction** | `--c-tier-1` (#065F46) | Best-in-class opportunity |
 | 65–79 | **Constructive** | `--c-tier-2` (#1E7C1E) | Favourable setup |
-| 50–64 | **Neutral** | `--c-tier-3` (#72696D) | Mixed signal |
+| 50–64 | **Neutral** | `--c-tier-3` (#9C5B01) | Mixed signal |
 | 35–49 | **Cautious** | `--c-tier-4` (#C73600) | Elevated risk |
 | 0–34 | **Bearish** | `--c-tier-5` (#8B1414) | Significant concerns |
 
-⚠️ **Neutral is a true grey as of 2026-08-23**, and it took three attempts to get
-there. `#D4A017` measured **2.38:1** under white — illegible for the life of the
+⚠️ **Neutral is GOLD again as of 2026-09-02 — `#9C5B01`.** Owner decision, and the
+reasoning is about meaning rather than measurement: *"it is not about visibility,
+it's about common sense. Traffic lights are typically used to say between good,
+neutral and bad… going from green, grey and red doesn't make sense."* The August
+verdict below is still arithmetically true and was answering a different question —
+that search maximised **separation**, which walks any colour out of its own hue and
+returned a near-black brown. Ranked instead by *how gold it is*, under identical
+floors, `#9C5B01` clears both (5.37 with white on it, 4.86 as text) where the
+original `#D4A017` cleared neither, and sits at L\* 45.0 beside its neighbours' 45.3
+so the weight ramp is undisturbed. **The cost, measured and accepted:** to a
+red-green colour-blind reader it sits 5.7 from Constructive and 5.3 from Cautious,
+where the grey scored 22.0 and 24.6 — a grey wins there precisely because it has no
+colour to lose. Not a 1.4.1 failure (every chip carries its score, every badge its
+word), and three ways of buying the gap back were measured and all failed. The two
+ratchets in `check-tier-palette.mjs` were re-based deliberately; that file carries
+the numbers. ⚠️ **Separately: Constructive against Cautious measures 3.9 to a
+red-blind reader and always has** — worse than either pair above, invisible to the
+guard because it only compares *adjacent* tiers, and untouched by this change.
+
+⚠️ *Historic, and the reason the gold had to be re-argued rather than simply
+restored:* **Neutral was a true grey from 2026-08-23**, and it took three attempts to
+get there. `#D4A017` measured **2.38:1** under white — illegible for the life of the
 product. Darkening it to `#87660F` fixed that one colour and broke the *set*: with
 tiers 2, 3 and 4 each darkened to just clear the floor they landed at 5.31 / 5.33 /
 5.31, practically one lightness, and adjacent tiers became hard to tell apart —
@@ -404,6 +429,68 @@ worse for a colour-blind reader than what it replaced (CLAUDE.md 11t). Gold was 
 proven unsalvageable (15,866 candidates searched; the best managed 12.9) and yellow
 impossible, because the binding constraint is the colour's use **as text**, not as a
 background. **Owner chose a true grey**, which is also what the word means.
+
+### The domains that are NOT a rating — added 2026-09-02
+
+The rating palette was doing **twelve unrelated jobs** (audit 5A-070), and four groups of
+tokens held the same value with nothing able to tell a wrong choice from a right one
+(5A-057). Retuning *Cautious* for a rating reason also repainted CSV import warnings,
+billing notices and short-interest bands. Each domain now has its own names:
+
+| Domain | Tokens | Why it cannot share |
+|---|---|---|
+| **Rating** (ours) | `--c-tier-1…5` + `-ink`, `-tint`, `-tint-strong` | the product opinion; must move alone |
+| **Health** (3 rungs) | `--health-good / -adequate / -at-risk` | ⚠️ deliberate **aliases** of tiers 1/3/5 — see below |
+| **Status** | `--status-warning` + `-ink`, `-tint`, `-tint-strong`, `-surface`, `-border` · `--status-danger` + `-ink`, `-tint`, `-tint-strong` · `--status-success` + the same four | forms, CSV import, run progress, billing. ⚠️ **Warning was built in P2 and the other two on 2026-09-05** (5A-102, 5A-134), so for a month every error on the site wore `--c-tier-5` and every *Saved* wore `--c-tier-2` — our Bearish and Constructive **ratings**. Danger and success hold the rating's values **on purpose**: red and green were already right, the defect was that they had no name and so could not stop following a judgement about a stock. Nothing moved on screen. Guarded by `e2e/status-danger.spec.ts` |
+| **Analyst** (third party) | `--analyst-positive / -neutral / -negative` | a Yahoo *Sell* must never wear our Bearish colour |
+| **Direction** | `--c-up-ink`, `--c-down-ink`, `--c-neutral-ink`, `--c-warn-ink`, `--c-brand-ink` | market movement, not our opinion |
+| **Data state** | `--data-missing` | must stay distinct from a *middling* value |
+| **Series** | `SERIES_TEAL`, `FIGURE_TEAL`, `FIGURE_NEUTRAL`, `DRAWDOWN`, `PROFIT`, `BENCH_COLOR` (`lib/ink.ts`, `lib/chartTheme.ts`) | ⚠️ **NOT because "chart props cannot read a variable"** — that was this repo’s stated reason until 2026-09-03 and it is wrong for Recharts, where `fill="var(--brand-deep)"` resolves normally (measured). The real reason is **Lightweight Charts paints to a `<canvas>`**, which has no stylesheet behind it. TS constants are kept for Recharts too, because an UNDEFINED `var()` in a `fill` paints **black** rather than failing loudly, while a mistyped identifier is a build error |
+| **Gauge** | `--gauge-1…4` | a position ramp, not a verdict |
+| **Surface** (elevation) | `--elev-sunken / -low / -mid / -high`, aliased by `--bg-page / -stripe / -hover / -surface / -sidebar / -header` | added 2026-09-03. Three levels are the same white today — deliberately: a sidebar, a header and a card are three elevations this theme paints alike, and naming them apart is what lets a dark theme separate them without touching a component |
+| **Zones** (Opportunity Map) | `--zone-good / -priced / -cheap / -worst-rgb`, `--zone-split`, mirrored by `OPPORTUNITY_ZONES` | one hue, three consumers: the paid chart, the landing page’s still of it, and `landing.css`. Stored as an RGB triplet so one value serves both the chart’s alphas and the legend’s heavier ones |
+| **Column bands** | `--band-verdict / -price / -growth / -ratios / -health` + `-bg`, `-ink` | the screener’s five subject areas. **Category** colours: green there means *price*, not *good*, which is why they must never borrow from the rating palette |
+| **Chart furniture** | `CHART_CHROME`, `CHART_TOOLTIP`, `CANDLE`, `BRAND`, `PROFIT` (`lib/chartTheme.ts`) | Lightweight Charts paints to a `<canvas>`, where there is no stylesheet and `var()` is an unparseable colour. ⚠️ Recharts is the OPPOSITE case — `var()` in a presentation attribute genuinely resolves, measured 2026-09-03; see `lib/ink.ts` |
+
+**A shared value is fine; a shared NAME is the defect.** Several of these start life as the
+same colour. That is the point — each can now move without the others, which is also what
+makes a dark theme a re-pointing job rather than a rewrite.
+
+⚠️ **Health is the one place aliasing is right**, and it is worth saying because it is the
+opposite of every other row. Green/amber/red for good/adequate/at-risk is genuinely the
+*same design decision* as the rating ladder's, so two golds that merely matched today would
+drift the next time one moved (11c-viii). Pointing at the tier makes that impossible.
+
+⚠️ **`pnpm check:tier-palette` check 6** measures every non-rating token on the ground it
+really sits on, and asserts a distance floor between the analyst palette and our verdict
+colours. Broken on purpose three ways before it was trusted.
+
+⚠️ **And four more checks were added on 2026-09-03**, each because something had already
+slipped past the ones that existed: **check 5** now compares all **ten** tier pairs rather
+than the four adjacent ones (the site’s weakest pair, Constructive vs Cautious at 3.9 to a
+deuteranope, was not among the four); **check 7** measures each badge ink on the *tint it
+actually draws on* rather than a flat ground, which is how a 4.69 passed as clean; **check
+8/8b** hold the CSS and TypeScript copies of the zone and canvas palettes in step; and
+**check 9** asserts every selector inside the `forced-colors` block names something that
+exists — written because the first draft of that block hooked a class that did not, and a
+CSS selector matching nothing is completely silent.
+
+### What is never coloured — owner decision, 2026-09-02
+
+**A raw market number is not coloured by our opinion of it.** A fall of −25% was painted
+three different ways across the site: green on the landing (deeper = more opportunity), red
+on Stock Detail (negative = bad) and blue in the Learn article teaching a reader what a
+drawdown *is*. All three shipped. Both conventions are defensible; together they are not,
+because nothing tells the reader which one a given colour belongs to.
+
+So Current Drawdown, Cycle Position and both range gauges now make no claim. Colour is
+reserved for **our ratings**, **status and warnings**, and **identifying a line on a chart**.
+The judgement about a fall is the Valuation score — which is the paid analysis, so
+colouring the free number was also quietly publishing the paid one.
+
+⚠️ Both range gauges were the concrete case: `WeekRangeGauge` ran green-at-the-low-end
+("cheap is good") and `.target-track` ran red-at-the-low-end ("high is good"), on the same
+page, in the same widget shape, with no label on either (5A-060).
 
 ⚠️ **Never hand-type one of these.** They were written out 247 times across 26
 files before 2026-08-22, and three of them were illegible under white text for the
@@ -455,8 +542,12 @@ score tier (one colour per label, so a label never shows two colours):
 (Tokens rather than hexes, deliberately: this ladder IS the rating ladder, and
 writing the values here a second time is how the two would come to disagree.)
 
-The **Cycle Position** column shows just the 0–100 reading (gauge + number, coloured
-by `cyclePositionColor`). The zone words are *not* rendered in that cell — they're
+The **Cycle Position** column shows just the 0–100 reading (gauge + number). ⚠️ **It is
+no longer COLOURED.** It was tinted by a `cyclePositionColor()` helper until 2026-09-02,
+when the owner ruled that a raw market reading never carries our colour — a cycle
+position is a fact about where a price sits, not a verdict on it. The helper was
+**deleted** rather than left unused, so nothing can quietly start calling it again; the
+marker is `--brand-mid` and a missing value is `--data-missing` (audit 5A-060/5A-062). The zone words are *not* rendered in that cell — they're
 described in its tooltip (75+ Deep Value · 50+ Value · 25+ Fair · below Stretched, as
 a rough guide) and remain available as a hidden filter / CSV field ("Cycle Position
 Zone"). A deeply-fallen but weak company therefore reads a low Valuation
@@ -466,11 +557,21 @@ via `ZONE_TIER`/`ZONE_DISPLAY` and is the only place the Deep Value…Stretched 
 appear with their zone-tier colour.)
 
 The **Health** column has only THREE labels (Healthy ≥80 · Adequate ≥60 · At Risk
-below 60), so it is coloured by `healthColor` — **one colour per tier**:
-`--c-tier-1` green / `--c-tier-3` gold / `--c-tier-5` red — applied to BOTH the
-number badge and the label. It reads the tokens, so the 2026-08-22 palette change
-reached this column and the Valuation ladder above without either being edited. It deliberately does NOT use the 5-tier `scoreColor` ladder (which would
-paint "Adequate" and "At Risk" rows several different shades for the same word).
+below 60), so it is coloured by `healthColor` — **one colour per tier**, via its own
+domain tokens `--health-good` / `--health-adequate` / `--health-at-risk`, applied to
+BOTH the number badge and the label. It deliberately does NOT use the 5-tier
+`scoreColor` ladder (which would paint "Adequate" and "At Risk" rows several different
+shades for the same word).
+
+⚠️ **Those three tokens are deliberate ALIASES of `--c-tier-1/3/5`**, and that is the
+only place in the token layer where aliasing is the right answer rather than the bug.
+Green/amber/red for good/adequate/at-risk is genuinely the *same design decision* as the
+rating ladder's, so two colours that merely happened to match would drift the next time
+one moved — and two slightly different golds on one screen is precisely the defect
+nobody spots (CLAUDE.md 11c-viii). Everything else that used to borrow a rating token
+was given its own literal instead, for the opposite reason. **Adequate was grey until
+2026-09-02** and is gold on owner instruction, having been shown it grey; it carries
+white numerals on the chip (5.37) and appears as `.score-tag` text on the page (4.86).
 Valuation keeps the 5-tier ladder above because it genuinely has five labels.
 
 ---
@@ -487,7 +588,7 @@ Every chart MUST follow these. Hard rule.
 | Neutral / informational | `#1E5CB3` | `#1A3A6E` | `#1E5CB3` |
 | Highlight / cursor / focus | `#2E7DE8` | `#1A3A6E` | `--c-brand-ink` |
 | Grid lines | `#E2E8F0` (10% alpha for major, 5% for minor) | — | — |
-| Axis labels | `#8A97A8` | — | — |
+| Axis labels | `#626B77` (`CHART_INK`) | — | — |
 
 ⚠️ **The fills and borders are unchanged and must stay that way** — green-for-up is
 the convention every trading tool follows. The fourth column exists because the
@@ -568,6 +669,25 @@ Tailwind defaults work but the reference uses these specific values for cards an
   Navy-tinted rather than neutral black, because it falls on `--bg-page`, which is
   blue-grey.
 - `lg`: modals, popovers, tooltips
+- **`marker` / `marker-sm`**: a small round marker raised off the track it slides along —
+  the analyst consensus dot (18px) and the 52-week position dot (9px). ⚠️ **TWO tokens,
+  and that is the point.** They are `0 2px 6px` and `0 1px 3px`; collapsing them into one
+  would have doubled the blur under the smaller marker on a Stock Detail card. A shared
+  *name* is the defect a palette needs fixing; a shared *value* is not something to
+  manufacture.
+- **`segment`**: the selected segment of a segmented control lifting off its own track.
+  Deliberately not `sm` — it sits on `--bg-stripe` rather than the page, and at 6% it
+  disappears.
+- **`--marker-ring`** (not a shadow, but it rides in the same declaration): the 1px ring
+  holding a marker off a coloured track. `--brand-deep` at 20%.
+- **`--track-tick`**: a hairline drawn ON a track — a bear/bull boundary. Ink over a
+  filled bar, so it must read on that bar’s lightest and darkest stops alike.
+
+⚠️ **A shadow is a colour too** (audit 5A-083). Every hard-typed `rgba(0,0,0,…)` is a place
+a dark theme has to be edited by hand, because a black shadow on a dark surface is
+invisible. The five that were left — the finding said fifteen; re-measuring found five,
+because the P2 gauge work had already removed the rest — became the tokens above on
+2026-09-03.
 
 ⚠️ A long-form DOCUMENT takes `--shadow-sm`, not `--shadow-lift`, even though it
 also sits alone on the page: `/terms` is the page rather than an object on it, and
@@ -585,6 +705,41 @@ reads as resting, not sliding. **Note the shape — a doc and its code disagreei
 with the doc right and no test in between.** Both card families' padding and
 radius are now compared to each other in `e2e/public-chrome.spec.ts`; the shadows
 are deliberately *not* compared, because differing is the point.
+
+---
+
+## 8b. Windows High Contrast (`forced-colors`) — added 2026-09-03
+
+The site had **zero** `forced-colors` rules until this date (audit 5A-082).
+
+In that mode the operating system throws away every author colour and substitutes its own
+small system palette: `color`, `background-color`, `border-color`, `fill` and `stroke` are
+all replaced, and `box-shadow` is **dropped entirely**. That is the right default for body
+copy — it is what the reader asked their OS for — and destructive for two things here.
+
+| What | Rule | Why |
+|---|---|---|
+| Charts, gauges, the Opportunity Map | `forced-color-adjust: none` | the colour **is** the data. Four benchmark lines forced to one system colour is not a high-contrast chart, it is an unreadable one |
+| Tinted chips — tier badges, Smart Money pills, metric tags, score chips | `border: 1px solid currentColor` | the wash is erased, and a chip with no wash and no border stops looking like a chip: it becomes a loose word in a table. Each carries its own text, so nothing is *lost* — the grouping is |
+| Cards | `border: 1px solid currentColor` | `box-shadow` is dropped, so a floating card and the page ground become one plane |
+| Focus ring | `outline: 2px solid Highlight` | `Highlight` is the system colour meaning “this is selected”. Without it the ring inherits a forced text colour and stops being distinguishable from a border |
+
+⚠️ **Relative Performance carries a distinct DASH per series as well as a hue** (5A-089/090).
+That is why the dash exists: even where a chart *did* collapse to one colour, the reader
+still has a second channel, which is what WCAG 1.4.1 actually asks for.
+
+⚠️ **Anything else needing the opt-out should carry `data-keep-colors`, not have a class
+invented for it.** The first draft of this block hooked `.wk-track` for the 52-week gauge —
+a class that does not exist, because that gauge is Tailwind utilities and an inline
+gradient. **A CSS selector matching nothing is completely silent:** the stylesheet stays
+valid, the build stays green, and the one element that most needed protecting is the one
+that does not get it. `check:tier-palette` check 9 now fails on a selector nothing uses.
+
+⚠️ **What is NOT verified.** There is no Windows High Contrast toggle on the development
+machine, so these rules are written from the specification and checked only as far as *“they
+parse, they apply, and they aim at elements that exist”* — read back off a running browser,
+not off the source. **Seeing this on a real Windows machine in High Contrast is an owner
+check**, and it belongs before launch rather than after.
 
 ---
 
@@ -2306,12 +2461,29 @@ grounds that the site owns no warning colour and inventing one would put a hue o
 notice in red?"* — with the checkout-cancelled banner from `/account` as the shape.
 
 ⚠️ **The reference answered my objection rather than overriding it, and that is the lesson.**
-That banner (`SubscriptionCard`) is already built from the **rating tier tokens** — tier 3, the
-neutral amber — used purely as a UI tint with no rating meaning. So the red here is
+That banner (`SubscriptionCard`) was, in August, built from the **rating tier tokens** — tier 3,
+the neutral amber — used purely as a UI tint with no rating meaning. So the red here is
 `--c-tier-5-ink` / `--tint-tier-5`: the same established set, one hue over. No new colour, no
-literal hex, nothing the palette guard cannot see, and a shape the product already uses for
+literal hex, nothing the palette guard cannot see, and a shape the product already used for
 this exact job. **The objection was sound and the answer was already in the codebase**; I had
 reached for "invent or refuse" without looking for the third option.
+
+⚠️ **BOTH HALVES OF THAT ARGUMENT EXPIRED TWO DAYS LATER, AND THE PARAGRAPH ABOVE WENT ON
+STATING THEM** (found re-reading P2 on 2026-09-03, finding 5A-100). P2 gave the site a real
+warning palette — `--status-warning` with its own ink, tint, surface and border — so *"the
+site owns no warning colour"* stopped being true; and it moved `SubscriptionCard` onto that
+palette, so *"already built from the rating tier tokens"* stopped being true as well. The
+whole reason 5A-050 existed was that a billing warning borrowing tier 3 had turned **grey on
+grey** when the rating palette moved underneath it.
+
+**The banner is unchanged and stays unchanged** — red is an owner decision, a delisting is a
+terminal fact rather than a warning, and it measures 8.06 / 7.32. What changed is that its
+justification is now a historical note rather than a live argument. Anyone reading the old
+wording would have concluded the product still has no warning colour and reached for a rating
+token again. **A correct sentence describing superseded work is worse than no sentence,
+because it closes a question that is open** (CLAUDE.md 11ae). ⚠️ Note the shape: P2 moved one
+component and left the doc that REASONED ABOUT that component behind. Grep for what a change
+is cited by, not only for what it touches.
 
 **Contrast measured before it was written**, on the grounds it actually sits on: **8.06:1** on
 a white card, **7.32:1** on the page ground, against a 4.5 floor. A margin, not a boundary —

@@ -127,7 +127,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
           {
             at: down(s.typicalDrawdownPct),
             label: `Typical −${depth(s.typicalDrawdownPct)}`,
-            colour: 'var(--c-tier-3)',
+            colour: 'var(--series-reference)',
           },
           {
             at: 100,
@@ -138,7 +138,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
         ]}
         legend={[
           { colour: 'var(--brand-bright)', text: 'Where it is now' },
-          { colour: 'var(--c-tier-3)', text: `Average of all ${falls} falls` },
+          { colour: 'var(--series-reference)', text: `Average of all ${falls} falls` },
           { colour: 'var(--c-tier-5)', text: 'Deepest single fall on record' },
         ]}
       />
@@ -181,7 +181,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
       <div className="readout">
         <div>
           <div className="k">Typical fall vs deepest ever</div>
-          <div className="v" style={{ color: 'var(--c-tier-3-ink)' }}>
+          <div className="v" style={{ color: 'var(--series-reference-ink)' }}>
             −{depth(s.typicalDrawdownPct)}{' '}
             <span style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>vs</span>{' '}
             <span style={{ color: 'var(--c-tier-5-ink)' }}>−{depth(s.deepestDrawdownPct)}</span>

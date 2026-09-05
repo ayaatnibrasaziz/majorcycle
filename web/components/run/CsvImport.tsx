@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Upload, Download } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -38,9 +38,9 @@ interface Preview {
 }
 
 const PREVIEW_COLOR: Record<Preview['kind'], string> = {
-  ok: 'var(--c-tier-2)',
-  warn: 'var(--c-tier-3)',
-  error: 'var(--c-tier-5)',
+  ok: 'var(--status-success)',
+  warn: 'var(--status-warning)',
+  error: 'var(--status-danger)',
 };
 
 export function CsvImport({
@@ -50,6 +50,7 @@ export function CsvImport({
   knownTickers: Set<string>;
   onAdd: (tickers: string[]) => void;
 }) {
+  const previewId = useId();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -129,7 +130,24 @@ export function CsvImport({
       <div
         role="button"
         tabIndex={0}
-        aria-label="Import a CSV with a ticker column — activate to browse for a file"
+        /* ⚠️ AUDIT 5A-151. There WAS an `aria-label` here, and it was a second
+           copy of the sentence printed inside the zone — written once as
+           "… activate to browse for a file" and once as "… drop here or click to
+           browse". The two had drifted, and because an `aria-label` REPLACES
+           element content when the accessible name is computed, the words on
+           screen were not the name: a voice-control user could read the zone
+           aloud and never reach it. WCAG 2.5.3 Level A.
+
+           Deleted rather than corrected. The visible sentence is the instruction;
+           an `aria-label` restating it is exactly the second copy that 11c says
+           will drift, and it had. The name now comes from the content, so the two
+           cannot disagree in principle.
+
+           ⚠️ It was found only on an ENTITLED account: the shared E2E account
+           holds no subscription, so `/run` renders the upsell and this zone is
+           not on the page the a11y scan looks at. `app-a11y.spec.ts` now carries
+           a paid scan for that reason. */
+        aria-describedby={preview ? previewId : undefined}
         onClick={() => inputRef.current?.click()}
         onKeyDown={(e) => {
           // Keyboard users can't reach the display:none file input, so the zone
@@ -158,7 +176,7 @@ export function CsvImport({
           preview?.kind === 'error' && 'upload-error',
         )}
       >
-        <Upload className="h-4 w-4" />
+        <Upload className="h-4 w-4" aria-hidden="true" />
         <span>
           Import a CSV with a <span className="font-[var(--font-mono)]">ticker</span> column —
           drop here or click to browse
@@ -184,13 +202,22 @@ export function CsvImport({
       >
         <Download className="h-3 w-3" /> Download sample CSV
       </button>
-      {preview && (
-        <div className="upload-preview" style={{ color: PREVIEW_COLOR[preview.kind] }}>
-          {preview.lines.map((l, i) => (
-            <div key={i}>{l}</div>
-          ))}
-        </div>
-      )}
+      {/* The live region is ALWAYS mounted and only its CONTENTS change. A region
+          added to the DOM at the same moment as its text is routinely missed by
+          screen readers, which is the difference between announcing the result of
+          an import and announcing nothing — and this is the only feedback channel
+          the control has, errors included ("not a .csv file", "is empty", "No
+          tickers found"). `polite` rather than `alert`: the same node carries the
+          success summary, and one node cannot switch role mid-life reliably. */}
+      <div role="status" aria-live="polite" id={previewId}>
+        {preview && (
+          <div className="upload-preview" style={{ color: PREVIEW_COLOR[preview.kind] }}>
+            {preview.lines.map((l, i) => (
+              <div key={i}>{l}</div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

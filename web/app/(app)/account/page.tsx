@@ -146,7 +146,6 @@ export default async function AccountPage({
       {/* The visible page title comes from the app Header (topbar). Keep an
           sr-only h1 for the document outline / screen readers — matching the
           other app pages (Results, Request a Ticker). */}
-      <h1 className="sr-only">Account</h1>
 
       <div className="flex flex-col gap-4">
         <ProfileForm
