@@ -263,6 +263,93 @@ jobs:
           path: web/playwright-report/
           retention-days: 7
 
+  # ── The gates that used to run NOWHERE ──────────────────────────────────────
+  #
+  # ⚠️ AUDIT 5A-153, 2026-09-05. `check:page-weight` and `check:csp` need a
+  # PRODUCTION server on :3200, so `pnpm gates` printed them as NOT RUN every
+  # single time and no workflow had ever mentioned them. They ran when somebody
+  # remembered to type three commands, which — measured — was at audit passes and
+  # not otherwise. That is finding F-016 exactly: a gate absent from the list is a
+  # gate nobody runs, and nothing goes red, because nothing looked.
+  #
+  # ⚠️ `pnpm lighthouse` is deliberately NOT here, and that is not laziness. The
+  # same unchanged page has scored 85, 81, 76, 63 and 62 on one machine; a CI
+  # runner is noisier still. A check that fails on the weather teaches everyone to
+  # ignore red (CLAUDE.md 11t), and decision #33's target is already recorded as
+  # BLOCKED on real-user monitoring rather than unfinished (11w). It stays a
+  # manual command with a median of three.
+  #
+  # ⚠️ What this job CANNOT see, said rather than implied (14g): `next start` does
+  # not serve the Vercel Python function, so the cycle block is absent from
+  # /stocks/us/AAPL here exactly as it is locally — the budget was measured in the
+  # same condition, so the comparison is fair, but neither number includes it.
+  server-gates:
+    name: Server gates (page weight + CSP, on the production build)
+    runs-on: ubuntu-latest
+    # Build ~2m, two sweeps ~2m on 2026-09-05. 20 is headroom, not a target.
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      # Half of each sweep is gated. Without these the scripts say so loudly —
+      # check:csp records it as a PROBLEM rather than a skip, because a run that
+      # silently drops the signed-in routes reports a clean site it never saw.
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        with:
+          version: '11'
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Both scripts drive a real browser: page weight reads the Resource Timing
+      # API for what actually crossed the wire, and the CSP sweep listens for the
+      # browser's own `securitypolicyviolation` event rather than scraping a
+      # console.
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install chromium
+
+      - name: Build
+        run: pnpm build
+
+      # ⚠️ Wait for a POSITIVE signal, never a fixed sleep. A sweep against a
+      # server that has not finished booting transfers almost nothing and would
+      # pass every budget in the file — which is why check:page-weight also
+      # refuses any page under 40 KB or 5 requests as "it did not load".
+      - name: Start the production server on :3200
+        run: |
+          pnpm start --port 3200 > /tmp/next-3200.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -sf -o /dev/null http://localhost:3200/; then
+              echo "server answered after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "the server never answered on :3200 — the sweeps below would have measured nothing"
+          cat /tmp/next-3200.log
+          exit 1
+
+      - name: Page weight (bytes to `load`, against ratcheted budgets)
+        run: pnpm check:page-weight
+
+      - name: Content-Security-Policy (enforcing, right form per route, zero violations)
+        run: pnpm check:csp
+
   backend:
     name: Python checks
     runs-on: ubuntu-latest

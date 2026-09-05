@@ -305,7 +305,42 @@
 > July. An instrument's silence is not the absence of the thing.
 >
 > **Remaining: P3b** — your colour walkthrough, with Windows High Contrast folded in ·
-> **P7** the three gates that never run automatically · **P8** 375px.
+> ~~**P7** the three gates that never run automatically~~ ✅ **DONE 2026-09-05** ·
+> **P8** 375px.
+>
+> ⚠️ **P7's outcome changed how this repo is checked, not just what it knows.**
+> `check:page-weight` and `check:csp` had never run in any workflow; they now run on
+> **every push** in a `server-gates` job that builds and starts :3200 for them. `pnpm
+> lighthouse` stays manual, deliberately — the same unchanged page has scored 85, 81, 76,
+> 63 and 62 on one machine, and a check that fails on the weather teaches everyone to
+> ignore red. Both sweeps were clean when finally run: 8 of 8 routes inside budget, 14
+> routes with zero CSP violations, and **100 across all four categories on all five public
+> pages**.
+>
+> ⚠️ **Eight routes were in NONE of the three gates' hand-written lists** — including
+> `/privacy`, `/disclaimer` and the entire screener. All eight measured clean the day they
+> were added, so this is protection rather than a fix; the point is that nothing would have
+> said otherwise. Same shape as the delta audit that found `/articles` unwatched.
+>
+> ⚠️ **The pass's real finding came from chasing an odd number, not from a gate.** Three
+> controls — the account button on **all six signed-in pages**, the two paywall tiles on
+> Stock Detail, and the CSV upload zone — carried an `aria-label` that REPLACED their
+> visible text, so speech-input software knew them by a name that appears nowhere on
+> screen. WCAG 2.5.3, Level A. **Neither instrument could report it:** Lighthouse runs the
+> audit at **weight 0**, so accessibility scored a clean 100 with the failure inside it,
+> and axe skips the rule as `experimental` — it appeared in no bucket at all, which is
+> indistinguishable from a pass. Five such rules were silently skipped; all five are now
+> enabled with a control that fails if any is not evaluated.
+>
+> ⚠️ **One of the three needed a PAID session to see**, and `app-a11y.spec.ts` had called
+> an entitled scan "the obvious follow-up" for two weeks. It is now built, and it is the
+> only reason that instance was found.
+>
+> **Decision #33 is unchanged and still BLOCKED.** The ticker page measured 65, inside the
+> 64–84 range already documented, with the bytes unmoved (1020 against 1017). Reading the
+> breakdown put a mechanism under it for the first time: one chunk carries 1,928 ms of the
+> 2,245 ms of script evaluation, and that chunk is **react-dom** — the cost is hydration,
+> which is why the byte saving did not move it and the Suspense split made it worse.
 > Ledger: `docs/layer-g-5a-sweep.md`.
 
 - **Phase 1.5** — Hardening. Mobile polish, accessibility audit, methodology page content, performance tuning, beta testing.

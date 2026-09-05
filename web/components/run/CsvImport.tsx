@@ -130,7 +130,23 @@ export function CsvImport({
       <div
         role="button"
         tabIndex={0}
-        aria-label="Import a CSV with a ticker column — activate to browse for a file"
+        /* ⚠️ AUDIT 5A-151. There WAS an `aria-label` here, and it was a second
+           copy of the sentence printed inside the zone — written once as
+           "… activate to browse for a file" and once as "… drop here or click to
+           browse". The two had drifted, and because an `aria-label` REPLACES
+           element content when the accessible name is computed, the words on
+           screen were not the name: a voice-control user could read the zone
+           aloud and never reach it. WCAG 2.5.3 Level A.
+
+           Deleted rather than corrected. The visible sentence is the instruction;
+           an `aria-label` restating it is exactly the second copy that 11c says
+           will drift, and it had. The name now comes from the content, so the two
+           cannot disagree in principle.
+
+           ⚠️ It was found only on an ENTITLED account: the shared E2E account
+           holds no subscription, so `/run` renders the upsell and this zone is
+           not on the page the a11y scan looks at. `app-a11y.spec.ts` now carries
+           a paid scan for that reason. */
         aria-describedby={preview ? previewId : undefined}
         onClick={() => inputRef.current?.click()}
         onKeyDown={(e) => {
@@ -160,7 +176,7 @@ export function CsvImport({
           preview?.kind === 'error' && 'upload-error',
         )}
       >
-        <Upload className="h-4 w-4" />
+        <Upload className="h-4 w-4" aria-hidden="true" />
         <span>
           Import a CSV with a <span className="font-[var(--font-mono)]">ticker</span> column —
           drop here or click to browse

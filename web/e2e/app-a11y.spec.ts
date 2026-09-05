@@ -1,5 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+
+import { RUN_SNAPSHOT, RUN_SNAPSHOT_ROWS, SNAPSHOT_KEY } from './fixtures/runSnapshot';
+import { TAGS, RULE_OPTIONS, rulesThatDidNotRun } from './lib/axeRules';
 
 /**
  * Automated accessibility scan of the SIGNED-IN product — axe-core, WCAG 2.1 A + AA.
@@ -32,7 +36,10 @@ import { expect, test, type Page } from '@playwright/test';
 const EMAIL = process.env.E2E_EMAIL;
 const PASSWORD = process.env.E2E_PASSWORD;
 
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+// ⚠️ AUDIT 5A-152 — `TAGS` moved to `lib/axeRules.ts`, alongside the five
+// WCAG A/AA rules that axe marks `experimental` and therefore skips unless they
+// are enabled by name. A tag filter alone never reached them, and a rule that
+// never runs is indistinguishable from one that passes.
 
 /**
  * The signed-in pages. `/run` and `/results` render the locked panel for this
@@ -116,7 +123,11 @@ async function scan(page: Page, path: string) {
       .toBeGreaterThanOrEqual(floor);
   }
 
-  return new AxeBuilder({ page }).withTags(TAGS).analyze();
+  const results = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
+  // The control: a rule that never ran is indistinguishable from one that passed.
+  const missing = rulesThatDidNotRun(results);
+  expect(missing, `axe never evaluated ${missing.join(', ')} — the scan is blind to them`).toEqual([]);
+  return results;
 }
 
 test.describe('the signed-in product is accessible', () => {
@@ -283,4 +294,158 @@ test.describe('the signed-in product is accessible', () => {
       expect(found, `${path}:\n${found.join('\n')}`).toEqual([]);
     });
   }
+});
+
+/**
+ * ── The product AS A SUBSCRIBER SEES IT ─────────────────────────────────────
+ *
+ * ⚠️ **AUDIT 5A-151. Added because the scan above is structurally unable to see
+ * half the product, and its own comment said so for two weeks without anyone
+ * acting on it.** The shared E2E account holds no subscription, so `/run` and
+ * `/results` render the upsell panel and Stock Detail withholds the Verdict, the
+ * scorecard radar and every rating badge. A spec named after those pages passed
+ * on every run while never once loading them.
+ *
+ * The gap was not theoretical. `CsvImport`'s upload zone — reachable only on an
+ * entitled `/run` — carried an `aria-label` that was a drifted second copy of the
+ * sentence printed inside it, so the words on screen were not the accessible
+ * name and a voice-control user could read the control aloud and never reach it
+ * (WCAG 2.5.3). Three instances of that defect were found across the product on
+ * 2026-09-05; **only this one needed a paid session to see.**
+ *
+ * ⚠️ Its own throwaway user, created and deleted here, for the reason
+ * `app-contrast.spec.ts` records: flipping the shared account's subscription is a
+ * second writer to one `profiles` row, and that race surfaces as an unexplainable
+ * flake in whichever suite loses.
+ */
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+const PAID_RUN = Date.now();
+const PAID_EMAIL = `a11y-e2e-${PAID_RUN}@example.com`;
+const PAID_PASSWORD = `E2e!a11y-${PAID_RUN}`;
+
+test.describe('the PAID product is accessible', () => {
+  test.describe.configure({ mode: 'serial' });
+  test.skip(
+    !SERVICE_KEY || !SUPABASE_URL,
+    'set SUPABASE_SERVICE_ROLE_KEY + NEXT_PUBLIC_SUPABASE_URL to run',
+  );
+
+  let admin: SupabaseClient;
+  let paidUserId = '';
+
+  test.beforeAll(async () => {
+    admin = createClient(SUPABASE_URL!, SERVICE_KEY!, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    // @example.com is reserved and non-deliverable; `email_confirm` skips the
+    // verification mail, so this account has no outside side-effects.
+    const { data: created, error } = await admin.auth.admin.createUser({
+      email: PAID_EMAIL,
+      email_confirm: true,
+      password: PAID_PASSWORD,
+    });
+    if (error || !created?.user) throw new Error(`could not create user: ${error?.message}`);
+    paidUserId = created.user.id;
+
+    /* The acknowledgement is set here rather than dismissed through the UI, for
+       the reason `app-contrast.spec.ts` records at length: the first-login modal
+       is a SERVER decision from this one field, and `app/(app)/layout.tsx` returns
+       the modal ALONE when it is null — so a UI dismissal that samples too early
+       leaves every later navigation rendering nothing but a dialog, and the scan
+       measures that instead. Setting the column removes the race rather than
+       timing it. */
+    const { error: upd } = await admin
+      .from('profiles')
+      .update({
+        subscription_status: 'active',
+        grace_until: null,
+        billing_blocked: false,
+        acknowledged_disclaimer_at: new Date().toISOString(),
+      })
+      .eq('id', paidUserId);
+    if (upd) throw new Error(`could not grant entitlement: ${upd.message}`);
+  });
+
+  test.afterAll(async () => {
+    if (admin && paidUserId) await admin.auth.admin.deleteUser(paidUserId);
+  });
+
+  test('the entitled screener and Stock Detail have no axe violations', async ({ page }) => {
+    test.setTimeout(240_000);
+
+    await page.goto('/login');
+    await page.fill('input#email', PAID_EMAIL);
+    await page.fill('input#password', PAID_PASSWORD);
+    await page.getByRole('button', { name: /^sign in$/i }).click();
+    await page.waitForURL(/\/stocks/, { timeout: 30_000 });
+
+    // "I set a column" and "the page is clear" are different claims, and the
+    // failure is silent: the modal renders INSTEAD of the app.
+    await expect(page.getByLabel(/I understand and acknowledge/i)).toHaveCount(0);
+
+    /** One scan, with the control that the rules were evaluated at all. */
+    const sweep = async (label: string) => {
+      const results = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
+      const missing = rulesThatDidNotRun(results);
+      expect(missing, `axe never evaluated ${missing.join(', ')} on ${label}`).toEqual([]);
+      expect(
+        results.passes.length,
+        `axe checked nothing on ${label} — the page did not render`,
+      ).toBeGreaterThan(10);
+      const found = results.violations.map(
+        (v) => `[${v.impact}] ${v.id} — ${v.nodes.length} node(s): ${v.help}`,
+      );
+      expect(found, `${label}:\n${found.join('\n')}`).toEqual([]);
+    };
+
+    // ── Stock Detail, with the premium cards actually on the page ────────────
+    await page.goto('/stocks/us/AAPL');
+    await expect
+      .poll(() => page.evaluate(() => document.querySelectorAll('body *').length), {
+        timeout: 45_000,
+      })
+      .toBeGreaterThanOrEqual(900);
+    /* THE CONTROL, and it is POSITIVE on purpose. Without it this test passes
+       just as happily on the unentitled page — which is the exact state this
+       whole describe exists to stop standing in for the product.
+
+       ⚠️ My first attempt asserted the ABSENCE of a `.premium-lock` class. There
+       is no such class anywhere in this codebase, so it would have matched
+       nothing, passed always, and proved nothing in either direction — a needle
+       that matches nothing is the vacuous control CLAUDE.md 11aw was written
+       about. `.verdict-thesis-num` is the Verdict card's numbered thesis, which
+       `stripPremium()` withholds from a free viewer entirely (11b), so its
+       PRESENCE is evidence the session really is entitled. */
+    expect(
+      await page.locator('.verdict-thesis-num').count(),
+      '/stocks/us/AAPL has no Verdict thesis — this account is not entitled, so the scan proves nothing',
+    ).toBeGreaterThan(0);
+    await sweep('/stocks/us/AAPL (entitled)');
+
+    // ── The screener's own controls, which a free account never renders ──────
+    await page.goto('/run');
+    await expect(page.locator('.upload-zone')).toBeVisible({ timeout: 30_000 });
+    await sweep('/run (entitled)');
+
+    // ── The ranked table, seeded rather than run ─────────────────────────────
+    await page.evaluate(
+      ([key, snap]) => sessionStorage.setItem(key as string, JSON.stringify(snap)),
+      [SNAPSHOT_KEY, RUN_SNAPSHOT] as const,
+    );
+    await page.goto('/results');
+    /* THE CONTROL, and it POLLS. Without the wait this reads the table before it
+       has rendered and reports 0 chips — which is the same number the lock screen
+       and the empty state give, so a bare count cannot tell "not entitled" from
+       "not yet painted". Waiting on the positive signal the assertion itself
+       demands is the fix (CLAUDE.md 11q). */
+    await expect
+      .poll(() => page.locator('.score-num').count(), {
+        message: 'no score chips on /results — this measured the lock screen or the empty state, not the table',
+        timeout: 45_000,
+      })
+      .toBeGreaterThanOrEqual(RUN_SNAPSHOT_ROWS);
+    await sweep('/results (entitled)');
+  });
 });

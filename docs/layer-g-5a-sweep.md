@@ -239,11 +239,22 @@ it is clean locally.
       kind**, and the two that did were covered by guards structurally unable to see them.
       ⚠️ The 13 **Supabase auth** templates are NOT in this repo and no connector can read
       them — owner-side check, and said so rather than implied (14g).
-- [ ] **P7 · The three gates that never run automatically.** ⚠️ **ADDED on review.**
+- [x] **P7 · The three gates that never run automatically.** ✅ **COMPLETE 2026-09-05** — see the P7 section below.
       `check:page-weight`, `check:csp` and `lighthouse` each need a production server on
-      `:3200`, so `pnpm gates` prints them as NOT RUN — every single time. **A gate nobody runs
-      is a gate nobody runs** (F-016, the reason `pnpm gates` exists at all). This is the sweep
-      that runs them.
+      `:3200`, so `pnpm gates` printed them as NOT RUN — every single time — and a grep found
+      **no workflow had ever mentioned any of them**. **A gate nobody runs is a gate nobody
+      runs** (F-016, the reason `pnpm gates` exists at all).
+      **Three findings, all fixed.** Two of the three now run on every push (`server-gates`);
+      Lighthouse stays manual on purpose, because one run is not a number. Eight routes were
+      in **none** of the three hand-written lists — including both remaining legal pages and
+      the whole screener — and five were added to each.
+      ⚠️ **The pass's real finding was not in any gate's output.** Chasing an odd Lighthouse
+      number turned up a **WCAG 2.5.3 Level A** failure on three controls, including the
+      account button on all six signed-in pages, that **neither instrument could report**:
+      Lighthouse weights the audit **0** (accessibility still scored 100) and axe skips the
+      rule as `experimental`, so it appeared in no bucket at all. One of the three was
+      reachable only on a **paid** session, which is why the entitled a11y scan finally got
+      built.
 - [ ] **P8 · 375px.** Public = fix. Signed-in = note only.
 - [ ] **P9 · The three platforms' own go-live checklists.** ⚠️ **ADDED 2026-08-31 after reading
       Stripe's, Supabase's and Vercel's current docs via their MCP servers.** Every pass above
@@ -1773,6 +1784,156 @@ instead of restating it (11c-iii).
 subscription and `CA$` for a stock price. Both are real conventions, they sit in different
 domains (decision #13 separates them), and no screen shows both. Not worth a repaint.
 
+## P7 · the three gates that never ran — 2026-09-05
+
+**Ran all three. Two were clean. The third found nothing new and confirmed a decision
+already taken.** The value of this pass was not in what the gates said — it was in
+discovering that **none of them ran anywhere**, and in the defect that turned up while
+asking why one of their numbers looked odd.
+
+### What the three gates actually reported
+
+| Gate | Result |
+|---|---|
+| `pnpm check:page-weight` | **8 of 8 routes within budget.** Ticker page **1020 KB** against a 1150 ceiling — the recorded figure is 1017, so no byte regression |
+| `pnpm check:csp` | **14 routes, 7 nonce + 7 prerendered, zero violations**, no `'unsafe-eval'`, nothing Report-Only |
+| `pnpm lighthouse` | Five public routes **100 / 100 / 100 / 100**. `/stocks` 100 / 100 / 100. `/stocks/us/AAPL` performance **65** (median of 3, spread 2) |
+
+### 5A-153 🟡 · The three gates ran NOWHERE — ✅ FIXED (owner-approved)
+
+`pnpm gates` prints them as NOT RUN **every single time**, and a grep of
+`.github/workflows/ci.yml` found that **no workflow has ever mentioned any of them**. So
+they ran when somebody typed three commands, which — measured against the git history —
+means at audit passes and not otherwise. That is finding **F-016** restated: a gate absent
+from the list is a gate nobody runs, and nothing goes red, because nothing looked.
+
+⚠️ **And `gates.mjs` printed NOT RUN even with a production server actually up on
+:3200**, which is not a caveat but a false statement about the world. It said the same
+thing whether or not the thing it named was possible.
+
+⚠️ **A second half, found by diffing every route against all three lists.** Each gate
+walks its own hand-written route list, and **eight routes were in none of the three**:
+`/privacy`, `/disclaimer`, `/run`, `/results`, `/request`, `/account/update-password`,
+`/deletion-requested`, `/reactivate`. Two are public legal pages a reader can be linked
+straight to; three are the screener, which is the part of the product a subscriber pays
+for. All eight measured **clean** on 2026-09-05 — this is protection, not a fix — and the
+point is that until that day nothing would have said otherwise. It is the same gap the
+Layer G delta audit found for `/articles`, which shipped unwatched for weeks while
+`check:page-weight` truthfully reported “every page within budget” about the six pages it
+knew about.
+
+**Applied, owner-approved 2026-09-05:**
+
+- A `server-gates` CI job builds, starts :3200 and runs `check:page-weight` and
+  `check:csp` on **every push**. `pnpm lighthouse` stays manual, deliberately: the same
+  unchanged page has scored 85, 81, 76, 63 and 62 on one machine, and a check that fails
+  on the weather teaches everyone to ignore red (11t).
+- Five routes added to each of the three lists (13 weighed, 19 CSP, 12 Lighthouse).
+- The three confinement pages are **named as unreachable** rather than quietly omitted —
+  each needs a one-shot session marker or a scheduled-deletion account. An unstated blind
+  spot reads as coverage (14g).
+- `gates.mjs` now says *where* each unrun gate does run, and its self-check was
+  **broken on purpose** to confirm it still refuses to run when CI gains an unaccounted
+  step (it named `pnpm check:nonsense` and stopped).
+
+### 5A-151 🔴 · Three controls told voice-control users the wrong name — ✅ FIXED
+
+**WCAG 2.5.3 “Label in Name”, Level A.** An `aria-label` REPLACES an element's content
+when the accessible name is computed. Three controls therefore advertised a name that
+appears nowhere on screen, so a speech-input user (Dragon, Voice Control) could read the
+control aloud and nothing would happen:
+
+| Where | On screen | The name software heard |
+|---|---|---|
+| `UserMenu` — the account button, **all six signed-in pages** | the reader's own email address | “Account menu” |
+| `PremiumLockKpi` — the paywall tiles on Stock Detail | “OVERALL RATING **Unlock**” | “Overall Rating — included with a subscription…” |
+| `CsvImport` — the upload zone on the **entitled** screener | “… drop here or click to browse” | “… activate to browse for a file” |
+
+⚠️ **NEITHER INSTRUMENT COULD SEE ANY OF THEM, and they failed differently.**
+Lighthouse runs the audit and **weights it 0**, so its accessibility category reported a
+clean **100** with the failure inside it. axe carries the same rule tagged `wcag21a` —
+which **is** in our tag list — but also tagged `experimental`, and axe ships experimental
+rules disabled: it appeared in **no bucket at all**, not violations, not passes, not even
+inapplicable. A rule that never ran returns exactly what a passing rule returns (14g).
+
+⚠️ **The third one needed a PAID session to see.** `app-a11y.spec.ts` signs in with the
+shared account, which holds no subscription, so `/run` renders the upsell and the upload
+zone is not on the page it scans. Its own comment had called an entitled scan “the obvious
+follow-up” for two weeks. It is now built — a throwaway entitled user, the same pattern
+`app-contrast.spec.ts` uses — and it is the only reason the third instance was found.
+
+⚠️ **My first fix for the paywall tile FAILED, and that is the lesson worth keeping.**
+I restated the visible words inside the `aria-label`. It still went red: `.kpi-label` is
+`text-transform: uppercase`, so the words on screen are “OVERALL RATING Unlock” while the
+prop said “Overall Rating Unlock”. **A hand-written label is a guess at what CSS finally
+renders.** Both that fix and the `CsvImport` one therefore **delete** the label rather
+than correct it, and let the name be computed from the content — with the extra sentence
+carried by an `sr-only` span inside the button, so the name contains the visible text *by
+construction* rather than by my matching it (11c: delete the second copy).
+
+### 5A-152 🟡 · Five WCAG rules in our own tag set never ran — ✅ FIXED
+
+`css-orientation-lock`, `label-content-name-mismatch`, `p-as-heading`,
+`table-fake-caption`, `td-has-header`. All five carry a `wcag2a`/`wcag21a` tag we ask for
+**and** the tag `experimental`, which axe treats as disabled.
+
+Measured across **18 routes** before changing anything: exactly one fired. So enabling
+them costs nothing and closes a blind spot — and enabling only these five, rather than
+every experimental rule, is deliberate: a first noisy failure from a rule axe itself does
+not consider settled is how an option like this gets deleted (11t).
+
+`e2e/lib/axeRules.ts` holds the tag list, the five rules, and — the load-bearing part —
+`rulesThatDidNotRun()`, which fails the scan if any of the five was not evaluated. Proven
+by removing the option: it named all five and went red.
+
+### Measured and NOT defects — recorded so nobody re-derives them (11aj)
+
+- **The ticker page's `<title>` and `<meta name=”description”>` are emitted inside
+  `<body>`, not `<head>`** — the only route family on the site where that is true, and
+  the reason Lighthouse scored `meta-description` **0** while the tag is plainly in the
+  HTML. This is **Next 16 streaming metadata**: `generateMetadata` awaits a database read,
+  so the shell is flushed before it resolves and React hoists the tags on the client.
+  ⚠️ **Verified rather than assumed** — requested with six user agents: Next **blocks
+  and puts the metadata in `<head>`** for Twitterbot, Slackbot, `facebookexternalhit` and
+  WhatsApp, and streams it for Chrome and **Googlebot**, which runs JavaScript. Every link
+  unfurler gets a proper head. The route is `noindex` and `Disallow`ed besides.
+- **`is-crawlable` scores 0 on `/stocks` and `/stocks/us/AAPL`** — from `Disallow: /stocks`
+  in our own `robots.txt`, which is deliberate. `lighthouse.mjs` already reports SEO as
+  `n/a` for gated routes for this reason.
+- **`valid-source-maps` scores 0** — weight 0, and we do not ship source maps publicly.
+
+### Decision #33 · still BLOCKED, and re-measuring confirmed it rather than reopening it
+
+The ticker page measured **65** where the G5 record says **84**. That is inside the range
+already documented: F-021 measured the deployed preview at **64** on 2026-08-24, and the
+owner deferred real-user monitoring the same day, leaving the merge-gate row red (11w).
+**The trustworthy number did not move** — 1020 KB against a recorded 1017.
+
+Reading the breakdown put a mechanism under it for the first time: **one chunk accounts
+for 1,928 ms of the 2,245 ms of script evaluation**, and that chunk is **react-dom**. The
+cost is hydrating a ~1,400-element page, which is why F-020's Suspense split made it worse
+and why F-019's byte saving did not move the score. Nothing here is actionable without the
+monitoring already deferred.
+
+⚠️ **One of my own measurements is withdrawn.** Re-measuring with an ad-hoc harness gave
+**37** with a 7-second LCP, and I nearly reported a collapse. The mechanism is that my
+harness used Lighthouse's *default* mobile emulation with **4× CPU throttling**, where
+`scripts/lighthouse.mjs` measures desktop with none. Discarded — an implausible reading is
+evidence against the instrument (11ao). It does, incidentally, give the first mobile
+reading of that page: **37**, which belongs to P8 and Layer H.
+
+### What P7 could NOT check
+
+- **The three confinement pages** (`/account/update-password`, `/deletion-requested`,
+  `/reactivate`) are in none of the three gates and cannot be reached by them.
+- **`/results` is weighed UNENTITLED** — 428 KB is the upsell panel, not the screener
+  table. An entitled run with 25 rows of charts is heavier and is not covered by that
+  number.
+- **`next start` does not serve the Vercel Python function**, so the cycle block is absent
+  from `/stocks/us/AAPL` in every one of these sweeps, locally and in CI alike. The budget
+  was measured in the same condition, so the comparison is fair; neither number includes
+  it (11v).
+
 ## Findings ledger
 
 *Findings are numbered `5A-nnn`. The first six come from **P9**, which was added on 2026-08-31
@@ -2485,7 +2646,7 @@ others. A shared *value* is fine; a shared *name* is the defect.
 
 ~~`P5a` re-derive the landing's 16 figures~~ ✅ → ~~`P1` renders + compliant~~ ✅ **DONE 2026-09-02** → `P2` colour →
 ~~`P3` interaction~~ ✅ → ~~`P4` data edge cases~~ ✅ → ~~`P5` content, copy, links~~ ✅ **DONE 2026-09-05** →
-`P6` not-the-screen → `P7` the three unrun gates + a11y regression → `P8` 375px public
+~~`P6` not-the-screen~~ ✅ **DONE 2026-09-05** → ~~`P7` the three unrun gates + a11y regression~~ ✅ **DONE 2026-09-05** → `P8` 375px public
 
 **Am I 100% happy now?** With the plan, yes — every set in it is derived from something
 executable, its scope is bounded by a stated reason, and it says who does what and what it cannot
