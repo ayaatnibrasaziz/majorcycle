@@ -308,8 +308,8 @@
 > ~~**P7** the three gates that never run automatically~~ ✅ **DONE 2026-09-05** ·
 > ~~**P8** 375px~~ ✅ **DONE 2026-09-06**.
 >
-> **P8 · 375px — ✅ COMPLETE 2026-09-06. Six findings: four fixed, one reverted into a
-> decision already open, one ruled not a defect** — plus a seventh you reported and correctly
+> **P8 · 375px — ✅ COMPLETE 2026-09-06. Seven findings: five fixed, one reverted into a
+> decision already open, one ruled not a defect** — plus an eighth you reported and correctly
 > diagnosed yourself as a rendering artefact. ⚠️ Both reversals were about SCOPE, not
 > correctness — each fix was bigger than the problem it solved.
 > The headline reads as good news and is the reason the rest were found by asking different
@@ -365,6 +365,15 @@
 > the guard now walks **320 → 900 in 4px steps** asserting the header never drops below 12px
 > of slack, whatever the breakpoint happens to be. Found only because P8's own sweep was
 > re-run after its fixes.
+>
+> 🟡 **5A-162 — a one-in-three flake on the entitled accessibility scan, found by reconciling
+> the count rather than reading the colour.** The final run said "778 passed, 1 flaky"; the
+> flaky one was P7's paid-account scan, the only guard that can see the paid product's
+> accessibility. Reproduced 1-in-3 in isolation. Cause: a cold Turbopack compile of the
+> heaviest route in the app against a 45s sub-timeout — the dev server, not the page, which
+> paints in 389ms in production. Budget raised to 120s with the assertion unchanged; four
+> consecutive isolated runs green. ⚠️ An intermittently-red guard on a paid surface is how a
+> team learns to ignore red.
 >
 > ✅ **The open menu panel was swept too** — a surface that did not exist when P8 started, so
 > nothing had ever measured it. 268px, never off-screen, no overflow, no control under 24×24,

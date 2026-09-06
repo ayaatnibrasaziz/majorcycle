@@ -1956,7 +1956,7 @@ signed-in pages are **noted** and belong to Layer H. Thirty public URLs — the 
 confinement pages — measured at **375, 360, 320 and 414px**, plus landscape (667×375),
 `prefers-color-scheme: dark` and `prefers-reduced-motion: reduce`.
 
-**Six findings. Four fixed, one reverted by the owner and folded into a decision already
+**Seven findings. Five fixed, one reverted by the owner and folded into a decision already
 open, one ruled not a defect** — plus a seventh the owner reported and correctly diagnosed as
 a rendering artefact rather than a defect. ⚠️ **Both owner reversals were about SCOPE rather than
 correctness** — the iPhone-zoom fix was right and changing one element inside a type scale
@@ -2122,6 +2122,31 @@ them.
   been in scope. **Recorded, not changed:** it is a design decision on a public page, and
   the substantive disclaimer beside the 9px chip is 12.5px, above the floor. Belongs with
   the open owner decision on the public documents' 13px body.
+
+### 5A-162 🟡 · A one-in-three flake on the entitled accessibility scan — ✅ FIXED
+
+The final full run reported **778 passed, 1 flaky** — the most ignorable result a suite can
+give, and the one this repo treats as a finding (11i). The test was P7's own
+`the entitled screener and Stock Detail have no axe violations`, which provisions a paid
+account and is the only guard that can see the paid product's accessibility.
+
+**Re-run in isolation: 2 passed, 1 failed** — reproducible, not a one-off. The failure reads
+`Expected >= 900, Received 24`: the shell and the `(app)` skeleton had painted and the
+streamed content had not, inside a 45s sub-timeout.
+
+⚠️ **It is the dev server, not the page.** `reuseExistingServer: false` gives every run a cold
+Turbopack compile, and Stock Detail is the heaviest route in the app — 34 components, ~1,400
+elements. Alone it is always cold (failed 1 of 3); inside the full suite the server is warm by
+the time it runs (failed 1 of 2). The same page paints its skeleton in **389ms** in production
+(11r). The binding constraint was the sub-timeout, never the product.
+
+Raised to 120s — the assertion is unchanged, still ≥900 elements as a positive signal that the
+page really built (11q), and the test's own budget is 240s so a genuine hang still fails.
+**Four consecutive isolated runs, all green at ~46s.**
+
+⚠️ Worth naming: an intermittently-red guard on a paid surface is exactly how a team learns to
+ignore red (11t), and it would have shipped as "green with a flaky" had the count not been
+reconciled line by line.
 
 ### 5A-159 🟠 · The menu fix put a 5px band of horizontal scroll at 520px — ✅ FIXED
 

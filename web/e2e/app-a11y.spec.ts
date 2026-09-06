@@ -402,9 +402,25 @@ test.describe('the PAID product is accessible', () => {
 
     // ── Stock Detail, with the premium cards actually on the page ────────────
     await page.goto('/stocks/us/AAPL');
+    /* ⚠️ 120s, and it was 45s until 2026-09-06, when this test was measured flaky
+       at roughly ONE RUN IN THREE — caught because a full suite reported "1 flaky"
+       and this repo treats that as a finding rather than noise (11i). The failure
+       reads `Expected >= 900, Received 24`: the shell and the `(app)` skeleton had
+       painted and the streamed content had not.
+
+       ⚠️ It is the DEV SERVER, not the product. `reuseExistingServer: false` gives
+       every run a cold Turbopack compile, and this is the heaviest route in the app
+       — 34 components and ~1,400 elements. Run alone it is always cold and failed 1
+       of 3; inside the full suite the server is warm by the time this runs and it
+       failed 1 of 2. In production the same page paints its skeleton in 389ms
+       (11r). So the binding constraint was the sub-timeout, never the page.
+
+       The number is raised rather than the assertion weakened: still >= 900
+       elements, still a positive signal the page actually built (11q), and the
+       test's own budget is 240s, so this cannot mask a real hang. */
     await expect
       .poll(() => page.evaluate(() => document.querySelectorAll('body *').length), {
-        timeout: 45_000,
+        timeout: 120_000,
       })
       .toBeGreaterThanOrEqual(900);
     /* THE CONTROL, and it is POSITIVE on purpose. Without it this test passes
