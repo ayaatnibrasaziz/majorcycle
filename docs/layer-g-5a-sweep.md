@@ -263,7 +263,11 @@ it is clean locally.
       content in a 375px window (11i-b: a boundary is not a margin). Plus every public text
       field zooming an iPhone, no navigation at all below 900px, two thirds of the landing's
       worked run hidden on a phone, and #3 itself enforced by four hand-written lists that
-      between them missed nine of the thirty URLs.
+      between them missed nine of the thirty URLs. ⚠️ **The owner reversed two of the five
+      fixes and was right on both** — the iPhone-zoom fix was correct and applying it to one
+      element inside a type scale was not, and the swipe hint explained something the
+      cut-off table already showed. The findings stand; the fixes were bigger than the
+      problems.
 - [ ] **P9 · The three platforms' own go-live checklists.** ⚠️ **ADDED 2026-08-31 after reading
       Stripe's, Supabase's and Vercel's current docs via their MCP servers.** Every pass above
       asks *"is our code right?"*. None asked *"is the ACCOUNT configured for production?"* —
@@ -1952,7 +1956,13 @@ signed-in pages are **noted** and belong to Layer H. Thirty public URLs — the 
 confinement pages — measured at **375, 360, 320 and 414px**, plus landscape (667×375),
 `prefers-color-scheme: dark` and `prefers-reduced-motion: reduce`.
 
-**Five findings, all fixed. The headline is the one that reads as good news:** at the
+**Six findings. Four fixed, one reverted by the owner and folded into a decision already
+open, one ruled not a defect** — plus a seventh the owner reported and correctly diagnosed as
+a rendering artefact rather than a defect. ⚠️ **Both owner reversals were about SCOPE rather than
+correctness** — the iPhone-zoom fix was right and changing one element inside a type scale
+was not; the swipe hint explained something the cut-off table already showed. Neither
+finding was wrong; both fixes were bigger than the problem. **The headline is the one that
+reads as good news:** at the
 stated 375px floor, **not one public page scrolled sideways and not one element extended
 past the right edge** — non-negotiable #3 holds where it is written down. Everything below
 was found by asking a different question, or by asking the same question at a width the
@@ -1984,25 +1994,37 @@ widths, **and** the header must leave at least **12px of slack** at 320px, becau
 boundary is not a margin (11i-b). Measured after the fix: **0px of overflow at 375 and at
 320, on all thirty.**
 
-### 5A-155 🟠 · Every text field on the public site zoomed an iPhone — ✅ FIXED
+### 5A-155 🟠 · Every text field on the public site zooms an iPhone — ⏸ **OWNER: REVERTED, folded into an open decision**
 
 Eleven form controls across `/login`, `/signup`, `/reset-password`, `/contact` and
-`/account/update-password` computed **13–14px**. iOS Safari zooms the page in when a
-focused control is under 16px **and does not zoom back out**, so a reader tapping "Email"
-is thrown into a magnified page in the middle of the sign-up funnel and has to pinch their
-way out. The viewport meta is `width=device-width, initial-scale=1` with no
-`maximum-scale`, so nothing was suppressing it — and suppressing it would break WCAG 1.4.4
-anyway, which is why the fix is the font size and not the meta tag.
+`/account/update-password` compute **13–14px**. iOS Safari zooms the page in when a focused
+control is under 16px **and does not zoom back out**, so a reader tapping "Email" is thrown
+into a magnified page in the middle of the sign-up funnel and has to pinch their way out.
 
-⚠️ **The rule is scoped to `[data-public-site]`, deliberately, and NOT written into
-`components/ui/input.tsx`.** That component is also the signed-in terminal's, and a
-public-pages pass does not get to repaint a paid surface unasked (11l). The terminal's own
-controls have the same property and are recorded for Layer H below.
+**Researched against current sources rather than asserted from memory**, because the fix
+was reverted and the reason had to be worth more than the fix. Three findings. Safari
+genuinely does not restore the zoom on blur — the reader pinches. The old
+`maximum-scale=1` / `user-scalable=no` escape is **ignored by modern iOS Safari** and would
+break WCAG 1.4.4 anyway, so it is not an option in either direction. And the one alternative
+that exists — 16px logical size shrunk visually with `transform: scale()` and negative
+margins — distorts the caret and the field's own geometry, which is precisely the class of
+defect this owner cannot debug. **16px is the only supported fix.**
 
-⚠️ **It is unlayered CSS beating a Tailwind utility**, which is a cascade question no
-amount of reading the source settles — so it is asserted on the **rendered** control
-(14d), with a mirror control proving an input outside the scope still computes 14px. A
-scope nobody checks is a scope that widens on the next edit.
+⚠️ **THE FIX WAS RIGHT AND APPLYING IT ALONE WAS WRONG, which is the part to remember.**
+Shipped, the 16px input became the **largest text on the card** — sitting above an 11px
+uppercase label and beside 13px body copy — and the owner's objection was immediate and
+correct: *"the textbox looks weird as opposed to the rest of the screen."* Nothing about
+the rule was mistaken; the mistake was changing one element inside a scale rather than the
+scale. This is 11t's shape at the level of type instead of colour: **never "is 16px right
+for this input?", always "what does the card look like after this?"**
+
+⏸ **Reverted to 14px on the owner's instruction and folded into the decision already open**
+— *whether to lift the public documents' 13px body size* — because that decision moves the
+legal pages, the auth cards and the articles together, and the input cannot sensibly move
+without them. It is not a separate question and must not be re-raised as one.
+
+⚠️ Recorded rather than closed: **the defect is still live.** Every text field on the public
+site zooms an iPhone today. Saying so is the point of leaving this entry open (14g).
 
 ### 5A-156 🟡 · The public site had no navigation on a phone — ✅ FIXED
 
@@ -2026,33 +2048,26 @@ decision rather than inventing a second one.
 `/signup` are required to work without it. Navigation is not lost — the footer nav is
 server-rendered on every page and carries all nine links — and the forms are untouched.
 
-### 5A-157 🟡 · The landing's worked run hid two thirds of itself on a phone — ✅ FIXED
+### 5A-157 🟡 · The landing's worked run hides two thirds of itself on a phone — ⏸ **OWNER: NOT A DEFECT**
 
-`.results-table-wrap` measured **1,055px of table inside a 341px box** at 375px — 714px
-off-screen. A phone reader saw Ticker, Company and Overall; Health, Valuation and all four
-Major Cycle columns were not there. The caption directly underneath explains **Current
-DD%**, **Typical DD%** and **Lower Bound%** by name — three columns that reader has never
-seen. It has always scrolled. Nothing said so, and a mobile scrollbar is an overlay that
-appears once you are already scrolling, which is no use to somebody who does not know
-there is more. This is the page's central sales argument.
+`.results-table-wrap` measures **1,055px of table inside a 341px box** at 375px — 714px
+off-screen. A phone reader sees Ticker, Company and Overall; Health, Valuation and all four
+Major Cycle columns are not there, while the caption directly underneath explains **Current
+DD%**, **Typical DD%** and **Lower Bound%** by name.
 
-A right-edge fade and one line — *"Swipe for Health, Valuation and the cycle columns"* —
-both of which disappear the moment the reader scrolls, and neither of which exists on a
-screen wide enough to show the whole table. **Owner-approved, 2026-09-06.**
+A fade and a "swipe for more" line were built and **removed the same day on the owner's
+instruction**: *"People can see the table is half cut anyway on screen which is an
+indicator that they can swipe."* That is a better reading of the evidence than mine. My
+argument was that a mobile scrollbar is an overlay nobody sees until they are already
+scrolling — true, and beside the point, because **the cut-off row itself is the
+affordance**, and it is visible before any gesture. A hint explaining something the picture
+already says is clutter on the page that has to do the most persuading.
 
-⚠️ **The hint hangs on an extra class, never on `.results-table-wrap` itself.** That class
-is also `components/results/ResultsTable.tsx` — the paid screener (11l). Guarded by reading
-the screener's source, because it needs a subscription to render and no browser check here
-can reach it. ⚠️ Worth recording: **the product does not have this defect**, because the
-screener renders `hidden md:block` and swaps to a card list on a phone. The landing's
-replica has no such alternative, which is the whole reason the defect exists only here.
-
-⚠️ **The hint is measured, never assumed** — `scrollWidth - clientWidth` is read off the
-live element and re-read on resize, so a screen wide enough to show everything gets no
-hint. Showing it under a fixed breakpoint would promise hidden content on a table that may
-have none, which is the same class of lie in the other direction. Its guard therefore
-carries the control that matters: the table must genuinely overflow, or the test would be
-asserting the presence of a false statement.
+The table is back to byte-identical, `SwipeToSee.tsx` is deleted, and the two guards that
+covered the hint went with it. ⚠️ Worth keeping from the investigation: **the product does
+not have this problem** — the screener renders `hidden md:block` and swaps to a card list on
+a phone. The landing's replica has no such alternative, which is why the question only ever
+arose here.
 
 ### 5A-158 🟡 · #3 was enforced by four hand-written lists that missed nine of thirty URLs — ✅ FIXED
 
@@ -2108,6 +2123,88 @@ them.
   the substantive disclaimer beside the 9px chip is 12.5px, above the floor. Belongs with
   the open owner decision on the public documents' 13px body.
 
+### 5A-159 🟠 · The menu fix put a 5px band of horizontal scroll at 520px — ✅ FIXED
+
+**Found by re-running P8's own sweep after the fixes, which is the only reason it was found
+at all.** Adding the menu control (5A-156) grew the header row, and at exactly the width
+where the two account buttons reappear — the inherited `min-[520px]` breakpoint — the row
+needs **506px of content in 480px of room**. `/learn` and `/` scrolled sideways by **6px from
+520 to 525px**, menu open or closed.
+
+⚠️ **This is the SAME LESSON as the finding that opened P8, one turn later.** 5A-154 lived at
+320px, below the floor anything sampled; this lived at 520px, between the widths everything
+sampled. **A header whose contents change at breakpoints cannot be certified by sampling** —
+the defect lives *at* the breakpoint, which is exactly the width nobody picks. The brand-new
+guard written for 5A-158 walked 375 / 360 / 320 and was blind to it.
+
+⚠️ And the offender probe returned **zero elements** past the right edge while the page really
+did scroll — 5A-116's situation exactly. `window.scrollTo(3000, 0)` and reading `scrollX` back
+is what matched a reader's experience (11ab).
+
+Fixed by moving the action breakpoint 520 → **600**, where the row keeps 54px. ⚠️ **Three
+literals move together** — both header buttons and the panel's copy of them — because a band
+where they disagree shows the pair twice or not at all; Tailwind's scanner needs the class in
+the source, so a shared constant is impossible and the invariant is **asserted** instead: the
+guard now walks **320 → 900 in 4px steps** and fails if the header ever drops below 12px of
+slack, whatever the breakpoint happens to be. Proven by putting 520 back — it goes red naming
+520 through 544. ⚠️ Its scope is stated in the file: one page, because the header is shared
+chrome; it says nothing about a page BODY at an intermediate width.
+
+### The open menu panel — a surface nothing had ever measured
+
+The panel did not exist when P8 swept the site, so no pass had walked it. Measured at 375,
+320, 520 and 640 on four routes: **268px wide, never off-screen** (20px clear at 320px),
+**no page overflow**, the toggle **38×38**, and **zero** controls under 24×24 or text under
+12px. Its axe scan is `a11y.spec.ts`'s "the phone menu is accessible in the state nobody
+scans". Clean — recorded because a surface nobody has measured is not the same as a clean one.
+
+### 5A-160 / 5A-161 · The landing's ruler figure — owner-reported, 2026-09-06
+
+Four changes on `components/landing/CycleRulers.tsx` and its stylesheet, all owner-approved.
+
+**5A-160 · Spacing.** The caption line and the "Typical −24.7%" label **overlapped by 2px**, and the
+"Today −8.0%" label's bottom edge sat at exactly the legend's top edge — a **0px** gap.
+⚠️ **The margins were not the gaps.** Each `.mk` marker is 66px tall against a 52px track, and
+its label is a pseudo-element a further 25px above (73px below) the marker's own box, so the
+labels reach 32px above the track and 34px below it and spend the head's `margin-bottom` and
+the legend's `margin-top` before a reader sees any space. The old 30/34 were chosen against
+the **track** and nobody subtracted the labels. Now 48/50, i.e. the label's reach plus 16px
+clear, with the derivation written beside the values so the next edit cannot repeat it.
+
+**5A-161 · Palette — three of the four readout figures were on the RATING palette.** Typical fall was
+already right (`--series-reference-ink`, the same hex as `INK.neutral`); the deepest fall wore
+**Bearish**, the typical recovery wore **Constructive**, and the largest recovery wore **High
+Conviction**. `lib/ink.ts` has forbidden exactly this since 2026-08-22 — *"`INK.up` means the
+number went up; `--c-tier-2` means our judgement is Constructive… they must be free to move
+apart"* — and it is the same defect audit 5A-135 fixed on `StockHeader` a day earlier. The
+markers, the legend swatches and the recovery bar's own tint (still `rgba(34,139,34)`, the
+**retired** green) were all on it too. Everything now reads `--c-neutral-ink` / `--c-down-ink`
+/ `--c-up-ink`.
+⚠️ **`direction-not-rating.spec.ts` could not have caught it, and says so in its own header:**
+it matches the shape `x >= 0 ? a : b`, a test against zero. These colours are hard-coded per
+marker with no sign test, so the guard was structurally blind to them (14g).
+⚠️ Measured after: contrast 5.89 / 6.68 / 5.90 on white, all clear. The two recovery figures
+had been **ΔE 13.1** apart — two dark greens either side of the word "vs" — and are now 33.7.
+
+**"Downside" / "Upside" dropped below 700px.** `justify-content: space-between` pins the label
+to the FIRST line while the caption wraps beneath it, so on a phone it read as a stranded word.
+⚠️ **700 is a margin, not the boundary**: measured, the caption is one line to 670px and wraps
+at 660, but that number belongs to today's sentence and the caption is editorial text somebody
+will reword (11i-b).
+
+**⚠️ And one owner report that was NOT a defect — recorded so nobody re-derives it (11aj).**
+The "Typical" and "Worst/Best ever" markers were reported as wider than the "Today" ones.
+Measured four ways — the CSS (`width: 2px`), `getBoundingClientRect` (2.000 for all six),
+crops at 5× and 6×, and finally the **raw painted pixels at dpr 1**, which is the only
+condition in which sub-pixel placement is visible at all: **every marker paints exactly two
+solid pixels.** The apparent difference is anti-aliasing — a 2px line lands on a different
+fraction of a device pixel at each viewport width — which is why it moved as the window was
+resized, and the **owner reached that conclusion**. Two contributing factors were real and are
+worth knowing: the Today markers sit on flat tint with nothing either side, while the others
+coincide with a background transition (the tint's end, or the track's own right edge), which
+adds a tonal step beside the line; a 1px halo would separate them and was not applied. **No
+change made.**
+
 ### Signed-in — NOTE ONLY, and the known figure was understated
 
 The accepted item reads *"375px overflow in the signed-in shell (~130px, the sidebar) →
@@ -2128,7 +2225,8 @@ silence, and this is a correction to its measurement rather than a re-raise (11a
 row is a claim about the last session's measurement).
 
 Two more for the same list: the signed-in forms have the **same sub-16px iOS zoom** as
-5A-155, deliberately left alone here (11l); and P7's ad-hoc mobile Lighthouse run scored
+5A-155 — which is now live on the public side too, since that fix was reverted, so it is one
+question for the whole product rather than two; and P7's ad-hoc mobile Lighthouse run scored
 the ticker page **37**, which is that pass's own note handed forward.
 
 ### The follow-on the fix created, and closed the same day
@@ -2143,7 +2241,8 @@ incapable of the finding.
 
 A scan of the **open** panel now runs, reusing `scan()` so it inherits the tag list, the
 rule options and the `rulesThatDidNotRun` control instead of growing a second, weaker
-configuration beside them — with its own control that axe actually saw a `nav`, because
+configuration beside them — and it was re-run after the owner reordered the panel, because
+a scan of a layout that no longer exists is not evidence about the one that does — with its own control that axe actually saw a `nav`, because
 scanning a closed menu is exactly what a passing-but-blind run looks like. **Clean.**
 
 Fixed with it: **Escape now returns focus to the toggle** (the WAI-ARIA disclosure

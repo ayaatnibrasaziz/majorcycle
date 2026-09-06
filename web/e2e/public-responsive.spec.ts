@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { expect, test, type Page } from '@playwright/test';
 
 import { ARTICLES, articlePath, ARTICLES_INDEX_PATH } from '../lib/articles';
@@ -134,119 +131,72 @@ test.describe('the public site fits a phone', () => {
     }
   });
 
-  test('the header keeps room to spare at 320px', async ({ page }) => {
+  test('the header keeps room to spare at every width from 320 to 900', async ({ page }) => {
     /**
-     * ⚠️ THE MARGIN, not the boundary — CLAUDE.md 11i-b. The test above passes the
+     * ⚠️ THE MARGIN, not the boundary — CLAUDE.md 11i-b. The sweep above passes the
      * moment the header fits exactly, and "exactly" is the state the site was
      * already in: at 375px the header row measured 375.0px against a 375px window.
      * Nothing was red, and a two-word change to the call-to-action would have
-     * pushed it over on the most common phone in the world. This asserts the
-     * header's own content leaves real room, so a copy change goes red here rather
-     * than shipping.
+     * pushed it over on the most common phone in the world.
+     *
+     * ⚠️ AND IT SWEEPS A RANGE RATHER THAN THREE PHONE WIDTHS, which cost a real
+     * defect to learn. The first version checked 320px only. Adding the menu
+     * control then pushed the row over at **exactly the width where the two
+     * buttons reappear** — 506px of content in 480px of room — so `/learn` and `/`
+     * scrolled sideways by 6px from **520 to 525**, menu open or closed. A
+     * five-pixel band, between every width anything sampled. A header whose
+     * contents change at breakpoints cannot be certified by sampling: the defect
+     * lives AT the breakpoint, which is exactly the width nobody picks.
+     *
+     * So this walks the whole range in 4px steps and asserts the invariant rather
+     * than any particular breakpoint — the three `min-[600px]` literals in
+     * PublicHeader.tsx can move without this file being edited, and if they move
+     * somewhere that does not fit, this goes red naming the width. Proven by
+     * putting them back to 520: it fails naming 520 through 544.
+     *
+     * ⚠️ SAY WHAT IT DOES NOT COVER (14g). One page, because the header is shared
+     * chrome and its contents do not vary by route beyond the two confinement
+     * pages, which carry no actions at all. It therefore says nothing about a
+     * PAGE BODY at an intermediate width — those are covered at 375 / 360 / 320 by
+     * the sweep above, and more widely by `learn.spec.ts` and `articles.spec.ts`
+     * for the two long-form sections. A body that overflows only at, say, 700px
+     * would still get past everything here.
      */
-    await page.setViewportSize({ width: 320, height: 812 });
-    await page.goto('/');
+    const failures: string[] = [];
+    let checked = 0;
+
+    await page.goto('/learn');
     await settled(page);
 
-    const slack = await page.evaluate(() => {
-      const header = document.querySelector('[data-public-header]')!;
-      const row = header.firstElementChild as HTMLElement;
-      const cs = getComputedStyle(row);
-      const inner =
-        row.getBoundingClientRect().width -
-        parseFloat(cs.paddingLeft) -
-        parseFloat(cs.paddingRight);
-      const used = [...row.children]
-        .map((c) => c.getBoundingClientRect().width)
-        .reduce((a, b) => a + b, 0);
-      return Math.round(inner - used);
-    });
-
-    expect(slack, `the header has only ${slack}px of slack at 320px`).toBeGreaterThanOrEqual(
-      MIN_HEADER_SLACK_PX,
-    );
-  });
-});
-
-test.describe('the public forms do not zoom an iPhone', () => {
-  /**
-   * ⚠️ AUDIT 5A-155. iOS Safari zooms the page in when a focused control computes
-   * under 16px and does not zoom back out, so a reader tapping "Email" is thrown
-   * into a magnified page in the middle of the sign-up funnel. Eleven controls
-   * across five pages were at 13–14px.
-   *
-   * ⚠️ Asserted on the RENDERED page, not on the stylesheet. The rule is unlayered
-   * CSS beating a Tailwind utility, which is a cascade question no amount of
-   * reading the source settles (CLAUDE.md 14d: source-correct and screen-wrong is
-   * a real state).
-   */
-  const FORM_PAGES = ['/login', '/signup', '/reset-password', '/contact'] as const;
-
-  test('every public text control is at least 16px on a phone', async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
-    const small: string[] = [];
-    let seen = 0;
-
-    for (const path of FORM_PAGES) {
-      await page.goto(path);
-      await settled(page);
-      const controls = await page.evaluate(() =>
-        [...document.querySelectorAll('input, textarea, select')]
-          .filter((el) => {
-            const cs = getComputedStyle(el);
-            const r = el.getBoundingClientRect();
-            const type = (el as HTMLInputElement).type;
-            return (
-              cs.display !== 'none' &&
-              cs.visibility !== 'hidden' &&
-              r.width > 8 &&
-              r.height > 8 &&
-              type !== 'checkbox' &&
-              type !== 'radio'
-            );
-          })
-          .map((el) => ({
-            id: el.id || el.tagName,
-            px: parseFloat(getComputedStyle(el).fontSize),
-          })),
-      );
-      seen += controls.length;
-      for (const c of controls) {
-        if (c.px < 16) small.push(`${path} #${c.id} is ${c.px}px`);
+    for (let width = 320; width <= 900; width += 4) {
+      await page.setViewportSize({ width, height: 812 });
+      const m = await page.evaluate(() => {
+        const de = document.documentElement;
+        const row = document.querySelector('[data-public-header]')!.firstElementChild as HTMLElement;
+        const cs = getComputedStyle(row);
+        const inner =
+          row.getBoundingClientRect().width -
+          parseFloat(cs.paddingLeft) -
+          parseFloat(cs.paddingRight);
+        const kids = [...row.children].filter((c) => c.getBoundingClientRect().width > 0);
+        const used = kids.reduce((a, c) => a + c.getBoundingClientRect().width, 0);
+        const gaps = (kids.length - 1) * parseFloat(cs.columnGap || cs.gap || '0');
+        return {
+          slack: Math.round(inner - used - gaps),
+          overflow: de.scrollWidth - de.clientWidth,
+        };
+      });
+      checked += 1;
+      if (m.overflow > 0) failures.push(`${width}px: the page overflows by ${m.overflow}px`);
+      else if (m.slack < MIN_HEADER_SLACK_PX) {
+        failures.push(`${width}px: the header has only ${m.slack}px of slack`);
       }
     }
 
-    // The control: "no control under 16px" is satisfied perfectly by a page with
-    // no controls on it, which is what a broken selector or a failed navigation
-    // produces.
-    expect(seen, 'no form controls were measured — the sweep proves nothing').toBeGreaterThanOrEqual(
-      7,
-    );
-    expect(small, `these zoom an iPhone on focus:\n  ${small.join('\n  ')}`).toEqual([]);
-  });
-
-  test('the signed-in terminal is deliberately NOT changed by that rule', async ({ page }) => {
-    /**
-     * ⚠️ The rule is scoped to `[data-public-site]` because `components/ui/input.tsx`
-     * is shared with the paid product, and a public-pages pass does not get to
-     * repaint a paid surface (CLAUDE.md 11l). That scoping is invisible in the CSS
-     * unless something asserts it, and a scope nobody checks is a scope that widens
-     * on the next edit.
-     */
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto('/login');
-    await settled(page);
-    const px = await page.evaluate(() => {
-      // Deliberately appended to <body>, i.e. OUTSIDE [data-public-site], which is
-      // body's child.
-      const el = document.createElement('input');
-      el.className = 'w-full h-11 text-[14px]';
-      document.body.appendChild(el);
-      const size = parseFloat(getComputedStyle(el).fontSize);
-      el.remove();
-      return size;
-    });
-    expect(px, 'the 16px rule escaped its [data-public-site] scope').toBe(14);
+    // The control: a viewport call that silently did nothing would report a clean
+    // sweep having measured one width 146 times (14g).
+    expect(checked, 'the width sweep did not run').toBe(146);
+    expect(failures, `the header runs out of room:\n  ${failures.join('\n  ')}`).toEqual([]);
   });
 });
 
@@ -281,8 +231,9 @@ test.describe('the phone menu', () => {
     for (const label of ['How it works', 'Articles', 'Learn', 'Pricing', 'Contact']) {
       await expect(menu.getByRole('link', { name: label, exact: true })).toBeVisible();
     }
-    // Under 520px the two actions live in here too, because the header row cannot
-    // hold the lockup, a menu control and a 178px call-to-action on a 375px screen.
+    // Under 520px the two actions live in here too — below the links, owner's call
+    // — because the header row cannot hold the lockup, a menu control and a 178px
+    // call-to-action on a 375px screen.
     await expect(page.getByRole('link', { name: /create free account/i }).first()).toBeVisible();
     await expect(page.getByRole('link', { name: /^sign in$/i }).first()).toBeVisible();
 
@@ -301,10 +252,11 @@ test.describe('the phone menu', () => {
      * deleting the line again and watching this go red.
      */
     await page.keyboard.press('Tab');
-    // Inside the PANEL, not inside the nav: under 520px the two actions are the
-    // panel's first focusable children and sit above the link list, so naming the
-    // nav's first link asserted the wrong element and failed for a reason that had
-    // nothing to do with what this test is about.
+    // Inside the PANEL, not inside the nav. The two account buttons and the five
+    // links have swapped places once already (owner, 2026-09-06 — links first), and
+    // an assertion naming whichever happens to be first today fails the next time
+    // somebody reorders them, for a reason with nothing to do with focus. Asserting
+    // "focus moved into the panel" is the thing this test is actually about.
     const panelId = await page
       .getByRole('button', { name: /close menu/i })
       .getAttribute('aria-controls');
@@ -329,56 +281,5 @@ test.describe('the phone menu', () => {
     await settled(page);
     await expect(page.locator('nav[aria-label="Main"]')).toBeVisible();
     await expect(page.getByRole('button', { name: /open menu/i })).toBeHidden();
-  });
-});
-
-test.describe('the landing worked run says it scrolls', () => {
-  /**
-   * ⚠️ AUDIT 5A-157. The table is 1,055px wide inside a 341px box at 375px, so two
-   * thirds of it is off-screen — including three columns the caption underneath
-   * explains by name. It always scrolled; nothing said so.
-   */
-  test('the hint appears on a phone and not on a desktop', async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto('/');
-    await settled(page);
-
-    const wrap = page.locator('.lp-swipe');
-    await expect(wrap).toBeVisible();
-
-    // The control: the hint must be claiming something TRUE. If the table did not
-    // actually overflow, a hint saying "swipe for more" would be a lie, and this
-    // whole test would be asserting the lie is present.
-    const over = await wrap.evaluate((el) => el.scrollWidth - el.clientWidth);
-    expect(over, 'the table does not overflow, so the hint should not exist').toBeGreaterThan(2);
-
-    await expect(page.locator('.lp-swipe-hint')).toBeVisible();
-
-    // …and it gets out of the way once the reader has done the thing.
-    await wrap.evaluate((el) => el.scrollTo({ left: 200 }));
-    await expect(page.locator('.lp-swipe-hint')).toBeHidden();
-
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto('/');
-    await settled(page);
-    await expect(page.locator('.lp-swipe-hint')).toBeHidden();
-  });
-
-  test('the screener keeps its own wrapper untouched', () => {
-    /**
-     * ⚠️ `.results-table-wrap` is ALSO `components/results/ResultsTable.tsx`, which
-     * is the paid screener. The hint hangs on an extra class so the landing can
-     * gain an affordance without the paid surface gaining one unasked (11l). This
-     * asserts the separation in the source, because the screener needs a
-     * subscription to render and no browser check here can reach it.
-     */
-    const src = readFileSync(
-      join(__dirname, '..', 'components', 'results', 'ResultsTable.tsx'),
-      'utf8',
-    );
-    expect(src, 'the swipe hint leaked onto the paid screener').not.toContain('lp-swipe');
-    expect(src, 'the screener no longer renders the wrapper this rule is about').toContain(
-      'results-table-wrap',
-    );
   });
 });

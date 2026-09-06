@@ -606,7 +606,7 @@ export default function LandingPage() {
               <p>
                 MajorCycle narrows {UNIVERSE_COUNT} companies down to a handful worth your
                 attention. What
-                it cannot know is <strong>why</strong> a company fell, what management is
+                it cannot know is why a company fell, what management is
                 doing about it, what happens at the next earnings date, or anything at all
                 about your own circumstances. Treat a high rating as a reason to go and read
                 about the company — never as a reason to buy it.

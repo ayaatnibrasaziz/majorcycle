@@ -767,12 +767,29 @@ change to the call-to-action would have broken it. `public-responsive.spec.ts` t
 asserts a **12px floor on the header's own leftover room** as well as the page fitting —
 11i-b's "assert a margin, not a boundary", now with a second instance behind it.
 
+⚠️ **AND THE FIRST VERSION OF THAT SLACK CHECK SAMPLED ONE WIDTH, WHICH IS WHY IT MISSED THE
+DEFECT THE FIX ITSELF CREATED (5A-159).** The new menu control pushed the header over at
+**exactly** the breakpoint where the two account buttons reappear — a 5px band at 520–525px,
+between every width anything sampled, the mirror of 5A-154 living below every width anything
+sampled. **A component whose contents change at breakpoints cannot be certified by sampling.**
+The check now walks **320 → 900 in 4px steps**, asserts the invariant rather than any
+particular breakpoint, and was proven by restoring 520: it goes red naming 520 through 544.
+Its scope is stated in the file — one page, because the header is shared chrome, so it says
+nothing about a page BODY at an intermediate width.
+
 **What the new guard covers:** every path in `PUBLIC_PAGES` plus both content registries —
 **derived, so a page added tomorrow is covered on the day it is added** — at 375, 360 and
-320px, with the two confinement pages named separately and the reason stated. Plus the
-computed font size of every public form control (5A-155), the phone menu in both directions
-(5A-156), and the landing's swipe hint with a control proving the table really does overflow
-(5A-157). Nine assertions, **all broken on purpose and confirmed red before being trusted**.
+320px, with the two confinement pages named separately and the reason stated. Plus a floor on
+the header's own leftover room, and the phone menu in both directions (5A-156), including
+that Escape returns focus to the control that opened it. **All broken on purpose and
+confirmed red before being trusted.**
+
+⚠️ **Two assertions were written and then deleted, and the deletions are the honest part.**
+Guards for the 16px form controls (5A-155) and the landing's swipe hint (5A-157) went with
+their fixes when the owner reversed both. A guard for behaviour the product no longer has is
+not coverage — it is a claim that quietly stops matching anything (11t: every exemption, and
+every assertion, bounded on both sides). **5A-155's defect is still live and is recorded as
+open**, folded into the standing decision on the public documents' 13px body size.
 
 **What P8 still cannot claim.** `/reactivate` in its real state needs an account with
 `deletion_scheduled_at` set. A real iOS Safari cannot be reached from here, so the

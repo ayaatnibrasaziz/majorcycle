@@ -115,13 +115,29 @@ export function PublicHeader() {
                   ⚠️ The narrow-screen collapse below is conditional for a reason:
                   on /signup the primary is the hidden one, so collapsing "Sign in"
                   as well would leave a 375px header with NO action at all — under
-                  520px BOTH live in the menu instead, which is the same rule one
-                  step further down. */}
+                  600px BOTH live in the menu instead, which is the same rule one
+                  step further down.
+
+                  ⚠️ **600, and it was 520 for about an hour.** 520 was inherited from
+                  the old "Sign in" collapse and was correct before this header grew a
+                  menu control. Measured after it did: at 520px the row needs 506px of
+                  content in 480px of room, so the page **scrolled sideways by 6px from
+                  520 to 525** — a five-pixel band, menu open or closed, invisible to a
+                  guard that samples 375 / 360 / 320. Slack first reaches the 12px floor
+                  at ~558; 600 leaves 54px. The lockup's own subtitle keeps `min-[520px]`
+                  deliberately: it answers a different question (does a 43px subtitle
+                  fit?) and has room to spare once these two are out of the row.
+
+                  ⚠️ THREE literals, and Tailwind cannot read a constant — its scanner
+                  needs the class in the source. So the invariant is asserted instead of
+                  written down: `public-responsive.spec.ts` sweeps every width from 320
+                  to 900 and fails if the header ever runs out of room, whatever the
+                  breakpoint happens to be. */}
               {pathname !== '/login' && (
                 <Button
                   asChild
                   variant="outline"
-                  className={`${HEADER_BTN} hidden min-[520px]:inline-flex`}
+                  className={`${HEADER_BTN} hidden min-[600px]:inline-flex`}
                 >
                   <Link href="/login">Sign in</Link>
                 </Button>
@@ -130,7 +146,7 @@ export function PublicHeader() {
                 <Button
                   asChild
                   variant="primary"
-                  className={`${HEADER_BTN} hidden min-[520px]:inline-flex`}
+                  className={`${HEADER_BTN} hidden min-[600px]:inline-flex`}
                 >
                   <Link href="/signup">Create free account</Link>
                 </Button>
@@ -239,20 +255,6 @@ function MenuButton({ pathname }: { pathname: string }) {
           onClick={() => setOpen(false)}
           className="absolute right-0 top-[calc(100%+8px)] z-50 w-[min(268px,calc(100vw-32px))] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-lift)] p-[12px] flex flex-col gap-[4px]"
         >
-          {/* The two actions, only where the header itself cannot show them. */}
-          <div className="min-[520px]:hidden flex flex-col gap-[8px] pb-[10px] mb-[6px] border-b border-[var(--border)]">
-            {pathname !== '/signup' && (
-              <Button asChild variant="primary" className="h-auto py-[10px] px-[18px] text-[length:var(--rd-small)] w-full">
-                <Link href="/signup">Create free account</Link>
-              </Button>
-            )}
-            {pathname !== '/login' && (
-              <Button asChild variant="outline" className="h-auto py-[10px] px-[18px] text-[length:var(--rd-small)] w-full">
-                <Link href="/login">Sign in</Link>
-              </Button>
-            )}
-          </div>
-
           <nav aria-label="Menu" className="flex flex-col">
             {[...NAV_LINKS, { href: '/contact', label: 'Contact' }].map((l) => {
               const current = pathname === l.href;
@@ -274,6 +276,33 @@ function MenuButton({ pathname }: { pathname: string }) {
               );
             })}
           </nav>
+
+          {/* ⚠️ The two actions sit BELOW the links, and that is an owner decision
+              (2026-09-06) rather than a layout accident. The first build put them
+              at the top, which made the panel open with two full-width buttons and
+              pushed the thing a reader opened a menu FOR — the links — under them.
+              A menu leads with navigation; the account offer is the footer of it.
+              Only rendered under 520px, where the header itself cannot show them. */}
+          <div className="min-[600px]:hidden flex flex-col gap-[8px] pt-[10px] mt-[6px] border-t border-[var(--border)]">
+            {pathname !== '/signup' && (
+              <Button
+                asChild
+                variant="primary"
+                className="h-auto py-[10px] px-[18px] text-[length:var(--rd-small)] w-full"
+              >
+                <Link href="/signup">Create free account</Link>
+              </Button>
+            )}
+            {pathname !== '/login' && (
+              <Button
+                asChild
+                variant="outline"
+                className="h-auto py-[10px] px-[18px] text-[length:var(--rd-small)] w-full"
+              >
+                <Link href="/login">Sign in</Link>
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </div>

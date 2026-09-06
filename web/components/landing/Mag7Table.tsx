@@ -7,7 +7,6 @@ import {
   valuationAppealLabel,
 } from '@/lib/ratings';
 import { mag7Rows, signed1, type Mag7Row, type Mag7Snapshot } from '@/lib/mag7';
-import { SwipeToSee } from './SwipeToSee';
 
 /**
  * The worked screener run, as a still photograph.
@@ -82,7 +81,7 @@ export function Mag7Table({ snapshot }: { snapshot: Mag7Snapshot }) {
     // than merely unused — and `e2e/contrast.spec.ts` asserts it cannot come back.
     // If a future surface needs excusing, that is a new defect and a new decision,
     // not an inheritance.
-    <SwipeToSee label="Swipe for Health, Valuation and the cycle columns">
+    <div className="results-table-wrap">
       <table className="results-table">
         <caption className="sr-only">
           A worked MajorCycle run over the seven largest US technology companies, ranked by
@@ -178,6 +177,6 @@ export function Mag7Table({ snapshot }: { snapshot: Mag7Snapshot }) {
           ))}
         </tbody>
       </table>
-    </SwipeToSee>
+    </div>
   );
 }

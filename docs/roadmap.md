@@ -308,7 +308,10 @@
 > ~~**P7** the three gates that never run automatically~~ ✅ **DONE 2026-09-05** ·
 > ~~**P8** 375px~~ ✅ **DONE 2026-09-06**.
 >
-> **P8 · 375px — ✅ COMPLETE 2026-09-06. Five findings, all fixed, all owner-approved.**
+> **P8 · 375px — ✅ COMPLETE 2026-09-06. Six findings: four fixed, one reverted into a
+> decision already open, one ruled not a defect** — plus a seventh you reported and correctly
+> diagnosed yourself as a rendering artefact. ⚠️ Both reversals were about SCOPE, not
+> correctness — each fix was bigger than the problem it solved.
 > The headline reads as good news and is the reason the rest were found by asking different
 > questions: **at the stated 375px floor not one public page scrolled sideways**, and no
 > element on any of the thirty public URLs extended past the right edge.
@@ -321,13 +324,19 @@
 > world with every check green (CLAUDE.md 11i-b). ⚠️ And the one sweep that *did* walk 320px
 > could not see it: `learn.spec.ts` measures the prose column, which the header is not in.
 >
-> 🟠 **5A-155 — every text field on the public site zoomed an iPhone.** Eleven controls at
-> 13–14px across login, signup, reset-password, contact and set-new-password. iOS Safari
-> zooms in on focus below 16px and does not zoom back out, so a reader tapping "Email" is
-> thrown into a magnified page mid-funnel. Fixed at 16px **on phones only**, scoped to the
-> public site — the shared `Input` is also the paid terminal's, and a public-pages pass does
-> not repaint a paid surface (11l). The terminal has the same property and is noted for
-> Layer H.
+> 🟠 **5A-155 — every text field on the public site zooms an iPhone.** Eleven controls at
+> 13–14px across login, signup, reset-password, contact and set-new-password. Safari zooms
+> in on focus below 16px and **does not zoom back out** — the reader has to pinch.
+> **Researched rather than asserted:** `maximum-scale=1` is ignored by modern iOS and breaks
+> WCAG 1.4.4; the one alternative (16px shrunk with a CSS transform) distorts the caret and
+> the field's geometry. **16px is the only supported fix.** ⏸ **REVERTED on your
+> instruction, and you were right about the part that mattered:** shipped alone, the 16px
+> input became the largest text on the card, above an 11px label and beside 13px body copy.
+> The rule was correct; changing one element inside a scale was not. Folded into the
+> decision already open — whether to lift the public documents' 13px body — because that
+> moves the legal pages, the auth cards and the articles together. **The defect is still
+> live and is recorded as such.**
+>
 >
 > 🟡 **5A-156 — the public site had no navigation on a phone at all.** Below 900px the header
 > was a logo and one button; the only route to Pricing, Learn, Articles or Contact was the
@@ -337,18 +346,37 @@
 > padding is 336px before a menu control exists, so on a 375px screen one of the three has to
 > yield, and *permanence* is the cheapest to give up.
 >
-> 🟡 **5A-157 — two thirds of the landing's worked run was hidden on a phone.** 1,055px of
+> 🟡 **5A-157 — two thirds of the landing's worked run is hidden on a phone.** 1,055px of
 > table inside a 341px box; Health, Valuation and all four Major Cycle columns off-screen,
-> while the caption directly underneath explains three of them by name. A right-edge fade and
-> one line of text, both of which vanish once the reader scrolls, and neither of which exists
-> on a screen wide enough to show the table. ⚠️ Hung on an extra class, never on
-> `.results-table-wrap` itself — that is also the paid screener's, which does not have the
-> defect because it swaps to a card list on a phone.
+> while the caption below it explains three of them by name. ⏸ **You ruled it NOT a defect,
+> with a better reading of the evidence than mine:** *"people can see the table is half cut
+> anyway, which is an indicator that they can swipe."* The cut-off row IS the affordance,
+> and it is visible before any gesture. Hint removed, `SwipeToSee.tsx` deleted, the table
+> byte-identical to before. Worth keeping: the paid screener does not have this problem —
+> it swaps to a card list on a phone.
+>
+> 🟠 **5A-159 — the menu fix itself put a 5px band of horizontal scroll at 520px.** Adding
+> the menu control grew the header, and at exactly the width where the two account buttons
+> reappear the row needed 506px in 480px of room, so `/learn` and `/` scrolled sideways by
+> **6px from 520 to 525**. ⚠️ **The same lesson as the finding that opened P8, one turn
+> later**: 5A-154 lived below every width sampled, this one lived between them. A header
+> whose contents change at breakpoints cannot be certified by sampling — the defect lives AT
+> the breakpoint, the one width nobody picks. Breakpoint moved to 600 (54px of room), and
+> the guard now walks **320 → 900 in 4px steps** asserting the header never drops below 12px
+> of slack, whatever the breakpoint happens to be. Found only because P8's own sweep was
+> re-run after its fixes.
+>
+> ✅ **The open menu panel was swept too** — a surface that did not exist when P8 started, so
+> nothing had ever measured it. 268px, never off-screen, no overflow, no control under 24×24,
+> no text under 12px, and its own axe scan. Clean, and recorded, because a surface nobody has
+> measured is not the same as a clean one.
 >
 > 🟡 **5A-158 — non-negotiable #3 was enforced by four hand-written lists that missed nine of
 > the thirty public URLs**, including every form on the site. Replaced by one guard whose path
-> list is **derived** from `PUBLIC_PAGES` and both content registries. All nine of its
-> assertions were **broken on purpose and confirmed red** before being trusted.
+> list is **derived** from `PUBLIC_PAGES` and both content registries, sweeping 375/360/320
+> and asserting a 12px floor on the header's own leftover room. Every assertion **broken on
+> purpose and confirmed red** before being trusted — two of them were worthless when first
+> written and only the sabotage said so.
 >
 > **Signed-in, note only:** the accepted Layer H item says "~130px, the sidebar". Measured, it
 > is **34–180px and varies by page** — 180 on both ticker pages, 131 on Browse, 55 on
