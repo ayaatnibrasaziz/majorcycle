@@ -282,3 +282,46 @@ test.describe('the public site is accessible', () => {
     expect(failures, `articles with axe violations:\n${failures.join('\n')}`).toEqual([]);
   });
 });
+
+test.describe('the phone menu is accessible in the state nobody scans', () => {
+  /**
+   * ⚠️ AUDIT 5A-156's follow-on, and it is 11ax's shape rather than a new defect
+   * class. The sweep above visits each public page and scans it **at rest**, at the
+   * default viewport. The phone menu does not exist at that width, and even at
+   * 375px it is a closed button — so its panel, which is now the only navigation a
+   * phone reader has, is a surface **no accessibility scan on this project can
+   * reach**. A guard's scope is a claim about what it can see (14g), and "every
+   * public page passes" was quietly a claim about every public page's *resting*
+   * state.
+   *
+   * It reuses `scan()` deliberately, so it inherits the tag list, the rule options
+   * and the `rulesThatDidNotRun` control rather than growing a second, weaker
+   * configuration beside them.
+   */
+  test('the open panel has no axe violations at 375px', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await scan(page, '/learn');
+
+    await page.getByRole('button', { name: /open menu/i }).click();
+    await expect(page.locator('nav[aria-label="Menu"]')).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
+
+    const missing = rulesThatDidNotRun(results);
+    expect(missing, `axe never evaluated ${missing.join(', ')} — the scan is blind to them`).toEqual(
+      [],
+    );
+
+    // The control that matters here: the panel must actually have been in the tree
+    // when axe looked. Scanning a closed menu is what a passing-but-blind run does.
+    const sawPanel = results.passes
+      .concat(results.violations)
+      .some((r) => r.nodes.some((n) => n.target.join(' ').includes('nav')));
+    expect(sawPanel, 'axe did not see any nav — it scanned the page without the panel').toBe(true);
+
+    const detail = results.violations
+      .map((v) => `  [${v.impact}] ${v.id}: ${v.help}`)
+      .join('\n');
+    expect(results.violations.map((v) => v.id), `open phone menu\n${detail}`).toEqual([]);
+  });
+});

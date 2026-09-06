@@ -255,7 +255,15 @@ it is clean locally.
       rule as `experimental`, so it appeared in no bucket at all. One of the three was
       reachable only on a **paid** session, which is why the entitled a11y scan finally got
       built.
-- [ ] **P8 · 375px.** Public = fix. Signed-in = note only.
+- [x] **P8 · 375px.** ✅ **COMPLETE 2026-09-06** — see the P8 section below. Public = fix.
+      Signed-in = note only. **Five findings, all fixed.** Nothing scrolled sideways at the
+      stated 375px floor; every finding came from asking a different question, or the same
+      question at a width the rule does not name — **all thirty public pages overflowed 18px
+      at 320px**, from one 178px button, while the header at 375px measured 375.0px of
+      content in a 375px window (11i-b: a boundary is not a margin). Plus every public text
+      field zooming an iPhone, no navigation at all below 900px, two thirds of the landing's
+      worked run hidden on a phone, and #3 itself enforced by four hand-written lists that
+      between them missed nine of the thirty URLs.
 - [ ] **P9 · The three platforms' own go-live checklists.** ⚠️ **ADDED 2026-08-31 after reading
       Stripe's, Supabase's and Vercel's current docs via their MCP servers.** Every pass above
       asks *"is our code right?"*. None asked *"is the ACCOUNT configured for production?"* —
@@ -1934,6 +1942,243 @@ reading of that page: **37**, which belongs to P8 and Layer H.
   was measured in the same condition, so the comparison is fair; neither number includes
   it (11v).
 
+---
+
+## P8 · 375px — the public site on a phone — 2026-09-06
+
+**Scope, per the rule set at the top of this document:** public pages are **fixed** here;
+signed-in pages are **noted** and belong to Layer H. Thirty public URLs — the twelve in
+`PUBLIC_PAGES`, both index pages, five articles, twelve Learn pieces, and the two
+confinement pages — measured at **375, 360, 320 and 414px**, plus landscape (667×375),
+`prefers-color-scheme: dark` and `prefers-reduced-motion: reduce`.
+
+**Five findings, all fixed. The headline is the one that reads as good news:** at the
+stated 375px floor, **not one public page scrolled sideways and not one element extended
+past the right edge** — non-negotiable #3 holds where it is written down. Everything below
+was found by asking a different question, or by asking the same question at a width the
+rule does not mention.
+
+### 5A-154 🟠 · Every public page overflowed 18px at 320px — one button, thirty pages — ✅ FIXED
+
+`documentElement.scrollWidth` was **338 in a 320px window**, identically, on all thirty
+URLs. The cause is a single element: the header's "Create free account" is
+`whitespace-nowrap` and measures **178px**, so `20px padding + 118px lockup + 178px button
++ 20px padding = 336`. Nothing else on any page contributed.
+
+⚠️ **The reason this is in scope at all, below our own stated floor, is 11i-b.** The last
+defect of exactly this class cleared 375px **by 1.1px** and overflowed at 360 and 320 — our
+floor was the one width that could not see it. Here the same thing had already happened and
+nobody had looked: measured at 375px, the header row was **375.0px of content in a 375px
+window**. Passing. With zero slack. A two-word change to the call-to-action would have
+pushed the most common phone in the world into horizontal scroll, and every guard would
+have stayed green.
+
+⚠️ **And the guard that swept 320px could not see it.** `learn.spec.ts` has walked
+375 / 360 / **320** on all twelve Learn articles since the section was built — measuring
+`[data-article-body]`, the prose column. The header is not in it. A sweep at the right
+width, on the right pages, structurally unable to see the defect (14g).
+
+**Fixed as part of 5A-156** — under 520px the two header actions move into the menu, which
+is what frees the room. Now asserted two ways: no page may overflow at any of the three
+widths, **and** the header must leave at least **12px of slack** at 320px, because a
+boundary is not a margin (11i-b). Measured after the fix: **0px of overflow at 375 and at
+320, on all thirty.**
+
+### 5A-155 🟠 · Every text field on the public site zoomed an iPhone — ✅ FIXED
+
+Eleven form controls across `/login`, `/signup`, `/reset-password`, `/contact` and
+`/account/update-password` computed **13–14px**. iOS Safari zooms the page in when a
+focused control is under 16px **and does not zoom back out**, so a reader tapping "Email"
+is thrown into a magnified page in the middle of the sign-up funnel and has to pinch their
+way out. The viewport meta is `width=device-width, initial-scale=1` with no
+`maximum-scale`, so nothing was suppressing it — and suppressing it would break WCAG 1.4.4
+anyway, which is why the fix is the font size and not the meta tag.
+
+⚠️ **The rule is scoped to `[data-public-site]`, deliberately, and NOT written into
+`components/ui/input.tsx`.** That component is also the signed-in terminal's, and a
+public-pages pass does not get to repaint a paid surface unasked (11l). The terminal's own
+controls have the same property and are recorded for Layer H below.
+
+⚠️ **It is unlayered CSS beating a Tailwind utility**, which is a cascade question no
+amount of reading the source settles — so it is asserted on the **rendered** control
+(14d), with a mirror control proving an input outside the scope still computes 14px. A
+scope nobody checks is a scope that widens on the next edit.
+
+### 5A-156 🟡 · The public site had no navigation on a phone — ✅ FIXED
+
+`nav[aria-label="Main"]` is `hidden min-[900px]:flex`. Below 900px the header carried the
+logo and one button, so on every phone the **only** way to reach Pricing, Learn, Articles
+or Contact was the footer — at the bottom of documents up to **9,300px** tall. Measured on
+all thirty pages: `Main` present in the DOM, `visible: false`, at every width tested.
+
+A menu button now appears below 900px, opening a panel with the four nav links plus
+Contact, at 40px per row. **Owner-approved, 2026-09-06.**
+
+⚠️ **Under 520px the two header actions move into the panel, and that is not a stylistic
+choice — it is arithmetic.** The lockup is 118px and the call-to-action is 178px; with
+padding that is 336px before a menu control exists. There is no arrangement that keeps all
+three on a 375px screen. Of the three, *permanence* is the cheapest thing to give up: both
+actions are the first two items of the menu, one tap away, with the primary drawn as the
+primary. 520px is the breakpoint the "Sign in" collapse already used, so this reuses a
+decision rather than inventing a second one.
+
+⚠️ **No-JavaScript, said rather than assumed** (14g): the panel needs JS, and `/login` and
+`/signup` are required to work without it. Navigation is not lost — the footer nav is
+server-rendered on every page and carries all nine links — and the forms are untouched.
+
+### 5A-157 🟡 · The landing's worked run hid two thirds of itself on a phone — ✅ FIXED
+
+`.results-table-wrap` measured **1,055px of table inside a 341px box** at 375px — 714px
+off-screen. A phone reader saw Ticker, Company and Overall; Health, Valuation and all four
+Major Cycle columns were not there. The caption directly underneath explains **Current
+DD%**, **Typical DD%** and **Lower Bound%** by name — three columns that reader has never
+seen. It has always scrolled. Nothing said so, and a mobile scrollbar is an overlay that
+appears once you are already scrolling, which is no use to somebody who does not know
+there is more. This is the page's central sales argument.
+
+A right-edge fade and one line — *"Swipe for Health, Valuation and the cycle columns"* —
+both of which disappear the moment the reader scrolls, and neither of which exists on a
+screen wide enough to show the whole table. **Owner-approved, 2026-09-06.**
+
+⚠️ **The hint hangs on an extra class, never on `.results-table-wrap` itself.** That class
+is also `components/results/ResultsTable.tsx` — the paid screener (11l). Guarded by reading
+the screener's source, because it needs a subscription to render and no browser check here
+can reach it. ⚠️ Worth recording: **the product does not have this defect**, because the
+screener renders `hidden md:block` and swaps to a card list on a phone. The landing's
+replica has no such alternative, which is the whole reason the defect exists only here.
+
+⚠️ **The hint is measured, never assumed** — `scrollWidth - clientWidth` is read off the
+live element and re-read on resize, so a screen wide enough to show everything gets no
+hint. Showing it under a fixed breakpoint would promise hidden content on a table that may
+have none, which is the same class of lie in the other direction. Its guard therefore
+carries the control that matters: the table must genuinely overflow, or the test would be
+asserting the presence of a false statement.
+
+### 5A-158 🟡 · #3 was enforced by four hand-written lists that missed nine of thirty URLs — ✅ FIXED
+
+"No horizontal scroll at 375px" was asserted in four spec files, each covering its own
+author's pages: `landing.spec.ts` for `/`, `articles.spec.ts` for the five articles and
+their index, `learn.spec.ts` for the twelve Learn pieces, `legal-doc.spec.ts` for the three
+legal pages. Twenty-one URLs. **Silent about the other nine** — `/pricing`, `/contact`,
+`/learn` (the index), `/login`, `/signup`, `/reset-password`, `/deletion-requested`,
+`/reactivate` and `/account/update-password`: every form on the site, and the two pages a
+distressed reader sees.
+
+Four lists that each cover their own page add up to a claim nobody made (14g). Replaced by
+`e2e/public-responsive.spec.ts`, whose path list is **derived** from `PUBLIC_PAGES` plus
+both content registries, so a page added tomorrow is covered the day it is added rather
+than the day somebody remembers the file. The two confinement pages are named separately,
+with the reason stated: they are not in `PUBLIC_PAGES`, so a derived list cannot reach
+them.
+
+### Measured and NOT defects — recorded so nobody re-derives them (11aj)
+
+- **No public page scrolls sideways at 375, 360 or 414px**, before the fix or after, and
+  no element extended past the right edge at any of them. The overflow was 320-only.
+- **Tap targets.** Nine to twenty-one controls per page measure under 24×24 — and **every
+  one of them passes**, by one of WCAG 2.5.8's two exceptions. The prose links are inline
+  in a sentence; the footer nav's nine links are 21px tall with a nearest-neighbour centre
+  distance of **29–33px**, against the 24px the spacing exception requires. 29px is the
+  tightest reading on the site and it clears.
+- **The disclaimer is above the fold at 375×667 on every page that shows a rating** (#4).
+  The landing's is at y=601 in a 667px viewport — present, and the closest to the fold
+  anywhere.
+- **`color-scheme: light` is set and holds.** Rendered under `prefers-color-scheme: dark`
+  the login form is unchanged: white field, dark ink, page ground `rgb(240,244,248)`. The
+  P2 decision on this was carried out.
+- **Landscape (667×375)** is clean — no sideways scroll, header 58px, still sticky.
+- **Scroll reveals fire on a phone.** Seven sections rest at `opacity: 0` and all seven
+  reveal, with and without `prefers-reduced-motion: reduce`. ⚠️ Asserted with a **positive
+  control**: the probe was shown the pre-scroll state first and counted seven, so "zero
+  invisible after scrolling" is a measurement rather than a probe that sees nothing (11q).
+- **No chart label overlaps on the landing** at 375, 360 or 320 — 26 labels inside the
+  briefing, Opportunity Map and distribution bars, compared pairwise.
+- **The `#how-it-works` anchor lands clear of the sticky header at 375×667** — section top
+  78px against a header bottom of 58px.
+- **The Learn illustrations load.** ⚠️ They first measured `naturalWidth: 0`,
+  `complete: false` with a blank box in a screenshot — which is 11p's trap exactly. They
+  are `loading="lazy"`; after scrolling, all three report `complete: true`,
+  `naturalWidth: 375`. **A picture of a lazy image is not evidence about the image.**
+- **Text under 12px on the landing** is 153 nodes across 32 classes, and most of it is
+  **correct**: the worked run reuses the screener's own classes on purpose (11m), and the
+  app scale legitimately runs 9–14px. The landing's own micro-scale (`.eyebrow` 10px,
+  `.tag` 9px, `.briefing-ring-cap` 8.5px, `.map-note` 10.5px) sits below the reading
+  floor `--rd-micro` — but the floor check has only ever run on `/terms`, so this has never
+  been in scope. **Recorded, not changed:** it is a design decision on a public page, and
+  the substantive disclaimer beside the 9px chip is 12.5px, above the floor. Belongs with
+  the open owner decision on the public documents' 13px body.
+
+### Signed-in — NOTE ONLY, and the known figure was understated
+
+The accepted item reads *"375px overflow in the signed-in shell (~130px, the sidebar) →
+Layer H"*. Measured at 375px on the production build, it is **not one number**:
+
+| Route | Sideways scroll at 375px |
+|---|---|
+| `/stocks/us/AAPL`, `/stocks/au/BHP` | **180px** |
+| `/stocks` (Browse) | **131px** |
+| `/account` | **55px** |
+| `/run`, `/results` | **46px** |
+| `/request` | **34px** |
+| an unknown ticker (404) | **4px** |
+
+So 34–180px, varying by page, rather than a uniform ~130. This **refines an existing Layer
+H item and is not a new finding** — the correct action on a known-and-accepted item is
+silence, and this is a correction to its measurement rather than a re-raise (11aj: an open
+row is a claim about the last session's measurement).
+
+Two more for the same list: the signed-in forms have the **same sub-16px iOS zoom** as
+5A-155, deliberately left alone here (11l); and P7's ad-hoc mobile Lighthouse run scored
+the ticker page **37**, which is that pass's own note handed forward.
+
+### The follow-on the fix created, and closed the same day
+
+Adding the phone menu created a surface **no accessibility scan on this project could
+reach**. `a11y.spec.ts` visits each public page and scans it **at rest**, at the default
+viewport — where the menu button does not exist; and even at 375px it is a closed control.
+So "every public page passes axe" was quietly a claim about every public page's *resting*
+state, and the panel that is now the only navigation a phone reader has sat outside it.
+That is 11ax's shape rather than a new class: the guard existed, ran, and was structurally
+incapable of the finding.
+
+A scan of the **open** panel now runs, reusing `scan()` so it inherits the tag list, the
+rule options and the `rulesThatDidNotRun` control instead of growing a second, weaker
+configuration beside them — with its own control that axe actually saw a `nav`, because
+scanning a closed menu is exactly what a passing-but-blind run looks like. **Clean.**
+
+Fixed with it: **Escape now returns focus to the toggle** (the WAI-ARIA disclosure
+pattern). Without it a keyboard reader who dismisses the menu is dropped at the top of the
+document — the same defect `dialog.tsx` had to fix in 5A-118, on a component written four
+sessions later.
+
+⚠️ **And its guard was worthless twice before it was worth anything — both caught only by
+breaking the code on purpose.** The first version pressed Escape straight after clicking
+the toggle and **passed with the focus-restoring line deleted**, because the click had left
+focus on the toggle already: there was nothing to restore, so the check could not tell a
+working implementation from a missing one (11i/11u — a break that fails to break is a
+finding about the test). Tabbing into the panel first fixed that and introduced the second
+fault: it asserted the nav's first *link*, when under 520px the panel's first focusable
+children are the two action buttons above the list, so it went red for a reason with
+nothing to do with focus restoration. It now asserts only that focus moved **inside the
+panel**, and the Escape assertion was confirmed to fail on its own line — 321 — with the
+fix removed and to pass with it back.
+
+### What P8 could NOT check — said plainly (14g)
+
+- **`/reactivate` in its real state.** It needs an account with `deletion_scheduled_at`
+  set, which is a write to a real account. Only the page it redirects to was measured.
+- **A real iOS Safari or Android Chrome.** Everything above is desktop Chromium emulating a
+  viewport. The zoom-on-focus behaviour is a documented iOS rule, not something observed on
+  a device — which is why the fix is asserted on the computed font size rather than on a
+  zoom that cannot be reproduced here.
+- **200% text zoom (WCAG 1.4.4)** and focus-visibility at 375px are Layer H's, per Q5.
+- ⚠️ **The Browser pane's own screenshots blanked repeatedly on the landing at 375px while
+  the DOM said otherwise** — `elementFromPoint(180, 300)` returned "Meta Platforms, Inc."
+  and computed opacity was 1. Settled by taking the same shot with a second, independent
+  instrument, which rendered the page perfectly. Instrument failure, not a defect; recorded
+  so the next session does not chase it (11ab: when measurements disagree, change one
+  thing).
+
 ## Findings ledger
 
 *Findings are numbered `5A-nnn`. The first six come from **P9**, which was added on 2026-08-31
@@ -2654,7 +2899,7 @@ others. A shared *value* is fine; a shared *name* is the defect.
 
 ~~`P5a` re-derive the landing's 16 figures~~ ✅ → ~~`P1` renders + compliant~~ ✅ **DONE 2026-09-02** → `P2` colour →
 ~~`P3` interaction~~ ✅ → ~~`P4` data edge cases~~ ✅ → ~~`P5` content, copy, links~~ ✅ **DONE 2026-09-05** →
-~~`P6` not-the-screen~~ ✅ **DONE 2026-09-05** → ~~`P7` the three unrun gates + a11y regression~~ ✅ **DONE 2026-09-05** → `P8` 375px public
+~~`P6` not-the-screen~~ ✅ **DONE 2026-09-05** → ~~`P7` the three unrun gates + a11y regression~~ ✅ **DONE 2026-09-05** → ~~`P8` 375px public~~ ✅ **DONE 2026-09-06**
 
 **Am I 100% happy now?** With the plan, yes — every set in it is derived from something
 executable, its scope is bounded by a stated reason, and it says who does what and what it cannot

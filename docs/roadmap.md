@@ -306,7 +306,59 @@
 >
 > **Remaining: P3b** — your colour walkthrough, with Windows High Contrast folded in ·
 > ~~**P7** the three gates that never run automatically~~ ✅ **DONE 2026-09-05** ·
-> **P8** 375px.
+> ~~**P8** 375px~~ ✅ **DONE 2026-09-06**.
+>
+> **P8 · 375px — ✅ COMPLETE 2026-09-06. Five findings, all fixed, all owner-approved.**
+> The headline reads as good news and is the reason the rest were found by asking different
+> questions: **at the stated 375px floor not one public page scrolled sideways**, and no
+> element on any of the thirty public URLs extended past the right edge.
+>
+> 🟠 **5A-154 — every public page overflowed 18px at 320px, from one button.** The header's
+> "Create free account" is 178px and cannot shrink, so `20 + 118 + 178 + 20 = 336` in a 320px
+> window, identically on all thirty pages. ⚠️ **The same defect was already latent at 375px
+> and passing**: the header row measured **375.0px of content in a 375px window** — zero
+> slack, so two extra words in that button would have broken the most common phone in the
+> world with every check green (CLAUDE.md 11i-b). ⚠️ And the one sweep that *did* walk 320px
+> could not see it: `learn.spec.ts` measures the prose column, which the header is not in.
+>
+> 🟠 **5A-155 — every text field on the public site zoomed an iPhone.** Eleven controls at
+> 13–14px across login, signup, reset-password, contact and set-new-password. iOS Safari
+> zooms in on focus below 16px and does not zoom back out, so a reader tapping "Email" is
+> thrown into a magnified page mid-funnel. Fixed at 16px **on phones only**, scoped to the
+> public site — the shared `Input` is also the paid terminal's, and a public-pages pass does
+> not repaint a paid surface (11l). The terminal has the same property and is noted for
+> Layer H.
+>
+> 🟡 **5A-156 — the public site had no navigation on a phone at all.** Below 900px the header
+> was a logo and one button; the only route to Pricing, Learn, Articles or Contact was the
+> footer, at the bottom of documents up to 9,300px tall. A menu button now opens a panel with
+> all five sections. Under 520px the two header actions move into it as well, which is
+> arithmetic rather than taste: the lockup (118px) plus the call-to-action (178px) plus
+> padding is 336px before a menu control exists, so on a 375px screen one of the three has to
+> yield, and *permanence* is the cheapest to give up.
+>
+> 🟡 **5A-157 — two thirds of the landing's worked run was hidden on a phone.** 1,055px of
+> table inside a 341px box; Health, Valuation and all four Major Cycle columns off-screen,
+> while the caption directly underneath explains three of them by name. A right-edge fade and
+> one line of text, both of which vanish once the reader scrolls, and neither of which exists
+> on a screen wide enough to show the table. ⚠️ Hung on an extra class, never on
+> `.results-table-wrap` itself — that is also the paid screener's, which does not have the
+> defect because it swaps to a card list on a phone.
+>
+> 🟡 **5A-158 — non-negotiable #3 was enforced by four hand-written lists that missed nine of
+> the thirty public URLs**, including every form on the site. Replaced by one guard whose path
+> list is **derived** from `PUBLIC_PAGES` and both content registries. All nine of its
+> assertions were **broken on purpose and confirmed red** before being trusted.
+>
+> **Signed-in, note only:** the accepted Layer H item says "~130px, the sidebar". Measured, it
+> is **34–180px and varies by page** — 180 on both ticker pages, 131 on Browse, 55 on
+> `/account`, 46 on the screener, 34 on `/request`. A correction to a known item's
+> measurement, not a new finding (11aj).
+>
+> **Not checked, said plainly:** `/reactivate` in its real state (it needs a
+> deletion-scheduled account); a real iOS or Android device — everything above is Chromium
+> emulating a viewport, which is why the fix is asserted on the computed font size rather than
+> on a zoom that cannot be reproduced here; and 200% text zoom, which is Layer H's.
 >
 > ⚠️ **P7's outcome changed how this repo is checked, not just what it knows.**
 > `check:page-weight` and `check:csp` had never run in any workflow; they now run on

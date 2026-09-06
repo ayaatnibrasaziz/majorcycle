@@ -741,6 +741,46 @@ panel, not a 25-row screener table with charts. And `next start` does not serve 
 Python function, so the cycle block is absent from `/stocks/us/AAPL` in every one of these
 sweeps, locally and in CI alike (11v).
 
+### P8 — the width rule was enforced by four lists that between them missed nine URLs
+
+**2026-09-06.** Non-negotiable #3 says "responsive down to 375px, no horizontal scroll on
+phones". Nothing in the suite owned that sentence. Four spec files each asserted it for
+their own author's pages — `landing.spec.ts` (`/`), `articles.spec.ts` (the index + five
+articles), `learn.spec.ts` (twelve articles), `legal-doc.spec.ts` (three legal pages) —
+covering **21 of the 30 public URLs**.
+
+**The nine with no document-level 375px assertion of any kind:** `/pricing`, `/contact`,
+`/learn` (the index), `/login`, `/signup`, `/reset-password`, `/deletion-requested`,
+`/reactivate`, `/account/update-password`. That is **every form on the site** and the two
+pages a reader mid-password-reset or mid-account-deletion sees.
+
+⚠️ **And the coverage that existed measured the wrong element at the widths that mattered.**
+`learn.spec.ts` had swept **375 / 360 / 320** on all twelve Learn articles since the section
+was built — reading `[data-article-body]`, the prose column. The defect P8 found is an 18px
+header overflow at 320px present on all thirty pages, twelve of which that sweep was
+walking, every night, at exactly the right width. The right question, the right pages, the
+wrong subject (11ar: ask what your guard is looking *at*, not only what it looks *for*).
+
+⚠️ **The rule was also passing with zero slack where it is written down.** At 375px the
+header row measured **375.0px of content in a 375px window**. Nothing was red; a two-word
+change to the call-to-action would have broken it. `public-responsive.spec.ts` therefore
+asserts a **12px floor on the header's own leftover room** as well as the page fitting —
+11i-b's "assert a margin, not a boundary", now with a second instance behind it.
+
+**What the new guard covers:** every path in `PUBLIC_PAGES` plus both content registries —
+**derived, so a page added tomorrow is covered on the day it is added** — at 375, 360 and
+320px, with the two confinement pages named separately and the reason stated. Plus the
+computed font size of every public form control (5A-155), the phone menu in both directions
+(5A-156), and the landing's swipe hint with a control proving the table really does overflow
+(5A-157). Nine assertions, **all broken on purpose and confirmed red before being trusted**.
+
+**What P8 still cannot claim.** `/reactivate` in its real state needs an account with
+`deletion_scheduled_at` set. A real iOS Safari cannot be reached from here, so the
+zoom-on-focus fix is asserted on the proxy — the computed font size — rather than on the
+zoom. 200% text zoom and focus visibility at 375px belong to Layer H. And the **signed-in**
+375px overflow is deliberately noted rather than fixed, per the pass's own scope: measured
+at **34–180px depending on the page**, against a known item that records "~130px".
+
 ## Still open after this delta
 
 ⬜ **Layers 3, 3b and 4 need their own delta re-run.** The wire sweep predates the entitlement

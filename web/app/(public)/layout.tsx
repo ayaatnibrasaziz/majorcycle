@@ -13,7 +13,14 @@ export default function PublicLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative min-h-screen bg-[var(--bg-page)] flex flex-col">
+    <div
+      // The scope for the public site's own form-control sizing (audit 5A-155).
+      // It has to be an attribute on the LAYOUT rather than a rule on the shared
+      // `Input`, because that component is also the signed-in terminal's, and a
+      // public-pages fix does not get to repaint a paid surface (CLAUDE.md 11l).
+      data-public-site
+      className="relative min-h-screen bg-[var(--bg-page)] flex flex-col"
+    >
       {/* Warm the connections the sign-in flow needs before it clicks: Google
           Identity Services (the button + One Tap) and the Supabase Auth endpoint
           (token exchange). Shaves the TLS handshake off the critical path. */}
