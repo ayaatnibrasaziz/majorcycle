@@ -80,7 +80,14 @@ export const strong = (score: number): boolean => tierFromScore(score) <= 2;
 export const shortName = (name: string): string =>
   name
     .split(',')[0]!
-    .replace(/\s+(Inc|Incorporated|Corporation|Corp|Company|Co|Ltd|Limited|PLC|Holdings|Group|N\.V|S\.A)\.?$/i, '')
+    // `Platforms` joined the list on 2026-09-01, when the regenerated snapshot put
+    // Meta into the prose for the first time: "Meta Platforms’s Financial Health"
+    // is not a sentence anyone would write. It belongs here for the same reason
+    // `Holdings` and `Group` do — it is a corporate-form word, not part of what the
+    // company is called, and stripping it is what makes "Qube Holdings" read as
+    // "Qube". Only Meta is affected among the seven; the ranked TABLE is unchanged,
+    // because it renders `r.name` in full and only prose uses this.
+    .replace(/\s+(Inc|Incorporated|Corporation|Corp|Company|Co|Ltd|Limited|PLC|Holdings|Group|Platforms|N\.V|S\.A)\.?$/i, '')
     .replace(/\.com$/i, '')
     .trim();
 
@@ -118,8 +125,10 @@ export interface Mag7Facts {
   deepestFall: Mag7Row;
   /** Where `deepestFall` places in the ranking, as a word ("seventh"). */
   deepestFallRank: string;
-  /** Lowest Financial Health — the business the discount is attached to. */
+  /** Lowest Financial Health — the business the callout contrasts against. */
   weakest: Mag7Row;
+  /** Where `weakest` places in the ranking, as a word ("seventh"). */
+  weakestRank: string;
   /** Strongest Financial Health, for the contrast the callout draws. */
   healthiest: Mag7Row;
   /** Healthy AND attractively valued — the green quadrant. Often empty, honestly. */
@@ -137,6 +146,12 @@ export function mag7Facts(snap: Mag7Snapshot = MAG7): Mag7Facts {
 
   const deepestFall = by((r) => r.currentDrawdownPct);
   const rank = rows.indexOf(deepestFall);
+  const weakest = by((r) => r.healthScore);
+  const weakestRank = rows.indexOf(weakest);
+
+  // Guarded rather than assumed, for the same reason `deepestFallRank` is: seven
+  // rows can only produce indexes 0–6, but `TICKERS` in the generator is editable.
+  const ordinal = (i: number): string => ORDINALS[i] ?? `${i + 1}th`;
 
   return {
     total: rows.length,
@@ -144,11 +159,9 @@ export function mag7Facts(snap: Mag7Snapshot = MAG7): Mag7Facts {
     cautiousOrWorse: rows.filter((r) => r.overallRating < 50).length,
     top: rows[0]!,
     deepestFall,
-    // Guarded rather than assumed: seven rows can only produce indexes 0–6, but
-    // the generator's ticker list is editable and an eighth would read `undefined`
-    // into a sentence about real companies.
-    deepestFallRank: ORDINALS[rank] ?? `${rank + 1}th`,
-    weakest: by((r) => r.healthScore),
+    deepestFallRank: ordinal(rank),
+    weakest,
+    weakestRank: ordinal(weakestRank),
     healthiest: by((r) => -r.healthScore),
     opportunityZone: rows.filter((r) => strong(r.healthScore) && strong(r.valuationScore)),
   };

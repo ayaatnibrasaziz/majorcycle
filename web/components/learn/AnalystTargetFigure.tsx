@@ -34,7 +34,7 @@ import {
  */
 
 const TODAY = 'var(--brand-mid)';
-const RANGE = 'var(--c-tier-3)';
+const RANGE = 'var(--series-reference)';
 const MEAN = 'var(--brand-deep)';
 
 /**

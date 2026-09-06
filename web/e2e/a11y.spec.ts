@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { ARTICLES, articlePath } from '../lib/articles';
 import { LEARN_ARTICLES, learnPath } from '../lib/learn';
+import { TAGS, RULE_OPTIONS, rulesThatDidNotRun } from './lib/axeRules';
 
 /**
  * Automated accessibility scan of the public site — axe-core, WCAG 2.1 A + AA.
@@ -69,7 +70,10 @@ const PUBLIC_PATHS = [
   ...ARTICLES.map((a) => articlePath(a.slug)),
 ];
 
-const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+// ⚠️ AUDIT 5A-152 — `TAGS` moved to `lib/axeRules.ts`, alongside the five
+// WCAG A/AA rules that axe marks `experimental` and therefore skips unless they
+// are enabled by name. A tag filter alone never reached them, and a rule that
+// never runs is indistinguishable from one that passes.
 
 /**
  * ⚠️ **Scanned with reduced motion, and that is a correctness decision rather
@@ -146,7 +150,11 @@ async function scan(page: Page, path: string) {
      with a control that proves it still covers exactly what it claims to, because
      an exemption that has outlived its defect excuses whatever moves under it
      next (14g). */
-  return new AxeBuilder({ page }).withTags(TAGS).analyze();
+  const results = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
+  // The control: a rule that never ran is indistinguishable from one that passed.
+  const missing = rulesThatDidNotRun(results);
+  expect(missing, `axe never evaluated ${missing.join(', ')} — the scan is blind to them`).toEqual([]);
+  return results;
 }
 
 test.describe('the public site is accessible', () => {
@@ -236,7 +244,7 @@ test.describe('the public site is accessible', () => {
     await expect(page.locator('main').first()).toBeVisible();
     await page.waitForLoadState('networkidle').catch(() => {});
 
-    const full = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+    const full = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
     const targets = full.violations.flatMap((v) =>
       v.nodes.map((n) => `${v.id} @ ${n.target.join(' ')}`),
     );
@@ -272,5 +280,48 @@ test.describe('the public site is accessible', () => {
       }
     }
     expect(failures, `articles with axe violations:\n${failures.join('\n')}`).toEqual([]);
+  });
+});
+
+test.describe('the phone menu is accessible in the state nobody scans', () => {
+  /**
+   * ⚠️ AUDIT 5A-156's follow-on, and it is 11ax's shape rather than a new defect
+   * class. The sweep above visits each public page and scans it **at rest**, at the
+   * default viewport. The phone menu does not exist at that width, and even at
+   * 375px it is a closed button — so its panel, which is now the only navigation a
+   * phone reader has, is a surface **no accessibility scan on this project can
+   * reach**. A guard's scope is a claim about what it can see (14g), and "every
+   * public page passes" was quietly a claim about every public page's *resting*
+   * state.
+   *
+   * It reuses `scan()` deliberately, so it inherits the tag list, the rule options
+   * and the `rulesThatDidNotRun` control rather than growing a second, weaker
+   * configuration beside them.
+   */
+  test('the open panel has no axe violations at 375px', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await scan(page, '/learn');
+
+    await page.getByRole('button', { name: /open menu/i }).click();
+    await expect(page.locator('nav[aria-label="Menu"]')).toBeVisible();
+
+    const results = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
+
+    const missing = rulesThatDidNotRun(results);
+    expect(missing, `axe never evaluated ${missing.join(', ')} — the scan is blind to them`).toEqual(
+      [],
+    );
+
+    // The control that matters here: the panel must actually have been in the tree
+    // when axe looked. Scanning a closed menu is what a passing-but-blind run does.
+    const sawPanel = results.passes
+      .concat(results.violations)
+      .some((r) => r.nodes.some((n) => n.target.join(' ').includes('nav')));
+    expect(sawPanel, 'axe did not see any nav — it scanned the page without the panel').toBe(true);
+
+    const detail = results.violations
+      .map((v) => `  [${v.impact}] ${v.id}: ${v.help}`)
+      .join('\n');
+    expect(results.violations.map((v) => v.id), `open phone menu\n${detail}`).toEqual([]);
   });
 });

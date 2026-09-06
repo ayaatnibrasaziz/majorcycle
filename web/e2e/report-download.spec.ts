@@ -174,6 +174,23 @@ test.describe('downloaded report renders from disk', () => {
     const pageErrors: string[] = [];
     offline.on('pageerror', (e) => pageErrors.push(String(e)));
 
+    // ── The file must not phone home (audit P6) ────────────────────────────
+    // This is a document that LEAVES THE BUILDING. Once a customer has it, they
+    // may open it on a plane, in five years, or somewhere they would not expect
+    // a financial file to announce itself — so it must be genuinely
+    // self-contained, not merely self-contained-looking. Fonts are inlined as
+    // data URIs and the charts are drawn locally; nothing in it has any reason
+    // to reach the network, and a single stray URL would be invisible to a
+    // reader and obvious to whoever received the request.
+    //
+    // Collected here and asserted after the mount, so a request fired during
+    // rendering is caught rather than raced.
+    const offsite: string[] = [];
+    offline.on('request', (r) => {
+      const url = r.url();
+      if (!/^(file|data|blob):/.test(url)) offsite.push(url.slice(0, 160));
+    });
+
     await offline.goto('file:///' + file.replace(/\\/g, '/'));
 
     // A blank report fails as "mount never filled", which says nothing about why.
@@ -197,6 +214,14 @@ test.describe('downloaded report renders from disk', () => {
 
     // Any uncaught error means the customer's file is broken, whatever the cause.
     expect(pageErrors, 'the offline report must throw nothing').toEqual([]);
+
+    expect(
+      offsite,
+      'the downloaded report requested something over the network. It is meant to be a ' +
+        'self-contained file a customer can open anywhere, forever — anything here is ' +
+        'both a broken-when-offline surface and a request their machine makes on our ' +
+        'behalf, to somebody, from a financial document (audit P6).',
+    ).toEqual([]);
 
     const body = await offline.evaluate(() => document.body.innerText);
     expect(body.length, 'a mounted report has real text').toBeGreaterThan(2_000);

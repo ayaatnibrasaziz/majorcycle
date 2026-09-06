@@ -48,7 +48,7 @@ export function DeleteAccountCard({
   return (
     <section className="card">
       <div className="card-header">
-        <h2 className="card-title text-[var(--c-tier-5-ink)]">Delete account</h2>
+        <h2 className="card-title text-[var(--status-danger-ink)]">Delete account</h2>
       </div>
       <div className="card-body">
         <p className="mb-5 text-[12px] leading-relaxed text-[var(--text-muted)]">
@@ -67,7 +67,7 @@ export function DeleteAccountCard({
           </Button>
         ) : (
           <div className="flex flex-col gap-4 rounded-[var(--radius-sm)] border border-[var(--tint-tier-5-strong)] bg-[var(--tint-tier-5)] p-4">
-            <div className="flex items-start gap-2.5 text-[13px] leading-relaxed text-[var(--c-tier-5-ink)]">
+            <div className="flex items-start gap-2.5 text-[13px] leading-relaxed text-[var(--status-danger-ink)]">
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2} aria-hidden />
               <p>
                 This schedules your account for <strong>permanent deletion</strong>{' '}
@@ -97,7 +97,7 @@ export function DeleteAccountCard({
                 type="checkbox"
                 checked={ack}
                 onChange={(e) => setAck(e.target.checked)}
-                className="mt-0.5 h-4 w-4 flex-shrink-0 accent-[var(--c-tier-5)]"
+                className="mt-0.5 h-4 w-4 flex-shrink-0 accent-[var(--status-danger)]"
               />
               I understand my account will be permanently deleted after{' '}
               {ACCOUNT_DELETION_GRACE_DAYS} days.

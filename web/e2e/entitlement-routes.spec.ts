@@ -451,15 +451,29 @@ test.describe('entitlement enforcement across subscription states', () => {
     // The free half is present — this is a real page, not a wall.
     await expect(page.getByText('Current Drawdown').first()).toBeVisible({ timeout: 60_000 });
 
-    // The two scored KPI tiles are locks, not values. They are BUTTONS, not links:
-    // a lock opens the upgrade dialog in place rather than navigating away from the
-    // stock the reader is deciding about.
+    /* The two scored KPI tiles are locks, not values. They are BUTTONS, not links:
+       a lock opens the upgrade dialog in place rather than navigating away from the
+       stock the reader is deciding about.
+
+       ⚠️ AUDIT 5A-151 — these patterns are DELIBERATELY loose in the middle. The
+       tile's accessible name used to be exactly "Overall Rating — included with a
+       subscription…", from an `aria-label`. That label was the defect: it REPLACED
+       the element's content, so the visible word "Unlock" was not in the name and a
+       voice-control user saying it reached nothing (WCAG 2.5.3). The name now comes
+       from the content, which means it also carries whatever CSS renders — today
+       "OVERALL RATING Unlock — included with…", because `.kpi-label` is
+       `text-transform: uppercase`.
+
+       So the assertion names the two things it actually cares about, the metric and
+       the offer, and tolerates what sits between them. Pinning the exact string
+       would make this test fail on the next wording change while proving nothing
+       more about entitlement, which is what it exists to guard. */
     const ratingLock = page.getByRole('button', {
-      name: /Overall Rating — included with a subscription/i,
+      name: /Overall Rating\b[\s\S]*included with a subscription/i,
     });
     await expect(ratingLock).toBeVisible();
     await expect(
-      page.getByRole('button', { name: /Health Score — included with a subscription/i }),
+      page.getByRole('button', { name: /Health Score\b[\s\S]*included with a subscription/i }),
     ).toBeVisible();
 
     // Verdict + Scorecard are upgrade prompts.
@@ -493,7 +507,7 @@ test.describe('entitlement enforcement across subscription states', () => {
       timeout: 60_000,
     });
     await expect(
-      page.getByRole('button', { name: /Overall Rating — included with a subscription/i }),
+      page.getByRole('button', { name: /Overall Rating\b[\s\S]*included with a subscription/i }),
     ).toHaveCount(0);
   });
 

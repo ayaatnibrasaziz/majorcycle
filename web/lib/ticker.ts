@@ -64,17 +64,36 @@ export function tickerDisplay(stored: string): string {
   return `${symbol} · ${MARKET_COUNTRY[market]}`;
 }
 
-/** Convert URL path parts to a storage-format ticker. */
-export function urlPartsToTicker(market: Market, symbol: string): string {
+/**
+ * Convert URL path parts to a storage-format ticker — or `null` when the market
+ * segment does not own that ticker.
+ *
+ * ⚠️ The null case closes audit 5A-034, and the defect was wider than the `.V`
+ * case that exposed it. A kept-suffix symbol carries its own exchange, so the
+ * branch below returns BEFORE `market` is ever consulted: `/stocks/us/AE.V` and
+ * `/stocks/au/AE.V` both resolved to the Canadian company. `us` is also the
+ * pass-through market, so any fully-qualified ticker resolved under it —
+ * `/stocks/us/BHP.AX` served the Australian stock.
+ *
+ * Every OTHER cross-market URL 404s only by accident: the reconstruction happens
+ * to build a ticker nobody owns (`/stocks/ca/AAPL` → `AAPL.TO` → absent). An
+ * accident is not a rule, so the agreement is asserted instead — whatever we
+ * build must map BACK to the market named in the URL. `tickerToUrlParts` is the
+ * same table read the other way, so one ticker can be reached from exactly one
+ * market and there is no second list to drift (CLAUDE.md 11c).
+ */
+export function urlPartsToTicker(market: Market, symbol: string): string | null {
   const upper = symbol.toUpperCase();
   // A kept suffix means the URL symbol IS already storage format — appending
   // the market's default would build `ABC.V.TO`, a ticker that doesn't exist.
-  if (MARKET_SUFFIXES.some((s) => s.keepSuffix && upper.endsWith(s.suffix))) {
-    return upper;
-  }
-  if (market === 'au') return `${upper}.AX`;
-  if (market === 'ca') return `${upper}.TO`;
-  return upper;
+  const kept = MARKET_SUFFIXES.some((s) => s.keepSuffix && upper.endsWith(s.suffix));
+  let stored: string;
+  if (kept) stored = upper;
+  else if (market === 'au') stored = `${upper}.AX`;
+  else if (market === 'ca') stored = `${upper}.TO`;
+  else stored = upper;
+
+  return tickerToUrlParts(stored).market === market ? stored : null;
 }
 
 /** Build the canonical URL path for a stock detail page. */

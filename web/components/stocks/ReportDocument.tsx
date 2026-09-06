@@ -31,6 +31,15 @@ import {
 } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useScrollSpy } from '@/lib/useScrollSpy';
+// ⚠️ The report keeps its own nav COMPONENT — deliberately, so the report↔page drift
+// guard ignores it — but it no longer keeps its own COPY of the labels. Those were
+// identical to StockSubnav's and unlinked (11c). A constant is not a component, and
+// `check-report-sections.mjs` only scans imports from '@/components/stocks/*'.
+import {
+  STOCK_SECTIONS as NAV,
+  STOCK_SECTION_IDS as NAV_IDS,
+  sectionHeading,
+} from '@/lib/stockSections';
 import type { ReportData } from '@/lib/report-types';
 
 /** Wrap each section card so a card never splits across a page break. */
@@ -40,15 +49,6 @@ function ReportSection({ children }: { children: React.ReactNode }) {
 
 // The five nav groups — same ids/order/labels as the live Stock Detail subnav,
 // so the report's nav behaves like the page's.
-const NAV = [
-  { id: 'sec-thesis', label: 'Thesis' },
-  { id: 'sec-scorecard', label: 'Scorecard' },
-  { id: 'sec-cycle', label: 'Cycle' },
-  { id: 'sec-fundamentals', label: 'Fundamentals' },
-  { id: 'sec-sentiment', label: 'Sentiment' },
-] as const;
-
-const NAV_IDS = NAV.map((n) => n.id);
 
 /**
  * Sticky section-nav for the report. Uses the same deterministic scroll-spy as
@@ -104,7 +104,7 @@ function CycleUnavailableNotice({ horizonLabel }: { horizonLabel: string }) {
   return (
     <div className="card card--stack-base" role="note">
       <div className="card-header">
-        <div className="card-title">Major Cycle — not available at this horizon</div>
+        <h3 className="card-title">Major Cycle — not available at this horizon</h3>
       </div>
       <div className="card-body">
         <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
@@ -159,6 +159,12 @@ export function ReportDocument({ data }: { data: ReportData }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logoDataUrl} alt="MajorCycle" width={32} height={32} />
           <div>
+            {/* ⚠️ NOT the h1, though it was for one afternoon — audit 5A-114.
+                The document's heading is the company's name, which `StockHeader`
+                supplies a few lines below (it is an h1 there for the live page too).
+                A report about Apple is titled "Apple Inc."; "MajorCycle" is the
+                masthead, and making the masthead the heading gave the file two h1s
+                the moment the page got a real one. Same classes, so nothing moves. */}
             <div className="report-brand-name">MajorCycle</div>
             <div className="report-brand-sub">Major Cycle analysis report</div>
           </div>
@@ -193,6 +199,9 @@ export function ReportDocument({ data }: { data: ReportData }) {
         <DelistedNotice stock={stock} />
 
         <section id="sec-thesis" className="report-group">
+          {/* ⚠️ The identity strip is FIRST and the group heading follows it, because
+              the strip carries this document's h1 (the company's name) and an h1 may
+              not come after an h2. Only the invisible heading moved. */}
           <ReportSection>
             <StockHeader
               stock={stock}
@@ -208,6 +217,7 @@ export function ReportDocument({ data }: { data: ReportData }) {
               }
             />
           </ReportSection>
+          <h2 className="sr-only">{sectionHeading('sec-thesis')}</h2>
           {!cycle && (
             <ReportSection>
               <CycleUnavailableNotice horizonLabel={horizonLabel} />
@@ -239,12 +249,14 @@ export function ReportDocument({ data }: { data: ReportData }) {
                 cycle={cycle}
                 fundamentals={stock.fundamentals}
                 currency={stock.fundamentals.currency}
+                priceBars={stock.priceBars}
               />
             </ReportSection>
           )}
         </section>
 
         <section id="sec-scorecard" className="report-group">
+          <h2 className="sr-only">{sectionHeading('sec-scorecard')}</h2>
           {cycle ? (
             <ReportSection>
               <SnowflakeRadar cycle={cycle} />
@@ -253,7 +265,7 @@ export function ReportDocument({ data }: { data: ReportData }) {
             <ReportSection>
               <div className="card card--stack-base" role="note">
                 <div className="card-header">
-                  <div className="card-title">Scorecard</div>
+                  <h3 className="card-title">Scorecard</h3>
                 </div>
                 <div className="card-body">
                   <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-secondary)' }}>
@@ -267,6 +279,7 @@ export function ReportDocument({ data }: { data: ReportData }) {
         </section>
 
         <section id="sec-cycle" className="report-group">
+          <h2 className="sr-only">{sectionHeading('sec-cycle')}</h2>
           {stock.priceBars.length > 0 && (
             <ReportSection>
               <TechnicalLevels
@@ -289,6 +302,7 @@ export function ReportDocument({ data }: { data: ReportData }) {
                 fundamentals={stock.fundamentals}
                 currentClose={lastClose}
                 currency={stock.fundamentals.currency}
+                priceBars={stock.priceBars}
               />
             </ReportSection>
           )}
@@ -305,6 +319,7 @@ export function ReportDocument({ data }: { data: ReportData }) {
         </section>
 
         <section id="sec-fundamentals" className="report-group">
+          <h2 className="sr-only">{sectionHeading('sec-fundamentals')}</h2>
           <ReportSection>
             {/* Statement figures use the REPORTING currency — see
                 statementCurrency(). The on-page section does the same. */}
@@ -356,6 +371,7 @@ export function ReportDocument({ data }: { data: ReportData }) {
         </section>
 
         <section id="sec-sentiment" className="report-group">
+          <h2 className="sr-only">{sectionHeading('sec-sentiment')}</h2>
           <ReportSection>
             <SmartMoneyActivity
               insiderTransactions={stock.insiderTransactions}

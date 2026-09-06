@@ -28,6 +28,7 @@ import { StockSubnav } from '@/components/stocks/StockSubnav';
 import { ValuationHistory } from '@/components/stocks/ValuationHistory';
 import { VerdictCard } from '@/components/stocks/VerdictCard';
 import { benchmarkSinceFor } from '@/lib/benchmarks';
+import { sectionHeading, type StockSectionId } from '@/lib/stockSections';
 import { fetchCycleAnalysis, type CycleSpec } from '@/lib/cycle';
 import { getViewerEntitlement } from '@/lib/entitlement.server';
 import {
@@ -132,7 +133,7 @@ async function CycleNotice({
   return (
     <div className="card card--stack-base" role="note">
       <div className="card-header">
-        <div className="card-title">Major Cycle — not available at this horizon</div>
+        <h3 className="card-title">Major Cycle — not available at this horizon</h3>
       </div>
       <div className="card-body">
         <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
@@ -177,7 +178,8 @@ async function CycleThesis({
   spec,
   entitled,
   fundamentals,
-}: CycleProps & { fundamentals: FundamentalsSnapshot }) {
+  priceBars,
+}: CycleProps & { fundamentals: FundamentalsSnapshot; priceBars: PriceBar[] }) {
   const cycle = await fetchCycleAnalysis(ticker, spec, entitled);
   // FREE (with one bullet withheld) — see the note on ThesisInsights' Props: its only
   // scored input gates a positive claim, so a free viewer loses that bullet rather
@@ -187,6 +189,7 @@ async function CycleThesis({
       cycle={cycle}
       fundamentals={fundamentals}
       currency={fundamentals.currency}
+      priceBars={priceBars}
     />
   ) : null;
 }
@@ -217,6 +220,29 @@ async function CycleScorecard({ ticker, spec, entitled }: CycleProps) {
   );
 }
 
+/**
+ * The invisible heading that names one of the five Stock Detail groups.
+ *
+ * ⚠️ AUDIT 5A-114 (option B, owner-approved 2026-09-04). Until this, the whole
+ * signed-in product had NO headings: every section title was a `div` styled bold,
+ * so "list the headings" returned one entry for the page. Sighted readers had the
+ * sticky sub-nav; nobody else had anything.
+ *
+ * ⚠️ It is `sr-only` because the groups have no visible titles BY DESIGN — the
+ * sub-nav is their label and the approved layout runs cards straight into one
+ * another. A visible heading here would be a design change nobody asked for.
+ *
+ * ⚠️ And it is layout-neutral only because of how Tailwind v4 compiles `space-y`
+ * here: `> :not(:last-child) { margin-block-end }`. So the new FIRST child takes an
+ * 18px bottom margin and, being `position: absolute`, is out of flow — its margin
+ * moves nothing. Under v3's `* + *` rule the card below it would have gained 18px.
+ * **Measured rather than argued** (11i-b): every card's box was compared before and
+ * after, and every one is identical.
+ */
+function SectionHeading({ id }: { id: StockSectionId }) {
+  return <h2 className="sr-only">{sectionHeading(id)}</h2>;
+}
+
 async function CycleDrawdown({
   ticker,
   spec,
@@ -240,6 +266,9 @@ export async function generateMetadata({
   if (!isValidMarket(market)) return { title: 'Stock not found' };
 
   const stored = urlPartsToTicker(market, ticker);
+  // null = this market does not own that ticker (e.g. `/stocks/us/AE.V`). Same
+  // answer as an unknown symbol, so the title must not differ either — 5A-034.
+  if (!stored) return { title: 'Stock not found' };
   const stock = await fetchStockDetail(stored);
   if (!stock) return { title: 'Stock not found' };
 
@@ -267,6 +296,9 @@ export default async function StockDetailPage({
   const { spec, label: horizonLabel } = parseSpec(sp);
 
   const stored = urlPartsToTicker(market, ticker);
+  // A ticker is reachable from exactly one market. Backstop only: the layout
+  // above already 404s this before anything streams (5A-034).
+  if (!stored) notFound();
   // Only the stock row + sector medians block the initial render — both are
   // fast. The slow cycle analysis and the benchmark series are streamed in via
   // Suspense below, so the bulk of the page paints without waiting on them.
@@ -334,6 +366,11 @@ export default async function StockDetailPage({
           </div>
         )}
         <section id="sec-thesis" className="scroll-mt-[120px]">
+          {/* ⚠️ The identity strip comes FIRST, before the group heading, because it
+              carries the page's h1 (the company's name) and an h1 may not follow an
+              h2. Only the invisible <SectionHeading> moved — the strip, the section
+              boundary and the "Thesis" anchor target are all exactly where they were,
+              so nothing on screen and nothing the sub-nav scrolls to has changed. */}
           <StockHeader
             stock={stock}
             badgeSlot={
@@ -341,12 +378,13 @@ export default async function StockDetailPage({
                 <CycleBadges
                   ticker={stored}
                   spec={spec}
-              entitled={entitled}
+                  entitled={entitled}
                   fundamentals={stock.fundamentals}
                 />
               </Suspense>
             }
           />
+          <SectionHeading id="sec-thesis" />
           <Suspense fallback={null}>
             <CycleNotice
               ticker={stored}
@@ -374,16 +412,28 @@ export default async function StockDetailPage({
               spec={spec}
               entitled={entitled}
               fundamentals={stock.fundamentals}
+              priceBars={stock.priceBars}
             />
           </Suspense>
         </section>
-        <Suspense
-          fallback={<SectionSkeleton className="h-[320px] scroll-mt-[120px]" />}
-        >
-          <CycleScorecard ticker={stored} spec={spec}
+        {/* Scorecard is the one group that is a single card rather than a run of
+            them, so it has no <section> of its own — the anchor id lives on the card,
+            deliberately, so the sub-nav pill still works for an unentitled viewer who
+            gets the lock instead. This wrapper exists ONLY to hang the heading on:
+            without it the Scorecard's h3 would read as belonging to Thesis, which is
+            the group above. It carries no classes, so it inherits the same
+            space-y child margin the Suspense's output had. */}
+        <section>
+          <SectionHeading id="sec-scorecard" />
+          <Suspense
+            fallback={<SectionSkeleton className="h-[320px] scroll-mt-[120px]" />}
+          >
+            <CycleScorecard ticker={stored} spec={spec}
               entitled={entitled} />
-        </Suspense>
+          </Suspense>
+        </section>
         <section id="sec-cycle" className="scroll-mt-[120px] space-y-[18px]">
+          <SectionHeading id="sec-cycle" />
         {stock.priceBars.length > 0 && (
           <TechnicalLevels
             priceBars={stock.priceBars}
@@ -404,6 +454,7 @@ export default async function StockDetailPage({
             fundamentals={stock.fundamentals}
             currentClose={stock.priceBars[stock.priceBars.length - 1]!.close}
             currency={stock.fundamentals.currency}
+            priceBars={stock.priceBars}
           />
         )}
         {stock.priceBars.length > 0 && (
@@ -416,6 +467,7 @@ export default async function StockDetailPage({
         )}
         </section>
         <section id="sec-fundamentals" className="scroll-mt-[120px] space-y-[18px]">
+          <SectionHeading id="sec-fundamentals" />
           {/* Statement figures are in the REPORTING currency, not the price
               currency — see statementCurrency(). BHP.AX trades in AUD and
               reports in USD, so `fundamentals.currency` here would print A$ in
@@ -460,6 +512,7 @@ export default async function StockDetailPage({
           />
         </section>
         <section id="sec-sentiment" className="scroll-mt-[120px] space-y-[18px]">
+          <SectionHeading id="sec-sentiment" />
           <SmartMoneyActivity
             insiderTransactions={stock.insiderTransactions}
             analystUpgradesDowngrades={stock.analystUpgradesDowngrades}
@@ -493,7 +546,7 @@ function FreeViewLimitNotice({ limit }: { limit: number }) {
     <div className="pt-5">
       <div className="card card--stack-base" role="note">
         <div className="card-header">
-          <div className="card-title">Daily browsing limit reached</div>
+          <h3 className="card-title">Daily browsing limit reached</h3>
         </div>
         <div className="card-body space-y-3">
           <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">

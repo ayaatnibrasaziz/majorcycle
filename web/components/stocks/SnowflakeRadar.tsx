@@ -12,6 +12,7 @@ import {
 
 import type { CycleAnalysis } from '@/lib/types';
 import { RATING_TIER_HEX, tierFromScore } from '@/lib/ratings';
+import { CHART_TOOLTIP } from '@/lib/chartTheme';
 import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
@@ -151,7 +152,7 @@ export function SnowflakeRadar({ cycle }: Props) {
   return (
     <section id="sec-scorecard" className="scroll-mt-[120px] card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Stock Scorecard
           <InfoTip title="Stock Scorecard">
             The company&apos;s financial health broken into five pillars, each scored
@@ -160,7 +161,7 @@ export function SnowflakeRadar({ cycle }: Props) {
             without enough data are left out rather than guessed (common for banks
             &amp; REITs) and the rest are reweighted.
           </InfoTip>
-        </div>
+        </h3>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           {financialHealthScore !== null
             ? `Health Score ${Math.round(financialHealthScore)}/100`
@@ -214,14 +215,14 @@ export function SnowflakeRadar({ cycle }: Props) {
                     [`${value ?? 0}/100`, (entry as { payload?: { subject?: string } }).payload?.subject ?? 'Score']
                   }
                   contentStyle={{
-                    background: '#1A1A1B',
-                    border: '1px solid #2E3347',
+                    background: CHART_TOOLTIP.bg,
+                    border: `1px solid ${CHART_TOOLTIP.border}`,
                     borderRadius: 6,
                     padding: '8px 12px',
                   }}
                   labelStyle={{ display: 'none' }}
                   itemStyle={{
-                    color: '#94A3B8',
+                    color: CHART_TOOLTIP.muted,
                     fontFamily: "'JetBrains Mono', monospace",
                     fontSize: 11,
                   }}

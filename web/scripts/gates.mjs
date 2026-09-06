@@ -71,11 +71,29 @@ const NOT_GATES = {
   'pnpm exec playwright install chromium': 'installs the browser',
 };
 
-/** Real gates that cannot run from a bare checkout, named rather than omitted. */
+/**
+ * Real gates that cannot run from a bare checkout, named rather than omitted.
+ *
+ * ⚠️ **AUDIT 5A-153, 2026-09-05 — two of these three now run on every push**,
+ * in the `server-gates` job, which builds and starts :3200 for them. Until that
+ * day they ran NOWHERE automatically: not in any workflow, and this file printed
+ * NOT RUN unconditionally — even with a production server actually up on :3200,
+ * which is a claim about the world that was simply false. They ran when somebody
+ * remembered, and F-016 is the standing record of what that is worth.
+ *
+ * The line still prints, because the local story has not changed: `pnpm gates`
+ * from a bare checkout still cannot run them, and saying "NOT RUN" is the whole
+ * point of this block. What changed is the second half of each sentence — where
+ * they DO run — so nobody reads the row as "nothing checks this".
+ */
 const NEEDS_A_SERVER = [
-  ['pnpm check:page-weight', 'needs a production server on :3200'],
-  ['pnpm check:csp', 'needs a production server on :3200 and a real session'],
-  ['pnpm lighthouse', 'needs a production server on :3200; median of 3, ~6 min'],
+  ['pnpm check:page-weight', 'needs a production server on :3200 — runs in CI (server-gates)'],
+  ['pnpm check:csp', 'needs a production server on :3200 and a real session — runs in CI (server-gates)'],
+  [
+    'pnpm lighthouse',
+    'needs a production server on :3200; median of 3, ~10 min — MANUAL ONLY, ' +
+      'deliberately: the same page has scored 85, 81, 76, 63 and 62 here',
+  ],
 ];
 
 /* ── the self-check: is this list still complete? ─────────────────────────── */
@@ -93,7 +111,16 @@ function ciCommands() {
   return found;
 }
 
-const covered = new Set([...GATES.flatMap((g) => g.covers), ...Object.keys(NOT_GATES)]);
+/* ⚠️ `NEEDS_A_SERVER` is part of the accounting, not an exception to it. Its
+   commands appear in ci.yml now, so leaving them out would make the self-check
+   below refuse to run — and the fix a hurried person would reach for is deleting
+   the self-check. They are covered here and printed as NOT RUN below, which is
+   the honest pair: accounted for, and not executed by this command. */
+const covered = new Set([
+  ...GATES.flatMap((g) => g.covers),
+  ...Object.keys(NOT_GATES),
+  ...NEEDS_A_SERVER.map(([cmd]) => cmd),
+]);
 const missing = [...ciCommands()].filter((c) => !covered.has(c));
 if (missing.length) {
   console.error('pnpm gates — this list is OUT OF DATE.\n');

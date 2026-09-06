@@ -139,7 +139,7 @@ entirely.
 | Element | Must be |
 |---|---|
 | **Header** | ONE header on every page. The brand lockup. **No "Markets · Live" pill** — removed by owner decision, and its CSS with it |
-| **Footer** | ONE definition, links in this order: **How it works · Learn · Pricing · Contact · Disclaimer · Terms · Privacy** |
+| **Footer** | ONE definition. **Measured live 2026-09-01 (P1):** *Home · How it works · Articles · Learn · Pricing · Contact · Disclaimer · Terms · Privacy* — nine links. The artifact's seven are all present **in the artifact's order**; `Home` and `Articles` were added afterwards, and `/articles` did not exist when the artifact was drawn (5A-007, 5A-017). Recorded as the live truth; `Home` is pending owner confirmation |
 | **Cards** | ONE language: **10px radius + 1px border**. ⚠️ Explicitly *not* the old 12px radius with a 60px ambient shadow — that is what made signing in feel like a different product from the thing you were signing into. Floating cards keep a lift; cards inside a page use the whisper |
 | **Buttons** | ONE primary: the **navy gradient**, not a flat fill. ⚠️ `.topnav a` outranks `.btn-primary` on specificity, so without `:not(.btn)` the sign-up button renders grey-on-blue — **invisible, and silent** |
 | **Disclaimer chip** | Required **above the fold** (#4 / #12) |
@@ -369,7 +369,7 @@ is a wish.** Everything below was verified against the live systems, not recalle
 
 | Surface | How to start it | Sign in | Limits |
 |---|---|---|---|
-| **Local** `:3200` | `cd web && pnpm start:fresh` (**builds first** — `:3200` cannot serve stale code). Never `:3000` | `.env.local` holds `E2E_EMAIL` / `E2E_PASSWORD` | ⚠️ **`/api/cycle` does not run.** The whole cycle block is empty for everyone — no rating, no verdict, not even the free "Current Drawdown" |
+| **Local** `:3200` | `cd web && pnpm start:fresh --port 3200` (**builds first** — `:3200` cannot serve stale code). ⚠️ **Without `--port 3200` it starts on `:3000`** — `start:fresh` is `pnpm build && next start` and carries no port of its own. Never `:3000` | `.env.local` holds `E2E_EMAIL` / `E2E_PASSWORD` | ⚠️ **`/api/cycle` does not run.** The whole cycle block is empty for everyone — no rating, no verdict, not even the free "Current Drawdown" |
 | **Vercel preview** | Pushed branches auto-deploy. Get the URL from `list_deployments`; the preview is SSO-gated, so mint a share link with `get_access_to_vercel_url` | same credentials | Reflects the **last pushed** commit, not your working tree |
 | **Live** `https://www.majorcycle.com` | Already deployed | a real account, in **Claude in Chrome** | Live Stripe. **You cannot induce a failed payment here** |
 
@@ -405,7 +405,10 @@ real card to really fail. Live checks are limited to signed-out / free / trialin
 ## 4 · Commands
 
 ```
-cd web && pnpm start:fresh          # :3200, builds first
+cd web && pnpm start:fresh --port 3200   # builds first. ⚠️ THE FLAG IS REQUIRED —
+                                    # `start:fresh` is `pnpm build && next start`
+                                    # with no port, so without it you get :3000,
+                                    # the one port every measuring script refuses.
 pnpm gates                          # all 16 (~15 min).  NEVER pipe it — see §40b
 pnpm gates --no-e2e                 # 15, fast, for docs-only changes
 pnpm check:page-weight              # needs :3200 running

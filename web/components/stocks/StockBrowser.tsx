@@ -534,12 +534,12 @@ function CustomField({
         className={cn(
           'w-[92px] rounded-[var(--radius-sm)] border bg-[var(--bg-surface)] px-2 py-[5px] font-[var(--font-mono)] text-[12px] text-[var(--text-primary)] outline-none',
           error
-            ? 'border-[var(--c-tier-5)] focus:border-[var(--c-tier-5)]'
+            ? 'border-[var(--status-danger)] focus:border-[var(--status-danger)]'
             : 'border-[var(--border)] focus:border-[var(--brand-bright)]'
         )}
       />
       {error && (
-        <span id={errorId} className="text-[9.5px] font-semibold text-[var(--c-tier-5)]">
+        <span id={errorId} className="text-[9.5px] font-semibold text-[var(--status-danger)]">
           {error}
         </span>
       )}

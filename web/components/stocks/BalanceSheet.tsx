@@ -1,6 +1,6 @@
 'use client';
 
-import { CHART_INK } from '@/lib/chartTheme';
+import { CANDLE, CHART_INK, CHART_TOOLTIP } from '@/lib/chartTheme';
 import { useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -122,14 +122,14 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Balance Sheet Health
           <InfoTip title="Balance Sheet Health">
             A snapshot of what the company owns versus what it owes. &quot;Net cash&quot;
             means it holds more cash than debt (resilient); &quot;net debt&quot; means the
             reverse. Lower debt relative to equity generally means lower financial risk.
           </InfoTip>
-        </div>
+        </h3>
         {hasChart && (
           <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
             Bars = Assets · Line = Debt
@@ -168,15 +168,15 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                     return (
                       <div
                         style={{
-                          background: '#1A1A1B',
-                          border: '1px solid #2E3347',
+                          background: CHART_TOOLTIP.bg,
+                          border: `1px solid ${CHART_TOOLTIP.border}`,
                           borderRadius: 6,
                           padding: '8px 12px',
                         }}
                       >
                         <div
                           style={{
-                            color: '#E8EAF0',
+                            color: CHART_TOOLTIP.text,
                             fontFamily: "'JetBrains Mono', monospace",
                             fontSize: 11,
                             fontWeight: 600,
@@ -189,7 +189,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                           <div
                             key={String(p.dataKey)}
                             style={{
-                              color: '#94A3B8',
+                              color: CHART_TOOLTIP.muted,
                               fontFamily: "'JetBrains Mono', monospace",
                               fontSize: 11,
                             }}
@@ -233,7 +233,7 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                      was not (4.39 against 4.5). Second instance of this coupling —
                      see BENCH_COLOR in RelativePerformance for the first. */
                   fill={INK.up}
-                  stroke="#006400"
+                  stroke={CANDLE.up}
                   strokeWidth={1.5}
                   radius={[0, 0, 0, 0]}
                   hide={hidden.has('cash')}

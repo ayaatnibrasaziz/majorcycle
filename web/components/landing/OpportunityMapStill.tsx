@@ -56,13 +56,23 @@ const diameter = (overall: number): number =>
  * review and unremarkable in a screenshot — two short labels touching at the
  * corner — so `e2e/landing.spec.ts` walks every pair of labels and captions and
  * fails on any intersection. Re-run it after any `build_mag7_snapshot` run.
+ *
+ * ⚠️ **It expired a SECOND time on 2026-09-01, exactly as predicted**, which is
+ * the argument for keeping the guard rather than trusting this note. Regenerating
+ * the snapshot moved Nvidia's Valuation 0.6 → 14.1 and Apple's 29.6 → 18.2,
+ * closing the gap between them from 29 points to 4; Nvidia's label hung left and
+ * Apple's hung right, so the two pointed into the same shrinking corridor and
+ * met. `NVDA` moved to the right — away from Apple, and it is the rightmost point
+ * on the map, so nothing sits beyond it. The guard found it in 20 seconds; a
+ * screenshot would not have, and neither did I when I predicted the collision but
+ * guessed the wrong pair (I expected Apple ↔ Amazon).
  */
 const SIDE: Record<string, 'l' | 'r' | 'u' | 'd'> = {
   GOOGL: 'r',
   META: 'l',
   MSFT: 'r',
   AAPL: 'r',
-  NVDA: 'l',
+  NVDA: 'r',
   TSLA: 'r',
   AMZN: 'u',
 };
@@ -79,18 +89,18 @@ const TIER_MIDS: Record<string, number> = {
 const TICKS = [0, 25, 50, 65, 75, 100];
 
 const QUADRANTS = [
-  { cls: 'q-tr', label: 'Opportunity Zone', swatch: 'rgba(0,100,0,.18)', ink: 'var(--c-tier-1)' },
+  { cls: 'q-tr', label: 'Opportunity Zone', swatch: 'rgba(var(--zone-good-rgb), .18)', ink: 'var(--c-tier-1)' },
   {
     cls: 'q-br',
     label: 'Healthy, fully priced',
-    swatch: 'rgba(212,160,23,.20)',
-    ink: 'var(--c-tier-3-ink)',
+    swatch: 'rgba(var(--zone-priced-rgb), .20)',
+    ink: 'var(--accent-warm-ink)',
   },
-  { cls: 'q-tl', label: 'Weak but cheap', swatch: 'rgba(30,92,179,.14)', ink: 'var(--brand-mid)' },
+  { cls: 'q-tl', label: 'Weak but cheap', swatch: 'rgba(var(--zone-cheap-rgb), .14)', ink: 'var(--brand-mid)' },
   {
     cls: 'q-bl',
     label: 'Weak & expensive',
-    swatch: 'rgba(178,34,34,.16)',
+    swatch: 'rgba(var(--zone-worst-rgb), .16)',
     ink: 'var(--c-tier-5-ink)',
   },
 ] as const;

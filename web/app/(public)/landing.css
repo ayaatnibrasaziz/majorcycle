@@ -6,8 +6,13 @@
  * globals.css — the same values the terminal renders. That is the point: the
  * front door and the product must not be two designs. Where the artifact used
  * short aliases (`--t3`, `--tint-t2-strong`) this file uses OUR canonical names
- * (`--c-tier-3`, `--tint-tier-2-strong`) rather than introducing a second set of
- * names for one palette (CLAUDE.md 11c).
+ * (`--accent-warm`, `--tint-tier-2-strong`) rather than introducing a second set
+ * of names for one palette (CLAUDE.md 11c).
+ *
+ * ⚠️ The warm accents here read `--accent-warm` / `--accent-warm-ink`, NOT the
+ * rating's Neutral, which they borrowed until 2026-09-02. They are decoration on
+ * a marketing page; Neutral is a verdict about a stock. Same value that day, and
+ * they part company the moment Neutral becomes gold.
  *
  * Why a stylesheet at all, on a Tailwind project: this page draws two measuring
  * rulers, a quadrant scatter plot and a ten-column table with a banded header.
@@ -327,8 +332,24 @@
 }
 
 /* ── The two rulers ────────────────────────────────────────────────────── */
+/* ⚠️ THE MARGINS HERE ARE NOT THE GAPS A READER SEES, and that is the whole
+   reason these numbers look large. Each `.mk` marker is 66px tall against a 52px
+   track, so it already overhangs 7px top and bottom, and its LABEL is a
+   pseudo-element another 25px above (or 73px below) the marker's own box. The
+   labels therefore reach 32px above the track and 34px below it, and they spend
+   the head's margin-bottom and the legend's margin-top before a reader sees any
+   space at all.
+
+   Measured at 1280px before this was raised: the caption line and the "Typical
+   −24.7%" label **overlapped by 2px**, and the "Today −8.0%" label's bottom edge
+   sat at exactly the legend's top edge — a 0px gap. Owner reported it; both
+   readings confirmed it. The old 30/34 were chosen against the track and nobody
+   subtracted the labels.
+
+   So: head 48 = 32 (label reach) + 16 clear. Legend 50 = 34 + 16 clear. Change a
+   marker's offsets and these two must move with them. */
 .lp .ruler + .ruler {
-  margin-top: 34px;
+  margin-top: 44px;
 }
 .lp .ruler-head {
   display: flex;
@@ -337,11 +358,30 @@
   gap: 16px;
   font-size: 11.5px;
   color: var(--text-secondary);
-  margin-bottom: 30px;
+  margin-bottom: 48px;
 }
 .lp .ruler-head b {
   color: var(--text-primary);
   font-weight: 600;
+}
+/* "Downside" / "Upside" — dropped once the caption beside it stops fitting on one
+   line. `justify-content: space-between` pins the label to the FIRST line while
+   the caption wraps underneath it, so the row reads as a stranded word rather
+   than a right-hand label. Owner reported it on a phone, 2026-09-06.
+
+   ⚠️ 700px is a MARGIN, not the boundary. Measured on the built page, the caption
+   is one line down to 670px and wraps at 660 — but that number belongs to today's
+   sentence, and the caption is editorial text somebody will reword. 700 keeps 40px
+   of headroom so a slightly longer caption cannot quietly reintroduce this
+   (CLAUDE.md 11i-b).
+
+   Removed outright rather than hidden from sight only: the word is redundant with
+   the heading above it ("How far it falls") and with the bar's own red/green tint,
+   so there is nothing for a screen reader to lose. */
+@media (max-width: 700px) {
+  .lp .ruler-head .side {
+    display: none;
+  }
 }
 .lp .ruler-track {
   position: relative;
@@ -435,7 +475,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
-  margin-top: 34px;
+  /* 34px of label reach below the track + 16px clear — see the note above. */
+  margin-top: 50px;
   font-size: 12px;
   color: var(--text-secondary);
 }
@@ -451,7 +492,9 @@
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 14px;
-  margin-top: 22px;
+  /* 22px read as a continuation of the legend rather than a new block. The two
+     readouts are a separate statement about the same figure. */
+  margin-top: 34px;
 }
 @media (max-width: 640px) {
   .lp .readout {
@@ -563,7 +606,7 @@
   top: 0;
   width: calc(100% - var(--split));
   height: calc(100% - var(--split));
-  background: rgba(0, 100, 0, 0.07);
+  background: rgba(var(--zone-good-rgb), 0.07);
 }
 .lp .q-tr .ql {
   right: 0;
@@ -577,12 +620,12 @@
   bottom: 0;
   width: calc(100% - var(--split));
   height: var(--split);
-  background: rgba(212, 160, 23, 0.06);
+  background: rgba(var(--zone-priced-rgb), 0.06);
 }
 .lp .q-br .ql {
   right: 0;
   bottom: 0;
-  color: var(--c-tier-3-ink);
+  color: var(--accent-warm-ink);
   text-align: right;
 }
 .lp .q-tl {
@@ -590,7 +633,7 @@
   top: 0;
   width: var(--split);
   height: calc(100% - var(--split));
-  background: rgba(30, 92, 179, 0.05);
+  background: rgba(var(--zone-cheap-rgb), 0.05);
 }
 .lp .q-tl .ql {
   left: 0;
@@ -602,7 +645,7 @@
   bottom: 0;
   width: var(--split);
   height: var(--split);
-  background: rgba(178, 34, 34, 0.06);
+  background: rgba(var(--zone-worst-rgb), 0.06);
 }
 .lp .q-bl .ql {
   left: 0;
@@ -612,7 +655,7 @@
 .lp .split-v,
 .lp .split-h {
   position: absolute;
-  border-color: rgba(138, 151, 168, 0.45);
+  border-color: var(--zone-split);
   border-style: dashed;
 }
 .lp .split-v {
@@ -752,7 +795,10 @@
 
 /* ── Callout ───────────────────────────────────────────────────────────── */
 .lp .callout {
-  border-left: 3px solid var(--c-tier-3);
+  border-left: 3px solid var(--accent-warm);
+  /* The one remaining literal from the original gold. Kept as a value rather than
+     mixed from --c-tier-3, because a 4%-ish wash of the new gold is a different
+     colour and this one is approved. Its rule and heading are --accent-warm*. */
   background: #fdf9ef;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   padding: 16px 20px;
@@ -762,7 +808,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--c-tier-3-ink);
+  color: var(--accent-warm-ink);
 }
 .lp .callout p {
   font-size: 13.5px;

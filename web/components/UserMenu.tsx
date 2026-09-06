@@ -46,7 +46,27 @@ export function UserMenu({ email }: { email?: string | null }) {
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Account menu"
+        /* ⚠️ AUDIT 5A-151 — WCAG 2.5.3 "Label in Name" (Level A). This read
+           `aria-label="Account menu"`, which REPLACED the visible text rather than
+           describing it: the button shows the reader's own email address, and an
+           `aria-label` wins over element content when the accessible name is
+           computed. So a speech-input user (Dragon, Voice Control) saw their email
+           on screen, said it, and nothing happened — the only name the software
+           knew was one that appears nowhere on the page. On all six signed-in
+           routes, for the life of the component.
+
+           The visible text now leads, so saying what is on screen works, and the
+           trailing words keep the hint that this opens a menu.
+
+           ⚠️ NEITHER INSTRUMENT COULD SEE IT, which is the part worth
+           remembering. Lighthouse runs the audit and weights it **0**, so
+           accessibility scored a clean 100 with the failure inside it. axe carries
+           the same rule tagged `wcag21a` — which IS in our tag list — but also
+           tagged `experimental`, and axe skips experimental rules by default: it
+           appeared in no bucket at all, not violations, not passes, not even
+           inapplicable. A rule that never ran is indistinguishable from one that
+           passed (CLAUDE.md 14g). `app-a11y.spec.ts` now enables it explicitly. */
+        aria-label={`${email ?? 'Account'} — account menu`}
         className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--bg-surface)] px-3 py-[7px] text-[12px] font-medium text-[var(--text-secondary)] transition-all duration-150 hover:border-[var(--brand-bright)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)]"
       >
         <UserRound className="h-[14px] w-[14px]" strokeWidth={1.8} aria-hidden="true" />

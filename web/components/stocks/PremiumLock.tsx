@@ -66,14 +66,14 @@ export function PremiumLockCard({
   return (
     <div id={id} className="card card--stack-base scroll-mt-[120px]" role="note">
       <div className="card-header">
-        <div className="card-title flex items-center gap-[6px]">
+        <h3 className="card-title flex items-center gap-[6px]">
           <Lock
             className="w-[13px] h-[13px] text-[var(--text-muted)]"
             strokeWidth={2}
             aria-hidden="true"
           />
           {title}
-        </div>
+        </h3>
       </div>
       <div className="card-body">
         <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
@@ -112,13 +112,33 @@ export function PremiumLockKpi({ label }: { label: string }) {
             '--kpi-value-color': 'var(--text-muted)',
           } as React.CSSProperties
         }
-        aria-label={`${label} — included with a subscription. See what's included.`}
+        /* ⚠️ AUDIT 5A-151. There WAS an `aria-label` here naming only the label
+           — "Overall Rating — included with a subscription…" — which REPLACED the
+           element's content as the accessible name and so omitted the one word a
+           voice-control user would actually say: **Unlock**. "Click Unlock" did
+           nothing, on the paywall, which is the screen where a free reader decides
+           whether to pay. WCAG 2.5.3 Level A.
+
+           ⚠️ **My first fix restated the visible words in the label and STILL
+           failed**, which is the lesson worth keeping. `.kpi-label` is
+           `text-transform: uppercase`, so the words on screen are
+           "OVERALL RATING Unlock" while the prop says "Overall Rating Unlock" —
+           two spellings of one sentence, and a hand-written label can only ever
+           be a guess at what CSS finally renders.
+
+           So the name is not restated at all: the `aria-label` is gone and the
+           name is computed from the content, with the extra sentence carried by
+           an `sr-only` span INSIDE the button. A screen reader hears all of it;
+           axe sees a name that contains the visible text **by construction**
+           rather than by my matching it. Same move as `CsvImport`: delete the
+           second copy rather than correct it (CLAUDE.md 11c). */
       >
         <div className="kpi-label">{label}</div>
         <div className="kpi-value flex items-center gap-[6px] text-[15px]">
           <Lock className="w-[15px] h-[15px]" strokeWidth={2} aria-hidden="true" />
           Unlock
         </div>
+        <span className="sr-only"> — included with a subscription. See what&rsquo;s included.</span>
       </button>
       <UpgradeDialog open={open} onOpenChange={setOpen} feature={label} />
     </>

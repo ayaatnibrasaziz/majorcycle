@@ -4,6 +4,7 @@ import Link from 'next/link';
 
 import { BrandLockup } from './BrandLockup';
 import { usePathname } from 'next/navigation';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { NAV_LINKS, showsFullChrome } from '@/lib/publicNav';
@@ -113,27 +114,197 @@ export function PublicHeader() {
                   competing for the only room the real action has.
                   ⚠️ The narrow-screen collapse below is conditional for a reason:
                   on /signup the primary is the hidden one, so collapsing "Sign in"
-                  as well would leave a 375px header with NO action at all. */}
+                  as well would leave a 375px header with NO action at all — under
+                  600px BOTH live in the menu instead, which is the same rule one
+                  step further down.
+
+                  ⚠️ **600, and it was 520 for about an hour.** 520 was inherited from
+                  the old "Sign in" collapse and was correct before this header grew a
+                  menu control. Measured after it did: at 520px the row needs 506px of
+                  content in 480px of room, so the page **scrolled sideways by 6px from
+                  520 to 525** — a five-pixel band, menu open or closed, invisible to a
+                  guard that samples 375 / 360 / 320. Slack first reaches the 12px floor
+                  at ~558; 600 leaves 54px. The lockup's own subtitle keeps `min-[520px]`
+                  deliberately: it answers a different question (does a 43px subtitle
+                  fit?) and has room to spare once these two are out of the row.
+
+                  ⚠️ THREE literals, and Tailwind cannot read a constant — its scanner
+                  needs the class in the source. So the invariant is asserted instead of
+                  written down: `public-responsive.spec.ts` sweeps every width from 320
+                  to 900 and fails if the header ever runs out of room, whatever the
+                  breakpoint happens to be. */}
               {pathname !== '/login' && (
                 <Button
                   asChild
                   variant="outline"
-                  className={`${HEADER_BTN} ${
-                    pathname === '/signup' ? '' : 'hidden min-[520px]:inline-flex'
-                  }`}
+                  className={`${HEADER_BTN} hidden min-[600px]:inline-flex`}
                 >
                   <Link href="/login">Sign in</Link>
                 </Button>
               )}
               {pathname !== '/signup' && (
-                <Button asChild variant="primary" className={HEADER_BTN}>
+                <Button
+                  asChild
+                  variant="primary"
+                  className={`${HEADER_BTN} hidden min-[600px]:inline-flex`}
+                >
                   <Link href="/signup">Create free account</Link>
                 </Button>
               )}
+              <MenuButton pathname={pathname} />
             </div>
           </>
         )}
       </div>
     </header>
+  );
+}
+
+/**
+ * The phone/tablet menu — audit 5A-156.
+ *
+ * ⚠️ Below 900px the public site had NO navigation at all. `nav[aria-label="Main"]`
+ * is `hidden min-[900px]:flex`, so a reader on a phone saw a logo and one button;
+ * the only way to reach Pricing, Learn, Articles or Contact was the footer, at the
+ * bottom of documents up to 9,300px tall. Measured on every public page.
+ *
+ * ⚠️ WHY THE TWO BUTTONS MOVE IN HERE UNDER 520px, rather than the menu being
+ * added beside them. The header row is `20 + lockup 118 + CTA 178 + 20 = 336`,
+ * which is why every public page overflowed by 18px at 320px (5A-154) and why at
+ * 375px the row measured 375.0 — zero slack. There is no arrangement that keeps
+ * the full lockup, a menu control AND a 178px call-to-action on a 375px screen;
+ * something has to yield. The lockup is the brand and the CTA is the conversion,
+ * so the thing that yields is *permanence*: under 520px both actions are the first
+ * two items of the menu, one tap away, with the primary drawn as the primary. That
+ * reuses the 520px breakpoint the "Sign in" collapse already used rather than
+ * inventing a second one.
+ *
+ * ⚠️ NO-JAVASCRIPT: this panel needs JS, and `/login` + `/signup` are required to
+ * work without it. Navigation is not lost — the footer nav is server-rendered on
+ * every page and carries all nine links — and the forms themselves are untouched.
+ * Said here rather than left as an unstated assumption (14g).
+ */
+function MenuButton({ pathname }: { pathname: string }) {
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
+  const wrap = useRef<HTMLDivElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      // Escape returns focus to the control that opened the panel — the WAI-ARIA
+      // disclosure pattern. Without it a keyboard reader who dismisses the menu is
+      // dropped at the top of the document, which is the defect `dialog.tsx`
+      // already had to fix once (5A-118). Deliberately NOT done on outside-click:
+      // there the reader has already moved their attention somewhere else.
+      toggle.current?.focus();
+    };
+    const onDown = (e: MouseEvent) => {
+      if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrap} className="relative min-[900px]:hidden">
+      <button
+        ref={toggle}
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        aria-label={open ? 'Close menu' : 'Open menu'}
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center justify-center w-[38px] h-[38px] rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--bg-surface)] text-[var(--text-secondary)] transition-colors hover:text-[var(--brand-mid)] hover:border-[var(--brand-bright)]"
+      >
+        {/* Inline SVG rather than an icon dependency, and `aria-hidden` because
+            the button already carries its name. Two paths, swapped by state, so
+            the control says which way it goes. */}
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+          {open ? (
+            <>
+              <path d="M4 4l10 10" />
+              <path d="M14 4L4 14" />
+            </>
+          ) : (
+            <>
+              <path d="M2.5 5h13" />
+              <path d="M2.5 9h13" />
+              <path d="M2.5 13h13" />
+            </>
+          )}
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          id={panelId}
+          // Closing here rather than in an effect on `pathname`. The header
+          // survives navigation, so without this a reader taps "Learn" and
+          // arrives with the menu still covering the page they asked for — and
+          // every interactive thing in this panel is a link, so one handler on
+          // the container covers all of them. (An effect that calls setState on
+          // a route change is a cascading render and the linter says so.)
+          onClick={() => setOpen(false)}
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-[min(268px,calc(100vw-32px))] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] shadow-[var(--shadow-lift)] p-[12px] flex flex-col gap-[4px]"
+        >
+          <nav aria-label="Menu" className="flex flex-col">
+            {[...NAV_LINKS, { href: '/contact', label: 'Contact' }].map((l) => {
+              const current = pathname === l.href;
+              return (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  {...(current ? { 'aria-current': 'page' as const } : {})}
+                  // 40px tall: a menu row is a primary touch target and is not
+                  // covered by WCAG 2.5.8's inline-in-a-sentence exception.
+                  className={`flex items-center min-h-[40px] px-[10px] rounded-[var(--radius-sm)] text-[length:var(--rd-small)] transition-colors ${
+                    current
+                      ? 'text-[var(--brand-mid)] font-semibold'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)]'
+                  }`}
+                >
+                  {l.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* ⚠️ The two actions sit BELOW the links, and that is an owner decision
+              (2026-09-06) rather than a layout accident. The first build put them
+              at the top, which made the panel open with two full-width buttons and
+              pushed the thing a reader opened a menu FOR — the links — under them.
+              A menu leads with navigation; the account offer is the footer of it.
+              Only rendered under 520px, where the header itself cannot show them. */}
+          <div className="min-[600px]:hidden flex flex-col gap-[8px] pt-[10px] mt-[6px] border-t border-[var(--border)]">
+            {pathname !== '/signup' && (
+              <Button
+                asChild
+                variant="primary"
+                className="h-auto py-[10px] px-[18px] text-[length:var(--rd-small)] w-full"
+              >
+                <Link href="/signup">Create free account</Link>
+              </Button>
+            )}
+            {pathname !== '/login' && (
+              <Button
+                asChild
+                variant="outline"
+                className="h-auto py-[10px] px-[18px] text-[length:var(--rd-small)] w-full"
+              >
+                <Link href="/login">Sign in</Link>
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

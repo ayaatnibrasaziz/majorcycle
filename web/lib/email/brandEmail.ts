@@ -26,6 +26,37 @@ const SITE = SITE_ORIGIN;
 const FONT_STACK =
   "'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
+/**
+ * The email palette. An email cannot read a CSS custom property — Gmail and
+ * Outlook strip <style> and there is no `:root` to resolve against — so literals
+ * are unavoidable *in kind*. What was avoidable is that they were TYPED INTO the
+ * markup rather than named, so the branded emails would silently keep the old
+ * brand colours through any palette change (audit 5A-073). Same argument as
+ * `lib/ink.ts`: one place, so a change reaches every template.
+ *
+ * ⚠️ `footer` was **#94a3b8 on #f8fafc — 2.45:1**, against a 4.5 floor, on the
+ * line carrying our legal and no-reply notice in every transactional email we
+ * send (audit 5A-091). That grey is the same family as the site's pre-August
+ * `--text-muted`, which was darkened when it turned out to be failing 258
+ * elements; the emails kept the old value because they are a separate palette
+ * that nothing measured. Now **5.59:1**. The other tones in this file were
+ * measured at the same time and all pass: body 17.74, wordmark 17.65,
+ * sub-heading 7.76.
+ */
+const EMAIL = {
+  pageBg: '#eef2f7',
+  cardBg: '#ffffff',
+  headerSolid: '#04163E',
+  headerGradient: 'linear-gradient(120deg,#010F2C 0%,#04214F 58%,#063A80 100%)',
+  headerRule: '#2E7DE8',
+  wordmark: '#ffffff',
+  subheading: '#9db8e0',
+  body: '#0f1923',
+  footerBg: '#f8fafc',
+  footerRule: '#e2e8f0',
+  footer: '#5a6675',
+} as const;
+
 export interface BrandEmailOptions {
   /** Small label shown under the wordmark, e.g. "New contact message". */
   heading: string;
@@ -35,43 +66,69 @@ export interface BrandEmailOptions {
   preheader?: string;
 }
 
-/** Render a full, Gmail/Outlook-safe HTML email in the MajorCycle brand chrome. */
+/**
+ * Render a full, Gmail/Outlook-safe HTML email in the MajorCycle brand chrome.
+ *
+ * ⚠️ THE FOOTER IS TWO SENTENCES, and it was one until 2026-09-05 (audit 5A-137).
+ * It read `&copy; MajorCycle provides educational information only` — a copyright
+ * symbol glued onto a sentence that is not a copyright notice, with no year, in
+ * every transactional email we send. Nothing could see it: the markup is valid, the
+ * email renders, and a footer is the last place anybody looks. It was found by
+ * rendering all seven emails and reading them, which had never been done.
+ *
+ * ⚠️ **AND IT CARRIES NO YEAR, WHICH REVERSES MY OWN FIX FROM AN HOUR EARLIER.**
+ * The first version computed `new Date().getFullYear()` — correct, and correct only
+ * here. This exact sentence also exists in **13 Supabase auth templates**, which are
+ * static HTML in somebody else's dashboard with no way to compute anything. So a
+ * year would have been right in one place and frozen at 2026 in thirteen others, and
+ * the two sets would part company on 1 January — a *new* instance of the drift this
+ * whole line was fixed to end (CLAUDE.md 11c).
+ *
+ * A year is conventional in a copyright notice, not required. **One string that is
+ * true everywhere beats a better string that is true in one place**, so the year
+ * goes and the two halves of the sentence stay separated by the `&middot;` — which
+ * is what was actually wrong with the original (audit 5A-137, 5A-147).
+ *
+ * ⚠️ **This string is duplicated into the Supabase dashboard and nothing can check
+ * that.** No test in this repo can see those 13 templates. If you change the line
+ * below, change it there too: Authentication → Emails → Templates, all 13.
+ */
 export function renderBrandEmail({ heading, bodyHtml, preheader }: BrandEmailOptions): string {
   return `<!DOCTYPE html>
 <html lang="en">
-<body style="margin:0;padding:0;background:#eef2f7;">
+<body style="margin:0;padding:0;background:${EMAIL.pageBg};">
 ${
   preheader
     ? `  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;">${preheader}</div>\n`
     : ''
-}  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;background:#eef2f7;">
+}  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;background:${EMAIL.pageBg};">
     <tr>
       <td align="center" style="padding:32px 16px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;border-collapse:collapse;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 18px rgba(16,42,90,0.08);">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:600px;max-width:600px;border-collapse:collapse;background:${EMAIL.cardBg};border-radius:12px;overflow:hidden;box-shadow:0 4px 18px rgba(16,42,90,0.08);">
           <tr>
-            <td bgcolor="#04163E" style="background-color:#04163E;background:linear-gradient(120deg,#010F2C 0%,#04214F 58%,#063A80 100%);border-bottom:3px solid #2E7DE8;padding:22px 28px;">
+            <td bgcolor="${EMAIL.headerSolid}" style="background-color:${EMAIL.headerSolid};background:${EMAIL.headerGradient};border-bottom:3px solid ${EMAIL.headerRule};padding:22px 28px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
                 <tr>
                   <td style="vertical-align:middle;padding:0 14px 0 0;">
                     <img src="${SITE}/email-icon.png" width="37" height="44" alt="MajorCycle" style="display:block;height:44px;width:37px;border:0;" />
                   </td>
                   <td style="vertical-align:middle;">
-                    <div style="font-family:${FONT_STACK};font-size:19px;font-weight:700;color:#ffffff;letter-spacing:0.2px;line-height:1.1;">MajorCycle</div>
-                    <div style="font-family:${FONT_STACK};font-size:12.5px;font-weight:600;color:#9db8e0;line-height:1.4;padding-top:3px;">${heading}</div>
+                    <div style="font-family:${FONT_STACK};font-size:19px;font-weight:700;color:${EMAIL.wordmark};letter-spacing:0.2px;line-height:1.1;">MajorCycle</div>
+                    <div style="font-family:${FONT_STACK};font-size:12.5px;font-weight:600;color:${EMAIL.subheading};line-height:1.4;padding-top:3px;">${heading}</div>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
           <tr>
-            <td style="padding:26px 28px;font-family:${FONT_STACK};color:#0f1923;">
+            <td style="padding:26px 28px;font-family:${FONT_STACK};color:${EMAIL.body};">
 ${bodyHtml}
             </td>
           </tr>
           <tr>
-            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 28px;">
-              <div style="font-family:${FONT_STACK};font-size:11px;color:#94a3b8;line-height:1.5;">
-                &copy; MajorCycle provides educational information only &mdash; not financial advice.
+            <td style="background:${EMAIL.footerBg};border-top:1px solid ${EMAIL.footerRule};padding:16px 28px;">
+              <div style="font-family:${FONT_STACK};font-size:11px;color:${EMAIL.footer};line-height:1.5;">
+                &copy; MajorCycle &middot; Educational information only &mdash; not financial advice.
               </div>
             </td>
           </tr>

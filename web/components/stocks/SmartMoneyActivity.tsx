@@ -1,6 +1,6 @@
 'use client';
 
-import { CHART_INK } from '@/lib/chartTheme';
+import { BRAND, CANDLE, CHART_CHROME, CHART_INK } from '@/lib/chartTheme';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { InfoTip } from '@/components/ui/InfoTip';
@@ -15,11 +15,16 @@ import {
 } from 'lightweight-charts';
 
 import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, fmtPrice } from '@/lib/format';
+import { insiderSentiment } from '@/lib/insiderSentiment';
 import type { AnalystUpgrade, Currency, InsiderTransaction, PriceBar } from '@/lib/types';
-import { INK } from '@/lib/ink';
+import { ANALYST, INK } from '@/lib/ink';
 
 type Range = '1y' | '3y' | 'all';
-const RANGE_LABELS: Record<Range, string> = { '1y': '1Y', '3y': '3Y', 'all': 'All' };
+/* "Max", not "All" — the same word the Price Chart and Relative Performance use for
+   the same idea. Three range selectors on one page said it two ways (audit 5A-105,
+   owner: "make it Max please to keep it consistent"). The internal key stays `all`
+   because it names a filter over events rather than a chart's time domain. */
+const RANGE_LABELS: Record<Range, string> = { '1y': '1Y', '3y': '3Y', 'all': 'Max' };
 
 interface Props {
   insiderTransactions?: InsiderTransaction[];
@@ -37,10 +42,10 @@ interface Props {
 /* ── Helpers ─────────────────────────────────────────────────── */
 
 const INSIDER_STYLE: Record<InsiderTransaction['type'], { pill: string; label: string; dot: string }> = {
-  Purchase: { pill: 'is-buy',       label: 'Buy',   dot: '#006400' },
-  Sale:     { pill: 'is-sell',      label: 'Sell',  dot: '#B22222' },
-  Award:    { pill: 'is-reiterate', label: 'Award', dot: '#2E7DE8' },
-  Gift:     { pill: 'is-reiterate', label: 'Gift',  dot: '#1E5CB3' },
+  Purchase: { pill: 'is-buy',       label: 'Buy',   dot: CANDLE.up },
+  Sale:     { pill: 'is-sell',      label: 'Sell',  dot: INK.down },
+  Award:    { pill: 'is-reiterate', label: 'Award', dot: BRAND.bright },
+  Gift:     { pill: 'is-reiterate', label: 'Gift',  dot: BRAND.mid },
   Other:    { pill: 'is-reiterate', label: 'Other', dot: CHART_INK },
 };
 
@@ -59,11 +64,11 @@ function classifyAction(action: string): { pill: string; label: string } {
 function gradeColor(grade: string | undefined): string {
   const g = (grade ?? '').toLowerCase().trim().replace(/-/g, ' ');
   if (g.includes('strong buy') || g === 'buy' || g.includes('outperform') || g.includes('overweight') || g === 'accumulate' || g === 'add' || g === 'positive' || g === 'long term buy')
-    return INK.up;
+    return ANALYST.positive;
   if (g.includes('sell') || g.includes('underperform') || g.includes('underweight') || g === 'reduce' || g === 'negative' || g === 'avoid')
-    return INK.down;
+    return ANALYST.negative;
   if (g === 'neutral' || g === 'hold' || g.includes('market perform') || g.includes('equal weight') || g.includes('peer perform') || g.includes('sector perform') || g.includes('market weight') || g.includes('in line') || g.includes('fair value'))
-    return INK.neutral;
+    return ANALYST.neutral;
   return INK.brand;
 }
 
@@ -74,16 +79,6 @@ function classifyGrade(grade: string | undefined): 'bull' | 'bear' | 'neut' {
   if (g.includes('sell') || g.includes('underperform') || g.includes('underweight') || g === 'reduce' || g === 'negative' || g === 'avoid')
     return 'bear';
   return 'neut';
-}
-
-function insiderSentiment(txs: InsiderTransaction[]): { label: string; color: string; bg: string } {
-  const buys  = txs.filter(t => t.type === 'Purchase').reduce((s, t) => s + (t.value ?? 0), 0);
-  const sells = txs.filter(t => t.type === 'Sale').reduce((s, t) => s + (t.value ?? 0), 0);
-  // `color` paints a `.smart-section-tag` — text sitting on `bg`, a 8-10% wash of
-  // the same hue. The tint is the darkest ground either colour meets, and it is
-  // what the ink values were solved against.
-  if (buys > sells * 0.5) return { label: 'NET BUYER (Bullish)',  color: INK.up,   bg: 'rgba(34,139,34,.10)' };
-  return                         { label: 'NET SELLER (Bearish)', color: INK.down, bg: 'rgba(178,34,34,.08)' };
 }
 
 // Computes overall analyst consensus from the most recent rating per firm.
@@ -210,9 +205,9 @@ function buildModel(priceBars: PriceBar[], txs: InsiderTransaction[], upgrades: 
     if (!key) continue;
     bucket(key).insiders.push(t);
     if (t.type === 'Purchase') {
-      markersAll.push({ kind: 'buy', time: key as Time, position: 'belowBar', color: '#006400', shape: 'arrowUp', size: 1 });
+      markersAll.push({ kind: 'buy', time: key as Time, position: 'belowBar', color: CANDLE.up, shape: 'arrowUp', size: 1 });
     } else if (t.type === 'Sale') {
-      markersAll.push({ kind: 'sell', time: key as Time, position: 'aboveBar', color: '#B22222', shape: 'arrowDown', size: 1 });
+      markersAll.push({ kind: 'sell', time: key as Time, position: 'aboveBar', color: INK.down, shape: 'arrowDown', size: 1 });
     } else {
       markersAll.push({ kind: 'other', time: key as Time, position: 'inBar', color: INSIDER_STYLE[t.type].dot, shape: 'circle', size: 1 });
     }
@@ -315,25 +310,25 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible, currency }:
         textColor: CHART_INK,
         fontFamily: "'JetBrains Mono', monospace",
       },
-      grid: { vertLines: { color: '#F0F4F8' }, horzLines: { color: '#F0F4F8' } },
+      grid: { vertLines: { color: CHART_CHROME.grid }, horzLines: { color: CHART_CHROME.grid } },
       crosshair: {
         mode: CrosshairMode.Magnet,
-        vertLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
-        horzLine: { color: 'rgba(74,85,104,.6)', width: 1, style: 2, labelBackgroundColor: '#1A3A6E' },
+        vertLine: { color: CHART_CHROME.crosshair, width: 1, style: 2, labelBackgroundColor: CHART_CHROME.crosshairLabel },
+        horzLine: { color: CHART_CHROME.crosshair, width: 1, style: 2, labelBackgroundColor: CHART_CHROME.crosshairLabel },
       },
       rightPriceScale: {
-        borderColor: '#E2E8F0',
+        borderColor: CHART_CHROME.axis,
         textColor: CHART_INK,
         minimumWidth: CHART_RIGHT_AXIS_WIDTH,
       },
-      timeScale: { borderColor: '#E2E8F0', timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+      timeScale: { borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
     });
     chartRef.current = chart;
 
     const area = chart.addAreaSeries({
-      lineColor: '#1E5CB3', lineWidth: 2,
+      lineColor: BRAND.mid, lineWidth: 2,
       topColor: 'rgba(30,92,179,0.10)', bottomColor: 'rgba(30,92,179,0.0)',
       priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: true,
       priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
@@ -592,22 +587,32 @@ function ChartLegend({ visible, toggle }: { visible: Visibility; toggle: (k: key
   return (
     <div style={{ display: 'flex', justifyContent: 'center', gap: 10, padding: '6px 0 2px', flexWrap: 'wrap' }}>
       <LegendChip active={visible.buy} onClick={() => toggle('buy')} icon={
-        <span style={{ color: '#006400', fontSize: 11 }}>▲</span>
+        <span style={{ color: CANDLE.up, fontSize: 11 }}>▲</span>
       }>Insider Buy</LegendChip>
       <LegendChip active={visible.sell} onClick={() => toggle('sell')} icon={
-        <span style={{ color: '#B22222', fontSize: 11 }}>▼</span>
+        <span style={{ color: INK.down, fontSize: 11 }}>▼</span>
       }>Insider Sell</LegendChip>
       <LegendChip active={visible.other} onClick={() => toggle('other')} icon={
         <span style={{ display: 'inline-flex', gap: 2 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#2E7DE8' }} />
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: BRAND.bright }} />
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: CHART_INK }} />
         </span>
       }>Award / Other</LegendChip>
+      {/* ⚠️ THESE THREE SWATCHES ARE DERIVED, NOT LISTED. They were hard-typed
+          as #228B22 / #D4A017 / #B22222 — the pre-2026-08 direction palette — and
+          on 2026-09-02 the analyst events themselves moved to `ANALYST.*` so a
+          third party's *Sell* would stop wearing our Bearish colour (5A-045).
+          The markers moved; this legend did not, so for a day it showed three
+          colours no marker on the chart used any more. Nothing errored and the
+          legend looked completely normal, which is why it took a literal sweep to
+          find (CLAUDE.md 11c-iv — the consumer that never received the rule).
+          Asking `gradeColor` the same question the markers ask is what makes a
+          repeat impossible rather than merely unlikely. */}
       <LegendChip active={visible.analyst} onClick={() => toggle('analyst')} icon={
         <span style={{ display: 'inline-flex', gap: 2 }}>
-          <span style={{ width: 7, height: 7, background: '#228B22' }} />
-          <span style={{ width: 7, height: 7, background: '#D4A017' }} />
-          <span style={{ width: 7, height: 7, background: '#B22222' }} />
+          {['Buy', 'Hold', 'Sell'].map((g) => (
+            <span key={g} style={{ width: 7, height: 7, background: gradeColor(g) }} />
+          ))}
         </span>
       }>Analyst Event</LegendChip>
     </div>
@@ -631,13 +636,13 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
   const hasEvents = txs.length > 0 || upgrades.length > 0;
   const hasChart  = hasEvents && bars.length > 0;
 
-  const sentiment  = txs.length      > 0 ? insiderSentiment(txs)       : null;
+  const sentiment  = txs.length      > 0 ? insiderSentiment(txs, INK)  : null;
   const consensus  = upgrades.length  > 0 ? analystConsensus(upgrades)  : null;
 
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Smart Money Activity
           <InfoTip title="Smart Money Activity">
             Recent buying and selling by company insiders (executives and directors)
@@ -646,17 +651,17 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
             scroll to zoom. Insider buying can signal confidence; selling has many
             causes. Information, not advice.
           </InfoTip>
-        </div>
+        </h3>
         {hasChart && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <div className="smart-legend">
-              <span className="smart-legend-chip" style={{ '--lg': '#006400' } as React.CSSProperties}>
+              <span className="smart-legend-chip" style={{ '--lg': CANDLE.up } as React.CSSProperties}>
                 <span className="smart-legend-chip-dot" />Buy / Upgrade
               </span>
-              <span className="smart-legend-chip" style={{ '--lg': '#B22222' } as React.CSSProperties}>
+              <span className="smart-legend-chip" style={{ '--lg': INK.down } as React.CSSProperties}>
                 <span className="smart-legend-chip-dot" />Sell / Downgrade
               </span>
-              <span className="smart-legend-chip" style={{ '--lg': '#1E5CB3' } as React.CSSProperties}>
+              <span className="smart-legend-chip" style={{ '--lg': BRAND.mid } as React.CSSProperties}>
                 <span className="smart-legend-chip-dot" />Reiterate
               </span>
             </div>

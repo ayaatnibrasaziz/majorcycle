@@ -7,7 +7,6 @@ import type { ReactNode } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
   compositionRamp,
-  cyclePositionColor,
   fmtAnalyst,
   healthColor,
   healthRatingLabel,
@@ -276,17 +275,28 @@ function OverallCell({ row, onTierFilter }: { row: ResultRow; onTierFilter: (lab
   );
 }
 
+/*
+ * ⚠️ UNCOLOURED SINCE 2026-09-02 — audit 5A-063, and it had two problems at once.
+ * design-system.md justified not printing the zone words here because "they're
+ * described in its tooltip (75+ Deep Value · 50+ Value · 25+ Fair · below
+ * Stretched)". **That tooltip did not exist** — so the reader got a green / grey /
+ * red number and nothing anywhere said what the colour meant. And the cut-points
+ * disagreed even in principle: the colour switched at 66 and 33 (three colours)
+ * while the zones switch at 75 / 50 / 25 (four zones), so a stock at 30 was
+ * painted the WORST red while its zone was the middling *Fair*.
+ *
+ * The position IS the information and the marker already shows it. Colouring it
+ * added a verdict the number never claimed — the same decision as the fall
+ * percentage and the two range gauges (owner, 2026-09-02).
+ */
 function CyclePosCell({ pos }: { pos: number | null }) {
-  if (pos == null) return <span className="text-[var(--text-muted)]">—</span>;
-  const col = cyclePositionColor(pos);
+  if (pos == null) return <span className="text-[var(--data-missing)]">—</span>;
   return (
     <div className="cyc-wrap">
       <div className="cyc-track">
-        <div className="cyc-marker" style={{ left: `${pos.toFixed(0)}%`, background: col }} />
+        <div className="cyc-marker" style={{ left: `${pos.toFixed(0)}%`, background: 'var(--brand-mid)' }} />
       </div>
-      <span className="cyc-pct" style={{ color: col }}>
-        {pos.toFixed(0)}
-      </span>
+      <span className="cyc-pct">{pos.toFixed(0)}</span>
     </div>
   );
 }
@@ -346,7 +356,6 @@ function ResultCard({
         <CardStat
           label="Cycle Pos"
           value={row.cyclePos == null ? '—' : String(Math.round(row.cyclePos))}
-          color={cyclePositionColor(row.cyclePos)}
         />
         <CardStat label="Close" value={formatValue(row.currentClose, 'money2')} />
       </div>

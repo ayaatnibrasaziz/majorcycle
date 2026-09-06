@@ -285,14 +285,50 @@ _SCREENER_FIELDS = (
     "analyst_target_price",
     "analyst_recommendation",
     "num_analyst_opinions",
+    # Not displayed. Shipped so the screener can ask whether the provider's QUOTE
+    # and its price HISTORY are on the same basis — see `_screener_fundamentals`.
+    "week52_high",
 )
 
+#: Bars behind `history_high` — one trading year, matching the quoted figure's own
+#: window. Same constant as `WINDOW` in `web/lib/quoteBasis.ts`.
+_HISTORY_HIGH_BARS = 252
 
-def _screener_fundamentals(snapshot: FundamentalsSnapshot | None) -> dict[str, Any]:
-    """Pull the display-only screener subset out of a FundamentalsSnapshot."""
+
+def _screener_fundamentals(
+    snapshot: FundamentalsSnapshot | None, df: Any = None
+) -> dict[str, Any]:
+    """Pull the display-only screener subset out of a FundamentalsSnapshot.
+
+    ⚠️ Also ships `history_high`: the highest high in our own last 252 bars — audit
+    5A-126. The screener's **Target** and **Upside%** columns divide
+    `analyst_target_price` (the provider's QUOTE) by `current_close` (its price
+    HISTORY), and after a split those two can sit on different bases for days. On
+    2026-09-04 AvalonBay was quoted at $184.06 with a 52-week high of $185.62 while
+    its own series ended at $68.14, which renders as "+196% upside" — arithmetic that
+    checks out on inputs that do not belong together.
+
+    ⚠️ **Two numbers rather than a verdict, deliberately.** The threshold that decides
+    what counts as a disagreement stays in `web/lib/quoteBasis.ts`, which the Stock
+    Detail page already uses. Computing the answer here would put an ALGORITHM in two
+    languages, which is the drift CLAUDE.md 11c-iii records: two implementations can
+    share a spec and still part company. A screener row carries no price bars, so the
+    number it cannot derive is the only thing sent.
+
+    ⚠️ Note it is NOT a plain max over the whole frame: `df` holds the full history
+    (five figures of bars for a US mega-cap), and a 52-week quote must be compared
+    against a 52-week window or every stock that has ever doubled loses its figures.
+    """
     if snapshot is None:
         return {}
-    return {f: getattr(snapshot, f, None) for f in _SCREENER_FIELDS}
+    out: dict[str, Any] = {f: getattr(snapshot, f, None) for f in _SCREENER_FIELDS}
+    out["history_high"] = None
+    if df is not None and not df.empty and "High" in df:
+        recent = df["High"].tail(_HISTORY_HIGH_BARS)
+        if len(recent):
+            top = float(recent.max())
+            out["history_high"] = top if top > 0 else None
+    return out
 
 
 # ── Request parsing / validation ─────────────────────────────────────────────
@@ -412,7 +448,7 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
                     return ticker, None  # insufficient history
                 result = dataclasses.asdict(analysis)
                 # Display-only fundamentals for the Results screener (see above).
-                result["fundamentals"] = _screener_fundamentals(fundamentals)
+                result["fundamentals"] = _screener_fundamentals(fundamentals, df)
                 _RESULT_CACHE[key] = (now, result)
                 return ticker, result
             except Exception:  # noqa: BLE001 — one bad ticker must not sink the batch

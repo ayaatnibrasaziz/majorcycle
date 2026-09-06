@@ -95,10 +95,17 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
   // freshly-listed / sparse ticker graceful.)
   const noMovingAverages = dma50 === null && dma200 === null;
 
+  // ⚠️ No `id` on the section below — audit 5A-115. This component used to declare
+  // `id="sec-cycle"` itself, from when it WAS the whole Cycle section. The page later
+  // wrapped it in `<section id="sec-cycle">` (page.tsx:392) and nobody removed the inner
+  // one, so the id existed twice, nested inside itself, on every stock page. Duplicate
+  // ids are invalid HTML and `href="#sec-cycle"` can only ever reach the first, so the
+  // sub-nav was addressing an element that also claimed to be its own child. The page
+  // owns the section anchor; a card inside it does not answer to the same name.
   return (
-    <section id="sec-cycle" className="scroll-mt-[120px] card card--stack-snug">
+    <section className="scroll-mt-[120px] card card--stack-snug">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Technical Levels
           <InfoTip title="Technical Levels">
             Reference prices traders watch. A &quot;moving average&quot; (DMA) is the
@@ -109,7 +116,7 @@ export function TechnicalLevels({ priceBars, currency }: Props) {
             the signal simply reads &quot;Bullish&quot; or &quot;Bearish&quot; for the standing trend.
             Hover any tile for detail.
           </InfoTip>
-        </div>
+        </h3>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           Moving averages · Trend signal
         </div>

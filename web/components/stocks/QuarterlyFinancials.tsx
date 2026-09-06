@@ -1,6 +1,6 @@
 'use client';
 
-import { CHART_INK } from '@/lib/chartTheme';
+import { CANDLE, CHART_INK, CHART_TOOLTIP } from '@/lib/chartTheme';
 import { useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -135,7 +135,7 @@ export function QuarterlyFinancials({
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           {isAnnual ? 'Annual' : 'Quarterly'} Financial Trends
           <InfoTip title="Financial Trends">
             The top-line story of the business over time: Revenue (total sales),
@@ -143,7 +143,7 @@ export function QuarterlyFinancials({
             costs) and Free Cash Flow (cash left after investment). Rising bars =
             a growing business. Switch between quarterly and annual views.
           </InfoTip>
-        </div>
+        </h3>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {hasQuarterly && hasAnnual && (
             <div className="period-toggle">
@@ -233,15 +233,15 @@ export function QuarterlyFinancials({
                   return (
                     <div
                       style={{
-                        background: '#1A1A1B',
-                        border: '1px solid #2E3347',
+                        background: CHART_TOOLTIP.bg,
+                        border: `1px solid ${CHART_TOOLTIP.border}`,
                         borderRadius: 6,
                         padding: '8px 12px',
                       }}
                     >
                       <div
                         style={{
-                          color: '#E8EAF0',
+                          color: CHART_TOOLTIP.text,
                           fontFamily: "'JetBrains Mono', monospace",
                           fontSize: 11,
                           fontWeight: 600,
@@ -252,7 +252,7 @@ export function QuarterlyFinancials({
                       </div>
                       <div
                         style={{
-                          color: '#94A3B8',
+                          color: CHART_TOOLTIP.muted,
                           fontFamily: "'JetBrains Mono', monospace",
                           fontSize: 11,
                         }}
@@ -280,7 +280,7 @@ export function QuarterlyFinancials({
                   <Cell
                     key={idx}
                     fill={row.isFirst ? '#1E5CB3' : row.isUp ? '#228B22' : '#B22222'}
-                    stroke={row.isFirst ? '#1A3A6E' : row.isUp ? '#006400' : '#8B0000'}
+                    stroke={row.isFirst ? '#1A3A6E' : row.isUp ? CANDLE.up : CANDLE.down}
                     strokeWidth={1.5}
                   />
                 ))}

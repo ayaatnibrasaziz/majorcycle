@@ -12,7 +12,7 @@ import {
   articlesNewestFirst,
   findArticle,
 } from '@/lib/articles';
-import { articleJsonLd, jsonLdScript } from '@/lib/jsonld';
+import { articlePageJsonLd, jsonLdScript } from '@/lib/jsonld';
 import { PREFERRED_SOURCE } from '@/lib/preferredSource';
 import { pageMetadata } from '@/lib/seo';
 import { ARTICLE_BODIES } from '../content';
@@ -63,6 +63,11 @@ export async function generateMetadata({
     // The summary, not the answer. This is the sentence under the blue link in a
     // search result; the answer is what the reader gets by clicking.
     description: article.summary,
+    // The registry's own dates. `reviewed` is "last checked against the running
+    // product", which is exactly what `modifiedTime` means - and it lets a
+    // re-verified piece say so rather than look abandoned (same reasoning as
+    // `dateModified` in lib/jsonld.ts).
+    article: { published: article.published, modified: article.reviewed },
   });
 }
 
@@ -94,7 +99,7 @@ export default async function ArticlePage({
           suddenly share long runs reading "context https schema org graph type
           article headline". A `<script>` is invisible on screen and very much
           visible to anything reading text out of the DOM. */}
-      <JsonLd json={jsonLdScript([articleJsonLd(article, articlePath(article.slug))])} />
+      <JsonLd json={jsonLdScript(articlePageJsonLd(article, articlePath(article.slug)))} />
       {/* Google's publisher script, only when the button is switched on — a
           script tag for a control nobody renders is a third party watching a
           page for no reason. `async` and plain `<script>`, as Google documents:

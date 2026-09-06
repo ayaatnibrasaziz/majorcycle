@@ -180,7 +180,7 @@ were dropped from the index are not here, and they did worse than the ones that
 stayed. So read this as "what the history of today's large Australian companies
 looks like", not as the odds facing any share you might buy. The true
 never-recovered figure across all Australian shares is certainly worse than
-12.8%.
+12.4%.
 
 It is also a description of the past, and the past has no obligation to repeat.
 Nothing here is advice about any particular company.

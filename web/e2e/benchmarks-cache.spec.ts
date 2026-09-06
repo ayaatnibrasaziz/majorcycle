@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 import {
+  BENCHMARK_REFRESH_UTC,
   BENCHMARK_WINDOW_YEARS,
   benchmarkDataVersion,
   benchmarkFloorDate,
@@ -17,8 +18,15 @@ import {
  * `/api/benchmarks` lets a browser keep ~900 KB of index history so the second
  * ticker page a reader opens costs nothing (audit F-019). The obvious hazard is
  * the one the owner asked about before it shipped: the nightly crons add a new
- * close at 08:00 and 22:30 UTC, so a cache that turns over on its own schedule
- * will serve yesterday's indices against today's stock price.
+ * close, so a cache that turns over on its own schedule will serve yesterday's
+ * indices against today's stock price.
+ *
+ * ⚠️ **Every expected key below is BUILT from `BENCHMARK_REFRESH_UTC`, never typed.**
+ * The times were literals until 2026-09-05, when the US+CA cron moved 22:30 → 01:30
+ * (audit 5A-124) and this file went red for the right reason — the cache boundaries
+ * and the workflow are two copies of one schedule (CLAUDE.md 11c-v), and a test that
+ * restates the copy cannot tell you they have parted. Derived, it fails only when the
+ * two genuinely disagree.
  *
  * ⚠️ And that failure is INVISIBLE. Nothing errors, nothing is blank: the index
  * lines simply run flat for the final day and the alpha figure quietly compares
@@ -32,39 +40,49 @@ import {
 
 const at = (iso: string) => new Date(iso);
 
+/** The keys the constant says a given day should produce, in order. */
+const R = BENCHMARK_REFRESH_UTC;
+const FIRST = R[0]!;
+const LAST = R[R.length - 1]!;
+const hhmm = (b: { hour: number; minute: number }) =>
+  `${String(b.hour).padStart(2, '0')}${String(b.minute).padStart(2, '0')}`;
+const key = (day: string, b: { hour: number; minute: number }) => `${day}T${hhmm(b)}`;
+/** A moment `mins` after a boundary, on 2026-08-24. */
+const after = (b: { hour: number; minute: number }, mins: number) =>
+  new Date(Date.UTC(2026, 7, 24, b.hour, b.minute + mins));
+
 test.describe('benchmarkDataVersion — turns over with the data, not with a stopwatch', () => {
   test('holds steady between cron runs, and changes across one', () => {
-    // Two moments inside the same window must share a key, or the cache never hits.
-    expect(benchmarkDataVersion(at('2026-08-24T10:00:00Z'))).toBe(
-      benchmarkDataVersion(at('2026-08-24T20:00:00Z')),
-    );
+    // Two moments inside the LAST run's window must share a key, or the cache never hits.
+    expect(benchmarkDataVersion(after(LAST, 61))).toBe(benchmarkDataVersion(after(LAST, 300)));
 
     // And two moments either side of a run must NOT, or the cache never refreshes.
-    expect(benchmarkDataVersion(at('2026-08-24T20:00:00Z'))).not.toBe(
-      benchmarkDataVersion(at('2026-08-24T23:59:00Z')),
-    );
+    expect(benchmarkDataVersion(after(FIRST, -5))).not.toBe(benchmarkDataVersion(after(FIRST, 61)));
   });
 
   test('a run counts only once its data has had time to land', () => {
-    // The cron STARTS at 08:00. Flipping the key then would cache whatever the
-    // refresh had written by that instant and keep it for the rest of the cycle,
-    // so the boundary deliberately sits an hour later.
-    const before = benchmarkDataVersion(at('2026-08-24T08:05:00Z'));
-    const after = benchmarkDataVersion(at('2026-08-24T09:05:00Z'));
+    // A cron STARTS at its boundary. Flipping the key then would cache whatever the
+    // refresh had written by that instant and keep it for the rest of the cycle, so
+    // the boundary deliberately sits SETTLE_MINUTES later.
+    const justAfterStart = benchmarkDataVersion(after(FIRST, 5));
+    const oncePlausiblyLanded = benchmarkDataVersion(after(FIRST, 61));
 
-    expect(before).toBe('2026-08-23T2230');
-    expect(after).toBe('2026-08-24T0800');
-    expect(before).not.toBe(after);
+    expect(justAfterStart).toBe(key('2026-08-23', LAST));
+    expect(oncePlausiblyLanded).toBe(key('2026-08-24', FIRST));
+    expect(justAfterStart).not.toBe(oncePlausiblyLanded);
   });
 
-  test('the 22:30 run settles the same way, and midnight belongs to it', () => {
-    expect(benchmarkDataVersion(at('2026-08-24T22:35:00Z'))).toBe('2026-08-24T0800');
-    expect(benchmarkDataVersion(at('2026-08-24T23:35:00Z'))).toBe('2026-08-24T2230');
+  test('every run settles the same way, and the small hours belong to the last one', () => {
+    for (let i = 1; i < R.length; i += 1) {
+      const b = R[i]!;
+      expect(benchmarkDataVersion(after(b, 5))).toBe(key('2026-08-24', R[i - 1]!));
+      expect(benchmarkDataVersion(after(b, 61))).toBe(key('2026-08-24', b));
+    }
 
-    // Just after midnight is still the previous evening's data — the next run is
-    // hours away. An off-by-one here would refresh the cache for no reason every
-    // night, which is wasteful rather than wrong, and therefore easy to miss.
-    expect(benchmarkDataVersion(at('2026-08-25T00:10:00Z'))).toBe('2026-08-24T2230');
+    // Before the day's FIRST settled run it is still the previous day's last data.
+    // An off-by-one here would refresh the cache for no reason every night, which is
+    // wasteful rather than wrong, and therefore easy to miss.
+    expect(benchmarkDataVersion(after(FIRST, -20))).toBe(key('2026-08-23', LAST));
   });
 
   test('a full day produces exactly two distinct keys', () => {
@@ -77,9 +95,12 @@ test.describe('benchmarkDataVersion — turns over with the data, not with a sto
       d.setUTCMinutes(m);
       keys.add(benchmarkDataVersion(d));
     }
-    expect([...keys].sort()).toEqual(['2026-08-23T2230', '2026-08-24T0800', '2026-08-24T2230']);
-    // Three because the day opens inside the previous evening's window; the two
-    // that BELONG to this day are the 08:00 and 22:30 runs.
+    expect([...keys].sort()).toEqual(
+      [key('2026-08-23', LAST), ...R.map((b) => key('2026-08-24', b))].sort(),
+    );
+    // One more than there are runs, because the day opens inside the previous
+    // evening's window; the rest BELONG to this day, one per cron.
+    expect(keys.size).toBe(R.length + 1);
   });
 });
 

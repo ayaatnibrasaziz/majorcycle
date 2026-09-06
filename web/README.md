@@ -94,9 +94,12 @@ per-stock card: they are fetched by anonymous crawlers and cached publicly, so o
 carrying a rating would publish paid output on a CDN. `e2e/seo.spec.ts` asserts
 every indexable page declares exactly one, and that it is this one.
 
-The landing page's live figures come from `web/app/landing-snapshot.json`, rebuilt
-nightly by `analytics/cron/build_landing_snapshot.py` inside the US+CA refresh
-workflow. It emits free-tier fields only, and that is *structural*: it calls
+The landing page's worked example comes from `web/app/landing-snapshot.json`, which is
+**frozen** — rebuilt only by `analytics/cron/build_landing_snapshot.py --worked-example`,
+by hand, together with `build_mag7_snapshot.py` (they share Apple; see data-contracts §7a).
+The nightly cron rebuilds the two LIVE files instead: `web/app/universe-count.json` (the
+company count) and `web/app/learn-snapshot.json` (Apple's figures for the `/learn`
+explainers, which describe how the product behaves today). It emits free-tier fields only, and that is *structural*: it calls
 `calculate_cycle_metrics`, which cannot return a rating or a score.
 
 ```bash

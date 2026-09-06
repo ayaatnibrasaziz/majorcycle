@@ -1,4 +1,5 @@
-import { LANDING, depth } from '@/lib/landing';
+import { depth } from '@/lib/landing';
+import { LEARN_FIGURES } from '@/lib/learn-figures';
 import { Figure, LegendItem } from '@/components/Figure';
 import {
   AVG_LINE,
@@ -414,19 +415,19 @@ const RECORD_ROWS = [
   {
     id: 'today',
     label: 'Where it is today',
-    pct: LANDING.currentDrawdownPct,
+    pct: LEARN_FIGURES.currentDrawdownPct,
     color: 'var(--brand-bright)',
   },
   {
     id: 'average',
     label: 'Its average fall',
-    pct: LANDING.typicalDrawdownPct,
+    pct: LEARN_FIGURES.typicalDrawdownPct,
     color: AVG_LINE,
   },
   {
     id: 'deepest',
     label: 'Its deepest ever',
-    pct: LANDING.deepestDrawdownPct,
+    pct: LEARN_FIGURES.deepestDrawdownPct,
     color: LOW_LINE,
   },
 ] as const;
@@ -438,8 +439,8 @@ export function OwnRecordFigure() {
     <Figure
       caption={
         <>
-          {LANDING.name}, to{' '}
-          {new Date(`${LANDING.asOf}T00:00:00Z`).toLocaleDateString('en-AU', {
+          {LEARN_FIGURES.name}, to{' '}
+          {new Date(`${LEARN_FIGURES.asOf}T00:00:00Z`).toLocaleDateString('en-AU', {
             day: 'numeric',
             month: 'long',
             year: 'numeric',

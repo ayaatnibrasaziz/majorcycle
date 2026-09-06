@@ -88,7 +88,34 @@ const ROUTES = [
   ['/stocks', true, true, 'Browse — the signed-in entry point'],
   ['/stocks/us/AAPL', true, true, 'the heaviest page we ship, 57 inline scripts'],
   ['/account', true, true, 'the account page'],
+
+  /**
+   * ⚠️ **AUDIT 5A-153, 2026-09-05.** Five more routes, added after a
+   * route-by-route diff showed eight sitting in none of the three server gates.
+   * All five measured clean the day they were added — the right CSP form for
+   * their render mode, no report-only header, no `'unsafe-eval'`, zero violations
+   * — so this is protection rather than a fix. The point is that until today
+   * nothing would have said otherwise.
+   *
+   * The two public ones matter most of the five: a legal page is the kind of
+   * thing a regulator or a customer is linked straight to, and it had never had
+   * its policy read.
+   */
+  ['/privacy', false, false, 'a legal page — prerendered'],
+  ['/disclaimer', false, false, 'the compliance page — prerendered'],
+  ['/run', true, true, 'the screener entry point — per-request'],
+  ['/results', true, true, 'the screener output — per-request'],
+  ['/request', true, true, 'Request a Ticker — per-request, and it searches listings'],
 ];
+
+/**
+ * ⚠️ **Still unread: `/account/update-password`, `/deletion-requested` and
+ * `/reactivate`.** Each needs a one-shot session marker or a scheduled-deletion
+ * account that a plain sign-in cannot produce. `e2e/csp.spec.ts` asserts the half
+ * that IS invariant — that every route class carries an enforcing policy — and
+ * those three are inside its sweep. Named here so the list is not mistaken for
+ * the whole site (14g).
+ */
 
 const NONCE_IN_POLICY = /'nonce-([A-Za-z0-9+/_-]+={0,2})'/;
 

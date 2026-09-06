@@ -1,4 +1,5 @@
 import { Figure, LegendItem } from '@/components/Figure';
+import { FIGURE_TEAL } from '@/lib/ink';
 import {
   AxisFrame,
   AxisLabels,
@@ -43,7 +44,7 @@ import {
  */
 
 const PE_LINE = '#1E5CB3'; // --brand-mid
-const EPS_LINE = '#0E7C8B'; // the teal the Learn illustrations use for a price line
+const EPS_LINE = FIGURE_TEAL; // the teal the Learn illustrations use for a price line
 const BAND = 'rgba(30, 92, 179, 0.10)';
 
 function Panel({

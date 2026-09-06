@@ -50,7 +50,7 @@ function Ruler({
         <span>
           <b>{heading}</b> {hint}
         </span>
-        <span>{side}</span>
+        <span className="side">{side}</span>
       </div>
       <div className="ruler-track">
         {/* The final width rides on a custom property rather than `width` itself.
@@ -127,19 +127,19 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
           {
             at: down(s.typicalDrawdownPct),
             label: `Typical −${depth(s.typicalDrawdownPct)}`,
-            colour: 'var(--c-tier-3)',
+            colour: 'var(--c-neutral-ink)',
           },
           {
             at: 100,
             label: `Worst ever −${depth(s.deepestDrawdownPct)}`,
-            colour: 'var(--c-tier-5)',
+            colour: 'var(--c-down-ink)',
             end: true,
           },
         ]}
         legend={[
           { colour: 'var(--brand-bright)', text: 'Where it is now' },
-          { colour: 'var(--c-tier-3)', text: `Average of all ${falls} falls` },
-          { colour: 'var(--c-tier-5)', text: 'Deepest single fall on record' },
+          { colour: 'var(--c-neutral-ink)', text: `Average of all ${falls} falls` },
+          { colour: 'var(--c-down-ink)', text: 'Deepest single fall on record' },
         ]}
       />
 
@@ -147,7 +147,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
         heading="How far it recovers."
         hint="Left edge is its last low; the scale runs to the largest rally in its history."
         side="Upside"
-        fill="linear-gradient(90deg,rgba(34,139,34,.09),rgba(34,139,34,.28))"
+        fill="linear-gradient(90deg,rgba(27,116,27,.09),rgba(27,116,27,.28))"
         tail={{
           from: up(s.typicalRecoveryPct),
           text: `Beyond where past recoveries usually stopped — one of ${recoveries} ran this far`,
@@ -162,29 +162,29 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
           {
             at: up(s.typicalRecoveryPct),
             label: `Typical +${depth(s.typicalRecoveryPct)}`,
-            colour: 'var(--c-tier-2)',
+            colour: 'var(--c-neutral-ink)',
           },
           {
             at: 100,
             label: `Best ever +${depth(s.largestRecoveryPct)}`,
-            colour: 'var(--c-tier-1)',
+            colour: 'var(--c-up-ink)',
             end: true,
           },
         ]}
         legend={[
           { colour: 'var(--brand-bright)', text: 'Risen since its last low' },
-          { colour: 'var(--c-tier-2)', text: `Average of all ${recoveries} recoveries` },
-          { colour: 'var(--c-tier-1)', text: 'Largest single recovery on record' },
+          { colour: 'var(--c-neutral-ink)', text: `Average of all ${recoveries} recoveries` },
+          { colour: 'var(--c-up-ink)', text: 'Largest single recovery on record' },
         ]}
       />
 
       <div className="readout">
         <div>
           <div className="k">Typical fall vs deepest ever</div>
-          <div className="v" style={{ color: 'var(--c-tier-3-ink)' }}>
+          <div className="v" style={{ color: 'var(--c-neutral-ink)' }}>
             −{depth(s.typicalDrawdownPct)}{' '}
             <span style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>vs</span>{' '}
-            <span style={{ color: 'var(--c-tier-5-ink)' }}>−{depth(s.deepestDrawdownPct)}</span>
+            <span style={{ color: 'var(--c-down-ink)' }}>−{depth(s.deepestDrawdownPct)}</span>
           </div>
           <div className="d">
             Two different questions: what usually happens, and what has actually happened at
@@ -193,10 +193,10 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
         </div>
         <div>
           <div className="k">Typical recovery vs largest ever</div>
-          <div className="v" style={{ color: 'var(--c-tier-2-ink)' }}>
+          <div className="v" style={{ color: 'var(--c-neutral-ink)' }}>
             +{depth(s.typicalRecoveryPct)}{' '}
             <span style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>vs</span>{' '}
-            <span style={{ color: 'var(--c-tier-1)' }}>+{depth(s.largestRecoveryPct)}</span>
+            <span style={{ color: 'var(--c-up-ink)' }}>+{depth(s.largestRecoveryPct)}</span>
           </div>
           <div className="d">
             The typical figure is where past recoveries have run out of steam — useful for

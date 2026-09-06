@@ -32,11 +32,60 @@ export const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     hideClose?: boolean;
   }
->(({ className, children, hideClose, ...props }, ref) => (
+>(({ className, children, hideClose, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
+  /**
+   * ⚠️ RESTORE FOCUS TO WHATEVER OPENED THE DIALOG — audit 5A-112.
+   *
+   * Radix restores focus on close to `context.triggerRef.current`, which is set by
+   * `<DialogTrigger>`. **Not one dialog in this app uses `DialogTrigger`** — every one is
+   * controlled by external state (`open` / `onOpenChange`) and opened by an ordinary
+   * button somewhere else in the tree. So that ref is null for all eight consumers, Radix
+   * has nothing to focus, and focus falls to `<body>`.
+   *
+   * Measured on production: open the upgrade dialog from "Download Report", dismiss with
+   * Escape or "Not now", and `document.activeElement` is BODY three seconds later — with
+   * the trigger button still in the DOM, same node, so it was not an unmount. A keyboard
+   * user is dropped at the top of the document and has to tab the whole sidebar and
+   * header to get back to where they were, on the paywall-conversion surface.
+   *
+   * The opener is captured in `onOpenAutoFocus`, which Radix fires as the content mounts
+   * and before it moves focus inside — so `document.activeElement` is still the reader's
+   * last position. Not an effect (Radix's FocusScope has already moved focus by then) and
+   * not the render body (reading a ref there is impure, and the React Compiler lint says
+   * so — it caught the first version of this fix).
+   *
+   * ⚠️ What is NOT wrong here, checked before changing anything: `aria-modal` is absent,
+   * and that is correct. Radix marks every sibling of the content `aria-hidden="true"`
+   * instead — verified on the live page, where the app root carries it while the dialog
+   * is open. Hiding the rest of the document is the stronger of the two mechanisms, and
+   * an earlier reading of this as a second defect was wrong.
+   */
+  const openerRef = React.useRef<HTMLElement | null>(null);
+
+  return (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      onOpenAutoFocus={(event) => {
+        onOpenAutoFocus?.(event);
+        // Radix fires this as the content mounts and BEFORE it moves focus inside, so
+        // `document.activeElement` is still whatever the reader was on. Captured here
+        // rather than during render: reading a ref in the render body is what the React
+        // Compiler lint rejects, and it is right to — render must stay pure.
+        const active = document.activeElement;
+        openerRef.current = active instanceof HTMLElement ? active : null;
+      }}
+      onCloseAutoFocus={(event) => {
+        onCloseAutoFocus?.(event);
+        const opener = openerRef.current;
+        // Only take over when the consumer has not, and only when the opener is still
+        // on the page — a stale node would send focus nowhere, which is the bug.
+        if (!event.defaultPrevented && opener && document.body.contains(opener)) {
+          event.preventDefault();
+          opener.focus();
+        }
+      }}
       className={cn(
         'fixed left-1/2 top-1/2 z-[200] -translate-x-1/2 -translate-y-1/2',
         'w-full max-w-lg max-h-[90vh] overflow-y-auto',
@@ -59,7 +108,8 @@ export const DialogContent = React.forwardRef<
       )}
     </DialogPrimitive.Content>
   </DialogPortal>
-));
+  );
+});
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

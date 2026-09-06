@@ -431,13 +431,13 @@ the wrong shape is how a feature ends up with a green suite and a broken half.
 
 | Shape | Needs | Use it for | Examples |
 |---|---|---|---|
-| **Pure** — no browser, no network | nothing | A rule you can state as a function | `entitlement.spec.ts`, `export-parity.spec.ts`, `public-chrome.spec.ts`, `auth-contracts.spec.ts` |
+| **Pure** — no browser, no network | nothing | A rule you can state as a function, **or a rule about the source itself** | `entitlement.spec.ts`, `export-parity.spec.ts`, `public-chrome.spec.ts`, `auth-contracts.spec.ts`, `form-errors.spec.ts`, `screener-filters.spec.ts` |
 | **Credential-free browser** | the dev server | Anything you can reach signed out, incl. a state you can fake with a cookie | `auth.spec.ts`, `auth-forms.spec.ts`, `seo.spec.ts`, `contrast.spec.ts`, `legal-doc.spec.ts` |
 | **Throwaway account** | Supabase service key | A flow that must actually RUN, with side-effects too destructive for the shared login | `entitlement-routes.spec.ts`, `stripe-webhook.spec.ts`, `deletion-notice.spec.ts`, `recovery-confinement.spec.ts` |
 
 **The throwaway pattern** — `admin.auth.admin.createUser` in `beforeAll`,
 `admin.auth.admin.deleteUser` in `afterAll` (the `profiles` row follows via cascade),
-`@example.com` so no mail is deliverable, and usually
+`@example.com` so no mail is deliverable — ⚠️ **measured 2026-09-03, and the reason is sharper than "nobody reads it": Resend REFUSES the domain outright** with `550 Invalid to field — please use our testing email address instead of domains like example.com`. So signing a throwaway up through the UI fails at the confirmation email, and Supabase rolls the user back cleanly (no account is left in limbo, verified). A throwaway must therefore be created through the **admin API**, never through the form. And usually
 `test.describe.configure({ mode: 'serial' })` because every test mutates one row.
 `afterAll` runs even when the test fails, so a deliberately-broken run leaves nothing
 behind — worth verifying once after any session that adds one.
@@ -1781,8 +1781,11 @@ derived from the constant at render time and guarded, or (b) genuinely fixed (th
 Flagged rather than fixed in the first pass, because approved storyboard copy is a
 design decision rather than a typo fix (11l) — the owner then asked for it, and the
 count turned out to be **866 in the database against 863 on the page**. It now comes
-from `landing-snapshot.json`, written nightly by the cron that already commits that
-file, so the page keeps its static prerender and the number keeps itself honest.
+from a committed file rather than the copy, so the page keeps its static prerender and
+the number keeps itself honest. ⚠️ **It moved to its own file, `universe-count.json`, on
+2026-09-01** (finding 5A-013): a count is a FACT that must never be stale, while the
+snapshot beside it is a dated worked example that must never disagree with the Mag 7 table
+sharing its page. One file could not carry both rules, and the wrong one won.
 
 ⚠️ Two details worth carrying forward. **Count with `count="exact"`, never
 `len(rows)`** — PostgREST's silent 1000-row cap (14c) would have made the figure
@@ -2094,3 +2097,60 @@ regardless.
 stays **silent** on a genuine `lib/pricing.ts` type error -- because a hint that appears on a real
 code error is worse than no hint at all: it sends you off deleting caches while your own bug sits
 untouched. Proven in both directions before being trusted (26).
+
+---
+
+## 44. A wait condition that can only match FAILURE waits forever on success
+
+Started as a convenience and ran for **1h 21m** before the owner spotted it in the background-task
+list, having been told twice that nothing was running.
+
+```
+until grep -q "full output:\|ran clean" /tmp/gates.log; do sleep 20; done
+```
+
+Both of those phrases are printed by `pnpm gates` **only when it fails**. A passing run prints
+`pnpm gates — 16 of 16 gates passed`, which matches neither, so the loop had no exit for the
+outcome it was actually waiting for. It would have ended promptly on a red run and never on a
+green one — **the polarity nobody checks, because you write the loop while thinking about the
+thing you are waiting to go wrong.**
+
+⚠️ **The rule: a wait must match the SUCCESS case explicitly, and preferably both.** Before arming
+one, ask *"if this succeeds right now, does my condition fire?"* — the same question §26's
+deliberate-break habit asks of a guard, moved to the thing that watches. Prefer waiting on a
+signal the tool emits either way (an exit code, a file appearing) over grepping its prose, because
+prose differs between the paths.
+
+⚠️ And prefer `run_in_background` on the command itself over a separate watcher. A backgrounded
+command notifies on exit whatever the exit is; a hand-rolled `until` loop only notices what you
+told it to look for.
+
+---
+
+## 45. Checking for the wrong KIND of process, and reporting the silence as absence
+
+The same incident, and the more embarrassing half. Asked whether any background work was still
+running, the check was:
+
+```
+tasklist /FI "IMAGENAME eq node.exe"      # 0
+netstat -ano | grep -E ":(3100|3200|3300)"  # nothing
+```
+
+Both clean, and the answer given was *"nothing running, nothing to close."* The task was a **bash
+sleep loop** — not node, not listening on a port. **The instrument could not see the category of
+thing being asked about, and its silence was reported as proof.**
+
+This is 14g stated about one's own session rather than about the product, and it is the third
+instance in a single day: Resend's API log did not list SMTP mail and was read as "no emails ever
+sent"; a coverage map indexed by route could not report surfaces that have no route. Same shape
+every time — **an instrument that cannot see X returns exactly what a world without X returns.**
+
+⚠️ **The habit: before reporting "none", name what the check would have found if the answer were
+"some".** If that sentence does not describe the thing being asked about, the check is wrong. Here
+the honest check is `ps -ef` (every process, whatever its runtime) or the harness's own task list —
+the one place that knows what it started.
+
+⚠️ **And the correction cost nothing but was not offered voluntarily**, which is the part to fix:
+the owner had to produce a screenshot. A confident "nothing is running" is worth less than
+"here is what I checked for" — the second invites the correction, the first forecloses it.

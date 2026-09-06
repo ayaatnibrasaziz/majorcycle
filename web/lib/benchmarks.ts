@@ -67,17 +67,26 @@ export function benchmarkSinceFor(firstBarDate: string | undefined, now?: Date):
 /**
  * When the index data actually changes: the two nightly cron runs.
  *
- * `.github/workflows/daily-refresh-au.yml` at 08:00 UTC and `daily-refresh.yml`
- * at 22:30 UTC (locked decision #32 — the split exists because no single time is
- * after every market close, so do not re-merge them).
+ * `.github/workflows/daily-refresh.yml` at 01:30 UTC (US+CA) and
+ * `daily-refresh-au.yml` at 08:00 UTC (locked decision #32 — the split exists
+ * because no single time is after every market close, so do not re-merge them).
  *
  * ⚠️ A copy of a schedule that lives somewhere else (CLAUDE.md 11c). If those
  * workflows move, this must move with them, and the symptom of forgetting is
  * silent: the chart's index lines simply lag by hours with nothing going red.
+ *
+ * ⚠️ **That warning earned itself on 2026-09-05.** The US+CA run moved 22:30 →
+ * 01:30 (audit 5A-124) as a one-line schedule edit, and this array is the reason a
+ * one-line edit was not enough — `benchmarks-cache.spec.ts` now DERIVES its
+ * expected keys from this constant rather than restating them, so the next move
+ * cannot leave the two silently disagreeing.
+ *
+ * Ascending order is load-bearing: `benchmarkDataVersion` walks it backwards and
+ * takes the first boundary already settled.
  */
-const BENCHMARK_REFRESH_UTC = [
+export const BENCHMARK_REFRESH_UTC = [
+  { hour: 1, minute: 30 },
   { hour: 8, minute: 0 },
-  { hour: 22, minute: 30 },
 ] as const;
 
 /**

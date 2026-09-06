@@ -73,6 +73,11 @@ function NavLink({
       : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)]'
   );
 
+  // ⚠️ The padlock's `role="img"` below is load-bearing, not decoration — audit 5A-119.
+  // An `aria-label` on an element with no role is not reliably announced across screen
+  // readers: the label needs something to label. lucide-react injects `aria-hidden` only
+  // when NO a11y prop is passed, so passing a label already opts this icon INTO the
+  // accessibility tree — the role decides whether it arrives there as anything at all.
   const body = (
     <>
       <span className="w-[18px] flex-shrink-0 flex justify-center text-[15px]">
@@ -83,6 +88,7 @@ function NavLink({
         <Lock
           className="w-[11px] h-[11px] ml-auto flex-shrink-0 text-[var(--text-muted)]"
           strokeWidth={2}
+          role="img"
           aria-label="Requires a subscription"
         />
       )}

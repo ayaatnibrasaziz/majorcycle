@@ -150,7 +150,7 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
           {error && (
             <div
               role="alert"
-              className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--tint-tier-5-strong)] bg-[var(--tint-tier-5)] px-3 py-2.5 text-[12px] text-[var(--c-tier-5-ink)]"
+              className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--status-danger-tint-strong)] bg-[var(--status-danger-tint)] px-3 py-2.5 text-[12px] text-[var(--status-danger-ink)]"
             >
               <AlertCircle className="mt-px h-4 w-4 flex-shrink-0" />
               <span className="leading-relaxed">{error}</span>
@@ -164,7 +164,7 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
             {sentTo && (
               <span
                 role="status"
-                className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--c-tier-2)]"
+                className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--status-success)]"
               >
                 <CheckCircle2 className="h-4 w-4" strokeWidth={2} aria-hidden />
                 Invite sent to {sentTo}

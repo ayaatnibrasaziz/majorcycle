@@ -72,6 +72,24 @@ export type PublicPage = {
   readonly path: string;
   /** Listed in sitemap.xml and indexable, or crawlable-but-noindex. */
   readonly index: boolean;
+  /**
+   * `<lastmod>`, an ISO date, for a page whose content has a REAL last-changed
+   * date. Absent everywhere else, and absent is valid - it means "unknown".
+   *
+   * WARNING - audit 5A-141. `sitemap.ts` has said since G1 that "when G4 adds
+   * articles they carry their real publication dates". G4 shipped, seventeen
+   * pieces went live, and the field was never added: the sitemap emits `<loc>`
+   * and nothing else. A doc naming a mechanism nobody built is worse than
+   * silence, because it converts an open question into a closed one (11ae) -
+   * anyone checking whether dates were handled would read that line and stop.
+   *
+   * It stays OPTIONAL rather than becoming required-with-a-default. The reason
+   * the field was omitted in the first place is still right: `new Date()` on
+   * every page would tell Google the whole site changed on every deploy, and a
+   * sitemap that cries wolf teaches it to ignore the field. Only a page with a
+   * genuine date may carry one.
+   */
+  readonly lastModified?: string;
 };
 
 export const PUBLIC_PAGES: readonly PublicPage[] = [
@@ -127,7 +145,13 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   // article answering 200, carrying its own canonical, and appearing in the real
   // sitemap.xml. A static guard that cannot see the thing it guards is worse
   // than none, because it reports success (CLAUDE.md 14g).
-  ...LEARN_ARTICLES.map((a) => ({ path: learnPath(a.slug), index: true })),
+  ...LEARN_ARTICLES.map((a) => ({
+    path: learnPath(a.slug),
+    index: true,
+    // `reviewed`, not `published` - the registry field already means "last
+    // checked against the running product", which is what lastmod is for.
+    lastModified: a.reviewed,
+  })),
 
   // ── Every ARTICLE, derived the same way, for the same reasons ─────────────
   //
@@ -139,7 +163,11 @@ export const PUBLIC_PAGES: readonly PublicPage[] = [
   // and cannot see a spread at all, so `e2e/articles.spec.ts` asserts the
   // rendered outcome instead — every registered article answering 200, with its
   // own canonical, and present in the real sitemap.xml (CLAUDE.md 14g).
-  ...ARTICLES.map((a) => ({ path: articlePath(a.slug), index: true })),
+  ...ARTICLES.map((a) => ({
+    path: articlePath(a.slug),
+    index: true,
+    lastModified: a.reviewed,
+  })),
 
   // ── Crawlable but NOT indexable ────────────────────────────────────────────
   // A sign-in form is not a search result. `/deletion-requested` additionally
@@ -207,6 +235,19 @@ export function pageMetadata(opts: {
   path: string;
   title: string;
   description: string;
+  /**
+   * Present when the page is a piece of WRITING rather than a part of the site.
+   *
+   * WARNING - audit 5A-140. Every one of the 17 Learn and Articles pages shipped
+   * `og:type: website`, which is what this function returns when nothing says
+   * otherwise. That is the tag a social card, a reader-mode and an AI crawler use
+   * to decide whether a URL is a document with an author and a date or simply a
+   * page of a site - and both dates already existed in the two registries.
+   *
+   * Stated HERE rather than in each page, so the two callers cannot disagree, and
+   * so a third one gets it for free (11c-iv).
+   */
+  article?: { readonly published: string; readonly modified: string };
 }): Metadata {
   const page = BY_PATH.get(opts.path);
   if (!page) {
@@ -235,7 +276,13 @@ export function pageMetadata(opts: {
     // for the reason in the PublicPage doc comment above.
     ...(page.index ? {} : { robots: { index: false, follow: true } }),
     openGraph: {
-      type: 'website',
+      ...(opts.article
+        ? {
+            type: 'article' as const,
+            publishedTime: opts.article.published,
+            modifiedTime: opts.article.modified,
+          }
+        : { type: 'website' as const }),
       siteName: 'MajorCycle',
       title: fullTitle,
       description: opts.description,

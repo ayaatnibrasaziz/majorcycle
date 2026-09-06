@@ -124,3 +124,32 @@ export function jsonLdScript(nodes: Record<string, unknown>[]): string {
     '@graph': nodes,
   }).replace(/</g, '\u003c');
 }
+
+/**
+ * The COMPLETE graph for one article page - the article, plus the publisher it
+ * names.
+ *
+ * WARNING - why this function exists (audit 5A-139, 2026-09-05). `articleJsonLd`
+ * gives `author` and `publisher` as `{ '@id': ORG_ID }`, and the Organization node
+ * holding that id is emitted **only on the landing page**. JSON-LD `@id` resolution
+ * is per-document, so on all 17 article and Learn pages those two properties
+ * pointed at nothing present in the page's own graph. Google's Article guidance
+ * wants a resolvable publisher carrying a name and a logo; a dangling reference
+ * gives it neither.
+ *
+ * Nothing could see it. The JSON is valid, the block renders, the page is perfect,
+ * and the only symptom lives inside somebody else's crawler.
+ *
+ * WARNING - it is a FUNCTION rather than a line added to each page, for the reason
+ * 11c-iv keeps costing this repo: the two callers were written weeks apart, and the
+ * second would have inherited whichever version of the graph its author remembered.
+ * Both now call one thing, so neither can be the consumer that never received the
+ * rule. Asserted on the RENDERED page by e2e/jsonld.spec.ts, never on the source.
+ */
+export function articlePageJsonLd(
+  article: JsonLdArticle,
+  path: string,
+  section?: string,
+): Record<string, unknown>[] {
+  return [organizationJsonLd(), articleJsonLd(article, path, section)];
+}

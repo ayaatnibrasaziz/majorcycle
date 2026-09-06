@@ -1,3 +1,4 @@
+import { CANDLE } from '@/lib/chartTheme';
 import { Figure, LegendItem } from '@/components/Figure';
 import {
   AxisFrame,
@@ -47,8 +48,8 @@ import {
 
 const UP_FILL = '#228B22';
 const DOWN_FILL = '#B22222';
-const UP_EDGE = '#006400';
-const DOWN_EDGE = '#8B0000';
+const UP_EDGE = CANDLE.up;
+const DOWN_EDGE = CANDLE.down;
 const RULE = 'var(--text-secondary)';
 
 /** One week's slot, in the horizontal space `rx()` maps into. */

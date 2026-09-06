@@ -173,7 +173,7 @@ export function StartTrialModal({
           {/* Know-before-you-pay: a repeat customer sees, BEFORE checkout, that this
               starts billing today with no free week (Step 7 — no surprise charge). */}
           {trialUsed && (
-            <div className="mt-4 flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--tint-tier-3-strong)] bg-[var(--tint-tier-3)] px-3 py-2.5 text-[12.5px] leading-relaxed text-[var(--c-tier-3-ink)]">
+            <div className="mt-4 flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--status-warning-tint-strong)] bg-[var(--status-warning-tint)] px-3 py-2.5 text-[12.5px] leading-relaxed text-[var(--status-warning-ink)]">
               <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2} aria-hidden />
               <p>
                 You&apos;ve already used your free trial, so subscribing starts your paid
@@ -225,7 +225,7 @@ export function StartTrialModal({
             </Button>
 
             {error && (
-              <div className="mt-3 flex items-start gap-2 text-[12.5px] text-[var(--c-tier-5-ink)]">
+              <div className="mt-3 flex items-start gap-2 text-[12.5px] text-[var(--status-danger-ink)]">
                 <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2} aria-hidden />
                 <p>{error}</p>
               </div>

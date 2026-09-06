@@ -88,9 +88,14 @@ export function OnboardingModal() {
                 profitability, balance sheet, growth, cashflow, and shareholder returns
               </li>
               <li>
-                <strong>Valuation Score</strong> — how far today&apos;s price has
-                pulled back versus the stock&apos;s typical cycle, adjusted for the
-                company&apos;s financial strength
+                {/* Literal apostrophes, not &apos;. SWC drops the LEADING space of a
+                    JSX text node that spans more than one line AND contains an entity
+                    (CLAUDE.md 11ac), which rendered this bullet as "Valuation Score—"
+                    while its three siblings kept their space. Guarded by
+                    e2e/jsx-entity-space.spec.ts. */}
+                <strong>Valuation Score</strong> — how far today’s price has
+                pulled back versus the stock’s typical cycle, adjusted for the
+                company’s financial strength
               </li>
               <li>
                 <strong>Overall Rating</strong> — a 0–100 composite of all three signals,
@@ -133,7 +138,7 @@ export function OnboardingModal() {
         </div>
 
         {error && (
-          <p role="alert" className="px-5 -mt-1 text-[12px] text-[var(--c-tier-5-ink)]">
+          <p role="alert" className="px-5 -mt-1 text-[12px] text-[var(--status-danger-ink)]">
             {error}
           </p>
         )}

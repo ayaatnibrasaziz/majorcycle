@@ -132,7 +132,12 @@ function BandTile({ label, value, sub, active, tooltip }: BandTileProps) {
   return (
     <div className={`verdict-band${active ? ' is-active' : ''}`} title={tooltip}>
       <div className="verdict-band-label">
-        {active && <span className="verdict-band-dot" style={{ color: 'var(--c-tier-2)' }} />}
+        {/* ⚠️ Hard-set to `--c-tier-2` until 2026-09-02 — Constructive green in
+            every state, including on a Bearish card (audit 5A-065). It was the
+            one element on the card that did not follow the verdict the card
+            exists to state. `--verdict-color` is already set on the card root
+            from RATING_TIER_HEX, so the dot now cannot drift from it. */}
+        {active && <span className="verdict-band-dot" style={{ color: 'var(--verdict-color)' }} />}
         {label}
       </div>
       <div className="verdict-band-val">{value}</div>

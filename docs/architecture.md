@@ -28,7 +28,7 @@ flowchart TB
     end
 
     subgraph GHA["🐙 GitHub Actions — FREE"]
-        Cron["Daily Cron — AU 08:00 UTC · US+CA 22:30 UTC<br/>Each market after its OWN close<br/>Refreshes data + ticker listings<br/>Drains the ticker-request queue<br/>Writes to Supabase"]
+        Cron["Daily Cron — US+CA 01:30 UTC · AU 08:00 UTC<br/>Each market after its OWN close<br/>Refreshes data + ticker listings<br/>Drains the ticker-request queue<br/>Writes to Supabase"]
     end
 
     subgraph External["External — FREE"]
@@ -59,7 +59,7 @@ flowchart TB
 
 ### Tier 1 — Batch (scheduled, free)
 
-**What:** **Two** GitHub Actions workflows run daily — **AU at 08:00 UTC**, **US+CA at 22:30 UTC** — each executing `analytics/cron/daily_refresh.py` in **smart mode** (the default) scoped with `--markets`. (Corrected 2026-08-04: this said "once per day at 23:00 UTC". No single time can work — see §8 "Why the refresh is split".) Smart mode:
+**What:** **Two** GitHub Actions workflows run daily — **US+CA at 01:30 UTC**, **AU at 08:00 UTC** (the US+CA run moved from 22:30 on 2026-09-05, audit 5A-124 — see decision #32) — each executing `analytics/cron/daily_refresh.py` in **smart mode** (the default) scoped with `--markets`. (Corrected 2026-08-04: this said "once per day at 23:00 UTC". No single time can work — see §8 "Why the refresh is split".) Smart mode:
 
 1. Loads the universe from the **DB** (`_load_universe()` reads every ticker in `stocks`, the live auto-expanding universe) plus the benchmark indices (`^GSPC`, `^IXIC`, `^AXJO`, `^GSPTSE`, always included) — there are **no static universe CSVs**. Benchmark indices are stored as `market='index'` **price-only** rows, used by the Relative Performance chart and excluded from stock listings. A one-off run can be scoped with `--only TICKER[,TICKER…]`.
 2. Pre-fetches the current DB state for all tickers — specifically `enriched_updated_at` and `next_earnings_date` — in a single query
@@ -71,6 +71,14 @@ flowchart TB
 4. **Smart split verification + dated state on price bars.** yfinance returns split- and dividend-adjusted prices relative to the *latest* bar, so a split that happens *after* a ticker's initial `max` pull would leave the already-stored older bars on the pre-split scale — a permanent fake one-day crash that corrupts the cycle bounds. The provider surfaces yfinance's **authoritative split-actions calendar** with the split ratio (`df.attrs['recent_split_events']` = `[{date, ratio}]`, not a price heuristic — a normal price move never appears there). It also applies a **sanity floor** (`_MIN_SPLIT_DEVIATION = 0.10`): any "split" whose ratio is within ~10% of 1.0 is **ignored at the source**, because a genuine split is never that small (the smallest real ones we see — e.g. FDX `1.241`, HON `0.5` — are well clear of it) and yfinance occasionally emits a spurious near-1.0 value (e.g. **SPGI `1.057`** on 2026-07-01). Recording one would create a `pending` row the resolver can **never** clear — its ±20% cliff tolerance (`1/ratio ≈ 0.95`) overlaps ordinary daily volatility, so it perpetually "matches" a normal down-day and churns until it ages out of the 1-month detection window. Covered by `analytics/tests/test_yfinance_provider.py`. On detecting a split, `daily_refresh` records a **`pending` row in `split_events`**, re-pulls the **full** `max` history, then **verifies the discontinuity is actually gone** (`_verify_split_resolved` scans a ±10-bar window around the split date for a leftover cliff matching the expected unadjusted factor `1/ratio` within ±20%; split-ratio-specific, so a real crash never false-fires). A matched step must **also be a *persistent* scale shift** — the median close just-before vs just-after the step must match the split factor (`_SPLIT_PERSIST_BARS` window) — so a **transient one-day dip that bounces back** (FDX 2026-06-10, −3.8% then +5.9%, which matched a dubious yfinance `1.241` "split" by coincidence) is **not** misread as a leftover cliff (it self-heals to `resolved`):
    - **Resolved** (yfinance back-adjusted correctly) → `status='resolved'`, and it **stops re-pulling** (the re-pull set is driven by the `split_events` pending rows, not the 1-month window, so a fixed split is never touched again).
    - **Still discontinuous** → stays `pending`, retried nightly; **after 30 days still broken → `status='failed'`** (e.g. **DD** — yfinance lists the split but never back-adjusts the prices, leaving a ~3× cliff a fresh `max` pull still returns). This is DB-record-only (no email — the `failed` row is the flag); the owner reads `split_events` for backend visibility. The provider also **drops glitch bars with a non-positive close** (yfinance occasionally serves a lone `$0` close, which would read as a −100% drawdown). One-off repair of already-corrupted tickers: `analytics/cron/fix_split_history.py` (`--ticker` / `--tickers` / `--all`).
+4b-split. **A SPLIT IS VERIFIED TWICE NOW — once against what the provider sent, once against what we stored** (added 2026-09-05, audit 5A-122). `_verify_split_resolved` was never the weak part: driven against our real stored MNST series it returns `(False, '2026-08-07', 1.9193)` on the first try. It simply never saw that series. It ran **once**, on the frame the provider had just handed us, at the moment the split was detected — and nothing ever compared its verdict against the rows that landed in `price_bars`. One night where the fetched frame looked clean and the stored result did not therefore wrote `status='resolved'`, and nothing looked again.
+
+Measured on the live database three weeks later: **478 of MNST's 501 stored bars were exactly 2.0× the provider's**, so the Stock Detail page reported a **−55.73%** fall on a stock that had fallen about **11%**, in **DEEP VALUE**, rated **High Conviction 88/100**. Every individual bar was a plausible price, so no other check in the pipeline had an opinion — the rating was wrong and nothing was red. After the re-pull: **−12.38%, VALUE, Constructive 73**, and 0 bars differing from the provider.
+
+`_reverify_stored_splits` now runs at the end of every refresh. It reads back the stored bars around each split resolved in the last `_SPLIT_REVERIFY_DAYS` (45) and re-runs the same verifier on them; an inconsistent one goes back to `pending`, and the existing machinery re-pulls it on the next run. Bounded on both sides — recent enough to matter, old enough to have settled — because re-pulling ancient history nightly is the failure that once left 120 rows churning for 30 days.
+
+⚠️ **It asks our own data, not the provider's, and that is deliberate.** The obvious sweep is "compare with a fresh pull and re-pull on a mismatch". Run on 2026-09-04 that would have **corrupted APH**: it split 2:1 the day before, our stored series was the correct post-split one, and the provider's own history was still mid-adjustment — 163.34 on 2026-08-03 against an 09-04 close of 83.06, with a NaN on the split day. **The provider is not always the one that is right**, so the question this asks is the answerable one: does our own series agree with itself? Guarded by four tests in `analytics/tests/test_daily_refresh.py`, broken on purpose (two went red), and the load-bearing one is the control that a HEALTHY split is left alone.
+
 4a. **A DIVIDEND re-adjusts the history too, and for a year nothing here knew that** (fixed 2026-08-30). Point 4 above says it in its own first sentence — yfinance returns "split- **and dividend**-adjusted prices relative to the *latest* bar" — and only the split half was ever acted on. Each time a company goes ex-dividend the provider divides its entire prior series by a new factor, so a `period="1mo"` refresh stored the new month on the new basis and left every older bar, **the peak included**, on the old one. Measured against a fresh pull on the live database: the ratio was a **constant** on every bar before that company's last ex-dividend date and exactly `1.0000` after it — CBA `1.0169`, GPT `1.0062–1.0244` (several dividends, so several steps), MSFT `1.0019`. A drawdown therefore read **up to two points deeper than the truth**, on the site and in a published article, and **nothing failed in any direction**: a slightly-too-deep fall is a perfectly plausible number. It was found only by comparing our figures against a fresh pull while auditing an article — a question nobody had asked before. The provider now surfaces `df.attrs['recent_dividends']` and `daily_refresh` re-pulls the full `max` history exactly as it does for a split (~6–9 tickers a night). ⚠️ **There is deliberately no verify step.** A split can leave a real cliff when the provider's own history is internally inconsistent (MNST, audit F-030), which is why splits carry a pending/resolve cycle; a dividend adjustment is a smooth rescale of the whole series — the re-pull either happened or it did not, and there is no signature left in the data to check. Guarded by `analytics/tests/test_dividend_readjust.py`, broken three ways before being trusted. The accumulated drift was cleared once with **`--repull-prices`**, a flag on this same pipeline rather than a one-off script, so the write path, chunking, pacing and failure handling are the ones already proven nightly.
 4b. **A ticker that stops RECEIVING prices, and how a dead one is told from a renamed one** (built 2026-08-30; roadmap "Stale prices + dead tickers"). Point 4a is about prices we *have*; this is about prices we stopped *getting*. A ticker the provider quietly stops serving is invisible — the refresh logs it as failed and exits 0, the page keeps rendering, and the stored price simply stops moving. Eleven companies were stale on 2026-08-30, one by four months, and every night had reported success. Three parts:
 
@@ -452,7 +460,7 @@ The full directory of stocks a user can *request*, far larger than the analysed
 for US, ASX directory for AU, TMX/EODData for CA — **no API key, no rate limit**),
 normalised to yfinance format, and refreshed by the daily cron.
 
-⚠️ **The listings refresh runs in the US+CA workflow only** (`daily-refresh.yml`, 22:30 UTC), and
+⚠️ **The listings refresh runs in the US+CA workflow only** (`daily-refresh.yml`, 01:30 UTC), and
 it refreshes **all three markets** including Australia. `daily-refresh-au.yml` deliberately does
 not run it — that workflow exists to fetch AU *prices* after the ASX close. So an ASX menu problem
 surfaces in the US+CA run, not the AU one, which is not where anyone would look first.
@@ -1422,8 +1430,23 @@ it cannot outlive its subject (14g).
 account**, because the shared E2E account holds no subscription — so the Verdict card, the
 scorecard radar and the rating badges were invisible to every run for the life of the site.
 Measuring it entitled for the first time found `.verdict-thesis-num` drawing white numerals
-at 85% opacity, 5.31 → **4.31**. Extending `app-a11y.spec.ts` the same way is the open
-follow-up, and the file says so rather than implying a coverage it lacks.
+at 85% opacity, 5.31 → **4.31**. ✅ **`app-a11y.spec.ts` was extended the same way on
+2026-09-05 (P7)** — a throwaway entitled user, scanning `/stocks/us/AAPL`, `/run` and
+`/results`, with a positive control on `.verdict-thesis-num` so the run cannot pass by
+quietly scanning the upsell instead of the product. It is the only reason the third
+instance of 5A-151 was found: the CSV upload zone is not on `/run` for an unentitled
+reader, so no unentitled scan could ever have seen it.
+
+⚠️ **A rule can be in our tag list and still never run.** Five WCAG rules
+(`css-orientation-lock`, `label-content-name-mismatch`, `p-as-heading`,
+`table-fake-caption`, `td-has-header`) carry a tag we ask for **and** the tag
+`experimental`, which axe ships disabled — so they appeared in **no bucket at all**, and a
+rule that never ran returns exactly what a passing rule returns. `e2e/lib/axeRules.ts`
+now holds the tag list, enables those five specifically, and — the load-bearing part —
+`rulesThatDidNotRun()` fails the scan if any was not evaluated. Only those five are
+enabled, not every experimental rule: a noisy failure from a rule axe itself does not
+consider settled is how an option like this gets deleted (11t). Full account: CLAUDE.md
+11ax.
 
 ⚠️ **Scanned under `prefers-reduced-motion: reduce`, and that is a correctness decision.**
 Axe composites `opacity`, and the landing's below-fold sections rest at `opacity: 0` until an
@@ -1877,6 +1900,51 @@ completed click-through is proof. The same masking hits One Tap, whose `prompt()
 
 ---
 
+## 7.4 Email — two senders, one house style
+
+**Twenty-one messages leave this system, from two different composers, through one
+provider.** The split is not arbitrary and it decides where you go to change any of them.
+
+| | Composed by | Where the wording lives | Testable |
+|---|---|---|---|
+| **8 app emails** | This repository | `web/lib/email/*` + `app/(public)/contact/actions.ts` | ✅ `e2e/email-render.spec.ts` renders all eight on every build |
+| **13 sign-in emails** | **Supabase** | The Supabase dashboard → Authentication → Emails → Templates | 🔴 **Nothing in this project can read them** |
+
+**Why Supabase owns thirteen of them:** it is the thing that knows a password was reset, an
+address confirmed or a magic link requested. The app never sees those moments, so it cannot
+send those emails. Supabase composes them and hands each finished message to **Resend** over
+SMTP — the same account the app calls directly — so all twenty-one leave from
+`noreply@majorcycle.com` in one house style. The single exception is the contact-form
+notification, which comes from the monitored `support@` inbox and carries `reply_to`.
+
+⚠️ **THE THIRTEEN HAVE NO FILE, AND THAT IS THE THING TO REMEMBER.** There is nothing to
+import, diff, lint or test. A guard cannot be written for them, because a guard needs
+something to read. `reference/email-templates.html` renders all twenty-one and is the **only
+record in this project** of what those thirteen say; keep it current by hand whenever a
+template is edited in the dashboard, because nothing else will.
+
+⚠️ **Every email is written TWICE** — an HTML body and a plain-text one, side by side in the
+same function, by hand. That is a copy in the 11c sense and it drifts: the trial-welcome
+email's button was moved off an empty page months before its plain-text twin was
+(5A-136). `email-render.spec.ts` now asserts one-directionally that every destination the
+HTML offers also appears in the text — one direction only, because text legitimately spells
+out URLs that HTML hangs on words, and a two-way check would fail on correct emails and be
+loosened within a week.
+
+**Delivery and authentication** (measured on a real delivered message, 2026-09-05): the
+domain is verified with Resend; DKIM signs as `d=majorcycle.com` on the apex and the
+envelope returns to `send.majorcycle.com`; `_dmarc` publishes `p=reject` with **strict**
+alignment on both `aspf` and `adkim`. Under strict SPF alignment the `send.` subdomain does
+**not** align, so **DMARC passes on DKIM alone** — one leg, not two. Owner-ruled to stay
+strict (5A-145). `security@majorcycle.com` receives the aggregate reports and
+`support@majorcycle.com` the contact form; both confirmed delivering.
+
+**The footer is one string in all twenty-one**, and it carries **no year on purpose**:
+thirteen of them are static templates that cannot compute one, so a year would be right in
+eight places and frozen in thirteen (5A-137, 5A-147).
+
+---
+
 ## 8. Cron Job Specification
 
 ### Daily smart refresh — `daily-refresh.yml` (US+CA) + `daily-refresh-au.yml` (AU)
@@ -2268,9 +2336,19 @@ redirects rather than quietly reporting a bounce as a page. This also satisfies 
   one. `og:image` is now stated explicitly from one `OG_IMAGE` constant in `lib/seo.ts`.
 
 - **Landing page live figures.** `/` shows one real stock with real numbers, read from
-  `web/app/landing-snapshot.json` — a committed file, not a query. Rebuilt nightly by
-  `analytics/cron/build_landing_snapshot.py` at the end of the US+CA refresh workflow,
-  which commits it back with `[skip ci]`.
+  `web/app/landing-snapshot.json` — a committed file, not a query. **FROZEN since
+  2026-09-01** (finding 5A-013): rebuilt only by `build_landing_snapshot.py
+  --worked-example`, by hand, in the same sitting as `build_mag7_snapshot.py`, because
+  the two share Apple and must carry one date. The nightly cron rebuilds only
+  `web/app/universe-count.json` — the live company count — and commits it with
+  `[skip ci]`.
+
+  ⚠️ **`[skip ci]` is why the guard could not save us, and it is why the fix had to be
+  structural.** `e2e/landing.spec.ts` has always asserted the two snapshots share an
+  `asOf`. That assertion is correct and it never ran on the commit that broke it, because
+  a cron commit skips CI by design (to save Actions minutes). Running CI nightly is the
+  wrong trade; **taking the snapshots out of the cron's reach entirely** is the right one.
+  A guard cannot cover a write that is committed past it.
 
   ⚠️ **It cannot leak a paid field, structurally.** The generator calls
   `calculate_cycle_metrics`, which returns cycle geometry and has no rating, health score

@@ -1,12 +1,32 @@
 import snapshot from '@/app/landing-snapshot.json';
+import universe from '@/app/universe-count.json';
 
 /**
- * The landing page's live figures.
+ * The landing page's worked example — Apple, on a stated date.
  *
- * Built nightly by `analytics/cron/build_landing_snapshot.py` from the site's own
- * price history, through the canonical cycle maths in `analytics/major_cycle.py`.
- * Imported as JSON, so the front door has no database in its critical path and
- * nothing for a visitor to wait on.
+ * Built by `analytics/cron/build_landing_snapshot.py --worked-example` from the
+ * site's own price history, through the canonical cycle maths in
+ * `analytics/major_cycle.py`. Imported as JSON, so the front door has no database
+ * in its critical path and nothing for a visitor to wait on.
+ *
+ * ⚠️ **FROZEN, and deliberately on the same lifecycle as `mag7-snapshot.json`**
+ * (finding 5A-013, 2026-09-01). Apple appears here AND in the Mag 7 table above
+ * it on the page. While this file rebuilt nightly and that one stayed frozen, the
+ * two drifted 18 days apart and the live page printed Apple at **−11.3%** in the
+ * table and **"8.0% below its high"** three screens later — both correct for
+ * their own date, and together indistinguishable from a mistake. CLAUDE.md 11k:
+ * *two snapshots describing the same subject must carry the same date.*
+ *
+ * ⚠️ **Two things moved OUT of this file rather than being frozen with it**, because
+ * neither is part of the worked example:
+ *
+ * - the company count → `universe-count.json` (a fact; must stay current);
+ * - the `/learn` figures → `learn-snapshot.json`, read via `lib/learn-figures.ts`
+ *   (an explainer describes how the product behaves *today* — owner decision,
+ *   2026-09-01: *"keep the learn articles as is ... keep it separate"*).
+ *
+ * **So nothing outside the landing page should import `LANDING`.** Freezing it was
+ * never meant to freeze anything else.
  *
  * ⚠️ These are FREE-tier fields only, and that is enforced upstream rather than
  * here: the generator calls `calculate_cycle_metrics`, which returns cycle
@@ -18,8 +38,6 @@ export interface LandingSnapshot {
   ticker: string;
   name: string;
   currency: string;
-  /** How many companies the site covers — counted in the database nightly. */
-  universeCount: number;
   /** Last close, in the stock's home currency (#13). */
   price: number;
   // ── how far it falls ──
@@ -68,8 +86,14 @@ export const depth = (pct: number): string => `${Math.abs(pct).toFixed(1)}%`;
  *
  * `toLocaleString`, not the bare number, so the day we pass a thousand the page
  * reads "1,204 companies" rather than "1204 companies".
+ *
+ * ⚠️ **Its own file, rebuilt and committed NIGHTLY** — unlike `LANDING` above,
+ * which is frozen. The two lifecycles are the whole point of the split: a count
+ * is a fact that must never be stale, while a worked example is a measurement
+ * that must never disagree with the one beside it (5A-013). Keeping both in one
+ * file forced one rule on two different kinds of number, and the wrong rule won.
  */
-export const UNIVERSE_COUNT: string = LANDING.universeCount.toLocaleString('en-AU');
+export const UNIVERSE_COUNT: string = universe.universeCount.toLocaleString('en-AU');
 
 /**
  * Price in the stock's home currency (#13).

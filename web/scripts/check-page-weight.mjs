@@ -113,7 +113,40 @@ const BUDGETS = [
   // risk; it is the same one, and a red here should first be checked against
   // `RelativePerformance`'s idle arming before anyone touches the number.
   ['/stocks/us/AAPL', 1150, true, 'the heaviest page we ship, and where the 588 KB regression landed'], // 1017
+
+  /**
+   * ⚠️ **AUDIT 5A-153, 2026-09-05. Added because a route-by-route diff found
+   * EIGHT routes in NONE of the three server gates** — this file, `check:csp` and
+   * `lighthouse` each walk their own hand-written list, and the union of the three
+   * still missed the whole screener, both remaining legal pages and all three
+   * confinement pages. That is the same gap the Layer G delta audit found for
+   * `/articles`, which shipped unwatched for weeks while this file truthfully
+   * reported "every page within budget" about the six pages it knew about (14g,
+   * and 11c-iv for the consumer a rule never reached).
+   *
+   * Measured on 2026-09-05, three consecutive readings each, none moving by a KB.
+   * Budgets are that figure plus roughly a quarter, the same rule as above.
+   *
+   * ⚠️ `/results` is measured on the E2E account, which holds no subscription,
+   * so it renders the upsell rather than the screener table. An entitled run with
+   * 25 rows of charts is heavier and is NOT covered by this number — saying so is
+   * cheaper than letting the row imply a coverage it does not have.
+   */
+  ['/privacy', 340, false, 'a legal page a reader may be sent straight to'],   // 268
+  ['/disclaimer', 340, false, 'the compliance page, linked from every rating'], // 267
+  ['/run', 380, true, 'the screener entry point'],                            // 303
+  ['/results', 540, true, 'the screener output — UNENTITLED; an entitled table is heavier'], // 427
+  ['/request', 370, true, 'Request a Ticker, which loads the listings search'], // 294
 ];
+
+/**
+ * ⚠️ **The three routes this file still cannot weigh, named rather than
+ * omitted.** `/account/update-password`, `/deletion-requested` and `/reactivate`
+ * are each reachable only behind a one-shot session marker or a scheduled-deletion
+ * account, so no ordinary sign-in reaches them. `e2e/deletion-notice.spec.ts` and
+ * `e2e/auth.spec.ts` drive them by pressing the real buttons; neither measures
+ * bytes. An unstated blind spot reads as coverage (14g).
+ */
 
 async function weigh(page, path) {
   await page.goto(ORIGIN + path, { waitUntil: 'load', timeout: 60_000 });

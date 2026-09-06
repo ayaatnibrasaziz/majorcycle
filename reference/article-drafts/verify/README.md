@@ -36,6 +36,37 @@ and caught it.
 
 ---
 
+## ⚠️ Which of these actually RUN (checked 2026-09-05, audit 5A-132)
+
+**Four of the seven scripts run. Three cannot, and have never been able to.**
+
+| script | |
+|---|---|
+| `assert_all.py` | ✅ runs — **464 figures, 0 failed** on 2026-09-05 |
+| `consistency.py` | ✅ runs — ALL PASS |
+| `audit_coverage.py` | ✅ runs — reports 8 printed numbers with no assertion behind them |
+| `audit_thresholds.py` | ✅ runs — 1 count would change (PDN.AX, sitting exactly on the −20% line) |
+| `audit_external.py` | ❌ **`ModuleNotFoundError: No module named 'engine'`** |
+| `audit_independent.py` | ❌ same |
+| `divfreeze.py` | ❌ same |
+
+`engine.py` is **not in the repository and has no git history** — it was never
+committed. Whoever ran those three had it in the working directory, read the output
+once, and wrote the results into the section below. So the audit results recorded
+here are real observations from a run that **cannot be reproduced**, and two of the
+three dead scripts are the ones that check our figures against an **external**
+source — which is the question that found a year of dividend drift (CLAUDE.md 11ae).
+
+⚠️ That is 11f in this file's own subject matter: **a record saying a check exists is
+not the check.** Left as a finding rather than reconstructed, because rebuilding a
+module from three callers' usage is guesswork, and guesswork wearing the name of an
+independent audit is worse than an obvious gap. **Owner's call.**
+
+⚠️ Note what P4 already answers: on 2026-09-05 every one of the **864** active
+tickers had its stored history compared against a fresh provider pull, and 850 matched
+to 0.0000%. That is the same question `audit_external.py` was written to ask, asked of
+a wider population — but of the LIVE database rather than of this frozen study file.
+
 ## The audit (2026-08-30)
 
 Four more scripts, run after the articles were approved, because 464 passing

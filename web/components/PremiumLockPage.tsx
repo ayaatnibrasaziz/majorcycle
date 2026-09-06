@@ -105,16 +105,16 @@ export function PremiumLockPage({
           {notice && (
             <div
               role="status"
-              className="mb-4 flex gap-2.5 rounded-[var(--radius-sm)] border border-[#fcd34d] bg-[#fffbeb] px-3.5 py-3"
+              className="mb-4 flex gap-2.5 rounded-[var(--radius-sm)] border border-[var(--status-warning-border)] bg-[var(--status-warning-surface)] px-3.5 py-3"
             >
               <AlertCircle
-                className="mt-[1px] h-[15px] w-[15px] flex-shrink-0 text-[#b45309]"
+                className="mt-[1px] h-[15px] w-[15px] flex-shrink-0 text-[var(--status-warning)]"
                 strokeWidth={2}
                 aria-hidden="true"
               />
               <div>
-                <p className="text-[12.5px] font-semibold text-[#92400e]">{notice.title}</p>
-                <p className="mt-1 text-[12px] leading-relaxed text-[#92400e]">
+                <p className="text-[12.5px] font-semibold text-[var(--status-warning-ink)]">{notice.title}</p>
+                <p className="mt-1 text-[12px] leading-relaxed text-[var(--status-warning-ink)]">
                   {notice.body}
                 </p>
               </div>

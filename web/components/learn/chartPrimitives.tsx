@@ -9,6 +9,8 @@
  * still renders perfectly.
  */
 
+import { DRAWDOWN } from '@/lib/chartTheme';
+
 /**
  * The gutter the y-axis labels live in, in PIXELS.
  *
@@ -80,11 +82,20 @@ export function Plot({
   );
 }
 
-/** The product's own drawdown palette (`components/stocks/DrawdownOverlay.tsx`). */
-export const DD_LINE = '#1E5CB3'; // --brand-mid
-export const DD_FILL = 'rgba(178,34,34,.15)';
-export const AVG_LINE = '#D4A017';
-export const LOW_LINE = '#B22222';
+/**
+ * The product's own drawdown palette — now IMPORTED rather than restated.
+ *
+ * ⚠️ These were four hand-typed literals under a comment naming their source,
+ * which is a copy however carefully it is labelled — and it had already drifted.
+ * `AVG_LINE` was `#D4A017`, the pre-August gold, while the product's overlay
+ * draws that rule in grey, so the figure teaching a reader what a drawdown looks
+ * like had stopped matching the chart it describes (audit 5A-064). Deriving is
+ * the fix; correcting the literal would only have reset the clock (11c-viii).
+ */
+export const DD_LINE = DRAWDOWN.line;
+export const DD_FILL = DRAWDOWN.fill;
+export const AVG_LINE = DRAWDOWN.avg;
+export const LOW_LINE = DRAWDOWN.bound;
 
 /**
  * ⚠️ **`vectorEffect` sits on each LINE, never on a wrapping `<g>`.** It is not an

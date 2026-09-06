@@ -31,7 +31,7 @@ export function ContactForm({
     return (
       <div className="bg-gradient-to-br from-white to-[var(--brand-light)] border border-[var(--brand-light-border)] rounded-[var(--radius)] p-6 text-center">
         <div className="w-14 h-14 mx-auto rounded-full bg-white shadow-[var(--shadow-md)] flex items-center justify-center mb-4">
-          <CheckCircle2 className="w-7 h-7 text-[var(--c-tier-2)]" strokeWidth={2} />
+          <CheckCircle2 className="w-7 h-7 text-[var(--status-success)]" strokeWidth={2} />
         </div>
         <p className="text-[14px] text-[var(--text-primary)] leading-relaxed">
           Thanks — your message is on its way. We&apos;ll reply by email.
@@ -68,6 +68,9 @@ export function ContactForm({
         <input id="company" name="company" type="text" tabIndex={-1} autoComplete="off" />
       </div>
 
+      {/* maxLength on all three: the SERVER caps them too (audit 5A-143, where
+          neither side did). A client attribute is a courtesy that stops the
+          reader at the keyboard; it is never the control. */}
       <div className="flex flex-col gap-2">
         <Label htmlFor="name">Name</Label>
         <Input
@@ -76,6 +79,7 @@ export function ContactForm({
           type="text"
           required
           minLength={2}
+          maxLength={80}
           placeholder="Your name"
           defaultValue={defaultName}
         />
@@ -89,6 +93,7 @@ export function ContactForm({
           type="email"
           autoComplete="email"
           required
+          maxLength={254}
           placeholder="you@example.com"
           defaultValue={defaultEmail}
         />
@@ -101,6 +106,7 @@ export function ContactForm({
           name="message"
           required
           minLength={10}
+          maxLength={4000}
           rows={5}
           placeholder="How can we help?"
           className="flex w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] shadow-[var(--shadow-sm)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-mid)] focus-visible:border-[var(--brand-mid)] resize-y leading-relaxed"
@@ -110,7 +116,7 @@ export function ContactForm({
       {state.status === 'error' && (
         <div
           role="alert"
-          className="flex items-start gap-2 text-[12px] text-[var(--c-tier-5-ink)] bg-[var(--tint-tier-5)] border border-[var(--tint-tier-5-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
+          className="flex items-start gap-2 text-[12px] text-[var(--status-danger-ink)] bg-[var(--status-danger-tint)] border border-[var(--status-danger-tint-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
         >
           <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" />
           <span className="leading-relaxed">{state.message}</span>

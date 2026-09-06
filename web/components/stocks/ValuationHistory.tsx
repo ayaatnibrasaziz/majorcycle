@@ -1,6 +1,6 @@
 'use client';
 
-import { CHART_INK } from '@/lib/chartTheme';
+import { CHART_INK, CHART_TOOLTIP } from '@/lib/chartTheme';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Area,
@@ -81,7 +81,7 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
   return (
     <div className="card card--stack-base">
       <div className="card-header">
-        <div className="card-title">
+        <h3 className="card-title">
           Valuation History — P/E Ratio
           <InfoTip title="P/E Ratio history">
             P/E (price-to-earnings) is the share price divided by earnings per share —
@@ -89,7 +89,7 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
             expensive. Plotting it over time shows whether the stock looks cheap or
             pricey versus its own past.
           </InfoTip>
-        </div>
+        </h3>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
           Is the stock cheap or expensive vs its own history?
         </div>
@@ -148,16 +148,16 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
                       return (
                         <div
                           style={{
-                            background: '#1A1A1B',
-                            border: '1px solid #2E3347',
+                            background: CHART_TOOLTIP.bg,
+                            border: `1px solid ${CHART_TOOLTIP.border}`,
                             borderRadius: 6,
                             padding: '8px 12px',
                           }}
                         >
-                          <div style={{ color: '#E8EAF0', fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
+                          <div style={{ color: CHART_TOOLTIP.text, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 600, marginBottom: 4 }}>
                             {label}
                           </div>
-                          <div style={{ color: '#94A3B8', fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
+                          <div style={{ color: CHART_TOOLTIP.muted, fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>
                             P/E: {Number(payload[0]?.value ?? 0).toFixed(1)}x
                           </div>
                         </div>

@@ -12,7 +12,7 @@ import {
   learnPath,
 } from '@/lib/learn';
 import { pageMetadata } from '@/lib/seo';
-import { articleJsonLd, jsonLdScript } from '@/lib/jsonld';
+import { articlePageJsonLd, jsonLdScript } from '@/lib/jsonld';
 import { JsonLd } from '@/components/JsonLd';
 import { ARTICLE_BODIES } from '../content';
 
@@ -68,6 +68,9 @@ export async function generateMetadata({
     // search result, and it should say what the page covers — the answer itself
     // is what the reader gets by clicking.
     description: article.summary,
+    // The registry's own dates, so this page announces itself as a document with
+    // an author and a date rather than as a page of a site (audit 5A-140).
+    article: { published: article.published, modified: article.reviewed },
   });
 }
 
@@ -101,9 +104,7 @@ export default async function LearnArticlePage({
           graph type article headline". A `<script>` is invisible on screen and
           very much visible to anything that reads text out of the DOM. */}
       <JsonLd
-        json={jsonLdScript([
-          articleJsonLd(article, learnPath(article.slug), theme?.label),
-        ])}
+        json={jsonLdScript(articlePageJsonLd(article, learnPath(article.slug), theme?.label))}
       />
       <ArticleDoc
         article={article}

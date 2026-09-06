@@ -148,7 +148,7 @@ export function ProfileForm({
           {error && (
             <div
               role="alert"
-              className="flex items-start gap-2 text-[12px] text-[var(--c-tier-5-ink)] bg-[var(--tint-tier-5)] border border-[var(--tint-tier-5-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
+              className="flex items-start gap-2 text-[12px] text-[var(--status-danger-ink)] bg-[var(--status-danger-tint)] border border-[var(--status-danger-tint-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
             >
               <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" />
               <span className="leading-relaxed">{error}</span>
@@ -162,7 +162,7 @@ export function ProfileForm({
             {saved && !dirty && (
               <span
                 role="status"
-                className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--c-tier-2)]"
+                className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--status-success)]"
               >
                 <CheckCircle2 className="w-4 h-4" strokeWidth={2} aria-hidden />
                 Saved

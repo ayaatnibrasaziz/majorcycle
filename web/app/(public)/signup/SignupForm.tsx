@@ -137,7 +137,7 @@ export function SignupForm() {
         <ul className="flex flex-col gap-2">
           {freeFeatures.map((line) => (
             <li key={line} className="flex items-start gap-2.5 text-[12.5px] text-[var(--text-secondary)] leading-snug">
-              <span className="mt-[2px] w-[15px] h-[15px] rounded-full bg-[var(--c-tier-2)] flex items-center justify-center flex-shrink-0">
+              <span className="mt-[2px] w-[15px] h-[15px] rounded-full bg-[var(--status-success)] flex items-center justify-center flex-shrink-0">
                 <Check className="w-[10px] h-[10px] text-white" strokeWidth={3.5} />
               </span>
               {line}
@@ -196,7 +196,7 @@ export function SignupForm() {
         {error && (
           <div
             role="alert"
-            className="flex items-start gap-2 text-[12px] text-[var(--c-tier-5-ink)] bg-[var(--tint-tier-5)] border border-[var(--tint-tier-5-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
+            className="flex items-start gap-2 text-[12px] text-[var(--status-danger-ink)] bg-[var(--status-danger-tint)] border border-[var(--status-danger-tint-strong)] rounded-[var(--radius-sm)] px-3 py-2.5"
           >
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" />
             <span className="leading-relaxed">{error}</span>

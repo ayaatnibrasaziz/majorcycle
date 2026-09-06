@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import landingSnapshot from '../app/landing-snapshot.json';
+import universeCountFile from '../app/universe-count.json';
 import mag7Snapshot from '../app/mag7-snapshot.json';
 import { mag7Facts, type Mag7Snapshot } from '../lib/mag7';
 
@@ -306,7 +307,11 @@ test.describe('the landing page tells the truth about its own run', () => {
   }) => {
     await page.goto('/', { waitUntil: 'networkidle' });
 
-    const n = landingSnapshot.universeCount;
+    // ⚠️ The count moved OUT of landing-snapshot.json on 2026-09-01 (finding
+    // 5A-013): it is a live fact on its own nightly lifecycle, while the
+    // snapshot beside it is a frozen worked example. Same rule as before —
+    // built FROM the file, never typed here.
+    const n = universeCountFile.universeCount;
     const shown = n.toLocaleString('en-AU');
     const body = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
 

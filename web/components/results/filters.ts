@@ -46,20 +46,30 @@ function ruleValue(r: ResultRow, field: string): number | string | null {
 function rulePasses(r: ResultRow, rule: AdvRule): boolean {
   const v = ruleValue(r, rule.field);
   if (rule.type === 'numeric') {
+    const [a, b] = Array.isArray(rule.value) ? rule.value : ['', ''];
+    // ⚠️ ORDER MATTERS. Decide "did the reader state a criterion?" BEFORE looking
+    // at the row, or a rule whose box is still blank silently deletes every row
+    // with no value for that field — which this did until 2026-09-04 (5A-107),
+    // because the null check sat above these lines. Adding a rule creates it
+    // blank and the field is then picked from a dropdown, so "rule exists, no
+    // criterion" is a state every reader passes through; half the fields on offer
+    // are nullable, and the first row to vanish is always the cycle-only stock
+    // whose Financial Health we withheld. A filtered table looks like a filtered
+    // table, so nothing but this ordering can tell the two apart.
+    const stated = rule.op === 'between' ? a !== '' && b !== '' : rule.value !== '';
+    if (!stated) return true; // no constraint — matches categorical/text below
+    // A stated criterion DOES exclude rows with no value: "P/E ≥ 10" must drop a
+    // stock that has no P/E. `screener-filters.spec.ts` guards both directions.
     if (v == null || typeof v !== 'number' || Number.isNaN(v)) return false;
     if (rule.op === 'gte') {
-      if (rule.value === '') return true; // no value yet = no constraint (matches between/categorical/text)
       const n = Number(rule.value);
       return !Number.isNaN(n) && v >= n;
     }
     if (rule.op === 'lte') {
-      if (rule.value === '') return true; // no value yet = no constraint
       const n = Number(rule.value);
       return !Number.isNaN(n) && v <= n;
     }
     if (rule.op === 'between') {
-      const [a, b] = Array.isArray(rule.value) ? rule.value : ['', ''];
-      if (a === '' || b === '') return true; // incomplete range = no constraint
       const lo = Number(a);
       const hi = Number(b);
       return v >= Math.min(lo, hi) && v <= Math.max(lo, hi);
