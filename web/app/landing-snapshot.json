@@ -3,15 +3,15 @@
   "name": "Apple",
   "currency": "USD",
   "universeCount": 869,
-  "price": 328.21,
-  "currentDrawdownPct": -4.6658,
+  "price": 319.97,
+  "currentDrawdownPct": -7.0592,
   "typicalDrawdownPct": -24.6437,
   "deepestDrawdownPct": -81.3799,
   "pullbackEvents": 611,
-  "currentProfitPct": 45.7944,
+  "currentProfitPct": 42.1341,
   "typicalRecoveryPct": 78.3344,
-  "largestRecoveryPct": 470.4564,
+  "largestRecoveryPct": 470.4561,
   "recoveryEvents": 631,
-  "asOf": "2026-09-03",
-  "generatedAt": "2026-09-05T01:00:26+00:00"
+  "asOf": "2026-09-04",
+  "generatedAt": "2026-09-06T01:02:09+00:00"
 }
