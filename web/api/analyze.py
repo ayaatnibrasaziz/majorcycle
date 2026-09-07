@@ -53,6 +53,7 @@ _WEB_ROOT = Path(__file__).resolve().parent.parent
 if str(_WEB_ROOT) not in sys.path:
     sys.path.insert(0, str(_WEB_ROOT))
 
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from postgrest.types import CountMethod  # noqa: E402
 from supabase import Client, create_client  # noqa: E402
@@ -89,6 +90,44 @@ _RESULT_CACHE_MAX = 2000
 # once the migration lands and the instance is recycled.
 _RPC_AVAILABLE: bool | None = None
 _RPC_NAME = "get_price_bars_json"
+
+# The LEAN history fetch, and the reason a 761-ticker screen went from ~200s to
+# 1,529s (measured in `analysis_runs`, which records started_at/finished_at).
+#
+# `get_price_bars_json` builds one jsonb OBJECT per bar — 11,525 of them for
+# AAPL — and that construction, not the scan, is where the time goes. Timed on
+# the live database:
+#
+#     get_price_bars_json('AAPL')                  826 ms   1,809,324 bytes
+#     count(*), max(high), min(low), max(close)     18 ms   (same scan, no json)
+#     get_cycle_bars_json('AAPL')                   15 ms     785,322 bytes
+#
+# At 761 tickers the old shape is ~630 seconds of database CPU and ~700-900 MB
+# over the wire for ONE screen. The new one is columnar (four arrays instead of
+# 11,525 objects) and carries only what the screener reads — High, Low, Close —
+# because `calculate_cycle_metrics` uses those three and nothing else, while
+# `open` and `volume` were fetched, parsed into the DataFrame and never touched.
+#
+# ⚠️ VALUES ARE BYTE-IDENTICAL, and that was not free. The obvious encoding —
+# `array_agg(high::float8)` — is smaller still, but Postgres renders a float8 at
+# 15 significant digits by default, so every price came back differing from the
+# stored numeric by ~1e-13: a comparison across 25 tickers matched 0 of them.
+# Four encodings were measured; the numeric's OWN TEXT, comma-joined, is both
+# exact and the fastest:
+#
+#     float8, 15 digits (default)   121 ms   801,531 bytes   NOT exact
+#     float8, 17 digits             448 ms   854,466 bytes   exact
+#     jsonb array of text            33 ms   923,618 bytes   exact
+#     string_agg, comma-joined       15 ms   785,322 bytes   exact  <- ships
+#
+# Verified across 40 random tickers, every date/high/low/close equal to what the
+# old function emits, with the 15-digit run kept as the control proving that
+# check can fail (11p).
+#
+# ⚠️ NOT a replacement for `_RPC_NAME`. The Stock Detail page draws candlesticks
+# and genuinely needs open, volume and every date; two readers, two shapes.
+_CYCLE_RPC_AVAILABLE: bool | None = None
+_CYCLE_RPC_NAME = "get_cycle_bars_json"
 
 # Custom-param validation bounds — the canonical contract (data-contracts.md §7).
 _CUSTOM_BOUNDS = {
@@ -127,6 +166,32 @@ def _load_price_bars(sb: Client, ticker: str, page_workers: int = 1) -> pd.DataF
     ticker, and parallel-across-tickers with sequential pages otherwise — total
     concurrency stays at the level web/api/cycle.py has proven safe (~8).
     """
+    # Fastest path: the columnar High/Low/Close RPC (see _CYCLE_RPC_NAME above).
+    # Falls through to the row-object RPC, and then to pagination, so this file is
+    # safe to deploy before the migration is applied and picks the fast path up on
+    # its own once it lands.
+    global _CYCLE_RPC_AVAILABLE
+    if _CYCLE_RPC_AVAILABLE is not False:
+        for attempt in range(3):
+            try:
+                resp = sb.rpc(_CYCLE_RPC_NAME, {"p_ticker": ticker}).execute()
+                _CYCLE_RPC_AVAILABLE = True
+                payload = cast("dict[str, Any] | None", resp.data)
+                return _columns_to_df(payload) if payload else None
+            except Exception as e:  # noqa: BLE001
+                msg = str(e).lower()
+                if any(
+                    s in msg
+                    for s in ("pgrst202", "could not find", "does not exist", "not found", "404")
+                ):
+                    _CYCLE_RPC_AVAILABLE = False
+                    logger.warning("%s RPC not deployed — using %s", _CYCLE_RPC_NAME, _RPC_NAME)
+                    break
+                if attempt < 2:
+                    time.sleep(0.3 * (attempt + 1))
+                    continue
+                break
+
     # Fast path: one round-trip via the get_price_bars_json RPC (no 1000-row cap).
     # Falls through to paginated reads if the function isn't deployed yet (so this
     # code is safe to ship before the migration is applied) or on a transient error.
@@ -213,6 +278,65 @@ def _load_price_bars(sb: Client, ticker: str, page_workers: int = 1) -> pd.DataF
     return _bars_to_df(rows)
 
 
+def _columns_to_df(payload: dict[str, Any]) -> pd.DataFrame | None:
+    """Build the analysis frame from the columnar RPC's four parallel arrays.
+
+    Produces the same DataFrame the row-object path produces, minus Open and
+    Volume — which nothing in the analysis path reads (`calculate_cycle_metrics`
+    takes High/Low/Close; `_screener_fundamentals` takes High).
+
+    ⚠️ The length check is the load-bearing line. Four separate `array_agg`s over
+    one scan cannot disagree — the primary key is (ticker, date), so the ordering
+    is total and every column sees the same rows — but if they ever did, pandas
+    would not complain in a useful way: a shorter column becomes NaN-padded and
+    the frame goes quietly out of alignment, which is a wrong number that looks
+    like a right one. This repo's whole failure catalogue is that shape, so the
+    impossible case is made LOUD rather than assumed away.
+    """
+    # Comma-DELIMITED, not JSON arrays. Postgres writes one `string_agg` per
+    # column instead of a jsonb array of 11,525 quoted strings, which halves the
+    # database's work again (33 ms -> 15 ms on AAPL) and drops another 15% of the
+    # payload. The values are the same characters either way, so `pd.to_numeric`
+    # receives exactly what it received before — verified element-for-element.
+    raw_d = payload.get("d") or ""
+    raw_h = payload.get("h") or ""
+    raw_l = payload.get("l") or ""
+    raw_c = payload.get("c") or ""
+    if not raw_d:
+        return None
+
+    dates = raw_d.split(",")
+    highs = raw_h.split(",")
+    lows = raw_l.split(",")
+    closes = raw_c.split(",")
+
+    n = len(dates)
+    if not (len(highs) == len(lows) == len(closes) == n):
+        raise ValueError(
+            f"{_CYCLE_RPC_NAME} returned misaligned columns: "
+            f"d={n} h={len(highs)} l={len(lows)} c={len(closes)}"
+        )
+    declared = payload.get("n")
+    if declared is not None and int(declared) != n:
+        raise ValueError(f"{_CYCLE_RPC_NAME} said n={declared} but sent {n} dates")
+
+    df = pd.DataFrame(
+        {
+            "High": pd.to_numeric(highs, errors="coerce"),
+            "Low": pd.to_numeric(lows, errors="coerce"),
+            "Close": pd.to_numeric(closes, errors="coerce"),
+        },
+        # ⚠️ `datetime64[s]` rather than `pd.to_datetime`, which is half the cost
+        # and — verified — produces an index that compares equal element for
+        # element. Every value comes from a Postgres `date` column, so it is
+        # always YYYY-MM-DD; anything else raises here rather than being coerced
+        # to NaT, because a silently missing date would shift `as_of`.
+        index=pd.DatetimeIndex(np.array(dates, dtype="datetime64[s]")),
+    )
+    df.index.name = "date"
+    return df
+
+
 def _bars_to_df(rows: list[Any]) -> pd.DataFrame:
     df = pd.DataFrame(rows)
     df["date"] = pd.to_datetime(df["date"])
@@ -237,8 +361,27 @@ def _bars_to_df(rows: list[Any]) -> pd.DataFrame:
 def _load_fundamentals(
     sb: Client, ticker: str
 ) -> tuple[dict[str, Any] | None, FundamentalsSnapshot | None]:
-    """Read the stocks row + reconstruct a FundamentalsSnapshot from the JSONB."""
-    resp = sb.table("stocks").select("*").eq("ticker", ticker).maybe_single().execute()
+    """Read the stocks row + reconstruct a FundamentalsSnapshot from the JSONB.
+
+    ⚠️ FOUR COLUMNS, not `*`. The row averages 46.3 kB and the screener reads
+    exactly four things from it — `fundamentals`, plus `ticker`/`market`/
+    `currency` as fallbacks when the snapshot omits them; the caller uses the row
+    itself only to ask "is this ticker in the universe?". The other ~40 kB is
+    statement blobs: insider transactions (6.6 kB), two balance sheets, two cash
+    flows, two income statements, analyst upgrades. None of it reaches a screener
+    row, and at 761 tickers `*` was pulling ~34 MB per screen to look at 2 kB of
+    it. Measured 2026-09-08 with `jsonb_each(to_jsonb(stocks))`.
+
+    The Stock Detail page is the reader those blobs exist for, and it fetches
+    them separately — this narrowing does not touch it.
+    """
+    resp = (
+        sb.table("stocks")
+        .select("ticker,market,currency,fundamentals")
+        .eq("ticker", ticker)
+        .maybe_single()
+        .execute()
+    )
     if resp is None:
         return None, None
     row: dict[str, Any] | None = cast("dict[str, Any] | None", resp.data)

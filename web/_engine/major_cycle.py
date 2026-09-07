@@ -77,52 +77,75 @@ def ta_lowest(series: pd.Series, length: int) -> pd.Series:  # type: ignore[type
     return series.rolling(window=length, min_periods=1).min()
 
 
+def _pivots(
+    series: pd.Series,  # type: ignore[type-arg]
+    left_bars: int,
+    right_bars: int,
+    *,
+    lower: bool,
+) -> pd.Series:  # type: ignore[type-arg]
+    """Vectorised Pine Script ta.pivotlow / ta.pivothigh.
+
+    A pivot is a bar strictly beyond all `left_bars` before it and all
+    `right_bars` after it; the value is reported at bar[i + right_bars], which is
+    the first bar on which it could have been known.
+
+    ⚠️ WHY THIS IS VECTORISED, and it is not micro-optimisation. Written as a
+    Python loop, these two functions were **97% of the entire analysis**:
+    measured on AAPL's 11,525 bars, 200.8 ms + 206.3 ms against 0.4 ms for both
+    rolling windows combined, out of 417 ms for the whole `analyze_ticker`. A
+    761-ticker screen therefore spent roughly **250 seconds of pure Python CPU**
+    inside these two loops — more than everything else in the request put
+    together, database included. Vectorised, the same call is ~2 ms.
+
+    ⚠️ THE NaN HANDLING IS THE SAME LOGIC, not a simplification, and it is the
+    part worth checking. The loop skipped a bar whose value or whose neighbours
+    were NaN, before comparing. Here the comparison does that work: `NaN > x`,
+    `x > NaN` and `NaN > NaN` are all False in IEEE 754, so any NaN in the
+    window fails the mask and the bar produces no pivot — the identical outcome
+    by a different route. `~np.isnan(val)` is kept explicitly anyway: it is
+    already implied while `left_bars + right_bars >= 1`, and stating it means a
+    future caller passing 0 cannot silently change the answer.
+
+    ⚠️ Ties are NOT pivots, in both directions — the comparison is strict, as
+    Pine's is. A flat stretch of equal prices produces nothing, which is why the
+    equivalence test feeds plateaus as well as real series.
+
+    Byte-identical to the loop it replaces: `analytics/tests/test_pivots.py`
+    keeps that loop as the frozen reference and compares them over real price
+    histories, plateaus, NaN patterns and random data, with a control proving
+    the comparison can fail.
+    """
+    arr: np.ndarray[Any, np.dtype[Any]] = np.asarray(series.values, dtype=float)
+    n = len(arr)
+    out = np.full(n, np.nan)
+    if n <= left_bars + right_bars:
+        return pd.Series(out, index=series.index)
+
+    idx = np.arange(left_bars, n - right_bars)
+    val = arr[idx]
+    keep = ~np.isnan(val)
+    for j in range(1, left_bars + 1):
+        keep &= (arr[idx - j] > val) if lower else (arr[idx - j] < val)
+    for j in range(1, right_bars + 1):
+        keep &= (arr[idx + j] > val) if lower else (arr[idx + j] < val)
+
+    out[idx[keep] + right_bars] = val[keep]
+    return pd.Series(out, index=series.index)
+
+
 def ta_pivotlow(
     series: pd.Series, left_bars: int, right_bars: int  # type: ignore[type-arg]
 ) -> pd.Series:  # type: ignore[type-arg]
-    """
-    Exact Pine Script ta.pivotlow replication.
-    Strict inequality on both sides. Value placed at bar[i + right_bars].
-    """
-    arr: np.ndarray[Any, np.dtype[Any]] = series.values  # type: ignore[assignment]
-    n = len(arr)
-    out = np.full(n, np.nan)
-    for i in range(left_bars, n - right_bars):
-        val = arr[i]
-        if np.isnan(val):
-            continue
-        if any(np.isnan(arr[i - j]) for j in range(1, left_bars + 1)):
-            continue
-        if any(np.isnan(arr[i + j]) for j in range(1, right_bars + 1)):
-            continue
-        if (all(arr[i - j] > val for j in range(1, left_bars + 1))
-                and all(arr[i + j] > val for j in range(1, right_bars + 1))):
-            out[i + right_bars] = val
-    return pd.Series(out, index=series.index)
+    """Exact Pine Script ta.pivotlow replication. See `_pivots`."""
+    return _pivots(series, left_bars, right_bars, lower=True)
 
 
 def ta_pivothigh(
     series: pd.Series, left_bars: int, right_bars: int  # type: ignore[type-arg]
 ) -> pd.Series:  # type: ignore[type-arg]
-    """
-    Exact Pine Script ta.pivothigh replication.
-    Strict inequality on both sides. Value placed at bar[i + right_bars].
-    """
-    arr: np.ndarray[Any, np.dtype[Any]] = series.values  # type: ignore[assignment]
-    n = len(arr)
-    out = np.full(n, np.nan)
-    for i in range(left_bars, n - right_bars):
-        val = arr[i]
-        if np.isnan(val):
-            continue
-        if any(np.isnan(arr[i - j]) for j in range(1, left_bars + 1)):
-            continue
-        if any(np.isnan(arr[i + j]) for j in range(1, right_bars + 1)):
-            continue
-        if (all(arr[i - j] < val for j in range(1, left_bars + 1))
-                and all(arr[i + j] < val for j in range(1, right_bars + 1))):
-            out[i + right_bars] = val
-    return pd.Series(out, index=series.index)
+    """Exact Pine Script ta.pivothigh replication. See `_pivots`."""
+    return _pivots(series, left_bars, right_bars, lower=False)
 
 
 def _safe(v: Any) -> Optional[float]:

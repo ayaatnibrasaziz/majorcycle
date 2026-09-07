@@ -39,7 +39,24 @@ import type {
 // times during a multi-ticker run instead of jumping 0→100. Each chunk is a
 // fast warm function call on Vercel; per-ticker bar fetches are parallel and
 // results are cached server-side, so the extra requests are cheap.
-export const CHUNK_SIZE = 10;
+// ⚠️ RAISED 10 → 25 on 2026-09-08, and the number is an arithmetic bound rather
+// than a guess. A 761-ticker screen was 77 separate function invocations; once
+// the per-ticker database cost fell 25x (`get_cycle_bars_json`, see
+// web/api/analyze.py) the invocation overhead became the larger share, and 77 of
+// them is simply 46 more cold-start risks and 46 fewer warm-cache hits than the
+// work needs.
+//
+// The bound that makes 25 safe is the FALLBACK case, not the fast one: if the
+// new RPC were ever missing, every ticker reverts to the old ~0.85s path, so a
+// 25-ticker chunk at 2 workers is 13 x 0.85s ≈ 11s against `maxDuration: 60`.
+// That is 5x headroom on the WORST path — a margin, not a boundary (11i-b) —
+// and roughly 1s on the path that actually ships.
+//
+// Concurrency is deliberately NOT touched in the same change. POOL_SIZE x
+// analyze.py's `max_workers` is what caused the cross-region read-timeout storm
+// and the false skips it produced; leaving both exactly where they were keeps
+// this to one variable, so a regression is attributable.
+export const CHUNK_SIZE = 25;
 const POOL_SIZE = 3;
 // A chunk whose POST fails (cold-start timeout, transient network blip) is retried
 // inline this many extra times before its tickers are set aside — so one bad
