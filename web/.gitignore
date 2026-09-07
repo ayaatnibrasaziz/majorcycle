@@ -67,3 +67,5 @@ gates-failure.log
 # is the pipe's last stage), so the file it tells you to make is ignored too.
 gates.log
 e2e-rerun.log
+# Playwright output from a hand-run suite (pnpm e2e > e2e.log)
+e2e*.log
