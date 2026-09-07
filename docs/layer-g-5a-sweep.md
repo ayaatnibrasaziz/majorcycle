@@ -268,12 +268,16 @@ it is clean locally.
       element inside a type scale was not, and the swipe hint explained something the
       cut-off table already showed. The findings stand; the fixes were bigger than the
       problems.
-- [ ] **P9 · The three platforms' own go-live checklists.** ⚠️ **ADDED 2026-08-31 after reading
+- [x] **P9 · The three platforms' own go-live checklists — DONE 2026-09-07.** ⚠️ **ADDED 2026-08-31 after reading
       Stripe's, Supabase's and Vercel's current docs via their MCP servers.** Every pass above
       asks *"is our code right?"*. None asked *"is the ACCOUNT configured for production?"* —
       and the three vendors each publish a checklist of things that are invisible from inside
       the repo. Detail in the section below; **two are launch-affecting and one closes a
-      finding the audit had recorded as blocked.**
+      finding the audit had recorded as blocked.** ⚠️ **Session 2 (2026-09-07) went back for the
+      eleven ⬜ boxes**: nine closed with evidence from the live accounts, **one real defect
+      found and fixed** (5A-163 — two log lines carried a customer's personal data), and
+      seven left open with the reason named per item — three because the instruments here
+      cannot see them, four because they are the owner's decision rather than a measurement.
 
 ---
 
@@ -282,6 +286,10 @@ it is clean locally.
 Read from the live docs (Stripe *Go-live* + *Account* checklists, Supabase *Production
 Checklist*, Vercel observability/rollback docs) rather than from memory. Items marked ✅ were
 verified against the real accounts in this session; ⬜ are open; ⚠️ are the ones that matter.
+
+⚠️ **The ⬜ rows below are as they stood on 2026-08-31.** Nine of them were answered on
+2026-09-07 — see *P9 · session 2* further down, which is the current state. An open row is a
+claim about the last session's measurement, not about the account today (11aj).
 
 ### Stripe
 
@@ -374,6 +382,296 @@ turning it on **before** launch rather than after: this project's own history is
 nobody can measure gets optimised against anyway (11w).
 
 ---
+
+
+---
+
+## P9 · session 2 — the open boxes, answered against the live accounts — 2026-09-07
+
+Session 1 left **eleven ⬜ boxes**. This session went back for them, following the rule
+session 1 learned the hard way: **the search has to run where the answer lives.** Nothing
+below was answered by grepping the repository. Sources are named per row — the Supabase
+Management API, Supabase's own public auth-settings endpoint, the Vercel project API,
+Vercel's production runtime-error table, and the live `www.majorcycle.com` wire.
+
+### Closed with evidence
+
+| Item | Answer | How it was measured |
+|---|---|---|
+| **Logs contain no card data or PII** (Stripe) | **One real defect, fixed** — see 5A-163. Otherwise clean | All 47 `console.*` calls in `web/app` + `web/lib`, plus the Python cron, read line by line |
+| **Email confirmations are on** (Supabase) | ✅ `mailer_autoconfirm: false` | `GET /auth/v1/settings` on the project — Supabase's own endpoint, so it reports the *running* configuration rather than our belief about it |
+| **Only the two agreed sign-in methods exist** | ✅ `email: true`, `google: true`, **every other provider false**, `anonymous_users: false`, `phone: false` | Same endpoint. Decision #22 exactly, with nothing left switched on from an experiment |
+| **Security Advisor still INFO-only** | ✅ 10 lints, all `rls_enabled_no_policy`, all the deliberate deny-all tables (F-004). No WARN, no ERROR | Supabase Management API, re-run 2026-09-07 |
+| **Free-plan inactivity pause** | ✅ Cannot bite us. Supabase pauses a free project after 7 days with **no activity**; two crons write every night, and the project reads `ACTIVE_HEALTHY` | Management API |
+| **A rollback target exists** | ✅ The previous production deployment is `READY` and promotable (`majorcycle-hi4bu7kbz…`), one behind the current `majorcycle-oimjvh8vp…` (the PR #92 merge) | Vercel deployments API |
+| **Post-deploy verification, done for real** | ✅ Landing, `/pricing`, `/articles`, `/robots.txt` all **200**; `/stocks/us/AAPL` **307 → /login** signed out; all five security headers present; **CSP is enforcing**, not report-only | `curl` against `www.majorcycle.com`, 2026-09-07 |
+| **apex → www is a 308** | ✅ `majorcycle.com` → `https://www.majorcycle.com/` with **308**, not 301/302 | Same. Carried as an open owner item in the doc-sweep notes; it is done |
+| **Preview deployments are still gated** | ✅ Vercel Authentication on, `all_except_custom_domains`; no password protection, no trusted-IP rules | Vercel project deployment-protection API |
+
+### 5A-163 🟠 · Two log lines shipped a customer's personal data to the platform log — ✅ FIXED
+
+Stripe's checklist asks that logs carry no card data or PII, and this sweep had **never read a
+single log line for it**. Card data turns out to be a non-question — Checkout is hosted, so a
+card number cannot reach this codebase — and of the 47 `console.*` calls, 45 log a UUID, a
+Stripe object id or an error code. **Two did not.**
+
+- `lib/email/send.ts` logged `input.subject` when `RESEND_API_KEY` is missing. Six of the seven
+  subjects are ours; the **referral** subject is `"<name>" thought you'd like MajorCycle`, so
+  that line writes a person's own name into the log.
+- `lib/email/send.ts` and `contact/actions.ts` both log **Resend's raw error body**. We do not
+  control what Resend puts in a `validation_error` message, and the request it is complaining
+  about carries a real recipient's address.
+
+⚠️ **This is not theoretical, and that is the only reason it is rated 🟠.** Vercel's production
+error table shows the exact line firing on 2026-09-01 from `/account` — the referral form —
+with Resend's 422 body logged verbatim. The mechanism is live on a path a customer can reach;
+the observed instance happened to name `example.com` rather than a person.
+
+**Fixed by redacting, not by silencing.** `lib/redact.ts` masks addresses and leaves everything
+else intact, because that body is the only thing that says *why* a customer's email did not
+arrive, and the owner cannot debug from the outside. The subject line becomes `input.heading` —
+all seven headings are fixed literals we write, and they identify the failing email just as well.
+
+⚠️ **The guard has two halves that fail in opposite directions** (`e2e/log-redaction.spec.ts`,
+pure and credential-free): one drives the real `redactEmails`, the other **reads the source**,
+because a perfect redactor protects nothing if the next log line does not call it (11c-iv).
+Proven by removing the redaction on purpose — the source half went red and named the file and
+the argument. Its load-bearing control is that non-address text survives **character for
+character**: a `redactEmails` returning one fixed string would satisfy every masking assertion
+while destroying the diagnostic the line exists for (11am).
+
+### Measured and NOT defects
+
+- **`Failed to find Server Action` — 6 occurrences, 1 user, over a month, on `/`.** Next's
+  documented behaviour when a tab left open across a deployment submits an action whose id no
+  longer exists. It resolves on reload and cannot affect a fresh visitor. Recorded so the next
+  session does not re-derive it (11aj).
+- **The public pages are edge-cached and should be.** `/`, `/learn`, `/terms` and `/contact` all
+  return `public, max-age=0, must-revalidate` with a Vercel cache HIT (ages 6–8 hours). They
+  carry nothing that varies by viewer, and a deploy purges them.
+- **The referral send fails honestly.** The 422 above returned `{ ok: false }` with a real
+  message to the reader — checked, because a failed send reported as success is this repo's
+  most-repeated defect class (11e) and the log line alone could not tell the two apart.
+
+### ⚠️ Still open — and WHY, per item
+
+**Three the instruments here genuinely cannot see**, said plainly rather than left to look
+covered (14g). ✅ **All three were read in the dashboards the same day — see *P9 · session 3*
+below, which is the current state of these rows.**
+
+| Item | Why not answerable here |
+|---|---|
+| **OTP expiry ≤ 1 hour** (Supabase) | `get_advisors` returns **database** lints only; the auth-config lints are a different surface, so its silence is not evidence. The public settings endpoint does not publish the expiry. **Dashboard → Authentication → Email** |
+| **SSL enforcement · network restrictions** (Supabase) | Neither is exposed by the MCP tools or the public endpoint |
+| **Vercel firewall / bot protection** | No MCP tool; needs the dashboard or a `VERCEL_TOKEN` this session does not hold |
+
+**And four that are owner decisions rather than measurements:** 2FA on both platforms
+(`5A-003`), the Stripe restricted-business check, exercising the rollback (it changes what
+production serves, so it is not mine to run), and Speed Insights (`5A-006`). ⚠️ Session 3
+measured the 2FA half of that: **Vercel and Supabase are both Inactive**, and Stripe could not
+be read because the dashboard is signed out and signing in needs the owner's own credentials.
+
+⚠️ **One measurement that looks stronger than it is.** `/deletion-requested`, `/reactivate` and
+`/account/update-password` all answered `private, no-store` on production — **but signed out
+that header comes from the proxy's 307, before any page renders.** It says the refusal is
+right and **nothing** about the page's own response. That is the exact trap recorded in 11a's
+fifth instance. The page half is covered by `check:render-modes` against the build artifact; it
+has not been read on the production wire with a session.
+
+
+### P9 · session 3 — the three "no instrument can see it" rows, read in the dashboards — 2026-09-07
+
+Session 2 left three items marked *cannot be answered from here* and four marked *owner
+decision*. The owner's instruction was to go and look, so all of it was read in their own
+signed-in browser. **Every row below is a dashboard reading, not an inference** — and two of
+them contradict something this repo has believed since Phase 1.
+
+⚠️ **Nothing was changed.** Every one of these is a settings write, and a settings write is the
+owner's to authorise. This session only measured.
+
+| Row | Measured | Verdict |
+|---|---|---|
+| **Supabase — email OTP expiry** | **3,600 seconds** | ✅ **Passes.** Supabase's checklist asks for ≤ 1 hour and this is exactly 1 hour. Session 2 was right to refuse to infer it from the advisor's silence |
+| **Supabase — leaked-password protection** | **On**, HaveIBeenPwned | ✅ Not on any checklist we were tracking, and it is the strongest single control on the sign-up form |
+| **Supabase — minimum password length** | 8, no character-class requirement | ✅ Supabase's own floor is 6 and it recommends 8 |
+| **Supabase — enforce SSL on incoming connections** | ✅ **ON — owner-approved and applied 2026-09-07.** It was OFF | ✅ **DONE.** Zero risk, and that was established before asking: a repo-wide grep finds **no** direct Postgres connection at all — no `postgresql://`, no `psycopg`, no `DATABASE_URL`. Everything, the cron included, goes through the Supabase client over HTTPS. ⚠️ **The dashboard warns of a database RESTART and a few minutes of downtime**, which the approval had not covered, so the first attempt was cancelled and re-asked. Applied with the test suite stopped, then re-run against the enforced database rather than assumed safe |
+| **Supabase — network restrictions** | **None** — *"accessible by all IP addresses"* | ✅ **Recommend leaving as it is, and this is the useful half.** Supabase's checklist asks for it in general; it does not apply to us. Our two callers are Vercel functions and GitHub Actions, both on **dynamic** IPs, so an allow-list would break the site and the nightly refresh and would need re-editing whenever a platform rotates a range. Recorded as *considered and declined*, not as *not done* |
+| **Supabase — connection logging** | Off | ⬜ Optional. Useful only once there is a direct connection to log, i.e. never, today |
+| **Vercel — firewall** | **Active.** System mitigations **active**, custom rules **0**, bot protection **inactive** | ✅ The platform's own DDoS layer is on and working; see the traffic reading below |
+| **Vercel — 2FA** | ✅ **ACTIVE** — Authenticator App (TOTP), enrolled by the owner 2026-09-07. It was inactive with 0 passkeys | ✅ **DONE.** ⚠️ Worth keeping in view: Google and GitHub are both linked as sign-in methods, so the account's floor is still whatever **those** accounts enforce |
+| **Supabase — MFA** | ✅ **ACTIVE** — authenticator added by the owner 2026-09-07 13:49 (+1000). It was *"no authenticator apps yet"* | ✅ **DONE.** ⚠️ Supabase now shows its own warning on that page: *"Losing access to your only app will permanently lock you out of your account."* One app and one phone is the remaining single point of failure on the account that **is** the database |
+| **Stripe — 2FA** | ✅ **ACTIVE, and had been all along** — authenticator app, added **10 July 2026**, marked Default. Read once the owner signed the dashboard in | ✅ **`5A-003` CLOSED.** ⚠️ **The doubt was right in both directions**: the owner said on 2026-08-31 that an authenticator app was *not* set up, while `layer-f-audit.md` had recorded them typing a 2FA code. The log was right and the recollection was wrong — which is exactly why the finding was written as *confirm* rather than asserted either way |
+
+### 🟢 The firewall reading is a finding in its own right
+
+Past 24 hours on `majorcycle.com`: **598 allowed, 1,100 denied, 1 challenged.** The denials are
+all Vercel's automatic DDoS mitigation, and they come from **four Google Cloud addresses in four
+regions** (`34.75.161.22`, `34.126.213.175`, `34.32.116.23`, `35.228.51.224`) at **277–309
+requests each** — an even, distributed, automated pattern against a site that **has not launched
+and has no customers**.
+
+**Nothing is wrong and nothing needs doing**: the platform layer is absorbing all of it, no IP is
+banned, no alert is active. It is recorded because it answers a question nobody had asked — *what
+actually reaches this domain?* — and because it sets a baseline. **Post-launch, the number worth
+watching is not "are we being scanned" (we are, constantly) but whether the ALLOWED figure starts
+to look like the denied one.**
+
+⚠️ **Bot protection is inactive and is deliberately left alone.** It is a settings change, it sits
+behind Vercel's Bot Management product, and turning it on without understanding what it
+challenges risks blocking a real reader on a site that has none to spare. Owner's call.
+
+### ❌ CORRECTION — this repo has said "Supabase free tier" since Phase 1, and it is not true
+
+The organisation is on the **Pro plan at US$25/month**, with a **Micro** compute instance and
+**spend cap enabled**. Read off the billing page, not inferred.
+
+Three things follow, and the third is the one that matters:
+
+1. **CLAUDE.md decision #4 and the tech-stack table are wrong** where they say "free tier". They
+   are corrected in the same commit as this note.
+2. **Session 2's "free-plan inactivity pause cannot bite us" row was right by accident.** Its
+   reasoning — *the crons write nightly, so the project is never inactive* — is sound and also
+   answers a question that does not apply to a Pro project. **A conclusion that survives having
+   its premise removed is still an unverified conclusion** (14f: a mechanism that is genuinely
+   present is not thereby the one responsible).
+3. ⚠️ **Spend cap on has a launch-day consequence worth stating plainly.** Supabase's own wording:
+   exceeding the included quota makes projects *"unresponsive or enter read-only mode"* rather
+   than billing more. So the failure mode under an unexpected traffic spike is **the product
+   stops working**, not a surprise invoice. That is very likely the right trade for a
+   pre-revenue product — it is written down here so it is a **choice** rather than a discovery
+   made on the day.
+
+
+### 5A-164 🟡 · P8's own responsive sweep passed with no time to spare, and timed out the next day — ✅ FIXED
+
+The guard written in P8 to enforce non-negotiable #3 walked **30 URLs × 3 widths = 90
+navigations** inside one test with a 5-minute budget. It passed on 2026-09-06 and **timed out on
+2026-09-07 with nothing changed** — on the first attempt *and* the retry, once while navigating
+to `/learn/is-a-dividend-safe` and once inside the settle wait.
+
+⚠️ **This is 11i-b in the TIME dimension, and the pass that wrote it is the pass that missed it.**
+P8's whole finding was that a header clearing 375px *by 1.1px* is a defect waiting for a slightly
+wider button; its own guard then shipped clearing a 5-minute budget by an unknown margin, waiting
+for a slightly slower machine. **A boundary is not a margin — including when the units are
+seconds.**
+
+⚠️ **And the cost of leaving it is not one red run.** A guard that fails on the weather is a guard
+people learn to re-run rather than read (11t), and this one is the only derived enforcement of a
+non-negotiable. **A flaky guard protects less than an honest gap, because a gap is visible.**
+
+**Fixed by splitting one test per width**, so each gets the whole budget for a third of the work
+and the failure names the width instead of the run. Not by raising the number: the same 90
+navigations under one timeout would still be one slow day from red, and a bigger constant only
+moves the edge.
+
+### The 20 failures that did not reproduce — recorded, not explained
+
+The same run reported **20 failures, every one of them a Stock Detail test** (`app-a11y`,
+`app-contrast`, `stock-not-found`, `stock-currency`, `delisted-notice`, `report-download`,
+`dialog-focus`, `page-weight`, `entitlement-routes`). Re-running `stock-not-found.spec.ts` alone
+gave **10 passed**; re-running the whole suite gave **785 passed, 1 failed** — and that one was
+the timeout above, not any of the twenty.
+
+**Counts reconciled both ways:** run 1 was 745 passed + 20 failed + 21 not run = 786; run 2 was
+785 + 1 = 786 (11i — read the whole summary block, not the last line matching *passed*).
+
+⚠️ **What is NOT claimed: a cause.** The shape — the heaviest page in the product, every one of
+its tests, in a single 22-minute parallel run against a cold dev server and the live database —
+is consistent with contention, and consistent with several other things. **A plausible mechanism
+that is genuinely present is the hardest kind of wrong explanation to catch** (14f), so it is
+written down as *not reproduced, cause unknown* rather than given a story. If it returns, it has
+a paragraph waiting for it and a date to measure from.
+
+⚠️ Footnote, and it is the repo's own standing trap: the first run reported `EXIT=0` because the
+command ended `... > log; echo EXIT=$?; tail -30` — **`$?` was `tail`'s**. The 20 failures were
+found by reading the log, not the status. Same defect as the `grep | tail` reading in F-027.
+
+
+### P9 · what is left — three of the four closed, 2026-09-07
+
+⚠️ Written by walking **all 22 rows** of the three session-1 tables plus the four
+launch-readiness notes, not by remembering. A done row is a claim about the last session's
+intent (11j / 5A-028).
+
+**Closed: 21 of 22.** Two were re-confirmed rather than cited from a week ago: the **Security
+Advisor** (10 lints, all `rls_enabled_no_policy`, the deliberate deny-all tables) and the
+**Performance Advisor** (7 unused indexes on low-traffic tables plus the auth
+connection-strategy note) — both **INFO only, no WARN, no ERROR**. The owner then authorised the
+last three, and all three landed the same day.
+
+#### ✅ Rollback — exercised in BOTH directions, and measured
+
+Production was rolled back to the previous deployment and restored. The evidence is a build
+fingerprint (the sorted set of chunk filenames) read off the live site at each step, because
+*"the dashboard says Production"* is a claim about Vercel's UI and not about what a reader is
+served:
+
+| | landing | /learn |
+|---|---|---|
+| before | `f136df99429b` | `cdfd76185057` |
+| rolled back | `2af813d89561` | `a675a8f909c3` |
+| restored | `f136df99429b` | `cdfd76185057` |
+
+Site up throughout (200), apex still **308**, gated routes still **307**.
+
+⚠️ **Two facts that only doing it could surface.** Vercel warns that an Instant Rollback also
+**reverts cron jobs to the previous deployment's state** — checked before confirming, and
+`vercel.json` is byte-identical across both deployments, so nothing was at risk. **That will not
+always be true; check it every time.** And **on Hobby the rollback reaches exactly ONE deployment
+back** (*"Upgrade to Pro to roll back to an earlier deployment"*), so a bad deploy that survives
+one further deploy is out of the button's reach — an argument for the Hobby → Pro decision that
+had not been made before.
+
+#### ✅ Bot protection — enabled in LOG mode, deliberately
+
+`Challenge` blocks "requests from non-browser sources". **Stripe's webhook is a non-browser
+request**, and a challenged webhook fails silently while payments appear to work — the exact
+shape of defect this repo keeps paying for. So the ruleset is on in **Log**, which watches
+everything and blocks nothing; Challenge becomes a decision with evidence once the log shows what
+it would have caught. **AI Bots left on Allow**: blocking scrapers is a content-strategy call
+about `/learn` and `/articles`, not a security one.
+
+#### ✅ Speed Insights — installed, and checking it first is what saved it
+
+Not a toggle: a package plus a `<SpeedInsights />` in the root layout. ⚠️ **The package carries a
+SECOND, external script host** (`https://va.vercel-scripts.com`), which our enforcing CSP does not
+allow — so had production used it, Speed Insights would have been **silently blocked and collected
+nothing**, presenting as an empty dashboard rather than a broken one (11v). Read out of the
+package's own `getScriptSrc` rather than assumed: production uses the **same-origin**
+`/_vercel/speed-insights/script.js`, already covered by `'self'`, and the external host appears
+only when `NODE_ENV` is not production. It is therefore allowed in the **dev** policy alone, and
+the shipped `script-src` is **byte-identical to before**. Guarded in `e2e/csp.spec.ts` in both
+directions, and broken on purpose to prove the guard catches a leak into production.
+
+Render modes were re-checked rather than assumed — a client component in the ROOT layout is
+exactly what made the whole site dynamic once before (11s). **9 prerendered, 6 dynamic: unchanged.**
+
+**Open: one.** The **Stripe restricted-business check** — a question about what the business does,
+answered by Stripe, and the owner is handling it.
+
+**Two more that were never P9 rows and belong on the launch page:** nothing watches the running web
+app (Sentry is a Phase 2 decision, so a 500 would be found by a customer), and **Vercel Hobby →
+Pro**, deferred by the owner — now with the one-deployment rollback limit as a second argument.
+
+### ⚠️ Two things to WATCH on the next nightly run, and one run answers both
+
+The US+CA refresh had not fired at the time of writing (scheduled 01:30 UTC, then 04:56 UTC with
+nothing queued). That is **not yet a finding** — this repo's scheduled runs landed 1.5–4.3 hours
+late all week and GitHub treats cron as best-effort. It matters because the next run is the first
+under **two** changes at once:
+
+1. **The new 01:30 UTC schedule** (decision #32) only reached `main` when PR #92 merged on
+   2026-09-06. ⚠️ Decision #32's own instruction applies: *if the lag survives the move, the
+   timing theory is wrong — do not simply push the time later again.* The test is whether the US
+   equities get **Monday's** bar.
+2. **SSL enforcement**, enabled 2026-09-07. The pipeline uses the Supabase client over HTTPS and a
+   repo-wide grep found no direct Postgres connection, so it should be unaffected — **but that is
+   a prediction, and the cron is what turns it into a measurement** (11o: a command that succeeded
+   is not a state that is true).
+
+**The data itself is current**: the freshest bar is **Friday 2026-09-04** across 861 tickers, and
+the check was run on the Monday — no session had closed since. A stale-looking date that is only
+the weekend is exactly the sort of thing reported as an incident, so it is written down as normal.
 
 ## ⚠️ What this sweep CANNOT check — stated before it starts, not after
 

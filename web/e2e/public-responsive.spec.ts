@@ -63,13 +63,23 @@ async function settled(page: Page) {
 }
 
 test.describe('the public site fits a phone', () => {
-  test('no public page scrolls sideways at 375, 360 or 320px', async ({ page }) => {
-    test.setTimeout(300_000);
+  /**
+   * ⚠️ ONE TEST PER WIDTH, and that is a timeout decision rather than a stylistic one.
+   * As a single test this walked 30 URLs x 3 widths = 90 navigations against a cold
+   * Turbopack dev server, and it sat right on the 5-minute budget: it passed on
+   * 2026-09-06 and TIMED OUT on 2026-09-07 having changed nothing, on the retry too.
+   * That is 11i-b in the time dimension - a test that passes with no margin is a test
+   * that fails on a slower day, and a flake in a guard is how a guard gets ignored
+   * (11t). Split, each width gets the whole budget for a third of the work, and the
+   * failure names the width instead of the run.
+   */
+  for (const width of WIDTHS) {
+    test(`no public page scrolls sideways at ${width}px`, async ({ page }) => {
+      test.setTimeout(300_000);
 
-    const failures: string[] = [];
-    let measured = 0;
+      const failures: string[] = [];
+      let measured = 0;
 
-    for (const width of WIDTHS) {
       await page.setViewportSize({ width, height: 812 });
       for (const path of PUBLIC_PATHS) {
         await page.goto(path);
@@ -101,18 +111,16 @@ test.describe('the public site fits a phone', () => {
           );
         }
       }
-    }
 
-    // ⚠️ The control. Without it a stale registry, a failed navigation or a
-    // viewport call that silently did nothing reports a clean sweep having
-    // measured nothing (14g).
-    expect(PUBLIC_PATHS.length, 'the derived path list collapsed').toBeGreaterThanOrEqual(28);
-    expect(measured, 'no page/width combination was measured').toBe(
-      WIDTHS.length * PUBLIC_PATHS.length,
-    );
+      // ⚠️ The control. Without it a stale registry, a failed navigation or a
+      // viewport call that silently did nothing reports a clean sweep having
+      // measured nothing (14g).
+      expect(PUBLIC_PATHS.length, 'the derived path list collapsed').toBeGreaterThanOrEqual(28);
+      expect(measured, `no page was measured at ${width}px`).toBe(PUBLIC_PATHS.length);
 
-    expect(failures, `these overflow a phone:\n  ${failures.join('\n  ')}`).toEqual([]);
-  });
+      expect(failures, ['these overflow a phone:', ...failures].join('\n  ')).toEqual([]);
+    });
+  }
 
   test('the two confinement pages are clean at 320px too', async ({ page }) => {
     // They are not in PUBLIC_PAGES, so the derived sweep above cannot reach them.

@@ -1,6 +1,7 @@
 'use server';
 
 import { renderBrandEmail } from '@/lib/email/brandEmail';
+import { redactEmails } from '@/lib/redact';
 
 /** Where contact-form submissions are emailed. Defaults to the live support@
  *  inbox (Cloudflare Email Routing → owner Gmail), overridable via env. */
@@ -119,7 +120,13 @@ export async function sendContact(
     });
 
     if (!res.ok) {
-      console.error('Contact form: Resend send failed', res.status, await res.text());
+      // Redacted: Resend decides what its error body quotes, and the request it is
+      // complaining about carries the sender's own address (5A-163).
+      console.error(
+        'Contact form: Resend send failed',
+        res.status,
+        redactEmails(await res.text()),
+      );
       return {
         status: 'error',
         message: 'Something went wrong sending your message. Please try again shortly.',

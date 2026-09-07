@@ -63,3 +63,7 @@ lighthouse-report/
 
 # pnpm gates writes a failing gate's full output here (see scripts/gates.mjs)
 gates-failure.log
+# ...and the script's own advice is `pnpm gates > gates.log 2>&1` (never a pipe, or $?
+# is the pipe's last stage), so the file it tells you to make is ignored too.
+gates.log
+e2e-rerun.log

@@ -1612,7 +1612,7 @@ never forge entitlement. Migration `20260523133635` + `20260711000000` +
 |---|---|---|
 | `stripe_customer_id` | text UNIQUE | Stripe `cus_…`. |
 | `stripe_subscription_id` | text | Active `sub_…` — portal/cancel/sync. |
-| `subscription_status` | text | `trialing`/`active`/`past_due`/`canceled` (our mapped view of Stripe status). |
+| `subscription_status` | text | `trialing`/`active`/`past_due`/`canceled` (our mapped view of Stripe status). ⚠️ **Not every live value came from Stripe.** On 2026-09-07 the owner's own account was set to `active` **by hand, with `stripe_customer_id` NULL**, to hold a subscription without paying for one. Nothing overwrites it, because `lib/billing/sync.ts` matches on the customer or subscription id and there is neither. **So `active` does NOT imply a Stripe object exists** — anything that joins the two, or reasons from one to the other, has to tolerate the gap. `/api/portal` already does (no customer id → 303 back with `?billing=none`), and `plan` / `current_period_end` were deliberately left NULL rather than invented, so the account shows no renewal date instead of a false one (11aa). |
 | `subscription_plan` | text | `monthly`/`annual` (from the Price lookup_key). |
 | `subscription_currency` | text | Locked `usd`/`aud`/`cad`. |
 | `trial_ends_at` | timestamptz | Stripe `sub.trial_end`. |

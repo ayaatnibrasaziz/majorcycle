@@ -805,3 +805,40 @@ rewrite; the data sweep predates the dividend re-pull of the whole universe. Ver
 confirmed working on 2026-08-31 — a READY preview for `fbf97fc` returned the real
 `/articles` page through the SSO gate — so Layer 3 is **not** blocked, contrary to an earlier
 claim in this session that was taken from a warning banner instead of from trying it.
+
+---
+
+## The delta — P9, 2026-09-07
+
+Three guards added, one changed. Recorded here because this document's whole job is to say what
+the suite can and cannot see, and a new guard silently changes that answer.
+
+**`e2e/log-redaction.spec.ts` — new, 7 tests, pure and credential-free.** Covers a surface that
+had **no test of any kind**: what our own `console.*` lines write to the platform log. Two halves
+that fail in opposite directions — one drives the real `redactEmails`, the other reads the source
+so the next log line cannot skip it (11c-iv). ⚠️ **Its scope claim:** it walks every `.ts`/`.tsx`
+under `app/` and `lib/` — **127 files today, with a floor of 100 asserted** so a broken path
+cannot report a clean sweep having read nothing. It does **not** see the Python cron, the
+`_engine` vendored copy, or `scripts/`; those were read by hand once, on 2026-09-07, and are not
+guarded.
+
+**`e2e/csp.spec.ts` — one test added.** Asserts that `va.vercel-scripts.com` (the Speed Insights
+DEBUG host) is in the dev policy and **never** in the shipped one, plus the whole production
+`script-src` string so a *different* origin sneaking in also fails. Driven against the real
+builder rather than a fetched header, because the production policy cannot be observed from a dev
+server (11v).
+
+**`e2e/public-responsive.spec.ts` — one test became three, one per width.** Not a coverage change:
+the same 30 URLs at the same 375 / 360 / 320px. It was a **timeout** change (5A-164) — 90
+navigations under one 5-minute budget passed one day and timed out the next, and a guard that
+fails on the weather is one people learn to re-run rather than read.
+
+⚠️ **What P9 did NOT add a guard for, said plainly.** The three settings changed that day — SSL
+enforcement, bot protection in Log mode, and 2FA — are **account configuration, not code**, so
+nothing in this repository can assert them and nothing does. They are recorded in
+`layer-g-5a-sweep.md` § *P9 · session 3* with the date they were read. **A setting nobody can test
+is a setting that can be turned off without anything going red**; the only control is to re-read
+it, which is what a checklist is for.
+
+**Suite total: 789 tests in 53 files** (786 → 788 with the responsive split and the redaction
+guard, → 789 with the CSP one).

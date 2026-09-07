@@ -283,4 +283,31 @@ item instead.
 
 ---
 
+## ⚠️ Changed since this audit closed — 2026-09-07
+
+This document is the record of **one** audit, applied in full on 2026-08-15. It is not a standing
+statement that the published pages are still accurate, and treating a closed audit as a current
+guarantee is how a page goes quietly wrong (11aj: a done row is a claim about the day it was
+written).
+
+**One change since:** `@vercel/speed-insights` went into the root layout (P9, `5A-006`), so the
+Privacy Policy's processor line moved from *"Vercel — hosting"* to *"Vercel — hosting and site
+performance measurement"*. Vercel was already a listed recipient, so this adds no new party — it
+widens the **purpose**, which is what APP 6 governs, and the precedent is this audit's own
+finding 4, which added Google to that list the day Google Identity Services started loading.
+
+**Deliberately NOT changed, and verified rather than assumed:** the Cookies clause. The package's
+own source contains no `document.cookie`, no `localStorage`, no `sessionStorage` and no
+`navigator.userAgent` read, and it reports the route **pattern** (`/stocks/[market]/[ticker]`)
+rather than the URL — so *"we do not build advertising profiles"* stays true and no consent
+banner is owed. **If either of those facts changes, the cookie clause and the retention clause
+both have to move with it.**
+
+**The general rule this earns, and it belongs beside finding 3's:** a dependency that talks to the
+outside is a change to the **published pages**, not only to `package.json`. `architecture.md` §6.6
+carried the sentence *"no analytics… nothing in `package.json`"* and this change falsified it the
+same hour, with nothing able to notice.
+
+---
+
 **End of legal-audit.md.**

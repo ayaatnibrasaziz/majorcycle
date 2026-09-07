@@ -1,4 +1,5 @@
 import { renderBrandEmail } from '@/lib/email/brandEmail';
+import { redactEmails } from '@/lib/redact';
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
 
@@ -38,7 +39,10 @@ export interface SendBrandEmailInput {
 export async function sendBrandEmail(input: SendBrandEmailInput): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.error('sendBrandEmail: RESEND_API_KEY not set — not sent:', input.subject);
+    // `heading`, never `subject`: the referral subject carries the sender's own name,
+    // and this line only needs to say WHICH email failed. All seven headings are fixed
+    // literals we write (P9, 5A-163).
+    console.error('sendBrandEmail: RESEND_API_KEY not set — not sent:', input.heading);
     return false;
   }
 
@@ -67,7 +71,13 @@ export async function sendBrandEmail(input: SendBrandEmailInput): Promise<boolea
       }),
     });
     if (!res.ok) {
-      console.error('sendBrandEmail: Resend send failed', res.status, await res.text());
+      // Redacted, not dropped: this body is the only thing that says WHY a customer's
+      // email did not arrive, and Resend decides what goes in it (5A-163).
+      console.error(
+        'sendBrandEmail: Resend send failed',
+        res.status,
+        redactEmails(await res.text()),
+      );
       return false;
     }
     return true;

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { usesNonce } from '../lib/csp';
+import { usesNonce, contentSecurityPolicy } from '../lib/csp';
 
 /**
  * Every response carries an enforcing Content-Security-Policy, in the form its
@@ -119,6 +119,47 @@ test.describe('content-security-policy', () => {
     // A constant nonce is decoration: anyone who can read one page can then write
     // a script that passes.
     expect(second).not.toBe(first);
+  });
+
+  /**
+   * ⚠️ The DEV-ONLY origin must stay dev-only — P9 / `5A-006`.
+   *
+   * `@vercel/speed-insights` loads `/_vercel/speed-insights/script.js` (same origin,
+   * already covered by `'self'`) in production, and swaps to a DEBUG build on
+   * `https://va.vercel-scripts.com` whenever `NODE_ENV` is not production. That host
+   * is therefore allowed in the dev policy and **must never reach the shipped one** —
+   * adding an external script origin to a live CSP is a real widening of what can run
+   * on a page carrying a session.
+   *
+   * Driven against the real builder rather than a fetched header, because the
+   * production policy cannot be observed from a dev server (11v: a check that cannot
+   * see the thing reports exactly what a clean system reports). Both directions are
+   * asserted: without the dev arm this test would pass on a build that had simply
+   * dropped Speed Insights, having proved nothing.
+   */
+  test('the Speed Insights debug host is in the dev policy and NOT in production', () => {
+    const args = {
+      nonce: 'test-nonce',
+      supabaseUrl: 'https://example.supabase.co',
+      siteOrigin: 'https://www.majorcycle.com',
+    };
+    const prod = contentSecurityPolicy({ ...args, dev: false });
+    const dev = contentSecurityPolicy({ ...args, dev: true });
+
+    expect(prod, 'an external script origin leaked into the shipped policy').not.toContain(
+      'va.vercel-scripts.com',
+    );
+    expect(dev, 'the dev policy would refuse the Speed Insights debug script').toContain(
+      'va.vercel-scripts.com',
+    );
+
+    // The production script-src is exactly what it was before Speed Insights: self,
+    // the nonce, and the two Google Identity origins. Stated as a whole rather than as
+    // a single "not" so a DIFFERENT origin sneaking in also fails.
+    const scriptSrc = prod.split('; ').find((d) => d.startsWith('script-src '));
+    expect(scriptSrc).toBe(
+      "script-src 'self' 'nonce-test-nonce' https://accounts.google.com https://apis.google.com",
+    );
   });
 
   test('the redirects and the refusals carry it too', async ({ request }) => {
