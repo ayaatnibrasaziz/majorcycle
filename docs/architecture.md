@@ -145,6 +145,14 @@ Measured on the live database three weeks later: **478 of MNST's 501 stored bars
 
 Net: with the RPC + co-location a heavy stock goes from ~5.6s to a few hundred ms. The **detail page uses the same RPC** — `web/api/cycle.py` (`_load_price_bars`) and `web/lib/stocks.ts` (`loadPriceBars`) both call `get_price_bars_json` with the same paginated fallback — so the Stock Detail page benefits too.
 
+⚠️ **The SCREENER stopped using that RPC on 2026-09-08, and the ~230ms above had become 826ms.** `get_price_bars_json` builds one `jsonb` **object per bar** — 11,525 of them for AAPL — and re-measuring on the live database showed that construction, not the scan, is essentially the whole cost: **826 ms**, against **18 ms** for the identical scan aggregated without a jsonb per row. At 761 tickers that is ~630 seconds of database CPU for one screen, and it is most of why a full-universe run had gone from ~200s in July to **1,529s**.
+
+`web/api/analyze.py` now calls **`get_cycle_bars_json(p_ticker)`** instead: four comma-delimited strings (`d`,`h`,`l`,`c`) plus `n`, carrying only High/Low/Close because `calculate_cycle_metrics` reads those three and nothing else — `open` and `volume` were fetched, parsed into the DataFrame and never touched. **15 ms, 785 kB** against 826 ms and 1,809 kB, with a fallback chain to the old RPC and then to pagination so it is safe to deploy either side of the migration.
+
+⚠️ **Two readers, two shapes — deliberately.** The Stock Detail page draws candlesticks and genuinely needs `open`, `volume` and every date, so `web/api/cycle.py` and `web/lib/stocks.ts` keep `get_price_bars_json` unchanged. ⚠️ **And the values are TEXT, not float8**: Postgres renders a float8 at 15 significant digits by default, so the obvious `array_agg(::float8)` returned every price ~1e-13 off the stored numeric and a 25-ticker comparison matched **zero** of them. Full reasoning and the four measured encodings: the migration's own header, and CLAUDE.md 11ay.
+
+⚠️ **The database was only half of it.** `ta_pivotlow`/`ta_pivothigh` in the cycle math were Python loops over every bar and measured **200.8 ms + 206.3 ms of a 417 ms `analyze_ticker`** — 97% of the analysis, ~250 further seconds per screen. Vectorised on 2026-09-08 (443 ms → 6.3 ms per analysis), with the original loop frozen in `analytics/tests/test_pivots.py` as the reference and 90 real analyses compared field by field.
+
 ---
 
 ## 3. Caching Layers (Critical — This Is How $0 Works)
