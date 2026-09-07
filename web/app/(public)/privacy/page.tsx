@@ -96,8 +96,20 @@ export default function PrivacyPage() {
                 <li>
                   <strong>Resend</strong> — email delivery
                 </li>
+                {/* "and site performance measurement" added 2026-09-07 (P9, 5A-006),
+                    the same day `<SpeedInsights />` went into the root layout. Vercel was
+                    already a listed processor, so this adds no RECIPIENT — but it widens
+                    the PURPOSE from hosting to hosting plus measurement, and APP 6 is
+                    about purpose. Precedent: the legal audit's finding 4 added Google to
+                    this list the day Google Identity Services started loading.
+                    ⚠️ The Cookies clause below is deliberately NOT touched, and that was
+                    verified rather than assumed: the package's own source contains no
+                    `document.cookie`, no `localStorage`, no `sessionStorage` and no
+                    `navigator.userAgent` read. If that ever stops being true, this
+                    paragraph and the cookie clause both have to move (11c-v: a sentence
+                    stating a fact IS a copy of that fact). */}
                 <li>
-                  <strong>Vercel</strong> — hosting
+                  <strong>Vercel</strong> — hosting and site performance measurement
                 </li>
                 {/* ✅ Verified in the Cloudflare dashboard 2026-08-15: DNS Setup
                     "Full" (12 records, all DNS-only — Cloudflare is authoritative

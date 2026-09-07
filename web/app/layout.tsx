@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Sora, JetBrains_Mono } from 'next/font/google';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { SITE_ORIGIN } from '@/lib/url';
 import './globals.css';
 
@@ -51,7 +52,30 @@ export default function RootLayout({
       lang="en"
       className={`${sora.variable} ${jetbrainsMono.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        {children}
+        {/*
+          Real-user performance, and the ONLY instrument that can answer decision #33.
+          Added 2026-09-07 (P9, `5A-006`).
+
+          The audit recorded the ticker page's Lighthouse target as BLOCKED rather than
+          unfinished, and this is why: three consecutive preview runs gave 370 / 540 /
+          990 ms of blocking time, the same unchanged page has scored 85, 81, 76, 63 and
+          62 on one machine, and no external lab tool can reach a page behind sign-in.
+          This measures real visitors on real devices, grouped by route, so no single
+          unlucky run can dominate and the SIGNED-IN pages are finally in scope.
+
+          It reports nothing until there is traffic (11w) - which is the argument for
+          switching it on BEFORE launch rather than after, not evidence that it is
+          broken. Do not chase an empty dashboard.
+
+          CSP: the script and its beacon are both same-origin (`/_vercel/speed-insights/*`),
+          so `script-src 'self'` and `connect-src 'self'` already cover it and no new
+          origin is added. A script with a `src` is judged by its URL, never by a nonce
+          (11u), so the prerendered pages need no change either.
+        */}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }

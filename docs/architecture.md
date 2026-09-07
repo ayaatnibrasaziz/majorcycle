@@ -170,8 +170,8 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 | Next.js frontend | Vercel | 100GB bandwidth/mo | Hobby plan. Functions/SSR pinned to **`iad1` (US-East)** via `web/vercel.json` `regions`. |
 | Python API routes | Vercel Serverless | 100GB-hr/mo, 300s timeout | `@vercel/python` runtime; co-located in `iad1` with the DB. |
 | Static assets | Vercel CDN | Unlimited | Global edge |
-| Postgres database | Supabase | 500MB DB, 5GB egress | Free tier, region **`us-east-1`** (project `MajorCycle`; co-located with the Vercel functions so DB round-trips are ~10-20ms). Migrated from the original Seoul region pre-launch — see §2 Tier 3 performance note. |
-| Auth service | Supabase Auth | 50,000 MAU | Free tier. A `handle_new_user` trigger auto-creates a `profiles` row on every sign-up (any provider). |
+| Postgres database | Supabase | Pro-plan quota | **Pro plan (US$25/mo), Micro compute, spend cap ON** — this row said *"free tier"* until 2026-09-07 (P9 session 3, read off the billing page). ⚠️ **Spend cap ON means the project goes READ-ONLY past the included quota rather than billing more**, so a traffic spike stops the product instead of overcharging. Region **`us-east-1`** (project `MajorCycle`; co-located with the Vercel functions so DB round-trips are ~10-20ms). Migrated from the original Seoul region pre-launch — see §2 Tier 3 performance note. |
+| Auth service | Supabase Auth | 100,000 MAU (Pro) | Included in the Pro plan above. A `handle_new_user` trigger auto-creates a `profiles` row on every sign-up (any provider). |
 | File storage | Supabase Storage | 1GB | For OG images, exports |
 | Cron jobs | GitHub Actions | 2,000 minutes/mo | Free for public + private repos |
 | Email | Resend | 3,000/mo | Free tier |
@@ -838,10 +838,29 @@ derived from a deleted account's email is kept forever.
 `/api/cron/purge-accounts` cancels Stripe first, then deletes the auth user and
 lets the cascades run.
 
-**No analytics, advertising or tracking stack exists** — nothing in `package.json`,
-and Resend has open- and click-tracking both off. The privacy page's "we do not
-build advertising profiles" is comfortably true, which is worth knowing before
-anyone proposes adding a tag manager.
+**No advertising or behavioural tracking stack exists**, and Resend has open- and
+click-tracking both off. The privacy page's "we do not build advertising profiles"
+is comfortably true, which is worth knowing before anyone proposes a tag manager.
+
+⚠️ **This paragraph said "no analytics … nothing in `package.json`" until 2026-09-07,
+and adding `@vercel/speed-insights` (P9, `5A-006`) made it false the same hour.** Nothing
+could have flagged it: a stale sentence in a doc renders perfectly, and the claim was
+filed under *deletion* rather than under *dependencies*, so no reader of `package.json`
+would have met it (11n — a fact can be right twice and still be missing, because it was
+filed under the wrong question). **What is there now, stated exactly:** one 5 KB script
+reporting Web Vitals per route to Vercel, which is already a listed processor. ⚠️ **The
+route is the PATTERN, not the URL** — `computeRoute()` substitutes every dynamic segment
+back to its parameter name before anything is sent, so a signed-in reader's page reports
+as `/stocks/[market]/[ticker]` and never as `/stocks/us/AAPL`. That is the difference
+between handing Vercel a route shape and handing them a person's browsing history, and it
+is the reason this was acceptable to switch on across the gated product rather than only
+the public pages. Read out of the package, not taken from its marketing. Verified
+by reading the package rather than its reputation — **no `document.cookie`, no
+`localStorage`, no `sessionStorage`, no `navigator.userAgent`** — which is why the cookie
+clause needed no change and the processor line did (`privacy/page.tsx` now reads "hosting
+and site performance measurement"). **The general rule this earns: adding a dependency
+that talks to the outside is a change to the PRIVACY PAGE and to this paragraph, not only
+to `package.json`.**
 
 📄 **The gaps this exposed in the published pages, with proposed wording, are in
 `docs/legal-audit.md` — ✅ **ALL SEVEN APPLIED, 2026-08-15**, on owner instruction.**
@@ -1360,6 +1379,28 @@ session boundary can never measure a page inside it.**
 abandoned; it is waiting for real-user monitoring, which measures actual customers on actual
 devices and works on gated pages because it runs inside the session. **The owner deferred adding
 it (2026-08-24)** — so the merge-gate row stays red and open rather than quietly dropped.
+
+✅ **UPDATE 2026-09-07 — the instrument now exists.** The owner approved it and
+`@vercel/speed-insights` is in the root layout (`5A-006`). It measures real visitors on real
+devices, groups by route, and reaches the signed-in pages, which is the one thing no lab tool
+can do.
+
+⚠️ **The row stays RED, and that is deliberate.** Speed Insights reports nothing until there is
+traffic, and this site has none — so what exists today is an *instrument*, not a *reading*, and
+those are not the same thing (11w: do not optimise against a number nobody can measure; an empty
+dashboard is not a score). **Do not read the blank panel as a problem, and do not change the
+product to move it until it has real data behind it.** That is also the argument for having
+switched it on before launch rather than after: it needs to be collecting on day one.
+
+⚠️ Three things about it worth knowing before anyone touches the CSP or the privacy pages.
+It loads **same-origin** (`/_vercel/speed-insights/script.js`, already covered by `'self'`) in
+production and swaps to a **debug build on `https://va.vercel-scripts.com`** whenever `NODE_ENV`
+is not production — so that host is allowed in the **dev** policy only, and the shipped
+`script-src` is byte-identical to before (`e2e/csp.spec.ts` asserts both directions). It sends
+the route **pattern**, never the URL: a reader's page reports as `/stocks/[market]/[ticker]`
+rather than `/stocks/us/AAPL`, which is why it was acceptable across the gated product. And it
+uses **no cookies and no storage**, verified by reading the package, which is why the Privacy
+Policy's cookie clause needed no change while its processor line did (§6.6).
 
 ⚠️ **What survives all of this is the byte count**, which `scripts/lighthouse.mjs` says in its own
 header is the better evidence when one exists. The page-weight budgets were ratcheted twice the

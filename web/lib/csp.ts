@@ -152,6 +152,17 @@ export function supabaseOriginForCsp(url: string | undefined): string {
  *               break the dev server and the e2e suite that boots one, while
  *               proving nothing about what ships. ⚠️ It is gated on NODE_ENV,
  *               which Next sets itself — `next build` cannot produce it.
+ *
+ *               It also adds `https://va.vercel-scripts.com`, and ONLY here.
+ *               `@vercel/speed-insights` (P9, `5A-006`) loads its script from the
+ *               same origin in production — `/_vercel/speed-insights/script.js`,
+ *               already covered by `'self'` — and swaps to a DEBUG build on that
+ *               external host when `NODE_ENV` is not production. Read out of the
+ *               package's own `getScriptSrc`, not assumed. Without this the dev
+ *               console carries a permanent CSP refusal that means nothing, and a
+ *               stale console error that looks current is how this repo has lost
+ *               hours before (coding-standards §38). **The production policy is
+ *               byte-identical to before: no new external origin ships.**
  */
 export function contentSecurityPolicy({
   nonce,
@@ -191,7 +202,7 @@ export function contentSecurityPolicy({
   const script = [
     "'self'",
     nonce ? `'nonce-${nonce}'` : "'unsafe-inline'",
-    ...(dev ? ["'unsafe-eval'"] : []),
+    ...(dev ? ["'unsafe-eval'", 'https://va.vercel-scripts.com'] : []),
     'https://accounts.google.com',
     'https://apis.google.com',
     ...(preferredSourceOrigin ? [preferredSourceOrigin] : []),
