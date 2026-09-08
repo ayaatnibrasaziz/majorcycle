@@ -8,3 +8,8 @@
 pandas>=2.2.0
 numpy>=1.26.0
 supabase>=2.4.0
+# Direct Postgres connection for the screener's price fetch (web/api/analyze.py).
+# The REST layer costs 700-1,200 ms per stock building JSON and gzipping it while
+# Postgres itself takes 16-23 ms; this skips it. [binary] ships the libpq wheel so
+# no system library is needed on the Vercel image.
+psycopg[binary]>=3.2
