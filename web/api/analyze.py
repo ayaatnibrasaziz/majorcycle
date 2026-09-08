@@ -32,6 +32,7 @@ Responses:
 
 from __future__ import annotations
 
+import base64
 import dataclasses
 import hmac
 import json
@@ -128,6 +129,11 @@ _RPC_NAME = "get_price_bars_json"
 # and genuinely needs open, volume and every date; two readers, two shapes.
 _CYCLE_RPC_AVAILABLE: bool | None = None
 _CYCLE_RPC_NAME = "get_cycle_bars_json"
+# The same bars in binary — 44% fewer raw bytes, bit-identical numbers. Tried
+# first; `get_cycle_bars_json` remains the fallback so a deploy and a migration
+# can land in either order. See supabase/migrations/20260909000000_*.sql.
+_B64_RPC_AVAILABLE: bool | None = None
+_B64_RPC_NAME = "get_cycle_bars_b64"
 
 # Custom-param validation bounds — the canonical contract (data-contracts.md §7).
 _CUSTOM_BOUNDS = {
@@ -170,6 +176,30 @@ def _load_price_bars(sb: Client, ticker: str, page_workers: int = 1) -> pd.DataF
     # Falls through to the row-object RPC, and then to pagination, so this file is
     # safe to deploy before the migration is applied and picks the fast path up on
     # its own once it lands.
+    global _B64_RPC_AVAILABLE
+    if _B64_RPC_AVAILABLE is not False:
+        for attempt in range(3):
+            try:
+                resp = sb.rpc(_B64_RPC_NAME, {"p_ticker": ticker}).execute()
+                _B64_RPC_AVAILABLE = True
+                payload = cast("dict[str, Any] | None", resp.data)
+                return _b64_to_df(payload) if payload else None
+            except Exception as e:  # noqa: BLE001
+                msg = str(e).lower()
+                if any(
+                    s in msg
+                    for s in ("pgrst202", "could not find", "does not exist", "not found", "404")
+                ):
+                    _B64_RPC_AVAILABLE = False
+                    logger.warning(
+                        "%s RPC not deployed — using %s", _B64_RPC_NAME, _CYCLE_RPC_NAME
+                    )
+                    break
+                if attempt < 2:
+                    time.sleep(0.3 * (attempt + 1))
+                    continue
+                break
+
     global _CYCLE_RPC_AVAILABLE
     if _CYCLE_RPC_AVAILABLE is not False:
         for attempt in range(3):
@@ -276,6 +306,52 @@ def _load_price_bars(sb: Client, ticker: str, page_workers: int = 1) -> pd.DataF
     if not rows:
         return None
     return _bars_to_df(rows)
+
+
+def _b64_to_df(payload: dict[str, Any]) -> pd.DataFrame | None:
+    """Build the analysis frame from the BINARY columnar RPC.
+
+    `d` is base64 of n big-endian int32 epoch-days; `h`, `l`, `c` are base64 of n
+    big-endian float8.
+
+    ⚠️ This is NOT bit-identical to `_columns_to_df`, and the difference is the
+    text path's fault rather than this one's. `pd.to_numeric` is a fast float
+    parser and is not correctly rounded: given "0.09812240302562714" it returns
+    0.0981224030256271, and it disagrees with Python's `float()` on 4,584 of
+    AAPL's 11,525 closes. So the text path has always carried ~1-14 ULP of error
+    (~2e-15 relative) and this path carries none, because it parses no strings.
+    Measured across 21 tickers x 3 presets, every frame differs and every
+    resulting CycleAnalysis is identical. See
+    `analytics/tests/test_analyze_columns.py`, which pins both halves.
+
+    ⚠️ The length check is load-bearing, for the same reason as in the text path:
+    four aggregates over one scan cannot disagree, but if they ever did,
+    `np.frombuffer` would hand back a short array and the frame would go silently
+    out of alignment — a wrong number that looks like a right one.
+    """
+    n = int(payload.get("n") or 0)
+    if n <= 0:
+        return None
+
+    def _col(key: str, dtype: str) -> np.ndarray[Any, np.dtype[Any]]:
+        arr = np.frombuffer(base64.b64decode(payload.get(key) or ""), dtype=dtype)
+        if len(arr) != n:
+            raise ValueError(
+                f"{_B64_RPC_NAME} column {key!r} has {len(arr)} values but n={n}"
+            )
+        return arr
+
+    # `.astype` also converts big-endian to native and makes the arrays writable;
+    # `np.frombuffer` returns a read-only view over the decoded bytes.
+    days = _col("d", ">i4").astype("int64")
+    return pd.DataFrame(
+        {
+            "High": _col("h", ">f8").astype("float64"),
+            "Low": _col("l", ">f8").astype("float64"),
+            "Close": _col("c", ">f8").astype("float64"),
+        },
+        index=pd.DatetimeIndex(days.astype("datetime64[D]")),
+    )
 
 
 def _columns_to_df(payload: dict[str, Any]) -> pd.DataFrame | None:
@@ -605,15 +681,50 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
 
     results: list[dict[str, Any]] = []
     unavailable: list[str] = []
-    # Across-ticker concurrency. Kept deliberately modest: the client may also
-    # have a few chunk requests in flight at once, so total concurrent Supabase
-    # reads ≈ client_pool × max_workers. Too many cross-region requests overwhelm
-    # the connection and cause read timeouts (tickers then fall to `unavailable`).
-    # 2 here × the client's pool of 3 ≈ 6 in flight — deliberately conservative
-    # to avoid the cross-region read-timeout storm that caused false skips. The
-    # client also runs a single-ticker reconciliation pass for any stragglers,
-    # so lower batch concurrency costs a little latency but not coverage.
-    max_workers = min(len(tickers), 2)
+    # Across-ticker concurrency. Total concurrent Supabase reads ≈
+    # client_pool (POOL_SIZE, 3) × max_workers, so this number times three is
+    # what the database sees.
+    #
+    # ── Why it moved from 2 to 4 on 2026-09-08 ─────────────────────────────
+    # Profiled against a real 761-ticker run (`analysis_runs` + the project's
+    # own edge logs), a screen now spends almost none of its time computing:
+    #
+    #     gunzip + json + DataFrame + analyze_ticker      35.7 ms   (3%)
+    #     waiting on Supabase                          ~1,327 ms  (97%)
+    #
+    # and of the database side, ONE call is 94% of it — `get_cycle_bars_json`,
+    # 785 calls at 787 ms average. Postgres itself runs that function in
+    # 15.5 ms warm (measured server-side with clock_timestamp, not EXPLAIN,
+    # which cannot see result serialisation). The rest is PostgREST building,
+    # gzipping and shipping 785 KB.
+    #
+    # A workload that is 97% waiting scales with concurrency, and the payload
+    # cannot be made smaller: the obvious win — the prices are float32 noise
+    # rendered at 18 characters (`319.9700012207031` for a real 319.97) and
+    # rounding to 4 dp halves the payload — was MEASURED and rejected. Across
+    # 26 tickers × 3 presets it changed 73 of 78 analyses, including AAPL
+    # losing a pullback event (662 → 661) and its Valuation Score moving
+    # 29.7 → 29.8. That is exactly the silent drift CLAUDE.md 11c-iii forbids.
+    #
+    # ⚠️ AND THE OBVIOUS JUSTIFICATION FOR RAISING THIS IS WRONG — recorded so
+    # nobody rebuilds it. It is tempting to argue the old paginated path put
+    # far more load on the database, so higher concurrency is a return to a
+    # tested level. It is not. In a BATCH the old path ran `page_workers = 1`,
+    # so its twelve 1,000-row pages per ticker were fetched SEQUENTIALLY:
+    # in-flight request concurrency was 6 then and is 6 now. What collapsed was
+    # the number of ROUND TRIPS per ticker (12 → 1), not the concurrency. So 12
+    # in flight is genuinely untested territory, and this is a deliberate step
+    # into it rather than a restoration.
+    #
+    # It is a safe step to take blind, which is why it is taken blind: the
+    # failure mode of too much concurrency here is a read timeout, a ticker
+    # falls to `unavailable`, and the client's warm-retry plus single-ticker
+    # reconciliation pass picks it up. The cost of being wrong is latency, not
+    # a missing stock — and it reverts by changing one number back to 2.
+    #
+    # ⚠️ Do NOT raise this and POOL_SIZE in the same change. One variable at a
+    # time is what makes the next `analysis_runs` reading attributable.
+    max_workers = min(len(tickers), 4)
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         for ticker, result in ex.map(_one, tickers):
             if result is None:

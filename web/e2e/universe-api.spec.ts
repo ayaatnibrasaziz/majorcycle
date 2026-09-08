@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import { signIn } from './lib/session';
 
 /**
  * The four universe endpoints behind the screener: ticker autocomplete, the
@@ -30,20 +31,6 @@ import { test, expect, type Page } from '@playwright/test';
 const EMAIL = process.env.E2E_EMAIL;
 const PASSWORD = process.env.E2E_PASSWORD;
 
-async function signIn(page: Page) {
-  await page.goto('/login');
-  await page.fill('input#email', EMAIL!);
-  await page.fill('input#password', PASSWORD!);
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  await expect(page).toHaveURL(/\/stocks/);
-  const dialog = page.getByRole('dialog', { name: /welcome to majorcycle/i });
-  await dialog.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
-  if (await dialog.isVisible().catch(() => false)) {
-    await page.getByRole('checkbox', { name: /i understand and acknowledge/i }).check();
-    await page.getByRole('button', { name: /continue to majorcycle/i }).click();
-    await dialog.waitFor({ state: 'hidden', timeout: 8000 }).catch(() => {});
-  }
-}
 
 /** Every response from these routes must be private and uncacheable (11a). */
 function expectPrivate(headers: Record<string, string>, label: string) {

@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import { signIn } from './lib/session';
 
 /**
  * A ticker we do not cover, and a market that does not exist.
@@ -34,22 +35,6 @@ import { test, expect, type Page } from '@playwright/test';
 const EMAIL = process.env.E2E_EMAIL;
 const PASSWORD = process.env.E2E_PASSWORD;
 
-/** Sign in with the shared test account and clear the first-login modal. */
-async function signIn(page: Page) {
-  await page.goto('/login');
-  await page.fill('input#email', EMAIL!);
-  await page.fill('input#password', PASSWORD!);
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  await expect(page).toHaveURL(/\/stocks/);
-
-  const dialog = page.getByRole('dialog', { name: /welcome to majorcycle/i });
-  await dialog.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
-  if (await dialog.isVisible().catch(() => false)) {
-    await page.getByRole('checkbox', { name: /i understand and acknowledge/i }).check();
-    await page.getByRole('button', { name: /continue to majorcycle/i }).click();
-    await dialog.waitFor({ state: 'hidden', timeout: 8000 }).catch(() => {});
-  }
-}
 
 test.describe('a ticker we do not cover', () => {
   test.skip(!EMAIL || !PASSWORD, 'set E2E_EMAIL + E2E_PASSWORD to run');

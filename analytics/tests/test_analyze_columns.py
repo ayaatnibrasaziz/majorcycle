@@ -39,6 +39,7 @@ from __future__ import annotations
 import dataclasses
 import importlib.util
 import sys
+from datetime import date
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -194,3 +195,101 @@ def test_no_bars_is_not_an_error() -> None:
     'I could not read it' and 'it does not exist' must not share a value (11e),
     and here the absence is genuine."""
     assert az._columns_to_df({"n": 0, "d": "", "h": "", "l": "", "c": ""}) is None
+
+
+# ── the BINARY encoding (get_cycle_bars_b64, 2026-09-09) ─────────────────────
+#
+# Half the bytes of the text encoding, and — unexpectedly — more accurate. The
+# text path runs `pd.to_numeric`, which is a FAST float parser and is not
+# correctly rounded: given "0.09812240302562714" it returns 0.0981224030256271,
+# and on AAPL's close column it disagrees with Python's `float()` on 4,584 of
+# 11,525 values. That parser is in `_bars_to_df` too, so it predates the columnar
+# work and has always been in the shipped product.
+#
+# So the two encodings are NOT bit-identical, and the tests below say which one
+# is right rather than asserting an equality that would be false: the decoder
+# must equal a CORRECTLY ROUNDED parse, and the analyses must still agree.
+
+
+def _as_b64(df: pd.DataFrame) -> dict[str, Any]:
+    """The wire shape `get_cycle_bars_b64` returns: big-endian binary, base64."""
+    import base64
+    import struct
+
+    n = len(df)
+    days = [(ts.date() - date(1970, 1, 1)).days for ts in df.index]
+    def pack(fmt: str, vals: list[Any]) -> str:
+        return base64.b64encode(struct.pack(f">{n}{fmt}", *vals)).decode()
+
+    return {
+        "n": n,
+        "d": pack("i", days),
+        "h": pack("d", [float(v) for v in df["High"].to_numpy()]),
+        "l": pack("d", [float(v) for v in df["Low"].to_numpy()]),
+        "c": pack("d", [float(v) for v in df["Close"].to_numpy()]),
+    }
+
+
+def test_the_binary_decoder_is_exactly_a_correctly_rounded_parse() -> None:
+    """⚠️ The half that matters. The text path is ~1-14 ULP off the stored value
+    because of `pd.to_numeric`; this path must carry NO error at all, which means
+    matching Python's `float()` bit for bit — not matching `_columns_to_df`."""
+    src = _frame()
+    got = az._b64_to_df(_as_b64(src))
+    assert got is not None
+    for col in ("High", "Low", "Close"):
+        exact = np.array([float(repr(float(v))) for v in src[col].to_numpy()])
+        assert np.array_equal(got[col].to_numpy(), exact), col
+
+
+def test_the_binary_shape_analyses_the_same_as_the_text_shape() -> None:
+    """They are not bit-identical, so this asserts what actually matters: no
+    figure a reader sees moves. Measured on live data over 21 tickers x 3
+    presets, 0 of 63 analyses differed."""
+    src = _frame()
+    a = analyze_ticker("TEST", az._columns_to_df(_as_columns(src)), None, PARAMS)
+    b = analyze_ticker("TEST", az._b64_to_df(_as_b64(src)), None, PARAMS)
+    assert a is not None and b is not None
+    assert dataclasses.asdict(a) == dataclasses.asdict(b)
+
+
+def test_control_the_binary_comparison_can_fail() -> None:
+    """Without this, the test above is satisfied by two paths that agree because
+    neither does anything (11p)."""
+    import base64
+    import struct
+
+    src = _frame()
+    cols = _as_b64(src)
+    vals = [float(v) for v in src["Close"].to_numpy()]
+    vals[-1] += 0.0001
+    cols["c"] = base64.b64encode(struct.pack(f">{len(vals)}d", *vals)).decode()
+    a = analyze_ticker("TEST", az._columns_to_df(_as_columns(src)), None, PARAMS)
+    b = analyze_ticker("TEST", az._b64_to_df(cols), None, PARAMS)
+    assert a is not None and b is not None
+    assert dataclasses.asdict(a) != dataclasses.asdict(b)
+
+
+def test_the_binary_dates_are_real_dates() -> None:
+    """`int4send(date - 1970-01-01)` is a compact encoding of the real calendar
+    date, NOT a synthetic index — `as_of` is read off the last one."""
+    src = _frame()
+    got = az._b64_to_df(_as_b64(src))
+    assert got is not None
+    assert isinstance(got.index, pd.DatetimeIndex)
+    assert got.index.equals(pd.DatetimeIndex(src.index))
+
+
+def test_a_short_binary_column_is_loud() -> None:
+    """A truncated column would let numpy hand back a short array and the frame
+    would go quietly out of alignment — a wrong number that looks right."""
+    cols = _as_b64(_frame())
+    import base64
+
+    cols["h"] = base64.b64encode(base64.b64decode(cols["h"])[:-8]).decode()
+    with pytest.raises(ValueError, match="but n="):
+        az._b64_to_df(cols)
+
+
+def test_no_binary_bars_is_not_an_error() -> None:
+    assert az._b64_to_df({"n": 0, "d": "", "h": "", "l": "", "c": ""}) is None

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { signIn } from './lib/session';
 
 /**
  * Money on the Stock Detail page is shown in the stock's OWN currency (audit
@@ -35,13 +36,6 @@ const PASSWORD = process.env.E2E_PASSWORD;
 const AU = { path: '/stocks/au/BHP', symbol: 'A$', label: 'BHP Group' };
 const US = { path: '/stocks/us/AAPL', symbol: '$', label: 'Apple' };
 
-async function signIn(page: Page) {
-  await page.goto('/login');
-  await page.fill('input#email', EMAIL!);
-  await page.fill('input#password', PASSWORD!);
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  await expect(page).toHaveURL(/\/stocks/, { timeout: 30_000 });
-}
 
 /**
  * The insider rows, as text. Waits on a POSITIVE signal — the section's own
