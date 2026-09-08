@@ -716,15 +716,42 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     # in flight is genuinely untested territory, and this is a deliberate step
     # into it rather than a restoration.
     #
-    # It is a safe step to take blind, which is why it is taken blind: the
-    # failure mode of too much concurrency here is a read timeout, a ticker
-    # falls to `unavailable`, and the client's warm-retry plus single-ticker
-    # reconciliation pass picks it up. The cost of being wrong is latency, not
-    # a missing stock — and it reverts by changing one number back to 2.
+    # ⚠️ RAISED TO 4 ON 2026-09-08 AND REVERTED THE SAME DAY. It was wrong, the
+    # measurement is below, and the reasoning that produced it is left here
+    # because the argument was plausible and needs a counter-example beside it.
     #
-    # ⚠️ Do NOT raise this and POOL_SIZE in the same change. One variable at a
-    # time is what makes the next `analysis_runs` reading attributable.
-    max_workers = min(len(tickers), 4)
+    # The argument was: a workload that is 97% waiting scales with concurrency,
+    # and the failure mode of too much of it is benign (a read timeout, the
+    # ticker falls to `unavailable`, the client's reconciliation pass picks it
+    # up). Both halves are true. The conclusion was still false, because the
+    # thing being waited ON is a shared Micro instance with ~2 burstable vCPU,
+    # and PostgREST building and gzipping ~500 KB per call is CPU work. Doubling
+    # the callers does not double the CPU.
+    #
+    # Driven on the live product, 761 tickers, medium horizon:
+    #
+    #     max_workers 2 (6 concurrent)   get_cycle_bars_json    787 ms avg
+    #     max_workers 4 (12 concurrent)  get_cycle_bars_b64   2,586 ms avg
+    #
+    # Per-call latency TRIPLED, so throughput did not move — and it was worse
+    # than that, because saturation spilled sideways: `/rest/v1/stocks` went
+    # 47 ms -> 433 ms, and enough b64 calls failed that 90 requests fell through
+    # to the paginated `price_bars` path the fast path exists to avoid. The run
+    # took ~430s against a 173s baseline, and 16 of 675 tickers had to be
+    # reconciled one at a time.
+    #
+    # ⚠️ AND THE REAL MISTAKE WAS SHIPPING IT ALONGSIDE THE b64 ENCODING. The
+    # comment right below this one said "do NOT move this and POOL_SIZE in the
+    # same change... one variable at a time is what makes the next
+    # `analysis_runs` reading attributable" — and then two variables moved
+    # anyway, which is why that run cannot say whether the encoding helped. Back
+    # to 2 so the next reading isolates the encoding alone.
+    #
+    # ⚠️ Do NOT raise this or POOL_SIZE without a measurement. The instance is
+    # the constraint, not the client; more callers is not the lever it looks
+    # like, and the honest fix for the remaining time is fewer bytes or more
+    # database CPU.
+    max_workers = min(len(tickers), 2)
     with ThreadPoolExecutor(max_workers=max_workers) as ex:
         for ticker, result in ex.map(_one, tickers):
             if result is None:
