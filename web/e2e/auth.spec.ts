@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { signInThroughTheForm as signIn } from './lib/session';
 
 /**
  * Auth + routing regression suite.
@@ -227,20 +228,13 @@ test.describe('authenticated flows', () => {
    * version of this helper returned immediately and the update-password test
    * landed on /stocks looking for a heading that was never going to be there.
    */
-  async function signIn(page: import('@playwright/test').Page, next?: string) {
-    await page.goto(next ? `/login?next=${encodeURIComponent(next)}` : '/login');
-    await page.fill('input#email', EMAIL!);
-    await page.fill('input#password', PASSWORD!);
-    await page.getByRole('button', { name: /^sign in$/i }).click();
-    await page.waitForURL((url) => !url.pathname.startsWith('/login'));
-  }
 
   test('a ?next= destination survives sign-in', async ({ page }) => {
     // The trial funnel depends on this: /pricing sends a signed-out reader to
     // /signup?next=/account and /login carries the same parameter, so a reader
     // who bounced off a gated page must land back on it rather than on /stocks.
     // Claimed as suite-covered by the Layer G plan; it was not.
-    await signIn(page, '/account');
+    await signIn(page, { next: '/account' });
     await expect(page).toHaveURL(/\/account/);
   });
 
@@ -248,7 +242,7 @@ test.describe('authenticated flows', () => {
     // safeNextPath's rejection table is pinned in auth-contracts.spec.ts. This is
     // the one that matters in practice: the guard runs on a value that is about
     // to be handed to window.location.assign WITH a live session in the jar.
-    await signIn(page, 'https://evil.example/harvest');
+    await signIn(page, { next: 'https://evil.example/harvest' });
     await expect(page).toHaveURL(/\/stocks/);
     expect(page.url()).not.toContain('evil.example');
   });

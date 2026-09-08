@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { signIn } from './lib/session';
 
 /**
  * F2 Account Hub — authenticated interaction suite.
@@ -14,28 +15,6 @@ import { test, expect, type Page } from '@playwright/test';
 const EMAIL = process.env.E2E_EMAIL;
 const PASSWORD = process.env.E2E_PASSWORD;
 
-/** Sign in with the test account and clear the first-login disclaimer modal. */
-async function signIn(page: Page) {
-  await page.goto('/login');
-  await page.fill('input#email', EMAIL!);
-  await page.fill('input#password', PASSWORD!);
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  // Post-auth home is Browse, not Results (F3 Step 10) — see POST_AUTH_HOME.
-  await expect(page).toHaveURL(/\/stocks/);
-
-  const dialog = page.getByRole('dialog', { name: /welcome to majorcycle/i });
-  await dialog.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
-  if (await dialog.isVisible().catch(() => false)) {
-    const ack = page.getByRole('checkbox', { name: /i understand and acknowledge/i });
-    const proceed = page.getByRole('button', { name: /continue to majorcycle/i });
-    await expect(async () => {
-      await ack.check();
-      await expect(proceed).toBeEnabled({ timeout: 1000 });
-    }).toPass({ timeout: 15000 });
-    await proceed.click();
-    await expect(dialog).toBeHidden();
-  }
-}
 
 /**
  * Open /account and wait for the profile form.

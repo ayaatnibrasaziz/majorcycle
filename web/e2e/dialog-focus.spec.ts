@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { signIn } from './lib/session';
 
 /**
  * Closing a dialog returns focus to whatever opened it.
@@ -25,20 +26,6 @@ import { expect, test, type Page } from '@playwright/test';
 const EMAIL = process.env.E2E_EMAIL;
 const PASSWORD = process.env.E2E_PASSWORD;
 
-async function signIn(page: Page) {
-  await page.goto('/login');
-  await page.fill('input#email', EMAIL!);
-  await page.fill('input#password', PASSWORD!);
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  await expect(page).toHaveURL(/\/stocks/);
-  const dialog = page.getByRole('dialog', { name: /welcome to majorcycle/i });
-  await dialog.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
-  if (await dialog.isVisible().catch(() => false)) {
-    await page.getByRole('checkbox', { name: /i understand and acknowledge/i }).check();
-    await page.getByRole('button', { name: /continue to majorcycle/i }).click();
-    await dialog.waitFor({ state: 'hidden', timeout: 8000 }).catch(() => {});
-  }
-}
 
 /** The locked "Download Report" button on a stock page — this account holds no plan. */
 const OPENER = 'button[title="The downloadable report is included with a subscription"]';

@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { RUN_SNAPSHOT, RUN_SNAPSHOT_ROWS, SNAPSHOT_KEY } from './fixtures/runSnapshot';
 import { TAGS, RULE_OPTIONS, rulesThatDidNotRun } from './lib/axeRules';
+import { signIn } from './lib/session';
 
 /**
  * Automated accessibility scan of the SIGNED-IN product — axe-core, WCAG 2.1 A + AA.
@@ -62,13 +63,6 @@ const PAGE_ELEMENT_FLOOR: Record<string, number> = {
 };
 
 
-async function signIn(page: Page) {
-  await page.goto('/login');
-  await page.fill('input#email', EMAIL!);
-  await page.fill('input#password', PASSWORD!);
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  await page.waitForURL(/\/stocks/, { timeout: 30_000 });
-}
 
 async function scan(page: Page, path: string) {
   /* ⚠️ `page.emulateMedia`, NOT `test.use({ reducedMotion })` — the latter

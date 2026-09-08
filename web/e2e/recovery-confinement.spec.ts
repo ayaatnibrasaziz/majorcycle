@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { PW_RECOVERY_COOKIE } from '@/lib/authRecovery';
+import { signInThroughTheForm as signIn } from './lib/session';
 
 /**
  * Password-recovery confinement, driven against a LIVE session — the half that
@@ -107,15 +108,6 @@ test.describe('a recovery session is pinned to the password-set page', () => {
   });
 
   /** Sign in as the throwaway account and settle on the post-auth landing. */
-  async function signIn(page: import('@playwright/test').Page) {
-    await page.goto('/login');
-    await page.fill('input#email', EMAIL);
-    await page.fill('input#password', PASSWORD);
-    await page.getByRole('button', { name: /^sign in$/i }).click();
-    // LoginForm ends in a hard window.location.assign — wait for it to land or a
-    // following goto races it and silently measures the wrong page.
-    await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 30_000 });
-  }
 
   const marker = (value: string) => ({
     name: PW_RECOVERY_COOKIE,
@@ -178,7 +170,7 @@ test.describe('a recovery session is pinned to the password-set page', () => {
     page,
   }) => {
     test.setTimeout(120_000);
-    await signIn(page);
+    await signIn(page, { email: EMAIL, password: PASSWORD });
 
     // The control, taken BEFORE the marker exists. Without it, a test that
     // asserts "these routes are unreachable" proves nothing — they might have
@@ -201,7 +193,7 @@ test.describe('a recovery session is pinned to the password-set page', () => {
     context,
     page,
   }) => {
-    await signIn(page);
+    await signIn(page, { email: EMAIL, password: PASSWORD });
     await context.addCookies([marker(userId)]);
 
     await page.goto('/account/update-password');
@@ -214,7 +206,7 @@ test.describe('a recovery session is pinned to the password-set page', () => {
     // ONLY way out is to end the session. If /auth/signout were not on the
     // allow-list, pressing it would bounce straight back here — an inescapable
     // page, which is worse than the hole the confinement closes.
-    await signIn(page);
+    await signIn(page, { email: EMAIL, password: PASSWORD });
     await context.addCookies([marker(userId)]);
     await page.goto('/account/update-password');
 
@@ -236,7 +228,7 @@ test.describe('a recovery session is pinned to the password-set page', () => {
     // computer) must not confine an unrelated sign-in — the visible symptom
     // would be a normal user unable to leave the password-set page, with no
     // explanation and nothing they can do about it.
-    await signIn(page);
+    await signIn(page, { email: EMAIL, password: PASSWORD });
     await context.addCookies([marker(OTHER_USER)]);
 
     for (const route of ['/stocks', '/account']) {
@@ -250,7 +242,7 @@ test.describe('a recovery session is pinned to the password-set page', () => {
     // left behind by an abandoned reset cannot confine the next real sign-in.
     // Asserted end to end rather than by reading the fetch call.
     await context.addCookies([marker(userId)]);
-    await signIn(page);
+    await signIn(page, { email: EMAIL, password: PASSWORD });
 
     expect(
       (await context.cookies()).find((c) => c.name === PW_RECOVERY_COOKIE)?.value,
@@ -266,7 +258,7 @@ test.describe('a recovery session is pinned to the password-set page', () => {
     // actually changed. Driving the endpoint directly isolates the release from
     // the password change, which cannot be performed here without leaving the
     // throwaway account in a different state than the one it was created in.
-    await signIn(page);
+    await signIn(page, { email: EMAIL, password: PASSWORD });
     await context.addCookies([marker(userId)]);
 
     await page.goto('/stocks');

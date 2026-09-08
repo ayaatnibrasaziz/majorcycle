@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { signIn } from './lib/session';
 
 /**
  * The signed-in pages must not scroll SIDEWAYS.
@@ -37,20 +38,6 @@ const WIDTHS = [640, 768, 900, 1280];
 /** Signed-in routes that render a full page for an account with no subscription. */
 const PATHS = ['/stocks', '/stocks/us/AAPL', '/request', '/account'];
 
-async function signIn(page: Page) {
-  await page.goto('/login');
-  await page.fill('input#email', EMAIL!);
-  await page.fill('input#password', PASSWORD!);
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  await expect(page).toHaveURL(/\/stocks/);
-  const dialog = page.getByRole('dialog', { name: /welcome to majorcycle/i });
-  await dialog.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
-  if (await dialog.isVisible().catch(() => false)) {
-    await page.getByRole('checkbox', { name: /i understand and acknowledge/i }).check();
-    await page.getByRole('button', { name: /continue to majorcycle/i }).click();
-    await dialog.waitFor({ state: 'hidden', timeout: 8000 }).catch(() => {});
-  }
-}
 
 /** Try to scroll the window right, and report how far it actually went. */
 async function sidewaysScroll(page: Page): Promise<number> {

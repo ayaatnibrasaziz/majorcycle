@@ -1,8 +1,9 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { measure, MIN_MEASURED, type Fail, type Probe } from './lib/contrastProbe';
 import { RUN_SNAPSHOT, RUN_SNAPSHOT_ROWS, SNAPSHOT_KEY } from './fixtures/runSnapshot';
+import { signIn } from './lib/session';
 
 /**
  * WCAG contrast on the SIGNED-IN pages — the half of the site nothing had ever
@@ -71,13 +72,6 @@ const isLogotype = (f: Fail) =>
 
 const unexpected = (p: Probe): Fail[] => p.fails.filter((f) => !isLogotype(f));
 
-async function signIn(page: Page) {
-  await page.goto('/login');
-  await page.fill('input#email', EMAIL!);
-  await page.fill('input#password', PASSWORD!);
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  await page.waitForURL(/\/stocks/, { timeout: 30_000 });
-}
 
 /**
  * The signed-in pages a subscriber actually operates.
