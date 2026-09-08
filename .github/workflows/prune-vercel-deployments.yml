@@ -1,0 +1,56 @@
+name: Prune Vercel deployments
+
+# Vercel keeps every deployment forever, and each one of ours stores ~268 MB of
+# Python function bundles (pandas + numpy, twice). At ~4 deploys a day that is
+# what filled the free tier's 10 GB Function Storage. This is the self-clean.
+#
+# ⚠️ The schedule runs with --apply. Manual runs are a DRY RUN unless you tick
+# the box, so you can always look before anything is deleted.
+
+on:
+  schedule:
+    # Sundays, 04:00 UTC — clear of both data-refresh crons.
+    - cron: '0 4 * * 0'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Actually delete (unticked = dry run, just prints)'
+        type: boolean
+        default: false
+      keep_days:
+        description: 'Keep everything newer than this many days'
+        default: '14'
+
+permissions:
+  contents: read
+
+jobs:
+  prune:
+    name: Prune old deployments
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # ⚠️ Gated on a VARIABLE, not on the secret. GitHub does not expose the
+    # `secrets` context to a job-level `if`, so `secrets.VERCEL_TOKEN != ''`
+    # would evaluate against nothing and the job would never run — a guard that
+    # silently disables the thing it guards. `vars` IS available here, so the
+    # job stays dormant until VERCEL_TEAM_ID is set, and once it is, a missing
+    # token fails LOUDLY in the script rather than skipping (11z).
+    if: ${{ vars.VERCEL_TEAM_ID != '' }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Prune
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT: majorcycle
+          KEEP_DAYS: ${{ github.event.inputs.keep_days || '14' }}
+          KEEP_PRODUCTION: '5'
+          # A scheduled run sends NO inputs, so `inputs.apply` is empty there —
+          # this must therefore default to applying on a schedule and to a dry
+          # run on a manual dispatch. Getting the polarity backwards would either
+          # gut the job silently or delete on every click (CLAUDE.md 11z).
+          APPLY: ${{ github.event_name == 'schedule' && '1' || (github.event.inputs.apply == 'true' && '1' || '0') }}
+        run: node .github/scripts/prune-vercel-deployments.mjs
