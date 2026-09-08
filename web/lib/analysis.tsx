@@ -48,14 +48,17 @@ import type {
 //
 // The bound that makes 25 safe is the FALLBACK case, not the fast one: if the
 // new RPC were ever missing, every ticker reverts to the old ~0.85s path, so a
-// 25-ticker chunk at 2 workers is 13 x 0.85s ≈ 11s against `maxDuration: 60`.
-// That is 5x headroom on the WORST path — a margin, not a boundary (11i-b) —
-// and roughly 1s on the path that actually ships.
+// 25-ticker chunk at analyze.py's 4 workers is 7 x 0.85s ≈ 6s against
+// `maxDuration: 60`. That is 10x headroom on the WORST path — a margin, not a
+// boundary (11i-b) — and roughly 1s on the path that actually ships.
 //
-// Concurrency is deliberately NOT touched in the same change. POOL_SIZE x
-// analyze.py's `max_workers` is what caused the cross-region read-timeout storm
-// and the false skips it produced; leaving both exactly where they were keeps
-// this to one variable, so a regression is attributable.
+// ⚠️ POOL_SIZE IS STILL 3 AND MUST STAY 3 FOR NOW. Total concurrent Supabase
+// reads are POOL_SIZE x analyze.py's `max_workers`, and that product moved 6 ->
+// 12 on 2026-09-08 when `max_workers` went 2 -> 4 (the reasoning, and the
+// measurement behind it, are in web/api/analyze.py above `max_workers`). Moving
+// this number in the same change would make the next `analysis_runs` reading
+// unattributable, which is the whole reason the last change left it alone.
+// Raise POOL_SIZE only after a real run has shown the step to 12 was clean.
 export const CHUNK_SIZE = 25;
 const POOL_SIZE = 3;
 // A chunk whose POST fails (cold-start timeout, transient network blip) is retried
