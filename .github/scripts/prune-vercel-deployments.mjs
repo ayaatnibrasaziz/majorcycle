@@ -32,6 +32,28 @@
  * Needs VERCEL_TOKEN (a personal API token) and VERCEL_TEAM_ID.
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+// Read the repo-root .env.local when a variable is not already in the
+// environment, so a local dry run is one command. This is a no-op in CI: the
+// file does not exist on a runner, and an already-set value always wins, so
+// nothing here can quietly override the workflow's own secret.
+try {
+  for (const line of readFileSync(resolve(ROOT, '.env.local'), 'utf8').split('\n')) {
+    if (line.trimStart().startsWith('#')) continue;
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/);
+    if (!m) continue;
+    const value = m[2].replace(/^(['"])(.*)\1$/, '$2');
+    if (value && process.env[m[1]] === undefined) process.env[m[1]] = value;
+  }
+} catch {
+  // Absent (CI, or a fresh clone) — fine; the check below says what is missing.
+}
+
 const TOKEN = process.env.VERCEL_TOKEN;
 const TEAM = process.env.VERCEL_TEAM_ID;
 const PROJECT = process.env.VERCEL_PROJECT || 'majorcycle';
@@ -40,7 +62,11 @@ const KEEP_PRODUCTION = Number(process.env.KEEP_PRODUCTION || 5);
 const APPLY = process.argv.includes('--apply') || process.env.APPLY === '1';
 
 if (!TOKEN || !TEAM) {
-  console.error('VERCEL_TOKEN and VERCEL_TEAM_ID are required.');
+  console.error(
+    'VERCEL_TOKEN and VERCEL_TEAM_ID are required.\n' +
+      '  local : put them in .env.local at the repo root\n' +
+      '  CI    : VERCEL_TOKEN is a repo secret, VERCEL_TEAM_ID a repo variable',
+  );
   process.exit(1);
 }
 
@@ -49,11 +75,13 @@ const api = async (path, init = {}) => {
     ...init,
     headers: { Authorization: `Bearer ${TOKEN}`, ...(init.headers || {}) },
   });
-  if (!res.ok) throw new Error(`${init.method || 'GET'} ${path} -> ${res.status} ${await res.text()}`);
+  if (!res.ok) {
+    throw new Error(`${init.method || 'GET'} ${path} -> ${res.status} ${await res.text()}`);
+  }
   return res.json();
 };
 
-/** Every deployment, oldest last. The API pages by `until`. */
+/** Every deployment, newest first. The API pages backwards via `until`. */
 async function listAll() {
   const out = [];
   let until;
@@ -77,22 +105,30 @@ const production = all
   .sort((a, b) => b.created - a.created);
 const keepIds = new Set(production.slice(0, KEEP_PRODUCTION).map((d) => d.uid || d.id));
 
-const settled = new Set(['READY', 'ERROR', 'CANCELED']);
+const SETTLED = new Set(['READY', 'ERROR', 'CANCELED']);
 const doomed = all.filter((d) => {
-  const id = d.uid || d.id;
-  if (keepIds.has(id)) return false;
-  if (!settled.has(d.state)) return false;
+  if (keepIds.has(d.uid || d.id)) return false;
+  if (!SETTLED.has(d.state)) return false;
   return d.created < cutoff;
 });
 
-const bytes = (n) => `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
-const PER_DEPLOYMENT_MB = 268; // measured; see the header
+// ⚠️ NO GIGABYTE ESTIMATE IS PRINTED, deliberately. The obvious one — 268 MB of
+// unpacked dependencies per deployment — does not reconcile: 216 retained
+// deployments x 268 MB is ~58 GB against a quota of 10 GB that Vercel says is
+// 100% used. So Vercel's Function Storage is accounted differently (compressed
+// bundles, or shared layers, or only a subset of deployments) and the multiplier
+// is not something this script can stand behind. Printing it anyway would be a
+// confident number nobody had checked, which is how a wrong figure gets quoted
+// back later as fact. The COUNT is exact; the count is what is reported.
 
 console.log(`project           : ${PROJECT}`);
 console.log(`deployments total : ${all.length}  (production ${production.length})`);
-console.log(`keeping           : newest ${KEEP_PRODUCTION} production + everything < ${KEEP_DAYS} days old`);
-console.log(`to delete         : ${doomed.length}`);
-console.log(`approx. reclaimed : ${bytes(doomed.length * PER_DEPLOYMENT_MB * 1024 * 1024)} of function storage`);
+console.log(
+  `keeping           : newest ${KEEP_PRODUCTION} production + everything < ${KEEP_DAYS} days old`,
+);
+console.log(
+  `to delete         : ${doomed.length} of ${all.length} (${Math.round((100 * doomed.length) / all.length)}% of stored deployments)`,
+);
 console.log(`mode              : ${APPLY ? 'APPLY — deleting' : 'DRY RUN — nothing will be deleted'}\n`);
 
 if (!doomed.length) process.exit(0);
@@ -102,17 +138,17 @@ let failed = 0;
 for (const d of doomed) {
   const id = d.uid || d.id;
   const age = Math.round((Date.now() - d.created) / 86_400_000);
-  const label = `${new Date(d.created).toISOString().slice(0, 10)}  ${age}d  ${d.target ?? 'preview'}  ${id}`;
+  const label = `${new Date(d.created).toISOString().slice(0, 10)}  ${String(age).padStart(3)}d  ${(d.target ?? 'preview').padEnd(10)}  ${id}`;
   if (!APPLY) {
     console.log(`  would delete  ${label}`);
     continue;
   }
   try {
     await api(`/v13/deployments/${id}?teamId=${TEAM}`, { method: 'DELETE' });
-    ok++;
-    if (ok % 25 === 0) console.log(`  deleted ${ok}/${doomed.length}…`);
+    ok += 1;
+    if (ok % 25 === 0) console.log(`  deleted ${ok}/${doomed.length}...`);
   } catch (e) {
-    failed++;
+    failed += 1;
     console.error(`  FAILED ${label}: ${e.message}`);
   }
 }
