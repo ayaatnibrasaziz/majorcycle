@@ -40,6 +40,7 @@ import logging
 import os
 import random
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -53,6 +54,8 @@ from typing import Any, cast
 _WEB_ROOT = Path(__file__).resolve().parent.parent
 if str(_WEB_ROOT) not in sys.path:
     sys.path.insert(0, str(_WEB_ROOT))
+
+from urllib.parse import quote_plus  # noqa: E402
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
@@ -135,6 +138,33 @@ _CYCLE_RPC_NAME = "get_cycle_bars_json"
 _B64_RPC_AVAILABLE: bool | None = None
 _B64_RPC_NAME = "get_cycle_bars_b64"
 
+# ── The direct-database fast path ────────────────────────────────────────────
+# Measured on three full 761-ticker runs, using /rest/v1/stocks (a tiny query this
+# work never touches) as a control for how loaded the instance was:
+#
+#     encoding / concurrency      price fetch   /stocks control   ratio
+#     text JSON,   6 concurrent      787 ms          44 ms        17.9x
+#     base64 JSON, 12 concurrent   3,330 ms         629 ms         5.3x
+#     base64 JSON, 6 concurrent    1,244 ms         152 ms         8.2x
+#
+# Postgres does the work in 16-23 ms in ALL of them. The 700-1,200 ms is the REST
+# layer: PostgREST building JSON, then gzip, on 2 shared ARM cores. Supabase's own
+# compute table lists Micro, Small AND Medium as "2-core shared", so a bigger tier
+# buys memory rather than the CPU this needs — only Large has dedicated cores.
+#
+# This path removes the layer instead of paying for it. Same numbers, 322,704
+# bytes of raw binary for AAPL against 785,136 of text JSON, no gzip anywhere.
+#
+# ⚠️ NOT the `postgres` superuser. `mc_bars_reader` may EXECUTE exactly one
+# function and holds zero table grants, so this credential is far narrower than
+# the app's existing service-role key rather than wider. Verified against
+# pg_authid / information_schema rather than assumed — see the migration.
+_DIRECT_HOST = "aws-1-us-east-1.pooler.supabase.com"
+_DIRECT_PORT = 6543  # transaction mode: the one Supabase documents for serverless
+_DIRECT_DISABLED: bool = False
+_DIRECT_LOCAL = threading.local()
+_DIRECT_FN = "get_cycle_bars_bin"
+
 # Custom-param validation bounds — the canonical contract (data-contracts.md §7).
 _CUSTOM_BOUNDS = {
     "pullback_threshold": (-30.0, -1.0),
@@ -176,6 +206,75 @@ def _load_price_bars(sb: Client, ticker: str, page_workers: int = 1) -> pd.DataF
     # Falls through to the row-object RPC, and then to pagination, so this file is
     # safe to deploy before the migration is applied and picks the fast path up on
     # its own once it lands.
+    # Fastest path: a direct Postgres connection, no REST layer at all. Falls
+    # through to the RPCs below on ANY failure — a missing password, a dropped
+    # connection, a pooler hiccup — so this can be deployed before the secret
+    # exists and degrades to exactly today's behaviour if it ever stops working.
+    global _DIRECT_DISABLED
+    if not _DIRECT_DISABLED:
+        for attempt in range(2):
+            try:
+                conn = _direct_conn()
+                if conn is None:
+                    # Not configured. Say so ONCE and stop trying: a per-ticker
+                    # log line here would be 761 identical warnings per run.
+                    _DIRECT_DISABLED = True
+                    logger.info("%s not configured — using %s", _DIRECT_FN, _B64_RPC_NAME)
+                    break
+                with conn.cursor() as cur:
+                    cur.execute(f"select public.{_DIRECT_FN}(%s)", (ticker,))
+                    row = cur.fetchone()
+                blob = row[0] if row else None
+                return _bin_to_df(bytes(blob)) if blob else None
+            except ValueError:
+                # A malformed payload is a REAL defect, not a transport blip.
+                # Let it raise rather than silently falling back to a slower path
+                # that would hide it (11e: never let one value mean two things).
+                raise
+            except Exception as e:  # noqa: BLE001
+                # Drop the connection so the retry rebuilds it; a half-open socket
+                # is the common serverless failure and it never heals in place.
+                conn = getattr(_DIRECT_LOCAL, "conn", None)
+                if conn is not None:
+                    try:
+                        conn.close()
+                    except Exception:  # noqa: BLE001
+                        pass
+                    _DIRECT_LOCAL.conn = None
+                # ⚠️ A PERMANENT failure must switch this path OFF, not retry it
+                # per ticker. Measured: a wrong password takes ~14 s to fail,
+                # because psycopg tries every A record twice before giving up —
+                # so 761 tickers would each burn 14 s discovering the same dead
+                # credential, and the "fast path" would make the run an hour
+                # slower than not having it. Transient and permanent failures
+                # need different answers (11e: never let one value mean two
+                # things), and the difference is not observable from the timing.
+                msg = str(e).lower()
+                permanent = any(
+                    s2 in msg
+                    for s2 in (
+                        "password authentication failed",
+                        "role \"mc_bars_reader\" does not exist",
+                        "permission denied",
+                        "no pg_hba.conf entry",
+                        "does not exist",
+                        "no module named",  # psycopg absent: permanent here too
+                    )
+                )
+                if permanent:
+                    _DIRECT_DISABLED = True
+                    logger.warning(
+                        "%s disabled for this instance (%s) — using %s",
+                        _DIRECT_FN,
+                        str(e).splitlines()[0][:160],
+                        _B64_RPC_NAME,
+                    )
+                    break
+                if attempt == 0:
+                    continue
+                logger.warning("%s failed (%s) — falling back to %s", _DIRECT_FN, e, _B64_RPC_NAME)
+                break
+
     global _B64_RPC_AVAILABLE
     if _B64_RPC_AVAILABLE is not False:
         for attempt in range(3):
@@ -306,6 +405,94 @@ def _load_price_bars(sb: Client, ticker: str, page_workers: int = 1) -> pd.DataF
     if not rows:
         return None
     return _bars_to_df(rows)
+
+
+def _direct_dsn() -> str | None:
+    """Build the connection string, or None when it is not configured.
+
+    `SCREENER_DB_URL` wins if present; otherwise the DSN is assembled from
+    `SCREENER_DB_PASSWORD` plus the documented pooler host, so only one secret
+    has to be managed. `os.environ.get(k) or None` rather than a default, because
+    an env var that EXISTS AND IS BLANK is exactly what an unfilled Vercel field
+    looks like and would otherwise be handed on as a valid empty password (11z).
+    """
+    url = os.environ.get("SCREENER_DB_URL") or None
+    if url:
+        return url
+    password = os.environ.get("SCREENER_DB_PASSWORD") or None
+    ref = os.environ.get("SUPABASE_PROJECT_REF") or None
+    if not ref:
+        supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL") or ""
+        # https://<ref>.supabase.co
+        host = supabase_url.split("://", 1)[-1]
+        ref = host.split(".", 1)[0] or None
+    if not password or not ref:
+        return None
+    return (
+        f"postgresql://mc_bars_reader.{ref}:{quote_plus(password)}"
+        f"@{_DIRECT_HOST}:{_DIRECT_PORT}/postgres?sslmode=require"
+    )
+
+
+def _direct_conn() -> Any:
+    """One connection per THREAD, reused across invocations.
+
+    The batch handler runs `max_workers` threads and a psycopg connection is not
+    safe to share between them, so this is thread-local rather than module-level.
+    A Vercel instance persists between invocations, so the connection is paid for
+    once and reused — which matters, because TLS + auth is most of the cost of a
+    single query.
+
+    ⚠️ `prepare_threshold=None` disables prepared statements. Supabase documents
+    this as required for the TRANSACTION-mode pooler: a prepared statement is
+    bound to a backend, and transaction mode hands out a different backend per
+    transaction, so leaving it on produces "prepared statement already exists"
+    errors under exactly the concurrency this path exists to serve.
+    """
+    conn = getattr(_DIRECT_LOCAL, "conn", None)
+    if conn is not None and not conn.closed:
+        return conn
+    # Config check BEFORE the import: where the path is not configured (CI, a
+    # fork PR, any environment without the secret) this must return None without
+    # touching psycopg at all. The other order raises ImportError where psycopg
+    # is absent, which reads as a transport failure and costs a retry per ticker.
+    dsn = _direct_dsn()
+    if not dsn:
+        return None
+    import psycopg  # lazy: a missing wheel must never break the REST path
+    conn = psycopg.connect(dsn, connect_timeout=10, prepare_threshold=None, autocommit=True)
+    _DIRECT_LOCAL.conn = conn
+    return conn
+
+
+def _bin_to_df(blob: bytes) -> pd.DataFrame | None:
+    """Decode the binary layout from `get_cycle_bars_bin`.
+
+    int32 n | n*int32 epoch-days | n*float8 high | n*float8 low | n*float8 close,
+    all big-endian and ordered by date.
+
+    ⚠️ The length check is load-bearing, as in the other two decoders: a truncated
+    payload would otherwise let numpy hand back a short array and the frame would
+    go quietly out of alignment — a wrong number that looks like a right one.
+    """
+    if not blob or len(blob) < 4:
+        return None
+    n = int(np.frombuffer(blob[:4], dtype=">i4")[0])
+    if n <= 0:
+        return None
+    expected = 4 + n * 4 + n * 8 * 3
+    if len(blob) != expected:
+        raise ValueError(
+            f"{_DIRECT_FN} returned {len(blob)} bytes but n={n} implies {expected}"
+        )
+    off = 4
+    days = np.frombuffer(blob[off : off + n * 4], dtype=">i4").astype("int64")
+    off += n * 4
+    cols = {}
+    for name in ("High", "Low", "Close"):
+        cols[name] = np.frombuffer(blob[off : off + n * 8], dtype=">f8").astype("float64")
+        off += n * 8
+    return pd.DataFrame(cols, index=pd.DatetimeIndex(days.astype("datetime64[D]")))
 
 
 def _b64_to_df(payload: dict[str, Any]) -> pd.DataFrame | None:

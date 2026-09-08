@@ -293,3 +293,108 @@ def test_a_short_binary_column_is_loud() -> None:
 
 def test_no_binary_bars_is_not_an_error() -> None:
     assert az._b64_to_df({"n": 0, "d": "", "h": "", "l": "", "c": ""}) is None
+
+
+# ── the DIRECT-CONNECTION encoding (get_cycle_bars_bin, 2026-09-08) ──────────
+#
+# Raw binary over a direct Postgres connection: no JSON, no base64, no gzip.
+# 322,704 bytes for AAPL against 785,136 for the original text JSON. Verified
+# against the live database over 20 tickers x 3 presets: 20/20 frames
+# bit-identical to the b64 path and 60/60 analyses identical.
+
+
+def _as_bin(df: pd.DataFrame) -> bytes:
+    """The wire shape `get_cycle_bars_bin` returns.
+
+    int32 n | n*int32 epoch-days | n*float8 high | n*float8 low | n*float8 close
+    """
+    import struct
+
+    n = len(df)
+    out = struct.pack(">i", n)
+    out += struct.pack(f">{n}i", *[(ts.date() - date(1970, 1, 1)).days for ts in df.index])
+    for col in ("High", "Low", "Close"):
+        out += struct.pack(f">{n}d", *[float(v) for v in df[col].to_numpy()])
+    return out
+
+
+def test_the_binary_blob_decodes_to_the_same_frame_as_base64() -> None:
+    src = _frame()
+    a = az._b64_to_df(_as_b64(src))
+    b = az._bin_to_df(_as_bin(src))
+    assert a is not None and b is not None
+    assert list(a.columns) == list(b.columns)
+    assert a.index.equals(b.index)
+    for col in a.columns:
+        assert np.array_equal(a[col].to_numpy(), b[col].to_numpy()), col
+
+
+def test_the_binary_blob_analyses_identically() -> None:
+    src = _frame()
+    a = analyze_ticker("TEST", az._b64_to_df(_as_b64(src)), None, PARAMS)
+    b = analyze_ticker("TEST", az._bin_to_df(_as_bin(src)), None, PARAMS)
+    assert a is not None and b is not None
+    assert dataclasses.asdict(a) == dataclasses.asdict(b)
+
+
+def test_control_the_binary_blob_comparison_can_fail() -> None:
+    """Without this the two tests above are satisfied by two decoders that agree
+    because neither does anything (11p)."""
+    import struct
+
+    src = _frame()
+    blob = bytearray(_as_bin(src))
+    # Nudge the last close by a ten-thousandth of a dollar.
+    tail = len(blob) - 8
+    (last,) = struct.unpack_from(">d", blob, tail)
+    struct.pack_into(">d", blob, tail, last + 0.0001)
+    a = analyze_ticker("TEST", az._b64_to_df(_as_b64(src)), None, PARAMS)
+    b = analyze_ticker("TEST", az._bin_to_df(bytes(blob)), None, PARAMS)
+    assert a is not None and b is not None
+    assert dataclasses.asdict(a) != dataclasses.asdict(b)
+
+
+def test_a_truncated_blob_is_loud() -> None:
+    """A short payload must raise, not silently produce a mis-aligned frame."""
+    blob = _as_bin(_frame())
+    with pytest.raises(ValueError, match="implies"):
+        az._bin_to_df(blob[:-8])
+
+
+def test_an_empty_blob_is_not_an_error() -> None:
+    assert az._bin_to_df(b"") is None
+    assert az._bin_to_df(struct_zero()) is None
+
+
+def struct_zero() -> bytes:
+    import struct
+
+    return struct.pack(">i", 0)
+
+
+def test_a_blank_password_does_not_build_a_dsn() -> None:
+    """⚠️ An env var that EXISTS AND IS BLANK is exactly what an unfilled Vercel
+    field looks like. It must read as "not configured", never as a valid empty
+    password, or every ticker would spend two connection attempts failing (11z).
+    """
+    import os
+
+    keep = {k: os.environ.get(k) for k in ("SCREENER_DB_URL", "SCREENER_DB_PASSWORD")}
+    try:
+        os.environ["SCREENER_DB_URL"] = ""
+        os.environ["SCREENER_DB_PASSWORD"] = ""
+        assert az._direct_dsn() is None
+        os.environ["SCREENER_DB_PASSWORD"] = "p@ss word/with+specials"
+        os.environ["NEXT_PUBLIC_SUPABASE_URL"] = "https://abcdef.supabase.co"
+        dsn = az._direct_dsn()
+        assert dsn is not None
+        # The password is URL-ENCODED: an unescaped @ or / silently corrupts the
+        # host or database name and produces a baffling connection error.
+        assert "p%40ss+word%2Fwith%2Bspecials" in dsn
+        assert "mc_bars_reader.abcdef" in dsn
+    finally:
+        for k, v in keep.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
