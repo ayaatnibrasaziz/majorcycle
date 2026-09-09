@@ -201,6 +201,10 @@ export const PUBLIC_ENDPOINTS: readonly string[] = [
   // Stripe posts webhook events server-to-server; the route verifies every request
   // with the signature secret, so an unsigned POST is rejected 400 inside it.
   '/api/stripe/webhook',
+  // Resend posts delivery events (we act on spam complaints) server-to-server.
+  // The route verifies the Svix signature on every request and answers 400 to an
+  // unsigned POST, 503 when the secret is unset — it never fails open.
+  '/api/resend/webhook',
 ] as const;
 
 /** Path → page, for the metadata helper and the guards. */
