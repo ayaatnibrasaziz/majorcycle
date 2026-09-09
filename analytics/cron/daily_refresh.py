@@ -302,6 +302,63 @@ def _upsert_price_bars(supabase: Client, ticker: str, df: pd.DataFrame) -> None:
         supabase.table("price_bars").upsert(chunk, on_conflict="ticker,date").execute()
 
 
+def _write_ticker(
+    supabase: Client, ticker: str, stock_row: dict[str, Any], df: pd.DataFrame
+) -> tuple[bool, bool]:
+    """Write one ticker's `stocks` row and its price bars INDEPENDENTLY.
+
+    Returns ``(wrote_stock, wrote_bars)``. The caller counts a success only when
+    both are true, so this widens what SURVIVES a failure and never what counts
+    as one: either write failing still puts the ticker in `failed`, and the retry
+    pass, the end-of-run warning and the workflow gate behave exactly as before.
+
+    ⚠️ THE ORDER IS FORCED. Do NOT swap these to "prices first":
+    `price_bars.ticker` is a FOREIGN KEY to `stocks.ticker`, so a brand-new
+    ticker's `stocks` row must land before its bars or every bar is rejected —
+    and the universe auto-expands on reader request (decision #12), so a new
+    ticker is the normal case, not an edge one.
+
+    ⚠️ THE INCIDENT (GGP.AX, 2026-09-02 .. 09-09). These two writes shared ONE
+    `try` inside `run()`. A NaN in the fundamentals blob threw on the first, so
+    the second never ran, and 23 already-fetched price bars were thrown away —
+    for eight days, over a ratio Yahoo does not publish for that company. Prices
+    do not depend on fundamentals being READABLE, only on the row EXISTING.
+
+    ⚠️ Extracted from `run()` purely so this can be tested. It was 400 lines deep
+    in a function that fetches from the network, which is how a rule goes
+    unguarded for a year (11at).
+    """
+    wrote_stock = False
+    try:
+        supabase.table("stocks").upsert(stock_row, on_conflict="ticker").execute()
+        wrote_stock = True
+    except Exception as e:
+        logger.error(
+            "%s: stocks upsert failed (%s) — still attempting price bars",
+            ticker,
+            e,
+            exc_info=True,
+        )
+
+    wrote_bars = False
+    try:
+        _upsert_price_bars(supabase, ticker, df)
+        wrote_bars = True
+    except Exception as e:
+        # A NEW ticker whose `stocks` row just failed cannot have bars. Say which
+        # of the two it is rather than leaving a foreign-key violation to be
+        # decoded at 2am (11e: never let one message mean two different things).
+        logger.error(
+            "%s: price bars failed (%s)%s",
+            ticker,
+            e,
+            "" if wrote_stock else " — expected: its stocks row did not land",
+            exc_info=wrote_stock,
+        )
+
+    return wrote_stock, wrote_bars
+
+
 def _recent_splits(df: pd.DataFrame) -> list[str]:
     """ISO dates of any stock split inside the freshly-fetched window.
 
@@ -1224,9 +1281,13 @@ def run(
                     else:
                         logger.info("%s | price+fund | bars=%d", ticker, len(df))
 
-                    supabase.table("stocks").upsert(stock_row, on_conflict="ticker").execute()
-                    _upsert_price_bars(supabase, ticker, df)
-                    succeeded += 1
+                    # Two INDEPENDENT writes — see `_write_ticker`. A
+                    # fundamentals failure must not cost the price bars.
+                    wrote_stock, wrote_bars = _write_ticker(supabase, ticker, stock_row, df)
+                    if wrote_stock and wrote_bars:
+                        succeeded += 1
+                    else:
+                        failed.append(ticker)
 
                 except Exception as e:
                     logger.error("%s: unexpected error: %s", ticker, e, exc_info=True)

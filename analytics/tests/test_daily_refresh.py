@@ -351,3 +351,98 @@ def test_control_a_raw_nan_really_does_break_that_encoder() -> None:
     NaN in it, and would pass even if `_jsonb` were the identity function."""
     with pytest.raises(ValueError, match="not JSON compliant"):
         json.dumps({"a": float("nan")}, allow_nan=False)
+
+
+# ── A fundamentals failure must cost the fundamentals and NOTHING else ────────
+# GGP.AX, 2026-09-02..09-09: the `stocks` upsert and the price-bar write shared
+# one `try`, so a NaN in a jsonb blob threw away 23 already-fetched price bars.
+
+
+class _WriteStub:
+    """Minimal Supabase stand-in that records writes and can fail one table."""
+
+    def __init__(self, fail_table: str | None = None) -> None:
+        self.fail_table = fail_table
+        self.wrote: dict[str, int] = {"stocks": 0, "price_bars": 0}
+        self._t: str | None = None
+
+    def table(self, name: str) -> "_WriteStub":
+        self._t = name
+        return self
+
+    def upsert(self, payload: Any, **_: Any) -> "_WriteStub":
+        assert self._t is not None
+        if self._t == self.fail_table:
+            raise RuntimeError(f"simulated {self._t} failure")
+        self.wrote[self._t] += len(payload) if isinstance(payload, list) else 1
+        return self
+
+    def execute(self) -> None:
+        return None
+
+
+def _one_bar_frame() -> pd.DataFrame:
+    idx = pd.date_range("2026-09-01", periods=3, freq="B")
+    return pd.DataFrame(
+        {"Open": [1.0, 2.0, 3.0], "High": [1.0, 2.0, 3.0], "Low": [1.0, 2.0, 3.0],
+         "Close": [1.0, 2.0, 3.0], "Volume": [10, 20, 30]},
+        index=idx,
+    )
+
+
+def test_price_bars_still_land_when_the_stocks_write_fails() -> None:
+    """The incident, as a test. This is the whole point of the change."""
+    from analytics.cron.daily_refresh import _write_ticker
+
+    sb = _WriteStub(fail_table="stocks")
+    wrote_stock, wrote_bars = _write_ticker(
+        sb, "GGP.AX", {"ticker": "GGP.AX"}, _one_bar_frame()  # type: ignore[arg-type]
+    )
+
+    assert wrote_stock is False
+    assert wrote_bars is True
+    assert sb.wrote["price_bars"] == 3, "the bars were fetched — they must be written"
+
+
+def test_the_ticker_is_still_reported_as_failed() -> None:
+    """⚠️ The control on the control. Surviving a partial failure must not turn
+    it into a success, or the retry pass and the workflow gate stop firing and
+    this fix would HIDE the next incident instead of surviving it."""
+    from analytics.cron.daily_refresh import _write_ticker
+
+    for fail in ("stocks", "price_bars"):
+        ws, wb = _write_ticker(
+            _WriteStub(fail_table=fail), "X", {"ticker": "X"}, _one_bar_frame()  # type: ignore[arg-type]
+        )
+        assert not (ws and wb), f"failing {fail} must not count as a success"
+
+
+def test_a_clean_run_writes_both_and_counts_as_success() -> None:
+    """Without this, "raise on everything" passes every assertion above."""
+    from analytics.cron.daily_refresh import _write_ticker
+
+    sb = _WriteStub()
+    ws, wb = _write_ticker(
+        sb, "BHP.AX", {"ticker": "BHP.AX"}, _one_bar_frame()  # type: ignore[arg-type]
+    )
+    assert (ws, wb) == (True, True)
+    assert sb.wrote == {"stocks": 1, "price_bars": 3}
+
+
+def test_the_stocks_row_is_written_before_the_bars() -> None:
+    """`price_bars.ticker` is a FOREIGN KEY to `stocks.ticker`, so a NEW ticker's
+    row must land first. Reordering these would break the auto-expanding universe
+    (decision #12) — and would look correct in every test that ignores order."""
+    from analytics.cron.daily_refresh import _write_ticker
+
+    order: list[str] = []
+
+    class _OrderStub(_WriteStub):
+        def table(self, name: str) -> "_OrderStub":
+            order.append(name)
+            return super().table(name)  # type: ignore[return-value]
+
+    _write_ticker(
+        _OrderStub(), "NEW.AX", {"ticker": "NEW.AX"}, _one_bar_frame()  # type: ignore[arg-type]
+    )
+    assert order[0] == "stocks", f"stocks must be written first, got {order}"
