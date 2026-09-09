@@ -167,6 +167,79 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 | **4. Browser HTTP cache** | User's browser | Per asset (1yr static, max-age=0 dynamic) | Standard cache headers |
 | **+. Benchmark module cache** | In-memory module scope (`benchmarks.server.ts`), reused across requests on a warm Fluid Compute instance | 24 hours | The full benchmark index series (~3MB, e.g. `^GSPC` ≈ 24.7k bars) is identical for every stock, so it's fetched once per instance. **Deliberately not Vercel Data Cache** — the ~3MB value exceeds that cache's 2MB entry limit (which previously threw an `unhandledRejection` on every render). A single shared in-flight promise dedupes concurrent first requests; an empty result is not cached. |
 
+| **+. Screener result cache** | Two layers in `web/api/analyze.py`: a per-instance dict (L1) and the **Vercel Runtime Cache** (L2, shared across every function instance in `iad1`, and surviving deploys) | L1 30 min, L2 7 days — both GARBAGE COLLECTION, not correctness | One computed `CycleAnalysis` per (ticker × preset), ~2 KB. **Staleness is prevented by the KEY, not by the TTL** — see below. |
+
+### 3.1 The screener cache, and why there is no webhook
+
+A 761-ticker screen costs ~166 s cold and about 0.21 s per stock it has to compute
+from scratch, so almost all of the time is stocks nobody has looked at yet today.
+Caching the finished answer removes that entirely: a cached stock costs ~5 ms.
+
+L1 alone is what shipped first, and its ceiling is visible in `analysis_runs` —
+two of the owner's runs on 2026-09-09, 34 minutes apart, were **100% and 99% cold**,
+because Vercel had recycled the instance in between. A warm cache that empties at
+unpredictable moments is one almost nobody arrives in time for. With L2 the cache
+empties when the DATA changes, once a night, and not before.
+
+**The one new way to be wrong is showing a number the database no longer agrees
+with, and it is closed by `stocks.data_version`** (migration
+`20260909120000_stocks_data_version.sql`). A trigger bumps that counter inside the
+transaction of ANY write to the stock or to its `price_bars`, and the counter rides
+in the cache key. A stale entry is therefore not deleted — it is **unreachable**.
+
+⚠️ **Deliberately not a Database Webhook.** A webhook is a MESSAGE: pg_net's worker
+can be down, the receiver can 500, we can be mid-deploy — and when it fails nothing
+is logged on the reading side, so the cache serves yesterday's numbers indefinitely.
+That is CLAUDE.md 11z's shape, a silence that reads as health. There is no delivery
+here, so there is nothing to miss, and it covers writers nobody thought to hook: a
+hand edit in the Studio, a split or dividend re-pull (11ae/11af), a migration, a
+backfill, and writers that do not exist yet.
+
+⚠️ **What the counter cost to get right, twice.** (i) `daily_refresh` writes bars
+with INSERT ... ON CONFLICT DO UPDATE, and in Postgres a row that already exists
+takes the UPDATE path and fires UPDATE triggers — so a trigger armed only on INSERT
+would have sat silent on exactly the re-pulls that rewrite history without adding a
+bar. All three verbs are armed. (ii) The stocks trigger first compared
+`IS DISTINCT FROM`, which honoured any explicit value including a LOWER one:
+measured live, one upsert sending `data_version = 1` took a stock from 500 back to
+1, making every answer cached at 1..500 reachable again. It compares `>`, so the
+counter is monotonic by construction. **Note the asymmetry** — failing to bump costs
+one recompute, going backwards serves a wrong number, so the guard is built for the
+worse direction.
+
+**Cost of the trigger**, measured on the live Micro instance before it was written:
+a 500-bar chunk goes 7.1 ms → 15.4 ms, a normal night's 5-bar chunk is 0.6 ms. A
+normal night is ~761 small statements, so ~0.3 s on a ~40-minute job.
+
+**Security.** The cache holds no per-viewer data — the screener's numbers are
+identical for every entitled reader. Entitlement is checked in `proxy.ts` on every
+single request, as a live `profiles` read, before the Python function is reached,
+and is never cached; a lapsed subscription is refused on the next click regardless
+of how warm the cache is. The response itself stays `private, no-store`, which
+`check:entitlement-gates` enforces. Runtime cache is split by deployment
+environment, so preview and production never share entries.
+
+⚠️ **`vercel.cache` falls back to a private in-memory dict when its environment
+variables are absent**, announcing it only in a log line. That would look like a
+working shared cache while being no better than L1 — unmeasurable counted as clean
+(14g). So `RUNTIME_CACHE_ENDPOINT` is read directly and L2 is skipped outright when
+it is missing, rather than silently duplicating L1.
+
+⚠️ **A cache entry outlives the deployment that wrote it.** A release that changed
+the SHAPE of a result would read yesterday's shape back. The key therefore carries a
+hash of the result's field names, derived from `CycleAnalysis` and
+`_SCREENER_FIELDS` themselves, so adding or removing a field retires every old entry
+with no second edit. What that hash CANNOT see is a change to how an existing field
+is COMPUTED — every name stays identical — so `_RESULT_EPOCH` is the hand lever for
+that case and must be bumped in the same commit.
+
+**Not built, and why:** a cache of the raw price BARS, which would be preset-free
+and would also help a first-ever Custom preset. It is 177 MB against 4.6 MB for the
+answers, still requires the full analysis on every run, and Vercel publishes no
+storage limit for a Hobby runtime cache. Owner decided 2026-09-09 to skip it — most
+readers never leave the three named presets. Nightly cache WARMING was also declined
+the same day: the owner is content for the first reader after each refresh to wait.
+
 **Decision rule:** A user request **never** hits yfinance directly. Brand-new tickers are *queued* (Tier 4) and fetched by the next daily cron; every read resolves in tiers 2-4.
 
 ---

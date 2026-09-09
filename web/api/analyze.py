@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import base64
 import dataclasses
+import hashlib
 import hmac
 import json
 import logging
@@ -62,7 +63,7 @@ import pandas as pd  # noqa: E402
 from postgrest.types import CountMethod  # noqa: E402
 from supabase import Client, create_client  # noqa: E402
 
-from _engine.major_cycle import CycleParams, analyze_ticker  # noqa: E402
+from _engine.major_cycle import CycleAnalysis, CycleParams, analyze_ticker  # noqa: E402
 from _engine.presets import PRESETS  # noqa: E402
 from _engine.providers.base import FundamentalsSnapshot  # noqa: E402
 from _engine.providers.field_spec import normalise_fundamentals  # noqa: E402
@@ -78,14 +79,151 @@ logging.basicConfig(level=logging.INFO)
 # a single function invocation stays well within its time/memory budget.
 MAX_TICKERS_PER_REQUEST = 60
 
-# Warm-instance result cache. Price bars only change once a day (the cron), so a
-# computed per-ticker result is safe to reuse for a while. On Vercel Fluid Compute
-# the module stays loaded across invocations, so this makes re-runs ("Re-run",
-# overlapping baskets like Top 50 ⊂ Top 100) near-instant. Keyed by ticker + the
-# exact params. Bounded so it can't grow without limit.
-_RESULT_CACHE: dict[tuple[str, float, float, int], tuple[float, dict[str, Any]]] = {}
-_RESULT_TTL = 1800.0  # 30 minutes
+# ── The result cache, in two layers ────────────────────────────────────
+#
+# L1 is this dict, private to one warm Python instance. L2 is the Vercel Runtime
+# Cache, shared by every instance in the region and surviving deploys.
+#
+# L1 alone is what shipped before, and its ceiling is visible in `analysis_runs`:
+# two of the owner's runs on 2026-09-09, 34 minutes apart, were 100% and 99% cold,
+# because Vercel had recycled the instance in between. A warm cache that empties
+# at unpredictable moments is a cache almost nobody arrives in time for. With L2
+# the cache empties when the DATA changes — once a night — and not before.
+#
+# ⚠️ STALENESS IS HANDLED BY THE KEY, NOT BY THE TTL. Every key carries the
+# stock's `data_version` (supabase/migrations/20260909120000_stocks_data_version
+# .sql), which a database trigger bumps inside the transaction of ANY write to
+# that stock or its bars. So an entry computed from older data is not deleted, it
+# is UNREACHABLE — nobody asks for version 4471 once the counter reads 4472.
+#
+# That is deliberately NOT a webhook. A webhook is a message, and a message can
+# fail to arrive with nothing logged on this side; the cache would then serve
+# yesterday's numbers indefinitely. There is no message here, so there is nothing
+# to miss — and it covers writers nobody thought to hook, including ones that do
+# not exist yet.
+#
+# The TTLs below are therefore GARBAGE COLLECTION, never correctness. Shortening
+# them cannot make the product more correct; it can only make it slower.
+_RESULT_CACHE: dict[tuple[str, float, float, int, int], tuple[float, dict[str, Any]]] = {}
+_RESULT_TTL = 1800.0  # 30 minutes — bounds one instance's memory, nothing else
 _RESULT_CACHE_MAX = 2000
+
+# L2 lifetime. Long on purpose: the version stamp is what expires an entry, and a
+# short window here would just throw away work that is still perfectly valid.
+_SHARED_TTL_SECONDS = 7 * 24 * 3600
+
+# ⚠️ A CACHE ENTRY OUTLIVES THE DEPLOYMENT THAT WROTE IT. Vercel keeps runtime
+# cache across deploys, so a release that changes the SHAPE of a result would read
+# yesterday's shape back and hand the screener a row missing a column. The shape
+# half of that is caught mechanically rather than remembered: the key carries a
+# hash of the field names a result actually contains, so adding or removing one
+# retires every old entry with no second edit and nothing to forget (CLAUDE.md
+# 11c — make it structural, not a rule somebody has to obey).
+#
+# What the hash CANNOT see is a change to how an existing field is COMPUTED — a
+# new weighting inside `analyze_ticker` leaves every field name identical. Say so
+# rather than let the automatic half read as full coverage (14g): for that case,
+# bump `_RESULT_EPOCH` by hand in the same commit.
+_RESULT_EPOCH = 1
+
+
+_SHAPE_SIGNATURE: str | None = None
+
+
+def _result_shape_signature() -> str:
+    """Short hash of every field name a cached result carries.
+
+    Built from the dataclass itself and from `_SCREENER_FIELDS`, so it tracks the
+    real shape rather than a list someone has to keep in step with it. Memoised —
+    it is asked once per ticker and the answer cannot change while the process
+    lives.
+    """
+    global _SHAPE_SIGNATURE
+    if _SHAPE_SIGNATURE is None:
+        names = [f.name for f in dataclasses.fields(CycleAnalysis)]
+        names += ["fundamentals", *_SCREENER_FIELDS, "history_high"]
+        raw = f"{_RESULT_EPOCH}|" + "|".join(names)
+        _SHAPE_SIGNATURE = hashlib.sha256(raw.encode()).hexdigest()[:12]
+    return _SHAPE_SIGNATURE
+
+
+# Vercel Runtime Cache handle, created once per instance.
+#
+# ⚠️ `vercel.cache` FALLS BACK TO A PRIVATE IN-MEMORY DICT when its environment
+# variables are absent, and says so only in a log line. That is friendly locally
+# and dangerous in production: a misconfigured deployment would keep working,
+# keep reporting hits, and quietly be no better than L1 — unmeasurable counted as
+# clean (14g). So the presence of the endpoint is read directly and recorded, and
+# L2 is skipped entirely when it is missing rather than silently duplicating L1.
+_SHARED_ENABLED = bool(os.environ.get("RUNTIME_CACHE_ENDPOINT"))
+_SHARED_LOCAL = threading.local()
+_SHARED_BROKEN = False
+
+# Said once per cold start, on purpose. Whether the shared layer is live is not
+# observable from the outside — a screen served entirely by L1 looks exactly like
+# one served by L2, just slower and less often — so without this line "the cache
+# is working" would be an inference rather than a reading (14g).
+logger.info(
+    "screener result cache: L2 %s", "ACTIVE (vercel runtime cache)" if _SHARED_ENABLED
+    else "OFF (RUNTIME_CACHE_ENDPOINT unset) — per-instance L1 only",
+)
+
+
+def _shared_cache() -> Any:
+    """The Runtime Cache handle for this thread, or None if it is unusable.
+
+    Fails open in every direction. A cache that cannot be reached must cost speed
+    and never an answer, so every path here returns None instead of raising.
+    """
+    global _SHARED_BROKEN
+    if not _SHARED_ENABLED or _SHARED_BROKEN:
+        return None
+    handle = getattr(_SHARED_LOCAL, "cache", None)
+    if handle is None:
+        try:
+            from vercel.cache import get_cache  # noqa: PLC0415 — optional at import time
+
+            handle = get_cache()
+            _SHARED_LOCAL.cache = handle
+        except Exception:  # noqa: BLE001 — the cache is an optimisation, never a dependency
+            logger.warning("runtime cache unavailable; serving without it", exc_info=True)
+            _SHARED_BROKEN = True
+            return None
+    return handle
+
+
+def _shared_key(ticker: str, params: CycleParams, version: int) -> str:
+    """The L2 key. Same four facts as L1 plus the shape hash.
+
+    `data_version` is what makes a stale entry unreachable; the shape hash is what
+    makes a previous deployment's entry unreachable.
+    """
+    return (
+        f"mc:analyze:{_result_shape_signature()}:{ticker}"
+        f":{params.pullback_threshold}:{params.profit_threshold}"
+        f":{params.lookback_bars}:{version}"
+    )
+
+
+def _shared_get(key: str) -> dict[str, Any] | None:
+    cache = _shared_cache()
+    if cache is None:
+        return None
+    try:
+        value = cache.get(key)
+    except Exception:  # noqa: BLE001 — a miss and a failure cost the same: one recompute
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def _shared_set(key: str, value: dict[str, Any]) -> None:
+    cache = _shared_cache()
+    if cache is None:
+        return
+    try:
+        cache.set(key, value, {"ttl": _SHARED_TTL_SECONDS, "tags": ["screener-analysis"]})
+    except Exception:  # noqa: BLE001 — never let a cache write sink a computed answer
+        logger.debug("runtime cache write failed for %s", key, exc_info=True)
 
 # Whether the get_price_bars_json RPC (one-shot history fetch) exists in this DB.
 # None = not yet probed; False = confirmed missing (use pagination, don't keep
@@ -799,6 +937,53 @@ def _clean_tickers(raw: Any) -> list[str]:
     return out
 
 
+def _load_data_versions(sb: Client, tickers: list[str]) -> dict[str, int] | None:
+    """Every ticker's `data_version`, in ONE round trip. None means "couldn't ask".
+
+    This is the whole staleness mechanism. The number it returns rides in the cache
+    key, so a result computed from older bars or older fundamentals can never be
+    found again (see the migration for why that beats a webhook).
+
+    ⚠️ THREE ANSWERS, NOT TWO — CLAUDE.md 11e. A ticker missing from the response
+    genuinely is not in our universe; a FAILED query is a different fact entirely,
+    and collapsing the two would tell a paying customer their real stock does not
+    exist. So a failure returns None for the whole batch, which the caller reads as
+    "run without the cache" — slower, never wrong, and never a false "not found".
+
+    That same None is what makes the deploy order not matter: before the migration
+    lands, `data_version` is not a column, PostgREST answers with an error, and the
+    screener simply behaves exactly as it did last week.
+
+    One request analyses at most MAX_TICKERS_PER_REQUEST (60) tickers, so this is a
+    single response far below PostgREST's silent 1000-row ceiling (14c).
+    """
+    if not tickers:
+        return {}
+    try:
+        resp = (
+            sb.table("stocks")
+            .select("ticker,data_version")
+            .in_("ticker", tickers)
+            .execute()
+        )
+        rows = cast("list[dict[str, Any]]", resp.data or [])
+    except Exception:  # noqa: BLE001 — no cache is a valid outcome; a wrong answer is not
+        logger.warning("data_version lookup failed; running uncached", exc_info=True)
+        return None
+
+    out: dict[str, int] = {}
+    for row in rows:
+        raw = row.get("data_version")
+        if raw is None:
+            # The column exists but this row has no value — impossible under the
+            # NOT NULL default, so something is wrong with our assumptions rather
+            # than with the row. Refuse to key on it rather than invent a version.
+            logger.warning("null data_version for %s; running uncached", row.get("ticker"))
+            return None
+        out[str(row["ticker"])] = int(raw)
+    return out
+
+
 def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     """Core batch computation, shared by the HTTP handler and the CLI.
 
@@ -829,6 +1014,11 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     # concurrency, keeping total in-flight requests at cycle.py's safe level.
     page_workers = 8 if len(tickers) == 1 else 1
 
+    # ONE query for the whole request, replacing nothing and enabling the cache.
+    # A miss still costs its own `stocks` read below; a hit costs nothing further,
+    # so a fully warm request touches the database exactly once.
+    versions = _load_data_versions(sb, tickers)
+
     def _one(ticker: str) -> tuple[str, dict[str, Any] | None]:
         """Analyse one ticker; return (ticker, result_dict | None).
 
@@ -837,14 +1027,47 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         into `unavailable`. A genuine "not in universe / insufficient history"
         is a clean None and returns immediately (no wasted retries).
         """
-        key = (ticker, *cache_key)
-        hit = _RESULT_CACHE.get(key)
-        if hit is not None and now - hit[0] < _RESULT_TTL:
-            return ticker, hit[1]
+        version = versions.get(ticker) if versions is not None else None
+        if versions is not None and version is None:
+            return ticker, None  # genuinely not in our universe
+
+        # ⚠️ NO VERSION MEANS NO CACHE AT ALL, in either layer.
+        #
+        # The tempting shortcut is to key L1 on a placeholder when the version
+        # lookup failed, on the grounds that L1 is only a 30-minute window. But two
+        # requests that both failed the lookup would then share that placeholder,
+        # so a data change landing between them would be served stale — narrow, and
+        # still the exact thing this design promises cannot happen. A guarantee with
+        # a rare exception is not a guarantee, it is a bug nobody will reproduce.
+        #
+        # The cost of the strict reading is one uncached screen on a day the
+        # database hiccups. Slower, never wrong.
+        key = (ticker, *cache_key, version) if version is not None else None
+        if key is not None:
+            hit = _RESULT_CACHE.get(key)  # L1: this instance's own memory
+            if hit is not None and now - hit[0] < _RESULT_TTL:
+                return ticker, hit[1]
+
+        # L2: shared across every instance in the region, and across deploys.
+        shared_key = _shared_key(ticker, params, version) if version is not None else None
+        if shared_key is not None and key is not None:
+            shared = _shared_get(shared_key)
+            if shared is not None:
+                _RESULT_CACHE[key] = (now, shared)
+                return ticker, shared
+
         for attempt in range(4):
             try:
                 row, fundamentals = _load_fundamentals(sb, ticker)
                 if row is None:
+                    if version is not None:
+                        # The version lookup already proved this row exists, so an
+                        # empty read here is a FAILED read, not an absent stock.
+                        # Raising sends it round the retry loop; four failures land
+                        # it in `unavailable`, which is the honest answer. Returning
+                        # None would report "not in our universe" about a stock we
+                        # demonstrably cover (11e).
+                        raise RuntimeError(f"stocks row unreadable for {ticker}")
                     return ticker, None  # not in universe
                 df = _load_price_bars(sb, ticker, page_workers)
                 if df is None or df.empty:
@@ -855,7 +1078,10 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
                 result = dataclasses.asdict(analysis)
                 # Display-only fundamentals for the Results screener (see above).
                 result["fundamentals"] = _screener_fundamentals(fundamentals, df)
-                _RESULT_CACHE[key] = (now, result)
+                if key is not None:
+                    _RESULT_CACHE[key] = (now, result)
+                if shared_key is not None:
+                    _shared_set(shared_key, result)
                 return ticker, result
             except Exception:  # noqa: BLE001 — one bad ticker must not sink the batch
                 if attempt == 3:

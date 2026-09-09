@@ -13,3 +13,9 @@ supabase>=2.4.0
 # Postgres itself takes 16-23 ms; this skips it. [binary] ships the libpq wheel so
 # no system library is needed on the Vercel image.
 psycopg[binary]>=3.2
+# Vercel Runtime Cache — the screener's shared result cache (web/api/analyze.py).
+# The narrow `vercel-cache` package, NOT the full `vercel` SDK: that one pulls in
+# sandbox, queues, websockets and cryptography for features this function will
+# never use, and the bundle limit is 250 MB with pandas and numpy already in it.
+# ~360 kB installed, and httpx is already here via supabase.
+vercel-cache>=0.7.2
