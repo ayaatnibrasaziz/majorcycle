@@ -165,8 +165,19 @@ def _bars_to_df(rows: list[Any]) -> pd.DataFrame:
             "volume": "Volume",
         }
     )
-    for col in ("Open", "High", "Low", "Close", "Volume"):
-        df[col] = pd.to_numeric(df[col], errors="coerce")
+    # ⚠️ The four PRICE columns are parsed with Python's `float()`, not
+    # `pd.to_numeric`. pandas' parser is fast and NOT correctly rounded, so where
+    # PostgREST serialises a numeric as a STRING it lands 1-14 ULP off the stored
+    # value while the binary path lands exactly — three decoders, three answers
+    # at the bit level. Measured 2026-09-09: 4,501 of AAPL's 11,526 highs. No
+    # `errors="coerce"`: all four columns carry zero NULLs across 6,616,389
+    # stored bars, and a NaN would be indistinguishable from a genuine gap (11e).
+    # Volume stays on `to_numeric` — it is an integer, exact either way, and
+    # keeping it there preserves the int64 dtype. Mirrored verbatim in the
+    # sibling handler; these two files are deliberate copies (see the loader note).
+    for col in ("Open", "High", "Low", "Close"):
+        df[col] = df[col].map(float).astype("float64")
+    df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
     return df
 
 

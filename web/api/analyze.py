@@ -501,15 +501,15 @@ def _b64_to_df(payload: dict[str, Any]) -> pd.DataFrame | None:
     `d` is base64 of n big-endian int32 epoch-days; `h`, `l`, `c` are base64 of n
     big-endian float8.
 
-    ⚠️ This is NOT bit-identical to `_columns_to_df`, and the difference is the
-    text path's fault rather than this one's. `pd.to_numeric` is a fast float
-    parser and is not correctly rounded: given "0.09812240302562714" it returns
-    0.0981224030256271, and it disagrees with Python's `float()` on 4,584 of
-    AAPL's 11,525 closes. So the text path has always carried ~1-14 ULP of error
-    (~2e-15 relative) and this path carries none, because it parses no strings.
-    Measured across 21 tickers x 3 presets, every frame differs and every
-    resulting CycleAnalysis is identical. See
-    `analytics/tests/test_analyze_columns.py`, which pins both halves.
+    ⚠️ This IS bit-identical to `_columns_to_df` as of 2026-09-09, and was not
+    before. That path used `pd.to_numeric`, which is fast and NOT correctly
+    rounded — it disagreed with Python's `float()` on 4,501 of AAPL's 11,526
+    highs (~1-14 ULP, ~2e-15 relative). Every CycleAnalysis came out identical
+    anyway, measured across 21 tickers x 3 presets, so no reader ever saw a wrong
+    number; it was fixed because three decoders that disagree at the bit level
+    are three chances for a value sitting exactly on a -3/-5/-8% threshold to
+    fall differently depending on which fallback happened to run. See
+    `analytics/tests/test_analyze_columns.py`, which pins all three.
 
     ⚠️ The length check is load-bearing, for the same reason as in the text path:
     four aggregates over one scan cannot disagree, but if they ever did,
@@ -583,11 +583,23 @@ def _columns_to_df(payload: dict[str, Any]) -> pd.DataFrame | None:
     if declared is not None and int(declared) != n:
         raise ValueError(f"{_CYCLE_RPC_NAME} said n={declared} but sent {n} dates")
 
+    # ⚠️ `np.array(..., dtype="float64")`, NOT `pd.to_numeric`. pandas' parser is
+    # fast and NOT correctly rounded: given "0.09854902842560147" it returns
+    # 0.0985490284256014, and it disagreed with Python's `float()` on 4,501 of
+    # AAPL's 11,526 highs — 94% of stored prices carry more than 15 significant
+    # digits, so most values were exposed. numpy's parser is exact and, measured
+    # on the same 11,526 values, costs the same 4.2 ms. This path is the third
+    # fallback, so nothing a reader saw was ever wrong; the defect was that the
+    # three decoders did not agree with each other, and a rule that holds on two
+    # of three arms is not a rule (11c). No `errors="coerce"`: the columns carry
+    # zero NULLs across all 6,616,389 stored bars, and coercing a malformed
+    # payload to NaN would make it indistinguishable from a genuine gap (11e) —
+    # the length check below already raises rather than guesses.
     df = pd.DataFrame(
         {
-            "High": pd.to_numeric(highs, errors="coerce"),
-            "Low": pd.to_numeric(lows, errors="coerce"),
-            "Close": pd.to_numeric(closes, errors="coerce"),
+            "High": np.array(highs, dtype="float64"),
+            "Low": np.array(lows, dtype="float64"),
+            "Close": np.array(closes, dtype="float64"),
         },
         # ⚠️ `datetime64[s]` rather than `pd.to_datetime`, which is half the cost
         # and — verified — produces an index that compares equal element for
@@ -613,11 +625,19 @@ def _bars_to_df(rows: list[Any]) -> pd.DataFrame:
             "volume": "Volume",
         }
     )
-    # Coerce OHLCV to numeric so the RPC path (jsonb numbers) and the paginated
-    # path (PostgREST) yield an identical DataFrame regardless of any string/number
-    # serialisation differences — the cycle math must get floats.
-    for col in ("Open", "High", "Low", "Close", "Volume"):
-        df[col] = pd.to_numeric(df[col], errors="coerce")
+    # ⚠️ The four PRICE columns are parsed with Python's `float()`, not
+    # `pd.to_numeric`. pandas' parser is fast and NOT correctly rounded, so where
+    # PostgREST serialises a numeric as a STRING it lands 1-14 ULP off the stored
+    # value while the binary path lands exactly — three decoders, three answers
+    # at the bit level. Measured 2026-09-09: 4,501 of AAPL's 11,526 highs. No
+    # `errors="coerce"`: all four columns carry zero NULLs across 6,616,389
+    # stored bars, and a NaN would be indistinguishable from a genuine gap (11e).
+    # Volume stays on `to_numeric` — it is an integer, exact either way, and
+    # keeping it there preserves the int64 dtype. Mirrored verbatim in the
+    # sibling handler; these two files are deliberate copies (see the loader note).
+    for col in ("Open", "High", "Low", "Close"):
+        df[col] = df[col].map(float).astype("float64")
+    df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
     return df
 
 

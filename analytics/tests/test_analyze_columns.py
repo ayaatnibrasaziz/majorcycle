@@ -231,9 +231,12 @@ def _as_b64(df: pd.DataFrame) -> dict[str, Any]:
 
 
 def test_the_binary_decoder_is_exactly_a_correctly_rounded_parse() -> None:
-    """⚠️ The half that matters. The text path is ~1-14 ULP off the stored value
-    because of `pd.to_numeric`; this path must carry NO error at all, which means
-    matching Python's `float()` bit for bit — not matching `_columns_to_df`."""
+    """Must carry NO error at all: matching Python's `float()` bit for bit.
+
+    ⚠️ This docstring said the text path was "~1-14 ULP off, so this must match
+    `float()` and NOT `_columns_to_df`" until 2026-09-09. That was true and is
+    the defect, not the design — see the sibling test below, which now requires
+    all three decoders to agree."""
     src = _frame()
     got = az._b64_to_df(_as_b64(src))
     assert got is not None
@@ -243,9 +246,9 @@ def test_the_binary_decoder_is_exactly_a_correctly_rounded_parse() -> None:
 
 
 def test_the_binary_shape_analyses_the_same_as_the_text_shape() -> None:
-    """They are not bit-identical, so this asserts what actually matters: no
-    figure a reader sees moves. Measured on live data over 21 tickers x 3
-    presets, 0 of 63 analyses differed."""
+    """No figure a reader sees moves. Measured on live data over 21 tickers x 3
+    presets, 0 of 63 analyses differed — and again over 7 tickers x 3 presets on
+    2026-09-09 with the Stock Detail decoder added to the comparison."""
     src = _frame()
     a = analyze_ticker("TEST", az._columns_to_df(_as_columns(src)), None, PARAMS)
     b = analyze_ticker("TEST", az._b64_to_df(_as_b64(src)), None, PARAMS)
@@ -398,3 +401,55 @@ def test_a_blank_password_does_not_build_a_dsn() -> None:
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
+
+
+def test_the_text_decoder_is_exactly_a_correctly_rounded_parse() -> None:
+    """The half that was missing until 2026-09-09.
+
+    `_columns_to_df` used `pd.to_numeric`, which is fast and NOT correctly
+    rounded — on live data it disagreed with Python's `float()` on 4,501 of
+    AAPL's 11,526 highs, and 94% of stored prices carry more than 15 significant
+    digits. Every analysis came out identical anyway, so nothing a reader saw was
+    ever wrong; the point is that a value sitting exactly on a -3/-5/-8%
+    threshold must not depend on WHICH fallback happened to run.
+    """
+    src = _frame()
+    got = az._columns_to_df(_as_columns(src))
+    assert got is not None
+    for col in ("High", "Low", "Close"):
+        exact = np.array([float(repr(float(v))) for v in src[col].to_numpy()])
+        assert np.array_equal(got[col].to_numpy(), exact), col
+
+
+def test_all_three_decoders_agree_bit_for_bit() -> None:
+    """The invariant, stated once, over every shape the screener can receive.
+
+    ⚠️ Asserted on the BARS, not on the analysis. Two frames that differ in the
+    last bit still produce the same CycleAnalysis almost always, so an
+    analysis-level check passes on a broken decoder (14g) — which is exactly how
+    the text path stayed lossy while a green test said the two shapes "analyse
+    identically".
+    """
+    src = _frame()
+    frames = {
+        "rows (detail page shape)": az._bars_to_df(_as_row_objects(src)),
+        "text columns": az._columns_to_df(_as_columns(src)),
+        "binary columns": az._b64_to_df(_as_b64(src)),
+    }
+    ref = np.array([float(repr(float(v))) for v in src["Close"].to_numpy()])
+    for name, df in frames.items():
+        assert df is not None, name
+        for col in ("High", "Low", "Close"):
+            exact = np.array([float(repr(float(v))) for v in src[col].to_numpy()])
+            assert np.array_equal(df[col].to_numpy(), exact), f"{name} / {col}"
+    assert len(ref) == BARS
+
+
+def test_control_the_bit_for_bit_check_can_fail() -> None:
+    """A decoder that rounded every price to 6 decimals must be caught, or the
+    test above is satisfied by any parser at all (11p)."""
+    src = _frame()
+    got = az._columns_to_df(_as_columns(src))
+    assert got is not None
+    rounded = np.round(np.array([float(v) for v in src["Close"].to_numpy()]), 6)
+    assert not np.array_equal(got["Close"].to_numpy(), rounded)
