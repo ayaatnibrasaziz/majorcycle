@@ -92,11 +92,49 @@ Measured on the live database three weeks later: **478 of MNST's 501 stored bars
 
    **Staleness is measured in SESSIONS, against the market's own calendar** — read from that market's benchmark index (`^GSPC` / `^AXJO` / `^GSPTSE`), which has a bar for every session. Not calendar days, which would report every market stale each Easter and Christmas; and not a calendar derived from the tickers being checked, which was the first implementation and was blind in the ordinary case: with 869 companies current and one straggler, only two dates are in evidence, so the straggler ranks *one* session behind and passes. ⚠️ And "how far behind" is asked as **how many sessions are strictly newer**, never as a lookup — running the lookup version against the live database reported **247 ASX stocks as 60 sessions behind for being one day MORE current than `^AXJO`**, a whole-market false alarm on the owner's own market, which no unit test had caught.
 
+   ⚠️ **THE FOUR BENCHMARK INDICES WERE NOT CHECKED AT ALL UNTIL 2026-09-10.** `_market_of`
+   returns `"index"` for a `^` ticker and `CALENDAR_INDEX` has no `"index"` key, so every run
+   logged *"INDEX: no session calendar — 4 ticker(s) NOT checked for staleness"* and moved on.
+   The warning was honest; nobody acted on it (14g). And these are not four more tickers —
+   **three of them ARE the calendar every equity above is ranked against**, so a stalled
+   `^GSPC` would freeze the US calendar and make all 535 US equities read as perfectly
+   current: the check would have failed exactly when there was most to find.
+
+   `stale_indices()` now judges each index against its market's **equities**, and equities
+   against the indices — each against something independent. ⚠️ **The reference cannot be the
+   calendar**: ranking `^GSPC` against the US calendar is ranking it against `^GSPC`, always
+   zero behind, a check that cannot fail. Deliberately **binary** ("is any equity newer?")
+   rather than a sessions-behind count, because only newest-bar dates are in evidence here and
+   a count would be a number the data cannot support (11k). An index alone in its market is
+   reported as **unchecked**, never as clean. Verified against the live database, not only in
+   unit tests, because a unit test on this module has been wrong before.
+
    **What is red, and what is only printed.** A handful of chronically slow tickers is not actionable — the owner's ruling is that a slow provider is the provider's problem — and "a red X every night for something nobody can act on is how people learn to ignore red" (F-027). So the run goes red only on a **proportion** (>5% of a market stale = an outbreak) or on the retire cap being hit; everything else is listed in the log on a green run. **One email**: the sweep is one more step in the existing workflow and shares the existing gate, because GitHub's failed-workflow notification fires once per failed *run* however many steps failed. There is no app-sent nightly email to merge into — the Resend key has been dead since 2026-07-02.
 
    ⚠️ **The Stooq fallback is decoration, not protection** (measured 2026-08-30). Driven through our own `_download_stooq` from Australia it returns None for every ticker in every market, AAPL included: Stooq now sits behind a JavaScript bot check answering **404 with no User-Agent (which is what our code sends) and HTTP 200 with a 796-byte challenge page with one** — F-027's shape exactly. It fails safe (HTML does not parse into OHLCV) and now logs the difference between "the source refused us" and "this ticker isn't on Stooq". ⚠️ **It must stay restricted to full pulls.** The original plan was to widen it to the nightly incremental path; measuring says the opposite, because Stooq's bars are not on Yahoo's `auto_adjust` basis and splicing them into a Yahoo series would put one company's history on two adjustment bases — the 4a defect, deliberately reintroduced. Replacing the source is an open decision for the owner.
 
 5. Always upserts `stocks` (fundamentals refreshed daily) and `price_bars`; enriched columns only written when the staleness check fires
+
+   ⚠️ **THOSE TWO WRITES ARE INDEPENDENT, AND WERE NOT UNTIL 2026-09-10** (`_write_ticker`).
+   They sat on consecutive lines inside ONE `try`, so anything wrong with the fundamentals
+   blob discarded price bars that had already been fetched. **GGP.AX wrote nothing for eight
+   days** because Yahoo publishes no fundamentals for it and a `NaN` reached the JSON encoder:
+   a missing ratio cost the stock its prices. It was silent throughout — a failed ticker is a
+   WARNING and the run finishes green — and surfaced only because the staleness sweep noticed
+   the stock had stopped moving, and only because someone read that sweep's output.
+
+   ⚠️ **The order is FORCED and must not be swapped to "prices first".** `price_bars.ticker`
+   is a FOREIGN KEY to `stocks.ticker`, so a brand-new ticker's row must land before its bars —
+   and the universe auto-expands on reader request (decision #12), so a new ticker is the
+   normal case. Checked against `pg_constraint`, not assumed.
+
+   ⚠️ **The NaN itself came from the sanitiser.** `_jsonb` is
+   `json.loads(json.dumps(obj, default=str))`, and `json.dumps` writes a bare `NaN` — legal
+   Python, illegal JSON — which `json.loads` reads straight back as a float. The one function
+   whose job is to make a row safe for `jsonb` returned the single value that is not. Fixed
+   with `parse_constant`, so a NaN becomes **null** at any depth — never `0.0`, which scoring
+   reads as a real number and marks the company down for (14b). `default=str` cannot help: it
+   fires on unsupported TYPES and a NaN is an ordinary float.
 6. Logs runtime metrics and failures; emails owner on any failures via Resend
 
 **Why this works:** Enriched data (financial statements, holders, insider transactions, PE history) changes only when a company reports earnings — typically quarterly. Fetching it daily was 95% wasted work. The earnings-date-driven approach cuts nightly runtime from ~2 hours to ~20–30 minutes while keeping data fresh where it matters.
@@ -1951,24 +1989,24 @@ completed click-through is proof. The same masking hits One Tap, whose `prompt()
 
 ## 7.4 Email — two senders, one house style
 
-**Twenty-one messages leave this system, from two different composers, through one
-provider.** The split is not arbitrary and it decides where you go to change any of them.
+**Twenty-two messages leave this system, from two different composers, through one
+provider — twenty-one to customers and one to us.** The split is not arbitrary and it decides where you go to change any of them.
 
 | | Composed by | Where the wording lives | Testable |
 |---|---|---|---|
-| **8 app emails** | This repository | `web/lib/email/*` + `app/(public)/contact/actions.ts` | ✅ `e2e/email-render.spec.ts` renders all eight on every build |
+| **9 app emails** | This repository | `web/lib/email/*`, `app/(public)/contact/actions.ts`, `app/api/resend/webhook/route.ts` | ✅ `e2e/email-render.spec.ts` renders the eight customer ones on every build; the ninth is the alert in Part 3 below |
 | **13 sign-in emails** | **Supabase** | The Supabase dashboard → Authentication → Emails → Templates | 🔴 **Nothing in this project can read them** |
 
 **Why Supabase owns thirteen of them:** it is the thing that knows a password was reset, an
 address confirmed or a magic link requested. The app never sees those moments, so it cannot
 send those emails. Supabase composes them and hands each finished message to **Resend** over
-SMTP — the same account the app calls directly — so all twenty-one leave from
+SMTP — the same account the app calls directly — so all twenty-two leave from
 `noreply@majorcycle.com` in one house style. The single exception is the contact-form
 notification, which comes from the monitored `support@` inbox and carries `reply_to`.
 
 ⚠️ **THE THIRTEEN HAVE NO FILE, AND THAT IS THE THING TO REMEMBER.** There is nothing to
 import, diff, lint or test. A guard cannot be written for them, because a guard needs
-something to read. `reference/email-templates.html` renders all twenty-one and is the **only
+something to read. `reference/email-templates.html` renders all twenty-two and is the **only
 record in this project** of what those thirteen say; keep it current by hand whenever a
 template is edited in the dashboard, because nothing else will.
 
@@ -1988,9 +2026,51 @@ alignment on both `aspf` and `adkim`. Under strict SPF alignment the `send.` sub
 strict (5A-145). `security@majorcycle.com` receives the aggregate reports and
 `support@majorcycle.com` the contact form; both confirmed delivering.
 
-**The footer is one string in all twenty-one**, and it carries **no year on purpose**:
+**The footer is one string in all twenty-two**, and it carries **no year on purpose**:
 thirteen of them are static templates that cannot compute one, so a year would be right in
 eight places and frozen in thirteen (5A-137, 5A-147).
+
+### Inbound — the one thing that comes BACK (2026-09-10)
+
+Everything above is outbound. Until 2026-09-10 **nothing came back**: the Resend account had
+**zero webhooks**, so a spam complaint or a hard bounce was recorded by Resend and asked
+about by nobody. That is the worst shape a signal can have, because complaints *compound* —
+a rising rate poisons the sending domain that carries every other message, including
+every sign-in and password-reset email, and the first symptom is delivery already degraded.
+
+`POST /api/resend/webhook` now receives `email.complained` and emails the owner. Shape:
+
+| | |
+|---|---|
+| Path | `/api/resend/webhook`, listed in `PUBLIC_PATHS` — Resend posts server-to-server without cookies, exactly like the Stripe webhook |
+| Gate | the **Svix signature is the only gate**. Verified in `lib/resendWebhook.ts` against `RESEND_WEBHOOK_SECRET`, with a 5-minute replay window |
+| Missing secret | **503, never 200.** It fails CLOSED, so an unset variable loses alerts rather than accepting forged ones — and the reason is distinct from a bad signature (11e), because one needs the owner and the other is routine probing |
+| Unhandled event | **200.** Resend retries non-2xx, so answering an error to an ordinary `email.sent` would build a retry storm |
+| Scope | complaints ONLY, by owner instruction. **Bounces are NOT covered** — stated in the route so the gap stays visible rather than being rediscovered (11f) |
+
+⚠️ **The verifier is hand-written against the published Svix scheme rather than the `svix`
+package.** Two reasons, both deliberate: a webhook verifier must not change under a
+dependency bump, and a pure function with no network and no client is the only shape
+`e2e/resend-webhook.spec.ts` can drive — 9 tests holding known-good and known-bad inputs,
+with the unset-secret case and the replay window each proven by sabotage.
+
+⚠️ **The secret in that spec is INVENTED, and carries no `whsec_` prefix.** The repo's
+pre-commit scanner blocked the first commit of that file, correctly — it cannot tell an
+invented key from a real one. Fixed by removing the shape (the verifier strips the prefix,
+so a bare base64 key exercises the identical path), **not** with `--no-verify`. A test that
+teaches people to bypass the secret hook costs more than it proves.
+
+⚠️ **Vercel bakes environment variables at BUILD time.** Adding `RESEND_WEBHOOK_SECRET`
+after a deployment does not reach the running one — the endpoint kept answering 503 until a
+redeploy of the same commit. That 503→400 switch is also how the secret can be confirmed
+present without anyone reading its value.
+
+**Verified end to end on production, 2026-09-10:** a correctly signed `email.complained`
+answered `200 {"received":true,"handled":true}` and the alert was **delivered** to
+`support@majorcycle.com`; the same payload with one byte changed answered `400
+bad_signature`. ⚠️ Resend's dashboard has **no "send test event"** — the menu offers only
+edit, disable, rotate, duplicate and delete — so this was driven by signing a request
+locally with the stored secret.
 
 ---
 
@@ -2154,6 +2234,10 @@ STRIPE_WEBHOOK_SECRET=
 # Email
 RESEND_API_KEY=
 RESEND_FROM_EMAIL=
+RESEND_WEBHOOK_SECRET=          # Svix signing secret for /api/resend/webhook.
+                                # Missing = 503 on every event (fails CLOSED).
+                                # Vercel bakes env vars at BUILD time — adding this
+                                # needs a REDEPLOY before the endpoint sees it.
 
 # Paywall (F3 Step 10). Marks a request as coming from our own server: /api/cycle
 # can't be session-gated (the Stock Detail page self-fetches it without cookies), and

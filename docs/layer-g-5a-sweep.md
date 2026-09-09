@@ -304,6 +304,14 @@ claim about the last session's measurement, not about the account today (11aj).
 | ✅ | Email notifications for successful charges and disputes | "Successful payments" already on. Disputes are handled **in code** (`charge.dispute.*` → `billing_blocked` + cancel-on-lost), live-verified against a real chargeback |
 | ✅ | Webhook handles **delayed**, **duplicate** and **out-of-order** delivery | All three, deliberately. Duplicates: the `stripe_events` idempotency ledger. Out-of-order: documented **order-safety guards** — failure/recovery act only on the sub currently on file, and `subscription.deleted` lapses only on a matching sub id, so a late event cannot dun, recover or cancel a newer subscription |
 | ⬜ | Logs contain no card data or PII | Stripe's checklist asks for this explicitly; we have never audited our log lines for it |
+
+**Resend — added 2026-09-10.** The account had **zero webhooks**, so a spam complaint or a
+hard bounce was recorded by Resend and asked about by nobody. `/api/resend/webhook` now
+receives `email.complained` and emails the support inbox; verified end to end on production
+(valid signature → 200 and the alert delivered; one byte changed → 400). ⚠️ **Bounces are
+still not covered** — owner-scoped to complaints only, recorded here so the gap stays
+visible. ⚠️ Resend's dashboard offers **no "send test event"**, so the proof was a locally
+signed request. See `architecture.md` §7.4.
 | ⬜ | Restricted-business check | We publish financial *analysis*, not advice — almost certainly fine, and cheap to confirm rather than assume |
 
 ### Supabase
@@ -326,7 +334,7 @@ suggesting these checks because I believe few of these are already done."* They 
 
 | I claimed | The truth | Where it was already written |
 |---|---|---|
-| Auth emails use Supabase's default SMTP | **Custom SMTP → Resend since Layer F0**, `noreply@majorcycle.com`, 13 branded templates, token-hash links on our own domain | `architecture.md` §Auth branding; `design-system.md` §17; a Resend key literally named **`supabase-smtp`** |
+| Auth emails use Supabase's default SMTP | **Custom SMTP → Resend since Layer F0**, `noreply@majorcycle.com`, 13 branded templates, token-hash links on our own domain | `architecture.md` §Auth branding; `design-system.md` §17; a Resend key literally named **`supabase-smtp`** — renamed 2026-09-10 to **`majorcycle-sending (Supabase SMTP + Vercel app)`**, because the account holds exactly ONE key and its old name hid the fact that the Vercel app depends on it too, so rotating it for one sender would silently break the other |
 | No statement descriptor | **`WWW.MAJORCYCLE.COM` / `MAJORCYCLE`**, phone hidden from receipts | `project_business_setup` memory |
 | No dispute notification | Disputes handled **in code**, live-verified against a real chargeback | `architecture.md` §`/api/stripe/webhook` |
 | Out-of-order webhooks untested | **Order-safety guards** designed in and documented | same line of `architecture.md` |

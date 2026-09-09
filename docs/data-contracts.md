@@ -699,6 +699,25 @@ coverage boundary, not an event. Any analysis that reports "N years of history"
 must check for it — the naive reading of the AU median first bar (`2004-06-30`)
 suggests thin coverage, while the actual constraint is the 1988 floor underneath it.
 
+**How much PRECISION a stored price carries (measured 2026-09-10).** `open`/`high`/`low`/
+`close` are Postgres `numeric`, and the stored text is long: across 34,463 sampled values,
+**94% carry more than 15 significant digits** and **52% carry more than 16** — they are
+decimal renderings of the IEEE doubles yfinance returns. Two consequences worth knowing
+before touching any reader. **A "fast" float parser is not enough**: `pd.to_numeric`
+disagreed with Python's `float()` on 4,501 of AAPL's 11,526 highs, which is why every
+decoder now parses with `float()` (CLAUDE.md 11az). And **every consumer already casts to
+float64 anyway** — the screener, the detail page and the TypeScript readers all do — so that
+extra decimal precision is stored and never read. Storing `float8` instead would be exactly
+as accurate to every current reader and would shrink the table, but it is a type migration on
+6.6 million rows of the one thing that cannot be regenerated, so it stays `numeric`.
+
+⚠️ **Zero NULLs in all five columns across all 6,616,389 rows**, which is what makes it safe
+for a decoder to raise on a malformed payload rather than coerce it to NaN (11e). ⚠️ And
+**64,224 bars have a `close` outside their own `high`/`low`** — 1% of the table, average
+overshoot 0.003%, i.e. rounding noise from the provider's own adjustment. Only 20 exceed 1%,
+all Australian micro-caps on thin days. Owner-ruled 2026-09-10 to leave them: we publish what
+the provider gives us and never a figure of our own construction (14f).
+
 **Above the floor the dates are genuinely right**, which is why this is easy to miss:
 CBA `1991-09-30` (floated 1991 ✅), Telstra `1997-11-28` (T1 float Nov 1997 ✅),
 Woolworths `1993-07-30` ✅, Qantas `1995-07-31` ✅. The data is accurate; it is just

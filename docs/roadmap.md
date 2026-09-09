@@ -1334,6 +1334,55 @@ in this section is written yet; it is about prices we stopped RECEIVING. Two nei
 problems with the same symptom (a wrong-looking number that nothing flags) and completely
 different fixes.
 
+#### Update 2026-09-10 — the pipeline's three remaining silences
+
+Three things this section built turned out to have blind spots, all found by USING it
+rather than by reading it. All fixed, all guarded, all pushed.
+
+**(1) The four benchmark indices were never checked.** Every run since this section shipped
+logged *"INDEX: no session calendar — 4 ticker(s) NOT checked for staleness"* and moved on.
+Three of the four ARE the calendar every equity is ranked against, so a stalled `^GSPC`
+would have frozen the US calendar and made all 535 US equities read as current — the check
+would have failed exactly when there was most to find. `stale_indices()` now judges each
+index against its market's **equities** (never against the calendar it IS, which would
+always be zero behind), binary rather than a fabricated sessions count, and reports an index
+alone in its market as UNCHECKED rather than clean. Verified live: all four current.
+
+**(2) A missing ratio cost one stock eight days of prices.** GGP.AX wrote nothing from
+2026-09-02 to 09-09. Yahoo publishes no fundamentals for it, a `NaN` reached the JSON
+encoder, and the `stocks` upsert and the price-bar write shared one `try` — so 23
+already-fetched bars were discarded each night. Silent throughout, because a failed ticker
+is a WARNING and the run finishes green. **It surfaced only because this section's own
+staleness sweep noticed the stock had stopped moving**, which is the best argument for it
+that has come up so far. Both halves fixed: `_jsonb` strips NaN to null at any depth, and
+`_write_ticker` gives the two writes their own handlers. See CLAUDE.md 11ba.
+
+**(3) The cron-time move worked.** The US+CA run was shifted 22:30 → 01:30 UTC on 2026-09-05
+against the possibility that the provider had not finalised the daily bars. Measured
+2026-09-09: **532 of 535 US equities current**, against 529 of 535 *missing* the previous
+day's bar on 09-04. The timing theory holds.
+
+🟠 **OPEN — the Australian listings menu.** The delisting sweep has refused to run every
+night for at least three nights, correctly: the source omits **202** of our 2,031 stored AU
+symbols (9.1%), far past the 2% cap. Investigated 2026-09-10 and the answer is not what the
+log implies. **There is only ONE Australian source** — the ASX's own CSV died in July and
+the Markit directory replaced it — so the disagreement is between that source and our own
+table, which still holds rows from the dead CSV. Sampling 35 of the 202 against the price
+provider: **28 no longer quoted (source right), 4 quoted but stopped trading, 2 trading
+today** (Pacgold, Ceryvyn Therapeutics). Many of the rest are securitisation trusts that do
+not belong in a stock menu at all. So the source is right about ~80% and wrong about ~6%.
+**Do not raise the threshold.** The proposal is to make the price provider the tiebreaker —
+retire only when the directory omits it AND the provider has no quote, which is the same
+unanimity rule `stocks` already uses. Owner has deferred this to a later session.
+
+🟠 **OPEN — a stock that stops trading but is not confirmed dead.** Five companies (EA, EQR,
+AVB, QUB.AX, CVW.AX) have not traded for up to a month, still carry a live provider quote,
+and therefore correctly fail the three-source test. `DelistedNotice` covers *confirmed*
+delistings only, so a reader sees a month-old price with nothing saying so. This is a state
+the design has no case for rather than a regression — the banner is intact and six stocks
+carry it today. Owner deferred to a later session.
+
+
 ### Layer G: SEO + Performance (target: 3-4 days)
 
 Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.

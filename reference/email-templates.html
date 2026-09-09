@@ -1249,15 +1249,64 @@
     </div>
   </section>
 
+
+  <div class="part-head">
+    <h2>Part 3 &mdash; the one the system sends to US</h2>
+    <p>Not a customer email. This is an operational alert: it goes to the support inbox when
+      Resend tells us a recipient marked one of our messages as spam. Added 2026-09-10 with
+      <code>/api/resend/webhook</code>, which is the first thing in this system that RECEIVES
+      from Resend rather than sending through it.</p>
+  </div>
+
+  <!-- ============================================================= 22 -->
+  <section class="mail">
+    <div class="mail-head">
+      <span class="mail-idx">22</span>
+      <div>
+        <p class="mail-title">Spam complaint received</p>
+        <p class="mail-purpose">Sent to the support inbox when Resend reports an
+          <code>email.complained</code> event. Complaints compound &mdash; a rising rate
+          poisons the sending domain that carries all twenty-one messages above.</p>
+      </div>
+    </div>
+    <table class="spec">
+      <tr><td class="k">Trigger</td><td class="v">Resend posts <code>email.complained</code> to <code>/api/resend/webhook</code>, signature verified</td></tr>
+      <tr><td class="k">From</td><td class="v"><span class="from-noreply">noreply@majorcycle.com</span></td></tr>
+      <tr><td class="k">To</td><td class="v">support@majorcycle.com (monitored inbox) &mdash; <code>CONTACT_TO_EMAIL</code></td></tr>
+      <tr><td class="k">Subject</td><td class="v"><code>Spam complaint received</code></td></tr>
+      <tr><td class="k">Header label</td><td class="v">Deliverability</td></tr>
+      <tr><td class="k">Preheader</td><td class="v">Someone marked a MajorCycle email as spam.</td></tr>
+      <tr><td class="k">Idempotency</td><td class="v"><code>complaint-{email_id}</code> &mdash; a Resend redelivery cannot alert twice</td></tr>
+      <tr><td class="k">Plain text</td><td class="v">Same three facts, no links</td></tr>
+      <tr><td class="k">Source</td><td class="v"><code>web/app/api/resend/webhook/route.ts</code></td></tr>
+      <tr><td class="k">Scope</td><td class="v">Complaints only. <strong>Bounces are NOT covered</strong> (owner decision)</td></tr>
+    </table>
+    <div class="inbox">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;">
+        <tr><td style="padding:28px 32px 24px;">
+          <h1 style="margin:0 0 14px;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0f172a;font-size:20px;font-weight:700;">Deliverability</h1>
+          <p style="margin:0 0 14px;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#334155;font-size:15px;line-height:1.6;">A recipient marked a MajorCycle email as spam.</p>
+          <p style="margin:0 0 14px;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#334155;font-size:15px;line-height:1.6;">
+            <strong>Recipient:</strong> someone@example.com<br>
+            <strong>Subject:</strong> Welcome to MajorCycle<br>
+            <strong>When:</strong> 2026-09-10T00:00:00.000Z
+          </p>
+          <p style="margin:0;font-family:'Sora',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#334155;font-size:15px;line-height:1.6;">Resend suppresses this address automatically. Repeated complaints damage the sending domain, which carries every sign-in and password-reset email, so it is worth reading the message that triggered it.</p>
+        </td></tr>
+      </table>
+    </div>
+  </section>
+
   <div class="footer-note">
-A static record, accurate as at 5 September 2026. Not sent to anyone — reference only.
+A static record, accurate as at 10 September 2026. Not sent to anyone — reference only.
     <br><br>
     <strong>Keep it current when any of these change:</strong>
     <code>brandEmail.ts</code>, <code>format.ts</code>, <code>accountEmails.ts</code>,
     <code>referralEmails.ts</code>, <code>billingEmails.ts</code> or
     <code>contact/actions.ts</code> for Part 1 — <strong>or any template in the Supabase
-    dashboard</strong> for Part 2. Part 1 has a test that will complain if it drifts.
-    Part 2 has nothing but this page.
+    dashboard</strong> for Part 2 &mdash; or <code>app/api/resend/webhook/route.ts</code>
+    for Part 3. Part 1 has a test that will complain if it drifts.
+    Part 2 has nothing but this page. Part 3 is one email and its wording lives in the route.
   </div>
 
 </div>
