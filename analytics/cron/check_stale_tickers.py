@@ -260,6 +260,66 @@ def market_calendars(sb: Client, days: int = 60) -> dict[str, list[str]]:
     return cal
 
 
+#: Which market each benchmark index trades on. The three in `CALENDAR_INDEX`
+#: cannot be ranked against themselves, so indices get their own check below.
+INDEX_HOME_MARKET: dict[str, str] = {
+    "^GSPC":   "us",
+    "^IXIC":   "us",
+    "^AXJO":   "au",
+    "^GSPTSE": "ca",
+}
+
+
+def stale_indices(newest: dict[str, Optional[str]]) -> list[tuple[str, str, str]]:
+    """Benchmark indices whose newest bar is older than their own market's.
+
+    ⚠️ THIS EXISTS BECAUSE THE MAIN CHECK CANNOT SEE THEM. `_market_of` returns
+    "index" for a `^` ticker, `CALENDAR_INDEX` has no "index" key, so every run
+    logged *"INDEX: no session calendar — 4 ticker(s) NOT checked"* and moved on.
+    That warning was honest and nobody acted on it for the section's whole life
+    (14g: unmeasurable counted as clean) — and these four are load-bearing, since
+    three of them ARE the calendar every equity is judged against. A stalled
+    `^GSPC` would freeze the US calendar and make all 535 US equities look
+    perfectly current.
+
+    ⚠️ THE REFERENCE MUST NOT BE THE INDEX ITSELF. Ranking `^GSPC` against the
+    US calendar is ranking it against `^GSPC`: always zero behind, a check that
+    cannot fail. So indices are judged against their market's EQUITIES and
+    equities against the indices — each against something independent.
+
+    ⚠️ Deliberately BINARY: "is any equity in this market newer?" rather than a
+    sessions-behind count. Only newest-bar dates are in evidence here, not full
+    histories, so a count would be a number we cannot actually support (11k). A
+    real answer of "yes" is enough to act on.
+
+    Returns ``[(index_ticker, its_newest_bar, the_market's_newest_bar)]``.
+    """
+    market_newest: dict[str, str] = {}
+    for ticker, bar_date in newest.items():
+        # `bar_date`, not `date`: the module imports `date` and a loop variable
+        # would shadow it (ruff F402) — silently, for every line after this one.
+        if not bar_date or ticker.startswith("^"):
+            continue
+        m = _market_of(ticker)
+        if bar_date > market_newest.get(m, ""):
+            market_newest[m] = bar_date
+
+    out: list[tuple[str, str, str]] = []
+    for index_ticker, home in sorted(INDEX_HOME_MARKET.items()):
+        idx_date = newest.get(index_ticker)
+        mkt_date = market_newest.get(home)
+        if not mkt_date:
+            # No equities to compare against — say so rather than pass silently.
+            logger.warning(
+                "%s: no %s equity bars to compare against — NOT checked",
+                index_ticker, home.upper(),
+            )
+            continue
+        if idx_date is None or idx_date < mkt_date:
+            out.append((index_ticker, idx_date or "never fetched", mkt_date))
+    return out
+
+
 def stale_by_market(
     newest: Mapping[str, Optional[str]],
     calendars: Mapping[str, list[str]],
@@ -288,10 +348,22 @@ def stale_by_market(
             # bug described in `market_calendars`, and a check that quietly
             # degrades into a broken one reports what a healthy system reports.
             # The benchmark being absent is itself worth seeing.
-            logger.warning(
-                "%s: no session calendar — %d ticker(s) NOT checked for staleness",
-                market.upper(), len(tickers),
-            )
+            if market == "index":
+                # ⚠️ NOT a gap. Indices have no calendar to rank against because
+                # three of them ARE the calendar; they are checked separately by
+                # `stale_indices`, against their market's equities. This line said
+                # "NOT checked for staleness" until 2026-09-10 and it was true —
+                # then the check was written and the sentence was not, which is
+                # how a doc starts describing a world that no longer exists (11ae).
+                logger.info(
+                    "INDEX: %d ticker(s) checked by stale_indices, not by calendar",
+                    len(tickers),
+                )
+            else:
+                logger.warning(
+                    "%s: no session calendar — %d ticker(s) NOT checked for staleness",
+                    market.upper(), len(tickers),
+                )
             continue
         # ⚠️ "How many sessions is this ticker behind?" is asked as **how many
         # sessions are strictly NEWER than its bar**, not as a lookup of its date
@@ -430,6 +502,28 @@ def run(apply_changes: bool = True) -> int:
                 f"outbreak, not a few slow symbols: suspect tonight's run, the "
                 f"provider, or the network."
             )
+
+    # ── The four benchmark indices, judged against their own market ──────────
+    # Three of these ARE the calendar the equities above were judged against, so
+    # a stalled one makes the whole market look current. Checked LAST, because
+    # `newest` has to be built first.
+    # `lagging_indices`, not `behind`: an earlier loop in this function already
+    # binds `behind` as an int, and reusing the name makes every line here a type
+    # error — the compiler's version of 11ab (one identifier, two meanings).
+    lagging_indices = stale_indices(newest)
+    if lagging_indices:
+        for index_ticker, idx_date, mkt_date in lagging_indices:
+            logger.error(
+                "    %-10s newest bar %s — its market has %s", index_ticker, idx_date, mkt_date
+            )
+        problems.append(
+            f"{len(lagging_indices)} benchmark index(es) behind their own market: "
+            + ", ".join(t for t, _, _ in lagging_indices)
+            + ". Three of the four ARE the session calendar every equity is "
+            "ranked against, so a stalled one hides staleness everywhere."
+        )
+    else:
+        logger.info("All %d benchmark indices are current with their market.", len(INDEX_HOME_MARKET))
 
     # ── The three-source test, on the stale set only ──────────────────────────
     candidates = [t for rows in stale.values() for (t, _, _) in rows]

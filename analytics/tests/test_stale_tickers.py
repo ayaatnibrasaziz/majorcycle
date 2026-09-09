@@ -368,3 +368,61 @@ def test_the_retire_cap_is_a_proportion_not_a_count() -> None:
     # ⚠️ And it never floors to zero: a small market must still be able to retire
     # its one genuinely dead company, or the sweep does nothing there forever.
     assert max(1, int(10 * MAX_RETIRE_PCT / 100.0)) == 1
+
+
+# ── The four benchmark indices ───────────────────────────────────────────────
+# Every run logged "INDEX: no session calendar — 4 ticker(s) NOT checked" and
+# moved on. Three of the four ARE the calendar every equity is ranked against.
+
+
+def test_a_current_index_is_not_flagged() -> None:
+    from analytics.cron.check_stale_tickers import stale_indices
+
+    assert stale_indices({
+        "AAPL": "2026-09-08", "MSFT": "2026-09-08",
+        "BHP.AX": "2026-09-09", "SHOP.TO": "2026-09-08",
+        "^GSPC": "2026-09-08", "^IXIC": "2026-09-08",
+        "^AXJO": "2026-09-09", "^GSPTSE": "2026-09-08",
+    }) == []
+
+
+def test_an_index_behind_its_own_market_is_flagged() -> None:
+    """The case that matters: a frozen ^GSPC would freeze the US calendar and
+    make all 535 US equities read as perfectly current."""
+    from analytics.cron.check_stale_tickers import stale_indices
+
+    out = stale_indices({
+        "AAPL": "2026-09-08", "MSFT": "2026-09-08",
+        "BHP.AX": "2026-09-09", "SHOP.TO": "2026-09-08",
+        "^GSPC": "2026-09-01",            # <- stalled a week ago
+        "^IXIC": "2026-09-08", "^AXJO": "2026-09-09", "^GSPTSE": "2026-09-08",
+    })
+    assert [t for t, _, _ in out] == ["^GSPC"]
+    assert out[0][1] == "2026-09-01" and out[0][2] == "2026-09-08"
+
+
+def test_an_index_that_was_never_fetched_is_flagged() -> None:
+    from analytics.cron.check_stale_tickers import stale_indices
+
+    out = stale_indices({"AAPL": "2026-09-08", "BHP.AX": "2026-09-09",
+                         "SHOP.TO": "2026-09-08", "^GSPC": None,
+                         "^IXIC": "2026-09-08", "^AXJO": "2026-09-09",
+                         "^GSPTSE": "2026-09-08"})
+    assert [t for t, _, _ in out] == ["^GSPC"]
+    assert out[0][1] == "never fetched"
+
+
+def test_an_index_is_never_compared_against_itself() -> None:
+    """⚠️ The load-bearing control. Ranking ^GSPC against the US CALENDAR is
+    ranking it against ^GSPC — always zero behind, a check that cannot fail. The
+    reference must be the market's EQUITIES, so an index ahead of every equity is
+    still fine, and an index alone in its market is reported as unchecked rather
+    than as clean (14g)."""
+    from analytics.cron.check_stale_tickers import stale_indices
+
+    # ^GSPC is the ONLY US row here: no equities to compare against.
+    assert stale_indices({"^GSPC": "2026-01-01", "BHP.AX": "2026-09-09",
+                          "^AXJO": "2026-09-09"}) == []
+    # And an index AHEAD of its market is not stale.
+    assert stale_indices({"AAPL": "2026-09-08", "^GSPC": "2026-09-09",
+                          "^IXIC": "2026-09-09"}) == []
