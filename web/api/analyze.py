@@ -163,10 +163,23 @@ _SHARED_BROKEN = False
 # observable from the outside — a screen served entirely by L1 looks exactly like
 # one served by L2, just slower and less often — so without this line "the cache
 # is working" would be an inference rather than a reading (14g).
-logger.info(
-    "screener result cache: L2 %s", "ACTIVE (vercel runtime cache)" if _SHARED_ENABLED
-    else "OFF (RUNTIME_CACHE_ENDPOINT unset) — per-instance L1 only",
-)
+if _SHARED_ENABLED:
+    logger.info("screener result cache: L2 ACTIVE (vercel runtime cache)")
+else:
+    # ⚠️ Name what the process COULD see, not just what it could not. "The variable
+    # is missing" is a symptom shared by several causes — the platform not injecting
+    # it into this runtime, a build that did not enable the feature, a renamed
+    # variable — and they are indistinguishable without the list. Names only, never
+    # values: a value here could be a credential.
+    _cache_env = sorted(
+        k for k in os.environ
+        if "CACHE" in k.upper() or k.upper().startswith(("SUSPENSE", "RUNTIME"))
+    )
+    logger.info(
+        "screener result cache: L2 OFF (RUNTIME_CACHE_ENDPOINT unset) — "
+        "per-instance L1 only. cache-related vars present: %s",
+        _cache_env or "(none)",
+    )
 
 
 def _shared_cache() -> Any:
