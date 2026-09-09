@@ -171,6 +171,38 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 
 ### 3.1 The screener cache, and why there is no webhook
 
+> ⚠️ **STATUS 2026-09-09: L2 IS INERT IN PRODUCTION, AND THIS SECTION DESCRIBES
+> WHAT IT WOULD DO.** Vercel does not give the **Python** runtime the Runtime
+> Cache connection. Measured twice, independently: the function logs
+> `L2 OFF (RUNTIME_CACHE_ENDPOINT unset)`, and Vercel's own Runtime Cache
+> dashboard reports **0 reads and 0 writes** for the whole project — while the
+> Next.js **Data** Cache beside it shows 46 reads at a 74% hit rate, so the
+> feature is present on Hobby and is not plan-gated. The OFF branch names what
+> the process CAN see, which is what separates the three candidate causes:
+> `['TURBO_CACHE', 'VERCEL_CACHE_HANDLER_MEMORY_CACHE',
+> 'VERCEL_VDC_REMOTE_CACHE_ENABLED']` — cache-adjacent variables inherited from
+> the build, and neither of the two the SDK needs.
+>
+> So the screener runs on L1 exactly as it did before: a cold 761-stock run
+> measured **181.9 s** on the first production run after the merge (a cold
+> instance, with CI hitting the same database).
+>
+> **Nothing here is broken.** `_SHARED_ENABLED` is read from the environment and
+> the layer is skipped outright, which is the designed behaviour and the reason
+> the failure is a log line rather than an outage. The `data_version` counter,
+> its triggers and the batched lookup are all live and working — they are also
+> the foundation any shared cache would need, so none of that work is wasted.
+>
+> ⚠️ **A correct description of half-built work is worse than no description**
+> (11ae): anyone reading the section below without this banner would conclude the
+> shared cache is running. Three routes forward, none of them started: bridge the
+> cache through a small internal JavaScript route (batched per chunk, so two extra
+> hops per 25 stocks rather than per stock — but it is a new door on a paid
+> surface); use a separate store the Python runtime CAN reach; or leave it inert
+> until Vercel injects the variables into this runtime. **Owner's call, not taken
+> yet.**
+
+
 A 761-ticker screen costs ~166 s cold and about 0.21 s per stock it has to compute
 from scratch, so almost all of the time is stocks nobody has looked at yet today.
 Caching the finished answer removes that entirely: a cached stock costs ~5 ms.
