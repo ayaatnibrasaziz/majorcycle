@@ -7,10 +7,12 @@ post-re-pull verification (``_verify_split_resolved``) + a dated status machine
 (``_classify_split``).
 """
 
+import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pandas as pd
+import pytest
 
 from analytics.cron.daily_refresh import (
     _SPLIT_RETRY_DAYS,
@@ -306,3 +308,46 @@ def test_classify_unresolved_at_retry_boundary_fails() -> None:
     now = datetime.now(timezone.utc)
     boundary = now - timedelta(days=_SPLIT_RETRY_DAYS)
     assert _classify_split(boundary, now, resolved=False) == "failed"
+
+
+# ── _jsonb must strip NaN, or one bad field costs a ticker its price bars ─────
+# Incident 2026-09-02..09-09: GGP.AX wrote nothing for eight days because a NaN
+# in its fundamentals aborted the `stocks` upsert, and `_upsert_price_bars` runs
+# on the NEXT line inside the same `try`. The run stayed green throughout.
+
+
+def test_jsonb_turns_nan_into_null_at_every_depth() -> None:
+    from analytics.cron.daily_refresh import _jsonb
+
+    out = _jsonb(
+        {
+            "grossMargins": float("nan"),
+            "statements": [{"revenue": 1.5, "ebitda": float("nan")}],
+            "nested": {"deep": {"x": float("inf"), "y": float("-inf")}},
+        }
+    )
+    assert out["grossMargins"] is None
+    assert out["statements"][0]["ebitda"] is None
+    assert out["nested"]["deep"]["x"] is None
+    assert out["nested"]["deep"]["y"] is None
+    # A real number must survive — "return None for everything" would pass the
+    # assertions above and destroy every fundamental we store (11am).
+    assert out["statements"][0]["revenue"] == 1.5
+
+
+def test_jsonb_output_survives_a_strict_encoder() -> None:
+    """The outcome, not the mechanism: this is exactly what the DB client does.
+
+    Asserting `is None` above would still pass if some future edit reintroduced a
+    NaN by another route, so this drives the encoder that actually raised.
+    """
+    from analytics.cron.daily_refresh import _jsonb
+
+    json.dumps(_jsonb({"a": float("nan"), "b": [float("inf")]}), allow_nan=False)
+
+
+def test_control_a_raw_nan_really_does_break_that_encoder() -> None:
+    """Without this the test above is satisfied by a payload that never had a
+    NaN in it, and would pass even if `_jsonb` were the identity function."""
+    with pytest.raises(ValueError, match="not JSON compliant"):
+        json.dumps({"a": float("nan")}, allow_nan=False)

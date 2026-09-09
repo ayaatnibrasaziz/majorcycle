@@ -135,7 +135,31 @@ def _with_market_cap(row: dict[str, Any], fund: Any) -> dict[str, Any]:
 
 
 def _jsonb(obj: Any) -> Any:
-    return json.loads(json.dumps(obj, default=str))
+    """Make an object safe to send as jsonb — including its NaNs.
+
+    ⚠️ `parse_constant` is the load-bearing argument, and its absence cost
+    Greatland Resources (GGP.AX) eight days of data, 2026-09-02 to 09-09.
+    `json.dumps` happily writes a bare `NaN` (valid Python, invalid JSON) and
+    `json.loads` reads it straight back as a float, so this function returned the
+    NaN it was called to remove. The database client then encodes strictly and
+    raises `Out of range float values are not JSON compliant: nan`.
+
+    ⚠️ The cost was NOT the fundamentals it was in. The `stocks` upsert and
+    `_upsert_price_bars` sit inside one `try`, so a NaN in a jsonb blob aborted
+    the ticker BEFORE its 23 perfectly good price bars were written — and the run
+    still finished green, because a failed ticker is a WARNING (11z: trace an
+    alarm to the thing a human actually receives). It surfaced only because a
+    staleness sweep noticed the stock had stopped moving.
+
+    NaN means "the provider did not report this" (14b), so it becomes null —
+    never 0.0, which scoring would read as a real value and mark the company down
+    for. `default=str` cannot help: it fires on unsupported TYPES, and a NaN is
+    an ordinary float.
+    """
+    return json.loads(
+        json.dumps(obj, default=str),
+        parse_constant=lambda _: None,  # NaN / Infinity / -Infinity -> null
+    )
 
 
 def _get_supabase() -> Client:

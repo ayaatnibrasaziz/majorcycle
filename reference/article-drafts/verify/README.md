@@ -38,7 +38,11 @@ and caught it.
 
 ## ⚠️ Which of these actually RUN (checked 2026-09-05, audit 5A-132)
 
-**Four of the seven scripts run. Three cannot, and have never been able to.**
+**Four scripts run. Three could not, and were DELETED on 2026-09-10 by owner
+decision** — `audit_external.py`, `audit_independent.py` and `divfreeze.py`. The
+table keeps their row because the finding outlives the files: what those three
+were *for* is still not covered, and deleting a broken check must never be
+mistaken for closing the gap it left (11f).
 
 | script | |
 |---|---|
@@ -46,9 +50,9 @@ and caught it.
 | `consistency.py` | ✅ runs — ALL PASS |
 | `audit_coverage.py` | ✅ runs — reports 8 printed numbers with no assertion behind them |
 | `audit_thresholds.py` | ✅ runs — 1 count would change (PDN.AX, sitting exactly on the −20% line) |
-| `audit_external.py` | ❌ **`ModuleNotFoundError: No module named 'engine'`** |
-| `audit_independent.py` | ❌ same |
-| `divfreeze.py` | ❌ same |
+| `audit_external.py` | ❌ never ran — **DELETED 2026-09-10** (`ModuleNotFoundError: No module named 'engine'`) |
+| `audit_independent.py` | ❌ same — **DELETED 2026-09-10** |
+| `divfreeze.py` | ❌ same — **DELETED 2026-09-10** |
 
 `engine.py` is **not in the repository and has no git history** — it was never
 committed. Whoever ran those three had it in the working directory, read the output
