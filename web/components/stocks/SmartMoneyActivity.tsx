@@ -98,9 +98,19 @@ function analystConsensus(upgrades: AnalystUpgrade[]): { label: string; color: s
     else neut++;
   }
   if (!bull && !bear && !neut) return null;
-  if (bull >= bear && bull > neut) return { label: 'BULLISH',  color: INK.up,      bg: 'rgba(34,139,34,.10)' };
-  if (bear > bull  && bear > neut) return { label: 'BEARISH',  color: INK.down,    bg: 'rgba(178,34,34,.08)' };
-  return                                   { label: 'NEUTRAL',  color: INK.neutral, bg: 'rgba(212,160,23,.10)' };
+  /* ⚠️ ANALYST.*, not INK.* — audit 2026-09-10. This chip SUMMARISES the rating
+     pills listed under it, and it was painted from a different palette than they
+     were: the pills use the third-party colours (so a Wall Street *Sell* cannot
+     wear our Bearish red, 5A-045) while the chip that adds them up used the
+     direction palette. Worse, NEUTRAL drew GREY TEXT ON A GOLD TINT — the tint
+     was the pre-August gold and the ink had moved to grey underneath it, so the
+     one chip summarising every analyst on the stock was the only element on the
+     page whose foreground and background came from different palettes and
+     different years. Every tint below is now its own colour at the same alpha the
+     matching `.smart-pill` uses. */
+  if (bull >= bear && bull > neut) return { label: 'BULLISH',  color: ANALYST.positive, bg: 'rgba(46,107,87,.12)' };
+  if (bear > bull  && bear > neut) return { label: 'BEARISH',  color: ANALYST.negative, bg: 'rgba(122,47,63,.10)' };
+  return                                   { label: 'NEUTRAL',  color: ANALYST.neutral,  bg: 'rgba(74,85,104,.10)' };
 }
 
 function fmtDate(iso: string): string {
@@ -654,14 +664,28 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
         </h3>
         {hasChart && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            {/* ⚠️ THE SECOND LEGEND ON THIS CHART, AND IT WAS THE ONE THAT LIED
+                (audit 2026-09-10). All three words here — Upgrade, Downgrade,
+                Reiterate — are analyst actions, and all three dots were drawn from
+                the DIRECTION palette (`CANDLE.up` / `INK.down` / `BRAND.mid`)
+                while every analyst mark on the chart, every pill in the table and
+                the marker legend below are drawn from `ANALYST.*`. So the legend
+                showed a green no analyst square uses, under labels that also said
+                "Buy" and "Sell" — words the legend below already spends on
+                INSIDER arrows in a different green again.
+                This is the identical defect recorded on the marker legend below,
+                on the other legend of the same chart, which is why that fix reads
+                as complete and was not (CLAUDE.md 11c-iv). Colours now come from
+                the analyst tokens the pills use, and the labels name only what
+                these dots actually mark. */}
             <div className="smart-legend">
-              <span className="smart-legend-chip" style={{ '--lg': CANDLE.up } as React.CSSProperties}>
-                <span className="smart-legend-chip-dot" />Buy / Upgrade
+              <span className="smart-legend-chip" style={{ '--lg': ANALYST.positive } as React.CSSProperties}>
+                <span className="smart-legend-chip-dot" />Upgrade
               </span>
-              <span className="smart-legend-chip" style={{ '--lg': INK.down } as React.CSSProperties}>
-                <span className="smart-legend-chip-dot" />Sell / Downgrade
+              <span className="smart-legend-chip" style={{ '--lg': ANALYST.negative } as React.CSSProperties}>
+                <span className="smart-legend-chip-dot" />Downgrade
               </span>
-              <span className="smart-legend-chip" style={{ '--lg': BRAND.mid } as React.CSSProperties}>
+              <span className="smart-legend-chip" style={{ '--lg': 'var(--brand-deep)' } as React.CSSProperties}>
                 <span className="smart-legend-chip-dot" />Reiterate
               </span>
             </div>

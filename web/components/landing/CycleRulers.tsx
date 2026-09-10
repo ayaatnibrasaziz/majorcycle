@@ -127,7 +127,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
           {
             at: down(s.typicalDrawdownPct),
             label: `Typical −${depth(s.typicalDrawdownPct)}`,
-            colour: 'var(--c-neutral-ink)',
+            colour: 'var(--series-reference-ink)',
           },
           {
             at: 100,
@@ -138,7 +138,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
         ]}
         legend={[
           { colour: 'var(--brand-bright)', text: 'Where it is now' },
-          { colour: 'var(--c-neutral-ink)', text: `Average of all ${falls} falls` },
+          { colour: 'var(--series-reference-ink)', text: `Average of all ${falls} falls` },
           { colour: 'var(--c-down-ink)', text: 'Deepest single fall on record' },
         ]}
       />
@@ -162,7 +162,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
           {
             at: up(s.typicalRecoveryPct),
             label: `Typical +${depth(s.typicalRecoveryPct)}`,
-            colour: 'var(--c-neutral-ink)',
+            colour: 'var(--series-reference-ink)',
           },
           {
             at: 100,
@@ -173,7 +173,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
         ]}
         legend={[
           { colour: 'var(--brand-bright)', text: 'Risen since its last low' },
-          { colour: 'var(--c-neutral-ink)', text: `Average of all ${recoveries} recoveries` },
+          { colour: 'var(--series-reference-ink)', text: `Average of all ${recoveries} recoveries` },
           { colour: 'var(--c-up-ink)', text: 'Largest single recovery on record' },
         ]}
       />
@@ -181,7 +181,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
       <div className="readout">
         <div>
           <div className="k">Typical fall vs deepest ever</div>
-          <div className="v" style={{ color: 'var(--c-neutral-ink)' }}>
+          <div className="v" style={{ color: 'var(--series-reference-ink)' }}>
             −{depth(s.typicalDrawdownPct)}{' '}
             <span style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>vs</span>{' '}
             <span style={{ color: 'var(--c-down-ink)' }}>−{depth(s.deepestDrawdownPct)}</span>
@@ -193,7 +193,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
         </div>
         <div>
           <div className="k">Typical recovery vs largest ever</div>
-          <div className="v" style={{ color: 'var(--c-neutral-ink)' }}>
+          <div className="v" style={{ color: 'var(--series-reference-ink)' }}>
             +{depth(s.typicalRecoveryPct)}{' '}
             <span style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>vs</span>{' '}
             <span style={{ color: 'var(--c-up-ink)' }}>+{depth(s.largestRecoveryPct)}</span>

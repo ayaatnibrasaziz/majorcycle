@@ -205,8 +205,22 @@ filed on request.
      that cannot read a CSS variable; `pnpm check:tier-palette` keeps them in step
      and measures each against the darkest ground it was OBSERVED on. */
   --c-up-ink:      #1B741B;  /* was #228B22 as text */
-  --c-neutral-ink: #6B6266;  /* was #D4A017 / #9A7010 / #B58800 as text; grey since
-                                2026-08-23. Documented as #81600F until 2026-09-03. */
+  --c-neutral-ink: #895001;  /* the MIDDLE RUNG of a judgement, in words. Gold
+                                again 2026-09-10 (owner): the rating tier went back
+                                to gold on 09-02 and this did not, so "Neutral" and
+                                "Adequate" were gold while "moderate leverage",
+                                "stretched", "Key Risks" and the analyst consensus
+                                stayed grey. Was #D4A017 / #9A7010 / #B58800, then
+                                #6B6266 from 2026-08-23. NOT "average" — see below. */
+  --series-reference-ink:      /* an AVERAGE / TYPICAL / baseline value, in words:
+                   #6B6266;       the dashed rule a chart draws through its own
+                                mean and every restatement of that number. Split
+                                out of --c-neutral-ink on 2026-09-10, because one
+                                token meaning both is why the same typical-drawdown
+                                figure reached the reader in THREE colours on one
+                                page (#4A5568 in the KPI tile, #92400E in the stat
+                                pill, #6B6266 on the chart rule). Mirrored by
+                                REFERENCE_INK and DRAWDOWN.avg; check 8c. */
   --c-warn-ink:    #C73600;  /* was #FF4500 as text */
   --c-brand-ink:   #1E5CB3;  /* was #2E7DE8 as text on its own tint */
 
@@ -227,6 +241,26 @@ filed on request.
 > its companion border was not. The consequence is invisible until it isn't: retuning the brand
 > palette moves every panel's background and leaves thirteen borders on the old blue. **If you
 > introduce a colour that pairs with an existing token, tokenise it in the same commit.**
+
+> ### Gold is a VERDICT. Grey is a REFERENCE. (owner, 2026-09-10)
+>
+> The middle rung of any good / middling / poor ladder is **gold**, because the owner's rule for
+> the rating tiers is the rule for every ladder: *"traffic lights are typically used to say
+> between good, neutral and bad; going from green, grey and red doesn't make sense."* That
+> covers Neutral, Adequate, moderate leverage, an elevated payout ratio, a stretched valuation,
+> a middling short-interest signal, Key Risks, and the analyst consensus target.
+>
+> An **average, a typical value, a baseline** is `--series-reference-ink` and stays **grey**, so it
+> reads as the yardstick rather than as a verdict — the same grey the charts already draw their
+> dashed mean rule in. That covers Typical Drawdown, Typical Profit, the historical-average P/E
+> rule, and the landing rulers' "average of all falls".
+>
+> ⚠️ **These were ONE token until 2026-09-10 and that is why the split matters more than the
+> hue.** `INK.neutral` meant both, so no single value could satisfy both rules, and the same
+> typical-drawdown figure was reaching the reader in **three** colours on one page: `#4A5568` in
+> the KPI tile (a hard literal in no palette), `#92400E` in the stat pill (whose CSS class was
+> named `.amber`), and `#6B6266` on the chart's own rule. Every one of them looked deliberate.
+> ⚠️ **Before you paint anything "neutral", say which of the two you mean.**
 
 These are exposed as Tailwind v4 theme tokens in the **`@theme inline` block at the top of `web/app/globals.css`** — Tailwind v4 is CSS-first and this project has **no `tailwind.config.ts`** (the doc named one until 2026-08-22; nobody had gone looking for it):
 

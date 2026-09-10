@@ -658,10 +658,21 @@
   --zone-split: rgba(138, 151, 168, 0.45);
 
   /* The 52-week position gauge: a green-to-red ramp showing where today's price
-     sits in its own yearly range. Its four stops read `--c-tier-1…4` today. */
+     sits in its own yearly range. Its four stops read `--c-tier-1…4`.
+
+     ⚠️ AND FOR EIGHT DAYS THEY DID NOT, WHILE THE SENTENCE ABOVE SAID THEY DID.
+     `--gauge-3` held #72696D — the grey tier 3 was when this ramp was built — and
+     stayed there when Neutral went gold on 2026-09-02. So the one gradient on the
+     page that exists to run good-to-bad had a grey band through its middle, the
+     comment beside it asserted the opposite, and `check:tier-palette` could not
+     see it: it hunts stray copies of the CURRENT palette by hex, and a copy of a
+     RETIRED value matches nothing (11c-viii, the `compositionRamp` defect exactly
+     — that one was three tier colours as `r,g,b` and this one is a hex of the
+     previous generation). Found 2026-09-10 by reading the ramp beside the tiers
+     on the colour walkthrough rather than by any check. */
   --gauge-1: #065F46;
   --gauge-2: #1E7C1E;
-  --gauge-3: #72696D;
+  --gauge-3: #9C5B01;
   --gauge-4: #C73600;
 
   /* ── SEMANTIC INK — the same meanings, for when the colour is TEXT ─────────
@@ -688,7 +699,7 @@
 
        role      was                            now       worst measured
        up        #228B22                        #1B741B   3.86 → 5.18
-       neutral   #D4A017 / #9A7010 / #B58800    #6B6266   2.11 → 5.18   (grey since 2026-08-23)
+       neutral   #D4A017 / #9A7010 / #B58800    #895001   2.11 → 5.18   (gold again 2026-09-10)
        warn      #FF4500                        #C73600   3.11 → 4.81
        brand     #2E7DE8                        #1E5CB3   3.67 → 5.91
 
@@ -703,7 +714,36 @@
      the chart props that cannot read a CSS variable; `pnpm check:tier-palette`
      fails if the two copies disagree. */
   --c-up-ink: #1B741B;
-  --c-neutral-ink: #6B6266;
+  /* GOLD AGAIN SINCE 2026-09-10, owner-approved, and it finishes a job the
+     2026-09-02 change started. That change turned the RATING tier Neutral back to
+     gold on the owner's reasoning — *"traffic lights are typically used to say
+     between good, neutral and bad; going from green, grey and red doesn't make
+     sense"* — and left the DIRECTION ladder alone. So the product carried two
+     middle rungs: `Neutral` and `Adequate` in gold, while "moderate leverage",
+     "stretched vs its own history", "an elevated payout", "Key Risks" and the
+     analyst consensus were all still grey. Same idea, same page, two colours.
+
+     ⚠️ WHY THE VALUE IS THE TIER INK RATHER THAN THE TIER. `--c-tier-3` (#9C5B01)
+     is solved for WHITE NUMERALS ON A SOLID CHIP; every use of this token is
+     words on a pale ground, which is what `--c-tier-3-ink` is solved for. Taking
+     the chip colour here would have been the mirror of the 2026-08-22 defect
+     (11l ii) — a colour measured where it does not sit.
+
+       as text on --bg-page   5.92   (floor 4.80)
+       on the white card      6.54
+       on the callout wash    6.22
+
+     ⚠️ IT DOES NOT MEAN "AVERAGE" ANY MORE, and that split is the whole point.
+     A typical drawdown, a historical average P/E and "the average of all falls"
+     are REFERENCE values, not middle rungs of a judgement, and the owner asked
+     for those to stay grey and to match the grey rule the charts already draw.
+     They point at `--series-reference-ink`. One value must not mean two things
+     (CLAUDE.md 11e), and this token meant both for six weeks.
+
+     ⚠️ Same value as `--c-tier-3-ink` today and still a separate name, for the
+     reason the block above gives: a rating is our judgement, a direction is a
+     fact about a number, and they must stay free to move apart. */
+  --c-neutral-ink: #895001;
   --c-warn-ink: #C73600;
   --c-brand-ink: #1E5CB3;
   /* ⚠️ THE FIFTH INK, MISSING UNTIL 2026-09-02 — audit 5A-058. Four of the five
@@ -1232,11 +1272,17 @@
   padding: 7px 10px; background: rgba(180,140,40,.06);
   border-left: 2px solid var(--c-neutral-ink); border-radius: 0 4px 4px 0;  /* impeccable-disable-line side-tab: owner-approved 2026-08-22 - marks the caveat as a condition (design-system.md 1a) */
   font-family: 'Sora', sans-serif; font-size: 11px; font-style: italic;
-  color: #7A5A10; line-height: 1.5;
+  /* ⚠️ #7A5A10 until 2026-09-10, with #5A4408 on the `strong` below and a third
+     gold in the wash above — three hand-typed near-misses for one idea, none of
+     them in any palette and none reachable by `check:tier-palette`, which hunts
+     stray copies BY HEX and therefore cannot see a colour that merely looks like
+     the token (11c-viii). They were invisible while the whole card was grey; the
+     moment the card went gold they became two golds sitting on a third. */
+  color: var(--c-neutral-ink); line-height: 1.5;
 }
 .insight-invalidation-icon { flex-shrink: 0; color: var(--c-neutral-ink); margin-top: 2px; }
 .insight-invalidation-icon svg { width: 11px; height: 11px; display: block; }
-.insight-invalidation strong { font-style: normal; font-weight: 700; color: #5A4408; }
+.insight-invalidation strong { font-style: normal; font-weight: 700; color: var(--c-neutral-ink); }
 
 /* The accent stripe and its heading on "Why Attractive" / "Key Risks".
    ⚠️ The stripe is a GRAPHIC and the heading is TEXT, and the gold failed both:
@@ -1263,7 +1309,7 @@
    individual verdicts: design-system.md §1a. */
 .card-header--accent-buy  { border-left: 3px solid var(--c-up-ink); }  /* impeccable-disable-line side-tab: owner-approved 2026-08-22 - green says good news before a word is read (design-system.md 1a) */
 .card-header--accent-buy .card-title  { color: var(--c-up-ink); }
-.card-header--accent-hold { border-left: 3px solid var(--c-neutral-ink); }  /* impeccable-disable-line side-tab: owner-approved 2026-08-22 - grey says caution before a word is read (design-system.md 1a) */
+.card-header--accent-hold { border-left: 3px solid var(--c-neutral-ink); }  /* impeccable-disable-line side-tab: owner-approved 2026-08-22 - gold says caution before a word is read (design-system.md 1a) */
 .card-header--accent-hold .card-title { color: var(--c-neutral-ink); }
 
 @media (max-width: 640px) {
@@ -1365,10 +1411,15 @@
   font-size: 15px; font-weight: 600; color: var(--text-primary);
 }
 .stat-pill-val.green { color: var(--c-up-ink); }
-/* ⚠️ The class is called `.amber` and rendered GREY: it pointed at
-   `--c-neutral-ink`, which stopped being gold in August. A name that states a
-   colour is a claim, and this one had been false for months. */
-.stat-pill-val.amber { color: var(--status-warning-ink); }
+/* ⚠️ THE CLASS IS NAMED FOR ITS JOB, NOT FOR A COLOUR, AND THAT IS THE FIX.
+   It was `.amber`, and before that it rendered grey while still being called
+   amber — a name that states a colour is a claim, and that one was false for
+   months. Its ONE caller is the Typical Drawdown / Typical Profit pill, which is
+   the stock's own AVERAGE: a reference value. It was rendering in
+   `--status-warning-ink` (#92400E) while the chart drew the identical figure as a
+   grey dashed rule and the KPI tile above printed it in a third colour again
+   (#4A5568). One number, three colours, every one of them plausible. */
+.stat-pill-val.reference { color: var(--series-reference-ink); }
 .stat-pill-val.red   { color: var(--c-down-ink); }
 
 @media (max-width: 640px) {

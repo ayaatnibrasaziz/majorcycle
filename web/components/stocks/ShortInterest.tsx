@@ -23,17 +23,24 @@ interface Props {
 
 const GAUGE_MAX = 20;
 
-// Colour ramp reuses the app's existing tier tokens: green → amber → orange-red,
+// Colour ramp reuses the app's existing tier tokens: green -> gold -> orange-red,
 // matching the reference short-interest bands (low / moderate / elevated).
+//
+// ⚠️ THE MIDDLE RUNG WAS `--band-neutral`, A GREY, AND THIS COMMENT SAID "amber"
+// THE WHOLE TIME (fixed 2026-09-10). A name — or a comment — that states a colour
+// is a claim, and this one had been false since the rating palette turned grey in
+// August. Both outer rungs are rating tiers; only the middle one had been pinned
+// to a token from the "not a rating" block, so a three-rung traffic light ran
+// green / grey / orange-red on a card whose whole job is to say good-middling-bad.
 function gaugeColor(pct: number): string {
   if (pct < 5)  return 'var(--c-tier-2)';
-  if (pct < 15) return 'var(--band-neutral)';
+  if (pct < 15) return 'var(--c-tier-3)';
   return 'var(--c-tier-4)';
 }
 
 function signalInfo(pct: number): { label: string; color: string } {
   if (pct < 5)  return { label: 'Bullish', color: 'var(--c-tier-2)' };
-  if (pct < 15) return { label: 'Neutral', color: 'var(--band-neutral)' };
+  if (pct < 15) return { label: 'Neutral', color: 'var(--c-tier-3)' };
   return           { label: 'Bearish', color: 'var(--c-tier-4)' };
 }
 

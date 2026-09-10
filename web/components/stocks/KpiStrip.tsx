@@ -1,4 +1,5 @@
 import { CHART_INK } from '@/lib/chartTheme';
+import { REFERENCE_INK } from '@/lib/ink';
 import { isFullCycle, type CycleAnalysis, type CycleAnalysisFree } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
 import { RATING_TIER_HEX, tierFromScore } from '@/lib/ratings';
@@ -152,7 +153,10 @@ export function KpiStrip({ cycle, entitled }: Props) {
       <KpiCard
         label="Typical Drawdown"
         value={typicalDrawdown != null ? `${fmt(typicalDrawdown, 1)}%` : '—'}
-        accentColor="#4A5568"
+        // ⚠️ Was the hard literal #4A5568, which was in no palette and did not
+        // match either of the other two places this same figure appears. The
+        // typical drawdown is a REFERENCE value: one grey, everywhere.
+        accentColor={REFERENCE_INK}
         tipBody="The average dip this stock has fallen through in its past cycles. It's the yardstick for the Current Drawdown: when today's dip nears this figure, the stock is in a historically attractive zone."
       />
     </div>

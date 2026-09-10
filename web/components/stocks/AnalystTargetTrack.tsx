@@ -124,10 +124,15 @@ export function AnalystTargetTrack({
               background: 'var(--track-tick)', borderRadius: 2,
             }} />
 
-            {/* Consensus marker (gold, smaller) */}
+            {/* Consensus marker (gold, smaller).
+                ⚠️ The dot was the hard literal `#D4A017` — the PRE-AUGUST gold,
+                in no palette — while its own label was grey. So the one marker
+                and the words under it disagreed, and the same figure again in
+                "Consensus Target" below was grey too. All three now read the
+                same token (owner, 2026-09-10). */}
             <div
               className="target-marker"
-              style={{ left: `${meanPos}%`, background: '#D4A017', width: 14, height: 14, zIndex: 3 }}
+              style={{ left: `${meanPos}%`, background: 'var(--c-neutral-ink)', width: 14, height: 14, zIndex: 3 }}
               title="Consensus Target — mean 12-month analyst estimate"
             >
               <div className="target-label" style={{ ...labelStyle(meanPos), color: INK.neutral }}>

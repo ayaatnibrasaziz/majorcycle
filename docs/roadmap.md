@@ -1383,6 +1383,44 @@ the design has no case for rather than a regression — the banner is intact and
 carry it today. Owner deferred to a later session.
 
 
+#### Update 2026-09-10 (later) — the colour pass the owner asked for
+
+The owner read the live product and reported that things meaning "middling" were grey while the
+rating tier *Neutral* had been gold since 2026-09-02. Every item below was confirmed on screen
+first, on real stocks in all three markets (AAPL, AAL, TSLA, INTC · BHP.AX, FMG.AX · SHOP.TO).
+
+**The rule, now written down** (`design-system.md` §2): **gold is a VERDICT, grey is a
+REFERENCE.** The middle rung of any good/middling/poor ladder is gold; an average, a typical
+value or a baseline is `--series-reference-ink` and stays grey.
+
+| What the owner saw | What it was | Fixed |
+|---|---|---|
+| *Key Risks* grey beside a green *Why Attractive* | `--c-neutral-ink` had stayed grey when the tier went gold | ✅ stripe, heading, icon, Severe tag and the invalidation note |
+| Consensus target grey under a **gold** marker dot | the dot was a stray `#D4A017` (the pre-August gold) and its own label was grey | ✅ all three read one token |
+| *Typical* drawdown in a third colour again | ONE figure in **three** colours: `#4A5568` (KPI tile, a literal in no palette), `#92400E` (`.stat-pill-val.amber`), `#6B6266` (the chart's rule) | ✅ one reference grey, class renamed `.reference` |
+| Smart Money "looks different, especially analyst events" | the chart had **two** legends and the top one drew analyst concepts in the DIRECTION palette; the consensus chip drew grey text on a gold tint | ✅ both now speak `ANALYST.*` |
+
+**Found while looking, not reported:** Short Interest ran green → **grey** → orange-red under a
+comment that said *"green → amber → orange-red"*; and `--gauge-3` (the 52-week position ramp's
+middle stop) still held the retired `#72696D` under a comment claiming the four stops *"read
+`--c-tier-1…4`"*. Both were invisible to `check:tier-palette`, which hunts stray copies of the
+**current** palette by hex — a copy of a retired value matches nothing.
+
+**Guards added** (each broken on purpose first and confirmed red for the right reason):
+check 8c pins `REFERENCE_INK` and `DRAWDOWN.avg` to `--series-reference-ink`; check 8d asserts
+`--gauge-1…4` equal `--c-tier-1…4`; `--analyst-neutral` is now measured against tier 3 (35.5
+apart, floor 12) — that pair was unasserted because tier 3 was grey when the list was written;
+and `--series-reference-ink` and `--analyst-downside` are now contrast-measured (5.33 and 4.80
+on the page ground). `--analyst-downside` had never been measured at all.
+
+**OPEN — one question for the owner.** The analyst palette (`#2E6B57` / `#4A5568` / `#7A2F3F`)
+is deliberately muted so a third party's *Sell* can never wear our Bearish red (5A-045, measured
+12.6–21.2 from the rating tiers). It is now used consistently, but it is still duller than the
+rest of the site, and `--analyst-neutral` is byte-identical to `--text-secondary`, so a *Hold*
+reads as ordinary body text. Re-tuning it means trading away some of that separation. **Not
+changed unilaterally** (CLAUDE.md 11l).
+
+
 ### Layer G: SEO + Performance (target: 3-4 days)
 
 Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.

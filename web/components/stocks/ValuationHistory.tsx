@@ -14,7 +14,7 @@ import {
 
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { PeHistoryItem } from '@/lib/types';
-import { INK } from '@/lib/ink';
+import { INK, REFERENCE_INK } from '@/lib/ink';
 
 interface Props {
   peHistory: PeHistoryItem[];
@@ -167,10 +167,14 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
                   {avg !== null && (
                     <ReferenceLine
                       y={avg}
-                      stroke={INK.neutral}
+                      /* ⚠️ REFERENCE_INK, not INK.neutral. This rule IS the
+                         historical average — a baseline, not a verdict — and
+                         INK.neutral became the gold "middling verdict" on
+                         2026-09-10. The verdict text below still uses it. */
+                      stroke={REFERENCE_INK}
                       strokeWidth={2}
                       strokeDasharray="6 4"
-                      label={{ value: `Avg ${avg}x`, position: 'insideBottomRight', fill: INK.neutral, fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
+                      label={{ value: `Avg ${avg}x`, position: 'insideBottomRight', fill: REFERENCE_INK, fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
                     />
                   )}
                   {curr !== null && (

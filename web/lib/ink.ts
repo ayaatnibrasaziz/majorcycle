@@ -51,8 +51,19 @@
 export const INK = {
   /** Up, better, a beat, a buy. Was #228B22 — 3.86:1 on a 10% green tint. */
   up: '#1B741B',
-  /** Mixed, average, stretched, "hold". Was #D4A017 / #9A7010 / #B58800. */
-  neutral: '#6B6266',
+  /**
+   * The MIDDLE RUNG of a good / middling / poor ladder, in words — moderate
+   * leverage, an elevated payout, a stretched valuation, a key risk, a Hold.
+   *
+   * ⚠️ Gold again since 2026-09-10 (owner). It went grey in August for contrast
+   * and the rating tier came back to gold on 2026-09-02 without it, so the same
+   * idea was being painted two ways on one page. `--c-tier-3-ink`'s value,
+   * because every use is words on a pale ground.
+   *
+   * ⚠️ NOT "average". An average, a typical drawdown, a historical mean is a
+   * REFERENCE value and stays grey — see `REFERENCE_INK`.
+   */
+  neutral: '#895001',
   /** The least favourable rung of a ramp. Was #FF4500 — 3.11:1 as a KPI value. */
   warn: '#C73600',
   /** Down, worse, a miss, a sell. Already legible at 6.68:1 — unchanged, and
@@ -123,3 +134,20 @@ export const FIGURE_TEAL = '#0E7C8B';
  * Same value as `--text-muted` today, and no longer tied to it.
  */
 export const FIGURE_NEUTRAL = '#626B77';
+
+/**
+ * "This is the average / the typical / the baseline" — a reference value, never
+ * a judgement. The dashed rule a chart draws through its own mean, the number
+ * that rule is labelled with, and the KPI tile restating it.
+ *
+ * ⚠️ IT EXISTS BECAUSE ONE TOKEN WAS DOING BOTH JOBS. `INK.neutral` used to mean
+ * "middling" AND "average", so when the owner asked for middling to be gold and
+ * averages to stay grey there was nothing to move: one value, two meanings
+ * (CLAUDE.md 11e). Splitting them also fixed a defect nobody had reported — the
+ * SAME typical-drawdown figure was rendering in three colours on one page
+ * (#4A5568 in the KPI tile, #92400E in the stat pill, #6B6266 on the chart rule),
+ * every one of them a plausible grey or amber.
+ *
+ * Mirrors `--series-reference-ink`; `pnpm check:tier-palette` asserts the pair.
+ */
+export const REFERENCE_INK = '#6B6266';

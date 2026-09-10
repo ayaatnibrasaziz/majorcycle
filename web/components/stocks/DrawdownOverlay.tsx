@@ -23,7 +23,6 @@ import {
 } from '@/lib/chartSync';
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { CycleAnalysisFree, PriceBar } from '@/lib/types';
-import { INK } from '@/lib/ink';
 
 type Mode = 'drawdown' | 'profit';
 
@@ -202,7 +201,11 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       chart.addLineSeries({
         // Lightweight Charts paints the price-scale label in the series colour,
         // so this is a dashed line AND its own text. 2.38:1 either way.
-        color: INK.neutral,
+        // ⚠️ DRAWDOWN.avg, not INK.neutral: this is the stock's AVERAGE fall, a
+        // reference value, and INK.neutral became the gold "middling verdict" on
+        // 2026-09-10. The two used to be one token and the owner asked for the
+        // typical figure to stay grey, matching the rule this line draws.
+        color: DRAWDOWN.avg,
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         priceLineVisible: false,
@@ -372,7 +375,11 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
               : 'Typical Profit Recovery (Historical Average) — The average recovery gain across all historical profit cycles. When Current ≥ Typical, the stock may be nearing an exit zone.'}
           >
             <div className="stat-pill-label">Typical</div>
-            <div className="stat-pill-val amber">{typicalVal !== null ? `${fmt(typicalVal)}%` : '—'}</div>
+            {/* ⚠️ `reference`, not `amber`. This is the same number the chart
+                draws its grey dashed rule at, and it used to render in a third
+                colour again in the KPI tile above — one figure, three colours
+                (audit 2026-09-10). They now share one token. */}
+            <div className="stat-pill-val reference">{typicalVal !== null ? `${fmt(typicalVal)}%` : '—'}</div>
           </div>
           <div
             className="stat-pill"

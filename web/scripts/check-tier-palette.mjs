@@ -450,7 +450,12 @@ for (const [[a, b], minPlain, minProtan, minDeutan] of SEPARATION) {
  */
 const INK_GROUND = {
   up: ['#E9F3E9', 'a 10% green tint - the insight strength tag'],
-  neutral: ['#F1F0F0', 'a 10% grey tint - the Smart Money consensus pill'],
+  /* Gold again 2026-09-10. The old ground here was the Smart Money consensus
+     pill's 10% grey tint; that pill now draws from the ANALYST palette (a
+     third party's opinion is not our middle rung), so the darkest ground this
+     ink actually sits on is the page itself - the summary-strip values, the
+     consensus target, the Key Risks stripe. */
+  neutral: ['#F0F4F8', '--bg-page - a middling verdict in words'],
   warn: ['#F0F4F8', '--bg-page - the KPI drawdown value'],
   down: ['#F0F4F8', '--bg-page - summary strip values'],
   brand: ['#EEF5FD', "the 50 DMA chip's own 8% tint"],
@@ -528,6 +533,10 @@ const DOMAIN = [
   ['--analyst-negative', '#F0F4F8', FLOOR, "a third party's Sell, as words"],
   ['--data-missing', '#F0F4F8', FLOOR, 'the em dash where we have no value'],
   ['--c-down-ink', '#F0F4F8', FLOOR, 'a loss, in words'],
+  ['--series-reference-ink', '#F0F4F8', FLOOR, 'an average / typical value, in words'],
+  /* Added 2026-09-10. It is TEXT — "8.5% above target" under the price — and it
+     had never been measured, because it sat in no list. */
+  ['--analyst-downside', '#F0F4F8', FLOOR, 'a price above the analyst target, in words'],
 ];
 const domainVal = {};
 for (const [token, ground, floor, what] of DOMAIN) {
@@ -554,6 +563,10 @@ const SEPARATE_FROM_RATING = [
   ['--analyst-positive', '2', 12.0],
   ['--analyst-negative', '5', 10.0],
   ['--analyst-negative', '4', 12.0],
+  /* Added 2026-09-10 with the gold. Tier 3 was GREY when this list was written,
+     and a grey is far from everything, so the pair nobody thought to assert was
+     the one about to collide: a third party's *Hold* beside our *Neutral*. */
+  ['--analyst-neutral', '3', 12.0],
 ];
 for (const [token, tier, floorD] of SEPARATE_FROM_RATING) {
   const a = domainVal[token];
@@ -773,6 +786,74 @@ for (const [obj, key, token] of MIRRORS) {
   }
 }
 note.push(`  chartTheme mirrors: ${MIRRORS.length} canvas literals checked against their tokens`);
+
+/* ── 8d · the 52-week gauge ramp still tracks the tiers it claims to ─────────
+ *
+ * `--gauge-1…4` are the four stops of the one gradient on a stock page that runs
+ * good-to-bad, and globals.css says in as many words that they read the rating
+ * tiers. Nothing had ever checked it.
+ *
+ * ⚠️ IT WAS ALREADY FALSE. When Neutral turned gold on 2026-09-02, `--gauge-3`
+ * kept #72696D — the grey tier 3 had been — so a green-to-red ramp ran through a
+ * grey band for eight days under a comment asserting it could not. Check 3's
+ * stray-literal sweep is blind to this by construction: it hunts copies of the
+ * CURRENT palette, and a copy of a RETIRED value matches nothing.
+ */
+{
+  for (const t of ['1', '2', '3', '4']) {
+    const g = readToken(`--gauge-${t}`);
+    const tier = fromCss[t];
+    if (!g || !tier) {
+      fail.push(`--gauge-${t} or --c-tier-${t} could not be read — check 8d needs both, and an unmeasurable pair reads as a clean one.`);
+      continue;
+    }
+    note.push(`  gauge ${t}   ${g}   --c-tier-${t} = ${tier}`);
+    if (g !== tier) {
+      fail.push(
+        `--gauge-${t} is ${g} but --c-tier-${t} is ${tier}. globals.css says the gauge stops READ the rating tiers; ` +
+          `a stop left behind puts a stale colour in the middle of a good-to-bad ramp, and it renders perfectly.`,
+      );
+    }
+  }
+}
+
+/* ── 8c · the reference ink: two copies, and the pair that used to be one ────
+ *
+ * `REFERENCE_INK` in lib/ink.ts and `DRAWDOWN.avg` in lib/chartTheme.ts are the
+ * canvas/Recharts copies of `--series-reference-ink`: "this is the average", the
+ * dashed rule a chart draws through its own mean and the words restating it.
+ *
+ * ⚠️ THE REASON THIS CHECK EXISTS. Until 2026-09-10 there was no reference ink at
+ * all — `INK.neutral` meant BOTH "the middle rung of our judgement" and "the
+ * average", so the same typical-drawdown figure reached the reader in three
+ * colours on one page and every one of them looked deliberate. Splitting the
+ * meanings is only half the fix; this is the half that stops them merging again.
+ */
+{
+  const cssHex = readToken('--series-reference-ink');
+  const inkHex = (inkTs.match(/REFERENCE_INK\s*=\s*'(#[0-9A-Fa-f]{6})'/) || [])[1];
+  const avgHex = (objectBody('DRAWDOWN') || '').match(/avg:\s*'(#[0-9A-Fa-f]{6})'/);
+  const copies = [
+    ['lib/ink.ts REFERENCE_INK', inkHex && inkHex.toUpperCase()],
+    ['lib/chartTheme.ts DRAWDOWN.avg', avgHex && avgHex[1].toUpperCase()],
+  ];
+  if (!cssHex) {
+    fail.push('--series-reference-ink is missing from globals.css — check 8c cannot compare its copies, and an unmeasurable pair reads as a clean one.');
+  }
+  for (const [where, hex] of copies) {
+    if (!hex) {
+      fail.push(`${where} could not be read — check 8c needs every copy of the reference ink.`);
+      continue;
+    }
+    note.push(`  reference ink ${where.padEnd(32)} ${hex}`);
+    if (cssHex && hex !== cssHex) {
+      fail.push(
+        `${where} is ${hex} but --series-reference-ink is ${cssHex}. An average would be drawn in one grey and ` +
+          `labelled in another on the same card — which is exactly the state this split was made to end.`,
+      );
+    }
+  }
+}
 
 // ── 9 · the forced-colors block only names things that exist ────────────────
 /*

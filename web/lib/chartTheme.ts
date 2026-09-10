@@ -45,7 +45,7 @@ export const CHART_GRID = '#E2E8F0';
  * construction (audit 5A-064). The audit recorded the three shared values as
  * still agreeing; checking the fourth showed they did not. The Learn figure drew
  * its average line in `#D4A017`, the pre-August gold, while the product draws it
- * in `INK.neutral` grey. So the article teaching a reader what a drawdown looks
+ * in the product's own reference grey. So the article teaching a reader what a drawdown looks
  * like had stopped matching the thing it describes, and nothing could see it.
  *
  * One definition now, and the Learn primitives consume it rather than restating
@@ -56,7 +56,11 @@ export const DRAWDOWN = {
   line: '#1E5CB3',
   /** The wash under a fall. */
   fill: 'rgba(178,34,34,.15)',
-  /** The "typical drawdown" rule. Mirrors `INK.neutral`. */
+  /** The stock's AVERAGE fall — a reference value, never a verdict.
+   *  ⚠️ Mirrored `INK.neutral` until 2026-09-10, when that ink became the gold
+   *  "middling verdict". It now mirrors `--series-reference-ink` / `REFERENCE_INK`,
+   *  which check 8c of `check:tier-palette` asserts. Owner: the typical figure
+   *  stays grey and matches the rule this line draws. */
   avg: '#6B6266',
   /** The lower-bound rule — the deepest confirmed fall. Mirrors `INK.down`. */
   bound: '#B22222',
