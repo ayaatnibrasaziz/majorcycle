@@ -38,7 +38,7 @@ export function SelectedTickers({
         <button
           type="button"
           onClick={onClear}
-          className="text-[11px] font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-bright)]"
+          className="text-[11px] font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-deep)]"
         >
           Clear all
         </button>

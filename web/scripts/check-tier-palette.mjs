@@ -53,7 +53,7 @@
  * palette pasted into a component (→ copy).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, dirname, relative } from 'node:path';
+import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -537,6 +537,7 @@ const DOMAIN = [
   /* Added 2026-09-10. It is TEXT — "8.5% above target" under the price — and it
      had never been measured, because it sat in no list. */
   ['--analyst-downside', '#F0F4F8', FLOOR, 'a price above the analyst target, in words'],
+  ['--analyst-chip', '#F0F4F8', FLOOR, 'the "Analysts: …" label chip in the page header'],
 ];
 const domainVal = {};
 for (const [token, ground, floor, what] of DOMAIN) {
@@ -563,10 +564,21 @@ const SEPARATE_FROM_RATING = [
   ['--analyst-positive', '2', 12.0],
   ['--analyst-negative', '5', 10.0],
   ['--analyst-negative', '4', 12.0],
-  /* Added 2026-09-10 with the gold. Tier 3 was GREY when this list was written,
-     and a grey is far from everything, so the pair nobody thought to assert was
-     the one about to collide: a third party's *Hold* beside our *Neutral*. */
-  ['--analyst-neutral', '3', 12.0],
+  /* ⚠️ FLOOR 5.0, NOT 12.0, AND THAT IS THE ONE DELIBERATE WEAKENING IN THIS FILE.
+     Added at 12.0 earlier the same day — then the owner pointed out that the Smart
+     Money marker legend already spends grey on an "Other" insider transaction, so
+     a grey *Hold* beside it put two unrelated meanings in one grey. The Hold is
+     gold now, and a gold cannot be kept 12 from OUR gold: searched across every
+     gold that clears the contrast floors, the furthest any reaches is 5.2 from
+     `--c-tier-3` and 4.1 from `--c-tier-3-ink`. Ranked on distance the search
+     returns an olive-khaki nobody would call gold.
+     The row is LOWERED rather than deleted so it still catches a further collapse
+     (11t: an exemption bounded on both sides), and what makes the pair safe is
+     that they never appear as peer chips — our badges sit in the page header, the
+     analyst grades inside the Smart Money card, each carrying its own word. The
+     header's own "Analysts: …" chip was split onto `--analyst-chip` and kept its
+     slate precisely so it does not sit gold beside the gold *Fair* badge. */
+  ['--analyst-neutral', '3', 5.0],
 ];
 for (const [token, tier, floorD] of SEPARATE_FROM_RATING) {
   const a = domainVal[token];
@@ -855,6 +867,174 @@ note.push(`  chartTheme mirrors: ${MIRRORS.length} canvas literals checked again
   }
 }
 
+/* ── 8e · the analyst palette: its TS copy, and the washes derived from it ───
+ *
+ * `ANALYST` in lib/ink.ts paints the chart markers (Lightweight Charts, a canvas,
+ * where a CSS variable is unparseable) and `--analyst-*` paints every pill, chip
+ * and legend dot. Two copies, and until 2026-09-10 NOTHING compared them: check 6
+ * measured the CSS side for contrast and had no opinion about the TS side at all.
+ *
+ * ⚠️ AND THE WASHES ARE A THIRD COPY. Six `rgba()` values — four `.smart-pill`
+ * rules and two inline styles in `SmartMoneyActivity.tsx` — were hand-typed from
+ * these hexes. Lightening the palette would have moved the text on six chips and
+ * left every one of their backgrounds on the old colour, which renders perfectly
+ * (11c-viii). So the tokens carry the tint and this asserts the tint's triplet is
+ * really the ink's.
+ */
+{
+  const analystTs = inkTs.match(/export const ANALYST\s*=\s*\{([\s\S]*?)\}\s*as const/);
+  const tsAnalyst = {};
+  if (analystTs) for (const m of analystTs[1].matchAll(/(\w+)\s*:\s*'(#[0-9A-Fa-f]{6})'/g)) tsAnalyst[m[1]] = m[2].toUpperCase();
+  if (!analystTs) {
+    fail.push('ANALYST is gone from lib/ink.ts — check 8e cannot compare the two copies, and an unmeasurable pair reads as a clean one.');
+  } else {
+    for (const role of ['positive', 'neutral', 'negative']) {
+      const tsHex = tsAnalyst[role];
+      const cssHex = readToken(`--analyst-${role}`);
+      if (!tsHex || !cssHex) {
+        fail.push(`ANALYST.${role} or --analyst-${role} could not be read — check 8e needs both.`);
+        continue;
+      }
+      note.push(`  analyst ${role.padEnd(9)} ${tsHex}   --analyst-${role} = ${cssHex}`);
+      if (tsHex !== cssHex) {
+        fail.push(
+          `ANALYST.${role} is ${tsHex} but --analyst-${role} is ${cssHex}. The chart markers read the TS copy and ` +
+            `every pill reads the token, so one legend would name a colour no marker on the chart uses.`,
+        );
+      }
+      // every wash/hairline must be a transparent version of that same ink
+      for (const suffix of ['-tint', '-border']) {
+        const decl = declaration(`--analyst-${role}${suffix}`);
+        if (!decl) continue; // not every role has both
+        const nums = decl.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+        if (!nums) {
+          fail.push(`--analyst-${role}${suffix} is not an rgba() triplet — check 8e cannot tie it to its ink.`);
+          continue;
+        }
+        const fromTriplet = '#' + [1, 2, 3].map((i) => Number(nums[i]).toString(16).padStart(2, '0')).join('').toUpperCase();
+        if (fromTriplet !== cssHex) {
+          fail.push(
+            `--analyst-${role}${suffix} is mixed from ${fromTriplet}, but --analyst-${role} is ${cssHex}. ` +
+              `A chip would draw the new ink on the old wash, and it would look entirely deliberate.`,
+          );
+        }
+      }
+    }
+  }
+}
+
+/* The header's "Analysts: …" label chip has no TS twin — nothing paints it on a
+ * canvas — but its wash is still a hand-mixed copy of its ink, so it needs the
+ * same tie. Split off `--analyst-neutral` on 2026-09-10 when the Hold went gold. */
+{
+  const chip = readToken('--analyst-chip');
+  const decl = declaration('--analyst-chip-tint');
+  const nums = decl && decl.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (!chip || !nums) {
+    fail.push('--analyst-chip or --analyst-chip-tint could not be read — check 8e needs both, and an unmeasurable pair reads as a clean one.');
+  } else {
+    const fromTriplet = '#' + [1, 2, 3].map((i) => Number(nums[i]).toString(16).padStart(2, '0')).join('').toUpperCase();
+    note.push(`  analyst chip      ${chip}   tint mixed from ${fromTriplet}`);
+    if (fromTriplet !== chip) {
+      fail.push(
+        `--analyst-chip-tint is mixed from ${fromTriplet}, but --analyst-chip is ${chip}. ` +
+          `The header chip would draw one colour on a wash of another, and it would look entirely deliberate.`,
+      );
+    }
+  }
+}
+
+/* ── 8f · the Key Metrics category taxonomy stays tellable apart ────────────
+ *
+ * Four pills name which part of the business a row is about. They are a SUBJECT,
+ * not a score, so none of them may borrow a rating tier or a direction ink — and
+ * they have to be distinguishable from each other, which is the half that failed.
+ *
+ * ⚠️ THE OWNER CAUGHT THIS BY LOOKING, on 2026-09-12, and the measurement agreed.
+ * Three of the four were a navy and two greys: Profitability against Balance Sheet
+ * was 12.4 apart in normal vision and **9.9 to a protanope**, under the 12 this
+ * project asks of two colours that must be told apart. Every other check here was
+ * green, because every one of them judges a colour ON ITS OWN — legible, in the
+ * right palette, not a stray copy. None of them asks whether two colours that
+ * appear in one column can be separated, which is the question a reader asks
+ * (CLAUDE.md 11t: never "is this colour legible?", always "how far is it from its
+ * neighbours after this?").
+ *
+ * ⚠️ BOTH BOUNDS ARE ASSERTED, and the ceiling is not decoration. The first
+ * search for a replacement set maximised distance alone and returned a near-black
+ * purple beside a near-black grey — 19.1 apart, and not a set anybody would draw.
+ * A pill whose ink clears 9:1 on its own wash has stopped being a coloured pill
+ * and become black text. So the floor keeps them readable and the ceiling keeps
+ * them coloured, and the lightness band keeps the four looking like siblings.
+ *
+ * The numbers here are today's measurement used as a ratchet, not a threshold
+ * invented on the spot: a guard that fails on the day it is written gets loosened
+ * rather than obeyed.
+ */
+{
+  const CATS = ['valuation', 'growth', 'profitability', 'balance'];
+  // The pill is its ink at 10% over a Key Metrics row, which alternates white and
+  // the stripe and turns --bg-hover under the cursor. Measure the worst of the three.
+  const ROW_GROUNDS = ['#FFFFFF', '#F8FAFC', '#F5F8FF'];
+  const MIN_APART = 13.0;   // today's worst pair is 13.1
+  const INK_FLOOR = 4.8;
+  const INK_CEIL  = 9.0;
+
+  const inks = {};
+  for (const c of CATS) {
+    const hex = readToken(`--cat-${c}`);
+    if (!hex) {
+      fail.push(`--cat-${c} could not be read — check 8f needs all four, and an unmeasurable set reads as a clean one.`);
+      continue;
+    }
+    inks[c] = hex;
+  }
+
+  // No colour here may BE a rating tier or a direction ink: a category pill that
+  // shares a value with a verdict stops being a taxonomy the moment anyone notices.
+  const RESERVED = { ...fromCss, up: readToken('--c-up-ink'), down: readToken('--c-down-ink'), neutral: readToken('--c-neutral-ink') };
+  for (const [c, hex] of Object.entries(inks)) {
+    for (const [rn, rv] of Object.entries(RESERVED)) {
+      if (rv && hex === rv) {
+        fail.push(`--cat-${c} is ${hex}, which is also ${rn}. A category names a SUBJECT and must never carry a verdict's value.`);
+      }
+    }
+  }
+
+  for (const [c, hex] of Object.entries(inks)) {
+    const worst = Math.min(...ROW_GROUNDS.map((g) => ratio(hex, composite([...rgb(hex), 0.10], g))));
+    note.push(`  category ${c.padEnd(14)} ${hex}   on its own 10% wash ${worst.toFixed(2)}:1`);
+    if (worst < INK_FLOOR) {
+      fail.push(`--cat-${c} (${hex}) scores ${worst.toFixed(2)} as text on its own wash, under ${INK_FLOOR}.`);
+    }
+    if (worst > INK_CEIL) {
+      fail.push(
+        `--cat-${c} (${hex}) scores ${worst.toFixed(2)} on its own wash, over ${INK_CEIL} — that is black text wearing a hue, ` +
+          `not a coloured pill. The ceiling is what stopped the search walking this set into near-black.`,
+      );
+    }
+  }
+
+  const got = Object.keys(inks);
+  for (let i = 0; i < got.length; i++) {
+    for (let j = i + 1; j < got.length; j++) {
+      const [a, b] = [inks[got[i]], inks[got[j]]];
+      const plain = deltaE(a, b);
+      const protan = deltaE(simulate(a, 'protan'), simulate(b, 'protan'));
+      const deutan = deltaE(simulate(a, 'deutan'), simulate(b, 'deutan'));
+      const m = Math.min(plain, protan, deutan);
+      note.push(`  category ${got[i]}-${got[j]}   apart ${plain.toFixed(1)}   protanope ${protan.toFixed(1)}   deuteranope ${deutan.toFixed(1)}`);
+      if (m < MIN_APART) {
+        fail.push(
+          `--cat-${got[i]} and --cat-${got[j]} are only ${m.toFixed(1)} apart at their worst (plain ${plain.toFixed(1)}, ` +
+            `protanope ${protan.toFixed(1)}, deuteranope ${deutan.toFixed(1)}), under ${MIN_APART}. These two pills sit in one ` +
+            `column of one table, so a reader has to separate them by colour alone.`,
+        );
+      }
+    }
+  }
+}
+
 // ── 9 · the forced-colors block only names things that exist ────────────────
 /*
  * Windows High Contrast support is a block of selectors nobody on this project
@@ -950,6 +1130,96 @@ if (docSrc) {
       `docs/design-system.md quotes ${drifted.length} value(s) the stylesheet disagrees with:\n    ` +
         drifted.join('\n    ') +
         `\n  The doc is what a person reads before picking a colour, so a stale value there is a recommendation to use the wrong one.`,
+    );
+  }
+}
+
+
+// ── 11 · --brand-bright is a DRAWN colour, never a WRITTEN one ───────────────
+/*
+ * WCAG asks 3:1 of a graphical object and 4.5:1 of text. `--brand-bright`
+ * (#2E7DE8) measures 4.03:1 on white and 3.64:1 on `--bg-stripe`, so it is a
+ * perfectly good 1.5px moving-average line and is NOT a colour you can write a
+ * sentence in.
+ *
+ * ⚠️ It had been the HOVER colour for every prose link on the public site, which
+ * is the worst possible place for it: a reader who moves the mouse to a link is
+ * handed its least legible form, 6.49 at rest → 4.03 hovered. Found 2026-09-12 by
+ * forcing hover on all 764 controls across the 31 public URLs — a hand pass had
+ * walked those same pages and seen nothing, because nobody hovers 764 things.
+ *
+ * ⚠️ AND IT WAS THE SECOND TIME. `.adv-toggle` carried the identical defect at the
+ * identical numbers and was fixed two days earlier; the fix note even asserted
+ * that "every other text control on the site darkens on hover", which was untrue
+ * as it was written. Fixing the instance and not grepping the class is CLAUDE.md
+ * 11c-iv, so this check exists to make the CLASS impossible rather than to repair
+ * the three consumers that happened to have it.
+ *
+ * The one exemption is `.info-tip-trigger` — an SVG icon, where 3:1 is the floor
+ * and 4.03 clears it. It is bounded on BOTH sides (CLAUDE.md 11t): if that
+ * selector ever stops existing, the exemption fails rather than going quietly on
+ * excusing whatever wanders into its scope.
+ *
+ * Broken on purpose before being trusted: putting the old value back in
+ * `.reading a:hover` fails and names the selector; deleting `.info-tip-trigger`
+ * fails for the exemption.
+ */
+{
+  const BRIGHT = /var\(\s*--brand-bright\s*\)|#2E7DE8/i;
+  const EXEMPT = '.info-tip-trigger';
+  const offenders = [];
+  let exemptSeen = 0;
+  let hoverRulesScanned = 0;
+
+  // CSS: any rule whose selector carries a pointer/keyboard state and whose body
+  // sets `color`. Comments are stripped first — this repo has been caught five
+  // times by a guard reading its own explanation (CLAUDE.md 11au).
+  const cssNoComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const m of cssNoComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const sel = m[1].trim();
+    if (!/:hover|:focus-visible|:focus\b|\[aria-expanded="true"\]/.test(sel)) continue;
+    const body = m[2];
+    const decl = body.match(/(?:^|;)\s*color\s*:\s*([^;]+)/);
+    if (!decl) continue;
+    hoverRulesScanned++;
+    if (!BRIGHT.test(decl[1])) continue;
+    if (sel.includes(EXEMPT)) { exemptSeen++; continue; }
+    offenders.push(`globals.css  ${sel.replace(/\s+/g, ' ').slice(0, 80)} { color: ${decl[1].trim()} }`);
+  }
+
+  // TSX/TS: the Tailwind spelling of the same thing.
+  for (const f of files) {
+    if (!/\.(ts|tsx)$/.test(f)) continue;
+    const rel = relative(ROOT, f).split(sep).join('/');
+    const body = readFileSync(f, 'utf8');
+    body.split('\n').forEach((line, i) => {
+      if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;
+      const hit = line.match(/(?:hover|focus|focus-visible|group-hover):text-\[(?:var\(--brand-bright\)|#2E7DE8)\]/i);
+      if (hit) offenders.push(`${rel}:${i + 1}  ${hit[0]}`);
+    });
+  }
+
+  note.push(`  brand-bright: ${hoverRulesScanned} state rules with a text colour scanned`);
+
+  // The walk has to have found something, or this passes having looked at nothing.
+  if (hoverRulesScanned < 10) {
+    fail.push(
+      `check 11 found only ${hoverRulesScanned} hover/focus rules that set a text colour — ` +
+        `the CSS parse is not seeing what it thinks it is, and an empty scan reads exactly like a clean one.`,
+    );
+  }
+  if (exemptSeen === 0) {
+    fail.push(
+      `check 11's only exemption, "${EXEMPT}", no longer matches anything. An exemption that outlives its ` +
+        `subject does not go quiet — it goes on excusing whatever wanders into its scope. Remove it.`,
+    );
+  }
+  if (offenders.length) {
+    fail.push(
+      `--brand-bright is being WRITTEN, not drawn, in ${offenders.length} place(s):\n    ` +
+        offenders.join('\n    ') +
+        `\n  It is 4.03:1 on white and 3.64:1 on --bg-stripe, against the 4.5 text owes. Text hover on this ` +
+        `site DARKENS: --brand-deep is 11.2 / 10.1. The only thing allowed to brighten is an icon (${EXEMPT}).`,
     );
   }
 }

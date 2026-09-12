@@ -121,6 +121,64 @@ test.describe('errors and confirmations use the status palette, never the rating
     ).toEqual([]);
   });
 
+  /**
+   * The surfaces the role-based rule cannot reach, named one by one.
+   *
+   * ⚠️ THIS EXISTS BECAUSE THE ROLE RULE MISSED FOUR THINGS AND NOBODY KNEW. A
+   * colour review on 2026-09-12 found the Delete-account confirmation panel still
+   * washed in `--tint-tier-5`, the two Request/Results availability pills still
+   * painted in `--c-tier-1` and `--c-tier-5`, and the upgrade dialog's unlock ticks
+   * in `--c-tier-2`. Every one had been migrated at the INK and left on a rating
+   * token for its SURFACE, or missed entirely — and the rule above is blind to all
+   * of them, because none carries `role="alert"`. A guard's scope is a claim about
+   * what it can see (14g), and that claim had been read as coverage.
+   *
+   * ⚠️ A LIST IS THE WRONG SHAPE FOR A RULE and the right shape for a KNOWN SET.
+   * The rule above needs no exception list and must keep none (11c-iv). This is the
+   * other thing: four specific surfaces, each asserted by name, so the list cannot
+   * quietly stop matching. Every entry carries a control — the string it must NOT
+   * contain — so a rule deleted outright fails here rather than passing vacuously.
+   */
+  test('the four surfaces outside the role rule use the status palette', () => {
+    const cases: Array<{ file: string; must: string; mustNot: string; what: string }> = [
+      { file: join('app', 'globals.css'), must: 'var(--status-success) 14%', mustNot: 'var(--c-tier-1) 14%',
+        what: 'the Request / Results "Available now" pill' },
+      { file: join('app', 'globals.css'), must: 'var(--status-danger) 12%', mustNot: 'var(--c-tier-5) 12%',
+        what: 'the Request / Results "Not supported" pill' },
+      { file: join('components', 'account', 'DeleteAccountCard.tsx'), must: 'bg-[var(--status-danger-tint)]',
+        mustNot: 'bg-[var(--tint-tier-5)]', what: 'the delete-account confirmation panel' },
+      { file: join('components', 'UpgradeDialog.tsx'), must: 'bg-[var(--status-success)]',
+        mustNot: 'bg-[var(--c-tier-2)]', what: "the upgrade dialog's unlock ticks" },
+    ];
+    for (const c of cases) {
+      const src = readFileSync(c.file, 'utf8');
+      expect(src, `${c.what}: ${c.must} is gone from ${c.file}`).toContain(c.must);
+      expect(src, `${c.what} is back on a rating token (${c.mustNot})`).not.toContain(c.mustNot);
+    }
+  });
+
+  /**
+   * ⚠️ The naive migration made one of these LESS legible, which is why the ink is
+   * asserted and not just the token name. `--status-success` on its own 14% wash
+   * measures 3.98:1 — under this project's 4.80 floor, and worse than the 6.16 of
+   * the rating tier it replaced. `--status-success-ink` clears it at 6.17. A pill
+   * that swapped the solid green in would have passed the check above and failed
+   * the reader.
+   */
+  test('the availability pills carry the INK, not the solid status colour', () => {
+    const css = readFileSync(join('app', 'globals.css'), 'utf8');
+    // ⚠️ Sliced, not matched by a built regex. The first version of this line
+    // assembled one from a string and the backslashes collapsed, so `\.` became a
+    // wildcard dot and `\s` became a literal "s" — it matched nothing and reported
+    // "the rule is gone" about a rule sitting right there. Indexing has no escaping.
+    for (const rule of ['.req-pill--ok', '.skipped-pill--ok']) {
+      const at = css.indexOf(rule + ' ');
+      expect(at, `${rule} is gone from globals.css`).toBeGreaterThan(-1);
+      const body = css.slice(css.indexOf('{', at) + 1, css.indexOf('}', at));
+      expect(body, `${rule} must use --status-success-ink as its text`).toContain('color: var(--status-success-ink)');
+    }
+  });
+
   test('both status halves exist and the rating ramp survived the migration', () => {
     const css = readFileSync(join('app', 'globals.css'), 'utf8');
     for (const t of [

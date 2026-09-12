@@ -108,9 +108,14 @@ function analystConsensus(upgrades: AnalystUpgrade[]): { label: string; color: s
      page whose foreground and background came from different palettes and
      different years. Every tint below is now its own colour at the same alpha the
      matching `.smart-pill` uses. */
-  if (bull >= bear && bull > neut) return { label: 'BULLISH',  color: ANALYST.positive, bg: 'rgba(46,107,87,.12)' };
-  if (bear > bull  && bear > neut) return { label: 'BEARISH',  color: ANALYST.negative, bg: 'rgba(122,47,63,.10)' };
-  return                                   { label: 'NEUTRAL',  color: ANALYST.neutral,  bg: 'rgba(74,85,104,.10)' };
+  /* ⚠️ The washes were hand-typed `rgba()` derived from the hexes beside them, so
+     lightening the palette on 2026-09-10 would have moved the text and left all
+     three backgrounds on the old colour. They read the tokens now — the same ones
+     the `.smart-pill` rules use, so a chip and the chip summarising it cannot part
+     company again (11c-viii). */
+  if (bull >= bear && bull > neut) return { label: 'BULLISH',  color: ANALYST.positive, bg: 'var(--analyst-positive-tint)' };
+  if (bear > bull  && bear > neut) return { label: 'BEARISH',  color: ANALYST.negative, bg: 'var(--analyst-negative-tint)' };
+  return                                   { label: 'NEUTRAL',  color: ANALYST.neutral,  bg: 'var(--analyst-neutral-tint)' };
 }
 
 function fmtDate(iso: string): string {

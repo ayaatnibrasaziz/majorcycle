@@ -529,16 +529,86 @@
      (CLAUDE.md #17). ⚠️ These must NOT be our rating colours: a Yahoo *Sell* drawn
      in `--c-tier-5` reads as OUR conclusion about the stock rather than someone
      else's, on a product whose whole compliance posture is "information only"
-     (5A-045). Deliberately quieter and cooler than the rating ramp — measured 16.8
-     from Constructive and 12.6 from Bearish, so they read as a different kind of
-     thing, while every chip still carries the word itself. */
-  --analyst-positive: #2E6B57;
-  --analyst-neutral: #4A5568;
-  /* The wash behind a third-party consensus chip. Was hand-typed inside
-     `.tier-badge--analyst` as rgba(74,85,104,0.12) — the only tier badge whose
-     background could not be reached from the palette (audit 5A-071). */
-  --analyst-neutral-tint: rgba(74, 85, 104, 0.12);
-  --analyst-negative: #7A2F3F;
+     (5A-045). They stay a different kind of thing from the rating ramp, and every
+     chip still carries the word itself.
+
+     ⚠️ LIGHTENED 2026-09-10 — the owner read the Smart Money chart and said the
+     three analyst-event colours "look very deep". They were: measured on the page
+     ground against a 4.80 floor, the set scored **5.66 / 6.81 / 8.24**. The wine
+     was carrying nearly twice the contrast it owed, which is exactly what makes a
+     7px marker square read as a black blob.
+
+       role      was       now       on --bg-page      inside the set
+       positive  #2E6B57   #0E6F58   5.66 -> 5.53      the three legend swatches
+       neutral   #4A5568   #7E5B25   6.81 -> 5.57      sit side by side, so the
+       negative  #7A2F3F   #AD344C   8.24 -> 5.63      pairs matter as much as
+                                                       each colour on its own:
+                                                       8.2 / 12.1 / 11.4  ->
+                                                       14.7 / 14.1 / 12.6
+
+     ⚠️ THE HOLD IS GOLD, NOT GREY, AND THAT IS AN OWNER DECISION THAT COSTS
+     SOMETHING — say the price out loud. Their words: *"you can't make awards grey
+     and reiterate grey, contradicting each other."* Exactly right: the marker
+     legend on that one chart draws the "Other" insider transaction in `CHART_INK`
+     grey and was drawing a third party's *Hold* in a slate two shades away, so one
+     legend carried two greys meaning unrelated things (11e, in a legend).
+
+     ⚠️ WHAT IT COSTS: a gold cannot be kept away from OUR gold. Searched across
+     every gold that clears the floors, the furthest any of them gets from
+     `--c-tier-3` is **5.2**, and from `--c-tier-3-ink` **4.1** — this file already
+     said as much where the warning amber was chosen (*"our rating ramp already
+     occupies the whole warm range and any legible dark amber lands in it; the only
+     ambers that separate cleanly stop looking like an amber at all"*). Ranked on
+     distance instead, the search returns an olive-khaki that nobody would call
+     gold. So 5A-045's rule — a third party's verdict must not wear our rating
+     colour — is **weakened here deliberately**, not overlooked, and check 6's floor
+     for this one pair is lowered to 5.0 with the number recorded rather than the
+     row deleted (11t: an exemption bounded on both sides).
+
+     ⚠️ WHAT MAKES IT SAFE is the same argument the warning amber rests on: the two
+     never appear as peer chips. Our rating badges sit in the page header; the
+     analyst grades sit inside the Smart Money card, each carrying its own word
+     (*Hold*, *Neutral*, *REITERATE*). And the "Analysts: …" chip in the header,
+     which sits directly beside the gold *Fair* valuation badge, was split off onto
+     `--analyst-chip` and KEPT its slate for exactly that reason — two gold chips
+     side by side meaning different things is the defect this was meant to fix, not
+     a second instance of it.
+
+     ⚠️ WHAT WAS ACTUALLY HOLDING THEM DOWN was not the page at all — it was the
+     PILL'S OWN WASH. A chip draws its ink on a tint of itself, so lightening the
+     ink lightens the ground under it and the ratio barely moves; at the old 12%
+     the search returned **zero** candidates in all three hues. The wash is now 8%,
+     which is what buys the ink its room. Each colour still clears 4.80 on its own
+     chip, over the page AND over a white card (11l ii).
+
+     ⚠️ AND THE OPTIMISER WALKED OUT OF ITS OWN HUE THREE TIMES getting here —
+     ranked purely on distance it returned a BLUE for the green, a MAGENTA for the
+     red and a BROWN for the slate. Each hue band is pinned, exactly as the gold
+     search had to be. The neutral moved 218 -> 233 degrees at the same low
+     saturation: imperceptible as a hue, and it takes the Hold chip 8.6 away from
+     `--text-secondary`, whose value it used to hold EXACTLY — so a third party's
+     verdict was rendering in the colour of ordinary body text. */
+  --analyst-positive: #0E6F58;
+  --analyst-neutral: #7E5B25;
+  --analyst-negative: #AD344C;
+  /* The "Analysts: Buy" chip in the page header is a LABEL for third-party data,
+     not a verdict — it reads the same whatever the recommendation is. It kept the
+     slate the Hold grade used to hold, because it sits one chip away from the gold
+     *Fair* valuation badge and two golds there would say nothing. */
+  --analyst-chip: #5E6282;
+  --analyst-chip-tint: rgba(94, 98, 130, 0.10);
+  /* The wash and the hairline behind a third-party chip.
+     ⚠️ ALL SIX WERE HAND-TYPED FROM THE HEXES ABOVE — four inside `.smart-pill`
+     rules and two more as inline `rgba()` in `SmartMoneyActivity.tsx`. Nothing
+     linked them, so this very change would have lightened six chips' text and
+     left every one of their backgrounds on the old colour (11c-viii, and the
+     `.tier-badge--analyst` half of it was already audit 5A-071). Derived here
+     once; `check:tier-palette` check 8e asserts the TS copies agree. */
+  --analyst-positive-tint: rgba(14, 111, 88, 0.08);
+  --analyst-positive-border: rgba(14, 111, 88, 0.26);
+  --analyst-neutral-tint: rgba(126, 91, 37, 0.08);
+  --analyst-negative-tint: rgba(173, 52, 76, 0.08);
+  --analyst-negative-border: rgba(173, 52, 76, 0.26);
 
   /* Financial Health has THREE rungs, not five — see `healthColor()`. It must
      never use the 5-tier score ladder, or one label ("Adequate") would come out
@@ -570,11 +640,45 @@
   /* Third-party analyst data: price is above the average target. */
   --analyst-downside: #72696D;
 
-  /* Middle band of a measured market statistic (short interest, and the
-     metric-category chips, which are a taxonomy rather than a score). */
-  --band-neutral: #72696D;
-  --band-neutral-ink: #6B6266;
-  --band-neutral-tint: rgba(114, 105, 109, 0.10);
+  /* ── Key Metrics category taxonomy ──────────────────────────────────────
+     A SUBJECT, never a score: these say which part of the business a row is
+     about. Four values, and not one of them is a rating tier or a direction ink,
+     because a pill that borrowed either would read as a verdict on the metric
+     beside it.
+
+     ⚠️ THE OWNER ASKED FOR THIS ON 2026-09-12 and there is a number behind it.
+     The four used to be a navy, a green and TWO GREYS: Profitability vs Balance
+     Sheet measured 12.4 apart in normal vision and **9.9 to a red-green
+     colour-blind reader**, under the 12 this project asks of two colours that
+     have to be told apart, and Valuation vs Balance Sheet was 12.7. Three of the
+     four were effectively one family. Measured now, the closest pair is 23.2 in
+     normal vision and 13.1 in the worse of the two colour-blindness simulations.
+
+     ⚠️ Valuation had to leave the brand navy to get there. Pinning it to
+     #1A3A6E and optimising the other three around it could reach only 9.5 — worse
+     than what was already shipping — because the navy sits in the same corner of
+     the space as any neutral dark. The blue stays a blue; it is simply a lighter,
+     more saturated one that a grey cannot be mistaken for.
+
+     ⚠️ And the first search returned a near-black purple and a near-black grey,
+     19.1 apart and not a set anybody would draw. An unconstrained distance
+     optimiser walks a colour out of its own design (CLAUDE.md 11t). The four are
+     held to one lightness band and a contrast ceiling as well as a floor, so they
+     read as siblings. `pnpm check:tier-palette` asserts both halves.
+
+     Growth is a teal rather than a green on purpose: green is a DIRECTION here,
+     and "Growth" names a subject, not good news. */
+  --cat-valuation: #1B5998;
+  --cat-growth: #206F6C;
+  --cat-profitability: #602056;
+  --cat-balance: #3B3B3B;
+
+  /* ⚠️ `--band-neutral`, `--band-neutral-ink` and `--band-neutral-tint` were DELETED
+     here on 2026-09-12, owner-approved. Short Interest moved to the rating tiers
+     when its middle rung went gold, and the Key Metrics category pills — their last
+     reader — moved to `--cat-*` the same day, which left all three defining a grey
+     nothing rendered. Gone rather than left behind, so the next person reaching for
+     a neutral band does not find one whose job ended months earlier. */
 
   /* The comparison series in a Learn/landing figure — "everyone else", "the
      average of all falls", the analyst range. A reference line, not a rating. */
@@ -962,7 +1066,7 @@
 .tier-badge--3 { background: var(--tint-tier-3-strong);        color: var(--c-tier-3-ink); }
 .tier-badge--4 { background: var(--tint-tier-4-strong);        color: var(--c-tier-4-ink); }
 .tier-badge--5 { background: var(--tint-tier-5-strong);        color: var(--c-tier-5-ink); }
-.tier-badge--analyst { background: var(--analyst-neutral-tint); color: var(--analyst-neutral); }
+.tier-badge--analyst { background: var(--analyst-chip-tint); color: var(--analyst-chip); }
 
 /* ─────────────────────────────────────────────────────────────────────────
    KPI strip — 4-card accent grid below the header strip.
@@ -1198,9 +1302,22 @@
   gap: 8px 16px; flex-wrap: wrap;
   padding: 14px 18px 12px; border-bottom: 1px solid var(--border);
 }
-.card-title {
-  font-size: 12px; font-weight: 700; color: var(--text-primary);
-  letter-spacing: .2px; text-transform: uppercase; font-family: 'Sora', sans-serif;
+/* ⚠️ IN @layer base SO A TAILWIND UTILITY ON THE ELEMENT STILL WINS — the same
+   remedy this stylesheet already prescribes twice, above the reset and again at the
+   `.reading` block. Unlayered, this rule beat `@layer utilities`, and the one place
+   in the codebase that combines `card-title` with a text utility was
+   `DeleteAccountCard`: its heading asked for `--status-danger-ink` and rendered
+   #0F1923, so the single heading on the product whose whole job is to warn you was
+   the same black as every other one. Nothing errored, the class was right there in
+   the markup, and only reading the computed colour off a browser showed it.
+
+   The two `.card-header--accent-*` rules stay UNLAYERED and more specific, so Why
+   Attractive and Key Risks keep their inks exactly as before. */
+@layer base {
+  .card-title {
+    font-size: 12px; font-weight: 700; color: var(--text-primary);
+    letter-spacing: .2px; text-transform: uppercase; font-family: 'Sora', sans-serif;
+  }
 }
 /* The quiet counterpart to `.card-title` — the dated provenance line that sits on
    the other end of a card header ("medium horizon · full price history to 13 Aug").
@@ -1307,6 +1424,17 @@
    .card--verdict::before (5px, and see VerdictCard.tsx — its colour is the rating
    tier, so the CSS fallback #1E5CB3 never renders). All five findings and their
    individual verdicts: design-system.md §1a. */
+/* ⚠️ THE RADIUS IS LOAD-BEARING, NOT DECORATION (owner, 2026-09-11). The card is
+   a 10px rounded box with `overflow: visible`, and the accent is a `border-left`
+   on its FIRST CHILD — a square-cornered strip that knows nothing about the curve
+   above it. So the top of the stripe stood proud of the card, a 3px tab sitting
+   outside the rounded corner on both Why Attractive and Key Risks. At 100% it
+   reads as a rendering glitch; it took a 4x capture to see what it actually was.
+   `--radius` minus the card's own 1px border is the INNER curve, which is the one
+   the first child has to follow. Not fixed with `overflow: hidden` on `.card`:
+   these cards hold charts whose tooltips are allowed to escape. */
+.card-header--accent-buy,
+.card-header--accent-hold { border-top-left-radius: calc(var(--radius) - 1px); }
 .card-header--accent-buy  { border-left: 3px solid var(--c-up-ink); }  /* impeccable-disable-line side-tab: owner-approved 2026-08-22 - green says good news before a word is read (design-system.md 1a) */
 .card-header--accent-buy .card-title  { color: var(--c-up-ink); }
 .card-header--accent-hold { border-left: 3px solid var(--c-neutral-ink); }  /* impeccable-disable-line side-tab: owner-approved 2026-08-22 - gold says caution before a word is read (design-system.md 1a) */
@@ -1636,14 +1764,31 @@ td.num             { font-weight: 600; }
 .news-row:hover { background: rgba(46, 125, 232, 0.04); }
 
 /* Key metrics category pills */
-.mt-cat-pill        { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 4px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap; }
-.mt-cat-valuation   { background: var(--tint-brand);        color: var(--brand-deep);     border: 1px solid rgba(46,125,232,.22); }
-.mt-cat-growth      { background: var(--tint-tier-2);       color: var(--c-tier-2-ink);   border: 1px solid rgba(34,139,34,.22); }
-.mt-cat-profitability { background: var(--band-neutral-tint); color: var(--band-neutral-ink); border: 1px solid rgba(114,105,109,.28); }
-.mt-cat-balance     { background: rgba(74,85,104,.10);      color: var(--text-secondary);  border: 1px solid rgba(74,85,104,.22); }
-.mt-cat-cashflow    { background: rgba(46,125,232,.08);     color: var(--c-brand-ink);     border: 1px solid rgba(46,125,232,.18); }
-.mt-cat-income      { background: rgba(212,160,23,.08);     color: #8A6710;               border: 1px solid rgba(212,160,23,.22); }
-.mt-cat-market      { background: rgba(138,151,168,.10);    color: var(--text-secondary);  border: 1px solid rgba(138,151,168,.22); }
+/* ⚠️ ONE VALUE PER CATEGORY, not three. Each pill used to hand-type its ink, its
+   10% fill and its 22% border as three separate literals, so a category's colour
+   lived in three places and could only be changed in three edits (CLAUDE.md 11c).
+   The fill and the border are now mixed from the ink, which also means they can
+   never drift out of step with it. The fallback is there so a class nobody has
+   defined renders readable prose rather than voiding the declaration. */
+.mt-cat-pill        { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 4px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; white-space: nowrap;
+                      color: var(--mt-cat, var(--text-secondary));
+                      background: color-mix(in srgb, var(--mt-cat, var(--text-secondary)) 10%, transparent);
+                      border: 1px solid color-mix(in srgb, var(--mt-cat, var(--text-secondary)) 28%, transparent); }
+.mt-cat-valuation     { --mt-cat: var(--cat-valuation); }
+.mt-cat-growth        { --mt-cat: var(--cat-growth); }
+.mt-cat-profitability { --mt-cat: var(--cat-profitability); }
+.mt-cat-balance       { --mt-cat: var(--cat-balance); }
+/* ⚠️ `.mt-cat-cashflow`, `.mt-cat-income` and `.mt-cat-market` were DELETED here
+   on 2026-09-12, owner-approved. They had rendered nowhere for the life of the
+   product — `MetricsTable` defines exactly four categories and always has — and
+   they still carried the blues and greys the live four left that day, so a fifth
+   category added later would have arrived in the family we had just moved away
+   from and looked like a mistake. The hand-typed #8A6710 on the income rule went
+   with them; it was flag 2 of the colour map, which is to say the one stray
+   literal on this page had always been inside code no reader could reach.
+
+   If a fifth category is ever wanted, add a `--cat-*` token and one line above.
+   Do not resurrect these. */
 
 /* ============================================================
    Sentiment section — Ownership, Insider Activity, Short Interest
@@ -1677,14 +1822,14 @@ td.num             { font-weight: 600; }
 .smart-legend                               { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .smart-legend-chip                          { display: inline-flex; align-items: center; gap: 5px; font-family: 'Sora', sans-serif; font-size: 9.5px; font-weight: 600; color: var(--text-secondary); letter-spacing: .3px; }
 .smart-legend-chip-dot                      { width: 7px; height: 7px; border-radius: 50%; background: var(--lg, var(--brand-mid)); flex-shrink: 0; }
-.smart-pill.is-buy        { background: rgba(46,107,87,.12); color: var(--analyst-positive); border: 1px solid rgba(46,107,87,.26); }
+.smart-pill.is-buy        { background: var(--analyst-positive-tint); color: var(--analyst-positive); border: 1px solid var(--analyst-positive-border); }
 /* ⚠️ #8B1414 here is the DIRECTION red darkened for a tinted ground, and it has
    held that value since long before --c-tier-5 arrived at the same one in 2026-08.
    Two rules, one hex, no relationship — do not "unify" them (CLAUDE.md 11c cuts
    both ways: a shared value is not evidence of a shared rule). */
-.smart-pill.is-sell       { background: rgba(122,47,63,.10); color: var(--analyst-negative); border: 1px solid rgba(122,47,63,.24); }
-.smart-pill.is-upgrade    { background: rgba(46,107,87,.12); color: var(--analyst-positive); border: 1px solid rgba(46,107,87,.26); }
-.smart-pill.is-downgrade  { background: rgba(122,47,63,.10); color: var(--analyst-negative); border: 1px solid rgba(122,47,63,.24); }
+.smart-pill.is-sell       { background: var(--analyst-negative-tint); color: var(--analyst-negative); border: 1px solid var(--analyst-negative-border); }
+.smart-pill.is-upgrade    { background: var(--analyst-positive-tint); color: var(--analyst-positive); border: 1px solid var(--analyst-positive-border); }
+.smart-pill.is-downgrade  { background: var(--analyst-negative-tint); color: var(--analyst-negative); border: 1px solid var(--analyst-negative-border); }
 .smart-pill.is-reiterate  { background: var(--tint-brand); color: var(--brand-deep); border: 1px solid rgba(46,125,232,.22); }
 .smart-pill.is-initiate   { background: var(--status-warning-tint); color: var(--status-warning-ink); border: 1px solid rgba(180,83,9,.28); }
 
@@ -1943,7 +2088,13 @@ td.num             { font-weight: 600; }
   font-size: 9.5px; font-weight: 600; color: var(--text-muted); margin-top: 2px;
   text-transform: uppercase; letter-spacing: .2px; font-family: var(--font-mono);
 }
-.preset-btn[aria-pressed='true'] .preset-btn-horizon { color: #BFD4F2; }
+/* ⚠️ WAS #BFD4F2, WHICH MEASURED 4.30:1 ON THE BRAND FILL — under WCAG AA's 4.5
+   for 9.5px text and under this project's 4.80 floor. The three horizon cards a
+   reader has NOT chosen were 5.16; the one they had chosen was the least legible
+   of the four, which is the wrong way round. #DBE5F3 is white at 84% over the
+   same fill: 5.10:1, and still visibly quieter than the white title above it, so
+   the hierarchy the pale blue was there for survives. */
+.preset-btn[aria-pressed='true'] .preset-btn-horizon { color: #DBE5F3; }
 
 /* Settings fields (Advanced) */
 .set-field-label {
@@ -1966,7 +2117,11 @@ td.num             { font-weight: 600; }
   color: var(--brand-mid); cursor: pointer; padding: 8px 0; user-select: none;
   background: none; border: none;
 }
-.adv-toggle:hover { color: var(--brand-bright); }
+/* ⚠️ WAS --brand-bright, and hover made this control HARDER to read: 6.49:1 at
+   rest, 4.03 hovered, on 11px text. Every other text control on the site darkens
+   on hover (.range-btn goes muted → brand, .ma-pill goes muted → secondary); this
+   one brightened. --brand-deep is 11.2:1 and reads as the same gesture. */
+.adv-toggle:hover { color: var(--brand-deep); }
 .adv-caret { transition: transform .18s; }
 .adv-caret.open { transform: rotate(90deg); }
 
@@ -2525,9 +2680,20 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600;
   border: 1px solid transparent; text-decoration: none;
 }
-.req-pill--ok { background: color-mix(in srgb, var(--c-tier-1) 14%, transparent); color: var(--c-tier-1); }
+/* ⚠️ THESE WERE THE RATING TIERS. "Available now" and "Not supported" say whether
+   we can fetch a listing; neither is a judgement about a company, so tying them to
+   Bearish and High Conviction meant a rating retuned for a rating reason would
+   silently repaint them (audit 5A-102 / 5A-134 — the same migration, which reached
+   every `role="alert"` surface and stopped at the edge of its own scope).
+
+   ⚠️ The ink is `--status-success-INK`, not `--status-success`. The solid green on
+   its own 14% wash measures 3.98:1, under the 4.80 floor — so the obvious one-word
+   swap would have made this pill LESS legible than the tier it replaced (6.16).
+   The ink clears it at 6.17. Nothing about the danger pill changes on screen: the
+   two tokens already hold the same value. */
+.req-pill--ok { background: color-mix(in srgb, var(--status-success) 14%, transparent); color: var(--status-success-ink); }
 .req-pill--queued { background: var(--bg-stripe); color: var(--text-secondary); border-color: var(--border); }
-.req-pill--bad { background: color-mix(in srgb, var(--c-tier-5) 12%, transparent); color: var(--c-tier-5); }
+.req-pill--bad { background: color-mix(in srgb, var(--status-danger) 12%, transparent); color: var(--status-danger-ink); }
 
 .req-recent { margin-top: 26px; }
 .req-recent-title {
@@ -2560,9 +2726,10 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   padding: 2px 7px; border-radius: 999px;
   font-size: 10px; font-weight: 600; text-decoration: none; border: 1px solid transparent;
 }
-.skipped-pill--ok  { background: color-mix(in srgb, var(--c-tier-1) 14%, transparent); color: var(--c-tier-1); }
+/* Same rule, same reasoning, on the results screen — see `.req-pill--ok` above. */
+.skipped-pill--ok  { background: color-mix(in srgb, var(--status-success) 14%, transparent); color: var(--status-success-ink); }
 .skipped-pill--req { background: var(--bg-stripe); color: var(--text-secondary); border-color: var(--border); }
-.skipped-pill--bad { background: color-mix(in srgb, var(--c-tier-5) 12%, transparent); color: var(--c-tier-5); }
+.skipped-pill--bad { background: color-mix(in srgb, var(--status-danger) 12%, transparent); color: var(--status-danger-ink); }
 .skipped-pill--muted { background: var(--bg-stripe); color: var(--text-muted); }
 
 /* Reduce motion */
@@ -2861,8 +3028,20 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
     text-decoration-color: rgba(30, 92, 179, 0.35);
     transition: color 0.15s, text-decoration-color 0.15s;
   }
+  /* ⚠️ WAS --brand-bright, and hovering a link made it HARDER to read: 6.49:1 at
+     rest, 4.03 hovered on white and 3.64 on the striped index rows, against the
+     4.5 a body-text link owes. Every prose link on all 30 public pages — the
+     twelve Learn explainers, the five articles, Terms, Privacy, Disclaimer and
+     Contact — so a reader who moves the mouse to read a link gets the least
+     legible version of it.
+
+     It is the IDENTICAL defect, at the identical numbers, that `.adv-toggle`
+     carried until two days ago (see the note above that rule). Fixing the
+     instance and not grepping for the class is CLAUDE.md 11c-iv, and this was
+     the other consumer. Both now darken; `--brand-deep` is 11.2:1 on white and
+     10.1:1 on the stripe, and needs no new colour. */
   .reading a:hover {
-    color: var(--brand-bright);
+    color: var(--brand-deep);
     text-decoration-color: currentColor;
   }
 

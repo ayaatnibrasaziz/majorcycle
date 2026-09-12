@@ -2155,9 +2155,37 @@ A **Vercel** cron (a Next.js route handler), distinct from the GitHub-Actions da
 - A data provider incident that left enriched data stale
 - Adding a large batch of new tickers to the universe
 
-**Runtime:** ~4–5 hours for the full universe (867 at 2026-08-04). GitHub Actions `timeout-minutes: 360`. **Manual trigger only** — despite the "weekly" filename it has no `schedule:`, only `workflow_dispatch`. ⚠️ This section called the file `manual-full-refresh.yml` until 2026-08-22; **no such workflow has ever existed.** The four real ones are `ci.yml`, `daily-refresh.yml`, `daily-refresh-au.yml` and `weekly-enriched-refresh.yml`.
+**Runtime:** ~4–5 hours for the full universe (867 at 2026-08-04). GitHub Actions `timeout-minutes: 360`. **Manual trigger only** — despite the "weekly" filename it has no `schedule:`, only `workflow_dispatch`. ⚠️ This section called the file `manual-full-refresh.yml` until 2026-08-22; **no such workflow has ever existed.** ⚠️ **And it then said there were FOUR real ones, which stopped being true when a fifth was added and stayed on the page until 2026-09-12** — the same defect one generation on, in the sentence written to correct the first. The five are `ci.yml`, `daily-refresh.yml`, `daily-refresh-au.yml`, `weekly-enriched-refresh.yml` and `prune-vercel-deployments.yml`. **A count in prose is a copy of something countable** (11c-v); the durable form is to derive it, which is why `scripts/gates.mjs` reads `ci.yml` rather than listing its steps.
 
 **Command:** `python -m analytics.cron.daily_refresh --mode full`
+
+### Deployment pruning — `.github/workflows/prune-vercel-deployments.yml`
+
+**Schedule:** Sundays 04:00 UTC, clear of both data-refresh crons. Also `workflow_dispatch`.
+
+**Runs:** `.github/scripts/prune-vercel-deployments.mjs` — the only script in that directory.
+
+**Why it exists:** Vercel keeps every deployment forever, and each of ours carries roughly
+268 MB of Python function bundle (pandas + numpy, twice). At about four deploys a day that is
+what filled the free tier's 10 GB of Function Storage. The job deletes deployments older than
+`keep_days` (default 14) while keeping the last **5 production** ones.
+
+⚠️ **The keep-5 figure is load-bearing beyond storage.** P9 measured how far Vercel's Instant
+Rollback can actually reach on Hobby, and a prune that kept fewer would silently shorten the
+rollback window — a storage setting quietly deciding an incident-recovery limit.
+
+⚠️ **Two polarity traps, both already handled in the file and both worth knowing before editing
+it.** The job is gated on `vars.VERCEL_TEAM_ID`, not on the secret, because GitHub does not
+expose the `secrets` context to a job-level `if` — `secrets.VERCEL_TOKEN != ''` evaluates
+against nothing and the job never runs, which is a guard that disables the thing it guards. And
+`APPLY` defaults to **on for a schedule and off for a manual dispatch**, because a scheduled run
+sends no inputs at all: reversing that would either gut the job in silence or delete on every
+click (11z, and the same shape as the listings-source dispatch inputs).
+
+⚠️ **This workflow was documented NOWHERE until 2026-09-12** — a scheduled job with a live
+Vercel token that deletes from the production hosting account, and no doc named it. It was found
+by asking a mechanical question rather than by reading: *does every file in
+`.github/workflows/` appear in at least one doc?*
 
 ---
 

@@ -98,7 +98,7 @@ export function SignupForm() {
         </div>
         <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
           Already confirmed?{' '}
-          <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">
+          <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-deep)] transition-colors">
             Sign in
           </Link>
         </p>
@@ -214,7 +214,7 @@ export function SignupForm() {
 
       <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
         Already have an account?{' '}
-        <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">
+        <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-deep)] transition-colors">
           Sign in
         </Link>
       </p>

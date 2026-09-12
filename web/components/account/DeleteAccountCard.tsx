@@ -66,7 +66,14 @@ export function DeleteAccountCard({
             Delete my account…
           </Button>
         ) : (
-          <div className="flex flex-col gap-4 rounded-[var(--radius-sm)] border border-[var(--tint-tier-5-strong)] bg-[var(--tint-tier-5)] p-4">
+          <div className="flex flex-col gap-4 rounded-[var(--radius-sm)] border border-[var(--status-danger-tint-strong)] bg-[var(--status-danger-tint)] p-4">
+            {/* ⚠️ The wash and the border were `--tint-tier-5` / `--tint-tier-5-strong`
+                — the BEARISH RATING tints — under text that had already moved to
+                `--status-danger-ink`. Half a migration: 5A-102 moved every ink on this
+                card and left the surface behind them on our judgement of a stock. The
+                two token sets hold the same value, so nothing moved on screen, which is
+                exactly why it survived. The guard could not see it either: it matches
+                `role="alert"`, and this panel carries no role. */}
             <div className="flex items-start gap-2.5 text-[13px] leading-relaxed text-[var(--status-danger-ink)]">
               <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" strokeWidth={2} aria-hidden />
               <p>

@@ -198,7 +198,7 @@ export function CsvImport({
       <button
         type="button"
         onClick={downloadSampleCsv}
-        className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-bright)] hover:underline"
+        className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-deep)] hover:underline"
       >
         <Download className="h-3 w-3" /> Download sample CSV
       </button>

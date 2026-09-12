@@ -23,6 +23,21 @@
       ],
       "port": 3200,
       "autoPort": false
+    },
+    {
+      "name": "web-fixtures",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--dir",
+        "web",
+        "dev",
+        "--port",
+        "3001"
+      ],
+      "port": 3001,
+      "env": {
+        "DEV_BYPASS_AUTH": "true"
+      }
     }
   ]
 }

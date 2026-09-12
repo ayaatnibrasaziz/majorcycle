@@ -62,10 +62,17 @@ interface KpiCardProps {
   label: string;
   value: string;
   /**
-   * Optional since 2026-09-02. A card WITHOUT one states a measured fact and is
-   * deliberately uncoloured (Current Drawdown, Typical Drawdown); a card WITH one
-   * is showing our own judgement, and the colour is part of that judgement.
-   * Leaving it off falls back to the ordinary text colour and the neutral rule.
+   * Optional since 2026-09-02. A card WITH one is showing our own judgement, and
+   * the colour is part of that judgement. Leaving it off keeps the numeral in the
+   * ordinary text colour.
+   *
+   * ⚠️ THIS SAID "A CARD WITHOUT ONE IS DELIBERATELY UNCOLOURED" UNTIL 2026-09-11,
+   * AND THAT WAS NEVER TRUE. `.kpi-card::before` draws a 3px rule on EVERY tile;
+   * `--accent` only overrides its colour. A tile that names nothing still gets the
+   * brand blue gradient, which is chrome rather than a verdict — but the sentence
+   * read as though the rule were absent, and the owner spotted the gap between the
+   * claim and the screen. Typical Drawdown is the only card here that is coloured
+   * without being a judgement, and it sets REFERENCE_INK explicitly.
    */
   accentColor?: string;
   tipBody: string;

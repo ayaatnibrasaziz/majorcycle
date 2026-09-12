@@ -1,6 +1,6 @@
 'use client';
 
-import { CHART_CHROME, CHART_INK, DRAWDOWN, PROFIT } from '@/lib/chartTheme';
+import { CHART_CHROME, CHART_INK, CYCLE_EVENT_MARKER, DRAWDOWN, PROFIT } from '@/lib/chartTheme';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -237,7 +237,7 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       mainSeries.setMarkers(pivots.map(p => ({
         time: p.time,
         position: isDD ? ('belowBar' as const) : ('aboveBar' as const),
-        color: isDD ? 'rgba(0,100,0,.85)' : 'rgba(30,92,179,.85)',
+        color: CYCLE_EVENT_MARKER,
         shape: isDD ? ('arrowUp' as const) : ('arrowDown' as const),
         text: '',
         size: 0.8,

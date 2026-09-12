@@ -38,7 +38,7 @@ export function PremiumLockInlineCta({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="font-semibold text-[var(--brand-mid)] underline underline-offset-2 hover:text-[var(--brand-bright)]"
+        className="font-semibold text-[var(--brand-mid)] underline underline-offset-2 hover:text-[var(--brand-deep)]"
       >
         {label}
       </button>
@@ -81,7 +81,7 @@ export function PremiumLockCard({
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="font-semibold text-[var(--brand-mid)] underline underline-offset-2 hover:text-[var(--brand-bright)]"
+            className="font-semibold text-[var(--brand-mid)] underline underline-offset-2 hover:text-[var(--brand-deep)]"
           >
             See what&apos;s included
           </button>

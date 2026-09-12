@@ -1,7 +1,7 @@
 'use client';
 
 import { CHART_INK, CHART_TOOLTIP } from '@/lib/chartTheme';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
   Area,
@@ -97,10 +97,114 @@ function toTs(d: string): number {
   return new Date(d.includes('T') ? d : d + 'T00:00:00').getTime();
 }
 
+/** Above this span a label is a bare year; below it, a month and a year. */
+const YEAR_LABEL_DAYS = 1500;
+
 function fmtTick(ts: number, spanDays: number): string {
   const d = new Date(ts);
-  if (spanDays > 730) return String(d.getUTCFullYear());
+  if (spanDays > YEAR_LABEL_DAYS) return String(d.getFullYear());
   return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+}
+
+/**
+ * The tick positions, on real calendar boundaries.
+ *
+ * ⚠️ RECHARTS PLACES TICKS ON DATA POINTS, and `minTickGap` only spaces them in
+ * PIXELS — it has no opinion about what the label ends up saying. So a formatter
+ * coarser than the spacing prints the same word over and over, and nothing goes
+ * wrong: the axis renders, the chart is correct, and the labels are simply
+ * useless. Measured on AAPL at 1440px before this existed:
+ *
+ *   3Y   19 ticks, 15 of them repeats — 2023 2023 2024 2024 2024 2024 2024 2024 …
+ *   1Y   16 ticks, 3 repeats — Dec 25 twice, Apr 26 twice, Jul 26 twice
+ *   Max  20 ticks, none — which is why only the 3Y button made it obvious
+ *
+ * Widening the label (bare year → month and year at 3Y) fixes the 3Y case and
+ * leaves the 1Y one, because the cause is not the format: it is that nobody
+ * chose where the ticks go. Naming the positions ourselves is what cannot
+ * regress — every label sits on the first of a month or the first of a year, so
+ * no two can read alike whatever the format is.
+ *
+ * ⚠️ LOCAL time throughout, because `toTs` builds local midnight from a bar's
+ * date. `fmtTick` read `getUTCFullYear()` against that until 2026-09-11, which
+ * puts a reader east of Greenwich a year out on every 1 January bar.
+ */
+function buildTicks(
+  firstTs: number,
+  lastTs: number,
+  spanDays: number,
+  target: number,
+): number[] | undefined {
+  const out: number[] = [];
+
+  if (spanDays > YEAR_LABEL_DAYS) {
+    const y0 = new Date(firstTs).getFullYear() + 1;
+    const yN = new Date(lastTs).getFullYear();
+    const step = Math.max(1, Math.ceil((yN - y0 + 1) / (target + 1)));
+    for (let y = y0; y <= yN; y += step) out.push(new Date(y, 0, 1).getTime());
+  } else {
+    const months = Math.max(1, Math.round(spanDays / 30.44));
+    const step = Math.max(1, Math.ceil(months / target));
+    const start = new Date(firstTs);
+    let y = start.getFullYear();
+    let m = start.getMonth() + 1;
+    if (m > 11) { m = 0; y += 1; }
+    for (let ts = new Date(y, m, 1).getTime(); ts <= lastTs; ts = new Date(y, m, 1).getTime()) {
+      out.push(ts);
+      m += step;
+      y += Math.floor(m / 12);
+      m %= 12;
+    }
+  }
+
+  // A span too short to hold two boundaries would leave the axis bare. Hand it
+  // back to Recharts, whose own ticks cannot repeat over a window that small.
+  return out.length >= 2 ? out : undefined;
+}
+
+/** A date label is about 46px wide, and needs room either side of it. */
+const PX_PER_LABEL = 95;
+const MIN_LABELS = 3;
+const MAX_LABELS = 7;
+
+/**
+ * How many date labels this chart has room for.
+ *
+ * ⚠️ WITHOUT THIS THE AXIS IS BLANK ON A PHONE. At 375px the plot is about 300px
+ * wide, seven labels want roughly 430px, and Recharts responds to that by dropping
+ * **every** one of them rather than thinning to a subset — so the chart kept its
+ * percentage scale and lost its time scale entirely. Measured identical before and
+ * after the September tick fix, so it is the count that is wrong, not the format.
+ *
+ * The width has to be measured rather than guessed: the card is fluid, and the
+ * same component renders inside the offline report at a different size again.
+ */
+function useLabelBudget(): { boxRef: (el: HTMLDivElement | null) => void; target: number } {
+  const [width, setWidth] = useState(0);
+  const roRef = useRef<ResizeObserver | null>(null);
+
+  // A callback ref, because the chart box is unmounted whenever the selected
+  // range holds too little history — an effect keyed on the node would miss it.
+  const boxRef = useCallback((el: HTMLDivElement | null) => {
+    roRef.current?.disconnect();
+    roRef.current = null;
+    if (!el) return;
+    setWidth(el.clientWidth);
+    if (typeof ResizeObserver !== 'function') return;
+    const ro = new ResizeObserver(([entry]) => setWidth(entry?.contentRect.width ?? 0));
+    ro.observe(el);
+    roRef.current = ro;
+  }, []);
+
+  useEffect(() => () => roRef.current?.disconnect(), []);
+
+  // Before the first measurement, ask for the desktop count — the server renders
+  // no chart at all, so this only ever applies for one frame.
+  const target =
+    width > 0
+      ? Math.max(MIN_LABELS, Math.min(MAX_LABELS, Math.floor(width / PX_PER_LABEL)))
+      : MAX_LABELS;
+  return { boxRef, target };
 }
 
 function downsample<T>(arr: T[], max: number): T[] {
@@ -317,6 +421,7 @@ export function RelativePerformance({
     });
 
   const { rows, spanDays, activeBenchTickers } = useChartData(priceBars, series, range);
+  const { boxRef: chartBoxRef, target: labelBudget } = useLabelBudget();
 
   // Home-market index drives the summary strip (return / alpha).
   const homeMeta = BENCHMARKS.find((b) => b.market === market) ?? BENCHMARKS[0]!;
@@ -365,7 +470,7 @@ export function RelativePerformance({
             Not enough price history for this range.
           </div>
         ) : (
-          <div className="chart-canvas-wrap chart-h-sm">
+          <div className="chart-canvas-wrap chart-h-sm" ref={chartBoxRef}>
             <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 200 }}>
               <ComposedChart data={rows} margin={{ top: 6, right: 0, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="#F0F4F8" vertical={false} />
@@ -374,6 +479,7 @@ export function RelativePerformance({
                   type="number"
                   scale="time"
                   domain={['dataMin', 'dataMax']}
+                  ticks={buildTicks(rows[0]!.ts, rows[rows.length - 1]!.ts, spanDays, labelBudget)}
                   tickFormatter={(ts: number) => fmtTick(ts, spanDays)}
                   tick={{ fill: CHART_INK, fontSize: 10, fontFamily: 'Sora' }}
                   axisLine={false}

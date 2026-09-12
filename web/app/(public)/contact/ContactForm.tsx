@@ -50,7 +50,7 @@ export function ContactForm({
           The contact form isn&apos;t connected yet. Please email us directly at{' '}
           <a
             href="mailto:support@majorcycle.com"
-            className="font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-bright)] transition-colors"
+            className="font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-deep)] transition-colors"
           >
             support@majorcycle.com
           </a>
@@ -131,7 +131,7 @@ export function ContactForm({
         <p className="mt-3 pt-5 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
           <Link
             href="/login"
-            className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors"
+            className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-deep)] transition-colors"
           >
             ← Back to sign in
           </Link>

@@ -231,7 +231,12 @@ export function UpgradeDialog({
                     key={line}
                     className="flex items-start gap-2.5 text-[12.5px] leading-snug text-[var(--text-secondary)]"
                   >
-                    <span className="mt-[2px] flex h-[15px] w-[15px] flex-shrink-0 items-center justify-center rounded-full bg-[var(--c-tier-2)]">
+                    {/* ⚠️ Was `--c-tier-2`, our CONSTRUCTIVE rating green, on a tick in a list of
+                        what a subscription unlocks. A tick is a confirmation, not a verdict on a
+                        stock. `--status-success` holds the identical value today, so nothing moves
+                        on screen — the point is that a rating retuned for a rating reason no longer
+                        repaints the paywall. */}
+                    <span className="mt-[2px] flex h-[15px] w-[15px] flex-shrink-0 items-center justify-center rounded-full bg-[var(--status-success)]">
                       <Check className="h-[10px] w-[10px] text-white" strokeWidth={3.5} />
                     </span>
                     {line}
