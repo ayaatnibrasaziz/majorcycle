@@ -149,7 +149,7 @@ export function LoginForm() {
           <div className="flex justify-end">
             <Link
               href="/reset-password"
-              className="text-[11.5px] font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-bright)] transition-colors"
+              className="text-[11.5px] font-semibold text-[var(--brand-mid)] hover:text-[var(--brand-deep)] transition-colors"
             >
               Forgot password?
             </Link>
@@ -177,7 +177,7 @@ export function LoginForm() {
 
       <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
         New to MajorCycle?{' '}
-        <Link href="/signup" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">
+        <Link href="/signup" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-deep)] transition-colors">
           Create a free account
         </Link>
       </p>

@@ -308,6 +308,28 @@
 > ~~**P7** the three gates that never run automatically~~ ✅ **DONE 2026-09-05** ·
 > ~~**P8** 375px~~ ✅ **DONE 2026-09-06**.
 >
+> **P3b UPDATE 2026-09-12 — the public pages and the offline report are both done; one
+> finding is with you.** All 23 Stock Detail sections were signed off 09-10→09-12 (eight
+> product defects, none of which any guard had reported). The four other signed-in pages and
+> the fourteen Account states were swept the same day. Today closed the two that were left.
+> **The public site:** all 31 URLs, derived from `PUBLIC_PAGES` rather than listed by hand,
+> measured at rest and with hover and keyboard focus forced on all 764 controls. **At rest it
+> was already perfect, which is what you said.** One defect, in a state nobody had looked at:
+> `--brand-bright` was the hover colour for every prose link, so pointing at a link gave the
+> reader its *least* legible form — 6.49:1 at rest, **4.03** hovered, against the 4.5 text
+> owes. It had **three** consumers and I had fixed only one of them two days earlier, so it is
+> now a gate (`check:tier-palette` check 11, broken three ways before being trusted) rather
+> than three repairs. **The offline report:** four real downloads opened from disk (AAPL, BHP,
+> AE.V, TSLA) — every one of the eight Stock Detail fixes confirmed *in the shipped bundle*,
+> the date axis driven at 1Y/3Y/Max with nothing repeating, and BHP proving the currency rules
+> survive the second build. Zero contrast failures. **One finding was raised rather than
+> repainted, because the scorecard is a paid surface (11l), and you approved the fix the same
+> day:** an uncomputable pillar printed `—` in `var(--border)` — 1.23:1, invisible — because the
+> dash and the empty bar track shared one value. Split, the dash now takes `--text-muted` at
+> **5.40:1** and every scored row is unchanged. Also still unswept: the same forced-state machine pass
+> inside the product (it needs an entitled local session), and three report edge cases —
+> a delisted ticker, a horizon with no cycle, and the `index` market.
+>
 > **P8 · 375px — ✅ COMPLETE 2026-09-06. Seven findings: five fixed, one reverted into a
 > decision already open, one ruled not a defect** — plus an eighth you reported and correctly
 > diagnosed yourself as a rendering artefact. ⚠️ Both reversals were about SCOPE, not
@@ -1413,12 +1435,101 @@ apart, floor 12) — that pair was unasserted because tier 3 was grey when the l
 and `--series-reference-ink` and `--analyst-downside` are now contrast-measured (5.33 and 4.80
 on the page ground). `--analyst-downside` had never been measured at all.
 
-**OPEN — one question for the owner.** The analyst palette (`#2E6B57` / `#4A5568` / `#7A2F3F`)
-is deliberately muted so a third party's *Sell* can never wear our Bearish red (5A-045, measured
-12.6–21.2 from the rating tiers). It is now used consistently, but it is still duller than the
-rest of the site, and `--analyst-neutral` is byte-identical to `--text-secondary`, so a *Hold*
-reads as ordinary body text. Re-tuning it means trading away some of that separation. **Not
-changed unilaterally** (CLAUDE.md 11l).
+**CLOSED the same day — the owner looked at the chart and said the three analyst-event colours
+"look very deep".** They were. Measured on the page ground against a 4.80 floor, the set scored
+**5.66 / 6.81 / 8.24** — the wine carrying nearly twice the contrast it owed, which is what makes
+a 7px marker square read as a black blob.
+
+| role | was | now | on `--bg-page` |
+|---|---|---|---|
+| positive | `#2E6B57` | `#0E6F58` | 5.66 → 5.53 |
+| neutral | `#4A5568` | `#5E6282` | 6.81 → 5.36 |
+| negative | `#7A2F3F` | `#AD344C` | 8.24 → 5.63 |
+
+The three swatches sit together in one legend, so the pairs matter as much as each colour alone:
+their closest pair went from **8.2 apart to 12.2**, and every floor against our own rating tiers
+still holds (16.3 / 38.0 / 14.2 / 17.4 against floors of 12 / 12 / 10 / 12), so a third party's
+*Sell* still cannot wear our Bearish red (5A-045).
+
+**What was actually holding them down was not the page — it was the pill's own wash.** A chip
+draws its ink on a tint of itself, so lightening the ink lightens the ground under it and the
+ratio barely moves; at the old 12% the search returned **zero** candidates in all three hues. The
+wash is now 8%, and each colour still clears 4.80 on its own chip over the page and over a white
+card. ⚠️ And the optimiser walked out of its own hue three times getting there — ranked purely on
+distance it returned a **blue** for the green, a **magenta** for the red and a **brown** for the
+slate, so each hue band is pinned, exactly as the gold search had to be.
+
+⚠️ **A third copy nobody had noticed.** Six `rgba()` washes and hairlines were hand-typed from
+these hexes — four `.smart-pill` rules and two inline styles — so this change would have lightened
+six chips' text and left every one of their backgrounds on the old colour. They are tokens now,
+and check **8e** asserts both the TypeScript copy and every wash against the ink, proven to fail
+three ways. It also closes a gap that had been open all along: `ANALYST` in `lib/ink.ts` paints
+the canvas markers and **nothing had ever compared it with the CSS tokens**.
+
+
+#### 2026-09-11/12 — the Stock Detail colour map, section by section, and what reviewing it found
+
+The owner reviewed a rendered map of every colour on the Stock Detail page one section at a time.
+Eight product defects came out of it, and **not one of them was reported by a guard** — every one
+was either a colour that looked plausible or a number nobody had measured.
+
+| # | What | Was | Now |
+|---|---|---|---|
+| 1 | Relative Performance's date axis at 3Y | 19 ticks, **15 repeats** | ticks on calendar boundaries, none |
+| 2 | The same axis at 1Y | 3 repeats of 16 | none |
+| 3 | P/E verdict words vs colours | stepped at different numbers | one function returns both |
+| 4 | Dividend legend | named 2 of the 3 colours it drew | names all three |
+| 5 | Dividend growth streak | green at 5, tooltip praised 10 | both stated, built from constants |
+| 6 | Drawdown event markers | green in one mode, blue in the other | one annotation dark, both modes |
+| 7 | Key Metrics category pills | a navy and **two greys** | four hues, 23.2 apart at worst |
+| 8 | "Delete account" heading | asked for red, **rendered black** | red |
+
+**The axis one is the shape to remember.** Recharts places ticks on DATA POINTS and `minTickGap`
+spaces them in *pixels* — it has no opinion about what the label says. A formatter coarser than
+the spacing therefore prints the same word repeatedly and nothing goes wrong: the axis renders,
+the chart is correct, the labels are useless. Naming the positions ourselves is the fix that
+cannot regress, and it cleared three repeats at 1Y nobody had reported.
+
+**The category pills needed a number before they needed a palette.** Profitability against Balance
+Sheet measured **12.4** apart in normal vision and **9.9 to a protanope**, under the 12 this
+project asks of two colours a reader must separate. Valuation had to leave the brand navy to fix
+it: pinned to `#1A3A6E` the best achievable set was **9.5**, worse than what was shipping, because
+the navy sits in the same corner of the space as any neutral dark. ⚠️ And the first search
+returned a near-black purple beside a near-black grey — 19.1 apart and not a set anybody would
+draw. An unconstrained distance optimiser walks a colour out of its own design (11t), so check
+**8f** asserts a contrast CEILING as well as a floor, and was broken three ways before being
+trusted.
+
+**The heading is the one with no visible symptom at all.** `DeleteAccountCard` asks for
+`--status-danger-ink` with a Tailwind utility; `.card-title` was declared **unlayered**, so it beat
+`@layer utilities` and the one heading on the product whose job is to warn you rendered the same
+black as every other. `.card-title` is in `@layer base` now — the remedy this stylesheet already
+prescribed twice — and every card title on four pages was diffed before and after: **exactly one
+changed**.
+
+#### 2026-09-12 — the other four signed-in pages, and the half-finished status migration
+
+Browse, Request a Ticker, Run Analysis, Results and the fourteen Account states, swept for
+contrast and driven by hand. Browse, Request and Results were clean. Two failures on Run Analysis,
+both fixed:
+
+- The **selected** horizon card's sub-label measured **4.30** where the three unselected cards
+  measured 5.16 — the one the reader had chosen was the least legible of the four. Now 5.10.
+- "Advanced parameters" got *less* legible when pointed at: 6.49 at rest, **4.03** hovered. Every
+  other text control on the site darkens on hover; this one brightened. Now 11.2.
+
+⚠️ **And the status-palette migration (5A-102 / 5A-134) had stopped at the edge of its own scope.**
+It is derived from `role="alert"`, deliberately and correctly — but four surfaces carry no role,
+so four status surfaces were still painted in our five rating tiers: the Request and Results
+availability pills, the delete-account confirmation panel, and the upgrade dialog's unlock ticks.
+Three of the four render identically today because the token sets share values, which is exactly
+why they survived.
+
+⚠️ **The obvious one-word swap would have made one of them WORSE.** `--status-success` on its own
+14% wash measures **3.98** — under the 4.80 floor, and worse than the **6.16** of the rating tier
+it replaced. `--status-success-ink` clears it at 6.17, and the guard now asserts the ink rather
+than the token name, because a check that only reads names would have passed the illegible version.
+A `--band-neutral` trio left unused by the pill rework was deleted the same day, owner-approved.
 
 
 ### Layer G: SEO + Performance (target: 3-4 days)
@@ -3120,7 +3231,7 @@ memory** — re-verified 2026-08-02. ✅ proven · 🟡 partly proven, with what
 ### Functionality
 | | Criterion | Evidence |
 |---|---|---|
-| 🟡 | Every Stock Detail section works with real data for every covered ticker | `pnpm check:report-sections` green — **22 sections**, and it also proves the downloadable report mirrors the page. **Don't hard-code the count**: it read "19" here and "14" in CLAUDE.md #29 on the same day the guard said 22; the first two are frozen planning-era numbers, so **the guard is the source of truth**. *Missing:* "every ticker" is unprovable by exhaustion — the mitigation is C-R2's null-data render sweep, which gives every section a defined empty state |
+| 🟡 | Every Stock Detail section works with real data for every covered ticker | `pnpm check:report-sections` green, and it also proves the downloadable report mirrors the page. **The count is deliberately NOT written here — run the guard, which prints it.** ⚠️ This cell said *"don't hard-code the count"* and then hard-coded **22**, which was already stale: the guard printed **23** when it was re-run on 2026-09-12. Three numbers had been in circulation for one fact (19 here, 14 in CLAUDE.md #29, 22 in this cell), and the advice to stop doing that was sitting in the same sentence as a fourth. **A warning is not a control** (11f); the control is having nowhere to put the number. *Missing:* "every ticker" is unprovable by exhaustion — the mitigation is C-R2's null-data render sweep, which gives every section a defined empty state |
 | ✅ | All three Run Analysis presets + Custom produce correct results | Layer D audit: `analyze.py` output **byte-identical** to `/api/cycle` on AAPL / BHP.AX / SHOP.TO plus custom −7/+7/300, all 21 keys |
 | ✅ | Universe auto-expansion works for arbitrary US/AU/CA tickers | Live in production: `ticker_requests` = **8 `fetched`**, 1 `unsupported`. Real requests, drained by the nightly cron |
 | 🟡 | Signup → trial → paid flow works end-to-end with real cards | **Cannot be executed, by rule** — Stripe's ToS forbid testing in live mode. Evidence instead: the full trial→convert→renew→decline→grace→lock→recover lifecycle on Stripe **test clocks** (incl. 3DS), plus a live `cs_live_` Checkout Session reaching the hosted page at the correct trial and price. *Missing:* the first real customer, which is a launch event, not a test |

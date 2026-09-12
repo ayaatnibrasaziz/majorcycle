@@ -238,6 +238,20 @@ export function SnowflakeRadar({ cycle }: Props) {
               const score    = fhSubscores[ax.key];
               const pct      = score !== undefined ? Math.round(score) : null;
               const barColor = pct !== null ? tierColor(pct) : 'var(--border)';
+              // ⚠️ ONE VALUE WAS DOING TWO JOBS, and only one of them was legible.
+              // When a pillar cannot be computed the bar is an empty track — `--border`
+              // is exactly right for that, a hairline the eye reads as "nothing here".
+              // The em dash beside it was taking the SAME value and is a figure a
+              // reader has to read: #E2E8F0 on white is 1.23:1, so the row looked
+              // broken rather than saying "we don't have this one". Found 2026-09-12
+              // on AE.V's Growth axis; owner asked for the muted grey (5.6:1).
+              //
+              // Same shape as CLAUDE.md 11bb — an ink that meant both "a middling
+              // verdict" and "the average" could not satisfy either once they were
+              // asked to differ. A track and a value are two jobs; give them two
+              // values. The SCORED case is untouched: it still takes the tier colour,
+              // because there the bar and the number really are saying one thing.
+              const scoreColour = pct !== null ? barColor : 'var(--text-muted)';
               return (
                 <div key={ax.key} className="radar-axis-row">
                   <div className="radar-axis-label">
@@ -254,7 +268,7 @@ export function SnowflakeRadar({ cycle }: Props) {
                       style={{ '--fill': `${pct ?? 0}%`, background: barColor } as React.CSSProperties}
                     />
                   </div>
-                  <div className="radar-axis-score" style={{ color: barColor }}>
+                  <div className="radar-axis-score" style={{ color: scoreColour }}>
                     {pct !== null ? pct : '—'}
                   </div>
                 </div>

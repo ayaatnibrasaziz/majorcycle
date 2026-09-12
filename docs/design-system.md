@@ -224,6 +224,25 @@ filed on request.
   --c-warn-ink:    #C73600;  /* was #FF4500 as text */
   --c-brand-ink:   #1E5CB3;  /* was #2E7DE8 as text on its own tint */
 
+  /* ── Key Metrics category taxonomy — a SUBJECT, never a score ───────────
+     Four pills naming which part of the business a row is about. None of them
+     may be a rating tier or a direction ink: a pill that borrowed either would
+     read as a verdict on the metric beside it. `check:tier-palette` check 8f
+     asserts that, and asserts the four stay tellable apart.
+
+     ⚠️ Reworked 2026-09-12 on the owner's instruction — they looked too alike,
+     and they were. Three of the four were a navy and two greys: Profitability
+     against Balance Sheet measured 12.4 apart in normal vision and 9.9 to a
+     protanope, under the 12 this project asks of two colours a reader has to
+     separate. Now the closest pair is 23.2 plain and 13.1 in the worse
+     simulation. Valuation had to leave the brand navy to get there — pinned to
+     #1A3A6E the best achievable set was 9.5, worse than what was shipping.
+     Growth is a TEAL and not a green on purpose: green is a direction here. */
+  --cat-valuation:     #1B5998;
+  --cat-profitability: #602056;
+  --cat-growth:        #206F6C;
+  --cat-balance:       #3B3B3B;
+
   /* Tint scale — 10/12% alpha for pills, cells, hover states */
   --tint-tier-2:        rgba(34,139,34,.10);
   --tint-tier-2-strong: rgba(34,139,34,.12);
@@ -1783,6 +1802,16 @@ therefore carries two colours: `color` strokes the line, `ink` writes the label 
 darker. This is CLAUDE.md 11l from the other side — there, one function could not answer
 both "what colour is this?" and "what can sit behind white text?"; here one colour has to
 identify a line *and* be read as a word, and only one of those clears 4.5.
+
+⚠️ **A THIRD instance of the same mistake, and it is the rule now: `--brand-bright` is a
+DRAWN colour, never a written one.** It had been the hover colour for every prose link on
+the public site — `.reading a:hover` plus twelve Tailwind utilities across the auth forms,
+`PremiumLock`, `SelectedTickers` and `CsvImport` — so pointing at a link handed the reader
+its *least* legible form: 6.49:1 at rest, **4.03** hovered on white and **3.64** on the
+striped index rows. **Text hover on this site DARKENS**; `--brand-deep` is 11.2 on white
+and 10.1 on the stripe, and the same substitution had already been made on `.adv-toggle`
+two days earlier without anyone grepping for the other consumers (CLAUDE.md 11c-iv).
+Measured across all 31 public pages on 2026-09-12; nothing else writes in brand-bright.
 
 ⚠️ **A figure drawing REAL data reads it, never types it.** Figure 3's three values come
 from the nightly snapshot, and its bar widths derive from the same values as its labels —

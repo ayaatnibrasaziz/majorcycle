@@ -181,11 +181,18 @@ it is clean locally.
       was missing); the legacy-contrast subtree (**removed in August, and there is now a guard
       that fails if it returns** — an exemption bounded on both sides, 11t); and the delisting
       banner (8.06 on a card, 7.32 on the page). Findings 5A-041…5A-100.
-- [~] **P3 · It works when used — STARTED 2026-09-03, not finished.** Every form, every control, keyboard-only, the screener end
+- [x] **P3 · It works when used — ✅ SURFACE COVERAGE COMPLETE, six sessions, 2026-09-03 → 09-04.** Every form, every control, keyboard-only, the screener end
       to end, sign-up → sign-out. Plus the **first-login disclaimer gate** (#23) on a genuinely
       new account — it is the one screen with a button that WRITES a compliance record, and it
       has already destroyed one (F-031).
-- [ ] **P3b · THE COLOUR WALKTHROUGH — the owner’s pass, added 2026-09-03 at their request.**
+      ⚠️ **This row read `[~] not finished` until 2026-09-12, two sessions after the work was
+      done.** Sessions 1–4 each closed with a "still outstanding" list, session 5 (the live
+      site, free then entitled) and session 6 closed every item on the last of them, and nobody
+      went back to tick the box — so the checklist said started-not-finished while the section
+      below it said otherwise. Reconciled item by item in *What P3 still has to cover*.
+      ⚠️ **The one thing genuinely left is not a surface, it is a DATE.** The live pass ran on
+      2026-09-04 and the product has moved since; the re-check belongs with the merge.
+- [x] **P3b · THE COLOUR WALKTHROUGH — the owner’s pass, added 2026-09-03 at their request. ✅ COMPLETE 2026-09-12:** all 23 Stock Detail sections, the four other signed-in pages, the fourteen Account states, all 31 public URLs, and the offline report on four real tickers plus its delisted and no-cycle states. Nine defects fixed across the pass. One optional extra is recorded rather than open — see the P3b section below.
       Every component rendered in every state it can take a colour in, side by side, for the
       owner to look at and sign off. ⚠️ **This slot did not exist**, and the omission is the
       shape this sweep keeps finding: P2 measures colour, P1 checks a page renders, and
@@ -661,6 +668,32 @@ answered by Stripe, and the owner is handling it.
 app (Sentry is a Phase 2 decision, so a 500 would be found by a customer), and **Vercel Hobby →
 Pro**, deferred by the owner — now with the one-deployment rollback limit as a second argument.
 
+### ✅ Both watch items answered — re-measured 2026-09-11 15:51 UTC
+
+Read off the live database rather than cited, because both rows were **predictions** and a
+prediction left in a log ages into a fact (11aj).
+
+| ticker | freshest stored bar | last close before the reading |
+|---|---|---|
+| AAPL · MSFT · SHOP.TO · RY.TO | 2026-09-10 | Thursday 09-10 — Friday's US session was still open |
+| BHP.AX · CBA.AX | 2026-09-11 | Friday 09-11, the ASX having closed at 06:00 UTC |
+| `^GSPC` `^IXIC` `^GSPTSE` | 2026-09-10 | matches their equities |
+| `^AXJO` | 2026-09-11 | matches its equities |
+
+**1 · The 01:30 UTC schedule holds.** Every market is current to its own last close, and the
+indices agree with the equities beneath them. This is the second independent reading after the
+2026-09-09 one already recorded in decision #32, so that question stays closed.
+
+**2 · SSL enforcement did not touch the pipeline.** The prediction was that it would not, because
+the cron speaks to Supabase over HTTPS and no direct Postgres connection exists. Four nightly
+runs have executed since it was enabled and the data above is what they produced — the prediction
+is now a measurement.
+
+⚠️ **One instrument note.** Counting bars by date (`date=eq.…` across 6.6M rows) **times out** at
+the REST layer — `57014`, statement timeout. Per-ticker reads use the primary key and return
+instantly. That is a property of the query, not of the data, and it is worth writing down because
+a 500 from a freshness check reads exactly like a broken pipeline.
+
 ### ⚠️ Two things to WATCH on the next nightly run, and one run answers both
 
 The US+CA refresh had not fired at the time of writing (scheduled 01:30 UTC, then 04:56 UTC with
@@ -680,6 +713,165 @@ under **two** changes at once:
 **The data itself is current**: the freshest bar is **Friday 2026-09-04** across 861 tickers, and
 the check was run on the Monday — no session had closed since. A stale-looking date that is only
 the weekend is exactly the sort of thing reported as an incident, so it is written down as normal.
+
+## P3b · the colour walkthrough — Stock Detail signed off, 2026-09-10 → 09-12
+
+**The owner reviewed a rendered map of every colour on the Stock Detail page, section by
+section, and approved all 23.** The map is an artifact rather than a tour of the live app, for
+the reason the P3b row gives: the live app cannot show five rating tiers side by side and cannot
+easily reach `past_due`, a delisted ticker or a stock with no analyst coverage.
+
+**It is verified, not drawn.** Every publish runs three checks against the running product —
+45 `:root` tokens, 36 component rules and 117 literal claims, each read off the live page or
+found verbatim in the source. The literal check was broken on purpose and went red for the right
+reason. That matters because a hand-drawn map is only as accurate as whoever drew it (11m), and
+this one is the document the owner is signing off against.
+
+### What the review found — eight product defects, none of them reported by a guard
+
+| # | Where | Was | Now |
+|---|---|---|---|
+| 1 | Relative Performance, 3Y axis | 19 ticks, **15 repeats** | calendar boundaries, none |
+| 2 | The same axis at 1Y | 3 repeats of 16 | none |
+| 3 | P/E verdict | words and colours stepped at different numbers | one function returns both |
+| 4 | Dividend legend | named 2 of the 3 colours it drew | names all three |
+| 5 | Dividend growth streak | green at 5, tooltip praised 10 | both stated, from constants |
+| 6 | Drawdown event markers | green in one mode, blue in the other | one annotation dark |
+| 7 | Key Metrics category pills | a navy and **two greys**, 9.9 to a protanope | four hues, 13.1 at worst |
+| 8 | "Delete account" heading | asked for red, **rendered black** | red |
+
+Two of the eight were the owner spotting something and being right when the first measurement
+disagreed with them: the category pills, and the blue KPI rule my own map had denied existed.
+
+### The other four signed-in pages — swept 2026-09-12
+
+Browse, Request a Ticker, Run Analysis, Results and the fourteen Account states. Browse, Request
+and Results measured clean. **Two contrast failures on Run Analysis**, both fixed: the *selected*
+horizon card's sub-label at **4.30** where the three unselected cards were 5.16, and "Advanced
+parameters" at **4.03 on hover** against 6.49 at rest — a text control that got less legible when
+pointed at. ⚠️ And the status-palette migration turned out to have stopped at the edge of its own
+`role="alert"` scope, leaving **four** status surfaces painted in the rating tiers; the guard now
+names them, and the naive swap was measured before it shipped because `--status-success` on its
+own wash (3.98) is *worse* than the tier it replaces (6.16).
+
+### The public pages — swept 2026-09-12, one defect
+
+All **31** public URLs, derived from `PUBLIC_PAGES` rather than hand-listed: the landing, pricing,
+contact, both indexes, all twelve Learn explainers, all five articles, the three legal pages and
+the six session-confined ones. Every page measured at rest and then with **hover and keyboard
+focus forced on every interactive control** — 764 controls, ~3,800 text elements. Reveal-on-scroll
+sections are triggered first and the count of measured-vs-present text is printed, so a page that
+was never looked at cannot report as clean (11q); the probe is proven against a deliberate break
+before any row is believed (11p).
+
+**Result: the rest state was already perfect — zero failures on all 31 pages, which is what the
+owner's own read said.** One defect, in a state nobody had looked at:
+
+| Where | Was | Now |
+|---|---|---|
+| Every prose link, hovered | `--brand-bright` — **4.03** on white, **3.64** on the striped index rows, against the 4.5 a body link owes | `--brand-deep`, 11.2 / 10.1 |
+
+⚠️ **It is the same defect, at the same numbers, that `.adv-toggle` carried until two days ago —
+and the comment I wrote on that fix asserted that "every other text control on the site darkens on
+hover", which was false while I was typing it.** Fixing the instance and not grepping the class is
+CLAUDE.md 11c-iv. There were **three** consumers, not one: `.reading a:hover` in `globals.css`
+(every Learn and article page, Terms, Privacy, Disclaimer, Contact) and twelve Tailwind
+`hover:text-[var(--brand-bright)]` utilities across six components — the four auth forms plus
+`PremiumLock`, `SelectedTickers` and `CsvImport`. All now darken.
+
+⚠️ **Two findings were retracted before they were reported, both my instrument.** Every focused
+input scored **1.00:1** because the probe took the first colour out of a `box-shadow` list that
+Tailwind fills with `rgba(0,0,0,0)` placeholders; the real indicator is the border going
+`--brand-bright`, 4.03:1 against white, and a sabotage confirms the check can still see a bad one
+(1.03). And four analyst-target labels scored 1.00:1 because the background walk climbed into the
+8px marker dot they hang off — a positioned child is not painted on its parent, so an ancestor now
+counts only where its box actually covers the element.
+
+### The offline report — checked against Stock Detail, 2026-09-12
+
+Four real downloads, built through the product's own assembly code and opened from disk: **AAPL**,
+**BHP** (AU, reports in USD), **AE.V** (TSX Venture, no dividend, no analyst coverage) and
+**TSLA**. Not a source read — the artifact (11d).
+
+**It matches, by construction rather than by luck.** `ReportDocument` renders the same section
+components the page does, `check:report-sections` already fails the build if the report's set stops
+being a superset, and a prop-by-prop diff of the two files shows only three differences, all
+designed: the report passes `entitled` flat (it is premium in its entirety), takes baked-in
+`benchmarks` where the page fetches them, and receives the badge fields directly where the page
+streams them through Suspense. Its CSS is generated from `globals.css` by the Tailwind CLI, so the
+new `--cat-*` tokens arrive with the right 10%/28% mixes and `.card-title` is inside `@layer base`
+ahead of `@layer utilities`, which is what the 11bc fix depends on.
+
+All eight of this sweep's Stock Detail fixes were confirmed **in the shipped bundle**, not inferred:
+the new event-marker colour is present once and both retired marker colours are gone; the dividend
+legend names three colours; the streak tooltip states 5 and 10; the P/E verdict prints *Above
+Average* in the direction red; the quarterly strip shows its tiles, and **BHP's annual view shows
+the fourth, annual-only "Recent Trend" tile**. The date axis was driven at 1Y, 3Y and Max inside
+the report and repeats nothing (Max: 1987 → 2023 in even six-year steps). BHP also proves the
+currency rules survive the second build: dividends in A$, the balance sheet in USD with the
+reporting-currency note, and the P/E history correctly **withheld** with its explanation.
+
+Contrast: **zero failures** on TSLA (568 elements) and AAPL, and one on AE.V, below.
+
+### ⚠️ What P3b still has left
+
+- ~~The Stock Scorecard's uncomputable pillar~~ ✅ **FIXED 2026-09-12, on the owner's word.** It
+  printed `—` in `var(--border)` — **1.23:1**, effectively invisible — so a missing pillar read as
+  a rendering fault rather than as "not available". `SnowflakeRadar` gave the number and the empty
+  bar track **one** value, which is 11bb's shape: an ink meaning two things cannot satisfy both
+  once they are asked to differ. A track wants a hairline the eye reads as *nothing here*; a value
+  has to be read. Split: the track keeps `--border`, the dash takes `--text-muted` — **5.40:1**,
+  measured in the rebuilt artifact, with every scored row byte-identical (number and bar still
+  share the tier colour, because there they really are saying one thing). It was raised as a
+  recorded finding rather than repainted, because the scorecard is a **paid** surface (11l).
+- **OPTIONAL, and the only thing left: the signed-in pages have never had the MACHINE sweep.**
+  Browse, Request, Run, Results and the fourteen Account states were walked by hand on 2026-09-12
+  and two hover/selected defects were found that way, so P3b's own definition — the owner looking
+  at every state and signing off — is satisfied. But the machine sweep is what found, on twelve
+  public pages a hand pass had already walked, a defect nobody had seen: **nobody hovers 764
+  controls.** Running it inside the product needs an entitled local session, which this machine
+  cannot mint without patching `getViewerEntitlement`. Recorded as an extra assurance the owner
+  may want, not as an open item blocking P3b.
+- ~~Three report edge cases are unchecked~~ ✅ **CLOSED 2026-09-12, and one of the three was my
+  error.** The **delisted** and **no-cycle** states have a notice each that no sampled ticker
+  rendered, so both were driven as fixtures: the report reads only its inlined JSON, so mutating
+  that payload gives the render a real stock in that state would give — **synthesised data, genuine
+  render**, said out loud because a fixture presented as a live reading is 14g with extra steps.
+  Delisted shows *"Apple Inc. no longer trades. Every figure below is frozen…"* in the rating red
+  the owner's F-035 ruling keeps; no-cycle correctly drops the rating, verdict, thesis and drawdown
+  sections and prints *"Major Cycle — not available at this horizon"*. **605 and 531 elements, zero
+  contrast failures.** ⚠️ The third, the `index` market, **is not a report state at all** — that URL
+  refuses before any report is built, which P4 already proved (5A-011, one of ten bad URLs, all
+  refusing). Listing it was a category error on my part.
+- **Dark mode and Windows High Contrast** are out of scope and stay so — see the CANNOT-check
+  section below.
+
+### ⚠️ An unexplained e2e failure, recorded rather than explained — 2026-09-12
+
+One full `pnpm gates` run failed two tests and the next one passed. Written down because an
+intermittent failure nobody writes down is one that gets re-diagnosed from scratch next time, and
+because **my first explanation was wrong and the experiment that was supposed to confirm it
+refused to.**
+
+**What was observed.** `entitlement-routes.spec.ts:545` expected **402** from `/report` for a free
+viewer and got **404 with an HTML body** — and the report route answers JSON on every one of its
+own 404s, so that body is Next's not-found page, i.e. the route did not resolve at all.
+`report-download.spec.ts` then timed out waiting for the download that refusal blocks. Same root,
+two symptoms. 781 passed, 17 did not run.
+
+**What was tested.** This repo has a documented history of exactly this symptom coming from a
+stale `.next-dev` cache (11i, fifth instance), and I had hit and fixed it on the fixtures server
+the same morning. So: cache moved aside, both spec files re-run → **46 passed**, including the two
+failures. That looked conclusive. Then the suspect cache was **restored** and the failing test
+re-run → **passed again**. ⚠️ **A sabotage that refuses to break is a fact about the model, not a
+verdict on the code** (11u), so the cache explanation is NOT established and is not claimed here.
+
+**Where that leaves it.** Both specs pass in isolation on two different caches, and failed inside
+a 19-minute run of 800. That points at the full run rather than at either test. A cold full re-run
+came back **16 of 16, e2e 986.9 s, 800 collected and 800 passed** — and the session had opened
+with a clean 16 of 16 on the same suite, so it is intermittent rather than new. **No cause is
+claimed.** If it recurs, the thing to capture is the dev server's own log at the moment of the
+404, which this run did not contain.
 
 ## ⚠️ What this sweep CANNOT check — stated before it starts, not after
 
@@ -984,13 +1176,38 @@ it: `CsvImport` sets no `aria-invalid`, so the guard was not silent about it by 
 
 ### What P3 still has to cover
 
-The screener's **execution** cannot be judged locally at all — `/api/analyze` is not served by
+⚠️ **THIS LIST WAS WRITTEN AT THE END OF SESSION 4 AND EVERY ITEM ON IT WAS CLOSED BY SESSIONS
+5 AND 6. It is kept, struck through, because a stale OPEN row is a claim about the last
+session's measurement (11aj) and deleting it would hide that the log lagged the work by two
+sessions.** Reconciled 2026-09-12, item by item, against the sessions that closed each one.
+
+~~The screener's **execution** cannot be judged locally at all — `/api/analyze` is not served by
 `next start`, so the run, the results, and what a reader is told when a run fails all have to
 be driven on the **Vercel preview** (method note 4). Also outstanding: `/results` and its
 toolbar, advanced filters and Opportunity Map controls · `/account`'s four cards ·
 `/request` · the Stock Detail subnav and chart range buttons · the keyboard pass on the
 signed-in pages · sign-out · and the whole pass on the **live site** in Claude in Chrome
-(method note 10).
+(method note 10).~~
+
+| Item | Closed by |
+|---|---|
+| The screener's **execution** | Session 2 on the Vercel preview, then a real 7-ticker run on **production** in session 5 — 7 scored, 22.3 s, top pick GOOGL 83/100 |
+| `/results` and its toolbar | Session 5 measured it at narrow widths: a 2,538 px table inside `overflow-x: auto`, **0 px** of page-level scroll at 752 px |
+| Advanced filters · CSV import | Session 4 — and 5A-107 came out of it, the blank numeric rule that silently deleted every stock with no value for that field |
+| Opportunity Map controls | Session 4 — 5A-109, its legend toggles announcing a state and an action at once |
+| `/account`'s four cards · `/request` | Session 3, then `/request` confirmed working end to end on production in session 5 |
+| Stock Detail subnav · chart range buttons | Session 3, re-confirmed live in session 5: the scroll-spy followed `aria-current` through all five links and every range/MA control carried the right `aria-pressed` |
+| The signed-in keyboard pass | Session 3, and it is what found 5A-112 — no dialog returned focus to its opener, on the paywall surface |
+| Sign-out | Session 3 — returns to `/login`, and `/results` afterwards re-gates rather than serving a stale page |
+| The whole pass on the **live site** | Session 5, twice: once on the owner's own no-plan account and again with a bounded, reversible subscription grant |
+| The **first-login disclaimer gate** (#23) on a genuinely new account | P1, 5A-025 — met before any page content on every route. The write-once half was driven separately as the app's own role, both directions with a control |
+
+**So P3's surface coverage is complete. One thing is genuinely outstanding and it is not on the
+list above:** session 5 ran on **2026-09-04**, and P2, P3b and this week's Stock Detail
+walkthrough have changed the product since — eight section defects, four status surfaces, the
+category pills, the link hover, the radar's empty pillar. **A live pass is evidence about the
+commit it was taken on** (the coverage map's own standing warning), so the re-check belongs with
+the merge rather than with P3.
 
 ⚠️ **Test data note.** This pass set a known password on the throwaway
 `p2run2-…@example.com` and cleared, then re-set, the acknowledgement on

@@ -19,6 +19,8 @@ import {
   PAYOUT_COMFORTABLE_MAX,
   PAYOUT_DISPLAY_CAP,
   PAYOUT_STRAINED_MAX,
+  STREAK_EXCEPTIONAL_YEARS,
+  STREAK_GREEN_YEARS,
 } from '@/lib/dividends';
 import { INK } from '@/lib/ink';
 
@@ -142,12 +144,20 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
           Dividend History
           <InfoTip title="Dividend History">
             A dividend is cash a company pays its shareholders, usually each year.
-            This shows the dividend per share over time — green bars are increases,
-            red are cuts. Many companies pay no dividend and reinvest instead.
+            This shows the dividend per share over time. Each bar is compared with
+            the year before it — green is an increase, red is a cut — so the oldest
+            bar, which has nothing behind it to compare against, is drawn in blue.
+            Many companies pay no dividend and reinvest instead.
           </InfoTip>
         </h3>
+        {/* ⚠️ THIS NAMED TWO OF THE THREE COLOURS IT DRAWS until 2026-09-11.
+            The oldest bar has been blue since the card was built, and blue is the
+            one colour a reader cannot work out from the words "increase" and
+            "cut" — so the sentence left out precisely the one that needed
+            explaining. Nothing rendered wrongly; the legend was simply short of
+            its own chart. */}
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-          Annual dividend per share · Green = increase · Red = cut
+          Annual dividend per share · Blue = first year · Green = increase · Red = cut
         </div>
       </div>
       <div className="card-body">
@@ -256,12 +266,12 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
 
           <div
             className="summary-strip-item"
-            title="Dividend Growth Streak — consecutive years of dividend increases. 10+ years signals exceptional financial discipline."
+            title={`Dividend Growth Streak — consecutive years of dividend increases. ${STREAK_GREEN_YEARS} or more marks an established record and is shown in green; ${STREAK_EXCEPTIONAL_YEARS} or more signals exceptional financial discipline. A year with no increase ends the run.`}
           >
             <div className="summary-strip-label">Growth Streak</div>
             <div
               className="summary-strip-val"
-              style={{ color: streak >= 5 ? INK.up : 'var(--text-primary)' }}
+              style={{ color: streak >= STREAK_GREEN_YEARS ? INK.up : 'var(--text-primary)' }}
             >
               {streak} yrs
             </div>

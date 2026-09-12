@@ -92,13 +92,32 @@ export const INK = {
  * exactly what the pills did until 2026-09-02, hard-typing `#8B1414` (audit
  * 5A-045). On a product whose whole compliance posture is "information only", the
  * line between what we say and what we are reporting has to be visible. Measured
- * 16.8 from Constructive and 12.6 from Bearish, and every chip still carries the
+ * 18.2 from Constructive and 16.9 from Bearish, and every chip still carries the
  * word itself, so nothing rests on the colour alone.
+ *
+ * ⚠️ LIGHTENED 2026-09-10 (owner: they "look very deep"). The set was carrying
+ * 5.66 / 6.81 / 8.24 against a 4.80 floor — the wine nearly double what it owed,
+ * which is what makes a 7px marker square read as a black blob. Now 5.53 / 5.57 /
+ * 5.63, and the three swatches that sit together in one legend went from 8.2 apart
+ * at their closest to 12.6. The full working, including why the PILL'S OWN WASH
+ * rather than the page was holding them down, is in globals.css beside the tokens.
  */
 export const ANALYST = {
-  positive: '#2E6B57',
-  neutral: '#4A5568',
-  negative: '#7A2F3F',
+  /** Buy / Strong Buy / Outperform, as somebody else said it. */
+  positive: '#0E6F58',
+  /**
+   * Hold / Neutral / Market Perform.
+   *
+   * ⚠️ GOLD, not grey, and it is an owner decision with a stated cost. The marker
+   * legend on the Smart Money chart already spends grey on an "Other" insider
+   * transaction, so a grey Hold beside it put two unrelated meanings in one grey.
+   * A gold cannot be kept far from OUR gold — the best available is 5.2 from
+   * `--c-tier-3` — so 5A-045's separation is weakened here on purpose. The full
+   * working, and what makes it safe, is in globals.css beside the token.
+   */
+  neutral: '#7E5B25',
+  /** Sell / Underperform. */
+  negative: '#AD344C',
 } as const;
 
 export const SERIES_TEAL = '#00695C';

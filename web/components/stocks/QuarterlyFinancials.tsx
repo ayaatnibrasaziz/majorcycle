@@ -132,6 +132,67 @@ export function QuarterlyFinancials({
   // Largest plotted magnitude → drives a uniform-decimal Y-axis (single series).
   const axisMax = chartData.reduce((mx, d) => Math.max(mx, Math.abs(d.val)), 0);
 
+  /*
+   * The summary strip — added 2026-09-11 on the owner's approval. This was the
+   * one card in the fundamentals run with nothing under its chart, so the reader
+   * had to hover a bar to learn anything the chart did not already draw.
+   *
+   * ⚠️ Every figure here describes the PERIODS PLOTTED, not the whole history —
+   * quarterly view shows the last eight, so a streak is counted inside that
+   * window and the tooltips say so. Reporting a streak the chart cannot show
+   * would be a number nobody could check against the thing beside it.
+   *
+   * ⚠️ The trend rule is EarningsHistory's, deliberately: latest against the
+   * third period back, two outcomes, absent below three periods. Two cards on one
+   * page should not mean two definitions of "accelerating" (CLAUDE.md 11c).
+   */
+  const latest = chartData[chartData.length - 1] ?? null;
+
+  /*
+   * ⚠️ QUARTER-ON-QUARTER IS THE WRONG COMPARISON FOR A SEASONAL BUSINESS, and
+   * building this strip is what made that visible. The first version printed
+   * Apple's latest quarter as −22.7% beside "▲ Accelerating" — both true, both
+   * measuring something real, and together they read as a contradiction. The
+   * December quarter is Apple's biggest every single year, so the March quarter
+   * "falling" says nothing at all about the business.
+   *
+   * So a quarter is compared with the SAME QUARTER A YEAR EARLIER wherever four
+   * quarters of room exist, which is how every filing reports it, and the tile is
+   * labelled with whichever comparison it actually made. A card with too little
+   * history says QoQ and means it.
+   */
+  const lag = !isAnnual && chartData.length > 4 ? 4 : 1;
+  const against = chartData.length > lag ? chartData[chartData.length - 1 - lag]! : null;
+  const changePct =
+    latest && against && against.val !== 0
+      ? +(((latest.val - against.val) / Math.abs(against.val)) * 100).toFixed(1)
+      : null;
+  const changeLabel = lag === 4 || isAnnual ? 'YoY' : 'QoQ';
+
+  /*
+   * The trend tile is EarningsHistory's rule — latest against the third period
+   * back — and it appears on the ANNUAL view only, for the same seasonality
+   * reason. "Accelerating" across three consecutive quarters of a seasonal series
+   * is a statement about the calendar, not about the company.
+   */
+  const trending =
+    isAnnual && chartData.length >= 3
+      ? chartData[chartData.length - 1]!.val > chartData[chartData.length - 3]!.val
+      : null;
+
+  // Consecutive periods that beat the period `lag` back — so in quarterly view
+  // this is the familiar "N quarters of year-on-year growth". Strictly greater,
+  // so a flat period ends the run: the same rule the dividend streak uses,
+  // because "unchanged" is not "growing".
+  let streak = 0;
+  for (let i = chartData.length - 1; i - lag >= 0; i--) {
+    if (chartData[i]!.val > chartData[i - lag]!.val) streak++;
+    else break;
+  }
+
+  const periodWord = isAnnual ? 'year' : 'quarter';
+  const periodUnit = isAnnual ? 'yrs' : 'qtrs';
+
   return (
     <div className="card card--stack-base">
       <div className="card-header">
@@ -289,6 +350,66 @@ export function QuarterlyFinancials({
           </ResponsiveContainer>
         </div>
         )}
+        {latest && (
+          <div className="summary-strip">
+            <div
+              className="summary-strip-item"
+              title={`Latest ${periodWord} — ${MODE_LABELS[mode]} for the most recent ${periodWord} reported. A measured figure, so it never changes colour.`}
+            >
+              <div className="summary-strip-label">Latest {periodWord}</div>
+              <div className="summary-strip-val">{fmtCompact(latest.val, currency)}</div>
+            </div>
+
+            {changePct !== null && (
+              <div
+                className="summary-strip-item"
+                title={
+                  lag === 4
+                    ? `Year on year — how ${MODE_LABELS[mode]} compares with the same quarter a year earlier. Quarters are compared like with like, because most businesses are seasonal and the quarter before is not a fair yardstick.`
+                    : `${isAnnual ? 'Year on year' : 'Quarter on quarter'} — how ${MODE_LABELS[mode]} changed against the ${periodWord} before it.${isAnnual ? '' : ' There is not yet a full year of history to compare against.'}`
+                }
+              >
+                <div className="summary-strip-label">{changeLabel}</div>
+                <div
+                  className="summary-strip-val"
+                  style={{ color: changePct >= 0 ? INK.up : INK.down }}
+                >
+                  {changePct >= 0 ? '+' : ''}{changePct}%
+                </div>
+              </div>
+            )}
+
+            {trending !== null && (
+              <div
+                className="summary-strip-item"
+                title={`Recent trend — compares the latest year with the one two years earlier. Accelerating = momentum is building. Shown on the annual view only: across consecutive quarters this would describe the calendar rather than the company.`}
+              >
+                <div className="summary-strip-label">Recent Trend</div>
+                <div
+                  className="summary-strip-val"
+                  style={{ color: trending ? INK.up : INK.down }}
+                >
+                  {trending ? '▲ Accelerating' : '▼ Decelerating'}
+                </div>
+              </div>
+            )}
+
+            <div
+              className="summary-strip-item"
+              title={
+                lag === 4
+                  ? `Growth streak — consecutive quarters that beat the same quarter a year earlier, among the ${chartData.length} plotted above. A flat quarter ends the run. A count, so it carries no colour.`
+                  : `Growth streak — consecutive ${periodUnit} of growth among the ${chartData.length} periods plotted above. A flat ${periodWord} ends the run. A count, so it carries no colour.`
+              }
+            >
+              <div className="summary-strip-label">Growth Streak</div>
+              <div className="summary-strip-val">
+                {streak} {streak === 1 ? (isAnnual ? 'yr' : 'qtr') : periodUnit}
+              </div>
+            </div>
+          </div>
+        )}
+
         {currencyNote && (
           <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--text-muted)' }}>
             {currencyNote}

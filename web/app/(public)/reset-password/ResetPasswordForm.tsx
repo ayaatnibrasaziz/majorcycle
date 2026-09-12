@@ -50,7 +50,7 @@ export function ResetPasswordForm() {
         </div>
         <Link
           href="/login"
-          className="mt-7 flex items-center justify-center gap-1.5 text-[13px] text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors"
+          className="mt-7 flex items-center justify-center gap-1.5 text-[13px] text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-deep)] transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to sign in
@@ -95,7 +95,7 @@ export function ResetPasswordForm() {
 
       <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
         Remembered it?{' '}
-        <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-bright)] transition-colors">
+        <Link href="/login" className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-deep)] transition-colors">
           Sign in
         </Link>
       </p>

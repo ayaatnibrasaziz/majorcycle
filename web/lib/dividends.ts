@@ -14,6 +14,25 @@
  * builds its assertion from these values rather than from the digits in the prose.
  */
 
+/**
+ * Consecutive years of increases at which the growth streak turns green.
+ *
+ * ⚠️ EXTRACTED 2026-09-11 because the tile's own tooltip disagreed with it. The
+ * colour changed at five while the words said *"10+ years signals exceptional
+ * financial discipline"*, so a reader with a six-year streak saw a green figure
+ * under a sentence naming ten as the mark. Neither number was wrong; they were
+ * answering different questions and only one of them was written down.
+ *
+ * Both survive, and the tooltip is now built FROM this constant rather than
+ * restating it — five is where we call a record established, ten is still the
+ * higher bar and is described as such (CLAUDE.md 11c-v: a sentence that states a
+ * constant IS a copy of that constant).
+ */
+export const STREAK_GREEN_YEARS = 5;
+
+/** The longer record the copy calls exceptional. Never changes a colour. */
+export const STREAK_EXCEPTIONAL_YEARS = 10;
+
 /** Below this share of profit, a dividend has room to grow. */
 export const PAYOUT_COMFORTABLE_MAX = 60;
 

@@ -62,21 +62,36 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
     ? +(((curr - avg) / Math.abs(avg)) * 100).toFixed(1)
     : null;
 
-  function verdict(): string {
-    if (vsAvg === null) return '—';
-    if (vsAvg > 20) return 'Historically Expensive';
-    if (vsAvg > 5)  return 'Above Average';
-    if (vsAvg < -15) return 'Historically Cheap';
-    if (vsAvg < -5)  return 'Below Average';
-    return 'Fair Value';
+  /**
+   * The verdict, and the ink it is printed in — from ONE set of thresholds.
+   *
+   * ⚠️ THE WORDS AND THE COLOUR USED TO CHANGE AT DIFFERENT NUMBERS, which is
+   * this project's one-rule-two-places defect wearing a palette (CLAUDE.md 11c).
+   * The words stepped at +20 / +5 / −5 / −15 and the colour at +15 / −10, so the
+   * same phrase arrived in two different inks depending on where inside its own
+   * band the reading fell: *Above Average* was plain black from +5% to +15% and
+   * gold from +15% to +20%. Nothing was ever wrong on screen — every colour was
+   * legible and every word was true — and no guard could have had an opinion,
+   * because neither half was incorrect on its own. One function now returns both,
+   * so they cannot part company again.
+   *
+   * ⚠️ AND THE PALETTE IS DELIBERATELY THE DIRECTION INK, NOT THE RATING TIERS
+   * (owner, 2026-09-11). A five-tier ramp here would say our Overall Rating about
+   * a stock that is merely priced above its own history, and the header already
+   * spends the tiers on the Valuation Zone badge. So: two greens for the cheap
+   * half, gold for the middle, two reds for the expensive half — five words, three
+   * inks, the same three this card's neighbours use.
+   */
+  function verdictOf(v: number | null): { label: string; color: string } {
+    if (v === null)  return { label: '—',                      color: 'var(--text-muted)' };
+    if (v > 20)      return { label: 'Historically Expensive', color: INK.down };
+    if (v > 5)       return { label: 'Above Average',          color: INK.down };
+    if (v < -15)     return { label: 'Historically Cheap',     color: INK.up };
+    if (v < -5)      return { label: 'Below Average',          color: INK.up };
+    return             { label: 'Fair Value',                  color: INK.neutral };
   }
 
-  function verdictColor(): string {
-    if (vsAvg === null) return 'var(--text-muted)';
-    if (vsAvg > 15)  return INK.neutral;
-    if (vsAvg < -10) return INK.up;
-    return 'var(--text-primary)';
-  }
+  const { label: verdictLabel, color: verdictInk } = verdictOf(vsAvg);
 
   return (
     <div className="card card--stack-base">
@@ -211,13 +226,15 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
               </div>
               <div className="summary-strip-item" title="Current P/E vs Historical Average — negative = cheaper than usual.">
                 <div className="summary-strip-label">vs Average</div>
-                <div className="summary-strip-val" style={{ color: vsAvg !== null ? (vsAvg > 15 ? INK.neutral : vsAvg < -10 ? INK.up : 'var(--text-primary)') : 'var(--text-muted)' }}>
+                {/* Reads the verdict's own ink, so the percentage and the word
+                    beside it can never disagree about which band this is. */}
+                <div className="summary-strip-val" style={{ color: verdictInk }}>
                   {vsAvg !== null ? `${vsAvg >= 0 ? '+' : ''}${vsAvg}%` : '—'}
                 </div>
               </div>
               <div className="summary-strip-item" title="Valuation Verdict — plain-English summary based on P/E vs historical average.">
                 <div className="summary-strip-label">Verdict</div>
-                <div className="summary-strip-val" style={{ color: verdictColor() }}>{verdict()}</div>
+                <div className="summary-strip-val" style={{ color: verdictInk }}>{verdictLabel}</div>
               </div>
             </div>
           </>

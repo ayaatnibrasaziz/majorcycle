@@ -120,6 +120,40 @@ export const CHART_CHROME = {
  * odd — which is exactly why an extraction that stops at the case in front of you
  * is worth re-reading before you leave the file (CLAUDE.md 11c-x).
  */
+/**
+ * The arrow marking a counted cycle event on the drawdown / profit overlay.
+ *
+ * ⚠️ ONE VALUE, BOTH MODES, and it is neither direction — which is the fix. The
+ * two branches used to paint the identical kind of mark in unrelated colours:
+ * `rgba(0,100,0,.85)` (dark green) in drawdown mode and `rgba(30,92,179,.85)`
+ * (brand mid) in profit mode. Neither said anything; a marker only ever means
+ * "an event was counted here", and the two modes count the same thing. The green
+ * one was also the last surviving trace of the retired "a deeper fall is good
+ * news" ramp the KPI strip dropped on 2026-09-02.
+ *
+ * ⚠️ THE FIRST FIX PICKED `--brand-deep` AND MEASURING SAID NO. An arrow that has
+ * to sit on top of a line needs real distance from it, and the navy is 13.3 from
+ * the drawdown blue — 12.5 to a deuteranope, barely over the 12 this project asks
+ * of two colours that must be told apart. On screen the arrows read as thickenings
+ * of the line. Four candidates, CIEDE2000 through the palette guard's own Brettel
+ * simulation, against both price lines:
+ *
+ *   #1A3A6E  brand deep      13.3 / 53.3   (protan 13.8 / 57.3)
+ *   #4A5568  text secondary  13.7 / 39.9   (protan 16.9 / 40.0)
+ *   #626B77  chart ink       15.8 / 34.5   (protan 19.6 / 33.7)
+ *   #2E3347  this one        21.5 / 45.2   (protan 21.7 / 46.3)
+ *
+ * So the marker is the near-black the chart tooltip is edged in — the site's
+ * annotation dark, which is what an event marker is. It happens to equal
+ * `CHART_TOOLTIP.border` today and is deliberately NOT imported from it: they are
+ * two different jobs that agree, and one shared name is how they would silently
+ * stop being free to move apart (the same argument `INK.warn` makes against tier 4).
+ *
+ * The direction is still carried, by the arrow itself: it points up from below the
+ * bar on a fall and down from above it on a rally.
+ */
+export const CYCLE_EVENT_MARKER = 'rgba(46,51,71,.85)';
+
 export const PROFIT = {
   /** The price line while the overlay is in profit mode. */
   line: '#228B22',
