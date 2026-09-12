@@ -154,6 +154,28 @@ finding turned into an unasked repaint of the screener.
 
 ## The ten passes — P0 to P9
 
+# ✅ ALL ELEVEN PASSES COMPLETE — 2026-09-12
+
+**P0 · P1 · P2 · P3 · P3b · P4 · P5 · P6 · P7 · P8 · P9.** ("Ten passes" is the original
+plan's name for the section; P3b was added on 2026-09-03 at the owner's request, making eleven.)
+
+The last two closed on the same day. **P3b** finished with the public pages' interactive colours
+and the offline report — one defect on the public site, one on the report, both fixed and the
+first of them turned into a build gate. **P3** was already finished and its row had read *not
+finished* for eight days: every item on its outstanding list had been closed by sessions 5 and 6,
+and the marker was never moved. Reconciled item by item rather than ticked.
+
+**What is left before launch, and none of it is a sweep pass:**
+
+| | Item | Owner |
+|---|---|---|
+| ⬜ | **5b — the owner's own judgement pass** | the owner |
+| 🔴 | The ticker page's Lighthouse target | **blocked on an instrument**, not on effort — Speed Insights installed 2026-09-07, reports nothing until there is traffic |
+| 🔵 | **Vercel Hobby → Pro** | owner-deferred; the free tier forbids commercial use, so this is the single item between the product and taking money |
+| ⬜ | The **Stripe restricted-business question** | with Stripe, the owner is handling it |
+| ⬜ | A **live re-check after merge** | the 09-04 live pass predates everything merged on 09-12; done for the public site and Stock Detail on 09-12, see below |
+| → | Nothing watches the running app · the signed-in 375px shell · the three stored-but-unshown fundamentals | **Layer H** |
+
 Each pass produces findings in the ledger below. Nothing on a paid surface is changed
 without the owner ruling on it first (11l).
 
@@ -787,6 +809,42 @@ Tailwind fills with `rgba(0,0,0,0)` placeholders; the real indicator is the bord
 8px marker dot they hang off — a positioned child is not painted on its parent, so an ancestor now
 counts only where its box actually covers the element.
 
+### ❌ RETRACTED · "The downloaded report's charts do not re-measure on resize" — NOT A DEFECT
+
+**Reported 2026-09-12 and withdrawn the same hour. There is nothing wrong with the report, and
+the owner had already asked for a fix before the retraction landed.** Kept in full, because the
+contamination is one this audit can hit again and the shape of it is worth more than the finding
+would have been.
+
+**What was reported.** Forcing `.recharts-responsive-container` to 380 px and back: the live
+Stock Detail page's chart followed (1221 → 380 → 1221, axis labels 6 → 3 → 6, the budget added
+today recalculating exactly as designed) while the downloaded report's stayed at 882 px. Two
+builds of one component disagreeing — which is 11d's whole premise, so it read as credible.
+
+**What was actually different: one browser was VISIBLE and the other was not.** The live page was
+driven in the owner's Chrome; the report in the Browser pane, which reports
+`document.visibilityState === 'hidden'`. A hidden page has no rendering loop, so
+`requestAnimationFrame` never fires and **ResizeObserver never delivers** — measured directly: a
+throwaway `<div>` observed in that page produced **zero** callbacks, not even the one the spec
+guarantees on `observe()`. Recharts was never given the chance to re-measure.
+
+**The control that settled it.** The live site, re-driven in a *hidden* window minutes later:
+container 1221 → 380 → 1221, chart **stays at 1221**. Identical to the report. Both builds are
+correct when the window is visible and both are frozen when it is not, which is the browser
+behaving as specified rather than either build being wrong.
+
+⚠️ **The lesson is not "check visibility" — it is that the two arms were never comparable.** The
+finding rested on a difference between builds, and the builds were the one thing held constant
+while the environment silently changed underneath. **A comparison is only evidence if the arms
+differ in exactly the thing being compared** (11i: clear the cache BETWEEN the arms, not just
+before). Record `document.visibilityState` alongside any reading that depends on the rendering
+loop — rAF, ResizeObserver, IntersectionObserver, CSS transitions, chart mounts.
+
+⚠️ **A second, unrelated artefact from the same session, worth keeping:** the "open at 420 px then
+widen" reproduction was contaminated the same way, and an earlier version of the test resized the
+container's PARENT rather than the element Recharts observes, which made both builds look frozen.
+Three probes, three different ways of being wrong, all pointing at a defect that does not exist.
+
 ### The offline report — checked against Stock Detail, 2026-09-12
 
 Four real downloads, built through the product's own assembly code and opened from disk: **AAPL**,
@@ -872,6 +930,56 @@ came back **16 of 16, e2e 986.9 s, 800 collected and 800 passed** — and the se
 with a clean 16 of 16 on the same suite, so it is intermittent rather than new. **No cause is
 claimed.** If it recurs, the thing to capture is the dev server's own log at the moment of the
 404, which this run did not contain.
+
+## The post-merge live pass — production, 2026-09-12
+
+Run after PR #99 merged, because the previous live pass was 2026-09-04 and everything in this
+session came after it. **The deploy was confirmed by reading the stylesheet production serves,
+not by reading a dashboard** — the link-hover rule resolves to `--brand-deep` on the wire.
+
+**Public site, 28 URLs, hover and keyboard focus forced on every control: 0 failures** at rest
+and in every state. Signed-out wire check: every gated route bounces, `/api/cycle` answers 401,
+all with `private, no-store` (⚠️ a signed-out read measures the PROXY's header, not the page's).
+
+**Signed in, on the owner's own account** — which turned out not to need the grant they
+authorised; see the 🔴 note under P3 session 5's method.
+
+| Surface | Measured | Contrast failures |
+|---|---|---|
+| Stock Detail (AAPL) | 623 | 0 |
+| Browse | 632 | 0 |
+| Account | 41 | 0 |
+| Run Analysis, advanced open | 49 | 0 |
+| Request a Ticker | 43 | 0 |
+
+Every fix confirmed live: the date axis repeats nothing at 1Y/3Y/Max (Max = 1987→2023 in even
+six-year steps), the four category pills, the three-colour dividend legend, the P/E verdict in
+the direction red, the streak tooltip stating 5 and 10, the quarterly strip, **the delete-account
+heading finally red**, both Run Analysis fixes (the advanced toggle settling at 11.2:1 and the
+selected horizon's sub-label at 5.10), and the scorecard's muted dash on AE.V.
+
+### The screener, the exports and the report — driven end to end, at the owner's request
+
+The owner lifted the standing "do not run a real screen" rule for this. Magnificent Seven,
+medium horizon: **7 scored in 5.3 s**, top pick GOOGL 83/100 — and the runtime shown on screen
+matches `analysis_runs` to the tenth of a second. For scale, 761 tickers took 222 s on 09-10,
+against 1,529 s before the performance work.
+
+**The two exports agree exactly: 195 numeric cells compared, 0 disagreements.** Compared as a
+whole grid rather than spot-checked, because the 2026-08-06 defect (65.76 in the workbook, 65.75
+in the CSV) hit ~4% of values and a sample would have missed it. The screen rounds for display
+(`$428` against `428.07`) which is the intended split, not a drift.
+
+| | Time |
+|---|---|
+| `/run` · `/results` · Stock Detail | 1.6 s · 1.9 s · 3.6 s (TTFB 25 ms) |
+| The screen itself, 7 tickers | 5.3 s |
+| CSV · Excel export | 3 s · 5 s |
+| Report, click to file on disk | 11 s (4.53 MB) |
+| Report opening from disk | 2.5 s to draw, no console errors |
+
+The report's cost is one 1 MB data fetch at 2.6 s; the bundle itself comes from cache in under
+100 ms.
 
 ## ⚠️ What this sweep CANNOT check — stated before it starts, not after
 
@@ -1232,6 +1340,33 @@ grant was bounded and reversible — `subscription_status` / `subscription_plan`
 was read and recorded before the write and restored to its exact prior value afterwards,
 verified by reading the row back. `acknowledged_disclaimer_at` — the June compliance record —
 was never touched. **No card number was entered anywhere.**
+
+🔴 **THE RESTORE DID NOT HAPPEN, AND THE SENTENCE ABOVE IS WRONG — found 2026-09-12, eight days
+later.** Reading the row before granting access for the post-merge live pass:
+`subscription_status` is **`active`**, with `subscription_plan`, `subscription_currency`,
+`current_period_end`, `stripe_customer_id` and `stripe_subscription_id` all **null**. That is
+the shape of a hand-written grant, not of a real subscription — and `hasAccess()` needs only the
+status, so **the owner's account has held full paid access, with nothing backing it, since
+4 September.**
+
+⚠️ **What can and cannot be established.** `profiles` has no `updated_at`, so the moment of the
+change cannot be read. The corroboration is `free_views_date`, frozen at **2026-09-04** with its
+ticker list intact: the free-view counter only advances for an UNENTITLED viewer, so a free
+account browsing at any point since would have moved it. Strong, and not proof — said that way
+round deliberately.
+
+⚠️ **Two lessons, and the second is the one that generalises.** A restore is a write like any
+other and needs its own read-back — *"verified by reading the row back"* was written, and the
+row plainly does not agree with it, so either the read-back never ran or it was read as the
+intent rather than the value. And **a sentence in an audit log is a claim about the system that
+ages exactly like any other** (11aj): this one was cited unchanged in three later summaries,
+including one earlier in this same session describing the account as holding *"no plan"*.
+Nobody re-read the row until a task happened to need it.
+
+**No write was made on 2026-09-12.** The grant the owner authorised turned out to be a no-op on
+the only field that decides access, so the correct action was to make no change and say so. The
+state is left as found and is the owner's to rule on: it is their own account, nothing was
+exposed, and no money is involved — but a live account is entitled without a subscription.
 
 ⚠️ **I should have offered this in the first pass rather than working around NO PLAN.** The
 owner had to ask. Recording that, because half a product measured and reported as a pass is the
