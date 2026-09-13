@@ -338,7 +338,7 @@ closed rather than merely being written to.
   lives in that file at all; it is built in `lib/csp.ts` and applied in `proxy.ts`. **Cite a
   file and a symbol, never a line number**; a line number is stale the next time anyone edits
   above it. See `architecture.md` §7 for the posture and `pnpm check:csp` for the proof.
-- **375px mobile** → Layer H (already triaged and measured there: 130px overflow, root-caused to
+- **375px mobile** → Layer H ⚠️ (the 130px below was re-measured on 2026-09-14 as **34–188px, varying by page**; root cause unchanged: 130px overflow, root-caused to
   the `(app)` shell, not to Layer F components).
 - **Lighthouse / SEO / sitemap / robots** → Layer G.
 - **Sentry / error monitoring** → Layer H.

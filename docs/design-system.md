@@ -1396,18 +1396,47 @@ Mobile-first. Tailwind defaults:
 
 | Breakpoint | Width | Layout |
 |---|---|---|
-| Default (mobile) | < 768px | Single column, sidebar becomes drawer |
-| `md` | ≥ 768px | Two-column where appropriate |
-| `lg` | ≥ 1024px | Sidebar visible, full desktop layout |
+| Default (mobile) | < 768px | Single column, **signed-in sidebar becomes a drawer** |
+| `md` | ≥ 768px | Two-column where appropriate; **the sidebar is pinned open, exactly as on a desktop** |
+| `lg` | ≥ 1024px | Full desktop layout |
 | `xl` | ≥ 1280px | Wider content area, larger charts |
+
+⚠️ **This table said two different things until 2026-09-14, and neither was built.** The first
+row put the drawer below 768px; the `lg` row said *"Sidebar visible"* at ≥1024px, which implies
+there is no sidebar between 768 and 1023. A reader could take either. **The 768 row is the one
+that is now correct**, and it is correct because it was measured rather than chosen — see the
+table below and `docs/layer-h-plan.md` §11.
+
+**The signed-in shell — the measured basis for 768px.** Taken on the production build, on a
+**paying** account, with the 220px sidebar left in place. Sideways scroll, in pixels:
+
+| Page | 375 | 744 | 768 | 810 | 834 | 1024 |
+|---|---|---|---|---|---|---|
+| Stock Detail | 180 | 0 | 0 | 0 | 0 | 0 |
+| Run Analysis | **188** | 0 | 0 | 0 | 0 | 0 |
+| Results | 158 | 0 | 0 | 0 | 0 | 0 |
+| Browse | 131 | 0 | 0 | 0 | 0 | 0 |
+| Account · Request | 48 · 34 | 0 | 0 | 0 | 0 | 0 |
+
+In 2px steps the first page to run out of room is **Stock Detail at 730px**; everything else
+survives to 620px. So the sidebar is **not a tablet problem — only a phone problem**, and every
+iPad from the 9.7″ up keeps the desktop layout untouched.
+
+⚠️ **768 rather than 730, deliberately.** 730 is the boundary and leaves zero margin; 768 leaves
+38px, and this project has been caught before by a guard passing with one pixel to spare
+(11i-b: assert a margin, not a boundary). The **iPad mini (744px)** therefore takes the drawer —
+it measured clean by 14px, which is luck rather than a design.
 
 **Critical:** the existing reference HTML is desktop-only. Mobile layouts are NEW and must be designed during the build — see roadmap.md for which screens need mobile-specific treatment.
 
 **Mobile patterns:**
-- Sidebar nav becomes hamburger drawer
+- Sidebar nav becomes hamburger drawer **below 768px only** — it follows `PublicHeader`'s
+  `MenuButton` pattern (Escape returns focus to the toggle, closes on navigation, 40px rows)
+  rather than a second implementation (11c)
 - Tables: horizontal scroll OR collapse to cards (case by case)
 - Multi-column grids stack vertically
-- Tooltips become tap-to-reveal popovers (not hover)
+- Tooltips become tap-to-reveal popovers (not hover) — ⚠️ and this is why an **icon-only rail**
+  was rejected for tablets: its labels would depend on hover, on a device that has none
 
 ---
 

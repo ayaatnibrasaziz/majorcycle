@@ -796,7 +796,7 @@ open**, folded into the standing decision on the public documents' 13px body siz
 zoom-on-focus fix is asserted on the proxy — the computed font size — rather than on the
 zoom. 200% text zoom and focus visibility at 375px belong to Layer H. And the **signed-in**
 375px overflow is deliberately noted rather than fixed, per the pass's own scope: measured
-at **34–180px depending on the page**, against a known item that records "~130px".
+at **34–180px depending on the page**, against a known item that records "~130px". ⚠️ **Both numbers are low: re-measured on an ENTITLED account 2026-09-14, the range is 34–188px** — this pass signed in free, so it never saw the screener. See § *The Layer H delta*.
 
 ## Still open after this delta
 
@@ -842,3 +842,60 @@ it, which is what a checklist is for.
 
 **Suite total: 789 tests in 53 files** (786 → 788 with the responsive split and the redaction
 guard, → 789 with the CSP one).
+
+---
+
+## 🔴 The Layer H delta — a whole dimension this map never had: WHO is signed in
+
+**2026-09-14, while planning Layer H.** This map has three dimensions — routes, viewer states,
+Python modules — and Dimension 2 (*viewer states*) asks which states each route was *visited*
+in. It never asked **which account a responsive or layout guard signs in as**, and that turned
+out to hide the largest uncovered surface in the product.
+
+### `e2e/app-responsive.spec.ts` has never measured a page a paying customer sees
+
+It signs in with the shared `E2E_EMAIL` account, which has **no subscription**. On that account
+the premium sections do not render at all — `/run` is the upsell card rather than the screener —
+so every page it measures is **narrower than the product**. Measured at 375px on the production
+build, same probe, two accounts:
+
+| Route | Free (what the guard sees) | **Entitled (what a customer sees)** |
+|---|---|---|
+| `/run` | 46px | **188px** |
+| `/results` | 0 (empty) | **158px** |
+| `/stocks/us/AAPL` | 180px | 180px |
+| `/stocks` | 131px | 131px |
+| `/account` · `/request` | 55px · 34px | 48px · 34px |
+
+⚠️ **And it is not only a 375px problem.** The spec sweeps **640 / 768 / 900 / 1280** — the band
+it was written for (5A-116) — and passes. On an **entitled** account the ticker page does not
+stop scrolling until **730px**, so it scrolls at **640 and 720** while the guard reports clean.
+The free ticker page also scrolls **10px at 720**, a width nothing samples (11i-b).
+
+**The generalisable form: a guard's ACCOUNT is part of its scope, exactly as its route list and
+its width list are** (14g, 11ax). `app-a11y.spec.ts` already learned this in September — it
+creates a throwaway *paid* user precisely because "every signed-in page passes axe" was quietly a
+claim about the unentitled view. **The same reasoning was never carried across to the responsive,
+contrast or layout guards**, which is 11c-iv: the rule existed and one set of consumers never
+received it.
+
+**→ Fixed as part of H1** (`layer-h-plan.md` §4): the spec gains an entitled account, its floor
+drops 640 → 320, it sweeps the range in 4px steps rather than sampling, and it asserts **≥20px of
+spare room** rather than merely "no overflow".
+
+### Two more blind spots found the same day
+
+- **`/results` renders nothing without a completed run.** Measured locally it reported a perfect
+  `0` — because the page was *empty*. A clean number from a page with no content on it is what a
+  broken check also returns. Any future measurement of it must **assert its table has rows first**;
+  the production run that found the real 158px does exactly that.
+- **The suite is Chromium-only** (`playwright.config.ts` → one project). Now that all three
+  engines run locally (Layer H finding E), the cross-browser run becomes its own command, printed
+  by `pnpm gates` as **NOT RUN with the reason** rather than omitted — F-016's lesson.
+
+### What this map still does not ask
+
+Added here so the gap is named rather than discovered again: **for every guard, which account,
+which widths, which browser, and which rule-set?** Four scope claims, each invisible in a pass,
+each already caught once — the tag list (11ap), the `experimental` flag (11ax), the width list
+(11i-b), and now the account.
