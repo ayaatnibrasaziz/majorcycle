@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { reportIssue } from '@/lib/observability';
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { getSiteURL } from '@/lib/url';
 import { hasUsedTrial } from '@/lib/trialGuard';
@@ -126,7 +127,11 @@ export async function POST(request: Request) {
       .update({ country: billingCountry })
       .eq('id', user.id);
     if (countryErr) {
-      console.error('checkout: could not persist resolved country', countryErr);
+      reportIssue('checkout: could not persist resolved country', {
+        cause: countryErr,
+        level: 'warning',
+        tags: { userId: user.id, country: billingCountry },
+      });
     }
   }
 
@@ -137,7 +142,14 @@ export async function POST(request: Request) {
     // Missing price = the product/prices weren't built in THIS Stripe mode
     // (test vs live are isolated). Log the real cause (owner can't debug a blank
     // 500), but surface a clean message — never a stack trace — to the user.
-    console.error('checkout: could not resolve price', plan, err);
+    // ALERT: the prices were not built in THIS Stripe mode, so NOBODY can subscribe.
+    // A total outage of the one revenue path, presenting to the reader as a polite
+    // "try again shortly" that will never come right on its own.
+    reportIssue('checkout: could not resolve price', {
+      cause: err,
+      level: 'alert',
+      tags: { plan },
+    });
     return NextResponse.json(
       { error: 'Billing is temporarily unavailable. Please try again shortly.' },
       { status: 500, headers: NO_STORE },
@@ -206,7 +218,11 @@ export async function POST(request: Request) {
   } catch (err) {
     // A Stripe API / network failure — log the real error for diagnosis, return a
     // clean retry message to the user (no internal details leak).
-    console.error('checkout: stripe session create failed', err);
+    reportIssue('checkout: stripe session create failed', {
+      cause: err,
+      level: 'alert',
+      tags: { userId: user.id, plan },
+    });
     return NextResponse.json(
       { error: 'Could not start checkout. Please try again.' },
       { status: 502, headers: NO_STORE },

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { reportIssue } from '@/lib/observability';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getSiteURL } from '@/lib/url';
 import { getStripe } from '@/lib/stripe';
@@ -101,7 +102,14 @@ export async function POST(request: Request) {
     // Most likely cause in a fresh mode: no active Customer Portal configuration
     // in THIS Stripe mode yet. Log the real reason (owner can't debug a blank
     // failure) and return the user to /account with a clean, retryable message.
-    console.error('portal: could not create billing portal session', err);
+    // ALERT: this is a paying customer pressing "manage billing" and getting an
+    // error page — which means they cannot change their card and cannot CANCEL.
+    // Being unable to cancel is a consumer-law problem as well as a support one.
+    reportIssue('portal: could not create billing portal session', {
+      cause: err,
+      level: 'alert',
+      tags: { userId: user.id, customerId },
+    });
     return NextResponse.redirect(`${origin}/account?billing=error`, {
       status: 303,
       headers: NO_STORE,

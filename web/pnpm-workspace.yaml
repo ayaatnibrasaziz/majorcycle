@@ -1,5 +1,22 @@
+# Which dependencies may run an install script.
+#
+# pnpm blocks postinstall scripts by default and refuses to run AT ALL until each
+# new one is answered — which is the right shape for a supply-chain decision, and
+# why every entry here is a deliberate yes rather than an inherited default.
+#
+# ⚠️ `@sentry/cli` (H2, 2026-09-16) downloads a binary from Sentry's CDN at install
+# time, and that binary is what uploads SOURCE MAPS during `next build`. Without it
+# a production stack trace is a list of one-letter names inside minified chunks:
+# technically an error report, and useless to an owner who cannot read code. That is
+# the whole value of H2, so this is `true`.
+#
+# The cost, stated rather than discovered later: it puts a third party's CDN in the
+# path of every `pnpm install`, CI and Vercel included. It is the official Sentry
+# package and the binary is cached, but if a deploy ever fails at the install step
+# with a download error, this line is why.
 allowBuilds:
   '@parcel/watcher': true
+  '@sentry/cli': true
   esbuild: true
   sharp: true
   unrs-resolver: true

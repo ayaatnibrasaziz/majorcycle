@@ -1,5 +1,6 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 
 interface ErrorProps {
@@ -9,7 +10,12 @@ interface ErrorProps {
 
 export default function GlobalError({ error, reset }: ErrorProps) {
   useEffect(() => {
+    // ⚠️ Both, always. An error boundary RENDERS correctly while telling us nothing:
+    // the reader gets a tidy apology, and the only trace is a `console.error` in a
+    // browser nobody is watching. The console line stays because it is the one
+    // instrument that works with the SDK off, behind an ad blocker, and locally.
     console.error(error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

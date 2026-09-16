@@ -1,7 +1,11 @@
 # Layer H — Pre-launch Hardening: the plan
 
-**Status:** ✅ **H1 COMPLETE — 2026-09-14/15. Not merged.** All nine decisions taken, both designs
-approved. H1.1–H1.5 all done. **H2 (Sentry) is next.**
+**Status:** ✅ **H1 COMPLETE** (2026-09-14/15, reviewed 2026-09-16) · ✅ **H2 CODE COMPLETE, AND
+DELIBERATELY INERT** (2026-09-16). All nine decisions taken, both designs approved.
+**H3 (`/learn` bands) is next.**
+⚠️ **H2 needs THREE things from the owner before it does anything at all** — a Sentry account and
+DSN (I cannot create an account), a choice of data region (US or EU, and it cannot be changed
+afterwards), and sign-off on the privacy-policy line. See §12.
 **Three findings came out of building it** that the plan did not have — §3, findings I, J and K.
 ⚠️ Finding I changed a **paid** surface beyond the approved design; it was put to the owner, and
 **my first fix for it was wrong** — it passed every automated check and the owner caught it from a
@@ -563,13 +567,16 @@ phones *and* tablets. Every iPad from the 9.7″ up keeps the layout it has toda
 ⚠️ Reuse the public header's `MenuButton` pattern (Escape returns focus to the toggle, the
 panel closes on navigation, 40px rows) rather than writing a second one — 11c.
 
-### H2 · Error monitoring 🔴 SECOND, and runs in parallel
+### H2 · Error monitoring ✅ BUILT 2026-09-16 — see §12
 No UI dependency. Second by **value**: a duplicate subscription is cancelled but **not
 refunded**, and nobody is told. It must be watching **before** beta testers arrive, or the beta
 is what discovers it.
 
-Scope is the full install (owner's decision 2), with the six named log lines as the first
-alerts, plus the `CYCLE_INTERNAL_SECRET` breadcrumb.
+Scope was the full install (owner's decision 2), with the six named log lines as the first
+alerts, plus the `CYCLE_INTERNAL_SECRET` breadcrumb. **Delivered wider than that** — every
+operational failure in `app/` and `lib/` now reports, not six of them — because the alternative
+was a guard that could only be a hand-written list of six, and a hand-written list is this
+repo's most-cited blind spot. §12 has the account.
 
 ### H3 · `/learn` bands + row heights 🟡 THIRD
 Cheap, public, isolated. **Design gate** — the band fix changes how `/learn` looks on a tablet.
@@ -939,6 +946,143 @@ comparison (drawer / icon rail / tabs) on top of it. **All three were answers to
 tablets do not have.** A sweep coarse enough to bracket a threshold is not fine enough to decide
 a breakpoint — and I presented the options as a considered choice rather than saying the
 underlying number was ±20px. The owner's question is what forced the finer measurement.
+
+---
+
+## 12. H2 · Error monitoring — what was built, 2026-09-16
+
+**Status: code complete, guarded, green, and deliberately INERT.** With no
+`NEXT_PUBLIC_SENTRY_DSN`, `Sentry.init` is a no-op, no network request is made and the CSP is
+unchanged. Turning it on is one deliberate act, and it carries a privacy-policy line with it.
+
+### What the owner still has to do — three things, and only the owner can
+
+| # | Why it cannot be done here |
+|---|---|
+| 1 | **Create the Sentry account and give me the DSN.** Creating accounts is outside what I may do. The DSN is **public** by design — it is compiled into the browser bundle — so it goes in Vercel as `NEXT_PUBLIC_SENTRY_DSN` for Production **and** Preview. `SENTRY_AUTH_TOKEN` (source-map upload) is a **real** secret, server-only, and wants `project:releases` and nothing else. |
+| 2 | **Choose a data region — US or EU.** It is fixed when the project is created and a project cannot be moved afterwards. Whichever is chosen is the country the privacy policy names. |
+| 3 | **Approve the privacy-policy line.** Sentry becomes a recipient of personal information the moment the DSN is set (APP 6 / APP 8). The wording is written and is in the diff. |
+
+⚠️ **Nothing can be reported as "monitoring is live" until 1 happens**, and the last step is a
+human one: drive a deliberate error, see it in the inbox, then remove the DSN and confirm the same
+run produces **nothing** — so "it arrived" is about our wiring rather than somebody's default.
+
+### The design, and the one decision inside it worth arguing about
+
+**`lib/observability.ts` is the only place a handled failure is announced.** It writes the
+`console.error` the owner already reads **and** captures to Sentry — both, always, including when
+the SDK is off. The console line is not belt-and-braces: it is the instrument that works when
+Sentry is down, behind an ad blocker, and on a local run.
+
+**The alert rule lives in the code, not in Sentry.** `reportIssue()` takes a level; `level: 'alert'`
+sets the tag `mc.alert = yes`; **one** Sentry rule keys on that tag. The alternative — six rules
+matching six log messages — is 11c-v with the second copy inside a third party's UI, where no type
+checker, grep or gate can see it, and rewording a log line silently stops the alarm matching.
+
+**Scope went wider than the six the plan named**, and that is the decision to review. Six paths
+would have meant a guard that could only be a hand-written list of six. Every operational failure
+in `app/` and `lib/` now reports, and the guard is an **invariant** instead: no bare `console.error`
+outside the reporter and the three error boundaries. ⚠️ **Two paths beyond the six were also raised
+to `alert` and are named here so they can be reversed**: `STRIPE_WEBHOOK_SECRET is not set` and
+`stripe webhook: handler failed`. Both are strictly worse than the six — with no secret, *every*
+webhook is rejected and nobody is provisioned, dunned or lapsed.
+
+### What leaves this machine, and what never does
+
+`lib/sentryOptions.ts` is the one answer for all three runtimes. **Stripped, explicitly:** the
+request's cookies (our session lives there — a session inside an error report is
+credential-equivalent), all headers (`authorization`, `x-mc-internal`, `cookie`), the query string,
+any POST body, the IP address, the reader's email and username. **Kept:** the method, the path, the
+opaque Supabase user id, our own tags and the stack. Every string in the event is then walked and
+email addresses **and credentials** masked — a deep walk rather than a field list, because what
+reaches Sentry is whatever somebody else's error message brought with it.
+
+⚠️ **The credential half came from asking what the WORST value could be, not from anything going
+red.** Every Supabase key is a JWT — the `anon` key, the `service_role` key and every signed-in
+reader's session token all begin `eyJ` — and nothing masked one. `redactSecrets` now covers JWTs,
+Stripe keys (`sk_`/`rk_`/`pk_`/`whsec_`) and `Bearer` values; `redactSensitive` runs it **before**
+the email mask, because masking an address first leaves `eyJ…[email redacted]…`, which no longer
+matches the token pattern and is still most of a credential. **The console line gets the same
+treatment** — a Vercel log is not a safe place for a key either — and the thrown error now reaches
+`console.error` as a redacted stack string rather than as the object.
+
+**Tracing is OFF and there is no Session Replay.** A trace records every URL a reader visits, which
+on this site is a record of which companies a named person looked at; replay records their screen.
+Neither should arrive as a side effect of installing error monitoring.
+
+⚠️ `sendDefaultPii` already defaults to `false`, so several of those strippers remove fields the SDK
+was never going to attach. That is deliberate — 11a, for the seventh time: **state it and guard it**,
+because an unasserted property is one upgrade from being gone and nothing goes red.
+
+### What it cost — measured, not estimated
+
+**+55 KB transferred on every page**, from a controlled A/B with the browser SDK swapped for a
+no-op and the build cache cleared between arms (11i).
+
+| page | without | with | budget | spare |
+|---|---|---|---|---|
+| `/` | 286 | 341 | 360 | 19 |
+| `/articles` | 275 | 330 | 340 | **10** |
+| `/privacy` | 275 | 330 | 340 | **10** |
+| `/stocks` | 336 | 391 | 400 | **9** |
+| `/run` | 312 | 367 | 380 | 13 |
+| `/stocks/us/AAPL` | 1031 | 1087 | 1150 | 63 |
+
+Every budget passes. ⚠️ **But five pages now sit within 13 KB of a ratchet that was tightened
+1400 → 1250 → 1150 precisely so a real saving could not be handed back in silence (11w)** — so the
+next ordinary addition trips CI on a public marketing page. Sentry's own documented tree-shaking
+flags (`__SENTRY_TRACING__` / `__SENTRY_DEBUG__` via Next 16's `compiler.define`) were tried and
+moved the number by **1 KB**; they were removed rather than left in, because an inert line that
+reads as an optimisation is worse than none (11ak). **This is recorded as a cost, not fixed. If the
+owner wants it back, the lever is to stop shipping the browser SDK to the public pages** — the six
+money paths and every API route are server-side and would be unaffected.
+
+### The guards, and what they cannot see
+
+`e2e/observability.spec.ts` — pure, credential-free. It **cannot** prove an event arrives; that
+needs a real project and a human looking at an inbox, and it is step 1 above. It proves everything
+on our side of the wire: the scrubbing, the CSP origin, the client entry filename, the privacy link,
+and that no failure path has gone back to shouting into a console.
+
+**Eleven deliberate breaks, every one caught, and one of them changed the code:**
+
+| Break | Result |
+|---|---|
+| `scrub` keeps the session cookie | caught |
+| `scrub` returns an empty event | caught (the control) |
+| a malformed DSN falls back to a wildcard | caught |
+| the ingest origin never reaches `connect-src` | caught |
+| `sentry.client.config.ts` comes back | caught |
+| a failure path returns to `console.error` | caught |
+| one of the six stops being an alert | caught |
+| the redaction sweep matches only `console.*` | caught |
+| **everything becomes an alert** | **NOT caught → the guard was fixed** |
+| the privacy line loses its condition | caught |
+| Sentry vanishes from the recipients | caught |
+
+⚠️ **The ninth is the one worth reading.** The control asserted the distribution of `level: 'alert'`
+across the SOURCE — "not none, not all" — and a reporter tagging **every** event `yes` left every
+source count untouched and the file green. A guard watching a proxy for the thing. Fixed by
+exporting the two-line mapping so a test can call it: a function can be driven, a count of literals
+cannot.
+
+⚠️ **And the sabotage harness itself reported EIGHT false negatives first.** Eight from eight is not
+a finding about eight guards; it is a finding about the instrument. Playwright's `webServer` runs
+`pnpm`, which is not on PATH inside the cmd.exe Python's `shell=True` creates, so no test ever ran —
+and the verdict function, seeing no "failed", scored silence as a pass. It now refuses any run whose
+output carries no test counts. **A verdict function must be able to say "I don't know."**
+
+### Two things that did NOT change, and why
+
+**No `tunnelRoute`.** Sentry offers one — events proxied through our own origin so an ad blocker
+cannot stop them, and no new CSP origin. Declined: it is an open forwarder to a third party hidden
+behind our own domain, a new route handler needing its own cache header and its own place in
+`check:entitlement-gates`, and it hides the egress the CSP line exists to declare.
+
+**The offline report stubs the SDK by CLASS.** No component reaches `@sentry/nextjs` today — that
+is a fact about this week, and 11d is the record of what happens when it stops being one. The
+esbuild build resolves `@sentry/*` to a no-op and `assertNoServerCode()` refuses an artifact
+containing `ingest.sentry.io` or `sentry-trace`. Verified on the emitted file: zero matches.
 
 ---
 

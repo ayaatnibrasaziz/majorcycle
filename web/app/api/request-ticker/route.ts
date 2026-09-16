@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { reportIssue } from '@/lib/observability';
 import { createAdminClient, createServerSupabaseClient } from '@/lib/supabase/server';
 import type { Market, TickerRequest } from '@/lib/types';
 
@@ -75,7 +76,10 @@ export async function POST(request: Request) {
     .eq('is_active', true)
     .maybeSingle();
   if (listingErr) {
-    console.error('request-ticker: listings lookup failed', symbol, listingErr);
+    reportIssue('request-ticker: listings lookup failed', {
+      cause: listingErr,
+      tags: { symbol },
+    });
     return NextResponse.json(
       { error: 'Could not check coverage right now' },
       { status: 503, headers: { ...NO_STORE, 'Retry-After': '5' } },
@@ -95,7 +99,7 @@ export async function POST(request: Request) {
     .eq('ticker', symbol)
     .maybeSingle();
   if (stockErr) {
-    console.error('request-ticker: stocks lookup failed', symbol, stockErr);
+    reportIssue('request-ticker: stocks lookup failed', { cause: stockErr, tags: { symbol } });
     return NextResponse.json(
       { error: 'Could not check coverage right now' },
       { status: 503, headers: { ...NO_STORE, 'Retry-After': '5' } },

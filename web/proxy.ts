@@ -90,6 +90,9 @@ export async function proxy(request: NextRequest) {
     dev: process.env.NODE_ENV !== 'production',
     supabaseUrl: process.env['NEXT_PUBLIC_SUPABASE_URL'],
     siteOrigin: SITE_ORIGIN,
+    // Undefined until the owner configures error monitoring, and then the policy
+    // widens by exactly one derived origin. Off ⇒ nothing is added (lib/csp.ts).
+    sentryDsn: process.env['NEXT_PUBLIC_SENTRY_DSN'],
     // `null` unless this is an /articles page AND the button is switched on, so
     // a disabled feature widens nothing anywhere (lib/preferredSource.ts).
     preferredSourceOrigin: usesPreferredSource(pathname) ? PREFERRED_SOURCE.origin : null,

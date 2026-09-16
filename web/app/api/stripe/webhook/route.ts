@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 
+import { reportIssue } from '@/lib/observability';
 import { getStripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
@@ -90,7 +91,10 @@ async function resolveUserIdFromDispute(
       cust = customerId(charge.customer);
     }
   } catch (err) {
-    console.error('stripe webhook: could not retrieve charge for dispute', dispute.id, err);
+    reportIssue('stripe webhook: could not retrieve charge for dispute', {
+      cause: err,
+      tags: { disputeId: dispute.id, customerId: cust },
+    });
   }
   return { userId: await userIdByCustomer(admin, cust), customerId: cust };
 }
@@ -100,7 +104,10 @@ async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<Eve
   const cust = customerId(sub.customer);
   const userId = await resolveUserId(admin, sub);
   if (!userId) {
-    console.error('stripe webhook: no profile for canceled subscription', sub.id);
+    reportIssue('stripe webhook: no profile for canceled subscription', {
+      level: 'alert',
+      tags: { subscriptionId: sub.id, customerId: cust },
+    });
     return { customerId: cust, subscriptionId: sub.id };
   }
   // Only lapse the account if this deleted sub is the one currently on file (or none is).
@@ -194,7 +201,12 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       const subscriptionId = refId(invoice.parent?.subscription_details?.subscription);
       const userId = await resolveUserIdFromInvoice(admin, invoice);
       if (!userId) {
-        console.error('stripe webhook: no profile for paid invoice', invoice.id);
+        // ALERT: money arrived and we cannot say whose it is. This is the exact
+        // shape of "someone paid and was never provisioned".
+        reportIssue('stripe webhook: no profile for paid invoice', {
+          level: 'alert',
+          tags: { invoiceId: invoice.id, customerId: cust, subscriptionId },
+        });
         return { customerId: cust, subscriptionId };
       }
       // Act only on the sub currently on file. A payment for an OLD/superseded sub (or a
@@ -243,7 +255,10 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       const subscriptionId = refId(invoice.parent?.subscription_details?.subscription);
       const userId = await resolveUserIdFromInvoice(admin, invoice);
       if (!userId) {
-        console.error('stripe webhook: no profile for failed invoice', invoice.id);
+        reportIssue('stripe webhook: no profile for failed invoice', {
+          level: 'alert',
+          tags: { invoiceId: invoice.id, customerId: cust, subscriptionId },
+        });
         return { customerId: cust, subscriptionId };
       }
       // Only dun a RENEWAL of the sub currently on file. Skip `subscription_create` (the
@@ -355,7 +370,11 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
           try {
             await getStripe().subscriptions.cancel(prof.stripe_subscription_id);
           } catch (err) {
-            console.error('stripe webhook: cancel after lost dispute failed', ctx.userId, err);
+            reportIssue('stripe webhook: cancel after lost dispute failed', {
+              cause: err,
+              level: 'alert',
+              tags: { userId: ctx.userId, subscriptionId: prof.stripe_subscription_id },
+            });
           }
         }
       }
@@ -378,7 +397,11 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
 export async function POST(request: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!secret) {
-    console.error('stripe webhook: STRIPE_WEBHOOK_SECRET is not set');
+    // ⚠️ ALERT, and NOT one of the six the plan named — added deliberately, because
+    // it is strictly worse than all six: with no secret we reject EVERY event, so
+    // nobody is provisioned, nobody is dunned and nobody lapses. Named here so the
+    // owner can see the addition and reverse it.
+    reportIssue('stripe webhook: STRIPE_WEBHOOK_SECRET is not set', { level: 'alert' });
     return new NextResponse('Webhook not configured', { status: 500 });
   }
 
@@ -411,7 +434,10 @@ export async function POST(request: Request) {
     )
     .select('id');
   if (claimErr) {
-    console.error('stripe webhook: could not record event', claimErr);
+    reportIssue('stripe webhook: could not record event', {
+      cause: claimErr,
+      tags: { eventId: event.id, eventType: event.type },
+    });
     return new NextResponse('Storage error', { status: 500 }); // let Stripe retry
   }
   if (!claimed || claimed.length === 0) {
@@ -422,7 +448,15 @@ export async function POST(request: Request) {
   try {
     ctx = await handleEvent(admin, event);
   } catch (err) {
-    console.error('stripe webhook: handler failed', event.type, err);
+    // ⚠️ ALERT, also beyond the six, for the same reason: Stripe retries, but a
+    // deterministic failure retries into the same wall and the event is eventually
+    // dropped. The claim is released below, so a silent version of this loses a
+    // billing event entirely.
+    reportIssue('stripe webhook: handler failed', {
+      cause: err,
+      level: 'alert',
+      tags: { eventType: event.type, eventId: event.id },
+    });
     // Release the claim so Stripe's automatic retry reprocesses this event.
     await admin.from('stripe_events').delete().eq('id', event.id);
     return new NextResponse('Handler error', { status: 500 });
@@ -442,7 +476,11 @@ export async function POST(request: Request) {
       })
       .eq('id', event.id);
     if (enrichErr) {
-      console.error('stripe webhook: could not enrich event row', event.id, enrichErr);
+      reportIssue('stripe webhook: could not enrich event row', {
+        cause: enrichErr,
+        level: 'warning',
+        tags: { eventId: event.id },
+      });
     }
   }
 

@@ -2074,6 +2074,111 @@ locally with the stored secret.
 
 ---
 
+## 7.5 Error monitoring — Sentry (Layer H2, 2026-09-16)
+
+**Off until a DSN exists.** `NEXT_PUBLIC_SENTRY_DSN` is the switch: empty ⇒ `Sentry.init` is a
+no-op, no network request is made, and the CSP is byte-identical to before. That is how it ships,
+because turning it on discloses personal information to an overseas recipient and should be an act
+rather than a default.
+
+### The shape
+
+| File | Runtime | Job |
+|---|---|---|
+| `instrumentation-client.ts` | browser | init, plus `onRouterTransitionStart` |
+| `sentry.server.config.ts` | Node | init |
+| `sentry.edge.config.ts` | Edge (`proxy.ts`) | init |
+| `instrumentation.ts` | both server runtimes | loads the two above; exports `onRequestError` |
+| `app/global-error.tsx` | browser | the boundary for a root-layout failure |
+| `lib/sentryOptions.ts` | all three | **what may leave this machine** |
+| `lib/observability.ts` | server | `reportIssue()` — the one place a handled failure is announced |
+
+⚠️ **`instrumentation-client.ts`, never `sentry.client.config.ts`.** Sentry's older guides name the
+second; under Turbopack — Next 16's default bundler, and ours — that file is **never imported**. It
+would sit in the repository, read correctly, pass lint and typecheck, and do nothing, while browser
+errors quietly stopped arriving. `e2e/observability.spec.ts` asserts the wrong file is **absent**,
+because its presence reads as coverage.
+
+### Two kinds of failure, two mechanisms
+
+**Handled** failures — the ~30 places that catch an error, do the right thing, and log — go through
+`reportIssue()`. **Unhandled** ones are caught by `onRequestError` (server components, route
+handlers, server actions, middleware) and by the three client error boundaries.
+
+`reportIssue()` writes the `console.error` **and** captures. Both, always. The console line is the
+instrument that survives Sentry being down, an ad blocker, and a local run; the capture is the one
+that reaches somebody when nobody is looking.
+
+### Alerting is declared in code
+
+`reportIssue(msg, { level: 'alert' })` sets the tag `mc.alert = yes`, and **one** Sentry rule keys
+on that tag:
+
+```
+the event's tags match   mc.alert   equals   yes
+```
+
+Six rules matching six log messages would put the second copy of the rule inside a third party's
+UI, where no type checker, grep or gate can see it — and rewording a log line would silently stop
+the alarm matching (CLAUDE.md 11c-v, 11bj).
+
+### What is stripped, and what is kept
+
+`scrub()` in `lib/sentryOptions.ts`, applied to every event and every transaction.
+
+**Never sent:** request cookies (the Supabase session lives there), all request headers
+(`authorization`, `cookie`, `x-mc-internal`), the query string, any POST body, the IP address, the
+reader's email and username. Every remaining string is then walked and both **email addresses and
+credentials** masked (`redactSensitive` in `lib/redact.ts` — JWTs, Stripe keys, `Bearer` values) —
+a deep walk, not a field list, because the case that actually happens is a token sitting in a field
+nobody predicted: an upstream error body echoing the request it rejected.
+
+⚠️ Every Supabase key is a JWT — the `anon` key, the `service_role` key and every reader's
+session token all begin `eyJ`. The same redactor runs on the **console line**, because a Vercel log
+is not a safe place for one either.
+
+**Sent:** the method, the path, the opaque Supabase user id, our own tags, the stack.
+
+**Tracing is off (`tracesSampleRate: 0`) and there is no Session Replay.** A trace is a record of
+which companies a named person looked at; a replay is a recording of their screen. Neither belongs
+in an error-monitoring install, and both can be turned on later with a privacy line to match.
+
+### CSP and the deployed artifact
+
+`connect-src` gains exactly one origin, **derived from the DSN** by `sentryOriginForCsp()` so the
+policy and the SDK can never name different hosts. With no DSN it gains nothing — and specifically
+not a wildcard, which would grant every Sentry project on the internet for a feature that is off.
+
+There is **no `tunnelRoute`**: it is an open forwarder to a third party behind our own domain, a new
+route handler needing its own cache header, and it hides the egress the CSP line exists to declare.
+
+Source maps upload only when `SENTRY_AUTH_TOKEN` is set, and
+`sourcemaps.deleteSourcemapsAfterUpload` keeps the `.map` files out of the deployed output — so the
+maps reach Sentry, where the owner needs them, and not the public web.
+
+⚠️ **The offline report stubs the SDK by class.** `scripts/build-report-bundle.mjs` resolves
+`@sentry/*` to a no-op and `assertNoServerCode()` refuses an artifact containing `ingest.sentry.io`
+or `sentry-trace`. No component reaches the SDK today; 11d is the record of what happens when that
+stops being true.
+
+### Cost
+
+**+55 KB transferred on every page** (controlled A/B, build cache cleared between arms). All
+`check:page-weight` budgets pass; five pages sit within 13 KB of theirs. Sentry's documented
+tree-shaking flags moved the number by 1 KB and were removed rather than left inert.
+
+### The environment variables
+
+| | Kind | Where |
+|---|---|---|
+| `NEXT_PUBLIC_SENTRY_DSN` | **public by design** — compiled into the browser bundle | Vercel Production + Preview |
+| `SENTRY_AUTH_TOKEN` | **a real secret** — can write to the project | Vercel, server-only, `project:releases` |
+| `SENTRY_ORG` / `SENTRY_PROJECT` | not secrets — slugs for the upload | Vercel |
+
+⚠️ Treating the DSN as a secret is the mistake to avoid: hidden where the client build cannot read
+it, browser monitoring is silently off.
+
+
 ## 8. Cron Job Specification
 
 ### Daily smart refresh — `daily-refresh.yml` (US+CA) + `daily-refresh-au.yml` (AU)

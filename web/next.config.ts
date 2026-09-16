@@ -1,3 +1,9 @@
+// ⚠️ `@sentry/nextjs/config`, not `@sentry/nextjs`. The root export still works and
+// prints a deprecation notice saying it stops working in v11 — and a warning in a
+// build log is exactly the thing this project loses hours to when it goes stale
+// (coding-standards §38). Fixed on arrival rather than left to be discovered by a
+// major-version bump.
+import { withSentryConfig } from "@sentry/nextjs/config";
 import type { NextConfig } from "next";
 
 // ── Security headers (F0.5 finding F) ───────────────────────────────
@@ -63,6 +69,7 @@ const retiredRoutes = [
 const nextConfig: NextConfig = {
   distDir,
 
+
   // ── Config review, Layer G, 2026-08-22 ─────────────────────────────────────
   // Three settings the roadmap flagged as "never consciously decided". Each is
   // now decided, and the two that stay at their defaults say so, because
@@ -87,6 +94,26 @@ const nextConfig: NextConfig = {
   // directive. See `lib/csp.ts` for the two forms and `pnpm check:csp` for the
   // proof, which reads the headers and the rendered HTML off a real server rather
   // than trusting this file.
+  // ⚠️ **THERE IS NO `compiler.define` SENTRY TREE-SHAKE HERE, AND THAT IS A
+  // MEASURED RESULT RATHER THAN AN OVERSIGHT (H2, 2026-09-16).**
+  //
+  // Installing the SDK costs **+55 KB transferred on every page** — a controlled
+  // A/B with the browser SDK swapped for a no-op and the build cache cleared
+  // between arms (11i). That is worth attacking, because `check:page-weight` is a
+  // RATCHET, tightened 1400 → 1250 → 1150 precisely so a real saving cannot be
+  // handed back in silence (11w).
+  //
+  // Sentry documents `__SENTRY_DEBUG__` and `__SENTRY_TRACING__` as build-time
+  // flags that drop its debug logging and its tracing code, and Next 16 exposes
+  // `compiler.define`. Both were set to `false` and the whole thing rebuilt from a
+  // cleared cache: **every page came back within 1 KB of the un-flagged build**
+  // (ticker 1087 → 1086). They buy nothing here — the flags do not reach the
+  // package, or v10 no longer honours them under Turbopack.
+  //
+  // So they are NOT left in place. Two lines that read as an optimisation, pass
+  // every check and do nothing are this repo's own recurring defect (11ak), and
+  // the next person to look would have believed the bundle was already trimmed.
+  // The 55 KB is recorded as a cost instead — see `docs/layer-h-plan.md` §H2.
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
@@ -95,4 +122,51 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * ── Sentry (H2, 2026-09-16) ──────────────────────────────────────────────────
+ *
+ * `withSentryConfig` does two things at BUILD time, and neither touches the
+ * runtime options — those are all in `lib/sentryOptions.ts`, deliberately, so the
+ * question "what may leave this machine?" has exactly one answer (11c).
+ *
+ * 1. It wires the SDK into the bundler.
+ * 2. It uploads SOURCE MAPS, if `SENTRY_AUTH_TOKEN` is set. Without them a
+ *    production stack trace is a list of one-letter names in minified chunks —
+ *    technically an error report, practically unreadable, which for an owner who
+ *    cannot debug code is the same as no report at all.
+ *
+ * ⚠️ **`SENTRY_AUTH_TOKEN` is the one real secret in this feature**, and it is the
+ * opposite of the DSN in every way: server-only, never `NEXT_PUBLIC_`, and it can
+ * write to the Sentry project. Absent ⇒ the upload step is skipped and the build
+ * still succeeds, which is the right failure: a missing token must never turn a
+ * deploy red.
+ *
+ * ⚠️ `widenClientFileUpload` is OFF. It uploads maps for every chunk rather than
+ * the pages', which is more thorough and also publishes more of our source to a
+ * third party. Off is the narrower default; turn it on if a stack trace ever
+ * arrives unresolvable.
+ *
+ * ⚠️ `deleteSourcemapsAfterUpload` keeps the `.map` files out of the DEPLOYED
+ * output, so the maps end up in Sentry (where the owner needs them) and not on the
+ * public web (where anyone would have them). Without it, installing error
+ * monitoring would quietly publish this application's source — a privacy and
+ * competitive exposure with no upside, arriving as a side effect of a debugging
+ * feature.
+ */
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Silent unless something goes wrong — a build log full of upload chatter is how
+  // the one line that matters gets missed.
+  silent: !process.env.CI,
+  widenClientFileUpload: false,
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+  // ⚠️ `disableLogger` and `automaticVercelMonitors` are NOT set, and their absence
+  // is the decision. Both are deprecated in favour of options under a `webpack.`
+  // namespace, and this project builds with **Turbopack** — Next 16's default — where
+  // the SDK's own warning says they are not supported. Setting them would have been
+  // two lines that read as configuration, pass every check, and do nothing at all:
+  // the inert-line defect (11ak). If a build log ever fills with SDK chatter, the
+  // answer is `webpack.treeshake.removeDebugLogging`, not these.
+});

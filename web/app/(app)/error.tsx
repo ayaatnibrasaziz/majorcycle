@@ -1,5 +1,6 @@
 'use client';
 
+import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 
 interface ErrorProps {
@@ -9,7 +10,10 @@ interface ErrorProps {
 
 export default function AppError({ error, reset }: ErrorProps) {
   useEffect(() => {
+    // ⚠️ Both, always — see the note in `app/error.tsx`. This boundary is the one a
+    // PAYING customer meets, so a failure reaching it silently is the expensive kind.
     console.error(error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

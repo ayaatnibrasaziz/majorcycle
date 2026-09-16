@@ -2,6 +2,7 @@ import { cache } from 'react';
 
 import { toCamel } from '@/lib/case';
 import { INTERNAL_HEADER } from '@/lib/internalAuth';
+import { addBreadcrumb, reportIssue } from '@/lib/observability';
 import type { CycleAnalysis, CycleAnalysisFree } from '@/lib/types';
 
 export type CyclePreset = 'short' | 'medium' | 'long';
@@ -218,13 +219,45 @@ export const fetchCycleAnalysis = cache(
         next: { revalidate: 3600 },
         headers: { [INTERNAL_HEADER]: process.env.CYCLE_INTERNAL_SECRET ?? '' },
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        // ⚠️ THE SILENT ONE (H2). The graceful degrade above is right — cycle data is
+        // enriching, not blocking — but it is also why a wrong or missing
+        // `CYCLE_INTERNAL_SECRET` is the most expensive misconfiguration this product
+        // has: the endpoint answers 401, this returns null, and EVERY Stock Detail
+        // page renders **200 with its cycle sections empty**. No error, no blank
+        // screen, no failing status. A page that looks finished and is missing the
+        // whole paid analysis.
+        //
+        // A 401 is therefore an alarm, not a degrade: the endpoint is internal-only,
+        // so the only caller is us, and the only way to be refused is a secret that
+        // does not match. Every other status is a breadcrumb — the fact that explains
+        // whatever fails next, without crying wolf over one provider hiccup.
+        if (res.status === 401) {
+          reportIssue('cycle: /api/cycle refused our internal secret', {
+            level: 'alert',
+            tags: {
+              ticker,
+              action: 'CYCLE_INTERNAL_SECRET disagrees between the app and api/cycle.py',
+            },
+          });
+        } else {
+          addBreadcrumb('cycle: /api/cycle did not answer', {
+            status: res.status,
+            ticker,
+          });
+        }
+        return null;
+      }
       const raw: unknown = await res.json();
       return stripPremium(
         toCamel<CycleAnalysis | CycleAnalysisFree>(raw as never),
         entitled,
       );
-    } catch {
+    } catch (err) {
+      addBreadcrumb('cycle: /api/cycle could not be reached', {
+        ticker,
+        reason: err instanceof Error ? err.name : 'unknown',
+      });
       return null;
     }
   },

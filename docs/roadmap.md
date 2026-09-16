@@ -3227,9 +3227,9 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
   - 🟢 Closes a Layer C defect for free: the scorecard radar's clipped labels, which that audit
     already attributed to "the pre-existing 220px fixed sidebar".
 
-#### H2 · Error monitoring (Sentry) 🔴 SECOND — owner confirmed IN Layer H
+#### H2 · Error monitoring (Sentry) ✅ **BUILT 2026-09-16 — INERT UNTIL THE OWNER SUPPLIES A DSN**
 
-- [ ] Full install, not money-paths-only. ⚠️ Two docs disagreed: the roadmap listed it here, the
+- [x] Full install, not money-paths-only. ⚠️ Two docs disagreed: the roadmap listed it here, the
       5a sweep called it "a Phase 2 decision". **Owner settled it 2026-09-14: Layer H.**
 
   - **The money paths first.** All six log lines re-verified present on 2026-09-14 at the paths
@@ -3247,6 +3247,21 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
     page **200 with empty cycle sections**.
   - **Proof:** each path *driven* and the event seen in the inbox — billing ones on a Stripe test
     clock — with a DSN-removed control, so "it arrived" is about our wiring and not a default.
+
+  - ✅ **DELIVERED WIDER THAN THE SIX, deliberately** — every operational failure in `app/` and
+    `lib/` reports through `lib/observability.ts`, because six paths would have meant a guard that
+    could only be a hand-written list of six. The guard is an invariant instead: no bare
+    `console.error` outside the reporter and the three error boundaries.
+  - ⚠️ **THE ALERT RULE IS IN THE CODE, NOT IN SENTRY.** `level: 'alert'` sets the tag
+    `mc.alert = yes` and ONE Sentry rule keys on it. Six rules matching six log messages would be
+    11c-v with the second copy inside a third party's UI — invisible to every tool here, and
+    silently unmatched the moment somebody rewords a log line.
+  - ⚠️ **IT COSTS +55 KB ON EVERY PAGE**, measured as a controlled A/B. Every budget still
+    passes; five pages now sit within 13 KB of a ratchet deliberately tightened 1400 → 1250 → 1150.
+    Sentry's own tree-shake flags moved it by 1 KB and were removed rather than left inert (11ak).
+  - ⚠️ **THREE THINGS ARE THE OWNER'S AND BLOCK THE PROOF ABOVE**: create the account and
+    supply the DSN, choose a data region (US or EU — fixed at creation, a project cannot be moved),
+    and approve the privacy-policy line. Full account: `docs/layer-h-plan.md` §12.
 
 #### H3 · `/learn` band rhythm + touch targets 🟡
 

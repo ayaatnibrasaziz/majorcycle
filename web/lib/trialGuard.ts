@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { reportIssue } from '@/lib/observability';
 import type { createAdminClient } from '@/lib/supabase/server';
 
 /**
@@ -43,7 +44,10 @@ export async function hasUsedTrial(admin: Admin, email: string | null | undefine
     .eq('email_hash', hashEmail(email))
     .limit(1);
   if (error) {
-    console.error('trialGuard: hasUsedTrial lookup failed', error);
+    // Fails OPEN — an unreadable tombstone table means a second free trial is
+    // granted rather than a real customer being refused one. The right direction,
+    // and the reason it has to be reported: the cost of being wrong is silent.
+    reportIssue('trialGuard: hasUsedTrial lookup failed', { cause: error });
     return false;
   }
   return (data?.length ?? 0) > 0;
@@ -64,7 +68,7 @@ export async function recordTrialConsumed(admin: Admin, email: string | null | u
       .eq('email_hash', emailHash)
       .limit(1);
     if (lookupErr) {
-      console.error('trialGuard: recordTrialConsumed lookup failed', lookupErr);
+      reportIssue('trialGuard: recordTrialConsumed lookup failed', { cause: lookupErr });
       return;
     }
     if (data && data.length > 0) return; // already tombstoned
@@ -72,9 +76,9 @@ export async function recordTrialConsumed(admin: Admin, email: string | null | u
       .from('trial_tombstones')
       .insert({ email_hash: emailHash });
     if (insertErr) {
-      console.error('trialGuard: could not write trial tombstone', insertErr);
+      reportIssue('trialGuard: could not write trial tombstone', { cause: insertErr });
     }
   } catch (err) {
-    console.error('trialGuard: recordTrialConsumed failed', err);
+    reportIssue('trialGuard: recordTrialConsumed failed', { cause: err });
   }
 }

@@ -1,4 +1,5 @@
 import { renderBrandEmail } from '@/lib/email/brandEmail';
+import { reportIssue } from '@/lib/observability';
 import { redactEmails } from '@/lib/redact';
 
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
@@ -42,7 +43,13 @@ export async function sendBrandEmail(input: SendBrandEmailInput): Promise<boolea
     // `heading`, never `subject`: the referral subject carries the sender's own name,
     // and this line only needs to say WHICH email failed. All seven headings are fixed
     // literals we write (P9, 5A-163).
-    console.error('sendBrandEmail: RESEND_API_KEY not set — not sent:', input.heading);
+    // ALERT: no key means NO transactional email at all — no password reset, no
+    // trial welcome, no payment-failure warning. Every one of those fails silently
+    // from the reader's side: they ask for a reset link and simply never get one.
+    reportIssue('sendBrandEmail: RESEND_API_KEY not set — not sent', {
+      level: 'alert',
+      tags: { heading: input.heading },
+    });
     return false;
   }
 
@@ -73,16 +80,25 @@ export async function sendBrandEmail(input: SendBrandEmailInput): Promise<boolea
     if (!res.ok) {
       // Redacted, not dropped: this body is the only thing that says WHY a customer's
       // email did not arrive, and Resend decides what goes in it (5A-163).
-      console.error(
-        'sendBrandEmail: Resend send failed',
-        res.status,
-        redactEmails(await res.text()),
-      );
+      reportIssue('sendBrandEmail: Resend send failed', {
+        tags: {
+          status: res.status,
+          heading: input.heading,
+          // Redacted, not dropped: this body is the only thing that says WHY a
+          // customer's email did not arrive, and Resend decides what goes in it
+          // (5A-163). `reportIssue` redacts again on the way out, which is a
+          // backstop rather than a reason to stop doing it here.
+          body: redactEmails(await res.text()),
+        },
+      });
       return false;
     }
     return true;
   } catch (err) {
-    console.error('sendBrandEmail: Resend request threw', err);
+    reportIssue('sendBrandEmail: Resend request threw', {
+      cause: err,
+      tags: { heading: input.heading },
+    });
     return false;
   }
 }
