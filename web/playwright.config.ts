@@ -84,6 +84,14 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: `pnpm exec next dev --port ${PORT}`,
+    // ⚠️ Turbopack's dev filesystem cache OFF for this server only — see the note
+    // in `next.config.ts`. Sampled every 20s across a real run, it took this
+    // machine from 11.47 GB free to 0.00 GB in eleven minutes and failed the suite
+    // with ENOSPC three times, scattering red across unrelated specs that were
+    // perfectly healthy. The cache buys a throwaway server nothing: it is never
+    // reused (see `reuseExistingServer` below) and `.next-dev` is routinely
+    // cleared. 83 MB against ~11 GB, measured.
+    env: { MC_E2E_NO_FS_CACHE: '1' },
     url: BASE_URL,
     // NEVER reuse. This was `!process.env.CI`, i.e. locally a run would attach to
     // whatever `next dev` already held port 3100 — no matter how old it was or which

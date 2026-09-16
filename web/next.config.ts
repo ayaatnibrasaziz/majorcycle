@@ -68,6 +68,28 @@ const retiredRoutes = [
 
 const nextConfig: NextConfig = {
   distDir,
+  // ── Turbopack's dev filesystem cache, and why the E2E RUN switches it off ────
+  // Measured 2026-09-16, sampling free disk every 20s through a full `pnpm gates`:
+  // the e2e gate's dev server took this machine from **11.47 GB free to 0.00 GB in
+  // eleven minutes**, then sat at zero — and the suite failed with `ENOSPC` three
+  // runs in a row, each time scattering unrelated red across purge-cron,
+  // universe-api and the responsive sweep. Those failures were pure collateral:
+  // driven by hand on a healthy server, every one of those endpoints answers
+  // correctly.
+  //
+  // The cache is worth having for a HUMAN — `pnpm dev` restarts warm. It is worth
+  // nothing to the e2e run, which spawns a throwaway server, never reuses it
+  // (`reuseExistingServer: false`), and is routinely handed a cleared `.next-dev`.
+  // Measured with it off: **83 MB against ~11 GB**, same six routes, same statuses.
+  //
+  // ⚠️ So it is scoped to the test run rather than turned off globally. Switching
+  // it off for everyone would quietly make the owner's own dev server slower to
+  // start, to fix a problem they never see — paying for a machine's disk pressure
+  // with a permanent tax on the person working here. `playwright.config.ts` sets
+  // the variable; nothing else does.
+  experimental: {
+    turbopackFileSystemCacheForDev: process.env.MC_E2E_NO_FS_CACHE !== '1',
+  },
 
 
   // ── Config review, Layer G, 2026-08-22 ─────────────────────────────────────
