@@ -150,6 +150,39 @@ MAX_RETIRE_PCT = 2.0
 #: an outcome (CLAUDE.md 11e).
 NEVER_FETCHED = 10_000
 
+#: How many of its own market's SESSIONS a benchmark index may trail its equities
+#: before the run goes red. TWO, not one — and the reason is measured rather than
+#: chosen for comfort.
+#:
+#: ⚠️ This was effectively ONE (any lag at all) until 2026-09-16, and it turned
+#: both nightly workflows red on consecutive nights for a condition that had
+#: already repaired itself. What happens is a fetch-time race, not a data defect:
+#: `daily_refresh` pulls the equities and the index in the same run, and the
+#: provider can publish the session's equity bars before the index's. On
+#: 2026-09-14 the AU run stored 246 equities at 09-14 and `^AXJO` at 09-11, went
+#: red — and the next pull filled 09-14 and 09-15 in. Measured across 90 days on
+#: the live database, every one of the four indices holds a bar for **every**
+#: session its own market had: zero holes. The lag is always transient.
+#:
+#: ⚠️ And the run that went red second had no power to fix it: `^AXJO` is
+#: refreshed only by the AU workflow, and it was the US+CA workflow that
+#: inherited the lag eight hours later and failed on it. A red X for something
+#: the reader cannot act on is how people learn to ignore red (CLAUDE.md 11z).
+#:
+#: ⚠️ THE ALLOWANCE IS SAFE ONLY BECAUSE `index_gaps` NOW EXISTS. Tolerating a
+#: session of lag without it would be a straight weakening. The pair is strictly
+#: STRONGER than what it replaces: a lag that does not heal still goes red on the
+#: second night, and a HOLE — a session the index skipped and will never refill,
+#: which the old newest-bar comparison was structurally blind to — goes red the
+#: first time it is seen. A hole is the dangerous shape, because it shortens the
+#: calendar every equity is ranked against for good.
+INDEX_LAG_ALARM_SESSIONS = 2
+
+#: How far back to look for holes in an index's history. Long enough that a real
+#: hole cannot age out before anyone reads the log, short enough to stay one
+#: cheap query per index.
+INDEX_HISTORY_WINDOW = 60
+
 
 def _get_supabase() -> Client:
     url = os.environ.get("SUPABASE_URL") or os.environ["NEXT_PUBLIC_SUPABASE_URL"]
@@ -270,8 +303,120 @@ INDEX_HOME_MARKET: dict[str, str] = {
 }
 
 
-def stale_indices(newest: dict[str, Optional[str]]) -> list[tuple[str, str, str]]:
-    """Benchmark indices whose newest bar is older than their own market's.
+#: How many of a market's freshest equities are read to build its session list.
+#: FIVE, because a single reference ticker can itself skip a day — and the freshest
+#: equities sorted alphabetically are microcaps (the AU three are 29M, 360, 4DX),
+#: for which a day with no trade is ordinary rather than a fault.
+_SESSION_WITNESSES = 5
+
+
+def equity_sessions(
+    sb: Client,
+    newest: Mapping[str, Optional[str]],
+    days: int = INDEX_HISTORY_WINDOW,
+) -> dict[str, list[str]]:
+    """Each market's real session dates, read from its EQUITIES, most recent first.
+
+    ⚠️ This exists because an index cannot be ranked against `market_calendars`:
+    that calendar IS the index, so the comparison is ^GSPC against ^GSPC — always
+    zero behind, a check that cannot fail. The equities are the only independent
+    witness a market has.
+
+    ⚠️ And it is NOT the broken fallback `market_calendars` warns about. That one
+    built a calendar out of each ticker's single NEWEST date, so with 869 current
+    companies and one straggler only two dates were ever in evidence. This reads
+    each witness's full recent history, which is a genuine session list.
+
+    A market with no witness is reported as unchecked, never as clean (14g).
+    """
+    by_market: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for ticker, bar_date in newest.items():
+        if not bar_date or ticker.startswith("^"):
+            continue
+        by_market[_market_of(ticker)].append((bar_date, ticker))
+
+    out: dict[str, list[str]] = {}
+    for market, rows in sorted(by_market.items()):
+        # Freshest first, ties broken alphabetically so the witnesses are the same
+        # every run and a disagreement between two nights means the DATA moved,
+        # not the sample. Two passes, because Python's sort is stable and the two
+        # keys run in opposite directions.
+        rows.sort(key=lambda r: r[1])
+        rows.sort(key=lambda r: r[0], reverse=True)
+        witnesses = [t for _, t in rows[:_SESSION_WITNESSES]]
+        # ⚠️ UNION, not a majority or an intersection, and the reason is what a
+        # session IS: the market was open on day D exactly when some equity printed
+        # a bar on D. One witness carrying a date is therefore proof, and the other
+        # four not carrying it is ordinary — those companies did not trade.
+        #
+        # A first draft required two of three. That can DELETE a real session, and
+        # a short calendar makes a lagging index read as current — the precise
+        # masking this whole check exists to prevent. It survived a deliberate
+        # break (loosening it to one changed nothing the tests could see), which is
+        # what sent me back to the semantics rather than to the threshold: a
+        # sabotage that fails to break is a finding about the model, not a verdict
+        # on the test (CLAUDE.md 11u/11ar).
+        #
+        # The opposite error — a spurious bar on a day the market was shut — would
+        # need a defect in stored data, and costs one phantom session, which the
+        # lag tolerance absorbs. The asymmetry settles it.
+        seen: dict[str, int] = defaultdict(int)
+        for ticker in witnesses:
+            res = (
+                sb.table("price_bars")
+                .select("date")
+                .eq("ticker", ticker)
+                .order("date", desc=True)
+                .limit(days)
+                .execute()
+            )
+            for r in cast(list[dict[str, Any]], res.data or []):
+                seen[str(r["date"])] += 1
+        sessions = sorted(seen, reverse=True)
+        if sessions:
+            out[market] = sessions
+            logger.info(
+                "%s sessions: %d in the last %d days, newest %s (witnesses %s)",
+                market.upper(), len(sessions), days, sessions[0], ", ".join(witnesses),
+            )
+        else:
+            logger.warning(
+                "%s: no equity session dates — its index is NOT checked this run",
+                market.upper(),
+            )
+    return out
+
+
+def index_bar_dates(
+    sb: Client, days: int = INDEX_HISTORY_WINDOW
+) -> dict[str, list[str]]:
+    """Every benchmark index's own recent bar dates, most recent first.
+
+    Needed for the hole check: the newest bar alone cannot tell a lag from a
+    session the index skipped and will never refill.
+    """
+    out: dict[str, list[str]] = {}
+    for index_ticker in sorted(INDEX_HOME_MARKET):
+        res = (
+            sb.table("price_bars")
+            .select("date")
+            .eq("ticker", index_ticker)
+            .order("date", desc=True)
+            .limit(days)
+            .execute()
+        )
+        out[index_ticker] = [
+            str(r["date"]) for r in cast(list[dict[str, Any]], res.data or [])
+        ]
+    return out
+
+
+def stale_indices(
+    newest: Mapping[str, Optional[str]],
+    sessions: Mapping[str, list[str]],
+    index_dates: Mapping[str, list[str]],
+) -> list[tuple[str, str, str, int, list[str]]]:
+    """Benchmark indices that are too far behind their market, or full of holes.
 
     ⚠️ THIS EXISTS BECAUSE THE MAIN CHECK CANNOT SEE THEM. `_market_of` returns
     "index" for a `^` ticker, `CALENDAR_INDEX` has no "index" key, so every run
@@ -287,36 +432,77 @@ def stale_indices(newest: dict[str, Optional[str]]) -> list[tuple[str, str, str]
     cannot fail. So indices are judged against their market's EQUITIES and
     equities against the indices — each against something independent.
 
-    ⚠️ Deliberately BINARY: "is any equity in this market newer?" rather than a
-    sessions-behind count. Only newest-bar dates are in evidence here, not full
-    histories, so a count would be a number we cannot actually support (11k). A
-    real answer of "yes" is enough to act on.
+    ⚠️ TWO DIFFERENT FAULTS, ONE OF WHICH USED TO BE INVISIBLE. This asked a
+    single binary question until 2026-09-16 — *"is any equity newer than the
+    index?"* — which conflates a LAG that heals on the next pull with a HOLE that
+    never does, alarms on the first, and cannot see the second at all. A hole is
+    the one that costs: `market_calendars` builds each market's session list out
+    of these very bars, so a session the index skipped permanently shortens the
+    calendar and every equity reads one session less behind than it is, for good.
 
-    Returns ``[(index_ticker, its_newest_bar, the_market's_newest_bar)]``.
+    So: a lag of `INDEX_LAG_ALARM_SESSIONS` or more sessions is a fault, and ANY
+    missing session inside the window is a fault regardless of the lag. The
+    tolerance and the hole check arrived together and only make sense together —
+    see `INDEX_LAG_ALARM_SESSIONS` for what was measured.
+
+    ``sessions`` must come from the market's EQUITIES (`equity_sessions`), never
+    from `market_calendars`, or an index is being ranked against itself.
+
+    Returns ``[(index_ticker, its_newest_bar, the_market's_newest_session,
+    sessions_behind, missing_sessions)]`` for the faulty ones only.
     """
-    market_newest: dict[str, str] = {}
-    for ticker, bar_date in newest.items():
-        # `bar_date`, not `date`: the module imports `date` and a loop variable
-        # would shadow it (ruff F402) — silently, for every line after this one.
-        if not bar_date or ticker.startswith("^"):
-            continue
-        m = _market_of(ticker)
-        if bar_date > market_newest.get(m, ""):
-            market_newest[m] = bar_date
-
-    out: list[tuple[str, str, str]] = []
+    out: list[tuple[str, str, str, int, list[str]]] = []
     for index_ticker, home in sorted(INDEX_HOME_MARKET.items()):
-        idx_date = newest.get(index_ticker)
-        mkt_date = market_newest.get(home)
-        if not mkt_date:
-            # No equities to compare against — say so rather than pass silently.
+        market_sessions = sessions.get(home)
+        if not market_sessions:
+            # No independent witness — say so rather than pass silently (14g).
             logger.warning(
-                "%s: no %s equity bars to compare against — NOT checked",
+                "%s: no %s equity sessions to compare against — NOT checked",
                 index_ticker, home.upper(),
             )
             continue
-        if idx_date is None or idx_date < mkt_date:
-            out.append((index_ticker, idx_date or "never fetched", mkt_date))
+
+        # `bar_date`, not `date`: the module imports `date` and a local of that
+        # name would shadow it (ruff F402) — silently, for every line after it.
+        bar_date = newest.get(index_ticker)
+        held = set(index_dates.get(index_ticker, []))
+        if bar_date is None:
+            out.append(
+                (index_ticker, "never fetched", market_sessions[0], NEVER_FETCHED, [])
+            )
+            continue
+
+        behind = sum(1 for s in market_sessions if s > bar_date)
+        # Only sessions the index has had a chance to store, which is a window
+        # bounded at BOTH ends.
+        #
+        # The top: anything newer than its own newest bar is the LAG, already
+        # counted — calling it a hole too would report every ordinary lag as the
+        # permanent fault as well, and the two need different responses.
+        #
+        # ⚠️ The bottom, which is the one that bites. `held` is capped at
+        # INDEX_HISTORY_WINDOW *bars*, so an index whose history is SHORTER than
+        # the market's session list — one newly added, or one the provider only
+        # serves recently — has nothing stored before its own oldest bar, and
+        # every market session older than that reads as a hole. Measured on the
+        # draft: a 5-bar index against a 31-session market reported 26 holes, all
+        # invented. Clamping to `oldest_held` is what makes the claim "the index
+        # skipped a session it should have had" rather than "the index does not go
+        # back as far as I looked".
+        oldest_held = min(held) if held else None
+        missing = (
+            sorted(
+                (
+                    s for s in market_sessions
+                    if oldest_held <= s <= bar_date and s not in held
+                ),
+                reverse=True,
+            )
+            if oldest_held is not None
+            else []
+        )
+        if behind >= INDEX_LAG_ALARM_SESSIONS or missing:
+            out.append((index_ticker, bar_date, market_sessions[0], behind, missing))
     return out
 
 
@@ -510,17 +696,31 @@ def run(apply_changes: bool = True) -> int:
     # `lagging_indices`, not `behind`: an earlier loop in this function already
     # binds `behind` as an int, and reusing the name makes every line here a type
     # error — the compiler's version of 11ab (one identifier, two meanings).
-    lagging_indices = stale_indices(newest)
+    lagging_indices = stale_indices(newest, equity_sessions(sb, newest), index_bar_dates(sb))
     if lagging_indices:
-        for index_ticker, idx_date, mkt_date in lagging_indices:
-            logger.error(
-                "    %-10s newest bar %s — its market has %s", index_ticker, idx_date, mkt_date
+        for index_ticker, idx_date, mkt_date, behind, missing in lagging_indices:
+            how = (
+                "never fetched" if behind >= NEVER_FETCHED else f"{behind} sessions behind"
             )
+            logger.error(
+                "    %-10s newest bar %s — its market has %s (%s)%s",
+                index_ticker, idx_date, mkt_date, how,
+                f"; MISSING {', '.join(missing[:8])}" if missing else "",
+            )
+        # ⚠️ Name the workflow that owns each one. These four are refreshed by the
+        # market's own nightly run, and the sweep runs in BOTH — so the US+CA
+        # workflow can go red for `^AXJO`, which only the AU workflow can fix. It
+        # did, on 2026-09-15. Without this line the reader is told the wrong job
+        # is broken (CLAUDE.md 11z: trace an alarm to the human who receives it).
+        owners = sorted({INDEX_HOME_MARKET[t].upper() for t, _, _, _, _ in lagging_indices})
         problems.append(
-            f"{len(lagging_indices)} benchmark index(es) behind their own market: "
-            + ", ".join(t for t, _, _ in lagging_indices)
-            + ". Three of the four ARE the session calendar every equity is "
-            "ranked against, so a stalled one hides staleness everywhere."
+            f"{len(lagging_indices)} benchmark index(es) unusable as a session "
+            "calendar: "
+            + ", ".join(t for t, _, _, _, _ in lagging_indices)
+            + f". Three of the four ARE the calendar every equity is ranked "
+            f"against, so a stalled one hides staleness everywhere. These are "
+            f"refreshed by the {', '.join(owners)} nightly workflow(s) — if that "
+            f"is not the run you are reading, look there, not here."
         )
     else:
         logger.info("All %d benchmark indices are current with their market.", len(INDEX_HOME_MARKET))

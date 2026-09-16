@@ -375,54 +375,204 @@ def test_the_retire_cap_is_a_proportion_not_a_count() -> None:
 # moved on. Three of the four ARE the calendar every equity is ranked against.
 
 
+# ⚠️ The check changed shape on 2026-09-16. It used to ask one binary question —
+# "is any equity newer than the index?" — which fires on a LAG that the next pull
+# repairs and is blind to a HOLE that nothing ever repairs. Both nightly
+# workflows went red on consecutive nights for a lag that had already healed, and
+# the second of them (US+CA) could not have fixed it: `^AXJO` is refreshed only
+# by the AU run. The pair of changes is strictly stronger; the tolerance below is
+# only safe BECAUSE the hole check landed with it, so the two must be read
+# together. See `INDEX_LAG_ALARM_SESSIONS`.
+
+#: A clean five-session AU week, most recent first, and an index holding all of it.
+_WEEK = ["2026-09-15", "2026-09-14", "2026-09-11", "2026-09-10", "2026-09-09"]
+
+
+def _au(index_newest: str | None, index_held: list[str]) -> list[tuple[str, str, str, int, list[str]]]:
+    """Drive `stale_indices` for ^AXJO alone against a known AU session week."""
+    from analytics.cron.check_stale_tickers import stale_indices
+
+    return stale_indices(
+        {"^AXJO": index_newest},
+        {"au": _WEEK},
+        {"^AXJO": index_held},
+    )
+
+
 def test_a_current_index_is_not_flagged() -> None:
-    from analytics.cron.check_stale_tickers import stale_indices
-
-    assert stale_indices({
-        "AAPL": "2026-09-08", "MSFT": "2026-09-08",
-        "BHP.AX": "2026-09-09", "SHOP.TO": "2026-09-08",
-        "^GSPC": "2026-09-08", "^IXIC": "2026-09-08",
-        "^AXJO": "2026-09-09", "^GSPTSE": "2026-09-08",
-    }) == []
+    assert _au("2026-09-15", _WEEK) == []
 
 
-def test_an_index_behind_its_own_market_is_flagged() -> None:
-    """The case that matters: a frozen ^GSPC would freeze the US calendar and
-    make all 535 US equities read as perfectly current."""
-    from analytics.cron.check_stale_tickers import stale_indices
+def test_one_session_of_lag_is_tolerated() -> None:
+    """THE 2026-09-14 SHAPE, verbatim: the AU run stored 246 equities at 09-14 and
+    `^AXJO` at 09-11 — one session — and the next pull filled it in. Measured
+    across 90 days on the live database, all four indices hold a bar for every
+    session their market had, so this lag is always a fetch-time race."""
+    assert _au("2026-09-14", _WEEK[1:]) == []
 
-    out = stale_indices({
-        "AAPL": "2026-09-08", "MSFT": "2026-09-08",
-        "BHP.AX": "2026-09-09", "SHOP.TO": "2026-09-08",
-        "^GSPC": "2026-09-01",            # <- stalled a week ago
-        "^IXIC": "2026-09-08", "^AXJO": "2026-09-09", "^GSPTSE": "2026-09-08",
-    })
-    assert [t for t, _, _ in out] == ["^GSPC"]
-    assert out[0][1] == "2026-09-01" and out[0][2] == "2026-09-08"
+
+def test_two_sessions_of_lag_is_flagged() -> None:
+    """The control that stops the tolerance from being a hole in the net: a lag
+    that does NOT heal overnight still goes red on the second night."""
+    out = _au("2026-09-11", _WEEK[2:])
+    assert [t for t, _, _, _, _ in out] == ["^AXJO"]
+    assert out[0][3] == 2 and out[0][4] == []
+
+
+def test_a_stalled_index_is_still_flagged_loudly() -> None:
+    """The fault the whole section exists for. A frozen `^AXJO` would freeze the
+    AU calendar and make every AU equity read as perfectly current."""
+    out = _au("2026-09-09", ["2026-09-09"])
+    assert [t for t, _, _, _, _ in out] == ["^AXJO"]
+    assert out[0][3] == 4
+
+
+def test_a_hole_is_flagged_even_with_no_lag_at_all() -> None:
+    """⚠️ THE STRENGTHENING, and the fault the old newest-bar comparison was
+    structurally blind to. The index is bang up to date and skipped 09-11. That
+    session will never be refilled, so `market_calendars` is one session short
+    for good and every AU equity reads one session less behind than it is."""
+    out = _au("2026-09-15", [d for d in _WEEK if d != "2026-09-11"])
+    assert [t for t, _, _, _, _ in out] == ["^AXJO"]
+    assert out[0][3] == 0, "no lag — the hole alone must be enough"
+    assert out[0][4] == ["2026-09-11"]
+
+
+def test_the_lag_tolerance_cannot_hide_a_hole() -> None:
+    """Both faults at once: one session behind AND missing an older session. The
+    tolerated lag must not swallow the hole sitting underneath it."""
+    out = _au("2026-09-14", ["2026-09-14", "2026-09-11", "2026-09-09"])
+    assert [t for t, _, _, _, _ in out] == ["^AXJO"]
+    assert out[0][3] == 1, "the lag itself is still inside tolerance"
+    assert out[0][4] == ["2026-09-10"]
+
+
+def test_an_ordinary_lag_is_not_reported_as_a_hole() -> None:
+    """The mirror control. Sessions NEWER than the index's own bar are the lag,
+    already counted; counting them as missing too would report every ordinary
+    lag as a permanent defect and make the hole check meaningless."""
+    out = _au("2026-09-10", ["2026-09-10", "2026-09-09"])
+    assert out[0][3] == 3 and out[0][4] == []
 
 
 def test_an_index_that_was_never_fetched_is_flagged() -> None:
-    from analytics.cron.check_stale_tickers import stale_indices
+    from analytics.cron.check_stale_tickers import NEVER_FETCHED
 
-    out = stale_indices({"AAPL": "2026-09-08", "BHP.AX": "2026-09-09",
-                         "SHOP.TO": "2026-09-08", "^GSPC": None,
-                         "^IXIC": "2026-09-08", "^AXJO": "2026-09-09",
-                         "^GSPTSE": "2026-09-08"})
-    assert [t for t, _, _ in out] == ["^GSPC"]
-    assert out[0][1] == "never fetched"
+    out = _au(None, [])
+    assert [t for t, _, _, _, _ in out] == ["^AXJO"]
+    assert out[0][1] == "never fetched" and out[0][3] == NEVER_FETCHED
 
 
 def test_an_index_is_never_compared_against_itself() -> None:
-    """⚠️ The load-bearing control. Ranking ^GSPC against the US CALENDAR is
-    ranking it against ^GSPC — always zero behind, a check that cannot fail. The
-    reference must be the market's EQUITIES, so an index ahead of every equity is
-    still fine, and an index alone in its market is reported as unchecked rather
-    than as clean (14g)."""
+    """⚠️ The load-bearing control. Ranking ^AXJO against the AU CALENDAR is
+    ranking it against ^AXJO — always zero behind, a check that cannot fail. The
+    reference has to be the market's EQUITIES, so a market with no equity
+    sessions is reported unchecked rather than clean (14g), and an index AHEAD of
+    its market is not a fault."""
     from analytics.cron.check_stale_tickers import stale_indices
 
-    # ^GSPC is the ONLY US row here: no equities to compare against.
-    assert stale_indices({"^GSPC": "2026-01-01", "BHP.AX": "2026-09-09",
-                          "^AXJO": "2026-09-09"}) == []
-    # And an index AHEAD of its market is not stale.
-    assert stale_indices({"AAPL": "2026-09-08", "^GSPC": "2026-09-09",
-                          "^IXIC": "2026-09-09"}) == []
+    # No AU equity sessions at all: NOT checked, and emphatically not "clean".
+    assert stale_indices({"^AXJO": "2026-01-01"}, {}, {"^AXJO": ["2026-01-01"]}) == []
+    # Ahead of its market — the index printed before the equities did.
+    assert _au("2026-09-16", ["2026-09-16", *_WEEK]) == []
+
+
+def test_every_index_is_covered_and_each_names_its_own_market() -> None:
+    """The scope control. An index missing from `INDEX_HOME_MARKET` is one the
+    sweep silently never looks at — and the market named is what tells the reader
+    WHICH nightly workflow owns a red run, after a US+CA run failed for ^AXJO."""
+    from analytics.cron.check_stale_tickers import CALENDAR_INDEX, INDEX_HOME_MARKET
+
+    assert INDEX_HOME_MARKET == {
+        "^GSPC": "us", "^IXIC": "us", "^AXJO": "au", "^GSPTSE": "ca",
+    }
+    # Every calendar index must be checked here, or the calendar it supplies is
+    # trusted with nothing watching it.
+    for market, index_ticker in CALENDAR_INDEX.items():
+        assert INDEX_HOME_MARKET[index_ticker] == market
+
+
+def test_one_witness_skipping_a_day_cannot_delete_a_real_session() -> None:
+    """`equity_sessions` UNIONS several of a market's freshest equities, because
+    the market was open on a day exactly when some equity printed a bar on it. A
+    witness that did not trade is ordinary — the freshest names sorted
+    alphabetically are microcaps. Requiring agreement would DELETE a real session,
+    and a short calendar makes a lagging index read as current, which is the
+    masking this whole check exists to prevent."""
+    from analytics.cron.check_stale_tickers import equity_sessions
+
+    history = {
+        # ⚠️ The SKIPPER is alphabetically first on purpose. Make it any other
+        # witness and reading a single ticker passes this test, so the sample size
+        # stops being load-bearing and can be cut to one without anything going red.
+        "AAA.AX": [d for d in _WEEK if d != "2026-09-11"],   # no trade that day
+        "BBB.AX": _WEEK,
+        "CCC.AX": _WEEK,
+        "DDD.AX": _WEEK,
+        "EEE.AX": _WEEK,
+        "FFF.AX": ["2026-09-15", "2026-08-03"],              # never consulted: 6th
+    }
+
+    class _Res:
+        def __init__(self, data: list[dict[str, str]]) -> None:
+            self.data = data
+
+    class _Tbl:
+        def __init__(self) -> None:
+            self._t = ""
+
+        def select(self, _c: str) -> "_Tbl":
+            return self
+
+        def eq(self, _c: str, v: str) -> "_Tbl":
+            self._t = v
+            return self
+
+        def order(self, _c: str, desc: bool = False) -> "_Tbl":
+            return self
+
+        def limit(self, _n: int) -> "_Tbl":
+            return self
+
+        def execute(self) -> _Res:
+            return _Res([{"date": d} for d in history.get(self._t, [])])
+
+    class _Client:
+        def table(self, _name: str) -> _Tbl:
+            return _Tbl()
+
+    out = equity_sessions(
+        cast(Client, _Client()),
+        {t: h[0] for t, h in history.items()},
+    )
+    # AAA..EEE are the five freshest; FFF ties on date and loses on ticker order,
+    # which is what keeps the sample stable between nights.
+    assert out["au"] == _WEEK, "AAA not trading on 09-11 does not unmake the session"
+    assert "2026-08-03" not in out["au"], "and a witness nobody consulted adds nothing"
+
+
+def test_a_short_index_history_is_not_reported_as_26_holes() -> None:
+    """⚠️ `held` is capped at a number of BARS, not at a shared date, so an index
+    whose stored history is shorter than the market's session list has nothing
+    before its own oldest bar — and without a lower bound every one of those
+    sessions reads as a hole. The draft of this check reported 26 invented holes
+    for a 5-bar index against a 31-session market, which is the worst fault it
+    knows about, fired on a perfectly current index."""
+    from analytics.cron.check_stale_tickers import stale_indices
+
+    market = [f"2026-07-{d:02d}" for d in range(31, 0, -1)]   # 31 sessions
+    held = market[:5]                                         # only 5 bars stored
+    out = stale_indices({"^AXJO": held[0]}, {"au": market}, {"^AXJO": held})
+    assert out == [], "current, and short history is not a skipped session"
+
+
+def test_a_hole_inside_the_stored_window_still_shows() -> None:
+    """The mirror control: clamping to the index's own oldest bar must not become
+    a way to excuse a genuine hole sitting inside that window."""
+    from analytics.cron.check_stale_tickers import stale_indices
+
+    market = [f"2026-07-{d:02d}" for d in range(31, 0, -1)]
+    held = [d for d in market[:10] if d != "2026-07-27"]
+    out = stale_indices({"^AXJO": held[0]}, {"au": market}, {"^AXJO": held})
+    assert [t for t, _, _, _, _ in out] == ["^AXJO"]
+    assert out[0][3] == 0 and out[0][4] == ["2026-07-27"]
