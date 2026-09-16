@@ -34,7 +34,7 @@ When in doubt about any decision: **ask, don't guess.**
 
 | Layer | Tech | Why |
 |---|---|---|
-| Frontend framework | Next.js **16** (App Router) + TypeScript | SEO via SSR, MCP-controlled via Vercel, best Claude Code support. *Scaffolded on 15; the installed version is **16.2.6** with React 19.2.4 — check `web/package.json` before relying on any version-specific API.* |
+| Frontend framework | Next.js **16** (App Router) + TypeScript | SEO via SSR, MCP-controlled via Vercel, best Claude Code support. *Scaffolded on 15; the installed version is **16.3.5** with React 19.2.4 (upgraded from 16.2.6 on 2026-09-17: two critical and four high published advisories, incl. unauthenticated RCE in image optimisation and a middleware bypass) — check `web/package.json` before relying on any version-specific API.* |
 | Styling | Tailwind v4 + shadcn/ui | Standard pairing, components owned in-repo |
 | Charts | Lightweight Charts (candlesticks) + Recharts (everything else) | TradingView-grade rendering, free |
 | Backend (batch) | Python via GitHub Actions cron | Free, no always-on cost |
@@ -442,7 +442,7 @@ These were agreed during planning. Do not relitigate.
 
 | # | Decision | Value |
 |---|---|---|
-| 1 | Frontend framework | Next.js App Router + TypeScript + Tailwind v4 + shadcn/ui (scaffolded on 15, now on **16.2.6**) |
+| 1 | Frontend framework | Next.js App Router + TypeScript + Tailwind v4 + shadcn/ui (scaffolded on 15, now on **16.3.5**) |
 | 2 | Charts | Lightweight Charts (candlesticks), Recharts (rest) |
 | 3 | Backend | Hybrid — Vercel Python serverless + GitHub Actions cron |
 | 4 | Database & Auth | Supabase — **Pro plan** since some point before 2026-09-07 (the decision was taken on the free tier; see the stack table) |
