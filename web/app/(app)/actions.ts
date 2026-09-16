@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { acknowledgeWriteDecision } from '@/lib/entitlement';
+import { reportIssue } from '@/lib/observability';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 /**
@@ -49,9 +50,13 @@ export async function acknowledgeDisclaimer(): Promise<{ ok: boolean }> {
   const decision = acknowledgeWriteDecision(existing, !!readError);
 
   if (decision === 'refuse_unreadable') {
-    console.error('acknowledgeDisclaimer: could not read the row before writing', {
-      userId: user.id,
-      code: readError?.code ?? 'zero_rows',
+    // ALERT: this is the refusal that stops the 2026-08-27 incident repeating — an
+    // unreadable profile must never let the gate WRITE over an existing June
+    // acknowledgement (11e, third instance). Refusing is right, and it also means a
+    // real reader is stuck on a modal they cannot dismiss.
+    reportIssue('acknowledgeDisclaimer: could not read the row before writing', {
+      level: 'alert',
+      tags: { userId: user.id, code: readError?.code ?? 'zero_rows' },
     });
     return { ok: false };
   }
@@ -66,7 +71,11 @@ export async function acknowledgeDisclaimer(): Promise<{ ok: boolean }> {
     .eq('id', user.id)
     .is('acknowledged_disclaimer_at', null);
   if (error) {
-    console.error('acknowledgeDisclaimer: update failed', error);
+    reportIssue('acknowledgeDisclaimer: update failed', {
+      cause: error,
+      level: 'alert',
+      tags: { userId: user.id },
+    });
     return { ok: false };
   }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { reportIssue } from '@/lib/observability';
 import { sendBrandEmail } from '@/lib/email/send';
 import { redactEmails } from '@/lib/redact';
 import {
@@ -59,7 +60,12 @@ export async function POST(req: Request): Promise<NextResponse> {
   if (!verdict.ok) {
     if (verdict.reason === 'unconfigured') {
       // OUR fault, not an attacker's — and the two must not look alike (11e).
-      console.error('resend webhook: RESEND_WEBHOOK_SECRET is unset — rejecting every event');
+      // OUR fault, not an attacker's — and the two must not look alike (11e).
+      // ALERT: every event is rejected, so spam complaints stop reaching the owner
+      // and the sending domain's reputation degrades with nobody watching.
+      reportIssue('resend webhook: RESEND_WEBHOOK_SECRET is unset — rejecting every event', {
+        level: 'alert',
+      });
       return NextResponse.json({ error: 'not configured' }, { status: 503, headers: NO_STORE });
     }
     return NextResponse.json({ error: verdict.reason }, { status: 400, headers: NO_STORE });
@@ -82,11 +88,15 @@ export async function POST(req: Request): Promise<NextResponse> {
   // ⚠️ The recipient is a real person's address, so it is redacted in the LOG and
   // kept in the EMAIL — the log is the thing that gets shipped around, and the
   // alert is useless without knowing who complained (lib/redact.ts).
-  console.warn(
-    'resend webhook: spam complaint',
-    redactEmails(`to=${recipient ?? 'unknown'}`),
-    `subject=${JSON.stringify(subject)}`,
-  );
+  // ⚠️ The recipient is a real person's address, so it is redacted HERE and kept in
+  // the EMAIL below — the log is the thing that gets shipped around, and the alert is
+  // useless without knowing who complained (lib/redact.ts). `warning`, not `alert`:
+  // the branded email below already reaches the owner, so a second channel would be
+  // noise rather than coverage.
+  reportIssue('resend webhook: spam complaint', {
+    level: 'warning',
+    tags: { to: redactEmails(`${recipient ?? 'unknown'}`), subject },
+  });
 
   const when = event.created_at ?? new Date().toISOString();
   await sendBrandEmail({

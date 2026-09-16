@@ -154,8 +154,35 @@ export function AnalystTargetTrack({
             </div>
           </div>
 
-          {/* Bear / Bull edge labels */}
-          <div style={{ position: 'relative', height: 16, marginTop: 4 }}>
+          {/* Bear / Bull edge labels.
+              ⚠️ `marginTop` was 4, and the Consensus label above is TWO lines —
+              its price, then the word "Consensus" — so its second line reached
+              down into this row. Measured on EA at 375px: "Consensus" printed
+              across "$210.00", 24px of shared ink, and the vertical overlap is a
+              constant 6px at every width from 320 to 800 because both rows are
+              fixed; only whether they meet horizontally depends on the data.
+
+              ⚠️ It is a DATA defect wearing a layout, which is why no width sweep
+              found it and AAPL looks perfect. The Consensus marker only sits over
+              a Bear/Bull tick when the consensus target is near one end of the
+              analyst range: measured across the universe, **15 of 837 stocks
+              (1.8%)** collide at 375px and 2 still collide at 1280px. Rare enough
+              to survive review forever, common enough that a customer meets it.
+
+              ⚠️ THE NUMBER IS MEASURED, NOT GUESSED, and my first two attempts at
+              it were wrong for the same reason twice: I edited the source, re-ran,
+              and got byte-identical geometry from 18, 24 and 30 — three different
+              values producing the same pixels, which is not a threshold, it is a
+              stale build answering (11i). The reading that settled it changes the
+              margin IN THE PAGE, where no compiler sits between the cause and the
+              measurement: 36px is where they stop touching and 44px clears by 8.
+
+              44, not 36: a bound that passes at exactly zero is the boundary, not a
+              margin, and this repo has been caught by a guard clearing by 1.1px
+              (11i-b). The mechanism is plain once the boxes are read — the
+              Consensus label is 31px tall and hangs about 31px below the track it
+              is anchored to, so the row simply has to start below that. */}
+          <div style={{ position: 'relative', height: 16, marginTop: 44 }}>
             <span style={{
               position: 'absolute', left: `${bearPosLeft}%`, transform: 'translateX(-50%)',
               fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: 'var(--text-muted)',

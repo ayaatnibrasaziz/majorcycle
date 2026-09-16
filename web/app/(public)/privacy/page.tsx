@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/seo';
+import { SENTRY_DSN } from '@/lib/sentryOptions';
 import { LegalDoc } from '@/components/LegalDoc';
 
 export const metadata: Metadata = pageMetadata({
@@ -15,7 +16,11 @@ export default function PrivacyPage() {
   return (
     <LegalDoc
       title="Privacy Policy"
-      updated="15 August 2026"
+      // ⚠️ Conditional for the same reason as the Sentry recipient line below, and
+      // it is worth the odd look: a policy whose text changed under a reader while
+      // the date says otherwise is the thing an "updated" date exists to prevent.
+      // The two move together or neither does.
+      updated={SENTRY_DSN ? '16 September 2026' : '15 August 2026'}
       intro={
         <p>
           This policy explains what personal information MajorCycle collects, how we
@@ -129,6 +134,32 @@ export default function PrivacyPage() {
                   Google confirms your identity to us and receives the fact that you
                   signed in; we never receive your Google password.
                 </li>
+                {/* Added with Layer H2, 2026-09-16 — error monitoring.
+                    ⚠️ **CONDITIONAL ON THE DSN, AND THAT IS THE POINT.** Sentry is a
+                    RECIPIENT of personal information the moment it is switched on, so
+                    APP 6 and APP 8 need it named — and the ordering trap is real in
+                    both directions: name it while monitoring is off and the policy
+                    describes a disclosure that is not happening; forget to name it
+                    when the DSN is set and the policy is a false statement about what
+                    we do, which is 11c-v exactly (a sentence stating a fact IS a copy
+                    of that fact, and prose is where copies go to drift unnoticed).
+                    Tying the line to `NEXT_PUBLIC_SENTRY_DSN` removes the question:
+                    Vercel bakes NEXT_PUBLIC_ vars at BUILD time and this page is
+                    prerendered, so the disclosure and the feature ship in the same
+                    deploy and cannot be out of step. A trap that depends on a human
+                    remembering is one worth making structural (11o).
+                    ⚠️ What actually reaches them is deliberately narrow — no cookies,
+                    no headers, no IP address, no session replay — and `lib/sentryOptions.ts`
+                    is where that is enforced rather than merely intended. */}
+                {SENTRY_DSN ? (
+                  <li>
+                    <strong>Sentry</strong> — error monitoring. When something goes wrong
+                    we send a technical report of the failure: what broke, on which page,
+                    and the account identifier it happened to. We do not send your name,
+                    your email address, your IP address, the contents of your session, or
+                    any recording of your screen.
+                  </li>
+                ) : null}
               </ul>
               <p>
                 Each processes data only to provide their service to us, under

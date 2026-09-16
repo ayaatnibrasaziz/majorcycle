@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 import { test, expect } from '@playwright/test';
 
-import { redactEmails } from '../lib/redact';
+import { redactEmails, redactSecrets, redactSensitive } from '../lib/redact';
 
 /**
  * No personal data in the logs — P9 / 5A-163, 2026-09-07.
@@ -29,9 +29,26 @@ import { redactEmails } from '../lib/redact';
 
 const WEB = join(__dirname, '..');
 
-/** Every `console.<anything>(...)` call in a file, with its argument list. */
+/**
+ * Every call that writes a log line, with its argument list.
+ *
+ * ⚠️ **`reportIssue` IS IN THIS LIST, AND LEAVING IT OUT WOULD HAVE SILENTLY GUTTED
+ * THIS FILE (H2, 2026-09-16).** Layer H2 routed every operational failure in `app/`
+ * and `lib/` through `lib/observability.ts`, which writes the console line on the
+ * caller's behalf. Matching only `console.*` would therefore have found **nothing
+ * to examine** the moment that landed — the sweep below would still run, still pass,
+ * and still report a clean bill of health over zero log lines. `lib/email/send.ts`,
+ * the file the redaction rule was WRITTEN for, has no `console.` in it any more.
+ *
+ * That is 14g in its purest form and 11am's lesson exactly: **a guard's scope is a
+ * claim about what it can see, and matching on the shape the last defect happened to
+ * use is how the claim quietly stops being true.** Match on what the surface IS —
+ * "a line that goes to a log" — not on the function that used to write it.
+ */
 function consoleCalls(src: string): string[] {
-  return [...src.matchAll(/console\.\w+\(([\s\S]{0,400}?)\);/g)].map((m) => m[1] ?? '');
+  return [
+    ...src.matchAll(/(?:console\.\w+|reportIssue|addBreadcrumb)\(([\s\S]{0,600}?)\);/g),
+  ].map((m) => m[1] ?? '');
 }
 
 test.describe('redactEmails — the function', () => {
@@ -76,6 +93,77 @@ test.describe('redactEmails — the function', () => {
     }
   });
 
+  test('redactSecrets — a Supabase JWT never reaches a log line', () => {
+    // ⚠️ Added with H2, 2026-09-16, from asking "what is the WORST thing that could
+    // end up in a string we forward?" rather than from anything going red. The
+    // answer was already in the building: the `anon` key, the `service_role` key and
+    // every signed-in reader's session token are all JWTs, all beginning `eyJ`
+    // because that encodes `{"`. A Vercel log is one place that must never hold one;
+    // an error sent to Sentry leaves the building entirely.
+    const jwt =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwicm9sZSI6ImFub24ifQ.dBjftJeZ4CVP';
+    const out = redactSecrets(`PostgREST refused: apikey=${jwt} role=anon`);
+    expect(out).not.toContain('eyJ');
+    expect(out).toContain('[token redacted]');
+    // CONTROL — the part that says WHAT failed survives, which is the same
+    // one-directional rule the email redactor is held to above.
+    expect(out).toContain('PostgREST refused:');
+    expect(out).toContain('role=anon');
+  });
+
+  test('redactSecrets — Stripe keys and Bearer headers too', () => {
+    // ⚠️ ASSEMBLED AT RUNTIME, NEVER WRITTEN AS A LITERAL. These are invented, but
+    // they are invented in the SHAPE of a live key — which is the whole point of the
+    // test and also exactly what the repo's pre-commit secret scanner exists to
+    // stop. It blocked this file on first commit, correctly: a scanner that trusts
+    // "it's only a test" is a scanner that waves through the day someone pastes a
+    // real one. Same reasoning as `purge-cron.spec.ts` holding an invented
+    // CRON_SECRET. Joining the parts keeps the runtime string identical and leaves
+    // nothing matchable in the source.
+    const stripeSecret = ['sk', 'live', '51Abc123Def456Ghi789'].join('_');
+    const stripeWebhook = ['whsec', 'AbCdEf1234567890xyz'].join('_');
+    expect(redactSecrets(`Stripe said ${stripeSecret} is revoked`)).toBe(
+      'Stripe said [stripe key redacted] is revoked',
+    );
+    expect(redactSecrets(`bad signature for ${stripeWebhook}`)).toBe(
+      'bad signature for [stripe key redacted]',
+    );
+    expect(redactSecrets('sent Authorization: Bearer abc123def456ghi789jkl')).toBe(
+      'sent Authorization: Bearer [redacted]',
+    );
+  });
+
+  test('CONTROL — redactSecrets leaves ordinary prose completely alone', () => {
+    // ⚠️ The load-bearing control for a pattern matcher. Over-masking destroys the
+    // part of a message that names the failure, and these are the shapes closest to
+    // a false positive: short base64, a word that starts the same way, a ticker.
+    for (const s of [
+      'Resend send failed 429 rate limit exceeded',
+      'could not resolve price for plan monthly_aud',
+      'eyJ is not a token on its own',
+      'the skater sk_ did not match',
+      'BearerTown is a place',
+      'user 6f1c0e2a-1111-2222-3333-444455556666 has no profile',
+    ]) {
+      expect(redactSecrets(s), `redactSecrets mangled: ${s}`).toBe(s);
+    }
+  });
+
+  test('redactSensitive — secrets are masked BEFORE addresses, and that order matters', () => {
+    // A JWT payload can decode to something containing an address, and more to the
+    // point a log line can hold both. Masking the address first would leave
+    // `eyJ…[email redacted]…` — no longer matching the token pattern, and still most
+    // of a credential. One function, one order (11c).
+    const both =
+      'rejected eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFAYi5jb20ifQ.sig for sam@example.com';
+    const out = redactSensitive(both);
+    expect(out).not.toContain('eyJ');
+    expect(out).not.toContain('sam@example.com');
+    expect(out).toContain('[token redacted]');
+    expect(out).toContain('[email redacted]');
+    expect(out).toContain('rejected');
+  });
+
   test('masks every address when a body names more than one', () => {
     expect(redactEmails('from noreply@majorcycle.com to friend@gmail.com')).toBe(
       'from [email redacted] to [email redacted]',
@@ -116,6 +204,23 @@ test.describe('the log lines themselves', () => {
       }
     }
     expect(offenders, offenders.join('\n')).toEqual([]);
+  });
+
+  test('CONTROL — the sweep can still SEE the log lines it judges', () => {
+    // ⚠️ Added with H2, and it is the assertion that would have caught the blinding
+    // described above. Every test in this describe block is vacuously true over an
+    // empty list, so "how many lines did you look at?" has to be asserted rather
+    // than assumed — a floor with headroom, not the current count (11i-b).
+    const total = FILES.reduce((n, f) => n + consoleCalls(readFileSync(f, 'utf8')).length, 0);
+    expect(total, 'the log-line matcher found almost nothing — it has stopped matching').toBeGreaterThan(
+      25,
+    );
+    // And specifically on the file this rule was written for: it is the one that
+    // logs an upstream body, and it now writes it through `reportIssue`.
+    expect(
+      consoleCalls(readFileSync(join(WEB, 'lib', 'email', 'send.ts'), 'utf8')).length,
+      'the email sender is the subject of the rule below and no line of it is visible here',
+    ).toBeGreaterThan(0);
   });
 
   test('the email sender logs its heading, never the subject', () => {

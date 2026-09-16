@@ -82,6 +82,50 @@ const serverActionStub = {
   },
 };
 
+/**
+ * The same move for the Sentry SDK — H2, 2026-09-16, and written BEFORE it was
+ * needed rather than after.
+ *
+ * ⚠️ No component reaches `@sentry/nextjs` today; `lib/observability.ts` is
+ * imported only by server modules. That is a fact about this week, and 11d is the
+ * record of what happens when it stops being one: `KpiStrip → PremiumLock →
+ * UpgradeDialog → next/link` blanked every downloaded report for four days, from an
+ * import three components away in a file nobody editing the report would open.
+ *
+ * Two things make this worth closing in advance rather than watching for. A
+ * downloaded report is opened from `file://` on a customer's own machine, with no
+ * CSP and no session, long after we have stopped controlling the file — an error
+ * reporter is the last thing that belongs there; and the SDK is ~40 KB on an
+ * artifact that already runs against a page-weight ratchet.
+ *
+ * Stubbed rather than excluded, and stubbed SILENTLY rather than throwing: unlike a
+ * server action, calling this is harmless, and a report that refuses to open
+ * because something logged a warning would be a worse outcome than no telemetry.
+ */
+const sentryStub = {
+  name: 'stub-sentry',
+  setup(build) {
+    build.onResolve({ filter: /^@sentry\// }, (args) => ({
+      path: args.path,
+      namespace: 'sentry-stub',
+    }));
+    build.onLoad({ filter: /.*/, namespace: 'sentry-stub' }, () => ({
+      contents:
+        'const noop = () => undefined;\n' +
+        'export const captureException = noop;\n' +
+        'export const captureMessage = noop;\n' +
+        'export const addBreadcrumb = noop;\n' +
+        'export const withScope = (fn) => fn({ setLevel: noop, setTags: noop, ' +
+        'setExtra: noop, setContext: noop, setFingerprint: noop });\n' +
+        'export const init = noop;\n' +
+        'export const captureRouterTransitionStart = noop;\n' +
+        'export const captureRequestError = noop;\n' +
+        'export default {};\n',
+      loader: 'js',
+    }));
+  },
+};
+
 /** Every server module the plugin replaced this build. Printed, never silent. */
 const stubbedServerModules = [];
 
@@ -106,7 +150,17 @@ async function assertNoServerCode() {
     );
   }
 
-  for (const needle of ['api.resend.com', 'supabase.co/auth', 'api.stripe.com']) {
+  // `ingest.sentry.io` is how the SDK addresses its own endpoint, and `sentry-trace`
+  // is a header only the real SDK emits — either one in the emitted file means the
+  // stub above stopped catching an import path (a deep `@sentry/browser/x` entry, a
+  // bundled copy) and a customer's downloaded file is talking to a third party.
+  for (const needle of [
+    'api.resend.com',
+    'supabase.co/auth',
+    'api.stripe.com',
+    'ingest.sentry.io',
+    'sentry-trace',
+  ]) {
     if (js.includes(needle)) {
       throw new Error(`report.js contains ${needle} — a server endpoint reached the offline artifact.`);
     }
@@ -140,7 +194,7 @@ async function buildJs() {
     target: ['es2020'],
     jsx: 'automatic',
     tsconfig: 'tsconfig.json',
-    plugins: [serverActionStub],
+    plugins: [serverActionStub, sentryStub],
     define: { 'process.env.NODE_ENV': '"production"' },
     // The downloaded .html runs from file:// with no bundler, no server and no
     // Node — so a single bare `process` reference is a blank page, not a

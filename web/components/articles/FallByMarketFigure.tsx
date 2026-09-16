@@ -247,6 +247,13 @@ export function FallByMarketFigure() {
           paddingRight: RIGHT_GUTTER_PX,
           paddingTop: PLOT_PAD_TOP_PX,
           paddingBottom: PLOT_PAD_BOTTOM_PX,
+          // ⚠️ The same two numbers, handed to the stylesheet rather than retyped
+          // there. The narrow-width caption rule has to reach out of the plot and
+          // across these gutters to the figure's own edges, and a `56px` written
+          // again in CSS would be a second copy of a constant that has already
+          // moved once (11c-v: prose and stylesheets are where copies drift).
+          ['--art-gut-l' as string]: `${LEFT_GUTTER_PX}px`,
+          ['--art-gut-r' as string]: `${RIGHT_GUTTER_PX}px`,
         }}
       >
         <div className="art-plot" style={{ height: PLOT_H_PX }}>

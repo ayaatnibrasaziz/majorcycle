@@ -36,3 +36,52 @@ export function redactEmails(text: string): string {
     '[email redacted]',
   );
 }
+
+/**
+ * Replace anything shaped like a CREDENTIAL — added with Layer H2, 2026-09-16.
+ *
+ * ⚠️ **The question that produced this was "what is the worst thing that could end
+ * up in a string we forward?", and the answer was already in the building.** Every
+ * Supabase key is a JWT — the `anon` key, the `service_role` key, and every signed-in
+ * reader's own session token all begin `eyJ`. A console line is a Vercel log; an
+ * error sent to Sentry leaves the building entirely. Neither should ever be able to
+ * carry one.
+ *
+ * Nothing has been observed doing so, and that is the point: the routes this could
+ * arrive by are the ones nobody controls — an upstream error body that echoes the
+ * request it rejected, a stack frame holding a local variable, a breadcrumb built
+ * from a URL. `redactEmails` already exists because Resend put a real address in a
+ * message we forward (5A-163); this is the same argument about a worse value.
+ *
+ * ⚠️ **Deliberately NARROW.** Each pattern is long and distinctive enough that a
+ * match is a credential rather than prose, because over-masking destroys the part of
+ * the message that names the failure — which `log-redaction.spec.ts` holds as its
+ * load-bearing control and which applies here unchanged.
+ */
+export function redactSecrets(text: string): string {
+  return (
+    text
+      // A JWT: three base64url segments, the first of which always starts `eyJ`
+      // because it encodes `{"`. Supabase's anon key, its service_role key and every
+      // user session token are all this shape.
+      .replace(/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}(?:\.[A-Za-z0-9_-]+)?/g, '[token redacted]')
+      // Stripe secret, restricted, publishable and webhook-signing keys. The
+      // publishable one is not a secret, but it is no use in a crash report either.
+      .replace(/\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{10,}/g, '[stripe key redacted]')
+      .replace(/\bwhsec_[A-Za-z0-9+/=_-]{10,}/g, '[stripe key redacted]')
+      // An Authorization header value, wherever one has been stringified.
+      .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{16,}/gi, 'Bearer [redacted]')
+  );
+}
+
+/**
+ * Both, in the one order that works.
+ *
+ * ⚠️ Secrets FIRST. A JWT's payload can contain an email, and masking the address
+ * first would leave `eyJ…[email redacted]…` — a string that no longer matches the
+ * token pattern and still carries most of a credential. Order is load-bearing here,
+ * which is why there is one function rather than two calls at each site (11c).
+ */
+export function redactSensitive(text: string): string {
+  return redactEmails(redactSecrets(text));
+}

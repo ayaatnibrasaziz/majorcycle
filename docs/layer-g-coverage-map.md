@@ -796,7 +796,7 @@ open**, folded into the standing decision on the public documents' 13px body siz
 zoom-on-focus fix is asserted on the proxy — the computed font size — rather than on the
 zoom. 200% text zoom and focus visibility at 375px belong to Layer H. And the **signed-in**
 375px overflow is deliberately noted rather than fixed, per the pass's own scope: measured
-at **34–180px depending on the page**, against a known item that records "~130px".
+at **34–180px depending on the page**, against a known item that records "~130px". ⚠️ **Both numbers are low: re-measured on an ENTITLED account 2026-09-14, the range is 34–188px** — this pass signed in free, so it never saw the screener. See § *The Layer H delta*.
 
 ## Still open after this delta
 
@@ -842,3 +842,137 @@ it, which is what a checklist is for.
 
 **Suite total: 789 tests in 53 files** (786 → 788 with the responsive split and the redaction
 guard, → 789 with the CSP one).
+
+---
+
+## 🔴 The Layer H delta — a whole dimension this map never had: WHO is signed in
+
+**2026-09-14, while planning Layer H.** This map has three dimensions — routes, viewer states,
+Python modules — and Dimension 2 (*viewer states*) asks which states each route was *visited*
+in. It never asked **which account a responsive or layout guard signs in as**, and that turned
+out to hide the largest uncovered surface in the product.
+
+### `e2e/app-responsive.spec.ts` has never measured a page a paying customer sees
+
+✅ **CLOSED by Layer H · H1, 2026-09-14/15 — and the first run with the right eyes found a defect.** The spec now sweeps **355 → 1280 in 4px steps** on a **throwaway entitled account** as well as the free one, with `/results` seeded and its row count asserted before anything is measured. It immediately found the paid ticker page scrolling up to **26px across 768–793px** — a band the old four samples, the tablet survey and a 20px sweep had all landed outside of. ⚠️ **Two blind spots had to be closed before it appeared**: the account AND the sampling. Closing either alone still reported clean, which is the part worth remembering — see CLAUDE.md **11bf**. The account is the fourth scope claim that is invisible in a passing run, after the tag list (11ap), the `experimental` flag (11ax) and the width list (11i-b).
+
+It signs in with the shared `E2E_EMAIL` account, which has **no subscription**. On that account
+the premium sections do not render at all — `/run` is the upsell card rather than the screener —
+so every page it measures is **narrower than the product**. Measured at 375px on the production
+build, same probe, two accounts:
+
+| Route | Free (what the guard sees) | **Entitled (what a customer sees)** |
+|---|---|---|
+| `/run` | 46px | **188px** |
+| `/results` | 0 (empty) | **158px** |
+| `/stocks/us/AAPL` | 180px | 180px |
+| `/stocks` | 131px | 131px |
+| `/account` · `/request` | 55px · 34px | 48px · 34px |
+
+⚠️ **And it is not only a 375px problem.** The spec sweeps **640 / 768 / 900 / 1280** — the band
+it was written for (5A-116) — and passes. On an **entitled** account the ticker page does not
+stop scrolling until **730px**, so it scrolls at **640 and 720** while the guard reports clean.
+The free ticker page also scrolls **10px at 720**, a width nothing samples (11i-b).
+
+**The generalisable form: a guard's ACCOUNT is part of its scope, exactly as its route list and
+its width list are** (14g, 11ax). `app-a11y.spec.ts` already learned this in September — it
+creates a throwaway *paid* user precisely because "every signed-in page passes axe" was quietly a
+claim about the unentitled view. **The same reasoning was never carried across to the responsive,
+contrast or layout guards**, which is 11c-iv: the rule existed and one set of consumers never
+received it.
+
+**→ Fixed as part of H1** (`layer-h-plan.md` §4): the spec gains an entitled account, its floor
+drops 640 → 320, it sweeps the range in 4px steps rather than sampling, and it asserts **≥20px of
+spare room** rather than merely "no overflow".
+
+### Two more blind spots found the same day
+
+- **`/results` renders nothing without a completed run.** Measured locally it reported a perfect
+  `0` — because the page was *empty*. A clean number from a page with no content on it is what a
+  broken check also returns. Any future measurement of it must **assert its table has rows first**;
+  the production run that found the real 158px does exactly that.
+- **The suite is Chromium-only** (`playwright.config.ts` → one project). Now that all three
+  engines run locally (Layer H finding E), the cross-browser run becomes its own command, printed
+  by `pnpm gates` as **NOT RUN with the reason** rather than omitted — F-016's lesson.
+
+### What this map still does not ask
+
+Added here so the gap is named rather than discovered again: **for every guard, which account,
+which widths, which browser, and which rule-set?** Four scope claims, each invisible in a pass,
+each already caught once — the tag list (11ap), the `experimental` flag (11ax), the width list
+(11i-b), and now the account.
+
+⚠️ **A FIFTH, and it is the emptiest kind — 2026-09-16.** *Which STATE is the page in?*
+`/results` renders nothing at all until a screen completes, because its rows live in client
+state rather than in any table a fixture can seed. So every sweep that has ever visited it
+loaded an empty page, measured it, and reported it clean — **the route had no test of any
+kind**, and two defects sat on it (the Opportunity Map's legend printed inside its own plot,
+and its quadrant labels running together at phone widths). This is 11v's lesson at the route
+level: the check ran, found nothing, and had nothing to find. `e2e/opportunity-map.spec.ts`
+now drives a real Magnificent Seven run before it measures, and refuses to report on a page
+with no rows.
+
+✅ **And the account dimension is closed for the layout guards.** The 2026-09-16 review swept
+**372 route x width measurements** in three viewer states — signed out, free, and paying —
+over 320 to 1280. Zero sideways scroll in all three. The five defects it found were found by
+asking four questions an overflow sweep does not ask; see CLAUDE.md **11bh**.
+
+## 🔴 A SIXTH dimension, found the hard way — WHICH PLATFORM the guard runs on
+
+**2026-09-16.** H1's widened responsive sweep passed on this Windows machine and went **red on
+CI, twice**, on the same test both times:
+
+```
+ENTITLED /run · the phone shell scrolled sideways:
+  320px scrolled 5px
+  324px scrolled 1px
+```
+
+⚠️ **It was reported as "in flight" and not checked back on, so the branch sat red across two
+pushes.** A run you start is not a run you have read (11i's *reconcile the count*, one level out).
+
+### What the defect actually was — and it was NOT a CI quirk
+
+The four preset buttons on `/run` are `flex: 1`, and **a flex item cannot shrink below
+`min-width: auto`**, which resolves to its longest label. Measured on the real page:
+
+| viewport | row width | row min-content | headroom |
+|---|---|---|---|
+| 320px | 240 | 274 | **−34px** |
+| 340px | 260 | 274 | **−14px** |
+| 375px | 295 | 274 | +21px |
+
+So the row had been spilling **34px out of its own card at 320px on every platform, this one
+included**. Windows merely had 6px of page gutter left to absorb it; Linux renders the same
+labels ~11px wider and ran past the viewport edge. **The platform did not cause the defect — it
+decided whether the defect was visible.** That is 11bf's *a layout that FITS is not a layout that
+WORKS*, with a new twist: it did not even fit, and only one operating system said so.
+
+Fixed with `flex-wrap` — a MEASUREMENT rather than a breakpoint (11bi), so the row breaks exactly
+when the labels stop fitting, whatever font the machine has. Headroom −34px → **+165px**; 375px
+and above are pixel-identical.
+
+### The dimension to write down
+
+This map already records that a guard's **account** is part of its scope (11bd). Add the
+**machine**: font metrics differ between Windows and Linux by a few per cent, and every local
+layout measurement in this repo is taken on Windows while **every CI measurement is taken on
+Linux**. A margin thinner than that difference is not a margin — it is a coin flip on which
+runner sees it.
+
+⚠️ **The practical rule: do not measure whether a page FITS; measure how much SLACK it has.** The
+probe that found this ranked every element by `clientWidth - right` and the answer was one row at
+**6px**, on a page reporting zero scroll. Six pixels is inside the platform delta. The next
+tightest thing was at 14px, which is why nothing else broke.
+
+### Six scope claims, none of them visible in a passing run
+
+| # | The claim | Where it bit |
+|---|---|---|
+| 1 | the **tag list** a checker is given | 11ap |
+| 2 | the **`experimental` flag** a rule carries | 11ax |
+| 3 | the **width list** that is sampled | 11i-b, 11bf |
+| 4 | the **account** that is signed in | 11bd |
+| 5 | the **state** the page is in | 11bh |
+| 6 | the **platform** the guard runs on | this section |
+

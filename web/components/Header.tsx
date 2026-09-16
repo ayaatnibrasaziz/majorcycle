@@ -52,9 +52,20 @@ interface HeaderProps {
   lastRunAt?: string | null;
   /** Shown on the account menu trigger; omitted in the dev-bypass render. */
   email?: string | null;
+  /**
+   * The drawer's toggle, below 768px — supplied by `AppShell`, which owns the
+   * drawer's open state (Layer H · H1).
+   *
+   * ⚠️ Passed in rather than built here, because the button and the drawer have to
+   * be the same `<Dialog>`: that is what gives Radix a real `triggerRef`, and it is
+   * what makes Escape return focus to the button rather than dropping a keyboard
+   * reader at the top of the document. A button here with the drawer somewhere else
+   * would be two halves of one control, wired by state passed twice.
+   */
+  menuButton?: React.ReactNode;
 }
 
-export function Header({ lastRunAt, email }: HeaderProps) {
+export function Header({ lastRunAt, email, menuButton }: HeaderProps) {
   const pathname = usePathname();
   const { title, subtitle, ownsHeading } = getPageMeta(pathname);
 
@@ -63,10 +74,20 @@ export function Header({ lastRunAt, email }: HeaderProps) {
 
   return (
     <header
-      className="fixed top-0 left-[var(--sidebar-w)] right-0 h-[var(--header-h)] bg-[var(--bg-header)] border-b border-[var(--border)] flex items-center justify-between px-6 z-[99] shadow-[var(--shadow-sm)]"
+      /* ⚠️ `left-0` below 768px, where the rail is a drawer and the page has the
+         screen to itself; the 220px offset returns at 768 and above, unchanged.
+         `min-[768px]:` rather than `md:` — same number; see lib/shell.ts.
+         ⚠️ `px-4` on a phone rather than `px-6`: the 21px `p-6` gutters are 42px of
+         a 375px screen, and the title is the thing that has to fit. */
+      className="fixed top-0 left-0 min-[768px]:left-[var(--sidebar-w)] right-0 h-[var(--header-h)] bg-[var(--bg-header)] border-b border-[var(--border)] flex items-center justify-between gap-3 px-4 min-[768px]:px-6 z-[99] shadow-[var(--shadow-sm)]"
       role="banner"
     >
-      <div>
+      {menuButton}
+      {/* `min-w-0` is load-bearing: a flex child defaults to `min-width: auto`, so
+          without it the title refuses to shrink below its own text and pushes the
+          account button off a 375px screen instead of truncating. The same
+          min-content trap that made the ticker page scroll (5A-116), one level up. */}
+      <div className="min-w-0 flex-1">
         {/* ⚠️ An <h1>, not a <div> — audit 5A-114. Browse, Run, Results and Stock Detail
             had NO heading of any level: every visible "heading" on them was a styled div,
             so a screen-reader user got one flat run of text with no way to navigate the
@@ -94,15 +115,23 @@ export function Header({ lastRunAt, email }: HeaderProps) {
             ⚠️ It also removes a duplicate nobody had measured: `NotInCoverage` carries
             its own h1, so an unknown ticker was serving TWO — a state the "exactly one"
             test above could not see, because no unknown ticker is in APP_PATHS. */}
-        <Title className="text-[15px] font-bold text-[var(--text-primary)] tracking-[-0.3px]">
+        {/* Truncate rather than wrap: the strip is a fixed 58px tall, so a title that
+            wraps is a title that overlaps its own subtitle. */}
+        <Title className="text-[15px] font-bold text-[var(--text-primary)] tracking-[-0.3px] truncate">
           {title}
         </Title>
-        <div className="text-[11px] text-[var(--text-muted)]">{subtitle}</div>
+        {/* The subtitle is the one thing here a reader can lose without losing a
+            destination — "Search and explore the universe" under a title that already
+            says "Browse Stocks". It goes first, and only on a phone. */}
+        <div className="hidden min-[768px]:block text-[11px] text-[var(--text-muted)]">{subtitle}</div>
       </div>
 
-      <div className="flex items-center gap-[10px]">
+      <div className="flex items-center gap-[10px] flex-shrink-0">
         {lastRunAt && (
-          <div className="flex items-center gap-[5px] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-full px-3 py-[5px] text-[11px] text-[var(--text-secondary)] font-[var(--font-mono)]">
+          /* A convenience, and the first thing to yield on a phone: the title says
+             which page this is and the account button is how you sign out, so between
+             the three this is the one that can wait for a wider screen. */
+          <div className="hidden min-[768px]:flex items-center gap-[5px] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-full px-3 py-[5px] text-[11px] text-[var(--text-secondary)] font-[var(--font-mono)]">
             <span
               className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"
               aria-hidden="true"

@@ -9,6 +9,7 @@ import {
   type ViewerEntitlement,
   type ViewerProfileRow,
 } from '@/lib/entitlement';
+import { reportIssue } from '@/lib/observability';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 /**
@@ -53,10 +54,18 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
     // fact: this read failed, said nothing, and the user simply saw a first-login
     // modal. `error` is null when RLS filtered the row to nothing (the expired-JWT
     // fallback to `anon`), which is itself the signal worth recording.
-    console.error('getViewerEntitlement: profile unreadable for a verified session', {
-      userId,
-      code: error?.code ?? 'zero_rows',
-      message: error?.message ?? 'RLS returned no row for a session we just verified',
+    // ALERT. This is the read behind the 2026-08-27 incident (11e, third instance):
+    // it failed, said nothing, and a customer who had acknowledged in June was shown
+    // the first-login gate — whose one button then WROTE over their June compliance
+    // record. The write is guarded now; the read failing at all still means a paying
+    // account is being judged on a profile we could not read.
+    reportIssue('getViewerEntitlement: profile unreadable for a verified session', {
+      level: 'alert',
+      tags: {
+        userId,
+        code: error?.code ?? 'zero_rows',
+        reason: error?.message ?? 'RLS returned no row for a session we just verified',
+      },
     });
   }
 

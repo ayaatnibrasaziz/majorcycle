@@ -162,7 +162,7 @@ async function weigh(page, path) {
       .sort((a, b) => b.encodedBodySize - a.encodedBodySize)
       .slice(0, 5)
       .map((e) => `${Math.round(e.encodedBodySize / 1024)}KB ${new URL(e.name).pathname}`);
-    return { bytes, requests: counted.length, heaviest };
+    return { bytes, requests: counted.length, heaviest, hasH1: !!document.querySelector('h1') };
   });
 }
 
@@ -199,7 +199,7 @@ for (const [path, maxKB, needsAuth, why] of BUDGETS) {
     continue;
   }
   const page = needsAuth ? appPage : publicPage;
-  const { bytes, requests, heaviest } = await weigh(page, path);
+  const { bytes, requests, heaviest, hasH1 } = await weigh(page, path);
   const kb = Math.round(bytes / 1024);
   const landed = new URL(page.url()).pathname;
 
@@ -222,6 +222,15 @@ for (const [path, maxKB, needsAuth, why] of BUDGETS) {
   // in this file (CLAUDE.md 14g).
   if (kb < 40 || requests < 5) {
     rowProblems.push(`${path} transferred only ${kb} KB over ${requests} requests — it did not load`);
+  }
+  // ⚠️ AND A PAGE THAT LOADED AN ERROR SCREEN IS NOT THE PAGE EITHER (2026-09-17).
+  // The size floor above cannot see it: CI weighed /stocks/us/AAPL at 560 KB on
+  // every run because the job lacked the service-role key and the page fell into
+  // `(app)/error.tsx` — comfortably over 40 KB, comfortably under its 1150 KB
+  // budget, and half the size of the real page. Every route here renders exactly
+  // one h1; the error boundaries do not, so its absence is the tell.
+  if (!hasH1) {
+    rowProblems.push(`${path} has no h1 — it rendered an error or fallback screen, not the page`);
   }
   if (kb > maxKB) {
     rowProblems.push(

@@ -2,6 +2,7 @@ import 'server-only';
 
 import type Stripe from 'stripe';
 
+import { reportIssue } from '@/lib/observability';
 import { getStripe, mapStripeStatus, planFromLookupKey } from '@/lib/stripe';
 import type { createAdminClient } from '@/lib/supabase/server';
 import { recordTrialConsumed } from '@/lib/trialGuard';
@@ -132,7 +133,15 @@ async function rejectDuplicateSubscription(
     // Can't confirm the incumbent (deleted, wrong mode, API blip) — do NOT cancel on a
     // guess. Fall through and let the normal write proceed, which is the pre-existing
     // behaviour: at worst we're back to the bug, never wrongly killing a paid plan.
-    console.error('billing sync: could not verify existing subscription', onFile, err);
+    // ALERT: this is the fail-open that precedes the duplicate below. Falling through
+    // means the write proceeds and the profile points at the incoming subscription
+    // while the incumbent may still be billing — two live subscriptions on one
+    // account, and nothing downstream notices.
+    reportIssue('billing sync: could not verify existing subscription', {
+      cause: err,
+      level: 'alert',
+      tags: { subscriptionOnFile: onFile, userId },
+    });
     return false;
   }
 
@@ -143,14 +152,31 @@ async function rejectDuplicateSubscription(
   } catch (err) {
     // Log and still refuse the write — leaving the profile pointing at the incumbent is
     // the safer of the two states, and the log names both ids for manual cleanup.
-    console.error('billing sync: could not cancel duplicate subscription', sub.id, err);
+    reportIssue('billing sync: could not cancel duplicate subscription', {
+      cause: err,
+      level: 'alert',
+      tags: { subscriptionId: sub.id, subscriptionOnFile: onFile, userId },
+    });
   }
 
-  console.error(
-    `billing sync: DUPLICATE SUBSCRIPTION for user ${userId} — kept ${onFile} (${live.status}), ` +
-      `cancelled incoming ${sub.id} (${sub.status}). If the duplicate was charged ` +
-      '(i.e. it was not trialing), refund it in the Stripe Dashboard — cancelling does not refund.',
-  );
+  // ⚠️ THE ONE H2 WAS BUILT FOR. Cancelling does not refund, so a customer charged
+  // twice stays charged twice until a human opens the Stripe Dashboard — and until
+  // this line reached somebody, no human ever found out.
+  //
+  // The sentence stays a fixed literal and the ids moved into `tags`: Sentry groups
+  // by the message, so interpolating a user id would make every occurrence its own
+  // issue and an alert rule would fire on each one as if it were new.
+  reportIssue('billing sync: DUPLICATE SUBSCRIPTION — cancelled the incoming one', {
+    level: 'alert',
+    tags: {
+      userId,
+      keptSubscription: onFile,
+      keptStatus: live.status,
+      cancelledSubscription: sub.id,
+      cancelledStatus: sub.status,
+      action: 'refund the duplicate in the Stripe Dashboard if it was charged',
+    },
+  });
   return true;
 }
 
@@ -162,7 +188,12 @@ export async function syncSubscription(
   const cust = customerId(sub.customer);
   const userId = await resolveUserId(admin, sub);
   if (!userId) {
-    console.error('billing sync: no profile for subscription', sub.id);
+    // ALERT: a live subscription that belongs to nobody. Somebody may have paid and
+    // not been provisioned, and they cannot fix it from their side.
+    reportIssue('billing sync: no profile for subscription', {
+      level: 'alert',
+      tags: { subscriptionId: sub.id, customerId: cust },
+    });
     return { customerId: cust, subscriptionId: sub.id };
   }
 

@@ -35,7 +35,7 @@ down.**
 | Decision | Consequence for this sweep |
 |---|---|
 | **375px on PUBLIC pages → FIX** | Mobile defects on the public site are in scope and get fixed here |
-| **375px on SIGNED-IN pages → note and move on** | Layer H owns it. The `(app)` shell has a known ~130px overflow, already triaged and measured there. Record anything new, fix nothing |
+| **375px on SIGNED-IN pages → note and move on** | Layer H owns it. ⚠️ The `~130px` here is wrong — re-measured 2026-09-14 it is **34–188px, varying by page**, worst on the entitled screener. Record anything new, fix nothing |
 | **Vercel Hobby → Pro** | Deferred by the owner. Still the launch blocker; not this sweep's job |
 | **`KpiStrip` / `ThesisInsights` "favourable"** | Ruled 2026-08-31: **leave as they are.** Do not re-raise |
 
@@ -687,7 +687,7 @@ exactly what made the whole site dynamic once before (11s). **9 prerendered, 6 d
 answered by Stripe, and the owner is handling it.
 
 **Two more that were never P9 rows and belong on the launch page:** nothing watches the running web
-app (Sentry is a Phase 2 decision, so a 500 would be found by a customer), and **Vercel Hobby →
+app (Sentry — ⚠️ this said *a Phase 2 decision*; the **owner confirmed on 2026-09-14 that it is Layer H**, so a 500 is found by a customer only until H2 ships), and **Vercel Hobby →
 Pro**, deferred by the owner — now with the one-deployment rollback limit as a second argument.
 
 ### ✅ Both watch items answered — re-measured 2026-09-11 15:51 UTC
@@ -1003,7 +1003,7 @@ complete one** (14g), and a "clean" verdict is worth nothing until you know what
 ever surface them — and each is the kind of thing that is only noticed once it is needed.
 
 - **If the site breaks on launch day, how does the owner find out?** Cron failures reach GitHub's
-  failed-workflow email. **Nothing watches the web app.** Sentry is a Phase 2 decision and is not
+  failed-workflow email. **Nothing watches the web app.** ⚠️ This said Sentry was *a Phase 2 decision*; the owner confirmed on 2026-09-14 that it is **Layer H (H2)**, and it is still not
   installed. A 500 on the ticker page would be discovered by a customer, not by us.
 - **Is the data current on the day?** Both crons must have run successfully the night before, and
   the market-cap invariant must be clean. Worth a one-command check on the morning.
@@ -2898,11 +2898,11 @@ Layer H"*. Measured at 375px on the production build, it is **not one number**:
 | `/stocks/us/AAPL`, `/stocks/au/BHP` | **180px** |
 | `/stocks` (Browse) | **131px** |
 | `/account` | **55px** |
-| `/run`, `/results` | **46px** |
+| `/run`, `/results` | **46px** ⚠️ on a FREE account — see below |
 | `/request` | **34px** |
 | an unknown ticker (404) | **4px** |
 
-So 34–180px, varying by page, rather than a uniform ~130. This **refines an existing Layer
+So 34–180px, varying by page, rather than a uniform ~130. ⚠️ **AND EVEN THIS WAS LOW: on 2026-09-14 the same probe was run on an ENTITLED account and `/run` measured 188px, not 46 — the 46 was the upsell card, because this pass (like `app-responsive.spec.ts`) signed in free. `/results` with real data is 158px. The range is 34–188px.** This **refines an existing Layer
 H item and is not a new finding** — the correct action on a known-and-accepted item is
 silence, and this is a correction to its measurement rather than a re-raise (11aj: an open
 row is a claim about the last session's measurement).
@@ -3132,11 +3132,16 @@ and it's fine"* is the sentence that preceded both earlier P0 failures.
 accepted debt is scattered across two long documents. **These are KNOWN and must never appear as a
 5a finding:**
 
+⚠️ **RE-CHECKED 2026-09-14 while planning Layer H, and three of these twelve rows had rotted.**
+Two were **already fixed** and were still being carried as accepted debt; one carried a number
+that was wrong by 58px. **An accepted-debt list ages exactly like a "done" row does** (11aj) —
+it is a claim about the day it was written. Corrected in place below.
+
 | Known · accepted · do NOT re-raise | Where it goes |
 |---|---|
-| 375px overflow in the signed-in shell (~130px, the sidebar) | **Layer H** |
-| Direction colours used as text (the remaining six) | **Layer H** |
-| `[data-legacy-contrast]` on the screener score chips | **Layer H** |
+| ~~375px overflow in the signed-in shell (~130px, the sidebar)~~ → **34–188px, varying by page**, worst on the **entitled** screener at 188px | **Layer H — now planned, designed and confirmed**, `layer-h-plan.md` |
+| ~~Direction colours used as text (the remaining six)~~ | ✅ **CLOSED 2026-08-22** when the owner brought the contrast sweep forward — zero violations, zero deferrals. No longer debt |
+| ~~`[data-legacy-contrast]` on the screener score chips~~ | ✅ **GONE.** `contrast.spec.ts` and `a11y.spec.ts` now assert the marker count is **zero** and fail with *"a marker is back"*. No longer debt |
 | Ticker page Lighthouse 83–84 vs the 90 target | **F-021 — blocked on an instrument** |
 | Vercel Hobby → Pro | Deferred, owner |
 | Four thin subscription states showing "no subscription" | **F-005 → Layer 5b** |

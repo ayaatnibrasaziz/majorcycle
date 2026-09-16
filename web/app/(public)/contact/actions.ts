@@ -1,6 +1,7 @@
 'use server';
 
 import { renderBrandEmail } from '@/lib/email/brandEmail';
+import { reportIssue } from '@/lib/observability';
 import { redactEmails } from '@/lib/redact';
 
 /** Where contact-form submissions are emailed. Defaults to the live support@
@@ -122,11 +123,18 @@ export async function sendContact(
     if (!res.ok) {
       // Redacted: Resend decides what its error body quotes, and the request it is
       // complaining about carries the sender's own address (5A-163).
-      console.error(
-        'Contact form: Resend send failed',
-        res.status,
-        redactEmails(await res.text()),
-      );
+      // ALERT: the reader is told to try again and their message is GONE. There is
+      // no queue and no retry, so a sustained failure means support requests simply
+      // stop arriving, with nothing on either side to say so.
+      reportIssue('Contact form: Resend send failed', {
+        level: 'alert',
+        tags: {
+          status: res.status,
+          // Redacted: Resend decides what its error body quotes, and the request it
+          // is complaining about carries the sender's own address (5A-163).
+          body: redactEmails(await res.text()),
+        },
+      });
       return {
         status: 'error',
         message: 'Something went wrong sending your message. Please try again shortly.',
@@ -135,7 +143,7 @@ export async function sendContact(
 
     return { status: 'success' };
   } catch (err) {
-    console.error('Contact form: Resend request threw', err);
+    reportIssue('Contact form: Resend request threw', { cause: err, level: 'alert' });
     return {
       status: 'error',
       message: 'Something went wrong sending your message. Please try again shortly.',

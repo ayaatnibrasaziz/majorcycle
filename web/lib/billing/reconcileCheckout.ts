@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { reportIssue } from '@/lib/observability';
 import { getStripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import { customerId, refId, syncSubscription } from '@/lib/billing/sync';
@@ -51,7 +52,13 @@ export async function reconcileCheckoutSession(
     // and neither matching means this session isn't ours to act on.
     const owner = session.client_reference_id ?? session.metadata?.['user_id'] ?? null;
     if (owner !== userId) {
-      console.error('reconcileCheckout: session does not belong to caller', sessionId);
+      // Not an outage — this is somebody presenting a session id that is not theirs,
+      // so it is a SECURITY signal rather than a fault. Reported at `error` so it is
+      // visible and searchable without waking anyone: one instance is noise, a
+      // pattern of them is not.
+      reportIssue('reconcileCheckout: session does not belong to caller', {
+        tags: { sessionId, userId },
+      });
       return false;
     }
 
@@ -79,7 +86,13 @@ export async function reconcileCheckoutSession(
   } catch (err) {
     // Logged, never surfaced: the customer's payment DID succeed, and the webhook will
     // land. An error here is our problem to see, not theirs.
-    console.error('reconcileCheckout: could not reconcile', sessionId, err);
+    // ALERT: the customer's payment DID succeed. If the webhook also misses, they
+    // have paid and have no access, and they cannot fix it from their side.
+    reportIssue('reconcileCheckout: could not reconcile', {
+      cause: err,
+      level: 'alert',
+      tags: { sessionId, userId },
+    });
     return false;
   }
 }

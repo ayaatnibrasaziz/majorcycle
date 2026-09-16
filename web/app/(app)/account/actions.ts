@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 
+import { reportIssue } from '@/lib/observability';
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { getStripe } from '@/lib/stripe';
 import { sendDeletionScheduledEmail } from '@/lib/email/accountEmails';
@@ -80,7 +81,7 @@ export async function updateProfile(input: {
     .update(patch)
     .eq('id', user.id);
   if (error) {
-    console.error('updateProfile: update failed', error);
+    reportIssue('updateProfile: update failed', { cause: error, tags: { userId: user.id } });
     return { ok: false, error: 'Could not save your changes. Please try again.' };
   }
   // Invalidate the cached /account render so a later back-navigation (e.g. after
@@ -140,7 +141,15 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
       .update({ deletion_scheduled_at: deletionDate.toISOString() })
       .eq('id', user.id);
     if (error) {
-      console.error('requestAccountDeletion: failed to set deletion_scheduled_at', error);
+      // ALERT: the reader pressed delete and was told it failed. Under #23/#24 an
+      // account deletion is a compliance obligation with a clock on it, and a
+      // customer who believes they have deleted an account and has not is the worst
+      // version of this failing.
+      reportIssue('requestAccountDeletion: failed to set deletion_scheduled_at', {
+        cause: error,
+        level: 'alert',
+        tags: { userId: user.id },
+      });
       redirect('/account?error=delete');
     }
 
@@ -159,7 +168,14 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
           cancel_at_period_end: true,
         });
       } catch (err) {
-        console.error('requestAccountDeletion: could not schedule subscription cancel', err);
+        // ALERT: best-effort by design — the deletion proceeds — which means a
+        // subscription can keep BILLING an account scheduled for purge, and nothing
+        // downstream notices.
+        reportIssue('requestAccountDeletion: could not schedule subscription cancel', {
+          cause: err,
+          level: 'alert',
+          tags: { userId: user.id, subscriptionId: profile.stripe_subscription_id },
+        });
       }
     }
 
@@ -223,7 +239,11 @@ export async function reactivateAccount(): Promise<void> {
     .update({ deletion_scheduled_at: null })
     .eq('id', user.id);
   if (error) {
-    console.error('reactivateAccount: failed to clear deletion_scheduled_at', error);
+    reportIssue('reactivateAccount: failed to clear deletion_scheduled_at', {
+      cause: error,
+      level: 'alert',
+      tags: { userId: user.id },
+    });
     redirect('/reactivate?error=1');
   }
 
@@ -245,7 +265,10 @@ export async function reactivateAccount(): Promise<void> {
       });
       subReactivated = true;
     } catch (err) {
-      console.error('reactivateAccount: could not clear subscription cancel', err);
+      reportIssue('reactivateAccount: could not clear subscription cancel', {
+        cause: err,
+        tags: { userId: user.id, subscriptionId: profile.stripe_subscription_id },
+      });
     }
   }
 
@@ -343,7 +366,7 @@ export async function sendReferral(input: {
     .eq('referrer_id', user.id)
     .gte('created_at', since);
   if (countErr) {
-    console.error('sendReferral: rate-limit query failed', countErr);
+    reportIssue('sendReferral: rate-limit query failed', { cause: countErr });
     return { ok: false, error: 'Could not send the invite. Please try again.' };
   }
   if ((count ?? 0) >= REFERRALS_PER_DAY) {
@@ -386,7 +409,13 @@ export async function sendReferral(input: {
   });
   if (insErr) {
     // The email already went out; log but don't fail the user's action.
-    console.error('sendReferral: insert failed after send', insErr);
+    // The email already went out and the row did not land, so this invite is not
+    // counted against the daily cap — the rate limit has a hole exactly as wide as
+    // this failure's frequency, which is why it is worth seeing rather than shrugging at.
+    reportIssue('sendReferral: insert failed after send', {
+      cause: insErr,
+      tags: { userId: user.id },
+    });
   }
 
   return { ok: true };

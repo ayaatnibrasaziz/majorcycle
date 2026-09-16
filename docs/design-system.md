@@ -1392,22 +1392,151 @@ All broken on purpose — see `coding-standards.md` §14 for the three traps tha
 
 ## 10. Responsive Breakpoints
 
-Mobile-first. Tailwind defaults:
+Mobile-first.
 
 | Breakpoint | Width | Layout |
 |---|---|---|
-| Default (mobile) | < 768px | Single column, sidebar becomes drawer |
-| `md` | ≥ 768px | Two-column where appropriate |
-| `lg` | ≥ 1024px | Sidebar visible, full desktop layout |
+| Default (mobile) | < 768px | Single column, **signed-in sidebar becomes a drawer** |
+| `md` | ≥ 768px | Two-column where appropriate; **the sidebar is pinned open, exactly as on a desktop** |
+| `lg` | ≥ 1024px | Full desktop layout |
 | `xl` | ≥ 1280px | Wider content area, larger charts |
+
+✅ **BUILT — Layer H · H1, 2026-09-14.** The shell is `components/AppShell.tsx`; the rail, the
+header offset and `<main>`'s offset all switch at 768px and nothing above it changed.
+
+⚠️ **The shell writes its breakpoint as `min-[768px]:`, not `md:` — and the reason usually given
+for that in this codebase is WRONG.** `globals.css` sets `html { font-size: 14px }`, which bends
+every Tailwind *spacing* utility by 0.875× (`p-6` is 21px, not 24 — the trap `PublicHeader`
+documents). The tempting inference is that `md` (`48rem`) is therefore 672px here. **Measured: it
+is not.** Relative units inside a media query resolve against the initial font size, never the
+root element's declared one, so `48rem` is 768px whatever `html` says — at a 700px viewport,
+`matchMedia('(min-width: 48rem)')` returns **false**, which it could not if the query read 672px.
+The explicit form is a readability choice, so that one line saying `md` beside another saying
+`min-[900px]` cannot invite the wrong inference. See `lib/shell.ts`.
+
+⚠️ **This table said two different things until 2026-09-14, and neither was built.** The first
+row put the drawer below 768px; the `lg` row said *"Sidebar visible"* at ≥1024px, which implies
+there is no sidebar between 768 and 1023. A reader could take either. **The 768 row is the one
+that is now correct**, and it is correct because it was measured rather than chosen — see the
+table below and `docs/layer-h-plan.md` §11.
+
+**The signed-in shell — the measured basis for 768px.** Taken on the production build, on a
+**paying** account, with the 220px sidebar left in place. Sideways scroll, in pixels:
+
+| Page | 375 | 744 | 768 | 810 | 834 | 1024 |
+|---|---|---|---|---|---|---|
+| Stock Detail | 180 | 0 | 0 | 0 | 0 | 0 |
+| Run Analysis | **188** | 0 | 0 | 0 | 0 | 0 |
+| Results | 158 | 0 | 0 | 0 | 0 | 0 |
+| Browse | 131 | 0 | 0 | 0 | 0 | 0 |
+| Account · Request | 48 · 34 | 0 | 0 | 0 | 0 | 0 |
+
+In 2px steps the first page to run out of room is **Stock Detail at 730px**; everything else
+survives to 620px. So the sidebar is **not a tablet problem — only a phone problem**, and every
+iPad from the 9.7″ up keeps the desktop layout untouched.
+
+⚠️ **768 rather than 730, deliberately.** 730 is the boundary and leaves zero margin; 768 leaves
+38px, and this project has been caught before by a guard passing with one pixel to spare
+(11i-b: assert a margin, not a boundary). The **iPad mini (744px)** therefore takes the drawer —
+it measured clean by 14px, which is luck rather than a design.
+
+⚠️ **THE 375px COLUMN ABOVE UNDER-STATES STOCK DETAIL, and the reason matters more than the
+number.** Those figures were taken on the **local** production build, where `next start` does not
+serve the Vercel Python function at `/api/cycle` — so the entire cycle block is absent: no Overall
+Rating, no Verdict, **no scorecard radar**. Measured on 2026-09-14: `hasCycle: false`,
+`radarRows: 0`, `verdictThesis: 0` on `localhost:3200`, against a full render on the dev server.
+That is CLAUDE.md **11v** — *a paid surface cannot be audited where its engine does not run* — and
+it means every Stock Detail width taken there is a floor rather than a measurement. The tablet
+columns (744-1024) came from the deployed site and stand.
+
+⚠️ **And the finer sweep found a band every earlier measurement had jumped over: 768-793px.**
+With the sidebar back, the scorecard's `.radar-grid` demanded `340 + 24 + 170 = 534px` inside a
+card offering 471px, so the ticker page scrolled sideways by up to **26px** there. The old guard
+sampled 768 and 900; the tablet survey sampled 744, 768, 810 — **the defect sat between every
+sample anyone had ever taken**, and it needed a *paying* session to render at all (11bd).
+
+⚠️ **AND THE FIRST FIX WAS THE WRONG SHAPE — the owner caught it from a screenshot.** Letting the
+chart column shrink (`minmax(0, 340px)`) removed the scroll and destroyed the section: at a 780px
+window the bars track collapsed to a **1px sliver**, so the one thing those five rows exist to show
+was gone, and the chart clipped its own axis label to "Balance Shee". **Both states measure zero
+horizontal scroll**, so no overflow guard — however fine its steps, however entitled its session —
+could tell them apart. **A layout that FITS is not a layout that WORKS.**
+
+The grid keeps its honest `340px` and **stacks** instead, which is what it already did on a phone,
+via a **container query** on the card rather than a media query on the window: `@container
+(max-width: 680px)`. 680 is the bars' minimum, not a round number — the container leaves the bar
+`C − 568`, so 680 buys a **112px** bar, and the owner chose it from a three-way comparison
+(640 → 72px, 680 → 112px, 720 → 152px). `SCORECARD_STACK_PX` in `lib/shell.ts` carries the number
+for the guard, which asserts the bar is a real bar on both sides of the threshold.
+
+⚠️ **THE PHONE LAYOUT WAS THEN REVIEWED BY EYE, and that found three defects no sweep
+could.** All three measured zero horizontal scroll: the Verdict card's brand watermark
+printed on top of its own heading; the company line broke as `Apple Inc.` / `·` /
+`Technology` (a space either side of a separator is two break opportunities, so the dot
+was orphaned); and the Technical Levels pills — `repeat(3, 1fr)`, which cannot go below
+min-content — were **clipped by 15px at 360px** before finally escaping at 320.
+
+⚠️ **The 320px row is retired, not excused.** Layer H recorded the screener as "~23px
+over at 320px, known and accepted". Measured, all 23px was **one native `<select>`**
+sized to its longest option with no `max-width`. Clamped, the signed-in product is clean
+from **320px**, and `app-responsive.spec.ts` sweeps from there — 55px of margin at the
+375px floor rather than the 20 originally aimed for.
+
+⚠️ **Container query or media query — the band decides, and both appear here.** The
+scorecard uses `@container` because its defect lives at **768–793px**, where the 220px
+rail severs any fixed relationship between window and card. The pills use `@media`
+because theirs lives **below 768**, where there is no rail and the card is exactly
+`window − 78`. Copying either rule to the other band would be wrong.
+
+⚠️ **`<main>` keeps `p-6` at every width, and that is load-bearing.** The first draft narrowed it
+to `p-4` on a phone to buy 14px of content; the Stock Detail sub-nav is `sticky … -mx-6 px-6` and
+bleeds 21px each side to reach the edges of `main`'s padding, so it hung 7px past both edges at
+**every width from 320 to 760**. The sub-nav holds a second copy of the page gutter (11c-v). Do not
+narrow one without the other.
+
+### A chart's LABELS are pixels; its drawing is a percentage
+
+⚠️ **This is the shape behind four separate defects found in one review (2026-09-16), and it
+will produce more.** Every chart in this product sizes its drawing as a share of its box —
+`outerRadius="52%"`, a track at `left: X%`, a plot filling its container — while the words
+around it stay a fixed pixel size. Narrow the box and the drawing shrinks; the words do not.
+So the room BETWEEN them is what collapses, and it collapses at exactly 1px per pixel of
+width, which is the tell: **a constant gradient means a fixed-size thing sitting in a
+shrinking box.**
+
+What it produced, all of which measure `scrollX === 0` and none of which an overflow sweep
+can see:
+
+| Chart | What collapsed | Fix |
+|---|---|---|
+| `/articles` fall-by-market | two axis captions centred on end points 31px apart | anchor them to the FIGURE's edges when centring cannot separate them (container query) |
+| Opportunity Map | four corner labels in shrinking quadrants | each label **wraps when it is wider than the quadrant it names** — no breakpoint |
+| Scorecard radar | labels live outside the ring, in a margin that shrinks | the wrap does not clip; the labels use the card's padding |
+| Analyst Target Track | a two-line label reaching into the row beneath it | the row starts below the tallest label, measured |
+
+**Three rules come out of it.**
+
+1. **Prefer a rule to a breakpoint.** "Wrap when wider than your own quadrant" survives a
+   reworded label, a type-scale change, and a width nobody sampled. `@media (max-width: 360px)`
+   encodes today's arithmetic and goes quietly wrong on the first edit to any of it.
+2. **A legend belongs OUTSIDE its SVG.** Recharts' `<Legend>` reserves one row's height; a
+   second row is painted on the chart. Ordinary DOM above the plot pushes it down instead —
+   the position on screen is identical and the overlap becomes impossible rather than
+   unlikely.
+3. **Ask the DATA how often a collision happens.** Two of the four only collide on certain
+   stocks — the target track on **15 of 837** at 375px — so the card is flawless on whichever
+   one you happen to open, and the number is what tells you whether it matters.
 
 **Critical:** the existing reference HTML is desktop-only. Mobile layouts are NEW and must be designed during the build — see roadmap.md for which screens need mobile-specific treatment.
 
 **Mobile patterns:**
-- Sidebar nav becomes hamburger drawer
+- Sidebar nav becomes hamburger drawer **below 768px only** — it follows `PublicHeader`'s
+  `MenuButton` pattern (Escape returns focus to the toggle, closes on navigation, 40px rows)
+  rather than a second implementation (11c)
 - Tables: horizontal scroll OR collapse to cards (case by case)
 - Multi-column grids stack vertically
-- Tooltips become tap-to-reveal popovers (not hover)
+- Tooltips become tap-to-reveal popovers (not hover) — ⚠️ and this is why an **icon-only rail**
+  was rejected for tablets: its labels would depend on hover, on a device that has none
 
 ---
 

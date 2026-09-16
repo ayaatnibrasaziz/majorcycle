@@ -21,6 +21,7 @@
  *   - it is not the current production deployment;
  *   - it is not one of the newest KEEP_PRODUCTION production deployments
  *     (so Instant Rollback still has somewhere to go);
+ *   - it is not the newest preview of its branch (an open PR keeps its link);
  *   - it is older than KEEP_DAYS;
  *   - its state is settled (READY / ERROR / CANCELED) — never one that is
  *     BUILDING or QUEUED, which would kill a live build.
@@ -57,7 +58,7 @@ try {
 const TOKEN = process.env.VERCEL_TOKEN;
 const TEAM = process.env.VERCEL_TEAM_ID;
 const PROJECT = process.env.VERCEL_PROJECT || 'majorcycle';
-const KEEP_DAYS = Number(process.env.KEEP_DAYS || 14);
+const KEEP_DAYS = Number(process.env.KEEP_DAYS || 3);
 const KEEP_PRODUCTION = Number(process.env.KEEP_PRODUCTION || 5);
 const APPLY = process.argv.includes('--apply') || process.env.APPLY === '1';
 
@@ -105,6 +106,23 @@ const production = all
   .sort((a, b) => b.created - a.created);
 const keepIds = new Set(production.slice(0, KEEP_PRODUCTION).map((d) => d.uid || d.id));
 
+// ⚠️ THE NEWEST PREVIEW OF EVERY BRANCH IS KEPT TOO (2026-09-17). KEEP_DAYS came down
+// 14 → 3 because 14 days of previews at this project's pace held the free tier's
+// Function Storage at 237% (23.69 GB of 10). A three-day window alone would delete
+// the preview link of a pull request that simply sat unreviewed over a weekend —
+// the one URL the owner needs to look at before merging. Vercel's own retention
+// policy makes the same exception for the latest deployment of an active branch;
+// this script deletes by API and so has to make it itself.
+const newestPerBranch = new Map();
+for (const d of all) {
+  if (d.target === 'production') continue;
+  const branch = d.meta?.githubCommitRef;
+  if (!branch) continue;
+  const seen = newestPerBranch.get(branch);
+  if (!seen || d.created > seen.created) newestPerBranch.set(branch, d);
+}
+for (const d of newestPerBranch.values()) keepIds.add(d.uid || d.id);
+
 const SETTLED = new Set(['READY', 'ERROR', 'CANCELED']);
 const doomed = all.filter((d) => {
   if (keepIds.has(d.uid || d.id)) return false;
@@ -124,7 +142,7 @@ const doomed = all.filter((d) => {
 console.log(`project           : ${PROJECT}`);
 console.log(`deployments total : ${all.length}  (production ${production.length})`);
 console.log(
-  `keeping           : newest ${KEEP_PRODUCTION} production + everything < ${KEEP_DAYS} days old`,
+  `keeping           : newest ${KEEP_PRODUCTION} production + newest preview of each branch + everything < ${KEEP_DAYS} days old`,
 );
 console.log(
   `to delete         : ${doomed.length} of ${all.length} (${Math.round((100 * doomed.length) / all.length)}% of stored deployments)`,

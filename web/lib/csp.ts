@@ -106,7 +106,11 @@ export function usesNonce(pathname: string): boolean {
  * Report-Only policy that is wrong is a trap primed for whoever flips it**, and
  * the thing it would have broken is the Google sign-in button.
  */
-function directives(supabaseOrigin: string, siteOrigin: string): Record<string, string[]> {
+function directives(
+  supabaseOrigin: string,
+  siteOrigin: string,
+  sentryOrigin: string | null,
+): Record<string, string[]> {
   return {
     'default-src': ["'self'"],
     'base-uri': ["'self'"],
@@ -128,7 +132,25 @@ function directives(supabaseOrigin: string, siteOrigin: string): Record<string, 
     'style-src': ["'self'", "'unsafe-inline'", 'https://accounts.google.com'],
     'img-src': ["'self'", 'data:', siteOrigin],
     'font-src': ["'self'"],
-    'connect-src': ["'self'", supabaseOrigin, 'https://accounts.google.com'],
+    // ⚠️ The Sentry ingest origin is here ONLY when a DSN is configured, and it is
+    // DERIVED from that DSN rather than typed (11c: the second copy is where drift
+    // lives, and a wrong origin here fails in the quietest possible way — the SDK
+    // initialises, the page works, every browser-side error is refused by the CSP
+    // and nothing is ever received, which is indistinguishable from a quiet week).
+    //
+    // ⚠️ And no `tunnelRoute`. Sentry offers one — it proxies events through our own
+    // origin so an ad blocker cannot stop them, which would also mean no new origin
+    // in this list. It is declined on purpose: a tunnel is an open forwarder to a
+    // third party hidden behind our own domain, it is a new route handler needing
+    // its own cache header and its own place in `check:entitlement-gates`, and it
+    // hides the egress this line exists to declare. Losing the small share of
+    // browser errors that a blocker eats is the cheaper of the two.
+    'connect-src': [
+      "'self'",
+      supabaseOrigin,
+      'https://accounts.google.com',
+      ...(sentryOrigin ? [sentryOrigin] : []),
+    ],
     'frame-src': ['https://accounts.google.com'],
   };
 }
@@ -138,6 +160,32 @@ export function supabaseOriginForCsp(url: string | undefined): string {
     return url ? new URL(url).origin : 'https://*.supabase.co';
   } catch {
     return 'https://*.supabase.co';
+  }
+}
+
+/**
+ * Where the browser may post an error report — derived from the DSN, never typed.
+ *
+ * A DSN reads `https://<key>@o123456.ingest.us.sentry.io/789`, so its origin is the
+ * host with the key stripped. `new URL().origin` does that for free, and using it
+ * means the CSP and the SDK can never name different hosts: change the DSN — to a
+ * different project, or to Sentry's EU region — and this follows in the same edit.
+ *
+ * ⚠️ Returns `null` for an absent or malformed DSN, so the policy is unchanged when
+ * the feature is off. **`null` means "add nothing", never a wildcard.** A fallback
+ * of `https://*.ingest.sentry.io` — the shape used above for Supabase, where a
+ * missing URL means a broken deployment — would be the opposite of safe here: it
+ * would grant every Sentry project on the internet as a destination, permanently,
+ * for a feature that is switched off. When the safe default is "narrower", a
+ * convenience wildcard is a hole.
+ */
+export function sentryOriginForCsp(dsn: string | undefined): string | null {
+  if (!dsn) return null;
+  try {
+    const { origin, protocol } = new URL(dsn);
+    return protocol === 'https:' ? origin : null;
+  } catch {
+    return null;
   }
 }
 
@@ -170,6 +218,7 @@ export function contentSecurityPolicy({
   supabaseUrl,
   siteOrigin,
   preferredSourceOrigin = null,
+  sentryDsn,
 }: {
   nonce: string | null;
   dev: boolean;
@@ -190,6 +239,15 @@ export function contentSecurityPolicy({
    */
   preferredSourceOrigin?: string | null;
   /**
+   * `NEXT_PUBLIC_SENTRY_DSN`, or undefined when error monitoring is off.
+   *
+   * Passed in rather than read here for the same reason as `siteOrigin`: this file
+   * deliberately has no imports, because it is loaded by the Edge middleware, by
+   * Playwright, and by `check-render-modes.mjs` through Node's type stripping,
+   * which resolves no path aliases.
+   */
+  sentryDsn?: string | undefined;
+  /**
    * `SITE_ORIGIN` from `lib/url.ts`, passed IN rather than imported. This file is
    * loaded three ways — by the Edge middleware, by Playwright, and by
    * `check-render-modes.mjs` through Node's type stripping, which resolves no
@@ -208,7 +266,11 @@ export function contentSecurityPolicy({
     ...(preferredSourceOrigin ? [preferredSourceOrigin] : []),
   ];
 
-  const base = directives(supabaseOriginForCsp(supabaseUrl), siteOrigin);
+  const base = directives(
+    supabaseOriginForCsp(supabaseUrl),
+    siteOrigin,
+    sentryOriginForCsp(sentryDsn),
+  );
   const all: Record<string, string[]> = {
     ...base,
     'script-src': script,

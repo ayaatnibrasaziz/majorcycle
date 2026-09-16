@@ -318,15 +318,30 @@ test.describe('the Articles section', () => {
     // by 0.5px, and the deepest left-hand label sat 2.1px above the caption
     // under it. All three were the artifact's own geometry, reasoned for 9px
     // labels and no longer true at 12px.
-    for (const width of [375, 768, 1280]) {
+    // ⚠️ SWEPT, not sampled — and this test sampled 375/768/1280 until 2026-09-16,
+    // which is why it was green while the two axis captions read "wholeleargest 60"
+    // at 320px. The plot is the figure minus two fixed gutters, so the centred
+    // captions close at exactly 1px per pixel of width and the failure lives
+    // strictly BELOW the lowest width anyone had picked. Layer H moved this
+    // product's floor to 320, so the old bottom sample is now 55px off the floor
+    // (CLAUDE.md 11bf: a defect at a width nobody samples is invisible twice over).
+    //
+    // Loaded once and resized, rather than reloaded per width: the labels are
+    // positioned by CSS, so a reload per step would buy nothing and cost minutes.
+    await page.goto(ARTICLES_INDEX_PATH);
+    await page.waitForSelector('.art-lab');
+
+    for (let width = 320; width <= 1280; width += 8) {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto(ARTICLES_INDEX_PATH);
-      await page.waitForSelector('.art-lab');
+      await page.waitForTimeout(30);
 
       const boxes = await page.evaluate(() =>
         [...document.querySelectorAll('.art-lab, .art-cap')].map((n) => {
           const r = n.getBoundingClientRect();
-          return { text: n.textContent ?? '', x: r.x, y: r.y, w: r.width, h: r.height };
+          return {
+            text: n.textContent ?? '', x: r.x, y: r.y, w: r.width, h: r.height,
+            caption: n.classList.contains('art-cap'),
+          };
         }),
       );
       expect(boxes.length, `no figure labels found at ${width}px`).toBeGreaterThan(4);
@@ -337,10 +352,17 @@ test.describe('the Articles section', () => {
           const b = boxes[j]!;
           const gapX = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w));
           const gapY = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h));
+          // ⚠️ TWO floors, because two labels that merely fail to collide are not
+          // thereby two labels. The axis captions are a NAMED PAIR a reader has to
+          // tell apart: at 360px they cleared by 4px — a word space — and read as
+          // the single phrase "whole index largest 60", passing a 3px bound with
+          // nothing wrong that a collision test could see. The dense end labels
+          // keep 3px, because sitting close to their own data point is their job.
+          const floor = a.caption && b.caption ? 16 : 3;
           expect(
             Math.max(gapX, gapY),
-            `at ${width}px "${a.text}" and "${b.text}" clear by less than 3px`,
-          ).toBeGreaterThanOrEqual(3);
+            `at ${width}px "${a.text.trim()}" and "${b.text.trim()}" clear by less than ${floor}px`,
+          ).toBeGreaterThanOrEqual(floor);
         }
       }
     }

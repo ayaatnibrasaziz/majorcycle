@@ -248,6 +248,10 @@ for (const [path, wantsNonce, needsAuth, why] of ROUTES) {
     return {
       total: tags.length,
       inline: inline.length,
+      // The React Server Components payload Next writes into the document. Its
+      // presence is what "this page rendered through Next" actually means.
+      flight: inline.filter((t) => (t.textContent || '').includes('__next_f')).length,
+      hasH1: !!document.querySelector('h1'),
       nonces: [...new Set(inline.map((t) => t.nonce || t.getAttribute('nonce') || ''))],
       violations: window.__cspViolations ?? [],
     };
@@ -255,10 +259,20 @@ for (const [path, wantsNonce, needsAuth, why] of ROUTES) {
 
   // A page that did not render has no scripts to refuse and would pass every
   // assertion above (14g).
-  if (inDoc.inline < 3) {
+  //
+  // ⚠️ THIS WAS `inline < 3` UNTIL 2026-09-17, AND NEXT 16.3 BROKE IT ON EVERY PAGE.
+  // Next 16.2 streamed its server-components payload as a run of small inline
+  // `self.__next_f.push(...)` tags; 16.3 writes it as ONE (measured on /terms: two
+  // inline tags, the second 27 KB, beside a fully rendered 51 KB document with its
+  // h1). The floor was a claim about how Next CHUNKS its output, not about whether a
+  // page rendered — so the upgrade turned all 16 routes red while every one of them
+  // reported zero violations. The render signal is now what rendering MEANS: the
+  // page carries its heading (every route here has exactly one — app-a11y asserts
+  // it) and at least one Next payload tag, however Next chooses to split it.
+  if (!inDoc.hasH1 || inDoc.flight < 1) {
     problems.push(
-      `${path} has only ${inDoc.inline} inline script tags — it did not render, so ` +
-        `nothing here was actually measured`,
+      `${path} did not render (h1: ${inDoc.hasH1 ? 'yes' : 'NO'}, Next payload tags: ` +
+        `${inDoc.flight}, inline scripts: ${inDoc.inline}) — nothing here was actually measured`,
     );
   }
 

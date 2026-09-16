@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { reportIssue } from '@/lib/observability';
 import { createAdminClient } from '@/lib/supabase/server';
 
 /**
@@ -96,7 +97,15 @@ export async function recordFreeView(
     // Logged, not swallowed silently: the owner cannot debug from a blank screen,
     // and a fence that has quietly stopped counting should be visible in the
     // Vercel function logs rather than inferred from a scraping bill.
-    console.error('[freeViews] record_free_view failed — allowing the view', err);
+    // ALERT, and the one member of the six that is not about money directly. The
+    // fence fails OPEN by design — locking real readers out over a database blip
+    // would be worse — which means a sustained failure is invisible from every
+    // angle: nothing breaks, nobody complains, and the first evidence is a bill.
+    // "Correctly handled and permanently silent" is exactly what H2 is for.
+    reportIssue('[freeViews] record_free_view failed — allowing the view', {
+      cause: err,
+      level: 'alert',
+    });
     return ALLOW;
   }
 }

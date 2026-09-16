@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+import { reportIssue } from '@/lib/observability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getStripe } from '@/lib/stripe';
 import { sendAccountDeletedEmail } from '@/lib/email/accountEmails';
@@ -48,7 +49,14 @@ async function cancelStripeForRow(row: {
       }
     }
   } catch (err) {
-    console.error('purge-accounts: could not cancel Stripe subscription(s)', row.id, err);
+    // ALERT: own try/catch by design — it must never block the purge — so the
+    // account is deleted and a live subscription can be left BILLING a customer who
+    // no longer exists and cannot cancel it.
+    reportIssue('purge-accounts: could not cancel Stripe subscription(s)', {
+      cause: err,
+      level: 'alert',
+      tags: { userId: row.id },
+    });
   }
 }
 
@@ -78,7 +86,10 @@ export async function GET(request: NextRequest) {
   const { data: due, error } = await selectDueForPurge(admin, nowIso);
 
   if (error) {
-    console.error('purge-accounts: query failed', error);
+    // ALERT: the purge did nothing at all this run. Deletion is a 30-day promise
+    // with a date on it, and a run that selects nothing is indistinguishable from a
+    // run with nothing due.
+    reportIssue('purge-accounts: query failed', { cause: error, level: 'alert' });
     return NextResponse.json({ error: 'query_failed' }, { status: 500, headers: NO_STORE });
   }
 
@@ -100,13 +111,21 @@ export async function GET(request: NextRequest) {
       }
       const { error: delErr } = await admin.auth.admin.deleteUser(row.id);
       if (delErr) {
-        console.error('purge-accounts: deleteUser failed', row.id, delErr);
+        reportIssue('purge-accounts: deleteUser failed', {
+          cause: delErr,
+          level: 'alert',
+          tags: { userId: row.id },
+        });
         failed.push(row.id);
         continue;
       }
       purged += 1;
     } catch (err) {
-      console.error('purge-accounts: unexpected error', row.id, err);
+      reportIssue('purge-accounts: unexpected error', {
+        cause: err,
+        level: 'alert',
+        tags: { userId: row.id },
+      });
       failed.push(row.id);
     }
   }
