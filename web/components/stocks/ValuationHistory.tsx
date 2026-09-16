@@ -63,6 +63,34 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
     : null;
 
   /**
+   * Which side of its OWN line each reference label sits on.
+   *
+   * ⚠️ These were two fixed strings, and the two labels printed ON TOP OF EACH
+   * OTHER at every width including desktop. Measured on AAPL: the Avg line at
+   * y=82, the Current line at y=65, and BOTH labels occupying y=68..80. Neither
+   * label had wandered; they were aimed at each other.
+   *
+   * The naming is the trap. A horizontal `ReferenceLine`'s label box has zero
+   * height, so `insideTop*` renders just BELOW the line and `insideBottom*` just
+   * ABOVE it — the opposite of how both read. The old pair therefore pointed the
+   * lower line's label up and the upper line's label down, into whatever gap the
+   * data happened to leave between them. On a stock whose current P/E sits far
+   * from its average that gap is wide and the card looks perfect; on AAPL it is
+   * 17px against 12px of type each, and on ENB 9px. Reverting this pair measures
+   * −12px and −3px of overlap on those two, and CLEAR on T — so the defect was
+   * never visible on whichever stock you happened to open.
+   *
+   * ⚠️ So the position cannot be a constant: WHICH line is on top is decided by
+   * the data, and it reverses the moment a stock trades below its own average
+   * (GILD and T do today). Each label now sits on the far side of its own line,
+   * away from the other, and stays right in both directions — a layout tuned to
+   * one dataset expires with it (CLAUDE.md 11k).
+   */
+  const avgOnTop = avg !== null && curr !== null && avg > curr;
+  const avgLabelPos = avgOnTop ? 'insideBottomRight' : 'insideTopRight';
+  const currLabelPos = avgOnTop ? 'insideTopRight' : 'insideBottomRight';
+
+  /**
    * The verdict, and the ink it is printed in — from ONE set of thresholds.
    *
    * ⚠️ THE WORDS AND THE COLOUR USED TO CHANGE AT DIFFERENT NUMBERS, which is
@@ -189,7 +217,7 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
                       stroke={REFERENCE_INK}
                       strokeWidth={2}
                       strokeDasharray="6 4"
-                      label={{ value: `Avg ${avg}x`, position: 'insideBottomRight', fill: REFERENCE_INK, fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
+                      label={{ value: `Avg ${avg}x`, position: avgLabelPos, fill: REFERENCE_INK, fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
                     />
                   )}
                   {curr !== null && (
@@ -198,7 +226,7 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
                       stroke={INK.brand}
                       strokeWidth={2}
                       strokeDasharray="3 3"
-                      label={{ value: `Current ${curr.toFixed(1)}x`, position: 'insideTopRight', fill: INK.brand, fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
+                      label={{ value: `Current ${curr.toFixed(1)}x`, position: currLabelPos, fill: INK.brand, fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
                     />
                   )}
                   <Area

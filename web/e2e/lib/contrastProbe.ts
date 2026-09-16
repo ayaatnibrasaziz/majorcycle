@@ -206,18 +206,27 @@ export const SENTINEL = {
     return !!el && getComputedStyle(el).position === 'sticky';
   },
   /**
-   * The SIGNED-IN shell. The app layout offsets `<main>` by the sidebar width via
-   * `ml-[var(--sidebar-w)]`, so a non-zero computed left margin proves both that
-   * the stylesheet is live AND that the token resolved — an unstyled page gives 0,
-   * and a page that loaded the stylesheet but not the theme gives 0 as well.
+   * The SIGNED-IN shell. `<main>` is pushed clear of the fixed header by
+   * `mt-[var(--header-h)]`, so a non-zero computed TOP margin proves both that the
+   * stylesheet is live AND that the token resolved — an unstyled page gives 0, and a
+   * page that loaded the stylesheet but not the theme gives 0 as well.
+   *
+   * ⚠️ **It read `marginLeft` until Layer H · H1, and H1 would have made it lie.**
+   * The left offset is `ml-[var(--sidebar-w)]` only at 768px and up; below that the
+   * rail is a drawer and a left margin of **0 is the correct state**. So the moment
+   * the contrast suite is run at phone width — which is exactly what H1.5 asks for —
+   * this sentinel would report a dead stylesheet on a perfectly styled page, and the
+   * scan would refuse to measure. The top offset is unconditional at every width.
    *
    * ⚠️ Deliberately NOT "the sidebar exists". The sidebar is in the DOM the moment
    * the layout renders, which is true while the page beneath it is still empty —
-   * the same trap that let the landing be measured at 47 elements of 291.
+   * the same trap that let the landing be measured at 47 elements of 291. (And after
+   * H1 it is not in the DOM at all below 768px, which would have been a second way
+   * for that version to be wrong.)
    */
   app: () => {
     const main = document.querySelector('main#main-content');
-    return !!main && parseFloat(getComputedStyle(main).marginLeft) > 0;
+    return !!main && parseFloat(getComputedStyle(main).marginTop) > 0;
   },
 } as const;
 

@@ -1,10 +1,8 @@
 import { redirect } from 'next/navigation';
 import { shouldShowOnboarding } from '@/lib/entitlement';
 import { getViewerEntitlement } from '@/lib/entitlement.server';
-import { Sidebar } from '@/components/Sidebar';
-import { Header } from '@/components/Header';
+import { AppShell } from '@/components/AppShell';
 import { OnboardingModal } from '@/components/OnboardingModal';
-import { AnalysisProvider } from '@/lib/analysis';
 
 export default async function AppLayout({
   children,
@@ -15,25 +13,14 @@ export default async function AppLayout({
   // without a Supabase session. Guard by NODE_ENV so this can never fire in prod.
   if (process.env.NODE_ENV !== 'production' && process.env.DEV_BYPASS_AUTH === 'true') {
     return (
-      <div className="min-h-screen bg-[var(--bg-page)]">
-        {/* Dev bypass renders the ENTITLED view so local work sees the full app.
-            Set DEV_FORCE_FREE=true to preview the locked/free-tier states instead. */}
-        <Sidebar
-          subscriptionStatus={null}
-          entitled={process.env.DEV_FORCE_FREE !== 'true'}
-        />
-        <Header />
-        <main
-          className="ml-[var(--sidebar-w)] mt-[var(--header-h)] p-6 min-h-[calc(100vh-var(--header-h))]"
-          id="main-content"
-        >
-          <div className="mb-4 px-3 py-2 bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[var(--radius-sm)] text-[11px] text-[var(--text-muted)] italic">
-            ⚠ For educational and research purposes only. Not financial advice.
-            Always conduct independent due diligence.
-          </div>
-          <AnalysisProvider>{children}</AnalysisProvider>
-        </main>
-      </div>
+      // Dev bypass renders the ENTITLED view so local work sees the full app.
+      // Set DEV_FORCE_FREE=true to preview the locked/free-tier states instead.
+      <AppShell
+        subscriptionStatus={null}
+        entitled={process.env.DEV_FORCE_FREE !== 'true'}
+      >
+        {children}
+      </AppShell>
     );
   }
 
@@ -84,24 +71,13 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-page)]">
-      <Sidebar
-        subscriptionStatus={viewer.subscriptionStatus}
-        entitled={viewer.entitled}
-        billingBlocked={viewer.billingBlocked}
-      />
-      <Header email={viewer.email} />
-      <main
-        className="ml-[var(--sidebar-w)] mt-[var(--header-h)] p-6 min-h-[calc(100vh-var(--header-h))]"
-        id="main-content"
-      >
-        {/* Disclaimer strip — required on all authenticated pages */}
-        <div className="mb-4 px-3 py-2 bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[var(--radius-sm)] text-[11px] text-[var(--text-muted)] italic">
-          ⚠ For educational and research purposes only. Not financial advice.
-          Always conduct independent due diligence.
-        </div>
-        <AnalysisProvider>{children}</AnalysisProvider>
-      </main>
-    </div>
+    <AppShell
+      email={viewer.email}
+      subscriptionStatus={viewer.subscriptionStatus}
+      entitled={viewer.entitled}
+      billingBlocked={viewer.billingBlocked}
+    >
+      {children}
+    </AppShell>
   );
 }

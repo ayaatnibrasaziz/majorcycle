@@ -66,7 +66,28 @@ function CompanyName({ stock }: { stock: StockDetail }) {
   return (
     <div className="text-[14px] text-[var(--text-secondary)] mt-[2px]">
       <h1 className="inline">{stock.name ?? stock.ticker}</h1>
-      {stock.sector ? <span> · {stock.sector}</span> : null}
+      {/* ⚠️ A NON-BREAKING SPACE AFTER THE DOT — Layer H · H1 visual pass, 2026-09-15.
+          This was `<span> · {stock.sector}</span>`, which gives the browser a break
+          opportunity on BOTH sides of the separator. At 375px that orphaned it, so the
+          phone read:
+
+              Apple Inc.
+              ·
+              Technology
+
+          — a line containing one dot. Zero horizontal scroll, every guard green; it is
+          only visible by looking (11bf: a layout that fits is not a layout that works).
+
+          ⚠️ Written as a single JS string rather than `&nbsp;` in JSX text. SWC drops
+          the leading whitespace of a multi-line JSX text node that contains an HTML
+          entity (CLAUDE.md 11ac) — the exact defect that ate the space after bold
+          phrases in the Learn articles — and `e2e/jsx-entity-space.spec.ts` bans the
+          shape outright. A template literal cannot be bitten by it.
+
+          The space BEFORE the dot stays breakable, so "· Technology" moves to the next
+          line as one unit when it has to, and a two-word sector can still wrap inside
+          itself rather than overflowing. */}
+      {stock.sector ? <span>{` \u00B7\u00A0${stock.sector}`}</span> : null}
     </div>
   );
 }

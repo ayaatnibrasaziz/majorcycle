@@ -102,6 +102,40 @@
 .art-cap-l { left: 0; }
 .art-cap-r { left: 100%; }
 
+/* ⚠️ …AND THE MEASUREMENT ABOVE WAS TAKEN AT 375px ONLY, WHICH IS THE WIDTH IT
+   PASSES AT. The plot is what shrinks: it is the figure minus two fixed gutters,
+   so `gap = plotWidth − 67` exactly, and the gradient runs
+
+       375px → plot 86 → gap  19   two labels
+       360px → plot 71 → gap   4   ONE phrase, "whole index largest 60"
+       340px → plot 51 → gap −16   overlapping
+       320px → plot 31 → gap −36   "wholeleargest 60"
+
+   H1 moved this product's floor from 375 to 320, so the one width the old fix was
+   tuned at is now 55px above the bottom of the range (11i-b: run the guard where
+   the defect appears, and assert a margin rather than a boundary).
+
+   Below the width where centring can separate them, the captions stop pointing at
+   their own verticals — which conveys nothing once the two verticals are 31px
+   apart — and anchor to the FIGURE's edges instead, left label hard left, right
+   label hard right. That is `figureWidth − 134`: 69px of clearance at 320px and
+   124px at 375px, so the narrow form is more separated than the wide one
+   everywhere it applies.
+
+   ⚠️ A CONTAINER query, not a media query, and the two are not interchangeable:
+   this figure is dropped into article prose as well as into the briefing card, so
+   its width tracks the reading column rather than the window (11bf). The
+   container is `.art-fig` rather than `.art-plotouter` because the outer box is
+   the positioning context for every label in the drawing, and `container-type`
+   brings layout containment with it. */
+.art-fig { container-type: inline-size; }
+
+@container (max-width: 283px) {
+  .art-cap { transform: none; }
+  .art-cap-l { left: calc(0px - var(--art-gut-l)); }
+  .art-cap-r { left: auto; right: calc(0px - var(--art-gut-r)); }
+}
+
 /* ── The featured card's own furniture ──────────────────────────────────── */
 .art-head {
   display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 7px;

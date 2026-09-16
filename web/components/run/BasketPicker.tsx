@@ -64,11 +64,19 @@ export function BasketPicker({
           {b.label}
         </button>
       ))}
+      {/* ⚠️ `max-w-full` — Layer H · H1 visual pass, 2026-09-15.
+          A native <select> sizes itself to its LONGEST OPTION, and the industry list
+          holds names like "Diversified Telecommunication Services": measured at a fixed
+          **303px** with `max-width: none`, right edge at 343px. That single control was
+          the ENTIRE 23px of horizontal scroll the screener had at 320px — the one
+          overflow Layer H had written down as known and accepted.
+          It changes nothing where the page already fits: at 375px the control is 303px
+          inside 333px of room, so the clamp only engages below ~345px. */}
       <select
         aria-label="Add a sector"
         value={sector}
         onChange={(e) => addSector(e.target.value)}
-        className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-[6px] text-[12px] text-[var(--text-secondary)] outline-none transition-colors focus:border-[var(--brand-bright)]"
+        className="max-w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-[6px] text-[12px] text-[var(--text-secondary)] outline-none transition-colors focus:border-[var(--brand-bright)]"
       >
         <option value="">+ By sector…</option>
         {sectors.map((s) => (
@@ -81,7 +89,7 @@ export function BasketPicker({
         aria-label="Add an industry"
         value={industry}
         onChange={(e) => addIndustry(e.target.value)}
-        className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-[6px] text-[12px] text-[var(--text-secondary)] outline-none transition-colors focus:border-[var(--brand-bright)]"
+        className="max-w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-2.5 py-[6px] text-[12px] text-[var(--text-secondary)] outline-none transition-colors focus:border-[var(--brand-bright)]"
       >
         <option value="">+ By industry…</option>
         {industryGroups.map((g) => (

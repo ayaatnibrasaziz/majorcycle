@@ -6,7 +6,6 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   Cell,
-  Legend,
   ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
@@ -20,6 +19,7 @@ import {
 
 import { InfoTip } from '@/components/ui/InfoTip';
 import { OVERALL_LABELS, scoreColor, tierFromLabel } from '@/lib/ratings';
+import { textWidth, whenFontsReady } from '@/lib/textWidth';
 import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { OverallLabel } from '@/lib/types';
 import type { ResultRow } from './columns';
@@ -50,6 +50,55 @@ interface ClusterState {
 }
 
 const SPLIT = 65; // tier-2 (Constructive) threshold — the quadrant divider.
+
+/** The in-chart zone labels' size, shared by the renderer and the fit test. */
+const ZONE_FONT_PX = 9.5;
+
+/** Breathing room a label must keep inside its own quadrant's edges. */
+const ZONE_PAD_PX = 14;
+
+/**
+ * The four quadrants: where each sits, what tints it, and what names it.
+ *
+ * ⚠️ ONE table, read twice — once by the `<ReferenceArea>` that paints the tint
+ * and once by the legend under the chart. Two lists would drift the moment a
+ * threshold or a colour moved, and the colour is the ONLY thing tying a legend
+ * row to the region it names (11c: one rule, one place).
+ */
+const ZONES = [
+  {
+    label: 'Opportunity Zone',
+    x1: SPLIT, x2: 100, y1: SPLIT, y2: 100,
+    fill: OPPORTUNITY_ZONES.zoneGood, fillOpacity: 0.07,
+    ink: OPPORTUNITY_ZONES.zoneGood, strong: true,
+    position: 'insideTopRight' as const, share: (100 - SPLIT) / 100,
+  },
+  {
+    label: 'Weak but cheap',
+    x1: 0, x2: SPLIT, y1: SPLIT, y2: 100,
+    fill: OPPORTUNITY_ZONES.zoneCheapWash, fillOpacity: 0.05,
+    ink: 'var(--brand-deep)', strong: false,
+    position: 'insideTopLeft' as const, share: SPLIT / 100,
+  },
+  {
+    label: 'Healthy, fully priced',
+    x1: SPLIT, x2: 100, y1: 0, y2: SPLIT,
+    fill: OPPORTUNITY_ZONES.zonePricedWash, fillOpacity: 0.06,
+    ink: OPPORTUNITY_ZONES.zonePricedInk, strong: false,
+    position: 'insideBottomRight' as const, share: (100 - SPLIT) / 100,
+  },
+  {
+    label: 'Weak & expensive',
+    x1: 0, x2: SPLIT, y1: 0, y2: SPLIT,
+    fill: OPPORTUNITY_ZONES.zoneWorstWash, fillOpacity: 0.06,
+    ink: 'var(--c-tier-5-ink)', strong: false,
+    position: 'insideBottomLeft' as const, share: SPLIT / 100,
+  },
+] as const;
+
+
+
+
 
 // Bubbles sit on a 0–100 grid; two stocks within the same integer cell visually
 // overlap. We cluster by the rounded cell so a click on a stack opens a picker.
@@ -83,6 +132,53 @@ export function OpportunityMap({
   const [cluster, setCluster] = useState<ClusterState | null>(null);
 
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Do the four zone names still fit INSIDE their own quadrants?
+   *
+   * ⚠️ The names belong in the chart — that is where they read best, and the
+   * desktop layout is not to change (owner, 2026-09-16). They only move to a
+   * legend underneath *"when the screen size becomes small and the text is
+   * overlapping / away from its own quadrant"*, which is a measurement, not a
+   * breakpoint: the quadrants are 65% and 35% of the plot, so the right-hand two
+   * are the tight ones and "Opportunity Zone" is the longest thing in them.
+   *
+   * ⚠️ Measured with a canvas rather than estimated per character — an estimate
+   * already shipped a cut label once (see `lib/textWidth.ts`) — and re-taken
+   * once the webfont is in, because before that it measures the fallback face.
+   */
+  const [namesFitInside, setNamesFitInside] = useState(true);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return undefined;
+
+    let alive = true;
+    const measure = () => {
+      if (!alive) return;
+      // The plot is the wrap minus the axis gutters; the ReferenceArea labels are
+      // positioned within it, so its width is what the quadrants divide up.
+      const plot = el.querySelector('.recharts-cartesian-grid')?.getBoundingClientRect().width
+        ?? el.getBoundingClientRect().width;
+      if (!plot) return;
+      const fits = ZONES.every((z) => {
+        const w = textWidth(z.label, {
+          fontSize: ZONE_FONT_PX,
+          fontWeight: z.strong ? 700 : 600,
+        });
+        // `null` is "could not measure", not "zero wide" — keep the labels where
+        // they are rather than silently rearranging the chart on a guess (11e).
+        return w === null || w + ZONE_PAD_PX <= plot * z.share;
+      });
+      setNamesFitInside(fits);
+    };
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    void whenFontsReady().then(measure);
+    measure();
+    return () => { alive = false; ro.disconnect(); };
+  }, []);
   const popRef = useRef<HTMLDivElement>(null);
   const mouse = useRef({ x: 0, y: 0 }); // last click point, for popover anchoring
 
@@ -205,6 +301,7 @@ export function OpportunityMap({
             No stocks with a Financial Health score to plot.
           </div>
         ) : (
+          <>
           <div
             ref={wrapRef}
             className="opp-map-wrap chart-h-lg"
@@ -218,6 +315,52 @@ export function OpportunityMap({
             <p className="sr-only">
               {`Opportunity map: ${plottable.length} stock${plottable.length === 1 ? '' : 's'} plotted by Financial Health (horizontal axis) versus Valuation score (vertical axis); larger bubbles are higher Overall ratings. ${oppZoneCount} ${oppZoneCount === 1 ? 'sits' : 'sit'} in the top-right Opportunity Zone — healthy companies trading at a discount. Full per-stock values are in the results table below.`}
             </p>
+            {/* ⚠️ THE LEGEND IS ORDINARY DOM, ABOVE THE PLOT — it used to be a
+                Recharts `<Legend verticalAlign="top">`, and at 320px the chips
+                wrapped to a second row while the chart had reserved height for
+                one. The result was the word "Neutral" printed INSIDE the plot,
+                across "Weak but cheap" and "Opportunity Zone" (measured: 21x6
+                and 16x6 of shared ink at 320, 11x6 and 6x6 at 340).
+
+                ⚠️ And the run that found it had only THREE tiers on screen. The
+                legend lists a chip per tier PRESENT, so a screen spanning all
+                five is ~430px of chips and wraps at roughly 490px — a far
+                commoner width than 320. The narrow phone is where it was seen;
+                it is not where the defect ends.
+
+                Taking the list out of the SVG makes the overlap impossible
+                rather than unlikely: wrapped chips now push the plot down
+                instead of covering it, whatever the tier count or the width.
+                The position on screen is unchanged — `verticalAlign="top"` put
+                it here anyway (11u: make the agreement structural). */}
+            <ul className="opp-legend">
+              {legendPayload.map((e) => {
+                const off = hidden.has(e.value);
+                return (
+                  <li key={e.id}>
+                    <button
+                      type="button"
+                      className="opp-legend-item"
+                      aria-pressed={!off}
+                      // No aria-label: the accessible name is the visible tier
+                      // name, and `aria-pressed` alone carries shown/hidden. It
+                      // used to be `${off ? 'Show' : 'Hide'} ${e.value}`, which
+                      // announced "Hide Bearish, pressed" - an action and a state
+                      // pulling opposite ways, and the ARIA practice for a toggle
+                      // is explicit that the label must not change with the state
+                      // (audit 5A-109).
+                      onClick={() => toggle(e.value)}
+                    >
+                      <span className="opp-legend-dot" style={{ background: e.color, opacity: off ? 0.4 : 1 }} />
+                      <span style={{ color: off ? 'var(--text-muted)' : 'var(--text-secondary)', textDecoration: off ? 'line-through' : 'none' }}>
+                        {e.value}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <div className="opp-map-plot">
             <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 0, height: 300 }}>
               <ScatterChart margin={{ top: 14, right: 18, bottom: 26, left: 6 }}>
                 {/* Quadrant tints.
@@ -229,14 +372,30 @@ export function OpportunityMap({
                     decoration and have no contrast duty. Recede with a colour,
                     never with transparency (CLAUDE.md 11q): a token can be
                     measured, an alpha silently dilutes whatever it is given. */}
-                <ReferenceArea x1={SPLIT} x2={100} y1={SPLIT} y2={100} fill={OPPORTUNITY_ZONES.zoneGood} fillOpacity={0.07} stroke="none"
-                  label={{ value: 'Opportunity Zone', position: 'insideTopRight', fill: OPPORTUNITY_ZONES.zoneGood, fontSize: 10, fontWeight: 700 }} />
-                <ReferenceArea x1={SPLIT} x2={100} y1={0} y2={SPLIT} fill={OPPORTUNITY_ZONES.zonePricedWash} fillOpacity={0.06} stroke="none"
-                  label={{ value: 'Healthy, fully priced', position: 'insideBottomRight', fill: OPPORTUNITY_ZONES.zonePricedInk, fontSize: 9.5, fontWeight: 600 }} />
-                <ReferenceArea x1={0} x2={SPLIT} y1={SPLIT} y2={100} fill={OPPORTUNITY_ZONES.zoneCheapWash} fillOpacity={0.05} stroke="none"
-                  label={{ value: 'Weak but cheap', position: 'insideTopLeft', fill: 'var(--brand-deep)', fontSize: 9.5, fontWeight: 600 }} />
-                <ReferenceArea x1={0} x2={SPLIT} y1={0} y2={SPLIT} fill={OPPORTUNITY_ZONES.zoneWorstWash} fillOpacity={0.06} stroke="none"
-                  label={{ value: 'Weak & expensive', position: 'insideBottomLeft', fill: 'var(--c-tier-5-ink)', fontSize: 9.5, fontWeight: 600 }} />
+                {/* ⚠️ THE TINTS STAY, THE WORDS MOVE OUT (owner, 2026-09-16:
+                    *"why don't you put the 4 zone text as a legend down instead of
+                    putting it inside the 4 quadrants? This will make it look
+                    cleaner"*). Four fixed-size labels inside four shrinking
+                    quadrants is the whole reason they collided at 320px — a
+                    legend underneath has the card's full width and cannot run
+                    into the plot at any size. The colour is what ties each
+                    legend row to its quadrant, so the fills keep their tokens
+                    and the swatches read the SAME constants (11c). */}
+                {ZONES.map((z) => (
+                  <ReferenceArea
+                    key={z.label}
+                    x1={z.x1} x2={z.x2} y1={z.y1} y2={z.y2}
+                    fill={z.fill} fillOpacity={z.fillOpacity} stroke="none"
+                    label={
+                      namesFitInside
+                        ? {
+                            value: z.label, position: z.position, fill: z.ink,
+                            fontSize: ZONE_FONT_PX, fontWeight: z.strong ? 700 : 600,
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
                 <ReferenceLine x={SPLIT} stroke={OPPORTUNITY_ZONES.split} strokeDasharray="4 4" />
                 <ReferenceLine y={SPLIT} stroke={OPPORTUNITY_ZONES.split} strokeDasharray="4 4" />
 
@@ -290,43 +449,6 @@ export function OpportunityMap({
                   }}
                 />
 
-                {/* Custom legend so the tier order is pinned (High Conviction → Bearish),
-                    not left to Recharts' series-registration order. Click toggles a tier. */}
-                <Legend
-                  verticalAlign="top"
-                  align="center"
-                  wrapperStyle={{ paddingBottom: 8 }}
-                  content={() => (
-                    <ul className="opp-legend">
-                      {legendPayload.map((e) => {
-                        const off = hidden.has(e.value);
-                        return (
-                          <li key={e.id}>
-                            <button
-                              type="button"
-                              className="opp-legend-item"
-                              aria-pressed={!off}
-                              // No aria-label: the accessible name is the visible tier
-                              // name, and `aria-pressed` alone carries shown/hidden. It
-                              // used to be `${off ? 'Show' : 'Hide'} ${e.value}`, which
-                              // announced "Hide Bearish, pressed" - an action and a state
-                              // pulling opposite ways, and the ARIA practice for a toggle
-                              // is explicit that the label must not change with the state
-                              // (audit 5A-109).
-                              onClick={() => toggle(e.value)}
-                            >
-                              <span className="opp-legend-dot" style={{ background: e.color, opacity: off ? 0.4 : 1 }} />
-                              <span style={{ color: off ? 'var(--text-muted)' : 'var(--text-secondary)', textDecoration: off ? 'line-through' : 'none' }}>
-                                {e.value}
-                              </span>
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                />
-
                 {series.map((s) => (
                   <Scatter
                     key={s.label}
@@ -346,7 +468,37 @@ export function OpportunityMap({
                 ))}
               </ScatterChart>
             </ResponsiveContainer>
+            </div>
           </div>
+
+            {/* The four zones, named under the chart instead of inside it.
+                ⚠️ OUTSIDE `.opp-map-wrap`, which is a FIXED-HEIGHT box. Putting
+                the list inside it made the three children share that height and
+                squashed the plot to a thin strip — the chart lost most of its
+                vertical range while every label was perfectly placed.
+                A `<ul>`, because it IS a list of four things, and the swatch is
+                `aria-hidden` — the colour is a pointer to the region, not
+                information a screen reader needs twice. */}
+            {!namesFitInside && (
+              <ul className="opp-zones" aria-label="What the four shaded regions mean">
+                {ZONES.map((z) => (
+                  <li key={z.label} className="opp-zone">
+                    <span
+                      className="opp-zone-swatch"
+                      aria-hidden="true"
+                      style={{ background: z.fill, opacity: z.fillOpacity * 9 }}
+                    />
+                    <span
+                      className="opp-zone-name"
+                      style={{ color: z.ink, fontWeight: z.strong ? 700 : 600 }}
+                    >
+                      {z.label}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </div>
 

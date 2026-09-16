@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { LogOut, UserRound } from 'lucide-react';
 
+import { cn } from '@/lib/utils';
+
 /**
  * Account menu in the header (F3 Step 10).
  *
@@ -18,6 +20,21 @@ import { LogOut, UserRound } from 'lucide-react';
 export function UserMenu({ email }: { email?: string | null }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Below 768px the email collapses to the reader's initial (Layer H · H1) — there is
+   * no arrangement in which a menu button, a page title, an email address and a 375px
+   * screen all fit, and of those the email is the one a reader needs least while using
+   * the product. Same button, same menu, same destinations.
+   *
+   * ⚠️ The circle is `aria-hidden` and the button keeps its `aria-label`, so the
+   * ACCESSIBLE NAME is byte-identical at every width. That matters: audit 5A-151 was
+   * this control advertising a name that appears nowhere on screen, and the fix there
+   * was to make the name contain what is visible. A decorative initial leaves the
+   * button with no visible text label at all — which is the icon-button case, not the
+   * mismatch case — so WCAG 2.5.3 is satisfied by having nothing to mismatch.
+   */
+  const initial = email?.trim()?.[0]?.toUpperCase() ?? null;
 
   // Close on outside click or Escape — a menu that can only be dismissed by
   // re-clicking the trigger is a trap for keyboard and touch users alike.
@@ -67,10 +84,36 @@ export function UserMenu({ email }: { email?: string | null }) {
            inapplicable. A rule that never ran is indistinguishable from one that
            passed (CLAUDE.md 14g). `app-a11y.spec.ts` now enables it explicitly. */
         aria-label={`${email ?? 'Account'} — account menu`}
-        className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--bg-surface)] px-3 py-[7px] text-[12px] font-medium text-[var(--text-secondary)] transition-all duration-150 hover:border-[var(--brand-bright)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)]"
+        className={cn(
+          'flex items-center rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--bg-surface)] text-[12px] font-medium text-[var(--text-secondary)] transition-all duration-150 hover:border-[var(--brand-bright)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)]',
+          // Phone: a 38px square, the same size as the drawer's toggle on the other
+          // side of the strip, so the two controls framing the title match.
+          'h-[38px] w-[38px] justify-center',
+          // 768px and up: exactly what it has always been.
+          'min-[768px]:h-auto min-[768px]:w-auto min-[768px]:justify-start min-[768px]:gap-1.5 min-[768px]:px-3 min-[768px]:py-[7px]',
+        )}
       >
-        <UserRound className="h-[14px] w-[14px]" strokeWidth={1.8} aria-hidden="true" />
-        <span className="max-w-[140px] truncate">{email ?? 'Account'}</span>
+        <UserRound
+          className={cn(
+            'h-[14px] w-[14px]',
+            // With an email there is an initial to show instead; without one (the
+            // dev-bypass render) the icon is all there is, at every width.
+            initial && 'hidden min-[768px]:block',
+          )}
+          strokeWidth={1.8}
+          aria-hidden="true"
+        />
+        {initial && (
+          <span
+            className="min-[768px]:hidden flex h-[24px] w-[24px] items-center justify-center rounded-full bg-[var(--brand-deep)] text-[11px] font-bold text-white"
+            aria-hidden="true"
+          >
+            {initial}
+          </span>
+        )}
+        <span className="hidden min-[768px]:block max-w-[140px] truncate">
+          {email ?? 'Account'}
+        </span>
       </button>
 
       {open && (

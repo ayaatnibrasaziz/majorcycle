@@ -2,17 +2,26 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
 import { BarChart3, Compass, ListPlus, Lock, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BrandLockup } from '@/components/BrandLockup';
-import { UpgradeDialog } from '@/components/UpgradeDialog';
 
 interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
 }
+
+/**
+ * How the nav is attached — the pinned rail at 768px and up, or the drawer that
+ * slides over the page below it (Layer H · H1).
+ *
+ * ⚠️ It changes the ROWS' size and nothing else. The content, the order, the group
+ * labels, the locks and the licence badge are identical, because a phone reader and a
+ * desktop reader are looking for the same four destinations and a second information
+ * architecture is a second thing to keep true.
+ */
+export type NavVariant = 'rail' | 'drawer';
 
 // Grouped by what the viewer OWNS vs what they're buying — which also happens to be
 // the order the work actually flows in. The old grouping put Results (an output) above
@@ -53,10 +62,16 @@ function NavLink({
   item,
   locked = false,
   onLockedClick,
+  variant = 'rail',
+  onNavigate,
 }: {
   item: NavItem;
   locked?: boolean;
   onLockedClick?: (label: string) => void;
+  /** `drawer` is the phone presentation — same rows, thumb-sized. */
+  variant?: NavVariant;
+  /** Called when a real navigation happens, so the drawer can close itself. */
+  onNavigate?: () => void;
 }) {
   const pathname = usePathname();
   const isActive =
@@ -67,7 +82,13 @@ function NavLink({
   // way an <a class="flex"> does, so it needs w-full — and w-full plus mx-2 is 100%
   // + 16px, which overflowed the nav and produced a horizontal scrollbar.
   const className = cn(
-    'w-full flex items-center gap-[10px] px-[18px] py-[9px] rounded-[var(--radius-sm)] text-[13px] font-medium transition-all duration-150 select-none',
+    'w-full flex items-center gap-[10px] px-[18px] rounded-[var(--radius-sm)] text-[13px] font-medium transition-all duration-150 select-none',
+    // ⚠️ A pointer has a cursor and a thumb does not. The rail's 9px padding gives a
+    // ~37px row, which is fine under a mouse and under WCAG 2.5.8's 24px floor, but
+    // the drawer exists only on touch screens — so its rows take the 44px the
+    // approved design asks for. `min-h` rather than more padding, so a label that
+    // wraps grows the row instead of overflowing it.
+    variant === 'drawer' ? 'min-h-[44px] py-[10px]' : 'py-[9px]',
     isActive
       ? 'bg-[var(--brand-light)] text-[var(--brand-mid)] font-semibold'
       : 'text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--brand-mid)]'
@@ -110,7 +131,11 @@ function NavLink({
           {body}
         </button>
       ) : (
-        <Link href={item.href} className={className}>
+        // ⚠️ `onNavigate` closes the drawer, and it is on the LINK rather than on an
+        // effect watching `pathname`: the shell survives navigation, so without it a
+        // reader taps "Results" and arrives at Results with the menu still covering
+        // it. The same reasoning, and the same placement, as the public MenuButton.
+        <Link href={item.href} className={className} onClick={onNavigate}>
           {body}
         </Link>
       )}
@@ -158,34 +183,50 @@ function licenceLabel(
   return (status && LICENCE_LABELS[status]) || 'No plan';
 }
 
-export function Sidebar({
+/**
+ * The nav itself — brand, the two groups, the licence badge.
+ *
+ * ⚠️ **Extracted so the rail and the drawer cannot be two navs.** Layer H gives the
+ * signed-in shell a second presentation below 768px, and the obvious way to build that
+ * is a second component beside this one. That is 11c: two lists of destinations, two
+ * sets of lock rules, two licence badges, drifting the first time one of them is
+ * edited. There is one body; `variant` decides only how big the rows are and
+ * `headerAction` only what sits beside the lockup.
+ */
+export function SidebarBody({
   subscriptionStatus,
   entitled = false,
   billingBlocked = false,
-}: SidebarProps) {
-  const [lockedFeature, setLockedFeature] = useState<string | null>(null);
+  variant = 'rail',
+  onLockedClick,
+  onNavigate,
+  headerAction,
+}: SidebarProps & {
+  variant?: NavVariant;
+  onLockedClick: (label: string) => void;
+  onNavigate?: () => void;
+  headerAction?: React.ReactNode;
+}) {
   return (
-    <aside
-      className="fixed top-0 left-0 w-[var(--sidebar-w)] h-screen bg-[var(--bg-sidebar)] border-r border-[var(--border)] flex flex-col z-[100] shadow-[var(--shadow-sm)]"
-      aria-label="Main navigation"
-    >
+    <>
       {/* Logo — `BrandLockup`, the same component the public header renders.
           It used to be this markup written out again, and the two copies drifted
           on `leading-none`, `flex-shrink-0` and the gap, so the wordmark sat
           differently inside the terminal than on the public site (owner,
           2026-08-17). The mark's own flex row and 10px gap now live in the
           component; this container keeps only the sidebar's chrome. */}
-      <div className="flex items-center px-[18px] h-[var(--header-h)] border-b border-[var(--border)] flex-shrink-0">
+      <div className="flex items-center gap-2 px-[18px] h-[var(--header-h)] border-b border-[var(--border)] flex-shrink-0">
         <BrandLockup />
+        {headerAction}
       </div>
 
       {/* Nav: Analysis */}
-      <nav className="flex-1 overflow-y-auto pt-1">
+      <nav className="flex-1 overflow-y-auto pt-1" aria-label="Product">
         <div className="px-[18px] py-[6px] mt-[10px] text-[9px] font-semibold tracking-[1.2px] uppercase text-[var(--text-muted)]">
           Discover
         </div>
         {NAV_DISCOVER.map((item) => (
-          <NavLink key={item.href} item={item} />
+          <NavLink key={item.href} item={item} variant={variant} onNavigate={onNavigate} />
         ))}
 
         <div className="px-[18px] py-[6px] mt-[10px] text-[9px] font-semibold tracking-[1.2px] uppercase text-[var(--text-muted)]">
@@ -196,7 +237,9 @@ export function Sidebar({
             key={item.href}
             item={item}
             locked={!entitled}
-            onLockedClick={setLockedFeature}
+            onLockedClick={onLockedClick}
+            variant={variant}
+            onNavigate={onNavigate}
           />
         ))}
       </nav>
@@ -229,11 +272,29 @@ export function Sidebar({
         </div>
       </div>
 
-      <UpgradeDialog
-        open={lockedFeature !== null}
-        onOpenChange={(v) => !v && setLockedFeature(null)}
-        feature={lockedFeature ?? ''}
-      />
+    </>
+  );
+}
+
+/**
+ * The permanent rail — **768px and above only**.
+ *
+ * Below that the identical body is rendered inside the drawer `AppShell` opens, so
+ * this element is hidden rather than narrowed: a 220px column on a 375px screen leaves
+ * 155px for the entire product, which is what made every signed-in page scroll
+ * sideways (and the entitled screener by 188px).
+ *
+ * ⚠️ `hidden min-[768px]:flex`. Same width as `md:`; `lib/shell.ts` says why this
+ * codebase spells its breakpoints out.
+ */
+export function Sidebar(props: SidebarProps & { onLockedClick: (label: string) => void }) {
+  return (
+    <aside
+      className="hidden min-[768px]:flex fixed top-0 left-0 w-[var(--sidebar-w)] h-screen bg-[var(--bg-sidebar)] border-r border-[var(--border)] flex-col z-[100] shadow-[var(--shadow-sm)]"
+      aria-label="Main navigation"
+      data-shell-rail
+    >
+      <SidebarBody {...props} variant="rail" />
     </aside>
   );
 }

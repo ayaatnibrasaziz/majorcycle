@@ -85,12 +85,22 @@ async function scan(page: Page, path: string) {
   // bouncing to /login would otherwise scan clean and mean nothing.
   expect(new URL(page.url()).pathname, `${path} did not stay put`).toBe(path);
 
-  // The app shell's own proof-of-stylesheet, matching app-contrast's sentinel:
-  // <main> is offset by the sidebar width, which is 0 on an unstyled page.
+  /* The app shell's own proof-of-stylesheet, matching app-contrast's sentinel:
+     <main> is offset clear of the fixed header, which is 0 on an unstyled page.
+
+     ⚠️ IT READ `marginLeft` UNTIL LAYER H · H1, AND H1 WOULD HAVE MADE IT LIE. The
+     LEFT offset is the sidebar's, and below 768px the rail is a drawer — a left margin
+     of **0 is the correct state** there. So the first phone-width scan would have hung
+     here for 30 seconds and failed, on a perfectly styled page. The TOP offset is
+     unconditional at every width.
+
+     ⚠️ And this is 11c-iv: `e2e/lib/contrastProbe.ts` holds the same sentinel and was
+     fixed first; this copy had to be found by grepping for the other one. Two consumers,
+     one rule, written twice. */
   await page.waitForFunction(
     () => {
       const m = document.querySelector('main#main-content');
-      return !!m && parseFloat(getComputedStyle(m).marginLeft) > 0;
+      return !!m && parseFloat(getComputedStyle(m).marginTop) > 0;
     },
     undefined,
     { timeout: 30_000 },
@@ -288,6 +298,46 @@ test.describe('the signed-in product is accessible', () => {
       expect(found, `${path}:\n${found.join('\n')}`).toEqual([]);
     });
   }
+
+  /**
+   * The PHONE shell, and the drawer while it is OPEN — Layer H · H1.5.
+   *
+   * ⚠️ Every scan above runs at the default desktop viewport, so until H1 there was
+   * nothing else to look at. There is now: below 768px the navigation is a different
+   * control in a different place, and it is the ONLY way a phone reader reaches Browse,
+   * Run, Results or Request.
+   *
+   * ⚠️ **A CLOSED CONTROL IS OUTSIDE EVERY SCAN WE OWN** (11ax). axe walks the rendered
+   * tree; a drawer that has not been opened is not in it, so scanning the phone shell
+   * with the menu shut would report on a page that is missing the very thing H1 added.
+   * The same reasoning found the `CsvImport` defect, which needed a paid session to put
+   * the control on the page at all.
+   */
+  test('the phone shell is accessible, including the OPEN navigation drawer', async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width: 375, height: 812 });
+
+    const closed = await scan(page, '/stocks');
+    const closedFound = closed.violations.map(
+      (v) => `[${v.impact}] ${v.id} — ${v.nodes.length} node(s): ${v.help}`,
+    );
+    expect(closedFound, `/stocks at 375px, drawer closed:\n${closedFound.join('\n')}`).toEqual([]);
+
+    await page.locator('[data-shell-menu-toggle]').click();
+    const drawer = page.getByRole('dialog', { name: /main navigation/i });
+    /* THE CONTROL. Without it a click that silently did nothing leaves this scanning
+       the closed shell a second time and reporting it as coverage of the open one —
+       which is the exact shape of every finding in this file's header (14g). */
+    await expect(drawer, 'the drawer did not open, so the scan below is of the closed shell').toBeVisible();
+
+    const open = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
+    const missing = rulesThatDidNotRun(open);
+    expect(missing, `axe never evaluated ${missing.join(', ')} on the open drawer`).toEqual([]);
+    const openFound = open.violations.map(
+      (v) => `[${v.impact}] ${v.id} — ${v.nodes.length} node(s): ${v.help}`,
+    );
+    expect(openFound, `/stocks at 375px with the drawer OPEN:\n${openFound.join('\n')}`).toEqual([]);
+  });
 });
 
 /**
@@ -381,6 +431,28 @@ test.describe('the PAID product is accessible', () => {
 
     /** One scan, with the control that the rules were evaluated at all. */
     const sweep = async (label: string) => {
+      /**
+       * ⚠️ WAIT FOR THE PAGE TO STOP MOVING. A colour mid-transition is a real
+       * computed value and the wrong one — the same trap 11ao records for the
+       * sub-nav pill, whose focus ring measured white at 0ms and `#2E7DE8` from
+       * 151ms. Scanning on the element-count signal alone caught elements still
+       * fading in, and axe reported **35 nodes on one run, 11 on the next and 0
+       * on a third**. A count that changes run to run is not a finding about the
+       * design; it is a finding about when you looked.
+       *
+       * `getAnimations()` covers CSS transitions as well as animations, so this
+       * is a positive signal that every one has settled rather than a sleep.
+       */
+      await page
+        .waitForFunction(
+          () =>
+            document
+              .getAnimations()
+              .every((a) => a.playState === 'finished' || a.playState === 'idle'),
+          null,
+          { timeout: 20_000 },
+        )
+        .catch(() => {});
       const results = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
       const missing = rulesThatDidNotRun(results);
       expect(missing, `axe never evaluated ${missing.join(', ')} on ${label}`).toEqual([]);
