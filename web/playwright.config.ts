@@ -91,7 +91,16 @@ export default defineConfig({
     // perfectly healthy. The cache buys a throwaway server nothing: it is never
     // reused (see `reuseExistingServer` below) and `.next-dev` is routinely
     // cleared. 83 MB against ~11 GB, measured.
-    env: { MC_E2E_NO_FS_CACHE: '1' },
+    // ⚠️ AND THE HEAP, because turning the cache off MOVED the problem rather
+    // than removing it. With no filesystem cache Turbopack holds more in memory,
+    // and the next run died with `FATAL ERROR: Zone Allocation failed - process
+    // out of memory` at ~4 GB — which is not this machine running out (16 GB
+    // total, 8.5 free) but **Node's own default old-space cap**, which sits near
+    // 4 GB on a 16 GB box. The dev server took 31 tests down with it and the run
+    // reported no failures at all: "31 did not run, 678 passed", exit 1. A suite
+    // that dies rather than fails is the most misreadable result there is, so the
+    // two settings belong together and are commented together.
+    env: { MC_E2E_NO_FS_CACHE: '1', NODE_OPTIONS: '--max-old-space-size=6144' },
     url: BASE_URL,
     // NEVER reuse. This was `!process.env.CI`, i.e. locally a run would attach to
     // whatever `next dev` already held port 3100 — no matter how old it was or which

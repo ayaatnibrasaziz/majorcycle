@@ -86,7 +86,26 @@ export function HorizonSettings({
 
   return (
     <div>
-      <div className="flex gap-2">
+      {/* ⚠️ `flex-wrap` — H2 follow-up, 2026-09-16, and it fixes more than the
+          symptom that found it.
+
+          CI went red on `ENTITLED /run scrolled 5px at 320px` while this machine
+          measured zero. Measured rather than guessed: the row's **min-content is
+          274px** and its container is **240px at a 320px viewport**, so the four
+          buttons were already spilling **34px out of their own card on every
+          platform** — `flex: 1` cannot shrink a flex item below `min-width: auto`,
+          which resolves to the longest label. Windows merely had 6px of page
+          gutter left to absorb it; Linux renders the same labels ~11px wider and
+          ran 5px past the viewport edge. A layout that FITS is not a layout that
+          WORKS (11bf), and here it did not even fit — it was clipping into the
+          gutter and only the platform decided whether that showed as scroll.
+
+          Wrapping is the fix rather than a breakpoint because the trigger is a
+          MEASUREMENT, not a width (11bi): the row breaks exactly when the labels
+          stop fitting, whatever font the machine has. Nothing changes at or above
+          our 375px floor, where the row has 21px of headroom and still draws one
+          line of four. */}
+      <div className="flex flex-wrap gap-2">
         {PRESET_CARDS.map((c) => (
           <button
             key={c.value}

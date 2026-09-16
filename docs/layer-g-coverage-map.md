@@ -916,3 +916,63 @@ with no rows.
 **372 route x width measurements** in three viewer states — signed out, free, and paying —
 over 320 to 1280. Zero sideways scroll in all three. The five defects it found were found by
 asking four questions an overflow sweep does not ask; see CLAUDE.md **11bh**.
+
+## 🔴 A SIXTH dimension, found the hard way — WHICH PLATFORM the guard runs on
+
+**2026-09-16.** H1's widened responsive sweep passed on this Windows machine and went **red on
+CI, twice**, on the same test both times:
+
+```
+ENTITLED /run · the phone shell scrolled sideways:
+  320px scrolled 5px
+  324px scrolled 1px
+```
+
+⚠️ **It was reported as "in flight" and not checked back on, so the branch sat red across two
+pushes.** A run you start is not a run you have read (11i's *reconcile the count*, one level out).
+
+### What the defect actually was — and it was NOT a CI quirk
+
+The four preset buttons on `/run` are `flex: 1`, and **a flex item cannot shrink below
+`min-width: auto`**, which resolves to its longest label. Measured on the real page:
+
+| viewport | row width | row min-content | headroom |
+|---|---|---|---|
+| 320px | 240 | 274 | **−34px** |
+| 340px | 260 | 274 | **−14px** |
+| 375px | 295 | 274 | +21px |
+
+So the row had been spilling **34px out of its own card at 320px on every platform, this one
+included**. Windows merely had 6px of page gutter left to absorb it; Linux renders the same
+labels ~11px wider and ran past the viewport edge. **The platform did not cause the defect — it
+decided whether the defect was visible.** That is 11bf's *a layout that FITS is not a layout that
+WORKS*, with a new twist: it did not even fit, and only one operating system said so.
+
+Fixed with `flex-wrap` — a MEASUREMENT rather than a breakpoint (11bi), so the row breaks exactly
+when the labels stop fitting, whatever font the machine has. Headroom −34px → **+165px**; 375px
+and above are pixel-identical.
+
+### The dimension to write down
+
+This map already records that a guard's **account** is part of its scope (11bd). Add the
+**machine**: font metrics differ between Windows and Linux by a few per cent, and every local
+layout measurement in this repo is taken on Windows while **every CI measurement is taken on
+Linux**. A margin thinner than that difference is not a margin — it is a coin flip on which
+runner sees it.
+
+⚠️ **The practical rule: do not measure whether a page FITS; measure how much SLACK it has.** The
+probe that found this ranked every element by `clientWidth - right` and the answer was one row at
+**6px**, on a page reporting zero scroll. Six pixels is inside the platform delta. The next
+tightest thing was at 14px, which is why nothing else broke.
+
+### Six scope claims, none of them visible in a passing run
+
+| # | The claim | Where it bit |
+|---|---|---|
+| 1 | the **tag list** a checker is given | 11ap |
+| 2 | the **`experimental` flag** a rule carries | 11ax |
+| 3 | the **width list** that is sampled | 11i-b, 11bf |
+| 4 | the **account** that is signed in | 11bd |
+| 5 | the **state** the page is in | 11bh |
+| 6 | the **platform** the guard runs on | this section |
+
