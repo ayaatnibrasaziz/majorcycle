@@ -299,6 +299,18 @@ jobs:
       # silently drops the signed-in routes reports a clean site it never saw.
       E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
       E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+      # ⚠️ ADDED 2026-09-17, AND ITS ABSENCE HAD BEEN HIDING THE FLAGSHIP PAGE.
+      # `lib/supabase/server.ts` requires this key, and `stocks` / `price_bars`
+      # grant nothing to anon or authenticated (by design — 11y). Without it
+      # /stocks/us/AAPL rendered the `(app)/error.tsx` boundary on EVERY run of
+      # this job: check:page-weight measured 560 KB of error page against a 1150 KB
+      # budget the real page (1070 KB) only just clears, and check:csp swept an
+      # error screen. Neither could tell — the CSP render floor counted script
+      # tags, which an error page has plenty of. It surfaced only when that floor
+      # was rewritten to ask for the page's h1, which the boundary does not carry.
+      # The e2e job has always had this secret; this job simply never received it
+      # (11c-iv).
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
     steps:
       - uses: actions/checkout@v6
