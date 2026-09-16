@@ -9,8 +9,14 @@ name: Prune Vercel deployments
 
 on:
   schedule:
-    # Sundays, 04:00 UTC — clear of both data-refresh crons.
-    - cron: '0 4 * * 0'
+    # DAILY, 04:00 UTC — clear of both data-refresh crons (01:30 and 08:00).
+    # ⚠️ Was weekly until 2026-09-17, when Vercel's usage page showed Function
+    # Storage at 23.69 GB of the free 10 GB (237%). Measured: 108 deployments
+    # retained, ~6 a day at this project's pace — a nightly data commit to main
+    # is a production deploy every morning, on top of every push. A weekly run
+    # with a 14-day window lets up to 21 days pile up between runs; a daily run
+    # with a 3-day window caps it at 3.
+    - cron: '0 4 * * *'
   workflow_dispatch:
     inputs:
       apply:
@@ -19,7 +25,7 @@ on:
         default: false
       keep_days:
         description: 'Keep everything newer than this many days'
-        default: '14'
+        default: '3'
 
 permissions:
   contents: read
@@ -46,7 +52,7 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
           VERCEL_PROJECT: majorcycle
-          KEEP_DAYS: ${{ github.event.inputs.keep_days || '14' }}
+          KEEP_DAYS: ${{ github.event.inputs.keep_days || '3' }}
           KEEP_PRODUCTION: '5'
           # A scheduled run sends NO inputs, so `inputs.apply` is empty there —
           # this must therefore default to applying on a schedule and to a dry
