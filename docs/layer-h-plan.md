@@ -1,7 +1,11 @@
 # Layer H — Pre-launch Hardening: the plan
 
-**Status:** ✅ **CONFIRMED — all nine decisions taken, both designs approved, nothing open.**
-No product code written yet; **H1 starts next session.**
+**Status:** ✅ **H1 COMPLETE — 2026-09-14/15. Not merged.** All nine decisions taken, both designs
+approved. H1.1–H1.5 all done. **H2 (Sentry) is next.**
+**Three findings came out of building it** that the plan did not have — §3, findings I, J and K.
+⚠️ Finding I changed a **paid** surface beyond the approved design; it was put to the owner, and
+**my first fix for it was wrong** — it passed every automated check and the owner caught it from a
+screenshot. The lesson is in CLAUDE.md **11bf**: *a layout that FITS is not a layout that WORKS*.
 **Written:** 2026-09-13. Revised 2026-09-14 across nine owner decisions and two design gates.
 **Against:** `main` at `b6742f7`.
 **Reading order:** CLAUDE.md wins over this file. Where this file and `roadmap.md` § *Layer H*
@@ -234,6 +238,281 @@ already handles — but I have not proved that, and a plausible mechanism that i
 present is the hardest kind of wrong explanation to catch (14f).** Recorded as a Layer H
 investigation, not reported as a defect.
 
+### I 🔴 · The ticker page scrolled sideways in a 26px band nobody had ever sampled
+
+Found by H1's own sweep, on the entitled account, the first time this guard has run at 4px
+resolution with a paying session. **768 → 793px, up to 26px of sideways scroll.**
+
+| Window | 763 | 767 | 771 | 775 | 779 | 783 | 787 | 791 | 795 |
+|---|---|---|---|---|---|---|---|---|---|
+| Sideways scroll | 0 | 0 | **23** | **19** | **15** | **11** | **7** | **3** | 0 |
+
+The overflow falls exactly 1px per pixel of width, which is the tell that a fixed-width thing is
+demanding a constant: `.radar-grid` is `grid-template-columns: 340px 1fr` where the second track's
+own min-content is ~170px (a 120px label + 10 + bar + 10 + a 28px score), so the scorecard demands
+**534px** and will not go below it. Beside the 220px rail the card offers 471px at a 771px window.
+
+⚠️ **Two independent reasons nobody had seen it, and both are this project's own recorded
+lessons.** The collapse rule is `@media (max-width: 640px)` — **written against the window when
+the constraint is the container**, which is audit 5A-116 verbatim. And the scorecard is
+**premium**, so the responsive guard, signed in as the free account, *never rendered the element
+at all* — 11bd, found by the first sweep that used a paying session. The old guard sampled 768 and
+900; the tablet survey sampled 744, 768, 810. **The defect sat between every sample ever taken.**
+
+⚠️ **This is a change to a paid surface beyond the approved design, so it was put to the owner
+rather than folded in** — and that was the right call twice over, because **my first fix was
+wrong and the owner caught it from a screenshot.**
+
+Attempt 1 let the chart column shrink (`minmax(0, 340px)`). It removed the horizontal scroll and
+**destroyed the section**: at a 780px window the bars track collapsed to a **1px sliver** — the one
+thing those five rows exist to show — and the chart clipped its own axis label to *"Balance Shee"*.
+⚠️ **Both states measure `scrollX === 0`.** The sweep passed. The entitled session passed. The 4px
+steps passed. **A layout that FITS is not a layout that WORKS**, and no overflow guard can see the
+difference; a person looking at a picture can, immediately.
+
+The shipped fix keeps the honest `340px` chart and **stacks** the bars underneath — which is what
+the grid already did on a phone — via a **container query on the card** rather than a media query
+on the window: `@container (max-width: 680px)`. ⚠️ **680 is the bars' minimum, not a round number.**
+The container leaves the bar `C − 568`, so the owner was shown the thinnest side-by-side each
+candidate would ever allow (640 → 72px, 680 → 112px, 720 → 152px) and chose **680 / 112px**.
+Guarded three ways: the sweep fails if the page scrolls, one assertion fails if the chart stops
+being 340px at 1280px, and a third fails if a bar is ever thinner than 100px while side-by-side.
+
+### J 🟡 · The local production build cannot measure the ticker page at all
+
+`next start` does not serve the Vercel Python function at `/api/cycle`, so on `localhost:3200`
+the ticker page renders **no cycle block**: measured `hasCycle: false`, `radarRows: 0`,
+`verdictThesis: 0`, against a full render on the dev server. That is **11v**, and it means finding
+A's Stock Detail figures — and the 375px column in `design-system.md` §10 — are floors rather than
+measurements. It is also why finding I was invisible on `:3200` and obvious on `:3100`: the local
+production build has no radar to overflow.
+
+⚠️ **The two instruments disagreed and the disagreement was the finding.** `:3200` said the ticker
+page was clean from 336px; `:3100` said it scrolled 23px at 771. The temptation is to trust the
+production build because it is the production build. The right question was *which of them is
+rendering the page a customer sees* — and the answer was neither fully, but only one of them was
+rendering the paid half.
+
+### K 🟡 · The page gutter is written twice, and narrowing one broke the other
+
+The first draft of the shell set `<main>` to `p-4` below 768px to buy 14px of content width. The
+Stock Detail sub-nav is `sticky … -mx-6 px-6`: it bleeds 21px each side to reach the edges of
+`main`'s padding, so with a 14px gutter it hung **7px past both edges at every width from 320 to
+760** — a constant, on every measurement. 21 − 14 = 7. The sub-nav holds a second copy of the page
+gutter (11c-v). `<main>` keeps `p-6` at every width; recorded rather than refactored, because the
+sub-nav is on a paid surface and `p-6` costs nothing measurable.
+
+### L 🔴 · The visual pass found three more "fits but does not work" defects
+
+The owner asked for the phone layout to be **looked at**, on the strength of the
+scorecard. That was the right instinct: three more of the same class were there, and
+every one of them measured **zero horizontal scroll**.
+
+| What | Where | What a reader saw |
+|---|---|---|
+| The Verdict card printed **two texts on top of each other** | `.verdict-watermark` is pinned top-right; on a phone the eyebrow runs the full card width and slides under it | "MAJORCYCLE VERDICT · AAPL" with the brand watermark across it |
+| A line containing **nothing but a dot** | `<span> · {sector}</span>` allows a break on BOTH sides of the separator | `Apple Inc.` / `·` / `Technology` — three lines |
+| The Technical Levels pills **clipped**, then overflowed | `repeat(3, 1fr)` cannot go below min-content: 3 pills demand 295px | 360px: third pill cut by 15px. 320px: 55px, and the page scrolls |
+
+⚠️ **The third one rewrites a "known and accepted" row.** Layer H recorded *"at 320px the
+screener stays ~23px over"*. Measured, that 23px was **one native `<select>`** sized to its
+longest option ("Diversified Telecommunication Services") at a fixed 303px with no
+`max-width`. One clamp closed it. And the ticker page's remaining 15px was these pills.
+**The signed-in product is now clean from 320px, not 355px** — so the sweep's floor
+dropped to 320 and the margin at our 375px promise is **55px**, not the 20 we set out to buy.
+
+⚠️ **Two mistakes of mine inside these fixes, both caught only by looking again.**
+The watermark fix **did not work the first time**: I put the `@container` block ABOVE
+`.verdict-watermark`, and that rule ends in `display: flex` — equal specificity, so source
+order won and my `display: none` was silently overruled (11bc). And the *guard* for it was
+wrong too, reading the eyebrow's BOX — a flex column spanning the whole card — rather than
+its ink, which reported a phantom 95px overlap at 600px. It measures the text now and
+carries a sabotage step that forces the watermark back on and asserts the probe sees the
+collision.
+
+⚠️ **And note where a container query was right and where a media query was.** The
+scorecard needed a container query because its problem lives at **768–793px**, where the
+220px rail breaks any relationship between window and card. The pills could take a media
+query because their problem lives **below 768**, where there is no rail and the card is
+exactly `window − 78`. Same lesson, opposite conclusion, because the band is different.
+
+### M 🟡 · Two geometry probes said "zero offenders" while the page scrolled 15px
+
+Finding L's third defect could not be located by inspection. An "which element overflows"
+probe returned **zero**; widening it to unclipped *content* overflow also returned zero.
+That is CLAUDE.md **11ab** exactly, and it is the second time this project has hit it
+(audit 5A-116 was the first).
+
+**What worked was the experiment**: hide each block under `<main>` in turn and watch
+`scrollWidth` fall back to the viewport. It named the Technical Levels card in one run,
+after two probes had agreed the page was clean. **When two measurements of a layout
+disagree with what the page does, stop reading geometry and change one thing.**
+
+### N ✅ · The five-question sweep — H1 review pass, 2026-09-16
+
+The owner asked for the whole product to be checked "for each and every edge case so
+that nothing gets overflown, looks squished etc". Finding L had already shown that an
+overflow sweep answers one question and a page has more than one way to be wrong, so
+this pass asked **five** at every width — does the document scroll, is text CLIPPED with
+no way to reach it, do two pieces of INK sit on each other, is an element CRUSHED below
+its own content, is a control too small to hit — in three viewer states (signed out,
+free, paying), across 320 → 1280 — and a second pass to 2560 and into the states.
+
+**Horizontal scroll: zero. Every route, every width, every state.** H1 holds.
+
+The other four questions found **six** defects, every one of which measures `scrollX === 0`:
+
+| # | Where | What a reader sees | Band | Status |
+|---|---|---|---|---|
+| N1 | `/articles` figure | the two axis captions read `wholeleargest 60` | ≤ 356px | ✅ fixed |
+| N2 | Valuation History | `Avg 32.1x` and `Current 38.2x` printed on each other | **every width, incl. 1280** | ✅ fixed |
+| N3 | Opportunity Map | the legend chip `Neutral` printed inside the plot | ≤ 340px (≤ ~490 with 5 tiers) | ✅ fixed |
+| N3b | Opportunity Map | the four zone names stay in their quadrants while they FIT, and move to a legend below when they do not | narrow only | ✅ owner's design call |
+| N4 | Opportunity Map | `Weak & expensiveHealthy, fully priced` | ≤ 340px | ✅ fixed |
+| N5 | Analyst Target Track | `Consensus` printed over a Bear/Bull price | 320–800px, **1.8% of stocks** | ✅ fixed |
+| N6 | Scorecard radar | `Balance S` / `areholder` — the axis labels cut off | ≤ ~385px | ✅ fixed (twice — see below) |
+
+⚠️ **N2 and N5 are DATA defects wearing a layout, and that is why they survived.** The
+valuation labels only collide when a stock's current P/E sits near its own average —
+AAPL yes, T no — and the target-track labels only when the consensus target sits near an
+end of the analyst range: **15 of 837 stocks (1.8%)** at 375px, **2 still at 1280px**.
+Open the wrong stock and both cards are flawless. When a collision is possible, ask the
+DATA how often it happens; the number is what decides whether it matters.
+
+#### The states a page sweep cannot reach
+
+Every sweep above measures a page AT REST, and a state nobody triggers reports exactly what
+a healthy one reports. So a second pass drove the states themselves — **34 more
+measurements, all clean**:
+
+| State | Widths | Result |
+|---|---|---|
+| the navigation drawer, OPEN | 320 / 360 / 375 / 414 / 640 / 767 | clean |
+| a LANDSCAPE phone (short, not narrow) | 667x375, 740x360, 896x414 | clean |
+| wider than anything else has sampled | 1440 / 1920 / 2560 | clean |
+| the paywall dialog, OPEN, on a free account | 320 / 375 / 768 | clean |
+| the first-login gate, which renders ALONE | 320 / 375 / 768 / 1280 | clean |
+
+⚠️ **Two of the probe's own controls were wrong here, in opposite directions, and both would
+have produced a confident report.** (i) Measuring a page WITH a modal open compares the modal
+against the page behind it, so a drawer that covers the page — which is its job — scored an
+overlap for every row. The rule is to measure the **top layer** alone, and specifically NOT
+"skip `aria-hidden`", which would also skip the Verdict watermark that was a real defect when
+it printed over its own heading. (ii) The render floor discarded all four first-login rows as
+"did not render" because that gate returns the modal and **nothing else** — 58 elements is
+correct for it. A control that throws away real rows is as damaging as one that passes bad
+ones; it just fails quietly. ⚠️ And the dialog count used `getByRole('dialog')`, which matches
+a dialog that is **closing** — so it reported `dialogs=1` for a dialog nobody could see. **A
+count used to establish a state has to establish that state.**
+
+⚠️ **`/results` had never been tested at all.** It renders nothing until a screen
+completes, so every sweep that has visited it measured an empty page and reported it
+clean — the same false-clean as auditing a paid surface on a free account (11bd). N3 and
+N4 were found only after driving a real Magnificent Seven run, and
+`e2e/opportunity-map.spec.ts` now does that in the suite.
+
+⚠️ **Two of the existing guards were SAMPLING.** `/articles`' own overlap test took 375,
+768 and 1280; the caption gap closes at exactly 1px per pixel of width, so the failure
+lives strictly below the lowest sample — and that sample is now 55px above this
+product's floor. It sweeps 320 → 1280 in 8px steps now.
+
+⚠️ **The probe needed seven corrections, each caught by a positive control before any
+result was believed.** Both directions cost: a flat render floor counting only VISIBLE
+elements discarded ten real rows on the free upsell page (the rail is `display:none`
+there, 47 elements); unioning a wrapping inline's line boxes invented 24 overlaps on
+`/articles`; blaming the nearest ancestor clipping in either axis pinned 66 scrollable
+table cells on `<body>`; an 18%-of-area threshold **hid a real one**; and a `Range`
+reports a clipped text node's full width, so every `text-overflow: ellipsis` read as an
+overlap until the ink was intersected with its own clip box. Full account: CLAUDE.md
+**11bh**.
+
+#### N3b and N6 — the owner reviewed the chart fixes, twice, and was right both times
+
+⚠️ **THIS IS THE SECOND AND THIRD TIME A SCORECARD-AREA FIX PASSED EVERY CHECK AND LOST TO A
+SCREENSHOT** (11bf was the first). Both rounds are worth keeping, because the first round's
+fixes were *defensible* and still wrong.
+
+**Round one.** The Opportunity Map's zone labels were made to WRAP so they stopped colliding;
+the radar's labels were allowed to spill into the card's padding. Measured, both "worked".
+The owner's reply: the radar label was *"overflowing outside the container"* — which it was,
+by 5px, because I had measured against the chart box and the reader sees the CARD.
+
+**Round two — the owner specified the behaviour, not just the defect:**
+
+> *"For the opportunity map, I don't want you to change the desktop version. Keep it as is.
+> When the screen size becomes small and the text is overlapping / away from its own quadrant
+> only at that time I want the legend. Also, you don't need to write what the zone means."*
+>
+> *"For the stock score card, I don't want you to move 'Sheet' into the new line for Balance
+> Sheet. Maybe slightly reduce the size of the radar chart to fit it on the screen."*
+
+Both are now measurements rather than breakpoints, and both use a **canvas** to measure the
+real advance width of the real string in the real font (`lib/textWidth.ts`), because an
+estimate of `chars x fontSize x coefficient` had already shipped **"hareholder"** on screen.
+
+| | Wide | Narrow |
+|---|---|---|
+| Opportunity Map | names INSIDE their quadrants, no legend — desktop byte-identical to before | names move to a **centred** legend under the chart, swatch + name only, matching the tier legend above it |
+| Scorecard radar | `outerRadius` unchanged at 52%, desktop untouched | the RING shrinks so every label stays on one line — **while that is still worth doing** |
+
+⚠️ **AND THE THIRD REJECTION IS THE ONE THE FINAL SHAPE IS BUILT AROUND.** Shrinking the ring
+until the words fit is arithmetically correct at every width and visually wrong below a point:
+at 320px it produced a **65px ring beside 10.5px labels**, and the owner's read was that *"the
+radar chart is very small compared to the text"*. So the ring shrinks only while it stays
+worth labelling (`MIN_LABELLED_RADIUS_PX`), and below that the labels stand down and the ring
+goes back to **full size** — a proper radar with the pillars named in the bars beneath beats a
+miniature one with its own labels. Measured:
+
+| width | ring | labels |
+|---|---|---|
+| 320 | 101px | bars name them |
+| 340 | 111px | bars name them |
+| 350 | 92px | all five |
+| 360 | 102px | all five |
+| 370+ | 111px | all five, desktop untouched |
+
+⚠️ **The state to make impossible is the THIRD one** — a shrunken ring that is *also* labelled.
+The guard is shaped around that rather than around "nothing is cut", because "nothing is cut"
+was true of every rejected version.
+
+⚠️ **The radar's floor had to come DOWN to make the margin real.** At `MIN_RADIUS_PX = 34` the
+floor was binding at 320px — the ring stopped shrinking before the label fit, and the 2px of
+clearance that resulted was an accident of the measurement being a shade generous. Rename a
+pillar one character longer and it overflows again. At 28 the formula governs at every width
+the product supports, so the clearance is constructed rather than lucky.
+
+⚠️ **And a 4px edge pad is the difference between a bound and a boundary.** Sizing the ring so
+the label ENDS at the box edge measured the ink 1px OUTSIDE it — and the wrap clips, so the
+last stroke of "Balance Sheet" was being shaved. This repo has been caught by a guard passing
+with 1.1px to spare before (11i-b).
+
+⚠️ **Wrong turns, all found by measuring:** a negative margin computed as `-12px` and widened
+nothing, because `.chart-canvas-wrap` sets `width: 100%`; giving the stacked radar the card's
+padding then made `.radar-grid` overflow its own card by 12px at every width — the exact shape
+another guard exists to catch, so it was reverted rather than have that guard loosened; the
+fit decision was first computed from each tick's OWN room, so the top label stayed while the
+sides vanished (**1 label at 320px, 3 at 360, 5 at 414**); and the first legend went INSIDE
+`.opp-map-wrap`, a fixed-height box, collapsing the plot to a strip with every label perfectly
+placed.
+
+**The original N6 note stands, because three fixes were RENDERED and looked at before one was
+chosen** (11bf: when a fix has a size in it, look at the picture rather than the number).
+The radar's labels live outside its ring, in a margin that shrinks with the box while
+"Balance Sheet" stays 77px; `.chart-canvas-wrap`'s `overflow: hidden` then cut the words.
+`layer-c-audit.md` had recorded this at 375px and expected H1's extra width to close it —
+H1 closed 360px and above and left the floor open.
+
+| Candidate | Rendered at 320px | Verdict |
+|---|---|---|
+| shrink the ring to fit | visibly small AND **"Balance Shee" still cut** at 34% | rejected — it does not even work, and the owner reversed a shrink once already |
+| drop the labels below the width they fit | full-size chart, an **unnamed five-sided shape** | rejected |
+| let the labels use the card's own padding | full size, every word whole, widest label ends 5px past the card's inner edge, **`scrollWidth` 320 in a 320px viewport** | ✅ shipped |
+
+Scoped to `.chart-h-radar` and unconditional: above ~390px the overhang is zero, so there is
+nothing for `visible` to do and no breakpoint to get wrong. Every other chart keeps its
+clipping. Guarded by *"every scorecard radar label is whole, at every phone width"*, which
+reverts to naming all six cut labels and widths when the rule is removed.
+
 ### G 🟢 · Fixing the sidebar fixes something else for free
 
 `layer-c-audit.md` records that the scorecard radar's outward labels are clipped at 375px
@@ -276,10 +555,10 @@ phones *and* tablets. Every iPad from the 9.7″ up keeps the layout it has toda
 | Step | What |
 |---|---|
 | H1.1 | ✅ **DESIGN GATE — APPROVED by the owner, 2026-09-14**: https://claude.ai/code/artifact/051c7763-0eaa-4d39-846e-b425e356ebdb — the shell at 1280 / 768 / 375 closed / 375 open, drawn to real proportions; what changes in `Sidebar`, `Header`, `UserMenu` and the brand lockup; the six drawer behaviours; the measured tablet answer (§11). Owner: *"1. Yes … 3. No changes required."* |
-| H1.2 | Build: `Sidebar` becomes a drawer below **768px**; `Header` and `main` drop the `ml-/left-[220px]` offset with it. At 768px and above **nothing changes at all**. |
-| H1.3 | Re-measure all six routes, **entitled and free**, 320 → 1280 in 4px steps. |
-| H1.4 | Widen `app-responsive.spec.ts`: floor 640 → 320, **add an entitled account**, sweep the range, assert **≥20px of spare room** rather than merely "no overflow". |
-| H1.5 | Re-run the a11y and contrast suites at phone width, including the **open drawer** — a closed control is outside every scan we own (11ax). H5 falls out here. |
+| H1.2 | ✅ **BUILT.** `components/AppShell.tsx` owns the shell; `Sidebar` splits into `SidebarBody` (one nav, two presentations) + the pinned rail; the drawer is a Radix dialog with a real `DialogTrigger`, so Escape returns focus to the button rather than to `<body>` (5A-112). `Header` and `<main>` drop the 220px offset below 768px. At 768 and above **nothing changes at all** — asserted, not assumed. |
+| H1.3 | ✅ **RE-MEASURED**, and it found three things the plan did not have — §3 findings I, J, K. |
+| H1.4 | ✅ **WIDENED.** `app-responsive.spec.ts` now sweeps **355 → 1280 in 4px steps** on a **throwaway entitled account** as well as the free one, 12 tests, one per account × route. The margin is expressed as a width rather than as arithmetic: a page that fits at **355px** has 20px spare at our 375px floor. `/results` is **seeded** and its row count asserted before anything is measured. Plus `app-shell-drawer.spec.ts` for the six approved drawer behaviours. |
+| H1.5 | ✅ **DONE.** `app-a11y.spec.ts` gains a **375px** scan of `/stocks` — closed AND with the **drawer open**, because axe walks only what is rendered and a closed control is outside every scan we own (11ax). It carries a control asserting the drawer really opened, so a click that silently did nothing cannot report as coverage. Both scans clean. ⚠️ **Which half this covers, said rather than implied (14g):** the drawer reuses the rail's own rows and tokens, already measured at desktop by `app-contrast.spec.ts`, and axe's `color-contrast` runs here too — so the new surface is covered, but this is NOT a full contrast sweep at phone width. ⚠️ Two prerequisites were latent defects, both fixed: `contrastProbe.ts` AND `app-a11y.spec.ts` each held their own copy of the "is the stylesheet live?" sentinel, reading `main`'s LEFT margin — which H1 makes legitimately `0` on a phone. The first phone-width scan would have hung 30s and failed on a perfectly styled page. Two consumers, one rule, written twice (11c-iv). |
 
 ⚠️ Reuse the public header's `MenuButton` pattern (Escape returns focus to the toggle, the
 panel closes on navigation, 40px rows) rather than writing a second one — 11c.

@@ -854,6 +854,8 @@ out to hide the largest uncovered surface in the product.
 
 ### `e2e/app-responsive.spec.ts` has never measured a page a paying customer sees
 
+✅ **CLOSED by Layer H · H1, 2026-09-14/15 — and the first run with the right eyes found a defect.** The spec now sweeps **355 → 1280 in 4px steps** on a **throwaway entitled account** as well as the free one, with `/results` seeded and its row count asserted before anything is measured. It immediately found the paid ticker page scrolling up to **26px across 768–793px** — a band the old four samples, the tablet survey and a 20px sweep had all landed outside of. ⚠️ **Two blind spots had to be closed before it appeared**: the account AND the sampling. Closing either alone still reported clean, which is the part worth remembering — see CLAUDE.md **11bf**. The account is the fourth scope claim that is invisible in a passing run, after the tag list (11ap), the `experimental` flag (11ax) and the width list (11i-b).
+
 It signs in with the shared `E2E_EMAIL` account, which has **no subscription**. On that account
 the premium sections do not render at all — `/run` is the upsell card rather than the screener —
 so every page it measures is **narrower than the product**. Measured at 375px on the production
@@ -899,3 +901,18 @@ Added here so the gap is named rather than discovered again: **for every guard, 
 which widths, which browser, and which rule-set?** Four scope claims, each invisible in a pass,
 each already caught once — the tag list (11ap), the `experimental` flag (11ax), the width list
 (11i-b), and now the account.
+
+⚠️ **A FIFTH, and it is the emptiest kind — 2026-09-16.** *Which STATE is the page in?*
+`/results` renders nothing at all until a screen completes, because its rows live in client
+state rather than in any table a fixture can seed. So every sweep that has ever visited it
+loaded an empty page, measured it, and reported it clean — **the route had no test of any
+kind**, and two defects sat on it (the Opportunity Map's legend printed inside its own plot,
+and its quadrant labels running together at phone widths). This is 11v's lesson at the route
+level: the check ran, found nothing, and had nothing to find. `e2e/opportunity-map.spec.ts`
+now drives a real Magnificent Seven run before it measures, and refuses to report on a page
+with no rows.
+
+✅ **And the account dimension is closed for the layout guards.** The 2026-09-16 review swept
+**372 route x width measurements** in three viewer states — signed out, free, and paying —
+over 320 to 1280. Zero sideways scroll in all three. The five defects it found were found by
+asking four questions an overflow sweep does not ask; see CLAUDE.md **11bh**.

@@ -3138,8 +3138,31 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 ### Layer H: Pre-launch Hardening (Phase 1.5, target: 1 week)
 
 > ✅ **PLANNED AND CONFIRMED 2026-09-14 — the full plan is `docs/layer-h-plan.md`.** Nine owner
-> decisions taken, two designs approved, nothing open. **H1 starts next session.** This section
-> is the summary; the plan is the authority, because it carries the measurements.
+> decisions taken, two designs approved, nothing open. This section is the summary; the plan is
+> the authority, because it carries the measurements.
+>
+> 🔨 **H1 IS BUILT (2026-09-14/15) and NOT MERGED.** H1.2 the shell, H1.3 the re-measure, H1.4
+> the widened guard — done. **H1.5 (the a11y + contrast re-run at phone width, drawer open) is
+> next**, then H2. Building it produced **three findings the plan did not have** — `layer-h-plan.md`
+> §3 I, J and K — one of which is a **26px sideways scroll on the paid ticker page across
+> 768–793px**, hidden by two independent blind spots (a free session, and every sample landing
+> outside the band). See CLAUDE.md **11bf**.
+>
+> ✅ **H1 REVIEWED END TO END, 2026-09-16 — five defects found and fixed, one owner decision
+> taken, nothing open.** The owner asked for every page checked "for each and every edge case".
+> Since finding L had already shown that an overflow sweep answers one question, the review asked
+> **five** at every width — scroll, CLIPPED, OVERLAP, CRUSHED, TOUCH — over **372 route x width
+> measurements** in three viewer states. **Horizontal scroll: zero, everywhere, 320 to 1280.**
+> The other four questions found five defects that every previous sweep was structurally unable
+> to see, because all five measure `scrollX === 0`: the `/articles` axis captions reading
+> *"wholeleargest 60"*; the Valuation History chart printing `Avg` and `Current` on top of each
+> other **at every width including 1280**; the Opportunity Map's legend printed inside its own
+> plot; its quadrant labels running together; and the Analyst Target Track's `Consensus` over a
+> Bear/Bull price. ⚠️ **Two of those are DATA defects wearing a layout** — open a different stock
+> and the card is flawless; the target-track one hits **15 of 837 stocks**. ⚠️ **`/results` had
+> never been tested at all**, because it renders nothing until a screen completes, so every sweep
+> that visited it measured an empty page and reported it clean. Full account: `layer-h-plan.md`
+> §3 finding N + CLAUDE.md **11bh**.
 >
 > ⚠️ **Six items that were on this list are already done, and were re-measured to prove it.**
 > Three more were true but recorded with the wrong number. One is deleted because it now
@@ -3163,10 +3186,18 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
 
 ---
 
-#### H1 · The signed-in shell on phones 🔴 FIRST — design APPROVED
+#### H1 · The signed-in shell on phones ✅ BUILT 2026-09-14/15 — not merged
 
-- [ ] **Below 768px the sidebar becomes a drawer**; the header loses its 220px offset and gains
+- [x] **Below 768px the sidebar becomes a drawer**; the header loses its 220px offset and gains
       a menu button. **At 768px and above nothing changes at all.**
+      Built as `components/AppShell.tsx` (rail + header + `<main>` + drawer in one owner, so the
+      toggle and the panel share one `<Dialog>` and Escape returns focus to the button);
+      `Sidebar` split into `SidebarBody` — ONE nav, two presentations. Guards:
+      `app-responsive.spec.ts` rewritten (355→1280 in **4px** steps, **entitled and free**,
+      `/results` seeded) and `app-shell-drawer.spec.ts` for the six approved behaviours.
+      ⚠️ `<main>` keeps `p-6` at EVERY width — the Stock Detail sub-nav's `-mx-6` is a second
+      copy of the page gutter, and narrowing one hung the other 7px over both edges at every
+      width from 320 to 760.
       Design (approved by the owner, 2026-09-14): https://claude.ai/code/artifact/051c7763-0eaa-4d39-846e-b425e356ebdb
 
   - **The overflow is 34–188px and varies by page — not "~130px".** Measured on the production
