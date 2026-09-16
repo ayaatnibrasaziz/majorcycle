@@ -20,8 +20,8 @@
  *
  * So the posture is: send the smallest thing that still lets the owner debug.
  *
- * ⚠️ **AND WE SAY IT OURSELVES RATHER THAN INHERIT IT.** `sendDefaultPii` already
- * defaults to `false`, so the strippers in `scrub()` below are, today, removing
+ * ⚠️ **AND WE SAY IT OURSELVES RATHER THAN INHERIT IT.** `dataCollection` below
+ * already withholds these, so the strippers in `scrub()` below are, today, removing
  * fields the SDK was never going to attach. That is deliberate. This repo has now
  * been bitten SIX times by a response that was safe because of somebody else's
  * default (11a) — the rule learned from those is not "check the default", it is
@@ -127,8 +127,8 @@ export function scrub<T extends object>(event: T): T {
       if (cut >= 0) req.url = req.url.slice(0, cut);
     }
   }
-  // 4. THE READER. `sendDefaultPii: false` already withholds the IP; saying so here
-  //    means a future `true` — set for some unrelated reason — cannot hand it over
+  // 4. THE READER. `dataCollection.userInfo: false` already withholds the IP; saying
+  //    so here means a future `true` — set for some unrelated reason — cannot hand it over
   //    as a side effect. The user's `id` is deliberately KEPT: it is the opaque
   //    Supabase UUID we already log, and without it "whose subscription is
   //    duplicated?" has no answer.
@@ -160,7 +160,39 @@ export const sharedOptions = {
   enabled: SENTRY_DSN.length > 0,
   environment: SENTRY_ENVIRONMENT,
   release: SENTRY_RELEASE,
-  sendDefaultPii: false,
+  /**
+   * ⚠️ **EVERY CATEGORY IS NAMED, AND THAT IS THE WHOLE POINT (audit, 2026-09-17).**
+   *
+   * This was `sendDefaultPii: false` until the SDK deprecated it for this option
+   * (removed in v11; ignored when both are set). The trap in the replacement, read
+   * out of `@sentry/core`'s own resolver: **the moment `dataCollection` is present,
+   * every category it does NOT name defaults to ON** — `userInfo` included. So a
+   * one-line "upgrade" to `{ userInfo: false }` would have quietly started sending
+   * request headers, cookies, bodies, query strings and database values that the old
+   * option withheld. Nothing would error and the privacy policy would be wrong.
+   *
+   * Hence the full list, each at its strictest. `e2e/observability.spec.ts` reads the
+   * installed resolver's category list and fails if the SDK ever adds one that is
+   * not named here, because a new category arrives switched ON.
+   *
+   * `frameContextLines` is the one thing kept: it is lines of OUR source code around
+   * a stack frame, which is what makes a trace readable, and holds no reader data.
+   * `scrub` still runs on every event as the second layer.
+   */
+  dataCollection: {
+    userInfo: false,
+    cookies: false,
+    httpHeaders: { request: false, response: false },
+    // `never[]` rather than `[]`: the object is `as const`, which would make this a
+    // readonly tuple the SDK's type refuses. Empty either way — no body is collected.
+    httpBodies: [] as never[],
+    urlQueryParams: false,
+    graphQL: { document: false, variables: false },
+    genAI: { inputs: false, outputs: false },
+    databaseQueryData: false,
+    stackFrameVariables: false,
+    frameContextLines: 5,
+  },
   tracesSampleRate: 0,
   /**
    * How many breadcrumbs ride along with an event. The default is 100; each one can

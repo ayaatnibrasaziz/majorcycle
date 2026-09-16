@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 
 import { test, expect } from '@playwright/test';
 
@@ -171,9 +172,41 @@ test.describe('scrub — what may leave this machine', () => {
     // 11a, for the seventh time: an option that happens to default the right way is
     // one upgrade from not doing so, and nothing goes red. These are the three that
     // decide how much of a reader travels with a crash.
-    expect(sharedOptions.sendDefaultPii, 'PII must be refused explicitly').toBe(false);
+    const dc = sharedOptions.dataCollection;
+    expect(dc.userInfo, 'the reader must be refused explicitly').toBe(false);
+    expect(dc.cookies, 'our session lives in a cookie').toBe(false);
+    expect(dc.httpHeaders).toEqual({ request: false, response: false });
+    expect(dc.httpBodies, 'a POST body can carry anything a form carried').toEqual([]);
+    expect(dc.urlQueryParams).toBe(false);
+    expect(dc.graphQL).toEqual({ document: false, variables: false });
+    expect(dc.genAI).toEqual({ inputs: false, outputs: false });
+    expect(dc.databaseQueryData, 'a query value can be an email address').toBe(false);
+    expect(dc.stackFrameVariables, 'a local variable can hold a key').toBe(false);
     expect(sharedOptions.tracesSampleRate, 'tracing records which companies a named person read').toBe(0);
     expect(sharedOptions.maxBreadcrumbs).toBeLessThanOrEqual(30);
+    // The deprecated switch must be GONE, not merely false: when both are set the SDK
+    // ignores it, so leaving it in reads as a second control that does nothing (11ak).
+    expect('sendDefaultPii' in sharedOptions, 'sendDefaultPii is deprecated and ignored beside dataCollection').toBe(false);
+  });
+
+  test('every data category the INSTALLED SDK knows about is named — a new one arrives switched ON', () => {
+    // ⚠️ The trap this exists for, read out of `@sentry/core`: once `dataCollection`
+    // is present, an unnamed category takes the resolver's DEFAULT, and every default
+    // there is `true`. So the day an SDK upgrade adds a category, it starts collecting
+    // with nothing in our code having changed. Read the category list from the
+    // resolver the app actually ships with, rather than restating it here (11c-iii).
+    const nextjsDir = dirname(createRequire(__filename).resolve('@sentry/nextjs/package.json'));
+    const coreDir = dirname(createRequire(join(nextjsDir, 'package.json')).resolve('@sentry/core/package.json'));
+    const resolver = readFileSync(
+      join(coreDir, 'build/esm/utils/data-collection/resolveDataCollectionOptions.js'),
+      'utf8',
+    );
+    const block = resolver.match(/const DEFAULTS = \{([\s\S]*?)\n\};/);
+    expect(block, 'the resolver changed shape — re-read it before trusting this guard').not.toBeNull();
+    const sdkKeys = [...(block![1] ?? '').matchAll(/^\s{2}(\w+):/gm)].map((m) => m[1] ?? '').sort();
+    // CONTROL: a regex that matched nothing would make the comparison below vacuous.
+    expect(sdkKeys.length, 'found no categories — the parse is broken').toBeGreaterThanOrEqual(8);
+    expect(Object.keys(sharedOptions.dataCollection).sort()).toEqual(sdkKeys);
   });
 
   test('the DSN is the switch — no DSN, nothing leaves', () => {
@@ -263,7 +296,7 @@ test.describe('the wiring — a rule nobody receives is not a rule', () => {
       expect(
         src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''),
         `${file} sets its own PII option — there must be exactly one answer to that question`,
-      ).not.toContain('sendDefaultPii');
+      ).not.toMatch(/sendDefaultPii|dataCollection/);
     }
   });
 
