@@ -230,8 +230,12 @@ export const fetchCycleAnalysis = cache(
         //
         // A 401 is therefore an alarm, not a degrade: the endpoint is internal-only,
         // so the only caller is us, and the only way to be refused is a secret that
-        // does not match. Every other status is a breadcrumb — the fact that explains
-        // whatever fails next, without crying wolf over one provider hiccup.
+        // does not match. A 5xx is the Python function itself failing — every paid page
+        // loses its analysis the same way — so it is RECORDED (a warning: listed in Sentry,
+        // no email). Found 2026-09-18 closing H2: the Python functions carry no SDK, so
+        // before this a crashing `api/cycle.py` reached Sentry as nothing at all. Every
+        // other status stays a breadcrumb — the fact that explains whatever fails next,
+        // without crying wolf over one bad request.
         if (res.status === 401) {
           reportIssue('cycle: /api/cycle refused our internal secret', {
             level: 'alert',
@@ -239,6 +243,11 @@ export const fetchCycleAnalysis = cache(
               ticker,
               action: 'CYCLE_INTERNAL_SECRET disagrees between the app and api/cycle.py',
             },
+          });
+        } else if (res.status >= 500) {
+          reportIssue('cycle: /api/cycle failed — the page renders without its analysis', {
+            level: 'warning',
+            tags: { ticker, status: res.status },
           });
         } else {
           addBreadcrumb('cycle: /api/cycle did not answer', {

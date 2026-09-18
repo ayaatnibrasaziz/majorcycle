@@ -137,3 +137,61 @@ def test_asx_split_dates_use_the_local_trading_date() -> None:
     out, _ = _download(df)
     assert out is not None
     assert out.attrs["recent_splits"] == ["2026-07-31"]
+
+
+# --------------------------------------------------------------------------
+# A recent listing is "too new", not "failed" (FDXF / HONA / Q, 2026-09).
+#
+# The provider answered with real bars — just fewer than the analysis needs — so it
+# must not be retried with back-off, must not fall through to Stooq, and must be
+# reportable separately from a genuine failure.
+# --------------------------------------------------------------------------
+
+
+def _bars(n: int) -> pd.DataFrame:
+    idx = pd.bdate_range("2026-01-01", periods=n)
+    return pd.DataFrame(
+        {"Open": 10.0, "High": 11.0, "Low": 9.0, "Close": 10.0, "Volume": 100},
+        index=idx,
+    )
+
+
+def _fetch_max(provider: YFinanceProvider, df: pd.DataFrame):
+    fake_ticker = MagicMock()
+    fake_ticker.history.return_value = df
+    with patch(
+        "analytics.providers.yfinance_provider.yf.Ticker", return_value=fake_ticker
+    ), patch("analytics.providers.yfinance_provider.time.sleep") as sleep, patch.object(
+        provider, "_download_stooq", return_value=(None, None)
+    ) as stooq:
+        out = provider.fetch_price_history("NEWCO", period="max")
+    return out, fake_ticker.history.call_count, sleep.call_count, stooq.call_count
+
+
+def test_short_history_is_too_new_and_not_retried() -> None:
+    provider = _provider()
+    out, calls, sleeps, stooq = _fetch_max(provider, _bars(79))
+    assert out is None
+    assert provider.history_too_short("NEWCO") == 79
+    assert calls == 1, "a short history was retried as if it were transient"
+    assert sleeps == 0
+    assert stooq == 0
+
+
+def test_real_failure_is_not_called_too_new() -> None:
+    # Control: an EMPTY answer is a failure, and must still retry and say nothing
+    # about history length — otherwise every outage would read as "too new".
+    provider = _provider()
+    out, calls, _, stooq = _fetch_max(provider, pd.DataFrame())
+    assert out is None
+    assert provider.history_too_short("NEWCO") is None
+    assert calls == 3
+    assert stooq == 1
+
+
+def test_long_enough_history_clears_too_new() -> None:
+    provider = _provider()
+    _fetch_max(provider, _bars(79))
+    out, _, _, _ = _fetch_max(provider, _bars(300))
+    assert out is not None and len(out) == 300
+    assert provider.history_too_short("NEWCO") is None

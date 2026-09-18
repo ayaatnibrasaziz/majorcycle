@@ -91,6 +91,12 @@ class YFinanceProvider(DataProvider):
             expire_after=timedelta(hours=cache_hours),
             allowable_methods=["GET"],
         )
+        # ticker -> bar count, for the last full-history fetch that came back SHORT.
+        # See DataProvider.history_too_short.
+        self._too_short: dict[str, int] = {}
+
+    def history_too_short(self, ticker: str) -> Optional[int]:
+        return self._too_short.get(ticker)
 
     @property
     def name(self) -> str:
@@ -650,7 +656,11 @@ class YFinanceProvider(DataProvider):
                 df[["Open", "High", "Low", "Volume"]].ffill()
             )
             if period == _DOWNLOAD_PERIOD and len(df) < _MIN_BARS:
+                # A real answer, not a failure: remembered so the retry loop stops
+                # and the refresh can say "too new" rather than "all sources failed".
+                self._too_short[ticker_str] = len(df)
                 return None, None
+            self._too_short.pop(ticker_str, None)
             df.attrs["recent_splits"] = split_dates
             df.attrs["recent_split_events"] = split_events
             df.attrs["recent_dividends"] = div_dates
@@ -748,6 +758,15 @@ class YFinanceProvider(DataProvider):
             df, t = self._download_yfinance(ticker_str, period=period)
             if df is not None:
                 return df, t
+            if period == _DOWNLOAD_PERIOD and ticker_str in self._too_short:
+                # Retrying cannot lengthen a listing history, and Stooq would only
+                # be asked the same question of a dead source.
+                logger.info(
+                    "%s: only %d trading days of history (need %d) — too new to analyse "
+                    "yet; it will be added automatically once it has enough",
+                    ticker_str, self._too_short[ticker_str], _MIN_BARS,
+                )
+                return None, None
             sleep_time = _RETRY_BACKOFF_BASE ** attempt + random.uniform(0, 1)
             logger.debug(
                 "%s: attempt %d failed — retry in %.1fs", ticker_str, attempt, sleep_time

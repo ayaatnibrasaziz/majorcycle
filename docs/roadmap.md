@@ -3141,6 +3141,10 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > decisions taken, two designs approved, nothing open. This section is the summary; the plan is
 > the authority, because it carries the measurements.
 >
+> ✅ **H1 AND H2 ARE MERGED AND LIVE** — H1 and H2's build in PR #101 (2026-09-16/17); H2's
+> close-out (server-side verification and three fixes) in the PR that follows it, 2026-09-18.
+> **H3 is next.** *(What follows is the H1 build note as written.)*
+>
 > 🔨 **H1 IS BUILT (2026-09-14/15) and NOT MERGED.** H1.2 the shell, H1.3 the re-measure, H1.4
 > the widened guard — done. **H1.5 (the a11y + contrast re-run at phone width, drawer open) is
 > next**, then H2. Building it produced **three findings the plan did not have** — `layer-h-plan.md`
@@ -3227,7 +3231,7 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
   - 🟢 Closes a Layer C defect for free: the scorecard radar's clipped labels, which that audit
     already attributed to "the pre-existing 220px fixed sidebar".
 
-#### H2 · Error monitoring (Sentry) ✅ **BUILT 2026-09-16 — INERT UNTIL THE OWNER SUPPLIES A DSN**
+#### H2 · Error monitoring (Sentry) ✅ **COMPLETE — LIVE IN PRODUCTION, SERVER SIDE VERIFIED 2026-09-18**
 
 - [x] Full install, not money-paths-only. ⚠️ Two docs disagreed: the roadmap listed it here, the
       5a sweep called it "a Phase 2 decision". **Owner settled it 2026-09-14: Layer H.**
@@ -3247,6 +3251,14 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
     page **200 with empty cycle sections**.
   - **Proof:** each path *driven* and the event seen in the inbox — billing ones on a Stripe test
     clock — with a DSN-removed control, so "it arrived" is about our wiring and not a default.
+    ✅ **Met by a chain rather than six drives, and the chain is stated so it can be checked:**
+    (1) every one of the six paths calls `reportIssue` at `level: 'alert'` — asserted by
+    `e2e/observability.spec.ts`, which goes red if any one of them stops being an alert;
+    (2) `reportIssue` at `alert` from a **real Vercel function** reached Sentry tagged
+    `mc.alert = yes` and **the alert email arrived** (2026-09-18, 02:28 UTC); (3) the
+    DSN-removed control: 30 days of local runs with no DSN produced **zero** events. What this
+    does not prove is that each path's own trigger condition fires — that is the paths' own
+    tests (`stripe-webhook`, `billing-sync`, `free-views`…), which already existed.
 
   - ✅ **DELIVERED WIDER THAN THE SIX, deliberately** — every operational failure in `app/` and
     `lib/` reports through `lib/observability.ts`, because six paths would have meant a guard that
@@ -3259,9 +3271,23 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
   - ⚠️ **IT COSTS +55 KB ON EVERY PAGE**, measured as a controlled A/B. Every budget still
     passes; five pages now sit within 13 KB of a ratchet deliberately tightened 1400 → 1250 → 1150.
     Sentry's own tree-shake flags moved it by 1 KB and were removed rather than left inert (11ak).
-  - ⚠️ **THREE THINGS ARE THE OWNER'S AND BLOCK THE PROOF ABOVE**: create the account and
-    supply the DSN, choose a data region (US or EU — fixed at creation, a project cannot be moved),
-    and approve the privacy-policy line. Full account: `docs/layer-h-plan.md` §12.
+  - ✅ **The owner's three items are done** (2026-09-17): account + DSN, **US** region, privacy
+    line approved and live.
+  - ✅ **Server side verified on Vercel 2026-09-18, and it found three defects no local or
+    browser test could** — reports being LOST (3 of 6 unhandled throws; now 5 of 5), the query
+    string leaking through `contexts.nextjs.request_path`, and stack-frame paths masked as emails.
+    All fixed, tested and re-verified on Vercel. Full account: `docs/layer-h-plan.md` §12.
+  - ⚠️ **Two email rules exist in Sentry, deliberately.** Ours (`mc.alert = yes`) is the money
+    paths; Sentry's default "high priority issues" rule is the ONLY thing that emails on an
+    UNHANDLED crash, which carries no tag. Kept. If it proves noisy, the fix is to tag unhandled
+    errors in `scrub`/`beforeSend` and retire it — not to delete it and go blind to crashes.
+  - **The Python functions carry no SDK**, so they are seen only through their callers — and
+    closing H2 found one of those callers was blind. A 5xx from `/api/cycle` (every paid page
+    then renders without its analysis) was only a breadcrumb, i.e. reached Sentry as nothing.
+    It is now a `warning` (listed, no email), guarded in `e2e/observability.spec.ts`.
+    `/api/analyze` failures are handled in the BROWSER and shown to the reader as tickers that
+    "couldn't be scored" — visible to the customer, not recorded in Sentry. Accepted for now.
+    The GitHub cron jobs are outside Sentry by design: a failed run already emails via GitHub.
 
 #### H3 · `/learn` band rhythm + touch targets 🟡
 

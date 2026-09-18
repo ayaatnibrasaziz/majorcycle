@@ -1,11 +1,9 @@
 # Layer H — Pre-launch Hardening: the plan
 
-**Status:** ✅ **H1 COMPLETE** (2026-09-14/15, reviewed 2026-09-16) · ✅ **H2 CODE COMPLETE, AND
-DELIBERATELY INERT** (2026-09-16). All nine decisions taken, both designs approved.
+**Status:** ✅ **H1 COMPLETE** (2026-09-14/15, reviewed 2026-09-16) · ✅ **H2 COMPLETE AND LIVE IN
+PRODUCTION** (built 2026-09-16, configured 2026-09-17 in Sentry's US region, merged in PR #101,
+server side verified on Vercel 2026-09-18 — §12). All nine decisions taken, both designs approved.
 **H3 (`/learn` bands) is next.**
-⚠️ **H2 needs THREE things from the owner before it does anything at all** — a Sentry account and
-DSN (I cannot create an account), a choice of data region (US or EU, and it cannot be changed
-afterwards), and sign-off on the privacy-policy line. See §12.
 **Three findings came out of building it** that the plan did not have — §3, findings I, J and K.
 ⚠️ Finding I changed a **paid** surface beyond the approved design; it was put to the owner, and
 **my first fix for it was wrong** — it passed every automated check and the owner caught it from a
@@ -951,7 +949,12 @@ underlying number was ±20px. The owner's question is what forced the finer meas
 
 ## 12. H2 · Error monitoring — what was built, 2026-09-16
 
-**Status: code complete, guarded, green, and deliberately INERT.** With no
+**Status (2026-09-18): LIVE IN PRODUCTION.** The owner's three items below are done (account + DSN,
+US region, privacy line), the four dashboard-side settings are recorded in `.env.example`, and the
+paragraph at the end of this section records the server-side verification. What follows is the
+account as written on 2026-09-16, when it was still inert.
+
+**Status as built: code complete, guarded, green, and deliberately INERT.** With no
 `NEXT_PUBLIC_SENTRY_DSN`, `Sentry.init` is a no-op, no network request is made and the CSP is
 unchanged. Turning it on is one deliberate act, and it carries a privacy-policy line with it.
 
@@ -1083,6 +1086,72 @@ behind our own domain, a new route handler needing its own cache header and its 
 is a fact about this week, and 11d is the record of what happens when it stops being one. The
 esbuild build resolves `@sentry/*` to a no-op and `assertNoServerCode()` refuses an artifact
 containing `ingest.sentry.io` or `sentry-trace`. Verified on the emitted file: zero matches.
+
+### Verified on Vercel, 2026-09-18 — and what only the SERVER test could find
+
+The browser half was verified on a preview on 2026-09-17. The server half — the one that carries
+every money path — had not been, so a throwaway branch (`test/sentry-server-probe`, never merged)
+added a route that raised one handled `alert` and one unhandled throw on a real Vercel preview.
+**Both arrived**, tagged `preview`, with the release commit, a stack trace resolved to
+`app/api/sentry-probe/route.ts:24`, no IP and no location. The alert carried `mc.alert = yes`.
+
+⚠️ **Two defects that no local test and no browser test could have shown:**
+
+1. **The query string leaked through a door `urlQueryParams: false` does not guard.**
+   `captureRequestError` — the hook for every UNHANDLED server error — writes
+   `contexts.nextjs.request_path` as the raw path WITH its query. On this site that can be
+   `/auth/confirm?token_hash=…` or `/auth/callback?code=…` (one-time sign-in credentials) or a
+   Stripe `session_id`. `scrub` now cuts at `?` in every context key ending `path`/`url`.
+2. **The email mask blanked every third-party stack frame.** pnpm paths are shaped like
+   addresses (`next@16.3.5_@babel+core@7.29.0/…/tracer.js`), so the deep walk replaced them with
+   `[email redacted]`. Frame `filename`/`abs_path`/`module` are now exempt — code, never reader data.
+
+3. **Reports were being LOST, and the SDK's own guard against that is off on Node.** Of six
+   unhandled throws Vercel logged, Sentry received **three**, and none of the two sent to a fresh
+   deployment. `@sentry/core`'s `vercelWaitUntil` returns immediately unless `EdgeRuntime` is set —
+   on Node it waits for a SIGTERM that Vercel does not send; it FREEZES the instance after the
+   response, and a send still in flight freezes with it. The handled money-path alerts use the
+   same client, so this was never only about crashes. `flushBeforeFreeze()` (`lib/observability.ts`)
+   hands `Sentry.flush()` to Vercel's own `waitUntil` — the hook `@vercel/functions` reads — from
+   both `reportIssue` and `onRequestError`.
+
+All three carry a test in `e2e/observability.spec.ts`, and each was broken on purpose and went red.
+⚠️ **Instrument note, and it cuts both ways:** the first unhandled event took
+several minutes to become searchable, and for those minutes it read as LOST. It was not — so I
+nearly wrote the whole thing off as latency. **Counting against Vercel's own log** (every request
+the platform saw, not just the ones I remembered sending) is what showed that three really were
+missing. An absent event one minute after the request is latency; an absent event after ten, with
+the request in the platform log, is a loss.
+
+Also switched off the build plugin's own usage telemetry (`telemetry: false`), which the production
+build log showed it sending on every build, with a test that fails if it comes back.
+
+### The close-out sweep, 2026-09-18 — what else was checked, and what is accepted
+
+- **The alert chain, end to end from a server.** A `level: 'alert'` report from a real Vercel
+  function reached Sentry tagged `mc.alert = yes` and **the email arrived**. Together with the
+  spec asserting each of the six money paths reports at `alert`, this is how the plan's "each
+  path driven on a Stripe test clock" row was met — by a chain whose every link is checked,
+  rather than six drives. What it does not prove is each path's own trigger; those have their
+  own tests.
+- **The DSN-removed control.** 30 days of local runs with no DSN: **zero** events.
+- **Source maps.** The production build log shows the upload; server frames resolve to our
+  own `.ts` lines.
+- **Privacy on the server event.** No IP, no location, no headers, and (after fix 1) no query.
+- **A fourth gap, found by asking what the Python functions report: nothing.** They carry no
+  SDK. `lib/cycle.ts` treated every non-401 failure of `/api/cycle` as a breadcrumb, so a
+  crashing engine — every paid page rendering without its analysis — reached Sentry as
+  nothing. A 5xx is now a `warning` (listed, no email: one outage must not become an email per
+  page view). `/api/analyze` fails in the browser and is shown to the reader as unscored
+  tickers; visible to them, not recorded. Accepted.
+- **Two email rules, deliberately.** Ours keys on `mc.alert`; Sentry's default "high priority
+  issues" rule is the only one that emails on an UNHANDLED crash (no tag). Kept. If it proves
+  noisy, tag unhandled errors in `beforeSend` and retire it — never delete it and go blind.
+- **Deploy emails** ("Deployed … to vercel-preview", one per preview build) come from the
+  build plugin recording each Vercel build as a Sentry deploy. The Next.js wrapper's types do
+  not accept `deploy: false`, and a cast would be a line that reads as config and may not hold
+  across upgrades (11ak), so this is an owner notification setting instead (Sentry → User
+  Settings → Notifications → Deploys → Never).
 
 ---
 

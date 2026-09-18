@@ -1,5 +1,7 @@
 import * as Sentry from '@sentry/nextjs';
 
+import { flushBeforeFreeze } from '@/lib/observability';
+
 /**
  * Next.js instrumentation — runs once at server startup, per runtime.
  *
@@ -41,4 +43,10 @@ export async function register() {
  * thought about. Without it, a Server Component that throws shows the reader the
  * error boundary and tells us nothing.
  */
-export const onRequestError = Sentry.captureRequestError;
+export const onRequestError: typeof Sentry.captureRequestError = (...args) => {
+  Sentry.captureRequestError(...args);
+  // The SDK's own flush here is a no-op on Vercel's Node runtime — see
+  // `flushBeforeFreeze` for the measurement. Without this, an unhandled error can
+  // sit in a frozen instance and reach Sentry late or never.
+  flushBeforeFreeze();
+};
