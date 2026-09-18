@@ -942,6 +942,10 @@ def run(
         universe = selected
         logger.info("--only restricted run: %d ticker(s): %s", len(universe), ", ".join(wanted))
     failed: list[str] = []
+    # Tickers whose full history is shorter than the analysis needs (a recent
+    # listing). Kept apart from `failed` so a new spin-off is not reported — or
+    # retried — as a broken fetch every night until it has enough history.
+    too_new: dict[str, int] = {}
     succeeded = 0
     enriched_count = 0
 
@@ -1045,6 +1049,12 @@ def run(
                         else _INCREMENTAL_PRICE_PERIOD,
                     )
                     if df is None or df.empty:
+                        bars = DATA_PROVIDER.history_too_short(ticker)
+                        if bars is not None:
+                            # Listed too recently to analyse — not a failure, and
+                            # not worth the retry pass. Reported on its own line.
+                            too_new[ticker] = bars
+                            continue
                         logger.debug("%s: no price data", ticker)
                         failed.append(ticker)
                         continue
@@ -1309,6 +1319,12 @@ def run(
 
     if failed:
         logger.warning("Failed tickers (%d): %s", len(failed), ", ".join(failed))
+    if too_new:
+        logger.info(
+            "Too new to analyse yet (%d) — skipped until they have enough history: %s",
+            len(too_new),
+            ", ".join(f"{t} ({n} days)" for t, n in sorted(too_new.items())),
+        )
 
     # Last, because it reads back what this run wrote. A split marked resolved whose
     # STORED bars still disagree with themselves goes back to pending, and tomorrow's

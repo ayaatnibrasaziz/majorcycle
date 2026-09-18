@@ -135,6 +135,17 @@ class DataProvider(ABC):
         """Return DataFrame with columns [Open, High, Low, Close, Volume], DatetimeIndex (UTC-naive)."""
         ...
 
+    def history_too_short(self, ticker: str) -> Optional[int]:
+        """How many bars the last full-history fetch of `ticker` found, IF that was too
+        few to analyse; None otherwise (including "never fetched" and "fetch failed").
+
+        A company that listed recently is not a failed fetch: the provider answered, the
+        history is simply shorter than the cycle maths needs. The refresh reports those
+        apart from real failures so a new S&P 500 spin-off does not read as a fault
+        every night for a year. Non-abstract so a provider without the notion stays valid.
+        """
+        return None
+
     @abstractmethod
     def fetch_fundamentals(self, ticker: str) -> Optional[FundamentalsSnapshot]:
         """Return fundamentals snapshot or None if unavailable."""
