@@ -3,7 +3,7 @@
 **Status:** ✅ **H1 COMPLETE** (2026-09-14/15, reviewed 2026-09-16) · ✅ **H2 COMPLETE AND LIVE IN
 PRODUCTION** (built 2026-09-16, configured 2026-09-17 in Sentry's US region, merged in PR #101,
 server side verified on Vercel 2026-09-18 — §12). All nine decisions taken, both designs approved.
-**H3 (`/learn` bands) is next.**
+· ✅ **H3 BUILT** (2026-09-18) — see the H3 section. **H4 (cross-browser) is next.**
 **Three findings came out of building it** that the plan did not have — §3, findings I, J and K.
 ⚠️ Finding I changed a **paid** surface beyond the approved design; it was put to the owner, and
 **my first fix for it was wrong** — it passed every automated check and the owner caught it from a
@@ -576,8 +576,28 @@ operational failure in `app/` and `lib/` now reports, not six of them — becaus
 was a guard that could only be a hand-written list of six, and a hand-written list is this
 repo's most-cited blind spot. §12 has the account.
 
-### H3 · `/learn` bands + row heights 🟡 THIRD
+### H3 · `/learn` bands + row heights ✅ BUILT 2026-09-18
 Cheap, public, isolated. **Design gate** — the band fix changes how `/learn` looks on a tablet.
+
+**Re-measured before building, and both findings held exactly:** picture 53.5–68.8% of the band
+across 768–1023 (448px → 607px tall), five rows at 36.8px at 375px. Two options were mocked up
+on the live preview and measured; **the owner chose side by side** — the band goes two-column at
+`md:` (768) instead of `lg:` (1024), the same line H1 drew for the shell. Result, swept: pictures
+209–301px, bands 280–475px, zero sideways scroll, nothing clipped; the other option (a 420px
+picture kept on top) met the 50% bound but left an empty half-row on wider tablets.
+
+⚠️ **The plan's own measurement stopped making sense once the fix was chosen**, and is replaced
+rather than bent: `img / band ≤ 50%` is only meaningful while the picture is ABOVE the text. Side
+by side, a short topic's band IS the picture's height (75% at 768px) and nothing is wrong. The guard
+now asserts the purpose — the heading starts level with its picture, the picture is ≤320px tall —
+swept 768 → 1023 in 17px steps, with a control that below 768 the band still stacks picture-first.
+
+Rows: `py-[13px] lg:py-[9px]` → 44.8px on touch widths, desktop density unchanged (control
+asserts <40px at 1280, and 1280 was compared to production: equal within 0.2px). Asserted for a
+one-line AND a wrapping title. Four deliberate breaks, four reds.
+
+**Not done, recorded:** a phone held sideways (600–767px) still stacks, picture 52–61% of the
+band. Outside the range this item covered; a candidate if the owner wants it.
 
 ### H4 · Cross-browser 🟡 FOURTH — must follow H1
 Whole site, **Chromium + Firefox + WebKit** (all three now run — finding E), **local command

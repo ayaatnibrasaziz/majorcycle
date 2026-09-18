@@ -97,7 +97,11 @@ export default function LearnIndexPage() {
                 // which is what happens only once the track is dropped as well
                 // as the picture. Nothing errored and typecheck was green: an
                 // absent grid child is not a fault, it is just a hole.
-                theme.image ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]' : '',
+                // ⚠️ `md:` (768px), not `lg:` — Layer H3, owner 2026-09-18. Below 1024 the
+                // band used to stack, and the full-width picture was 54–69% of it: 607px
+                // tall at 1023px, a screen of illustration before the first title. Tablets
+                // now take the desktop layout, the same decision H1 made for the shell.
+                theme.image ? 'md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]' : '',
                 // The first band opens the page; a rule above it would read as a
                 // divider from the disclaimer rather than between two topics.
                 'first:border-t-0 first:pt-[6px]',
@@ -111,11 +115,11 @@ export default function LearnIndexPage() {
                 className={
                   theme.image
                     ? // Alternating sides. `order` only applies once the grid
-                      // exists at ≥1024px; below that the layout is a single
+                      // exists at ≥768px; below that the layout is a single
                       // column and the picture must always come first, or every
                       // other topic would start with a wall of text.
                       i % 2 === 1
-                      ? 'lg:order-first'
+                      ? 'md:order-first'
                       : undefined
                     : // No picture: hold the header's own 720px measure rather
                       // than letting the band sprawl to the full 1120px frame,
@@ -194,6 +198,12 @@ export default function LearnIndexPage() {
                       {/* The title is the only link in the row. A second "read
                           more" would give a screen-reader user two links to the
                           same place, one of which says nothing. */}
+                      {/* ⚠️ 13px padding below 1024px, 9px from it — Layer H3.
+                          A one-line row was 36.8px, under the 44px comfortable
+                          tap size on a phone or tablet (5 of 12 rows). 13px gives
+                          44.85px; the desktop, where a pointer is precise, keeps
+                          the density the owner approved. "Coming soon" rows take
+                          the same padding so the list keeps one rhythm. */}
                       {/* Title and blurb are both --pub-body (13px); WEIGHT and
                           COLOUR separate them, not size. A half-step up to 14px
                           would be a fifth value on a page that has just been
@@ -202,7 +212,7 @@ export default function LearnIndexPage() {
                           uses for its links. */}
                       <Link
                         href={learnPath(article.slug)}
-                        className="flex items-baseline gap-[12px] py-[9px] font-semibold leading-[1.45] no-underline"
+                        className="flex items-baseline gap-[12px] py-[13px] font-semibold leading-[1.45] no-underline lg:py-[9px]"
                       >
                         <span className="flex-auto">{article.title}</span>
                         <span className="flex-none font-mono text-[length:var(--pub-label)] font-normal text-[var(--text-secondary)]">
@@ -236,7 +246,7 @@ export default function LearnIndexPage() {
                           Now it recedes honestly: normal weight against the
                           link's semibold, grey against the link's blue. Both
                           survive a screenshot AND a measurement. */}
-                      <div className="flex items-baseline gap-[12px] py-[9px] leading-[1.45] text-[var(--text-secondary)]">
+                      <div className="flex items-baseline gap-[12px] py-[13px] leading-[1.45] text-[var(--text-secondary)] lg:py-[9px]">
                         <span className="flex-auto">{title}</span>
                         <span className="flex-none font-mono text-[length:var(--pub-label)]">
                           Coming soon
@@ -271,8 +281,10 @@ export default function LearnIndexPage() {
  * currently unreachable in production; `learn.spec.ts` measures it anyway,
  * because the last time this comment described untested behaviour it was wrong.
  *
- * `sizes` is stated because the band is half a 1120px frame on desktop and full
+ * `sizes` is stated because the band is half the frame from 768px up and full
  * width on a phone; without it Next serves the largest candidate to everyone.
+ * From 768 to 1023 the column is narrower than 560px, so 560 stays the upper
+ * bound the promise has to cover.
  *
  * ⚠️ **560px, not 532px.** The grid is `1fr / 1.05fr`, so the two columns are
  * NOT the same width — measured at 1280px they are 531.7px and 558.3px, and the
@@ -291,7 +303,7 @@ function ThemeImage({ theme }: { theme: LearnThemeMeta }) {
         alt={theme.image.alt}
         width={1600}
         height={1000}
-        sizes="(min-width: 1024px) 560px, 100vw"
+        sizes="(min-width: 768px) 560px, 100vw"
         className="h-auto w-full"
       />
     </div>
