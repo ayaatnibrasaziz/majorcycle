@@ -591,7 +591,8 @@ picture kept on top) met the 50% bound but left an empty half-row on wider table
 rather than bent: `img / band ≤ 50%` is only meaningful while the picture is ABOVE the text. Side
 by side, a short topic's band IS the picture's height (75% at 768px) and nothing is wrong. The guard
 now asserts the purpose — the heading starts level with its picture, the picture is ≤320px tall —
-swept 768 → 1023 in 17px steps, with a control that below 768 the band still stacks picture-first.
+swept across the side-by-side range, with a control that below it the band still stacks picture-first
+(the range moved from 768 to 600 the same day — see below).
 
 Rows: `py-[13px] lg:py-[9px]` → 44.8px on touch widths, desktop density unchanged (control
 asserts <40px at 1280, and 1280 was compared to production: equal within 0.2px). Asserted for a
@@ -604,6 +605,17 @@ for most readers; the change makes every phone held sideways behave alike. No ph
 upright, and 600 is the public header's existing breakpoint. Measured at 600px: picture 150px, text
 column 254px (a 320px phone gets 245), zero scroll, nothing clipped, rows 45px. The guard sweeps
 600 → 1023 and its control is 599px stacked; reverting to `md:` goes red at 600px.
+
+**Audit, 2026-09-18 (before merge).** Swept `/learn` at **every pixel** from 320 to 1440: zero
+sideways scroll, no clipped text, no picture over its heading, nothing escaping its band, text
+column never under 241px, rows ≥ 44.8px below 1024 and 36.8px above. Screenshotted at 375 × 812,
+667 × 375 (sideways), 600, 768 × 1024, 1024 × 768 and 1280 — all as intended. One gap closed: the
+17px sweep stopped at 1008 and never measured **1023**, where the picture is tallest (305px of the
+320 allowed), so 1023 is now asserted explicitly. Known and accepted: a **568 × 320** phone held
+sideways (iPhone 5/SE 1st gen) is below 600 and still stacks, with a 307px picture. The line
+*could* drop to 568 — no phone is that wide held upright — but every phone that narrow is about ten
+years old, and 600 is the public header's existing breakpoint; not worth a second line for it. From 600 to ~800px a short picture beside a long article list leaves empty space under
+the picture — the trade the owner accepted when choosing side by side.
 
 ### H4 · Cross-browser 🟡 FOURTH — must follow H1
 Whole site, **Chromium + Firefox + WebKit** (all three now run — finding E), **local command
@@ -629,7 +641,7 @@ Every check has a **control** — the thing that proves it can fail (11p).
 |---|---|---|
 | H1 | `scrollX` after `scrollTo(99999,0)` is **0** on all six routes, **entitled and free**, swept 320 → 1280 in 4px steps; and the tightest page keeps **≥ 20px spare**, not merely ≥ 0 | Restore the offset on one route → the sweep goes red **and names the width**. Plus: a 1280px check that the sidebar is still *there* — a layout that hides it everywhere passes every overflow assertion |
 | H2 | Each of the six log paths **driven**, and the event **arrives in the Sentry inbox**. Billing paths via a **Stripe test clock** | A deliberate test error must arrive; and a run with the DSN removed must produce **nothing**, so "it arrived" is about our wiring, not someone's default |
-| H3a | Picture share ≤ **50%** of the band at every width 768–1023, measured `img.height / section.height` | The 1280px two-column layout must be **unchanged** — flattening the desktop also passes a picture-share bound |
+| H3a | ~~Picture share ≤ 50% of the band~~ — **replaced when side-by-side was chosen** (the ratio only means something while the picture is above the text). Now: from **600px** the heading starts within 60px of its picture's top and the picture is ≤ **320px**, swept 600 → 1023 in 17px steps plus 1023 itself; separately swept at **1px** from 320 → 1440 during the audit, clean | Below 600px (599) the band must still **stack picture-first**, and 1280 must be **unchanged** — "side by side everywhere" passes the sweep and crushes a phone's text column |
 | H3b | Every article link ≥ **44px** at 375px | Assert the **wrapping** titles by name — fixing only the single-line rows would read as a pass |
 | H4 | Whole suite in Chromium + WebKit; the runner prints a **per-engine count** | Three totals, never one — an engine that failed to launch reports as "no failures" (and today Firefox would) |
 | H5 | Focus indicator ≥ **3:1** against its own ground at 375px, **polled until the computed value stops changing** | 11ao: two sessions read this at t≈0 and got white. A control with its outline removed must be caught |

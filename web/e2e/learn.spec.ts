@@ -278,7 +278,12 @@ test.describe('the Learn library', () => {
      * is wrong. So the guard asserts the purpose — the heading starts level with
      * the picture — plus a height bound, swept across the whole band (11bf).
      */
-    for (let width = 600; width <= 1023; width += 17) {
+    // 17px steps, PLUS 1023 itself: the stepped loop stops at 1008, and 1023 is
+    // where the picture is tallest (305px against the 320 bound) — the one width
+    // this assertion is tightest at. A 1px sweep of 320 → 1440 found nothing the
+    // 17px one misses; the endpoints are what a step can skip (11be).
+    const widths = [...Array.from({ length: 25 }, (_, i) => 600 + i * 17), 1023];
+    for (const width of widths) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(LEARN_INDEX_PATH);
       await ready(page);
