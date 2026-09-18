@@ -3141,7 +3141,7 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > decisions taken, two designs approved, nothing open. This section is the summary; the plan is
 > the authority, because it carries the measurements.
 >
-> ✅ **H3 BUILT 2026-09-18** — `/learn` tablets go side by side, rows are 44px on touch widths.
+> ✅ **H3 BUILT 2026-09-18** — `/learn` goes side by side from 600px (tablets and phones held sideways), rows are 44px on touch widths.
 >
 > ✅ **H1 AND H2 ARE MERGED AND LIVE** — H1 and H2's build in PR #101 (2026-09-16/17); H2's
 > close-out (server-side verification and three fixes) in the PR that follows it, 2026-09-18.
@@ -3298,8 +3298,10 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
 > two-column band, bands shrink from ~800–1000px to 280–475px, pictures from 448–607px to
 > 209–301px tall. Rows are 44.8px below 1024px; 1280px was measured against production and is
 > unchanged to within 0.2px. Guards in `e2e/learn.spec.ts`, each broken on purpose and seen red.
-> ⚠️ **Not done, noted:** a phone held sideways (600–767px) still stacks, where the picture is
-> 52–61% of the band. Below the tablet range the plan covered, and the same 768 line H1 drew.
+> ✅ **Then extended to 600px (owner, same day)** so a small phone held SIDEWAYS (iPhone SE,
+> 667px) gets the same layout: stacked, its picture was ~390px tall on a ~375px-tall screen. Most
+> phones held sideways are already ≥768; no phone is 600px wide upright; 600 is the public header's
+> existing breakpoint. At 600px: picture 150px, text column 254px, nothing clipped.
 
 - [x] **Band rhythm — the bad width is 1023px, not 768.** One pixel below the `lg` breakpoint the
       illustration **doubles from 291px to 616px**; the picture is **54–69%** of the band across

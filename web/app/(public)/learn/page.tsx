@@ -97,11 +97,14 @@ export default function LearnIndexPage() {
                 // which is what happens only once the track is dropped as well
                 // as the picture. Nothing errored and typecheck was green: an
                 // absent grid child is not a fault, it is just a hole.
-                // ⚠️ `md:` (768px), not `lg:` — Layer H3, owner 2026-09-18. Below 1024 the
+                // ⚠️ 600px, not `lg:` (1024) — Layer H3, owner 2026-09-18. Below 1024 the
                 // band used to stack, and the full-width picture was 54–69% of it: 607px
-                // tall at 1023px, a screen of illustration before the first title. Tablets
-                // now take the desktop layout, the same decision H1 made for the shell.
-                theme.image ? 'md:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]' : '',
+                // tall at 1023px, a screen of illustration before the first title. First
+                // moved to 768 (tablets); then to 600 so a small phone held SIDEWAYS
+                // (iPhone SE, 667px) gets the same layout instead of a picture ~390px tall
+                // on a ~375px-tall screen. No phone is 600px wide upright, and 600 is
+                // already the public header's breakpoint.
+                theme.image ? 'min-[600px]:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]' : '',
                 // The first band opens the page; a rule above it would read as a
                 // divider from the disclaimer rather than between two topics.
                 'first:border-t-0 first:pt-[6px]',
@@ -115,11 +118,11 @@ export default function LearnIndexPage() {
                 className={
                   theme.image
                     ? // Alternating sides. `order` only applies once the grid
-                      // exists at ≥768px; below that the layout is a single
+                      // exists at ≥600px; below that the layout is a single
                       // column and the picture must always come first, or every
                       // other topic would start with a wall of text.
                       i % 2 === 1
-                      ? 'md:order-first'
+                      ? 'min-[600px]:order-first'
                       : undefined
                     : // No picture: hold the header's own 720px measure rather
                       // than letting the band sprawl to the full 1120px frame,
@@ -281,9 +284,9 @@ export default function LearnIndexPage() {
  * currently unreachable in production; `learn.spec.ts` measures it anyway,
  * because the last time this comment described untested behaviour it was wrong.
  *
- * `sizes` is stated because the band is half the frame from 768px up and full
+ * `sizes` is stated because the band is half the frame from 600px up and full
  * width on a phone; without it Next serves the largest candidate to everyone.
- * From 768 to 1023 the column is narrower than 560px, so 560 stays the upper
+ * From 600 to 1023 the column is narrower than 560px, so 560 stays the upper
  * bound the promise has to cover.
  *
  * ⚠️ **560px, not 532px.** The grid is `1fr / 1.05fr`, so the two columns are
@@ -303,7 +306,7 @@ function ThemeImage({ theme }: { theme: LearnThemeMeta }) {
         alt={theme.image.alt}
         width={1600}
         height={1000}
-        sizes="(min-width: 768px) 560px, 100vw"
+        sizes="(min-width: 600px) 560px, 100vw"
         className="h-auto w-full"
       />
     </div>

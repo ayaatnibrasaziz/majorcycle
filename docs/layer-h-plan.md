@@ -582,7 +582,8 @@ Cheap, public, isolated. **Design gate** — the band fix changes how `/learn` l
 **Re-measured before building, and both findings held exactly:** picture 53.5–68.8% of the band
 across 768–1023 (448px → 607px tall), five rows at 36.8px at 375px. Two options were mocked up
 on the live preview and measured; **the owner chose side by side** — the band goes two-column at
-`md:` (768) instead of `lg:` (1024), the same line H1 drew for the shell. Result, swept: pictures
+`md:` (768) instead of `lg:` (1024), the same line H1 drew for the shell — then lowered to 600px,
+below. Result, swept: pictures
 209–301px, bands 280–475px, zero sideways scroll, nothing clipped; the other option (a 420px
 picture kept on top) met the 50% bound but left an empty half-row on wider tablets.
 
@@ -596,8 +597,13 @@ Rows: `py-[13px] lg:py-[9px]` → 44.8px on touch widths, desktop density unchan
 asserts <40px at 1280, and 1280 was compared to production: equal within 0.2px). Asserted for a
 one-line AND a wrapping title. Four deliberate breaks, four reds.
 
-**Not done, recorded:** a phone held sideways (600–767px) still stacks, picture 52–61% of the
-band. Outside the range this item covered; a candidate if the owner wants it.
+**Then moved from 768 to 600px (owner, same day).** A phone held sideways in 600–767 still
+stacked, and on an iPhone SE (667 × 375) the picture was ~390px tall — taller than the screen.
+Most phones held sideways are ≥768 and already switched, so a rotation already changes the layout
+for most readers; the change makes every phone held sideways behave alike. No phone is 600px wide
+upright, and 600 is the public header's existing breakpoint. Measured at 600px: picture 150px, text
+column 254px (a 320px phone gets 245), zero scroll, nothing clipped, rows 45px. The guard sweeps
+600 → 1023 and its control is 599px stacked; reverting to `md:` goes red at 600px.
 
 ### H4 · Cross-browser 🟡 FOURTH — must follow H1
 Whole site, **Chromium + Firefox + WebKit** (all three now run — finding E), **local command

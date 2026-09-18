@@ -249,8 +249,8 @@ test.describe('the Learn library', () => {
       .replace(/\/\/.*$/gm, '');
 
     // Any breakpoint prefix: the band went two-column at `lg:` until H3 (2026-09-18)
-    // moved it to `md:`, and this guard must not care which.
-    const uses = [...src.matchAll(/(?:sm|md|lg|xl):grid-cols-/g)];
+    // moved it to 600px, and this guard must not care which.
+    const uses = [...src.matchAll(/(?:sm|md|lg|xl|min-\[\d+px\]):grid-cols-/g)];
     expect(uses.length, 'the band no longer declares a multi-column track at all').toBeGreaterThan(0);
 
     for (const m of uses) {
@@ -265,11 +265,12 @@ test.describe('the Learn library', () => {
     }
   });
 
-  test('on a tablet the picture sits BESIDE its words, not a screen above them (H3a)', async ({ page }) => {
+  test('from 600px the picture sits BESIDE its words, not a screen above them (H3a)', async ({ page }) => {
     /**
      * Layer H3, owner 2026-09-18. Below 1024px the band used to stack, and the
      * full-width picture was 54–69% of it — 607px tall at 1023px, a screen of
-     * illustration before the first title. Tablets now take the desktop layout.
+     * illustration before the first title. From 600px — tablets, and every phone
+     * held sideways — the band takes the desktop layout.
      *
      * ⚠️ Why not the plan's "picture ≤ 50% of the band": that ratio only means
      * something while the picture is ABOVE the text. Side by side, a short topic's
@@ -277,7 +278,7 @@ test.describe('the Learn library', () => {
      * is wrong. So the guard asserts the purpose — the heading starts level with
      * the picture — plus a height bound, swept across the whole band (11bf).
      */
-    for (let width = 768; width <= 1023; width += 17) {
+    for (let width = 600; width <= 1023; width += 17) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(LEARN_INDEX_PATH);
       await ready(page);
@@ -302,10 +303,10 @@ test.describe('the Learn library', () => {
     }
   });
 
-  test('CONTROL — below 768px the band still stacks, picture first', async ({ page }) => {
+  test('CONTROL — below 600px the band still stacks, picture first', async ({ page }) => {
     // "Side by side everywhere" satisfies the test above perfectly and crushes a
     // phone's text column to nothing; the phone layout must be untouched.
-    await page.setViewportSize({ width: 767, height: 900 });
+    await page.setViewportSize({ width: 599, height: 900 });
     await page.goto(LEARN_INDEX_PATH);
     await ready(page);
     const orders = await page.evaluate(() =>
@@ -314,7 +315,7 @@ test.describe('the Learn library', () => {
         .map((s) => s.querySelector('img')!.getBoundingClientRect().bottom <= s.querySelector('h2')!.getBoundingClientRect().top),
     );
     expect(orders.length).toBeGreaterThan(0);
-    expect(orders.every(Boolean), 'below 768px every picture must sit above its heading').toBe(true);
+    expect(orders.every(Boolean), 'below 600px every picture must sit above its heading').toBe(true);
   });
 
   test('every article row is a comfortable tap on a phone, and desktop keeps its density (H3b)', async ({ page }) => {
