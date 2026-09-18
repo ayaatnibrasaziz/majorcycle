@@ -83,8 +83,27 @@ test.describe('scrub — what may leave this machine', () => {
           {
             type: 'Error',
             value: 'Invalid `to` field. sam.oreilly+news@example.co.uk is not a valid recipient.',
+            stacktrace: {
+              frames: [
+                {
+                  // A pnpm path, which is shaped like an email address.
+                  filename:
+                    '../node_modules/.pnpm/next@16.3.5_@babel+core@7.29.0_react@19.2.4/node_modules/next/dist/server/lib/trace/tracer.js',
+                  function: 'startActiveSpan',
+                },
+              ],
+            },
           },
         ],
+      },
+      // What `captureRequestError` really attaches to every UNHANDLED server error —
+      // the raw path WITH its query (seen on the first server event from Vercel).
+      contexts: {
+        nextjs: {
+          request_path: '/auth/confirm?token_hash=pretend-one-time-hash&type=recovery',
+          router_path: '/auth/confirm',
+          route_type: 'route',
+        },
       },
       breadcrumbs: [{ category: 'fetch', message: 'POST /api/portal for dana@example.org' }],
       tags: { userId: '6f1c0e2a-1111-2222-3333-444455556666', subscriptionId: 'sub_123' },
@@ -124,6 +143,18 @@ test.describe('scrub — what may leave this machine', () => {
     expect((out.request as Record<string, unknown>).otherwise).toContain('PostgREST refused');
   });
 
+  test('the query string does not travel inside a context either', () => {
+    // `urlQueryParams: false` and the `request.url` cut both miss this one: the SDK's
+    // unhandled-error hook copies the raw path, query included, into a context.
+    const out = scrub(sampleEvent());
+    const wire = JSON.stringify(out);
+    expect(wire, 'a one-time sign-in hash reached the wire').not.toContain('pretend-one-time-hash');
+    expect(out.contexts.nextjs.request_path, 'the path itself is what makes it useful').toBe(
+      '/auth/confirm',
+    );
+    expect(out.contexts.nextjs.router_path).toBe('/auth/confirm');
+  });
+
   test('every email address is masked, however deep it sits', () => {
     const wire = JSON.stringify(scrub(sampleEvent()));
     // One in `user`, one inside an exception value, one inside a breadcrumb, one in
@@ -155,6 +186,11 @@ test.describe('scrub — what may leave this machine', () => {
     // The upstream sentence survives with only the address removed — the same
     // one-directional rule `log-redaction.spec.ts` holds for the console line.
     expect(out.exception.values[0]!.value).toContain('is not a valid recipient.');
+    // A stack frame's file path is code, not reader data. Masking it as an "email"
+    // left every third-party frame reading "[email redacted]".
+    expect(out.exception.values[0]!.stacktrace.frames[0]!.filename).toContain(
+      'next/dist/server/lib/trace/tracer.js',
+    );
   });
 
   test('a cyclic event does not hang the reporter', () => {
@@ -336,6 +372,52 @@ test.describe('the wiring — a rule nobody receives is not a rule', () => {
     );
     expect(src).toContain('sentry.server.config');
     expect(src).toContain('sentry.edge.config');
+  });
+
+  test('a report asks Vercel to stay awake until it is SENT', () => {
+    // The SDK's own flush is a no-op on Vercel's Node runtime, and Vercel freezes the
+    // instance once the response is out — measured: 3 of 5 unhandled throws arrived.
+    const key = Symbol.for('@vercel/request-context');
+    const g = globalThis as Record<symbol, unknown>;
+    const held: unknown[] = [];
+    g[key] = { get: () => ({ waitUntil: (p: unknown) => held.push(p) }) };
+    try {
+      reportIssue('observability.spec: flush probe', { level: 'warning' });
+      expect(held, 'reportIssue did not hand a flush to waitUntil').toHaveLength(1);
+      expect(held[0], 'waitUntil must receive the flush PROMISE').toBeInstanceOf(Promise);
+    } finally {
+      delete g[key];
+    }
+    // CONTROL — off Vercel there is no context, and nothing may throw or be queued.
+    expect(() => reportIssue('observability.spec: no context', { level: 'warning' })).not.toThrow();
+    expect(held).toHaveLength(1);
+
+    const inst = readFileSync(join(WEB, 'instrumentation.ts'), 'utf8');
+    const body = inst.slice(inst.indexOf('export const onRequestError'));
+    expect(body, 'unhandled errors must flush too — that is where the loss was measured').toContain(
+      'flushBeforeFreeze()',
+    );
+  });
+
+  test('a failing Python engine is RECORDED, not only left as a breadcrumb', () => {
+    // The Python functions carry no SDK, so the TypeScript caller is the only place their
+    // failure can be seen. A 5xx means every paid page is missing its analysis.
+    const src = readFileSync(join(WEB, 'lib', 'cycle.ts'), 'utf8');
+    const at = src.indexOf('res.status >= 500');
+    expect(at, 'the 5xx branch of the /api/cycle call is gone').toBeGreaterThan(-1);
+    const branch = src.slice(at, src.indexOf('} else {', at));
+    expect(branch).toContain('reportIssue(');
+    // CONTROL — a warning, not an alert: one outage must not become an email per page view.
+    expect(branch).toContain("level: 'warning'");
+  });
+
+  test('the build plugin does not report its own usage to Sentry', () => {
+    const src = readFileSync(join(WEB, 'next.config.ts'), 'utf8');
+    const at = src.indexOf('withSentryConfig(nextConfig');
+    expect(at, 'withSentryConfig(nextConfig, …) not found').toBeGreaterThan(-1);
+    expect(src.slice(at), 'telemetry defaults to ON — it must be switched off explicitly').toMatch(
+      /^\s*telemetry:\s*false,/m,
+    );
   });
 });
 

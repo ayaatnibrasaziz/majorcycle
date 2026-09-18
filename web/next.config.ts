@@ -184,6 +184,11 @@ export default withSentryConfig(nextConfig, {
   silent: !process.env.CI,
   widenClientFileUpload: false,
   sourcemaps: { deleteSourcemapsAfterUpload: true },
+  // The build plugin otherwise reports its own usage (SDK version, options used) to
+  // Sentry on every build — the production build log said so. Not visitor data, but
+  // nothing we need to send. Verify by the absence of "Sending telemetry data" in a
+  // Vercel build log, since this line is otherwise unobservable (11ak).
+  telemetry: false,
   // ⚠️ `disableLogger` and `automaticVercelMonitors` are NOT set, and their absence
   // is the decision. Both are deprecated in favour of options under a `webpack.`
   // namespace, and this project builds with **Turbopack** — Next 16's default — where

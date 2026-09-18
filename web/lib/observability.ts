@@ -179,9 +179,38 @@ export function reportIssue(message: string, options: IssueOptions = {}): void {
         Sentry.captureMessage(message);
       }
     });
+    flushBeforeFreeze();
   } catch {
     // Deliberately silent. If the reporter cannot report, the console line above has
     // already carried the failure to the log the owner actually reads.
+  }
+}
+
+/**
+ * Make Vercel keep the function alive until Sentry has SENT what was captured.
+ *
+ * ⚠️ **The SDK does not do this on the Node runtime, and that is the whole reason
+ * this exists.** `@sentry/core`'s `vercelWaitUntil` opens with `if (typeof EdgeRuntime
+ * !== 'string') return;` — on Node it relies on a SIGTERM flush instead. Vercel does
+ * not send SIGTERM between requests: it FREEZES the instance once the response is
+ * out, and a send still in flight freezes with it. Measured on a real preview,
+ * 2026-09-18: of five unhandled throws Vercel logged, Sentry received three, one of
+ * them minutes late. The money-path alerts go through the same client.
+ *
+ * `Symbol.for('@vercel/request-context')` is the hook `@vercel/functions`'
+ * `waitUntil` reads, so this is that function without adding the dependency. Off
+ * Vercel (a local run, a Playwright spec) there is no context and it does nothing.
+ */
+export function flushBeforeFreeze(): void {
+  try {
+    const holder = (globalThis as Record<symbol, unknown>)[
+      Symbol.for('@vercel/request-context')
+    ] as { get?: () => { waitUntil?: (p: Promise<unknown>) => void } | undefined } | undefined;
+    const ctx = holder?.get?.();
+    if (typeof ctx?.waitUntil !== 'function') return;
+    ctx.waitUntil(Sentry.flush(2000).catch(() => false));
+  } catch {
+    // Same rule as reportIssue: monitoring must never become the failure.
   }
 }
 

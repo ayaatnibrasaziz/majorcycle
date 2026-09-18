@@ -77,6 +77,9 @@ type Loose = Record<string, unknown>;
  * Bounded at depth 8 and 5,000 entries so a cyclic or enormous payload cannot turn
  * a crash report into a hang. `seen` handles cycles, which Sentry events do have.
  */
+/** Stack-frame keys that hold a path to CODE, left unmasked by `maskDeep`. */
+const CODE_PATH_KEYS = new Set(['filename', 'abs_path', 'module']);
+
 function maskDeep(
   value: unknown,
   seen = new WeakSet<object>(),
@@ -96,7 +99,14 @@ function maskDeep(
     return value;
   }
   const obj = value as Loose;
-  for (const key of Object.keys(obj)) obj[key] = maskDeep(obj[key], seen, depth + 1, budget);
+  for (const key of Object.keys(obj)) {
+    // A stack frame's file path is code, never reader data — and pnpm paths are
+    // shaped like addresses (`next@16.3.5_…@19.2.4/…/tracer.js`), so masking them
+    // turned every third-party frame into "[email redacted]". Measured on the first
+    // server-side event from Vercel, 2026-09-18.
+    if (CODE_PATH_KEYS.has(key) && typeof obj[key] === 'string') continue;
+    obj[key] = maskDeep(obj[key], seen, depth + 1, budget);
+  }
   return obj;
 }
 
@@ -132,6 +142,27 @@ export function scrub<T extends object>(event: T): T {
   //    as a side effect. The user's `id` is deliberately KEPT: it is the opaque
   //    Supabase UUID we already log, and without it "whose subscription is
   //    duplicated?" has no answer.
+  // ⚠️ The query string reaches the event a SECOND way that `urlQueryParams: false`
+  // does not govern: `captureRequestError` (every UNHANDLED server error) writes
+  // `contexts.nextjs.request_path` as the raw path WITH its query. Found on the
+  // first server-side event from Vercel, 2026-09-18, reading `?mode=throw`. On this
+  // site a query can be `/auth/callback?code=…` or `/auth/confirm?token_hash=…` —
+  // one-time sign-in credentials — or a Stripe `session_id`. Cut at `?` in every
+  // context, not just `nextjs`, so the next integration that copies a URL is covered.
+  const contexts = loose.contexts as Record<string, unknown> | undefined;
+  if (contexts && typeof contexts === 'object') {
+    for (const ctx of Object.values(contexts)) {
+      if (!ctx || typeof ctx !== 'object') continue;
+      const c = ctx as Loose;
+      for (const k of Object.keys(c)) {
+        const v = c[k];
+        if (typeof v === 'string' && /(?:path|url)$/i.test(k) && v.includes('?')) {
+          c[k] = v.slice(0, v.indexOf('?'));
+        }
+      }
+    }
+  }
+
   const user = loose.user as Loose | undefined;
   if (user) {
     delete user.ip_address;
