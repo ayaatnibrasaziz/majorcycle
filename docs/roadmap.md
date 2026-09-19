@@ -3141,9 +3141,11 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > decisions taken, two designs approved, nothing open. This section is the summary; the plan is
 > the authority, because it carries the measurements.
 >
+> ✅ **H3 BUILT 2026-09-18** — `/learn` goes side by side from 600px (tablets and phones held sideways), rows are 44px on touch widths.
+>
 > ✅ **H1 AND H2 ARE MERGED AND LIVE** — H1 and H2's build in PR #101 (2026-09-16/17); H2's
 > close-out (server-side verification and three fixes) in the PR that follows it, 2026-09-18.
-> **H3 is next.** *(What follows is the H1 build note as written.)*
+> **H4 is next.** *(What follows is the H1 build note as written.)*
 >
 > 🔨 **H1 IS BUILT (2026-09-14/15) and NOT MERGED.** H1.2 the shell, H1.3 the re-measure, H1.4
 > the widened guard — done. **H1.5 (the a11y + contrast re-run at phone width, drawer open) is
@@ -3289,13 +3291,23 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
     "couldn't be scored" — visible to the customer, not recorded in Sentry. Accepted for now.
     The GitHub cron jobs are outside Sentry by design: a failed run already emails via GitHub.
 
-#### H3 · `/learn` band rhythm + touch targets 🟡
+#### H3 · `/learn` band rhythm + touch targets ✅ **BUILT 2026-09-18**
 
-- [ ] **Band rhythm — the bad width is 1023px, not 768.** One pixel below the `lg` breakpoint the
+> Re-measured first (11aj): both findings held to the decimal. **Owner chose "side by side"**
+> from two mock-ups measured on the live preview: tablets (768–1023) now take the desktop
+> two-column band, bands shrink from ~800–1000px to 280–475px, pictures from 448–607px to
+> 209–301px tall. Rows are 44.8px below 1024px; 1280px was measured against production and is
+> unchanged to within 0.2px. Guards in `e2e/learn.spec.ts`, each broken on purpose and seen red.
+> ✅ **Then extended to 600px (owner, same day)** so a small phone held SIDEWAYS (iPhone SE,
+> 667px) gets the same layout: stacked, its picture was ~390px tall on a ~375px-tall screen. Most
+> phones held sideways are already ≥768; no phone is 600px wide upright; 600 is the public header's
+> existing breakpoint. At 600px: picture 150px, text column 254px, nothing clipped.
+
+- [x] **Band rhythm — the bad width is 1023px, not 768.** One pixel below the `lg` breakpoint the
       illustration **doubles from 291px to 616px**; the picture is **54–69%** of the band across
       768–1023, not the "~45%" recorded. Target ≤50%, with the 1280px two-column case asserted
       unchanged as the control.
-- [ ] **Learn index rows are 36.8px when the title fits one line and 55.7px when it wraps** —
+- [x] **Learn index rows are 36.8px when the title fits one line and 55.7px when it wraps** —
       **5 of 12** are under 44px, not all twelve. ⚠️ And 44px is *guidance*: WCAG 2.5.8's actual
       minimum is 24px, which all twelve clear. A comfort item, not a breach.
 

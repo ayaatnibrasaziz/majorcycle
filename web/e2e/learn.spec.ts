@@ -248,7 +248,9 @@ test.describe('the Learn library', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/.*$/gm, '');
 
-    const uses = [...src.matchAll(/lg:grid-cols-/g)];
+    // Any breakpoint prefix: the band went two-column at `lg:` until H3 (2026-09-18)
+    // moved it to 600px, and this guard must not care which.
+    const uses = [...src.matchAll(/(?:sm|md|lg|xl|min-\[\d+px\]):grid-cols-/g)];
     expect(uses.length, 'the band no longer declares a multi-column track at all').toBeGreaterThan(0);
 
     for (const m of uses) {
@@ -261,6 +263,102 @@ test.describe('the Learn library', () => {
         'the two-column track is declared unconditionally — an imageless topic will keep the empty second column',
       ).toMatch(/theme\.image/);
     }
+  });
+
+  test('from 600px the picture sits BESIDE its words, not a screen above them (H3a)', async ({ page }) => {
+    /**
+     * Layer H3, owner 2026-09-18. Below 1024px the band used to stack, and the
+     * full-width picture was 54–69% of it — 607px tall at 1023px, a screen of
+     * illustration before the first title. From 600px — tablets, and every phone
+     * held sideways — the band takes the desktop layout.
+     *
+     * ⚠️ Why not the plan's "picture ≤ 50% of the band": that ratio only means
+     * something while the picture is ABOVE the text. Side by side, a short topic's
+     * band is simply the picture's height (band 3 reads 75% at 768px) and nothing
+     * is wrong. So the guard asserts the purpose — the heading starts level with
+     * the picture — plus a height bound, swept across the whole band (11bf).
+     */
+    // 17px steps, PLUS 1023 itself: the stepped loop stops at 1008, and 1023 is
+    // where the picture is tallest (305px against the 320 bound) — the one width
+    // this assertion is tightest at. A 1px sweep of 320 → 1440 found nothing the
+    // 17px one misses; the endpoints are what a step can skip (11be).
+    const widths = [...Array.from({ length: 25 }, (_, i) => 600 + i * 17), 1023];
+    for (const width of widths) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(LEARN_INDEX_PATH);
+      await ready(page);
+      const bands = await page.evaluate(() =>
+        [...document.querySelectorAll('main section')]
+          .filter((s) => s.querySelector('img'))
+          .map((s) => {
+            const img = s.querySelector('img')!.getBoundingClientRect();
+            const h2 = s.querySelector('h2')!.getBoundingClientRect();
+            return {
+              heading: s.querySelector('h2')!.textContent?.trim(),
+              topGap: Math.round(h2.top - img.top),
+              imgH: Math.round(img.height),
+            };
+          }),
+      );
+      expect(bands.length, `no picture bands at ${width}px — the sweep measured nothing`).toBeGreaterThan(0);
+      for (const b of bands) {
+        expect(b.topGap, `"${b.heading}" at ${width}px: the heading starts ${b.topGap}px below its picture`).toBeLessThan(60);
+        expect(b.imgH, `"${b.heading}" at ${width}px: picture is ${b.imgH}px tall`).toBeLessThanOrEqual(320);
+      }
+    }
+  });
+
+  test('CONTROL — below 600px the band still stacks, picture first', async ({ page }) => {
+    // "Side by side everywhere" satisfies the test above perfectly and crushes a
+    // phone's text column to nothing; the phone layout must be untouched.
+    await page.setViewportSize({ width: 599, height: 900 });
+    await page.goto(LEARN_INDEX_PATH);
+    await ready(page);
+    const orders = await page.evaluate(() =>
+      [...document.querySelectorAll('main section')]
+        .filter((s) => s.querySelector('img'))
+        .map((s) => s.querySelector('img')!.getBoundingClientRect().bottom <= s.querySelector('h2')!.getBoundingClientRect().top),
+    );
+    expect(orders.length).toBeGreaterThan(0);
+    expect(orders.every(Boolean), 'below 600px every picture must sit above its heading').toBe(true);
+  });
+
+  test('every article row is a comfortable tap on a phone, and desktop keeps its density (H3b)', async ({ page }) => {
+    /**
+     * A one-line row was 36.8px — 5 of 12 under the 44px comfortable tap size
+     * (WCAG's hard floor is 24px, which all cleared; this is comfort, not a breach).
+     * ⚠️ Asserted by NAME for both a one-line and a wrapping title, because fixing
+     * only one shape would read as a pass on the other.
+     */
+    const oneLine = LEARN_ARTICLES.find((a) => a.slug === 'what-is-a-drawdown');
+    expect(oneLine, 'the one-line control article is gone from the registry').toBeTruthy();
+    for (const width of [375, 320]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto(LEARN_INDEX_PATH);
+      await ready(page);
+      const rows = await page.evaluate(() =>
+        [...document.querySelectorAll('main section ul a')].map((a) => ({
+          title: a.querySelector('span')?.textContent ?? '',
+          h: a.getBoundingClientRect().height,
+          lines: Math.round(a.querySelector('span')!.getBoundingClientRect().height / parseFloat(getComputedStyle(a).lineHeight)),
+        })),
+      );
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows.some((r) => r.lines === 1), `no one-line row at ${width}px to test`).toBe(true);
+      expect(rows.some((r) => r.lines > 1), `no wrapping row at ${width}px to test`).toBe(true);
+      for (const r of rows) {
+        expect(r.h, `"${r.title}" is ${r.h.toFixed(1)}px tall at ${width}px`).toBeGreaterThanOrEqual(44);
+      }
+      expect(rows.map((r) => r.title)).toContain(oneLine!.title);
+    }
+    // CONTROL — the desktop, where a pointer is precise, keeps the approved density.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(LEARN_INDEX_PATH);
+    await ready(page);
+    const desktop = await page.evaluate(() =>
+      Math.min(...[...document.querySelectorAll('main section ul a')].map((a) => a.getBoundingClientRect().height)),
+    );
+    expect(desktop, 'the desktop rows grew — the tap padding leaked past 1024px').toBeLessThan(40);
   });
 
   test('the reading time on the index matches the article that was written', async ({ page }) => {
