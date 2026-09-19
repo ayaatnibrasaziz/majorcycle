@@ -3147,7 +3147,7 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 >
 > ✅ **H1 AND H2 ARE MERGED AND LIVE** — H1 and H2's build in PR #101 (2026-09-16/17); H2's
 > close-out (server-side verification and three fixes) in the PR that follows it, 2026-09-18.
-> **H5 is next.** *(What follows is the H1 build note as written.)*
+> **H3, H4 merged (PRs #106, #107); H5 built 2026-09-20. H6 / H6a are next.** *(What follows is the H1 build note as written.)*
 >
 > 🔨 **H1 IS BUILT (2026-09-14/15) and NOT MERGED.** H1.2 the shell, H1.3 the re-measure, H1.4
 > the widened guard — done. **H1.5 (the a11y + contrast re-run at phone width, drawer open) is
@@ -3342,12 +3342,19 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
   - The rest were test-side and each kept its assertion: `innerText` over chart labels, Safari's
     click/Tab focus rules, headless Firefox withholding animation frames, longer limits.
 
-#### H5 · Accessibility residue 🟢 — falls out of H1
+#### H5 · Accessibility residue ✅ BUILT 2026-09-20 — `layer-h-plan.md` § H5
 
-- [ ] Focus visibility at 375px (**polled until the computed value settles** — two earlier
+- [x] Focus visibility at 375px (**polled until the computed value settles** — two earlier
       sessions read this at t≈0 and reported white, 11ao), and the signed-in scans re-run at
       phone width **including the open drawer**, since a closed control is outside every scan we
       own (11ax).
+  - Every public page, the open menu, all six signed-in pages, the open drawer and three paid
+    pages walked by keyboard at 375px (`e2e/focus-visible.spec.ts`, `e2e/lib/focusRing.ts`), and axe
+    at 375px on every signed-in page. **Three real defects found and fixed, plus one probe blind spot:** the holders table could not
+    be scrolled by keyboard; each phone result card nested a button in a button (fixed with the six
+    cards byte-identical); six charts and two toggles whose ring was CLIPPED away at every width by
+    an `overflow: hidden` container; and the probe's own blind spot for focus drawn on a search
+    box's wrapper.
 
 #### H6 · Owner items 🔵 — any time, no dependency
 

@@ -314,8 +314,20 @@ function ResultCard({
 }) {
   const { symbol } = tickerToUrlParts(row.ticker);
   const tier = tierFromLabel(row.overallLabel);
+  /* ⚠️ The card was a <button> with the tier badge — a second button — INSIDE it
+     (axe `nested-interactive`, found at 375px in Layer H5: a screen reader cannot
+     reach a control nested in another, and announces the whole card as one button).
+     Now the "open" button is a transparent layer over the whole card and the badge
+     is its SIBLING, raised above it, so both are real buttons and the card looks and
+     taps exactly as before. */
   return (
-    <button type="button" className="result-card" onClick={onOpen}>
+    <div className="result-card">
+      <button
+        type="button"
+        className="result-card-open"
+        onClick={onOpen}
+        aria-label={`Open ${symbol}${row.name ? ` — ${row.name}` : ''}`}
+      />
       <div className="result-card-head">
         <div className="min-w-0">
           <div className="result-card-ticker">{symbol}</div>
@@ -323,24 +335,13 @@ function ResultCard({
         </div>
         <div className="flex items-center gap-2">
           <ScoreNum value={row.overallRating} />
-          <span
-            role="button"
-            tabIndex={0}
-            className={`tier-badge tier-badge--${tier}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onTierFilter(row.overallLabel);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.stopPropagation();
-                onTierFilter(row.overallLabel);
-              }
-            }}
+          <button
+            type="button"
+            className={`tier-badge tier-badge--${tier} result-card-filter`}
+            onClick={() => onTierFilter(row.overallLabel)}
           >
             {row.overallLabel}
-          </span>
+          </button>
         </div>
       </div>
       {row.financialHealthScore == null && (
@@ -359,7 +360,7 @@ function ResultCard({
         />
         <CardStat label="Close" value={formatValue(row.currentClose, 'money2')} />
       </div>
-    </button>
+    </div>
   );
 }
 
