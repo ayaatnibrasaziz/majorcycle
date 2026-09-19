@@ -3,7 +3,9 @@
 **Status:** ✅ **H1 COMPLETE** (2026-09-14/15, reviewed 2026-09-16) · ✅ **H2 COMPLETE AND LIVE IN
 PRODUCTION** (built 2026-09-16, configured 2026-09-17 in Sentry's US region, merged in PR #101,
 server side verified on Vercel 2026-09-18 — §12). All nine decisions taken, both designs approved.
-· ✅ **H3 BUILT** (2026-09-18) — see the H3 section. **H4 (cross-browser) is next.**
+· ✅ **H3 BUILT** (2026-09-18) — see the H3 section. · ✅ **H4 BUILT** (2026-09-19) — 876 tests clean
+in Chromium, Firefox and WebKit, and one real defect fixed on seven forms; see the H4 section.
+**H5 (accessibility residue) is next.**
 **Three findings came out of building it** that the plan did not have — §3, findings I, J and K.
 ⚠️ Finding I changed a **paid** surface beyond the approved design; it was put to the owner, and
 **my first fix for it was wrong** — it passed every automated check and the owner caught it from a
@@ -221,7 +223,16 @@ fails with "Executable doesn't exist", which is how the first attempt failed.
 runtime; it is installed, all four DLLs present. The Windows event log named the real
 dependency. **Ask the machine before theorising** (11i).
 
-### F 🟡 · One cross-engine difference around `/api/billing-context` — recorded, NOT diagnosed
+### F ✅ · One cross-engine difference around `/api/billing-context` — CLOSED 2026-09-19 (H4)
+
+**Resolved by timing it.** A probe logged every event around the request in both engines: WebKit
+fails it at exactly one moment — **17.05s, the instant the test navigated AWAY** with the request
+in flight (`Load request cancelled`). A reader who stays on the page gets **200** in both engines
+(WebKit 25.55s, Chromium 18.25s), and `UpgradeDialog` already catches the cancelled one. Not a
+defect: WebKit reports a navigation-cancelled fetch louder than Chromium does. ⚠️ Said plainly: the
+exact *"access control checks"* wording was not reproduced on the re-run — the failure was, at
+the navigation. The original record follows.
+
 
 In WebKit the paid page throws *"Fetch API cannot load /api/billing-context due to access
 control checks."* Chromium does not.
@@ -617,9 +628,74 @@ sideways (iPhone 5/SE 1st gen) is below 600 and still stacks, with a 307px pictu
 years old, and 600 is the public header's existing breakpoint; not worth a second line for it. From 600 to ~800px a short picture beside a long article list leaves empty space under
 the picture — the trade the owner accepted when choosing side by side.
 
-### H4 · Cross-browser 🟡 FOURTH — must follow H1
+### H4 · Cross-browser ✅ BUILT 2026-09-19
 Whole site, **Chromium + Firefox + WebKit** (all three now run — finding E), **local command
-only**, printed as NOT RUN by `pnpm gates`. Includes closing finding F.
+only**, printed as NOT RUN by `pnpm gates`. Includes closing finding F — ✅ closed, §3.
+
+**The command:** `pnpm e2e:browsers` (`web/scripts/e2e-browsers.mjs`). Each engine is its own
+Playwright run with its own dev server, **sequentially** (three at once would put three writers
+on the shared E2E account and make flake look like an engine difference). It prints one row per
+engine and refuses "clean" unless every engine ran the **same number** of tests with no failures.
+Proven: pointed at an empty browsers folder it reports `NOT CLEAN: firefox: 10 failed` and exits 1.
+`playwright.config.ts` declares the two extra engines only when that command asks
+(`MC_ALL_BROWSERS=1`), so CI's bare `playwright test` stays Chromium. ~1.5 h for all three.
+
+| Run | Chromium | Firefox | WebKit |
+|---|---|---|---|
+| First (as found) | 866 passed · 3 flaky | 845 · **5 failed · 17 not run** | 798 · **32 failed** · 25 flaky |
+| Final | green inside `pnpm gates` (16/16; count not printed there) · 873 · 0 flaky in the run before the last three tests were added | **876 passed · 0 flaky** | **876 · 0 failed** (1 flaky, fixed and re-proven) |
+
+**ONE REAL DEFECT, and it was in every engine.** Every signed-in WebKit test failed at sign-in
+because WebKit's dev server hydrates slowly enough that Playwright typed into the form before React
+owned it. Measured on the live `/login`, that gap is **0.07s on wifi, ~0.5s on 4G, ~2.9s on slow
+4G, ~6s on 3G**, and inside it a press **reloaded the page** (native submit) while early typing was
+**replaced by React's empty state** — sign-in sent an empty email and cleared the boxes in front of
+the reader. Reproduced in all three engines with the scripts delayed: WebKit had only landed in a
+window everyone has. **Owner: fix all seven forms, one mechanism** (`lib/useHydrated.ts`): the
+submit button is disabled until React owns the page, and each box's ref adopts whatever was typed
+before that. Guarded by `e2e/auth-early-input.spec.ts` (sign-in, sign-up, forgot password, and
+`/account`), which delays the scripts and intercepts the auth request rather than sending it;
+**both halves broken on purpose, both red**. The set-new-password page carries the fix but is not
+driven — it renders only inside a recovery session.
+
+**Everything else was the TESTS, and each fix keeps its assertion:**
+- *"Words run together"* on five `/learn` articles in WebKit — `innerText` joins a chart's
+  absolutely positioned labels differently per engine ("-40%19 months"). The DOM was byte-identical
+  and the prose clean. Prose is now read with figures set aside and each label read on its own, so a
+  real "19months" is still caught in every engine (broken on purpose: red in Chromium and WebKit).
+- **Safari does not focus a clicked button**, and the dialogs restore whatever was focused before
+  they opened — so a Safari *mouse* user correctly gets the page back. The focus tests now open
+  menus and dialogs the way a *keyboard* reader does (focus, Enter); red in both engines when the
+  hand-back is removed.
+- **This build of WebKit cannot Tab to a link at all** — not with Tab, not with Option+Tab, while
+  `link.focus()` works. That is Safari's "Tab to links" preference, not our menu; there the phone
+  menu test moves focus in directly and still asserts the Escape half.
+- **Headless Firefox can withhold an animation frame forever**, which hung the ticker page's phone
+  sweep past ten minutes on one width. A timed rotation of that page is 0.3–1.3s in Firefox against
+  0.65–0.8s in Chromium, so readers are unaffected; frame waits are now capped (`e2e/lib/frames.ts`)
+  and the sweep still catches a forced 700px-wide page at every width.
+- Firefox and WebKit get longer limits for the long sweeps (~1.7× Chromium per resize here).
+
+⚠️ **Watched, not explained away:** in one WebKit pass the `/report` route answered the dev
+server's own HTML 404 twice (not the route's JSON refusal), and both tests pass alone. Consistent
+with `.next-dev` losing one route under load (CLAUDE.md 11i-c). It did not recur in the final run.
+
+**Audit, 2026-09-19 — two gaps in the seven-form fix, both in `ProfileForm`, both closed.**
+(i) Its Save button kept `!dirty` as its only guard, on the reasoning that an untouched form is
+never dirty. **A form with a suggested country is dirty in the server HTML** — and on the live
+site that is every new reader, because Vercel's edge header is always set — so Save was pressable
+before the page was ready: the exact defect H4 fixed on the other six. The browser test could not
+see it because the E2E account has a saved country (11bd again: *who* the guard signs in as).
+(ii) The fix itself introduced a regression. `profiles.country` can hold a code the dropdown has no
+option for (checkout saves the edge country as-is; `XK` is not in `COUNTRIES`); the browser then
+shows "Select your country…" and reads `''`, and adopting that blank would light Save on an
+untouched page and **erase the saved country** on the next save. `adoptEarlyInput` now leaves a
+dropdown alone when no option carries the state's value. Guarded in `auth-early-input.spec.ts` by a
+**derived** source check — every component that submits in the browser must hold its button on
+`useHydrated`, including the next one written — and a driven test of the dropdown rule with three
+controls. **Both red when their fix is removed.** The other five forms on the site (contact,
+reactivate, delete account, sign-out, billing portal) post to a server `action=` and work before
+the page is ready by design.
 
 ### H5 · Accessibility residue 🟢 — falls out of H1
 Focus visibility at 375px; signed-in scans at phone width. Nearly free once H1 lands.
@@ -643,7 +719,7 @@ Every check has a **control** — the thing that proves it can fail (11p).
 | H2 | Each of the six log paths **driven**, and the event **arrives in the Sentry inbox**. Billing paths via a **Stripe test clock** | A deliberate test error must arrive; and a run with the DSN removed must produce **nothing**, so "it arrived" is about our wiring, not someone's default |
 | H3a | ~~Picture share ≤ 50% of the band~~ — **replaced when side-by-side was chosen** (the ratio only means something while the picture is above the text). Now: from **600px** the heading starts within 60px of its picture's top and the picture is ≤ **320px**, swept 600 → 1023 in 17px steps plus 1023 itself; separately swept at **1px** from 320 → 1440 during the audit, clean | Below 600px (599) the band must still **stack picture-first**, and 1280 must be **unchanged** — "side by side everywhere" passes the sweep and crushes a phone's text column |
 | H3b | Every article link ≥ **44px** at 375px | Assert the **wrapping** titles by name — fixing only the single-line rows would read as a pass |
-| H4 | Whole suite in Chromium + WebKit; the runner prints a **per-engine count** | Three totals, never one — an engine that failed to launch reports as "no failures" (and today Firefox would) |
+| H4 ✅ | Whole suite in Chromium + **Firefox** + WebKit; the runner prints a **per-engine count** | Three totals, never one — an engine that failed to launch reports as "no failures" (and today Firefox would) |
 | H5 | Focus indicator ≥ **3:1** against its own ground at 375px, **polled until the computed value stops changing** | 11ao: two sessions read this at t≈0 and got white. A control with its outline removed must be caught |
 | H6 | Owner's judgement | — |
 

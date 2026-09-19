@@ -42,7 +42,12 @@ test.describe('a dialog gives focus back', () => {
 
       const opener = page.locator(OPENER);
       await expect(opener).toBeVisible({ timeout: 30_000 });
-      await opener.click();
+      // Opened from the KEYBOARD — this test is about a keyboard reader's focus
+      // (Layer H4). A mouse click focuses the button in Chromium and not in Safari,
+      // which leaves focus on the page; the dialog then correctly hands the page
+      // back, and a click-driven version of this test failed in WebKit on nothing.
+      await opener.focus();
+      await page.keyboard.press('Enter');
 
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible({ timeout: 10_000 });

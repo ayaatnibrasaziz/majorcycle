@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { twoFrames } from './lib/frames';
 
 import { RUN_SNAPSHOT, RUN_SNAPSHOT_ROWS, SNAPSHOT_KEY } from './fixtures/runSnapshot';
 import { HAVE_E2E_CREDENTIALS, signIn } from './lib/session';
@@ -46,10 +47,11 @@ import { SCORECARD_STACK_PX, SHELL_DESKTOP_MIN_PX } from '../lib/shell';
 
 /** Try to scroll the window right, and report how far it actually went. */
 async function sidewaysScroll(page: Page): Promise<number> {
-  return page.evaluate(async () => {
-    window.scrollTo(99999, window.scrollY);
-    // Two frames: one for the scroll to apply, one for any layout it triggers.
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  await page.evaluate(() => window.scrollTo(99999, window.scrollY));
+  // Two frames: one for the scroll to apply, one for any layout it triggers — capped,
+  // because headless Firefox can withhold a frame forever (see `lib/frames.ts`).
+  await twoFrames(page);
+  return page.evaluate(() => {
     const x = Math.round(window.scrollX);
     window.scrollTo(0, window.scrollY);
     return x;
@@ -277,8 +279,10 @@ test.describe('no signed-in page scrolls sideways — FREE account', () => {
   for (const path of PATHS) {
    for (const band of BANDS) {
     const widths = widthsIn(band.from, band.to);
-    test(`${path} fits every width of ${band.name}`, async ({ page }) => {
-      test.setTimeout(300_000);
+    test(`${path} fits every width of ${band.name}`, async ({ page, browserName }) => {
+      // Firefox and WebKit take ~1.7x Chromium's time per width on the ticker page
+      // (measured, Layer H4: 0.86s vs 0.50s) — a sweep of 240 widths, not a reader.
+      test.setTimeout(browserName === 'chromium' ? 300_000 : 600_000);
       await signIn(page);
       if (path === '/results') await seedResults(page);
       const paidOnly = PAID_ONLY.has(path);
@@ -402,8 +406,10 @@ test.describe('no signed-in page scrolls sideways — ENTITLED account', () => {
   for (const path of PATHS) {
    for (const band of BANDS) {
     const widths = widthsIn(band.from, band.to);
-    test(`${path} fits every width of ${band.name}`, async ({ page }) => {
-      test.setTimeout(300_000);
+    test(`${path} fits every width of ${band.name}`, async ({ page, browserName }) => {
+      // Firefox and WebKit take ~1.7x Chromium's time per width on the ticker page
+      // (measured, Layer H4: 0.86s vs 0.50s) — a sweep of 240 widths, not a reader.
+      test.setTimeout(browserName === 'chromium' ? 300_000 : 600_000);
       await signInPaid(page);
 
       // "I set a column" and "the page is clear" are different claims, and the

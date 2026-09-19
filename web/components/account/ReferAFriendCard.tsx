@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { sendReferral } from '@/app/(app)/account/actions';
+import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MESSAGE_MAX = 300;
@@ -18,6 +19,8 @@ const MESSAGE_MAX = 300;
  * honeypot field to catch bots.
  */
 export function ReferAFriendCard({ initialName }: { initialName: string }) {
+  // Button stays disabled until React owns the form — see lib/useHydrated.ts.
+  const hydrated = useHydrated();
   const [name, setName] = useState(initialName);
   const [friendEmail, setFriendEmail] = useState('');
   const [message, setMessage] = useState('');
@@ -88,6 +91,7 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
               autoComplete="name"
               maxLength={80}
               value={name}
+              ref={adoptEarlyInput(name, setName)}
               onChange={(e) => {
                 setName(e.target.value);
                 setSentTo(null);
@@ -107,6 +111,7 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
               autoComplete="off"
               maxLength={254}
               value={friendEmail}
+              ref={adoptEarlyInput(friendEmail, setFriendEmail)}
               onChange={(e) => {
                 setFriendEmail(e.target.value);
                 setSentTo(null);
@@ -122,6 +127,7 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
               maxLength={MESSAGE_MAX}
               rows={3}
               value={message}
+              ref={adoptEarlyInput(message, setMessage)}
               onChange={(e) => {
                 setMessage(e.target.value);
                 setSentTo(null);
@@ -143,6 +149,7 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
               tabIndex={-1}
               autoComplete="off"
               value={website}
+              ref={adoptEarlyInput(website, setWebsite)}
               onChange={(e) => setWebsite(e.target.value)}
             />
           </div>
@@ -158,7 +165,7 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
           )}
 
           <div className="mt-1 flex items-center gap-3">
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || !hydrated}>
               {loading ? 'Sending…' : 'Send invite'}
             </Button>
             {sentTo && (

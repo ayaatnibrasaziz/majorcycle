@@ -67,7 +67,14 @@ test.describe('the phone navigation drawer', () => {
 
   test('Escape closes it AND returns focus to the button', async ({ page }) => {
     await phoneHome(page);
-    await openDrawer(page);
+    /* Opened the way a KEYBOARD reader opens it — reach the button, press Enter —
+       because that is whose focus this test is about (Layer H4). Clicking left focus
+       on the button in Chromium and on the page in Safari, which never focuses a
+       clicked button; the dialog restores whatever was focused before it opened, so
+       a Safari mouse user correctly gets the page back and this failed on nothing. */
+    await toggle(page).focus();
+    await page.keyboard.press('Enter');
+    await expect(drawer(page)).toBeVisible();
 
     /* Focus must be INSIDE the drawer once it opens, or "focus returns" is a claim
        about a journey that never started. */
@@ -87,10 +94,15 @@ test.describe('the phone navigation drawer', () => {
        found exactly that on the paywall dialog, where Radix had no trigger ref to
        restore to. Here the button IS a real `DialogTrigger`, and this asserts the
        outcome rather than the mechanism. */
-    expect(
-      await page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? ''),
-      'Escape left focus somewhere other than the menu button',
-    ).toMatch(/menu/i);
+    /* Polled, not sampled: the dialog hands focus back asynchronously, and WebKit
+       takes a beat longer than Chromium — a single read went flaky there (Layer H4).
+       `dialog-focus.spec.ts` polls for the same reason. */
+    await expect
+      .poll(
+        () => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? ''),
+        { timeout: 5000, message: 'Escape left focus somewhere other than the menu button' },
+      )
+      .toMatch(/menu/i);
   });
 
   test('tapping the backdrop closes it', async ({ page }) => {

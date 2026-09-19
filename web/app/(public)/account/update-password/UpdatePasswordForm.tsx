@@ -9,9 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
+import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
 
 export function UpdatePasswordForm() {
   const router = useRouter();
+  // Button stays disabled until React owns the form — see lib/useHydrated.ts.
+  const hydrated = useHydrated();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -77,6 +80,7 @@ export function UpdatePasswordForm() {
             required
             minLength={8}
             value={password}
+            ref={adoptEarlyInput(password, setPassword)}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Minimum 8 characters"
           />
@@ -91,6 +95,7 @@ export function UpdatePasswordForm() {
             required
             minLength={8}
             value={confirm}
+            ref={adoptEarlyInput(confirm, setConfirm)}
             onChange={(e) => setConfirm(e.target.value)}
             placeholder="Re-enter your password"
           />
@@ -106,7 +111,7 @@ export function UpdatePasswordForm() {
           </div>
         )}
 
-        <Button type="submit" size="lg" disabled={loading} className="w-full mt-1">
+        <Button type="submit" size="lg" disabled={loading || !hydrated} className="w-full mt-1">
           {loading ? 'Updating…' : 'Update password'}
         </Button>
       </form>

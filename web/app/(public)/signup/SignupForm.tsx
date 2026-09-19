@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
 import { getSiteURL, safeNextPath } from '@/lib/url';
+import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
 
 // Signing up has never actually started a trial — `supabase.auth.signUp` just
 // creates the account, and the 7-day trial begins at checkout, where the card is
@@ -49,6 +50,8 @@ export function SignupForm() {
   // and redirects a signed-in reader away, so it can't be a post-signup destination.
   const startingTrial = next.startsWith('/account');
 
+  // Button stays disabled until React owns the form — see lib/useHydrated.ts.
+  const hydrated = useHydrated();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -174,6 +177,7 @@ export function SignupForm() {
             autoComplete="email"
             required
             value={email}
+            ref={adoptEarlyInput(email, setEmail)}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
           />
@@ -188,6 +192,7 @@ export function SignupForm() {
             required
             minLength={8}
             value={password}
+            ref={adoptEarlyInput(password, setPassword)}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Minimum 8 characters"
           />
@@ -203,7 +208,7 @@ export function SignupForm() {
           </div>
         )}
 
-        <Button type="submit" size="lg" disabled={loading} className="w-full mt-1">
+        <Button type="submit" size="lg" disabled={loading || !hydrated} className="w-full mt-1">
           {loading ? 'Creating account…' : 'Create free account'}
         </Button>
       </form>

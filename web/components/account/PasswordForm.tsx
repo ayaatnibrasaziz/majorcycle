@@ -7,12 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
+import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
 
 interface PasswordFormProps {
   email: string;
 }
 
 export function PasswordForm({ email }: PasswordFormProps) {
+  // Button stays disabled until React owns the form — see lib/useHydrated.ts.
+  const hydrated = useHydrated();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -102,6 +105,7 @@ export function PasswordForm({ email }: PasswordFormProps) {
               autoComplete="current-password"
               required
               value={current}
+              ref={adoptEarlyInput(current, setCurrent)}
               onChange={(e) => {
                 setCurrent(e.target.value);
                 setDone(false);
@@ -119,6 +123,7 @@ export function PasswordForm({ email }: PasswordFormProps) {
               required
               minLength={8}
               value={next}
+              ref={adoptEarlyInput(next, setNext)}
               onChange={(e) => {
                 setNext(e.target.value);
                 setDone(false);
@@ -136,6 +141,7 @@ export function PasswordForm({ email }: PasswordFormProps) {
               required
               minLength={8}
               value={confirm}
+              ref={adoptEarlyInput(confirm, setConfirm)}
               onChange={(e) => {
                 setConfirm(e.target.value);
                 setDone(false);
@@ -166,7 +172,7 @@ export function PasswordForm({ email }: PasswordFormProps) {
             </div>
           )}
 
-          <Button type="submit" disabled={loading} className="mt-1 self-start">
+          <Button type="submit" disabled={loading || !hydrated} className="mt-1 self-start">
             {loading ? 'Updating…' : 'Update password'}
           </Button>
         </form>
