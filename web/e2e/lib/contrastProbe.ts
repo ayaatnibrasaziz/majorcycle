@@ -21,7 +21,13 @@ import { expect, type Page } from '@playwright/test';
  * apply belong to the callers.
  */
 
-export const PROBE = `(() => {
+/**
+ * The colour maths, as browser source: luminance, parsing, compositing, the ground an
+ * element is painted on, and the WCAG ratio. Shared with `focusRing.ts` (Layer H5)
+ * rather than copied — two implementations of "what is behind this element" would
+ * drift, and this one has already been corrected twice (11q, the containment rule).
+ */
+export const COLOUR_FNS = `
   const lum = (c) => {
     const [r, g, b] = c.map((v) => {
       v /= 255;
@@ -57,11 +63,13 @@ export const PROBE = `(() => {
   // (CLAUDE.md 11q: when a measurement disagrees with the screen, instrument the
   // INSTRUMENT. A guard that invents failures gets ignored just as fast as one
   // that misses them.)
-  const bgOf = (el) => {
+  // \`from\` defaults to the element itself; the focus-ring probe passes the PARENT,
+  // because an outline sits outside the box and is seen against what surrounds it.
+  const bgOf = (el, from = el) => {
     const r = el.getBoundingClientRect();
     const cx = r.left + r.width / 2;
     const cy = r.top + r.height / 2;
-    let n = el, acc = [255, 255, 255];
+    let n = from, acc = [255, 255, 255];
     const stack = [];
     while (n && n !== document.documentElement) {
       const c = parse(getComputedStyle(n).backgroundColor);
@@ -81,6 +89,10 @@ export const PROBE = `(() => {
     const L1 = lum(a), L2 = lum(b);
     return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
   };
+`;
+
+export const PROBE = `(() => {
+  ${COLOUR_FNS}
   // ⚠️ ACCUMULATED \`opacity\`, and this probe was blind to it until 2026-08-17.
   // A wrapper carrying \`opacity: .7\` dims its text exactly as an alpha on
   // \`color\` would, but appears in NEITHER \`color\` nor \`backgroundColor\` — so

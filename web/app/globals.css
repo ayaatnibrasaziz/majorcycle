@@ -1811,6 +1811,24 @@
 .period-btn.active { background: var(--bg-surface); color: var(--text-primary); box-shadow: var(--shadow-segment); }
 .period-btn:hover:not(.active) { color: var(--brand-mid); }
 
+/* ⚠️ FOCUS INSIDE A CLIPPING BOX (Layer H5). The site-wide ring sits 2px OUTSIDE the
+   element, and these three containers are `overflow: hidden` — the charts' wrapper so a
+   chart cannot paint past its card, the two segmented toggles so their rounded corners
+   clip the buttons. So a keyboard reader tabbing onto a chart (Recharts makes each one a
+   focusable `role="application"`, arrow keys walk the data) or a toggle button saw the
+   ring clipped on all four sides, or three: focus simply vanished, at every width.
+   Measured by `e2e/lib/focusRing.ts`, which now fails a ring clipped on every side.
+   Drawn INSIDE the edge instead; on the one solid-blue button the ring turns white,
+   because brand-bright on brand-mid would be ~1.5:1. */
+.chart-canvas-wrap :focus-visible,
+.overlay-toggle > :focus-visible,
+.period-toggle > :focus-visible { outline-offset: -2px; }
+.ovl-btn.active:focus-visible { outline-color: white; }
+/* Firefox makes any scrolling box a Tab stop even when it holds focusable controls, and
+   the Key Metrics scroller sits in a clipping card body — same fix, same reason. */
+.km-scroll:focus-visible { outline-offset: -2px; }
+
+
 /* Summary strip under charts */
 .summary-strip       { display: flex; gap: 24px; padding: 10px 0 0; border-top: 1px solid var(--border); margin-top: 10px; flex-wrap: wrap; }
 .summary-strip-item  { text-align: center; }
@@ -2753,11 +2771,19 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 /* Mobile result cards (show/hide + flex layout handled by Tailwind md:hidden on
    the element — keeping it unlayered here would override the responsive utility). */
 .result-card {
+  position: relative;
   display: block; width: 100%; text-align: left; background: var(--bg-surface);
   border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px;
   cursor: pointer; box-shadow: var(--shadow-sm); transition: border-color .15s;
 }
 .result-card:hover { border-color: var(--brand-bright); }
+/* The card's "open" button is a transparent layer over the whole card, and the tier
+   badge a SIBLING button raised above it — never one button inside another (H5). */
+.result-card-open {
+  position: absolute; inset: 0; z-index: 1; border-radius: inherit;
+  background: transparent; border: 0; padding: 0; cursor: pointer;
+}
+.result-card-filter { position: relative; z-index: 2; }
 .result-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .result-card-ticker { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--brand-deep); }
 .result-card-name { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

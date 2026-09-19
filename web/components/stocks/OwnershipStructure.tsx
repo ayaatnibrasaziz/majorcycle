@@ -151,7 +151,16 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
           <div>
             <div className="table-section-label">Top Institutional Holders</div>
             {holders.length > 0 ? (
-              <div className="table-wrapper">
+              /* Focusable, because below ~380px this table scrolls sideways and holds
+                 nothing a keyboard can land on — so a keyboard reader could never reach
+                 the Shares column (axe `scrollable-region-focusable`, found at 375px in
+                 Layer H5). The site-wide focus ring shows where they are. */
+              <div
+                className="table-wrapper"
+                role="region"
+                aria-label="Top institutional holders"
+                tabIndex={0}
+              >
                 <table className="ownership-table">
                   <thead>
                     <tr>
