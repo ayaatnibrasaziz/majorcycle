@@ -41,12 +41,24 @@ export function useHydrated(): boolean {
   );
 }
 
-/** Ref callback: adopt a value the reader typed before hydration (see above). */
+/**
+ * Ref callback: adopt a value the reader typed before hydration (see above).
+ *
+ * ⚠️ A DROPDOWN THAT CANNOT SHOW THE VALUE IS NOT THE READER TYPING (H4 audit).
+ * `profiles.country` can hold a code the `<select>` has no option for — checkout saves
+ * Vercel's edge country as-is, and e.g. `XK` is not in `COUNTRIES`. The browser then
+ * shows the first option and `el.value` reads `''`, so a plain comparison "adopted"
+ * that blank: Save lit up on a page the reader had not touched, and pressing it
+ * would have erased the saved country. When no option carries the state's value the
+ * box and the state cannot agree by construction, so leave the state alone.
+ */
 export function adoptEarlyInput(
   value: string,
   set: (typed: string) => void,
 ): (el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null) => void {
   return (el) => {
-    if (el && el.value !== value) set(el.value);
+    if (!el || el.value === value) return;
+    if (el instanceof HTMLSelectElement && ![...el.options].some((o) => o.value === value)) return;
+    set(el.value);
   };
 }

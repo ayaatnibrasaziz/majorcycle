@@ -680,6 +680,23 @@ driven — it renders only inside a recovery session.
 server's own HTML 404 twice (not the route's JSON refusal), and both tests pass alone. Consistent
 with `.next-dev` losing one route under load (CLAUDE.md 11i-c). It did not recur in the final run.
 
+**Audit, 2026-09-19 — two gaps in the seven-form fix, both in `ProfileForm`, both closed.**
+(i) Its Save button kept `!dirty` as its only guard, on the reasoning that an untouched form is
+never dirty. **A form with a suggested country is dirty in the server HTML** — and on the live
+site that is every new reader, because Vercel's edge header is always set — so Save was pressable
+before the page was ready: the exact defect H4 fixed on the other six. The browser test could not
+see it because the E2E account has a saved country (11bd again: *who* the guard signs in as).
+(ii) The fix itself introduced a regression. `profiles.country` can hold a code the dropdown has no
+option for (checkout saves the edge country as-is; `XK` is not in `COUNTRIES`); the browser then
+shows "Select your country…" and reads `''`, and adopting that blank would light Save on an
+untouched page and **erase the saved country** on the next save. `adoptEarlyInput` now leaves a
+dropdown alone when no option carries the state's value. Guarded in `auth-early-input.spec.ts` by a
+**derived** source check — every component that submits in the browser must hold its button on
+`useHydrated`, including the next one written — and a driven test of the dropdown rule with three
+controls. **Both red when their fix is removed.** The other five forms on the site (contact,
+reactivate, delete account, sign-out, billing portal) post to a server `action=` and work before
+the page is ready by design.
+
 ### H5 · Accessibility residue 🟢 — falls out of H1
 Focus visibility at 375px; signed-in scans at phone width. Nearly free once H1 lands.
 

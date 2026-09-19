@@ -1,4 +1,8 @@
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
+
 import { expect, test, type Page } from '@playwright/test';
+import { adoptEarlyInput } from '../lib/useHydrated';
 import { HAVE_E2E_CREDENTIALS, signIn } from './lib/session';
 
 /**
@@ -91,6 +95,77 @@ for (const form of [
     });
   });
 }
+
+/**
+ * H4 audit, 2026-09-19 — the two gaps the first pass left, both in `ProfileForm`.
+ *
+ * (i) Its Save button relied on `!dirty` alone, and with a suggested country the form
+ * is dirty in the SERVER html — every new reader on the live site — so Save was live
+ * before the page was ready. The browser test above could not see it: the E2E account
+ * has a saved country. So this reads the SOURCE, and it is derived rather than listed:
+ * every component that handles its own submit must hold its button on `useHydrated`,
+ * including the next one written. (A form posting to a server `action=` is exempt —
+ * it works before hydration, which is what React's progressive enhancement is for.)
+ */
+test('every form that submits in the browser waits for the page to be ready', () => {
+  const root = join(__dirname, '..');
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (p.endsWith('.tsx')) files.push(p);
+    }
+  };
+  walk(join(root, 'app'));
+  walk(join(root, 'components'));
+  // Comments stripped: a sentence explaining the fix must not satisfy the guard (11c-iv).
+  const code = (p: string) =>
+    readFileSync(p, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+  const forms = files.filter((p) => /onSubmit=/.test(code(p)) && !p.includes('dev-fixtures'));
+  expect(forms.length, 'found no forms at all — the walk is broken').toBeGreaterThanOrEqual(7);
+  const unguarded = forms
+    .filter((p) => !/useHydrated\(\)/.test(code(p)) || !/disabled=\{[^}]*!hydrated/.test(code(p)))
+    .map((p) => relative(root, p));
+  expect(unguarded, 'a form whose submit button is live before React owns the page').toEqual([]);
+});
+
+/**
+ * (ii) A `<select>` whose state has no matching option shows its first option and reads
+ * `''`, and adopting that blank lit Save on an untouched page and would have erased the
+ * saved country (checkout saves the edge country as-is; `XK` is not in `COUNTRIES`).
+ * Driven in a real browser element, with the two controls that keep the fix honest.
+ */
+test('a dropdown that cannot show the saved value is not the reader typing', async ({ page }) => {
+  await page.setContent(`
+    <select id="s"><option value="">Select…</option><option value="AU">AU</option><option value="FR">FR</option></select>
+    <input id="i" />`);
+  const adoptSrc = adoptEarlyInput.toString();
+  const run = (id: string, state: string, box: string) =>
+    page.evaluate(
+      ({ src, id, state, box }) => {
+        const adopt = new Function(`return (${src})`)() as typeof adoptEarlyInput;
+        const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+        el.value = box;
+        const seen: string[] = [];
+        adopt(state, (v) => seen.push(v))(el);
+        return seen;
+      },
+      { src: adoptSrc, id, state, box },
+    );
+
+  // The defect: saved "XK", the dropdown can only show "" — nothing may be adopted.
+  expect(await run('s', 'XK', 'XK'), 'an off-list saved country was replaced by a blank').toEqual([]);
+  // CONTROL: a real pick made before hydration is still adopted.
+  expect(await run('s', 'AU', 'FR')).toEqual(['FR']);
+  // CONTROL: typing into a text box is still adopted.
+  expect(await run('i', '', 'typed@example.com')).toEqual(['typed@example.com']);
+  // CONTROL: box and state agree → nothing happens (the after-hydration case).
+  expect(await run('s', 'AU', 'AU')).toEqual([]);
+});
 
 test.describe('/account on a slow connection', () => {
   test.skip(!HAVE_E2E_CREDENTIALS, 'set E2E_EMAIL + E2E_PASSWORD to run');

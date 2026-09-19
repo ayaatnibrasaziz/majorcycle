@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { updateProfile } from '@/app/(app)/account/actions';
 import { COUNTRIES } from '@/lib/countries';
-import { adoptEarlyInput } from '@/lib/useHydrated';
+import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
 
 interface ProfileFormProps {
   email: string;
@@ -37,6 +37,10 @@ export function ProfileForm({
   // Pre-fill the dropdown with the saved country, or (if none) the detected
   // suggestion. The saved baseline below stays empty in the suggestion case, so
   // the suggested value reads as an unsaved change the user can Save immediately.
+  // Button stays disabled until React owns the form — see lib/useHydrated.ts. `!dirty`
+  // alone is not enough: with a suggested country the form is dirty in the SERVER html,
+  // which is the case for every new reader on the live site (the edge header is set).
+  const hydrated = useHydrated();
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [country, setCountry] = useState(initialCountry || suggestedCountry);
   const [loading, setLoading] = useState(false);
@@ -159,7 +163,7 @@ export function ProfileForm({
           )}
 
           <div className="flex items-center gap-3 mt-1">
-            <Button type="submit" disabled={loading || !dirty}>
+            <Button type="submit" disabled={loading || !dirty || !hydrated}>
               {loading ? 'Saving…' : 'Save changes'}
             </Button>
             {saved && !dirty && (
