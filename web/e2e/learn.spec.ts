@@ -470,14 +470,36 @@ test.describe('the Learn library', () => {
         // `innerText` inserts the line breaks layout actually produces, which is
         // the thing being asserted: what the page reads like, not how the nodes
         // happen to be nested.
-        const text = (document.querySelector('article') as HTMLElement).innerText ?? '';
+        //
+        // ⚠️ AND NOT OVER A FIGURE (Layer H4, 2026-09-19). A chart's labels are
+        // absolutely positioned, and how `innerText` joins positioned boxes is up
+        // to the engine: Chromium separates them, WebKit butts them together —
+        // "-40%19 months3 years" — so this test failed on five articles in Safari's
+        // engine whose DOM is byte-identical to Chromium's and whose prose is clean.
+        // So prose is read with the figures set aside, and each figure LABEL is read
+        // on its own — every leaf element separately, which is how a reader sees a
+        // positioned label — so a real "19months" inside a chart is still caught,
+        // in every engine, rather than dropped from the check.
+        const article = document.querySelector('article') as HTMLElement;
+        const figures = [...article.querySelectorAll('figure')] as HTMLElement[];
+        const saved = figures.map((f) => f.style.display);
+        figures.forEach((f) => (f.style.display = 'none'));
+        const prose = article.innerText ?? '';
+        figures.forEach((f, i) => (f.style.display = saved[i]!));
+        const labels = figures.flatMap((f) =>
+          [...f.querySelectorAll('*')]
+            .filter((el) => el.children.length === 0)
+            .map((el) => el.textContent ?? ''),
+        );
         const out: string[] = [];
         // A digit or % butted against a letter, or a letter against a digit —
         // the two shapes a swallowed space around an interpolated number makes.
         const re = /[0-9%](?=[A-Za-z])|[a-z](?=[0-9])/g;
-        let m: RegExpExecArray | null;
-        while ((m = re.exec(text)) !== null) {
-          out.push(text.slice(Math.max(0, m.index - 30), m.index + 24));
+        for (const text of [prose, ...labels]) {
+          let m: RegExpExecArray | null;
+          while ((m = re.exec(text)) !== null) {
+            out.push(text.slice(Math.max(0, m.index - 30), m.index + 24));
+          }
         }
         return out;
       });

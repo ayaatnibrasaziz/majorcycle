@@ -10,8 +10,11 @@ import { Label } from '@/components/ui/label';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
 import { getSiteURL } from '@/lib/url';
+import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
 
 export function ResetPasswordForm() {
+  // Button stays disabled until React owns the form — see lib/useHydrated.ts.
+  const hydrated = useHydrated();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +76,7 @@ export function ResetPasswordForm() {
             autoComplete="email"
             required
             value={email}
+            ref={adoptEarlyInput(email, setEmail)}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
           />
@@ -88,7 +92,7 @@ export function ResetPasswordForm() {
           </div>
         )}
 
-        <Button type="submit" size="lg" disabled={loading} className="w-full mt-1">
+        <Button type="submit" size="lg" disabled={loading || !hydrated} className="w-full mt-1">
           {loading ? 'Sending…' : 'Send reset link'}
         </Button>
       </form>

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { updateProfile } from '@/app/(app)/account/actions';
 import { COUNTRIES } from '@/lib/countries';
+import { adoptEarlyInput } from '@/lib/useHydrated';
 
 interface ProfileFormProps {
   email: string;
@@ -100,6 +101,7 @@ export function ProfileForm({
               autoComplete="name"
               maxLength={80}
               value={displayName}
+              ref={adoptEarlyInput(displayName, setDisplayName)}
               onChange={(e) => {
                 setDisplayName(e.target.value);
                 setSaved(false);
@@ -122,6 +124,7 @@ export function ProfileForm({
             <select
               id="country"
               value={country}
+              ref={adoptEarlyInput(country, setCountry)}
               disabled={countryLocked}
               onChange={(e) => {
                 setCountry(e.target.value);

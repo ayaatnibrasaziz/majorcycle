@@ -81,7 +81,24 @@ export default defineConfig({
     trace: 'on-first-retry',
     navigationTimeout: 45_000,
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // ⚠️ Chromium only, unless `pnpm e2e:browsers` asks for all three (Layer H4).
+  // Owner decision 4: the cross-browser run is local and on demand, NOT in CI, so a
+  // push is not slowed. It is gated on an env var rather than always declaring three
+  // projects because CI runs a bare `playwright test`, which would otherwise run all
+  // of them. `scripts/e2e-browsers.mjs` runs each engine SEPARATELY and prints three
+  // totals — see its header for why one combined total is not evidence.
+  projects: process.env.MC_ALL_BROWSERS === '1'
+    ? [
+        { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+        // Longer limits for the two engines that are slower HERE, not for readers:
+        // measured on the dev server, the ticker page loads ~1s later in Firefox and
+        // every resize costs ~1.7x, so the first full run timed out on loads and on
+        // the long sweeps — never on an assertion. A limit is a budget for the
+        // machine; a wrong value would still fail.
+        { name: 'firefox', timeout: 120_000, use: { ...devices['Desktop Firefox'], navigationTimeout: 90_000 } },
+        { name: 'webkit', timeout: 120_000, use: { ...devices['Desktop Safari'], navigationTimeout: 90_000 } },
+      ]
+    : [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: `pnpm exec next dev --port ${PORT}`,
     // ⚠️ Turbopack's dev filesystem cache OFF for this server only — see the note

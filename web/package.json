@@ -16,6 +16,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
+    "e2e:browsers": "node scripts/e2e-browsers.mjs",
     "stripe:listen": "node scripts/stripe-listen.mjs",
     "build:og-image": "node scripts/build-og-image.mjs",
     "check:render-modes": "node scripts/check-render-modes.mjs",

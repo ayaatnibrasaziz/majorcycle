@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { expect, test, type Page } from '@playwright/test';
+import { twoFrames } from './lib/frames';
 
 import { LEGAL_DOCS } from '../lib/publicNav';
 
@@ -543,9 +544,7 @@ test.describe('the contents rail', () => {
     const topAt = async (y: number) => {
       await page.evaluate((to) => window.scrollTo(0, to), y);
       // Two frames: one for the scroll, one for the sticky position to settle.
-      await page.evaluate(
-        () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
-      );
+      await twoFrames(page);
       return Math.round((await rail.boundingBox())!.y);
     };
 

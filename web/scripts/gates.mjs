@@ -96,6 +96,21 @@ const NEEDS_A_SERVER = [
   ],
 ];
 
+/**
+ * Real checks that run in NO workflow, by the owner's decision rather than by
+ * omission (Layer H4, decision 4: cross-browser is "local, on demand — NOT in
+ * CI, so a push is not slowed"). Printed every time, because a suite that exists
+ * and runs nowhere is F-016 exactly — the NOT RUN line is what stops it reading
+ * as covered.
+ */
+const LOCAL_ONLY = [
+  [
+    'pnpm e2e:browsers',
+    'the whole suite in Chromium + Firefox + WebKit, ~1.5 h — LOCAL ONLY by owner ' +
+      'decision (Layer H4); run it before a release, not on every push',
+  ],
+];
+
 /* ── the self-check: is this list still complete? ─────────────────────────── */
 
 function ciCommands() {
@@ -302,6 +317,7 @@ const passed = results.filter((r) => r.ok).length;
 
 if (skipE2e) console.log('  SKIPPED  e2e — you passed --no-e2e');
 for (const [cmd, why] of NEEDS_A_SERVER) console.log(`  NOT RUN  ${cmd} — ${why}`);
+for (const [cmd, why] of LOCAL_ONLY) console.log(`  NOT RUN  ${cmd} — ${why}`);
 if (failedAt) {
   for (const g of planned.slice(planned.indexOf(failedAt) + 1)) {
     console.log(`  NOT RUN  ${g.name} — stopped after ${failedAt.name} failed`);

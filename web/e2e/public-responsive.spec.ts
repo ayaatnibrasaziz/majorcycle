@@ -215,7 +215,7 @@ test.describe('the phone menu', () => {
    * Pricing, Learn, Articles or Contact, at the bottom of documents up to 9,300px
    * tall.
    */
-  test('a phone reader can reach every section from the header', async ({ page }) => {
+  test('a phone reader can reach every section from the header', async ({ page, browserName }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto('/learn');
     await settled(page);
@@ -258,8 +258,21 @@ test.describe('the phone menu', () => {
      * fails to break is a finding about the test (CLAUDE.md 11i/11u). Tabbing into
      * the panel first is what makes the assertion mean anything — verified by
      * deleting the line again and watching this go red.
+     *
+     *
+     * ⚠️ WEBKIT CANNOT TAB TO A LINK HERE, so there the move into the panel is made
+     * directly (Layer H4, 2026-09-19). Playwright's WebKit on this machine skips links
+     * with Tab AND with Option+Tab — measured: focus goes button → page → button,
+     * while `link.focus()` works — which is a property of that build (Safari's own
+     * "Tab to links" preference), not of this menu. The half that is OURS, Escape
+     * handing focus back to the toggle, is still asserted in every engine.
      */
-    await page.keyboard.press('Tab');
+    await page.getByRole('button', { name: /close menu/i }).focus();
+    if (browserName === 'webkit') {
+      await page.locator('nav[aria-label="Menu"] a').first().focus();
+    } else {
+      await page.keyboard.press('Tab');
+    }
     // Inside the PANEL, not inside the nav. The two account buttons and the five
     // links have swapped places once already (owner, 2026-09-06 — links first), and
     // an assertion naming whichever happens to be first today fails the next time
