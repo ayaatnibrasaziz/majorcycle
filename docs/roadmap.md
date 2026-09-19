@@ -3143,9 +3143,11 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 >
 > ✅ **H3 BUILT 2026-09-18** — `/learn` goes side by side from 600px (tablets and phones held sideways), rows are 44px on touch widths.
 >
+> ✅ **H4 BUILT 2026-09-19** — `pnpm e2e:browsers` runs the whole suite in Chromium, Firefox and WebKit (876 tests, 0 failed); it found one real defect in every engine — typing before a form's scripts arrive was lost — fixed on all seven forms.
+>
 > ✅ **H1 AND H2 ARE MERGED AND LIVE** — H1 and H2's build in PR #101 (2026-09-16/17); H2's
 > close-out (server-side verification and three fixes) in the PR that follows it, 2026-09-18.
-> **H4 is next.** *(What follows is the H1 build note as written.)*
+> **H5 is next.** *(What follows is the H1 build note as written.)*
 >
 > 🔨 **H1 IS BUILT (2026-09-14/15) and NOT MERGED.** H1.2 the shell, H1.3 the re-measure, H1.4
 > the widened guard — done. **H1.5 (the a11y + contrast re-run at phone width, drawer open) is
@@ -3311,9 +3313,9 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
       **5 of 12** are under 44px, not all twelve. ⚠️ And 44px is *guidance*: WCAG 2.5.8's actual
       minimum is 24px, which all twelve clear. A comfort item, not a breach.
 
-#### H4 · Cross-browser 🟡 — must follow H1
+#### H4 · Cross-browser ✅ BUILT 2026-09-19 — `docs/layer-h-plan.md` § H4
 
-- [ ] **Whole site in Chromium + Firefox + WebKit, run LOCALLY on demand, deliberately NOT in
+- [x] **Whole site in Chromium + Firefox + WebKit, run LOCALLY on demand, deliberately NOT in
       CI** (owner, 2026-09-14) so a push is not slowed.
 
   - ⚠️ **It gets its own command and `pnpm gates` prints it as NOT RUN with the reason**, the way
@@ -3328,9 +3330,17 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
     errors, zero page errors, no sideways scroll at 375px, exactly one `h1`. And the **paid**
     Stock Detail page renders identically in WebKit (21/21 canvases painted, 18 Recharts SVGs,
     page height within 3px of Chromium).
-  - 🟡 One open thread: WebKit reports `/api/billing-context` as an "access control" failure that
-    Chromium shows as an aborted request. A direct fetch of the endpoint returns **200**, and
-    `UpgradeDialog` already catches and retries. **Recorded, not diagnosed** (14f).
+  - ✅ **Finding F closed** — WebKit fails that request only when the test navigates away mid-flight;
+    a reader who stays gets **200** in both engines.
+  - ✅ **`pnpm e2e:browsers`** — each engine run separately, three totals, refuses "clean" unless all
+    three ran the same count with no failures. **Final: 876 tests, 0 failed, in Firefox and WebKit;
+    Chromium green in `pnpm gates`.** First run: Firefox 5 failed + 17 not run, WebKit 32 failed.
+  - ✅ **One real defect, in EVERY engine:** typing on a form before its scripts arrive (~2.9s on slow
+    4G, ~6s on 3G on the live `/login`) was lost — an early press reloaded the page and early
+    typing was replaced by React's empty state. **Owner: fix all seven forms, one mechanism**
+    (`lib/useHydrated.ts`); guarded by `e2e/auth-early-input.spec.ts`.
+  - The rest were test-side and each kept its assertion: `innerText` over chart labels, Safari's
+    click/Tab focus rules, headless Firefox withholding animation frames, longer limits.
 
 #### H5 · Accessibility residue 🟢 — falls out of H1
 
