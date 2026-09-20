@@ -35,11 +35,22 @@ const SETUP = `(() => {
     const cs = getComputedStyle(el);
     before.set(el, { border: cs.borderTopColor, shadow: cs.boxShadow });
   };
-  document.querySelectorAll(FOCUSABLE).forEach((el) => {
-    remember(el);
-    remember(el.parentElement);
-    remember(el.parentElement && el.parentElement.parentElement);
-  });
+  // ⚠️ RECORD THE UNFOCUSED STATE WITH NOTHING FOCUSED, and only once the change has
+  // finished. A DIALOG focuses its first control as it opens, so recording straight away
+  // captured that input's FOCUSED blue border as its "before" — and the walk then saw no
+  // change and called the support dialog's name box ringless. It is not: settled, it is
+  // the same brand-blue border as the contact page's (measured, both).
+  window.__focusPrime = async () => {
+    const active = document.activeElement;
+    if (active && active !== document.body) active.blur();
+    await new Promise((r) => setTimeout(r, 260));
+    document.querySelectorAll(FOCUSABLE).forEach((el) => {
+      remember(el);
+      remember(el.parentElement);
+      remember(el.parentElement && el.parentElement.parentElement);
+    });
+    return true;
+  };
 
   // Split a computed box-shadow list on the commas BETWEEN shadows, not inside rgb().
   const shadows = (s) => {
@@ -56,6 +67,25 @@ const SETUP = `(() => {
       const px = (sh.replace(/rgba?\\([^)]+\\)/, '').match(/-?[\\d.]+px/g) || []).map(parseFloat);
       return { colour: colour ? parse(colour[0]) : null, spread: px[3] || 0, blur: px[2] || 0, inset: /inset/.test(sh) };
     });
+  };
+
+  // ⚠️ A GRADIENT IS NOT A BACKGROUND COLOUR. \`background: linear-gradient(...)\` leaves
+  // background-color TRANSPARENT, so compositing colours alone reads straight through a
+  // painted band to the page behind it — the defect \`ui/button.tsx\` already carries a
+  // comment about, and CLAUDE.md 11l(iii). Where one is in the paint chain the ground is
+  // a GUESS, and the caller re-measures it from the rendered pixels instead.
+  const paintedWithImage = (el, from = el) => {
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    for (let n = from; n && n !== document.documentElement; n = n.parentElement) {
+      const cs = getComputedStyle(n);
+      if (cs.backgroundImage && cs.backgroundImage !== 'none') {
+        const ar = n.getBoundingClientRect();
+        if (n === el || (cx >= ar.left - 0.5 && cx <= ar.right + 0.5 && cy >= ar.top - 0.5 && cy <= ar.bottom + 0.5)) return true;
+      }
+    }
+    return false;
   };
 
   const read = (el) => {
@@ -159,23 +189,36 @@ const SETUP = `(() => {
       for (let i = 0; i < 20 && sy !== window.scrollY; i++) { sy = window.scrollY; await sleep(50); }
       r = el.getBoundingClientRect();
     }
+    // ⚠️ WAIT THE ELEMENT'S OWN TRANSITION OUT. WebKit reported this CTA's ring at
+    // 1.02–2.91:1 in colours part-way between white (its currentColor) and brand blue:
+    // its readings were taken mid-fade, and "two equal readings 60ms apart" can be two
+    // equal samples of a value that has not started moving yet (11ao, the plateau).
+    // The duration is not a guess — it is read off the element.
+    const secs = (v) => Math.max(0, ...String(v || '0s').split(',').map((x) => parseFloat(x) * (x.includes('ms') ? 0.001 : 1) || 0));
+    const tcs = getComputedStyle(el);
+    const settleMs = Math.min(1200, (secs(tcs.transitionDuration) + secs(tcs.transitionDelay)) * 1000 + 80);
+    if (settleMs > 0) await sleep(settleMs);
+    // ⚠️ THREE CONSECUTIVE IDENTICAL SAMPLES, 100ms apart — not two 60ms apart.
+    // WebKit updates a transitioning colour in steps, so two close samples can be equal
+    // while the fade is still running: it reported this CTA's ring at 1.12 (pure white,
+    // its currentColor), then 2.14, 2.17, 2.68, 2.69 on successive runs, all of them
+    // part-way to brand blue. A plateau is not a finish (11ao, three times now).
     let last = '';
+    let stableFor = 0;
     let found = [];
-    while (Date.now() - t0 < 2000) {
+    while (Date.now() - t0 < 4000) {
       // The wrapper's border transitions too (.15s on the search boxes).
       const moving = [el, el.parentElement, el.parentElement && el.parentElement.parentElement]
         .filter(Boolean)
         .some((n) => n.getAnimations().some((a) => a.playState === 'running'));
       found = read(el);
       const now = JSON.stringify(found);
-      // ⚠️ A MINIMUM as well as a stability test (11ao, again). The ring TRANSITIONS
-      // from currentColor, and if the transition has not started yet the first two reads
-      // agree perfectly — on a dark band that scored a white ring at 1.1:1 in Firefox
-      // and WebKit while Chromium, a shade slower, read the settled brand blue. "Two
-      // equal readings" is a plateau, not a finish.
-      if (!moving && now === last && Date.now() - t0 >= 280) break;
+      stableFor = now === last ? stableFor + 1 : 0;
+      // A minimum as well, because the transition may not have STARTED when the first
+      // samples are taken — and those agree perfectly with each other.
+      if (!moving && stableFor >= 2 && Date.now() - t0 >= 320) break;
       last = now;
-      await sleep(60);
+      await sleep(100);
     }
     const best = found.reduce((m, f) => (f.ratio > m ? f.ratio : m), 0);
     // Reported on every failure: without it, "no indicator" cannot be told apart from
@@ -230,9 +273,24 @@ const SETUP = `(() => {
     // the PREVIOUS tip's bubble sitting over this trigger — 20 confident false findings
     // on Stock Detail, each naming a different metric's explanation (11q: when a
     // measurement disagrees with the screen, instrument the instrument).
-    await sleep(200);
+    // Only when one is actually on screen: InfoTip hides 100ms after blur, and waiting
+    // for that on every control cost 200ms × every control × every width.
+    if (document.querySelector('[role="tooltip"]')) await sleep(200);
     let visiblePoints = 0;
     let coveredBy = '';
+    // ⚠️ HIT-TESTING IS OFF WHILE A DIALOG IS OPEN. Radix sets \`pointer-events: none\` on
+    // <body> for as long as one is, and elementFromPoint then answers NOTHING for every
+    // point — which this read as "covered by (nothing)" and failed the first-login gate's
+    // own checkbox. Restored for the sample and put back immediately.
+    // ⚠️ AND IT IS SET !important, so a plain assignment is ignored — which is why the
+    // first restore changed nothing and the gate's checkbox still read as covered.
+    const savedPE = [document.documentElement, document.body].map((n) => [
+      n.style.getPropertyValue('pointer-events'),
+      n.style.getPropertyPriority('pointer-events'),
+    ]);
+    for (const n of [document.documentElement, document.body]) {
+      n.style.setProperty('pointer-events', 'auto', 'important');
+    }
     const inView = r.bottom > 0 && r.top < innerHeight && r.right > 0 && r.left < innerWidth;
     // ⚠️ PER LINE BOX, not per bounding rect. A link that wraps has a bounding rect
     // spanning the whole paragraph, so most sample points land on the text AROUND it
@@ -262,7 +320,10 @@ const SETUP = `(() => {
           const x = b.left + (bw * ix) / 6;
           const y = b.top + (bh * iy) / 4;
           if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue;
-          const top = document.elementFromPoint(x, y);
+          let top = document.elementFromPoint(x, y);
+          // Next's dev-only overlay sits over a corner of every page and never ships;
+          // counting it reported the first-login gate's own button as buried.
+          if (top && top.tagName === 'NEXTJS-PORTAL') top = null;
           // NOT \`top.contains(el)\`: every element's ancestors end at <body>, so
           // accepting an ancestor made the check unable to fail — my own control,
           // a fixed bar over the header, went unreported until this line changed.
@@ -272,10 +333,26 @@ const SETUP = `(() => {
       }
     }
 
+    [document.documentElement, document.body].forEach((n, i) => {
+      n.style.removeProperty('pointer-events');
+      if (savedPE[i][0]) n.style.setProperty('pointer-events', savedPE[i][0], savedPE[i][1]);
+    });
+
     // Whether the outside ring is what carried the pass — a clipped outline does not
     // matter when a border or wrapper change already reaches 3:1 on its own.
     const outlineCarries = !found.some((f) => f.kind !== 'outline' && f.ratio >= 3);
-    return { who, key: String(ids.get(el)), best: +best.toFixed(2), found, clippedSides, outlineCarries, inView, visiblePoints, coveredBy, focusVisible, stale, docFocus, ms: Date.now() - t0 };
+    // Geometry for the pixel re-measure, when the ground is a guess (see above).
+    const insetRing = parseFloat(cs.outlineOffset) < 0;
+    const groundGuess =
+      reach > 0 && (insetRing ? paintedWithImage(el) : paintedWithImage(el, el.parentElement || el));
+    const ring = groundGuess
+      ? {
+          box: { x: r.left, y: r.top, w: r.width, h: r.height },
+          offset: parseFloat(cs.outlineOffset) || 0,
+          width: parseFloat(cs.outlineWidth) || 0,
+        }
+      : null;
+    return { who, key: String(ids.get(el)), best: +best.toFixed(2), found, clippedSides, outlineCarries, inView, visiblePoints, coveredBy, focusVisible, stale, docFocus, groundGuess, ring, ms: Date.now() - t0 };
   };
   return true;
 })()`;
@@ -317,6 +394,10 @@ export interface RingReading {
   focusVisible?: boolean;
   stale?: boolean;
   docFocus?: boolean;
+  /** The ground under the ring is a gradient, so `best` is a guess — re-measured in pixels. */
+  groundGuess?: boolean;
+  ring?: { box: { x: number; y: number; w: number; h: number }; offset: number; width: number } | null;
+  pixelRatio?: number;
   ms?: number;
 }
 
@@ -359,11 +440,17 @@ export async function walkFocus(
   const { maxTabs = 400, mode = 'tab' } = opts;
   // The page must own keyboard focus for any of this to mean anything.
   await page.bringToFront();
+  // ⚠️ REMOVE NEXT'S DEV OVERLAY FIRST. It never ships, it takes Tab stops (Firefox walks
+  // the parts inside it one by one), and it sits over the bottom-left corner — where it
+  // covered the first-login gate's own checkbox and made this report the product's most
+  // important control as buried. Measuring around a thing that is not in the product is
+  // worse than not measuring it (11q).
+  await page.evaluate(() => document.querySelectorAll('nextjs-portal').forEach((n) => n.remove()));
   await domQuiet(page);
   await page.evaluate(SETUP);
+  // Snapshot the unfocused state (blurring first — see `__focusPrime`).
+  await page.evaluate('window.__focusPrime()');
   if (mode === 'direct') return walkDirect(page);
-  // Start from the document, not from whatever a previous step left focused.
-  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
   const readings: RingReading[] = [];
   const seen = new Set<string>();
   for (let i = 0; i < maxTabs; i++) {
@@ -397,13 +484,135 @@ async function measure(page: Page): Promise<RingReading | null> {
   // Re-take when the page moved under the reading, or when the browser did not treat
   // it as keyboard focus — the second happens when the WINDOW lost focus, and then
   // every control reads "no ring" however good the CSS is.
-  if (!first.stale && first.focusVisible !== false) return first;
+  if (!first.stale && first.focusVisible !== false) {
+    if (first.groundGuess) {
+      const px = await pixelRing(page, first);
+      if (px != null) return { ...first, pixelRatio: px, best: px };
+    }
+    return first;
+  }
   await page.bringToFront();
   await page.keyboard.press(MODALITY_KEY);
   const back = await page.evaluate('window.__refocusLast()');
   if (!back) return first;
-  const second = (await page.evaluate('window.__focusRing()')) as RingReading | null;
+  let second = (await page.evaluate('window.__focusRing()')) as RingReading | null;
+  if (second && !second.stale && second.groundGuess) {
+    const px = await pixelRing(page, second);
+    if (px != null) second = { ...second, pixelRatio: px, best: px };
+  }
   return second ?? first;
+}
+
+/**
+ * Re-measure a ring from the RENDERED PIXELS, for the one case colour arithmetic cannot
+ * answer: a ring drawn over a gradient (11l iii — `background: linear-gradient(...)`
+ * leaves `background-color` transparent, so compositing reads through a painted band to
+ * the page behind it, and the answer can be wrong in either direction).
+ *
+ * Screenshots the control with its ring, decodes it IN THE PAGE (a canvas, so no image
+ * library here), averages the pixels of the ring band, averages the pixels just outside
+ * it — which is exactly the "adjacent colour" WCAG 1.4.11 asks about — and returns the
+ * contrast between them.
+ */
+async function pixelRing(page: Page, r: RingReading): Promise<number | null> {
+  if (!r.ring || r.ring.width <= 0) return null;
+  const { box, offset, width } = r.ring;
+  const pad = Math.ceil(Math.max(0, offset) + width) + 4;
+  const vw = page.viewportSize();
+  const clip = {
+    x: Math.max(0, Math.floor(box.x - pad)),
+    y: Math.max(0, Math.floor(box.y - pad)),
+    width: Math.ceil(box.w + pad * 2),
+    height: Math.ceil(box.h + pad * 2),
+  };
+  if (vw) {
+    clip.width = Math.min(clip.width, vw.width - clip.x);
+    clip.height = Math.min(clip.height, vw.height - clip.y);
+  }
+  if (clip.width < 4 || clip.height < 4) return null;
+  let shot: Buffer;
+  try {
+    shot = await page.screenshot({ clip, animations: 'disabled' });
+  } catch {
+    return null; // off screen or mid-scroll — the caller keeps the colour reading
+  }
+  return page.evaluate(
+    async ({ b64, clip, box, offset, width }) => {
+      // ⚠️ NOT `fetch('data:…')`: this site's CSP refuses it (`connect-src`), and the
+      // whole measurement died with "Failed to fetch". Decode the bytes by hand into a
+      // Blob instead, which no directive governs.
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const img = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const scale = img.width / clip.width; // device pixel ratio (WebKit runs at 2)
+      const cv = document.createElement('canvas');
+      cv.width = img.width;
+      cv.height = img.height;
+      const ctx = cv.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, cv.width, cv.height).data;
+      const at = (x: number, y: number) => {
+        const px = Math.round((x - clip.x) * scale);
+        const py = Math.round((y - clip.y) * scale);
+        if (px < 0 || py < 0 || px >= cv.width || py >= cv.height) return null;
+        const i = (py * cv.width + px) * 4;
+        return [data[i]!, data[i + 1]!, data[i + 2]!];
+      };
+      /**
+       * ⚠️ PER SIDE, AND THE BEST SIDE WINS — not one average of everything.
+       * Averaging all four sides scored the Verdict card's round info button at 2.13:1
+       * when a screenshot plainly shows a clear blue ring on a near-white card: the
+       * button is ROUND, so samples at the corners of its box land on background
+       * rather than on the ring, and focusing it opens its own tooltip, which covers
+       * one side. A reader sees the indicator where it IS drawn, so each side is judged
+       * on its own and the clearest one decides.
+       * ⚠️ And the MIDDLE of each side only (t = 3…7 of 10), away from the corners.
+       */
+      const sides: { ring: number[][]; ground: number[][] }[] = [
+        { ring: [], ground: [] },
+        { ring: [], ground: [] },
+        { ring: [], ground: [] },
+        { ring: [], ground: [] },
+      ];
+      const dRing = offset + width / 2;
+      const dGround = offset + width + 2;
+      for (let t = 3; t <= 7; t++) {
+        const fx = box.x + (box.w * t) / 10;
+        const fy = box.y + (box.h * t) / 10;
+        const pairs: [number[] | null, number[] | null][] = [
+          [at(fx, box.y - dRing), at(fx, box.y - dGround)],
+          [at(fx, box.y + box.h + dRing), at(fx, box.y + box.h + dGround)],
+          [at(box.x - dRing, fy), at(box.x - dGround, fy)],
+          [at(box.x + box.w + dRing, fy), at(box.x + box.w + dGround, fy)],
+        ];
+        pairs.forEach(([a, b], i) => {
+          if (a && b) {
+            sides[i]!.ring.push(a);
+            sides[i]!.ground.push(b);
+          }
+        });
+      }
+      const mean = (xs: number[][]) => [0, 1, 2].map((i) => xs.reduce((s, c) => s + c[i]!, 0) / xs.length);
+      const lum = (c: number[]) => {
+        const [r, g, b] = c.map((v) => {
+          v /= 255;
+          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        }) as [number, number, number];
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+      };
+      let best: number | null = null;
+      for (const side of sides) {
+        if (side.ring.length < 3) continue;
+        const L1 = lum(mean(side.ring));
+        const L2 = lum(mean(side.ground));
+        const r = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+        if (best == null || r > best) best = r;
+      }
+      return best == null ? null : +best.toFixed(2);
+    },
+    { b64: shot.toString('base64'), clip, box, offset, width },
+  );
 }
 
 /**
@@ -514,7 +723,7 @@ export function ringFailures(readings: RingReading[]): string[] {
     .filter((r) => !r.invisible && !r.stale && r.focusVisible !== false && (r.best ?? 0) < 3)
     .map(
       (r) =>
-        `${r.who} — best ${r.best}:1 (:focus-visible ${r.focusVisible ? 'yes' : 'NO — the walk lost keyboard modality, not a site defect'})` +
+        `${r.who} — best ${r.best}:1${r.pixelRatio != null ? ' (measured in pixels: its ground is a gradient)' : ''} (:focus-visible ${r.focusVisible ? 'yes' : 'NO — the walk lost keyboard modality, not a site defect'})` +
         (r.found?.length ? ` (${r.found.map((f) => `${f.kind} ${f.colour} ${f.ratio.toFixed(2)}`).join('; ')})` : ' (no indicator)'),
     )];
 }

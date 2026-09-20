@@ -770,7 +770,40 @@ produced a confident, plausible, wrong finding:
   chain ends at `<body>`); and it flagged a wrapped link as covered by its own paragraph, because a
   link on two lines has a bounding box spanning the whole column (11bh, the same trap).
 
-**Final:** Chromium 62/62, Firefox 62/62, WebKit 62/62, `pnpm gates` 16/16.
+**THEN THE OWNER REFUSED THE THREE "LIMITS" I HAD WRITTEN DOWN, and was right to.** Naming a limit
+and calling the layer finished is the same move as an exemption that outlives its defect (11t). All
+three are now closed, and closing them found two more real defects:
+
+- **WIDTHS.** The walks ran at 375px only. They now run at **375 / 768 / 1280** on every public
+  page, every signed-in page and the paid pages — 768 because that is where this shell swaps the
+  drawer for the rail, and whether a ring can be SEEN depends on the container it is drawn in.
+  ⚠️ **It immediately found a defect the phone-only walk could not:** the legal pages' contents
+  rail is `overflow-y: auto`, so at desktop width every clause link's ring was clipped on three
+  sides. Red without the fix, green with it.
+- **DIALOGS.** Only the nav menu and the drawer were walked; every other dialog renders nothing
+  until a reader opens one, so none was measured. `e2e/focus-dialogs.spec.ts` now opens and walks
+  all five — upgrade, trial, support, methodology and the first-login gate — and **the list is
+  derived**: it reads the codebase and fails if a component renders a `DialogContent` that nothing
+  opens, and also if a name here no longer exists. Two needed their own account states (a payment
+  dispute for support; a brand-new account for the gate), which is 11bd again.
+- **GROUND UNDER THE RING.** Colour arithmetic cannot answer a ring drawn over a gradient
+  (`background: linear-gradient(…)` leaves `background-color` transparent, so it reads through to
+  the page — 11l iii). Where a gradient is in the paint chain the walk now **measures the rendered
+  pixels**: screenshot, decode in the page, average the ring band and the band just outside it.
+  ⚠️ Its first verdict was a false one — 2.13:1 on the Verdict card's round info button, which a
+  screenshot plainly shows ringed in blue on a near-white card: averaging all four sides of a
+  ROUND control samples background at the corners, and focusing it opens its own tooltip over one
+  side. Each side is now judged on its own and the clearest wins.
+- **SPEED.** Making the whole cross-browser suite serial to fix three specs taxed every other test
+  for a fault they do not have. `pnpm e2e:browsers` now runs each engine twice: the three walk
+  specs with `--workers=1`, everything else in parallel (`MC_SKIP_FOCUS_SPECS` in the config), and
+  sums both totals so the "same number of tests in every engine" check is unchanged.
+
+**Controls, all three proven red:** a removed ring (exactly one failure, named); a control buried
+under fixed content; and a ring painted the same colour as its dark band, which only the pixel path
+can see. Plus the derived dialog list, and the walk itself fails rather than return a partial page.
+
+**Final:** the whole suite clean in Chromium, Firefox and WebKit; `pnpm gates` 16/16.
 
 **Firefox, same day.** The new "never came back round" check failed every Firefox walk at once, and
 it was right to: Next's dev-only error overlay sits last in `<body>`, and Firefox Tabs through the

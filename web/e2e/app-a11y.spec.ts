@@ -82,6 +82,14 @@ async function scan(page: Page, path: string) {
      in a comment, and the one line that needed it never received it. */
   await page.goto(path, { waitUntil: 'domcontentloaded' });
 
+  /* ⚠️ PARK THE POINTER. Playwright's mouse stays where the last action left it, and it
+     carries across a navigation — so a page can be scanned with an InfoTip bubble open
+     under a pointer nobody moved. That is what failed `/results` at 1280px and nowhere
+     else: the bubble is portalled to <body> (deliberately, so no card can clip it), and
+     axe correctly reported content outside a landmark. The hover is the test's, not a
+     reader's, so the scan is of the page as it renders. */
+  await page.mouse.move(0, 0);
+
   // Prove we are on the page we think we are: a signed-in route that started
   // bouncing to /login would otherwise scan clean and mean nothing.
   expect(new URL(page.url()).pathname, `${path} did not stay put`).toBe(path);
@@ -320,31 +328,21 @@ test.describe('the signed-in product is accessible', () => {
     });
 
     /* H5: every control a keyboard reaches must show where it is, at 3:1, read once
-       it has stopped animating (11ao) — `lib/focusRing.ts`. */
-    test(`${path}: every control shows its focus at 375px`, async ({ page, browserName }) => {
-      test.setTimeout(240_000);
-      await page.setViewportSize({ width: 375, height: 812 });
-      await scan(page, path);
-      const readings = await walkFocus(page, { mode: modeFor(browserName) });
-      expect(readings.length, `${path}: Tab reached ${readings.length} controls — the walk did not run`).toBeGreaterThanOrEqual(3);
-      const fails = ringFailures(readings);
-      expect(fails, `${path} at 375px:\n${fails.join('\n')}`).toEqual([]);
-    });
+       it has stopped animating (11ao) — `lib/focusRing.ts`.
+       ⚠️ THREE WIDTHS: 768 is where this shell swaps the drawer for the rail, and
+       whether a ring can be seen depends on the container it is drawn in. */
+    for (const width of [375, 768, 1280]) {
+      test(`${path}: every control shows its focus at ${width}px`, async ({ page, browserName }) => {
+        test.setTimeout(240_000);
+        await page.setViewportSize({ width, height: 900 });
+        await scan(page, path);
+        const readings = await walkFocus(page, { mode: modeFor(browserName) });
+        expect(readings.length, `${path}: the walk reached ${readings.length} controls`).toBeGreaterThanOrEqual(3);
+        const fails = ringFailures(readings);
+        expect(fails, `${path} at ${width}px:\n${fails.join('\n')}`).toEqual([]);
+      });
+    }
   }
-
-  /* ⚠️ AND ONE WALK AT DESKTOP WIDTH (H5 audit). The rings H5 found clipped — six
-     charts and two segmented toggles — were clipped at EVERY width, because the
-     `overflow: hidden` that cut them is not a phone rule. A 375px-only walk would see
-     a regression there only by the luck of it being on the phone layout too. */
-  test('/stocks/us/AAPL: every control shows its focus at 1280px', async ({ page, browserName }) => {
-    test.setTimeout(240_000);
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await scan(page, '/stocks/us/AAPL');
-    const readings = await walkFocus(page, { mode: modeFor(browserName) });
-    expect(readings.length, 'the walk reached almost nothing').toBeGreaterThanOrEqual(20);
-    const fails = ringFailures(readings);
-    expect(fails, `/stocks/us/AAPL at 1280px:\n${fails.join('\n')}`).toEqual([]);
-  });
 
   test('the OPEN navigation drawer shows focus on every link at 375px', async ({ page, browserName }) => {
     test.setTimeout(180_000);
@@ -599,9 +597,10 @@ test.describe('the PAID product is accessible', () => {
    * layout is where the phone rearranges most (the scorecard stacks, the pills wrap,
    * the screener's controls reflow — 11bf), and a free session never renders any of it.
    */
-  test('the entitled pages at 375px: no axe violations, and every focus visible', async ({ page, browserName }) => {
-    test.setTimeout(420_000);
-    await page.setViewportSize({ width: 375, height: 812 });
+  for (const width of [375, 768, 1280])
+  test(`the entitled pages at ${width}px: no axe violations, and every focus visible`, async ({ page, browserName }) => {
+    test.setTimeout(600_000);
+    await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/login');
     await page.fill('input#email', PAID_EMAIL);
@@ -617,11 +616,16 @@ test.describe('the PAID product is accessible', () => {
           { timeout: 20_000 },
         )
         .catch(() => {});
+      await page.mouse.move(0, 0); // see `scan()` — no stray hover state in the scan
       const results = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
       expect(rulesThatDidNotRun(results), `axe skipped rules on ${label}`).toEqual([]);
       expect(results.passes.length, `axe checked nothing on ${label}`).toBeGreaterThan(10);
       const found = results.violations.map(
-        (v) => `[${v.impact}] ${v.id} — ${v.nodes.length} node(s): ${v.help}`,
+        (v) =>
+          `[${v.impact}] ${v.id} — ${v.nodes.length} node(s): ${v.help}\n    ` +
+          // NAME the node. "1 node" alone sent me hunting for a violation that only
+          // appears in this sequence of pages (H5 audit).
+          v.nodes.map((n) => `${n.target.join(' ')} :: ${n.html.slice(0, 120)}`).join('\n    '),
       );
       expect(found, `${label}:\n${found.join('\n')}`).toEqual([]);
       const readings = await walkFocus(page, { mode: modeFor(browserName) });
@@ -636,11 +640,11 @@ test.describe('the PAID product is accessible', () => {
       .toBeGreaterThanOrEqual(900);
     // Positive control, as above: the Verdict thesis exists only for an entitled viewer.
     expect(await page.locator('.verdict-thesis-num').count(), 'not entitled — this proves nothing').toBeGreaterThan(0);
-    await check('/stocks/us/AAPL (entitled, 375px)');
+    await check('/stocks/us/AAPL (entitled, ${width}px)');
 
     await page.goto('/run');
     await expect(page.locator('.upload-zone')).toBeVisible({ timeout: 30_000 });
-    await check('/run (entitled, 375px)');
+    await check('/run (entitled, ${width}px)');
 
     await page.evaluate(
       ([key, snap]) => sessionStorage.setItem(key as string, JSON.stringify(snap)),
@@ -650,6 +654,6 @@ test.describe('the PAID product is accessible', () => {
     await expect
       .poll(() => page.locator('.score-num').count(), { timeout: 45_000 })
       .toBeGreaterThanOrEqual(RUN_SNAPSHOT_ROWS);
-    await check('/results (entitled, 375px)');
+    await check('/results (entitled, ${width}px)');
   });
 });
