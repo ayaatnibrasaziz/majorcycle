@@ -58,7 +58,13 @@ for (const engine of engines) {
   // needs a shell, and Node deprecates shell + args (DEP0190) because it only
   // concatenates them. The args are quoted here instead, so a spec path with a
   // space survives.
-  const cmd = ['pnpm exec playwright test', `--project=${engine}`, '--reporter=list,json',
+  // ⚠️ ONE TEST AT A TIME. The focus-ring walks measure what a browser draws for the
+  // KEYBOARD, and only one page in a browser can hold focus — with two workers, whichever
+  // page lost it reported every control as "no ring". Firefox and WebKit both did; Chromium
+  // does not, which is why CI (Chromium, parallel) is unaffected. Measured cost on the two
+  // walk specs: 16.7m parallel against 21.8m serial. Determinism wins for a command that is
+  // run on purpose before a release (Layer H5 audit).
+  const cmd = ['pnpm exec playwright test', `--project=${engine}`, '--workers=1', '--reporter=list,json',
     ...passthrough.map((a) => JSON.stringify(a))].join(' ');
   const run = spawnSync(cmd, {
     stdio: 'inherit',

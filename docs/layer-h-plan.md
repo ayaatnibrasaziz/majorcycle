@@ -734,7 +734,43 @@ ring is drawn *inside* the edge in those three containers, white on the one soli
 **Red on all ten controls with the CSS removed, green with it**; a 1280px walk of Stock Detail was
 added because the defect was never a phone rule. The audit also made the walk **fail** if it runs
 out of Tabs rather than return a partial page, and fail when focus lands on something with no size.
-Focus walks are skipped in **WebKit only** (it cannot Tab to links — H4); its axe scans still run.
+**SAFARI IS MEASURED, not skipped** — owner's instruction, 2026-09-20. The audit's first answer
+was to skip WebKit's walks because that build never gives a LINK focus from Tab (Safari's own "Tab
+to links" preference, off by default: real Safari behaviour, not ours). That threw away the half
+that IS ours — whether our CSS shows a ring — so WebKit now walks by focusing each visible control
+directly. **Measured before it was trusted:** with a key press first, WebKit matches
+`:focus-visible` on programmatic focus for every control and reports the same outline colours as
+Chromium, control for control (`/pricing`, 375px). What Safari's walk does NOT check is the Tab
+ORDER, which there is Safari's own.
+
+⚠️ **It took seven runs, and every failure was the instrument.** Worth keeping, because each one
+produced a confident, plausible, wrong finding:
+- **A MODIFIER KEY DOES NOT COUNT AS KEYBOARD USE.** After a mouse click WebKit is in pointer
+  modality and a script's `focus()` stops matching `:focus-visible` — so every control reads "no
+  ring". Pressing **Shift** does not undo it; F1 does (measured both ways, menu opened by a real
+  click). My first Safari experiment only worked because that page had never been clicked, and my
+  first attempt to reproduce the failure pressed Escape in every arm, which hid the difference.
+- **`tabindex="-1"` is not keyboard-reachable**, so the walk must not visit it: the two honeypot
+  inputs are invisible to people by design, and WebKit's walk reported both as defects.
+- **WebKit does not always scroll a script-focused control into view**, where Tab always does — a
+  control below the fold measured "off screen" there and nowhere else.
+- **Two pages in one browser cannot both hold focus**, so the parallel run reported whole pages as
+  ringless in Firefox and WebKit while each passed alone. `pnpm e2e:browsers` now runs
+  `--workers=1`: 16.7m against 21.8m on these two specs, and determinism is worth it for a command
+  run on purpose before a release.
+- **A plateau is not a finish** (11ao again): the ring transitions from `currentColor`, and two
+  equal readings taken before the transition starts scored a white ring on a dark band at 1.1:1 in
+  Firefox and WebKit while Chromium read the settled blue. The settle now has a **minimum**.
+- **Sample the part of a control that is ON SCREEN.** Points taken at fractions of the element's
+  own height fall outside the viewport for anything taller than the screen, and a point outside the
+  viewport returns nothing — which read as "covered by (nothing)" on a chart, a table region and an
+  article card.
+- And the two that were caught by a CONTROL rather than by a run: the obscured check accepted a
+  control's own PARENT as "the thing on top", which made it unable to fail at all (every parent
+  chain ends at `<body>`); and it flagged a wrapped link as covered by its own paragraph, because a
+  link on two lines has a bounding box spanning the whole column (11bh, the same trap).
+
+**Final:** Chromium 62/62, Firefox 62/62, WebKit 62/62, `pnpm gates` 16/16.
 
 **Firefox, same day.** The new "never came back round" check failed every Firefox walk at once, and
 it was right to: Next's dev-only error overlay sits last in `<body>`, and Firefox Tabs through the

@@ -4,7 +4,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { RUN_SNAPSHOT, RUN_SNAPSHOT_ROWS, SNAPSHOT_KEY } from './fixtures/runSnapshot';
 import { TAGS, RULE_OPTIONS, rulesThatDidNotRun } from './lib/axeRules';
-import { ringFailures, walkFocus, WEBKIT_SKIPS_LINKS } from './lib/focusRing';
+import { modeFor, ringFailures, walkFocus } from './lib/focusRing';
 import { signIn } from './lib/session';
 
 /**
@@ -322,11 +322,10 @@ test.describe('the signed-in product is accessible', () => {
     /* H5: every control a keyboard reaches must show where it is, at 3:1, read once
        it has stopped animating (11ao) — `lib/focusRing.ts`. */
     test(`${path}: every control shows its focus at 375px`, async ({ page, browserName }) => {
-      test.skip(browserName === 'webkit', WEBKIT_SKIPS_LINKS);
-      test.setTimeout(180_000);
+      test.setTimeout(240_000);
       await page.setViewportSize({ width: 375, height: 812 });
       await scan(page, path);
-      const readings = await walkFocus(page);
+      const readings = await walkFocus(page, { mode: modeFor(browserName) });
       expect(readings.length, `${path}: Tab reached ${readings.length} controls — the walk did not run`).toBeGreaterThanOrEqual(3);
       const fails = ringFailures(readings);
       expect(fails, `${path} at 375px:\n${fails.join('\n')}`).toEqual([]);
@@ -338,24 +337,22 @@ test.describe('the signed-in product is accessible', () => {
      `overflow: hidden` that cut them is not a phone rule. A 375px-only walk would see
      a regression there only by the luck of it being on the phone layout too. */
   test('/stocks/us/AAPL: every control shows its focus at 1280px', async ({ page, browserName }) => {
-    test.skip(browserName === 'webkit', WEBKIT_SKIPS_LINKS);
-    test.setTimeout(180_000);
+    test.setTimeout(240_000);
     await page.setViewportSize({ width: 1280, height: 900 });
     await scan(page, '/stocks/us/AAPL');
-    const readings = await walkFocus(page);
+    const readings = await walkFocus(page, { mode: modeFor(browserName) });
     expect(readings.length, 'the walk reached almost nothing').toBeGreaterThanOrEqual(20);
     const fails = ringFailures(readings);
     expect(fails, `/stocks/us/AAPL at 1280px:\n${fails.join('\n')}`).toEqual([]);
   });
 
   test('the OPEN navigation drawer shows focus on every link at 375px', async ({ page, browserName }) => {
-    test.skip(browserName === 'webkit', WEBKIT_SKIPS_LINKS);
-    test.setTimeout(120_000);
+    test.setTimeout(180_000);
     await page.setViewportSize({ width: 375, height: 812 });
     await scan(page, '/stocks');
     await page.locator('[data-shell-menu-toggle]').click();
     await expect(page.getByRole('dialog', { name: /main navigation/i })).toBeVisible();
-    const readings = await walkFocus(page);
+    const readings = await walkFocus(page, { mode: modeFor(browserName) });
     // The control: the walk must actually be INSIDE the drawer, or this re-measured the page.
     expect(
       readings.filter((r) => /Browse|Run|Results|Request/.test(r.who)).length,
@@ -627,8 +624,7 @@ test.describe('the PAID product is accessible', () => {
         (v) => `[${v.impact}] ${v.id} — ${v.nodes.length} node(s): ${v.help}`,
       );
       expect(found, `${label}:\n${found.join('\n')}`).toEqual([]);
-      if (browserName === 'webkit') return; // WEBKIT_SKIPS_LINKS — the axe scan above still runs
-      const readings = await walkFocus(page);
+      const readings = await walkFocus(page, { mode: modeFor(browserName) });
       expect(readings.length, `${label}: the focus walk reached nothing`).toBeGreaterThanOrEqual(3);
       const fails = ringFailures(readings);
       expect(fails, `${label} focus:\n${fails.join('\n')}`).toEqual([]);

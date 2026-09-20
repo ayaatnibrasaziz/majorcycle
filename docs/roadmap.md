@@ -3354,7 +3354,7 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
     be scrolled by keyboard; each phone result card nested a button in a button (fixed with the six
     cards byte-identical); six charts and two toggles whose ring was CLIPPED away at every width by
     an `overflow: hidden` container; and the probe's own blind spot for focus drawn on a search
-    box's wrapper.
+    box's wrapper. Safari is walked by focusing each control directly (it cannot Tab to links).
 
 #### H6 · Owner items 🔵 — any time, no dependency
 
