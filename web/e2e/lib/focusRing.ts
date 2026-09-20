@@ -13,14 +13,22 @@ import { COLOUR_FNS } from './contrastProbe';
  *
  * ⚠️ **SETTLED OR NOT AT ALL (11ao).** Two sessions read the Stock Detail sub-nav pill
  * at t≈0 and reported its ring as white on white; `transition: all` animates
- * `outline-color` from `currentColor`, and it settles at 4.03:1 from 151ms. So each
- * reading waits for the element's own animations to finish AND for two readings 60ms
- * apart to agree, capped at 2s with `setTimeout` — never a frame wait, which headless
- * Firefox can withhold forever (`frames.ts`).
+ * `outline-color` from `currentColor`, and it settles at 4.03:1 from 151ms. So a reading
+ * waits out the element's OWN transition (read off its computed style), then requires
+ * **three consecutive identical samples 100ms apart** with no animation running, capped
+ * at 4s — all with `setTimeout`, never a frame wait, which headless Firefox can withhold
+ * forever (`frames.ts`). Two samples 60ms apart was not enough: WebKit steps a
+ * transitioning colour, so two close samples can be equal mid-fade, and it reported one
+ * CTA's ring at 1.12 (its white currentColor), 2.14, 2.17, 2.68 and 2.69 on successive
+ * runs — every one of them part-way to brand blue.
  *
- * ⚠️ A border counts only if it DIFFERS from the unfocused border, which is recorded
- * for every focusable element before the first Tab. A permanent grey border is not a
+ * ⚠️ A border counts only if it DIFFERS from the unfocused border, which `__focusPrime`
+ * records with NOTHING focused (a dialog focuses its first control as it opens, which
+ * made that control's focused border its own "before"). A permanent grey border is not a
  * focus indicator, however dark.
+ *
+ * ⚠️ And where a GRADIENT is in the paint chain, colour arithmetic cannot answer the
+ * question at all — the caller re-measures that ring from the rendered pixels.
  */
 const SETUP = `(() => {
   ${COLOUR_FNS}
