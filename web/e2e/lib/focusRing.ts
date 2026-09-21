@@ -204,8 +204,24 @@ const SETUP = `(() => {
     // The duration is not a guess — it is read off the element.
     const secs = (v) => Math.max(0, ...String(v || '0s').split(',').map((x) => parseFloat(x) * (x.includes('ms') ? 0.001 : 1) || 0));
     const tcs = getComputedStyle(el);
-    const settleMs = Math.min(1200, (secs(tcs.transitionDuration) + secs(tcs.transitionDelay)) * 1000 + 80);
-    if (settleMs > 0) await sleep(settleMs);
+    // ⚠️ THE STRICT PATH IS FOR ELEMENTS THAT FADE, and only those. The settle rule
+    // exists because a ring TRANSITIONS from currentColor; a control that declares no
+    // transition cannot be read mid-fade, so paying ~600ms for it buys nothing and cost
+    // CI its 30-minute budget once the walks ran at three widths.
+    const fades = secs(tcs.transitionDuration) > 0;
+    // ⚠️ DON'T WAIT OUT THE FADE — END IT. Waiting is what kept failing: WebKit reported
+    // this CTA's ring at 1.12 (its white currentColor), then 2.14, 2.17, 2.68, 2.88 on
+    // successive runs, every one part-way to brand blue, through three rounds of
+    // stricter waiting. Turning the element's own transition off makes the ring jump to
+    // the value it settles at, which is the colour WCAG judges; the fade is not the
+    // indicator. Restored before this function returns.
+    const savedTransition = fades
+      ? [el.style.getPropertyValue('transition'), el.style.getPropertyPriority('transition')]
+      : null;
+    if (fades) {
+      el.style.setProperty('transition', 'none', 'important');
+      void el.offsetWidth; // force the new value to apply before anything is read
+    }
     // ⚠️ THREE CONSECUTIVE IDENTICAL SAMPLES, 100ms apart — not two 60ms apart.
     // WebKit updates a transitioning colour in steps, so two close samples can be equal
     // while the fade is still running: it reported this CTA's ring at 1.12 (pure white,
@@ -224,9 +240,9 @@ const SETUP = `(() => {
       stableFor = now === last ? stableFor + 1 : 0;
       // A minimum as well, because the transition may not have STARTED when the first
       // samples are taken — and those agree perfectly with each other.
-      if (!moving && stableFor >= 2 && Date.now() - t0 >= 320) break;
+      if (!moving && (fades ? stableFor >= 2 && Date.now() - t0 >= 320 : stableFor >= 1)) break;
       last = now;
-      await sleep(100);
+      await sleep(fades ? 100 : 40);
     }
     const best = found.reduce((m, f) => (f.ratio > m ? f.ratio : m), 0);
     // Reported on every failure: without it, "no indicator" cannot be told apart from
@@ -239,6 +255,10 @@ const SETUP = `(() => {
     // reading finishes. Its computed styles are then the UNFOCUSED ones, which reads as
     // "no indicator": a site defect, reported against a control that is perfectly fine.
     // The caller re-measures once rather than believing it.
+    if (savedTransition) {
+      el.style.removeProperty('transition');
+      if (savedTransition[0]) el.style.setProperty('transition', savedTransition[0], savedTransition[1]);
+    }
     const stale = !el.isConnected || document.activeElement !== el;
     // ⚠️ AND DOES THE WINDOW ITSELF HAVE FOCUS? A browser draws no focus ring in a
     // window that is not focused, so a page that lost it reports every control as
