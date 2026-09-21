@@ -83,6 +83,29 @@ async function profile() {
   return data as unknown as Record<string, unknown>;
 }
 
+/**
+ * The profile ONCE `subscription_status` reaches what the event should have made it.
+ *
+ * ⚠️ WHY POLL. The route answers 200 when it has accepted the event; the row is written
+ * a moment later. Reading immediately therefore reads the PREVIOUS test's value, and on
+ * 2026-09-21 that is exactly what happened in CI — `subscription.deleted → canceled`
+ * read "active", the value the invoice test left behind, and passed on retry. Nothing
+ * about billing changed that day; the suite simply got busier (Layer H5 added 175 tests),
+ * which is what a read-after-write race waits for.
+ *
+ * Bounded at 10s and it still FAILS if the write never lands or lands wrong, so this
+ * waits for the outcome rather than excusing it.
+ */
+async function profileWhen(status: string) {
+  await expect
+    .poll(async () => (await profile())['subscription_status'], {
+      message: `the webhook never left subscription_status at "${status}"`,
+      timeout: 10_000,
+    })
+    .toBe(status);
+  return profile();
+}
+
 function subObject(overrides: Record<string, unknown> = {}) {
   return {
     id: SUB,
@@ -307,8 +330,7 @@ test.describe.serial('stripe webhook contract', () => {
     const event = makeEvent('invoice.payment_succeeded', invoiceObject());
     expect((await post(request, event)).ok()).toBeTruthy();
 
-    const p = await profile();
-    expect(p['subscription_status']).toBe('active');
+    const p = await profileWhen('active');
     expect(p['grace_until']).toBeNull();
   });
 
@@ -316,8 +338,7 @@ test.describe.serial('stripe webhook contract', () => {
     const event = makeEvent('customer.subscription.deleted', subObject({ status: 'canceled' }));
     expect((await post(request, event)).ok()).toBeTruthy();
 
-    const p = await profile();
-    expect(p['subscription_status']).toBe('canceled');
+    const p = await profileWhen('canceled');
     expect(p['stripe_subscription_id']).toBeNull();
     expect(p['trial_ends_at']).toBeNull();
     expect(p['cancel_at_period_end']).toBe(false);
@@ -495,8 +516,7 @@ test.describe.serial('stripe webhook contract', () => {
       }),
     );
     expect((await post(request, stale)).ok()).toBeTruthy();
-    const p = await profile();
-    expect(p['subscription_status']).toBe('active');
+    const p = await profileWhen('active');
     expect(p['grace_until']).toBeNull();
   });
 
