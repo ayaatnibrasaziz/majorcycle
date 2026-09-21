@@ -331,7 +331,7 @@ test.describe('the signed-in product is accessible', () => {
        it has stopped animating (11ao) — `lib/focusRing.ts`.
        ⚠️ THREE WIDTHS: 768 is where this shell swaps the drawer for the rail, and
        whether a ring can be seen depends on the container it is drawn in. */
-    for (const width of [375, 768, 1280]) {
+    for (const width of [320, 375, 768, 1280]) {
       test(`${path}: every control shows its focus at ${width}px`, async ({ page, browserName }) => {
         test.setTimeout(240_000);
         await page.setViewportSize({ width, height: 900 });

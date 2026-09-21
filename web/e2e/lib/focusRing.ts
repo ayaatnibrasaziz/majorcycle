@@ -183,8 +183,17 @@ const SETUP = `(() => {
     // footer links as "off screen", and sampled coverage at points outside the viewport
     // (where elementFromPoint returns null, i.e. "covered by nothing"). Poll until the
     // page has stopped moving, capped.
+    // ⚠️ TWICE EQUAL, not once: a smooth scroll steps, and two samples 50ms apart can
+    // be equal mid-glide. The downloaded report sets scroll-behavior:smooth on <html>
+    // (lib/report-download.ts), and reading one step early reported a dozen of its own
+    // info buttons as "off screen" in WebKit.
     let sy = -1;
-    for (let i = 0; i < 20 && sy !== window.scrollY; i++) { sy = window.scrollY; await sleep(50); }
+    let still = 0;
+    for (let i = 0; i < 40 && still < 2; i++) {
+      still = window.scrollY === sy ? still + 1 : 0;
+      sy = window.scrollY;
+      await sleep(50);
+    }
     r = el.getBoundingClientRect(); // where it ENDED UP, not where it was mid-scroll
     // ⚠️ WebKit does not always scroll a control into view when a SCRIPT focuses it,
     // where Tab always does — so a control below the fold measured "off screen" there
@@ -192,9 +201,16 @@ const SETUP = `(() => {
     // ('nearest', never centred), so "is the sticky header covering it?" stays a real
     // question.
     if (r.bottom <= 0 || r.top >= innerHeight || r.right <= 0 || r.left >= innerWidth) {
-      el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      // 'instant': we are measuring where it ENDS UP, and a smooth glide only adds a
+      // race. (The browser's own focus scroll is not ours to control — hence the wait.)
+      el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
       sy = -1;
-      for (let i = 0; i < 20 && sy !== window.scrollY; i++) { sy = window.scrollY; await sleep(50); }
+      still = 0;
+      for (let i = 0; i < 40 && still < 2; i++) {
+        still = window.scrollY === sy ? still + 1 : 0;
+        sy = window.scrollY;
+        await sleep(50);
+      }
       r = el.getBoundingClientRect();
     }
     // ⚠️ WAIT THE ELEMENT'S OWN TRANSITION OUT. WebKit reported this CTA's ring at

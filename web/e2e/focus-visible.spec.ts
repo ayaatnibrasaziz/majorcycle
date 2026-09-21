@@ -35,8 +35,11 @@ const PUBLIC_PATHS: readonly string[] = [
  * collapses below 900, the app shell below 768, cards stack). The clipped rings this
  * layer found were clipped at EVERY width, so a 375-only walk found them by luck rather
  * than by design; 768 is a boundary this repo has been caught at before (11i-b, 11bf).
+ * ⚠️ And 320 because that is the width this product actually supports — the responsive
+ * guards sweep it, the screener was fixed to clear it, and a ring is clipped by the
+ * container it sits in, which is tightest there.
  */
-const WIDTHS = [375, 768, 1280] as const;
+const WIDTHS = [320, 375, 768, 1280] as const;
 
 async function ready(page: Page, path: string, width: number = 375) {
   await page.setViewportSize({ width, height: 812 });

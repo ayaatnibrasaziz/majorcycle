@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { modeFor, ringFailures, walkFocus } from './lib/focusRing';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
@@ -78,8 +79,13 @@ test.describe('downloaded report renders from disk', () => {
     if (admin && userId) await admin.auth.admin.deleteUser(userId);
   });
 
-  test('the .html mounts, throws nothing, and carries its sections', async ({ page, context }) => {
-    test.setTimeout(180_000);
+  test('the .html mounts, throws nothing, and carries its sections', async ({ page, context, browserName }) => {
+    /* 360s, not 180: this test signs in, builds and downloads a ~4 MB artifact, opens
+       it from disk, AND now walks its ~100 focus rings (added in H5). It passed alone at
+       2.5 minutes in WebKit and ran out of budget under full-suite load — a limit is a
+       budget for the machine, and a wrong one fails on the weather rather than on a
+       defect (11t: a guard that fails on the weather teaches everyone to ignore red). */
+    test.setTimeout(360_000);
 
     await page.goto('/login');
     await page.fill('input#email', EMAIL);
@@ -234,6 +240,26 @@ test.describe('downloaded report renders from disk', () => {
       () => document.querySelectorAll('.recharts-wrapper path.recharts-curve').length,
     );
     expect(curves, 'the report charts should render').toBeGreaterThan(0);
+
+    /**
+     * ⚠️ AND ITS FOCUS RINGS (Layer H5). The report is a SECOND BUILD of these
+     * components with its own stylesheet (11d), and it carries real controls — every
+     * Key Metrics row has an InfoTip trigger. The site's walks cannot reach it: it is a
+     * file on disk, not a route, so a keyboard reader's rings here were measured by
+     * nothing at all until this.
+     */
+    const readings = await walkFocus(offline, { mode: modeFor(browserName) });
+    if (readings.length > 0) {
+      const fails = ringFailures(readings);
+      expect(fails, `the downloaded report:\n${fails.join('\n')}`).toEqual([]);
+    } else {
+      // Said out loud rather than passed over: a build with no controls is a fine
+      // result, but it must be the MEASURED one, not an empty walk reported as clean.
+      const controls = await offline.evaluate(
+        () => document.querySelectorAll('a[href], button, input, select, textarea').length,
+      );
+      expect(controls, 'the walk reached nothing but the report has controls').toBe(0);
+    }
 
     await offline.close();
     await fs.unlink(file).catch(() => {});

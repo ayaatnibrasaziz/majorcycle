@@ -803,7 +803,20 @@ three are now closed, and closing them found two more real defects:
 under fixed content; and a ring painted the same colour as its dark band, which only the pixel path
 can see. Plus the derived dialog list, and the walk itself fails rather than return a partial page.
 
-**Final:** the whole suite clean in Chromium, Firefox and WebKit; `pnpm gates` 16/16.
+**AND TWO MORE PLACES NOTHING WAS LOOKING, closed the same way:**
+- **320px**, the width this product actually supports — the responsive guards sweep it and the
+  screener was fixed to clear it, so the walks now run at **320 / 375 / 768 / 1280**.
+- **The DOWNLOADED REPORT.** It is a second build of these components with its own stylesheet
+  (11d) and it carries ~100 real controls (every Key Metrics row has an info trigger), and no walk
+  could reach it because it is a file on disk rather than a route. `report-download.spec.ts` now
+  walks it, and says so out loud if a build ever has no controls rather than reporting an empty
+  walk as clean. ⚠️ It failed first in WebKit — a dozen of its own buttons "off screen" — because
+  the report sets `scroll-behavior: smooth`, and a scroll that GLIDES can read equal twice
+  mid-glide. The walk scrolls `instant` and waits for two equal positions now.
+
+**Final:** the whole suite clean in Chromium (1041), Firefox (1041) and WebKit (1041), the walks
+at four widths, every dialog, and the offline report; `pnpm gates` 16/16. One Firefox flake in an
+unrelated API spec was a dropped local connection (`ECONNRESET`) under load, passing on retry.
 
 **Firefox, same day.** The new "never came back round" check failed every Firefox walk at once, and
 it was right to: Next's dev-only error overlay sits last in `<body>`, and Firefox Tabs through the
