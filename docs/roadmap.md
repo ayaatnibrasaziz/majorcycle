@@ -3147,7 +3147,12 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 >
 > ✅ **H1 AND H2 ARE MERGED AND LIVE** — H1 and H2's build in PR #101 (2026-09-16/17); H2's
 > close-out (server-side verification and three fixes) in the PR that follows it, 2026-09-18.
-> **H3, H4 merged (PRs #106, #107); H5 built 2026-09-20. H6 / H6a are next.** *(What follows is the H1 build note as written.)*
+> ✅ **H5 COMPLETE 2026-09-20/21 (PR #108)** — keyboard focus is measured at 320/375/768/1280 on
+> every public page, every signed-in page, the paid pages, all five dialogs and the downloaded
+> report, in all three engines. **Six real defects** fixed. ⚠️ Its first version recorded three
+> "limits" and called itself done; the owner refused that, and closing them found half the defects.
+>
+> **H3, H4, H5 merged (PRs #106, #107, #108). H6 / H6a are next.** *(What follows is the H1 build note as written.)*
 >
 > 🔨 **H1 IS BUILT (2026-09-14/15) and NOT MERGED.** H1.2 the shell, H1.3 the re-measure, H1.4
 > the widened guard — done. **H1.5 (the a11y + contrast re-run at phone width, drawer open) is
@@ -3342,19 +3347,31 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
   - The rest were test-side and each kept its assertion: `innerText` over chart labels, Safari's
     click/Tab focus rules, headless Firefox withholding animation frames, longer limits.
 
-#### H5 · Accessibility residue ✅ BUILT 2026-09-20 — `layer-h-plan.md` § H5
+#### H5 · Accessibility residue ✅ COMPLETE 2026-09-20/21 (PR #108) — `layer-h-plan.md` § H5
 
-- [x] Focus visibility at 375px (**polled until the computed value settles** — two earlier
-      sessions read this at t≈0 and reported white, 11ao), and the signed-in scans re-run at
-      phone width **including the open drawer**, since a closed control is outside every scan we
-      own (11ax).
-  - Every public page, the open menu, all six signed-in pages, the open drawer and three paid
-    pages walked by keyboard at 375px (`e2e/focus-visible.spec.ts`, `e2e/lib/focusRing.ts`), and axe
-    at 375px on every signed-in page. **Three real defects found and fixed, plus one probe blind spot:** the holders table could not
-    be scrolled by keyboard; each phone result card nested a button in a button (fixed with the six
-    cards byte-identical); six charts and two toggles whose ring was CLIPPED away at every width by
-    an `overflow: hidden` container; and the probe's own blind spot for focus drawn on a search
-    box's wrapper. Safari is walked by focusing each control directly (it cannot Tab to links).
+- [x] Focus visibility (**read only once settled** — two earlier sessions read it at t≈0 and
+      reported white, 11ao) and the signed-in scans re-run at phone width **including the open
+      drawer**, since a closed control is outside every scan we own (11ax).
+  - **What runs now:** a keyboard walk at **320 / 375 / 768 / 1280** over every public page, the
+    open menu, all six signed-in pages, the open drawer, the paid pages, **all five dialogs**
+    (upgrade, trial, support, methodology, first-login gate — the list DERIVED from
+    `DialogContent`, so a new one fails on the day it is written) and the **downloaded report**
+    (a second build, ~100 controls, reachable only as a file); plus axe at phone width on every
+    signed-in page, free and paid. `e2e/focus-visible.spec.ts`, `e2e/focus-dialogs.spec.ts`,
+    `e2e/app-a11y.spec.ts`, `e2e/report-download.spec.ts`, mechanism in `e2e/lib/focusRing.ts`.
+  - **Six real defects, all fixed:** the holders table could not be scrolled by keyboard; each
+    phone result card nested a button in a button (fixed with the six cards byte-identical); six
+    charts and two toggles had their ring CLIPPED away at every width by an `overflow: hidden`
+    container; the legal pages' contents rail did the same at desktop width; the paid Verdict
+    card's info button measured **2.13:1** once read from PIXELS (colour arithmetic had guessed
+    3.64 by reading through its gradient to the page behind); and a stray pointer left a tooltip
+    open during an axe scan.
+  - ⚠️ **The owner refused the three "limits" the first version recorded**, and closing them found
+    three of those six. ⚠️ Safari is walked by FOCUSING each control (it cannot Tab to links —
+    Safari's own preference); what is not measured there is Safari's Tab ORDER, which is not ours.
+  - **Proven:** whole suite clean in Chromium, Firefox and WebKit (1041 each), `pnpm gates` 16/16,
+    CI 1041 passed; three sabotage controls (a removed ring, a control buried under fixed content,
+    a ring painted invisible on a dark band) each red on demand.
 
 #### H6 · Owner items 🔵 — any time, no dependency
 
@@ -3523,7 +3540,9 @@ Order of priority TBD based on user feedback. Candidate features:
    ↓
    Phase 1 Layer H: Hardening (Phase 1.5)  — PLANNED + CONFIRMED 2026-09-14, docs/layer-h-plan.md
                                               H1 phone shell · H2 Sentry · H3 /learn · H4 browsers
-                                              H5 a11y · H6 owner items · H6a 12 Key Metrics rows
+                                              H5 a11y (focus rings, 4 widths, dialogs, the
+                                              downloaded report) · H6 owner items
+                                              H6a 12 Key Metrics rows
    ↓
 🚀 LAUNCH                                   — gated on Vercel Hobby → Pro (Hobby forbids commercial use)
    ↓

@@ -106,8 +106,10 @@ const NEEDS_A_SERVER = [
 const LOCAL_ONLY = [
   [
     'pnpm e2e:browsers',
-    'the whole suite in Chromium + Firefox + WebKit, ~1.5 h — LOCAL ONLY by owner ' +
-      'decision (Layer H4); run it before a release, not on every push',
+    'the whole suite in Chromium + Firefox + WebKit, ~3.5 h — LOCAL ONLY by owner ' +
+      'decision (Layer H4); run it before a release, not on every push. It runs the three ' +
+      'keyboard-walk specs one test at a time (only one page in a browser can hold focus) ' +
+      'and everything else in parallel — measured 61m/76m/89m per engine (H5)',
   ],
 ];
 

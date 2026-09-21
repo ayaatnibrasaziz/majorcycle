@@ -5,8 +5,12 @@ PRODUCTION** (built 2026-09-16, configured 2026-09-17 in Sentry's US region, mer
 server side verified on Vercel 2026-09-18 — §12). All nine decisions taken, both designs approved.
 · ✅ **H3 BUILT** (2026-09-18) — see the H3 section. · ✅ **H4 BUILT** (2026-09-19) — 876 tests clean
 in Chromium, Firefox and WebKit, and one real defect fixed on seven forms; see the H4 section.
-· ✅ **H3 and H4 MERGED** (PRs #106, #107, 2026-09-19). · ✅ **H5 BUILT** (2026-09-20) — three real
-defects found and fixed (two at phone width, one at every width); see the H5 section. **H6 / H6a are next.**
+· ✅ **H3 and H4 MERGED** (PRs #106, #107, 2026-09-19). · ✅ **H5 COMPLETE** (2026-09-20/21, PR #108)
+— **six real defects** found and fixed, keyboard focus now measured at four widths on every public
+page, every signed-in page, the paid pages, all five dialogs and the **downloaded report**, in all
+three engines; see the H5 section. ⚠️ Its first version named three "limits" and called itself
+done; the owner refused them — *"if you are finding limits and saying that you are happy, you are
+just faking it"* — and closing them produced three of the six defects. **H6 / H6a are next.**
 **Three findings came out of building it** that the plan did not have — §3, findings I, J and K.
 ⚠️ Finding I changed a **paid** surface beyond the approved design; it was put to the owner, and
 **my first fix for it was wrong** — it passed every automated check and the owner caught it from a
