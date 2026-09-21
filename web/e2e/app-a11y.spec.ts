@@ -4,6 +4,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { RUN_SNAPSHOT, RUN_SNAPSHOT_ROWS, SNAPSHOT_KEY } from './fixtures/runSnapshot';
 import { TAGS, RULE_OPTIONS, rulesThatDidNotRun } from './lib/axeRules';
+import { modeFor, ringFailures, walkFocus } from './lib/focusRing';
 import { signIn } from './lib/session';
 
 /**
@@ -80,6 +81,14 @@ async function scan(page: Page, path: string) {
      before either of them ran. Same shape as CLAUDE.md 11c-iv: the rule existed,
      in a comment, and the one line that needed it never received it. */
   await page.goto(path, { waitUntil: 'domcontentloaded' });
+
+  /* ⚠️ PARK THE POINTER. Playwright's mouse stays where the last action left it, and it
+     carries across a navigation — so a page can be scanned with an InfoTip bubble open
+     under a pointer nobody moved. That is what failed `/results` at 1280px and nowhere
+     else: the bubble is portalled to <body> (deliberately, so no card can clip it), and
+     axe correctly reported content outside a landmark. The hover is the test's, not a
+     reader's, so the scan is of the page as it renders. */
+  await page.mouse.move(0, 0);
 
   // Prove we are on the page we think we are: a signed-in route that started
   // bouncing to /login would otherwise scan clean and mean nothing.
@@ -298,6 +307,58 @@ test.describe('the signed-in product is accessible', () => {
       expect(found, `${path}:\n${found.join('\n')}`).toEqual([]);
     });
   }
+
+  /**
+   * ⚠️ LAYER H5 — THE SAME SCAN AT PHONE WIDTH, on every signed-in page. Until now
+   * only `/stocks` was scanned at 375px (below). Below 768px these pages are a
+   * different layout — stacked cards, the drawer instead of the rail, the pills and
+   * the radar rearranged (11bf) — and a layout the scan has never seen is not one it
+   * has passed.
+   */
+  for (const path of APP_PATHS) {
+    test(`${path} has no axe violations at 375px`, async ({ page }) => {
+      test.setTimeout(120_000);
+      await page.setViewportSize({ width: 375, height: 812 });
+      const results = await scan(page, path);
+      expect(results.passes.length, `axe checked nothing on ${path} at 375px`).toBeGreaterThan(10);
+      const found = results.violations.map(
+        (v) => `[${v.impact}] ${v.id} — ${v.nodes.length} node(s): ${v.help}`,
+      );
+      expect(found, `${path} at 375px:\n${found.join('\n')}`).toEqual([]);
+    });
+
+    /* H5: every control a keyboard reaches must show where it is, at 3:1, read once
+       it has stopped animating (11ao) — `lib/focusRing.ts`.
+       ⚠️ THREE WIDTHS: 768 is where this shell swaps the drawer for the rail, and
+       whether a ring can be seen depends on the container it is drawn in. */
+    for (const width of [320, 375, 768, 1280]) {
+      test(`${path}: every control shows its focus at ${width}px`, async ({ page, browserName }) => {
+        test.setTimeout(240_000);
+        await page.setViewportSize({ width, height: 900 });
+        await scan(page, path);
+        const readings = await walkFocus(page, { mode: modeFor(browserName) });
+        expect(readings.length, `${path}: the walk reached ${readings.length} controls`).toBeGreaterThanOrEqual(3);
+        const fails = ringFailures(readings);
+        expect(fails, `${path} at ${width}px:\n${fails.join('\n')}`).toEqual([]);
+      });
+    }
+  }
+
+  test('the OPEN navigation drawer shows focus on every link at 375px', async ({ page, browserName }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize({ width: 375, height: 812 });
+    await scan(page, '/stocks');
+    await page.locator('[data-shell-menu-toggle]').click();
+    await expect(page.getByRole('dialog', { name: /main navigation/i })).toBeVisible();
+    const readings = await walkFocus(page, { mode: modeFor(browserName) });
+    // The control: the walk must actually be INSIDE the drawer, or this re-measured the page.
+    expect(
+      readings.filter((r) => /Browse|Run|Results|Request/.test(r.who)).length,
+      'the walk never reached the drawer links',
+    ).toBeGreaterThan(0);
+    const fails = ringFailures(readings);
+    expect(fails, `the open drawer at 375px:\n${fails.join('\n')}`).toEqual([]);
+  });
 
   /**
    * The PHONE shell, and the drawer while it is OPEN — Layer H · H1.5.
@@ -529,5 +590,70 @@ test.describe('the PAID product is accessible', () => {
       })
       .toBeGreaterThanOrEqual(RUN_SNAPSHOT_ROWS);
     await sweep('/results (entitled)');
+  });
+
+  /**
+   * H5 — the PAID pages at phone width: axe, and every focus indicator. The paid
+   * layout is where the phone rearranges most (the scorecard stacks, the pills wrap,
+   * the screener's controls reflow — 11bf), and a free session never renders any of it.
+   */
+  for (const width of [375, 768, 1280])
+  test(`the entitled pages at ${width}px: no axe violations, and every focus visible`, async ({ page, browserName }) => {
+    test.setTimeout(600_000);
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/login');
+    await page.fill('input#email', PAID_EMAIL);
+    await page.fill('input#password', PAID_PASSWORD);
+    await page.getByRole('button', { name: /^sign in$/i }).click();
+    await page.waitForURL(/\/stocks/, { timeout: 30_000 });
+
+    const check = async (label: string) => {
+      await page
+        .waitForFunction(
+          () => document.getAnimations().every((a) => a.playState === 'finished' || a.playState === 'idle'),
+          null,
+          { timeout: 20_000 },
+        )
+        .catch(() => {});
+      await page.mouse.move(0, 0); // see `scan()` — no stray hover state in the scan
+      const results = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
+      expect(rulesThatDidNotRun(results), `axe skipped rules on ${label}`).toEqual([]);
+      expect(results.passes.length, `axe checked nothing on ${label}`).toBeGreaterThan(10);
+      const found = results.violations.map(
+        (v) =>
+          `[${v.impact}] ${v.id} — ${v.nodes.length} node(s): ${v.help}\n    ` +
+          // NAME the node. "1 node" alone sent me hunting for a violation that only
+          // appears in this sequence of pages (H5 audit).
+          v.nodes.map((n) => `${n.target.join(' ')} :: ${n.html.slice(0, 120)}`).join('\n    '),
+      );
+      expect(found, `${label}:\n${found.join('\n')}`).toEqual([]);
+      const readings = await walkFocus(page, { mode: modeFor(browserName) });
+      expect(readings.length, `${label}: the focus walk reached nothing`).toBeGreaterThanOrEqual(3);
+      const fails = ringFailures(readings);
+      expect(fails, `${label} focus:\n${fails.join('\n')}`).toEqual([]);
+    };
+
+    await page.goto('/stocks/us/AAPL');
+    await expect
+      .poll(() => page.evaluate(() => document.querySelectorAll('body *').length), { timeout: 120_000 })
+      .toBeGreaterThanOrEqual(900);
+    // Positive control, as above: the Verdict thesis exists only for an entitled viewer.
+    expect(await page.locator('.verdict-thesis-num').count(), 'not entitled — this proves nothing').toBeGreaterThan(0);
+    await check('/stocks/us/AAPL (entitled, ${width}px)');
+
+    await page.goto('/run');
+    await expect(page.locator('.upload-zone')).toBeVisible({ timeout: 30_000 });
+    await check('/run (entitled, ${width}px)');
+
+    await page.evaluate(
+      ([key, snap]) => sessionStorage.setItem(key as string, JSON.stringify(snap)),
+      [SNAPSHOT_KEY, RUN_SNAPSHOT] as const,
+    );
+    await page.goto('/results');
+    await expect
+      .poll(() => page.locator('.score-num').count(), { timeout: 45_000 })
+      .toBeGreaterThanOrEqual(RUN_SNAPSHOT_ROWS);
+    await check('/results (entitled, ${width}px)');
   });
 });

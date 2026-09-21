@@ -48,30 +48,72 @@ if (!env.PLAYWRIGHT_BROWSERS_PATH && process.platform === 'win32') {
 console.log(`browsers: ${env.PLAYWRIGHT_BROWSERS_PATH ?? '(Playwright default)'}`);
 console.log(`engines:  ${engines.join(', ')}${passthrough.length ? `   args: ${passthrough.join(' ')}` : ''}\n`);
 
+/**
+ * ⚠️ THE FOCUS WALKS RUN ONE AT A TIME; EVERYTHING ELSE DOES NOT.
+ *
+ * Those specs measure what a browser draws for the KEYBOARD, and only one page in a
+ * browser can hold focus — with two workers, whichever page lost it reported every
+ * control as "no ring" (Firefox and WebKit both did; Chromium does not, which is why CI
+ * is unaffected). Making the WHOLE suite serial to fix three specs was the first answer
+ * and it taxed every other test for a fault they do not have, so each engine now runs
+ * twice: the walks with `--workers=1`, the rest in parallel. The two totals are summed,
+ * so the "same number of tests in every engine" check is unchanged.
+ */
+const FOCUS_SPECS = ['e2e/focus-visible.spec.ts', 'e2e/app-a11y.spec.ts', 'e2e/focus-dialogs.spec.ts'];
+
 const dir = mkdtempSync(join(tmpdir(), 'mc-e2e-browsers-'));
 const results = [];
-for (const engine of engines) {
-  const report = join(dir, `${engine}.json`);
-  console.log(`━━ ${engine} ━━`);
-  const t0 = Date.now();
-  // One command STRING, not an args array: `pnpm` is a .cmd shim on Windows and
-  // needs a shell, and Node deprecates shell + args (DEP0190) because it only
-  // concatenates them. The args are quoted here instead, so a spec path with a
-  // space survives.
-  const cmd = ['pnpm exec playwright test', `--project=${engine}`, '--reporter=list,json',
-    ...passthrough.map((a) => JSON.stringify(a))].join(' ');
+
+/** One Playwright invocation. Returns its stats (or null if it never reported). */
+function invoke(engine, report, args, extraEnv = {}) {
+  // One command STRING, not an args array: `pnpm` is a .cmd shim on Windows and needs a
+  // shell, and Node deprecates shell + args (DEP0190) because it only concatenates them.
+  const cmd = ['pnpm exec playwright test', `--project=${engine}`, '--reporter=list,json', ...args].join(' ');
   const run = spawnSync(cmd, {
     stdio: 'inherit',
     shell: true,
-    env: { ...env, PLAYWRIGHT_JSON_OUTPUT_NAME: report },
+    env: { ...env, ...extraEnv, PLAYWRIGHT_JSON_OUTPUT_NAME: report },
   });
   let stats = null;
   try {
     stats = JSON.parse(readFileSync(report, 'utf8')).stats;
   } catch {
-    // No report at all — the engine never got as far as running a test.
+    // No report at all — this invocation never got as far as running a test.
   }
-  results.push({ engine, exit: run.status, stats, mins: (Date.now() - t0) / 60000 });
+  return { stats, exit: run.status };
+}
+
+const add = (a, b) => {
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    expected: a.expected + b.expected,
+    unexpected: a.unexpected + b.unexpected,
+    flaky: a.flaky + b.flaky,
+    skipped: a.skipped + b.skipped,
+  };
+};
+
+for (const engine of engines) {
+  console.log(`━━ ${engine} ━━`);
+  const t0 = Date.now();
+  let stats = null;
+  let exit = 0;
+
+  if (passthrough.length) {
+    // Explicit spec paths: one serial run, because the caller may well have named a walk.
+    const r = invoke(engine, join(dir, `${engine}.json`), ['--workers=1', ...passthrough.map((a) => JSON.stringify(a))]);
+    stats = r.stats;
+    exit = r.exit;
+  } else {
+    const walks = invoke(engine, join(dir, `${engine}-walks.json`), ['--workers=1', ...FOCUS_SPECS]);
+    const rest = invoke(engine, join(dir, `${engine}-rest.json`), [], { MC_SKIP_FOCUS_SPECS: '1' });
+    stats = add(walks.stats, rest.stats);
+    // Either invocation failing fails the engine; a missing report shows up as no stats.
+    exit = walks.exit || rest.exit;
+    if (!walks.stats || !rest.stats) stats = walks.stats ?? rest.stats;
+  }
+  results.push({ engine, exit, stats, mins: (Date.now() - t0) / 60000 });
 }
 
 /* ── the verdict ─────────────────────────────────────────────────────────── */

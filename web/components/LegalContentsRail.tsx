@@ -86,7 +86,12 @@ export function LegalContentsRail({
                   setActive(s.id);
                   lock();
                 }}
-                className={`flex items-baseline gap-2.5 border-l-2 py-1.5 pl-3 text-[length:var(--pub-body)] leading-snug no-underline transition-colors ${
+                /* ⚠️ The ring is drawn INSIDE the edge here: this rail is
+                   `overflow-y-auto`, which clips anything painted outside it, and the
+                   site-wide ring sits 2px out — so a keyboard reader on a desktop saw
+                   it cut away on three sides (H5, found the day the walks stopped
+                   being phone-only). Same fix as the Key Metrics scroller. */
+                className={`flex items-baseline gap-2.5 border-l-2 py-1.5 pl-3 text-[length:var(--pub-body)] leading-snug no-underline transition-colors focus-visible:[outline-offset:-2px] ${
                   isActive
                     ? 'border-[var(--brand-mid)] font-semibold text-[var(--brand-mid)]'
                     : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--border)] hover:text-[var(--brand-mid)]'

@@ -81,6 +81,16 @@ export default defineConfig({
     trace: 'on-first-retry',
     navigationTimeout: 45_000,
   },
+  /**
+   * ⚠️ `MC_SKIP_FOCUS_SPECS` leaves out the three keyboard-walk specs, and ONLY
+   * `pnpm e2e:browsers` sets it: that command runs the walks in their own serial
+   * invocation (one page in a browser can hold focus, not two) and everything else in
+   * parallel. CI never sets it, so CI runs every spec.
+   */
+  testIgnore:
+    process.env.MC_SKIP_FOCUS_SPECS === '1'
+      ? ['**/focus-visible.spec.ts', '**/focus-dialogs.spec.ts', '**/app-a11y.spec.ts']
+      : undefined,
   // ⚠️ Chromium only, unless `pnpm e2e:browsers` asks for all three (Layer H4).
   // Owner decision 4: the cross-browser run is local and on demand, NOT in CI, so a
   // push is not slowed. It is gated on an env var rather than always declaring three

@@ -5,7 +5,12 @@ PRODUCTION** (built 2026-09-16, configured 2026-09-17 in Sentry's US region, mer
 server side verified on Vercel 2026-09-18 — §12). All nine decisions taken, both designs approved.
 · ✅ **H3 BUILT** (2026-09-18) — see the H3 section. · ✅ **H4 BUILT** (2026-09-19) — 876 tests clean
 in Chromium, Firefox and WebKit, and one real defect fixed on seven forms; see the H4 section.
-**H5 (accessibility residue) is next.**
+· ✅ **H3 and H4 MERGED** (PRs #106, #107, 2026-09-19). · ✅ **H5 COMPLETE** (2026-09-20/21, PR #108)
+— **six real defects** found and fixed, keyboard focus now measured at four widths on every public
+page, every signed-in page, the paid pages, all five dialogs and the **downloaded report**, in all
+three engines; see the H5 section. ⚠️ Its first version named three "limits" and called itself
+done; the owner refused them — *"if you are finding limits and saying that you are happy, you are
+just faking it"* — and closing them produced three of the six defects. **H6 / H6a are next.**
 **Three findings came out of building it** that the plan did not have — §3, findings I, J and K.
 ⚠️ Finding I changed a **paid** surface beyond the approved design; it was put to the owner, and
 **my first fix for it was wrong** — it passed every automated check and the owner caught it from a
@@ -697,8 +702,145 @@ controls. **Both red when their fix is removed.** The other five forms on the si
 reactivate, delete account, sign-out, billing portal) post to a server `action=` and work before
 the page is ready by design.
 
-### H5 · Accessibility residue 🟢 — falls out of H1
-Focus visibility at 375px; signed-in scans at phone width. Nearly free once H1 lands.
+### H5 · Accessibility residue ✅ BUILT 2026-09-20
+Focus visibility at 375px; signed-in scans at phone width.
+
+**What now runs, on every push (Chromium, inside `pnpm gates`):**
+- **Every control a keyboard reaches shows its focus at 3:1** at 375px — all 29 public pages
+  (derived from the registries), the open phone menu, all six signed-in pages, the open app drawer,
+  and the three paid pages on a throwaway entitled account. `e2e/lib/focusRing.ts` Tabs through the
+  page and reads each indicator **only once it has stopped animating** (11ao): an outline, a
+  `box-shadow` ring, a border that changes on focus, or the same on the wrapper around it.
+  Measured: the site's ring is `--brand-bright` at **3.99–4.03:1**; the pricing toggle 3.79.
+- **axe at 375px on every signed-in page**, free and paid — until now only `/stocks` was.
+
+**Two real defects, both invisible at desktop width, both fixed — and one blind spot in the probe:**
+1. **The Top Institutional Holders table** scrolls sideways below ~380px and held nothing a keyboard
+   could land on, so its Shares column was unreachable (axe `scrollable-region-focusable`). The
+   wrapper is now a labelled, focusable region. An extra Tab stop at every width; nothing visible.
+2. **Every phone result card on `/results`** (paid) was a button with the rating badge — a second
+   button — inside it (`nested-interactive`, 6 nodes). Now a transparent "open" button covers the
+   card and the badge is its raised sibling. **All six cards byte-identical** in before/after
+   screenshots; the badge still filters and the card still opens.
+3. *(Not a defect — my probe's.)* The search boxes on `/stocks` and `/request` scored "no
+   indicator": their focus is the WRAPPER's border (`:focus-within` → brand blue, 4:1), and the probe
+   only read the input. It now reads the two nearest ancestors for what CHANGED on focus — never a
+   permanent border — and removing that `:focus-within` rule turns `/request` red.
+
+**Audit, same day — a fourth defect, and it was at EVERY width.** A ring can pass on colour and
+still be cut off: the site-wide ring sits 2px *outside* the element, and three containers are
+`overflow: hidden` — the chart wrapper and the two segmented toggles. So on Stock Detail a keyboard
+reader tabbing onto any of **six charts** (Recharts makes each a focusable `role="application"`;
+arrow keys walk the data) saw the ring clipped on all four sides, and on **Drawdown/Profit** and
+**Quarterly/Annual** on three: focus vanished. Nothing measured on colour could see it. The probe
+now counts the sides of the ring band a clipping ancestor cuts and fails at three or more; the
+ring is drawn *inside* the edge in those three containers, white on the one solid-blue button.
+**Red on all ten controls with the CSS removed, green with it**; a 1280px walk of Stock Detail was
+added because the defect was never a phone rule. The audit also made the walk **fail** if it runs
+out of Tabs rather than return a partial page, and fail when focus lands on something with no size.
+**SAFARI IS MEASURED, not skipped** — owner's instruction, 2026-09-20. The audit's first answer
+was to skip WebKit's walks because that build never gives a LINK focus from Tab (Safari's own "Tab
+to links" preference, off by default: real Safari behaviour, not ours). That threw away the half
+that IS ours — whether our CSS shows a ring — so WebKit now walks by focusing each visible control
+directly. **Measured before it was trusted:** with a key press first, WebKit matches
+`:focus-visible` on programmatic focus for every control and reports the same outline colours as
+Chromium, control for control (`/pricing`, 375px). What Safari's walk does NOT check is the Tab
+ORDER, which there is Safari's own.
+
+⚠️ **It took seven runs, and every failure was the instrument.** Worth keeping, because each one
+produced a confident, plausible, wrong finding:
+- **A MODIFIER KEY DOES NOT COUNT AS KEYBOARD USE.** After a mouse click WebKit is in pointer
+  modality and a script's `focus()` stops matching `:focus-visible` — so every control reads "no
+  ring". Pressing **Shift** does not undo it; F1 does (measured both ways, menu opened by a real
+  click). My first Safari experiment only worked because that page had never been clicked, and my
+  first attempt to reproduce the failure pressed Escape in every arm, which hid the difference.
+- **`tabindex="-1"` is not keyboard-reachable**, so the walk must not visit it: the two honeypot
+  inputs are invisible to people by design, and WebKit's walk reported both as defects.
+- **WebKit does not always scroll a script-focused control into view**, where Tab always does — a
+  control below the fold measured "off screen" there and nowhere else.
+- **Two pages in one browser cannot both hold focus**, so the parallel run reported whole pages as
+  ringless in Firefox and WebKit while each passed alone. `pnpm e2e:browsers` now runs
+  `--workers=1`: 16.7m against 21.8m on these two specs, and determinism is worth it for a command
+  run on purpose before a release.
+- **A plateau is not a finish** (11ao again): the ring transitions from `currentColor`, and two
+  equal readings taken before the transition starts scored a white ring on a dark band at 1.1:1 in
+  Firefox and WebKit while Chromium read the settled blue. The settle now has a **minimum**.
+- **Sample the part of a control that is ON SCREEN.** Points taken at fractions of the element's
+  own height fall outside the viewport for anything taller than the screen, and a point outside the
+  viewport returns nothing — which read as "covered by (nothing)" on a chart, a table region and an
+  article card.
+- And the two that were caught by a CONTROL rather than by a run: the obscured check accepted a
+  control's own PARENT as "the thing on top", which made it unable to fail at all (every parent
+  chain ends at `<body>`); and it flagged a wrapped link as covered by its own paragraph, because a
+  link on two lines has a bounding box spanning the whole column (11bh, the same trap).
+
+**THEN THE OWNER REFUSED THE THREE "LIMITS" I HAD WRITTEN DOWN, and was right to.** Naming a limit
+and calling the layer finished is the same move as an exemption that outlives its defect (11t). All
+three are now closed, and closing them found two more real defects:
+
+- **WIDTHS.** The walks ran at 375px only. They now run at **375 / 768 / 1280** on every public
+  page, every signed-in page and the paid pages — 768 because that is where this shell swaps the
+  drawer for the rail, and whether a ring can be SEEN depends on the container it is drawn in.
+  ⚠️ **It immediately found a defect the phone-only walk could not:** the legal pages' contents
+  rail is `overflow-y: auto`, so at desktop width every clause link's ring was clipped on three
+  sides. Red without the fix, green with it.
+- **DIALOGS.** Only the nav menu and the drawer were walked; every other dialog renders nothing
+  until a reader opens one, so none was measured. `e2e/focus-dialogs.spec.ts` now opens and walks
+  all five — upgrade, trial, support, methodology and the first-login gate — and **the list is
+  derived**: it reads the codebase and fails if a component renders a `DialogContent` that nothing
+  opens, and also if a name here no longer exists. Two needed their own account states (a payment
+  dispute for support; a brand-new account for the gate), which is 11bd again.
+- **GROUND UNDER THE RING.** Colour arithmetic cannot answer a ring drawn over a gradient
+  (`background: linear-gradient(…)` leaves `background-color` transparent, so it reads through to
+  the page — 11l iii). Where a gradient is in the paint chain the walk now **measures the rendered
+  pixels**: screenshot, decode in the page, average the ring band and the band just outside it.
+  ⚠️ Its first verdict was a false one — 2.13:1 on the Verdict card's round info button, which a
+  screenshot plainly shows ringed in blue on a near-white card: averaging all four sides of a
+  ROUND control samples background at the corners, and focusing it opens its own tooltip over one
+  side. Each side is now judged on its own and the clearest wins.
+- **SPEED.** Making the whole cross-browser suite serial to fix three specs taxed every other test
+  for a fault they do not have. `pnpm e2e:browsers` now runs each engine twice: the three walk
+  specs with `--workers=1`, everything else in parallel (`MC_SKIP_FOCUS_SPECS` in the config), and
+  sums both totals so the "same number of tests in every engine" check is unchanged.
+
+**Controls, all three proven red:** a removed ring (exactly one failure, named); a control buried
+under fixed content; and a ring painted the same colour as its dark band, which only the pixel path
+can see. Plus the derived dialog list, and the walk itself fails rather than return a partial page.
+
+**AND TWO MORE PLACES NOTHING WAS LOOKING, closed the same way:**
+- **320px**, the width this product actually supports — the responsive guards sweep it and the
+  screener was fixed to clear it, so the walks now run at **320 / 375 / 768 / 1280**.
+- **The DOWNLOADED REPORT.** It is a second build of these components with its own stylesheet
+  (11d) and it carries ~100 real controls (every Key Metrics row has an info trigger), and no walk
+  could reach it because it is a file on disk rather than a route. `report-download.spec.ts` now
+  walks it, and says so out loud if a build ever has no controls rather than reporting an empty
+  walk as clean. ⚠️ It failed first in WebKit — a dozen of its own buttons "off screen" — because
+  the report sets `scroll-behavior: smooth`, and a scroll that GLIDES can read equal twice
+  mid-glide. The walk scrolls `instant` and waits for two equal positions now.
+
+**Final:** the whole suite clean in Chromium (1041), Firefox (1041) and WebKit (1041), the walks
+at four widths, every dialog, and the offline report; `pnpm gates` 16/16. One Firefox flake in an
+unrelated API spec was a dropped local connection (`ECONNRESET`) under load, passing on retry.
+
+**Firefox, same day.** The new "never came back round" check failed every Firefox walk at once, and
+it was right to: Next's dev-only error overlay sits last in `<body>`, and Firefox Tabs through the
+parts inside it one by one, so a walk that returned what it had would have looked complete. The
+overlay now counts as the end of the page, and "focus left the page" is accepted only when **no
+tabbable control follows the last one read**. Two Firefox findings followed:
+- **The Key Metrics scroller** is a Tab stop in Firefox (it makes every scrolling box one) and its
+  ring was clipped on three sides by the card body — the same fix, drawn inside the edge.
+- **"Continue with Google" reported focus on a zero-size element.** Google's widget focuses a 0×0
+  overlay and draws its ring inside its own cross-origin iframe, which no script of ours can read.
+  ⚠️ **I misread this first.** An early screenshot showed no ring, I called it a defect and added a
+  ring of our own; re-checked with our CSS removed, Google's ring (`rgb(0,99,155)`) is there from
+  100ms, so mine only doubled it and was **reverted**. The probe now exempts that one element **by
+  Google's exact label**, so an invisible focus stop of ours still fails.
+
+**Controls:** a header link with its ring removed is caught — exactly one failure, naming it; the
+search-wrapper rule red when its CSS is removed; each walk must reach ≥3 controls, the menu and drawer
+walks must reach their own links, and the paid walk must see the Verdict thesis first.
+⚠️ The first control run failed with TWO failures, not one: the CSS selector matched two logos. The
+probe was right and the control ambiguous; it now marks one element by hand.
 
 ### H6 · Owner items 🔵 — any time
 The 13px/16px decision; disclaimer copy; beta.
@@ -720,7 +862,7 @@ Every check has a **control** — the thing that proves it can fail (11p).
 | H3a | ~~Picture share ≤ 50% of the band~~ — **replaced when side-by-side was chosen** (the ratio only means something while the picture is above the text). Now: from **600px** the heading starts within 60px of its picture's top and the picture is ≤ **320px**, swept 600 → 1023 in 17px steps plus 1023 itself; separately swept at **1px** from 320 → 1440 during the audit, clean | Below 600px (599) the band must still **stack picture-first**, and 1280 must be **unchanged** — "side by side everywhere" passes the sweep and crushes a phone's text column |
 | H3b | Every article link ≥ **44px** at 375px | Assert the **wrapping** titles by name — fixing only the single-line rows would read as a pass |
 | H4 ✅ | Whole suite in Chromium + **Firefox** + WebKit; the runner prints a **per-engine count** | Three totals, never one — an engine that failed to launch reports as "no failures" (and today Firefox would) |
-| H5 | Focus indicator ≥ **3:1** against its own ground at 375px, **polled until the computed value stops changing** | 11ao: two sessions read this at t≈0 and got white. A control with its outline removed must be caught |
+| H5 ✅ | Focus indicator ≥ **3:1** against its own ground at 375px, **polled until the computed value stops changing** | 11ao: two sessions read this at t≈0 and got white. A control with its outline removed must be caught |
 | H6 | Owner's judgement | — |
 
 ---

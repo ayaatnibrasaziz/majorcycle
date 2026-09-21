@@ -151,7 +151,10 @@ jobs:
     # notification — an unfinished run reads exactly like a slow one. The failed-
     # workflow email is the only alerting channel this project has, so a hang has
     # to become a FAILURE for anyone to hear about it. Whole suite runs in ~3.3m.
-    timeout-minutes: 30
+    # ⚠️ 30 was not enough once the focus walks ran at three widths (H5): the job was
+    # cancelled at exactly 30:17. Actions minutes are free on this public repo (11an),
+    # so the budget is raised rather than the coverage cut.
+    timeout-minutes: 60
     # Boots a real Next dev server, so it needs the (public) Supabase URL + anon
     # key. They live as repo Variables — until they're set this job SKIPS cleanly
     # instead of failing, so CI never goes red on missing config. Add repo
