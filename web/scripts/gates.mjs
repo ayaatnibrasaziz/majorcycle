@@ -61,7 +61,7 @@ const GATES = [
   { name: 'check:tier-palette',   cmd: 'pnpm check:tier-palette',         cwd: WEB,  covers: ['pnpm check:tier-palette'] },
   { name: 'build',                cmd: 'pnpm build',                      cwd: WEB,  covers: ['pnpm build', 'pnpm build:report-bundle'] },
   { name: 'check:render-modes',   cmd: 'pnpm check:render-modes',         cwd: WEB,  covers: ['pnpm check:render-modes'] },
-  { name: 'e2e',                  cmd: 'pnpm e2e',                        cwd: WEB,  covers: ['pnpm e2e'], slow: true },
+  { name: 'e2e',                  cmd: 'pnpm e2e',                        cwd: WEB,  covers: ['pnpm e2e', 'pnpm exec playwright test'], slow: true },
 ];
 
 /** In ci.yml but not a gate — setup, not verification. Each needs a reason,
@@ -69,6 +69,7 @@ const GATES = [
 const NOT_GATES = {
   'pnpm install --frozen-lockfile': 'installs dependencies',
   'pnpm exec playwright install chromium': 'installs the browser',
+  'pnpm exec playwright merge-reports': 'merges the CI shards into one count — a report, not a check',
 };
 
 /**
@@ -122,6 +123,13 @@ function ciCommands() {
     line = line.trim();
     if (line.startsWith('#')) continue;
     line = line.replace(/^run:\s*/, '').replace(/^\(cd web && /, '').replace(/\)$/, '');
+    // `pnpm exec playwright <verb>` is matched on its verb alone: CI passes shard and
+    // reporter flags that vary by job, and the verb is what this list accounts for.
+    const pw = line.match(/^(pnpm exec playwright (?:test|merge-reports))\b/);
+    if (pw) {
+      found.add(pw[1]);
+      continue;
+    }
     const m = line.match(/^(pnpm [\w:.-]+(?: --frozen-lockfile| chromium)?|python -m .+)$/);
     if (m) found.add(m[1].trim());
   }

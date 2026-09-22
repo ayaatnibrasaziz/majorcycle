@@ -103,8 +103,17 @@ test.describe('the Opportunity Map on a completed screen', () => {
     await page.goto('/run');
     await page.locator('button.basket-chip', { hasText: 'Magnificent Seven' }).click();
     await page.locator('button.btn-run').click();
-    await page.waitForURL(/\/results/, { timeout: 300_000 }).catch(() => {});
-    await page.goto('/results');
+    /* ⚠️ Wait for the run to FINISH, then take the reader's own way to the results.
+       This was `waitForURL(/\/results/, { timeout: 300_000 }).catch(() => {})`, but a
+       finished screen does not navigate anywhere — it shows "View Full Results" — so
+       the wait expired every time and the swallowed timeout turned it into a fixed
+       five-minute sleep: 318 s of a 318 s test on CI (2026-09-22). */
+    const viewResults = page.getByRole('button', { name: /view (full|partial) results/i });
+    await expect(viewResults, 'the Magnificent Seven screen never finished').toBeVisible({
+      timeout: 300_000,
+    });
+    await viewResults.click();
+    await page.waitForURL(/\/results/, { timeout: 30_000 });
     await expect
       .poll(() => page.evaluate(() => document.querySelectorAll('.opp-legend-item').length), {
         message: 'the Opportunity Map legend never rendered',

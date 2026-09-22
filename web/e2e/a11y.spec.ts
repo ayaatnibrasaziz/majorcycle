@@ -5,6 +5,12 @@ import { ARTICLES, articlePath } from '../lib/articles';
 import { LEARN_ARTICLES, learnPath } from '../lib/learn';
 import { TAGS, RULE_OPTIONS, rulesThatDidNotRun } from './lib/axeRules';
 
+// ⚠️ PARALLEL within the file (2026-09-22). Every test here is an independent
+// page × width check, and run as one block on one worker this file alone set a
+// floor on CI time no number of machines could beat. Workers are separate
+// browsers, so focus walks do not compete for focus.
+test.describe.configure({ mode: 'parallel' });
+
 /**
  * Automated accessibility scan of the public site — axe-core, WCAG 2.1 A + AA.
  *
@@ -111,7 +117,7 @@ async function scan(page: Page, path: string) {
   // against a half-rendered document reports a clean page it never looked at
   // (CLAUDE.md 11q — the contrast probe measured 47 elements of 291 this way).
   await expect(page.locator('main, [role="main"]').first()).toBeVisible();
-  await page.waitForLoadState('networkidle').catch(() => {});
+  await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
 
   /* ⚠️ **`networkidle` is not "the page is finished".** The first version of
      this file stopped there and went flaky: `/learn/what-is-a-drawdown` and the
@@ -202,7 +208,7 @@ test.describe('the public site is accessible', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
     await expect(page.locator('main').first()).toBeVisible();
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
 
     const state = await page.evaluate(() => {
       const rises = [...document.querySelectorAll('.lp [data-rise]')] as HTMLElement[];
@@ -242,7 +248,7 @@ test.describe('the public site is accessible', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/');
     await expect(page.locator('main').first()).toBeVisible();
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
 
     const full = await new AxeBuilder({ page }).withTags(TAGS).options(RULE_OPTIONS).analyze();
     const targets = full.violations.flatMap((v) =>

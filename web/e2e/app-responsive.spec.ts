@@ -6,6 +6,12 @@ import { RUN_SNAPSHOT, RUN_SNAPSHOT_ROWS, SNAPSHOT_KEY } from './fixtures/runSna
 import { HAVE_E2E_CREDENTIALS, signIn, signInAs } from './lib/session';
 import { SCORECARD_STACK_PX, SHELL_DESKTOP_MIN_PX } from '../lib/shell';
 
+// ⚠️ PARALLEL within the file (2026-09-22). Every test here is an independent
+// page × width check, and run as one block on one worker this file alone set a
+// floor on CI time no number of machines could beat. Workers are separate
+// browsers, so focus walks do not compete for focus.
+test.describe.configure({ mode: 'parallel' });
+
 /**
  * The signed-in pages must not scroll SIDEWAYS — non-negotiable #3.
  *
@@ -335,7 +341,7 @@ test.describe('no signed-in page scrolls sideways — FREE account', () => {
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-const PAID_RUN = Date.now();
+const PAID_RUN = `${Date.now()}${process.pid}`;
 const PAID_EMAIL = `resp-e2e-${PAID_RUN}@example.com`;
 const PAID_PASSWORD = `E2e!resp-${PAID_RUN}`;
 
@@ -355,7 +361,9 @@ async function signInPaid(page: Page): Promise<void> {
 }
 
 test.describe('no signed-in page scrolls sideways — ENTITLED account', () => {
-  test.describe.configure({ mode: 'serial' });
+  // Parallel: setup runs once PER WORKER, each creating its own throwaway user
+  // (PAID_RUN carries the process id), so nothing is shared between workers.
+  test.describe.configure({ mode: 'parallel' });
   test.skip(
     !SERVICE_KEY || !SUPABASE_URL,
     'set SUPABASE_SERVICE_ROLE_KEY + NEXT_PUBLIC_SUPABASE_URL to run',

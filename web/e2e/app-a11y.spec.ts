@@ -7,6 +7,12 @@ import { TAGS, RULE_OPTIONS, rulesThatDidNotRun } from './lib/axeRules';
 import { modeFor, ringFailures, walkFocus } from './lib/focusRing';
 import { signIn, signInAs } from './lib/session';
 
+// ⚠️ PARALLEL within the file (2026-09-22). Every test here is an independent
+// page × width check, and run as one block on one worker this file alone set a
+// floor on CI time no number of machines could beat. Workers are separate
+// browsers, so focus walks do not compete for focus.
+test.describe.configure({ mode: 'parallel' });
+
 /**
  * Automated accessibility scan of the SIGNED-IN product — axe-core, WCAG 2.1 A + AA.
  *
@@ -426,12 +432,14 @@ test.describe('the signed-in product is accessible', () => {
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-const PAID_RUN = Date.now();
+const PAID_RUN = `${Date.now()}${process.pid}`;
 const PAID_EMAIL = `a11y-e2e-${PAID_RUN}@example.com`;
 const PAID_PASSWORD = `E2e!a11y-${PAID_RUN}`;
 
 test.describe('the PAID product is accessible', () => {
-  test.describe.configure({ mode: 'serial' });
+  // Parallel: setup runs once PER WORKER, each creating its own throwaway user
+  // (PAID_RUN carries the process id), so nothing is shared between workers.
+  test.describe.configure({ mode: 'parallel' });
   test.skip(
     !SERVICE_KEY || !SUPABASE_URL,
     'set SUPABASE_SERVICE_ROLE_KEY + NEXT_PUBLIC_SUPABASE_URL to run',
