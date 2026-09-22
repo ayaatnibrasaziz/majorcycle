@@ -181,6 +181,10 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      # Cloudflare's published always-pass TEST key, so every run drives the real
+      # Turnstile widget (lib/turnstile.ts). Public by design; the production key
+      # lives in Vercel. e2e/lib/captcha.ts is how form submissions get through.
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: '1x00000000000000000000AA'
       E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
       E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
       # Stripe webhook contract tests (skip cleanly if any is empty):
@@ -297,6 +301,10 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      # Cloudflare's published always-pass TEST key, so every run drives the real
+      # Turnstile widget (lib/turnstile.ts). Public by design; the production key
+      # lives in Vercel. e2e/lib/captcha.ts is how form submissions get through.
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: '1x00000000000000000000AA'
       # Half of each sweep is gated. Without these the scripts say so loudly —
       # check:csp records it as a PROBLEM rather than a skip, because a run that
       # silently drops the signed-in routes reports a clean site it never saw.

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { pageMetadata } from '@/lib/seo';
 import { SENTRY_DSN } from '@/lib/sentryOptions';
+import { CAPTCHA_REQUIRED } from '@/lib/turnstile';
 import { LegalDoc } from '@/components/LegalDoc';
 
 export const metadata: Metadata = pageMetadata({
@@ -20,7 +21,9 @@ export default function PrivacyPage() {
       // it is worth the odd look: a policy whose text changed under a reader while
       // the date says otherwise is the thing an "updated" date exists to prevent.
       // The two move together or neither does.
-      updated={SENTRY_DSN ? '16 September 2026' : '15 August 2026'}
+      updated={
+        CAPTCHA_REQUIRED ? '22 September 2026' : SENTRY_DSN ? '16 September 2026' : '15 August 2026'
+      }
       intro={
         <p>
           This policy explains what personal information MajorCycle collects, how we
@@ -121,8 +124,22 @@ export default function PrivacyPage() {
                     DNS and registrar, and does NOT proxy site traffic), and Email
                     Routing is Enabled with two active rules forwarding
                     support@ and security@. Both halves of this line are true. */}
+                {/* ⚠️ The Turnstile half is CONDITIONAL ON THE SITE KEY, for the same
+                    reason as the Sentry line below: the check sends Cloudflare
+                    signals about the visitor's browser and their IP address, so it
+                    makes Cloudflare a recipient the moment it is on — and only then.
+                    NEXT_PUBLIC_ vars are baked at build time and this page is
+                    prerendered, so the disclosure and the check ship in one deploy. */}
                 <li>
                   <strong>Cloudflare</strong> — DNS and email routing
+                  {CAPTCHA_REQUIRED ? (
+                    <>
+                      , and a security check (Turnstile) on the sign-in, sign-up and
+                      password pages that tells people apart from automated abuse. To do
+                      that it receives your IP address and technical signals from your
+                      browser; it does not receive your email address or password
+                    </>
+                  ) : null}
                 </li>
                 {/* Added 2026-08-15 (legal audit, finding 4). The collection
                     clause already acknowledged Google sign-in, but Google was

@@ -1,5 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
 import { signIn } from './lib/session';
+import { passCaptchaForTests } from './lib/captcha';
+
+// Once Supabase enforces the human check, a test's form submission must carry
+// admin credentials to be let through — see e2e/lib/captcha.ts.
+test.beforeEach(async ({ page }) => {
+  await passCaptchaForTests(page);
+});
 
 /**
  * F2 Account Hub — authenticated interaction suite.

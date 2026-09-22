@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createBrowserClient } from '@/lib/supabase/client';
-import { friendlyAuthError } from '@/lib/authErrors';
+import { friendlyAuthError, isCaptchaError } from '@/lib/authErrors';
 import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
+import { useCaptcha } from '@/components/Turnstile';
 
 interface PasswordFormProps {
   email: string;
@@ -22,6 +23,7 @@ export function PasswordForm({ email }: PasswordFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const captcha = useCaptcha('change_password');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,9 +51,18 @@ export function PasswordForm({ email }: PasswordFormProps) {
     const { error: reauthError } = await supabase.auth.signInWithPassword({
       email,
       password: current,
+      options: captcha.options,
     });
+    // The token is spent either way; the next attempt needs a fresh one.
+    captcha.renew();
     if (reauthError) {
-      setError('Your current password is incorrect.');
+      // A refused security check is not a wrong password, and saying so would send
+      // the reader to retype something that was right.
+      setError(
+        isCaptchaError(reauthError.message)
+          ? friendlyAuthError(reauthError.message)
+          : 'Your current password is incorrect.',
+      );
       setLoading(false);
       return;
     }
@@ -172,7 +183,13 @@ export function PasswordForm({ email }: PasswordFormProps) {
             </div>
           )}
 
-          <Button type="submit" disabled={loading || !hydrated} className="mt-1 self-start">
+          {captcha.widget}
+
+          <Button
+            type="submit"
+            disabled={loading || !hydrated || !captcha.ready}
+            className="mt-1 self-start"
+          >
             {loading ? 'Updating…' : 'Update password'}
           </Button>
         </form>

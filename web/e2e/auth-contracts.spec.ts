@@ -111,10 +111,15 @@ test.describe('friendlyAuthError — what a failed sign-in is allowed to say', (
     ['Password is known to be weak and easy to guess', /known data breach/],
     ['This password has been found in a data breach', /known data breach/],
     ['Password should be at least 8 characters', /at least 8 characters/],
+    // Turnstile (lib/turnstile.ts). Verbatim from the auth server's verifyCaptcha:
+    // a refused check must read as a check, never as a wrong password.
+    ['captcha protection: request disallowed (no captcha_token found)', /security check/],
+    ['captcha protection: request disallowed (invalid-input-response)', /security check/],
+    ['captcha protection: request disallowed (timeout-or-duplicate)', /security check/],
   ];
 
   for (const [raw, expected] of MAPPED) {
-    test(`maps "${raw.slice(0, 40)}…"`, () => {
+    test(`maps "${raw.length > 40 ? `${raw.slice(0, 20)}…${raw.slice(-20)}` : raw}"`, () => {
       const friendly = friendlyAuthError(raw);
       expect(friendly).toMatch(expected);
       // Raw upstream wording must not survive into the UI for a MAPPED case —

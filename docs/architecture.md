@@ -2178,6 +2178,49 @@ tree-shaking flags moved the number by 1 KB and were removed rather than left in
 ⚠️ Treating the DSN as a secret is the mistake to avoid: hidden where the client build cannot read
 it, browser monitoring is silently off.
 
+## 7.6 The human check — Cloudflare Turnstile (2026-09-22)
+
+**Why.** On 2026-09-21 four fake accounts appeared, each followed 3–17 s later by a password-reset
+request — a bot using our sign-up and reset forms to flood somebody's inbox with genuine mail. All
+four were deleted.
+
+**Where the protection is.** Sign-in, sign-up, password reset and the `/account` password
+re-check all call Supabase's auth API **from the browser, with the public anon key**, so a widget on
+our page alone would stop nothing: a bot calls the API directly. The check is enforced by
+**Supabase** (Authentication → Attack Protection → CAPTCHA → Turnstile + the secret key), which
+verifies each token server-side. Our code (`lib/turnstile.ts`, `components/Turnstile.tsx`) only
+obtains a token and passes it as `captchaToken`, renewing it after every attempt because a token is
+single-use.
+
+**Exempt by Supabase's own design** (its `isIgnoreCaptchaRoute`, read from source): Google sign-in
+(`id_token`), the OAuth callback (`pkce`), token refresh, and any request with **admin**
+credentials. None of those can be used to send email, so nothing is lost.
+
+**Scope.** Cloudflare's origin is added to `script-src` and `frame-src` on exactly `/login`,
+`/signup`, `/reset-password` and `/account`, and nowhere when the site key is empty
+(`lib/csp.ts` → `turnstileOrigin`). The privacy policy names it under Cloudflare, conditional on
+the same key. The widget is `interaction-only`: invisible unless Cloudflare genuinely needs a click.
+
+**Tests.** Local and CI builds use Cloudflare's always-pass TEST site key. Its dummy token is
+refused by Supabase's real secret, so `e2e/lib/captcha.ts` gives a test's own requests to the
+captcha-checked auth endpoints the service-role key, which Supabase exempts. That happens in the
+test runner's network layer; the page never sees the key and nothing in the product carries it.
+`e2e/turnstile.spec.ts` asserts every form sends and renews the token (and was broken on purpose:
+with `renew()` deleted, a fresh check never ran and it went red), the CSP scoping, and the
+blocked-Cloudflare message. ⚠️ **What no test can see: that Supabase refuses a bot.** That is
+checked by hand on the live project after switching it on.
+
+**Switch-on order — ⚠️ the order matters.**
+1. Merge and deploy this code (site key still unset → nothing changes).
+2. Owner: Cloudflare dashboard → Turnstile → add widget for `majorcycle.com` (+ `www`) → copy the
+   **site key** (public) and the **secret key**.
+3. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in Vercel (Production) and redeploy: the widget, CSP origin
+   and privacy line appear together. Confirm on live `/login` that the button unlocks.
+4. **Only then**, owner pastes the secret into Supabase → Attack Protection → CAPTCHA and enables
+   it. Doing 4 before 3 refuses every password sign-in on the live site.
+5. Verify: a direct `POST /auth/v1/signup` with no token answers `captcha protection: request
+   disallowed`, and a real sign-in on the live site still works.
+
 
 ## 8. Cron Job Specification
 

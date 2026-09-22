@@ -218,6 +218,7 @@ export function contentSecurityPolicy({
   supabaseUrl,
   siteOrigin,
   preferredSourceOrigin = null,
+  turnstileOrigin = null,
   sentryDsn,
 }: {
   nonce: string | null;
@@ -238,6 +239,15 @@ export function contentSecurityPolicy({
    * guessed, and `lib/preferredSource.ts` records how.
    */
   preferredSourceOrigin?: string | null;
+  /**
+   * `https://challenges.cloudflare.com` on the four pages that draw the Turnstile
+   * check (`lib/turnstile.ts` → `usesTurnstile`), and `null` everywhere else —
+   * including every page when the site key is unset. Cloudflare documents exactly
+   * two directives: `script-src` for `api.js` and `frame-src` for the widget. Same
+   * scoping principle as `preferredSourceOrigin`: a third party is admitted only
+   * where its feature is drawn.
+   */
+  turnstileOrigin?: string | null;
   /**
    * `NEXT_PUBLIC_SENTRY_DSN`, or undefined when error monitoring is off.
    *
@@ -264,6 +274,7 @@ export function contentSecurityPolicy({
     'https://accounts.google.com',
     'https://apis.google.com',
     ...(preferredSourceOrigin ? [preferredSourceOrigin] : []),
+    ...(turnstileOrigin ? [turnstileOrigin] : []),
   ];
 
   const base = directives(
@@ -271,12 +282,15 @@ export function contentSecurityPolicy({
     siteOrigin,
     sentryOriginForCsp(sentryDsn),
   );
+  const frames = [
+    ...base['frame-src']!,
+    ...(preferredSourceOrigin ? [preferredSourceOrigin] : []),
+    ...(turnstileOrigin ? [turnstileOrigin] : []),
+  ];
   const all: Record<string, string[]> = {
     ...base,
     'script-src': script,
-    ...(preferredSourceOrigin
-      ? { 'frame-src': [...base['frame-src']!, preferredSourceOrigin] }
-      : {}),
+    'frame-src': frames,
   };
 
   // Stable order so a diff of two policies reads as a diff of intent.

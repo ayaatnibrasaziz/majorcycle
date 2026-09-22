@@ -14,6 +14,7 @@ import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
 import { safeNextPath } from '@/lib/url';
 import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
+import { useCaptcha } from '@/components/Turnstile';
 
 /**
  * Why the sign-in page explains a dead link.
@@ -86,7 +87,8 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hash = useSyncExternalStore(subscribeToHash, readHash, noHashOnTheServer);
+  const captcha = useCaptcha('login');
+  const hash =useSyncExternalStore(subscribeToHash, readHash, noHashOnTheServer);
   const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
   const hashFailure = linkFailure(
     hashParams.get('error_code') ?? hashParams.get('error'),
@@ -104,7 +106,10 @@ export function LoginForm() {
     const { error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
+      options: captcha.options,
     });
+    // The token is spent either way; the next attempt needs a fresh one.
+    captcha.renew();
     if (authError) {
       setError(friendlyAuthError(authError.message));
       setLoading(false);
@@ -171,7 +176,14 @@ export function LoginForm() {
           </div>
         )}
 
-        <Button type="submit" size="lg" disabled={loading || !hydrated} className="w-full mt-1">
+        {captcha.widget}
+
+        <Button
+          type="submit"
+          size="lg"
+          disabled={loading || !hydrated || !captcha.ready}
+          className="w-full mt-1"
+        >
           {loading ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
