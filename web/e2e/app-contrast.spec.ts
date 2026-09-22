@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { measure, MIN_MEASURED, type Fail, type Probe } from './lib/contrastProbe';
 import { RUN_SNAPSHOT, RUN_SNAPSHOT_ROWS, SNAPSHOT_KEY } from './fixtures/runSnapshot';
-import { signIn } from './lib/session';
+import { signIn, signInAs } from './lib/session';
 
 /**
  * WCAG contrast on the SIGNED-IN pages — the half of the site nothing had ever
@@ -224,11 +224,7 @@ test.describe('the paid screener output is legible', () => {
   test('/results draws every tier, and every one of them is readable', async ({ page }) => {
     test.setTimeout(180_000);
 
-    await page.goto('/login');
-    await page.fill('input#email', PAID_EMAIL);
-    await page.fill('input#password', PAID_PASSWORD);
-    await page.getByRole('button', { name: /^sign in$/i }).click();
-    await page.waitForURL(/\/stocks/, { timeout: 30_000 });
+    await signInAs(page, PAID_EMAIL, PAID_PASSWORD);
 
     /* ⚠️ THE ONBOARDING MODAL IS HANDLED IN `beforeAll`, NOT HERE — see the note
        there. A brand-new account meets the first-login modal (decision #23) before
@@ -286,11 +282,7 @@ test.describe('the paid screener output is legible', () => {
   test('the Verdict, the radar and the badges are readable too', async ({ page }) => {
     test.setTimeout(180_000);
 
-    await page.goto('/login');
-    await page.fill('input#email', PAID_EMAIL);
-    await page.fill('input#password', PAID_PASSWORD);
-    await page.getByRole('button', { name: /^sign in$/i }).click();
-    await page.waitForURL(/\/stocks/, { timeout: 30_000 });
+    await signInAs(page, PAID_EMAIL, PAID_PASSWORD);
     await expect(page.getByLabel(/I understand and acknowledge/i)).toHaveCount(0);
 
     const probe = await measure(page, '/stocks/us/AAPL', 'app', MIN_MEASURED.detail);

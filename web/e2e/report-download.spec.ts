@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { modeFor, ringFailures, walkFocus } from './lib/focusRing';
+import { signInAs } from './lib/session';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
@@ -87,11 +88,7 @@ test.describe('downloaded report renders from disk', () => {
        defect (11t: a guard that fails on the weather teaches everyone to ignore red). */
     test.setTimeout(360_000);
 
-    await page.goto('/login');
-    await page.fill('input#email', EMAIL);
-    await page.fill('input#password', PASSWORD);
-    await page.getByRole('button', { name: /^sign in$/i }).click();
-    await expect(page).toHaveURL(/\/stocks/, { timeout: 30_000 });
+    await signInAs(page, EMAIL, PASSWORD);
 
     // The download handler fetches these two at click time. They are produced by
     // `prebuild`, which does NOT run for `next dev` — so without an explicit

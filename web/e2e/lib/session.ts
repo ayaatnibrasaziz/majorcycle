@@ -1,5 +1,7 @@
 import { expect, type BrowserContext, type Page } from '@playwright/test';
 
+import { passCaptchaForTests } from './captcha';
+
 /**
  * The ONE sign-in for the whole suite.
  *
@@ -121,6 +123,7 @@ export async function signInThroughTheForm(
   opts: { next?: string; email?: string; password?: string } = {},
 ): Promise<void> {
   const { next, email = EMAIL, password = PASSWORD } = opts;
+  await passCaptchaForTests(page);
   await page.goto(next ? `/login?next=${encodeURIComponent(next)}` : '/login');
   await page.fill('input#email', email!);
   await page.fill('input#password', password!);
@@ -128,6 +131,25 @@ export async function signInThroughTheForm(
   // LoginForm ends in a hard `window.location.assign`. Wait for it to land, or a
   // following goto races it and silently measures the wrong page.
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), {
+    timeout: SIGN_IN_BUDGET_MS,
+  });
+}
+
+/**
+ * Sign in as a SPECIFIC account — a throwaway paid user, a billing state — and land
+ * on Browse, with the same budget as everything else in this file.
+ *
+ * ⚠️ It exists because `signIn()` cannot take an account (11bd), so every suite that
+ * needed a paid session hand-wrote the form again — eight copies by 2026-09-22, at
+ * 30s where this file says a sign-in is a NAVIGATION budgeted at 45s. The 2026-09-08
+ * incident above, re-formed one consumer at a time (11c-iv). It surfaced as a flaky
+ * on `main` whose log read `navigated to "/stocks"` and then timed out WAITING FOR
+ * LOAD: the sign-in had worked, and a dev server compiling `/stocks` under a full
+ * suite took longer than a budget nobody had meant to set.
+ */
+export async function signInAs(page: Page, email: string, password: string): Promise<void> {
+  await signInThroughTheForm(page, { email, password });
+  await expect(page, 'a signed-in reader lands on Browse').toHaveURL(POST_AUTH_HOME, {
     timeout: SIGN_IN_BUDGET_MS,
   });
 }

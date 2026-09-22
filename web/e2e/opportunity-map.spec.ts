@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, test, type Page } from '@playwright/test';
+import { signInAs } from './lib/session';
 
 /**
  * The Opportunity Map, on a screen that has actually been run.
@@ -97,11 +98,7 @@ test.describe('the Opportunity Map on a completed screen', () => {
   });
 
   async function runTheScreen(page: Page): Promise<number> {
-    await page.goto('/login');
-    await page.fill('input#email', EMAIL);
-    await page.fill('input#password', PASSWORD);
-    await page.getByRole('button', { name: /^sign in$/i }).click();
-    await page.waitForURL(/\/stocks/, { timeout: 45_000 });
+    await signInAs(page, EMAIL, PASSWORD);
 
     await page.goto('/run');
     await page.locator('button.basket-chip', { hasText: 'Magnificent Seven' }).click();

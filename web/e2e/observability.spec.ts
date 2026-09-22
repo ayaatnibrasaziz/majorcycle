@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
 
 import { contentSecurityPolicy, sentryOriginForCsp } from '../lib/csp';
 import { alertTagValue, reportIssue } from '../lib/observability';
-import { scrub, sharedOptions } from '../lib/sentryOptions';
+import { BROWSER_NOISE, scrub, sharedOptions } from '../lib/sentryOptions';
 
 /**
  * Error monitoring — Layer H2, 2026-09-16.
@@ -250,6 +250,28 @@ test.describe('scrub — what may leave this machine', () => {
     // until the owner turns it on, and turning it on is one deliberate act with a
     // privacy-policy line attached to it.
     expect(sharedOptions.enabled).toBe(process.env.NEXT_PUBLIC_SENTRY_DSN ? true : false);
+  });
+
+  test('the robot-noise filter drops the Outlook link scanner and nothing of ours', () => {
+    // The exact string Sentry recorded for MAJORCYCLE-WEB-B.
+    const scanner =
+      'Non-Error promise rejection captured with value: Object Not Found Matching Id:1, MethodName:update, ParamCount:4';
+    const dropped = (msg: string) => BROWSER_NOISE.some((re) => re.test(msg));
+    expect(dropped(scanner)).toBe(true);
+    // CONTROLS: a filter that drops everything also passes the line above, and would
+    // silence every real customer error. Ordinary rejections must still get through.
+    for (const ours of [
+      'Non-Error promise rejection captured with value: undefined',
+      'TypeError: Failed to fetch',
+      'Object Not Found',
+      'Error: update failed',
+    ]) {
+      expect(dropped(ours), `"${ours}" is a real error and must still be reported`).toBe(false);
+    }
+    // And the client actually receives the list — an exported constant nobody passes
+    // to Sentry.init is the inert-line defect (11ak).
+    const client = readFileSync(join(__dirname, '..', 'instrumentation-client.ts'), 'utf8');
+    expect(client).toMatch(/ignoreErrors:\s*\[\.\.\.BROWSER_NOISE\]/);
   });
 });
 

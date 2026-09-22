@@ -3,7 +3,7 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { twoFrames } from './lib/frames';
 
 import { RUN_SNAPSHOT, RUN_SNAPSHOT_ROWS, SNAPSHOT_KEY } from './fixtures/runSnapshot';
-import { HAVE_E2E_CREDENTIALS, signIn } from './lib/session';
+import { HAVE_E2E_CREDENTIALS, signIn, signInAs } from './lib/session';
 import { SCORECARD_STACK_PX, SHELL_DESKTOP_MIN_PX } from '../lib/shell';
 
 /**
@@ -350,11 +350,7 @@ async function signInPaid(page: Page): Promise<void> {
     if (!page.url().includes('/login')) return;
     paidCookies = null;
   }
-  await page.goto('/login');
-  await page.fill('input#email', PAID_EMAIL);
-  await page.fill('input#password', PAID_PASSWORD);
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  await page.waitForURL(/\/stocks/, { timeout: 45_000 });
+  await signInAs(page, PAID_EMAIL, PAID_PASSWORD);
   paidCookies = (await page.context().storageState()).cookies;
 }
 

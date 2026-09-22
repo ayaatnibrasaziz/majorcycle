@@ -36,6 +36,7 @@
  */
 
 import { expect, test } from '@playwright/test';
+import { signInAs } from './lib/session';
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -97,11 +98,7 @@ test.describe('a live stock is never accused of delisting', () => {
 
   test('AAPL renders, and carries no delisting notice', async ({ page }) => {
     test.setTimeout(120_000);
-    await page.goto('/login');
-    await page.fill('input#email', EMAIL!);
-    await page.fill('input#password', PASSWORD!);
-    await page.getByRole('button', { name: /^sign in$/i }).click();
-    await page.waitForURL(/\/stocks/, { timeout: 30_000 });
+    await signInAs(page, EMAIL!, PASSWORD!);
 
     await page.goto('/stocks/us/AAPL');
 

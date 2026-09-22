@@ -5,7 +5,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { RUN_SNAPSHOT, RUN_SNAPSHOT_ROWS, SNAPSHOT_KEY } from './fixtures/runSnapshot';
 import { TAGS, RULE_OPTIONS, rulesThatDidNotRun } from './lib/axeRules';
 import { modeFor, ringFailures, walkFocus } from './lib/focusRing';
-import { signIn } from './lib/session';
+import { signIn, signInAs } from './lib/session';
 
 /**
  * Automated accessibility scan of the SIGNED-IN product — axe-core, WCAG 2.1 A + AA.
@@ -480,11 +480,7 @@ test.describe('the PAID product is accessible', () => {
   test('the entitled screener and Stock Detail have no axe violations', async ({ page }) => {
     test.setTimeout(240_000);
 
-    await page.goto('/login');
-    await page.fill('input#email', PAID_EMAIL);
-    await page.fill('input#password', PAID_PASSWORD);
-    await page.getByRole('button', { name: /^sign in$/i }).click();
-    await page.waitForURL(/\/stocks/, { timeout: 30_000 });
+    await signInAs(page, PAID_EMAIL, PAID_PASSWORD);
 
     // "I set a column" and "the page is clear" are different claims, and the
     // failure is silent: the modal renders INSTEAD of the app.
@@ -602,11 +598,7 @@ test.describe('the PAID product is accessible', () => {
     test.setTimeout(600_000);
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/login');
-    await page.fill('input#email', PAID_EMAIL);
-    await page.fill('input#password', PAID_PASSWORD);
-    await page.getByRole('button', { name: /^sign in$/i }).click();
-    await page.waitForURL(/\/stocks/, { timeout: 30_000 });
+    await signInAs(page, PAID_EMAIL, PAID_PASSWORD);
 
     const check = async (label: string) => {
       await page
