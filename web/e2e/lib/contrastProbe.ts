@@ -325,7 +325,10 @@ export async function measure(
   sentinel: keyof typeof SENTINEL = 'reading',
   expectAtLeast: number = MIN_MEASURED.reading,
 ): Promise<Probe> {
-  await page.goto(path, { waitUntil: 'load' });
+  // `domcontentloaded` for the same reason as app-responsive's sweep: waiting for
+  // `load` on the heaviest signed-in page can exceed the navigation budget while the
+  // page is perfectly healthy. Readiness is proven below, by what is on the page.
+  await page.goto(path, { waitUntil: 'domcontentloaded' });
   await settle(page);
 
   // ⚠️ ONE reload if `next dev` hands back an EMPTY DOCUMENT.

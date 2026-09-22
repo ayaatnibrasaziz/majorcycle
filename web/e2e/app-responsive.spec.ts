@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { twoFrames } from './lib/frames';
@@ -195,8 +197,12 @@ async function ready(
   path: string,
   floor: number = MIN_ELEMENTS.full,
 ): Promise<void> {
-  await page.goto(path);
-  await page.waitForLoadState('domcontentloaded');
+  /* ⚠️ `domcontentloaded`, not the default `load`. On /stocks/us/AAPL — the heaviest
+     route in the product — a cold compile with both workers busy exceeded the 45s
+     navigation budget and failed five tests on CI (2026-09-22) on a page that then
+     rendered fine. `load` proves nothing here anyway: the POSITIVE signal is the
+     element-count poll below, which is what the measurement actually needs (11q). */
+  await page.goto(path, { waitUntil: 'domcontentloaded' });
   await expect
     .poll(() => page.evaluate(() => document.querySelectorAll('body *').length), {
       message: `${path} never rendered enough to measure`,
@@ -341,9 +347,16 @@ test.describe('no signed-in page scrolls sideways — FREE account', () => {
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-const PAID_RUN = `${Date.now()}${process.pid}`;
-const PAID_EMAIL = `resp-e2e-${PAID_RUN}@example.com`;
-const PAID_PASSWORD = `E2e!resp-${PAID_RUN}`;
+/**
+ * The throwaway paid account — a NEW identity every time one is created.
+ *
+ * ⚠️ `${Date.now()}${process.pid}` was not unique enough (2026-09-22). Ten CI runners
+ * start workers at the same moment and pids repeat across machines, so one run failed
+ * with "A user with this email address has already been registered" — and a hook that
+ * runs twice in one worker would collide with itself. A random id cannot.
+ */
+let PAID_EMAIL = '';
+let PAID_PASSWORD = '';
 
 /** Signed in once per worker and replayed, for the reason `lib/session.ts` gives. */
 type Cookies = Parameters<BrowserContext['addCookies']>[0];
@@ -373,6 +386,9 @@ test.describe('no signed-in page scrolls sideways — ENTITLED account', () => {
   let paidUserId = '';
 
   test.beforeAll(async () => {
+    const run = randomUUID().slice(0, 12);
+    PAID_EMAIL = `resp-e2e-${run}@example.com`;
+    PAID_PASSWORD = `E2e!resp-${run}`;
     /* ⚠️ A NEW USER MEANS A NEW SESSION. In parallel mode Playwright can run this
        hook more than once in one worker — create user, test, afterAll deletes it,
        later create a fresh user for the next test. The cached cookies were the

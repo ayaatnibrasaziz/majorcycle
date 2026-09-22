@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -432,9 +434,13 @@ test.describe('the signed-in product is accessible', () => {
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-const PAID_RUN = `${Date.now()}${process.pid}`;
-const PAID_EMAIL = `a11y-e2e-${PAID_RUN}@example.com`;
-const PAID_PASSWORD = `E2e!a11y-${PAID_RUN}`;
+/**
+ * The throwaway paid account — a NEW identity every time one is created. See the note
+ * in `app-responsive.spec.ts`: a clock-plus-pid id collided across CI runners on
+ * 2026-09-22 ("A user with this email address has already been registered").
+ */
+let PAID_EMAIL = '';
+let PAID_PASSWORD = '';
 
 test.describe('the PAID product is accessible', () => {
   // Parallel: setup runs once PER WORKER, each creating its own throwaway user
@@ -449,6 +455,9 @@ test.describe('the PAID product is accessible', () => {
   let paidUserId = '';
 
   test.beforeAll(async () => {
+    const run = randomUUID().slice(0, 12);
+    PAID_EMAIL = `a11y-e2e-${run}@example.com`;
+    PAID_PASSWORD = `E2e!a11y-${run}`;
     admin = createClient(SUPABASE_URL!, SERVICE_KEY!, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
