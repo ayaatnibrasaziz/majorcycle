@@ -113,11 +113,22 @@ const keepIds = new Set(production.slice(0, KEEP_PRODUCTION).map((d) => d.uid ||
 // the one URL the owner needs to look at before merging. Vercel's own retention
 // policy makes the same exception for the latest deployment of an active branch;
 // this script deletes by API and so has to make it itself.
+//
+// ⚠️ 2026-09-22: ONLY FOR A BRANCH WITH AN OPEN PULL REQUEST, when the workflow tells us
+// which those are (OPEN_BRANCHES, one name per line, from `gh pr list`). A merged
+// branch's last preview had no reader left and was kept forever — with nothing else
+// changed, Functions Storage sat at 24 GB of the free 10 GB for a month. Unset (a
+// local run) keeps the old behaviour rather than guessing.
+const OPEN_BRANCHES =
+  process.env.OPEN_BRANCHES === undefined
+    ? null
+    : new Set(process.env.OPEN_BRANCHES.split('\n').map((s) => s.trim()).filter(Boolean));
 const newestPerBranch = new Map();
 for (const d of all) {
   if (d.target === 'production') continue;
   const branch = d.meta?.githubCommitRef;
   if (!branch) continue;
+  if (OPEN_BRANCHES && !OPEN_BRANCHES.has(branch)) continue;
   const seen = newestPerBranch.get(branch);
   if (!seen || d.created > seen.created) newestPerBranch.set(branch, d);
 }
