@@ -40,8 +40,23 @@ if (blobs.length !== expectedShards) {
 const { stats } = JSON.parse(readFileSync(mergedPath, 'utf8'));
 const ran = stats.expected + stats.unexpected + stats.flaky + stats.skipped;
 
-const listing = execSync('pnpm exec playwright test --list', { cwd: WEB, encoding: 'utf8' });
-const listed = Number(listing.match(/Total: (\d+) tests?/)?.[1] ?? NaN);
+// The JSON listing, not the text one: CI colours terminal output, and a "Total: N" read
+// through colour codes matched nothing (2026-09-22 — the one run where every shard passed).
+const listing = JSON.parse(
+  (() => {
+    const raw = execSync('pnpm exec playwright test --list --reporter=json', {
+      cwd: WEB,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return raw.slice(raw.indexOf('{'));
+  })(),
+);
+const countTests = (suite) =>
+  (suite.specs ?? []).reduce((n, s) => n + s.tests.length, 0) +
+  (suite.suites ?? []).reduce((n, s) => n + countTests(s), 0);
+const listed = listing.suites.reduce((n, s) => n + countTests(s), 0);
 if (!Number.isFinite(listed)) problems.push('could not read the listed test total');
 else if (ran !== listed) problems.push(`the shards ran ${ran} tests but the suite lists ${listed}`);
 
