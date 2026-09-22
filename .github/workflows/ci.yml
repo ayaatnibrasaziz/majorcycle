@@ -151,10 +151,16 @@ jobs:
     # suite is split across parallel runners — free on this public repo (11an) — and
     # `e2e-report` below merges every shard back into ONE summary, because "check the
     # COUNT, not the colour" only works while there is one number.
+    #
+    # ⚠️ TEN, and the ceiling is the DATABASE, not GitHub. Every shard runs a dev server
+    # and two browsers against the one shared Supabase project (Micro compute). Measured
+    # 2026-09-22: 8 shards (16 browsers) ran clean in 7.6 min; 16 shards (32 browsers)
+    # got 504s from auth and 500s from the price-history RPC, and 14 tests failed on
+    # timeouts that were the database's, not the code's. More shards needs more database.
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     # ⚠️ A hang here used to be INVISIBLE. GitHub's default is 6 hours, so the
     # wedged `playwright install` on 2026-08-19 produced no red, no email and no
     # notification — an unfinished run reads exactly like a slow one. The failed-
