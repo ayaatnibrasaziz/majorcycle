@@ -384,6 +384,17 @@ jobs:
           node scripts/e2e-merge-check.mjs merged.json ./all-blob-reports
           if [ "$SHARDS_OK" != success ]; then echo "a shard job ended '$SHARDS_OK'"; exit 1; fi
 
+      # Fresh durations for the sharder (scripts/e2e-shard.mjs). Commit when shards drift.
+      - name: Refresh shard timings
+        if: ${{ !cancelled() }}
+        run: node scripts/e2e-timings.mjs merged.json timings.json
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: e2e-timings
+          path: web/timings.json
+          retention-days: 14
+
   server-gates:
     name: Server gates (page weight + CSP, on the production build)
     runs-on: ubuntu-latest

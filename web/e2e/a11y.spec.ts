@@ -116,7 +116,12 @@ async function scan(page: Page, path: string) {
   // ⚠️ Wait for something the PAGE promises, not for a timer: a scan that runs
   // against a half-rendered document reports a clean page it never looked at
   // (CLAUDE.md 11q — the contrast probe measured 47 elements of 291 this way).
-  await expect(page.locator('main, [role="main"]').first()).toBeVisible();
+  /* ⚠️ 60s, not the default 15. `reuseExistingServer: false` gives every run a COLD
+     Turbopack compile, and with several workers compiling different routes at once the
+     first visit to a route can take longer than 15s on a laptop — one articles scan
+     went flaky exactly there (2026-09-22). Raising a WAIT weakens no assertion: a page
+     that never renders still fails, just later (the same argument as app-a11y's 120s). */
+  await expect(page.locator('main, [role="main"]').first()).toBeVisible({ timeout: 60_000 });
   await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
 
   /* ⚠️ **`networkidle` is not "the page is finished".** The first version of

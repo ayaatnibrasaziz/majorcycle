@@ -336,10 +336,10 @@ test.describe('authenticated flows', () => {
     // Continue button), so on a dev server the first interaction can land before
     // hydration — poll the (idempotent) check until it actually enables Continue.
     const dialog = page.getByRole('dialog', { name: /welcome to majorcycle/i });
-    // The modal mounts only after a client-side profile check, so it isn't in the
-    // DOM the instant /results loads — wait for it to appear (or confirm it never
-    // will, for an already-acknowledged account) before deciding to dismiss it.
-    await dialog.waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+    // The server renders EITHER the modal alone or the app shell's <main>
+    // (`(app)/layout.tsx`), so wait for whichever arrived rather than sleeping 8s to
+    // prove the modal is absent — which is what an acknowledged account always paid.
+    await expect(dialog.or(page.locator('main#main-content'))).toBeVisible({ timeout: 30_000 });
     if (await dialog.isVisible().catch(() => false)) {
       const ack = page.getByRole('checkbox', { name: /i understand and acknowledge/i });
       const proceed = page.getByRole('button', { name: /continue to majorcycle/i });

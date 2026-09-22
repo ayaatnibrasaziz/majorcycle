@@ -84,7 +84,15 @@ let cachedCookies: Cookies | null = null;
  */
 async function dismissOnboarding(page: Page): Promise<void> {
   const dialog = page.getByRole('dialog', { name: /welcome to majorcycle/i });
-  await dialog.waitFor({ state: 'visible', timeout: 3_000 }).catch(() => {});
+  /* ⚠️ Wait for whichever the SERVER sent, not for a timer. This was
+     `dialog.waitFor({ timeout: 3_000 }).catch(() => {})` — on the shared account,
+     which acknowledged long ago, that was a guaranteed 3-second sleep on EVERY
+     `signIn()`, i.e. on most signed-in tests (2026-09-22). `(app)/layout.tsx`
+     renders either the modal ALONE or the app shell's <main>, never neither, so the
+     first of the two to appear is the answer, and it arrives with the page. */
+  await expect(dialog.or(page.locator('main#main-content'))).toBeVisible({
+    timeout: SIGN_IN_BUDGET_MS,
+  });
   if (!(await dialog.isVisible().catch(() => false))) return;
 
   const ack = page.getByRole('checkbox', { name: /i understand and acknowledge/i });

@@ -4,6 +4,12 @@ import { ARTICLES, articlePath, ARTICLES_INDEX_PATH } from '../lib/articles';
 import { LEARN_ARTICLES, learnPath } from '../lib/learn';
 import { PUBLIC_PAGES } from '../lib/seo';
 
+// ⚠️ PARALLEL within the file (2026-09-22). These tests share nothing — no beforeAll,
+// no declared order, no state between them — and run as one block this file held a
+// single worker for minutes while the others idled (Playwright's own "slow test file"
+// hint). CI splits it per test as well (scripts/e2e-shard.mjs).
+test.describe.configure({ mode: 'parallel' });
+
 /**
  * Non-negotiable #3 on the PUBLIC site, at every width a phone actually has.
  *
