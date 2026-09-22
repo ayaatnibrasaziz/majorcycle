@@ -74,6 +74,13 @@ export default defineConfig({
   // line, not the colour — same rule as always, one level further in.
   retries: 1,
   reporter: [['list']],
+  // ⚠️ On CI, stop BEFORE GitHub does (the E2E job is capped at 60 minutes). When
+  // GitHub cancels a job the runner is killed mid-sentence and the log simply ends;
+  // on 2026-09-22 two runs sat silent for 20+ minutes that way and said nothing
+  // about why. Playwright's own global timeout interrupts whatever is still running
+  // and PRINTS it, plus the summary line — a hang becomes a report. 55 minutes is
+  // well above the ~35 a healthy run takes.
+  globalTimeout: process.env.CI ? 55 * 60_000 : 0,
   timeout: 60_000,
   expect: { timeout: 15_000 },
   use: {
