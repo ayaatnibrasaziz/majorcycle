@@ -238,42 +238,27 @@ function buildCss() {
   );
 }
 
-// Best-effort: inline Sora + JetBrains Mono as base64 @font-face so the offline
-// file is pixel-identical to the live site. If the network is unavailable (e.g.
-// an offline local build), we skip it and the file falls back to system fonts —
-// layout is unchanged, only the typeface differs. Never throws.
+// Inline the site's own font files into the offline report, so it opens anywhere
+// with the live site's typefaces and no network.
+//
+// ⚠️ Until 2026-09-22 this DOWNLOADED them from Google at build time and, on any
+// failure, "skipped (offline build → system-font fallback)" — so a customer's report
+// could ship in Arial whenever the build machine could not reach Google, with nothing
+// red anywhere. The fonts are committed files now (`public/fonts`, `globals.css`), so
+// the compiled CSS already names them; this swaps each `/fonts/…` URL for its bytes.
+// A missing file or an unreplaced URL is an ERROR, not a fallback.
 async function inlineFonts() {
-  const FONT_CSS_URL =
-    'https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap';
-  try {
-    const cssRes = await fetch(FONT_CSS_URL, {
-      headers: {
-        // A modern-browser UA makes Google return woff2 (smallest, best support).
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
-      },
-    });
-    if (!cssRes.ok) throw new Error(`font css ${cssRes.status}`);
-    let css = await cssRes.text();
-
-    const urls = [...css.matchAll(/url\((https:\/\/[^)]+\.woff2)\)/g)].map((m) => m[1]);
-    const unique = [...new Set(urls)];
-    const map = new Map();
-    await Promise.all(
-      unique.map(async (u) => {
-        const r = await fetch(u);
-        if (!r.ok) return;
-        const buf = Buffer.from(await r.arrayBuffer());
-        map.set(u, `data:font/woff2;base64,${buf.toString('base64')}`);
-      }),
-    );
-    for (const [u, dataUrl] of map) css = css.split(u).join(dataUrl);
-
-    await fs.appendFile(path.join(outDir, 'report.css'), `\n${css}\n`, 'utf8');
-    console.log(`  fonts      inlined ${map.size} woff2`);
-  } catch (err) {
-    console.warn(`  fonts      skipped (offline build → system-font fallback): ${err}`);
+  const cssPath = path.join(outDir, 'report.css');
+  let css = await fs.readFile(cssPath, 'utf8');
+  const urls = [...new Set([...css.matchAll(/url\(["']?(\/fonts\/[^)"']+\.woff2)["']?\)/g)].map((m) => m[1]))];
+  if (urls.length === 0) throw new Error('report.css names no /fonts/*.woff2 — the font faces did not compile in');
+  for (const u of urls) {
+    const buf = await fs.readFile(path.join(webRoot, 'public', u));
+    css = css.split(u).join(`data:font/woff2;base64,${buf.toString('base64')}`);
   }
+  if (/url\(["']?\/fonts\//.test(css)) throw new Error('a /fonts/ URL survived inlining');
+  await fs.writeFile(cssPath, css, 'utf8');
+  console.log(`  fonts      inlined ${urls.length} woff2 (committed files, no network)`);
 }
 
 async function main() {

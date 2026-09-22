@@ -1,5 +1,39 @@
 @import "tailwindcss";
 
+/* ── Fonts — committed files, not a download at build time (2026-09-22) ──────────
+   Until this date `next/font/google` fetched Sora and JetBrains Mono from Google on
+   every build and every dev-server start. When that fetch failed, `next dev` answered
+   nothing but "Module not found: …/font/google/font" — which took down one CI shard
+   and one whole CI attempt the same day — and the offline report's build silently
+   fell back to system fonts. The site served the same files from its own origin
+   either way; only WHERE THEY CAME FROM AT BUILD TIME was the fragile part.
+
+   Reproduced exactly from what `next/font/google` generated, read off the build:
+   - the real family names "Sora" / "JetBrains Mono" (138 inline styles and the
+     canvas charts name them literally);
+   - one face per weight, pointing at the one variable file (wght 100–800 / 400–800),
+     so every weight resolves as before;
+   - the LATIN file only, with its unicode-range. It is the only file a reader ever
+     loaded: every company name (881 stocks, 10,694 listings) and every string in the
+     UI is inside it; the three characters outside it (π, Δ, ƒ) occur only in comments;
+   - the size-adjusted Arial fallbacks, so nothing reflows when the font arrives.
+   The files are preloaded from `app/layout.tsx` and cached immutably (next.config.ts). */
+@font-face { font-family: 'Sora'; font-style: normal; font-weight: 300; font-display: swap; src: url('/fonts/sora-latin-v1.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Sora'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/sora-latin-v1.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Sora'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/sora-latin-v1.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Sora'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/sora-latin-v1.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Sora'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/sora-latin-v1.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Sora Fallback'; src: local('Arial'); ascent-override: 85.29%; descent-override: 25.5%; line-gap-override: 0%; size-adjust: 113.73%; }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/jetbrains-mono-latin-v1.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/jetbrains-mono-latin-v1.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/jetbrains-mono-latin-v1.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'JetBrains Mono Fallback'; src: local('Arial'); ascent-override: 75.79%; descent-override: 22.29%; line-gap-override: 0%; size-adjust: 134.59%; }
+
+:root {
+  --font-sora: 'Sora', 'Sora Fallback';
+  --font-jetbrains: 'JetBrains Mono', 'JetBrains Mono Fallback';
+}
+
 @theme inline {
   /* Brand */
   --color-brand-deep: var(--brand-deep);

@@ -154,7 +154,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     # ⚠️ A hang here used to be INVISIBLE. GitHub's default is 6 hours, so the
     # wedged `playwright install` on 2026-08-19 produced no red, no email and no
     # notification — an unfinished run reads exactly like a slow one. The failed-
@@ -222,6 +222,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Cache the Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
+
       - name: Install Playwright Chromium
         # ⚠️ NO `--with-deps`, and the reason is measured rather than assumed.
         # That flag runs `apt-get`, and on 2026-08-19 apt hung TWICE against
@@ -254,6 +260,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: web/requirements.txt
 
       - name: Install engine Python deps (next dev spawns cycle.py)
         run: pip install -r requirements.txt
@@ -291,7 +299,10 @@ jobs:
       - name: Run E2E (shard ${{ matrix.shard }})
         env:
           E2E_EXTERNAL_SERVER: '1'
-        run: pnpm exec playwright test --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=list,blob
+        # Shards by measured DURATION, not by count — scripts/e2e-shard.mjs says why.
+        run: |
+          node scripts/e2e-shard.mjs ${{ matrix.shard }} ${{ strategy.job-total }} "$RUNNER_TEMP/shard.list"
+          pnpm exec playwright test --test-list "$RUNNER_TEMP/shard.list" --reporter=list,blob
 
       - name: Dev server log (on failure)
         if: failure()
@@ -354,7 +365,18 @@ jobs:
       # Prints every test once and the single summary line; exits non-zero if any
       # test failed in any shard, so this job's colour is the suite's colour.
       - name: Merged result
-        run: pnpm exec playwright merge-reports --reporter=list ./all-blob-reports
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: merged.json
+        run: pnpm exec playwright merge-reports --reporter=list,json ./all-blob-reports
+
+      # Every shard present, the merged total equal to the LISTED total, nothing failed.
+      # A shard that never started must turn this red (it did not, the first time).
+      - name: One count for the whole suite
+        env:
+          SHARDS_OK: ${{ needs.e2e.result }}
+        run: |
+          node scripts/e2e-merge-check.mjs merged.json 8 ./all-blob-reports
+          if [ "$SHARDS_OK" != success ]; then echo "a shard job ended '$SHARDS_OK'"; exit 1; fi
 
   server-gates:
     name: Server gates (page weight + CSP, on the production build)

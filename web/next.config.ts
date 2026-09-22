@@ -137,7 +137,16 @@ const nextConfig: NextConfig = {
   // the next person to look would have believed the bundle was already trimmed.
   // The 55 KB is recorded as a cost instead — see `docs/layer-h-plan.md` §H2.
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      // The committed fonts (globals.css). Their names carry a version (`-v1`), so a
+      // new file gets a new URL and they can be cached forever — as the hashed
+      // `/_next/static/media` copies `next/font` served were.
+      {
+        source: '/fonts/:file*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+    ];
   },
   async redirects() {
     return retiredRoutes;
