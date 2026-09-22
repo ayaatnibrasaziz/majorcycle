@@ -69,11 +69,21 @@ export function listTests() {
   return tests;
 }
 
-/** Does this spec opt into per-test parallelism at the top of the file? */
+/**
+ * May this spec's tests run apart from one another?
+ *
+ * Yes if the file declares `mode: 'parallel'`, or if it shares NOTHING between tests:
+ * no `beforeAll`/`afterAll` (per-file setup such as a throwaway account), no
+ * `mode: 'serial'` (declared order), and no top-level `let` (state one test leaves
+ * for the next). `beforeEach` is per test and fine. Anything else stays whole — the
+ * cost of a wrong "yes" is an order-dependent failure nobody can reproduce, the cost of
+ * a wrong "no" is a few seconds of balance.
+ */
 function splitsPerTest(file) {
   const src = readFileSync(join(WEB, file), 'utf8');
   if (/mode:\s*'serial'/.test(src)) return false;
-  return /^test\.describe\.configure\(\{\s*mode:\s*'parallel'\s*\}\);/m.test(src);
+  if (/^test\.describe\.configure\(\{\s*mode:\s*'parallel'\s*\}\);/m.test(src)) return true;
+  return !/beforeAll|afterAll|^let |^export let /m.test(src);
 }
 
 const tests = listTests();

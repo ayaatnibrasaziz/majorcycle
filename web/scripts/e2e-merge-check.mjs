@@ -2,7 +2,10 @@
 /**
  * The ONE count for a sharded E2E run, and the proof that it is the whole suite.
  *
- *     node scripts/e2e-merge-check.mjs <merged.json> <expected-shards> <blob-dir>
+ *     node scripts/e2e-merge-check.mjs <merged.json> <blob-dir>
+ *
+ * The expected number of shards is READ from `ci.yml`'s matrix rather than passed in,
+ * so there is one place that says how many shards there are.
  *
  * ⚠️ WHY THIS EXISTS (2026-09-22). The first sharded run merged five shards' results,
  * printed a clean summary and went GREEN — while shard 3 had failed to start and
@@ -19,11 +22,15 @@ import { execSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const [mergedPath, shardsArg, blobDir] = process.argv.slice(2);
-const expectedShards = Number(shardsArg);
+const [mergedPath, blobDir] = process.argv.slice(2);
 const WEB = resolve(import.meta.dirname, '..');
 
 const problems = [];
+
+const ci = readFileSync(resolve(WEB, '..', '.github', 'workflows', 'ci.yml'), 'utf8');
+const matrix = ci.match(/^\s+shard:\s*\[([^\]]+)\]/m);
+const expectedShards = matrix ? matrix[1].split(',').length : NaN;
+if (!Number.isFinite(expectedShards)) problems.push('could not read the shard matrix from ci.yml');
 
 const blobs = readdirSync(blobDir).filter((f) => f.endsWith('.zip'));
 if (blobs.length !== expectedShards) {

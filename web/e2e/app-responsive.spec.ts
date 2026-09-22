@@ -373,6 +373,13 @@ test.describe('no signed-in page scrolls sideways — ENTITLED account', () => {
   let paidUserId = '';
 
   test.beforeAll(async () => {
+    /* ⚠️ A NEW USER MEANS A NEW SESSION. In parallel mode Playwright can run this
+       hook more than once in one worker — create user, test, afterAll deletes it,
+       later create a fresh user for the next test. The cached cookies were the
+       DELETED user's, still a validly signed JWT, so the site saw a signed-in reader
+       with no profile and no subscription, and the padlock control failed three tests
+       (2026-09-22). Forget the old session whenever a new user is made. */
+    paidCookies = null;
     admin = createClient(SUPABASE_URL!, SERVICE_KEY!, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
