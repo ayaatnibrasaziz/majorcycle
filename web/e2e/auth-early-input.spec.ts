@@ -4,6 +4,13 @@ import { join, relative } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { adoptEarlyInput } from '../lib/useHydrated';
 import { HAVE_E2E_CREDENTIALS, signIn } from './lib/session';
+import { passCaptchaForTests } from './lib/captcha';
+
+// Once Supabase enforces the human check, a test's form submission must carry
+// admin credentials to be let through — see e2e/lib/captcha.ts.
+test.beforeEach(async ({ page }) => {
+  await passCaptchaForTests(page);
+});
 
 /**
  * Layer H4, 2026-09-19 — a reader on a slow connection must not lose what they typed.

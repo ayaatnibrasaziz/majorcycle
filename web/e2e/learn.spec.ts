@@ -6,6 +6,12 @@ import { expect, test, type Page } from '@playwright/test';
 import { LEARN_ARTICLES, LEARN_INDEX_PATH, LEARN_THEMES, learnPath } from '../lib/learn';
 import { expectNoLostSpaces } from './lib/proseSpacing';
 
+// ⚠️ PARALLEL within the file (2026-09-22). These tests share nothing — no beforeAll,
+// no declared order, no state between them — and run as one block this file held a
+// single worker for minutes while the others idled (Playwright's own "slow test file"
+// hint). CI splits it per test as well (scripts/e2e-shard.mjs).
+test.describe.configure({ mode: 'parallel' });
+
 /**
  * The Learn library — `/learn` and `/learn/[slug]`.
  *

@@ -11,6 +11,7 @@ import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
 import { getSiteURL } from '@/lib/url';
 import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
+import { useCaptcha } from '@/components/Turnstile';
 
 export function ResetPasswordForm() {
   // Button stays disabled until React owns the form — see lib/useHydrated.ts.
@@ -19,6 +20,7 @@ export function ResetPasswordForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const captcha = useCaptcha('reset_password');
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault();
@@ -27,7 +29,10 @@ export function ResetPasswordForm() {
     const supabase = createBrowserClient();
     const { error: authError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${getSiteURL()}/auth/callback?next=/account/update-password`,
+      ...captcha.options,
     });
+    // The token is spent either way; the next attempt needs a fresh one.
+    captcha.renew();
     if (authError) {
       setError(friendlyAuthError(authError.message));
       setLoading(false);
@@ -92,7 +97,14 @@ export function ResetPasswordForm() {
           </div>
         )}
 
-        <Button type="submit" size="lg" disabled={loading || !hydrated} className="w-full mt-1">
+        {captcha.widget}
+
+        <Button
+          type="submit"
+          size="lg"
+          disabled={loading || !hydrated || !captcha.ready}
+          className="w-full mt-1"
+        >
           {loading ? 'Sending…' : 'Send reset link'}
         </Button>
       </form>

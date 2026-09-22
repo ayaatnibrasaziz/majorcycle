@@ -1,22 +1,14 @@
 import type { Metadata } from 'next';
-import { Sora, JetBrains_Mono } from 'next/font/google';
+import { preload } from 'react-dom';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { SITE_ORIGIN } from '@/lib/url';
 import './globals.css';
 
-const sora = Sora({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-sora',
-  display: 'swap',
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-jetbrains',
-  display: 'swap',
-});
+/**
+ * The two font files, preloaded as `next/font` did (the faces themselves are in
+ * `globals.css` — see the note there for why they are committed files now).
+ */
+const FONT_FILES = ['/fonts/sora-latin-v1.woff2', '/fonts/jetbrains-mono-latin-v1.woff2'];
 
 /**
  * Google Search Console ownership proof. Renders
@@ -47,11 +39,11 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  for (const href of FONT_FILES) {
+    preload(href, { as: 'font', type: 'font/woff2', crossOrigin: 'anonymous' });
+  }
   return (
-    <html
-      lang="en"
-      className={`${sora.variable} ${jetbrainsMono.variable}`}
-    >
+    <html lang="en">
       <body>
         {children}
         {/*

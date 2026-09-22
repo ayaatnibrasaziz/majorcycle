@@ -5,6 +5,12 @@ import { LEARN_ARTICLES, learnPath } from '../lib/learn';
 import { PUBLIC_PAGES } from '../lib/seo';
 import { modeFor, ringFailures, walkFocus, type RingReading } from './lib/focusRing';
 
+// ⚠️ PARALLEL within the file (2026-09-22). Every test here is an independent
+// page × width check, and run as one block on one worker this file alone set a
+// floor on CI time no number of machines could beat. Workers are separate
+// browsers, so focus walks do not compete for focus.
+test.describe.configure({ mode: 'parallel' });
+
 /**
  * Layer H5 — a keyboard reader on a PHONE can see where they are.
  *

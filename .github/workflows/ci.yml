@@ -144,8 +144,23 @@ jobs:
         run: pnpm check:engine-drift
 
   e2e:
-    name: E2E (Playwright — auth + Stripe webhook + entitlement)
+    name: E2E shard ${{ matrix.shard }}/${{ strategy.job-total }}
     runs-on: ubuntu-latest
+    # ⚠️ SHARDED, 2026-09-22. One job ran the whole suite in ~38 min on 2 workers and
+    # was the only thing CI waited for (the other three jobs take 1–1.5 min). The
+    # suite is split across parallel runners — free on this public repo (11an) — and
+    # `e2e-report` below merges every shard back into ONE summary, because "check the
+    # COUNT, not the colour" only works while there is one number.
+    #
+    # ⚠️ TEN, and the ceiling is the DATABASE, not GitHub. Every shard runs a dev server
+    # and two browsers against the one shared Supabase project (Micro compute). Measured
+    # 2026-09-22: 8 shards (16 browsers) ran clean in 7.6 min; 16 shards (32 browsers)
+    # got 504s from auth and 500s from the price-history RPC, and 14 tests failed on
+    # timeouts that were the database's, not the code's. More shards needs more database.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     # ⚠️ A hang here used to be INVISIBLE. GitHub's default is 6 hours, so the
     # wedged `playwright install` on 2026-08-19 produced no red, no email and no
     # notification — an unfinished run reads exactly like a slow one. The failed-
@@ -154,7 +169,7 @@ jobs:
     # ⚠️ 30 was not enough once the focus walks ran at three widths (H5): the job was
     # cancelled at exactly 30:17. Actions minutes are free on this public repo (11an),
     # so the budget is raised rather than the coverage cut.
-    timeout-minutes: 60
+    timeout-minutes: 25
     # Boots a real Next dev server, so it needs the (public) Supabase URL + anon
     # key. They live as repo Variables — until they're set this job SKIPS cleanly
     # instead of failing, so CI never goes red on missing config. Add repo
@@ -181,6 +196,10 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      # Cloudflare's published always-pass TEST key, so every run drives the real
+      # Turnstile widget (lib/turnstile.ts). Public by design; the production key
+      # lives in Vercel. e2e/lib/captcha.ts is how form submissions get through.
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: '1x00000000000000000000AA'
       E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
       E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
       # Stripe webhook contract tests (skip cleanly if any is empty):
@@ -208,6 +227,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Cache the Playwright browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: pw-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
 
       - name: Install Playwright Chromium
         # ⚠️ NO `--with-deps`, and the reason is measured rather than assumed.
@@ -241,6 +266,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: web/requirements.txt
 
       - name: Install engine Python deps (next dev spawns cycle.py)
         run: pip install -r requirements.txt
@@ -255,16 +282,45 @@ jobs:
       - name: Build the offline report bundle (next dev does not)
         run: pnpm build:report-bundle
 
-      - name: Run auth E2E
-        run: pnpm e2e
+      # ⚠️ The dev server is started HERE, not by Playwright's `webServer`. On
+      # 2026-09-22 two runs passed every test and then hung for 20+ minutes: Playwright
+      # force-kills the server's process group and then waits for its output pipe to
+      # CLOSE, and a process that outlives the group while holding that pipe makes the
+      # wait endless ("Timed out waiting 3300s for the teardown for plugin setup").
+      # Started here, Playwright only reuses it (E2E_EXTERNAL_SERVER) and has nothing
+      # to tear down; the runner discards the process when the job ends.
+      - name: Start the dev server
+        env:
+          MC_E2E_NO_FS_CACHE: '1'
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: |
+          nohup pnpm exec next dev --port 3100 > "$RUNNER_TEMP/next-dev.log" 2>&1 &
+          for i in $(seq 1 90); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3100/ || true)
+            [ "$code" = 200 ] && echo "dev server up after $((i * 2))s" && exit 0
+            sleep 2
+          done
+          echo "dev server never answered 200"; tail -50 "$RUNNER_TEMP/next-dev.log"; exit 1
 
-      - name: Upload report on failure
+      - name: Run E2E (shard ${{ matrix.shard }})
+        env:
+          E2E_EXTERNAL_SERVER: '1'
+        # Shards by measured DURATION, not by count — scripts/e2e-shard.mjs says why.
+        run: |
+          node scripts/e2e-shard.mjs ${{ matrix.shard }} ${{ strategy.job-total }} "$RUNNER_TEMP/shard.list"
+          pnpm exec playwright test --test-list "$RUNNER_TEMP/shard.list" --reporter=list,blob
+
+      - name: Dev server log (on failure)
         if: failure()
+        run: tail -200 "$RUNNER_TEMP/next-dev.log"
+
+      - name: Upload shard results
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: web/playwright-report/
-          retention-days: 7
+          name: blob-report-${{ matrix.shard }}
+          path: web/blob-report
+          retention-days: 3
 
   # ── The gates that used to run NOWHERE ──────────────────────────────────────
   #
@@ -286,6 +342,59 @@ jobs:
   # not serve the Vercel Python function, so the cycle block is absent from
   # /stocks/us/AAPL here exactly as it is locally — the budget was measured in the
   # same condition, so the comparison is fair, but neither number includes it.
+  # ONE count for the whole suite, merged from every shard (CLAUDE.md 11i).
+  e2e-report:
+    name: E2E (Playwright — all shards, one count)
+    if: ${{ !cancelled() && vars.NEXT_PUBLIC_SUPABASE_URL != '' }}
+    needs: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+        with:
+          version: '11'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          path: web/all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+      # Prints every test once and the single summary line; exits non-zero if any
+      # test failed in any shard, so this job's colour is the suite's colour.
+      - name: Merged result
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: merged.json
+        run: pnpm exec playwright merge-reports --reporter=list,json ./all-blob-reports
+
+      # Every shard present, the merged total equal to the LISTED total, nothing failed.
+      # A shard that never started must turn this red (it did not, the first time).
+      - name: One count for the whole suite
+        env:
+          SHARDS_OK: ${{ needs.e2e.result }}
+        run: |
+          node scripts/e2e-merge-check.mjs merged.json ./all-blob-reports
+          if [ "$SHARDS_OK" != success ]; then echo "a shard job ended '$SHARDS_OK'"; exit 1; fi
+
+      # Fresh durations for the sharder (scripts/e2e-shard.mjs). Commit when shards drift.
+      - name: Refresh shard timings
+        if: ${{ !cancelled() }}
+        run: node scripts/e2e-timings.mjs merged.json timings.json
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: e2e-timings
+          path: web/timings.json
+          retention-days: 14
+
   server-gates:
     name: Server gates (page weight + CSP, on the production build)
     runs-on: ubuntu-latest
@@ -297,6 +406,10 @@ jobs:
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      # Cloudflare's published always-pass TEST key, so every run drives the real
+      # Turnstile widget (lib/turnstile.ts). Public by design; the production key
+      # lives in Vercel. e2e/lib/captcha.ts is how form submissions get through.
+      NEXT_PUBLIC_TURNSTILE_SITE_KEY: '1x00000000000000000000AA'
       # Half of each sweep is gated. Without these the scripts say so loudly —
       # check:csp records it as a PROBLEM rather than a skip, because a run that
       # silently drops the signed-in routes reports a clean site it never saw.

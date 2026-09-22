@@ -186,6 +186,25 @@ export function scrub<T extends object>(event: T): T {
  * ⚠️ **No Session Replay, for the same reason and more so:** it records the screen,
  * including a signed-in reader's own account page.
  */
+/**
+ * Browser errors that are NOT ours, dropped before they are sent (client only).
+ *
+ * Each entry is one exact signature of a known robot, never a broad category —
+ * a loose pattern here would silence a real customer's error, which is the one
+ * thing monitoring exists to catch. So an entry must be specific enough that no
+ * code in this repo could produce it; `e2e/observability.spec.ts` drives each one
+ * with a control proving an ordinary rejection still gets through.
+ *
+ * - **Microsoft's Outlook / Defender "Safe Links" scanner.** It opens every link in
+ *   an email (our auth emails point at `/login`) in a headless browser and rejects
+ *   a promise with this string from its own injected script. Seen as
+ *   MAJORCYCLE-WEB-B on 2026-09-21: one event, no stack, zero users. Nothing in
+ *   this codebase calls anything named `MethodName`.
+ */
+export const BROWSER_NOISE: readonly RegExp[] = [
+  /Object Not Found Matching Id:\d+, MethodName:\w+, ParamCount:\d+/,
+];
+
 export const sharedOptions = {
   dsn: SENTRY_DSN,
   enabled: SENTRY_DSN.length > 0,

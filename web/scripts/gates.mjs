@@ -31,7 +31,7 @@
  * Usage:  pnpm gates            every gate, e2e included (slow — ~15 min)
  *         pnpm gates --no-e2e   skip the Playwright suite, and say so
  */
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -61,7 +61,7 @@ const GATES = [
   { name: 'check:tier-palette',   cmd: 'pnpm check:tier-palette',         cwd: WEB,  covers: ['pnpm check:tier-palette'] },
   { name: 'build',                cmd: 'pnpm build',                      cwd: WEB,  covers: ['pnpm build', 'pnpm build:report-bundle'] },
   { name: 'check:render-modes',   cmd: 'pnpm check:render-modes',         cwd: WEB,  covers: ['pnpm check:render-modes'] },
-  { name: 'e2e',                  cmd: 'pnpm e2e',                        cwd: WEB,  covers: ['pnpm e2e'], slow: true },
+  { name: 'e2e',                  cmd: 'pnpm e2e',                        cwd: WEB,  covers: ['pnpm e2e', 'pnpm exec playwright test'], slow: true },
 ];
 
 /** In ci.yml but not a gate — setup, not verification. Each needs a reason,
@@ -69,6 +69,7 @@ const GATES = [
 const NOT_GATES = {
   'pnpm install --frozen-lockfile': 'installs dependencies',
   'pnpm exec playwright install chromium': 'installs the browser',
+  'pnpm exec playwright merge-reports': 'merges the CI shards into one count — a report, not a check',
 };
 
 /**
@@ -122,6 +123,13 @@ function ciCommands() {
     line = line.trim();
     if (line.startsWith('#')) continue;
     line = line.replace(/^run:\s*/, '').replace(/^\(cd web && /, '').replace(/\)$/, '');
+    // `pnpm exec playwright <verb>` is matched on its verb alone: CI passes shard and
+    // reporter flags that vary by job, and the verb is what this list accounts for.
+    const pw = line.match(/^(pnpm exec playwright (?:test|merge-reports))\b/);
+    if (pw) {
+      found.add(pw[1]);
+      continue;
+    }
     const m = line.match(/^(pnpm [\w:.-]+(?: --frozen-lockfile| chromium)?|python -m .+)$/);
     if (m) found.add(m[1].trim());
   }
@@ -153,7 +161,9 @@ if (missing.length) {
 /* ── run ─────────────────────────────────────────────────────────────────── */
 
 const planned = GATES.filter((g) => !(skipE2e && g.name === 'e2e'));
-console.log(`pnpm gates — ${planned.length} gate(s), stopping at the first failure\n`);
+console.log(
+  `pnpm gates — ${planned.length} gate(s); all but e2e at once, e2e last and only if they all pass\n`,
+);
 
 const results = [];
 let failedAt = null;
@@ -284,30 +294,89 @@ function excerpt(r, lines = 40) {
   return all.length > lines ? `… ${all.length - lines} earlier lines are in the log file\n${tail}` : tail;
 }
 
-for (const gate of planned) {
-  process.stdout.write(`  ${gate.name.padEnd(26)} `);
-  const started = Date.now();
-  // The whole command as ONE string with `shell: true`. Splitting it into
-  // file + args under a shell is what Node deprecates in DEP0190 (the args are
-  // concatenated, not escaped) — and it would mangle the flags these gates pass.
-  const r = spawnSync(gate.cmd, {
-    cwd: gate.cwd,
-    shell: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    encoding: 'utf8',
+/**
+ * Run one gate without blocking the others.
+ *
+ * The whole command as ONE string with `shell: true`. Splitting it into file + args
+ * under a shell is what Node deprecates in DEP0190 (the args are concatenated, not
+ * escaped) — and it would mangle the flags these gates pass.
+ */
+function runGate(gate) {
+  return new Promise((done) => {
+    const started = Date.now();
+    const child = spawn(gate.cmd, { cwd: gate.cwd, shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (d) => (stdout += d));
+    child.stderr.on('data', (d) => (stderr += d));
+    child.on('close', (status) => {
+      const secs = ((Date.now() - started) / 1000).toFixed(1);
+      done({ gate, r: { status, stdout, stderr }, ok: status === 0, secs });
+    });
   });
-  const secs = ((Date.now() - started) / 1000).toFixed(1);
-  const ok = r.status === 0;
-  results.push({ ...gate, ok, secs });
-  console.log(ok ? `ok    ${secs}s` : `FAIL  ${secs}s`);
-  if (!ok) {
-    failedAt = gate;
-    failureLog = writeFailureLog(gate, r);
-    console.log(`\n───── ${gate.name} failed (exit ${r.status}) ─────`);
-    console.log(excerpt(r));
-    artifactHint = generatedArtifactDiagnosis(r);
-    if (artifactHint) console.log(artifactHint);
-    break;
+}
+
+/**
+ * ⚠️ CONCURRENT, 2026-09-22. The gates are independent — TypeScript, ESLint, the
+ * Python checks and the source guards read source; only `check:render-modes` needs
+ * the build's output — so they run at the same time, and each line prints the moment
+ * its gate finishes. Measured one-after-another they took ~255s, most of it `build`
+ * (95s) and `lint` (92s) queued behind each other.
+ *
+ * `e2e` still runs ALONE and LAST: it is the one gate that needs the whole machine
+ * (a dev server plus a browser per worker), and there is no point spending it on a
+ * tree that fails a 2-second lint.
+ *
+ * Every non-e2e gate runs to completion even if another fails, so one run reports
+ * EVERY failure rather than the first — a second failure found only after fixing the
+ * first is a second round trip for nothing.
+ */
+const AFTER = { 'check:render-modes': 'build' };
+
+function report(res) {
+  results.push({ ...res.gate, ok: res.ok, secs: res.secs });
+  console.log(`  ${res.gate.name.padEnd(26)} ${res.ok ? 'ok  ' : 'FAIL'}  ${res.secs}s`);
+  return res;
+}
+
+const quick = planned.filter((g) => !g.slow && !AFTER[g.name]);
+const outcomes = await Promise.all(
+  quick.map(async (g) => {
+    const res = report(await runGate(g));
+    const dependants = planned.filter((d) => AFTER[d.name] === g.name);
+    if (!res.ok) return [res];
+    const after = await Promise.all(dependants.map(async (d) => report(await runGate(d))));
+    return [res, ...after];
+  }),
+);
+const settled = outcomes.flat();
+// A dependant that never ran because its prerequisite failed is recorded as not run.
+const failures = planned
+  .map((g) => settled.find((s) => s.gate === g))
+  .filter((s) => s && !s.ok);
+
+if (!failures.length) {
+  for (const g of planned.filter((x) => x.slow)) {
+    const res = report(await runGate(g));
+    if (!res.ok) failures.push(res);
+  }
+}
+
+if (failures.length) {
+  const first = failures[0];
+  failedAt = first.gate;
+  failureLog = writeFailureLog(first.gate, first.r);
+  for (const f of failures) {
+    console.log(`\n───── ${f.gate.name} failed (exit ${f.r.status}) ─────`);
+    console.log(excerpt(f.r));
+    const hint = generatedArtifactDiagnosis(f.r);
+    if (hint) {
+      artifactHint = hint;
+      console.log(hint);
+    }
+  }
+  if (failures.length > 1) {
+    console.log(`\n(${failures.length} gates failed; the full output of ${first.gate.name} is in the log file)`);
   }
 }
 
@@ -321,8 +390,8 @@ if (skipE2e) console.log('  SKIPPED  e2e — you passed --no-e2e');
 for (const [cmd, why] of NEEDS_A_SERVER) console.log(`  NOT RUN  ${cmd} — ${why}`);
 for (const [cmd, why] of LOCAL_ONLY) console.log(`  NOT RUN  ${cmd} — ${why}`);
 if (failedAt) {
-  for (const g of planned.slice(planned.indexOf(failedAt) + 1)) {
-    console.log(`  NOT RUN  ${g.name} — stopped after ${failedAt.name} failed`);
+  for (const g of planned.filter((p) => !results.some((r) => r.name === p.name))) {
+    console.log(`  NOT RUN  ${g.name} — skipped because ${failedAt.name} failed`);
   }
 }
 

@@ -5,7 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 
 import { modeFor, ringFailures, walkFocus } from './lib/focusRing';
-import { signIn } from './lib/session';
+import { signIn, signInAs } from './lib/session';
 
 /**
  * Layer H5 — a keyboard reader can see where they are INSIDE a dialog.
@@ -33,15 +33,6 @@ const COVERED = [
   'components/stocks/MethodologyModal.tsx',
   'components/OnboardingModal.tsx',
 ];
-
-/** Sign in with a specific account (the shared `signIn` helper uses the env one). */
-async function signInAs(page: Page, email: string, password: string) {
-  await page.goto('/login');
-  await page.fill('input#email', email);
-  await page.fill('input#password', password);
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  await page.waitForURL(/\/stocks/, { timeout: 30_000 });
-}
 
 /** A real account in a given billing state, deleted afterwards whatever happens. */
 async function withThrowawayAccount(

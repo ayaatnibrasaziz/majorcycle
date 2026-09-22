@@ -1,10 +1,18 @@
+import { randomUUID } from 'node:crypto';
+
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { twoFrames } from './lib/frames';
 
 import { RUN_SNAPSHOT, RUN_SNAPSHOT_ROWS, SNAPSHOT_KEY } from './fixtures/runSnapshot';
-import { HAVE_E2E_CREDENTIALS, signIn } from './lib/session';
+import { HAVE_E2E_CREDENTIALS, signIn, signInAs } from './lib/session';
 import { SCORECARD_STACK_PX, SHELL_DESKTOP_MIN_PX } from '../lib/shell';
+
+// ⚠️ PARALLEL within the file (2026-09-22). Every test here is an independent
+// page × width check, and run as one block on one worker this file alone set a
+// floor on CI time no number of machines could beat. Workers are separate
+// browsers, so focus walks do not compete for focus.
+test.describe.configure({ mode: 'parallel' });
 
 /**
  * The signed-in pages must not scroll SIDEWAYS — non-negotiable #3.
@@ -189,8 +197,12 @@ async function ready(
   path: string,
   floor: number = MIN_ELEMENTS.full,
 ): Promise<void> {
-  await page.goto(path);
-  await page.waitForLoadState('domcontentloaded');
+  /* ⚠️ `domcontentloaded`, not the default `load`. On /stocks/us/AAPL — the heaviest
+     route in the product — a cold compile with both workers busy exceeded the 45s
+     navigation budget and failed five tests on CI (2026-09-22) on a page that then
+     rendered fine. `load` proves nothing here anyway: the POSITIVE signal is the
+     element-count poll below, which is what the measurement actually needs (11q). */
+  await page.goto(path, { waitUntil: 'domcontentloaded' });
   await expect
     .poll(() => page.evaluate(() => document.querySelectorAll('body *').length), {
       message: `${path} never rendered enough to measure`,
@@ -335,9 +347,16 @@ test.describe('no signed-in page scrolls sideways — FREE account', () => {
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-const PAID_RUN = Date.now();
-const PAID_EMAIL = `resp-e2e-${PAID_RUN}@example.com`;
-const PAID_PASSWORD = `E2e!resp-${PAID_RUN}`;
+/**
+ * The throwaway paid account — a NEW identity every time one is created.
+ *
+ * ⚠️ `${Date.now()}${process.pid}` was not unique enough (2026-09-22). Ten CI runners
+ * start workers at the same moment and pids repeat across machines, so one run failed
+ * with "A user with this email address has already been registered" — and a hook that
+ * runs twice in one worker would collide with itself. A random id cannot.
+ */
+let PAID_EMAIL = '';
+let PAID_PASSWORD = '';
 
 /** Signed in once per worker and replayed, for the reason `lib/session.ts` gives. */
 type Cookies = Parameters<BrowserContext['addCookies']>[0];
@@ -350,16 +369,14 @@ async function signInPaid(page: Page): Promise<void> {
     if (!page.url().includes('/login')) return;
     paidCookies = null;
   }
-  await page.goto('/login');
-  await page.fill('input#email', PAID_EMAIL);
-  await page.fill('input#password', PAID_PASSWORD);
-  await page.getByRole('button', { name: /^sign in$/i }).click();
-  await page.waitForURL(/\/stocks/, { timeout: 45_000 });
+  await signInAs(page, PAID_EMAIL, PAID_PASSWORD);
   paidCookies = (await page.context().storageState()).cookies;
 }
 
 test.describe('no signed-in page scrolls sideways — ENTITLED account', () => {
-  test.describe.configure({ mode: 'serial' });
+  // Parallel: setup runs once PER WORKER, each creating its own throwaway user
+  // (PAID_RUN carries the process id), so nothing is shared between workers.
+  test.describe.configure({ mode: 'parallel' });
   test.skip(
     !SERVICE_KEY || !SUPABASE_URL,
     'set SUPABASE_SERVICE_ROLE_KEY + NEXT_PUBLIC_SUPABASE_URL to run',
@@ -369,6 +386,16 @@ test.describe('no signed-in page scrolls sideways — ENTITLED account', () => {
   let paidUserId = '';
 
   test.beforeAll(async () => {
+    const run = randomUUID().slice(0, 12);
+    PAID_EMAIL = `resp-e2e-${run}@example.com`;
+    PAID_PASSWORD = `E2e!resp-${run}`;
+    /* ⚠️ A NEW USER MEANS A NEW SESSION. In parallel mode Playwright can run this
+       hook more than once in one worker — create user, test, afterAll deletes it,
+       later create a fresh user for the next test. The cached cookies were the
+       DELETED user's, still a validly signed JWT, so the site saw a signed-in reader
+       with no profile and no subscription, and the padlock control failed three tests
+       (2026-09-22). Forget the old session whenever a new user is made. */
+    paidCookies = null;
     admin = createClient(SUPABASE_URL!, SERVICE_KEY!, {
       auth: { autoRefreshToken: false, persistSession: false },
     });

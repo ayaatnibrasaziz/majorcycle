@@ -3,6 +3,12 @@ import { expect, test } from '@playwright/test';
 import { OG_IMAGE, PUBLIC_PAGES, pageUrl } from '@/lib/seo';
 import { SITE_ORIGIN } from '@/lib/url';
 
+// ⚠️ PARALLEL within the file (2026-09-22). These tests share nothing — no beforeAll,
+// no declared order, no state between them — and run as one block this file held a
+// single worker for minutes while the others idled (Playwright's own "slow test file"
+// hint). CI splits it per test as well (scripts/e2e-shard.mjs).
+test.describe.configure({ mode: 'parallel' });
+
 /**
  * The SEO plumbing, asserted on the WIRE.
  *

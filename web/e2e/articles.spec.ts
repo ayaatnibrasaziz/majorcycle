@@ -12,6 +12,12 @@ import {
 import { PREFERRED_SOURCE } from '../lib/preferredSource';
 import { expectNoLostSpaces } from './lib/proseSpacing';
 
+// ⚠️ PARALLEL within the file (2026-09-22). These tests share nothing — no beforeAll,
+// no declared order, no state between them — and run as one block this file held a
+// single worker for minutes while the others idled (Playwright's own "slow test file"
+// hint). CI splits it per test as well (scripts/e2e-shard.mjs).
+test.describe.configure({ mode: 'parallel' });
+
 /**
  * The Articles section — `/articles` and `/articles/[slug]`.
  *

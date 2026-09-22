@@ -9,6 +9,12 @@ import { LEARN_ARTICLES, learnPath } from '../lib/learn';
 // keeping up with the first.
 import { measure, MIN_MEASURED, type Fail, type Probe } from './lib/contrastProbe';
 
+// ⚠️ PARALLEL within the file (2026-09-22). These tests share nothing — no beforeAll,
+// no declared order, no state between them — and run as one block this file held a
+// single worker for minutes while the others idled (Playwright's own "slow test file"
+// hint). CI splits it per test as well (scripts/e2e-shard.mjs).
+test.describe.configure({ mode: 'parallel' });
+
 /**
  * ── How the landing nearly became unmeasurable, and what fixed it ─────────────
  *

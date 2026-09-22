@@ -5,9 +5,23 @@
  * the user (or from ourselves during debugging). Keep the matches loose — the
  * upstream wording occasionally changes between Supabase releases.
  */
+/**
+ * Supabase refused the request at the human check (lib/turnstile.ts), not on its
+ * merits. Its wording, verbatim from the auth server's source:
+ * "captcha protection: request disallowed (no captcha_token found)" and
+ * "captcha protection: request disallowed (<cloudflare error codes>)".
+ */
+export function isCaptchaError(message: string): boolean {
+  return message.toLowerCase().includes('captcha protection');
+}
+
 export function friendlyAuthError(message: string): string {
   const m = message.toLowerCase();
 
+  // First: a refused check must never read as a wrong password or a bad email.
+  if (isCaptchaError(message)) {
+    return "Our quick security check didn't go through. Please wait a moment and try again.";
+  }
   if (m.includes('invalid login credentials')) {
     return "That email or password doesn't match our records.";
   }

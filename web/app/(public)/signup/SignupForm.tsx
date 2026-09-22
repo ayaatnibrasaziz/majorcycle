@@ -14,6 +14,7 @@ import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
 import { getSiteURL, safeNextPath } from '@/lib/url';
 import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
+import { useCaptcha } from '@/components/Turnstile';
 
 // Signing up has never actually started a trial — `supabase.auth.signUp` just
 // creates the account, and the 7-day trial begins at checkout, where the card is
@@ -57,6 +58,7 @@ export function SignupForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const captcha = useCaptcha('signup');
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -72,8 +74,11 @@ export function SignupForm() {
       password,
       options: {
         emailRedirectTo: `${getSiteURL()}/auth/callback?next=${encodeURIComponent(next)}`,
+        ...captcha.options,
       },
     });
+    // The token is spent either way; the next attempt needs a fresh one.
+    captcha.renew();
     if (authError) {
       setError(friendlyAuthError(authError.message));
       setLoading(false);
@@ -208,7 +213,14 @@ export function SignupForm() {
           </div>
         )}
 
-        <Button type="submit" size="lg" disabled={loading || !hydrated} className="w-full mt-1">
+        {captcha.widget}
+
+        <Button
+          type="submit"
+          size="lg"
+          disabled={loading || !hydrated || !captcha.ready}
+          className="w-full mt-1"
+        >
           {loading ? 'Creating account…' : 'Create free account'}
         </Button>
       </form>

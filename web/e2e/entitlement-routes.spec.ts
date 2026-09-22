@@ -1,4 +1,5 @@
 import { test, expect, type BrowserContext } from '@playwright/test';
+import { signInAs } from './lib/session';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -312,11 +313,7 @@ test.describe('entitlement enforcement across subscription states', () => {
     // Sign in once and persist the session for every test in this file.
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto('/login');
-    await page.fill('input#email', EMAIL);
-    await page.fill('input#password', PASSWORD);
-    await page.getByRole('button', { name: /^sign in$/i }).click();
-    await expect(page).toHaveURL(/\/stocks/, { timeout: 30_000 });
+    await signInAs(page, EMAIL, PASSWORD);
     sessionCookies = await context.cookies();
     await context.close();
   });

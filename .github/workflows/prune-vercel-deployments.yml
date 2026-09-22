@@ -25,10 +25,11 @@ on:
         default: false
       keep_days:
         description: 'Keep everything newer than this many days'
-        default: '3'
+        default: '1'
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   prune:
@@ -47,13 +48,32 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
+      # Which branches still have an open pull request — their newest preview is the
+      # link the owner reviews before merging, so it survives. Every other branch's
+      # previews go once they pass KEEP_DAYS (2026-09-22: Functions Storage at 24 GB
+      # of the free 10 GB with only 13 deployments retained).
+      - name: Open pull-request branches
+        id: open
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo 'branches<<EOF'
+            gh pr list --repo "$GITHUB_REPOSITORY" --state open --json headRefName --jq '.[].headRefName'
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
       - name: Prune
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
           VERCEL_PROJECT: majorcycle
-          KEEP_DAYS: ${{ github.event.inputs.keep_days || '3' }}
-          KEEP_PRODUCTION: '5'
+          # 1 day, and 2 production (the live one + one Instant Rollback target) —
+          # down from 3 and 5 on 2026-09-22. Vercel's own Hobby policy (since
+          # 2026-09-16) keeps 3 production + 3 recent, so this is not stricter than
+          # the platform's, only prompter.
+          KEEP_DAYS: ${{ github.event.inputs.keep_days || '1' }}
+          KEEP_PRODUCTION: '2'
+          OPEN_BRANCHES: ${{ steps.open.outputs.branches }}
           # A scheduled run sends NO inputs, so `inputs.apply` is empty there —
           # this must therefore default to applying on a schedule and to a dry
           # run on a manual dispatch. Getting the polarity backwards would either

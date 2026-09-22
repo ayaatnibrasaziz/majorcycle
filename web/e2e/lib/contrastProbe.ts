@@ -305,13 +305,31 @@ export const MIN_MEASURED = {
   detail: 420,
 } as const;
 
+/**
+ * Network quiet, as a best effort with a ceiling — never as a requirement.
+ *
+ * ⚠️ `waitUntil: 'networkidle'` needs ZERO open connections for 500ms, and
+ * Cloudflare Turnstile (lib/turnstile.ts) keeps one open on the four pages that
+ * draw it, so those pages NEVER go idle: every probe there timed out at 45s
+ * (2026-09-22), four red tests that were the wait and not the colour. What makes a
+ * reading trustworthy is the positive readiness check below (`expectAtLeast`,
+ * 11q), not idleness — so idle is waited for where it comes, and not forever.
+ */
+async function settle(page: Page): Promise<void> {
+  await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => {});
+}
+
 export async function measure(
   page: Page,
   path: string,
   sentinel: keyof typeof SENTINEL = 'reading',
   expectAtLeast: number = MIN_MEASURED.reading,
 ): Promise<Probe> {
-  await page.goto(path, { waitUntil: 'networkidle' });
+  // `domcontentloaded` for the same reason as app-responsive's sweep: waiting for
+  // `load` on the heaviest signed-in page can exceed the navigation budget while the
+  // page is perfectly healthy. Readiness is proven below, by what is on the page.
+  await page.goto(path, { waitUntil: 'domcontentloaded' });
+  await settle(page);
 
   // ⚠️ ONE reload if `next dev` hands back an EMPTY DOCUMENT.
   //
@@ -332,7 +350,8 @@ export async function measure(
   // fails still fails on the first pass. Reloading is also the honest response
   // to a dropped response: it is what a reader does.
   if (await page.evaluate(() => document.querySelectorAll('body *').length < 10)) {
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'load' });
+    await settle(page);
   }
 
   await page.evaluate(() => document.fonts.ready);

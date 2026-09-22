@@ -74,6 +74,13 @@ export default defineConfig({
   // line, not the colour — same rule as always, one level further in.
   retries: 1,
   reporter: [['list']],
+  // ⚠️ On CI, stop BEFORE GitHub does (each E2E shard is capped at 25 minutes). When
+  // GitHub cancels a job the runner is killed mid-sentence and the log simply ends;
+  // on 2026-09-22 two runs sat silent for 20+ minutes that way and said nothing
+  // about why. Playwright's own global timeout interrupts whatever is still running
+  // and PRINTS it, plus the summary line — a hang becomes a report. 20 minutes is
+  // well above what one CI shard takes; the job itself is capped at 25.
+  globalTimeout: process.env.CI ? 20 * 60_000 : 0,
   timeout: 60_000,
   expect: { timeout: 15_000 },
   use: {
@@ -143,7 +150,10 @@ export default defineConfig({
     //
     // Booting a server costs ~30 seconds. Being unable to trust a green run costs a
     // great deal more. `pnpm e2e` now always tests the working tree in front of it.
-    reuseExistingServer: false,
+    // ⚠️ `E2E_EXTERNAL_SERVER=1` only on CI, whose workflow starts the dev server itself
+    // on a fresh runner (see ci.yml → "Start the dev server" for the teardown hang that
+    // made this necessary). Locally it stays `false`, for the stale-server reason above.
+    reuseExistingServer: process.env.E2E_EXTERNAL_SERVER === '1',
     timeout: 180_000,
   },
 });

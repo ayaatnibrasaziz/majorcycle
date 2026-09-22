@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { signInAs } from './lib/session';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { DELETION_NOTICE_COOKIE, DELETION_NOTICE_PATH } from '@/lib/account';
@@ -84,11 +85,7 @@ test.describe('requestAccountDeletion sets the marker its own page requires', ()
   }) => {
     test.setTimeout(120_000);
 
-    await page.goto('/login');
-    await page.fill('input#email', EMAIL);
-    await page.fill('input#password', PASSWORD);
-    await page.getByRole('button', { name: /^sign in$/i }).click();
-    await expect(page).toHaveURL(/\/stocks/, { timeout: 30_000 });
+    await signInAs(page, EMAIL, PASSWORD);
 
     // The control. Before the action runs, this browser must NOT be able to reach
     // the confirmation — otherwise the assertion after it proves nothing.

@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
 
-import { sharedOptions } from '@/lib/sentryOptions';
+import { BROWSER_NOISE, sharedOptions } from '@/lib/sentryOptions';
 
 /**
  * Sentry, in the reader's browser.
@@ -22,7 +22,7 @@ import { sharedOptions } from '@/lib/sentryOptions';
  * ⚠️ With no `NEXT_PUBLIC_SENTRY_DSN` this is a no-op and no network request is
  * made — see `lib/sentryOptions.ts`.
  */
-Sentry.init({ ...sharedOptions });
+Sentry.init({ ...sharedOptions, ignoreErrors: [...BROWSER_NOISE] });
 
 /**
  * Report slow or failed client-side route changes.

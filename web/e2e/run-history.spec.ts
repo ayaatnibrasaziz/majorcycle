@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { signInAs } from './lib/session';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -79,11 +80,7 @@ test.describe('the Run tab fetches its own history', () => {
       }
     });
 
-    await page.goto('/login');
-    await page.fill('input#email', EMAIL);
-    await page.fill('input#password', PASSWORD);
-    await page.getByRole('button', { name: /^sign in$/i }).click();
-    await expect(page).toHaveURL(/\/stocks/, { timeout: 30_000 });
+    await signInAs(page, EMAIL, PASSWORD);
 
     // ── The half that must NOT happen ────────────────────────────────────────
     // Browse is a signed-in page wrapped by the same provider. It has no business
