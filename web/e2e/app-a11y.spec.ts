@@ -649,11 +649,11 @@ test.describe('the PAID product is accessible', () => {
       .toBeGreaterThanOrEqual(900);
     // Positive control, as above: the Verdict thesis exists only for an entitled viewer.
     expect(await page.locator('.verdict-thesis-num').count(), 'not entitled — this proves nothing').toBeGreaterThan(0);
-    await check('/stocks/us/AAPL (entitled, ${width}px)');
+    await check(`/stocks/us/AAPL (entitled, ${width}px)`);
 
     await page.goto('/run');
     await expect(page.locator('.upload-zone')).toBeVisible({ timeout: 30_000 });
-    await check('/run (entitled, ${width}px)');
+    await check(`/run (entitled, ${width}px)`);
 
     await page.evaluate(
       ([key, snap]) => sessionStorage.setItem(key as string, JSON.stringify(snap)),
@@ -663,6 +663,6 @@ test.describe('the PAID product is accessible', () => {
     await expect
       .poll(() => page.locator('.score-num').count(), { timeout: 45_000 })
       .toBeGreaterThanOrEqual(RUN_SNAPSHOT_ROWS);
-    await check('/results (entitled, ${width}px)');
+    await check(`/results (entitled, ${width}px)`);
   });
 });
