@@ -11,6 +11,7 @@ import { cache } from 'react';
 
 import { toCamel } from '@/lib/case';
 import { normalizeAnalystRecommendation } from '@/lib/format';
+import { reportIssue } from '@/lib/observability';
 import { createAdminClient } from '@/lib/supabase/server';
 import type {
   FundamentalsSnapshot,
@@ -139,11 +140,85 @@ export async function readStockRow(
 }
 
 /**
+ * What `get_price_bars_cols` returns: each column joined with commas, in date order,
+ * as the numeric's own TEXT (exact — see the migration). `n` is the row count, and a
+ * missing value is the empty string rather than a zero (14b).
+ */
+interface ColumnarBars {
+  n: number;
+  d: string | null;
+  o: string | null;
+  h: string | null;
+  l: string | null;
+  c: string | null;
+  v: string | null;
+}
+
+/**
+ * ⚠️ `Number()`, which is correctly rounded, and NEVER `parseFloat` on a pre-split
+ * buffer or any "fast" parser: 94% of stored prices carry more than 15 significant
+ * digits, and 11az is the record of four decoders disagreeing at the last bit while
+ * every answer still looked right.
+ *
+ * ⚠️ Every column's length is RECONCILED against `n` (11i). A column one element
+ * short does not error on its own — it pairs one day's high with the next day's low,
+ * and every number that comes out looks perfectly ordinary. A mismatch throws, and
+ * `loadPriceBars` then takes the paginated path, which is slower and right.
+ *
+ * ⚠️ The empty string is the encoding's NULL, so it decodes to `NaN`, never `0`:
+ * `Number('')` is 0, and a zero volume is a plausible reading of a real trading day
+ * (14b — an absent value must never read as a real one). Measured 2026-09-23: no row
+ * in `price_bars` has a NULL in any of the five, so this is a guard rather than a
+ * live case, and it is the direction a reader can see.
+ */
+export function decodeColumnarBars(cols: ColumnarBars): PriceBar[] {
+  if (!cols.n || !cols.d) return [];
+  const split = (key: keyof ColumnarBars, s: string | null): string[] => {
+    // ⚠️ `s ? … : []` is WRONG here: a single row whose value is NULL arrives as the
+    // empty string, and `''.split(',')` is `['']` — one missing value, which is the
+    // truth. Treating it as "no column" would send that ticker down the fallback for
+    // the rest of its life. Only a genuinely absent column yields `[]`, and the
+    // length check below then rejects it.
+    const parts = s === null || s === undefined ? [] : s.split(',');
+    if (parts.length !== cols.n) {
+      throw new Error(
+        `get_price_bars_cols: column "${key}" has ${parts.length} values, expected ${cols.n}`,
+      );
+    }
+    return parts;
+  };
+  const num = (s: string | undefined): number => (s ? Number(s) : NaN);
+  const d = split('d', cols.d);
+  const o = split('o', cols.o);
+  const h = split('h', cols.h);
+  const l = split('l', cols.l);
+  const c = split('c', cols.c);
+  const v = split('v', cols.v);
+  const bars: PriceBar[] = [];
+  for (let i = 0; i < d.length; i++) {
+    bars.push({
+      date: d[i]!,
+      open: num(o[i]),
+      high: num(h[i]),
+      low: num(l[i]),
+      close: num(c[i]),
+      volume: num(v[i]),
+    });
+  }
+  return bars;
+}
+
+/**
  * Load a ticker's full daily history.
  *
- * Fast path: ONE request via the `get_price_bars_json` RPC, which returns the
- * whole history as a single jsonb value (bypassing PostgREST's 1000-row cap —
- * so a long-history ticker no longer needs ~12 cross-region round-trips).
+ * Fast path: ONE request via the `get_price_bars_cols` RPC, which returns the whole
+ * history as six comma-joined strings (bypassing PostgREST's 1000-row cap — so a
+ * long-history ticker no longer needs ~12 cross-region round-trips).
+ *
+ * ⚠️ It was `get_price_bars_json` until 2026-09-22, which builds one jsonb OBJECT per
+ * bar: 98 ms against 16 ms for AAPL, measured interleaved on the live database. That
+ * cost was the query Postgres cancelled under load, and a cancelled fast path falls
+ * through to ~12 paginated reads, which is more load again.
  *
  * Falls back to parallel paginated reads if the RPC isn't deployed yet or errors,
  * so this is safe to ship before/after the migration.
@@ -159,11 +234,23 @@ export async function loadPriceBars(
   supabase: AdminClient,
   ticker: string,
 ): Promise<PriceBar[]> {
-  const { data: rpcData, error: rpcErr } = await supabase.rpc('get_price_bars_json', {
+  const { data: rpcData, error: rpcErr } = await supabase.rpc('get_price_bars_cols', {
     p_ticker: ticker,
   });
-  if (!rpcErr && Array.isArray(rpcData)) {
-    return rpcData as unknown as PriceBar[];
+  if (!rpcErr && rpcData && typeof rpcData === 'object' && !Array.isArray(rpcData)) {
+    try {
+      return decodeColumnarBars(rpcData as ColumnarBars);
+    } catch (err) {
+      // A payload that does not reconcile is a BUG, not a read failure: the rows are
+      // there and the paginated path below can still fetch them correctly. Falling
+      // through silently would turn a correctness fault into a performance one
+      // nobody ever hears about (11ag), so it is reported and then recovered from.
+      reportIssue('stocks: get_price_bars_cols returned a payload that does not reconcile', {
+        level: 'warning',
+        cause: err,
+        tags: { ticker },
+      });
+    }
   }
 
   // Fallback: get the count once, then pull every 1000-row page in parallel so

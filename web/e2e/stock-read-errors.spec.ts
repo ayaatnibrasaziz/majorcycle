@@ -124,12 +124,79 @@ test.describe('the control — a genuine absence must still be null, not a throw
   });
 
   test('the RPC fast path returns bars without touching the fallback', async () => {
-    const bars = [{ date: '2026-01-02', open: 1, high: 2, low: 1, close: 2, volume: 10 }];
     const supabase = stubClient({
-      rpc: { data: bars, error: null },
+      rpc: { data: COLS, error: null },
       // The fallback would throw if it ran — so resolving proves it did not.
       count: { count: null, error: ERR },
     });
-    await expect(loadPriceBars(supabase, 'AAPL')).resolves.toEqual(bars);
+    await expect(loadPriceBars(supabase, 'AAPL')).resolves.toEqual([
+      { date: '2026-01-02', open: 1, high: 2, low: 1, close: 2, volume: 10 },
+      { date: '2026-01-05', open: 2, high: 3, low: 2, close: 3, volume: 20 },
+    ]);
+  });
+});
+
+/**
+ * The COLUMNAR payload (`get_price_bars_cols`, 2026-09-22). Six comma-joined TEXT
+ * columns plus the row count — cheaper than the jsonb-object-per-bar shape it
+ * replaced, and every failure it can have is silent unless something checks.
+ */
+const COLS = {
+  n: 2,
+  d: '2026-01-02,2026-01-05',
+  o: '1,2',
+  h: '2,3',
+  l: '1,2',
+  c: '2,3',
+  v: '10,20',
+};
+
+test.describe('the columnar decoder', () => {
+  test('a price survives the wire EXACTLY — the last digits are the whole point', async () => {
+    // 11az: `Number()` is correctly rounded; a "fast" parser is not, and 94% of
+    // stored prices carry more than 15 significant digits. A 1e-13 shift cannot be
+    // seen and can move a pullback across its threshold.
+    const exact = '0.09854902842560147';
+    const supabase = stubClient({
+      rpc: { data: { ...COLS, n: 1, d: '2026-01-02', o: exact, h: exact, l: exact, c: exact, v: '1' }, error: null },
+      count: { count: null, error: ERR },
+    });
+    const bars = await loadPriceBars(supabase, 'AAPL');
+    expect(bars[0]!.close).toBe(Number(exact));
+    // The control: the assertion has to be able to fail on the LAST digit.
+    expect(bars[0]!.close).not.toBe(Number('0.09854902842560148'));
+  });
+
+  test('a MISSING value decodes to NaN, never to a plausible zero', async () => {
+    // 14b: `Number('')` is 0, and a zero volume reads as a real trading day.
+    const supabase = stubClient({
+      rpc: { data: { ...COLS, n: 1, d: '2026-01-02', o: '1', h: '2', l: '1', c: '2', v: '' }, error: null },
+      count: { count: null, error: ERR },
+    });
+    const bars = await loadPriceBars(supabase, 'AAPL');
+    expect(Number.isNaN(bars[0]!.volume)).toBe(true);
+  });
+
+  test('a payload that does not RECONCILE falls back instead of mis-pairing rows', async () => {
+    // A column one element short does not error on its own: it pairs one day's high
+    // with the next day's low, and every number that comes out looks ordinary (11i —
+    // reconcile the count). The fallback is slower and right, so it must be taken.
+    const page = [{ date: '2026-01-02', open: 1, high: 2, low: 1, close: 2, volume: 10 }];
+    const supabase = stubClient({
+      rpc: { data: { ...COLS, h: '2' }, error: null }, // 1 high for 2 dates
+      count: { count: 1, error: null },
+      page: { data: page, error: null },
+    });
+    await expect(loadPriceBars(supabase, 'AAPL')).resolves.toEqual(page);
+  });
+
+  test('the control — the same payload with its column INTACT uses the fast path', async () => {
+    // Without this, a decoder that threw on everything would pass the test above
+    // while silently costing a dozen round-trips per ticker.
+    const supabase = stubClient({
+      rpc: { data: COLS, error: null },
+      count: { count: null, error: ERR }, // the fallback would throw
+    });
+    await expect(loadPriceBars(supabase, 'AAPL')).resolves.toHaveLength(2);
   });
 });

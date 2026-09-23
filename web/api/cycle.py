@@ -61,11 +61,11 @@ logging.basicConfig(level=logging.INFO)
 # the constant in web/lib/cycle.ts and the check in web/proxy.ts.
 INTERNAL_HEADER = "x-mc-internal"
 
-# Whether the get_price_bars_json RPC (one-shot history fetch) exists in this DB.
+# Whether the get_price_bars_cols RPC (one-shot history fetch) exists in this DB.
 # None = not yet probed; False = confirmed missing (use pagination); True = present.
 # Lets this run before the migration is applied (falls back to paginated reads).
 _RPC_AVAILABLE: bool | None = None
-_RPC_NAME = "get_price_bars_json"
+_RPC_NAME = "get_price_bars_cols"
 
 
 def _supabase() -> Client:
@@ -81,8 +81,9 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
     """Read all price_bars for one ticker. Returns DataFrame with yfinance-style
     OHLCV column names (Open, High, Low, Close, Volume) and a DatetimeIndex.
 
-    Fast path: ONE request via the get_price_bars_json RPC (whole history as a
-    single jsonb — bypasses the 1000-row cap). Falls back to parallel paginated
+    Fast path: ONE request via the get_price_bars_cols RPC (whole history as six
+    comma-joined TEXT columns — bypasses the 1000-row cap, and costs about a sixth
+    of the jsonb-per-bar shape it replaced). Falls back to parallel paginated
     reads if the RPC isn't deployed yet or errors, so this is safe before/after
     the migration. (Without the RPC, PostgREST caps each response at 1000 rows,
     so we must page; otherwise the cycle math would see only the oldest 1000
@@ -93,8 +94,8 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
         try:
             resp = sb.rpc(_RPC_NAME, {"p_ticker": ticker}).execute()
             _RPC_AVAILABLE = True
-            data = cast("list[Any] | None", resp.data)
-            return _bars_to_df(data) if data else None
+            cols = cast("dict[str, Any] | None", resp.data)
+            return _cols_to_df(cols) if cols else None
         except Exception as e:  # noqa: BLE001
             msg = str(e).lower()
             if _RPC_AVAILABLE is None and any(
@@ -144,6 +145,55 @@ def _load_price_bars(sb: Client, ticker: str) -> pd.DataFrame | None:
     if not rows:
         return None
     return _bars_to_df(rows)
+
+
+def _cols_to_df(cols: dict[str, Any]) -> pd.DataFrame | None:
+    """Build the OHLCV DataFrame from the COLUMNAR payload get_price_bars_cols returns.
+
+    The shape is {n, d, o, h, l, c, v}: each column is that field's values joined
+    with commas, in date order, as the stored numeric's own TEXT, with NULL written
+    as the EMPTY STRING. Exact by construction — see the migration and 11ay/11az: a
+    float rendering drops the last digits of 94% of stored prices, and a 1e-13 shift
+    can in principle move a pullback across its threshold.
+
+    ⚠️ The lengths are RECONCILED against `n` rather than trusted. A column one
+    element short would not error — it would pair one day's high with another day's
+    low, and every resulting number would look perfectly ordinary (11i: reconcile the
+    count). A malformed payload raises, which sends this call down the paginated
+    fallback, rather than returning a frame nobody can tell is wrong.
+    """
+    n = int(cols.get("n") or 0)
+    if n == 0:
+        return None
+
+    parts: dict[str, list[str]] = {}
+    for key in ("d", "o", "h", "l", "c", "v"):
+        raw = cols.get(key)
+        if not isinstance(raw, str):
+            msg = f"get_price_bars_cols: column {key!r} is not text"
+            raise ValueError(msg)
+        values = raw.split(",")
+        if len(values) != n:
+            msg = f"get_price_bars_cols: column {key!r} has {len(values)} values, expected {n}"
+            raise ValueError(msg)
+        parts[key] = values
+
+    idx = pd.to_datetime(pd.Series(parts["d"], dtype="object"))
+    df = pd.DataFrame(index=pd.DatetimeIndex(idx))
+    # Python's `float()` for the four price columns, for the reason spelled out in
+    # `_bars_to_df` below: it is correctly rounded and `pd.to_numeric` is not. The
+    # empty string is the encoding's NULL, so it becomes NaN — a genuine gap, never
+    # a 0.0 the scorer would read as a real price (14b).
+    for col, key in (("Open", "o"), ("High", "h"), ("Low", "l"), ("Close", "c")):
+        df[col] = pd.Series(
+            [float(x) if x else float("nan") for x in parts[key]], index=df.index, dtype="float64"
+        )
+    # Volume stays on `to_numeric` — an integer, exact either way, and this keeps the
+    # int64 dtype when the column has no gaps, exactly as the paginated path does.
+    df["Volume"] = pd.to_numeric(
+        pd.Series([x if x else None for x in parts["v"]], index=df.index, dtype="object")
+    )
+    return df
 
 
 def _bars_to_df(rows: list[Any]) -> pd.DataFrame:
