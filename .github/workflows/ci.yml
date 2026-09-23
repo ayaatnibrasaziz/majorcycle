@@ -160,7 +160,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     # ⚠️ A hang here used to be INVISIBLE. GitHub's default is 6 hours, so the
     # wedged `playwright install` on 2026-08-19 produced no red, no email and no
     # notification — an unfinished run reads exactly like a slow one. The failed-
