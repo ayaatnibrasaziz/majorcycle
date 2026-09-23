@@ -29,6 +29,17 @@
  * time, so the widget, the CSP and the disclosure ship together or not at all.
  * Dev and CI use Cloudflare's published always-pass TEST key
  * (`1x00000000000000000000AA`), so the real widget path runs on every test.
+ *
+ * ── LIVE since 2026-09-23 ────────────────────────────────────────────────────
+ * Cloudflare widget **"MajorCycle auth"**, mode Managed, hostnames
+ * `majorcycle.com` + `www.majorcycle.com`. The site key is set on Vercel for
+ * **production only**, which has a consequence worth knowing before it surprises
+ * somebody: a PREVIEW deployment is `*.vercel.app`, which is not in that hostname
+ * list, so previews ship no widget — and Supabase's CAPTCHA setting is per
+ * PROJECT, not per environment. Once it is on, a password sign-in on a preview
+ * URL is refused. That is deliberate: adding `vercel.app` to the widget would
+ * hand our site key to every site on that domain. Use production, or the local
+ * test key, to exercise a password form by hand.
  */
 
 export const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
