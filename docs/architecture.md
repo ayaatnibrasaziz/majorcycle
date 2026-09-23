@@ -2221,6 +2221,32 @@ checked by hand on the live project after switching it on.
 5. Verify: a direct `POST /auth/v1/signup` with no token answers `captcha protection: request
    disallowed`, and a real sign-in on the live site still works.
 
+✅ **DONE 2026-09-23.** Widget "MajorCycle auth" (Managed, `majorcycle.com` + `www`), site key on
+Vercel production only, secret in Supabase. Measured at the wire: `/auth/v1/signup` and
+`/auth/v1/recover` with no token both answer `captcha protection: request disallowed (no
+captcha_token found)`; a junk token answers `invalid-input-response`, which is **Cloudflare's own**
+code and therefore proof the secret is being used AND that it matches the widget (a wrong secret
+answers `invalid-input-secret`); service-role credentials still sign in, which is what the test
+suite rides on.
+
+⚠️ **THE WIDGET IS NORMALLY INVISIBLE, AND THAT LOOKS IDENTICAL TO BROKEN.** The owner reported
+seeing no "Verify you are human" box. Measured on the live page while signed out: a real token had
+been issued, the Sign In button was **enabled**, and the widget's box was **0px tall** — Cloudflare
+judged the visitor human without asking, which is exactly what `appearance: 'interaction-only'`
+is for. An automated browser hitting the same page got the visible checkbox. **So "I can't see it"
+is not evidence either way: read the button's disabled state and whether a token exists.**
+
+⚠️ **SWITCHING IT ON TURNED CI RED IN THREE PLACES THE E2E BYPASS COULD NOT REACH**, and each
+failure named something other than the captcha. `check-page-weight` and `check-csp` sign in with a
+real form from plain `.mjs` scripts (symptom: `page.waitForURL: Timeout 30000ms exceeded`);
+`entitlement-routes` and `db-grants` call `signInWithPassword` from **Node**, where a `page.route`
+rewrite cannot see it (symptom: *"the test user should be able to sign in"*). The rule now lives in
+ONE module, `web/e2e/lib/captchaRoute.mjs`, which both the TypeScript specs and the `.mjs` scripts
+import. Two further defects surfaced while fixing it: the bypass **returned silently** when it had
+no service key (so a harness that could not do its job failed elsewhere — 14g; it now reports
+whether it armed), and it read the environment at **import** time, which is evaluated before the
+importing script loads `.env.local`, so widening that loader alone changed nothing.
+
 
 ## 8. Cron Job Specification
 
