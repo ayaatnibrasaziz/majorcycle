@@ -289,18 +289,50 @@ jobs:
       # wait endless ("Timed out waiting 3300s for the teardown for plugin setup").
       # Started here, Playwright only reuses it (E2E_EXTERNAL_SERVER) and has nothing
       # to tear down; the runner discards the process when the job ends.
+      # ⚠️ EXPERIMENT (2026-09-23). Turbopack's dev filesystem cache is OFF locally
+      # for a reason that is about THIS LAPTOP, not about a runner: it took the
+      # machine from 11.47 GB free to 0.00 GB in eleven minutes (see
+      # playwright.config.ts). A runner has its own disk and is thrown away, so
+      # every shard has been re-compiling the whole app from cold on every run.
+      # Measured locally, a server restarted onto a warm cache ran the same spec in
+      # 125s against 152s. Shared here between shards.
+      - name: Restore the Turbopack dev cache
+        uses: actions/cache/restore@v4
+        with:
+          path: web/.next-dev
+          key: nextdev-${{ hashFiles('web/pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            nextdev-${{ hashFiles('web/pnpm-lock.yaml') }}-
+
       - name: Start the dev server
         env:
-          MC_E2E_NO_FS_CACHE: '1'
           NODE_OPTIONS: --max-old-space-size=6144
         run: |
-          nohup pnpm exec next dev --port 3100 > "$RUNNER_TEMP/next-dev.log" 2>&1 &
-          for i in $(seq 1 90); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3100/ || true)
-            [ "$code" = 200 ] && echo "dev server up after $((i * 2))s" && exit 0
-            sleep 2
-          done
-          echo "dev server never answered 200"; tail -50 "$RUNNER_TEMP/next-dev.log"; exit 1
+          start_server() {
+            nohup pnpm exec next dev --port 3100 > "$RUNNER_TEMP/next-dev.log" 2>&1 &
+            for i in $(seq 1 90); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3100/ || true)
+              [ "$code" = 200 ] && echo "dev server up after $((i * 2))s" && return 0
+              sleep 2
+            done
+            return 1
+          }
+          # ⚠️ ASK A NON-ROOT ROUTE (CLAUDE.md 11i-c). A `.next-dev` that has gone
+          # bad answers 404 on every route EXCEPT `/`, so checking `/` proves
+          # nothing — and the symptom is a dozen invented failures in unrelated
+          # specs. A restored cache is the one thing that can arrive already
+          # broken, so it gets thrown away and the server started once more.
+          healthy() {
+            [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3100/pricing || true)" = 200 ]
+          }
+          if start_server && healthy; then exit 0; fi
+          echo "cold start or /pricing check failed — discarding the restored cache"
+          tail -30 "$RUNNER_TEMP/next-dev.log" || true
+          pkill -f 'next dev' || true
+          sleep 3
+          rm -rf .next-dev
+          if start_server && healthy; then echo "recovered without the cache"; exit 0; fi
+          echo "dev server never served /pricing"; tail -50 "$RUNNER_TEMP/next-dev.log"; exit 1
 
       - name: Run E2E (shard ${{ matrix.shard }})
         env:
@@ -309,6 +341,15 @@ jobs:
         run: |
           node scripts/e2e-shard.mjs ${{ matrix.shard }} ${{ strategy.job-total }} "$RUNNER_TEMP/shard.list"
           pnpm exec playwright test --test-list "$RUNNER_TEMP/shard.list" --reporter=list,blob
+
+      # ONE shard saves it. Ten uploads of the same ~1 GB would cost more than the
+      # compiling they save, and every shard restores the same key regardless.
+      - name: Save the Turbopack dev cache
+        if: ${{ matrix.shard == 1 && !cancelled() }}
+        uses: actions/cache/save@v4
+        with:
+          path: web/.next-dev
+          key: nextdev-${{ hashFiles('web/pnpm-lock.yaml') }}-${{ github.sha }}
 
       - name: Dev server log (on failure)
         if: failure()
