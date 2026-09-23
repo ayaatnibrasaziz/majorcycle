@@ -39,12 +39,15 @@
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { chromium } from '@playwright/test';
+import { passCaptchaForTests } from '../e2e/lib/captchaRoute.mjs';
 
 function loadE2ECredsFromEnvLocal() {
   if (process.env.E2E_EMAIL && process.env.E2E_PASSWORD) return;
   if (!existsSync('.env.local')) return;
   for (const line of readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
-    const m = line.match(/^\s*(E2E_EMAIL|E2E_PASSWORD)\s*=\s*(.*)\s*$/);
+    const m = line.match(
+      /^\s*(E2E_EMAIL|E2E_PASSWORD|NEXT_PUBLIC_SUPABASE_URL|SUPABASE_SERVICE_ROLE_KEY)\s*=\s*(.*)\s*$/,
+    );
     if (m) process.env[m[1]] ??= m[2].replace(/^['"]|['"]$/g, '');
   }
 }
@@ -151,6 +154,16 @@ if (process.env.E2E_EMAIL && process.env.E2E_PASSWORD) {
   const appCtx = await browser.newContext();
   await appCtx.addInitScript(RECORD_VIOLATIONS);
   appPage = await appCtx.newPage();
+  // Supabase enforces the human check since 2026-09-23, and this script signs in
+  // with a real form. One rule for every harness that does — e2e/lib/captchaRoute.mjs.
+  const armed = await passCaptchaForTests(appPage);
+  if (!armed) {
+    throw new Error(
+      'the captcha bypass could not arm: set NEXT_PUBLIC_SUPABASE_URL and ' +
+      'SUPABASE_SERVICE_ROLE_KEY. Without it Supabase refuses the sign-in and this ' +
+      'script fails thirty lines later on an unrelated-looking timeout.',
+    );
+  }
   await appPage.goto(`${ORIGIN}/login`);
   await appPage.fill('input#email', process.env.E2E_EMAIL);
   await appPage.fill('input#password', process.env.E2E_PASSWORD);

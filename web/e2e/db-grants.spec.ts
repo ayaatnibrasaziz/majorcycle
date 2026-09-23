@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { userClientForTests } from './lib/captcha';
 
 /**
  * `anon` may READ `profiles` and may write nothing (audit F-024).
@@ -213,14 +214,12 @@ test.describe('a signed-in customer can still edit their own profile', () => {
    * to hold is still refused.
    */
   test('the three allowed columns still save, and subscription_status still does not', async () => {
-    const user = createClient(SUPABASE_URL!, ANON_KEY!, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-    const { error: signInError } = await user.auth.signInWithPassword({
-      email: EMAIL,
-      password: PASSWORD,
-    });
-    expect(signInError, 'the throwaway account must be able to sign in').toBeNull();
+    // ⚠️ Minted through the admin path rather than `signInWithPassword`: Supabase's
+    // captcha check went live on 2026-09-23 and this call is made from NODE, where
+    // the browser-level rewrite cannot reach it. The client still carries the
+    // USER's token, so this remains a test of what `authenticated` may write —
+    // and the assertion below is exactly what would catch it if it did not.
+    const { client: user } = await userClientForTests(EMAIL, PASSWORD);
 
     const { error: allowed } = await user
       .from('profiles')

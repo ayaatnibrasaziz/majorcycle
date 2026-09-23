@@ -47,6 +47,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
+import { passCaptchaForTests } from '../e2e/lib/captchaRoute.mjs';
 
 for (const line of readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
   const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
@@ -188,6 +189,7 @@ try {
     let signedIn = false;
     for (let attempt = 1; attempt <= 2 && !signedIn; attempt++) {
       try {
+        await passCaptchaForTests(page);
         await page.goto(`${ORIGIN}/login`, { waitUntil: 'domcontentloaded' });
         await page.fill('input#email', EMAIL);
         await page.fill('input#password', PASSWORD);

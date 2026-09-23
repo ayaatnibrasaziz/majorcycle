@@ -1,5 +1,6 @@
 import { test, expect, type BrowserContext } from '@playwright/test';
 import { signInAs } from './lib/session';
+import { userClientForTests } from './lib/captcha';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -792,15 +793,13 @@ test.describe('entitlement enforcement across subscription states', () => {
 
   // ── The counter must not be resettable by its own user (audit finding B4) ───
   test('a signed-in user cannot write their own counter or billing columns', async () => {
-    const userClient = createClient(SUPABASE_URL!, ANON_KEY!, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-    const { data: signIn, error: signInErr } = await userClient.auth.signInWithPassword({
-      email: EMAIL,
-      password: PASSWORD,
-    });
-    expect(signInErr, 'the test user should be able to sign in').toBeNull();
-    expect(signIn.session).not.toBeNull();
+    // ⚠️ NOT `userClient.auth.signInWithPassword`. Supabase's captcha check went
+    // live on 2026-09-23 and this call is made from NODE, where the browser-level
+    // rewrite in `lib/captcha` cannot reach it — it was refused, and the test read
+    // as "the test user should be able to sign in". `userClientForTests` takes the
+    // admin path to MINT the session and then hands back a client carrying the
+    // USER's token, so what is being tested is unchanged.
+    const { client: userClient } = await userClientForTests(EMAIL, PASSWORD);
 
     const today = new Date().toISOString().slice(0, 10);
     await setState({
@@ -840,10 +839,10 @@ test.describe('entitlement enforcement across subscription states', () => {
 
   // ── What a user IS allowed to change ────────────────────────────────────────
   test('a signed-in user CAN update display name and country, and nothing else', async () => {
-    const userClient = createClient(SUPABASE_URL!, ANON_KEY!, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-    await userClient.auth.signInWithPassword({ email: EMAIL, password: PASSWORD });
+    // THE CONTROL for the test above, and for `userClientForTests` itself: if that
+    // helper ever handed back an anonymous client, every refusal above would still
+    // pass — for the wrong reason — and this is the assertion that would go red.
+    const { client: userClient } = await userClientForTests(EMAIL, PASSWORD);
 
     const { error } = await userClient
       .from('profiles')
