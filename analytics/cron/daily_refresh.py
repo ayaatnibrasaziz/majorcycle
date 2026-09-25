@@ -672,6 +672,93 @@ def _mark_dividend_repulled(supabase: Client, ticker: str, ex_dates: list[str]) 
     ).eq("ticker", ticker).in_("ex_date", ex_dates).execute()
 
 
+#: Below this many stored-and-fetched bars BEFORE the newest ex-date, the price check
+#: has too little to go on and the decision falls back to the dividend record.
+_BASIS_MIN_OVERLAP = 3
+#: A dividend rescales history by its yield — 1.0005 for a 0.05% payment, 1.035 for a
+#: large one. Two copies of the SAME basis agree to ~1e-12 (the same provider float,
+#: stored as numeric), so 1e-5 separates "rescaled" from "identical" by orders of magnitude.
+_BASIS_TOLERANCE = 1e-5
+
+
+def _history_needs_readjust(
+    stored_closes: dict[str, float],
+    fetched: pd.DataFrame,
+    newest_ex_date: str,
+    already_repulled: bool,
+) -> bool:
+    """Does a dividend in tonight's window still need a FULL history re-pull?
+
+    ⚠️ WHY THIS EXISTS — 2026-09-25. The window is one month, so a dividend stays in
+    it for ~20 nights, and until today every one of those nights re-pulled the
+    company's ENTIRE history — the first re-pull fixed the basis, the other nineteen
+    rewrote identical rows. In September's dividend season that was **337 full
+    re-pulls in one day** and ~630,000 rewritten rows, which wiped the visibility map
+    the screener's index-only reads depend on: a 38-second screen took 155 seconds,
+    and failed outright when a CI run landed on top.
+
+    The answer is in the data, not a flag. When a company goes ex-dividend the
+    provider rescales every EARLIER bar by one constant (measured 2026-08-29: CBA
+    1.0169, MSFT 1.0019), so compare the bars we STORED with the bars just FETCHED on
+    the dates before the newest ex-date:
+
+    - same values → our history is already on the provider's current basis → no re-pull;
+    - a constant factor apart → it is not → re-pull (the first night, and also a night
+      when the provider applied the adjustment a day late, which a "did we re-pull
+      already?" flag would miss).
+
+    Too few overlapping bars to judge (the ex-date sits at the start of the window)
+    falls back to the record: re-pull unless this dividend was already re-pulled for.
+    The median ratio is used so one revised bar cannot force or suppress a re-pull.
+    """
+    if fetched is None or fetched.empty or "Close" not in fetched:
+        return True
+    ratios: list[float] = []
+    for ts, close in zip(pd.DatetimeIndex(fetched.index), fetched["Close"], strict=True):
+        day = ts.strftime("%Y-%m-%d")
+        if day >= newest_ex_date:
+            continue
+        stored = stored_closes.get(day)
+        if stored is None or not close or pd.isna(close) or stored == 0:
+            continue
+        ratios.append(float(stored) / float(close))
+    if len(ratios) < _BASIS_MIN_OVERLAP:
+        return not already_repulled
+    ratios.sort()
+    median = ratios[len(ratios) // 2]
+    return abs(median - 1.0) > _BASIS_TOLERANCE
+
+
+def _stored_closes(supabase: Client, ticker: str, since: str, until: str) -> dict[str, float]:
+    """Stored closes for one ticker in [since, until) — a month at most, so one page."""
+    res = (
+        supabase.table("price_bars")
+        .select("date,close")
+        .eq("ticker", ticker)
+        .gte("date", since)
+        .lt("date", until)
+        .execute()
+    )
+    rows = cast(list[dict[str, Any]], res.data or [])
+    return {str(r["date"])[:10]: float(r["close"]) for r in rows if r.get("close") is not None}
+
+
+def _dividends_already_repulled(supabase: Client, ticker: str, ex_dates: list[str]) -> bool:
+    """True when every one of these dividends has a `repulled_at` on record."""
+    if not ex_dates:
+        return False
+    res = (
+        supabase.table("dividend_events")
+        .select("ex_date,repulled_at")
+        .eq("ticker", ticker)
+        .in_("ex_date", ex_dates)
+        .execute()
+    )
+    rows = cast(list[dict[str, Any]], res.data or [])
+    done = {str(r["ex_date"])[:10] for r in rows if r.get("repulled_at")}
+    return all(d[:10] in done for d in ex_dates)
+
+
 def _update_split_state(
     supabase: Client,
     split_id: str,
@@ -1161,6 +1248,26 @@ def run(
                                 _record_dividend_detection(
                                     supabase, ticker, ev["date"], ev.get("amount")
                                 )
+                            # Re-pull only if our stored history is NOT already on the
+                            # provider's current basis — see `_history_needs_readjust`.
+                            # Without this, one dividend cost ~20 full re-pulls.
+                            newest_ex = max(d[:10] for d in divs)
+                            window_start = pd.Timestamp(df.index.min()).strftime("%Y-%m-%d")
+                            if not _history_needs_readjust(
+                                _stored_closes(supabase, ticker, window_start, newest_ex),
+                                df,
+                                newest_ex,
+                                _dividends_already_repulled(supabase, ticker, divs),
+                            ):
+                                logger.info(
+                                    "%s: dividend on %s — stored history already on the current basis, no re-pull",
+                                    ticker,
+                                    ", ".join(divs),
+                                )
+                                # Honest either way: the history IS on the current basis.
+                                _mark_dividend_repulled(supabase, ticker, divs)
+                                divs = []
+                        if divs:
                             logger.info(
                                 "%s: dividend on %s — re-pulling full re-adjusted history",
                                 ticker,
