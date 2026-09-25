@@ -28,12 +28,16 @@ given, and the refresh must READ it. Both halves fail silently on their own — 
 provider that stops setting the attr leaves `_recent_dividends` returning `[]`
 forever, which is indistinguishable from a company that pays nothing.
 
-There is no "verify it worked" step, unlike splits. A split can leave a real cliff
-when the provider's own history is internally inconsistent (MNST, audit F-030), so
-splits carry a pending/resolve cycle. A dividend adjustment is a smooth rescale of
-the whole series: the re-pull either happened or it did not, and there is no
-signature in the data to check afterwards. Asserting one would be inventing work
-for a failure mode that does not exist.
+There is no pending/resolve cycle, unlike splits: a split can leave a real cliff
+when the provider's own history is internally inconsistent (MNST, audit F-030); a
+dividend adjustment is a smooth rescale that either happened or did not.
+
+⚠️ But this file said until 2026-09-25 that there is "no signature in the data to
+check", and that was wrong — the signature is the constant factor this very header
+measured. Without using it, a dividend re-pulled the whole history on EVERY night it
+sat in the one-month window: 337 full re-pulls in one day in September, ~630,000
+rewritten rows, and a screener slowed from 38s to failing. `_history_needs_readjust`
+now compares stored against fetched and re-pulls only when they differ.
 
 yfinance is fully mocked — no network, so this runs on a fork PR with no secrets.
 """
@@ -42,6 +46,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 
 from analytics.cron.daily_refresh import (
+    _history_needs_readjust,
     _recent_dividend_events,
     _recent_dividends,
     _should_record_corporate_actions,
@@ -211,3 +216,58 @@ def test_a_first_fetch_is_not_recorded() -> None:
 
 def test_both_at_once_is_still_not_recorded() -> None:
     assert _should_record_corporate_actions(first_fetch=True, repull_prices=True) is False
+
+
+# ── Re-pull ONCE per dividend, not once per night (2026-09-25) ───────────────
+
+def _window(closes: list[float]) -> pd.DataFrame:
+    idx = pd.date_range("2026-09-01", periods=len(closes), freq="B")
+    return pd.DataFrame({"Close": closes}, index=idx)
+
+
+_FRESH = _window([10.0, 10.2, 10.4, 10.6, 10.8, 11.0])   # 1-8 Sep
+_EX = "2026-09-07"                                         # 4 bars before it
+
+
+def _stored(factor: float, fresh: pd.DataFrame = _FRESH) -> dict[str, float]:
+    return {ts.strftime("%Y-%m-%d"): c * factor for ts, c in zip(pd.DatetimeIndex(fresh.index), fresh["Close"], strict=True)}
+
+
+def test_first_night_old_basis_is_repulled() -> None:
+    # Our bars are still on the pre-dividend basis: a constant factor apart.
+    assert _history_needs_readjust(_stored(1.02), _FRESH, _EX, already_repulled=False)
+
+
+def test_later_nights_same_basis_are_not_repulled() -> None:
+    # THE defect: identical history, re-pulled every night for a month.
+    assert not _history_needs_readjust(_stored(1.0), _FRESH, _EX, already_repulled=True)
+
+
+def test_same_basis_is_not_repulled_even_without_a_record() -> None:
+    assert not _history_needs_readjust(_stored(1.0), _FRESH, _EX, already_repulled=False)
+
+
+def test_a_late_provider_adjustment_is_still_caught() -> None:
+    # Re-pulled on night one before the provider had rescaled; the record says done,
+    # the DATA says otherwise — the data wins.
+    assert _history_needs_readjust(_stored(1.004), _FRESH, _EX, already_repulled=True)
+
+
+def test_a_tiny_dividend_is_still_caught() -> None:
+    assert _history_needs_readjust(_stored(1.0005), _FRESH, _EX, already_repulled=True)
+
+
+def test_one_revised_bar_does_not_force_a_repull() -> None:
+    stored = _stored(1.0)
+    stored["2026-09-02"] *= 1.01          # the provider revised one close
+    assert not _history_needs_readjust(stored, _FRESH, _EX, already_repulled=True)
+
+
+def test_too_little_overlap_falls_back_to_the_record() -> None:
+    early_ex = "2026-09-02"                # only one bar before it
+    assert _history_needs_readjust(_stored(1.0), _FRESH, early_ex, already_repulled=False)
+    assert not _history_needs_readjust(_stored(1.0), _FRESH, early_ex, already_repulled=True)
+
+
+def test_nothing_stored_means_repull() -> None:
+    assert _history_needs_readjust({}, _FRESH, _EX, already_repulled=False)
