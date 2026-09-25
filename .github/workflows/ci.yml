@@ -20,6 +20,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Read-only unless a job asks for more. The repository default is already read
+# (checked 2026-09-25), but a default is someone else's setting; this file says it.
+permissions:
+  contents: read
+
 jobs:
   frontend:
     name: Frontend checks
@@ -31,13 +36,12 @@ jobs:
         working-directory: web
 
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: '11'
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
           cache: 'pnpm'
@@ -166,9 +170,9 @@ jobs:
     # notification — an unfinished run reads exactly like a slow one. The failed-
     # workflow email is the only alerting channel this project has, so a hang has
     # to become a FAILURE for anyone to hear about it. Whole suite runs in ~3.3m.
-    # ⚠️ 30 was not enough once the focus walks ran at three widths (H5): the job was
-    # cancelled at exactly 30:17. Actions minutes are free on this public repo (11an),
-    # so the budget is raised rather than the coverage cut.
+    # ⚠️ Was 30 on ONE runner, and not enough once the focus walks ran at three widths
+    # (H5): cancelled at 30:17. Split ten ways (2026-09-22) a shard takes 4–5 min, so
+    # 25 is five times the work with room for a cold cache — a hang still goes red.
     timeout-minutes: 25
     # Boots a real Next dev server, so it needs the (public) Supabase URL + anon
     # key. They live as repo Variables — until they're set this job SKIPS cleanly
@@ -193,6 +197,11 @@ jobs:
     defaults:
       run:
         working-directory: web
+    # ⚠️ ONLY PUBLIC VALUES AT JOB LEVEL (2026-09-25). A job-level `env` reaches
+    # every step — `pnpm install` and its packages' scripts, and every third-party
+    # action — so the five SECRETS are given to exactly the three steps that use
+    # them (start the server, run the tests, clean the report). Not paranoia: on
+    # 2026-09-23 the service-role key left this job inside a public artifact.
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -200,12 +209,6 @@ jobs:
       # Turnstile widget (lib/turnstile.ts). Public by design; the production key
       # lives in Vercel. e2e/lib/captcha.ts is how form submissions get through.
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: '1x00000000000000000000AA'
-      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
-      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
-      # Stripe webhook contract tests (skip cleanly if any is empty):
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
-      STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_TEST_WEBHOOK_SECRET }}
       # NOT a secret — a throwaway fixture value. e2e/entitlement-routes.spec.ts uses it
       # to prove /api/cycle's edge gate accepts a correct secret as well as rejecting a
       # missing one. The real production secret lives only in Vercel and is never needed
@@ -213,13 +216,12 @@ jobs:
       CYCLE_INTERNAL_SECRET: ci-throwaway-not-a-real-secret
 
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: '11'
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
           cache: 'pnpm'
@@ -229,7 +231,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Cache the Playwright browser
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/ms-playwright
           key: pw-${{ runner.os }}-${{ hashFiles('web/pnpm-lock.yaml') }}
@@ -263,7 +265,7 @@ jobs:
       # presented: "Current Drawdown" never appearing for the free-viewer test.
       # Same class as the CYCLE_INTERNAL_SECRET blackout recorded in the roadmap — a
       # missing prerequisite that produces empty output instead of an error.
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
           cache: 'pip'
@@ -293,6 +295,11 @@ jobs:
         env:
           MC_E2E_NO_FS_CACHE: '1'
           NODE_OPTIONS: --max-old-space-size=6144
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_TEST_WEBHOOK_SECRET }}
         run: |
           nohup pnpm exec next dev --port 3100 > "$RUNNER_TEMP/next-dev.log" 2>&1 &
           for i in $(seq 1 90); do
@@ -305,6 +312,11 @@ jobs:
       - name: Run E2E (shard ${{ matrix.shard }})
         env:
           E2E_EXTERNAL_SERVER: '1'
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_TEST_WEBHOOK_SECRET }}
         # Shards by measured DURATION, not by count — scripts/e2e-shard.mjs says why.
         run: |
           node scripts/e2e-shard.mjs ${{ matrix.shard }} ${{ strategy.job-total }} "$RUNNER_TEMP/shard.list"
@@ -314,9 +326,27 @@ jobs:
         if: failure()
         run: tail -200 "$RUNNER_TEMP/next-dev.log"
 
-      - name: Upload shard results
+      # ⚠️ THE REPORT IS PUBLIC, so it is cleaned first and uploaded only if the
+      # cleaning PROVED it clean. Until 2026-09-25 the raw blob went up: every shard
+      # carried the E2E password (Playwright titles a `fill` with the value typed)
+      # and ten retried tests carried the service-role key in their traces. The
+      # script keeps only the results, masks every secret, re-reads what it wrote,
+      # and fails if anything is left — the upload below then does not run and the
+      # merge job goes red for a missing shard. Fails closed.
+      - name: Clean the shard report of every secret
+        id: sanitize
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+        env:
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_TEST_WEBHOOK_SECRET }}
+        run: python scripts/e2e-sanitize-blob.py blob-report
+
+      - name: Upload shard results
+        if: ${{ !cancelled() && steps.sanitize.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: blob-report-${{ matrix.shard }}
           path: web/blob-report
@@ -353,17 +383,17 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: '11'
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
           cache: 'pnpm'
           cache-dependency-path: web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: web/all-blob-reports
           pattern: blob-report-*
@@ -380,6 +410,9 @@ jobs:
       - name: One count for the whole suite
         env:
           SHARDS_OK: ${{ needs.e2e.result }}
+          # A push, or a PR from a branch of THIS repo, runs with the secrets, so it
+          # must skip nothing. Only a fork's PR (no secrets) may.
+          REQUIRE_EVERY_TEST: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           node scripts/e2e-merge-check.mjs merged.json ./all-blob-reports
           if [ "$SHARDS_OK" != success ]; then echo "a shard job ended '$SHARDS_OK'"; exit 1; fi
@@ -388,7 +421,7 @@ jobs:
       - name: Refresh shard timings
         if: ${{ !cancelled() }}
         run: node scripts/e2e-timings.mjs merged.json timings.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ !cancelled() }}
         with:
           name: e2e-timings
@@ -410,32 +443,13 @@ jobs:
       # Turnstile widget (lib/turnstile.ts). Public by design; the production key
       # lives in Vercel. e2e/lib/captcha.ts is how form submissions get through.
       NEXT_PUBLIC_TURNSTILE_SITE_KEY: '1x00000000000000000000AA'
-      # Half of each sweep is gated. Without these the scripts say so loudly —
-      # check:csp records it as a PROBLEM rather than a skip, because a run that
-      # silently drops the signed-in routes reports a clean site it never saw.
-      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
-      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
-      # ⚠️ ADDED 2026-09-17, AND ITS ABSENCE HAD BEEN HIDING THE FLAGSHIP PAGE.
-      # `lib/supabase/server.ts` requires this key, and `stocks` / `price_bars`
-      # grant nothing to anon or authenticated (by design — 11y). Without it
-      # /stocks/us/AAPL rendered the `(app)/error.tsx` boundary on EVERY run of
-      # this job: check:page-weight measured 560 KB of error page against a 1150 KB
-      # budget the real page (1070 KB) only just clears, and check:csp swept an
-      # error screen. Neither could tell — the CSP render floor counted script
-      # tags, which an error page has plenty of. It surfaced only when that floor
-      # was rewritten to ask for the page's h1, which the boundary does not carry.
-      # The e2e job has always had this secret; this job simply never received it
-      # (11c-iv).
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: pnpm/action-setup@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: '11'
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
           cache: 'pnpm'
@@ -459,6 +473,26 @@ jobs:
       # pass every budget in the file — which is why check:page-weight also
       # refuses any page under 40 KB or 5 requests as "it did not load".
       - name: Start the production server on :3200
+        env:
+        # ⚠️ Secrets are given to these three steps only, never to the job (see the
+        # e2e job's note, 2026-09-25): the build and `pnpm install` do not need them.
+          # Half of each sweep is gated. Without these the scripts say so loudly —
+          # check:csp records it as a PROBLEM rather than a skip, because a run that
+          # silently drops the signed-in routes reports a clean site it never saw.
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          # ⚠️ ADDED 2026-09-17, AND ITS ABSENCE HAD BEEN HIDING THE FLAGSHIP PAGE.
+          # `lib/supabase/server.ts` requires this key, and `stocks` / `price_bars`
+          # grant nothing to anon or authenticated (by design — 11y). Without it
+          # /stocks/us/AAPL rendered the `(app)/error.tsx` boundary on EVERY run of
+          # this job: check:page-weight measured 560 KB of error page against a 1150 KB
+          # budget the real page (1070 KB) only just clears, and check:csp swept an
+          # error screen. Neither could tell — the CSP render floor counted script
+          # tags, which an error page has plenty of. It surfaced only when that floor
+          # was rewritten to ask for the page's h1, which the boundary does not carry.
+          # The e2e job has always had this secret; this job simply never received it
+          # (11c-iv).
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           pnpm start --port 3200 > /tmp/next-3200.log 2>&1 &
           for i in $(seq 1 90); do
@@ -473,9 +507,45 @@ jobs:
           exit 1
 
       - name: Page weight (bytes to `load`, against ratcheted budgets)
+        env:
+          # Half of each sweep is gated. Without these the scripts say so loudly —
+          # check:csp records it as a PROBLEM rather than a skip, because a run that
+          # silently drops the signed-in routes reports a clean site it never saw.
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          # ⚠️ ADDED 2026-09-17, AND ITS ABSENCE HAD BEEN HIDING THE FLAGSHIP PAGE.
+          # `lib/supabase/server.ts` requires this key, and `stocks` / `price_bars`
+          # grant nothing to anon or authenticated (by design — 11y). Without it
+          # /stocks/us/AAPL rendered the `(app)/error.tsx` boundary on EVERY run of
+          # this job: check:page-weight measured 560 KB of error page against a 1150 KB
+          # budget the real page (1070 KB) only just clears, and check:csp swept an
+          # error screen. Neither could tell — the CSP render floor counted script
+          # tags, which an error page has plenty of. It surfaced only when that floor
+          # was rewritten to ask for the page's h1, which the boundary does not carry.
+          # The e2e job has always had this secret; this job simply never received it
+          # (11c-iv).
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: pnpm check:page-weight
 
       - name: Content-Security-Policy (enforcing, right form per route, zero violations)
+        env:
+          # Half of each sweep is gated. Without these the scripts say so loudly —
+          # check:csp records it as a PROBLEM rather than a skip, because a run that
+          # silently drops the signed-in routes reports a clean site it never saw.
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          # ⚠️ ADDED 2026-09-17, AND ITS ABSENCE HAD BEEN HIDING THE FLAGSHIP PAGE.
+          # `lib/supabase/server.ts` requires this key, and `stocks` / `price_bars`
+          # grant nothing to anon or authenticated (by design — 11y). Without it
+          # /stocks/us/AAPL rendered the `(app)/error.tsx` boundary on EVERY run of
+          # this job: check:page-weight measured 560 KB of error page against a 1150 KB
+          # budget the real page (1070 KB) only just clears, and check:csp swept an
+          # error screen. Neither could tell — the CSP render floor counted script
+          # tags, which an error page has plenty of. It surfaced only when that floor
+          # was rewritten to ask for the page's h1, which the boundary does not carry.
+          # The e2e job has always had this secret; this job simply never received it
+          # (11c-iv).
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: pnpm check:csp
 
   backend:
@@ -487,9 +557,8 @@ jobs:
       PYTHONPATH: .
 
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
           cache: 'pip'

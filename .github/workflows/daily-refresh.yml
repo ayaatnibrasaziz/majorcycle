@@ -49,6 +49,11 @@ on:
         type: string
         default: ''
 
+# Read-only unless a job asks for more. The repository default is already read
+# (checked 2026-09-25), but a default is someone else's setting; this file says it.
+permissions:
+  contents: read
+
 jobs:
   refresh:
     name: Run daily pipeline (US + CA)
@@ -70,9 +75,8 @@ jobs:
       PYTHONPATH: .
 
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
           cache: 'pip'

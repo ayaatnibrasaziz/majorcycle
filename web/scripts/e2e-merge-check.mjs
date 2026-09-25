@@ -62,6 +62,18 @@ else if (ran !== listed) problems.push(`the shards ran ${ran} tests but the suit
 
 if (stats.unexpected > 0) problems.push(`${stats.unexpected} test(s) failed`);
 
+// ⚠️ A SKIP IS A FAILURE WHEN THE RUN HOLDS THE SECRETS (2026-09-25). Every
+// credentialed spec self-skips when its secret is empty — right for a fork PR,
+// which GitHub gives no secrets, and silent everywhere else: rotate a key, forget
+// (or mistype) the GitHub copy, and a third of the suite skips while this line
+// still reads green. The workflow says which case this is; a fork may skip.
+if (process.env.REQUIRE_EVERY_TEST === 'true' && stats.skipped > 0) {
+  problems.push(
+    `${stats.skipped} test(s) SKIPPED on a run that has the repository's secrets — ` +
+      'a skip here almost always means a secret is missing or empty',
+  );
+}
+
 console.log(
   `E2E, all shards: ${ran} of ${listed} listed — ${stats.expected} passed, ` +
     `${stats.flaky} flaky, ${stats.unexpected} failed, ${stats.skipped} skipped`,

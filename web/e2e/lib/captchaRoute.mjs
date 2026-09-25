@@ -19,9 +19,10 @@
  * (`verifyCaptcha` → `requireAdminCredentials`, read from its source). Both paths
  * below use that and nothing else:
  *
- * - `passCaptchaForTests(page)` rewrites ONLY the browser's requests to the
- *   captcha-checked auth endpoints, in the test runner's network layer — the
- *   page's own JavaScript never sees the key and nothing in the product ships it;
+ * - `passCaptchaForTests(page)` takes over ONLY the browser's requests to the
+ *   captcha-checked auth endpoints and sends them from the TEST RUNNER with the
+ *   key attached — the browser, its network log and any trace never hold the
+ *   key, and nothing in the product ships it;
  * - `userSessionForTests()` is for code that calls Supabase from NODE, where
  *   there is no page to intercept.
  *
@@ -72,9 +73,38 @@ export async function passCaptchaForTests(page) {
       const isPasswordGrant =
         !req.url().includes('/token') || req.url().includes('grant_type=password');
       if (req.method() !== 'POST' || !isPasswordGrant) return route.continue();
-      await route.continue({
-        headers: { ...req.headers(), authorization: `Bearer ${key}` },
-      });
+      // ⚠️ The key NEVER enters the browser (2026-09-25). This used to be
+      // `route.continue({ headers })`, which hands the header to Chromium: it then
+      // sat in the page's network log and in every trace, and ten PUBLIC CI
+      // artifacts carried the service-role key that way. `route.fetch` sends the
+      // request from the test runner instead and gives the browser only the
+      // response. Two more reasons it has to be this way:
+      // - Supabase's new `sb_secret_…` keys answer 401 to anything whose
+      //   User-Agent looks like a browser, so the header rewrite would stop
+      //   working the day the legacy key is replaced;
+      // - with a secret key, `apikey` and `authorization` must carry the SAME
+      //   key (the gateway swaps it for an admin token only then). Setting both
+      //   works for the legacy JWT key as well.
+      let response;
+      try {
+        response = await route.fetch({
+          headers: {
+            ...req.headers(),
+            apikey: key,
+            authorization: `Bearer ${key}`,
+            'user-agent': 'majorcycle-e2e (captcha bypass)',
+          },
+        });
+        await route.fulfill({ response });
+      } catch (err) {
+        // A test that ends while its last sign-in is still in flight (a retry press,
+        // a navigation) closes the page under this fetch. That is not a failure of
+        // the test that ended — and left uncaught, Playwright pins it on the NEXT
+        // test in the worker and prints this request's call log, key and all. Seen
+        // 2 runs in 2 on 2026-09-25. Anything else is a real error and still throws.
+        if (page.isClosed() || /Test ended|has been closed/i.test(String(err))) return;
+        throw err;
+      }
     },
   );
   return true;

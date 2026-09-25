@@ -70,6 +70,19 @@ const NOT_GATES = {
   'pnpm install --frozen-lockfile': 'installs dependencies',
   'pnpm exec playwright install chromium': 'installs the browser',
   'pnpm exec playwright merge-reports': 'merges the CI shards into one count — a report, not a check',
+  // ⚠️ These four were INVISIBLE to the self-check below until 2026-09-25: it only
+  // recognised `pnpm …` and `python -m …` lines, so a CI step written as
+  // `node scripts/…` could be added or removed without this file noticing — and one
+  // of them is the check that proves the merged E2E count (11i). Each is named now.
+  'node scripts/e2e-shard.mjs': 'splits the E2E suite across the CI runners — setup',
+  'node scripts/e2e-merge-check.mjs':
+    'proves every CI shard reported and the merged count equals the listed count — needs ' +
+    'the ten shards, so CI only; a local `pnpm e2e` is one run and prints its own count',
+  'node scripts/e2e-timings.mjs': 'refreshes the shard durations — a report, not a check',
+  'python scripts/e2e-sanitize-blob.py':
+    "strips every secret from CI's PUBLIC test reports and blocks the upload if any is " +
+    'left — CI only, because a local report never leaves this machine (its logic is ' +
+    'tested by analytics/tests/test_e2e_sanitize_blob.py, which IS a gate)',
 };
 
 /**
@@ -122,7 +135,9 @@ function ciCommands() {
   for (let line of yml.split(/\r?\n/)) {
     line = line.trim();
     if (line.startsWith('#')) continue;
-    line = line.replace(/^run:\s*/, '').replace(/^\(cd web && /, '').replace(/\)$/, '');
+    // `- run: x` (a one-line step) as well as `run: x`: the first form was invisible
+    // to this check until 2026-09-25, whatever command it ran.
+    line = line.replace(/^(?:-\s+)?run:\s*/, '').replace(/^\(cd web && /, '').replace(/\)$/, '');
     // `pnpm exec playwright <verb>` is matched on its verb alone: CI passes shard and
     // reporter flags that vary by job, and the verb is what this list accounts for.
     const pw = line.match(/^(pnpm exec playwright (?:test|merge-reports))\b/);
@@ -132,6 +147,9 @@ function ciCommands() {
     }
     const m = line.match(/^(pnpm [\w:.-]+(?: --frozen-lockfile| chromium)?|python -m .+)$/);
     if (m) found.add(m[1].trim());
+    // A repo script run directly, matched on the script alone (its arguments vary).
+    const script = line.match(/^((?:node|python) scripts\/[\w.-]+)/);
+    if (script) found.add(script[1]);
   }
   return found;
 }

@@ -69,6 +69,11 @@ export function redactSecrets(text: string): string {
       // publishable one is not a secret, but it is no use in a crash report either.
       .replace(/\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{10,}/g, '[stripe key redacted]')
       .replace(/\bwhsec_[A-Za-z0-9+/=_-]{10,}/g, '[stripe key redacted]')
+      // Supabase's NEW keys are not JWTs, so the first rule cannot see them. The
+      // service-role key is being replaced by an `sb_secret_…` key (2026-09-25,
+      // after the old one leaked through a CI artifact); without this line the
+      // replacement would pass every log and crash report unmasked.
+      .replace(/\bsb_(?:secret|publishable)_[A-Za-z0-9_-]{10,}/g, '[supabase key redacted]')
       // An Authorization header value, wherever one has been stringified.
       .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{16,}/gi, 'Bearer [redacted]')
   );

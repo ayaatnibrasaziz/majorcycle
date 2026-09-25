@@ -44,8 +44,8 @@ jobs:
     # token fails LOUDLY in the script rather than skipping (11z).
     if: ${{ vars.VERCEL_TEAM_ID != '' }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '24'
       # Which branches still have an open pull request — their newest preview is the

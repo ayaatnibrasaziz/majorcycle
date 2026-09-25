@@ -133,6 +133,21 @@ test.describe('redactEmails — the function', () => {
     );
   });
 
+  test('redactSecrets — Supabase NEW keys, which are not JWTs', () => {
+    // The service-role key is being replaced by an `sb_secret_…` key after the old one
+    // leaked through a public CI artifact (2026-09-25). It is not a JWT, so the `eyJ`
+    // rule cannot see it; this proves the replacement is masked too. Assembled at
+    // runtime for the same reason as the Stripe keys above.
+    const secret = ['sb', 'secret', 'Xq7Lm2Pz9Rt4Vw8Yb1Nc6Kd'].join('_');
+    expect(redactSecrets(`PostgREST refused apikey=${secret} for this call`)).toBe(
+      'PostgREST refused apikey=[supabase key redacted] for this call',
+    );
+    // CONTROL: the prefix alone, in prose, is not a key.
+    expect(redactSecrets('rotate the sb_secret_ key in the dashboard')).toBe(
+      'rotate the sb_secret_ key in the dashboard',
+    );
+  });
+
   test('CONTROL — redactSecrets leaves ordinary prose completely alone', () => {
     // ⚠️ The load-bearing control for a pattern matcher. Over-masking destroys the
     // part of a message that names the failure, and these are the shapes closest to

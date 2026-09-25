@@ -85,7 +85,12 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   use: {
     baseURL: BASE_URL,
-    trace: 'on-first-retry',
+    // ⚠️ OFF IN CI. A trace records every request the page makes, headers and
+    // bodies included, and CI's artifacts are PUBLIC on this repo: on 2026-09-23
+    // ten of them carried the Supabase service-role key this way. Locally a trace
+    // stays on this machine, beside .env.local. (scripts/e2e-sanitize-blob.py also
+    // strips anything a trace would add, so neither protection rests on the other.)
+    trace: process.env.CI ? 'off' : 'on-first-retry',
     navigationTimeout: 45_000,
   },
   /**
