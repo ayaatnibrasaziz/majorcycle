@@ -214,7 +214,7 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 | Component | Hosted On | Free Tier Limit | Notes |
 |---|---|---|---|
 | Next.js frontend | Vercel | 100GB bandwidth/mo | Hobby plan. Functions/SSR pinned to **`iad1` (US-East)** via `web/vercel.json` `regions`. |
-| Python API routes | Vercel Serverless | 100GB-hr/mo, 300s timeout | `@vercel/python` runtime; co-located in `iad1` with the DB. |
+| Python API routes | Vercel Serverless | 100GB-hr/mo, 300s timeout | `@vercel/python` runtime; co-located in `iad1` with the DB. **Time limits (2026-09-25): `analyze.py` 300s (the Hobby maximum), `cycle.py` 60s** — at 60s/30s a batch slowed by a busy database was killed and retried into the same wall, and a 760-stock screen failed outright. Why, and the measurements: `e2e/build-config.spec.ts`. ⚠️ The slowness itself comes from ONE database shared by the live site, the nightly refresh and every CI run. |
 | Static assets | Vercel CDN | Unlimited | Global edge |
 | Postgres database | Supabase | Pro-plan quota | **Pro plan (US$25/mo), Micro compute, spend cap ON** — this row said *"free tier"* until 2026-09-07 (P9 session 3, read off the billing page). ⚠️ **Spend cap ON means the project goes READ-ONLY past the included quota rather than billing more**, so a traffic spike stops the product instead of overcharging. Region **`us-east-1`** (project `MajorCycle`; co-located with the Vercel functions so DB round-trips are ~10-20ms). Migrated from the original Seoul region pre-launch — see §2 Tier 3 performance note. |
 | Auth service | Supabase Auth | 100,000 MAU (Pro) | Included in the Pro plan above. A `handle_new_user` trigger auto-creates a `profiles` row on every sign-up (any provider). |
