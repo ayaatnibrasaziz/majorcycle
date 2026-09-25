@@ -310,4 +310,36 @@ same hour, with nothing able to notice.
 
 ---
 
+## Re-audit, 2026-09-25 — against the system as it now runs
+
+Owner's instruction: no lawyer review; check every legal document against the live system. Each
+statement in `/privacy`, `/terms` and `/disclaimer` was read against the code and the vendors in use.
+Four gaps, all fixed the same day:
+
+1. **Privacy — no way to COMPLAIN.** APP 1.4(e) asks a policy to say how someone complains about a
+   breach and how it is handled. It said how to *request* things, never how to complain. Added: email
+   support@, reply within 30 days, then the OAIC.
+2. **Privacy — cookies clause incomplete.** It named only the session cookie. The site also keeps the
+   Browse horizon in `localStorage`, the latest screen in `sessionStorage`, and Google One Tap sets
+   `g_state` once its prompt is closed. Now "Cookies and storage on your device". Speed Insights and
+   Sentry were checked and store nothing (Sentry's only storage path needs an option we do not set).
+3. **Privacy — the contact form was never listed.** It collects name, email and message, sent to us
+   by email through Resend and not stored in the database. Added to "Information we collect".
+4. **Terms — the Tor block was not mentioned.** Every page now refuses Tor exits; Acceptable use now
+   says access may be refused from anonymising networks.
+
+Verified still true: 25 new stocks a day on a free account, 30-day deletion, 3-day payment grace (all
+three asserted from their constants by `e2e/legal-doc.spec.ts`); Sentry and Turnstile each named only
+while switched on; overseas storage (US); refund wording keeps Australian Consumer Law rights; no ABN
+on the page (owner, 2026-08-15). GST: not registered (under A$75,000), which the Terms' tax sentence
+already covers.
+
+⚠️ **Two questions a document cannot settle, recorded so they are not forgotten.** (i) Whether stock
+ratings amount to *general financial product advice* under the Corporations Act is decided by what
+the product does, not by the disclaimer — the disclaimer is necessary but not sufficient. (ii) The
+price and fundamentals come from Yahoo through `yfinance`, whose terms do not permit commercial use;
+the planned FMP move (roadmap Phase 2) is what resolves it. Neither is fixed by editing a page.
+
+---
+
 **End of legal-audit.md.**

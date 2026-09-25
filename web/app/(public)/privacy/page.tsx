@@ -17,13 +17,11 @@ export default function PrivacyPage() {
   return (
     <LegalDoc
       title="Privacy Policy"
-      // ⚠️ Conditional for the same reason as the Sentry recipient line below, and
-      // it is worth the odd look: a policy whose text changed under a reader while
-      // the date says otherwise is the thing an "updated" date exists to prevent.
-      // The two move together or neither does.
-      updated={
-        CAPTCHA_REQUIRED ? '22 September 2026' : SENTRY_DSN ? '16 September 2026' : '15 August 2026'
-      }
+      // ⚠️ Moves with EVERY change to what this page says, including the ones
+      // switched by a build flag below. 25 September 2026: the cookies-and-storage
+      // clause and the complaints paragraph, which apply whatever is switched on —
+      // so the date is no longer conditional (it was, while the latest change was).
+      updated="25 September 2026"
       intro={
         <p>
           This policy explains what personal information MajorCycle collects, how we
@@ -51,6 +49,14 @@ export default function PrivacyPage() {
                 <li>authentication data when you sign in with Google;</li>
                 <li>billing information handled by our payment processor;</li>
                 <li>your analysis activity within the app;</li>
+                {/* Added 2026-09-25: /contact collects a name, email and message and
+                    had never been listed. It is emailed to us through Resend (already a
+                    listed provider) and not stored in our database —
+                    app/(public)/contact/actions.ts. */}
+                <li>
+                  what you send us through the contact form or by email (your name, email
+                  address and message), which we use to reply to you;
+                </li>
                 <li>
                   standard technical data (such as log and device information) needed
                   to operate and secure the Service; and
@@ -202,12 +208,27 @@ export default function PrivacyPage() {
           ),
         },
         {
-          heading: 'Cookies',
+          // Widened 2026-09-25, from a sweep of what the site ACTUALLY stores: the
+          // old clause named only the session cookie, while Browse keeps the chosen
+          // horizon in localStorage (`mc:browse-horizon`, `mc:browse-custom`), the
+          // screener keeps the latest results in sessionStorage (lib/analysis.tsx),
+          // and Google's One Tap sets `g_state` on our domain once its prompt is
+          // closed (components/GoogleSignIn.tsx calls `prompt()`). Speed Insights
+          // uses neither (see the Vercel note above), and neither does Sentry: its
+          // only storage read is trace-linking, which touches sessionStorage solely
+          // under `linkPreviousTrace: 'session-storage'` (default 'in-memory'), and
+          // tracing is off here anyway (`tracesSampleRate: 0`).
+          heading: 'Cookies and storage on your device',
           body: (
             <p>
               We use cookies that are necessary to keep you signed in and to secure
-              the Service (including the authentication session). We do not use them
-              to build advertising profiles.
+              the Service (including the authentication session). If you use Google
+              sign-in, Google may also set a cookie that remembers whether you closed
+              its sign-in prompt. The app keeps a few settings in your browser&rsquo;s
+              own storage — such as your chosen time horizon and your latest screen
+              results — so it remembers them between pages and visits; these stay on
+              your device. We do not use cookies or storage for advertising or to
+              track you across other websites.
             </p>
           ),
         },
@@ -244,14 +265,29 @@ export default function PrivacyPage() {
         },
         {
           heading: 'Your rights',
+          // Complaints paragraph added 2026-09-25. Australian Privacy Principle 1.4(e)
+          // asks a privacy policy to say how someone can complain about a breach and
+          // how the complaint will be handled; the policy said how to REQUEST things
+          // and never how to COMPLAIN. 30 days is the OAIC's own expectation for a
+          // response before it will take a complaint up.
           body: (
-            <p>
-              Depending on where you live, you may have rights to access, correct,
-              or delete your personal information, or to object to certain
-              processing. To make a request, or to close your account,{' '}
-              <a href="/contact">contact us</a> and we will respond in line with
-              applicable law.
-            </p>
+            <>
+              <p>
+                Depending on where you live, you may have rights to access, correct,
+                or delete your personal information, or to object to certain
+                processing. To make a request, or to close your account,{' '}
+                <a href="/contact">contact us</a> and we will respond in line with
+                applicable law.
+              </p>
+              <p>
+                If you think we have mishandled your personal information, email{' '}
+                <a href="mailto:support@majorcycle.com">support@majorcycle.com</a> with
+                the details. We will acknowledge your complaint, look into it, and
+                reply within 30 days. If you are not satisfied with our reply, you can
+                complain to the Office of the Australian Information Commissioner at{' '}
+                <a href="https://www.oaic.gov.au">oaic.gov.au</a>.
+              </p>
+            </>
           ),
         },
         {
