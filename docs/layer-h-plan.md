@@ -10,7 +10,18 @@ in Chromium, Firefox and WebKit, and one real defect fixed on seven forms; see t
 page, every signed-in page, the paid pages, all five dialogs and the **downloaded report**, in all
 three engines; see the H5 section. ⚠️ Its first version named three "limits" and called itself
 done; the owner refused them — *"if you are finding limits and saying that you are happy, you are
-just faking it"* — and closing them produced three of the six defects. **H6 / H6a are next.**
+just faking it"* — and closing them produced three of the six defects.
+· ✅ **H6a MERGED AND LIVE 2026-09-25 (PR #113)** — Key Metrics 13 → 25 rows in six groups;
+Shareholder is violet `#4200AB` after the owner rejected the umber beside Balance Sheet's grey.
+Merged with it: **PR #114** (Tor exits refused site-wide; no fresh human check after a sign-in
+that worked; CI logs and artifacts scrubbed of sessions and keys; the legal re-audit) and
+**PR #115** (production builds compile fresh — the first deploy served last week's stylesheet).
+Verified on the live site: `pnpm check:live-css` 63/63, all 25 rows, no runtime errors.
+· **H6, the owner's items:** (1) text size — ✅ **CLOSED, no change** (owner, 2026-09-25: *"happy
+with what is present in the live site"*); (2) lawyer review — ✅ **replaced by owner decision** with
+a check of every legal page against the running system (`legal-audit.md`, *Re-audit 2026-09-25*,
+four gaps fixed); (3) beta testers — 🔵 **owner-run, open**, and not a code item.
+**⇒ LAYER H'S BUILD IS COMPLETE.** What remains before launch is outside it: see `roadmap.md`.
 **Three findings came out of building it** that the plan did not have — §3, findings I, J and K.
 ⚠️ Finding I changed a **paid** surface beyond the approved design; it was put to the owner, and
 **my first fix for it was wrong** — it passed every automated check and the owner caught it from a
@@ -906,13 +917,14 @@ saying so is the point.
 | Error monitoring | ✅ **Closed by H2** |
 | Accessibility | ✅ Closed (G + 5a + H5) |
 | Cross-browser | ✅ **Chromium + Firefox + WebKit**, all three working (finding E) |
-| Lighthouse / #33 | 🔴 **Still red** — blocked on an instrument, not on effort |
+| Lighthouse / #33 | 🟡 **Instrument now exists, reading too thin** — Speed Insights, 2026-09-25: desktop Real Experience Score 60 over 259 visits in 7 days, rising to ~95 on the last day; mobile only 15 visits. Nearly all of it is the owner and bots, so not yet a reading (11w). Re-read after the beta |
 | **Vercel Hobby → Pro** | 🔵 **OWNER, launch-day.** Hobby forbids commercial use. **This is the single thing between the product and taking money** |
-| Stripe restricted-business question | 🔵 **OWNER**, with Stripe |
-| Disclaimer / legal text review | 🔵 **OWNER** — still `BASELINE CONTENT` |
+| Stripe restricted-business question | ✅ **Owner, 2026-09-25: not required** |
+| Disclaimer / legal text review | ✅ **Owner: no lawyer.** Every page checked against the running system instead, 2026-09-25 — four gaps fixed (`legal-audit.md`). ⚠️ Two questions a page cannot settle stay recorded there: whether ratings are *general advice*, and Yahoo's data terms (→ FMP, Phase 2) |
+| Beta with 5–10 testers | 🔵 **OWNER** — run it, then fix any P0/P1 it finds |
 | **5b — the owner's judgement pass** | 🔵 **OWNER** |
 
-**So: Layer H closes every engineering item. Four things remain and all four are the owner's.**
+**So: Layer H closes every engineering item — and on 2026-09-25 it did.** Three things remain, all the owner's: **Vercel Pro**, the **beta**, and **5b**.
 
 ---
 
