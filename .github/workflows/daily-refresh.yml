@@ -247,7 +247,22 @@ jobs:
           # two frozen worked examples this job is deliberately unable to write.
           git add web/app/universe-count.json web/app/learn-snapshot.json
           git commit -m "chore(landing): nightly live figures [skip ci]"
-          git push
+          # ⚠️ REBASE, THEN PUSH, WITH RETRIES — 2026-09-25. This job runs ~50 min on a
+          # checkout taken at the START, so any push to main in that window made a bare
+          # `git push` fail "rejected (fetch first)" at the very last step: the day's
+          # figures lost and the run red, from a docs commit nobody connected to it.
+          # The two files above are written only by this job, so a rebase cannot
+          # conflict with anyone else's change. Reproduced in a shallow clone and
+          # proven fixed before it went in. Three tries, in case of another push.
+          for attempt in 1 2 3; do
+            if git pull --rebase --quiet origin main && git push --quiet origin main; then
+              echo "live figures pushed (attempt $attempt)"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::could not push the live figures after 3 attempts"
+          exit 1
 
       # ── The listings alarm (audit F-027, 2026-08-25) ───────────────────────
       #
