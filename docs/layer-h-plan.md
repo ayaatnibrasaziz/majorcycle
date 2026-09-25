@@ -857,7 +857,7 @@ Australia; FCF Yield withheld cross-currency), zero page scroll at 375px.
 ⚠️ **Three things building it found:** (i) the design's two placeholder colours both FAILED
 check 8f — its brown sat 4.3 from the Neutral rating ink and its indigo 5.6 from Valuation to
 a colour-blind reader; a search of every allowed hue found ONE muted pair that clears the
-floor, umber `#50381C` + olive `#6F6000`. (ii) Short Interest's gauge told a SCREEN READER
+floor, olive `#6F6000` + (after the owner saw the umber `#50381C` beside Balance Sheet's grey and rejected it) violet `#4200AB`. (ii) Short Interest's gauge told a SCREEN READER
 "1.0%" while showing "0.96%" — found by the new one-figure-one-reading test, fixed with the
 shared precision constant. (iii) The table's formatting and verdicts moved into
 `buildKeyMetricsTable`, because a pure Playwright spec cannot render a component (it rewrites

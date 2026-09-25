@@ -245,14 +245,17 @@ filed on request.
      from Valuation to a colour-blind reader). With the four above held exactly
      where the owner approved them, a search of every hue that is not a green,
      a red or the rating gold found ONE muted pair that clears the floor: the
-     umber and olive below (closest new pair 14.2). Re-run the search before
-     changing either; six muted colours a colour-blind reader can separate is
-     near the edge of what the space holds. */
+     umber (#50381C) and the olive below. The owner rejected the umber on
+     sight (2026-09-25): 14.2 from Balance Sheet's grey clears the floor and
+     still reads as the same dull dark pill. Nothing muted sits well clear of
+     that grey, so Shareholder is a deep violet — 30.1 from the grey, 13.3 from
+     its nearest neighbour at worst. Re-run the search AND show the result
+     before changing any of the six. */
   --cat-valuation:     #1B5998;
   --cat-profitability: #602056;
   --cat-growth:        #206F6C;
   --cat-balance:       #3B3B3B;
-  --cat-shareholder:   #50381C;
+  --cat-shareholder:   #4200AB;
   --cat-risk:          #6F6000;
 
   /* Tint scale — 10/12% alpha for pills, cells, hover states */
