@@ -972,7 +972,10 @@ note.push(`  chartTheme mirrors: ${MIRRORS.length} canvas literals checked again
  * rather than obeyed.
  */
 {
-  const CATS = ['valuation', 'growth', 'profitability', 'balance'];
+  // Six since H6a (2026-09-25): Shareholder and Risk joined the four, and every
+  // pair of the SIX is held to the same floor — the new two were chosen by searching
+  // for the pair that clears it, not by loosening it for them (11t).
+  const CATS = ['valuation', 'growth', 'profitability', 'balance', 'shareholder', 'risk'];
   // The pill is its ink at 10% over a Key Metrics row, which alternates white and
   // the stripe and turns --bg-hover under the cursor. Measure the worst of the three.
   const ROW_GROUNDS = ['#FFFFFF', '#F8FAFC', '#F5F8FF'];
@@ -984,7 +987,7 @@ note.push(`  chartTheme mirrors: ${MIRRORS.length} canvas literals checked again
   for (const c of CATS) {
     const hex = readToken(`--cat-${c}`);
     if (!hex) {
-      fail.push(`--cat-${c} could not be read — check 8f needs all four, and an unmeasurable set reads as a clean one.`);
+      fail.push(`--cat-${c} could not be read — check 8f needs all six, and an unmeasurable set reads as a clean one.`);
       continue;
     }
     inks[c] = hex;

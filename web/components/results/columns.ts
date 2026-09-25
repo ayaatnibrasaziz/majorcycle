@@ -295,6 +295,20 @@ export const CSV_COLUMNS: ReadonlyArray<{
   { header: 'Revenue Growth %', get: (r) => r.fundamentals?.revenueGrowthYoy ?? null, xf: 'num2' },
   { header: 'Short % of Float', get: (r) => r.fundamentals?.shortPctOfFloat ?? null, xf: 'num2' },
   { header: 'Days to Cover', get: (r) => r.fundamentals?.shortRatio ?? null, xf: 'num2' },
+  // Layer H6a — the Key Metrics rows that used to be stored and shown nowhere.
+  // Owner, 2026-09-14: "yes to the downloadable report and the exports". Raw
+  // provider figures at 2dp like every other ratio here; no display cap, because a
+  // spreadsheet is where a reader goes to see the real number.
+  { header: 'Forward P/E', get: (r) => r.fundamentals?.forwardPe ?? null, xf: 'num2' },
+  { header: 'Price/Book', get: (r) => r.fundamentals?.priceToBook ?? null, xf: 'num2' },
+  { header: 'Price/Sales', get: (r) => r.fundamentals?.priceToSales ?? null, xf: 'num2' },
+  { header: 'EV/Revenue', get: (r) => r.fundamentals?.evToRevenue ?? null, xf: 'num2' },
+  { header: 'EBITDA Margin %', get: (r) => r.fundamentals?.ebitdaMargin ?? null, xf: 'num2' },
+  { header: 'FCF Margin %', get: (r) => r.fundamentals?.fcfMarginPct ?? null, xf: 'num2' },
+  { header: 'Quick Ratio', get: (r) => r.fundamentals?.quickRatio ?? null, xf: 'num2' },
+  { header: 'Payout Ratio %', get: (r) => r.fundamentals?.payoutRatioPct ?? null, xf: 'num2' },
+  { header: 'Share Count Change %', get: (r) => r.fundamentals?.sharesChangeYoyPct ?? null, xf: 'num2' },
+  { header: 'Beta', get: (r) => r.fundamentals?.beta ?? null, xf: 'num2' },
 ];
 
 /**

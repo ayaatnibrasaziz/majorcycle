@@ -237,11 +237,23 @@ filed on request.
      separate. Now the closest pair is 23.2 plain and 13.1 in the worse
      simulation. Valuation had to leave the brand navy to get there — pinned to
      #1A3A6E the best achievable set was 9.5, worse than what was shipping.
-     Growth is a TEAL and not a green on purpose: green is a direction here. */
+     Growth is a TEAL and not a green on purpose: green is a direction here.
+
+     ⚠️ SIX since Layer H6a (2026-09-25): Shareholder and Risk joined, and check
+     8f now holds all SIX pairs to the same 13.0 floor. The design's placeholders
+     both failed (its brown was 4.3 from the Neutral rating ink; its indigo 5.6
+     from Valuation to a colour-blind reader). With the four above held exactly
+     where the owner approved them, a search of every hue that is not a green,
+     a red or the rating gold found ONE muted pair that clears the floor: the
+     umber and olive below (closest new pair 14.2). Re-run the search before
+     changing either; six muted colours a colour-blind reader can separate is
+     near the edge of what the space holds. */
   --cat-valuation:     #1B5998;
   --cat-profitability: #602056;
   --cat-growth:        #206F6C;
   --cat-balance:       #3B3B3B;
+  --cat-shareholder:   #50381C;
+  --cat-risk:          #6F6000;
 
   /* Tint scale — 10/12% alpha for pills, cells, hover states */
   --tint-tier-2:        rgba(34,139,34,.10);
@@ -932,9 +944,9 @@ The Stock Scorecard plots the five Financial-Health pillars (Recharts `RadarChar
 
 Real yfinance values can be absurd (a near-zero denominator gives P/E 3,500×, ROE 8,457%, operating margin −546,607%, payout 18,210%). **Never render the raw figure as a confident headline.** The pattern (S8/S9):
 
-- **`MetricDef.cap`** (Key Metrics, `MetricsTable.tsx`): a per-metric cap. Beyond `±cap` the cell shows `>+cap` / `<−cap`, and the **true value goes in the hover tooltip** ("Actual … — capped for display"). Current caps: P/E 150x · EV/EBITDA 150x · PEG 25 · FCF Yield 100% · Op/Net Margin 300% · ROE 300% · ROA 300% · D/E 25 · Current Ratio 25 · Revenue/Earnings Growth 300%.
+- **`MetricDef.cap`** (Key Metrics, defined ONCE in `lib/keyMetrics.ts` since H6a): a per-metric cap. Beyond `±cap` the cell shows `>+cap` / `<−cap`, and the **true value goes in the hover tooltip** ("Actual … — capped for display"). The same number excludes outliers from the peer median — it used to be a second hand-kept list in `medians.server.ts`. Caps: Trailing/Forward P/E 150x · EV/EBITDA 150x · Price/Book 100x · Price/Sales 50x · EV/Revenue 50x · PEG 25 · FCF Yield 100% · EBITDA/Op/Net/FCF Margin 300% · ROE/ROA 300% · Revenue/Earnings Growth 300% · D/E 25 · Current/Quick Ratio 25 · Payout Ratio 300% (`PAYOUT_DISPLAY_CAP`, shared with Dividend History) · Share Count change 100%. Beta, Short % of Float and Days to Cover need none (no explosive tail, measured).
 - **Median hygiene:** the same bounds are mirrored in `medians.server.ts` `OUTLIER_BOUND` so capped outliers don't skew the peer median (bump the cache key when you change them).
-- **Peer comparison columns:** Key Metrics shows three relative columns — **vs Industry**, **vs Sector**, **vs Market** — ordered most-specific → broadest (industry ⊂ sector ⊂ market). Each cell is coloured green/red/grey by whether the stock beats / trails / matches that peer group's median. `medians.server.ts` (`fetchMetricMedians`, cache key `metric-medians-v5`) groups the whole universe by industry, sector, and market in one daily-cached scan. **Industry peer floor:** industries are small (~126 across 719 stocks), so a group needs **≥ 5 stocks** (`INDUSTRY_PEER_FLOOR`) before its median is trusted; below that the industry is omitted and the cell falls back to "—" rather than showing a one- or two-peer median.
+- **Peer comparison columns:** Key Metrics shows three relative columns — **vs Industry**, **vs Sector**, **vs Market** — ordered most-specific → broadest (industry ⊂ sector ⊂ market). Each cell is coloured green/red/grey by whether the stock beats / trails / matches that peer group's median — **except the three Risk rows** (Beta, Short % of Float, Days to Cover), whose `higherBetter` is `null`: their gap is drawn in plain ink (`.km-cmp--neutral`) with no stronger/weaker claim, because a more volatile or more shorted share is not better or worse. **25 rows in six groups since H6a** (Valuation 8, Profitability 7, Growth 2, Balance Sheet 3, Shareholder 2, Risk 3); a row with no value is omitted, so an ASX stock's Risk group is Beta alone. `medians.server.ts` (`fetchMetricMedians`, cache key `metric-medians-v6` — **bump it whenever a row is added**, or the new row reads "—" for up to a day) groups the whole universe by industry, sector, and market in one daily-cached scan. **Industry peer floor:** industries are small (~126 across 719 stocks), so a group needs **≥ 5 stocks** (`INDUSTRY_PEER_FLOOR`) before its median is trusted; below that the industry is omitted and the cell falls back to "—" rather than showing a one- or two-peer median.
 - **Distress flag (not a cap):** where a high number is *bad* (a trailing dividend yield > 20% almost always means a collapsed price / imminent cut), show the **real** value but recolour it amber (`INK.neutral`, not reassuring green) + a ⚠ + a caution tooltip — capping it would read as "good".
 - **`fmtCapped(value, cap, decimals)`** (`web/lib/format.ts`) is the shared helper for **prose** numbers — the same cap pattern for values interpolated into sentences rather than table cells. Used by the Thesis narrative (`VerdictCard` `bestStrength`/`topRisk`, `ThesisInsights` `buildAttractive`/`buildRisks`): ROE/margins/growth 300, FCF Yield 100, D/E & PEG 25. Beyond the cap it renders ">cap" inline (e.g. "an exceptional >300% return on equity").
 - These are **display-only**: the cycle math and FH pillars already clamp their inputs, so ratings are untouched.

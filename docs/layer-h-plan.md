@@ -845,9 +845,25 @@ probe was right and the control ambiguous; it now marks one element by hand.
 ### H6 · Owner items 🔵 — any time
 The 13px/16px decision; disclaimer copy; beta.
 
-### H6a · The twelve new Key Metrics rows 🟡 — fully specified, §10
-All decisions taken. Independent of H1, but H1 first: the table is on a paid page and the
-shell fix changes how that page lays out on a phone.
+### H6a · The twelve new Key Metrics rows ✅ — built 2026-09-25, §10
+✅ **BUILT 2026-09-25 on `feat/h6a-key-metrics` — awaiting the owner's review and merge.**
+One definition (`lib/keyMetrics.ts`) now feeds the table, the peer medians (whose outlier
+bounds used to be a second hand-kept copy of the caps) and the spec. 25 rows in the approved
+order; Risk rows `higherBetter: null`, drawn in plain ink; median cache key bumped to `v6`;
+the ten new figures added to the CSV/.xlsx exports (on-screen screener columns unchanged);
+the three pillar tooltips corrected. `e2e/key-metrics.spec.ts` (12 tests, pure) — each broken
+on purpose first. Measured on the live data: AAPL 25 rows, BHP 22 (no short data in
+Australia; FCF Yield withheld cross-currency), zero page scroll at 375px.
+⚠️ **Three things building it found:** (i) the design's two placeholder colours both FAILED
+check 8f — its brown sat 4.3 from the Neutral rating ink and its indigo 5.6 from Valuation to
+a colour-blind reader; a search of every allowed hue found ONE muted pair that clears the
+floor, umber `#50381C` + olive `#6F6000`. (ii) Short Interest's gauge told a SCREEN READER
+"1.0%" while showing "0.96%" — found by the new one-figure-one-reading test, fixed with the
+shared precision constant. (iii) The table's formatting and verdicts moved into
+`buildKeyMetricsTable`, because a pure Playwright spec cannot render a component (it rewrites
+JSX in anything a spec imports) and a test re-implementing them would guard its own copy.
+
+
 
 ---
 
