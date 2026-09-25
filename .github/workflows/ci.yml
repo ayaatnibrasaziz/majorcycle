@@ -564,16 +564,16 @@ jobs:
           cache: 'pip'
           cache-dependency-path: analytics/pyproject.toml
 
+      # ⚠️ The pipeline's EXACT versions, from the file the nightly jobs install —
+      # not "newest". Until 2026-09-25 this line installed floors, so CI tested
+      # analytics/ against yfinance 1.7.0 while every nightly run fetched with the
+      # pinned 1.5.2: the tests were green about a library production never runs,
+      # and a provider upgrade that changes what a number MEANS (14e) would have
+      # been "tested" here before anyone had decided to adopt it. The tools below
+      # the -r line are CI-only and stay floors.
       - name: Install Python dependencies
         run: |
-          pip install \
-            "yfinance>=0.2.40" \
-            "pandas>=2.2.0" \
-            "numpy>=1.26.0" \
-            "requests>=2.31.0" \
-            "requests-cache>=1.2.0" \
-            "supabase>=2.4.0" \
-            "python-dotenv>=1.0.0" \
+          pip install -r analytics/requirements-cron.txt \
             "ruff>=0.4.0" \
             "mypy>=1.10.0" \
             "pandas-stubs>=2.2.0" \
