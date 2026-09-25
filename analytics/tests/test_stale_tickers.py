@@ -576,3 +576,72 @@ def test_a_hole_inside_the_stored_window_still_shows() -> None:
     out = stale_indices({"^AXJO": held[0]}, {"au": market}, {"^AXJO": held})
     assert [t for t, _, _, _, _ in out] == ["^AXJO"]
     assert out[0][3] == 0 and out[0][4] == ["2026-07-27"]
+
+
+# ── 2026-09-24: a hole the PROVIDER has ──────────────────────────────────────────
+# Yahoo publishes no 2026-09-22 bar for ^GSPC, ^IXIC or ^GSPTSE (AAPL and MSFT have
+# it), so both nightly runs went red for a gap nobody can re-fetch. The calendar is
+# now the union of the index and the equities, which takes the danger out of a
+# hole; a hole alone is then a warning, and a LAG still fails the run.
+
+_US_WEEK = ["2026-09-24", "2026-09-23", "2026-09-22", "2026-09-21", "2026-09-18"]
+_GSPC_HELD = [d for d in _US_WEEK if d != "2026-09-22"]
+
+
+def test_a_provider_hole_no_longer_shortens_the_calendar() -> None:
+    from analytics.cron.check_stale_tickers import merge_calendars
+
+    cal = merge_calendars({"us": _GSPC_HELD}, {"us": _US_WEEK})
+    assert cal["us"] == _US_WEEK, "the equities carry the day the index skipped"
+
+
+def test_the_merged_calendar_still_sees_a_straggler() -> None:
+    """The control: the union must not make a stale equity look current. One
+    ticker stopped at 09-17 is four sessions behind a full week."""
+    from analytics.cron.check_stale_tickers import merge_calendars, stale_by_market
+
+    cal = merge_calendars({"us": _GSPC_HELD}, {"us": [*_US_WEEK, "2026-09-17"]})
+    stale, _ = stale_by_market({"AAPL": "2026-09-24", "ZZZ": "2026-09-17"}, cal)
+    assert [t for t, _, _ in stale["us"]] == ["ZZZ"]
+    assert stale["us"][0][2] == 5
+
+
+def test_a_market_with_only_one_witness_keeps_its_calendar() -> None:
+    from analytics.cron.check_stale_tickers import merge_calendars
+
+    assert merge_calendars({"au": ["2026-09-24"]}, {}) == {"au": ["2026-09-24"]}
+    assert merge_calendars({}, {"ca": ["2026-09-24"]}) == {"ca": ["2026-09-24"]}
+
+
+def test_a_hole_alone_does_not_fail_the_run() -> None:
+    """THE 2026-09-24 SHAPE: current index, one provider-side hole. Still reported
+    (by `stale_indices`), no longer red."""
+    from analytics.cron.check_stale_tickers import index_faults_that_fail_the_run, stale_indices
+
+    # ^IXIC is given nothing here, so it reads "never fetched"; only ^GSPC is asked about.
+    faults = [
+        f for f in stale_indices({"^GSPC": "2026-09-24"}, {"us": _US_WEEK}, {"^GSPC": _GSPC_HELD})
+        if f[0] == "^GSPC"
+    ]
+    assert faults and faults[0][4] == ["2026-09-22"], "the hole is still SEEN"
+    assert index_faults_that_fail_the_run(faults) == []
+
+
+def test_a_lag_still_fails_the_run_with_or_without_a_hole() -> None:
+    from analytics.cron.check_stale_tickers import (
+        NEVER_FETCHED,
+        index_faults_that_fail_the_run,
+        stale_indices,
+    )
+
+    lag = [
+        f for f in stale_indices(
+            {"^GSPC": "2026-09-21"}, {"us": _US_WEEK}, {"^GSPC": ["2026-09-21", "2026-09-18"]}
+        )
+        if f[0] == "^GSPC"
+    ]
+    assert [f[0] for f in index_faults_that_fail_the_run(lag)] == ["^GSPC"]
+    never: list[tuple[str, str, str, int, list[str]]] = [
+        ("^GSPC", "never fetched", "2026-09-24", NEVER_FETCHED, [])
+    ]
+    assert index_faults_that_fail_the_run(never) == never

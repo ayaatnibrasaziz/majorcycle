@@ -4,7 +4,7 @@ import { DELETION_NOTICE_COOKIE, DELETION_NOTICE_PATH } from '@/lib/account';
 import { PW_RECOVERY_COOKIE, PW_RECOVERY_ALLOWED_PATHS } from '@/lib/authRecovery';
 import { contentSecurityPolicy, createNonce, usesNonce } from '@/lib/csp';
 import { PREFERRED_SOURCE, usesPreferredSource } from '@/lib/preferredSource';
-import { TURNSTILE_ORIGIN, usesTurnstile } from '@/lib/turnstile';
+import { turnstileCspOrigin } from '@/lib/turnstile';
 import { accessDenialReason, hasAccess } from '@/lib/entitlement';
 import { INTERNAL_HEADER, hasInternalSecret } from '@/lib/internalAuth';
 import { PUBLIC_ENDPOINTS, PUBLIC_PAGES } from '@/lib/seo';
@@ -97,9 +97,9 @@ export async function proxy(request: NextRequest) {
     // `null` unless this is an /articles page AND the button is switched on, so
     // a disabled feature widens nothing anywhere (lib/preferredSource.ts).
     preferredSourceOrigin: usesPreferredSource(pathname) ? PREFERRED_SOURCE.origin : null,
-    // `null` unless this page draws the human check AND a site key is set, so the
-    // other pages — and every page before the owner switches it on — are unchanged.
-    turnstileOrigin: usesTurnstile(pathname) ? TURNSTILE_ORIGIN : null,
+    // On EVERY page while the site key is set, because a click on a link keeps
+    // the policy of the page the reader started on (lib/turnstile.ts says why).
+    turnstileOrigin: turnstileCspOrigin(),
   });
 
   // The nonce reaches the renderer on the REQUEST, not the response: Next parses

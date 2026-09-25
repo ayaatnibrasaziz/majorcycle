@@ -240,12 +240,16 @@ export function contentSecurityPolicy({
    */
   preferredSourceOrigin?: string | null;
   /**
-   * `https://challenges.cloudflare.com` on the four pages that draw the Turnstile
-   * check (`lib/turnstile.ts` → `usesTurnstile`), and `null` everywhere else —
-   * including every page when the site key is unset. Cloudflare documents exactly
-   * two directives: `script-src` for `api.js` and `frame-src` for the widget. Same
-   * scoping principle as `preferredSourceOrigin`: a third party is admitted only
-   * where its feature is drawn.
+   * `https://challenges.cloudflare.com` on EVERY page while the Turnstile site
+   * key is set, and `null` when it is not (`lib/turnstile.ts` →
+   * `turnstileCspOrigin`). Cloudflare documents exactly two directives:
+   * `script-src` for `api.js` and `frame-src` for the widget.
+   *
+   * ⚠️ Not scoped to the pages that draw it, unlike `preferredSourceOrigin`, and
+   * that scoping was a live defect until 2026-09-25: a click on a link is a
+   * client-side navigation that keeps the STARTING page's policy, so a reader who
+   * pressed "Sign in" on the landing page reached a form whose Cloudflare script
+   * was refused. A per-route origin only holds for pages reached by a full load.
    */
   turnstileOrigin?: string | null;
   /**

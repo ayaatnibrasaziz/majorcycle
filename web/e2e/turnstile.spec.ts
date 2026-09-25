@@ -4,7 +4,7 @@ import { join, relative } from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { contentSecurityPolicy } from '../lib/csp';
-import { TURNSTILE_ORIGIN, TURNSTILE_ROUTES } from '../lib/turnstile';
+import { TURNSTILE_ORIGIN } from '../lib/turnstile';
 import { passCaptchaForTests } from './lib/captcha';
 
 /**
@@ -15,7 +15,8 @@ import { passCaptchaForTests } from './lib/captcha';
  * bot is refused. What it proves is our half: every form that asks Supabase to
  * sign in, sign up or send a reset obtains a token and hands it over, renews it
  * after each attempt, fails visibly when Cloudflare cannot load, and that the
- * CSP admits Cloudflare on exactly those pages. The refusal itself was checked
+ * CSP admits Cloudflare on EVERY page — because a click on a link keeps the
+ * policy of the page the reader started on (lib/turnstile.ts, 2026-09-25). The refusal itself was checked
  * by hand against the live project and is recorded in docs/architecture.md.
  */
 
@@ -68,7 +69,7 @@ test.describe('every captcha-checked auth call carries a token', () => {
   }
 });
 
-test.describe('the CSP admits Cloudflare only where the check is drawn', () => {
+test.describe('the CSP admits Cloudflare on every page while the check is on', () => {
   const base = {
     nonce: 'n',
     dev: false,
@@ -93,18 +94,18 @@ test.describe('the CSP admits Cloudflare only where the check is drawn', () => {
     expect(contentSecurityPolicy(base)).not.toContain('cloudflare');
   });
 
-  test('the four pages, and exactly those', () => {
-    expect([...TURNSTILE_ROUTES].sort()).toEqual(['/account', '/login', '/reset-password', '/signup']);
-  });
-
-  test('on the wire: /login carries it, /pricing does not', async ({ request }) => {
-    const login = (await request.get('/login')).headers()['content-security-policy'] ?? '';
-    const pricing = (await request.get('/pricing')).headers()['content-security-policy'] ?? '';
-    expect(login, 'a policy was sent').toContain('script-src');
-    expect(login).toContain(TURNSTILE_ORIGIN);
-    expect(pricing).toContain('script-src');
-    expect(pricing).not.toContain(TURNSTILE_ORIGIN);
-  });
+  // ⚠️ This asserted the OPPOSITE for /pricing until 2026-09-25 — "/login carries
+  // it, /pricing does not" — and so certified the defect the owner then met on the
+  // live site: the guard pinned the very scoping that breaks a click-through.
+  // Prerendered and per-request pages both, since either can link to a form.
+  for (const path of ['/', '/pricing', '/learn', '/articles', '/login']) {
+    test(`on the wire: ${path} carries it`, async ({ request }) => {
+      const csp = (await request.get(path)).headers()['content-security-policy'] ?? '';
+      expect(csp, 'a policy was sent').toContain('script-src');
+      expect(directive(csp, 'script-src')).toContain(TURNSTILE_ORIGIN);
+      expect(directive(csp, 'frame-src')).toContain(TURNSTILE_ORIGIN);
+    });
+  }
 });
 
 test.describe('the widget, in a browser, with the always-pass test key', () => {
@@ -127,6 +128,30 @@ test.describe('the widget, in a browser, with the always-pass test key', () => {
     await fromCloudflare;
     await expect(page.getByRole('button', { name: /^sign in$/i })).toBeEnabled({ timeout: 30_000 });
     expect(refused, 'the CSP refused something on /login').toEqual([]);
+  });
+
+  test('reached by CLICKING a link, the form still gets its check — the 2026-09-25 defect', async ({ page }) => {
+    // The owner's report, verbatim in shape: land on the home page, press "Sign in",
+    // and the form said "We couldn't run our quick security check" with Sign In
+    // disabled — until a reload. Every other test here uses page.goto('/login'), a
+    // FULL load that fetches /login's own policy, so none of them could see it.
+    const refused: string[] = [];
+    page.on('console', (m) => {
+      if (m.type() === 'error' && /Content Security Policy/i.test(m.text())) refused.push(m.text());
+    });
+    await page.goto('/');
+    await page.getByRole('banner').getByRole('link', { name: /^sign in$/i }).first().click();
+    await page.waitForURL(/\/login/);
+    // ⚠️ CONTROL: the navigation must have been CLIENT-SIDE, or this is just the
+    // full-load test again and passes on the broken policy. The document's own
+    // navigation entry still names the page it was loaded as.
+    expect(
+      await page.evaluate(() => new URL(performance.getEntriesByType('navigation')[0]!.name).pathname),
+      'the click did a full page load, so this proves nothing about a soft navigation',
+    ).toBe('/');
+    await expect(page.getByRole('button', { name: /^sign in$/i })).toBeEnabled({ timeout: 30_000 });
+    await expect(page.getByText(/couldn.t run our quick security check/i)).toHaveCount(0);
+    expect(refused, 'the CSP refused Cloudflare after a click-through').toEqual([]);
   });
 
   test('after a failed attempt the form gets a FRESH check and can be retried', async ({ page }) => {

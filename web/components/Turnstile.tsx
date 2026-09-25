@@ -31,8 +31,8 @@ function loadTurnstile(): Promise<TurnstileApi> {
   if (window.turnstile) return Promise.resolve(window.turnstile);
   loading ??= new Promise<TurnstileApi>((resolve, reject) => {
     const script = document.createElement('script');
-    // Allowed by URL: the CSP names Cloudflare's origin on exactly the pages that
-    // mount this (lib/csp.ts `turnstileOrigin`), so no nonce is needed on the tag.
+    // Allowed by URL: the CSP names Cloudflare's origin on every page while the
+    // check is on (lib/turnstile.ts `turnstileCspOrigin`), so no nonce is needed.
     script.src = TURNSTILE_SCRIPT;
     script.async = true;
     script.onload = () =>

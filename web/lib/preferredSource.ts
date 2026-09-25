@@ -66,7 +66,15 @@
  * changes — the button, the CSP origins and the guard all follow this one value.
  */
 export const PREFERRED_SOURCE = {
-  /** Flip to `true` only once majorcycle.com is listed at google.com/preferences/source. */
+  /**
+   * Flip to `true` only once majorcycle.com is listed at google.com/preferences/source.
+   *
+   * ⚠️ BEFORE flipping it, widen `usesPreferredSource` to every page that can LINK
+   * to an article (in practice: every page). Its /articles-only scope is the exact
+   * shape that broke sign-in on 2026-09-25 — a click on a link keeps the policy of
+   * the page the reader started on, so a reader arriving at an article from /learn
+   * would have Google's script refused. See `lib/turnstile.ts` → `turnstileCspOrigin`.
+   */
   enabled: false,
 
   /** Google's publisher script. `async`, and it is the only script this site loads from a third party besides Google Identity. */

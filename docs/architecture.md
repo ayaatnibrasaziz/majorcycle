@@ -2196,10 +2196,23 @@ single-use.
 (`id_token`), the OAuth callback (`pkce`), token refresh, and any request with **admin**
 credentials. None of those can be used to send email, so nothing is lost.
 
-**Scope.** Cloudflare's origin is added to `script-src` and `frame-src` on exactly `/login`,
-`/signup`, `/reset-password` and `/account`, and nowhere when the site key is empty
-(`lib/csp.ts` → `turnstileOrigin`). The privacy policy names it under Cloudflare, conditional on
-the same key. The widget is `interaction-only`: invisible unless Cloudflare genuinely needs a click.
+**Scope.** Cloudflare's origin is added to `script-src` and `frame-src` on **every** page while
+the site key is set, and nowhere when it is empty (`lib/turnstile.ts` → `turnstileCspOrigin`).
+The privacy policy names it under Cloudflare, conditional on the same key. The widget is
+`interaction-only`: invisible unless Cloudflare genuinely needs a click.
+
+⚠️ **It was scoped to the four pages that draw the widget until 2026-09-25, and that broke
+sign-in for anyone who CLICKED their way there.** A `<Link>` click is a client-side navigation:
+the browser keeps its document, and with it the policy of the page the reader started on. From
+the landing page's "Sign in", `/login` arrived under the landing page's policy, Cloudflare's
+script was refused, and the form said *"We couldn't run our quick security check"* with Sign In
+disabled — until a reload fetched `/login`'s own policy. The owner found it on the live site.
+**Every test had loaded `/login` directly**, which is a full load, so none could see it; and the
+wire test asserted `/pricing` must NOT carry the origin, i.e. it certified the defect.
+`e2e/turnstile.spec.ts` now clicks through from `/` and first asserts the navigation really was
+client-side, since otherwise it is the full-load test again. Proven both ways: the old scoping
+fails it (Sign In stays disabled), the fix passes. **A per-route CSP origin holds only for pages
+reached by a full load — and nothing in Next guarantees that of any page.**
 
 **Tests.** Local and CI builds use Cloudflare's always-pass TEST site key. Its dummy token is
 refused by Supabase's real secret, so `e2e/lib/captcha.ts` gives a test's own requests to the

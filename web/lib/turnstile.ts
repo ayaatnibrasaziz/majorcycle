@@ -54,17 +54,28 @@ export const TURNSTILE_ORIGIN = 'https://challenges.cloudflare.com';
 export const TURNSTILE_SCRIPT = `${TURNSTILE_ORIGIN}/turnstile/v0/api.js?render=explicit`;
 
 /**
- * The pages that draw the widget: the three auth forms, and `/account`, whose
- * password change re-checks the current password with `signInWithPassword`.
- * `/account/update-password` is NOT here — it calls `updateUser` on a session
- * the reset link already proved, which Supabase does not captcha.
+ * Cloudflare's origin for EVERY page's CSP while the check is on; `null` when the
+ * key is unset, so the policy is then byte-identical to the site before Turnstile.
+ *
+ * ⚠️ SITE-WIDE, NOT THE FOUR PAGES THAT DRAW IT — and the owner found why on the
+ * live site on 2026-09-25. This used to admit Cloudflare only on `/login`,
+ * `/signup`, `/reset-password` and `/account`. But a click on a `<Link>` is a
+ * CLIENT-SIDE navigation: the browser keeps the document it already has, and with
+ * it the Content-Security-Policy of the page the reader STARTED on. So a reader who
+ * pressed "Sign in" on the landing page arrived at a sign-in form whose policy was
+ * the landing page's, which does not name Cloudflare: `api.js` was refused, the
+ * form said *"We couldn't run our quick security check"* and Sign In stayed
+ * disabled. A reload fetched `/login`'s own policy and it worked — which is exactly
+ * what the owner reported, and exactly what a test that loads `/login` directly
+ * can never see. A per-route CSP holds only for pages reached by a full load, and
+ * nothing in Next makes a page reachable only that way (redirects from `proxy.ts`
+ * are followed client-side too), so a third-party origin a page needs must be in
+ * every page's policy that can navigate to it — which on this site is every page.
+ *
+ * The cost is one origin in `script-src` + `frame-src` on pages that do not draw
+ * the widget. It is Cloudflare's challenge host, and those two directives are the
+ * whole of Cloudflare's documented CSP.
  */
-export const TURNSTILE_ROUTES = ['/login', '/signup', '/reset-password', '/account'] as const;
-
-/** Does this page need Cloudflare's origin in its CSP? `false` whenever the key is unset. */
-export function usesTurnstile(pathname: string): boolean {
-  if (!CAPTCHA_REQUIRED) return false;
-  const path =
-    pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname;
-  return (TURNSTILE_ROUTES as readonly string[]).includes(path);
+export function turnstileCspOrigin(): string | null {
+  return CAPTCHA_REQUIRED ? TURNSTILE_ORIGIN : null;
 }

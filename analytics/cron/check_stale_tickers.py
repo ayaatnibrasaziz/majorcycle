@@ -293,6 +293,50 @@ def market_calendars(sb: Client, days: int = 60) -> dict[str, list[str]]:
     return cal
 
 
+def merge_calendars(
+    index_calendars: Mapping[str, list[str]],
+    sessions: Mapping[str, list[str]],
+) -> dict[str, list[str]]:
+    """Each market's calendar as the UNION of its index's bars and its equities'.
+
+    ⚠️ The index alone is not enough, and 2026-09-24 is why. Yahoo publishes NO bar
+    for 2026-09-22 on `^GSPC`, `^IXIC` or `^GSPTSE` — measured on a fresh pull the
+    same day, while AAPL and MSFT carry it — so an index-only calendar was one
+    session short for as long as that date stays in the window, and every equity
+    read one session less behind than it was. We cannot re-fetch a bar the provider
+    does not have, and we never hand-patch one (CLAUDE.md 11as): the day Yahoo
+    fills it in, the nightly one-month pull stores it with nothing to undo.
+
+    A union is the same rule `equity_sessions` already follows — the market was
+    open on D exactly when SOME witness printed a bar on D — so an index hole can
+    no longer shorten the calendar, and a lagging index still cannot mask a
+    straggler, because the equities carry the newest session. The index stays in
+    the union for the case it was chosen for: a night on which the equity
+    witnesses themselves are thin.
+    """
+    out: dict[str, list[str]] = {}
+    for market in sorted(set(index_calendars) | set(sessions)):
+        dates = set(index_calendars.get(market, [])) | set(sessions.get(market, []))
+        if dates:
+            out[market] = sorted(dates, reverse=True)
+    return out
+
+
+def index_faults_that_fail_the_run(
+    faults: list[tuple[str, str, str, int, list[str]]],
+) -> list[tuple[str, str, str, int, list[str]]]:
+    """The index faults worth a red run: a LAG, never a hole on its own.
+
+    A hole was red from 2026-09-16 because it shortened the calendar for good. Once
+    `merge_calendars` fills the calendar from the equities, a hole costs nothing
+    downstream — and the one that fired (2026-09-22, above) is the PROVIDER's, so a
+    red X every night would be an alarm nobody can act on (CLAUDE.md 11bg). Holes
+    are still logged by name at WARNING; a lag of two sessions, or an index never
+    fetched, still fails the run.
+    """
+    return [f for f in faults if f[3] >= INDEX_LAG_ALARM_SESSIONS]
+
+
 #: Which market each benchmark index trades on. The three in `CALENDAR_INDEX`
 #: cannot be ranked against themselves, so indices get their own check below.
 INDEX_HOME_MARKET: dict[str, str] = {
@@ -661,12 +705,13 @@ def run(apply_changes: bool = True) -> int:
         logger.error("The active universe is EMPTY — refusing to report a vacuous pass.")
         return 1
 
-    calendars = market_calendars(sb)
+    newest = newest_bar_dates(sb, universe)
+    sessions = equity_sessions(sb, newest)
+    calendars = merge_calendars(market_calendars(sb), sessions)
     logger.info(
         "Session calendars: %s",
         ", ".join(f"{m.upper()} newest {d[0]}" for m, d in sorted(calendars.items())) or "NONE",
     )
-    newest = newest_bar_dates(sb, universe)
     stale, totals = stale_by_market(newest, calendars)
 
     problems: list[str] = []
@@ -696,17 +741,22 @@ def run(apply_changes: bool = True) -> int:
     # `lagging_indices`, not `behind`: an earlier loop in this function already
     # binds `behind` as an int, and reusing the name makes every line here a type
     # error — the compiler's version of 11ab (one identifier, two meanings).
-    lagging_indices = stale_indices(newest, equity_sessions(sb, newest), index_bar_dates(sb))
+    index_faults = stale_indices(newest, sessions, index_bar_dates(sb))
+    lagging_indices = index_faults_that_fail_the_run(index_faults)
+    for index_ticker, idx_date, mkt_date, behind, missing in index_faults:
+        how = (
+            "never fetched" if behind >= NEVER_FETCHED else f"{behind} sessions behind"
+        )
+        # A hole alone is a WARNING: the calendar no longer depends on it
+        # (`merge_calendars`), and the last one was the provider's own gap.
+        log = logger.error if behind >= INDEX_LAG_ALARM_SESSIONS else logger.warning
+        log(
+            "    %-10s newest bar %s — its market has %s (%s)%s",
+            index_ticker, idx_date, mkt_date, how,
+            f"; MISSING {', '.join(missing[:8])} (calendar covered by the equities; "
+            f"refills by itself if the provider publishes it)" if missing else "",
+        )
     if lagging_indices:
-        for index_ticker, idx_date, mkt_date, behind, missing in lagging_indices:
-            how = (
-                "never fetched" if behind >= NEVER_FETCHED else f"{behind} sessions behind"
-            )
-            logger.error(
-                "    %-10s newest bar %s — its market has %s (%s)%s",
-                index_ticker, idx_date, mkt_date, how,
-                f"; MISSING {', '.join(missing[:8])}" if missing else "",
-            )
         # ⚠️ Name the workflow that owns each one. These four are refreshed by the
         # market's own nightly run, and the sweep runs in BOTH — so the US+CA
         # workflow can go red for `^AXJO`, which only the AU workflow can fix. It
@@ -722,6 +772,8 @@ def run(apply_changes: bool = True) -> int:
             f"refreshed by the {', '.join(owners)} nightly workflow(s) — if that "
             f"is not the run you are reading, look there, not here."
         )
+    elif index_faults:
+        logger.info("No benchmark index is lagging; the holes above are warnings only.")
     else:
         logger.info("All %d benchmark indices are current with their market.", len(INDEX_HOME_MARKET))
 
