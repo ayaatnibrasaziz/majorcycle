@@ -708,6 +708,20 @@ _SCREENER_FIELDS = (
     "revenue_growth_yoy",
     "short_pct_of_float",
     "short_ratio",
+    # Layer H6a (owner, 2026-09-14): the Key Metrics rows that were stored and never
+    # shown also go into the spreadsheet exports. Export-only — the on-screen
+    # screener columns are unchanged — and each is a plain provider figure, so no
+    # withholding rule applies to it (compare `analyst_target_price` below).
+    "forward_pe",
+    "price_to_book",
+    "price_to_sales",
+    "ev_to_revenue",
+    "ebitda_margin",
+    "fcf_margin_pct",
+    "quick_ratio",
+    "payout_ratio_pct",
+    "shares_change_yoy_pct",
+    "beta",
     "analyst_target_price",
     "analyst_recommendation",
     "num_analyst_opinions",

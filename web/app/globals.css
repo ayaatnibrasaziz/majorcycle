@@ -707,6 +707,26 @@
   --cat-profitability: #602056;
   --cat-balance: #3B3B3B;
 
+  /* The fifth and sixth, added with Layer H6a (2026-09-25) for Shareholder and
+     Risk. ⚠️ MEASURED, not picked — and the design's own placeholders both
+     FAILED: its brown (#7A4A12) sat 4.3 from `--c-neutral-ink`, so the pill would
+     have read as the Neutral rating, and its indigo (#4A3A7A) sat 5.6 from
+     Valuation to a colour-blind reader, i.e. the same pill twice. With the four
+     above held exactly where the owner approved them, a search of every hue
+     that is not a green or red (DIRECTION inks) or the rating gold, inside the
+     same lightness band and ink window, found ONE pair clearing check 8f's 13.0
+     floor in all three visions: an umber (#50381C) and this olive. ⚠️ THE OWNER
+     THEN LOOKED AT IT and the umber was out the same day: 14.2 from Balance
+     Sheet's grey passes the floor, and on screen the two read as one dull dark
+     pill next to another. Passing a distance floor is not the same as looking
+     different (11t). A re-run found nothing muted that sits well clear of that
+     grey — only violets and blues — so Shareholder is this deep violet, 30.1
+     from the grey and 13.3 from its nearest neighbour at worst, owner-approved.
+     Six colours a colour-blind reader can separate is close to the edge of what
+     the space holds — so if any is changed, re-run the search AND show it. */
+  --cat-shareholder: #4200AB;
+  --cat-risk: #6F6000;
+
   /* ⚠️ `--band-neutral`, `--band-neutral-ink` and `--band-neutral-tint` were DELETED
      here on 2026-09-12, owner-approved. Short Interest moved to the rating tiers
      when its middle rung went gold, and the Key Metrics category pills — their last
@@ -1922,6 +1942,10 @@ td.num             { font-weight: 600; }
 .km-cmp--better { color: var(--c-up-ink); }
 .km-cmp--worse  { color: var(--c-down-ink); }
 .km-cmp--inline { color: var(--text-muted); }
+/* A Risk row's gap: real, and deliberately NOT a verdict (lib/keyMetrics.ts
+   `higherBetter: null`). Plain ink, so it reads as a figure rather than as the
+   grey "about the same" above it or the green/red of a judgement. */
+.km-cmp--neutral { color: var(--text-primary); }
 /* ⚠️ --border-strong (#CBD5E1) until 2026-08-22, i.e. a BORDER token used as ink:
    **1.48:1** on a white card and 1.42 on a striped row, where the floor is 4.5.
    It is the "no industry median available" dash, so it is genuinely secondary —
@@ -1949,6 +1973,8 @@ td.num             { font-weight: 600; }
 .mt-cat-growth        { --mt-cat: var(--cat-growth); }
 .mt-cat-profitability { --mt-cat: var(--cat-profitability); }
 .mt-cat-balance       { --mt-cat: var(--cat-balance); }
+.mt-cat-shareholder   { --mt-cat: var(--cat-shareholder); }
+.mt-cat-risk          { --mt-cat: var(--cat-risk); }
 /* ⚠️ `.mt-cat-cashflow`, `.mt-cat-income` and `.mt-cat-market` were DELETED here
    on 2026-09-12, owner-approved. They had rendered nowhere for the life of the
    product — `MetricsTable` defines exactly four categories and always has — and

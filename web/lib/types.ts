@@ -204,6 +204,22 @@ export interface ScreenerFundamentals {
   revenueGrowthYoy: number | null;
   shortPctOfFloat: number | null;
   shortRatio: number | null;
+  /**
+   * H6a's newly surfaced Key Metrics, shipped for the CSV/.xlsx exports only.
+   * ⚠️ Optional, unlike the rest: a run saved to sessionStorage before this landed
+   * has none of them, and a required field would be a type that lies about those
+   * rows. Every reader uses `?? null`.
+   */
+  forwardPe?: number | null;
+  priceToBook?: number | null;
+  priceToSales?: number | null;
+  evToRevenue?: number | null;
+  ebitdaMargin?: number | null;
+  fcfMarginPct?: number | null;
+  quickRatio?: number | null;
+  payoutRatioPct?: number | null;
+  sharesChangeYoyPct?: number | null;
+  beta?: number | null;
   analystTargetPrice: number | null;
   analystRecommendation: string | null;
   numAnalystOpinions: number | null;

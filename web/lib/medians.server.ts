@@ -18,60 +18,28 @@ import { unstable_cache } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 import { selectAll } from '@/lib/supabase/paginate';
 
-/** Metrics where a cross-peer median comparison is meaningful. */
-export type MetricKey =
-  | 'pe'
-  | 'evToEbitda'
-  | 'fcfYieldPct'
-  | 'grossMargin'
-  | 'operatingMargin'
-  | 'netMargin'
-  | 'roe'
-  | 'roa'
-  | 'revenueGrowthYoy'
-  | 'earningsGrowthYoy'
-  | 'debtToEquity'
-  | 'currentRatio'
-  | 'peg';
+import { KEY_METRICS, type MetricKey } from '@/lib/keyMetrics';
+
+export type { MetricKey };
 
 // camelCase MetricKey -> snake_case field in the fundamentals JSONB payload
-// (Python writes fundamentals in snake_case).
-const DB_FIELD: Record<MetricKey, string> = {
-  pe: 'pe',
-  evToEbitda: 'ev_to_ebitda',
-  fcfYieldPct: 'fcf_yield_pct',
-  grossMargin: 'gross_margin',
-  operatingMargin: 'operating_margin',
-  netMargin: 'net_margin',
-  roe: 'roe',
-  roa: 'roa',
-  revenueGrowthYoy: 'revenue_growth_yoy',
-  earningsGrowthYoy: 'earnings_growth_yoy',
-  debtToEquity: 'debt_to_equity',
-  currentRatio: 'current_ratio',
-  peg: 'peg',
-};
+// (Python writes fundamentals in snake_case). Derived from the ONE definition in
+// lib/keyMetrics.ts, so a row added there is a median computed here.
+const DB_FIELD = Object.fromEntries(KEY_METRICS.map((m) => [m.key, m.dbField])) as Record<
+  MetricKey,
+  string
+>;
 
 // Some metrics explode when their denominator is near zero — e.g. earnings going
 // from $0.01 to $3 reads as +30,000%, or P/E on near-zero EPS reads as 3,500x.
-// Such values are technically real but would skew the peer median, so we exclude
-// anything beyond a sane bound from the median pool. These bounds mirror the
-// per-metric display caps in MetricsTable (`MetricDef.cap`) so the cell text and
-// the comparison median stay consistent.
-const OUTLIER_BOUND: Partial<Record<MetricKey, number>> = {
-  pe: 150,
-  evToEbitda: 150,
-  peg: 25,
-  fcfYieldPct: 100,
-  operatingMargin: 300,
-  netMargin: 300,
-  roe: 300,
-  roa: 300,
-  revenueGrowthYoy: 300,
-  earningsGrowthYoy: 300,
-  debtToEquity: 25,
-  currentRatio: 25,
-};
+// Such values are technically real but would skew the peer median, so anything
+// beyond the metric's DISPLAY CAP is left out of the median pool. It is the same
+// number, read from the same place (`MetricDef.cap`), so the cell text and the
+// median it is compared with cannot disagree. (This was a second hand-kept list
+// "mirroring" the caps until 2026-09-25.)
+const OUTLIER_BOUND = Object.fromEntries(
+  KEY_METRICS.filter((m) => m.cap !== undefined).map((m) => [m.key, m.cap]),
+) as Partial<Record<MetricKey, number>>;
 
 export interface MedianStat {
   median: number;
@@ -188,6 +156,10 @@ async function _fetchMetricMedians(): Promise<MedianTables> {
  */
 export const fetchMetricMedians = unstable_cache(
   _fetchMetricMedians,
-  ['metric-medians-v5'],
+  // ⚠️ BUMP THIS KEY whenever KEY_METRICS gains a row. A cached entry from before
+  // the change has no median for the new metric, so for up to a day after deploy
+  // its every comparison would read "—" while looking entirely deliberate.
+  // v6: H6a, twelve new rows (2026-09-25).
+  ['metric-medians-v6'],
   { revalidate: 86400 },
 );

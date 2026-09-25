@@ -16,6 +16,9 @@
 // (CLAUDE.md 11d — a second build of the same components is a second product).
 import type { FundamentalsSnapshot } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
+// The Key Metrics table shows these two figures too (H6a). One precision for both,
+// or the page prints "0.96%" here and "1.0%" there about the same number (11c-iii).
+import { DAYS_TO_COVER_DECIMALS, SHORT_PCT_DECIMALS } from '@/lib/keyMetrics';
 
 interface Props {
   fundamentals: FundamentalsSnapshot;
@@ -68,7 +71,7 @@ function ArcGauge({ pct }: { pct: number }) {
       width="180"
       height="100"
       role="img"
-      aria-label={`Short interest gauge: ${pct.toFixed(1)}%`}
+      aria-label={`Short interest gauge: ${pct.toFixed(SHORT_PCT_DECIMALS)}%`}
     >
       <path d={bgD} fill="none" stroke="var(--border-strong)" strokeWidth={16} strokeLinecap="round" />
       {f > 0.01 && (
@@ -82,7 +85,7 @@ function ArcGauge({ pct }: { pct: number }) {
         fontWeight={700}
         fontFamily="'JetBrains Mono', monospace"
       >
-        {pct.toFixed(2)}%
+        {pct.toFixed(SHORT_PCT_DECIMALS)}%
       </text>
       <text
         x={cx} y={cy + 6}
@@ -114,7 +117,7 @@ export function ShortInterest({ fundamentals }: Props) {
   const statRows = [
     {
       label: 'Days to Cover',
-      value: shortRatio != null ? shortRatio.toFixed(1) : '—',
+      value: shortRatio != null ? shortRatio.toFixed(DAYS_TO_COVER_DECIMALS) : '—',
       tipTitle: 'Days to Cover (Short Ratio)',
       tipBody: 'Short Interest ÷ Average Daily Volume — how many trading days it would take all short sellers to buy back their shares. Below 3 days = low risk · 3–7 days = moderate · above 7 days = high. A sudden price rise can trigger a "short squeeze" as shorts are forced to cover.',
       color: undefined as string | undefined,

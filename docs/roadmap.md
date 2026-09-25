@@ -3387,9 +3387,26 @@ the file"*. A review *against* it is the activity that rule exists to stop. **5b
 - [ ] Beta with 5–10 friendly testers, then fix all P0/P1 from it
 - [ ] The **13px body size / 16px input** decision, still open, still owner's (5A-155)
 
-#### H6a · Twelve new Key Metrics rows 🟡 — fully specified, design approved
+#### H6a · Twelve new Key Metrics rows ✅ — built, awaiting the owner's merge
 
-- [ ] **Key Metrics goes from 13 rows to 25, in six groups instead of four.**
+✅ **BUILT 2026-09-25 on `feat/h6a-key-metrics` — awaiting the owner's review and merge.**
+  One definition (`lib/keyMetrics.ts`) now feeds the table, the peer medians (whose outlier
+  bounds used to be a second hand-kept copy of the caps) and the spec. 25 rows in the approved
+  order; Risk rows `higherBetter: null`, drawn in plain ink; median cache key bumped to `v6`;
+  the ten new figures added to the CSV/.xlsx exports (on-screen screener columns unchanged);
+  the three pillar tooltips corrected. `e2e/key-metrics.spec.ts` (12 tests, pure) — each broken
+  on purpose first. Measured on the live data: AAPL 25 rows, BHP 22 (no short data in
+  Australia; FCF Yield withheld cross-currency), zero page scroll at 375px.
+  ⚠️ **Three things building it found:** (i) the design's two placeholder colours both FAILED
+  check 8f — its brown sat 4.3 from the Neutral rating ink and its indigo 5.6 from Valuation to
+  a colour-blind reader; a search of every allowed hue found ONE muted pair that clears the
+  floor, olive `#6F6000` + (after the owner saw the umber `#50381C` beside Balance Sheet's grey and rejected it) violet `#4200AB`. (ii) Short Interest's gauge told a SCREEN READER
+  "1.0%" while showing "0.96%" — found by the new one-figure-one-reading test, fixed with the
+  shared precision constant. (iii) The table's formatting and verdicts moved into
+  `buildKeyMetricsTable`, because a pure Playwright spec cannot render a component (it rewrites
+  JSX in anything a spec imports) and a test re-implementing them would guard its own copy.
+
+- [x] **Key Metrics goes from 13 rows to 25, in six groups instead of four.**
       Design: https://claude.ai/code/artifact/287083d9-2684-40ad-a982-6142b27ff053
 
   - ⚠️ **The old row said "three fundamentals we store, score with, and never show", and it was

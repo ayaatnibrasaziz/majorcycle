@@ -120,6 +120,13 @@ function AngleAxisTick(props: {
 }
 
 // The five pillars and the weight each carries in the composite Health Score
+//
+// ⚠️ Each `desc` names the pillar's REAL inputs, read from
+// `analytics/scoring/financial_health.py` — and that is checked, not remembered
+// (e2e/key-metrics.spec.ts). Until 2026-09-25 three of them credited inputs that
+// do not exist ("operating leverage", "operating cash conversion", "dividend yield"
+// and "payout consistency") on a page that carries a rating (#12/#24): a
+// description of our own method that overstated it.
 // (weights sum to 100; they renormalise when a pillar is withheld). Weights are
 // surfaced in the UI so the headline score visibly follows from the bars.
 const AXES = [
@@ -127,7 +134,7 @@ const AXES = [
     key:    'profitability' as const,
     label:  'Profitability',
     weight: 30,
-    desc:   'How efficiently the company turns revenue into profit. Factors in Return on Equity, Gross Margin, Net Margin and operating leverage. Higher = a more profitable business model.',
+    desc:   'How efficiently the company turns revenue into profit. Factors in Return on Equity, Gross Margin, Operating Margin and Net Margin. Higher = a more profitable business model.',
   },
   {
     key:    'balanceSheet' as const,
@@ -145,13 +152,13 @@ const AXES = [
     key:    'cashflow' as const,
     label:  'Cash Flow',
     weight: 15,
-    desc:   'The quality and consistency of cash generation. Factors in Free Cash Flow yield, FCF margin and operating cash conversion. Higher = a more cash-generative business.',
+    desc:   'How much spare cash the business generates. Factors in Free Cash Flow yield and FCF margin. Higher = a more cash-generative business.',
   },
   {
     key:    'shareholder' as const,
     label:  'Shareholder',
     weight: 10,
-    desc:   'How well the company returns value to shareholders. Factors in dividend yield, payout consistency, buybacks and share-count changes. Higher = more shareholder-friendly.',
+    desc:   'How the company treats its shareholders. Factors in the payout ratio (the share of profit paid as dividends) and the change in share count (buybacks shrink it, new shares dilute it). Higher = more shareholder-friendly.',
   },
 ] as const;
 
