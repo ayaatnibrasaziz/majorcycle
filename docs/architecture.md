@@ -2348,18 +2348,25 @@ A **Vercel** cron (a Next.js route handler), distinct from the GitHub-Actions da
 
 ### Deployment pruning — `.github/workflows/prune-vercel-deployments.yml`
 
-**Schedule:** Sundays 04:00 UTC, clear of both data-refresh crons. Also `workflow_dispatch`.
+**Schedule:** DAILY 04:00 UTC (weekly until 2026-09-17, when Function Storage reached 237% of
+the free 10 GB), clear of both data-refresh crons. Also `workflow_dispatch`, which is a dry run
+unless ticked.
 
 **Runs:** `.github/scripts/prune-vercel-deployments.mjs` — the only script in that directory.
 
 **Why it exists:** Vercel keeps every deployment forever, and each of ours carries roughly
 268 MB of Python function bundle (pandas + numpy, twice). At about four deploys a day that is
 what filled the free tier's 10 GB of Function Storage. The job deletes deployments older than
-`keep_days` (default 14) while keeping the last **5 production** ones.
+`keep_days` (**1**) while keeping the last **2 production** ones and the newest preview of every
+branch with an OPEN pull request (the link the owner reviews before merging).
 
-⚠️ **The keep-5 figure is load-bearing beyond storage.** P9 measured how far Vercel's Instant
-Rollback can actually reach on Hobby, and a prune that kept fewer would silently shorten the
-rollback window — a storage setting quietly deciding an incident-recovery limit.
+⚠️ **The production count is an incident-recovery setting, not a storage one — and 2 is the
+measured answer, not a guess.** P9 found that on Hobby, Instant Rollback reaches **exactly one
+deployment back** (*"Upgrade to Pro to roll back to an earlier deployment"*), so "the live one +
+one rollback target" is everything the button can use. This section said "keep 5" until
+2026-09-25, three days after the workflow moved 5 → 2; the figure was right about the principle
+and stale about the number (11c-v). **On a move to Pro, raise it again**, because Pro's rollback
+reaches further back and a prune keeping 2 would then quietly cap it.
 
 ⚠️ **Two polarity traps, both already handled in the file and both worth knowing before editing
 it.** The job is gated on `vars.VERCEL_TEAM_ID`, not on the secret, because GitHub does not

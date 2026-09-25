@@ -1812,6 +1812,14 @@ Goal: Lighthouse 90+ on per-ticker pages, all SEO essentials live.
 > months of runway from 2026-08-12, and it is a dashboard + secrets rotation, not a code
 > change. Do it deliberately, not on the deadline.
 >
+> 🔴 **2026-09-25: NO LONGER OPTIONAL.** The legacy `service_role` key was found in 74 public
+> CI artifacts (CLAUDE.md 11bk), so the move is now the incident remediation, not a chore. It
+> was NOT purely a secrets rotation after all: a secret key answers 401 to a browser
+> User-Agent, so the test suite's captcha bypass had to move into the test runner
+> (`route.fetch`) first — done in `c7e8c22`, and `redactSecrets` learned the `sb_` shapes.
+> The owner's half — create the keys, paste them, deactivate the legacy pair — is in the
+> session report of that date.
+>
 > ✅ **Confirmed correct against the current docs, not assumed:** `proxy.ts` calls
 > `getClaims()`, which the Supabase Next.js guide now names as *the* method for protecting
 > pages (local WebCrypto + cached JWKS verification), with no code between
