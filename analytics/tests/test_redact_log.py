@@ -100,3 +100,28 @@ def test_every_ci_step_that_drives_a_browser_is_filtered_and_keeps_its_exit_code
         name = step.splitlines()[0]
         assert "python3 scripts/redact-log.py" in step, f"{name!r} writes to the public log unfiltered"
         assert "set -o pipefail" in step, f"{name!r} would report the filter's exit code, not the run's"
+
+
+def test_what_the_rules_write_is_what_the_recheck_accepts() -> None:
+    """The artifact cleaner redacts, then RE-READS and refuses anything a rule still
+    matches. A rule that matches its own output therefore deletes every report — which
+    is exactly what the first CI run of the header rule did: its `\s*` backtracked
+    and found " [redacted]" to be a fresh header value."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("sanitize_blob", WEB / "scripts" / "e2e-sanitize-blob.py")
+    assert spec and spec.loader
+    rules = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rules)
+    sample = (
+        f"    - cookie: sb-abcdefghij-auth-token={COOKIE_VALUE}\n"
+        f"    - Authorization:   Bearer {JWT}\n"
+        "    - apikey: something-public\n"
+        f"set-cookie: sb-abcdefghij-auth-token.1={COOKIE_VALUE}; path=/\n"
+    ).encode()
+    once = rules.redact(sample, [])
+    assert rules.leaks(once, []) == [], rules.leaks(once, [])
+    # And redacting twice changes nothing: the output is a fixed point.
+    assert rules.redact(once, []) == once
+    # CONTROL: the raw sample IS a leak, or the assertion above proves nothing.
+    assert rules.leaks(sample, [])

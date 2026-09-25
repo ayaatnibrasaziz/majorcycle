@@ -71,7 +71,10 @@ PATTERNS = (
 #: Request HEADERS that carry a credential whatever its shape. Playwright prints
 #: every header of a failed request in its call log; the value is replaced and
 #: the name kept, so the log still says what was sent.
-HEADERS = re.compile(rb"(?i)(\b(?:cookie|set-cookie|authorization|apikey)\s*:\s*)(?!\[)[^\r\n\"\\]+")
+#: ⚠️ `(?![\s\[])`, not `(?!\[)`: the `\s*` BACKTRACKS, so on "cookie: [redacted]"
+#: it gives the space back, the value then starts at " [", and the rule matches its
+#: own output — the first CI run refused every shard's report as unsafe.
+HEADERS = re.compile(rb"(?i)(\b(?:cookie|set-cookie|authorization|apikey)\s*:\s*)(?![\s\[])[^\r\n\"\\]+")
 
 REDACTED = b"[redacted]"
 KEEP = "report.jsonl"
