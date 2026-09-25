@@ -2652,7 +2652,7 @@ widths, **and** the header must leave at least **12px of slack** at 320px, becau
 boundary is not a margin (11i-b). Measured after the fix: **0px of overflow at 375 and at
 320, on all thirty.**
 
-### 5A-155 🟠 · Every text field on the public site zooms an iPhone — ⏸ **OWNER: REVERTED, folded into an open decision**
+### 5A-155 🟠 · Every text field on the public site zooms an iPhone — ✅ **CLOSED 2026-09-25, owner: no change** (*"happy with what is present in the live site"*; the zoom is accepted)
 
 Eleven form controls across `/login`, `/signup`, `/reset-password`, `/contact` and
 `/account/update-password` compute **13–14px**. iOS Safari zooms the page in when a focused

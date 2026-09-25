@@ -213,7 +213,7 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 
 | Component | Hosted On | Free Tier Limit | Notes |
 |---|---|---|---|
-| Next.js frontend | Vercel | 100GB bandwidth/mo | Hobby plan. Functions/SSR pinned to **`iad1` (US-East)** via `web/vercel.json` `regions`. |
+| Next.js frontend | Vercel | 100GB bandwidth/mo | Hobby plan. Functions/SSR pinned to **`iad1` (US-East)** via `web/vercel.json` `regions`. ⚠️ **Every production build compiles from scratch** (`turbopackFileSystemCacheForBuild: false`, 2026-09-25): Vercel restores the previous build's cache, and with Next 16.3's default ON a merge went live with new page text and the OLD stylesheet. **Verify a deploy with `pnpm check:live-css`**, not with Vercel's *Ready* (CLAUDE.md 11bl). |
 | Python API routes | Vercel Serverless | 100GB-hr/mo, 300s timeout | `@vercel/python` runtime; co-located in `iad1` with the DB. **Time limits (2026-09-25): `analyze.py` 300s (the Hobby maximum), `cycle.py` 60s** — at 60s/30s a batch slowed by a busy database was killed and retried into the same wall, and a 760-stock screen failed outright. Why, and the measurements: `e2e/build-config.spec.ts`. ⚠️ The slowness itself comes from ONE database shared by the live site, the nightly refresh and every CI run. |
 | Static assets | Vercel CDN | Unlimited | Global edge |
 | Postgres database | Supabase | Pro-plan quota | **Pro plan (US$25/mo), Micro compute, spend cap ON** — this row said *"free tier"* until 2026-09-07 (P9 session 3, read off the billing page). ⚠️ **Spend cap ON means the project goes READ-ONLY past the included quota rather than billing more**, so a traffic spike stops the product instead of overcharging. Region **`us-east-1`** (project `MajorCycle`; co-located with the Vercel functions so DB round-trips are ~10-20ms). Migrated from the original Seoul region pre-launch — see §2 Tier 3 performance note. |
@@ -222,7 +222,7 @@ Four stacked caches eliminate redundant data fetches and protect against rate li
 | Cron jobs | GitHub Actions | 2,000 minutes/mo | Free for public + private repos |
 | Email | Resend | 3,000/mo | Free tier |
 | Payments | Stripe | — | Pay per transaction (~2.9% + $0.30) |
-| Error tracking | Sentry (Phase 2) | 5,000 events/mo | Defer to Phase 2 |
+| Error tracking | Sentry (US region) | 5,000 events/mo | **Live since 2026-09-17** (Layer H2) — this row said *"Defer to Phase 2"* until 2026-09-25. What may leave: `lib/sentryOptions.ts`; the one alert rule: `lib/observability.ts`. |
 
 ---
 
