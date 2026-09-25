@@ -226,6 +226,16 @@ test.describe('the document layout', () => {
             // "cpl = the whole paragraph": the two have completely different
             // causes, and the number alone sent me looking for a column-width bug
             // when the real answer was "measured too early".
+            // ⚠️ But a run that ENDS before its line does — because a link or bold
+            // phrase follows it — cannot wrap however laid out the page is, so it
+            // measures nothing either way (2026-09-25: the complaints paragraph opens
+            // with 64 characters and then an email link). Only the LAST run of a
+            // paragraph can prove "measured too early", and that is the run the
+            // 430-character race produced, so the protection is unchanged.
+            if (!measured && node !== para.lastChild) {
+              skippedMidLine += 1;
+              continue;
+            }
             if (!measured) {
               all.push({ cpl: text.length, wrapped: false, width, text: text.trim().slice(0, 40) });
             }

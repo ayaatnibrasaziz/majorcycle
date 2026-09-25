@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/build-report-bundle.mjs && next build",
+    "build": "node scripts/build-tor-exits.mjs && node scripts/build-report-bundle.mjs && next build",
     "build:report-bundle": "node scripts/build-report-bundle.mjs",
     "check:report-sections": "node scripts/check-report-sections.mjs",
     "check:entitlement-gates": "node scripts/check-entitlement-gates.mjs",

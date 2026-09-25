@@ -15,7 +15,7 @@ export default function TermsPage() {
   return (
     <LegalDoc
       title="Terms of Service"
-      updated="15 August 2026"
+      updated="25 September 2026"
       intro={
         <p>
           These terms govern your use of MajorCycle (the &ldquo;Service&rdquo;). By
@@ -121,6 +121,13 @@ export default function TermsPage() {
                 <li>reverse-engineer the Service; or</li>
                 <li>use it to build a competing product.</li>
               </ul>
+              {/* Added 2026-09-25 with the Tor block (lib/torExits.ts): every page now
+                  refuses a Tor exit, so a reader on Tor meets a refusal the Terms
+                  should already have told them was possible. */}
+              <p>
+                To protect the Service from automated abuse, we may refuse access from
+                some networks, including anonymising networks such as Tor.
+              </p>
             </>
           ),
         },

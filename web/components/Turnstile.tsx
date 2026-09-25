@@ -113,9 +113,12 @@ function TurnstileWidget({
  * - `ready` gates the submit button: with no site key it is always true, so the
  *   forms behave exactly as before until the owner switches the check on.
  * - `options` spreads into a Supabase auth call's `options`.
- * - ⚠️ `renew()` after EVERY attempt, success or failure. A Turnstile token is
- *   single-use: Supabase spends it verifying, so a reader who mistypes a password
- *   and tries again would otherwise be refused with no way forward but a reload.
+ * - ⚠️ `renew()` after every FAILED attempt. A Turnstile token is single-use:
+ *   Supabase spends it verifying, so a reader who mistypes a password and tries
+ *   again would otherwise be refused with no way forward but a reload. NOT after a
+ *   success that replaces the form — a check started while the reader is leaving
+ *   is one Cloudflare may draw on screen (the owner saw it, 2026-09-25). A form
+ *   that stays on screen after success (`/account` password) renews then too.
  */
 export function useCaptcha(action: string): {
   ready: boolean;

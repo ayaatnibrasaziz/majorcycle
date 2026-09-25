@@ -9,6 +9,14 @@ import { accessDenialReason, hasAccess } from '@/lib/entitlement';
 import { INTERNAL_HEADER, hasInternalSecret } from '@/lib/internalAuth';
 import { PUBLIC_ENDPOINTS, PUBLIC_PAGES } from '@/lib/seo';
 import { SITE_ORIGIN } from '@/lib/url';
+import { clientIp, isTorExit } from '@/lib/torExits';
+
+/** What a Tor exit is told. Plain text: nothing on it can load a script. */
+const TOR_REFUSAL =
+  'MajorCycle is not available over Tor or similar anonymising networks.\n\n' +
+  'Our sign-up and password-reset forms were being used over Tor to send email to ' +
+  'people who never asked for it, so connections from Tor exit nodes are refused. ' +
+  'Please connect without Tor to use the site.\n';
 
 /** Internal-only analysis endpoint — secret-gated, never session-gated. */
 const CYCLE_PATH = '/api/cycle';
@@ -145,6 +153,17 @@ export async function proxy(request: NextRequest) {
     response.headers.set('Content-Security-Policy', policy);
     return response;
   };
+
+  // Tor exits get nothing — checked before every other rule, so no page, and
+  // therefore no Turnstile widget, is ever served to one. lib/torExits.ts says why
+  // (the fake sign-ups of 24–25 Sep all came over Tor) and why it is site-wide
+  // rather than the form pages alone.
+  if (isTorExit(clientIp(request.headers))) {
+    return send(new NextResponse(TOR_REFUSAL, {
+      status: 403,
+      headers: { ...NO_STORE, 'Content-Type': 'text/plain; charset=utf-8' },
+    }));
+  }
 
   // Dev-only bypass: skip auth so the local preview server can render pages
   // without a Supabase session. NODE_ENV guard ensures this never fires in prod.

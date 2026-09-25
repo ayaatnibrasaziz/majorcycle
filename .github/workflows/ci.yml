@@ -318,13 +318,19 @@ jobs:
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_TEST_WEBHOOK_SECRET }}
         # Shards by measured DURATION, not by count — scripts/e2e-shard.mjs says why.
+        # ⚠️ Output goes through redact-log.py: the log is PUBLIC and a failed request's
+        # call log prints its cookie header — a live session (2026-09-25). pipefail keeps
+        # the test run's exit code, not the filter's.
         run: |
+          set -o pipefail
           node scripts/e2e-shard.mjs ${{ matrix.shard }} ${{ strategy.job-total }} "$RUNNER_TEMP/shard.list"
-          pnpm exec playwright test --test-list "$RUNNER_TEMP/shard.list" --reporter=list,blob
+          pnpm exec playwright test --test-list "$RUNNER_TEMP/shard.list" --reporter=list,blob 2>&1 | python3 scripts/redact-log.py
 
       - name: Dev server log (on failure)
         if: failure()
-        run: tail -200 "$RUNNER_TEMP/next-dev.log"
+        run: |
+          set -o pipefail
+          tail -200 "$RUNNER_TEMP/next-dev.log" | python3 scripts/redact-log.py
 
       # ⚠️ THE REPORT IS PUBLIC, so it is cleaned first and uploaded only if the
       # cleaning PROVED it clean. Until 2026-09-25 the raw blob went up: every shard
@@ -403,7 +409,9 @@ jobs:
       - name: Merged result
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: merged.json
-        run: pnpm exec playwright merge-reports --reporter=list,json ./all-blob-reports
+        run: |
+          set -o pipefail
+          pnpm exec playwright merge-reports --reporter=list,json ./all-blob-reports 2>&1 | python3 scripts/redact-log.py
 
       # Every shard present, the merged total equal to the LISTED total, nothing failed.
       # A shard that never started must turn this red (it did not, the first time).
@@ -525,7 +533,9 @@ jobs:
           # The e2e job has always had this secret; this job simply never received it
           # (11c-iv).
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: pnpm check:page-weight
+        run: |
+          set -o pipefail
+          pnpm check:page-weight 2>&1 | python3 scripts/redact-log.py
 
       - name: Content-Security-Policy (enforcing, right form per route, zero violations)
         env:
@@ -546,7 +556,9 @@ jobs:
           # The e2e job has always had this secret; this job simply never received it
           # (11c-iv).
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: pnpm check:csp
+        run: |
+          set -o pipefail
+          pnpm check:csp 2>&1 | python3 scripts/redact-log.py
 
   backend:
     name: Python checks

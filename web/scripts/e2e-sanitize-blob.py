@@ -59,7 +59,22 @@ PATTERNS = (
     re.compile(rb"sb_secret_[A-Za-z0-9_-]{8,}"),
     re.compile(rb"(?:sk|rk)_(?:test|live)_[A-Za-z0-9]{8,}"),
     re.compile(rb"whsec_[A-Za-z0-9+/=_-]{8,}"),
+    # ⚠️ A SIGNED-IN SESSION, found 2026-09-25 in a public CI LOG: a timed-out
+    # request's call log printed its `cookie:` header, and Supabase's auth cookie is
+    # the session JSON base64-encoded — so the JWT inside it is NOT JWT-shaped any
+    # more, and the refresh token beside it is a plain short string. Nothing above
+    # could see either. `(?!\[)` stops a value we already replaced matching again.
+    re.compile(rb"sb-[a-z0-9]+-auth-token(?:\.\d+)?=(?!\[)[^;\s\"'\\]+"),
+    re.compile(rb"base64-eyJ[A-Za-z0-9+/=_-]{8,}"),
 )
+
+#: Request HEADERS that carry a credential whatever its shape. Playwright prints
+#: every header of a failed request in its call log; the value is replaced and
+#: the name kept, so the log still says what was sent.
+#: ⚠️ `(?![\s\[])`, not `(?!\[)`: the `\s*` BACKTRACKS, so on "cookie: [redacted]"
+#: it gives the space back, the value then starts at " [", and the rule matches its
+#: own output — the first CI run refused every shard's report as unsafe.
+HEADERS = re.compile(rb"(?i)(\b(?:cookie|set-cookie|authorization|apikey)\s*:\s*)(?![\s\[])[^\r\n\"\\]+")
 
 REDACTED = b"[redacted]"
 KEEP = "report.jsonl"
@@ -82,6 +97,7 @@ def secret_values() -> list[bytes]:
 def redact(data: bytes, secrets: list[bytes]) -> bytes:
     for s in secrets:
         data = data.replace(s, REDACTED)
+    data = HEADERS.sub(rb"\1" + REDACTED, data)
     for p in PATTERNS:
         data = p.sub(REDACTED, data)
     return data
@@ -89,7 +105,7 @@ def redact(data: bytes, secrets: list[bytes]) -> bytes:
 
 def leaks(data: bytes, secrets: list[bytes]) -> list[str]:
     found = [f"a secret value ({len(s)} chars)" for s in secrets if s in data]
-    found += [f"a credential shaped like {p.pattern[:24]!r}" for p in PATTERNS if p.search(data)]
+    found += [f"a credential shaped like {p.pattern[:24]!r}" for p in (*PATTERNS, HEADERS) if p.search(data)]
     return found
 
 

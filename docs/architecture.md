@@ -2189,8 +2189,11 @@ re-check all call Supabase's auth API **from the browser, with the public anon k
 our page alone would stop nothing: a bot calls the API directly. The check is enforced by
 **Supabase** (Authentication → Attack Protection → CAPTCHA → Turnstile + the secret key), which
 verifies each token server-side. Our code (`lib/turnstile.ts`, `components/Turnstile.tsx`) only
-obtains a token and passes it as `captchaToken`, renewing it after every attempt because a token is
-single-use.
+obtains a token and passes it as `captchaToken`, renewing it after every FAILED attempt because a token
+is single-use. ⚠️ Not after a successful one where the form goes away (sign-in, sign-up, reset): until
+2026-09-25 it renewed there too, so a fresh check ran while the next page loaded, and in a private
+window Cloudflare drew that check on screen under a sign-in that had already worked — the owner saw
+it. `/account`'s password form still renews on success, because it stays on screen for another go.
 
 **Exempt by Supabase's own design** (its `isIgnoreCaptchaRoute`, read from source): Google sign-in
 (`id_token`), the OAuth callback (`pkce`), token refresh, and any request with **admin**
@@ -2259,6 +2262,33 @@ import. Two further defects surfaced while fixing it: the bypass **returned sile
 no service key (so a harness that could not do its job failed elsewhere — 14g; it now reports
 whether it armed), and it read the environment at **import** time, which is evaluated before the
 importing script loads `.env.local`, so widening that loader alone changed nothing.
+
+
+### 7.6b Tor exits are refused site-wide (2026-09-25)
+
+Turnstile stopped the automated sign-ups but not all of them: three more arrived on 24–25 Sep,
+each a real browser over **Tor** (Supabase's edge logs: `cf_ipcountry: T1`, one fake "Mac
+Chrome" user agent), each signing up with a stranger's address and asking for a password reset
+9–18 seconds later — someone using our forms to send email to people who never asked for it.
+Cloudflare's Managed challenge lets a real browser through, Tor or not.
+
+`proxy.ts` now answers any request from a **Tor exit node** with a plain-text **403**
+(`private, no-store`), before every other rule, on **every** path — not just the forms, because
+a Turnstile token is bound to our hostname rather than a page, so anyone driving their own
+browser could render the widget on any majorcycle.com page and call Supabase directly
+(`lib/torExits.ts`). The visitor address comes from `x-forwarded-for`, which Vercel writes itself
+and does not accept from the visitor.
+
+The exit list is the Tor Project's own (`check.torproject.org/torbulkexitlist`, ~1,400
+addresses). `scripts/build-tor-exits.mjs` refreshes `lib/tor-exits.json` on every **Vercel**
+build (daily, because the nightly job commits) and keeps the committed copy if the download
+fails or comes back under 500 addresses — fetching per request was measured at 3 s.
+
+⚠️ **What it does not stop:** the same person on an ordinary home or phone connection looks
+exactly like a customer, and nothing free tells the two apart. This closes the door actually
+being used; Turnstile still stands behind it. Guarded by `e2e/tor-block.spec.ts`, whose
+load-bearing test is the control that ordinary visitors still get every page — broken on purpose
+first (block disabled → all 6 refusal tests red).
 
 
 ## 8. Cron Job Specification
