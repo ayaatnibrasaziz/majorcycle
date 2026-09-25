@@ -9,6 +9,12 @@ function requireEnv(name: string, value: string | undefined): string {
 
 const SUPABASE_URL = () =>
   requireEnv('NEXT_PUBLIC_SUPABASE_URL', process.env['NEXT_PUBLIC_SUPABASE_URL']);
+// ⚠️ Since 2026-09-25 these two names hold Supabase's NEW key formats (the legacy
+// JWT service_role key leaked through public CI artifacts — CLAUDE.md 11bk):
+// the anon key is the publishable `sb_publishable_…` key, and the service key is
+// an `sb_secret_…` key, one per place it lives (Vercel / GitHub / local). A secret
+// key answers 401 to any request whose User-Agent looks like a browser, so the
+// admin client below must only ever run on the server — which it always did.
 const SUPABASE_ANON_KEY = () =>
   requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY']);
 const SUPABASE_SERVICE_KEY = () =>
