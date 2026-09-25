@@ -89,6 +89,16 @@ const nextConfig: NextConfig = {
   // the variable; nothing else does.
   experimental: {
     turbopackFileSystemCacheForDev: process.env.MC_E2E_NO_FS_CACHE !== '1',
+    // ⚠️ OFF for every production build, and stated rather than left to Next's
+    // default (ON since 16.3). Vercel restores `.next/cache` from the previous
+    // deployment, and on 2026-09-25 the merge that added two Key Metrics colours
+    // shipped with NEW page text and the OLD stylesheet: the build "compiled
+    // successfully in 10.8s" from that cache and served a CSS file with neither
+    // colour in it. Every check passed, because CI builds from a clean checkout and
+    // never sees Vercel's cache — the owner found it by looking at the live page.
+    // A slower build is the price of the site being the code (CLAUDE.md 11i, the
+    // stale `.next-dev`, one environment further along).
+    turbopackFileSystemCacheForBuild: false,
   },
 
 
