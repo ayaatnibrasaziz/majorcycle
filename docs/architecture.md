@@ -2189,8 +2189,11 @@ re-check all call Supabase's auth API **from the browser, with the public anon k
 our page alone would stop nothing: a bot calls the API directly. The check is enforced by
 **Supabase** (Authentication → Attack Protection → CAPTCHA → Turnstile + the secret key), which
 verifies each token server-side. Our code (`lib/turnstile.ts`, `components/Turnstile.tsx`) only
-obtains a token and passes it as `captchaToken`, renewing it after every attempt because a token is
-single-use.
+obtains a token and passes it as `captchaToken`, renewing it after every FAILED attempt because a token
+is single-use. ⚠️ Not after a successful one where the form goes away (sign-in, sign-up, reset): until
+2026-09-25 it renewed there too, so a fresh check ran while the next page loaded, and in a private
+window Cloudflare drew that check on screen under a sign-in that had already worked — the owner saw
+it. `/account`'s password form still renews on success, because it stays on screen for another go.
 
 **Exempt by Supabase's own design** (its `isIgnoreCaptchaRoute`, read from source): Google sign-in
 (`id_token`), the OAuth callback (`pkce`), token refresh, and any request with **admin**

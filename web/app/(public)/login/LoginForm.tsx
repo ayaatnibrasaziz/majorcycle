@@ -108,9 +108,12 @@ export function LoginForm() {
       password,
       options: captcha.options,
     });
-    // The token is spent either way; the next attempt needs a fresh one.
-    captcha.renew();
     if (authError) {
+      // The token is spent; a retry needs a fresh one. ⚠️ ONLY on failure: on
+      // success the reader is leaving, and a fresh check started while the next
+      // page loads is one Cloudflare may draw on screen — the owner saw its box
+      // appear under a sign-in that had already worked (2026-09-25).
+      captcha.renew();
       setError(friendlyAuthError(authError.message));
       setLoading(false);
     } else {

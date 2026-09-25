@@ -6,6 +6,7 @@ import { expect, test } from '@playwright/test';
 import { contentSecurityPolicy } from '../lib/csp';
 import { TURNSTILE_ORIGIN } from '../lib/turnstile';
 import { passCaptchaForTests } from './lib/captcha';
+import { HAVE_E2E_CREDENTIALS, SIGN_IN_BUDGET_MS } from './lib/session';
 
 /**
  * The human check (Cloudflare Turnstile) — 2026-09-22. Read lib/turnstile.ts first.
@@ -185,6 +186,32 @@ test.describe('the widget, in a browser, with the always-pass test key', () => {
     await button.click();
     await expect.poll(() => sent.length, { timeout: 30_000 }).toBe(2);
     expect(sent.every((t) => t.length > 0), 'every attempt carried a token').toBe(true);
+  });
+
+  test('a SUCCESSFUL sign-in starts no fresh check — the box the owner saw', async ({ page }) => {
+    // 2026-09-25: the owner signed in (incognito), the button went to "loading",
+    // and a Cloudflare box appeared that needed nothing and then vanished as the
+    // next page arrived. The form was renewing the check after EVERY attempt, so a
+    // fresh challenge ran while the reader was already leaving — and in a private
+    // window Cloudflare, knowing less, may draw that one on screen.
+    test.skip(!HAVE_E2E_CREDENTIALS, 'set E2E_EMAIL / E2E_PASSWORD to run');
+    await passCaptchaForTests(page);
+    let challenges = 0;
+    page.on('request', (r) => {
+      if (r.url().includes('/cdn-cgi/challenge-platform/')) challenges += 1;
+    });
+    await page.goto('/login');
+    const button = page.getByRole('button', { name: /^sign in$/i });
+    await expect(button).toBeEnabled({ timeout: 30_000 });
+    const before = challenges;
+    // CONTROL: the counter must be able to see a check at all, or "no new one"
+    // is true of a page that never ran any.
+    expect(before, 'the first check never reached Cloudflare').toBeGreaterThan(0);
+    await page.fill('input#email', process.env['E2E_EMAIL']!);
+    await page.fill('input#password', process.env['E2E_PASSWORD']!);
+    await button.click();
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: SIGN_IN_BUDGET_MS });
+    expect(challenges, 'a fresh check ran after a sign-in that had already worked').toBe(before);
   });
 
   test('if Cloudflare cannot load, the reader is TOLD, and the form does not pretend', async ({ page }) => {

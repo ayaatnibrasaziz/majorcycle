@@ -31,9 +31,10 @@ export function ResetPasswordForm() {
       redirectTo: `${getSiteURL()}/auth/callback?next=/account/update-password`,
       ...captcha.options,
     });
-    // The token is spent either way; the next attempt needs a fresh one.
-    captcha.renew();
     if (authError) {
+      // The token is spent; a retry needs a fresh one. Only on failure — on
+      // success the form is replaced (see LoginForm for why that matters).
+      captcha.renew();
       setError(friendlyAuthError(authError.message));
       setLoading(false);
     } else {
