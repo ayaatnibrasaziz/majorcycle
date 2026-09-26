@@ -129,7 +129,9 @@ test.describe('the approved shape', () => {
   test('a metric with no value is OMITTED, not blanked — the Australian Risk group', () => {
     // Short interest is not published for ASX stocks (0 of 248). The group must
     // shrink to Beta alone rather than print two empty rows.
-    const { shortPctOfFloat: _a, shortRatio: _b, ...au } = VALUES;
+    const au: Partial<typeof VALUES> = { ...VALUES };
+    delete au.shortPctOfFloat;
+    delete au.shortRatio;
     const risk = rows(au).filter((r) => r.cat === 'Risk').map((r) => r.label);
     expect(risk).toEqual(['Beta']);
   });
