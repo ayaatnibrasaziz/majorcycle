@@ -356,10 +356,13 @@ export default async function StockDetailPage({
   // below (technical levels, thesis, analyst track) still read the full history here.
   const recentBars = packBars(stock.priceBars.slice(-RECENT_BARS));
   const historyVersion = barsVersion(stock.priceBars);
-  // Start the full-history request with the HTML rather than after the charts' code
-  // has loaded and run — measured 2026-09-26, that wait was most of the delay before
-  // the drawdown chart could draw. `crossOrigin: 'anonymous'` matches a plain same-origin
-  // fetch(), so the provider's request is answered by this one rather than repeated.
+  // Hint the full-history request early. ⚠️ Measured on production 2026-09-26: this
+  // is emitted AFTER the shell has streamed, so React delivers it in its data stream,
+  // not as an HTML <link> — the request starts when that chunk is processed, only a
+  // little before the charts would ask. Kept because it costs nothing and never causes
+  // a second download: `crossOrigin: 'anonymous'` matches a plain same-origin fetch(),
+  // so the provider's request is answered by this one (one request observed, and
+  // `e2e/price-history.spec.ts` fails if the two addresses ever differ).
   if (stock.priceBars.length > RECENT_BARS) {
     preload(historyUrl(stored, historyVersion), { as: 'fetch', crossOrigin: 'anonymous' });
   }
