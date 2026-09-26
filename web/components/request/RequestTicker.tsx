@@ -20,12 +20,12 @@ const STATUS_META: Record<RequestStatus, { label: string; cls: string }> = {
   unsupported: { label: 'Not supported', cls: 'req-pill--bad' },
 };
 
-export function RequestTicker() {
+export function RequestTicker({ initialRecent }: { initialRecent: TickerRequest[] | null }) {
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<ListingHit[]>([]);
   const [searching, setSearching] = useState(false);
   const [pending, setPending] = useState<Set<string>>(new Set());
-  const [recent, setRecent] = useState<TickerRequest[]>([]);
+  const [recent, setRecent] = useState<TickerRequest[]>(initialRecent ?? []);
   const [notice, setNotice] = useState<string | null>(null);
 
   // Plain helper (called from event handlers, not an effect) — refreshes the
@@ -41,9 +41,11 @@ export function RequestTicker() {
     }
   };
 
-  // Load recent requests on mount — setState only after the await, never
-  // synchronously in the effect body.
+  // The page renders the recent list with itself; the browser only asks when that
+  // server read failed (`initialRecent === null`). setState only after the await,
+  // never synchronously in the effect body.
   useEffect(() => {
+    if (initialRecent !== null) return;
     const ctrl = new AbortController();
     void (async () => {
       try {
@@ -56,7 +58,7 @@ export function RequestTicker() {
       }
     })();
     return () => ctrl.abort();
-  }, []);
+  }, [initialRecent]);
 
   // Debounced search. The empty-query case is handled in the input's onChange so
   // the effect never calls setState synchronously in its body.
