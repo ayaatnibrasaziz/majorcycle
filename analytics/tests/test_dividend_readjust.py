@@ -271,3 +271,19 @@ def test_too_little_overlap_falls_back_to_the_record() -> None:
 
 def test_nothing_stored_means_repull() -> None:
     assert _history_needs_readjust({}, _FRESH, _EX, already_repulled=False)
+
+
+def test_a_skip_never_overwrites_the_date_of_the_real_repull() -> None:
+    from analytics.cron.daily_refresh import _mark_dividend_repulled
+
+    sb = MagicMock()
+    q = sb.table.return_value.update.return_value.eq.return_value.in_.return_value
+    _mark_dividend_repulled(sb, "CBA.AX", ["2026-09-01"], only_unmarked=True)
+    q.is_.assert_called_once_with("repulled_at", "null")
+    q.is_.return_value.execute.assert_called_once()
+    # CONTROL: a real re-pull stamps regardless — its date IS the one to keep.
+    sb2 = MagicMock()
+    q2 = sb2.table.return_value.update.return_value.eq.return_value.in_.return_value
+    _mark_dividend_repulled(sb2, "CBA.AX", ["2026-09-01"])
+    q2.is_.assert_not_called()
+    q2.execute.assert_called_once()
