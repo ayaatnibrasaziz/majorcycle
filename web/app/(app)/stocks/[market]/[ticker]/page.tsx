@@ -8,19 +8,22 @@ import { BalanceSheet } from '@/components/stocks/BalanceSheet';
 import { CompanyOverview } from '@/components/stocks/CompanyOverview';
 import { DelistedNotice } from '@/components/stocks/DelistedNotice';
 import { DividendHistory } from '@/components/stocks/DividendHistory';
-import { DrawdownOverlay } from '@/components/stocks/DrawdownOverlay';
 import { EarningsHistory } from '@/components/stocks/EarningsHistory';
 import { KpiStrip } from '@/components/stocks/KpiStrip';
 import { MetricsTable } from '@/components/stocks/MetricsTable';
 import { NewsFeed } from '@/components/stocks/NewsFeed';
 import { OwnershipStructure } from '@/components/stocks/OwnershipStructure';
+import {
+  LiveDrawdownOverlay,
+  LivePriceChart,
+  LiveRelativePerformance,
+  LiveSmartMoneyActivity,
+  PriceHistoryProvider,
+} from '@/components/stocks/PriceHistory';
 import { PremiumLockCard, PremiumLockInlineCta } from '@/components/stocks/PremiumLock';
-import { PriceChart } from '@/components/stocks/PriceChart';
 import { QuarterlyFinancials } from '@/components/stocks/QuarterlyFinancials';
-import { RelativePerformance } from '@/components/stocks/RelativePerformance';
 import { ShortInterest } from '@/components/stocks/ShortInterest';
 import { ThesisInsights } from '@/components/stocks/ThesisInsights';
-import { SmartMoneyActivity } from '@/components/stocks/SmartMoneyActivity';
 import { SnowflakeRadar } from '@/components/stocks/SnowflakeRadar';
 import { BadgeRow, StockHeader } from '@/components/stocks/StockHeader';
 import { TechnicalLevels } from '@/components/stocks/TechnicalLevels';
@@ -39,6 +42,7 @@ import {
 import { recordFreeView } from '@/lib/freeViews';
 import { parseSpec, isValidMarket, horizonQuery, type RouteSearch } from '@/lib/horizon';
 import { fetchMetricMedians } from '@/lib/medians.server';
+import { barsVersion, packBars, RECENT_BARS } from '@/lib/priceHistory';
 import { fetchStockDetail } from '@/lib/stocks';
 import { urlPartsToTicker, tickerDisplay, tickerToUrlParts } from '@/lib/ticker';
 import { isFullCycle, type FundamentalsSnapshot, type PriceBar } from '@/lib/types';
@@ -243,16 +247,12 @@ function SectionHeading({ id }: { id: StockSectionId }) {
   return <h2 className="sr-only">{sectionHeading(id)}</h2>;
 }
 
-async function CycleDrawdown({
-  ticker,
-  spec,
-  entitled,
-  priceBars,
-}: CycleProps & { priceBars: PriceBar[] }) {
+async function CycleDrawdown({ ticker, spec, entitled }: CycleProps) {
   const cycle = await fetchCycleAnalysis(ticker, spec, entitled);
   // FREE: the drawdown overlay and its cycle bands are descriptive price history —
-  // the hook that gives a free viewer a reason to come back.
-  return cycle ? <DrawdownOverlay priceBars={priceBars} cycle={cycle} /> : null;
+  // the hook that gives a free viewer a reason to come back. Its price history comes
+  // from PriceHistoryProvider, which fetches the full series after the page arrives.
+  return cycle ? <LiveDrawdownOverlay cycle={cycle} /> : null;
 }
 
 export async function generateMetadata({
@@ -350,6 +350,11 @@ export default async function StockDetailPage({
   // browser-cached window rather than 1,011 KB baked into every page (F-019) —
   // so this date is all the page still needs to send.
   const benchSince = benchmarkSinceFor(stock.priceBars[0]?.date);
+  // The charts get the last two years inline and fetch the rest themselves — see
+  // lib/priceHistory.ts for why (1.77 MB of a 2 MB page). The server-side sections
+  // below (technical levels, thesis, analyst track) still read the full history here.
+  const recentBars = packBars(stock.priceBars.slice(-RECENT_BARS));
+  const historyVersion = barsVersion(stock.priceBars);
 
   return (
     <div className="-mt-2">
@@ -362,6 +367,12 @@ export default async function StockDetailPage({
         entitled={entitled}
       />
 
+      <PriceHistoryProvider
+        ticker={stored}
+        recent={recentBars}
+        total={stock.priceBars.length}
+        version={historyVersion}
+      >
       <div className="pt-5 space-y-[18px]">
         {/* FIRST, above everything, and rendered server-side rather than inside a
             Suspense boundary: a reader must not scroll to learn that every figure
@@ -456,14 +467,9 @@ export default async function StockDetailPage({
             currency={stock.fundamentals.currency}
           />
         )}
-        <PriceChart priceBars={stock.priceBars} ticker={stored} />
+        <LivePriceChart ticker={stored} />
         <Suspense fallback={<SectionSkeleton className="h-[260px]" />}>
-          <CycleDrawdown
-            ticker={stored}
-            spec={spec}
-              entitled={entitled}
-            priceBars={stock.priceBars}
-          />
+          <CycleDrawdown ticker={stored} spec={spec} entitled={entitled} />
         </Suspense>
         {stock.priceBars.length > 0 && (
           <AnalystTargetTrack
@@ -474,12 +480,7 @@ export default async function StockDetailPage({
           />
         )}
         {stock.priceBars.length > 0 && (
-          <RelativePerformance
-            ticker={stored}
-            market={market}
-            priceBars={stock.priceBars}
-            benchSince={benchSince}
-          />
+          <LiveRelativePerformance ticker={stored} market={market} benchSince={benchSince} />
         )}
         </section>
         <section id="sec-fundamentals" className="scroll-mt-[120px] space-y-[18px]">
@@ -529,10 +530,9 @@ export default async function StockDetailPage({
         </section>
         <section id="sec-sentiment" className="scroll-mt-[120px] space-y-[18px]">
           <SectionHeading id="sec-sentiment" />
-          <SmartMoneyActivity
+          <LiveSmartMoneyActivity
             insiderTransactions={stock.insiderTransactions}
             analystUpgradesDowngrades={stock.analystUpgradesDowngrades}
-            priceBars={stock.priceBars}
             currency={stock.fundamentals.currency}
           />
           <OwnershipStructure
@@ -543,6 +543,7 @@ export default async function StockDetailPage({
           <NewsFeed news={stock.news} />
         </section>
       </div>
+      </PriceHistoryProvider>
     </div>
   );
 }

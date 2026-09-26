@@ -27,7 +27,23 @@ const REPORT = path.join(webRoot, 'components', 'stocks', 'ReportDocument.tsx');
 // PremiumLockInlineCta is the same argument in miniature: an inline "see what's
 // included" button inside the free-tier daily-limit panel. It replaced a link to the
 // public /pricing page, which dropped a signed-in reader out of the app shell.
-const PAGE_ONLY = new Set(['StockSubnav', 'PremiumLockCard', 'PremiumLockInlineCta']);
+//
+// PriceHistoryProvider carries the price history to the charts below it (2026-09-26);
+// it draws nothing of its own.
+const PAGE_ONLY = new Set(['StockSubnav', 'PremiumLockCard', 'PremiumLockInlineCta', 'PriceHistoryProvider']);
+
+// The page renders four charts through wrappers that hand them the price history as it
+// arrives (components/stocks/PriceHistory.tsx); the report renders the charts directly.
+// An EXPLICIT map rather than a "Live" prefix rule, so a new wrapper cannot pass by its
+// name alone — and each wrapper is checked below to really render the section it
+// stands for, or an alias could hide a missing chart.
+const PAGE_ALIASES = {
+  LivePriceChart: 'PriceChart',
+  LiveDrawdownOverlay: 'DrawdownOverlay',
+  LiveRelativePerformance: 'RelativePerformance',
+  LiveSmartMoneyActivity: 'SmartMoneyActivity',
+};
+const ALIAS_FILE = path.join(webRoot, 'components', 'stocks', 'PriceHistory.tsx');
 
 /** Names imported from '@/components/stocks/...' in a source file. */
 function importedStockComponents(src) {
@@ -82,7 +98,23 @@ function renderedStockSections(file) {
   return rendered;
 }
 
-const pageSections = renderedStockSections(PAGE);
+const aliasSrc = stripComments(readFileSync(ALIAS_FILE, 'utf8'));
+const brokenAliases = Object.entries(PAGE_ALIASES).filter(([wrapper, target]) => {
+  const body = aliasSrc.match(new RegExp(`export function ${wrapper}\\b[\\s\\S]*?\\n}`));
+  return !body || !new RegExp(`<${target}[\\s/>]`).test(body[0]);
+});
+if (brokenAliases.length) {
+  console.error(
+    'ALIAS: these page wrappers no longer render the section they stand for\n' +
+      '       (components/stocks/PriceHistory.tsx):\n  - ' +
+      brokenAliases.map(([w, t]) => `${w} → ${t}`).join('\n  - '),
+  );
+  process.exit(1);
+}
+
+const pageSections = new Set(
+  [...renderedStockSections(PAGE)].map((s) => PAGE_ALIASES[s] ?? s),
+);
 const reportSections = renderedStockSections(REPORT);
 
 const missingFromReport = [...pageSections].filter(

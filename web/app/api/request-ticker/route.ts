@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { reportIssue } from '@/lib/observability';
 import { createAdminClient, createServerSupabaseClient } from '@/lib/supabase/server';
-import type { Market, TickerRequest } from '@/lib/types';
+import { fetchRecentRequests, REQUEST_SELECT, toTickerRequest, type RawRequestRow } from '@/lib/tickerRequests.server';
 
 // Enqueue (POST) / list (GET) user-requested tickers. The daily cron drains the
 // queue (architecture.md §8 Tier 4). The queue is GLOBAL — one row per symbol, so
@@ -23,27 +23,8 @@ export const dynamic = 'force-dynamic';
 const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
 
 
-interface RawRequestRow {
-  symbol: string;
-  market: Market;
-  status: TickerRequest['status'];
-  requested_at: string;
-  fetched_at: string | null;
-  last_error: string | null;
-}
-
-const SELECT = 'symbol,market,status,requested_at,fetched_at,last_error';
-
-function toTickerRequest(r: RawRequestRow): TickerRequest {
-  return {
-    symbol: r.symbol,
-    market: r.market,
-    status: r.status,
-    requestedAt: r.requested_at,
-    fetchedAt: r.fetched_at,
-    lastError: r.last_error,
-  };
-}
+// The row shape and the list query live in lib/tickerRequests.server.ts, shared with
+// the /request page, which renders the recent list itself (2026-09-26).
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { symbol?: unknown } | null;
@@ -131,7 +112,7 @@ export async function POST(request: Request) {
       },
       { onConflict: 'symbol' },
     )
-    .select(SELECT)
+    .select(REQUEST_SELECT)
     .maybeSingle();
 
   if (error || !upserted) {
@@ -141,16 +122,14 @@ export async function POST(request: Request) {
 }
 
 export async function GET() {
-  const admin = createAdminClient();
-  // Only genuine user requests (requested_by set). Cron-originated universe
-  // additions (e.g. index constituents) never carry a requester and must not
-  // appear on the Request-a-Ticker page — they aren't user requests.
-  const { data } = await admin
-    .from('ticker_requests')
-    .select(SELECT)
-    .not('requested_by', 'is', null)
-    .order('requested_at', { ascending: false })
-    .limit(50);
-  const requests = ((data ?? []) as RawRequestRow[]).map(toTickerRequest);
+  const requests = await fetchRecentRequests();
+  // Unreadable is not "none" (CLAUDE.md 11e) — until 2026-09-26 a failed read
+  // answered an empty list, which a reader takes as the truth.
+  if (requests === null) {
+    return NextResponse.json(
+      { error: 'Could not load recent requests' },
+      { status: 503, headers: { ...NO_STORE, 'Retry-After': '5' } },
+    );
+  }
   return NextResponse.json({ requests }, { headers: NO_STORE });
 }

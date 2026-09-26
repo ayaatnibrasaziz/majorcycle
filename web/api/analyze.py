@@ -163,7 +163,7 @@ _DIRECT_HOST = "aws-1-us-east-1.pooler.supabase.com"
 _DIRECT_PORT = 6543  # transaction mode: the one Supabase documents for serverless
 _DIRECT_DISABLED: bool = False
 _DIRECT_LOCAL = threading.local()
-_DIRECT_FN = "get_cycle_bars_bin"
+_DIRECT_FN = "get_cycle_bars_packed"
 
 # Custom-param validation bounds — the canonical contract (data-contracts.md §7).
 _CUSTOM_BOUNDS = {
@@ -660,7 +660,7 @@ def _load_fundamentals(
     """
     resp = (
         sb.table("stocks")
-        .select("ticker,market,currency,fundamentals")
+        .select(_FUNDAMENTALS_COLUMNS)
         .eq("ticker", ticker)
         .maybe_single()
         .execute()
@@ -670,7 +670,35 @@ def _load_fundamentals(
     row: dict[str, Any] | None = cast("dict[str, Any] | None", resp.data)
     if not row:
         return None, None
+    return _row_to_fundamentals(row)
 
+
+_FUNDAMENTALS_COLUMNS = "ticker,market,currency,fundamentals"
+
+
+def _load_fundamentals_batch(sb: Client, tickers: list[str]) -> dict[str, dict[str, Any]] | None:
+    """The `stocks` rows for a whole chunk in ONE request (2026-09-26).
+
+    Until then every ticker made its own request — 25 per chunk, 760 per screen —
+    and under a screen's load each one queued behind the others. A chunk is at most
+    `MAX_TICKERS_PER_REQUEST` tickers, far under PostgREST's 1,000-row cap (14c).
+
+    Returns ticker → row, or None when the batch read failed; the caller then falls
+    back to the per-ticker read, so a failure here costs speed and never a result.
+    """
+    try:
+        resp = sb.table("stocks").select(_FUNDAMENTALS_COLUMNS).in_("ticker", tickers).execute()
+    except Exception:  # noqa: BLE001 — fall back to per-ticker reads
+        logger.warning("batched fundamentals read failed — falling back to one per ticker")
+        return None
+    rows = cast("list[dict[str, Any]]", resp.data or [])
+    return {r["ticker"]: r for r in rows if r.get("ticker")}
+
+
+def _row_to_fundamentals(
+    row: dict[str, Any],
+) -> tuple[dict[str, Any] | None, FundamentalsSnapshot | None]:
+    """A `stocks` row → (row, FundamentalsSnapshot), shared by the single and batched reads."""
     fund_dict: dict[str, Any] = row.get("fundamentals") or {}
     allowed = {f.name for f in dataclasses.fields(FundamentalsSnapshot)}
     clean = {k: v for k, v in fund_dict.items() if k in allowed}
@@ -684,7 +712,7 @@ def _load_fundamentals(
         # Normalised on read too — same reason as web/api/cycle.py.
         snapshot = normalise_fundamentals(FundamentalsSnapshot(**clean))
     except TypeError as e:
-        logger.warning("FundamentalsSnapshot reconstruction failed for %s: %s", ticker, e)
+        logger.warning("FundamentalsSnapshot reconstruction failed for %s: %s", row.get("ticker"), e)
         snapshot = None
     return row, snapshot
 
@@ -863,6 +891,9 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     # concurrency, keeping total in-flight requests at cycle.py's safe level.
     page_workers = 8 if len(tickers) == 1 else 1
 
+    # One request for the whole chunk's fundamentals; per-ticker only as a fallback.
+    prefetched = _load_fundamentals_batch(sb, tickers) if len(tickers) > 1 else None
+
     def _one(ticker: str) -> tuple[str, dict[str, Any] | None]:
         """Analyse one ticker; return (ticker, result_dict | None).
 
@@ -877,7 +908,12 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
             return ticker, hit[1]
         for attempt in range(4):
             try:
-                row, fundamentals = _load_fundamentals(sb, ticker)
+                if prefetched is not None and attempt == 0:
+                    # Absent from a successful batch read = not in the universe.
+                    pre = prefetched.get(ticker)
+                    row, fundamentals = _row_to_fundamentals(pre) if pre else (None, None)
+                else:
+                    row, fundamentals = _load_fundamentals(sb, ticker)
                 if row is None:
                     return ticker, None  # not in universe
                 df = _load_price_bars(sb, ticker, page_workers)
