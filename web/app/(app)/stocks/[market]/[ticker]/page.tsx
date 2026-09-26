@@ -305,10 +305,26 @@ export default async function StockDetailPage({
   // Memoised by React cache() and already resolved by the (app) layout for this
   // request, so this costs no extra query. Threaded into every cycle section below —
   // it selects which shape /api/cycle returns, and is part of that fetch's cache key.
+  const viewerP = getViewerEntitlement();
+  // ⚠️ Start the analysis the moment we know the viewer is a subscriber, instead of
+  // after the stock row and medians. It is the slow call (a Python function), and on
+  // a cold start the two waits used to ADD UP: measured 2026-09-25, a cold page asked
+  // for its analysis 7s after the request arrived and got it 5s later — 11.9s against
+  // 2.7s warm. Same cached promise the sections below await (cache() keys on this
+  // `spec` object and `true`), so it still runs exactly once; the `.catch` only stops
+  // an early failure counting as unhandled — the sections await and handle it. Free
+  // viewers keep the old order: their daily view limit is checked first, and an early
+  // start would spend an analysis on a page that ends in the limit notice.
+  void viewerP.then(
+    (v) => {
+      if (v.entitled) fetchCycleAnalysis(stored, spec, true).catch(() => undefined);
+    },
+    () => undefined,
+  );
   const [stock, medians, viewer] = await Promise.all([
     fetchStockDetail(stored),
     fetchMetricMedians(),
-    getViewerEntitlement(),
+    viewerP,
   ]);
   if (!stock) notFound();
   const entitled = viewer.entitled;
