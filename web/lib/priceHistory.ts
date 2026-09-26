@@ -82,3 +82,13 @@ export function barsVersion(bars: readonly PriceBar[]): string {
   const last = bars.length ? bars[bars.length - 1]!.date : 'none';
   return `${bars.length}-${last}-${(h >>> 0).toString(36)}`;
 }
+
+/**
+ * The ONE address of a stock's full history. The page asks the browser to start this
+ * request as soon as the HTML arrives (a preload), and the charts' provider makes the
+ * same request once its code has run. The two must be byte-identical, or the browser
+ * cannot match them and downloads the history twice.
+ */
+export function historyUrl(ticker: string, version: string): string {
+  return `/api/bars?ticker=${encodeURIComponent(ticker)}&v=${encodeURIComponent(version)}`;
+}

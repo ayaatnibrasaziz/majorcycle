@@ -6,7 +6,7 @@ import { DrawdownOverlay } from '@/components/stocks/DrawdownOverlay';
 import { PriceChart } from '@/components/stocks/PriceChart';
 import { RelativePerformance } from '@/components/stocks/RelativePerformance';
 import { SmartMoneyActivity } from '@/components/stocks/SmartMoneyActivity';
-import { unpackBars, type PackedBars } from '@/lib/priceHistory';
+import { historyUrl, unpackBars, type PackedBars } from '@/lib/priceHistory';
 import { useHydrated } from '@/lib/useHydrated';
 import type { PriceBar } from '@/lib/types';
 
@@ -71,7 +71,7 @@ export function PriceHistoryProvider({
   useEffect(() => {
     if (!needsRest) return;
     const ctrl = new AbortController();
-    const url = `/api/bars?ticker=${encodeURIComponent(ticker)}&v=${encodeURIComponent(version)}`;
+    const url = historyUrl(ticker, version);
     void (async () => {
       // One retry: a cold function or a busy database is the likely failure, and
       // it is usually gone a second later.
