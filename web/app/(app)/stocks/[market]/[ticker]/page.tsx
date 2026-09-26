@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import { preload } from 'react-dom';
 
 import { AnalystTargetTrack } from '@/components/stocks/AnalystTargetTrack';
 import { BalanceSheet } from '@/components/stocks/BalanceSheet';
@@ -42,7 +43,7 @@ import {
 import { recordFreeView } from '@/lib/freeViews';
 import { parseSpec, isValidMarket, horizonQuery, type RouteSearch } from '@/lib/horizon';
 import { fetchMetricMedians } from '@/lib/medians.server';
-import { barsVersion, packBars, RECENT_BARS } from '@/lib/priceHistory';
+import { barsVersion, historyUrl, packBars, RECENT_BARS } from '@/lib/priceHistory';
 import { fetchStockDetail } from '@/lib/stocks';
 import { urlPartsToTicker, tickerDisplay, tickerToUrlParts } from '@/lib/ticker';
 import { isFullCycle, type FundamentalsSnapshot, type PriceBar } from '@/lib/types';
@@ -355,6 +356,13 @@ export default async function StockDetailPage({
   // below (technical levels, thesis, analyst track) still read the full history here.
   const recentBars = packBars(stock.priceBars.slice(-RECENT_BARS));
   const historyVersion = barsVersion(stock.priceBars);
+  // Start the full-history request with the HTML rather than after the charts' code
+  // has loaded and run — measured 2026-09-26, that wait was most of the delay before
+  // the drawdown chart could draw. `crossOrigin: 'anonymous'` matches a plain same-origin
+  // fetch(), so the provider's request is answered by this one rather than repeated.
+  if (stock.priceBars.length > RECENT_BARS) {
+    preload(historyUrl(stored, historyVersion), { as: 'fetch', crossOrigin: 'anonymous' });
+  }
 
   return (
     <div className="-mt-2">

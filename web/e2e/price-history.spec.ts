@@ -90,6 +90,25 @@ test.describe('the page and /api/bars', () => {
     expect(hydration, 'a hydration mismatch was logged').toEqual([]);
   });
 
+  test('the page starts the history request early, at the SAME address the charts ask for', async ({ page }) => {
+    // A preload only helps if the charts' later request matches it exactly; a
+    // different address would download the full history twice.
+    test.setTimeout(150_000);
+    await signIn(page);
+    const asked: string[] = [];
+    page.on('request', (r) => {
+      if (r.url().includes('/api/bars?')) asked.push(new URL(r.url()).pathname + new URL(r.url()).search);
+    });
+    await page.goto('/stocks/us/AAPL');
+    const href = await page
+      .locator('link[rel="preload"][as="fetch"][href^="/api/bars?"]')
+      .first()
+      .getAttribute('href', { timeout: 60_000 });
+    expect(href, 'no preload for the history').toMatch(/^\/api\/bars\?ticker=AAPL&v=/);
+    await expect.poll(() => asked.length, { timeout: 90_000 }).toBeGreaterThan(0);
+    expect(new Set(asked), 'a request went to a different address than the preload').toEqual(new Set([href]));
+  });
+
   test('caching: private always, kept a day only when the fingerprint matches', async ({ page }) => {
     await signIn(page);
     const stale = await page.request.get('/api/bars?ticker=AAPL&v=not-the-current-one');
