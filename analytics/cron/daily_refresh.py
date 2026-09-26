@@ -657,7 +657,9 @@ def _record_dividend_detection(
     ).execute()
 
 
-def _mark_dividend_repulled(supabase: Client, ticker: str, ex_dates: list[str]) -> None:
+def _mark_dividend_repulled(
+    supabase: Client, ticker: str, ex_dates: list[str], *, only_unmarked: bool = False
+) -> None:
     """Stamp `repulled_at` on the dividends that triggered a full re-pull.
 
     Separate from recording, because the two answer different questions and the
@@ -667,9 +669,18 @@ def _mark_dividend_repulled(supabase: Client, ticker: str, ex_dates: list[str]) 
     """
     if not ex_dates:
         return
-    supabase.table("dividend_events").update(
-        {"repulled_at": datetime.now(timezone.utc).isoformat()}
-    ).eq("ticker", ticker).in_("ex_date", ex_dates).execute()
+    q = (
+        supabase.table("dividend_events")
+        .update({"repulled_at": datetime.now(timezone.utc).isoformat()})
+        .eq("ticker", ticker)
+        .in_("ex_date", ex_dates)
+    )
+    # ⚠️ A SKIP stamps only rows never stamped. Until 2026-09-26 it overwrote the date
+    # of the real re-pull every night the dividend sat in the window, so the table
+    # could no longer say when the history was actually re-adjusted.
+    if only_unmarked:
+        q = q.is_("repulled_at", "null")
+    q.execute()
 
 
 #: Below this many stored-and-fetched bars BEFORE the newest ex-date, the price check
@@ -1264,8 +1275,10 @@ def run(
                                     ticker,
                                     ", ".join(divs),
                                 )
-                                # Honest either way: the history IS on the current basis.
-                                _mark_dividend_repulled(supabase, ticker, divs)
+                                # Honest either way: the history IS on the current basis —
+                                # but only stamp a dividend never stamped, so the date of
+                                # the real re-pull survives.
+                                _mark_dividend_repulled(supabase, ticker, divs, only_unmarked=True)
                                 divs = []
                         if divs:
                             logger.info(
