@@ -354,7 +354,9 @@ jobs:
         if: ${{ !cancelled() && steps.sanitize.outcome == 'success' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: blob-report-${{ matrix.shard }}
+          # The ATTEMPT is in the name so a re-run's report can never be mistaken for
+          # the one it replaced (scripts/e2e-pick-latest.mjs says what went wrong).
+          name: blob-report-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
           path: web/blob-report
           retention-days: 3
 
@@ -401,9 +403,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          path: web/all-blob-reports
+          path: web/blob-downloads
           pattern: blob-report-*
-          merge-multiple: true
+      # After `gh run rerun --failed` a re-run shard has a report from EACH attempt;
+      # take only its latest, or a failed first attempt is merged into a green re-run.
+      - name: Take each shard's latest attempt
+        run: node scripts/e2e-pick-latest.mjs blob-downloads all-blob-reports
       # Prints every test once and the single summary line; exits non-zero if any
       # test failed in any shard, so this job's colour is the suite's colour.
       - name: Merged result

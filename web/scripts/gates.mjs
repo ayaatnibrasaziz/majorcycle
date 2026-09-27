@@ -79,6 +79,9 @@ const NOT_GATES = {
     'proves every CI shard reported and the merged count equals the listed count — needs ' +
     'the ten shards, so CI only; a local `pnpm e2e` is one run and prints its own count',
   'node scripts/e2e-timings.mjs': 'refreshes the shard durations — a report, not a check',
+  'node scripts/e2e-pick-latest.mjs':
+    "takes each CI shard's report from its latest attempt, so a re-run merges the " +
+    're-run — CI only (its logic is driven by e2e/e2e-pick-latest.spec.ts, which IS a gate)',
   'python scripts/e2e-sanitize-blob.py':
     "strips every secret from CI's PUBLIC test reports and blocks the upload if any is " +
     'left — CI only, because a local report never leaves this machine (its logic is ' +
