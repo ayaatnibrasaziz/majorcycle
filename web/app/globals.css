@@ -2613,6 +2613,16 @@ td.num             { font-weight: 600; }
 }
 .browse-select:hover { border-color: var(--brand-mid); }
 .browse-select:focus { border-color: var(--brand-bright); }
+/* Browse "Show more" / "Show all" — the list's page size is 120 (beta review E-2). */
+.browse-more {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 600; color: var(--brand-mid);
+  cursor: pointer; transition: border-color .15s;
+}
+.browse-more:hover { border-color: var(--brand-mid); }
 .quick-chip {
   display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid var(--border);
   border-radius: 20px; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 600;
