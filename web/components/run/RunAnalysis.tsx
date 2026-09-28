@@ -52,9 +52,12 @@ function Section({
 export function RunAnalysis({
   universe,
   membership,
+  retired,
 }: {
   universe: UniverseStock[];
   membership: IndexMembership;
+  /** Tickers that have stopped trading — named, and left out, by the CSV import. */
+  retired: string[];
 }) {
   const router = useRouter();
   const analysis = useAnalysis();
@@ -91,6 +94,7 @@ export function RunAnalysis({
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const knownTickers = useMemo(() => new Set(universe.map((s) => s.ticker)), [universe]);
+  const retiredTickers = useMemo(() => new Set(retired), [retired]);
 
   const addTickers = (tickers: string[]) =>
     setSelected((prev) => {
@@ -203,7 +207,7 @@ export function RunAnalysis({
             </div>
             <div>
               <div className="run-sublabel">Import CSV</div>
-              <CsvImport knownTickers={knownTickers} onAdd={addTickers} />
+              <CsvImport knownTickers={knownTickers} retiredTickers={retiredTickers} onAdd={addTickers} />
             </div>
             <div className="border-t border-[var(--border)] pt-3.5">
               <SelectedTickers

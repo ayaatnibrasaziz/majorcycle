@@ -21,6 +21,7 @@ import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 interface ResolvedRow {
   ticker: string;
   covered: boolean;
+  retired: boolean;
   inListings: boolean;
   reqStatus: RequestStatus | null;
   known: boolean; // live status has loaded for this ticker
@@ -51,14 +52,16 @@ export function SkippedTickers({
       ticker: t,
       // Fall back to the universe lookup while the live status is still loading.
       covered: st ? st.covered : Boolean(lookup[t]),
+      retired: st?.retired ?? false,
       inListings: st?.inListings ?? false,
       reqStatus: localStatus[t] ?? st?.requestStatus ?? null,
       known: st != null,
     };
   });
 
-  const coveredRows = resolved.filter((r) => r.covered);
-  const otherRows = resolved.filter((r) => !r.covered);
+  const retiredRows = resolved.filter((r) => r.retired);
+  const coveredRows = resolved.filter((r) => r.covered && !r.retired);
+  const otherRows = resolved.filter((r) => !r.covered && !r.retired);
 
   const requestTicker = async (t: string) => {
     setPending((p) => new Set(p).add(t));
@@ -110,6 +113,21 @@ export function SkippedTickers({
       </button>
       {open && (
         <div className="skipped-detail">
+          {retiredRows.length > 0 && (
+            <div className="skipped-group">
+              <span className="skipped-group-label">
+                No longer trading <span className="skipped-group-note">(not rated — its page shows the last prices it traded at)</span>:
+              </span>{' '}
+              {retiredRows.map((r, i) => (
+                <span key={r.ticker}>
+                  <Link href={tickerToPath(r.ticker)} className="skipped-tk skipped-tk--link">
+                    {tickerToUrlParts(r.ticker).symbol}
+                  </Link>
+                  {i < retiredRows.length - 1 ? ', ' : ''}
+                </span>
+              ))}
+            </div>
+          )}
           {coveredRows.length > 0 && (
             <div className="skipped-group">
               <span className="skipped-group-label">

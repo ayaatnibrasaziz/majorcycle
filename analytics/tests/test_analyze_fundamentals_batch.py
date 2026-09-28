@@ -76,3 +76,35 @@ def test_a_ticker_missing_from_a_good_batch_is_simply_absent() -> None:
     batch = az._load_fundamentals_batch(sb, ["AAPL", "NOTASTOCK"])
     assert batch is not None
     assert "NOTASTOCK" not in batch
+
+
+# ── Beta review C-4 (2026-09-28): a retired stock is never rated ──────────────
+
+
+def test_a_retired_stock_is_retired_and_a_trading_one_is_not() -> None:
+    assert az._is_retired({**ROW, "is_active": False})
+    # CONTROL: trading, unknown (NULL) and a row read without the column all count as
+    # trading — "retired" must be positive evidence, or one bad read empties a screen.
+    assert not az._is_retired({**ROW, "is_active": True})
+    assert not az._is_retired({**ROW, "is_active": None})
+    assert not az._is_retired(ROW)
+    assert not az._is_retired(None)
+
+
+def test_the_screener_asks_for_the_column_it_checks() -> None:
+    # Without `is_active` in the select, every row reads as trading and the check is inert.
+    assert "is_active" in az._FUNDAMENTALS_COLUMNS.split(",")
+
+
+def test_run_analysis_puts_a_retired_stock_in_unavailable(monkeypatch: Any) -> None:
+    retired = {**ROW, "ticker": "AOF.AX", "market": "au", "is_active": False}
+    trading = {**ROW, "is_active": True}
+    sb = _client_returning([retired, trading])
+    monkeypatch.setattr(az, "_supabase", lambda: sb)
+    loaded: list[str] = []
+    monkeypatch.setattr(az, "_load_price_bars", lambda _sb, t, _w=1: loaded.append(t))  # None → unavailable
+    status, body = az.run_analysis({"tickers": ["AOF.AX", "AAPL"], "preset": "medium"})
+    assert status == 200
+    assert "AOF.AX" in body["unavailable"]
+    # The retired one is refused BEFORE its prices are read; the trading one is read.
+    assert loaded == ["AAPL"]

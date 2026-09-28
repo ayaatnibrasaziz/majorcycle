@@ -4,7 +4,7 @@ import { PremiumLockPage } from '@/components/PremiumLockPage';
 import { RunAnalysis } from '@/components/run/RunAnalysis';
 import { requirePremiumPage } from '@/lib/entitlement.server';
 import { fetchIndexMembership } from '@/lib/index-membership.server';
-import { fetchUniverseIndex } from '@/lib/universe.server';
+import { fetchRetiredTickers, fetchUniverseIndex } from '@/lib/universe.server';
 
 export const metadata: Metadata = {
   title: 'Run Analysis',
@@ -35,9 +35,10 @@ export default async function RunPage() {
     );
   }
 
-  const [universe, membership] = await Promise.all([
+  const [universe, membership, retired] = await Promise.all([
     fetchUniverseIndex(),
     fetchIndexMembership(),
+    fetchRetiredTickers(),
   ]);
-  return <RunAnalysis universe={universe} membership={membership} />;
+  return <RunAnalysis universe={universe} membership={membership} retired={retired} />;
 }

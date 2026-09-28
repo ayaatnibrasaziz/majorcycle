@@ -45,9 +45,12 @@ const PREVIEW_COLOR: Record<Preview['kind'], string> = {
 
 export function CsvImport({
   knownTickers,
+  retiredTickers,
   onAdd,
 }: {
   knownTickers: Set<string>;
+  /** Stopped trading: named in the preview and NOT added — we never rate them (C-4). */
+  retiredTickers: Set<string>;
   onAdd: (tickers: string[]) => void;
 }) {
   const previewId = useId();
@@ -77,6 +80,7 @@ export function CsvImport({
     const seen = new Set<string>();
     const valid: string[] = [];
     const unknown: string[] = [];
+    const retired: string[] = [];
     let dupes = 0;
     for (const line of dataLines) {
       const raw = (line.split(',')[col] ?? '').trim().toUpperCase();
@@ -87,10 +91,11 @@ export function CsvImport({
       }
       seen.add(raw);
       if (knownTickers.has(raw)) valid.push(raw);
+      else if (retiredTickers.has(raw)) retired.push(raw);
       else unknown.push(raw);
     }
 
-    const total = valid.length + unknown.length;
+    const total = valid.length + unknown.length + retired.length;
     if (total === 0) {
       setPreview({ kind: 'error', lines: [`No tickers found in ${filename}.`] });
       return;
@@ -106,9 +111,13 @@ export function CsvImport({
       const sample = unknown.slice(0, 6).join(', ') + (unknown.length > 6 ? '…' : '');
       out.push(`+ ${unknown.length} not in our coverage (${sample}) — run the analysis, then request ${unknown.length === 1 ? 'it' : 'them'} in the Results tab`);
     }
+    if (retired.length > 0) {
+      const sample = retired.slice(0, 6).join(', ') + (retired.length > 6 ? '…' : '');
+      out.push(`✕ ${retired.length} no longer trade${retired.length === 1 ? 's' : ''} (${sample}) — left out of the run`);
+    }
     if (dupes > 0) out.push(`⚠ ${dupes} duplicate${dupes === 1 ? '' : 's'} removed`);
 
-    setPreview({ kind: unknown.length > 0 || dupes > 0 ? 'warn' : 'ok', lines: out });
+    setPreview({ kind: unknown.length > 0 || retired.length > 0 || dupes > 0 ? 'warn' : 'ok', lines: out });
 
     onAdd([...valid, ...unknown]);
   };
