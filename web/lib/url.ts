@@ -61,5 +61,16 @@ export function safeNextPath(next?: string | null): string {
   if (!next) return POST_AUTH_HOME;
   // Must start with exactly one '/', and not '//' or '/\' (protocol-relative).
   if (next[0] !== '/' || next[1] === '/' || next[1] === '\\') return POST_AUTH_HOME;
+  // ⚠️ Beta review A-6 (2026-09-28): a browser DELETES tab, LF and CR anywhere in a
+  // URL and reads '\' as '/', so `/\t/evil.com` passed the check above and navigated
+  // to `//evil.com`. No real in-app path holds a control character or a backslash.
+  if (/[\u0000-\u001F\u007F\\]/.test(next)) return POST_AUTH_HOME;
+  // And ask the question itself, with the parser a browser navigates with.
+  const base = 'https://next.invalid';
+  try {
+    if (new URL(next, base).origin !== base) return POST_AUTH_HOME;
+  } catch {
+    return POST_AUTH_HOME;
+  }
   return next;
 }
