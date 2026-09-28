@@ -1,7 +1,14 @@
 // Ticker format conversion between URL routing and DB storage.
 // This is the ONLY place this conversion happens — do not duplicate.
 
-import type { Market } from '@/lib/types';
+import type { Currency, Market } from '@/lib/types';
+
+/**
+ * The currency a market's share prices are quoted in. Measured 2026-09-28: all 868
+ * active stocks' provider price currency matches this map, so a screener row — which
+ * carries its market but not its currency — prints its home currency (#13).
+ */
+export const MARKET_CURRENCY: Record<Market, Currency> = { us: 'USD', au: 'AUD', ca: 'CAD' };
 
 /**
  * Every exchange suffix we store, and the market it belongs to. THE list — a

@@ -39,6 +39,18 @@ B-2 (`VerdictCard.tsx:278` divides by `bandUpper`), F-3 (`overall.py` event scor
 
 ## 🟠 Major — wrong or misleading numbers
 
+> ✅ **Owner's picks, 2026-09-28 — FIXED:** Verdict "% below current" (B-2); losses no longer
+> "thin", no stale "Current P/E" on a loss-maker (B-4, B-5); the health sentence names only
+> areas the scorecard itself scores below 50, and no strength is quoted from a weak area
+> (B-7 — owner: *"make it in a way it can't contradict"*); results table + both exports use
+> the Stock Detail price format and home currency (C-3 prices, C-7, C-8); every score label
+> is read from the rounded number shown — screen, colours, `.csv` and `.xlsx` (C-14, A-2);
+> Relative Performance starts every line on the LATEST first date among the stock and the
+> indices (B-12); the insider label states its period and totals over all stored filings
+> (F-8); the holder table is hidden when no holder owns ≥1% (B-3, F-9). Guarded by
+> `e2e/beta-wrong-numbers.spec.ts`. **Declined by the owner — do not re-propose:** TSM's EPS
+> currency (B-11) and the Smart Money legend (B-6).
+
 | # | What | Findings |
 |---|---|---|
 | 4 | Verdict "Top $X · N% below current" uses the premium formula — AAPL says 31.1%, truth 23.7%. | B-2 |

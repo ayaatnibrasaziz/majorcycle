@@ -10,6 +10,7 @@ import { InfoTip } from '@/components/ui/InfoTip';
 import { fmtCapped, fmtPrice } from '@/lib/format';
 import { INK } from '@/lib/ink';
 import { quoteMatchesHistory } from '@/lib/quoteBasis';
+import { pillarIsWeak } from '@/lib/thesisText';
 
 interface Props {
   /**
@@ -66,15 +67,25 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
   // a stock whose typical dip is itself < 5% never earns an "attractive entry zone" claim.
   if (tdd != null && tdd <= -5 && dd <= tdd && !fhWeak)
     out.push(`Trading at or below its historical average dip (${fmt(tdd)}%) — historically attractive entry zone`);
-  if (f.roe != null && f.roe >= 20)
+  // Never praise a figure from an area the scorecard beside it calls weak (beta review
+  // B-7): "fortress balance sheet" sat under a Verdict blaming the balance sheet.
+  const sub = isFullCycle(c) ? c.fhSubscores : undefined;
+  const ok = (key: keyof NonNullable<typeof sub>) => !pillarIsWeak(sub, key);
+  if (f.roe != null && f.roe >= 20 && ok('profitability'))
     out.push(`Exceptional ROE of ${fmtCapped(f.roe, 300)}% — management creates strong shareholder value`);
-  if (f.fcfYieldPct != null && f.fcfYieldPct >= 4)
+  if (f.fcfYieldPct != null && f.fcfYieldPct >= 4 && ok('cashflow'))
     out.push(`Strong FCF yield of ${fmtCapped(f.fcfYieldPct, 100)}% — the business generates real cash`);
-  if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 15)
+  if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 15 && ok('growth'))
     out.push(`Accelerating revenue growth of ${fmtCapped(f.revenueGrowthYoy, 300)}% YoY`);
-  if (f.debtToEquity != null && f.debtToEquity < 0.5)
+  if (f.debtToEquity != null && f.debtToEquity < 0.5 && ok('balanceSheet'))
     out.push(`Low D/E of ${fmt(f.debtToEquity, 2)} — fortress balance sheet`);
-  if (f.peg != null && f.peg > 0 && f.peg < 1.5)
+  // "Growing faster than the valuation implies" beside "revenue declining 99%" (Adavale):
+  // a low PEG from a one-off earnings jump is not growth, so it needs revenue to agree.
+  if (
+    f.peg != null && f.peg > 0 && f.peg < 1.5
+    && (f.revenueGrowthYoy == null || f.revenueGrowthYoy >= 0)
+    && ok('growth')
+  )
     out.push(`PEG of ${fmt(f.peg, 2)} — growing faster than the valuation implies`);
   if (c.totalPullbackEvents >= 10)
     out.push(`${c.totalPullbackEvents} confirmed pullback events — a well-calibrated signal`);
@@ -117,6 +128,8 @@ function riskInvalidation(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsS
     return `Either an acceleration in EPS growth or a meaningful multiple compression would restore a defensible PEG.`;
   if (c.totalPullbackEvents < 8)
     return `As more cycles accumulate (target: 10+ events), the band statistics tighten and confidence improves.`;
+  if (f.netMargin != null && f.netMargin < 0)
+    return `A return to profitability (a positive net margin) would clear the loss-making concern.`;
   if (f.netMargin != null && f.netMargin < 5)
     return `Net margin expanding back to ≥8% would signal pricing power has returned.`;
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 0 && f.revenueGrowthYoy < 15)
@@ -140,7 +153,10 @@ function buildRisks(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapsho
     out.push(`PEG of ${fmtCapped(f.peg, 25, 2)} — valuation stretched vs growth`);
   if (c.totalPullbackEvents < 8)
     out.push(`Only ${c.totalPullbackEvents} pullback events — limited signal history`);
-  if (f.netMargin != null && f.netMargin < 5)
+  // A loss is not a thin margin (beta review B-4: Moderna −141% read "thin").
+  if (f.netMargin != null && f.netMargin < 0)
+    out.push(`Loss-making — net margin of ${fmtCapped(f.netMargin, 300)}%`);
+  else if (f.netMargin != null && f.netMargin < 5)
     out.push(`Thin net margin of ${fmtCapped(f.netMargin, 300)}%`);
   // Gated modest-growth risk: ONLY for genuinely modest growth [0,15) — disjoint from
   // the "accelerating ≥15%" attractive bullet and the "<0 declining" risk, so it can

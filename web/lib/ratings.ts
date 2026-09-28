@@ -6,6 +6,7 @@
 // reason about and reuse. Every label here is one of our five COMPLIANT tiers
 // (CLAUDE.md #2) — no "Buy"/"Sell"/"Avoid" language anywhere.
 
+import { priceDecimals } from '@/lib/format';
 import { tickerToUrlParts } from '@/lib/ticker';
 import type { CycleAnalysis, OverallLabel, ValuationZone } from '@/lib/types';
 
@@ -42,11 +43,18 @@ export const RATING_TIER_HEX: Readonly<Record<1 | 2 | 3 | 4 | 5, string>> = {
 } as const;
 
 /** Tier index 1 (strongest) … 5 (weakest) for a 0–100 score. */
+/**
+ * ⚠️ Every score is SHOWN rounded to a whole number, so its tier is read from that
+ * whole number (beta review C-14 / A-2, 2026-09-28). Judging the raw 79.6 printed
+ * "80 Adequate" beside "80 Healthy", and 64.5 printed "65 Reasonable" beside another
+ * row's "65 Attractive" — on screen, in both exports, and on the landing page.
+ */
 export function tierFromScore(score: number): 1 | 2 | 3 | 4 | 5 {
-  if (score >= 80) return 1;
-  if (score >= 65) return 2;
-  if (score >= 50) return 3;
-  if (score >= 35) return 4;
+  const s = Math.round(score);
+  if (s >= 80) return 1;
+  if (s >= 65) return 2;
+  if (s >= 50) return 3;
+  if (s >= 35) return 4;
   return 5;
 }
 
@@ -91,15 +99,21 @@ export function scoreColor(score: number | null): string {
  */
 export function healthColor(score: number | null): string {
   if (score == null) return 'var(--text-muted)';
-  if (score >= 80) return 'var(--health-good)'; //     Healthy  → green
-  if (score >= 60) return 'var(--health-adequate)'; // Adequate → gold
-  return 'var(--health-at-risk)'; //                   At Risk  → red
+  return {
+    Healthy: 'var(--health-good)', //       green
+    Adequate: 'var(--health-adequate)', //  gold
+    'At Risk': 'var(--health-at-risk)', //  red
+  }[healthRatingLabel(score)];
 }
 
-/** Financial-Health 3-tier label (matches healthColor): Healthy / Adequate / At Risk. */
-export function healthRatingLabel(score: number): string {
-  if (score >= 80) return 'Healthy';
-  if (score >= 60) return 'Adequate';
+/**
+ * Financial-Health 3-tier label (healthColor and the workbook's fills read it):
+ * Healthy / Adequate / At Risk — judged on the ROUNDED score, as `tierFromScore` is.
+ */
+export function healthRatingLabel(score: number): 'Healthy' | 'Adequate' | 'At Risk' {
+  const s = Math.round(score);
+  if (s >= 80) return 'Healthy';
+  if (s >= 60) return 'Adequate';
   return 'At Risk';
 }
 
@@ -261,11 +275,13 @@ function csvField(value: string | number | null): string {
 
 /**
  * Per-column export precision. `int` = whole number; `num2` = exactly two decimals
- * (trailing zeros kept, so 1 → "1.00"). Drives BOTH the CSV (`toCsv`, as strings)
+ * (trailing zeros kept, so 1 → "1.00"); `price` = the Stock Detail page's price
+ * precision (2 decimals from $1 up, more below — 0.365, 0.041), so a penny stock's
+ * close is not cut to "0.04" in a file and "$0.04" on screen (beta review C-8). Drives BOTH the CSV (`toCsv`, as strings)
  * and the Excel export (`lib/xlsx.ts`, as numbers + a matching cell number-format),
  * so the two files always show identical figures.
  */
-export type ExportFmt = 'int' | 'num2';
+export type ExportFmt = 'int' | 'num2' | 'price';
 
 /**
  * Rounding for the exports — deliberately the SCREEN's rounding.
@@ -286,7 +302,7 @@ export type ExportFmt = 'int' | 'num2';
  * same run. `useGrouping: false` because a CSV field must not contain a comma and
  * an Excel cell must stay parseable as a number.
  */
-const EXPORT_FORMAT: Record<ExportFmt, Intl.NumberFormat> = {
+const EXPORT_FORMAT: Record<Exclude<ExportFmt, 'price'>, Intl.NumberFormat> = {
   int: new Intl.NumberFormat('en-US', { maximumFractionDigits: 0, useGrouping: false }),
   num2: new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
@@ -304,6 +320,13 @@ const EXPORT_FORMAT: Record<ExportFmt, Intl.NumberFormat> = {
 export function exportText(value: string | number | null, xf?: ExportFmt): string {
   if (value == null || value === '') return '';
   if (typeof value === 'number' && Number.isFinite(value)) {
+    if (xf === 'price') {
+      return new Intl.NumberFormat('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: priceDecimals(value),
+        useGrouping: false,
+      }).format(value);
+    }
     if (xf) return EXPORT_FORMAT[xf].format(value);
     return String(value);
   }

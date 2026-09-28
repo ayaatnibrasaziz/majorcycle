@@ -23,6 +23,10 @@ interface Props {
    *  series can never be built (the company reports in a different currency from
    *  the one its shares trade in), so the empty state must not say "building". */
   unavailableReason?: string | null;
+  /** Negative net margin. Then a missing current P/E means "no earnings", and the last
+   *  historical point must not stand in for it (beta review B-5). Required, not
+   *  defaulted, so a new caller cannot omit it silently. */
+  lossMaking: boolean;
 }
 
 function toMonthLabel(dateStr: string): string {
@@ -32,7 +36,7 @@ function toMonthLabel(dateStr: string): string {
   return `${mo} '${yr}`;
 }
 
-export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Props) {
+export function ValuationHistory({ peHistory, currentPe, unavailableReason, lossMaking }: Props) {
   // `unavailableReason` OUTRANKS the stored series rather than merely captioning
   // an empty one. Withholding at the source is a single control: it protects the
   // chart only for as long as no cross-currency series is ever written, and a
@@ -44,7 +48,10 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
   const hasEnoughHistory = !unavailableReason && peHistory.length >= 4;
 
   const allPe   = peHistory.map((p) => p.pe);
-  const curr    = currentPe ?? allPe[allPe.length - 1] ?? null;
+  // ⚠️ The last month-end P/E stands in for a missing current one ONLY while the
+  // company is profitable. Moderna, losing money, showed "Current P/E 9.9x" here —
+  // a P/E from when it last had earnings, labelled as today's (beta review B-5).
+  const curr    = currentPe ?? (lossMaking ? null : allPe[allPe.length - 1] ?? null);
 
   // Append today's trailing P/E as a final "Now" point so the Current marker
   // line sits exactly on the end of the curve. Today's price ÷ trailing EPS is
@@ -247,6 +254,9 @@ export function ValuationHistory({ peHistory, currentPe, unavailableReason }: Pr
               <div className="summary-strip-item" title="Current P/E — Price ÷ EPS (trailing 12 months).">
                 <div className="summary-strip-label">Current P/E</div>
                 <div className="summary-strip-val">{curr !== null ? `${curr.toFixed(1)}x` : '—'}</div>
+                {curr === null && lossMaking && (
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Loss-making — no P/E</div>
+                )}
               </div>
               <div className="summary-strip-item" title="Historical Average P/E — your baseline for cheap/expensive judgements.">
                 <div className="summary-strip-label">Hist Avg P/E</div>

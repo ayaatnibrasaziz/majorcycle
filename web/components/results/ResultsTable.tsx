@@ -16,7 +16,7 @@ import {
   tierFromLabel,
   valuationAppealLabel,
 } from '@/lib/ratings';
-import { tickerToPath, tickerToUrlParts } from '@/lib/ticker';
+import { MARKET_CURRENCY, tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { OverallLabel } from '@/lib/types';
 import {
   BAND_META,
@@ -208,7 +208,7 @@ function renderCell(
       return <span className="analyst-cell">{fmtAnalyst((col.get(r) as string | null) ?? null)}</span>;
     default: {
       const raw = col.get(r);
-      const text = formatValue(raw, col.fmt, col.cap);
+      const text = formatValue(raw, col.fmt, { cap: col.cap, currency: MARKET_CURRENCY[r.market] });
       const color =
         col.tint && typeof raw === 'number' ? metricTintColor(col.tint, raw) : null;
       if (color) return <span style={{ color, fontWeight: 600 }}>{text}</span>;
@@ -358,7 +358,7 @@ function ResultCard({
           label="Cycle Pos"
           value={row.cyclePos == null ? '—' : String(Math.round(row.cyclePos))}
         />
-        <CardStat label="Close" value={formatValue(row.currentClose, 'money2')} />
+        <CardStat label="Close" value={formatValue(row.currentClose, 'price', { currency: MARKET_CURRENCY[row.market] })} />
       </div>
     </div>
   );

@@ -344,6 +344,7 @@ export function ReportDocument({ data }: { data: ReportData }) {
               unavailableReason={peHistoryUnavailableReason(stock.fundamentals)}
               peHistory={stock.peHistory ?? []}
               currentPe={stock.fundamentals.pe}
+              lossMaking={(stock.fundamentals.netMargin ?? 0) < 0}
             />
           </ReportSection>
           <ReportSection>

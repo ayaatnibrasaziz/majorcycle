@@ -2,6 +2,7 @@
 
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 
+import { holdersWorthShowing } from '@/lib/ownership';
 import type { FundamentalsSnapshot, TopHolder } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
 import { fmtCompact } from '@/lib/format';
@@ -150,7 +151,7 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
               the Smart Money / Analyst-rating empty states. */}
           <div>
             <div className="table-section-label">Top Institutional Holders</div>
-            {holders.length > 0 ? (
+            {holders.length > 0 && holdersWorthShowing(holders) ? (
               /* Focusable, because below ~380px this table scrolls sideways and holds
                  nothing a keyboard can land on — so a keyboard reader could never reach
                  the Shares column (axe `scrollable-region-focusable`, found at 375px in
@@ -182,6 +183,8 @@ export function OwnershipStructure({ topHolders, fundamentals }: Props) {
                   </tbody>
                 </table>
               </div>
+            ) : holders.length > 0 ? (
+              <div className="smart-empty">Holder-level detail isn&rsquo;t available for this listing.</div>
             ) : (
               <div className="smart-empty">No institutional holder data available.</div>
             )}

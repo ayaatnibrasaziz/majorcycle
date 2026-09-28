@@ -16,6 +16,7 @@ import {
 } from 'recharts';
 
 import { BENCHMARKS, trimBenchmarks, type BenchmarkSeries } from '@/lib/benchmarks';
+import { relativeRows, type Range } from '@/lib/relativePerformance';
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import type { Market, PriceBar } from '@/lib/types';
 import { tickerToUrlParts } from '@/lib/ticker';
@@ -49,7 +50,6 @@ interface Props {
   benchSince?: string;
 }
 
-type Range = '1y' | '3y' | 'max';
 const RANGE_LABELS: Record<Range, string> = { '1y': '1Y', '3y': '3Y', 'max': 'Max' };
 
 const STOCK_COLOR = '#1E5CB3';
@@ -93,9 +93,6 @@ const BENCH_DASH: Record<string, string> = {
   '^GSPTSE': '14 5',
 };
 
-function toTs(d: string): number {
-  return new Date(d.includes('T') ? d : d + 'T00:00:00').getTime();
-}
 
 /** Above this span a label is a bare year; below it, a month and a year. */
 const YEAR_LABEL_DAYS = 1500;
@@ -207,83 +204,12 @@ function useLabelBudget(): { boxRef: (el: HTMLDivElement | null) => void; target
   return { boxRef, target };
 }
 
-function downsample<T>(arr: T[], max: number): T[] {
-  if (arr.length <= max) return arr;
-  const step = Math.ceil(arr.length / max);
-  const out: T[] = [];
-  for (let i = 0; i < arr.length; i += step) out.push(arr[i]!);
-  if (out[out.length - 1] !== arr[arr.length - 1]) out.push(arr[arr.length - 1]!);
-  return out;
-}
-
-interface Row {
-  ts: number;
-  stock: number;
-  [k: string]: number;
-}
-
 function useChartData(
   priceBars: PriceBar[],
   benchmarks: BenchmarkSeries,
   range: Range,
 ) {
-  return useMemo(() => {
-    const empty = { rows: [] as Row[], spanDays: 0, activeBenchTickers: [] as string[] };
-    const bars = priceBars
-      .map((b) => ({ ts: toTs(b.date), close: Number(b.close) }))
-      .filter((b) => !isNaN(b.ts) && !isNaN(b.close) && b.close > 0)
-      .sort((a, b) => a.ts - b.ts);
-    if (bars.length < 2) return empty;
-
-    const lastTs = bars[bars.length - 1]!.ts;
-    const cutoff =
-      range === '1y' ? lastTs - 365 * 86400000
-      : range === '3y' ? lastTs - 3 * 365 * 86400000
-      : -Infinity;
-
-    const inRange = downsample(bars.filter((b) => b.ts >= cutoff), 180);
-    if (inRange.length < 2) return empty;
-
-    const startTs = inRange[0]!.ts;
-    const stockBase = inRange[0]!.close;
-
-    // Prepare each benchmark: sorted ts/close + a base close at/just-before start.
-    const benchPrepared: Record<string, { pts: { ts: number; close: number }[]; base: number }> = {};
-    const activeBenchTickers: string[] = [];
-    for (const b of BENCHMARKS) {
-      const raw = (benchmarks[b.ticker] ?? [])
-        .map((p) => ({ ts: toTs(p.date), close: Number(p.close) }))
-        .filter((p) => !isNaN(p.ts) && !isNaN(p.close) && p.close > 0)
-        .sort((a, c) => a.ts - c.ts);
-      if (raw.length < 2) continue;
-      // base = last close on/before startTs, else first close after
-      let base = raw.find((p) => p.ts > startTs)?.close ?? null;
-      for (const p of raw) { if (p.ts <= startTs) base = p.close; else break; }
-      if (!base) continue;
-      benchPrepared[b.ticker] = { pts: raw, base };
-      activeBenchTickers.push(b.ticker);
-    }
-
-    // Walk benchmark pointers in date order (rows are monotonic in ts).
-    const ptr: Record<string, number> = {};
-    for (const t of activeBenchTickers) ptr[t] = 0;
-
-    const rows: Row[] = inRange.map((bar) => {
-      const row: Row = { ts: bar.ts, stock: (bar.close / stockBase) * 100 };
-      for (const t of activeBenchTickers) {
-        const { pts, base } = benchPrepared[t]!;
-        let i = ptr[t]!;
-        while (i + 1 < pts.length && pts[i + 1]!.ts <= bar.ts) i++;
-        ptr[t] = i;
-        const c = pts[i]!.close;
-        if (pts[i]!.ts <= bar.ts) row[t] = (c / base) * 100;
-      }
-      return row;
-    });
-
-    const spanDays = (lastTs - startTs) / 86400000;
-    return { rows, spanDays, activeBenchTickers };
-  }, [priceBars, benchmarks, range]);
+  return useMemo(() => relativeRows(priceBars, benchmarks, range), [priceBars, benchmarks, range]);
 }
 
 function fmtPct(v: number): string {

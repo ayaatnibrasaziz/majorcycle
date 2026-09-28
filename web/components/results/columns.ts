@@ -10,8 +10,9 @@
 // Analyst column shows the Wall-Street consensus verbatim (third-party data, #17).
 
 import { quoteBasisAgrees } from '@/lib/quoteBasis';
+import { fmtPrice } from '@/lib/format';
 import { tickerToUrlParts } from '@/lib/ticker';
-import type { Market, RunResult } from '@/lib/types';
+import type { Currency, Market, RunResult } from '@/lib/types';
 import {
   ZONE_DISPLAY,
   cyclePosition,
@@ -68,8 +69,7 @@ export type FieldType = 'numeric' | 'categorical' | 'text';
 export type CellKind = 'ticker' | 'overall' | 'valuation' | 'health' | 'cyclePos' | 'analyst' | 'default';
 export type TintKind = 'roe' | 'fcf' | 'de' | 'peg' | 'upside' | 'positive';
 export type Fmt =
-  | 'money2'
-  | 'money0'
+  | 'price'
   | 'pct1'
   | 'pctSigned1'
   | 'mult1'
@@ -177,8 +177,8 @@ export const FIELDS: Field[] = [
   { key: 'cyclePos', label: 'Cycle Position', tip: 'Cycle Position|How deep today’s price sits in the stock’s own historical drawdown band: 0 = near a recent peak, 100 = at its typical worst-case dip. As a rough guide — 75+ Deep Value · 50+ Value · 25+ Fair · below Stretched. Deeper into the band = better value versus its own history.', type: 'numeric', band: 'verdict', cell: 'cyclePos', fmt: 'int', align: 'left', get: (r) => r.cyclePos, filterable: true },
 
   // Price & Analyst Targets
-  { key: 'close', label: 'Close', tip: 'Close|Most recent daily closing price, in the stock’s home currency.', type: 'numeric', band: 'price', cell: 'default', fmt: 'money2', align: 'right', get: (r) => r.currentClose, filterable: true },
-  { key: 'target', label: 'Target', tip: 'Analyst Price Target|Average 12-month Wall-Street price target (third-party data).', type: 'numeric', band: 'price', cell: 'default', fmt: 'money0', align: 'right', get: (r) => targetIfComparable(r), filterable: true },
+  { key: 'close', label: 'Close', tip: 'Close|Most recent daily closing price, in the stock’s home currency.', type: 'numeric', band: 'price', cell: 'default', fmt: 'price', align: 'right', get: (r) => r.currentClose, filterable: true },
+  { key: 'target', label: 'Target', tip: 'Analyst Price Target|Average 12-month Wall-Street price target (third-party data).', type: 'numeric', band: 'price', cell: 'default', fmt: 'price', align: 'right', get: (r) => targetIfComparable(r), filterable: true },
   { key: 'upside', label: 'Upside%', tip: 'Upside to Target%|Percentage gain (or loss) from the current price to the average analyst target.', type: 'numeric', band: 'price', cell: 'default', fmt: 'pctSigned1', align: 'right', tint: 'upside', get: (r) => upsidePct(r.currentClose, targetIfComparable(r)), filterable: true },
   { key: 'analyst', label: 'Analyst', tip: 'Analyst Consensus|The consensus recommendation from Wall-Street analysts (third-party data, shown verbatim — not our rating).', type: 'text', band: 'price', cell: 'analyst', fmt: 'text', align: 'left', get: (r) => f(r)?.analystRecommendation ?? null, filterable: false },
 
@@ -269,10 +269,10 @@ export const CSV_COLUMNS: ReadonlyArray<{
   { header: 'Cycle Payoff', get: (r) => r.cyclePayoffScore, xf: 'int' },
   { header: 'Cycle Position', get: (r) => r.cyclePos, xf: 'int' },
   { header: 'Cycle Position Zone', get: (r) => ZONE_DISPLAY[r.valuationZone] },
-  { header: 'Close', get: (r) => r.currentClose, xf: 'num2' },
+  { header: 'Close', get: (r) => r.currentClose, xf: 'price' },
   // Withheld in the export exactly as on screen — a figure we will not show is not
   // a figure we will hand over in a spreadsheet (11c: one rule, every surface).
-  { header: 'Analyst Target', get: (r) => targetIfComparable(r), xf: 'num2' },
+  { header: 'Analyst Target', get: (r) => targetIfComparable(r), xf: 'price' },
   { header: 'Upside %', get: (r) => upsidePct(r.currentClose, targetIfComparable(r)), xf: 'num2' },
   { header: 'Analyst Consensus', get: (r) => fmtAnalyst(r.fundamentals?.analystRecommendation ?? null) },
   { header: 'Current Drawdown %', get: (r) => r.currentDrawdownPct, xf: 'num2' },
@@ -317,7 +317,11 @@ export const CSV_COLUMNS: ReadonlyArray<{
  * beyond `cap` shows ">+cap" / "<−cap" instead of an absurd raw figure. Caps are
  * DISPLAY-ONLY — sort/filter/CSV use the true raw value via `Field.get`.
  */
-export function formatValue(value: number | string | null, fmt: Fmt, cap?: number): string {
+export function formatValue(
+  value: number | string | null,
+  fmt: Fmt,
+  { cap, currency }: { cap?: number; currency: Currency },
+): string {
   if (value == null || value === '') return '—';
   if (typeof value === 'string') return value;
   const suffix = fmt === 'mult1' ? 'x' : fmt === 'pct1' ? '%' : '';
@@ -325,10 +329,12 @@ export function formatValue(value: number | string | null, fmt: Fmt, cap?: numbe
     return `${value > 0 ? '>+' : '<−'}${cap}${suffix}`;
   }
   switch (fmt) {
-    case 'money2':
-      return `$${value.toFixed(2)}`;
-    case 'money0':
-      return `$${value.toFixed(0)}`;
+    case 'price':
+      // The Stock Detail page's formatter, so a row reads exactly as its own page does:
+      // the home-currency symbol and the precision small prices need. It printed a bare
+      // `$` with `toFixed` until 2026-09-28 — A$0.365 read "$0.36" here and 0.37 in the
+      // exports, A$0.041 read "$0.04", and a A$1.08 target read "$1" (beta review C-7/C-8).
+      return fmtPrice(value, currency);
     case 'pct1':
       return `${value.toFixed(1)}%`;
     case 'pctSigned1':
