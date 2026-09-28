@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import { depth } from '@/lib/landing';
-import { LEARN_FIGURES } from '@/lib/learn-figures';
+import { LEARN_FIGURES, todayAgainstTypical } from '@/lib/learn-figures';
 import type { LearnSlug } from '@/lib/learn';
 import { CUSTOM_PARAM_BOUNDS, PRESETS, PRESET_HORIZONS, PRESET_LABELS } from '@/lib/presets';
 import {
@@ -108,6 +108,11 @@ const asOfWords = new Date(`${LEARN_FIGURES.asOf}T00:00:00Z`).toLocaleDateString
   year: 'numeric',
   timeZone: 'UTC',
 });
+
+const TODAY_VS_TYPICAL = todayAgainstTypical(
+  LEARN_FIGURES.currentDrawdownPct,
+  LEARN_FIGURES.typicalDrawdownPct,
+);
 
 export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
   'what-is-a-drawdown': () => (
@@ -299,16 +304,25 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         Take {LEARN_FIGURES.name}, using its full price record to {asOfWords}, on the{' '}
         {PRESET_LABELS.medium.toLowerCase()} horizon.
       </p>
+      {/* ⚠️ These figures are rebuilt NIGHTLY, so no sentence here may judge them in
+          fixed words — "a meaningful drop" once sat beside a 1.2% dip (beta review
+          A-15). The comparison is worked out from the printed numbers. */}
       <p>
-        It was recently <strong>{depth(LEARN_FIGURES.currentDrawdownPct)}</strong> below
-        its one-year high. On its own, that sounds like a meaningful drop.
+        {TODAY_VS_TYPICAL.atHigh ? (
+          <>It was recently at its one-year high.</>
+        ) : (
+          <>
+            It was recently <strong>{depth(LEARN_FIGURES.currentDrawdownPct)}</strong> below
+            its one-year high. On its own, that number tells you very little.
+          </>
+        )}
       </p>
       <p>
-        Set against its own history, it is unremarkable. Across{' '}
+        Its own history is what gives it meaning. Across{' '}
         {LEARN_FIGURES.pullbackEvents.toLocaleString('en-AU')} separate falls of more
         than {MEDIUM_FALL}% in its record, the average one ran to{' '}
-        <strong>{depth(LEARN_FIGURES.typicalDrawdownPct)}</strong>. Today&rsquo;s fall is
-        under half of that. And at its worst, the share has fallen{' '}
+        <strong>{depth(LEARN_FIGURES.typicalDrawdownPct)}</strong>.{' '}
+        {TODAY_VS_TYPICAL.comparison} And at its worst, the share has fallen{' '}
         <strong>{depth(LEARN_FIGURES.deepestDrawdownPct)}</strong> from a high.
       </p>
 

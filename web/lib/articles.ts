@@ -145,7 +145,7 @@ export const PLANNED_ARTICLES: readonly PlannedArticle[] = [
     title: 'Do bank shares fall differently to mining shares?',
     blurb:
       'Banks and miners are most of the ASX. Canada is built the same way, which makes the comparison worth running.',
-    due: 'Sep 2026',
+    due: 'Oct 2026',
   },
 ] as const;
 

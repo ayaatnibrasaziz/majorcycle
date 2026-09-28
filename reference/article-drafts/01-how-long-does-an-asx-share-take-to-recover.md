@@ -104,8 +104,9 @@ them are falls of more than 70%**, and not a single one is a fall of less than
 40%.
 
 The useful way to read this is that the first half of a big fall and the second
-half are not the same event. Going from down 20% to down 50% roughly doubles the
-wait. Going from down 50% to down 70% quadruples it.
+half are not the same event. Going from down 20% to down 50% stretches the typical
+wait about four times, from 4 months to 1.5 years. Going past 70% nearly triples it
+again, from 2.9 years to 8.3 years.
 
 ### Australian shares take longer than American ones
 

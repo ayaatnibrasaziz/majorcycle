@@ -34,3 +34,27 @@ import type { LandingSnapshot } from './landing';
  * added to one and not the other is a type error rather than a silent gap.
  */
 export const LEARN_FIGURES: LandingSnapshot = snapshot;
+
+/**
+ * How today's fall compares with the typical one, in words that stay true whatever
+ * the nightly figure is (beta review A-15, 2026-09-28).
+ *
+ * The worked example on `/learn/what-is-a-drawdown` used to call today's fall "a
+ * meaningful drop", "unremarkable" and "under half" the typical one in fixed prose,
+ * written when Apple was about 11% down. The figure is rebuilt nightly, and at 1.2%
+ * the page called a 1.2% dip meaningful. The judgement now comes from the numbers,
+ * compared as PRINTED (one decimal), so the words can never disagree with the
+ * figures beside them.
+ */
+export function todayAgainstTypical(currentPct: number, typicalPct: number): {
+  atHigh: boolean;
+  comparison: string;
+} {
+  const today = Math.round(Math.abs(currentPct) * 10);
+  const typical = Math.round(Math.abs(typicalPct) * 10);
+  if (today === 0) return { atHigh: true, comparison: 'Today it has not fallen at all.' };
+  if (today * 2 < typical) return { atHigh: false, comparison: 'Today’s fall is under half of that.' };
+  if (today < typical) return { atHigh: false, comparison: 'Today’s fall is short of that.' };
+  if (today === typical) return { atHigh: false, comparison: 'Today’s fall is the same size.' };
+  return { atHigh: false, comparison: 'Today’s fall has gone further than that.' };
+}
