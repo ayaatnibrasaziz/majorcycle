@@ -15,6 +15,7 @@ import {
 } from 'lightweight-charts';
 
 import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, fmtPrice } from '@/lib/format';
+import { analystTally, consensusFromTally, gradeGroup, type AnalystTally } from '@/lib/analystConsensus';
 import { insiderSentiment, insiderTotals } from '@/lib/insiderSentiment';
 import type { AnalystUpgrade, Currency, InsiderTransaction, PriceBar } from '@/lib/types';
 import { ANALYST, INK } from '@/lib/ink';
@@ -62,42 +63,16 @@ function classifyAction(action: string): { pill: string; label: string } {
    measured 2.38:1. One function, so it returns ink and the markers darken with
    the words rather than drifting apart from them. */
 function gradeColor(grade: string | undefined): string {
-  const g = (grade ?? '').toLowerCase().trim().replace(/-/g, ' ');
-  if (g.includes('strong buy') || g === 'buy' || g.includes('outperform') || g.includes('overweight') || g === 'accumulate' || g === 'add' || g === 'positive' || g === 'long term buy')
-    return ANALYST.positive;
-  if (g.includes('sell') || g.includes('underperform') || g.includes('underweight') || g === 'reduce' || g === 'negative' || g === 'avoid')
-    return ANALYST.negative;
-  if (g === 'neutral' || g === 'hold' || g.includes('market perform') || g.includes('equal weight') || g.includes('peer perform') || g.includes('sector perform') || g.includes('market weight') || g.includes('in line') || g.includes('fair value'))
-    return ANALYST.neutral;
+  const g = gradeGroup(grade);
+  if (g === 'buy')  return ANALYST.positive;
+  if (g === 'sell') return ANALYST.negative;
+  if (g === 'hold') return ANALYST.neutral;
   return INK.brand;
 }
 
-function classifyGrade(grade: string | undefined): 'bull' | 'bear' | 'neut' {
-  const g = (grade ?? '').toLowerCase().trim().replace(/-/g, ' ');
-  if (g.includes('strong buy') || g === 'buy' || g.includes('outperform') || g.includes('overweight') || g === 'accumulate' || g === 'add' || g === 'positive' || g === 'long term buy')
-    return 'bull';
-  if (g.includes('sell') || g.includes('underperform') || g.includes('underweight') || g === 'reduce' || g === 'negative' || g === 'avoid')
-    return 'bear';
-  return 'neut';
-}
-
-// Computes overall analyst consensus from the most recent rating per firm.
-function analystConsensus(upgrades: AnalystUpgrade[]): { label: string; color: string; bg: string } | null {
-  if (!upgrades.length) return null;
-  const latest = new Map<string, AnalystUpgrade>();
-  for (const u of upgrades) {
-    if (!latest.has(u.firm) || u.date > latest.get(u.firm)!.date) {
-      latest.set(u.firm, u);
-    }
-  }
-  let bull = 0, bear = 0, neut = 0;
-  for (const u of latest.values()) {
-    const cls = classifyGrade(u.to_grade);
-    if (cls === 'bull') bull++;
-    else if (cls === 'bear') bear++;
-    else neut++;
-  }
-  if (!bull && !bear && !neut) return null;
+// The chip: the plurality of each firm's most recent rating (lib/analystConsensus.ts).
+function analystConsensus(tally: AnalystTally | null): { label: string; color: string; bg: string } | null {
+  if (!tally) return null;
   /* ⚠️ ANALYST.*, not INK.* — audit 2026-09-10. This chip SUMMARISES the rating
      pills listed under it, and it was painted from a different palette than they
      were: the pills use the third-party colours (so a Wall Street *Sell* cannot
@@ -113,9 +88,10 @@ function analystConsensus(upgrades: AnalystUpgrade[]): { label: string; color: s
      three backgrounds on the old colour. They read the tokens now — the same ones
      the `.smart-pill` rules use, so a chip and the chip summarising it cannot part
      company again (11c-viii). */
-  if (bull >= bear && bull > neut) return { label: 'BULLISH',  color: ANALYST.positive, bg: 'var(--analyst-positive-tint)' };
-  if (bear > bull  && bear > neut) return { label: 'BEARISH',  color: ANALYST.negative, bg: 'var(--analyst-negative-tint)' };
-  return                                   { label: 'NEUTRAL',  color: ANALYST.neutral,  bg: 'var(--analyst-neutral-tint)' };
+  const label = consensusFromTally(tally);
+  if (label === 'BULLISH') return { label, color: ANALYST.positive, bg: 'var(--analyst-positive-tint)' };
+  if (label === 'BEARISH') return { label, color: ANALYST.negative, bg: 'var(--analyst-negative-tint)' };
+  return                          { label, color: ANALYST.neutral,  bg: 'var(--analyst-neutral-tint)' };
 }
 
 function fmtMonthYear(iso: string): string {
@@ -657,7 +633,8 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
 
   const sentiment  = txs.length      > 0 ? insiderSentiment(txs, INK)  : null;
   const totals     = sentiment ? insiderTotals(txs) : null;
-  const consensus  = upgrades.length  > 0 ? analystConsensus(upgrades)  : null;
+  const tally      = upgrades.length  > 0 ? analystTally(upgrades)      : null;
+  const consensus  = analystConsensus(tally);
 
   return (
     <div className="card card--stack-base">
@@ -783,6 +760,20 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
                 </span>
               )}
             </div>
+            {tally && (
+              <div className="smart-section-basis">
+                {/* A no-break space inside each count, so a phone never strands "10" at the
+                    end of one line and "Hold" at the start of the next. */}
+                {fmtMonthYear(tally.from)} – {fmtMonthYear(tally.to)}: latest view of{' '}
+                {tally.firms}{' '}{tally.firms === 1 ? 'firm' : 'firms'}: {tally.buy}{' '}Buy ·{' '}
+                {tally.hold}{' '}Hold · {tally.sell}{' '}Sell{' '}
+                <InfoTip title="How the ratings are grouped">
+                  Each firm is counted once, by its most recent rating on record. Buy also covers
+                  Outperform, Overweight and Strong Buy; Sell covers Underperform and Underweight;
+                  Hold covers the rest, such as Neutral, Equal-Weight and Market Perform.
+                </InfoTip>
+              </div>
+            )}
             {upgrades.length === 0 ? (
               <div className="smart-empty">No rating changes available.</div>
             ) : (
