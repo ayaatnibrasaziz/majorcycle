@@ -25,8 +25,9 @@ import {
  * It exists because three of the load-bearing pieces of auth are plain functions
  * that no test had ever called. `safeNextPath` is the open-redirect guard on
  * every post-auth destination — `/login?next=`, `/signup?next=`, and both
- * `/auth/*` exchange routes feed it attacker-supplied input — and its whole
- * implementation is two character comparisons. `friendlyAuthError` decides what
+ * `/auth/*` exchange routes feed it attacker-supplied input — and until 2026-09-28
+ * its whole implementation was two character comparisons, which a tab defeated
+ * (beta review A-6). `friendlyAuthError` decides what
  * a failed sign-in SAYS, which is a security property and not only a copy one.
  *
  * ⚠️ Every rejection table below carries ACCEPTANCE controls. `safeNextPath`
@@ -51,6 +52,13 @@ test.describe('safeNextPath — the open-redirect guard', () => {
     ['a javascript: URL', 'javascript:alert(1)'],
     ['a data: URL', 'data:text/html,<script>alert(1)</script>'],
     ['a backslash-rooted path', '\\evil.example'],
+    // Beta review A-6 (2026-09-28): browsers DELETE tab, LF and CR anywhere in a URL,
+    // so each of these became `//evil.example` after passing the two-character check.
+    ['a tab between the slashes', '/\t/evil.example'],
+    ['a newline between the slashes', '/\n/evil.example'],
+    ['a carriage return between the slashes', '/\r/evil.example'],
+    ['a tab and a backslash', '/\t\\evil.example'],
+    ['a backslash later in the path', '/stocks\\..\\\\evil.example'],
     ['an empty string', ''],
     ['a missing value', null],
     ['an absent value', undefined],
@@ -72,6 +80,8 @@ test.describe('safeNextPath — the open-redirect guard', () => {
     '/account',
     '/results?sort=rating',
     '/run#presets',
+    '/stocks/au/BHP?preset=long',
+    '/stocks/us/AAPL?preset=custom&lookback=504&pullback=-8',
   ];
 
   for (const path of LEGITIMATE) {
@@ -79,6 +89,23 @@ test.describe('safeNextPath — the open-redirect guard', () => {
       expect(safeNextPath(path)).toBe(path);
     });
   }
+
+  test('whatever it returns, a browser resolves to OUR origin — every ASCII character tried', () => {
+    // The table above names the tricks somebody thought of; this asks the question the
+    // guard exists to answer, for every character in the positions that matter, using
+    // the same URL parser the browser navigates with. It is what the tab trick needed:
+    // a list of known attacks had passed for months with it missing.
+    const origin = 'https://www.majorcycle.com';
+    const escaped: string[] = [];
+    for (let c = 0; c < 128; c++) {
+      const ch = String.fromCharCode(c);
+      for (const input of [`/${ch}/evil.example`, `${ch}//evil.example`, `/${ch}${ch}evil.example`, `/x${ch}/evil.example`]) {
+        const target = new URL(safeNextPath(input), origin);
+        if (target.origin !== origin) escaped.push(JSON.stringify(input));
+      }
+    }
+    expect(escaped, 'these left the site').toEqual([]);
+  });
 
   test('POST_AUTH_HOME is itself an in-app path', () => {
     // The fallback is fed straight into a navigation. If it ever became an

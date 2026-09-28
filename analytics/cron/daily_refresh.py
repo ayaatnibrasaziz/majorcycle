@@ -11,6 +11,7 @@ import logging
 import os
 import re
 import time
+import zlib
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional, cast
 
@@ -945,27 +946,68 @@ def _retry_targets(failed: list[str], universe_size: int) -> list[str]:
     return list(failed)
 
 
+# How often the enriched data (statements, earnings, insider trades, analyst changes,
+# holders, P/E history) is re-read. See `_should_fetch_enriched`.
+_ENRICH_MAX_AGE_DAYS = 8
+_POST_EARNINGS_SETTLE_DAYS = 3
+
+
+def _enrich_weekday(ticker: str) -> int:
+    """The weekday (0 = Monday) this ticker's weekly enrichment falls on.
+
+    A stable hash, so the universe is spread over the week (~1/7 a night) and stays
+    spread: a full refresh that enriches every ticker on one day does not make them
+    all fall due together seven days later.
+    """
+    return zlib.crc32(ticker.encode("utf-8")) % 7
+
+
 def _should_fetch_enriched(
-    state: Optional[dict[str, Any]], today_str: str, mode: str
+    state: Optional[dict[str, Any]], today_str: str, mode: str, ticker: str
 ) -> bool:
-    if mode == "full":
-        return True
-    if state is None:
+    """Whether tonight's run re-reads this ticker's enriched data.
+
+    ⚠️ BETA REVIEW B-1 (2026-09-28). The rule used to be "the stored next earnings
+    date has passed AND we last enriched BEFORE it". A ticker enriched ON its earnings
+    day — before the results were out — or while the provider still reported the old
+    date, could never satisfy it again: 771 of 872 stocks were stuck, a median of 54
+    days old, with nothing saying so. Insider trades, analyst changes and holders were
+    only ever refreshed around earnings, because there was no maximum age at all.
+
+    Now three reasons, any one of which is enough:
+      1. its weekly day (`_enrich_weekday`), if not already enriched today;
+      2. it is `_ENRICH_MAX_AGE_DAYS` old — a missed weekly day cannot age it further;
+      3. an earnings date has passed and no enrichment has yet been taken at least
+         `_POST_EARNINGS_SETTLE_DAYS` after it — results show the next morning, and
+         the statements, which the provider publishes a few days later, follow.
+    """
+    if mode == "full" or state is None:
         return True
     enrich_ts: Optional[str] = state.get("enriched_updated_at")
-    enrich_date = enrich_ts[:10] if enrich_ts else None
-    if enrich_date is None:
+    if not enrich_ts:
+        return True
+    try:
+        today = date.fromisoformat(today_str)
+        last = date.fromisoformat(enrich_ts[:10])
+    except ValueError:
+        return True
+    age = (today - last).days
+    if age >= _ENRICH_MAX_AGE_DAYS:
+        return True
+    if age < 1:
+        return False  # already enriched today — a re-run or retry must not repeat it
+    if today.weekday() == _enrich_weekday(ticker):
         return True
     next_ed: Optional[str] = state.get("next_earnings_date")
-    if next_ed is None:
+    if next_ed:
         try:
-            days_since = (
-                datetime.fromisoformat(today_str) - datetime.fromisoformat(enrich_date)
-            ).days
-            return days_since >= 7
-        except Exception:
+            earnings = date.fromisoformat(next_ed[:10])
+        except ValueError:
+            return False
+        settled = earnings + timedelta(days=_POST_EARNINGS_SETTLE_DAYS)
+        if earnings < today and last < settled:
             return True
-    return next_ed <= today_str and enrich_date < next_ed
+    return False
 
 
 
@@ -1137,7 +1179,7 @@ def run(
                 ticker = item["ticker"]
                 try:
                     state = ticker_states.get(ticker)
-                    fetch_enriched = _should_fetch_enriched(state, today_str, mode)
+                    fetch_enriched = _should_fetch_enriched(state, today_str, mode, ticker)
                     first_fetch = state is None
 
                     df = DATA_PROVIDER.fetch_price_history(
