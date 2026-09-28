@@ -717,7 +717,12 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
             {totals && (
               <div className="smart-section-basis">
                 {fmtMonthYear(totals.from)} – {fmtMonthYear(totals.to)}: bought{' '}
-                {fmtCompact(totals.bought, currency)} · sold {fmtCompact(totals.sold, currency)}
+                {fmtCompact(totals.bought, currency)} · sold {fmtCompact(totals.sold, currency)}{' '}
+                <InfoTip title="How the insider label is worked out">
+                  Adds up the value of every Buy and Sell filing on record for this period, not
+                  only the ten listed. NET BUYER when more was bought than sold, NET SELLER when
+                  more was sold. Award, Gift and Other filings are listed but not counted.
+                </InfoTip>
               </div>
             )}
             {txs.length === 0 ? (
@@ -726,11 +731,8 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
               <div className="smart-timeline">
                 {txs.slice(0, 10).map((tx, i) => {
                   const s = INSIDER_STYLE[tx.type];
-                  const shares = tx.shares ?? 0;
-                  const val = tx.value ?? 0;
-                  const sz = (shares >= 100000 || val >= 1e8) ? 'dot-lg' : (shares < 10000 && val < 2e6) ? 'dot-sm' : '';
                   return (
-                    <div key={i} className={`smart-event${sz ? ` ${sz}` : ''}`} style={{ '--dot': s.dot } as React.CSSProperties}>
+                    <div key={i} className="smart-event" style={{ '--dot': s.dot } as React.CSSProperties}>
                       <div>
                         <div className="smart-event-head">
                           <span className={`smart-pill ${s.pill}`}>{s.label}</span>
@@ -782,10 +784,8 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
                   const cls = classifyAction(ac.action);
                   const gc  = gradeColor(ac.to_grade);
                   const hasChange = ac.from_grade && ac.from_grade !== ac.to_grade;
-                  const acLower = (ac.action ?? '').toLowerCase();
-                  const acSz = acLower === 'upgrade' || acLower === 'downgrade' ? 'dot-lg' : '';
                   return (
-                    <div key={i} className={`smart-event${acSz ? ` ${acSz}` : ''}`} style={{ '--dot': gc } as React.CSSProperties}>
+                    <div key={i} className="smart-event" style={{ '--dot': gc } as React.CSSProperties}>
                       <div>
                         <div className="smart-event-head">
                           <span className={`smart-pill ${cls.pill}`}>{cls.label}</span>
