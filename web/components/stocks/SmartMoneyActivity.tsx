@@ -15,7 +15,7 @@ import {
 } from 'lightweight-charts';
 
 import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, fmtPrice } from '@/lib/format';
-import { insiderSentiment } from '@/lib/insiderSentiment';
+import { insiderSentiment, insiderTotals } from '@/lib/insiderSentiment';
 import type { AnalystUpgrade, Currency, InsiderTransaction, PriceBar } from '@/lib/types';
 import { ANALYST, INK } from '@/lib/ink';
 
@@ -116,6 +116,10 @@ function analystConsensus(upgrades: AnalystUpgrade[]): { label: string; color: s
   if (bull >= bear && bull > neut) return { label: 'BULLISH',  color: ANALYST.positive, bg: 'var(--analyst-positive-tint)' };
   if (bear > bull  && bear > neut) return { label: 'BEARISH',  color: ANALYST.negative, bg: 'var(--analyst-negative-tint)' };
   return                                   { label: 'NEUTRAL',  color: ANALYST.neutral,  bg: 'var(--analyst-neutral-tint)' };
+}
+
+function fmtMonthYear(iso: string): string {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
 function fmtDate(iso: string): string {
@@ -652,6 +656,7 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
   const hasChart  = hasEvents && bars.length > 0;
 
   const sentiment  = txs.length      > 0 ? insiderSentiment(txs, INK)  : null;
+  const totals     = sentiment ? insiderTotals(txs) : null;
   const consensus  = upgrades.length  > 0 ? analystConsensus(upgrades)  : null;
 
   return (
@@ -732,6 +737,12 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
                 </span>
               )}
             </div>
+            {totals && (
+              <div className="smart-section-basis">
+                {fmtMonthYear(totals.from)} – {fmtMonthYear(totals.to)}: bought{' '}
+                {fmtCompact(totals.bought, currency)} · sold {fmtCompact(totals.sold, currency)}
+              </div>
+            )}
             {txs.length === 0 ? (
               <div className="smart-empty">No transactions available.</div>
             ) : (

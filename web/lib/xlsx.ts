@@ -12,13 +12,15 @@
 import type { Row } from 'exceljs';
 
 import type { ResultRow } from '@/components/results/columns';
-import { exportText, RATING_TIER_HEX, tierFromScore, type ExportFmt } from '@/lib/ratings';
+import { exportText, healthRatingLabel, RATING_TIER_HEX, tierFromScore, type ExportFmt } from '@/lib/ratings';
 
 type ExportColumn = { header: string; get: (r: ResultRow) => string | number | null; xf?: ExportFmt };
 
 // Excel number-format string per export precision (mirrors the CSV's toFixed):
 // `0` = whole number, `0.00` = exactly two decimals (so 1 displays as "1.00").
-const NUM_FMT: Record<ExportFmt, string> = { int: '0', num2: '0.00' };
+// `price` shows at least two decimals and up to six — the cell holds the value parsed
+// back from `exportText`, so the extra places only ever show digits the CSV also has.
+const NUM_FMT: Record<ExportFmt, string> = { int: '0', num2: '0.00', price: '0.00####' };
 
 // Coerce one export value to its Excel cell value — numbers stay numeric (so Excel
 // can sort/sum) but are DERIVED from the string `exportText` already produced for
@@ -60,11 +62,13 @@ const TIER_ARGB: Record<1 | 2 | 3 | 4 | 5, string> = Object.fromEntries(
   ([1, 2, 3, 4, 5] as const).map((t) => [t, `FF${RATING_TIER_HEX[t].slice(1).toUpperCase()}`]),
 ) as Record<1 | 2 | 3 | 4 | 5, string>;
 
-/** Financial Health uses a 3-tier scale (matches healthColor): Healthy / Adequate / At Risk. */
+/**
+ * Financial Health uses a 3-tier scale. Read from `healthRatingLabel` rather than
+ * restating 80/60 here: this private copy judged the raw score while the cell beside
+ * it printed the rounded one (beta review, 2026-09-28).
+ */
 function healthTier(score: number): 1 | 3 | 5 {
-  if (score >= 80) return 1;
-  if (score >= 60) return 3;
-  return 5;
+  return ({ Healthy: 1, Adequate: 3, 'At Risk': 5 } as const)[healthRatingLabel(score)];
 }
 
 /** Build + trigger a client-side .xlsx download. No-op on the server. */

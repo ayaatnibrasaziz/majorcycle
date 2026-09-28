@@ -73,3 +73,30 @@ export function insiderSentiment(
   }
   return null; // exactly balanced — neither word would be true
 }
+
+/**
+ * What the label above was worked out from: the totals bought and sold, and the dates
+ * of the earliest and latest filing on record.
+ *
+ * ⚠️ Beta review F-8, 2026-09-28. The label weighs EVERY stored filing (about two
+ * years) while the list under it shows the latest ten, so on 152 of 827 stocks the two
+ * pointed opposite ways — CSL read NET SELLER above ten purchases. The owner's ruling:
+ * keep the label on all the data, and say which period and totals it rests on, so a
+ * reader can see why. Reads the same filter as `insiderSentiment`, so the numbers
+ * printed are the numbers the label compared.
+ */
+export interface InsiderTotals {
+  bought: number;
+  sold: number;
+  /** ISO dates of the earliest and latest filing on record (any type). */
+  from: string;
+  to: string;
+}
+
+export function insiderTotals(txs: InsiderTransaction[]): InsiderTotals | null {
+  const dates = txs.map((t) => t.date).filter((d): d is string => !!d).sort();
+  if (dates.length === 0) return null;
+  const sum = (type: InsiderTransaction['type']) =>
+    txs.filter((t) => t.type === type).reduce((s, t) => s + (t.value ?? 0), 0);
+  return { bought: sum('Purchase'), sold: sum('Sale'), from: dates[0]!.slice(0, 10), to: dates[dates.length - 1]!.slice(0, 10) };
+}

@@ -517,6 +517,7 @@ export default async function StockDetailPage({
             unavailableReason={peHistoryUnavailableReason(stock.fundamentals)}
             peHistory={stock.peHistory ?? []}
             currentPe={stock.fundamentals.pe}
+            lossMaking={(stock.fundamentals.netMargin ?? 0) < 0}
           />
           <BalanceSheet
             balanceSheetAnnual={stock.balanceSheetAnnual}

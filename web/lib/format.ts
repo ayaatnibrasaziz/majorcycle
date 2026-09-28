@@ -89,7 +89,7 @@ export const CHART_RIGHT_AXIS_WIDTH = 72;
  * "$0":  ≥ $1 → 2 dp · $0.10–$1 → ≤ 3 dp · $0.01–$0.10 → ≤ 4 dp · < $0.01 → ≤ 6 dp
  * (2 dp floor throughout; trailing zeros trimmed only below $1).
  */
-function priceDecimals(magnitude: number): number {
+export function priceDecimals(magnitude: number): number {
   const a = Math.abs(magnitude);
   if (a >= 1) return 2;
   if (a >= 0.1) return 3;

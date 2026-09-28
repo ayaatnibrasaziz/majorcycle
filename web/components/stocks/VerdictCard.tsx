@@ -1,7 +1,8 @@
 import type { CycleAnalysis, Currency, FundamentalsSnapshot, OverallLabel, ValuationZone } from '@/lib/types';
 import { InfoTip } from '@/components/ui/InfoTip';
-import { fmtCapped, fmtPrice } from '@/lib/format';
+import { fmtPrice } from '@/lib/format';
 import { OVERALL_LABELS, RATING_TIER_HEX, tierFromLabel } from '@/lib/ratings';
+import { healthSentence, topRisk } from '@/lib/thesisText';
 import { tickerToUrlParts } from '@/lib/ticker';
 
 interface Props {
@@ -79,46 +80,6 @@ function sentence1(
   return `Trading near its ${lookbackBars}-day highs (${ddAbs}% off peak) — limited cycle-based margin of safety against the ${tddAbs}% typical pullback.`;
 }
 
-// Mirror of reference bestStrength — picks the single strongest evidence point.
-function bestStrength(f: FundamentalsSnapshot): string {
-  if (f.roe != null && f.roe >= 25)
-    return `an exceptional ${fmtCapped(f.roe, 300, 0)}% return on equity`;
-  if (f.fcfYieldPct != null && f.fcfYieldPct >= 5)
-    return `a strong ${fmtCapped(f.fcfYieldPct, 100, 1)}% free-cash-flow yield`;
-  if (f.debtToEquity != null && f.debtToEquity < 0.4)
-    return `a fortress balance sheet (D/E ${fmt(f.debtToEquity, 2)})`;
-  if (f.grossMargin != null && f.grossMargin >= 60)
-    return `gross margins of ${fmtCapped(f.grossMargin, 300, 0)}%`;
-  if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 20)
-    return `accelerating revenue growth of ${fmtCapped(f.revenueGrowthYoy, 300, 0)}% YoY`;
-  if (f.operatingMargin != null && f.operatingMargin >= 20)
-    return `operating margins of ${fmtCapped(f.operatingMargin, 300, 0)}%`;
-  if (f.netMargin != null && f.netMargin >= 10)
-    return `healthy net margins of ${fmtCapped(f.netMargin, 300, 0)}%`;
-  return 'a solid overall financial-health profile';
-}
-
-// Mirror of reference topRisk — first match wins.
-function topRisk(f: FundamentalsSnapshot, drawdownPct: number, pullbackEvents: number, lookbackBars: number): string {
-  if (drawdownPct > -5)
-    return `near its ${lookbackBars}-day highs with limited cycle-based margin of safety`;
-  if (f.debtToEquity != null && f.debtToEquity >= 1.5)
-    return `elevated debt at ${fmtCapped(f.debtToEquity, 25, 1)}× equity — sensitive to higher rates`;
-  if (f.revenueGrowthYoy != null && f.revenueGrowthYoy < 0)
-    return `revenue declining ${fmtCapped(Math.abs(f.revenueGrowthYoy), 300, 1)}% YoY — execution risk`;
-  if (f.currentRatio != null && f.currentRatio < 1)
-    return 'current ratio below 1 — short-term liquidity pressure';
-  if (f.peg != null && f.peg > 3)
-    return `PEG of ${fmtCapped(f.peg, 25, 1)} — valuation stretched vs growth`;
-  if (pullbackEvents < 8)
-    return `only ${pullbackEvents} historical cycles — limited statistical confidence`;
-  if (f.netMargin != null && f.netMargin < 5)
-    return `thin net margin of ${fmtCapped(f.netMargin, 300, 1)}% leaves little buffer`;
-  if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 0 && f.revenueGrowthYoy < 15)
-    return `modest revenue growth of ${fmt(f.revenueGrowthYoy, 1)}% — multiple-compression risk`;
-  return 'the chief risk is the historical cycle pattern not repeating as it has before';
-}
-
 // ── Band tile helpers ───────────────────────────────────────────────────────
 interface BandTileProps {
   label: string;
@@ -190,18 +151,8 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
   // ── Thesis sentences ─────────────────────────────────────────────────────
   const s1 = sentence1(valuationZone, currentDrawdownPct, typicalDrawdown, totalPullbackEvents, cycle.params.lookbackBars);
 
-  let s2: string;
-  const hs = financialHealthScore;
-  if (hs == null)
-    s2 = 'Financial health data is unavailable for this ticker.';
-  else if (hs >= 85)
-    s2 = `Financial health is exceptional at ${fmt(hs, 0)}/100, supported by ${bestStrength(fundamentals)}.`;
-  else if (hs >= 70)
-    s2 = `Financial health is solid at ${fmt(hs, 0)}/100, with ${bestStrength(fundamentals)}.`;
-  else if (hs >= 50)
-    s2 = `Financial health is adequate at ${fmt(hs, 0)}/100 — passable but not a standout balance-sheet story.`;
-  else
-    s2 = `Financial health is stressed at ${fmt(hs, 0)}/100 — elevated balance-sheet and profitability risks warrant caution.`;
+  // Names only scorecard areas the scorecard itself calls weak (lib/thesisText.ts).
+  const s2 = healthSentence(financialHealthScore, fundamentals, cycle.fhSubscores);
 
   const s3 = `Primary risk: ${topRisk(fundamentals, currentDrawdownPct, totalPullbackEvents, cycle.params.lookbackBars)}.`;
 
@@ -276,12 +227,16 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
   } else {
     // Above entry zone — waiting for pullback
     const premiumPct = ((currentClose - bandUpper) / bandUpper * 100).toFixed(1);
+    // How far the zone's top sits BELOW today's price is a share of TODAY's price. It
+    // reused `premiumPct` (a share of the zone top) until 2026-09-28, so AAPL read
+    // "31.1% below current" where $260.22 is 23.7% below $341.07 (beta review B-2).
+    const belowCurrentPct = ((currentClose - bandUpper) / currentClose * 100).toFixed(1);
     bandTiles = (
       <>
         <BandTile
           label="Wait for Entry Zone"
           value={`${fmtPrice(bandLower, currency)} – ${fmtPrice(bandUpper, currency)}`}
-          sub={`Top ${fmtPrice(typicalPrice, currency)} · ${premiumPct}% below current`}
+          sub={`Top ${fmtPrice(typicalPrice, currency)} · ${belowCurrentPct}% below current`}
           tooltip="Target Entry Zone — Built from this stock's typical historical drawdown. Current price sits above it, by the percentage shown."
         />
         <BandTile
