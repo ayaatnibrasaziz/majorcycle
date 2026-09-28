@@ -18,6 +18,19 @@ B-2 (`VerdictCard.tsx:278` divides by `bandUpper`), F-3 (`overall.py` event scor
 
 ## 🔴 Blockers — fix before any beta tester or launch
 
+> ✅ **#1 and #2 FIXED AND LIVE 2026-09-28 (PR #124).** The redirect fix was confirmed in the
+> chunk the live `/login` ships. The full enrichment ran once (44 min): 866 of 872 active rows
+> re-enriched — the other six are the four indices (never enriched) and QUB.AX / CVW.AX (no
+> provider prices since August; already on the staleness sweep). AAPL now carries the June
+> quarter, insiders to 22 Sep, analyst changes to 23 Sep.
+>
+> ✅ **#3 CLOSED — no change, owner ruling 2026-09-28.** The Entry Zone / Reload / Invalidation
+> tiles, the entry/exit tooltips and "Top pick" stay: the owner already ruled on 2026-08-23 that
+> the entry/exit language is the house voice (`layer-g-audit.md` F-001), and declined the three
+> newly-found phrases too. **Do not re-propose.** The one change made: the Results briefing no
+> longer calls every standout under Health 80 "fundamentally sound" — it names the Health tier
+> (`lib/ratings.ts`, guarded by `e2e/briefing-health.spec.ts`).
+
 | # | What | Findings |
 |---|---|---|
 | 1 | **Open redirect after sign-in.** `?next=/%09/evil.com` (tab, newline or CR) passes `safeNextPath` (`lib/url.ts`) and the browser resolves it to `evil.com` — a phishing link can land a reader on a fake page straight after a real sign-in. Fix: parse with `new URL(next, origin)`, require same origin; add the cases to `auth-contracts.spec.ts`. | A-6 |

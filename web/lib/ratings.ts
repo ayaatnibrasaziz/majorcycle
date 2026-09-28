@@ -204,10 +204,21 @@ export function buildBriefing<T extends BriefingRow>(rows: T[]): Briefing {
   const weak = rows.filter((r) => NEGATIVE_LABELS.includes(r.overallLabel));
 
   const topName = top.name ? ` (${top.name})` : '';
-  const healthWord =
-    top.financialHealthScore != null && top.financialHealthScore >= 80 ? 'financially healthy' : 'fundamentally sound';
-  const healthClause =
-    top.financialHealthScore != null ? `, Health ${Math.round(top.financialHealthScore)}` : '';
+  // The description follows the Health tier the table shows beside the same score
+  // (healthRatingLabel). It said "fundamentally sound" for EVERY score under 80 until
+  // 2026-09-28 — Adequate and At Risk alike (beta review C-9) — and for a stock with
+  // no Health score at all.
+  const fh = top.financialHealthScore;
+  const healthTier = fh == null ? null : healthRatingLabel(fh);
+  const healthDescription =
+    healthTier === 'Healthy'
+      ? 'a financially healthy company'
+      : healthTier === 'Adequate'
+        ? 'a company with adequate financial health'
+        : healthTier === 'At Risk'
+          ? 'a company whose financial health is rated At Risk'
+          : 'a company without a Financial Health score';
+  const healthClause = fh != null ? `, Health ${Math.round(fh)}` : '';
 
   const sentences: string[] = [];
   sentences.push(
@@ -217,7 +228,7 @@ export function buildBriefing<T extends BriefingRow>(rows: T[]): Briefing {
 
   if (constructivePlus > 0) {
     sentences.push(
-      `The standout is {{TICKER}}${topName} — a ${healthWord} company${healthClause}, currently ` +
+      `The standout is {{TICKER}}${topName} — ${healthDescription}${healthClause}, currently ` +
         `rated ${top.overallLabel} with ${article(valuationAppealLabel(top.valuationScore))} ${valuationAppealLabel(top.valuationScore)} valuation.`,
     );
   } else {
