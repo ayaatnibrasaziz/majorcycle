@@ -12,9 +12,16 @@ import { useAnalysis } from '@/lib/analysis';
  * older run, or "No analysis run yet", as if nothing had been asked for (beta review).
  * The marker that makes this possible is written in `lib/analysis.tsx` (`RUNNING_KEY`).
  */
-export function InterruptedRunNotice({ showRunLink = false }: { showRunLink?: boolean }) {
+export function InterruptedRunNotice({
+  showRunLink = false,
+  olderResultsBelow = false,
+}: {
+  showRunLink?: boolean;
+  /** Results is showing an EARLIER, finished run underneath — say so. */
+  olderResultsBelow?: boolean;
+}) {
   const { interrupted, dismissInterrupted, progress } = useAnalysis();
-  if (!interrupted || progress.running) return null;
+  if (!interrupted || interrupted.dismissed || progress.running) return null;
   const n = interrupted.tickerCount;
   return (
     <div
@@ -25,6 +32,7 @@ export function InterruptedRunNotice({ showRunLink = false }: { showRunLink?: bo
         <strong className="text-[var(--text-primary)]">Your last run did not finish.</strong>{' '}
         The page was reloaded or closed while it was screening {n} {n === 1 ? 'stock' : 'stocks'}, so
         it stopped part way.{' '}
+        {olderResultsBelow && 'The results below are from your previous, finished run. '}
         {showRunLink ? (
           <>
             <Link href="/run" className="results-empty-link">

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { expect, test, type Page } from '@playwright/test';
 
+import { RUNNING_KEY } from '../lib/analysis';
 import { RUN_SNAPSHOT, RUN_SNAPSHOT_ROWS, SNAPSHOT_KEY } from './fixtures/runSnapshot';
 import { signInAs } from './lib/session';
 
@@ -178,6 +179,32 @@ test.describe('the Results page on a phone', () => {
     await page.waitForURL('**/login');
     const left = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('mc:analysis')));
     expect(left).toEqual([]);
+  });
+
+  test('a run cut off by a reload is named on Run and Results, and the older run is not offered as it', async ({ page }) => {
+    await page.goto('/stocks');
+    // An earlier finished run in this tab, then a run that was still going when the page reloaded.
+    await page.evaluate(
+      ([snapKey, snap, runKey]) => {
+        sessionStorage.setItem(snapKey as string, JSON.stringify(snap));
+        sessionStorage.setItem(runKey as string, JSON.stringify({ tickerCount: 9, startedAt: new Date().toISOString() }));
+      },
+      [SNAPSHOT_KEY, RUN_SNAPSHOT, RUNNING_KEY] as const,
+    );
+    await page.goto('/run');
+    await expect(page.getByText('Your last run did not finish.')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('screening 9 stocks')).toBeVisible();
+    // The OLDER run's "complete" summary and the re-run card stay away.
+    await expect(page.getByRole('button', { name: 'View Full Results' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Re-run', exact: true })).toHaveCount(0);
+
+    await page.goto('/results');
+    await expect(page.getByText('The results below are from your previous, finished run.')).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: 'Dismiss' }).click();
+    await page.reload();
+    await expect(page.locator('.result-card')).toHaveCount(RUN_SNAPSHOT_ROWS, { timeout: 30_000 });
+    // CONTROL: once dismissed it does not come back on the next load.
+    await expect(page.getByText('Your last run did not finish.')).toHaveCount(0);
   });
 
   test('from 768px the table is back, with no phone Sort box', async ({ page }) => {

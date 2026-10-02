@@ -10,6 +10,7 @@ import type { UniverseStock } from '@/lib/universe.server';
 import { marketLabel, tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { Currency, Market } from '@/lib/types';
 import { fmtCompact } from '@/lib/format';
+import { useNumberDraft } from '@/lib/numberDraft';
 import { boundError, CUSTOM_PARAM_BOUNDS } from '@/lib/presets';
 import { matchesQuery, matchStrength } from '@/lib/stockSearch';
 import { cn } from '@/lib/utils';
@@ -380,8 +381,20 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
               value={custom.lookback}
               step={1}
               error={lookbackErr}
-              onChange={(n) => updateCustom({ lookback: Math.round(n) })}
+              // Not rounded: a rounded value would rewrite "252.5" under the cursor;
+              // "Whole number only." says what is wrong instead (as on Run Analysis).
+              onChange={(n) => updateCustom({ lookback: n })}
             />
+            {/* ⚠️ An invalid Custom value used to be ignored in silence: the stock simply
+                opened on Medium, so the reader thought their window was in use. Say so
+                (owner, 2026-10-03: "when a wrong custom parameter is inputted it is
+                acting properly"). The Run page blocks its button; Browse cannot block
+                a list of stocks, so it states what will happen instead. */}
+            {!customOk && (
+              <p role="status" className="w-full text-[11px] font-semibold text-[var(--status-danger)]">
+                Fix the value marked above. Until then, stocks open with the Medium horizon.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -647,6 +660,10 @@ function CustomField({
   // Link the inline error to the input so a screen reader announces the reason
   // (not just `aria-invalid`) — mirrors the C-R3 deep-a11y bar.
   const errorId = useId();
+  // The box keeps what was typed and refuses a leading zero — the same rules as the
+  // Run Analysis horizon (lib/numberDraft.ts), so the two pages cannot disagree.
+  const draft = useNumberDraft(value, onChange);
+  const shown = draft.typingError ?? error;
   return (
     <label className="flex flex-col gap-0.5">
       <span className="flex items-center gap-0.5 text-[9.5px] font-semibold uppercase tracking-[0.5px] text-[var(--brand-mid)]">
@@ -655,24 +672,21 @@ function CustomField({
       </span>
       <input
         type="number"
-        value={Number.isFinite(value) ? value : ''}
+        value={draft.inputValue}
         step={step}
-        aria-invalid={error !== null}
-        aria-describedby={error ? errorId : undefined}
-        onChange={(e) => {
-          const n = Number(e.target.value);
-          if (!Number.isNaN(n)) onChange(n);
-        }}
+        aria-invalid={shown !== null}
+        aria-describedby={shown ? errorId : undefined}
+        onChange={draft.onInput}
         className={cn(
           'w-[92px] rounded-[var(--radius-sm)] border bg-[var(--bg-surface)] px-2 py-[5px] font-[var(--font-mono)] text-[12px] text-[var(--text-primary)] outline-none',
-          error
+          shown
             ? 'border-[var(--status-danger)] focus:border-[var(--status-danger)]'
             : 'border-[var(--border)] focus:border-[var(--brand-bright)]'
         )}
       />
-      {error && (
+      {shown && (
         <span id={errorId} className="text-[9.5px] font-semibold text-[var(--status-danger)]">
-          {error}
+          {shown}
         </span>
       )}
     </label>

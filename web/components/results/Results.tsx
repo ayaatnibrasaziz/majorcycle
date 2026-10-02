@@ -185,7 +185,7 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
   return (
     <div className="results-layout">
       <h1 className="sr-only">Analysis Results</h1>
-      <InterruptedRunNotice showRunLink />
+      <InterruptedRunNotice showRunLink olderResultsBelow />
       {progress.running && (
         <div className="results-running" role="status">
           <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />

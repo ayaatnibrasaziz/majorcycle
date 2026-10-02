@@ -154,10 +154,18 @@ export function RunAnalysis({
 
   const finished = !progress.running && runMeta?.finishedAt != null;
   // Show the summary after a run this session (even if 0 scored — the card has
-  // an empty state) or when results were hydrated from a prior session.
-  const showComplete = finished && (hasRun || results.length > 0);
+  // an empty state) or when results were hydrated from a prior session — but not
+  // after a cut-off run, when the hydrated results are an EARLIER screen and its
+  // "complete" summary would read as the run just lost (owner, 2026-10-03).
+  const showComplete =
+    finished && (hasRun || (results.length > 0 && analysis.interrupted == null));
   // Returning user with DB history but no in-session results.
-  const showLastRun = !progress.running && !showComplete && lastRun != null;
+  //
+  // ⚠️ Not after a run this tab was cut off from (owner, 2026-10-03). `lastRun` is the
+  // last run that FINISHED, so beside "your last run did not finish" it offered to re-run
+  // an older, different screen as if it were the one just lost.
+  const showLastRun =
+    !progress.running && !showComplete && lastRun != null && analysis.interrupted == null;
   const runtimeMs =
     runMeta?.finishedAt != null
       ? new Date(runMeta.finishedAt).getTime() - new Date(runMeta.startedAt).getTime()

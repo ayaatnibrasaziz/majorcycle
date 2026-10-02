@@ -103,7 +103,7 @@ const LAST_RUN_PREFIX = 'mc:analysis-last-v1:';
  * reload finds it, the run in this tab was cut off — the page was reloaded or closed
  * mid-run — and the reader is told so instead of the run silently vanishing.
  */
-const RUNNING_KEY = 'mc:analysis-running-v1';
+export const RUNNING_KEY = 'mc:analysis-running-v1';
 
 /** Every stored copy of a run on this device, for every account — called on sign-out. */
 export function clearStoredRuns(): void {
@@ -208,6 +208,8 @@ interface AnalysisSnapshot {
 export interface InterruptedRun {
   tickerCount: number;
   startedAt: string;
+  /** The notice was dismissed. The run still counts as cut off for this visit. */
+  dismissed?: boolean;
 }
 
 interface AnalysisContextValue extends AnalysisSnapshot {
@@ -425,7 +427,7 @@ export function AnalysisProvider({
     try {
       const raw = sessionStorage.getItem(RUNNING_KEY);
       if (raw) {
-        sessionStorage.removeItem(RUNNING_KEY);
+        // Kept until it is dismissed or a new run starts, so Results says it too.
         const mark = JSON.parse(raw) as InterruptedRun & { owner?: string | null };
         if (!mark.owner || mark.owner === ownerId) {
           setInterrupted({ tickerCount: mark.tickerCount, startedAt: mark.startedAt });
@@ -470,7 +472,16 @@ export function AnalysisProvider({
     [ownerId, lastRunKey],
   );
 
-  const dismissInterrupted = useCallback(() => setInterrupted(null), []);
+  // Dismissing hides the notice but keeps the fact for this visit, so the "re-run your
+  // last analysis" card does not come back offering an OLDER run in its place.
+  const dismissInterrupted = useCallback(() => {
+    try {
+      sessionStorage.removeItem(RUNNING_KEY);
+    } catch {
+      // Non-fatal.
+    }
+    setInterrupted((i) => (i ? { ...i, dismissed: true } : i));
+  }, []);
 
   const refreshLastRun = useCallback(async () => {
     try {
