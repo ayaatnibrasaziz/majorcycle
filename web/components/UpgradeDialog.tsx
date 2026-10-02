@@ -17,6 +17,8 @@ import { StartTrialModal } from '@/components/account/StartTrialModal';
 import { SupportDialog } from '@/components/SupportDialog';
 import type { BillingCurrency } from '@/lib/stripe';
 import { PREMIUM_UNLOCKS } from '@/lib/pricing';
+import { DENIAL_COPY } from '@/lib/denialCopy';
+import type { AccessDenialReason } from '@/lib/entitlement';
 
 /**
  * The one place a locked feature explains itself (F3 Step 10, owner-requested).
@@ -110,6 +112,8 @@ interface BillingContext {
   hasSubscription: boolean;
   /** Dispute lock. Outranks everything else — see the `blocked` branch below. */
   billingBlocked: boolean;
+  /** Why this reader is locked (lib/entitlement.ts), so the window can say so. */
+  reason: AccessDenialReason | null;
   /** Prefill the support dialog so a locked reader doesn't retype what we hold. */
   email: string | null;
   displayName: string | null;
@@ -164,6 +168,19 @@ export function UpgradeDialog({
   // refuse at the till — and the reader would be left guessing why a paid-up plan
   // stopped working. Say it plainly and point at the one action that helps.
   const blocked = ctx?.billingBlocked === true;
+
+  // ⚠️ Why THIS reader is locked (beta review D-4, owner-approved design 2026-10-03).
+  // Until then a former subscriber, or a customer whose card had failed, got the
+  // stranger's pitch — "Start free trial" — with no word about what had happened. The
+  // sentences are the Run / Results lock pages' own (lib/denialCopy.ts).
+  const reason = !blocked ? (ctx?.reason ?? null) : null;
+  const denial = reason ? DENIAL_COPY[reason] : null;
+  const listTitle =
+    reason === 'canceled'
+      ? 'Resubscribing brings back'
+      : reason === 'payment_failed'
+        ? 'Updating your card brings back'
+        : 'A subscription also includes';
 
   // Belt and braces alongside the mount-time fetch: if the answer somehow hasn't
   // arrived by the time the dialog opens, show nothing that presumes an answer. The
@@ -222,8 +239,19 @@ export function UpgradeDialog({
             </div>
           ) : (
             <div className="p-5">
+              {denial && (
+                <div
+                  className={`mb-4 rounded-[var(--radius-sm)] border px-3 py-2.5 text-[12.5px] leading-relaxed ${
+                    reason === 'payment_failed'
+                      ? 'border-[var(--status-danger-tint-strong)] bg-[var(--status-danger-tint)] text-[var(--status-danger-ink)]'
+                      : 'border-[var(--brand-light-border)] bg-[var(--brand-light)] text-[var(--brand-deep)]'
+                  }`}
+                >
+                  <strong>{denial.title}.</strong> {denial.body}
+                </div>
+              )}
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--text-muted)]">
-                A subscription also includes
+                {listTitle}
               </p>
               <ul className="flex flex-col gap-2.5">
                 {UNLOCKS.map((line) => (
@@ -284,13 +312,27 @@ export function UpgradeDialog({
                   Checking your plan…
                 </Button>
               )
+            ) : reason === 'payment_failed' ? (
+              // Stripe's billing page, where the card is changed — the same plain form
+              // POST as the Account page and the payment banner. Checkout would refuse
+              // this account: it already has a plan.
+              <form action="/api/portal" method="post">
+                <Button type="submit" variant="primary" className="w-full">
+                  Update card
+                </Button>
+              </form>
+            ) : reason === 'setup_incomplete' || reason === 'subscription_paused' ? (
+              // Both sentences send the reader to the Account page, so the button does.
+              <Button asChild variant="primary">
+                <Link href="/account">Go to your account</Link>
+              </Button>
             ) : ctx.hasSubscription ? (
               <Button asChild variant="primary">
                 <Link href="/account">Manage your plan</Link>
               </Button>
             ) : (
               <Button variant="primary" onClick={handleContinue}>
-                {ctx.trialUsed ? 'Subscribe' : 'Start free trial'}
+                {reason === 'canceled' ? 'Resubscribe' : ctx.trialUsed ? 'Subscribe' : 'Start free trial'}
               </Button>
             )}
           </DialogFooter>

@@ -74,3 +74,15 @@ export function safeNextPath(next?: string | null): string {
   }
   return next;
 }
+
+/**
+ * The address to come back to after signing in: the path AND its query (beta review
+ * D-10). A query too long to be a real page's is dropped and the path kept — the
+ * reader still lands on the right page, and the sign-in URL stays a sane length.
+ * The result is still only a suggestion; `safeNextPath` decides whether it is used.
+ */
+export const MAX_RETURN_QUERY = 1024;
+
+export function returnPath(pathname: string, search: string): string {
+  return search && search.length <= MAX_RETURN_QUERY ? `${pathname}${search}` : pathname;
+}

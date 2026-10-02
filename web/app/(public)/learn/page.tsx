@@ -112,7 +112,7 @@ export default function LearnIndexPage() {
                 .filter(Boolean)
                 .join(' ')}
             >
-              <ThemeImage theme={theme} />
+              <ThemeImage theme={theme} index={i} />
 
               <div
                 className={
@@ -296,8 +296,13 @@ export default function LearnIndexPage() {
  * on a retina screen and slightly soft on an ordinary one. `sizes` is a promise
  * about the LARGEST box the image can occupy, so it takes the wider column.
  */
-function ThemeImage({ theme }: { theme: LearnThemeMeta }) {
+function ThemeImage({ theme, index }: { theme: LearnThemeMeta; index: number }) {
   if (!theme.image) return null;
+  // ⚠️ The first two pictures are on screen as the page opens (beta review A-31: Next
+  // reported each as the page's largest paint, at different widths), so they must not
+  // wait to be lazy-loaded. The first is the main one and is fetched first; the third
+  // is below the fold and stays lazy.
+  const eager = index < 2;
 
   return (
     <div className="overflow-hidden rounded-[var(--radius)] border border-[var(--border)]">
@@ -308,6 +313,8 @@ function ThemeImage({ theme }: { theme: LearnThemeMeta }) {
         height={1000}
         sizes="(min-width: 600px) 560px, 100vw"
         className="h-auto w-full"
+        loading={eager ? 'eager' : 'lazy'}
+        fetchPriority={index === 0 ? 'high' : 'auto'}
       />
     </div>
   );

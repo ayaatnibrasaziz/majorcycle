@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import { Header } from '@/components/Header';
+import { PaymentBanner } from '@/components/PaymentBanner';
 import { Sidebar, SidebarBody } from '@/components/Sidebar';
 import { UpgradeDialog } from '@/components/UpgradeDialog';
 import {
@@ -13,6 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { AnalysisProvider } from '@/lib/analysis';
+import type { PaymentBanner as PaymentBannerState } from '@/lib/entitlement';
 import { SHELL_DESKTOP_MIN_PX } from '@/lib/shell';
 
 /**
@@ -40,6 +42,7 @@ export function AppShell({
   subscriptionStatus,
   entitled = false,
   billingBlocked = false,
+  payment = null,
   children,
 }: {
   /** Scopes the screener results this browser keeps (lib/analysis.tsx). */
@@ -49,6 +52,8 @@ export function AppShell({
   subscriptionStatus?: string | null;
   entitled?: boolean;
   billingBlocked?: boolean;
+  /** A failed payment to warn about — `paymentBanner()` in lib/entitlement.ts. */
+  payment?: PaymentBannerState | null;
   children: React.ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(false);
@@ -186,6 +191,7 @@ export function AppShell({
         className="min-[768px]:ml-[var(--sidebar-w)] mt-[var(--header-h)] p-6 min-h-[calc(100vh-var(--header-h))]"
         id="main-content"
       >
+        {payment && <PaymentBanner state={payment} />}
         {/* Disclaimer strip — required on all authenticated pages (#4, #12). */}
         <div className="mb-4 px-3 py-2 bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[var(--radius-sm)] text-[11px] text-[var(--text-muted)] italic">
           ⚠ For educational and research purposes only. Not financial advice.

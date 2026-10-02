@@ -45,6 +45,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        {/* First thing a keyboard reaches on every page, and invisible until it does:
+            jumps past the header and menu (WCAG 2.4.1; beta review A-8). Both shells
+            give their <main> this id — the signed-in AppShell and the public layout. */}
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
         {children}
         {/*
           Real-user performance, and the ONLY instrument that can answer decision #33.

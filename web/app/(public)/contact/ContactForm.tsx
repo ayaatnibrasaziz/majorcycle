@@ -81,7 +81,7 @@ export function ContactForm({
           minLength={2}
           maxLength={80}
           placeholder="Your name"
-          defaultValue={defaultName}
+          defaultValue={state.values?.name ?? defaultName}
         />
       </div>
 
@@ -95,7 +95,7 @@ export function ContactForm({
           required
           maxLength={254}
           placeholder="you@example.com"
-          defaultValue={defaultEmail}
+          defaultValue={state.values?.email ?? defaultEmail}
         />
       </div>
 
@@ -109,6 +109,7 @@ export function ContactForm({
           maxLength={4000}
           rows={5}
           placeholder="How can we help?"
+          defaultValue={state.values?.message ?? ''}
           className="flex w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2.5 text-[13px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] shadow-[var(--shadow-sm)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-mid)] focus-visible:border-[var(--brand-mid)] resize-y leading-relaxed"
         />
       </div>

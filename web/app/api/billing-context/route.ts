@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
 import { hasUsedTrial } from '@/lib/trialGuard';
+import { accessDenialReason } from '@/lib/entitlement';
 
 /**
  * What the upgrade dialog needs to offer the RIGHT thing to THIS reader (F3 Step 10).
@@ -34,11 +35,14 @@ export async function GET() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('country, subscription_status, billing_blocked, display_name')
+    .select('country, subscription_status, grace_until, billing_blocked, display_name')
     .eq('id', user.id)
     .single();
 
   const hasSubscription = ACTIVE_STATES.has(profile?.subscription_status ?? '');
+  // Why this reader is locked, so the Stock Detail lock window can say so (beta review
+  // D-4) — the same rule the Run / Results lock pages use. NULL for an entitled reader.
+  const reason = accessDenialReason(profile ?? null);
   // Surfaced so a locked feature can say WHY it's locked. A disputed account must
   // never be shown an upsell: /api/checkout 403s it anyway, so offering a plan would
   // be an offer we refuse at the till.
@@ -60,6 +64,7 @@ export async function GET() {
       trialUsed,
       hasSubscription,
       billingBlocked,
+      reason,
       // Prefill the in-place support dialog, so the lock path matches the account
       // page rather than asking a signed-in reader who they are.
       email: user.email ?? null,

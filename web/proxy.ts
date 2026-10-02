@@ -8,6 +8,7 @@ import { turnstileCspOrigin } from '@/lib/turnstile';
 import { accessDenialReason, hasAccess } from '@/lib/entitlement';
 import { INTERNAL_HEADER, hasInternalSecret } from '@/lib/internalAuth';
 import { PUBLIC_ENDPOINTS, PUBLIC_PAGES } from '@/lib/seo';
+import { POST_AUTH_HOME, returnPath, safeNextPath } from '@/lib/url';
 import { SITE_ORIGIN } from '@/lib/url';
 import { clientIp, isTorExit } from '@/lib/torExits';
 
@@ -230,7 +231,12 @@ export async function proxy(request: NextRequest) {
 
   if (!userId && !isPublicPath) {
     const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('next', pathname);
+    // ⚠️ The WHOLE address, query included (beta review D-10, 2026-10-03). Only the
+    // path was kept, so `/stocks/us/NVDA?preset=long` came back as the Medium page and
+    // a return from checkout lost the `session_id` that confirms the payment. It is
+    // still only a suggestion: every reader of `next` passes it through
+    // `safeNextPath` (lib/url.ts), which refuses anything that leaves this site.
+    loginUrl.searchParams.set('next', returnPath(pathname, request.nextUrl.search));
     // Same rule as the 401/402 below, and for the same reason: whether this bounce
     // happens at all depends on the caller's session, so it is a per-viewer answer.
     // Found while closing live-check Session 3's finding A — the two billing routes
@@ -323,7 +329,15 @@ export async function proxy(request: NextRequest) {
     // Per-viewer for the same reason as the bounce above: /login answers a signed-in
     // caller with a redirect and a signed-out one with the page. A shared cache keyed
     // on the URL alone could not tell them apart.
-    return send(NextResponse.redirect(new URL('/stocks', request.url), { headers: NO_STORE }));
+    //
+    // A sign-in link carrying `?next=` was followed by someone ALREADY signed in: take
+    // them where the link was going rather than to Browse (beta review A-7). Same guard
+    // as every other reader of `next`; anything it refuses becomes /stocks, as before.
+    const target =
+      pathname === '/login' || pathname === '/signup'
+        ? safeNextPath(request.nextUrl.searchParams.get('next'))
+        : POST_AUTH_HOME;
+    return send(NextResponse.redirect(new URL(target, request.url), { headers: NO_STORE }));
   }
 
   // The deletion confirmation is for ONE reader: the person whose browser just

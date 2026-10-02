@@ -439,8 +439,8 @@ test.describe('the promises in the legal pages match the running code', () => {
    *
    * These specs are required to be pure and credential-free so they run on a fork
    * PR (see the file header), and importing app code reaches straight past that.
-   * `GRACE_DAYS` could not have been imported in any case — it is module-local
-   * inside the Stripe webhook route.
+   * (`GRACE_DAYS` was module-local inside the Stripe webhook route until 2026-10-03;
+   * it now lives in `lib/billing/grace.ts`, and is read from there the same way.)
    *
    * The cost of reading source text is that a rename becomes a silent no-match, so
    * every extraction asserts it actually matched. A guard that quietly stops
@@ -461,7 +461,8 @@ test.describe('the promises in the legal pages match the running code', () => {
 
   const freeViewDailyLimit = () => constantFrom('lib/freeViews.ts', 'FREE_VIEW_DAILY_LIMIT');
   const deletionGraceDays = () => constantFrom('lib/account.ts', 'ACCOUNT_DELETION_GRACE_DAYS');
-  const dunningGraceDays = () => constantFrom('app/api/stripe/webhook/route.ts', 'GRACE_DAYS');
+  // Moved out of the webhook route on 2026-10-03, when the account card needed it too.
+  const dunningGraceDays = () => constantFrom('lib/billing/grace.ts', 'GRACE_DAYS');
 
   const bodyText = async (page: Page, path: string): Promise<string> => {
     await page.goto(path);

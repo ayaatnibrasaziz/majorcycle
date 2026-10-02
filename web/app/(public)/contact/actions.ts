@@ -38,7 +38,19 @@ function escapeHtml(value: string): string {
 export type ContactState = {
   status: 'idle' | 'success' | 'error' | 'unconfigured';
   message?: string;
+  /**
+   * What the reader typed, handed back with an error so the form can put it back.
+   * ⚠️ React clears a form after its action runs, so an error used to wipe the whole
+   * message (beta review A-21). Only ever returned to the person who sent it.
+   */
+  values?: { name: string; email: string; message: string };
 };
+
+/** The three fields as typed (capped like the inputs), for an error to hand back. */
+function typed(formData: FormData): NonNullable<ContactState['values']> {
+  const raw = (k: string, max: number) => String(formData.get(k) ?? '').slice(0, max);
+  return { name: raw('name', 80), email: raw('email', 254), message: raw('message', MESSAGE_MAX) };
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -78,6 +90,7 @@ export async function sendContact(
       status: 'error',
       message:
         'Please add your name, a valid email, and a message of at least 10 characters.',
+      values: typed(formData),
     };
   }
 
@@ -138,6 +151,7 @@ export async function sendContact(
       return {
         status: 'error',
         message: 'Something went wrong sending your message. Please try again shortly.',
+        values: typed(formData),
       };
     }
 
@@ -147,6 +161,7 @@ export async function sendContact(
     return {
       status: 'error',
       message: 'Something went wrong sending your message. Please try again shortly.',
+      values: typed(formData),
     };
   }
 }

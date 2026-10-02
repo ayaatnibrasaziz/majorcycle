@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { KeyRound } from 'lucide-react';
@@ -6,10 +7,12 @@ import { KeyRound } from 'lucide-react';
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { hasAccess } from '@/lib/entitlement';
 import { reconcileCheckoutSession } from '@/lib/billing/reconcileCheckout';
-import { currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
+import { fillNextCharge, nextChargeAction } from '@/lib/billing/sync';
+import { TRIAL_PERIOD_DAYS, currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
 import { hasUsedTrial } from '@/lib/trialGuard';
 import { ProfileForm } from '@/components/account/ProfileForm';
-import { SubscriptionCard } from '@/components/account/SubscriptionCard';
+import { SubscriptionCard, type NoticeTone } from '@/components/account/SubscriptionCard';
+import { LocalDate } from '@/components/LocalDate';
 import { PasswordForm } from '@/components/account/PasswordForm';
 import { ReferAFriendCard } from '@/components/account/ReferAFriendCard';
 import { DeleteAccountCard } from '@/components/account/DeleteAccountCard';
@@ -39,9 +42,13 @@ const CHECKOUT_NOTICE: Record<string, string> = {
 // sentence directly above a card reading "NO PLAN" — and it did so precisely in the
 // case the reconciler exists for (Stripe slow or erroring AND the webhook not yet
 // arrived). Telling a paying customer both at once is worse than either alone.
+//
+// ⚠️ And it depends on WHICH plan landed (beta review D-2, 2026-10-03): a free trial
+// charges nothing, so "Payment received" told a trial customer they had paid. The
+// message now follows the status the card below will show.
 const CHECKOUT_SUCCESS_NOTICE = 'Payment received — your plan is set up below.';
 const CHECKOUT_SUCCESS_PENDING_NOTICE =
-  'Payment received. We’re still setting your plan up — refresh in a few seconds and it’ll appear. Nothing further is needed from you.';
+  'Setting up your plan. Refresh in a few seconds and it’ll appear. Nothing further is needed from you.';
 
 // Friendly messages for a return from /api/portal that couldn't open the portal.
 const BILLING_NOTICE: Record<string, string> = {
@@ -82,10 +89,24 @@ export default async function AccountPage({
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'display_name, country, subscription_status, subscription_plan, trial_ends_at, cancel_at_period_end, current_period_end, billing_blocked, grace_until'
+      'display_name, country, subscription_status, subscription_plan, trial_ends_at, cancel_at_period_end, current_period_end, billing_blocked, grace_until, stripe_subscription_id, next_charge_amount, next_charge_currency'
     )
     .eq('id', user.id)
     .single();
+
+  // Stripe's own figure for the next charge (lib/billing/sync.ts). Normally stored on
+  // every Stripe change; filled in here, once, when a renewing plan has none yet.
+  let nextCharge =
+    profile?.next_charge_amount != null && profile.next_charge_currency
+      ? { amount: profile.next_charge_amount, currency: profile.next_charge_currency }
+      : null;
+  if (
+    !nextCharge &&
+    profile?.stripe_subscription_id &&
+    nextChargeAction(profile.subscription_status, profile.cancel_at_period_end ?? false) === 'preview'
+  ) {
+    nextCharge = await fillNextCharge(createAdminClient(), user.id, profile.stripe_subscription_id);
+  }
 
   // `grace_until` is selected purely so the Subscription card can tell the two
   // halves of `past_due` apart. Without it the card read the status alone and told a
@@ -98,18 +119,36 @@ export default async function AccountPage({
   // Either half is enough: the reconciler provisioned it, or the webhook already had.
   // Otherwise the payment is confirmed but provisioning is still in flight, and we say
   // exactly that rather than pointing at a card that reads "No plan".
-  const checkoutNotice =
-    checkout === 'success'
-      ? reconciled || profile?.subscription_status
-        ? CHECKOUT_SUCCESS_NOTICE
-        : CHECKOUT_SUCCESS_PENDING_NOTICE
-      : null;
+  const liveStatus = profile?.subscription_status ?? null;
+  let checkoutNotice: ReactNode = null;
+  let noticeTone: NoticeTone = 'warning';
+  if (checkout === 'success') {
+    if (liveStatus === 'trialing') {
+      noticeTone = 'info';
+      checkoutNotice = profile?.trial_ends_at ? (
+        <>
+          <b>Your {TRIAL_PERIOD_DAYS}-day free trial has started.</b> You won’t be charged
+          until <LocalDate iso={profile.trial_ends_at} fallback="the trial ends" />.
+        </>
+      ) : (
+        <b>Your {TRIAL_PERIOD_DAYS}-day free trial has started.</b>
+      );
+    } else if (liveStatus === 'active') {
+      noticeTone = 'success';
+      checkoutNotice = CHECKOUT_SUCCESS_NOTICE;
+    } else if (!liveStatus && !reconciled) {
+      noticeTone = 'info';
+      checkoutNotice = CHECKOUT_SUCCESS_PENDING_NOTICE;
+    }
+    // Cancelled / lapsed / past-due: nothing to celebrate — the card says what is true.
+  }
 
-  const notice =
+  const notice: ReactNode =
     checkoutNotice ||
     (checkout && CHECKOUT_NOTICE[checkout]) ||
     (billing && BILLING_NOTICE[billing]) ||
     null;
+  if (!checkoutNotice && notice) noticeTone = 'warning';
 
   const email = user.email ?? '';
   const hasPasswordIdentity =
@@ -169,6 +208,10 @@ export default async function AccountPage({
           entitled={entitled}
           displayName={profile?.display_name ?? ''}
           email={email}
+          nextChargeAmount={nextCharge?.amount ?? null}
+          nextChargeCurrency={nextCharge?.currency ?? null}
+          graceUntil={profile?.grace_until ?? null}
+          noticeTone={noticeTone}
         />
 
         {hasPasswordIdentity ? (

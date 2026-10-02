@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 
+import { GRACE_DAYS } from '@/lib/billing/grace';
 import { reportIssue } from '@/lib/observability';
 import { getStripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
   customerId,
+  nextChargeFromInvoice,
   refId,
   resolveUserId,
   syncSubscription,
@@ -55,7 +57,7 @@ import {
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const GRACE_DAYS = 3;
+// GRACE_DAYS lives in lib/billing/grace.ts: the account card and the Terms read it too.
 
 // The subscription→profile write, its helpers and EventContext now live in
 // lib/billing/sync.ts, because the checkout landing page reconciles through the SAME
@@ -123,6 +125,10 @@ async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<Eve
       trial_ends_at: null,
       grace_until: null,
       cancel_at_period_end: false,
+      // Nothing more will be charged.
+      next_charge_amount: null,
+      next_charge_currency: null,
+      next_charge_at: null,
     })
     .eq('id', userId)
     .or(`stripe_subscription_id.eq.${sub.id},stripe_subscription_id.is.null`);
@@ -271,9 +277,23 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       }
       // Reflect past_due (agrees with the subscription.updated event; ordering-safe), for
       // the current sub only.
+      // The amount that FAILED, for the account card's "Payment failed: A$19.00" row.
+      // `syncSubscription` leaves these alone while past_due (nextChargeAction 'keep'),
+      // so a subscription.updated arriving either side of this cannot replace it with
+      // the next period's figure.
+      const failed = nextChargeFromInvoice(invoice);
       await admin
         .from('profiles')
-        .update({ subscription_status: 'past_due' })
+        .update({
+          subscription_status: 'past_due',
+          ...(failed
+            ? {
+                next_charge_amount: failed.amount,
+                next_charge_currency: failed.currency,
+                next_charge_at: failed.at,
+              }
+            : {}),
+        })
         .eq('id', userId)
         .eq('stripe_subscription_id', subscriptionId);
       // Anchor grace on the FIRST failure only: grace_until is the single-owner dunning

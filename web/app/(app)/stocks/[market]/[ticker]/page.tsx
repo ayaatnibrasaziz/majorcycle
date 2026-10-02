@@ -35,6 +35,7 @@ import { benchmarkSinceFor } from '@/lib/benchmarks';
 import { sectionHeading, type StockSectionId } from '@/lib/stockSections';
 import { fetchCycleAnalysis, type CycleSpec } from '@/lib/cycle';
 import { getViewerEntitlement } from '@/lib/entitlement.server';
+import { shouldShowOnboarding } from '@/lib/entitlement';
 import {
   peHistoryUnavailableReason,
   reportingCurrencyNote,
@@ -335,6 +336,13 @@ export default async function StockDetailPage({
   // counted at all — locked decision #18 promises them no usage limits — so this
   // whole block is skipped when entitled. Re-opening a stock seen earlier today is
   // free, which is what makes a refresh or a prefetch harmless. See lib/freeViews.ts.
+  //
+  // ⚠️ NOT while the first-login screen is up (beta review A-23, measured 2026-10-03:
+  // opening MSFT behind it used a view). The app layout shows that screen INSTEAD of
+  // this page, but Next renders the layout and the page together, so the page was
+  // counting a view the reader never saw. Same rule the layout uses, so the two
+  // cannot disagree about whether the screen is showing.
+  if (shouldShowOnboarding(viewer)) return null;
   if (!entitled && viewer.userId) {
     const view = await recordFreeView(viewer.userId, stored);
     if (!view.allowed) return <FreeViewLimitNotice limit={view.limit} />;

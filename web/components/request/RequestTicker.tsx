@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Search, Plus, Check, Clock, Loader2, X } from 'lucide-react';
+import { AlertCircle, Search, Plus, Check, Clock, Loader2, X } from 'lucide-react';
 
 import { marketLabel, tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { ListingHit, RequestStatus, TickerRequest } from '@/lib/types';
@@ -26,7 +26,9 @@ export function RequestTicker({ initialRecent }: { initialRecent: TickerRequest[
   const [searching, setSearching] = useState(false);
   const [pending, setPending] = useState<Set<string>>(new Set());
   const [recent, setRecent] = useState<TickerRequest[]>(initialRecent ?? []);
-  const [notice, setNotice] = useState<string | null>(null);
+  // ⚠️ Success and failure are told apart (beta review E-12): a failed request used to
+  // show in the same blue box with the same tick as a successful one.
+  const [notice, setNotice] = useState<{ text: string; ok: boolean } | null>(null);
 
   // Plain helper (called from event handlers, not an effect) — refreshes the
   // recent list after a request. setState runs only after the await.
@@ -101,16 +103,17 @@ export function RequestTicker({ initialRecent }: { initialRecent: TickerRequest[
         setHits((hs) =>
           hs.map((h) => (h.symbol === symbol ? { ...h, requestStatus: 'queued' } : h)),
         );
-        setNotice(
-          `${tickerToUrlParts(symbol).symbol} requested — it’ll be available after our next daily update (within ~24h).`,
-        );
+        setNotice({
+          text: `${tickerToUrlParts(symbol).symbol} requested — it’ll be available after our next daily update (within ~24h).`,
+          ok: true,
+        });
         void loadRecent();
       } else {
         const json = (await res.json().catch(() => null)) as { error?: string } | null;
-        setNotice(json?.error ?? 'Could not queue that ticker. Please try again.');
+        setNotice({ text: json?.error ?? 'Could not queue that ticker. Please try again.', ok: false });
       }
     } catch {
-      setNotice('Could not queue that ticker. Please try again.');
+      setNotice({ text: 'Could not queue that ticker. Please try again.', ok: false });
     } finally {
       setPending((p) => {
         const n = new Set(p);
@@ -162,9 +165,16 @@ export function RequestTicker({ initialRecent }: { initialRecent: TickerRequest[
         </p>
 
         {notice && (
-          <div className="req-notice" role="status">
-            <Check className="h-3.5 w-3.5 shrink-0" />
-            <span>{notice}</span>
+          <div
+            className={notice.ok ? 'req-notice' : 'req-notice req-notice--error'}
+            role={notice.ok ? 'status' : 'alert'}
+          >
+            {notice.ok ? (
+              <Check className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            ) : (
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            )}
+            <span>{notice.text}</span>
             <button type="button" className="req-notice-x" onClick={() => setNotice(null)} aria-label="Dismiss">
               <X className="h-3 w-3" />
             </button>

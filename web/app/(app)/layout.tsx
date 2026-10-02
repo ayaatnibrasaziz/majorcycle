@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { shouldShowOnboarding } from '@/lib/entitlement';
+import { paymentBanner, shouldShowOnboarding } from '@/lib/entitlement';
 import { getViewerEntitlement } from '@/lib/entitlement.server';
 import { AppShell } from '@/components/AppShell';
 import { OnboardingModal } from '@/components/OnboardingModal';
@@ -77,6 +77,7 @@ export default async function AppLayout({
       subscriptionStatus={viewer.subscriptionStatus}
       entitled={viewer.entitled}
       billingBlocked={viewer.billingBlocked}
+      payment={paymentBanner(viewer)}
     >
       {children}
     </AppShell>

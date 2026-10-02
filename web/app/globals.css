@@ -2930,6 +2930,72 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 .result-card-band.band-ratios { background: var(--band-ratios-bg); color: var(--band-ratios-ink); }
 .result-card-band.band-health { background: var(--band-health-bg); color: var(--band-health-ink); }
 
+/* "Skip to main content" — off screen until a keyboard focuses it (app/layout.tsx). */
+.skip-link {
+  position: fixed; left: 12px; top: -60px; z-index: 1000;
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--brand-deep); color: #fff; font: 700 12px 'Sora', sans-serif;
+  text-decoration: none; transition: top .12s;
+}
+.skip-link:focus { top: 12px; outline: 2px solid var(--brand-bright); outline-offset: 2px; }
+
+/* The failed-payment banner at the top of every signed-in page (components/PaymentBanner).
+   Amber while access continues (the grace window), red once it is paused. */
+.payment-banner {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px;
+  padding: 10px 12px; border: 1px solid; border-radius: var(--radius-sm);
+  font-size: 13px; line-height: 1.5;
+}
+.payment-banner--grace {
+  background: var(--status-warning-tint); border-color: var(--status-warning-tint-strong); color: var(--status-warning-ink);
+}
+.payment-banner--paused {
+  background: var(--status-danger-tint); border-color: var(--status-danger-tint-strong); color: var(--status-danger-ink);
+}
+.payment-banner-icon { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+.payment-banner-text { margin: 0; flex: 1; min-width: 0; }
+.payment-banner-action { flex-shrink: 0; }
+.payment-banner-btn {
+  height: 32px; padding: 0 14px; border-radius: var(--radius-sm); cursor: pointer;
+  background: var(--bg-surface); border: 1px solid var(--border-strong);
+  font: 700 12px 'Sora', sans-serif; color: var(--brand-deep); white-space: nowrap;
+}
+.payment-banner-btn:hover { border-color: var(--brand-bright); color: var(--brand-mid); }
+@media (max-width: 639.98px) {
+  .payment-banner { flex-wrap: wrap; }
+  .payment-banner-action { flex-basis: 100%; padding-left: 28px; }
+  .payment-banner-btn { height: 36px; }
+}
+
+/* Account → Subscription: the plan box (owner-approved design, 2026-10-03). Three
+   fixed parts — name + pill, a label/value list, a footer with one sentence and one
+   button — so nothing moves when the wording changes length. */
+.sub-plan {
+  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  background: var(--bg-surface);
+}
+.sub-plan-top {
+  display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sub-plan-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.sub-plan-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.sub-plan-rows { margin: 0; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.sub-plan-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); column-gap: 16px; align-items: baseline; }
+.sub-plan-row dt { font-size: 12px; color: var(--text-muted); }
+.sub-plan-row dd { margin: 0; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.sub-plan-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 16px; border-top: 1px solid var(--border); background: var(--bg-stripe);
+}
+.sub-plan-foot > p { margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.55; }
+.sub-plan-foot > :last-child { flex-shrink: 0; }
+@media (max-width: 639.98px) {
+  .sub-plan-row { grid-template-columns: 110px minmax(0, 1fr); }
+  .sub-plan-foot { flex-direction: column; align-items: stretch; }
+  .sub-plan-foot > :last-child, .sub-plan-foot > :last-child button { width: 100%; }
+}
+
 /* Empty states */
 .results-empty {
   text-align: center; padding: 48px 20px; border: 1px dashed var(--border);
@@ -2977,6 +3043,10 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
    been measured by anything we own (CLAUDE.md 14g). The colour was always fine —
    brand-mid is 6.49 on white — and the fade was the whole defect (11q). */
 .req-notice-x { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--brand-mid); }
+.req-notice--error {
+  background: var(--status-danger-tint); border-color: var(--status-danger-tint-strong); color: var(--status-danger-ink);
+}
+.req-notice--error .req-notice-x { color: var(--status-danger-ink); }
 .req-notice-x:hover { opacity: 1; }
 
 .req-empty { margin-top: 12px; font-size: 12px; color: var(--text-muted); font-style: italic; }

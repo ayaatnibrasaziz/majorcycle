@@ -138,6 +138,8 @@ export interface ViewerEntitlement {
   /** Present so callers needing onboarding state don't re-query. */
   acknowledgedDisclaimerAt: string | null;
   subscriptionStatus: string | null;
+  /** End of the payment-failure grace window, for the in-app warning's deadline. */
+  graceUntil: string | null;
   /**
    * Dispute lock. Exposed separately from `subscriptionStatus` because it is an
    * orthogonal dimension — a disputed account keeps its Stripe status — and any
@@ -169,6 +171,7 @@ export const SIGNED_OUT_VIEWER: ViewerEntitlement = {
   deletionScheduled: false,
   acknowledgedDisclaimerAt: null,
   subscriptionStatus: null,
+  graceUntil: null,
   billingBlocked: false,
   email: null,
   displayName: null,
@@ -222,11 +225,33 @@ export function viewerFromProfileRead(
     deletionScheduled: !!profile.deletion_scheduled_at,
     acknowledgedDisclaimerAt: profile.acknowledged_disclaimer_at ?? null,
     subscriptionStatus: profile.subscription_status ?? null,
+    graceUntil: profile.grace_until ?? null,
     billingBlocked: !!profile.billing_blocked,
     email: profile.email ?? null,
     displayName: profile.display_name ?? null,
     profileUnreadable: false,
   };
+}
+
+/**
+ * The payment warning at the top of every signed-in page (beta review D-1, owner-approved
+ * design 2026-10-03). Until then a failed card changed only a small sidebar label, with
+ * no date and no action, so a customer could lose access without knowing why.
+ *
+ * - `grace`: the payment failed but access continues until `until` (decision #20);
+ * - `paused`: the grace window has closed and premium is locked;
+ * - null: nothing to say. A disputed account (`billingBlocked`) is excluded on purpose:
+ *   updating a card cannot lift a dispute, so this banner would point at the wrong fix.
+ */
+export type PaymentBanner = { kind: 'grace'; until: string | null } | { kind: 'paused' };
+
+export function paymentBanner(viewer: ViewerEntitlement): PaymentBanner | null {
+  if (!viewer.userId || viewer.billingBlocked || viewer.profileUnreadable) return null;
+  if (viewer.entitled && viewer.subscriptionStatus === 'past_due') {
+    return { kind: 'grace', until: viewer.graceUntil };
+  }
+  if (!viewer.entitled && viewer.reason === 'payment_failed') return { kind: 'paused' };
+  return null;
 }
 
 /**

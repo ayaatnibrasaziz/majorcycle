@@ -18,8 +18,7 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
-  useState,
+  useSyncExternalStore,
 } from 'react';
 
 import { toCamel } from '@/lib/case';
@@ -370,6 +369,77 @@ async function writeRun(req: AnalyzeRequest, meta: RunMeta, partial: boolean): P
   }
 }
 
+/*
+ * ⚠️ THE RUN'S STATE LIVES HERE, IN THE TAB — NOT IN THE PROVIDER (owner, 2026-10-03).
+ *
+ * The provider wraps only the signed-in pages. Moving to a public page (Pricing,
+ * Learn) unmounts it, and while it held this state in `useState` the run lost its
+ * screen: the work carried on in the background and finished, but returning showed
+ * "your last run did not finish" about a run that had. The public and signed-in pages
+ * share one root layout, so the tab's JavaScript survives that move; keeping the state
+ * at module level means a remounted provider reconnects to the live run — progress
+ * still moving, or the results there. Only a reload or a closed tab ends a run now,
+ * and the provider warns before either while one is going (`beforeunload`, below).
+ *
+ * Module state is per TAB, so two tabs still run independently, and a full reload
+ * starts it empty — exactly the cases sessionStorage / localStorage already cover.
+ */
+interface RunStore {
+  results: RunResult[];
+  unavailable: string[];
+  params: AnalyzeRequest | null;
+  runMeta: RunMeta | null;
+  progress: RunProgress;
+  lastRun: AnalysisRunRecord | null;
+  lapsed: boolean;
+  interrupted: InterruptedRun | null;
+}
+
+const EMPTY_STORE: RunStore = {
+  results: [],
+  unavailable: [],
+  params: null,
+  runMeta: null,
+  progress: EMPTY_PROGRESS,
+  lastRun: null,
+  lapsed: false,
+  interrupted: null,
+};
+
+let store: RunStore = EMPTY_STORE;
+const storeListeners = new Set<() => void>();
+/** The run in flight in this tab, if any — what Cancel aborts. */
+let activeRun: AbortController | null = null;
+/** Which account this tab has already read its stored run for (`undefined` = not yet). */
+let hydratedFor: string | null | undefined;
+
+function subscribeStore(listener: () => void): () => void {
+  storeListeners.add(listener);
+  return () => storeListeners.delete(listener);
+}
+const readStore = () => store;
+const readServerStore = () => EMPTY_STORE;
+
+/** A `useState`-shaped setter for one field of the tab's run store. */
+function storeSetter<K extends keyof RunStore>(key: K) {
+  return (next: RunStore[K] | ((prev: RunStore[K]) => RunStore[K])) => {
+    const value =
+      typeof next === 'function' ? (next as (prev: RunStore[K]) => RunStore[K])(store[key]) : next;
+    if (Object.is(value, store[key])) return;
+    store = { ...store, [key]: value };
+    for (const l of storeListeners) l();
+  };
+}
+
+const setResults = storeSetter('results');
+const setUnavailable = storeSetter('unavailable');
+const setParams = storeSetter('params');
+const setRunMeta = storeSetter('runMeta');
+const setProgress = storeSetter('progress');
+const setLastRun = storeSetter('lastRun');
+const setLapsed = storeSetter('lapsed');
+const setInterrupted = storeSetter('interrupted');
+
 export function AnalysisProvider({
   ownerId = null,
   children,
@@ -378,18 +448,23 @@ export function AnalysisProvider({
   ownerId?: string | null;
   children: React.ReactNode;
 }) {
-  const [results, setResults] = useState<RunResult[]>([]);
-  const [unavailable, setUnavailable] = useState<string[]>([]);
-  const [params, setParams] = useState<AnalyzeRequest | null>(null);
-  const [runMeta, setRunMeta] = useState<RunMeta | null>(null);
-  const [progress, setProgress] = useState<RunProgress>(EMPTY_PROGRESS);
-  const [lastRun, setLastRun] = useState<AnalysisRunRecord | null>(null);
-  const [lapsed, setLapsed] = useState(false);
-  const [interrupted, setInterrupted] = useState<InterruptedRun | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  // Read by the cross-tab listener, which must never overwrite a run in progress here.
-  const runningRef = useRef(false);
+  const { results, unavailable, params, runMeta, progress, lastRun, lapsed, interrupted } =
+    useSyncExternalStore(subscribeStore, readStore, readServerStore);
   const lastRunKey = ownerId ? LAST_RUN_PREFIX + ownerId : null;
+
+  // A reload or a closed tab is the one thing that still ends a run, so the browser
+  // asks first while one is going (owner, 2026-10-03). The box is the browser's own;
+  // no site can change its words. Moving between MajorCycle's pages does not trigger
+  // it — the run carries on, above.
+  useEffect(() => {
+    if (!progress.running) return undefined;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [progress.running]);
 
   // Hydrate the live snapshot from sessionStorage AFTER mount (so navigating to
   // /results and back, or a soft reload, keeps the last run visible). This must
@@ -410,6 +485,12 @@ export function AnalysisProvider({
   }, []);
 
   useEffect(() => {
+    // Once per tab per account. A provider remounting after a visit to a public page
+    // finds the run (or its results) still in the store, so there is nothing to read —
+    // and reading would put an older stored run over a newer one in memory.
+    if (hydratedFor === ownerId) return;
+    hydratedFor = ownerId;
+    if (store.progress.running) return;
     const read = (raw: string | null): AnalysisSnapshot | null => {
       if (!raw) return null;
       const snap = JSON.parse(raw) as AnalysisSnapshot;
@@ -419,7 +500,6 @@ export function AnalysisProvider({
       const snap =
         read(sessionStorage.getItem(SNAPSHOT_KEY)) ??
         (lastRunKey ? read(localStorage.getItem(lastRunKey)) : null);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (snap) applySnapshot(snap);
     } catch {
       // Ignore corrupt/unavailable storage.
@@ -443,7 +523,7 @@ export function AnalysisProvider({
   useEffect(() => {
     if (!lastRunKey) return undefined;
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== lastRunKey || !e.newValue || runningRef.current) return;
+      if (e.key !== lastRunKey || !e.newValue || store.progress.running) return;
       try {
         applySnapshot(JSON.parse(e.newValue) as AnalysisSnapshot);
         sessionStorage.setItem(SNAPSHOT_KEY, e.newValue);
@@ -521,7 +601,7 @@ export function AnalysisProvider({
    */
 
   const cancel = useCallback(() => {
-    abortRef.current?.abort();
+    activeRun?.abort();
   }, []);
 
   const clear = useCallback(() => {
@@ -542,11 +622,10 @@ export function AnalysisProvider({
   const run = useCallback(
     async (req: AnalyzeRequest) => {
       const controller = new AbortController();
-      abortRef.current = controller;
+      activeRun = controller;
       const { signal } = controller;
       setLapsed(false);
       setInterrupted(null);
-      runningRef.current = true;
 
       const chunks = chunk(req.tickers, chunkSizeFor(req.tickers.length));
       const startedAt = new Date().toISOString();
@@ -752,7 +831,6 @@ export function AnalysisProvider({
       setResults([...allResults]);
       setUnavailable(finalUnavailable);
       persist({ results: allResults, unavailable: finalUnavailable, params: req, runMeta: finalMeta });
-      runningRef.current = false;
       try {
         sessionStorage.removeItem(RUNNING_KEY);
       } catch {
@@ -765,7 +843,7 @@ export function AnalysisProvider({
         await writeRun(req, finalMeta, finalUnavailable.length > 0);
         await refreshLastRun();
       }
-      abortRef.current = null;
+      activeRun = null;
     },
     [persist, refreshLastRun, ownerId],
   );

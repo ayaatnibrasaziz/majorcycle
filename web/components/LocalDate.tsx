@@ -8,6 +8,13 @@ const DATE_OPTS: Intl.DateTimeFormatOptions = {
   year: 'numeric',
 };
 
+/** "Sat 5 Oct" — for a deadline a few days away, where the weekday matters more. */
+const SHORT_OPTS: Intl.DateTimeFormatOptions = {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+};
+
 // No-op store: the value is read once per mount and never changes afterwards, so
 // there's nothing to subscribe to. useSyncExternalStore is the lint-clean, hydration-
 // safe way to serve a server snapshot (fallback) then a client snapshot (device zone).
@@ -21,6 +28,8 @@ interface LocalDateProps {
    * users aren't blank). Used as the SSR snapshot; the client swaps in the device zone.
    */
   fallback: string;
+  /** `short` = "Sat 5 Oct"; the default is "5 October 2026". */
+  format?: 'long' | 'short';
 }
 
 /**
@@ -30,7 +39,7 @@ interface LocalDateProps {
  * the zone from `profiles.country` (country drives currency, not date display).
  * See docs/coding-standards.md §16 "Date & timezone display".
  */
-export function LocalDate({ iso, fallback }: LocalDateProps) {
+export function LocalDate({ iso, fallback, format = 'long' }: LocalDateProps) {
   const text = useSyncExternalStore(
     noopSubscribe,
     // Client snapshot: device zone (toLocaleDateString with no explicit timeZone).
@@ -38,7 +47,7 @@ export function LocalDate({ iso, fallback }: LocalDateProps) {
       const d = new Date(iso);
       return Number.isNaN(d.getTime())
         ? fallback
-        : d.toLocaleDateString(undefined, DATE_OPTS);
+        : d.toLocaleDateString(undefined, format === 'short' ? SHORT_OPTS : DATE_OPTS);
     },
     // Server snapshot.
     () => fallback,
