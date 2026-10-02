@@ -420,6 +420,18 @@ function subscribeStore(listener: () => void): () => void {
 const readStore = () => store;
 const readServerStore = () => EMPTY_STORE;
 
+/**
+ * A reload or a closed tab is the one thing that still ends a run, so the browser asks
+ * first while one is going (owner, 2026-10-03). The box is the browser's own; no site
+ * can change its words. Moving between MajorCycle's pages does not trigger it — the run
+ * carries on. Attached by the RUN, not by the provider, so it still asks while the
+ * reader is on a public page mid-run (where the provider is not mounted).
+ */
+function warnBeforeLeaving(e: BeforeUnloadEvent): void {
+  e.preventDefault();
+  e.returnValue = '';
+}
+
 /** A `useState`-shaped setter for one field of the tab's run store. */
 function storeSetter<K extends keyof RunStore>(key: K) {
   return (next: RunStore[K] | ((prev: RunStore[K]) => RunStore[K])) => {
@@ -452,19 +464,6 @@ export function AnalysisProvider({
     useSyncExternalStore(subscribeStore, readStore, readServerStore);
   const lastRunKey = ownerId ? LAST_RUN_PREFIX + ownerId : null;
 
-  // A reload or a closed tab is the one thing that still ends a run, so the browser
-  // asks first while one is going (owner, 2026-10-03). The box is the browser's own;
-  // no site can change its words. Moving between MajorCycle's pages does not trigger
-  // it — the run carries on, above.
-  useEffect(() => {
-    if (!progress.running) return undefined;
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [progress.running]);
 
   // Hydrate the live snapshot from sessionStorage AFTER mount (so navigating to
   // /results and back, or a soft reload, keeps the last run visible). This must
@@ -623,6 +622,7 @@ export function AnalysisProvider({
     async (req: AnalyzeRequest) => {
       const controller = new AbortController();
       activeRun = controller;
+      window.addEventListener('beforeunload', warnBeforeLeaving);
       const { signal } = controller;
       setLapsed(false);
       setInterrupted(null);
@@ -828,6 +828,7 @@ export function AnalysisProvider({
       const finalMeta: RunMeta = { ...meta, finishedAt, cancelled: aborted };
       setRunMeta(finalMeta);
       setProgress((p) => ({ ...p, running: false }));
+      window.removeEventListener('beforeunload', warnBeforeLeaving);
       setResults([...allResults]);
       setUnavailable(finalUnavailable);
       persist({ results: allResults, unavailable: finalUnavailable, params: req, runMeta: finalMeta });

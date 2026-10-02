@@ -717,15 +717,19 @@ test.describe('entitlement enforcement across subscription states', () => {
   test('past_due INSIDE grace still promises continued access', async ({ page }) => {
     await setState({ subscription_status: 'past_due', grace_until: iso(2 * DAY) });
     await page.goto('/account');
-    await expect(page.getByText(/update your card to keep access/i)).toBeVisible();
+    // Wording from the owner-approved account card + banner (2026-10-03).
+    await expect(page.getByText(/your access continues until then/i)).toBeVisible();
+    await expect(page.getByText(/to keep full access/i)).toBeVisible();
     await expect(page.getByText(/access is paused/i)).toHaveCount(0);
   });
 
   test('past_due PAST grace says access is paused, never "keep access"', async ({ page }) => {
     await setState({ subscription_status: 'past_due', grace_until: iso(-1 * DAY) });
     await page.goto('/account');
-    await expect(page.getByText(/access is paused/i)).toBeVisible();
-    await expect(page.getByText(/keep access/i)).toHaveCount(0);
+    // Both the card and the banner say it now.
+    await expect(page.getByText(/access is paused/i).first()).toBeVisible();
+    await expect(page.getByText(/keep (full )?access/i)).toHaveCount(0);
+    await expect(page.getByText(/access continues/i)).toHaveCount(0);
   });
 
   // ── Never claim a plan is set up when none is showing ───────────────────────
@@ -737,15 +741,26 @@ test.describe('entitlement enforcement across subscription states', () => {
   }) => {
     await setState({ subscription_status: null });
     await page.goto('/account?checkout=success');
-    await expect(page.getByText(/still setting your plan up/i)).toBeVisible();
+    await expect(page.getByText(/setting up your plan/i)).toBeVisible();
     await expect(page.getByText(/plan is set up below/i)).toHaveCount(0);
+    // Nothing was necessarily charged (a trial charges nothing), so it does not say so.
+    await expect(page.getByText(/payment received/i)).toHaveCount(0);
   });
 
   test('checkout=success with a live plan keeps the confident confirmation', async ({ page }) => {
-    await setState({ subscription_status: 'trialing' });
+    await setState({ subscription_status: 'active' });
     await page.goto('/account?checkout=success');
     await expect(page.getByText(/plan is set up below/i)).toBeVisible();
-    await expect(page.getByText(/still setting your plan up/i)).toHaveCount(0);
+    await expect(page.getByText(/setting up your plan/i)).toHaveCount(0);
+  });
+
+  // A free trial charges nothing, so it must not be told "Payment received" (beta
+  // review D-2, owner-approved wording 2026-10-03).
+  test('checkout=success on a trial says the trial started, not that it paid', async ({ page }) => {
+    await setState({ subscription_status: 'trialing' });
+    await page.goto('/account?checkout=success');
+    await expect(page.getByText(/free trial has started/i)).toBeVisible();
+    await expect(page.getByText(/payment received/i)).toHaveCount(0);
   });
 
   // ── Free-tier daily fence ───────────────────────────────────────────────────

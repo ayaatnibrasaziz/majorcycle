@@ -13,11 +13,17 @@ import { signInAs } from './lib/session';
  * what a <Link> calls; the spec checks the tab really was not reloaded.
  */
 
-const LIST = ['Ticker', 'AAPL', 'MSFT', 'KO', 'JNJ', 'XOM', ''].join('\n');
+const SHORT = ['AAPL', 'MSFT', 'KO', 'JNJ', 'XOM'];
+// Long enough to still be running after a reload, a page change and a second reload.
+const LONG = [
+  ...SHORT, 'NVDA', 'AMZN', 'META', 'TSLA', 'PEP', 'WMT', 'BHP.AX', 'CBA.AX', 'RIO.AX',
+  'TD.TO', 'RY.TO', 'ENB.TO', 'CSL.AX', 'WES.AX', 'SHOP.TO',
+];
 
-async function startRun(page: Page): Promise<void> {
-  await page.locator('input[type="file"]').setInputFiles({ name: 'l.csv', mimeType: 'text/csv', buffer: Buffer.from(LIST) });
-  await expect(page.getByRole('button', { name: /^Run Analysis · 5/ })).toBeEnabled();
+async function startRun(page: Page, tickers: string[] = SHORT): Promise<void> {
+  const csv = ['Ticker', ...tickers, ''].join('\n');
+  await page.locator('input[type="file"]').setInputFiles({ name: 'l.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await expect(page.getByRole('button', { name: new RegExp(`^Run Analysis · ${tickers.length}`) })).toBeEnabled();
   await page.getByRole('button', { name: /^Run Analysis/ }).click();
   await expect(page.locator('.progress-bar-wrap')).toBeVisible();
 }
@@ -70,11 +76,20 @@ test.describe('a screen in progress', () => {
     await page.reload();
     expect(dialogs).toEqual([]);
 
-    await startRun(page);
+    await startRun(page, LONG);
     await page.reload({ timeout: 5_000 }).catch(() => {});
     await expect.poll(() => dialogs).toEqual(['beforeunload']);
     // Choosing to stay keeps the run.
     await expect(page.locator('.progress-bar-wrap')).toBeVisible();
+
+    // And it still asks while the reader is on a PUBLIC page mid-run, where the
+    // signed-in shell (and its provider) is not mounted.
+    await go(page, '/learn');
+    await expect(page).toHaveURL(/\/learn$/);
+    dialogs.length = 0;
+    await page.reload({ timeout: 5_000 }).catch(() => {});
+    await expect.poll(() => dialogs).toEqual(['beforeunload']);
+    await go(page, '/run');
     await page.getByRole('button', { name: 'Cancel' }).click();
   });
 });

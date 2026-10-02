@@ -73,8 +73,10 @@ test('the first Tab on a page reaches "Skip to main content", and it works', asy
   expect(hidden && hidden.y + hidden.height <= 0, 'off screen until focused').toBe(true);
   await page.keyboard.press('Tab');
   await expect(skip).toBeFocused();
-  const box = await skip.boundingBox();
-  expect(box && box.y >= 0, 'the focused link is on screen').toBe(true);
+  // It slides in over 0.12s, so wait for it to arrive rather than reading mid-slide.
+  await expect
+    .poll(async () => ((await skip.boundingBox())?.y ?? -1) >= 0, { message: 'the focused link is on screen' })
+    .toBe(true);
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#main-content$/);
 });
