@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import { ChevronRight } from 'lucide-react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
@@ -153,7 +154,10 @@ export function HorizonSettings({
             value={value.lookbackBars}
             step={1}
             error={lookbackErr}
-            onChange={(n) => editField({ lookbackBars: Math.round(n) })}
+            // Not rounded here: a rounded value no longer matches the box, which would
+            // rewrite "252.5" to "253" under the reader's cursor. "Whole number only."
+            // says what is wrong and the Run button waits.
+            onChange={(n) => editField({ lookbackBars: n })}
           />
         </div>
       )}
@@ -203,6 +207,36 @@ function Field({
    * rather than by reading it: nothing renders differently either way.
    */
   const errorId = useId();
+
+  /*
+   * ⚠️ THE BOX KEEPS WHAT WAS TYPED (beta review C-1, 2026-10-02). It used to be bound
+   * straight to the number, and a number cannot hold a half-typed value: clearing the
+   * box wrote 0, and typing "-" (which a number input reports as "") wrote 0 too, so
+   * "-8" came out as "08". A Pullback threshold is negative by definition, so Custom
+   * could not actually be typed into.
+   *
+   * Now the text is the field's own; the parent receives the number when it is one,
+   * and NaN while it is not — which `boundError` reports as "Enter a number." and
+   * `validateHorizon` keeps the Run button disabled for. A preset click still
+   * replaces the text, because the parent's value then no longer matches it.
+   */
+  const [text, setText] = useState(() => (Number.isFinite(value) ? String(value) : ''));
+  const parsed = parseDraft(text);
+  const [lastValue, setLastValue] = useState(value);
+  if (!Object.is(value, lastValue)) {
+    setLastValue(value);
+    if (!Object.is(value, parsed)) setText(Number.isFinite(value) ? String(value) : '');
+  }
+
+  const onInput = (e: ChangeEvent<HTMLInputElement>) => {
+    // A number input reports "" for an unfinished entry such as "-" or "1e";
+    // `badInput` says the box is not really empty, so keep waiting rather than clear it.
+    const raw = e.target.value;
+    const incomplete = raw === '' && e.target.validity.badInput;
+    setText(incomplete ? '-' : raw);
+    onChange(incomplete ? NaN : parseDraft(raw));
+  };
+
   return (
     <div>
       <div className="set-field-label">
@@ -211,15 +245,12 @@ function Field({
       </div>
       <input
         type="number"
-        value={Number.isFinite(value) ? value : ''}
+        value={text === '-' ? '' : text}
         step={step}
         aria-label={label}
         aria-invalid={error !== null}
         aria-describedby={error ? errorId : undefined}
-        onChange={(e) => {
-          const n = Number(e.target.value);
-          if (!Number.isNaN(n)) onChange(n);
-        }}
+        onChange={onInput}
         className={cn('set-field-input', error && 'set-field-input--error')}
       />
       {error && (
@@ -229,4 +260,12 @@ function Field({
       )}
     </div>
   );
+}
+
+/** The number a box holds, or NaN while it is empty or half-typed. */
+function parseDraft(text: string): number {
+  const t = text.trim();
+  if (t === '' || t === '-' || t === '.' || t === '-.') return NaN;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : NaN;
 }

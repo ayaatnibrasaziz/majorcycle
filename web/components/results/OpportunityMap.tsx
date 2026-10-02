@@ -121,14 +121,27 @@ function clampClusterPos(x: number, y: number): { left: number; top: number } {
 
 export function OpportunityMap({
   rows,
+  totalCount,
+  hiddenTiers,
+  onToggleTier,
   horizonQuery,
 }: {
+  /** The rows the table's filters leave, before the tier list is applied. */
   rows: ResultRow[];
+  /** Every scored row in the run, to say how many the filters are hiding. */
+  totalCount: number;
+  /**
+   * ⚠️ The tiers switched off — SHARED with the results table (owner, 2026-10-02).
+   * This used to be the map's own private state, so its legend and the table's tier
+   * filter could disagree about what was on screen.
+   */
+  hiddenTiers: OverallLabel[];
+  onToggleTier: (label: OverallLabel) => void;
   /** `?…` horizon suffix (from the run) so a bubble opens the same Major Cycle window. */
   horizonQuery: string;
 }) {
   const router = useRouter();
-  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const hidden = new Set<string>(hiddenTiers);
   const [cluster, setCluster] = useState<ClusterState | null>(null);
 
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -182,13 +195,11 @@ export function OpportunityMap({
   const popRef = useRef<HTMLDivElement>(null);
   const mouse = useRef({ x: 0, y: 0 }); // last click point, for popover anchoring
 
-  const toggle = (label: string) =>
-    setHidden((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
+  const toggle = (label: OverallLabel) => onToggleTier(label);
+
+  // How many of the run's stocks the table's search and filters are hiding (the tier
+  // list is not counted here: the legend shows that one itself).
+  const filteredOut = totalCount - rows.length;
 
   // Only rows with a Financial Health score can be plotted.
   const plottable = rows.filter((r) => r.financialHealthScore != null);
@@ -218,7 +229,7 @@ export function OpportunityMap({
   // Explicit legend order + colours, pinned to the rating-tier sequence (High
   // Conviction → … → Bearish) rather than Recharts' series-registration order.
   const legendPayload = series.map((s) => ({
-    value: s.label,
+    value: s.label as OverallLabel,
     type: 'circle' as const,
     id: s.label,
     color: scoreColor(tierMidScore(s.label)),
@@ -286,19 +297,27 @@ export function OpportunityMap({
             right = a stronger company); the vertical axis is the Valuation score (higher up = more
             attractively valued for the company’s quality). Bubble size reflects the Overall Rating, and colour
             is the rating tier. The top-right Opportunity Zone — healthy companies trading at a
-            discount — is where the most cyclically attractive names cluster. Click a legend tier to
-            show/hide it, or any bubble to open its full detail. Information only — not financial
-            advice.
+            discount — is where the most cyclically attractive names cluster. The map follows the
+            filters on the results table below, and a legend tier switched off here is switched off
+            in the table too. Click any bubble to open its full detail. Information only — not
+            financial advice.
           </InfoTip>
         </div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+          {filteredOut > 0 && (
+            <span>
+              Showing {rows.length} of {totalCount}: filters below apply ·{' '}
+            </span>
+          )}
           Bubble size = Overall Rating · click a tier to toggle · click a bubble (or a stack) to open
         </div>
       </div>
       <div className="card-body">
         {plottable.length === 0 ? (
           <div className="py-10 text-center text-[12px] text-[var(--text-muted)]">
-            No stocks with a Financial Health score to plot.
+            {rows.length === 0
+              ? 'No stocks match the filters below.'
+              : 'No stocks with a Financial Health score to plot.'}
           </div>
         ) : (
           <>

@@ -72,6 +72,7 @@ export default async function AppLayout({
 
   return (
     <AppShell
+      userId={viewer.userId}
       email={viewer.email}
       subscriptionStatus={viewer.subscriptionStatus}
       entitled={viewer.entitled}

@@ -34,6 +34,7 @@ import { SHELL_DESKTOP_MIN_PX } from '@/lib/shell';
  * the rail's rather than a file away. All three move together or the layout tears.
  */
 export function AppShell({
+  userId = null,
   email,
   lastRunAt,
   subscriptionStatus,
@@ -41,6 +42,8 @@ export function AppShell({
   billingBlocked = false,
   children,
 }: {
+  /** Scopes the screener results this browser keeps (lib/analysis.tsx). */
+  userId?: string | null;
   email?: string | null;
   lastRunAt?: string | null;
   subscriptionStatus?: string | null;
@@ -188,7 +191,7 @@ export function AppShell({
           ⚠ For educational and research purposes only. Not financial advice.
           Always conduct independent due diligence.
         </div>
-        <AnalysisProvider>{children}</AnalysisProvider>
+        <AnalysisProvider ownerId={userId}>{children}</AnalysisProvider>
       </main>
 
       <UpgradeDialog

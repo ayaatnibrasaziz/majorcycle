@@ -17,6 +17,7 @@ import {
   validateHorizon,
   type HorizonValue,
 } from './HorizonSettings';
+import { InterruptedRunNotice } from './InterruptedRunNotice';
 import { LastAnalysisCard } from './LastAnalysisCard';
 import { RunComplete } from './RunComplete';
 import { RunProgress } from './RunProgress';
@@ -168,6 +169,8 @@ export function RunAnalysis({
         Screen a basket or your own list through the Major Cycle + health scoring, then
         rank them. Pick a ready-made basket, search and add, or import a CSV.
       </p>
+
+      <InterruptedRunNotice />
 
       {/* A subscription that lapsed PART WAY through a run (most plausibly a trial
           expiring mid-screen). Without this the aborted chunks would read as

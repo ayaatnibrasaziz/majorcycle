@@ -2,13 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { FolderSearch, SearchX } from 'lucide-react';
+import { FolderSearch, Loader2, SearchX } from 'lucide-react';
 
 import { useAnalysis } from '@/lib/analysis';
 import { horizonQueryFromRequest } from '@/lib/horizon';
 import { downloadCsv, toCsv } from '@/lib/ratings';
 import { downloadXlsx } from '@/lib/xlsx';
 import type { Market, OverallLabel, SkippedStatus } from '@/lib/types';
+
+import { InterruptedRunNotice } from '@/components/run/InterruptedRunNotice';
 
 import { BriefingCard } from './BriefingCard';
 import { ProvenanceBar } from './ProvenanceBar';
@@ -21,7 +23,9 @@ import { CSV_COLUMNS, FIELD_BY_KEY, buildRows, type ViewMode } from './columns';
 import {
   INITIAL_FILTER,
   applyFilters,
+  onlyTier,
   sortRows,
+  toggleTier,
   type AdvRule,
   type FilterState,
   type QuickFilter,
@@ -37,7 +41,7 @@ export type ResultsLookup = Record<string, { name: string | null; sector: string
 // comes from the cached light universe index, passed by the server page.
 
 export function Results({ lookup }: { lookup: ResultsLookup }) {
-  const { results, unavailable, params, runMeta } = useAnalysis();
+  const { results, unavailable, params, runMeta, progress } = useAnalysis();
 
   const rows = useMemo(() => buildRows(results, lookup), [results, lookup]);
 
@@ -83,6 +87,9 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
   const [sortAsc, setSortAsc] = useState(false);
 
   const filtered = useMemo(() => applyFilters(rows, filter), [rows, filter]);
+  // The map follows every filter EXCEPT the tier list, which it draws as its legend:
+  // a tier switched off must still have a chip to switch it back on.
+  const mapRows = useMemo(() => applyFilters(rows, { ...filter, hiddenTiers: [] }), [rows, filter]);
   const sorted = useMemo(() => sortRows(filtered, sortKey, sortAsc), [filtered, sortKey, sortAsc]);
 
   const patch = (p: Partial<FilterState>) => setFilter((f) => ({ ...f, ...p }));
@@ -99,18 +106,23 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
   };
 
   const onTierFilter = (label: OverallLabel) =>
-    setFilter((f) => ({ ...f, tier: f.tier === label ? '' : label, quick: 'all' }));
+    setFilter((f) => ({ ...onlyTier(f, label), quick: 'all' }));
+
+  const onToggleTier = (label: OverallLabel) => setFilter((f) => toggleTier(f, label));
 
   const onQuickFilter = (q: QuickFilter) => {
-    setFilter((f) => ({ ...f, quick: f.quick === q ? 'all' : q, tier: '' }));
+    setFilter((f) => ({ ...f, quick: f.quick === q ? 'all' : q, hiddenTiers: [] }));
     tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const onAdvancedRules = (advRules: AdvRule[]) => patch({ rules: advRules });
 
-  const onExport = () => downloadCsv('majorcycle_results.csv', toCsv(sorted, CSV_COLUMNS));
+  // Every download used to be called `majorcycle_results`, so a second screen saved
+  // over (or beside, as "(1)") the first. The run's date and horizon tell them apart.
+  const fileName = exportFileName(runMeta?.startedAt ?? null, params?.preset ?? null);
+  const onExport = () => downloadCsv(`${fileName}.csv`, toCsv(sorted, CSV_COLUMNS));
   const onExportXlsx = () => {
-    void downloadXlsx('majorcycle_results.xlsx', sorted, CSV_COLUMNS);
+    void downloadXlsx(`${fileName}.xlsx`, sorted, CSV_COLUMNS);
   };
 
   // ── Empty: no usable results ───────────────────────────────────────────────
@@ -118,11 +130,27 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
     const ran = runMeta != null || results.length > 0;
     return (
       <div>
+        <InterruptedRunNotice showRunLink />
         {unavailable.length > 0 && (
           <SkippedTickers unavailable={unavailable} lookup={lookup} statusMap={skippedStatus} horizonQuery={horizonQuery} />
         )}
         <div className="results-empty">
-          {ran ? (
+          {progress.running ? (
+            // ⚠️ This branch used to be reachable only as "finished": mid-run, before the
+            // first batch came back, the page said "Your run finished — none scored"
+            // about a run that was still going (beta review C-6).
+            <>
+              <Loader2 className="results-empty-icon animate-spin motion-reduce:animate-none" />
+              <div className="results-empty-title">Your analysis is still running</div>
+              <div className="results-empty-text">
+                Results appear here as each batch comes back. You can follow it on the{' '}
+                <Link href="/run" className="results-empty-link">
+                  Run Analysis
+                </Link>{' '}
+                tab.
+              </div>
+            </>
+          ) : ran ? (
             <>
               <SearchX className="results-empty-icon" />
               <div className="results-empty-title">No stocks could be scored</div>
@@ -157,17 +185,32 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
   return (
     <div className="results-layout">
       <h1 className="sr-only">Analysis Results</h1>
+      <InterruptedRunNotice showRunLink />
+      {progress.running && (
+        <div className="results-running" role="status">
+          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+          Still running: {rows.length} of {runMeta?.tickerCount ?? rows.length} stocks scored so far. The
+          table and map fill in as more come back.
+        </div>
+      )}
       <BriefingCard rows={rows} onQuickFilter={onQuickFilter} horizonQuery={horizonQuery} />
       <ProvenanceBar params={params} runMeta={runMeta} tickerCount={rows.length} />
       {unavailable.length > 0 && (
         <SkippedTickers unavailable={unavailable} lookup={lookup} statusMap={skippedStatus} horizonQuery={horizonQuery} />
       )}
-      <OpportunityMap rows={rows} horizonQuery={horizonQuery} />
+      <OpportunityMap
+        rows={mapRows}
+        totalCount={rows.length}
+        hiddenTiers={filter.hiddenTiers}
+        onToggleTier={onToggleTier}
+        horizonQuery={horizonQuery}
+      />
 
       <div ref={tableRef} style={{ scrollMarginTop: 16 }}>
       <ResultsToolbar
         filter={filter}
         patch={patch}
+        setFilter={setFilter}
         viewMode={viewMode}
         onViewMode={setViewMode}
         advancedOpen={advancedOpen}
@@ -175,6 +218,14 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
         resultCount={sorted.length}
         onExport={onExport}
         onExportXlsx={onExportXlsx}
+        sortKey={sortKey}
+        sortAsc={sortAsc}
+        onSortKey={(key) => {
+          // The same default as a desktop header click on a new column.
+          setSortKey(key);
+          setSortAsc(FIELD_BY_KEY[key]?.type === 'text');
+        }}
+        onSortDir={() => setSortAsc((a) => !a)}
       />
 
       {advancedOpen && (
@@ -208,4 +259,13 @@ export function Results({ lookup }: { lookup: ResultsLookup }) {
       </div>
     </div>
   );
+}
+
+/** `majorcycle_results_2026-10-02_medium` — the run's own date and horizon. */
+function exportFileName(startedAt: string | null, preset: string | null): string {
+  const d = startedAt ? new Date(startedAt) : new Date();
+  const day = Number.isNaN(d.getTime())
+    ? ''
+    : `_${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `majorcycle_results${day}${preset ? `_${preset}` : ''}`;
 }

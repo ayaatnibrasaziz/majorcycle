@@ -85,6 +85,43 @@ const RECONCILE_POOL = 2;
  */
 export const SNAPSHOT_KEY = 'mc:analysis-snapshot-v1';
 
+/**
+ * The same finished run, kept for THIS ACCOUNT across tabs and browser restarts
+ * (beta review, owner-approved 2026-10-02). sessionStorage alone dies with the tab,
+ * so a reader who opened /results in a new tab met "No analysis run yet" for a run
+ * they had just finished.
+ *
+ * ⚠️ The key carries the account id, so a second person signing in on the same
+ * browser never reads the first person's results, and signing out deletes every
+ * copy (`clearStoredRuns`). Nothing here reaches the database — the ratings stay
+ * derived and in the browser (CLAUDE.md #15).
+ */
+const LAST_RUN_PREFIX = 'mc:analysis-last-v1:';
+
+/**
+ * Set when a run STARTS and removed when it ends, in sessionStorage (per tab). If a
+ * reload finds it, the run in this tab was cut off — the page was reloaded or closed
+ * mid-run — and the reader is told so instead of the run silently vanishing.
+ */
+const RUNNING_KEY = 'mc:analysis-running-v1';
+
+/** Every stored copy of a run on this device, for every account — called on sign-out. */
+export function clearStoredRuns(): void {
+  for (const store of [() => localStorage, () => sessionStorage]) {
+    try {
+      const s = store();
+      const doomed: string[] = [];
+      for (let i = 0; i < s.length; i++) {
+        const k = s.key(i);
+        if (k && (k.startsWith(LAST_RUN_PREFIX) || k === SNAPSHOT_KEY || k === RUNNING_KEY)) doomed.push(k);
+      }
+      for (const k of doomed) s.removeItem(k);
+    } catch {
+      // Storage unavailable (private mode) — nothing was stored, so nothing to clear.
+    }
+  }
+}
+
 /** A cancellable sleep — rejects (AbortError) if the run is cancelled mid-wait. */
 function delay(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -118,6 +155,36 @@ export interface RunProgress {
   // reaches 100% while they run — `phase: 'reconciling'` lets RunProgress say
   // "Double-checking skipped tickers…" instead of leaving "Analysing…" at 100%.
   phase?: 'analysing' | 'reconciling';
+  /** Tickers whose chunk has come back — the bar and "Processed" count read this. */
+  tickersDone: number;
+  /** When the solo warm-up chunk finished, and how many tickers it carried (for the ETA). */
+  warmedAt: number | null;
+  warmedTickers: number;
+  /** When the most recent request came back. */
+  lastAt: number | null;
+}
+
+const EMPTY_PROGRESS: RunProgress = {
+  done: 0,
+  total: 0,
+  running: false,
+  tickersDone: 0,
+  warmedAt: null,
+  warmedTickers: 0,
+  lastAt: null,
+};
+
+/**
+ * How many tickers go in one request.
+ *
+ * ⚠️ A run of 25 or fewer used to be ONE chunk, so its bar sat at 0% for the whole run
+ * and jumped to 100% at the end — the progress bar told the reader nothing on exactly
+ * the runs people make most (beta review C-15). Splitting a small run into about eight
+ * requests lets the bar move; large runs keep `CHUNK_SIZE`, whose reasoning above is
+ * about invocation count and is unchanged.
+ */
+export function chunkSizeFor(tickerCount: number): number {
+  return Math.min(CHUNK_SIZE, Math.max(1, Math.ceil(tickerCount / 8)));
 }
 
 export interface RunMeta {
@@ -133,6 +200,14 @@ interface AnalysisSnapshot {
   unavailable: string[];
   params: AnalyzeRequest | null;
   runMeta: RunMeta | null;
+  /** The account that ran it. Absent only on a snapshot written before 2026-10-02. */
+  owner?: string;
+}
+
+/** A run that was cut off by a reload or a closed tab. */
+export interface InterruptedRun {
+  tickerCount: number;
+  startedAt: string;
 }
 
 interface AnalysisContextValue extends AnalysisSnapshot {
@@ -144,6 +219,9 @@ interface AnalysisContextValue extends AnalysisSnapshot {
    * honest "your access ended" prompt instead of a wall of unavailable tickers.
    */
   lapsed: boolean;
+  /** Set when this tab was reloaded or closed while a run was still going. */
+  interrupted: InterruptedRun | null;
+  dismissInterrupted: () => void;
   run: (req: AnalyzeRequest) => Promise<void>;
   cancel: () => void;
   clear: () => void;
@@ -290,15 +368,26 @@ async function writeRun(req: AnalyzeRequest, meta: RunMeta, partial: boolean): P
   }
 }
 
-export function AnalysisProvider({ children }: { children: React.ReactNode }) {
+export function AnalysisProvider({
+  ownerId = null,
+  children,
+}: {
+  /** The signed-in account's id; null only in the local dev-bypass render. */
+  ownerId?: string | null;
+  children: React.ReactNode;
+}) {
   const [results, setResults] = useState<RunResult[]>([]);
   const [unavailable, setUnavailable] = useState<string[]>([]);
   const [params, setParams] = useState<AnalyzeRequest | null>(null);
   const [runMeta, setRunMeta] = useState<RunMeta | null>(null);
-  const [progress, setProgress] = useState<RunProgress>({ done: 0, total: 0, running: false });
+  const [progress, setProgress] = useState<RunProgress>(EMPTY_PROGRESS);
   const [lastRun, setLastRun] = useState<AnalysisRunRecord | null>(null);
   const [lapsed, setLapsed] = useState(false);
+  const [interrupted, setInterrupted] = useState<InterruptedRun | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Read by the cross-tab listener, which must never overwrite a run in progress here.
+  const runningRef = useRef(false);
+  const lastRunKey = ownerId ? LAST_RUN_PREFIX + ownerId : null;
 
   // Hydrate the live snapshot from sessionStorage AFTER mount (so navigating to
   // /results and back, or a soft reload, keeps the last run visible). This must
@@ -306,30 +395,82 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
   // SSR, and seeding initial state from it on the client would diverge from the
   // server render and trigger a hydration mismatch. The set-state-in-effect rule
   // is a false positive for this one-time post-mount hydration.
+  //
+  // Order: this tab's own copy first (it is the newest thing THIS tab did), then the
+  // account's copy in localStorage, which is what a brand-new tab finds. A snapshot
+  // naming a DIFFERENT account is ignored: a session that expired and was replaced by
+  // someone else's in the same tab must not show the first person's results.
+  const applySnapshot = useCallback((snap: AnalysisSnapshot) => {
+    setResults(snap.results ?? []);
+    setUnavailable(snap.unavailable ?? []);
+    setParams(snap.params ?? null);
+    setRunMeta(snap.runMeta ?? null);
+  }, []);
+
   useEffect(() => {
+    const read = (raw: string | null): AnalysisSnapshot | null => {
+      if (!raw) return null;
+      const snap = JSON.parse(raw) as AnalysisSnapshot;
+      return snap.owner && snap.owner !== ownerId ? null : snap;
+    };
     try {
-      const raw = sessionStorage.getItem(SNAPSHOT_KEY);
+      const snap =
+        read(sessionStorage.getItem(SNAPSHOT_KEY)) ??
+        (lastRunKey ? read(localStorage.getItem(lastRunKey)) : null);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (snap) applySnapshot(snap);
+    } catch {
+      // Ignore corrupt/unavailable storage.
+    }
+    try {
+      const raw = sessionStorage.getItem(RUNNING_KEY);
       if (raw) {
-        const snap = JSON.parse(raw) as AnalysisSnapshot;
-        /* eslint-disable react-hooks/set-state-in-effect */
-        setResults(snap.results ?? []);
-        setUnavailable(snap.unavailable ?? []);
-        setParams(snap.params ?? null);
-        setRunMeta(snap.runMeta ?? null);
-        /* eslint-enable react-hooks/set-state-in-effect */
+        sessionStorage.removeItem(RUNNING_KEY);
+        const mark = JSON.parse(raw) as InterruptedRun & { owner?: string | null };
+        if (!mark.owner || mark.owner === ownerId) {
+          setInterrupted({ tickerCount: mark.tickerCount, startedAt: mark.startedAt });
+        }
       }
     } catch {
       // Ignore corrupt/unavailable storage.
     }
-  }, []);
+  }, [ownerId, lastRunKey, applySnapshot]);
 
-  const persist = useCallback((snap: AnalysisSnapshot) => {
-    try {
-      sessionStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snap));
-    } catch {
-      // Non-fatal (quota / private mode).
-    }
-  }, []);
+  // Another tab of the same account finished a run: show it here too, unless this tab
+  // is in the middle of its own.
+  useEffect(() => {
+    if (!lastRunKey) return undefined;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== lastRunKey || !e.newValue || runningRef.current) return;
+      try {
+        applySnapshot(JSON.parse(e.newValue) as AnalysisSnapshot);
+        sessionStorage.setItem(SNAPSHOT_KEY, e.newValue);
+      } catch {
+        // Ignore a corrupt value.
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [lastRunKey, applySnapshot]);
+
+  const persist = useCallback(
+    (snap: AnalysisSnapshot) => {
+      const json = JSON.stringify({ ...snap, owner: ownerId ?? undefined });
+      try {
+        sessionStorage.setItem(SNAPSHOT_KEY, json);
+      } catch {
+        // Non-fatal (quota / private mode).
+      }
+      try {
+        if (lastRunKey) localStorage.setItem(lastRunKey, json);
+      } catch {
+        // Non-fatal: the run still shows in this tab.
+      }
+    },
+    [ownerId, lastRunKey],
+  );
+
+  const dismissInterrupted = useCallback(() => setInterrupted(null), []);
 
   const refreshLastRun = useCallback(async () => {
     try {
@@ -378,13 +519,14 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
     setParams(null);
     setRunMeta(null);
     setLapsed(false);
-    setProgress({ done: 0, total: 0, running: false });
+    setProgress(EMPTY_PROGRESS);
     try {
       sessionStorage.removeItem(SNAPSHOT_KEY);
+      if (lastRunKey) localStorage.removeItem(lastRunKey);
     } catch {
       // Non-fatal.
     }
-  }, []);
+  }, [lastRunKey]);
 
   const run = useCallback(
     async (req: AnalyzeRequest) => {
@@ -392,16 +534,26 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       abortRef.current = controller;
       const { signal } = controller;
       setLapsed(false);
+      setInterrupted(null);
+      runningRef.current = true;
 
-      const chunks = chunk(req.tickers, CHUNK_SIZE);
+      const chunks = chunk(req.tickers, chunkSizeFor(req.tickers.length));
       const startedAt = new Date().toISOString();
       const meta: RunMeta = { startedAt, finishedAt: null, tickerCount: req.tickers.length };
+      try {
+        sessionStorage.setItem(
+          RUNNING_KEY,
+          JSON.stringify({ tickerCount: meta.tickerCount, startedAt, owner: ownerId }),
+        );
+      } catch {
+        // Non-fatal: only the "your run was interrupted" notice depends on it.
+      }
 
       setParams(req);
       setResults([]);
       setUnavailable([]);
       setRunMeta(meta);
-      setProgress({ done: 0, total: chunks.length, running: true, phase: 'analysing' });
+      setProgress({ ...EMPTY_PROGRESS, total: chunks.length, running: true, phase: 'analysing' });
 
       const allResults: RunResult[] = [];
       // Genuine "not in our universe / insufficient history" — the server returns
@@ -411,10 +563,29 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       // network). Worth one warm retry pass — that's where the real skips came from.
       const chunkFailed: string[] = [];
       let done = 0;
+      let tickersDone = 0;
+      let warmedAt: number | null = null;
+      let warmedTickers = 0;
 
-      const bump = () => {
+      const bump = (size: number) => {
         done += 1;
-        setProgress({ done, total: chunks.length, running: true, phase: 'analysing' });
+        tickersDone += size;
+        // The first chunk runs alone and pays the cold start, so the pace that
+        // predicts the rest is measured from the moment it finished.
+        if (warmedAt === null) {
+          warmedAt = Date.now();
+          warmedTickers = tickersDone;
+        }
+        setProgress({
+          done,
+          total: chunks.length,
+          tickersDone,
+          warmedAt,
+          warmedTickers,
+          lastAt: Date.now(),
+          running: true,
+          phase: 'analysing',
+        });
         setResults([...allResults]);
         // Failed-chunk tickers are shown only if the retry pass can't recover them.
         setUnavailable([...serverUnavailable]);
@@ -449,7 +620,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
           }
           if (!signal.aborted) chunkFailed.push(...tickers);
         } finally {
-          if (!signal.aborted) bump();
+          if (!signal.aborted) bump(tickers.length);
         }
       };
 
@@ -570,6 +741,12 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       setResults([...allResults]);
       setUnavailable(finalUnavailable);
       persist({ results: allResults, unavailable: finalUnavailable, params: req, runMeta: finalMeta });
+      runningRef.current = false;
+      try {
+        sessionStorage.removeItem(RUNNING_KEY);
+      } catch {
+        // Non-fatal.
+      }
 
       if (!aborted) {
         // A run that yielded nothing usable still records inputs; "partial" when
@@ -579,7 +756,7 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       }
       abortRef.current = null;
     },
-    [persist, refreshLastRun],
+    [persist, refreshLastRun, ownerId],
   );
 
   const value = useMemo<AnalysisContextValue>(
@@ -591,6 +768,8 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       progress,
       lastRun,
       lapsed,
+      interrupted,
+      dismissInterrupted,
       run,
       cancel,
       clear,
@@ -604,6 +783,8 @@ export function AnalysisProvider({ children }: { children: React.ReactNode }) {
       progress,
       lastRun,
       lapsed,
+      interrupted,
+      dismissInterrupted,
       run,
       cancel,
       clear,

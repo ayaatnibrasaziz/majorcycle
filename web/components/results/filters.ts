@@ -2,7 +2,8 @@
 // ResultRow[], shared by the toolbar, the advanced rule-builder, and the
 // orchestrator so the table, Opportunity Map and export all see the same set.
 
-import type { OverallLabel } from '@/lib/types';
+import { OVERALL_LABELS } from '@/lib/ratings';
+import type { Market, OverallLabel } from '@/lib/types';
 import { FIELD_BY_KEY, FILTER_FIELDS, type Field, type ResultRow } from './columns';
 
 export type QuickFilter = 'all' | 'constructivePlus' | 'weak';
@@ -22,8 +23,20 @@ export interface AdvRule {
 
 export interface FilterState {
   query: string;
-  /** Empty = all tiers; otherwise restrict to this overall label. */
-  tier: OverallLabel | '';
+  /**
+   * Rating tiers switched OFF. Empty = every tier shown.
+   *
+   * ⚠️ ONE list for the table and the Opportunity Map (owner, 2026-10-02: "both the
+   * table and opportunity map is linked"). It was a single `tier` for the table's
+   * dropdown plus a private set of hidden tiers inside the map, so hiding Bearish on
+   * the map left Bearish rows in the table, and picking a tier in the table left the
+   * map showing everything. A set, not one value, because the map's legend switches
+   * tiers off one at a time; the dropdown's "just this tier" is the set of the other
+   * four.
+   */
+  hiddenTiers: OverallLabel[];
+  /** Empty = every market (owner, 2026-10-02: a Market filter on every screen size). */
+  market: Market | '';
   minRating: number;
   quick: QuickFilter;
   rules: AdvRule[];
@@ -31,7 +44,8 @@ export interface FilterState {
 
 export const INITIAL_FILTER: FilterState = {
   query: '',
-  tier: '',
+  hiddenTiers: [],
+  market: '',
   minRating: 0,
   quick: 'all',
   rules: [],
@@ -99,13 +113,37 @@ export function applyFilters(rows: ResultRow[], f: FilterState): ResultRow[] {
     if (q && !r.ticker.toLowerCase().includes(q) && !(r.name ?? '').toLowerCase().includes(q)) {
       return false;
     }
-    if (f.tier && r.overallLabel !== f.tier) return false;
+    if (f.hiddenTiers.includes(r.overallLabel)) return false;
+    if (f.market && r.market !== f.market) return false;
     if (r.overallRating < f.minRating) return false;
     if (f.quick === 'constructivePlus' && !POSITIVE_LABELS.includes(r.overallLabel)) return false;
     if (f.quick === 'weak' && !NEGATIVE_LABELS.includes(r.overallLabel)) return false;
     if (!advRulesPass(r, f.rules)) return false;
     return true;
   });
+}
+
+/** The tiers left showing, in tier order. */
+export function shownTiers(f: FilterState): OverallLabel[] {
+  return OVERALL_LABELS.filter((l) => !f.hiddenTiers.includes(l));
+}
+
+/** Switch one tier on or off (the map's legend). */
+export function toggleTier(f: FilterState, label: OverallLabel): FilterState {
+  const hidden = f.hiddenTiers.includes(label)
+    ? f.hiddenTiers.filter((l) => l !== label)
+    : [...f.hiddenTiers, label];
+  return { ...f, hiddenTiers: hidden };
+}
+
+/**
+ * Show only this tier (the dropdown, and a click on a row's tier badge). Asked again
+ * while it is already the only tier showing, it shows every tier again.
+ */
+export function onlyTier(f: FilterState, label: OverallLabel | ''): FilterState {
+  const alreadyOnly = label !== '' && shownTiers(f).length === 1 && shownTiers(f)[0] === label;
+  if (label === '' || alreadyOnly) return { ...f, hiddenTiers: [] };
+  return { ...f, hiddenTiers: OVERALL_LABELS.filter((l) => l !== label) };
 }
 
 export function sortRows(rows: ResultRow[], key: string, asc: boolean): ResultRow[] {
@@ -138,7 +176,8 @@ export function sortRows(rows: ResultRow[], key: string, asc: boolean): ResultRo
 export function isFilterActive(f: FilterState): boolean {
   return (
     f.query.trim() !== '' ||
-    f.tier !== '' ||
+    f.hiddenTiers.length > 0 ||
+    f.market !== '' ||
     f.minRating > 0 ||
     f.quick !== 'all' ||
     f.rules.length > 0

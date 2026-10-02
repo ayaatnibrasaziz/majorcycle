@@ -348,7 +348,10 @@ export function toCsv<T>(
 /** Trigger a client-side CSV download. No-op on the server. */
 export function downloadCsv(filename: string, csv: string): void {
   if (typeof document === 'undefined') return;
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  // ⚠️ The leading byte-order mark is what tells Excel the file is UTF-8. Without it
+  // Excel assumes the Windows code page and prints "EstÃ©e Lauder" for every accented
+  // name (beta review C-21). Other spreadsheet apps ignore it.
+  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

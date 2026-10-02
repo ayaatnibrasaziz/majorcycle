@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { LogOut, UserRound } from 'lucide-react';
 
+import { clearStoredRuns } from '@/lib/analysis';
 import { cn } from '@/lib/utils';
 
 /**
@@ -130,7 +131,14 @@ export function UserMenu({ email }: { email?: string | null }) {
             <UserRound className="h-[14px] w-[14px]" strokeWidth={1.8} aria-hidden="true" />
             Account
           </Link>
-          <form action="/auth/signout" method="post" className="border-t border-[var(--border)]">
+          {/* Screener results kept in this browser go with the session (lib/analysis.tsx).
+              Cleared before the native POST, which still works with JS off. */}
+          <form
+            action="/auth/signout"
+            method="post"
+            onSubmit={clearStoredRuns}
+            className="border-t border-[var(--border)]"
+          >
             <button
               type="submit"
               role="menuitem"

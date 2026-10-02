@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
@@ -16,13 +16,14 @@ import {
   tierFromLabel,
   valuationAppealLabel,
 } from '@/lib/ratings';
-import { MARKET_CURRENCY, tickerToPath, tickerToUrlParts } from '@/lib/ticker';
+import { MARKET_CURRENCY, marketLabel, tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { OverallLabel } from '@/lib/types';
 import {
   BAND_META,
   VIEW_MODES,
   columnsForBand,
   formatValue,
+  type BandKey,
   type Field,
   type ResultRow,
   type ViewMode,
@@ -147,7 +148,14 @@ export function ResultsTable({
       {/* Mobile cards */}
       <div className="results-cards flex flex-col gap-2.5 md:hidden">
         {rows.map((r) => (
-          <ResultCard key={r.ticker} row={r} onOpen={() => open(r.ticker)} onTierFilter={onTierFilter} />
+          <ResultCard
+            key={r.ticker}
+            row={r}
+            bands={bands}
+            onOpen={() => open(r.ticker)}
+            onTierFilter={onTierFilter}
+            horizonQuery={horizonQuery}
+          />
         ))}
       </div>
     </>
@@ -225,14 +233,28 @@ function ScoreNum({ value, color }: { value: number; color?: string }) {
   );
 }
 
-function OverallCell({ row, onTierFilter }: { row: ResultRow; onTierFilter: (label: OverallLabel) => void }) {
+/** The Health / Valuation / Cycle Payoff make-up of the Overall score — table and card. */
+function CompositionBar({ row, className = '' }: { row: ResultRow; className?: string }) {
   const comp = ratingComposition(row);
   const total = comp.health + comp.valuation + comp.payoff || 1;
   const wH = (comp.health / total) * 100;
   const wV = (comp.valuation / total) * 100;
   const wP = (comp.payoff / total) * 100;
-  const tier = tierFromLabel(row.overallLabel);
   const ramp = compositionRamp(row.overallRating);
+  return (
+    <div
+      className={`micro-bar ${className}`}
+      title={`Composition: Health ${Math.round(comp.health)} (40%) + Valuation ${Math.round(comp.valuation)} (35%) + Cycle Payoff ${Math.round(comp.payoff)} (25%)`}
+    >
+      <div className="micro-seg" style={{ width: `${wH}%`, background: ramp[0] }} />
+      <div className="micro-seg" style={{ width: `${wV}%`, background: ramp[1] }} />
+      <div className="micro-seg" style={{ width: `${wP}%`, background: ramp[2] }} />
+    </div>
+  );
+}
+
+function OverallCell({ row, onTierFilter }: { row: ResultRow; onTierFilter: (label: OverallLabel) => void }) {
+  const tier = tierFromLabel(row.overallLabel);
   return (
     <div className="score-stack">
       <div className="score-row">
@@ -263,14 +285,7 @@ function OverallCell({ row, onTierFilter }: { row: ResultRow; onTierFilter: (lab
           </span>
         )}
       </div>
-      <div
-        className="micro-bar"
-        title={`Composition: Health ${Math.round(comp.health)} (40%) + Valuation ${Math.round(comp.valuation)} (35%) + Cycle Payoff ${Math.round(comp.payoff)} (25%)`}
-      >
-        <div className="micro-seg" style={{ width: `${wH}%`, background: ramp[0] }} />
-        <div className="micro-seg" style={{ width: `${wV}%`, background: ramp[1] }} />
-        <div className="micro-seg" style={{ width: `${wP}%`, background: ramp[2] }} />
-      </div>
+      <CompositionBar row={row} />
     </div>
   );
 }
@@ -303,17 +318,33 @@ function CyclePosCell({ pos }: { pos: number | null }) {
 
 // ── Mobile card ───────────────────────────────────────────────────────────────
 
+/*
+ * ⚠️ ONE CARD PER VIEW, BUILT FROM THE TABLE'S OWN COLUMNS (owner-approved design,
+ * 2026-10-02). The phone card was the same four boxes whatever the Simple / Analyst /
+ * Full switch said, so the switch did nothing on a phone. It now shows exactly the
+ * column groups the desktop table shows for the chosen view, under the same group
+ * names and colours, and every value comes from `renderCell` — the desktop's renderer —
+ * so a figure, its colour and its currency cannot differ between the two (11c).
+ */
 function ResultCard({
   row,
+  bands,
   onOpen,
   onTierFilter,
+  horizonQuery,
 }: {
   row: ResultRow;
+  bands: BandKey[];
   onOpen: () => void;
   onTierFilter: (label: OverallLabel) => void;
+  horizonQuery: string;
 }) {
   const { symbol } = tickerToUrlParts(row.ticker);
   const tier = tierFromLabel(row.overallLabel);
+  // Overall is the card's headline, so the verdict boxes are the other three.
+  const verdictCols = columnsForBand('verdict').filter((c) => c.key !== 'overall');
+  const groups = bands.filter((b) => b !== 'identity' && b !== 'verdict');
+  const cellOf = (col: Field) => renderCell(col, row, onTierFilter, horizonQuery);
   /* ⚠️ The card was a <button> with the tier badge — a second button — INSIDE it
      (axe `nested-interactive`, found at 375px in Layer H5: a screen reader cannot
      reach a control nested in another, and announces the whole card as one button).
@@ -332,45 +363,57 @@ function ResultCard({
         <div className="min-w-0">
           <div className="result-card-ticker">{symbol}</div>
           {row.name && <div className="result-card-name">{row.name}</div>}
+          <div className="result-card-sector">
+            {row.sector ? `${row.sector} · ` : ''}
+            {marketLabel(row.market)}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <ScoreNum value={row.overallRating} />
-          <button
-            type="button"
-            className={`tier-badge tier-badge--${tier} result-card-filter`}
-            onClick={() => onTierFilter(row.overallLabel)}
-          >
-            {row.overallLabel}
-          </button>
+        <div className="flex shrink-0 flex-col items-end">
+          <div className="flex items-center gap-2">
+            <ScoreNum value={row.overallRating} />
+            <button
+              type="button"
+              className={`tier-badge tier-badge--${tier} result-card-filter`}
+              onClick={() => onTierFilter(row.overallLabel)}
+            >
+              {row.overallLabel}
+            </button>
+          </div>
+          <CompositionBar row={row} className="mt-1.5" />
         </div>
       </div>
       {row.financialHealthScore == null && (
         <div className="result-card-cycleonly">Cycle-only rating — excludes Financial Health</div>
       )}
+      {groups.length > 0 && <div className={`result-card-band ${BAND_META.verdict.cssClass}`}>{BAND_META.verdict.label}</div>}
       <div className="result-card-stats">
-        <CardStat label="Valuation" value={valuationAppealLabel(row.valuationScore)} color={scoreColor(row.valuationScore)} />
-        <CardStat
-          label="Health"
-          value={row.financialHealthScore == null ? '—' : String(Math.round(row.financialHealthScore))}
-          color={healthColor(row.financialHealthScore)}
-        />
-        <CardStat
-          label="Cycle Pos"
-          value={row.cyclePos == null ? '—' : String(Math.round(row.cyclePos))}
-        />
-        <CardStat label="Close" value={formatValue(row.currentClose, 'price', { currency: MARKET_CURRENCY[row.market] })} />
+        {verdictCols.map((col) => (
+          <CardStat key={col.key} label={col.label}>
+            {cellOf(col)}
+          </CardStat>
+        ))}
       </div>
+      {groups.map((b) => (
+        <Fragment key={b}>
+          <div className={`result-card-band ${BAND_META[b].cssClass}`}>{BAND_META[b].label}</div>
+          <div className="result-card-stats">
+            {columnsForBand(b).map((col) => (
+              <CardStat key={col.key} label={col.label}>
+                {cellOf(col)}
+              </CardStat>
+            ))}
+          </div>
+        </Fragment>
+      ))}
     </div>
   );
 }
 
-function CardStat({ label, value, color }: { label: string; value: string; color?: string }) {
+function CardStat({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="result-card-stat">
       <div className="result-card-stat-label">{label}</div>
-      <div className="result-card-stat-val" style={color ? { color } : undefined}>
-        {value}
-      </div>
+      <div className="result-card-stat-val">{children}</div>
     </div>
   );
 }
