@@ -6,7 +6,13 @@ import { reportIssue } from '@/lib/observability';
 import { getStripe, mapStripeStatus, planFromLookupKey } from '@/lib/stripe';
 import type { createAdminClient } from '@/lib/supabase/server';
 import { recordTrialConsumed } from '@/lib/trialGuard';
-import { nextChargeAction, nextChargeFromInvoice, toISO, type NextCharge } from '@/lib/billing/nextCharge';
+import {
+  nextChargeAction,
+  nextChargeFromInvoice,
+  nextChargeFromSubscription,
+  toISO,
+  type NextCharge,
+} from '@/lib/billing/nextCharge';
 
 export { nextChargeAction, nextChargeFromInvoice, toISO };
 
@@ -51,20 +57,44 @@ export function refId(ref: string | { id: string } | null | undefined): string |
   return typeof ref === 'string' ? ref : ref.id;
 }
 
+/** Reported once per server instance — the cause is a key setting, not an event. */
+let previewDeniedReported = false;
+
 /**
- * Ask Stripe what the next invoice will be. NULL when it cannot say — the account page
- * then shows the date alone. A stale or guessed amount is worse than a missing one
- * (CLAUDE.md 11aa), so a failure clears the figure rather than keeping the old one.
+ * The next charge for a subscription: Stripe's preview of the next invoice first —
+ * discounts, tax and any old price already in it — and, when Stripe will not preview
+ * (a restricted key without Invoices access), the price on the subscription itself,
+ * which says nothing at all when a discount or tax would make it wrong
+ * (`nextChargeFromSubscription`). NULL means the card shows the date alone.
  */
-async function previewNextCharge(subscriptionId: string): Promise<NextCharge | null> {
+async function computeNextCharge(sub: Stripe.Subscription): Promise<NextCharge | null> {
+  const stripe = getStripe();
   try {
-    const inv = await getStripe().invoices.createPreview({ subscription: subscriptionId });
-    return nextChargeFromInvoice(inv);
+    const inv = await stripe.invoices.createPreview({ subscription: sub.id });
+    const next = nextChargeFromInvoice(inv);
+    if (next) return next;
   } catch (cause) {
-    reportIssue('billing sync: could not preview the next charge', {
+    const denied = (cause as { type?: string }).type === 'StripePermissionError';
+    if (!denied || !previewDeniedReported) {
+      reportIssue(
+        denied
+          ? 'billing sync: the Stripe key cannot preview invoices (grant Invoices: Read); using the subscription price'
+          : 'billing sync: could not preview the next charge; using the subscription price',
+        { level: 'warning', cause, tags: { subscriptionId: sub.id } },
+      );
+      if (denied) previewDeniedReported = true;
+    }
+  }
+  try {
+    return await nextChargeFromSubscription(sub, async (priceId, currency) => {
+      const price = await stripe.prices.retrieve(priceId, { expand: ['currency_options'] });
+      return price.currency_options?.[currency]?.unit_amount ?? null;
+    });
+  } catch (cause) {
+    reportIssue('billing sync: could not read the subscription price', {
       level: 'warning',
       cause,
-      tags: { subscriptionId },
+      tags: { subscriptionId: sub.id },
     });
     return null;
   }
@@ -75,16 +105,24 @@ async function previewNextCharge(subscriptionId: string): Promise<NextCharge | n
  *
  * The figure is normally written by `syncSubscription` on every Stripe change. This
  * covers the two ways it can be missing: a subscription recorded before the columns
- * existed (2026-10-03), and a preview Stripe could not answer at the time. The page
- * calls it only when the plan will renew and the amount is NULL, so it costs one
- * Stripe call once, not one per visit.
+ * existed (2026-10-03), and a figure Stripe could not give at the time. The page calls
+ * it only when the plan will renew and the amount is NULL.
  */
 export async function fillNextCharge(
   admin: Admin,
   userId: string,
   subscriptionId: string,
 ): Promise<NextCharge | null> {
-  const next = await previewNextCharge(subscriptionId);
+  let next: NextCharge | null = null;
+  try {
+    next = await computeNextCharge(await getStripe().subscriptions.retrieve(subscriptionId));
+  } catch (cause) {
+    reportIssue('billing: could not read the subscription to fill its next charge', {
+      level: 'warning',
+      cause,
+      tags: { subscriptionId },
+    });
+  }
   if (!next) return null;
   await admin
     .from('profiles')
@@ -270,7 +308,7 @@ export async function syncSubscription(
   };
   const action = nextChargeAction(status, patch.cancel_at_period_end === true);
   if (action !== 'keep') {
-    const next = action === 'preview' ? await previewNextCharge(sub.id) : null;
+    const next = action === 'preview' ? await computeNextCharge(sub) : null;
     patch.next_charge_amount = next?.amount ?? null;
     patch.next_charge_currency = next?.currency ?? null;
     patch.next_charge_at = next?.at ?? null;

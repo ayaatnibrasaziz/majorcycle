@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { GRACE_DAYS, paymentFailedAt } from '../lib/billing/grace';
-import { nextChargeAction, nextChargeFromInvoice } from '../lib/billing/nextCharge';
+import { nextChargeAction, nextChargeFromInvoice, nextChargeFromSubscription } from '../lib/billing/nextCharge';
 import { DENIAL_COPY } from '../lib/denialCopy';
 import { SIGNED_OUT_VIEWER, paymentBanner, type ViewerEntitlement } from '../lib/entitlement';
 import { formatCharge } from '../lib/pricing';
@@ -34,6 +34,46 @@ test.describe('the next charge is Stripe’s own figure', () => {
     // CONTROL: an invoice with no amount or currency stores nothing rather than a guess.
     expect(nextChargeFromInvoice({ amount_due: null as unknown as number, currency: 'aud', next_payment_attempt: null, period_end: 1 })).toBeNull();
     expect(nextChargeFromInvoice({ amount_due: 1900, currency: '', next_payment_attempt: null, period_end: 1 })).toBeNull();
+  });
+
+  test('when Stripe will not preview, the subscription’s own price — or nothing', async () => {
+    type Sub = Parameters<typeof nextChargeFromSubscription>[0];
+    const sub = (over: Record<string, unknown> = {}, item: Record<string, unknown> = {}): Sub =>
+      ({
+        currency: 'aud',
+        status: 'active',
+        trial_end: null,
+        discounts: [],
+        automatic_tax: { enabled: false },
+        items: {
+          data: [
+            {
+              price: { id: 'price_m', currency: 'aud', unit_amount: 1900 },
+              quantity: 1,
+              discounts: [],
+              current_period_end: 1_800_000_000,
+              ...item,
+            },
+          ],
+        },
+        ...over,
+      }) as unknown as Sub;
+    // Multi-currency price: the payload carries the default (AUD) amount only.
+    const options = async (_id: string, cur: string) => ({ aud: 1900, usd: 1500, cad: 2000 })[cur] ?? null;
+
+    expect(await nextChargeFromSubscription(sub(), options)).toEqual({
+      amount: 1900, currency: 'aud', at: new Date(1_800_000_000_000).toISOString(),
+    });
+    expect((await nextChargeFromSubscription(sub({ currency: 'usd' }), options))?.amount).toBe(1500);
+    // A trial's first charge is at the trial's end.
+    expect((await nextChargeFromSubscription(sub({ status: 'trialing', trial_end: 1_799_000_000 }), options))?.at).toBe(
+      new Date(1_799_000_000_000).toISOString(),
+    );
+    // CONTROL: whenever the price alone would be WRONG, it says nothing.
+    expect(await nextChargeFromSubscription(sub({ discounts: ['di_1'] }), options)).toBeNull();
+    expect(await nextChargeFromSubscription(sub({}, { discounts: ['di_2'] }), options)).toBeNull();
+    expect(await nextChargeFromSubscription(sub({ automatic_tax: { enabled: true } }), options)).toBeNull();
+    expect(await nextChargeFromSubscription(sub({ currency: 'nzd' }), options)).toBeNull();
   });
 
   test('amounts read the way prices do everywhere else', () => {
