@@ -2,15 +2,15 @@
   "ticker": "AAPL",
   "name": "Apple",
   "currency": "USD",
-  "price": 333.02,
-  "currentDrawdownPct": -3.5675,
+  "price": 330.32,
+  "currentDrawdownPct": -4.3493,
   "typicalDrawdownPct": -24.6493,
   "deepestDrawdownPct": -81.3799,
   "pullbackEvents": 611,
-  "currentProfitPct": 37.1812,
+  "currentProfitPct": 36.069,
   "typicalRecoveryPct": 78.285,
   "largestRecoveryPct": 470.4561,
   "recoveryEvents": 632,
-  "asOf": "2026-09-30",
-  "generatedAt": "2026-10-01T08:00:39+00:00"
+  "asOf": "2026-10-01",
+  "generatedAt": "2026-10-02T07:49:52+00:00"
 }
