@@ -114,9 +114,10 @@ export function DeleteAccountCard({
             <div className="flex items-center gap-3">
               {/* Submits the server action; disabled until acknowledged. The
                   hidden field carries the device timezone for the email date. */}
-              <form action={requestAccountDeletion} onSubmit={clearStoredRuns}>
+              <form action={requestAccountDeletion}>
                 <input type="hidden" name="timeZone" value={timeZone} />
-                <Button type="submit" variant="destructive" disabled={!ack}>
+                {/* Screener results kept in this browser leave with the account. */}
+                <Button type="submit" variant="destructive" disabled={!ack} onClick={clearStoredRuns}>
                   Schedule deletion
                 </Button>
               </form>

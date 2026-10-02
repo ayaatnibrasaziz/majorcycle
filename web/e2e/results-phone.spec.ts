@@ -150,6 +150,36 @@ test.describe('the Results page on a phone', () => {
     await expect(page.locator('.result-card')).toHaveCount(RUN_SNAPSHOT_ROWS);
   });
 
+  test('a finished screen opens in a NEW tab, and signing out removes it', async ({ page, context }) => {
+    // Kept per account in localStorage (lib/analysis.tsx), so a second tab finds it.
+    await page.goto('/stocks');
+    const key = `mc:analysis-last-v1:${userId}`;
+    await page.evaluate(
+      ([k, snap, owner]) => localStorage.setItem(k as string, JSON.stringify({ ...(snap as object), owner })),
+      [key, RUN_SNAPSHOT, userId] as const,
+    );
+    const tab = await context.newPage();
+    await tab.goto('/results');
+    await expect(tab.locator('.results-table tbody tr')).toHaveCount(RUN_SNAPSHOT_ROWS, { timeout: 30_000 });
+    // CONTROL: a copy belonging to ANOTHER account is never shown.
+    await tab.evaluate(([k]) => {
+      const v = JSON.parse(localStorage.getItem(k as string) ?? '{}');
+      localStorage.setItem(k as string, JSON.stringify({ ...v, owner: 'someone-else' }));
+      sessionStorage.clear();
+    }, [key] as const);
+    await tab.reload();
+    await expect(tab.getByText('No analysis run yet')).toBeVisible({ timeout: 30_000 });
+    await tab.close();
+
+    await page.evaluate(([k, snap, owner]) => localStorage.setItem(k as string, JSON.stringify({ ...(snap as object), owner })), [key, RUN_SNAPSHOT, userId] as const);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.getByRole('button', { name: email }).click();
+    await page.getByRole('menuitem', { name: 'Sign out' }).click();
+    await page.waitForURL('**/login');
+    const left = await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('mc:analysis')));
+    expect(left).toEqual([]);
+  });
+
   test('from 768px the table is back, with no phone Sort box', async ({ page }) => {
     await openResults(page, 768);
     await expect(page.locator('.results-table')).toBeVisible();
