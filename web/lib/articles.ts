@@ -242,7 +242,7 @@ export const ARTICLES = [
   },
   {
     slug: 'asx-200-shares-furthest-below-their-highs',
-    title: 'Which ASX 200 shares sit furthest below their own highs',
+    title: 'ASX 200 shares furthest below their highs',
     question: 'Which ASX shares have fallen the most?',
     answer:
       'Eighty-eight of the 201 companies in the ASX 200 sit more than 20% below their own one-year high, and sixteen are more than half below. The falls are spread right across the market rather than concentrated in one industry, which is what makes this run unusual.',
@@ -272,7 +272,7 @@ export const ARTICLES = [
   },
   {
     slug: 'sp-500-shares-furthest-below-their-highs',
-    title: 'Which S&P 500 shares sit furthest below their own highs',
+    title: 'S&P 500 shares furthest below their highs',
     question: 'Which S&P 500 stocks are furthest below their 52-week highs?',
     answer:
       'The S&P 500 is close to its high, and that hides an unusual split. One hundred and forty-three of its companies are more than 20% below their own one-year high, and 44 of the 83 technology companies are — while the very largest companies sit near their peaks.',
@@ -302,7 +302,7 @@ export const ARTICLES = [
   },
   {
     slug: 'tsx-60-shares-furthest-below-their-highs',
-    title: 'Which S&P/TSX 60 shares sit furthest below their own highs',
+    title: 'TSX 60 shares furthest below their highs',
     question: 'Which Canadian shares have fallen the most?',
     answer:
       'Ten of the 60 companies in the S&P/TSX 60 sit more than 20% below their own one-year high, and not one is down more than 40%. Canada is by a wide margin the calmest of the three markets we cover, and almost all of its damage is in a single sector.',

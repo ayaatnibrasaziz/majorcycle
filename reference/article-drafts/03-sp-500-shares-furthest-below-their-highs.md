@@ -9,8 +9,8 @@
 | Field | Value |
 |---|---|
 | **URL** | `/articles/sp-500-shares-furthest-below-their-highs` |
-| **Title tag** | Which S&P 500 shares sit furthest below their own highs (55 chars) |
-| **H1** | Which S&P 500 shares sit furthest below their own highs |
+| **Title tag** | S&P 500 shares furthest below their highs (41 chars; 54 with the site suffix) |
+| **H1** | S&P 500 shares furthest below their highs |
 | **Meta description** | Every S&P 500 company ranked by how far it sits below its own one-year high, as at 27 August 2026. The index looks calm. Half of technology does not. (147 chars) |
 | **Kind** | Analysis |
 | **Region pill** | United States |
