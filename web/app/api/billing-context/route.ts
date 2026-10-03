@@ -5,6 +5,7 @@ import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/se
 import { currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
 import { hasUsedTrial } from '@/lib/trialGuard';
 import { accessDenialReason } from '@/lib/entitlement';
+import { disputeEnded } from '@/lib/planStatus';
 
 /**
  * What the upgrade dialog needs to offer the RIGHT thing to THIS reader (F3 Step 10).
@@ -73,6 +74,8 @@ export async function GET() {
       trialUsed,
       hasSubscription,
       billingBlocked,
+      // A lost dispute has ended the plan: the window must not promise it comes back.
+      disputeEnded: disputeEnded(billingBlocked, profile?.subscription_status ?? null),
       reason,
       // Prefill the in-place support dialog, so the lock path matches the account
       // page rather than asking a signed-in reader who they are.

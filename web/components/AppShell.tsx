@@ -38,20 +38,25 @@ import { SHELL_DESKTOP_MIN_PX } from '@/lib/shell';
 export function AppShell({
   userId = null,
   email,
+  displayName = null,
   lastRunAt,
   subscriptionStatus,
   entitled = false,
   billingBlocked = false,
+  cancelAtPeriodEnd = false,
   payment = null,
   children,
 }: {
   /** Scopes the screener results this browser keeps (lib/analysis.tsx). */
   userId?: string | null;
   email?: string | null;
+  /** Prefills the support form the dispute banner opens. */
+  displayName?: string | null;
   lastRunAt?: string | null;
   subscriptionStatus?: string | null;
   entitled?: boolean;
   billingBlocked?: boolean;
+  cancelAtPeriodEnd?: boolean;
   /** A failed payment to warn about — `paymentBanner()` in lib/entitlement.ts. */
   payment?: PaymentBannerState | null;
   children: React.ReactNode;
@@ -89,6 +94,7 @@ export function AppShell({
     subscriptionStatus,
     entitled,
     billingBlocked,
+    cancelAtPeriodEnd,
     onLockedClick: setLockedFeature,
   };
 
@@ -191,7 +197,7 @@ export function AppShell({
         className="min-[768px]:ml-[var(--sidebar-w)] mt-[var(--header-h)] p-6 min-h-[calc(100vh-var(--header-h))]"
         id="main-content"
       >
-        {payment && <PaymentBanner state={payment} />}
+        {payment && <PaymentBanner state={payment} email={email ?? ''} displayName={displayName ?? ''} />}
         {/* Disclaimer strip — required on all authenticated pages (#4, #12). */}
         <div className="mb-4 px-3 py-2 bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[var(--radius-sm)] text-[11px] text-[var(--text-muted)] italic">
           ⚠ For educational and research purposes only. Not financial advice.

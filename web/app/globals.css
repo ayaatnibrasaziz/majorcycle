@@ -2949,7 +2949,8 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 .payment-banner--grace {
   background: var(--status-warning-tint); border-color: var(--status-warning-tint-strong); color: var(--status-warning-ink);
 }
-.payment-banner--paused {
+.payment-banner--paused,
+.payment-banner--held {
   background: var(--status-danger-tint); border-color: var(--status-danger-tint-strong); color: var(--status-danger-ink);
 }
 .payment-banner-icon { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }

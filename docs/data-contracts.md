@@ -1903,6 +1903,13 @@ state sync; checkout just links the customer:
   blocked **and cancel the subscription** so it can't renew. `charge.dispute.funds_reinstated`
   ⇒ `billing_blocked = false`. The `Dispute` object carries no customer, so these are the ONE
   place the webhook does a live Stripe retrieve (charge → customer); best-effort.
+  **Billing follows access (2026-10-03):** while a real dispute is open the subscription's
+  collection is PAUSED (`pause_collection: { behavior: 'void' }` — each invoice is voided,
+  not charged), and a win resumes it; a disputed customer used to keep being charged for up
+  to 75 days while locked out. A paused subscription stores no next charge. ⚠️ A closed
+  bank INQUIRY (`warning_closed`) changes nothing — until that date it fell into the "lost"
+  branch and cancelled a paying customer's subscription. One rule decides all of it:
+  `disputeBillingAction` in `web/lib/billing/dispute.ts`.
 - **Step 7 (done):** `syncSubscription` writes the email trial-tombstone once the sub is
   trialing (the card-fingerprint guard was dropped — that vector is Stripe Radar's job).
 

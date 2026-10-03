@@ -2,7 +2,9 @@ import { expect, test } from '@playwright/test';
 
 import { GRACE_DAYS, paymentFailedAt } from '../lib/billing/grace';
 import { nextChargeAction, nextChargeFromInvoice, nextChargeFromSubscription } from '../lib/billing/nextCharge';
+import { canPauseOrResume, disputeBillingAction } from '../lib/billing/dispute';
 import { DENIAL_COPY } from '../lib/denialCopy';
+import { disputeEnded, planStatus } from '../lib/planStatus';
 import { SIGNED_OUT_VIEWER, paymentBanner, type ViewerEntitlement } from '../lib/entitlement';
 import { formatCharge } from '../lib/pricing';
 import { MAX_RETURN_QUERY, POST_AUTH_HOME, returnPath, safeNextPath } from '../lib/url';
@@ -116,10 +118,20 @@ test.describe('who sees the failed-payment banner', () => {
     expect(paymentBanner(viewer({ entitled: true, reason: null, subscriptionStatus: 'active' }))).toBeNull();
     expect(paymentBanner(viewer({ entitled: false, reason: 'canceled', subscriptionStatus: 'canceled' }))).toBeNull();
     expect(paymentBanner(viewer({ entitled: false, reason: 'no_subscription' }))).toBeNull();
-    // A disputed account: updating a card cannot lift a dispute.
+    expect(paymentBanner(SIGNED_OUT_VIEWER)).toBeNull();
+  });
+
+  test('a disputed account gets the HOLD banner, never the card one — even mid card-failure', () => {
     expect(
       paymentBanner(viewer({ entitled: false, reason: 'billing_blocked', billingBlocked: true, subscriptionStatus: 'past_due' })),
-    ).toBeNull();
+    ).toEqual({ kind: 'held', ended: false });
+    expect(
+      paymentBanner(viewer({ entitled: false, reason: 'billing_blocked', billingBlocked: true, subscriptionStatus: 'active' })),
+    ).toEqual({ kind: 'held', ended: false });
+    // Lost: the plan was cancelled, so the banner must not promise it comes back.
+    expect(
+      paymentBanner(viewer({ entitled: false, reason: 'billing_blocked', billingBlocked: true, subscriptionStatus: 'canceled' })),
+    ).toEqual({ kind: 'held', ended: true });
     expect(paymentBanner(SIGNED_OUT_VIEWER)).toBeNull();
     expect(paymentBanner(viewer({ profileUnreadable: true, subscriptionStatus: 'past_due' }))).toBeNull();
   });
@@ -155,5 +167,55 @@ test.describe('the link to come back to after signing in', () => {
       expect(new URL(out, 'https://www.majorcycle.com').origin, bad).toBe('https://www.majorcycle.com');
     }
     expect(safeNextPath('//evil.com/?preset=long')).toBe(POST_AUTH_HOME);
+  });
+});
+
+test.describe('a dispute decides billing as well as access', () => {
+  test('open → pause, won → resume, lost → cancel', () => {
+    expect(disputeBillingAction('charge.dispute.created', 'needs_response')).toBe('pause');
+    expect(disputeBillingAction('charge.dispute.funds_withdrawn', 'needs_response')).toBe('pause');
+    expect(disputeBillingAction('charge.dispute.funds_reinstated', 'won')).toBe('resume');
+    expect(disputeBillingAction('charge.dispute.closed', 'won')).toBe('resume');
+    expect(disputeBillingAction('charge.dispute.closed', 'lost')).toBe('cancel');
+  });
+
+  test('a bank INQUIRY moves no money, so it touches nothing — even when it closes', () => {
+    expect(disputeBillingAction('charge.dispute.created', 'warning_needs_response')).toBeNull();
+    // ⚠️ Until 2026-10-03 a closed inquiry fell into the "lost" branch and CANCELLED
+    // a paying customer's subscription.
+    expect(disputeBillingAction('charge.dispute.closed', 'warning_closed')).toBeNull();
+    expect(disputeBillingAction('invoice.paid', 'won')).toBeNull();
+  });
+
+  test('only a plan that can still bill is paused or resumed', () => {
+    for (const s of ['active', 'trialing', 'past_due']) expect(canPauseOrResume(s), s).toBe(true);
+    for (const s of ['canceled', null]) expect(canPauseOrResume(s), String(s)).toBe(false);
+  });
+});
+
+test.describe('one name for each plan state — the sidebar and the Account page', () => {
+  const label = (o: Partial<Parameters<typeof planStatus>[0]>) =>
+    planStatus({ status: null, billingBlocked: false, entitled: false, cancelAtPeriodEnd: false, ...o }).label;
+
+  test('every state', () => {
+    expect(label({})).toBe('No plan');
+    expect(label({ status: 'trialing', entitled: true })).toBe('Trial active');
+    expect(label({ status: 'active', entitled: true })).toBe('Active');
+    expect(label({ status: 'active', entitled: true, cancelAtPeriodEnd: true })).toBe('Cancelling');
+    expect(label({ status: 'trialing', entitled: true, cancelAtPeriodEnd: true })).toBe('Cancelling');
+    expect(label({ status: 'past_due', entitled: true })).toBe('Payment due');
+    expect(label({ status: 'past_due', entitled: false })).toBe('Access paused');
+    expect(label({ status: 'canceled' })).toBe('Cancelled');
+    // A dispute outranks everything — until it has ended the plan.
+    expect(label({ status: 'active', billingBlocked: true })).toBe('On hold');
+    expect(label({ status: 'active', billingBlocked: true, cancelAtPeriodEnd: true })).toBe('On hold');
+    expect(label({ status: 'past_due', billingBlocked: true })).toBe('On hold');
+    expect(label({ status: 'canceled', billingBlocked: true })).toBe('Cancelled');
+  });
+
+  test('a dispute has ENDED the plan only once the plan is cancelled', () => {
+    expect(disputeEnded(true, 'canceled')).toBe(true);
+    expect(disputeEnded(true, 'active')).toBe(false);
+    expect(disputeEnded(false, 'canceled')).toBe(false);
   });
 });

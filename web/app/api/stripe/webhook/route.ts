@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 
 import { GRACE_DAYS } from '@/lib/billing/grace';
+import { canPauseOrResume, disputeBillingAction, type DisputeBillingAction } from '@/lib/billing/dispute';
 import { reportIssue } from '@/lib/observability';
 import { getStripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -40,7 +41,7 @@ import {
  * welcome when the sub begins trialing (step 8); `checkout.session.completed` just links
  * the Stripe customer to our user; invoices flip active/past_due + the grace clock AND
  * send the branded dunning / recovery emails (step 8); `trial_will_end` sends the branded
- * trial-ending reminder (step 8); `charge.dispute.*` set/clear `billing_blocked` and cancel the sub on a lost
+ * trial-ending reminder (step 8); `charge.dispute.*` set/clear `billing_blocked`, pause billing while a dispute is open, and cancel the sub on a lost
  * dispute (step 8). The Step-7 email trial-tombstone is written in `syncSubscription` when
  * a sub goes trialing (the same-card vector is handled by Stripe Radar, no code here).
  *
@@ -99,6 +100,41 @@ async function resolveUserIdFromDispute(
     });
   }
   return { userId: await userIdByCustomer(admin, cust), customerId: cust };
+}
+
+/**
+ * The Stripe half of a dispute (lib/billing/dispute.ts): pause collection while it is
+ * open, resume it on a win, cancel on a loss. Failures are ALERTS — a pause that did
+ * not happen means a locked-out customer may be charged, and the owner must know.
+ */
+async function applyDisputeToSubscription(
+  admin: Admin,
+  userId: string,
+  action: Exclude<DisputeBillingAction, null>,
+): Promise<void> {
+  const { data: prof } = await admin
+    .from('profiles')
+    .select('stripe_subscription_id, subscription_status')
+    .eq('id', userId)
+    .maybeSingle();
+  const subId = prof?.stripe_subscription_id;
+  if (!subId) return;
+  try {
+    if (action === 'cancel') {
+      await getStripe().subscriptions.cancel(subId);
+    } else if (canPauseOrResume(prof.subscription_status ?? null)) {
+      await getStripe().subscriptions.update(subId, {
+        // 'void': each invoice while paused is voided rather than charged or left owing.
+        pause_collection: action === 'pause' ? { behavior: 'void' } : '',
+      });
+    }
+  } catch (err) {
+    reportIssue(`stripe webhook: could not ${action} the subscription for a dispute`, {
+      cause: err,
+      level: 'alert',
+      tags: { userId, subscriptionId: subId },
+    });
+  }
 }
 
 /** Subscription ended for good → lapse to a free (canceled) account. */
@@ -353,60 +389,28 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       }
       return ctx;
     }
-    case 'charge.dispute.created': {
-      // A chargeback opened. Revoke access ONLY for a real dispute (funds moved) — a mere
-      // inquiry (status warning_*) hasn't taken money, so it must not lock a legit customer.
-      const dispute = event.data.object as Stripe.Dispute;
-      const ctx = await resolveUserIdFromDispute(admin, dispute);
-      if (ctx.userId && !dispute.status.startsWith('warning')) {
-        await admin.from('profiles').update({ billing_blocked: true }).eq('id', ctx.userId);
-      }
-      return ctx;
-    }
-    case 'charge.dispute.funds_withdrawn': {
-      // Funds actually pulled (a real chargeback, incl. an inquiry that escalated) → lock.
-      const dispute = event.data.object as Stripe.Dispute;
-      const ctx = await resolveUserIdFromDispute(admin, dispute);
-      if (ctx.userId) {
-        await admin.from('profiles').update({ billing_blocked: true }).eq('id', ctx.userId);
-      }
-      return ctx;
-    }
+    case 'charge.dispute.created':
+    case 'charge.dispute.funds_withdrawn':
+    case 'charge.dispute.funds_reinstated':
     case 'charge.dispute.closed': {
       const dispute = event.data.object as Stripe.Dispute;
       const ctx = await resolveUserIdFromDispute(admin, dispute);
       if (!ctx.userId) return ctx;
-      if (dispute.status === 'won') {
-        // We won → restore access.
-        await admin.from('profiles').update({ billing_blocked: false }).eq('id', ctx.userId);
-      } else {
-        // Lost → keep access revoked AND cancel the sub so it can't renew / re-dispute.
-        const { data: prof } = await admin
-          .from('profiles')
-          .select('stripe_subscription_id')
-          .eq('id', ctx.userId)
-          .maybeSingle();
-        if (prof?.stripe_subscription_id) {
-          try {
-            await getStripe().subscriptions.cancel(prof.stripe_subscription_id);
-          } catch (err) {
-            reportIssue('stripe webhook: cancel after lost dispute failed', {
-              cause: err,
-              level: 'alert',
-              tags: { userId: ctx.userId, subscriptionId: prof.stripe_subscription_id },
-            });
-          }
-        }
-      }
-      return ctx;
-    }
-    case 'charge.dispute.funds_reinstated': {
-      // Funds returned (dispute resolved in our favour) → restore access.
-      const dispute = event.data.object as Stripe.Dispute;
-      const ctx = await resolveUserIdFromDispute(admin, dispute);
-      if (ctx.userId) {
+      // Access and billing are decided by the SAME rule (lib/billing/dispute.ts):
+      // - pause:  a real dispute (funds moved). Lock access, and stop charging a
+      //           customer who cannot use what they would be paying for.
+      // - resume: we won. Restore access and billing.
+      // - cancel: we lost. Access stays off and the subscription ends.
+      // - null:   a bank INQUIRY (warning_*), which moves no money. ⚠️ Until 2026-10-03
+      //           an inquiry that CLOSED fell into the "lost" branch and cancelled a
+      //           paying customer's subscription for a question their bank had asked.
+      const action = disputeBillingAction(event.type, dispute.status);
+      if (action === 'pause') {
+        await admin.from('profiles').update({ billing_blocked: true }).eq('id', ctx.userId);
+      } else if (action === 'resume') {
         await admin.from('profiles').update({ billing_blocked: false }).eq('id', ctx.userId);
       }
+      if (action) await applyDisputeToSubscription(admin, ctx.userId, action);
       return ctx;
     }
     default:

@@ -352,17 +352,23 @@ test.describe('entitlement enforcement across subscription states', () => {
 
         if (state.entitled) {
           await expect(
-            page.getByRole('button', { name: LOCK_CTA }),
+            // Inside the lock PANEL: a held account's banner has its own "Contact support".
+            page.getByRole('note').getByRole('button', { name: LOCK_CTA }),
             `${route} should not be locked for ${state.name}`,
           ).toHaveCount(0);
         } else {
           await expect(
-            page.getByRole('button', { name: LOCK_CTA }),
+            page.getByRole('note').getByRole('button', { name: LOCK_CTA }),
             `${route} should be locked for ${state.name}`,
           ).toBeVisible();
           // The panel must name what happened, not just that something is locked.
           if (state.reason === 'billing_blocked') {
-            await expect(page.getByText(/your account is on hold/i).first()).toBeVisible();
+            // A LOST dispute has ended the plan, so it must NOT claim to be on hold.
+            const lost = state.patch.subscription_status === 'canceled';
+            await expect(
+              page.getByText(lost ? /switched off on this account/i : /your account is on hold/i).first(),
+            ).toBeVisible();
+            if (lost) await expect(page.getByText(/your account is on hold/i)).toHaveCount(0);
           }
           // The decisive half: locked means the scores were never built, not merely
           // covered up. `NN/100` is the only rendering of a rating anywhere.
@@ -623,7 +629,9 @@ test.describe('entitlement enforcement across subscription states', () => {
     await expect(page.getByRole('button', { name: /start free trial|subscribe/i })).toHaveCount(
       0,
     );
-    await expect(page.getByRole('button', { name: /contact support/i })).toBeVisible();
+    // The card's support button — the hold banner at the top carries one too.
+    await expect(page.locator('.sub-plan').getByRole('button', { name: /contact support/i })).toBeVisible();
+    await expect(page.locator('.payment-banner').getByRole('button', { name: /contact support/i })).toBeVisible();
   });
 
   // ── Mid-deletion accounts belong at /reactivate, not /pricing ───────────────

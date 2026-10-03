@@ -17,7 +17,7 @@ import { StartTrialModal } from '@/components/account/StartTrialModal';
 import { SupportDialog } from '@/components/SupportDialog';
 import type { BillingCurrency } from '@/lib/stripe';
 import { PREMIUM_UNLOCKS } from '@/lib/pricing';
-import { DENIAL_COPY } from '@/lib/denialCopy';
+import { DENIAL_COPY, DISPUTE_ENDED_COPY } from '@/lib/denialCopy';
 import type { AccessDenialReason } from '@/lib/entitlement';
 
 /**
@@ -112,6 +112,8 @@ interface BillingContext {
   hasSubscription: boolean;
   /** Dispute lock. Outranks everything else — see the `blocked` branch below. */
   billingBlocked: boolean;
+  /** The dispute has ended the plan (lost), so nothing is "on hold" any more. */
+  disputeEnded?: boolean;
   /** Why this reader is locked (lib/entitlement.ts), so the window can say so. */
   reason: AccessDenialReason | null;
   /** Prefill the support dialog so a locked reader doesn't retype what we hold. */
@@ -168,6 +170,7 @@ export function UpgradeDialog({
   // refuse at the till — and the reader would be left guessing why a paid-up plan
   // stopped working. Say it plainly and point at the one action that helps.
   const blocked = ctx?.billingBlocked === true;
+  const ended = blocked && ctx?.disputeEnded === true;
 
   // ⚠️ Why THIS reader is locked (beta review D-4, owner-approved design 2026-10-03).
   // Until then a former subscriber, or a customer whose card had failed, got the
@@ -206,15 +209,17 @@ export function UpgradeDialog({
                 />
               </span>
               <DialogTitle>
-                {blocked ? 'Your account is on hold' : copy.title}
+                {ended ? DISPUTE_ENDED_COPY.title : blocked ? 'Your account is on hold' : copy.title}
               </DialogTitle>
             </div>
             <DialogDescription>
               {loading
                 ? 'Checking your plan…'
-                : blocked
-                  ? 'A payment on this account was disputed with the bank, so access is on hold while that’s resolved.'
-                  : copy.what}
+                : ended
+                  ? 'A payment on this account was disputed with the bank, so the paid analysis is switched off on this account.'
+                  : blocked
+                    ? 'A payment on this account was disputed with the bank, so access is on hold while that’s resolved.'
+                    : copy.what}
             </DialogDescription>
           </DialogHeader>
 
@@ -228,9 +233,9 @@ export function UpgradeDialog({
           ) : blocked ? (
             <div className="p-5">
               <p className="text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
-                {copy.title} is part of the paid analysis, and it comes back as soon as
-                the dispute is settled. If you think this is a mistake, contact us and
-                we’ll sort it out with you.
+                {ended
+                  ? `${copy.title} is part of the paid analysis. If you’d like to talk about it, contact us and we’ll sort it out with you.`
+                  : `${copy.title} is part of the paid analysis, and it comes back as soon as the dispute is settled. If you think this is a mistake, contact us and we’ll sort it out with you.`}
               </p>
               <p className="mt-4 text-[11.5px] leading-relaxed text-[var(--text-muted)]">
                 Browsing, price charts and company financials stay free in the meantime.
@@ -356,7 +361,7 @@ export function UpgradeDialog({
         onOpenChange={setSupportOpen}
         defaultName={ctx?.displayName ?? ''}
         defaultEmail={ctx?.email ?? ''}
-        description="Your account is on hold because a payment was disputed. Tell us what happened and we’ll sort it out with you by email."
+        description={ended ? DISPUTE_ENDED_COPY.support : 'Your account is on hold because a payment was disputed. Tell us what happened and we’ll sort it out with you by email.'}
       />
     </>
   );

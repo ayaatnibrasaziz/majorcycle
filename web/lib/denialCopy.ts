@@ -39,3 +39,16 @@ export const DENIAL_COPY: Record<AccessDenialReason, { title: string; body: stri
     body: 'Browsing, charts and company financials are still yours while it’s paused. Resuming it from the Account page brings this back straight away.',
   },
 };
+
+/**
+ * A dispute that has ENDED the subscription (lost: the plan is cancelled and the hold
+ * stays). `billing_blocked` alone said "on hold while that’s resolved" and "comes back
+ * as soon as the dispute is settled" — both untrue once it is settled against the
+ * customer (owner-approved wording, 2026-10-03). See `disputeEnded` in lib/planStatus.ts.
+ */
+export const DISPUTE_ENDED_COPY = {
+  title: 'The paid analysis is switched off',
+  body: 'A payment on this account was disputed with the bank, so the paid analysis is switched off on this account. If you’d like to talk about it, contact us and we’ll sort it out with you.',
+  support:
+    'The paid analysis was switched off on your account after a payment dispute. Tell us what happened and we’ll sort it out with you by email.',
+} as const;

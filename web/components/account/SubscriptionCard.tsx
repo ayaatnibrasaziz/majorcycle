@@ -7,6 +7,7 @@ import { ContactSupportButton } from '@/components/account/ContactSupportButton'
 import { paymentFailedAt } from '@/lib/billing/grace';
 import { formatCharge } from '@/lib/pricing';
 import type { BillingCurrency } from '@/lib/stripe';
+import { disputeEnded, planStatus, type PlanStatusTone } from '@/lib/planStatus';
 
 interface SubscriptionCardProps {
   status: string | null;
@@ -52,9 +53,9 @@ interface SubscriptionCardProps {
 
 export type NoticeTone = 'success' | 'info' | 'warning';
 
+// The pill's words and colour come from lib/planStatus.ts — the sidebar badge reads the
+// same function, so the two always name a state alike. This table holds only sentences.
 interface StatusMeta {
-  label: string;
-  tone: 'ok' | 'warn' | 'muted';
   // `trialEnd` is a <LocalDate> node (renders in the viewer's device timezone),
   // or null when there's no trial-end date. See docs/coding-standards.md.
   detail: (plan: string | null, trialEnd: ReactNode | null) => ReactNode;
@@ -82,16 +83,12 @@ function planLabel(plan: string | null): string {
 
 const STATUS_META: Record<string, StatusMeta> = {
   active: {
-    label: 'Active',
-    tone: 'ok',
     detail: (plan) =>
       plan
         ? `You're on the ${planLabel(plan)}.`
         : 'Your subscription is active.',
   },
   trialing: {
-    label: 'Trial active',
-    tone: 'ok',
     detail: (_plan, trialEnd) =>
       trialEnd ? (
         <>Your free trial runs until {trialEnd}.</>
@@ -100,21 +97,15 @@ const STATUS_META: Record<string, StatusMeta> = {
       ),
   },
   past_due: {
-    label: 'Payment due',
-    tone: 'warn',
     detail: () =>
       'We couldn’t take your last payment. Update your card to keep access.',
   },
   canceled: {
-    label: 'Cancelled',
-    tone: 'muted',
     detail: () => 'Your subscription has been cancelled.',
   },
 };
 
 const NONE_META: StatusMeta = {
-  label: 'No plan',
-  tone: 'muted',
   detail: () => 'You don’t have an active subscription yet.',
 };
 
@@ -124,8 +115,6 @@ const NONE_META: StatusMeta = {
 // access" they had ALREADY lost. Status is one dimension short of the truth here;
 // entitlement is what separates the two cases, so the copy follows entitlement.
 const PAST_DUE_LAPSED_META: StatusMeta = {
-  label: 'Access paused',
-  tone: 'warn',
   detail: () =>
     'We couldn’t take your last payment, so access is paused for now. Update your card and it comes straight back — nothing has been lost.',
 };
@@ -135,13 +124,11 @@ const PAST_DUE_LAPSED_META: StatusMeta = {
 // customer "ACTIVE — You're on the Monthly plan", which is both wrong and the single
 // most support-generating thing we could say to someone whose access just vanished.
 const BLOCKED_META: StatusMeta = {
-  label: 'On hold',
-  tone: 'warn',
   detail: () =>
     'A payment on this account was disputed with the bank, so access is on hold while that’s resolved. Contact support and we’ll sort it out with you.',
 };
 
-const TONE_CLS: Record<StatusMeta['tone'], string> = {
+const TONE_CLS: Record<PlanStatusTone, string> = {
   ok: 'bg-[var(--brand-light)] text-[var(--brand-mid)] border-[var(--brand-light-border)]',
   warn: 'bg-[var(--status-warning-tint)] text-[var(--status-warning-ink)] border-[var(--status-warning-tint-strong)]',
   muted:
@@ -202,9 +189,8 @@ export function SubscriptionCard({
   // Never let "won't renew" mask the hold: a blocked account needs to hear why it
   // lost access, and the renewal date is the lesser fact.
   const scheduledCancel =
-    !billingBlocked &&
-    cancelDate !== null &&
-    (status === 'active' || status === 'trialing');
+    !billingBlocked && cancelAtPeriodEnd && (status === 'active' || status === 'trialing');
+  const pill = planStatus({ status, billingBlocked, entitled, cancelAtPeriodEnd });
 
   // No live subscription (never subscribed, or lapsed) → offer the trial. A LOST
   // dispute cancels the subscription, so a blocked account lands on `canceled` — which
@@ -228,9 +214,13 @@ export function SubscriptionCard({
   let sentence: ReactNode = null;
 
   if (billingBlocked) {
-    sentence = meta.detail(plan, trialEnd);
+    // A lost dispute cancels the plan and keeps the hold: nothing is coming back, so
+    // the "while that's resolved" sentence would be a promise we will not keep.
+    sentence = disputeEnded(billingBlocked, status)
+      ? 'A payment on this account was disputed with the bank, so the paid analysis is switched off on this account. If you’d like to talk about it, contact us and we’ll sort it out with you.'
+      : meta.detail(plan, trialEnd);
   } else if (scheduledCancel) {
-    rows.push([status === 'trialing' ? 'Trial ends' : 'Plan ends', cancelDate]);
+    if (cancelDate) rows.push([status === 'trialing' ? 'Trial ends' : 'Plan ends', cancelDate]);
     rows.push(['Next charge', 'None']);
     // A trial has never been charged, so "again" would be untrue there.
     sentence =
@@ -302,9 +292,9 @@ export function SubscriptionCard({
               {subLine && <div className="sub-plan-sub">{subLine}</div>}
             </div>
             <span
-              className={`inline-flex flex-shrink-0 items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.4px] ${TONE_CLS[meta.tone]}`}
+              className={`inline-flex flex-shrink-0 items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.4px] ${TONE_CLS[pill.tone]}`}
             >
-              {scheduledCancel ? 'Cancelling' : meta.label}
+              {pill.label}
             </span>
           </div>
 

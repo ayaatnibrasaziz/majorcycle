@@ -306,7 +306,12 @@ export async function syncSubscription(
     cancel_at_period_end: sub.cancel_at != null || (sub.cancel_at_period_end ?? false),
     trial_ends_at: toISO(sub.trial_end),
   };
-  const action = nextChargeAction(status, patch.cancel_at_period_end === true);
+  // Collection paused (an open dispute, lib/billing/dispute.ts): Stripe voids each
+  // invoice, so nothing is coming — the same as a scheduled cancel for this purpose.
+  const action = nextChargeAction(
+    status,
+    patch.cancel_at_period_end === true || sub.pause_collection != null,
+  );
   if (action !== 'keep') {
     const next = action === 'preview' ? await computeNextCharge(sub) : null;
     patch.next_charge_amount = next?.amount ?? null;

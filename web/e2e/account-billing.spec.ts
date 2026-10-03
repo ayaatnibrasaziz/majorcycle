@@ -50,6 +50,8 @@ const STATES: Record<string, Record<string, unknown>> = {
     current_period_end: iso(20 * DAY), next_charge_amount: 1900, next_charge_currency: 'aud',
     billing_blocked: true,
   },
+  // A dispute that went against the customer: the plan is cancelled and the hold stays.
+  disputeLost: { subscription_status: 'canceled', subscription_plan: 'monthly', subscription_currency: 'aud', billing_blocked: true },
 };
 
 const users: Record<string, ThrowawayUser> = {};
@@ -86,6 +88,11 @@ test.describe('billing as the customer sees it', () => {
       const t = await text(page);
       for (const m of must) expect(t, `${state}: ${m}`).toMatch(m);
       for (const m of mustNot) expect(t, `${state} must not show ${m}`).not.toMatch(m);
+      // The sidebar badge and the card's pill name the state alike (lib/planStatus.ts).
+      const pill = (await card(page).locator('.sub-plan-top > span').textContent())?.trim();
+      const badge = (await page.getByRole('group', { name: 'Subscription status' }).first().textContent())?.trim();
+      expect(pill, `${state}: card pill`).toBeTruthy();
+      expect(badge?.toLowerCase(), `${state}: sidebar says what the card says`).toBe(pill?.toLowerCase());
       await page.context().clearCookies();
     };
     await expectCard('trial', [/Trial ends/, /Then A\$19\.00 a month/, /First charge/, /Cancel any time before/, /Manage billing/]);
@@ -99,17 +106,33 @@ test.describe('billing as the customer sees it', () => {
     // A trial was never charged, so it is not told it "won't be charged AGAIN".
     await expectCard('trialCancelling', [/Trial ends/, /Next charge None/, /won.t be charged\./], [/charged again/]);
     // A held account: why, and the one action that helps — no renewal, amount or card button.
+    // After a LOST dispute nothing is "on hold" — it will not come back by itself.
+    await expectCard('disputeLost', [/CANCELLED/i, /switched off/, /Contact support/], [/on hold/i, /while that.s resolved/]);
     await expectCard('disputed', [/ON HOLD/i, /disputed with the bank/, /Contact support/], [/Renews on/, /A\$19/, /Manage billing/, /Update card/]);
   });
 
-  test('a held account: no card-failure banner, and the hold is said once', async ({ page }) => {
+  test('a held account: the hold banner with support, never the card one, and the card says it once', async ({ page }) => {
     await as(page, 'disputed');
     await page.goto('/account?billing=blocked');
     await expect(card(page)).toBeVisible();
-    // Updating a card cannot lift a dispute, so the payment banner must not point at it.
-    await expect(page.locator('.payment-banner')).toHaveCount(0);
     const t = await text(page);
-    expect(t.match(/disputed/g)?.length, 'the hold explained once, not twice').toBe(1);
+    expect(t.match(/disputed/g)?.length, 'the hold explained once in the card, not twice').toBe(1);
+    // Every signed-in page carries the hold banner; its one action is support.
+    await page.goto('/stocks');
+    const banner = page.locator('.payment-banner');
+    await expect(banner).toHaveClass(/payment-banner--held/);
+    await expect(banner).toContainText('Your account is on hold');
+    // Updating a card cannot lift a dispute, so nothing may point at it.
+    await expect(banner.getByRole('button', { name: 'Update card' })).toHaveCount(0);
+    await banner.getByRole('button', { name: 'Contact support' }).click();
+    await expect(page.getByRole('dialog')).toContainText('on hold because a payment was disputed');
+    await page.context().clearCookies();
+
+    // After a LOST dispute it no longer says "on hold".
+    await as(page, 'disputeLost');
+    await page.goto('/stocks');
+    await expect(page.locator('.payment-banner')).toContainText('switched off on this account');
+    await expect(page.locator('.payment-banner')).not.toContainText('on hold');
   });
 
   test('the failed-payment banner: amber with a deadline, red once paused, absent otherwise', async ({ page }) => {

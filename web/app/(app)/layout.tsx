@@ -74,9 +74,11 @@ export default async function AppLayout({
     <AppShell
       userId={viewer.userId}
       email={viewer.email}
+      displayName={viewer.displayName}
       subscriptionStatus={viewer.subscriptionStatus}
       entitled={viewer.entitled}
       billingBlocked={viewer.billingBlocked}
+      cancelAtPeriodEnd={viewer.cancelAtPeriodEnd}
       payment={paymentBanner(viewer)}
     >
       {children}

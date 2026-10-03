@@ -44,7 +44,7 @@ export const getViewerEntitlement = cache(async (): Promise<ViewerEntitlement> =
   const { data: profile, error } = await supabase
     .from('profiles')
     .select(
-      'email, display_name, subscription_status, grace_until, billing_blocked, acknowledged_disclaimer_at, deletion_scheduled_at',
+      'email, display_name, subscription_status, grace_until, billing_blocked, acknowledged_disclaimer_at, deletion_scheduled_at, cancel_at_period_end',
     )
     .eq('id', userId)
     .maybeSingle();

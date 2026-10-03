@@ -29,6 +29,7 @@ export default async function RunPage() {
         feature="Run Analysis"
         blurb="The screener runs the Major Cycle across a whole basket, your own list or the entire universe at once, instead of one stock at a time."
         reason={viewer.reason ?? 'no_subscription'}
+        subscriptionStatus={viewer.subscriptionStatus}
         displayName={viewer.displayName ?? ''}
         email={viewer.email ?? ''}
       />

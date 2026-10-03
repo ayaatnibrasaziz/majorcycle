@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { BarChart3, Compass, ListPlus, Lock, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BrandLockup } from '@/components/BrandLockup';
+import { planStatus } from '@/lib/planStatus';
 
 interface NavItem {
   label: string;
@@ -149,39 +150,13 @@ interface SidebarProps {
   entitled?: boolean;
   /** Dispute lock — outranks `subscriptionStatus` in the licence badge. */
   billingBlocked?: boolean;
+  /** Set to stop at period end: the badge reads "Cancelling", as the Account page does. */
+  cancelAtPeriodEnd?: boolean;
 }
 
-// Licence-badge copy per Stripe subscription status. `null`/unknown (a fresh
-// account hasn't started a trial — account creation ≠ trial start) reads "No plan".
-// Fixes the old fall-through where past_due/canceled wrongly showed "Free Trial".
-const LICENCE_LABELS: Record<string, string> = {
-  active: 'Active',
-  trialing: 'Trial Active',
-  past_due: 'Payment Due',
-  canceled: 'Cancelled',
-};
-
-// `billing_blocked` is an ORTHOGONAL dimension, not a status value — a disputed
-// account keeps whatever Stripe status it had (usually `active`). Reading the status
-// alone made the badge announce "ACTIVE" to someone locked out of every paid surface,
-// which is the opposite of what the rest of the app was telling them. Entitlement
-// already ranks the block above the status (hasAccess / accessDenialReason); the badge
-// now agrees.
-// `past_due` is the other status that needs a second dimension to read honestly. It
-// spans BOTH sides of the 3-day grace window (decision #20): inside it the reader
-// still has full access and "Payment Due" is a nudge; outside it their access has
-// already stopped, and the identical badge would tell them nothing had changed.
-// `entitled` is the same value the nav rows already use for their lock icons, so the
-// badge and the locks can no longer disagree.
-function licenceLabel(
-  status: string | null | undefined,
-  billingBlocked?: boolean,
-  entitled?: boolean,
-): string {
-  if (billingBlocked) return 'On hold';
-  if (status === 'past_due' && !entitled) return 'Access paused';
-  return (status && LICENCE_LABELS[status]) || 'No plan';
-}
+// The badge reads the SAME function as the Account page's pill (lib/planStatus.ts), so
+// the two cannot disagree about a state. It used to keep its own table here, which said
+// "Active" for a plan the Account page called "Cancelling".
 
 /**
  * The nav itself — brand, the two groups, the licence badge.
@@ -197,6 +172,7 @@ export function SidebarBody({
   subscriptionStatus,
   entitled = false,
   billingBlocked = false,
+  cancelAtPeriodEnd = false,
   variant = 'rail',
   onLockedClick,
   onNavigate,
@@ -251,7 +227,7 @@ export function SidebarBody({
           <div className="text-[var(--text-muted)] font-medium tracking-[0.5px] uppercase">
             Licence Status
           </div>
-          {/* Uppercased in CSS, not in LICENCE_LABELS, so the source strings stay
+          {/* Uppercased in CSS, not in lib/planStatus.ts, so the source strings stay
               readable prose for screen readers and for any other surface reusing them. */}
           {/* ⚠️ The label needs a role to exist at all — `aria-label` on a bare
               <div> is prohibited and silently ignored. `group` is the honest
@@ -267,7 +243,14 @@ export function SidebarBody({
             role="group"
             aria-label="Subscription status"
           >
-            {licenceLabel(subscriptionStatus, billingBlocked, entitled)}
+            {
+              planStatus({
+                status: subscriptionStatus ?? null,
+                billingBlocked,
+                entitled,
+                cancelAtPeriodEnd,
+              }).label
+            }
           </div>
         </div>
       </div>

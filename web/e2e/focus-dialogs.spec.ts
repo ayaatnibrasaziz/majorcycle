@@ -101,7 +101,8 @@ test.describe('every dialog shows focus at 375px', () => {
       await page.setViewportSize({ width: 375, height: 812 });
       await signInAs(page, email, password);
       await page.goto('/account');
-      await page.getByRole('button', { name: /contact support/i }).click({ timeout: 60_000 });
+      // The card's button — the hold banner at the top carries one too.
+      await page.locator('.sub-plan').getByRole('button', { name: /contact support/i }).click({ timeout: 60_000 });
       await walkDialog(page, browserName, 'the support dialog');
     });
   });
