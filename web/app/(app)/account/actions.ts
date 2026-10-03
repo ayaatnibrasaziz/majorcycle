@@ -9,6 +9,7 @@ import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/se
 import { getStripe } from '@/lib/stripe';
 import { sendDeletionScheduledEmail } from '@/lib/email/accountEmails';
 import { sendReferralEmail } from '@/lib/email/referralEmails';
+import { cleanReferralInput } from '@/lib/referralInput';
 import { sendTrialEndingEmail } from '@/lib/email/billingEmails';
 import {
   ACCOUNT_DELETION_GRACE_DAYS,
@@ -338,21 +339,14 @@ export async function sendReferral(input: {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(friendEmail)) {
     return { ok: false, error: 'Enter a valid email address.' };
   }
-  // `.trim()` does not touch an INTERIOR newline, and this value becomes an email
-  // SUBJECT (`"<name>" thought you'd like MajorCycle`). Control characters are
-  // stripped for the same reason as in the contact action (audit 5A-143), and with
-  // the same honesty about it: `name` reaches Resend as a JSON string and Resend
-  // encodes the header itself, so this is defence in depth, not a demonstrated hole.
-  // Fixed HERE as well because fixing one of two callers is the defect this repo
-  // keeps paying for (CLAUDE.md 11c-iv) — the contact form was the other one.
-  const referrerName = input.referrerName
-    .slice(0, 80)
-    .replace(/[\u0000-\u001F\u007F]/g, ' ')
-    .trim();
-  if (!referrerName) {
-    return { ok: false, error: 'Please add your name so your friend knows who invited them.' };
-  }
-  const message = input.message.trim().slice(0, 300);
+  // Name and note are checked by ONE rule (lib/referralInput.ts, beta review D-17):
+  // the name looks like a name and the note holds no link or address, because this
+  // email goes out from our address with the name in its subject. Control characters
+  // are stripped there too (audit 5A-143, the contact form's twin — 11c-iv).
+  const cleaned = cleanReferralInput(input.referrerName, input.message);
+  if (!cleaned.ok) return { ok: false, error: cleaned.error };
+  const referrerName = cleaned.name;
+  const message = cleaned.note;
 
   if (user.email && friendEmail === user.email.toLowerCase()) {
     return { ok: false, error: "That's your own email — invite a friend instead." };

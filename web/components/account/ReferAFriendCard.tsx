@@ -1,5 +1,6 @@
 'use client';
 
+import { REFERRAL_NAME_MAX, REFERRAL_NOTE_MAX } from '@/lib/referralInput';
 import { useState } from 'react';
 import { AlertCircle, CheckCircle2, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,8 @@ import { sendReferral } from '@/app/(app)/account/actions';
 import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MESSAGE_MAX = 300;
+// One limit for the form and the server (lib/referralInput.ts).
+const MESSAGE_MAX = REFERRAL_NOTE_MAX;
 
 /**
  * Refer-a-friend card (F2 Part C). Sends a one-off branded invite from the
@@ -89,7 +91,7 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
               id="referrerName"
               type="text"
               autoComplete="name"
-              maxLength={80}
+              maxLength={REFERRAL_NAME_MAX}
               value={name}
               ref={adoptEarlyInput(name, setName)}
               onChange={(e) => {
