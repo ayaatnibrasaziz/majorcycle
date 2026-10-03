@@ -6,7 +6,7 @@
 // reason about and reuse. Every label here is one of our five COMPLIANT tiers
 // (CLAUDE.md #2) — no "Buy"/"Sell"/"Avoid" language anywhere.
 
-import { priceDecimals } from '@/lib/format';
+import { normalizeAnalystRecommendation, priceDecimals } from '@/lib/format';
 import { tickerToUrlParts } from '@/lib/ticker';
 import type { CycleAnalysis, OverallLabel, ValuationZone } from '@/lib/types';
 
@@ -421,22 +421,11 @@ export function compositionRamp(score: number): [string, string, string] {
  * Normalises yfinance's raw recommendation key to a display string.
  */
 export function fmtAnalyst(raw: string | null): string {
-  if (!raw) return '—';
-  const map: Record<string, string> = {
-    strong_buy: 'Strong Buy',
-    buy: 'Buy',
-    outperform: 'Buy',
-    overweight: 'Buy',
-    hold: 'Hold',
-    neutral: 'Hold',
-    market_perform: 'Hold',
-    underperform: 'Sell',
-    underweight: 'Sell',
-    sell: 'Sell',
-    strong_sell: 'Strong Sell',
-  };
-  const key = String(raw).toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_');
-  return map[key] ?? String(raw).replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+  // ⚠️ The Stock Detail page's own rule, not a second table (beta review C-22): this
+  // kept a private map that passed unknown keys through title-cased, so Yahoo's
+  // "none" (no consensus — 107 stocks on 2026-10-03) printed as "None" in the
+  // screener while the stock page showed nothing (CLAUDE.md 11c).
+  return normalizeAnalystRecommendation(raw) ?? '—';
 }
 
 /** Upside % from current price to the analyst target. Null when either is missing. */

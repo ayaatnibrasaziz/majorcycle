@@ -294,6 +294,7 @@ export function normalizeAnalystRecommendation(
     neutral: 'Hold',
     market_perform: 'Hold',
     underperform: 'Sell',
+    underweight: 'Sell',
     sell: 'Sell',
     strong_sell: 'Strong Sell',
   };

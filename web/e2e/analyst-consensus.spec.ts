@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 import { analystTally, consensusFromTally, gradeGroup } from '../lib/analystConsensus';
+import { normalizeAnalystRecommendation } from '../lib/format';
+import { fmtAnalyst } from '../lib/ratings';
 import type { AnalystUpgrade } from '../lib/types';
 
 /**
@@ -59,4 +61,14 @@ test('CONTROL: an empty grade is not a view — it is skipped, not counted as Ho
   expect([t.firms, t.buy, t.hold, t.sell]).toEqual([2, 1, 0, 1]);
   expect(analystTally([ev('A', '')])).toBeNull();
   expect(analystTally([])).toBeNull();
+});
+
+test('the screener reads the analyst consensus with the stock page’s rule (beta review C-22)', () => {
+  // Yahoo's "none" means no consensus: the stock page shows nothing, so the screener
+  // must not print "None".
+  expect(fmtAnalyst('none')).toBe('—');
+  expect(fmtAnalyst(null)).toBe('—');
+  for (const raw of ['strong_buy', 'buy', 'outperform', 'overweight', 'hold', 'neutral', 'underperform', 'underweight', 'sell']) {
+    expect(fmtAnalyst(raw), raw).toBe(normalizeAnalystRecommendation(raw) ?? '—');
+  }
 });

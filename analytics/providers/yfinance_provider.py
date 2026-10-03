@@ -857,19 +857,7 @@ class YFinanceProvider(DataProvider):
 
         shares_change_yoy_pct: Optional[float] = None
         try:
-            bs: Any = ticker_obj.balance_sheet
-            if bs is not None and not bs.empty and bs.shape[1] >= 2:
-                so_rows = [
-                    r for r in bs.index
-                    if "share" in str(r).lower() and "issued" in str(r).lower()
-                ]
-                if not so_rows:
-                    so_rows = [r for r in bs.index if "common stock" in str(r).lower()]
-                if so_rows:
-                    s_now = float(bs.loc[so_rows[0]].iloc[0])
-                    s_prev = float(bs.loc[so_rows[0]].iloc[1])
-                    if s_prev and s_prev != 0:
-                        shares_change_yoy_pct = round((s_now - s_prev) / abs(s_prev) * 100, 4)
+            shares_change_yoy_pct = shares_change_pct(ticker_obj.balance_sheet)
         except Exception:
             pass
 
@@ -957,3 +945,35 @@ class YFinanceProvider(DataProvider):
             beta=_safe(g("beta")),
             dividend_history=dividend_history,
         ))
+
+
+# Shares OUTSTANDING first, issued only as a fallback, and never a dollar row.
+_SHARE_COUNT_ROWS = ("Ordinary Shares Number", "Share Issued")
+
+
+def shares_change_pct(bs: Any) -> Optional[float]:
+    """Year-on-year change in the share count, in percent, from an annual balance sheet.
+
+    ⚠️ Read "Ordinary Shares Number" (shares OUTSTANDING), not "Share Issued". Shares a
+    company buys back go into treasury and stay ISSUED, so the issued count does not move
+    on a buyback: 128 stocks read exactly 0.0% and 81 of them had in fact changed their
+    share count; across the universe 193 had the wrong sign (beta review B-34,
+    measured 2026-10-03). "Share Issued" is kept only for a sheet without the
+    outstanding row. The old last resort — any row containing "common stock" — was a
+    DOLLAR amount (par value or equity), so it is gone: no figure beats a figure in the
+    wrong unit (CLAUDE.md 11aa).
+    """
+    if bs is None or getattr(bs, "empty", True) or bs.shape[1] < 2:
+        return None
+    for name in _SHARE_COUNT_ROWS:
+        if name not in bs.index:
+            continue
+        now, prev = bs.loc[name].iloc[0], bs.loc[name].iloc[1]
+        try:
+            s_now, s_prev = float(now), float(prev)
+        except (TypeError, ValueError):
+            continue
+        if np.isnan(s_now) or np.isnan(s_prev) or s_prev == 0:
+            continue
+        return round((s_now - s_prev) / abs(s_prev) * 100, 4)
+    return None

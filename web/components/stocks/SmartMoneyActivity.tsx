@@ -16,7 +16,7 @@ import {
 
 import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, fmtPrice } from '@/lib/format';
 import { analystTally, consensusFromTally, gradeGroup, type AnalystTally } from '@/lib/analystConsensus';
-import { insiderSentiment, insiderTotals } from '@/lib/insiderSentiment';
+import { insiderPositionLabel, insiderSentiment, insiderTotals, isIssuer } from '@/lib/insiderSentiment';
 import type { AnalystUpgrade, Currency, InsiderTransaction, PriceBar } from '@/lib/types';
 import { ANALYST, INK } from '@/lib/ink';
 
@@ -127,10 +127,18 @@ function fmtDate(iso: string): string {
  * own 52-week range for **94.7% of AU** and **97.0% of CA**. The local currency is
  * right for the overwhelming majority; a bare `$` was right for none of them.
  */
-function fmtValue(v: number | null, currency: Currency): string {
+function fmtValue(v: number | null, currency: Currency, text?: string | null): string {
   if (!v) return '';
+  // ⚠️ A share GRANT priced "0.00 - 40.74 per share" has no trade price: the provider
+  // values it at the midpoint of that range, so it reads as shares bought at half the
+  // market price (beta review B-33, BHP.AX — 154 such grants across the universe,
+  // 2026-10-03). The share count is real; the dollar figure is the provider's guess,
+  // so it is left out rather than corrected (CLAUDE.md 11as: never hand-patch a figure).
+  if (text && ZERO_RANGE_GRANT.test(text)) return '';
   return ` · ${fmtCompact(v, currency)}`;
 }
+
+const ZERO_RANGE_GRANT = /at price 0\.00 - /;
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] ?? c));
@@ -199,12 +207,14 @@ function buildModel(priceBars: PriceBar[], txs: InsiderTransaction[], upgrades: 
     const key = snap(t.date);
     if (!key) continue;
     bucket(key).insiders.push(t);
-    if (t.type === 'Purchase') {
+    // A company's own buyback is not an insider buying: drawn as a neutral dot.
+    if (t.type === 'Purchase' && !isIssuer(t)) {
       markersAll.push({ kind: 'buy', time: key as Time, position: 'belowBar', color: CANDLE.up, shape: 'arrowUp', size: 1 });
-    } else if (t.type === 'Sale') {
+    } else if (t.type === 'Sale' && !isIssuer(t)) {
       markersAll.push({ kind: 'sell', time: key as Time, position: 'aboveBar', color: INK.down, shape: 'arrowDown', size: 1 });
     } else {
-      markersAll.push({ kind: 'other', time: key as Time, position: 'inBar', color: INSIDER_STYLE[t.type].dot, shape: 'circle', size: 1 });
+      const dot = isIssuer(t) ? INSIDER_STYLE.Other.dot : INSIDER_STYLE[t.type].dot;
+      markersAll.push({ kind: 'other', time: key as Time, position: 'inBar', color: dot, shape: 'circle', size: 1 });
     }
   }
   for (const a of upgrades) {
@@ -375,7 +385,7 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible, currency }:
         const glyph = t.type === 'Purchase' ? '▲' : t.type === 'Sale' ? '▼' : '●';
         rows.push(`<div class="smart-tip-row"><span style="color:${s.dot}">${glyph}</span> `
           + `<b>${s.label}</b> · ${escapeHtml(t.insider)}`
-          + `<span class="smart-tip-meta">${(t.shares ?? 0).toLocaleString()} sh${fmtValue(t.value, currency)}</span></div>`);
+          + `<span class="smart-tip-meta">${(t.shares ?? 0).toLocaleString()} sh${fmtValue(t.value, currency, t.text)}</span></div>`);
       }
       for (const a of analysts) {
         const cls = classifyAction(a.action);
@@ -524,7 +534,7 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible, currency }:
                   <span className="smart-day-panel-glyph" style={{ color: s.dot }}>{glyph}</span>
                   <div>
                     <div><span className="smart-day-panel-label">{s.label}</span> · <span className="smart-day-panel-name">{t.insider}</span></div>
-                    <div className="smart-day-panel-meta">{t.position} · {(t.shares ?? 0).toLocaleString()} sh{fmtValue(t.value, currency)}</div>
+                    <div className="smart-day-panel-meta">{insiderPositionLabel(t)} · {(t.shares ?? 0).toLocaleString()} sh{fmtValue(t.value, currency, t.text)}</div>
                   </div>
                 </div>
               );
@@ -737,11 +747,11 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
                         <div className="smart-event-head">
                           <span className={`smart-pill ${s.pill}`}>{s.label}</span>
                           <span className="smart-event-name" title={tx.insider}>{tx.insider}</span>
-                          <span className="smart-event-title">{tx.position}</span>
+                          <span className="smart-event-title">{insiderPositionLabel(tx)}</span>
                         </div>
                         <div className="smart-event-meta">
                           <span className="smart-event-meta-mono">{(tx.shares ?? 0).toLocaleString()}</span>
-                          {' '}shares{fmtValue(tx.value, currency)}
+                          {' '}shares{fmtValue(tx.value, currency, tx.text)}
                         </div>
                       </div>
                       <div className="smart-event-date">{fmtDate(tx.date)}</div>

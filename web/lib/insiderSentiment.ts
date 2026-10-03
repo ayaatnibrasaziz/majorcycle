@@ -50,10 +50,27 @@ export const INSIDER_SELL: Omit<InsiderSentiment, 'color' | 'bg'> = {
   label: 'NET SELLER (Bearish)',
 };
 
+/**
+ * A filing by the COMPANY ITSELF (position "Issuer") — its own share buyback, not an
+ * insider's trade. ⚠️ Beta review F-20, 2026-10-03: Royal Bank of Canada's buybacks
+ * were counted as "insider purchases" in RY.TO and turned its label NET BUYER; 40
+ * stocks carry such filings (1,232 rows). They stay in the list, named for what they
+ * are, and are left out of every insider figure.
+ */
+export function isIssuer(t: Pick<InsiderTransaction, 'position'>): boolean {
+  return (t.position ?? '').trim().toLowerCase() === 'issuer';
+}
+
+/** The position to print beside a filing. */
+export function insiderPositionLabel(t: Pick<InsiderTransaction, 'position'>): string {
+  return isIssuer(t) ? 'Company buyback' : t.position;
+}
+
 export function insiderSentiment(
-  txs: InsiderTransaction[],
+  allTxs: InsiderTransaction[],
   ink: { up: string; down: string },
 ): InsiderSentiment | null {
+  const txs = allTxs.filter((t) => !isIssuer(t));
   const buys = txs
     .filter((t) => t.type === 'Purchase')
     .reduce((sum, t) => sum + (t.value ?? 0), 0);
@@ -93,7 +110,8 @@ export interface InsiderTotals {
   to: string;
 }
 
-export function insiderTotals(txs: InsiderTransaction[]): InsiderTotals | null {
+export function insiderTotals(allTxs: InsiderTransaction[]): InsiderTotals | null {
+  const txs = allTxs.filter((t) => !isIssuer(t));
   const dates = txs.map((t) => t.date).filter((d): d is string => !!d).sort();
   if (dates.length === 0) return null;
   const sum = (type: InsiderTransaction['type']) =>
