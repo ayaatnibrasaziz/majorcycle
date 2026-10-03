@@ -40,6 +40,16 @@ const STATES: Record<string, Record<string, unknown>> = {
     grace_until: iso(-1 * DAY), next_charge_amount: 1900, next_charge_currency: 'aud',
   },
   canceled: { subscription_status: 'canceled', subscription_plan: 'monthly', subscription_currency: 'cad' },
+  trialCancelling: {
+    subscription_status: 'trialing', subscription_plan: 'monthly', subscription_currency: 'aud',
+    trial_ends_at: iso(5 * DAY), current_period_end: iso(5 * DAY), cancel_at_period_end: true,
+  },
+  // A payment disputed with the bank: a paid-up plan, held.
+  disputed: {
+    subscription_status: 'active', subscription_plan: 'monthly', subscription_currency: 'aud',
+    current_period_end: iso(20 * DAY), next_charge_amount: 1900, next_charge_currency: 'aud',
+    billing_blocked: true,
+  },
 };
 
 const users: Record<string, ThrowawayUser> = {};
@@ -86,6 +96,20 @@ test.describe('billing as the customer sees it', () => {
     await expectCard('grace', [/Payment failed A\$19\.00 on/, /Update card by/, /Update card/]);
     await expectCard('lapsed', [/Payment failed A\$19\.00 on/, /ACCESS PAUSED/i], [/Update card by/]);
     await expectCard('canceled', [/Free plan/, /subscription has ended/]);
+    // A trial was never charged, so it is not told it "won't be charged AGAIN".
+    await expectCard('trialCancelling', [/Trial ends/, /Next charge None/, /won.t be charged\./], [/charged again/]);
+    // A held account: why, and the one action that helps — no renewal, amount or card button.
+    await expectCard('disputed', [/ON HOLD/i, /disputed with the bank/, /Contact support/], [/Renews on/, /A\$19/, /Manage billing/, /Update card/]);
+  });
+
+  test('a held account: no card-failure banner, and the hold is said once', async ({ page }) => {
+    await as(page, 'disputed');
+    await page.goto('/account?billing=blocked');
+    await expect(card(page)).toBeVisible();
+    // Updating a card cannot lift a dispute, so the payment banner must not point at it.
+    await expect(page.locator('.payment-banner')).toHaveCount(0);
+    const t = await text(page);
+    expect(t.match(/disputed/g)?.length, 'the hold explained once, not twice').toBe(1);
   });
 
   test('the failed-payment banner: amber with a deadline, red once paused, absent otherwise', async ({ page }) => {

@@ -143,10 +143,14 @@ export default async function AccountPage({
     // Cancelled / lapsed / past-due: nothing to celebrate — the card says what is true.
   }
 
+  // A held account's card already says the same thing in full, so the portal's
+  // "blocked" bounce adds nothing but the sentence twice, one above the other.
+  const billingNotice =
+    billing === 'blocked' && profile?.billing_blocked ? null : billing && BILLING_NOTICE[billing];
   const notice: ReactNode =
     checkoutNotice ||
     (checkout && CHECKOUT_NOTICE[checkout]) ||
-    (billing && BILLING_NOTICE[billing]) ||
+    billingNotice ||
     null;
   if (!checkoutNotice && notice) noticeTone = 'warning';
 

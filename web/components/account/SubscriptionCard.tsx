@@ -232,7 +232,13 @@ export function SubscriptionCard({
   } else if (scheduledCancel) {
     rows.push([status === 'trialing' ? 'Trial ends' : 'Plan ends', cancelDate]);
     rows.push(['Next charge', 'None']);
-    sentence = <>You won&apos;t be charged again. Changed your mind? You can keep it from Manage billing.</>;
+    // A trial has never been charged, so "again" would be untrue there.
+    sentence =
+      status === 'trialing' ? (
+        <>You won&apos;t be charged. Changed your mind? You can keep it from Manage billing.</>
+      ) : (
+        <>You won&apos;t be charged again. Changed your mind? You can keep it from Manage billing.</>
+      );
   } else if (status === 'trialing') {
     if (trialEnd) rows.push(['Trial ends', trialEnd]);
     if (amount) rows.push(['Then', <>{amount}{perInterval(plan)}</>]);

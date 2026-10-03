@@ -33,11 +33,20 @@ export async function GET() {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: readError } = await supabase
     .from('profiles')
     .select('country, subscription_status, grace_until, billing_blocked, display_name')
     .eq('id', user.id)
     .single();
+  // ⚠️ An unreadable profile is not a profile with no plan (CLAUDE.md 11e). Treated as
+  // one, a disputed account or a lapsed customer was offered the stranger's free trial.
+  // A failure here makes the dialog offer "Go to your account", which reads it afresh.
+  if (readError) {
+    return NextResponse.json(
+      { error: 'Could not read your plan just now.' },
+      { status: 503, headers: { 'Cache-Control': 'private, no-store', 'Retry-After': '5' } },
+    );
+  }
 
   const hasSubscription = ACTIVE_STATES.has(profile?.subscription_status ?? '');
   // Why this reader is locked, so the Stock Detail lock window can say so (beta review
