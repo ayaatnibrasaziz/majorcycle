@@ -8,6 +8,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { RATING_BANDS } from '@/lib/ratingDefinition';
+import { RATING_WEIGHTS } from '@/lib/ratings';
 
 interface MethodologyModalProps {
   open: boolean;
@@ -39,13 +41,12 @@ function Formula({ children }: { children: React.ReactNode }) {
 
 /** The five composite rating tiers. Same hex as the reference grid; only the
  *  labels change to our compliant, advice-free vocabulary (design-system §4). */
-const TIERS = [
-  { range: '80–100', label: 'High Conviction', color: 'var(--c-tier-1)' },
-  { range: '65–79', label: 'Constructive', color: 'var(--c-tier-2)' },
-  { range: '50–64', label: 'Neutral', color: 'var(--c-tier-3)' },
-  { range: '35–49', label: 'Cautious', color: 'var(--c-tier-4)' },
-  { range: '0–34', label: 'Bearish', color: 'var(--c-tier-5)' },
-] as const;
+// Ranges read from the ONE band table (lib/ratingDefinition.ts), so they cannot drift.
+const TIERS = RATING_BANDS.map((b, i) => ({
+  range: `${b.min}–${i === 0 ? 100 : RATING_BANDS[i - 1]!.min - 1}`,
+  label: b.label,
+  color: `var(--c-tier-${i + 1})`,
+}));
 
 /**
  * In-app scoring methodology, opened from the "Methodology" button in the Stock
@@ -82,9 +83,9 @@ export function MethodologyModal({ open, onOpenChange }: MethodologyModalProps) 
             single number, designed to answer one question:{' '}
             <em>is this stock worth my attention right now?</em>
           </p>
-          <Formula>{`Overall Rating = (Financial Health × 0.40)
-               + (Valuation × 0.35)
-               + (Cycle Payoff × 0.25)`}</Formula>
+          <Formula>{`Overall Rating = (Financial Health × ${(RATING_WEIGHTS.health / 100).toFixed(2)})
+               + (Valuation × ${(RATING_WEIGHTS.valuation / 100).toFixed(2)})
+               + (Cycle Payoff × ${(RATING_WEIGHTS.payoff / 100).toFixed(2)})`}</Formula>
           <p className="mb-2.5">
             <strong className="text-[var(--text-primary)]">Why these weights:</strong>{' '}
             Financial Health carries the largest weight because a strong business

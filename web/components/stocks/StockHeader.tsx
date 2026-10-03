@@ -12,6 +12,7 @@ import type {
   OverallLabel,
   ValuationZone,
 } from '@/lib/types';
+import { RATING_SUMMARY } from '@/lib/ratingDefinition';
 
 // Match the Browse page: show the clean symbol + a country badge rather than the
 // raw exchange-suffixed storage ticker (BHP.AX / SHOP.TO). Country code via the
@@ -299,7 +300,7 @@ export function BadgeRow({
       {overallLabel && (
         <span
           className={`tier-badge tier-badge--${LABEL_TIER[overallLabel]}`}
-          title={`Overall rating: ${overallLabel}. Composite of Financial Health (40%) + Valuation Zone (35%) + Cycle Payoff (25%).`}
+          title={`Overall rating: ${overallLabel}. ${RATING_SUMMARY}`}
         >
           {overallLabel}
         </span>

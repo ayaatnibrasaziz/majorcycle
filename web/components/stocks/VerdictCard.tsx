@@ -4,6 +4,7 @@ import { fmtPrice } from '@/lib/format';
 import { OVERALL_LABELS, RATING_TIER_HEX, tierFromLabel } from '@/lib/ratings';
 import { healthSentence, topRisk } from '@/lib/thesisText';
 import { tickerToUrlParts } from '@/lib/ticker';
+import { RATING_SUMMARY } from '@/lib/ratingDefinition';
 
 interface Props {
   cycle: CycleAnalysis;
@@ -295,7 +296,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
 
         <div
           className="verdict-score-block"
-          title="Overall MajorCycle Rating (0–100) — Composite score: Financial Health (40%) + Valuation Zone (35%) + Cycle Payoff (25%). Higher is better."
+          title={`Overall MajorCycle Rating — ${RATING_SUMMARY} Higher is more favourable.`}
         >
           <div className="verdict-score-ring">
             <svg viewBox="0 0 84 84" aria-hidden="true">

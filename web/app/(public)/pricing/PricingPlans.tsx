@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { AuthCard } from '@/components/AuthCard';
 import type { BillingCurrency } from '@/lib/stripe';
 import {
+  PREMIUM_UNLOCKS,
   PRICE_TABLE,
   CURRENCY_SYMBOL,
   CURRENCY_CODE_LABEL,
@@ -32,13 +33,11 @@ type PlanKey = keyof PlanPrices; // 'monthly' | 'annual'
  * the free-account line below, never here. Keep this list and lib/entitlement.ts
  * telling the same story.
  */
-const FEATURES = [
-  'Overall Rating and Health Score on every stock',
-  'The full Verdict, five-pillar scorecard and valuation zone',
-  'Screen hundreds of stocks at once — rank, filter and export',
-  'Download a complete report for any stock',
-  'Cancel anytime — no charge until day 7',
-];
+// ⚠️ The SHARED list (lib/pricing.ts PREMIUM_UNLOCKS), not a private one: this page kept
+// its own, worded differently from the upgrade window and the trial modal — CLAUDE.md
+// 11c-i, which names exactly these three surfaces (beta review D-14, 2026-10-03). The
+// last line is a term of the trial, not something the subscription adds.
+const FEATURES = [...PREMIUM_UNLOCKS, 'Cancel anytime — no charge until day 7'];
 
 /** Money with the currency's symbol; whole numbers stay whole, otherwise 2dp. */
 function money(amount: number, currency: BillingCurrency): string {

@@ -6,7 +6,7 @@ import { jsonLdScript, organizationJsonLd, websiteJsonLd } from '@/lib/jsonld';
 import { JsonLd } from '@/components/JsonLd';
 import { LANDING, UNIVERSE_COUNT, depth, price } from '@/lib/landing';
 import { MAG7, mag7Facts, pct1, shortName } from '@/lib/mag7';
-import { tierFromLabel } from '@/lib/ratings';
+import { RATING_WEIGHTS, tierFromLabel } from '@/lib/ratings';
 import { Button } from '@/components/ui/button';
 import { CycleRulers } from '@/components/landing/CycleRulers';
 import { Mag7Table } from '@/components/landing/Mag7Table';
@@ -452,7 +452,7 @@ export default function LandingPage() {
               <div className="card">
                 <div className="card-body">
                   <div className="idx" style={{ color: 'var(--c-tier-2-ink)' }}>
-                    40% OF THE RATING
+                    {RATING_WEIGHTS.health}% OF THE RATING
                   </div>
                   <h3 style={{ marginTop: '6px' }}>Financial Health</h3>
                   <p>
@@ -466,7 +466,7 @@ export default function LandingPage() {
               <div className="card">
                 <div className="card-body">
                   <div className="idx" style={{ color: 'var(--brand-mid)' }}>
-                    35% OF THE RATING
+                    {RATING_WEIGHTS.valuation}% OF THE RATING
                   </div>
                   <h3 style={{ marginTop: '6px' }}>Valuation</h3>
                   <p>
@@ -480,7 +480,7 @@ export default function LandingPage() {
               <div className="card">
                 <div className="card-body">
                   <div className="idx" style={{ color: 'var(--accent-warm-ink)' }}>
-                    25% OF THE RATING
+                    {RATING_WEIGHTS.payoff}% OF THE RATING
                   </div>
                   <h3 style={{ marginTop: '6px' }}>Cycle Payoff</h3>
                   <p>

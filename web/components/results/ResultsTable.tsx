@@ -6,6 +6,7 @@ import { Fragment, type ReactNode } from 'react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
 import {
+  RATING_WEIGHTS,
   compositionRamp,
   fmtAnalyst,
   healthColor,
@@ -244,7 +245,7 @@ function CompositionBar({ row, className = '' }: { row: ResultRow; className?: s
   return (
     <div
       className={`micro-bar ${className}`}
-      title={`Composition: Health ${Math.round(comp.health)} (40%) + Valuation ${Math.round(comp.valuation)} (35%) + Cycle Payoff ${Math.round(comp.payoff)} (25%)`}
+      title={`Composition: Health ${Math.round(comp.health)} (${RATING_WEIGHTS.health}%) + Valuation ${Math.round(comp.valuation)} (${RATING_WEIGHTS.valuation}%) + Cycle Payoff ${Math.round(comp.payoff)} (${RATING_WEIGHTS.payoff}%)`}
     >
       <div className="micro-seg" style={{ width: `${wH}%`, background: ramp[0] }} />
       <div className="micro-seg" style={{ width: `${wV}%`, background: ramp[1] }} />

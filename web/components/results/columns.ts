@@ -22,6 +22,7 @@ import {
   valuationAppealLabel,
   type ExportFmt,
 } from '@/lib/ratings';
+import { RATING_BANDS_TEXT, RATING_SUMMARY } from '@/lib/ratingDefinition';
 
 export interface ResultRow extends RunResult {
   name: string | null;
@@ -171,7 +172,7 @@ export const FIELDS: Field[] = [
   { key: 'sector', label: 'Sector', type: 'categorical', band: 'identity', cell: 'default', fmt: 'text', align: 'left', get: (r) => r.sector, filterable: true },
 
   // MajorCycle Verdict
-  { key: 'overall', label: 'Overall', tip: 'Overall Rating|Our 0–100 summary: Financial Health (40%) + Valuation (35%) + Cycle Payoff (25%). 80+ High Conviction · 65+ Constructive · 50+ Neutral · 35+ Cautious · below Bearish.', type: 'numeric', band: 'verdict', cell: 'overall', fmt: 'score', align: 'left', get: (r) => r.overallRating, filterable: true },
+  { key: 'overall', label: 'Overall', tip: `Overall Rating|${RATING_SUMMARY} ${RATING_BANDS_TEXT}.`, type: 'numeric', band: 'verdict', cell: 'overall', fmt: 'score', align: 'left', get: (r) => r.overallRating, filterable: true },
   { key: 'valuation', label: 'Valuation', tip: 'Valuation Score|Our 0–100 score for how attractively a stock is valued, quality-gated by Financial Health (a cheap-but-weak name is marked down). 80+ Compelling · 65+ Attractive · 50+ Reasonable · 35+ Elevated · below Expensive.', type: 'numeric', band: 'verdict', cell: 'valuation', fmt: 'score', align: 'left', get: (r) => r.valuationScore, filterable: true },
   { key: 'health', label: 'Health', tip: 'Financial Health Score|Our 0–100 score across five pillars — profitability, balance sheet, growth, cash flow and shareholder returns. 80+ Healthy · 60+ Adequate · below At Risk.', type: 'numeric', band: 'verdict', cell: 'health', fmt: 'score', align: 'left', get: (r) => r.financialHealthScore, filterable: true },
   { key: 'cyclePos', label: 'Cycle Position', tip: 'Cycle Position|How deep today’s price sits in the stock’s own historical drawdown band: 0 = near a recent peak, 100 = at its typical worst-case dip. As a rough guide — 75+ Deep Value · 50+ Value · 25+ Fair · below Stretched. Deeper into the band = better value versus its own history.', type: 'numeric', band: 'verdict', cell: 'cyclePos', fmt: 'int', align: 'left', get: (r) => r.cyclePos, filterable: true },

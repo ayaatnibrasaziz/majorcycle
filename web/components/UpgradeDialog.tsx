@@ -19,6 +19,7 @@ import type { BillingCurrency } from '@/lib/stripe';
 import { PREMIUM_UNLOCKS } from '@/lib/pricing';
 import { DENIAL_COPY, DISPUTE_ENDED_COPY } from '@/lib/denialCopy';
 import type { AccessDenialReason } from '@/lib/entitlement';
+import { RATING_SUMMARY } from '@/lib/ratingDefinition';
 
 /**
  * The one place a locked feature explains itself (F3 Step 10, owner-requested).
@@ -41,7 +42,10 @@ const FEATURES: Record<string, { title: string; what: string }> = {
   'Overall Rating': {
     title: 'Overall Rating',
     what:
-      'A single 0–100 score for the stock, combining its financial health (40%), how far it has pulled back versus its own typical cycle (35%), and the historical payoff from buying at this point in that cycle (25%). It maps to one of five labels, from High Conviction to Bearish.',
+      // The ONE definition (lib/ratingDefinition.ts). This used to call the third part
+      // "the historical payoff from buying at this point" — buy-framed, and worded
+      // unlike every other surface (beta review F-6).
+      `${RATING_SUMMARY} It maps to one of five labels, from High Conviction to Bearish.`,
   },
   'Health Score': {
     title: 'Health Score',

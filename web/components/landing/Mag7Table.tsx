@@ -1,4 +1,5 @@
 import {
+  RATING_WEIGHTS,
   compositionRamp,
   healthColor,
   healthRatingLabel,
@@ -54,9 +55,9 @@ function OverallCell({ row }: { row: Mag7Row }) {
       </div>
       <div
         className="micro-bar"
-        title={`Composition: Health ${Math.round(row.healthScore)} (40%) + Valuation ${Math.round(
+        title={`Composition: Health ${Math.round(row.healthScore)} (${RATING_WEIGHTS.health}%) + Valuation ${Math.round(
           row.valuationScore,
-        )} (35%) + Cycle Payoff ${Math.round(row.cyclePayoffScore)} (25%)`}
+        )} (${RATING_WEIGHTS.valuation}%) + Cycle Payoff ${Math.round(row.cyclePayoffScore)} (${RATING_WEIGHTS.payoff}%)`}
       >
         <div className="micro-seg" style={{ width: `${(health / total) * 100}%`, background: ramp[0] }} />
         <div className="micro-seg" style={{ width: `${(valuation / total) * 100}%`, background: ramp[1] }} />
