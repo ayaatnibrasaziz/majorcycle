@@ -3793,3 +3793,16 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   }
   .stock-head-price { margin-top: 10px; }
 }
+
+/* A failed report download, said beside the button instead of in a browser pop-up
+   (components/stocks/StockSubnav.tsx, beta review B-35). Hangs below the sticky strip. */
+.report-error {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 5;
+  width: max-content; max-width: min(320px, calc(100vw - 32px));
+  margin: 0; padding: 8px 10px; border-radius: var(--radius-sm);
+  /* Tint over an opaque surface: the strip behind it is frosted glass. */
+  background-color: var(--bg-surface);
+  background-image: linear-gradient(var(--status-danger-tint), var(--status-danger-tint));
+  border: 1px solid var(--status-danger-tint-strong);
+  color: var(--status-danger-ink); font-size: 12px; line-height: 1.45;
+}

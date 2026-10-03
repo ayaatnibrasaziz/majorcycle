@@ -36,6 +36,8 @@ interface StartTrialModalProps {
   // True when this email already used its free trial (Step 7). Switches the modal to
   // an honest "subscribe, billed today, no free week" flow so there's no surprise charge.
   trialUsed?: boolean;
+  /** The plan chosen on /pricing before signing up, carried through (beta review A-4). */
+  initialPlan?: PlanKey;
 }
 
 /**
@@ -53,8 +55,9 @@ export function StartTrialModal({
   onOpenChange,
   currency,
   trialUsed = false,
+  initialPlan = 'monthly',
 }: StartTrialModalProps) {
-  const [plan, setPlan] = useState<PlanKey>('monthly');
+  const [plan, setPlan] = useState<PlanKey>(initialPlan);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

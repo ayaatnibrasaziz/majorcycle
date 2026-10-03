@@ -58,7 +58,6 @@ export function SupportDialog({
           <ContactForm
             defaultName={defaultName}
             defaultEmail={defaultEmail}
-            showSignInLink={false}
           />
         </div>
       </DialogContent>

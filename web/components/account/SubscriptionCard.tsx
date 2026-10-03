@@ -49,6 +49,8 @@ interface SubscriptionCardProps {
   // How the success / setting-up notice should look (it used to be an amber warning
   // even for "Payment received").
   noticeTone?: NoticeTone;
+  /** The plan chosen on /pricing before signing up, pre-selected in the trial window. */
+  initialPlan?: 'monthly' | 'annual';
 }
 
 export type NoticeTone = 'success' | 'info' | 'warning';
@@ -173,6 +175,7 @@ export function SubscriptionCard({
   nextChargeCurrency = null,
   graceUntil = null,
   noticeTone = 'warning',
+  initialPlan,
 }: SubscriptionCardProps) {
   const meta = billingBlocked
     ? BLOCKED_META
@@ -316,7 +319,7 @@ export function SubscriptionCard({
                  can't, and checkout refuses this account. Opens in place. */
               <ContactSupportButton defaultName={displayName} defaultEmail={email} />
             ) : canStartTrial ? (
-              <StartTrialButton currency={currency} trialUsed={trialUsed} />
+              <StartTrialButton currency={currency} trialUsed={trialUsed} initialPlan={initialPlan} />
             ) : (
               /* Manage billing / Update card → Stripe Customer Portal. A plain form POST
                  to /api/portal, which creates a portal session and 303-redirects to it

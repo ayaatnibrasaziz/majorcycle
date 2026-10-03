@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { AuthCard } from '@/components/AuthCard';
@@ -11,7 +12,7 @@ import { createBrowserClient } from '@/lib/supabase/client';
 import { friendlyAuthError } from '@/lib/authErrors';
 import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
 
-export function UpdatePasswordForm() {
+export function UpdatePasswordForm({ recovery = true }: { recovery?: boolean }) {
   const router = useRouter();
   // Button stays disabled until React owns the form — see lib/useHydrated.ts.
   const hydrated = useHydrated();
@@ -123,18 +124,32 @@ export function UpdatePasswordForm() {
           returns to /login. Labelled "return to sign in" (the user's mental model)
           rather than "sign out" — under the hood it must sign out. Also the right
           exit for a Google account that has no password to set here. */}
-      <form
-        action="/auth/signout"
-        method="post"
-        className="mt-7 pt-6 border-t border-[var(--border)] text-center"
-      >
-        <button
-          type="submit"
-          className="text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--brand-mid)] transition-colors"
+      {/* ⚠️ Only for a RESET-LINK session. A signed-in reader who opened this page to
+          change their password used to be signed out by "Cancel" too (beta review
+          A-34, 2026-10-03); they now simply go back to their account. */}
+      {recovery ? (
+        <form
+          action="/auth/signout"
+          method="post"
+          className="mt-7 pt-6 border-t border-[var(--border)] text-center"
         >
-          Cancel and return to sign in
-        </button>
-      </form>
+          <button
+            type="submit"
+            className="text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--brand-mid)] transition-colors"
+          >
+            Cancel and return to sign in
+          </button>
+        </form>
+      ) : (
+        <div className="mt-7 pt-6 border-t border-[var(--border)] text-center">
+          <Link
+            href="/account"
+            className="text-[13px] font-semibold text-[var(--text-secondary)] hover:text-[var(--brand-mid)] transition-colors"
+          >
+            Cancel and return to your account
+          </Link>
+        </div>
+      )}
     </AuthCard>
   );
 }

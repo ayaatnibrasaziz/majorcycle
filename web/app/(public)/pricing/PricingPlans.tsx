@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+
+import { useHydrated } from '@/lib/useHydrated';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
 
@@ -64,6 +66,9 @@ function money(amount: number, currency: BillingCurrency): string {
  */
 export function PricingPlans({ currency }: { currency: BillingCurrency }) {
   const [plan, setPlan] = useState<PlanKey>('monthly');
+  // The switch does nothing until React owns it, so it waits to be pressable rather
+  // than swallowing an early tap (beta review A-30; the rule every form follows).
+  const hydrated = useHydrated();
 
   const prices = PRICE_TABLE[currency];
   const isAnnual = plan === 'annual';
@@ -89,6 +94,7 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
           <button
             type="button"
             aria-pressed={!isAnnual}
+            disabled={!hydrated}
             onClick={() => setPlan('monthly')}
             className={`h-9 rounded-[calc(var(--radius-sm)-2px)] text-[12.5px] font-semibold transition-colors ${
               !isAnnual
@@ -101,6 +107,7 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
           <button
             type="button"
             aria-pressed={isAnnual}
+            disabled={!hydrated}
             onClick={() => setPlan('annual')}
             className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-[calc(var(--radius-sm)-2px)] text-[12.5px] font-semibold transition-colors ${
               isAnnual
@@ -155,7 +162,9 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
             the same trial modal and the same /api/checkout finish the job. */}
         <div className="mt-7">
           <Button asChild variant="primary" size="lg" className="w-full">
-            <Link href={`/signup?next=${encodeURIComponent('/account')}`}>
+            {/* The chosen plan rides through sign-up to the Account page's trial window
+                (beta review A-4: it used to be forgotten, though this file said otherwise). */}
+            <Link href={`/signup?next=${encodeURIComponent(`/account?plan=${plan}`)}`}>
               Start 7-day free trial
             </Link>
           </Button>

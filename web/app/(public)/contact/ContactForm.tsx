@@ -1,7 +1,6 @@
 'use client';
 
 import { useActionState } from 'react';
-import Link from 'next/link';
 import { AlertCircle, CheckCircle2, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,17 +12,19 @@ const initialState: ContactState = { status: 'idle' };
 /**
  * Also rendered inside the app, in the support dialog a dispute-locked reader opens
  * from a lock (see components/SupportDialog.tsx) — hence the props: a signed-in user
- * shouldn't retype what we already know, and "Back to sign in" is nonsense to someone
- * who is signed in.
+ * shouldn't retype what we already know.
+ *
+ * ⚠️ It ended with "← Back to sign in" until 2026-10-03 (beta review A-20) — odd on a
+ * public page most visitors reach from the footer, and the page cannot tell who is
+ * signed in without losing its prerendering (architecture.md §7.2c). The site's own
+ * header and footer are the way on.
  */
 export function ContactForm({
   defaultName = '',
   defaultEmail = '',
-  showSignInLink = true,
 }: {
   defaultName?: string;
   defaultEmail?: string;
-  showSignInLink?: boolean;
 } = {}) {
   const [state, formAction, pending] = useActionState(sendContact, initialState);
 
@@ -128,16 +129,6 @@ export function ContactForm({
         {pending ? 'Sending…' : 'Send message'}
       </Button>
 
-      {showSignInLink && (
-        <p className="mt-3 pt-5 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
-          <Link
-            href="/login"
-            className="text-[var(--brand-mid)] font-semibold hover:text-[var(--brand-deep)] transition-colors"
-          >
-            ← Back to sign in
-          </Link>
-        </p>
-      )}
     </form>
   );
 }

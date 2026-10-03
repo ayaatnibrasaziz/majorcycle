@@ -62,9 +62,11 @@ const BILLING_NOTICE: Record<string, string> = {
 export default async function AccountPage({
   searchParams,
 }: {
-  searchParams: Promise<{ billing?: string; checkout?: string; session_id?: string }>;
+  searchParams: Promise<{ billing?: string; checkout?: string; session_id?: string; plan?: string }>;
 }) {
-  const { billing, checkout, session_id: sessionId } = await searchParams;
+  const { billing, checkout, session_id: sessionId, plan: chosenPlan } = await searchParams;
+  // The plan picked on /pricing before signing up (beta review A-4). Anything else is ignored.
+  const initialPlan = chosenPlan === 'annual' ? 'annual' : chosenPlan === 'monthly' ? 'monthly' : undefined;
 
   const supabase = await createServerSupabaseClient();
 
@@ -200,6 +202,7 @@ export default async function AccountPage({
         />
 
         <SubscriptionCard
+          initialPlan={initialPlan}
           status={profile?.subscription_status ?? null}
           plan={profile?.subscription_plan ?? null}
           trialEndsAt={profile?.trial_ends_at ?? null}
