@@ -3744,3 +3744,52 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
     outline-offset: 2px;
   }
 }
+
+/* Earnings Performance chart key (components/stocks/EarningsHistory.tsx). Drawn by hand
+   so the Actual swatches show the beat/miss colours the bars actually use (B-17). */
+.earnings-legend {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px;
+  padding-top: 4px; font: 10px 'Sora', sans-serif;
+}
+.earnings-legend-item { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.earnings-legend-swatch {
+  width: 10px; height: 10px; border: 1px solid; border-radius: 2px; flex-shrink: 0;
+}
+
+/* Key Metrics on a phone (beta review B-22): the Category column took the width the
+   Value needed, so a reader saw "Gross Margin · PROFITABILITY ·" and the number was off
+   the right edge. Below 560px the category moves under the metric's name. */
+.km-cat-inline { display: none; }
+@media (max-width: 559.98px) {
+  .km-th-cat, .km-cat-cell { display: none; }
+  .km-cat-inline { display: inline-flex; margin-top: 4px; font-size: 8.5px; }
+  .km-metric-cell .km-metric-label { display: flex; }
+}
+
+/* The Stock Detail header (components/stocks/StockHeader.tsx, beta review B-29).
+   Wide: identity over tags on the left, price block spanning both rows on the right —
+   the old two-column layout. Phone: the tags take a full-width row of their own, so
+   they can no longer run under the 52-week gauge. */
+.stock-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, auto);
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "id price" "badges price";
+  column-gap: 20px;
+}
+.stock-head-id { grid-area: id; }
+.stock-head-badges { grid-area: badges; }
+.stock-head-price { grid-area: price; }
+@media (max-width: 559.98px) {
+  .stock-head { grid-template-areas: "id price" "badges badges"; }
+}
+/* Under 360px the price block (which needs ~240px) leaves the name a dozen pixels, so
+   it moves under the identity instead of beside it. */
+@media (max-width: 359.98px) {
+  .stock-head {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas: "id" "price" "badges";
+  }
+  .stock-head-price { margin-top: 10px; }
+}

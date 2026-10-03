@@ -209,8 +209,12 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         priceLineVisible: false,
+        // ⚠️ The name only, not "Avg -58.5%" (beta review B-20): the axis label beside it
+        // already prints the value, so the pair read "Avg -58.5%  -58.54" and on a phone
+        // covered two ticks of the scale. (The chart library draws a line's name only
+        // together with its axis label, so the label itself has to stay.)
         lastValueVisible: true,
-        title: `Avg ${fmt(typLine)}%`,
+        title: 'Avg',
       }).setData(series.map(p => ({ time: p.time, value: typLine })));
     }
 
@@ -221,7 +225,7 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
         lineStyle: LineStyle.LargeDashed,
         priceLineVisible: false,
         lastValueVisible: true,
-        title: `${isDD ? 'Low' : 'High'} ${fmt(boundLine)}%`,
+        title: isDD ? 'Low' : 'High',
       }).setData(series.map(p => ({ time: p.time, value: boundLine })));
     }
 

@@ -154,7 +154,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
   // Names only scorecard areas the scorecard itself calls weak (lib/thesisText.ts).
   const s2 = healthSentence(financialHealthScore, fundamentals, cycle.fhSubscores);
 
-  const s3 = `Primary risk: ${topRisk(fundamentals, currentDrawdownPct, totalPullbackEvents, cycle.params.lookbackBars)}.`;
+  const s3 = `Primary risk: ${topRisk(fundamentals, totalPullbackEvents)}.`;
 
   // ── Band tiles ───────────────────────────────────────────────────────────
   let bandTiles: React.ReactNode;

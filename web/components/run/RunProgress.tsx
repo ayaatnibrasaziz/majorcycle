@@ -72,7 +72,7 @@ export function RunProgress({
               ? 'Double-checking skipped tickers…'
               : 'Analysing your selection…'}
           </span>
-          <span className="font-[var(--font-mono)] text-[12px] text-[var(--text-muted)]">{pct}%</span>
+          <span className="font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-muted)]">{pct}%</span>
         </div>
 
         <div

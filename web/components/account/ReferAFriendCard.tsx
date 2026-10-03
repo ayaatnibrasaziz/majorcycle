@@ -133,7 +133,7 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
                 setSentTo(null);
               }}
               placeholder="Add a short note…"
-              className="w-full resize-y rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-3.5 py-2.5 text-[13.5px] font-[var(--font-sans)] text-[var(--text-primary)] outline-none transition-all duration-150 hover:border-[var(--border-strong)] focus:border-[var(--brand-bright)] focus:ring-[3px] focus:ring-[var(--brand-bright)]/15"
+              className="w-full resize-y rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-3.5 py-2.5 text-[13.5px] font-[family-name:var(--font-sans)] text-[var(--text-primary)] outline-none transition-all duration-150 hover:border-[var(--border-strong)] focus:border-[var(--brand-bright)] focus:ring-[3px] focus:ring-[var(--brand-bright)]/15"
             />
             <p className="text-right text-[11px] text-[var(--text-muted)]">
               {message.length}/{MESSAGE_MAX}

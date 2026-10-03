@@ -187,7 +187,7 @@ export function CsvImport({
       >
         <Upload className="h-4 w-4" aria-hidden="true" />
         <span>
-          Import a CSV with a <span className="font-[var(--font-mono)]">ticker</span> column —
+          Import a CSV with a <span className="font-[family-name:var(--font-mono)]">ticker</span> column —
           drop here or click to browse
         </span>
       </div>

@@ -31,7 +31,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 /** Monospace formula block with a left brand accent (mirrors `.methodology-formula`). */
 function Formula({ children }: { children: React.ReactNode }) {
   return (
-    <pre className="font-[var(--font-mono)] text-[12px] leading-[1.55] whitespace-pre-wrap bg-[var(--bg-stripe)] border border-[var(--border)] border-l-[3px] border-l-[var(--brand-mid)] rounded-[var(--radius-sm)] px-3.5 py-2.5 my-2.5 text-[var(--text-primary)] overflow-x-auto">
+    <pre className="font-[family-name:var(--font-mono)] text-[12px] leading-[1.55] whitespace-pre-wrap bg-[var(--bg-stripe)] border border-[var(--border)] border-l-[3px] border-l-[var(--brand-mid)] rounded-[var(--radius-sm)] px-3.5 py-2.5 my-2.5 text-[var(--text-primary)] overflow-x-auto">
       {children}
     </pre>
   );
@@ -110,7 +110,7 @@ export function MethodologyModal({ open, onOpenChange }: MethodologyModalProps) 
                     below what it was measured at by something upstream. Recede with
                     a colour, never with transparency (CLAUDE.md 11q). Restores
                     5.31 / 5.33 / 5.31 / 9.51 across the five chips. */}
-                <div className="font-[var(--font-mono)] text-[11px] font-semibold mb-[3px]">
+                <div className="font-[family-name:var(--font-mono)] text-[11px] font-semibold mb-[3px]">
                   {t.range}
                 </div>
                 <div className="text-[9px] font-bold uppercase tracking-[0.6px] leading-tight">

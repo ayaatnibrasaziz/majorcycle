@@ -227,7 +227,21 @@ function buildModel(priceBars: PriceBar[], txs: InsiderTransaction[], upgrades: 
   // LWC requires markers sorted by time ascending (date strings sort chronologically).
   markersAll.sort((m1, m2) => String(m1.time).localeCompare(String(m2.time)));
 
-  return { priceData, priceByTime, eventsByTime, markersAll, lastTime };
+  // ⚠️ ONE marker per kind per day (beta review B-19). The chart stacks every marker on
+  // a bar, so a day with six analyst notes drew a column of six squares that ran off
+  // the top of the chart on a phone. The day's panel still lists every event; a day
+  // whose analyst notes landed in different groups is drawn in the neutral ink rather
+  // than in whichever colour happened to come first.
+  const perDay = new Map<string, KindMarker>();
+  for (const m of markersAll) {
+    const k = `${String(m.time)}|${m.kind}`;
+    const seen = perDay.get(k);
+    if (!seen) perDay.set(k, { ...m });
+    else if (seen.color !== m.color) seen.color = CHART_INK;
+  }
+  const markers = [...perDay.values()];
+
+  return { priceData, priceByTime, eventsByTime, markersAll: markers, lastTime };
 }
 
 /* ── Lightweight-Charts chart (native pan/zoom + combined tooltip) ── */
@@ -325,6 +339,8 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible, currency }:
         borderColor: CHART_CHROME.axis,
         textColor: CHART_INK,
         minimumWidth: CHART_RIGHT_AXIS_WIDTH,
+        // Headroom for the markers drawn above the price line.
+        scaleMargins: { top: 0.18, bottom: 0.1 },
       },
       timeScale: { borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },

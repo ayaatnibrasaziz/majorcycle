@@ -21,6 +21,9 @@ import {
   PAYOUT_STRAINED_MAX,
   STREAK_EXCEPTIONAL_YEARS,
   STREAK_GREEN_YEARS,
+  annualDividendSeries,
+  dividendStreak,
+  lastDividendYear,
 } from '@/lib/dividends';
 import { INK } from '@/lib/ink';
 
@@ -36,7 +39,9 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
   // render as a fake "cut", reset the growth streak, and halve Annual DPS +
   // Current Yield. Drop it so every bar/stat reflects a COMPLETE year.
   const currentYear = new Date().getFullYear();
-  const completeHistory = dividendHistory.filter((d) => d.year < currentYear);
+  // Gap years filled with 0, and run to last year (lib/dividends.ts, beta review B-18).
+  const completeHistory = annualDividendSeries(dividendHistory, currentYear);
+  const lastPaid = lastDividendYear(completeHistory);
 
   const noDividend = dividendHistory.length === 0;
 
@@ -67,8 +72,10 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
                 lineHeight: 1.55,
               }}
             >
-              Does not pay a dividend — typical for high-growth businesses
-              reinvesting cash into expansion.
+              {/* ⚠️ Said "typical for high-growth businesses reinvesting cash" until
+                  2026-10-03 — untrue of a loss-making explorer, which is most of the
+                  non-payers on the ASX (beta review B-24). The fact, and no reason. */}
+              Does not pay a dividend.
             </div>
           </div>
         </div>
@@ -107,7 +114,36 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
     );
   }
 
-  // sorted ascending by year (from yfinance groupby), current incomplete year dropped
+  // Paid once, and no longer: say so rather than chart a yield off an old payment.
+  if (lastPaid !== null && completeHistory[completeHistory.length - 1]!.amount === 0) {
+    return (
+      <div className="card card--stack-base">
+        <div className="card-header">
+          <h3 className="card-title">Dividend History</h3>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+            Annual dividend per share
+          </div>
+        </div>
+        <div className="card-body">
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '32px 0',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 380, lineHeight: 1.55 }}>
+              No dividend paid since {lastPaid}.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // sorted ascending by year, gap years as 0, current incomplete year dropped
   const chartData = completeHistory.map((d, i) => ({
     label: String(d.year),
     val:   d.amount,
@@ -128,12 +164,8 @@ export function DividendHistory({ dividendHistory, fundamentals, currentClose }:
   // real number, but flag it and drop the reassuring green (S9 sanity-bounds).
   const yieldDistressed = yieldPct !== null && yieldPct > DISTRESS_YIELD_PCT;
 
-  // Consecutive years of growth streak
-  let streak = 0;
-  for (let i = completeHistory.length - 1; i > 0; i--) {
-    if (completeHistory[i]!.amount > completeHistory[i - 1]!.amount) streak++;
-    else break;
-  }
+  // Consecutive years of growth; a resumption after a gap year is not growth.
+  const streak = dividendStreak(completeHistory);
 
   const { payoutRatioPct } = fundamentals;
 

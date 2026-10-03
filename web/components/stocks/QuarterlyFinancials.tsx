@@ -122,12 +122,23 @@ export function QuarterlyFinancials({
   const n     = isAnnual ? paired.length : Math.min(8, paired.length);
   const shown = paired.slice(-n);
 
+  // The comparison every figure on this card makes — see the long note below. Worked
+  // out FIRST so the bar colours use it too: they compared each bar with the one
+  // before it while the strip under them compared with the same quarter a year
+  // earlier, so a seasonal dip coloured red beside a "+12% YoY" (beta review B-16).
+  const lag = !isAnnual && shown.length > 4 ? 4 : 1;
+
   const chartData = shown.map((p, i) => ({
     label:   isAnnual ? toYearLabel(p.label) : toQtrLabel(p.label),
     val:     p.val,
-    isFirst: i === 0,
-    isUp:    i > 0 && p.val >= shown[i - 1]!.val,
+    // No earlier period on the chart to compare with: drawn in the neutral brand colour.
+    isFirst: i < lag,
+    isUp:    i >= lag && p.val >= shown[i - lag]!.val,
   }));
+
+  // Every period reported as exactly zero — a company with no revenue yet, such as an
+  // explorer. Drawn, it was an empty chart on a 0–4 axis (beta review B-25).
+  const allZero = chartData.length > 0 && chartData.every((d) => d.val === 0);
 
   // Largest plotted magnitude → drives a uniform-decimal Y-axis (single series).
   const axisMax = chartData.reduce((mx, d) => Math.max(mx, Math.abs(d.val)), 0);
@@ -161,7 +172,6 @@ export function QuarterlyFinancials({
    * labelled with whichever comparison it actually made. A card with too little
    * history says QoQ and means it.
    */
-  const lag = !isAnnual && chartData.length > 4 ? 4 : 1;
   const against = chartData.length > lag ? chartData[chartData.length - 1 - lag]! : null;
   const changePct =
     latest && against && against.val !== 0
@@ -189,6 +199,10 @@ export function QuarterlyFinancials({
     if (chartData[i]!.val > chartData[i - lag]!.val) streak++;
     else break;
   }
+  // ⚠️ With five quarters the provider gives us, only ONE year-on-year comparison
+  // exists, so the streak could never read above 1 — a count that cannot count
+  // (beta review B-16). It shows only where at least two comparisons exist.
+  const showStreak = chartData.length - lag >= 2;
 
   const periodWord = isAnnual ? 'year' : 'quarter';
   const periodUnit = isAnnual ? 'yrs' : 'qtrs';
@@ -235,7 +249,7 @@ export function QuarterlyFinancials({
         </div>
       </div>
       <div className="card-body">
-        {chartData.length === 0 ? (
+        {chartData.length === 0 || allZero ? (
           <div
             style={{
               display: 'flex',
@@ -246,7 +260,9 @@ export function QuarterlyFinancials({
             }}
           >
             <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 360, lineHeight: 1.55 }}>
-              {`No ${MODE_LABELS[mode]} data reported for this company — try another metric above. (Some companies, such as banks, don't report every line.)`}
+              {allZero
+                ? `No ${MODE_LABELS[mode].toLowerCase()} reported in any of the periods shown.`
+                : `No ${MODE_LABELS[mode]} data reported for this company — try another metric above. (Some companies, such as banks, don't report every line.)`}
             </div>
           </div>
         ) : (
@@ -350,7 +366,7 @@ export function QuarterlyFinancials({
           </ResponsiveContainer>
         </div>
         )}
-        {latest && (
+        {latest && !allZero && (
           <div className="summary-strip">
             <div
               className="summary-strip-item"
@@ -394,6 +410,7 @@ export function QuarterlyFinancials({
               </div>
             )}
 
+            {showStreak && (
             <div
               className="summary-strip-item"
               title={
@@ -407,6 +424,7 @@ export function QuarterlyFinancials({
                 {streak} {streak === 1 ? (isAnnual ? 'yr' : 'qtr') : periodUnit}
               </div>
             </div>
+            )}
           </div>
         )}
 

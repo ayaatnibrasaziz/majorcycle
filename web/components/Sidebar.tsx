@@ -239,7 +239,7 @@ export function SidebarBody({
               strength of knowing what the other one looked like. A state no
               fixture reaches is a state no guard covers. */}
           <div
-            className="font-[var(--font-mono)] text-[10px] text-[var(--brand-mid)] font-semibold mt-0.5 uppercase tracking-[0.5px]"
+            className="font-[family-name:var(--font-mono)] text-[10px] text-[var(--brand-mid)] font-semibold mt-0.5 uppercase tracking-[0.5px]"
             role="group"
             aria-label="Subscription status"
           >

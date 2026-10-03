@@ -97,15 +97,18 @@ export function healthSentence(
     : `Financial health is stressed at ${shown}/100.`;
 }
 
-/** The Verdict's primary risk — first match wins. */
+/**
+ * The Verdict's primary risk — first match wins.
+ *
+ * ⚠️ "Near its highs" used to be the FIRST rule here. The Verdict's opening sentence
+ * already says that for every stock near its highs, so the card said it twice and hid
+ * whatever the real risk was — debt, falling revenue, losses (beta review B-23,
+ * 2026-10-03). The fallback also read "Primary risk: the chief risk is…".
+ */
 export function topRisk(
   f: FundamentalsSnapshot,
-  drawdownPct: number,
   pullbackEvents: number,
-  lookbackBars: number,
 ): string {
-  if (drawdownPct > -5)
-    return `near its ${lookbackBars}-day highs with limited cycle-based margin of safety`;
   if (f.debtToEquity != null && f.debtToEquity >= 1.5)
     return `elevated debt at ${fmtCapped(f.debtToEquity, 25, 1)}× equity — sensitive to higher rates`;
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy < 0)
@@ -122,5 +125,5 @@ export function topRisk(
     return `thin net margin of ${fmtCapped(f.netMargin, 300, 1)}% leaves little buffer`;
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 0 && f.revenueGrowthYoy < 15)
     return `modest revenue growth of ${f.revenueGrowthYoy.toFixed(1)}% — multiple-compression risk`;
-  return 'the chief risk is the historical cycle pattern not repeating as it has before';
+  return 'the historical cycle pattern not repeating as it has before';
 }

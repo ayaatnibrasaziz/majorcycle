@@ -19,9 +19,9 @@ const F = (over: Partial<FundamentalsSnapshot>): FundamentalsSnapshot => over as
 
 test.describe('#2 a loss is not a thin margin', () => {
   test('Moderna (−141%) is loss-making; a 3% margin is still thin', () => {
-    expect(topRisk(F({ netMargin: -141.43 }), -30, 20, 252)).toBe('loss-making — net margin of -141.4%');
-    expect(topRisk(F({ netMargin: 3 }), -30, 20, 252)).toContain('thin net margin of 3.0%');
-    expect(topRisk(F({ netMargin: -0.1 }), -30, 20, 252)).toMatch(/^loss-making/);
+    expect(topRisk(F({ netMargin: -141.43 }), 20)).toBe('loss-making — net margin of -141.4%');
+    expect(topRisk(F({ netMargin: 3 }), 20)).toContain('thin net margin of 3.0%');
+    expect(topRisk(F({ netMargin: -0.1 }), 20)).toMatch(/^loss-making/);
   });
 });
 

@@ -429,7 +429,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
               onClick={() => setMarket(m.value)}
               aria-pressed={market === m.value}
               className={cn(
-                'px-[10px] py-[5px] rounded-[var(--radius-sm)] border text-[11px] font-[var(--font-mono)] font-medium transition-all duration-150',
+                'px-[10px] py-[5px] rounded-[var(--radius-sm)] border text-[11px] font-[family-name:var(--font-mono)] font-medium transition-all duration-150',
                 market === m.value
                   ? 'bg-[var(--brand-mid)] border-[var(--brand-mid)] text-white'
                   : 'bg-transparent border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--brand-mid)] hover:text-[var(--brand-mid)]'
@@ -492,7 +492,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
           so changing the order is not announced as a new count. */}
       <div className="flex items-center justify-between gap-3 mb-2">
         <div
-          className="text-[11px] text-[var(--text-muted)] font-[var(--font-mono)]"
+          className="text-[11px] text-[var(--text-muted)] font-[family-name:var(--font-mono)]"
           role="status"
           aria-live="polite"
         >
@@ -553,7 +553,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-[var(--font-mono)] font-semibold text-[13px] text-[var(--text-primary)] group-hover:text-[var(--brand-mid)]">
+                      <span className="font-[family-name:var(--font-mono)] font-semibold text-[13px] text-[var(--text-primary)] group-hover:text-[var(--brand-mid)]">
                         {symbol}
                       </span>
                       <span className="text-[9px] font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[4px] px-1.5 py-px flex-shrink-0">
@@ -567,7 +567,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
                   <div className="hidden sm:block text-[11px] text-[var(--text-muted)] flex-shrink-0 w-[160px] truncate">
                     {s.sector ?? '—'}
                   </div>
-                  <div className="font-[var(--font-mono)] text-[12px] text-[var(--text-secondary)] flex-shrink-0 w-[72px] text-right">
+                  <div className="font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)] flex-shrink-0 w-[72px] text-right">
                     {formatMarketCap(s.marketCap, s.currency)}
                   </div>
                 </Link>
@@ -617,7 +617,7 @@ function EmptyState({ query }: { query: string }) {
           {query.trim() ? (
             <>
               We don&apos;t cover a stock matching{' '}
-              <span className="font-[var(--font-mono)] text-[var(--text-secondary)]">
+              <span className="font-[family-name:var(--font-mono)] text-[var(--text-secondary)]">
                 &ldquo;{query.trim()}&rdquo;
               </span>{' '}
               yet. If it&apos;s a valid US, Australian or Canadian stock, request it
@@ -678,7 +678,7 @@ function CustomField({
         aria-describedby={shown ? errorId : undefined}
         onChange={draft.onInput}
         className={cn(
-          'w-[92px] rounded-[var(--radius-sm)] border bg-[var(--bg-surface)] px-2 py-[5px] font-[var(--font-mono)] text-[12px] text-[var(--text-primary)] outline-none',
+          'w-[92px] rounded-[var(--radius-sm)] border bg-[var(--bg-surface)] px-2 py-[5px] font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-primary)] outline-none',
           shown
             ? 'border-[var(--status-danger)] focus:border-[var(--status-danger)]'
             : 'border-[var(--border)] focus:border-[var(--brand-bright)]'

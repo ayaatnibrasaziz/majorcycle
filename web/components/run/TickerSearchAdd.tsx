@@ -153,7 +153,7 @@ export function TickerSearchAdd({
                   className={already ? 'run-search-opt' : cn('run-search-opt', i === activeIndex && 'run-search-opt--active')}
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <span className="font-[var(--font-mono)] text-[12px] font-semibold text-[var(--text-primary)]">
+                    <span className="font-[family-name:var(--font-mono)] text-[12px] font-semibold text-[var(--text-primary)]">
                       {tickerToUrlParts(h.ticker).symbol}
                     </span>
                     <span className="truncate text-[12px] text-[var(--text-secondary)]">

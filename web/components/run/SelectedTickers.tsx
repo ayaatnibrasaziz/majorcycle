@@ -30,7 +30,7 @@ export function SelectedTickers({
     <div>
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
-          <span className="font-[var(--font-mono)] text-[var(--text-primary)]">
+          <span className="font-[family-name:var(--font-mono)] text-[var(--text-primary)]">
             {tickers.length}
           </span>{' '}
           selected

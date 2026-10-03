@@ -116,6 +116,11 @@ export function MetricsTable({ fundamentals, industry, sector, market, medians }
                       {r.def.label}
                       <InfoTip title={r.def.label}>{r.def.tip}</InfoTip>
                     </span>
+                    {/* Phones only: the Category column is hidden there so the value sits
+                        beside its name instead of off the right edge (beta review B-22). */}
+                    <span className={`mt-cat-pill km-cat-inline ${CAT_PILL[r.def.cat]}`} aria-hidden="true">
+                      {r.def.cat}
+                    </span>
                   </td>
                   <td className="km-cat-cell">
                     <span className={`mt-cat-pill ${CAT_PILL[r.def.cat]}`}>{r.def.cat}</span>
