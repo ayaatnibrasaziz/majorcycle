@@ -4,11 +4,13 @@ import {
   sendTrialEndingEmail,
   sendPaymentFailedEmail,
   sendPaymentRecoveredEmail,
+  sendAccessPausedEmail,
+  sendSubscriptionEndedEmail,
 } from '@/lib/email/billingEmails';
 import { sendDeletionScheduledEmail, sendAccountDeletedEmail } from '@/lib/email/accountEmails';
 import { sendReferralEmail } from '@/lib/email/referralEmails';
 import { sendContact } from '@/app/(public)/contact/actions';
-import { CURRENCY_SYMBOL, PRICE_TABLE } from '@/lib/pricing';
+import { formatCharge } from '@/lib/pricing';
 import { TRIAL_PERIOD_DAYS } from '@/lib/stripe';
 
 /**
@@ -69,6 +71,12 @@ const NAMES = [
   'trialEnding',
   'paymentFailed',
   'paymentRecovered',
+  'paymentRecoveredAfterPause',
+  'accessPaused',
+  'accessPausedNoAmount',
+  'trialEnded',
+  'endedPayment',
+  'ended',
   'deletionScheduled',
   'accountDeleted',
   'referral',
@@ -86,12 +94,24 @@ async function renderAll(): Promise<Record<MailName, Captured>> {
   }) as typeof fetch;
 
   try {
-    await sendTrialStartedEmail({ to: 'x@example.com', name: 'Ayaat', currency: 'aud', plan: 'monthly' });
-    await sendTrialEndingEmail({ to: 'x@example.com', name: null, currency: 'usd', plan: 'annual' });
-    await sendPaymentFailedEmail({
-      to: 'x@example.com', name: 'Ayaat', currency: 'cad', plan: 'monthly', graceDays: 3,
+    // Amounts are STRIPE'S figure in minor units — deliberately NOT a price-table
+    // value (A$17.10 is a discounted A$19), so a sender that reads the table fails.
+    await sendTrialStartedEmail({
+      to: 'x@example.com', name: 'Ayaat', charge: { amount: 1710, currency: 'aud' }, plan: 'monthly',
     });
-    await sendPaymentRecoveredEmail({ to: 'x@example.com', name: 'Ayaat' });
+    await sendTrialEndingEmail({
+      to: 'x@example.com', name: null, charge: { amount: 12650, currency: 'usd' }, plan: 'annual',
+    });
+    await sendPaymentFailedEmail({
+      to: 'x@example.com', name: 'Ayaat', charge: { amount: 2200, currency: 'cad' }, plan: 'monthly', graceDays: 3,
+    });
+    await sendPaymentRecoveredEmail({ to: 'x@example.com', name: 'Ayaat', wasPaused: false });
+    await sendPaymentRecoveredEmail({ to: 'x@example.com', name: 'Ayaat', wasPaused: true });
+    await sendAccessPausedEmail({ to: 'x@example.com', name: 'Ayaat', charge: { amount: 2200, currency: 'cad' } });
+    await sendAccessPausedEmail({ to: 'x@example.com', name: null, charge: null });
+    await sendSubscriptionEndedEmail({ to: 'x@example.com', name: 'Ayaat', kind: 'trial_ended' });
+    await sendSubscriptionEndedEmail({ to: 'x@example.com', name: 'Ayaat', kind: 'ended_payment' });
+    await sendSubscriptionEndedEmail({ to: 'x@example.com', name: 'Ayaat', kind: 'ended' });
     await sendDeletionScheduledEmail({
       to: 'x@example.com',
       name: 'Ayaat',
@@ -122,10 +142,10 @@ function paths(body: string): string[] {
 }
 
 test.describe('every transactional email renders, and says the same thing twice', () => {
-  test('all seven render, in both formats, with nothing unresolved', async () => {
+  test('every email renders, in both formats, with nothing unresolved', async () => {
     const mail = await renderAll();
     // Control: a stub that captured nothing would report what a clean run reports.
-    expect(Object.keys(mail), 'not every email rendered').toHaveLength(7);
+    expect(Object.keys(mail), 'not every email rendered').toHaveLength(NAMES.length);
 
     for (const [name, m] of Object.entries(mail)) {
       expect(m.subject, `${name}: no subject`).toBeTruthy();
@@ -194,21 +214,36 @@ test.describe('every transactional email renders, and says the same thing twice'
     expect(trialStarted.html).toContain(`${TRIAL_PERIOD_DAYS}-day`);
     expect(trialStarted.html).not.toContain(`${TRIAL_PERIOD_DAYS + 1}-day`);
     expect(paymentFailed.text, 'the grace period is wrong or missing').toContain('3 days');
-    // And the sticker is the real PRICE_TABLE value for the currency the caller
-    // passed. BUILT from the table rather than restated: my first draft typed
-    // `CA$` from memory and went red on a correct email, because the subscription
-    // symbol is `C$` (`CURRENCY_SYMBOL` in lib/pricing.ts, the same map /pricing
-    // renders from). A guard that restates the value it is guarding is a fourth
-    // copy of it (CLAUDE.md 11c-iii), and it fails on the code rather than on the
-    // defect.
-    expect(trialStarted.text, 'AUD monthly sticker wrong or missing')
-      .toContain(`${CURRENCY_SYMBOL.aud}${PRICE_TABLE.aud.monthly}/month`);
-    expect(paymentFailed.text, 'CAD sticker wrong or missing')
-      .toContain(`${CURRENCY_SYMBOL.cad}${PRICE_TABLE.cad.monthly}`);
-    // The control: an off-by-one must NOT be found, or the two assertions above
-    // would pass on any body containing a currency symbol and some digits.
-    expect(trialStarted.text)
-      .not.toContain(`${CURRENCY_SYMBOL.aud}${PRICE_TABLE.aud.monthly + 1}/month`);
+    // The amount is STRIPE'S figure, formatted by the same function the account card
+    // uses — never our price table, which is wrong under any discount or tax (owner,
+    // 2026-10-03). 1710 is a discounted A$19, so a table-reading sender fails here.
+    expect(trialStarted.text, 'trial-started: not the Stripe amount')
+      .toContain(`${formatCharge(1710, 'aud')}/month`);
+    expect(paymentFailed.text, 'payment-failed: not the failed invoice amount')
+      .toContain(formatCharge(2200, 'cad'));
+    // The control: the table price must NOT appear in place of Stripe's figure.
+    expect(trialStarted.text, 'the price table leaked back in').not.toContain('A$19.00');
+  });
+
+  test('the access emails say what actually happened (beta review D-5 / D-6)', async () => {
+    const m = await renderAll();
+    // "uninterrupted" is true only when access never stopped.
+    expect(m.paymentRecovered.text).toContain('uninterrupted');
+    expect(m.paymentRecoveredAfterPause.text, 'told a locked-out customer access was uninterrupted')
+      .not.toContain('uninterrupted');
+    expect(m.paymentRecoveredAfterPause.text).toContain('full access is back');
+    // Paused: names the failed amount when Stripe gave one, and invents none when not.
+    expect(m.accessPaused.text).toContain(formatCharge(2200, 'cad'));
+    expect(m.accessPausedNoAmount.text).toContain('your last payment,');
+    expect(m.accessPausedNoAmount.text, 'invented an amount').not.toMatch(/\$\d/);
+    // Ended: a trial says no charge; a payment end says why; none promises a refund.
+    expect(m.trialEnded.text).toMatch(/haven't been charged/);
+    expect(m.endedPayment.text).toMatch(/couldn't take the payment/);
+    expect(m.ended.text).toMatch(/won't be charged again/);
+    for (const k of ['trialEnded', 'endedPayment', 'ended'] as const) {
+      expect(m[k].text, `${k}: lost the free-plan line`).toContain('still yours on the free plan');
+      expect(m[k].text, `${k}: mentions a refund`).not.toMatch(/refund/i);
+    }
   });
 });
 

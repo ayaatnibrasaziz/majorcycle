@@ -3,6 +3,7 @@ import type Stripe from 'stripe';
 
 import { GRACE_DAYS } from '@/lib/billing/grace';
 import { canPauseOrResume, disputeBillingAction, type DisputeBillingAction } from '@/lib/billing/dispute';
+import { accessWasPaused, endedEmailKind } from '@/lib/billing/accessEmails';
 import { reportIssue } from '@/lib/observability';
 import { getStripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -21,6 +22,7 @@ import {
   sendTrialEndingEmail,
   sendPaymentFailedEmail,
   sendPaymentRecoveredEmail,
+  sendSubscriptionEndedEmail,
 } from '@/lib/email/billingEmails';
 
 /**
@@ -153,7 +155,13 @@ async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<Eve
   // cancelled an old sub and started a new one, and Stripe delivered the old
   // `subscription.deleted` out of order (delivery order isn't guaranteed). Guarding on the
   // id means a late deletion of a superseded sub can never clobber a newer active one.
-  await admin
+  // The profile AS IT WAS, to decide which "it has ended" email applies (if any).
+  const { data: prev } = await admin
+    .from('profiles')
+    .select('email, display_name, subscription_status, billing_blocked, deletion_scheduled_at')
+    .eq('id', userId)
+    .maybeSingle();
+  const { data: applied } = await admin
     .from('profiles')
     .update({
       subscription_status: 'canceled',
@@ -167,7 +175,20 @@ async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<Eve
       next_charge_at: null,
     })
     .eq('id', userId)
-    .or(`stripe_subscription_id.eq.${sub.id},stripe_subscription_id.is.null`);
+    .or(`stripe_subscription_id.eq.${sub.id},stripe_subscription_id.is.null`)
+    .select('id');
+  // Only when THIS deletion actually ended the plan on file (not a stale, superseded
+  // one) — and lib/billing/accessEmails.ts decides whether the customer is told. Until
+  // 2026-10-03 nobody was (beta review D-5). Last and best-effort, like every email here.
+  const kind = applied?.length ? endedEmailKind(prev ?? null, sub.cancellation_details?.reason) : null;
+  if (kind && prev?.email) {
+    await sendSubscriptionEndedEmail({
+      to: prev.email,
+      name: prev.display_name ?? null,
+      kind,
+      idempotencyKey: `${sub.id}:subscription_ended`,
+    });
+  }
   return { userId, customerId: cust, subscriptionId: sub.id };
 }
 
@@ -208,14 +229,18 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       if (ctx.userId && sub.status === 'trialing' && sub.cancel_at == null) {
         const { data: prof } = await admin
           .from('profiles')
-          .select('email, display_name, subscription_currency, subscription_plan')
+          .select('email, display_name, subscription_plan, next_charge_amount, next_charge_currency')
           .eq('id', ctx.userId)
           .maybeSingle();
         if (prof?.email) {
           await sendTrialStartedEmail({
             to: prof.email,
             name: prof.display_name ?? null,
-            currency: prof.subscription_currency,
+            // Stripe's figure, stored by the sync above — never our price table.
+            charge:
+              prof.next_charge_amount != null && prof.next_charge_currency
+                ? { amount: prof.next_charge_amount, currency: prof.next_charge_currency }
+                : null,
             plan: prof.subscription_plan,
             idempotencyKey: `${event.id}:trial_started`,
           });
@@ -269,9 +294,16 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       // first to clear it emails; the second sees NULL and no-ops. A normal renewal and the
       // $0 trial-start invoice never set grace, so they never trigger this. Email is the
       // last, best-effort action.
+      // Read the grace end BEFORE clearing it: the email must know whether access had
+      // already been paused (beta review D-6). The update returns the NEW row.
+      const { data: before } = await admin
+        .from('profiles')
+        .select('grace_until')
+        .eq('id', userId)
+        .maybeSingle();
       const { data: recovered } = await admin
         .from('profiles')
-        .update({ grace_until: null })
+        .update({ grace_until: null, access_paused_notified_at: null })
         .eq('id', userId)
         .eq('stripe_subscription_id', subscriptionId)
         .not('grace_until', 'is', null)
@@ -281,6 +313,7 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
         await sendPaymentRecoveredEmail({
           to: recovered.email,
           name: recovered.display_name ?? null,
+          wasPaused: accessWasPaused(before?.grace_until ?? null),
           idempotencyKey: `${event.id}:payment_recovered`,
         });
       }
@@ -340,17 +373,19 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       const graceUntil = new Date(Date.now() + GRACE_DAYS * 24 * 60 * 60 * 1000).toISOString();
       const { data: firstFailure } = await admin
         .from('profiles')
-        .update({ grace_until: graceUntil })
+        // A NEW failure starts a new lapse, so its access-paused email must go out again.
+        .update({ grace_until: graceUntil, access_paused_notified_at: null })
         .eq('id', userId)
         .eq('stripe_subscription_id', subscriptionId)
         .is('grace_until', null)
-        .select('email, display_name, subscription_currency, subscription_plan')
+        .select('email, display_name, subscription_plan')
         .maybeSingle();
       if (firstFailure?.email) {
         await sendPaymentFailedEmail({
           to: firstFailure.email,
           name: firstFailure.display_name ?? null,
-          currency: firstFailure.subscription_currency,
+          // The invoice that failed, as Stripe reported it — not our price table.
+          charge: failed ? { amount: failed.amount, currency: failed.currency } : null,
           plan: firstFailure.subscription_plan,
           graceDays: GRACE_DAYS,
           idempotencyKey: `${event.id}:payment_failed`,
@@ -365,11 +400,13 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       const userId = await resolveUserId(admin, sub);
       const ctx: EventContext = { userId, customerId: cust, subscriptionId: sub.id };
       // Skip if the trial is already scheduled to cancel — the user won't be charged, so a
-      // "you'll be charged" reminder would be false (they got the cancellation email).
+      // "you'll be charged" reminder would be false. (This said "they got the cancellation
+      // email" until 2026-10-03; there was none. They now get one when the trial actually
+      // ends — `markCanceled`.)
       if (!userId || sub.cancel_at != null) return ctx;
       const { data: prof } = await admin
         .from('profiles')
-        .select('email, display_name, subscription_currency, subscription_plan, trial_reminder_sent')
+        .select('email, display_name, subscription_plan, trial_reminder_sent, next_charge_amount, next_charge_currency')
         .eq('id', userId)
         .maybeSingle();
       // Belt-and-suspenders on top of stripe_events idempotency: only send once. Mark
@@ -382,7 +419,11 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
         await sendTrialEndingEmail({
           to: prof.email,
           name: prof.display_name ?? null,
-          currency: prof.subscription_currency,
+          // Stripe's preview of the first charge — discounts and tax included.
+          charge:
+            prof.next_charge_amount != null && prof.next_charge_currency
+              ? { amount: prof.next_charge_amount, currency: prof.next_charge_currency }
+              : null,
           plan: prof.subscription_plan,
           idempotencyKey: `${event.id}:trial_ending`,
         });
