@@ -13,6 +13,7 @@ import type {
   ValuationZone,
 } from '@/lib/types';
 import { RATING_SUMMARY } from '@/lib/ratingDefinition';
+import { ZONE_DISPLAY, ZONE_TIER } from '@/lib/ratings';
 
 // Match the Browse page: show the clean symbol + a country badge rather than the
 // raw exchange-suffixed storage ticker (BHP.AX / SHOP.TO). Country code via the
@@ -274,13 +275,7 @@ const LABEL_TIER: Record<OverallLabel, number> = {
   'High Conviction': 1, Constructive: 2, Neutral: 3, Cautious: 4, Bearish: 5,
 };
 
-const ZONE_TIER: Record<ValuationZone, number> = {
-  'DEEP VALUE': 1, VALUE: 2, FAIR: 3, STRETCHED: 4,
-};
-
-const ZONE_DISPLAY: Record<ValuationZone, string> = {
-  'DEEP VALUE': 'Deep Value', VALUE: 'Value', FAIR: 'Fair', STRETCHED: 'Stretched',
-};
+// Zone names and tiers come from lib/ratings.ts — one table, read everywhere.
 
 export function BadgeRow({
   overallLabel,
@@ -320,7 +315,7 @@ export function BadgeRow({
         >
           {/* Attribution is VISIBLE, not just a tooltip, and unconditional. It used to
               appear only when our own badges were absent, on the theory that our label
-              framed this chip. That reads backwards: beside "Neutral" and "Stretched",
+              framed this chip. That reads backwards: beside "Neutral" and "Near high",
               a bare "Buy" looks like the third thing WE concluded, which is precisely
               what CLAUDE.md #2 forbids. Colour and a hover title are not enough — the
               tooltip is invisible on touch, and the entitled view is the one where the
@@ -340,8 +335,8 @@ export function BadgeRow({
           <>
             Three quick reads at a glance. The first is MajorCycle&apos;s overall label
             (High Conviction → Bearish). The second is the Valuation Zone — how the
-            current dip compares with this stock&apos;s typical pullback (Deep Value →
-            Stretched). The third, if shown, is the Wall Street analyst consensus —
+            current dip compares with this stock&apos;s typical pullback (
+            {`${ZONE_DISPLAY['DEEP VALUE']} → ${ZONE_DISPLAY.STRETCHED}`}). The third, if shown, is the Wall Street analyst consensus —
             third-party data, not our rating.
           </>
         ) : (

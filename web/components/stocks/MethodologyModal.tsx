@@ -9,7 +9,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { RATING_BANDS } from '@/lib/ratingDefinition';
-import { RATING_WEIGHTS } from '@/lib/ratings';
+import { RATING_WEIGHTS, ZONE_DISPLAY, ZONE_ORDER } from '@/lib/ratings';
 
 interface MethodologyModalProps {
   open: boolean;
@@ -148,7 +148,7 @@ export function MethodologyModal({ open, onOpenChange }: MethodologyModalProps) 
             <strong className="text-[var(--text-primary)]">cycle position</strong>{' '}
             — how deep today&apos;s drawdown is versus the stock&apos;s{' '}
             <em>typical</em> drawdown — shown as a zone:{' '}
-            <strong>Deep Value · Value · Fair · Stretched</strong>. The score that
+            <strong>{ZONE_ORDER.map((z) => ZONE_DISPLAY[z]).join(' · ')}</strong>. The score that
             feeds the Overall Rating is then scaled by company quality, so a
             cheap-but-weak business can&apos;t score as a bargain:
           </p>

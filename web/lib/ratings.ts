@@ -143,19 +143,32 @@ function article(word: string): string {
 
 // Valuation zone → tier + display. DEEP VALUE/VALUE are favourable (green),
 // FAIR is neutral (gold), STRETCHED is unfavourable (orange).
-const ZONE_TIER: Record<ValuationZone, 1 | 2 | 3 | 4 | 5> = {
+export const ZONE_TIER: Record<ValuationZone, 1 | 2 | 3 | 4 | 5> = {
   'DEEP VALUE': 1,
   VALUE: 2,
   FAIR: 3,
   STRETCHED: 4,
 };
 
+/**
+ * What each zone is CALLED — the one table every surface reads (owner-approved names,
+ * 2026-10-03; beta review C-2 / B-14 / F-4).
+ *
+ * ⚠️ They were "Deep Value / Value / Fair / Stretched" until then. The zone measures
+ * how far the price has fallen against the stock's own typical fall — a price
+ * POSITION — and the old names read as a verdict on valuation, so CBA showed "Deep
+ * Value" while trading above every analyst's target. The stored codes ('DEEP VALUE'…)
+ * are unchanged: they are identifiers, never shown, and the rating does not move.
+ */
 export const ZONE_DISPLAY: Record<ValuationZone, string> = {
-  'DEEP VALUE': 'Deep Value',
-  VALUE: 'Value',
-  FAIR: 'Fair',
-  STRETCHED: 'Stretched',
+  'DEEP VALUE': 'Deep pullback',
+  VALUE: 'Pullback',
+  FAIR: 'Shallow dip',
+  STRETCHED: 'Near high',
 };
+
+/** Deepest fall first — the order the zones are listed and offered in. */
+export const ZONE_ORDER: readonly ValuationZone[] = ['DEEP VALUE', 'VALUE', 'FAIR', 'STRETCHED'];
 
 export function zoneColor(zone: ValuationZone): string {
   return tierColorVar(ZONE_TIER[zone]);

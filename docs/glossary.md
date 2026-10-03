@@ -81,7 +81,7 @@
 
 **DataFrame** — A pandas DataFrame. Used internally in Python for OHLCV time series. Never crosses an API boundary — always serialised to plain JSON first.
 
-**DEEP VALUE** — Valuation Zone label when current drawdown ≤ lower bound (at or beyond worst-ever pullback). Replaces "STRONG BUY".
+**DEEP VALUE** — Valuation Zone code when the current drawdown is at or beyond the stock's **typical** drawdown (`dd ≤ typical`). ⚠️ This entry said "≤ lower bound" until 2026-10-03, which is not what `calculate_valuation_zone` does. Replaces "STRONG BUY". Shown to readers as **Deep pullback** since 2026-10-03 (owner-approved; the old name read as a verdict on valuation — beta review C-2/B-14/F-4). The stored code is unchanged.
 
 **Deletion confinement** — The rule that an account with `deletion_scheduled_at` set may use exactly one surface, `/reactivate`, and nothing else. Requesting deletion signs the user out on **every** device and deactivates the account for the whole 30-day grace window; confinement is what makes that true for anyone who signs back in. It is evaluated **before** the **Entitlement gate** everywhere, because offering to sell a plan to someone whose account is being deleted answers the wrong question — and they may already have paid. Pages redirect to `/reactivate`; the self-gating route handlers answer **403 `account_deleting`** (`/report`, `/api/analyze*`, `/api/checkout`) or **303 `/reactivate`** (`/api/portal`). Never 402. The route-handler half was missing until live-check Session 3 (2026-08-01), when a deletion-scheduled *subscriber* was found still able to pull the full paid report, the full screener payload, and a live Stripe Customer Portal session — the last of which could have charged them and un-cancelled the subscription the delete flow had just stopped. See `architecture.md` §7.1.
 
@@ -89,7 +89,7 @@
 
 **Deletion notice marker** (`mc_deletion_notice`) — The httpOnly cookie that lets `/deletion-requested` tell the person who just deleted their account from a stranger who typed the URL. Set by `requestAccountDeletion` immediately before it redirects, enforced in `proxy.ts`. Necessary because the deletion action's last act is a **global** sign-out, so the confirmation page has no session to read — "signed out" is the only thing it could otherwise know, and that is true of everyone. Carries **no user data**, is path-scoped to that one page, lasts 30 minutes, and is deliberately **not** consumed on first read (a one-shot marker would bounce anyone who refreshed). Distinct from the **Recovery marker**: this one *permits* a page to a reader with no session; that one *restricts* where a live session may go. Added Layer G, 2026-08-12. See `architecture.md` §6.5 and CLAUDE.md 11f.
 
-**Dispute (chargeback)** — When a cardholder asks their bank to reverse a charge. Stripe sends `charge.dispute.*` webhooks; a *real* chargeback (funds withdrawn, not a mere inquiry) sets `billing_blocked = true` on the account. An **inquiry** is the pre-dispute stage some networks use (Amex, Discover) where no money has moved; in the API its `status` is prefixed `warning_` (`warning_needs_response`, `warning_under_review`, `warning_closed`), and our handler deliberately does **not** lock on it — locking would revoke a paying customer's access over a question. If we lose (`closed`, status not `won`) we keep access revoked and cancel the subscription; if we win, access is restored. See `docs/data-contracts.md` §10.
+**Dispute (chargeback)** — When a cardholder asks their bank to reverse a charge. Stripe sends `charge.dispute.*` webhooks; a *real* chargeback (funds withdrawn, not a mere inquiry) sets `billing_blocked = true` on the account. An **inquiry** is the pre-dispute stage some networks use (Amex, Discover) where no money has moved; in the API its `status` is prefixed `warning_` (`warning_needs_response`, `warning_under_review`, `warning_closed`), and our handler deliberately does **not** lock on it — locking would revoke a paying customer's access over a question. If we lose (`closed`, status not `won`) we keep access revoked and cancel the subscription; if we win, access is restored. Since 2026-10-03 billing follows: while a dispute is open the subscription's collection is **paused** (invoices voided, so a locked-out customer is not charged), resumed on a win; and a closed **inquiry** (`warning_closed`) changes nothing — it used to fall into the "lost" branch and cancel the subscription. One rule: `web/lib/billing/dispute.ts`. See `docs/data-contracts.md` §10.
 
 **Dunning** — The process of chasing a failed subscription payment: a first renewal failure sets the account `past_due`, starts the 3-day grace clock (`grace_until`), and sends the branded "payment failed / update your card" email. Covers both a decline (`invoice.payment_failed`) and a needed 3-D Secure authentication (`invoice.payment_action_required`). See Grace period, Smart Retries.
 
@@ -121,7 +121,7 @@
 
 ## F
 
-**FAIR** — Valuation Zone label when current drawdown sits between 0.5×typical and -5% (mild pullback, not yet attractive). Replaces "WATCH".
+**FAIR** — Valuation Zone code when the current drawdown sits between 0.5×typical and -5% (a mild pullback). Replaces "WATCH". Shown to readers as **Shallow dip** since 2026-10-03 (owner-approved; the old name read as a verdict on valuation — beta review C-2/B-14/F-4). The stored code is unchanged.
 
 **FCF Yield** — Free Cash Flow ÷ Market Cap × 100. A measure of how much cash a company generates relative to its market price. Higher = better.
 
@@ -329,7 +329,7 @@
 
 **Strong Customer Authentication (SCA) / 3-D Secure (3DS)** — A bank-required identity check on a card payment (a one-time code, fingerprint, or banking-app tap), mandatory mainly in the EU/UK. On an automatic renewal the customer isn't present to complete it, so Stripe fires `invoice.payment_action_required`; we treat that like a failed payment (dunning path — see Dunning). Uncommon for our AU/US/CA markets, handled defensively.
 
-**STRETCHED** — Valuation Zone label when current drawdown > -5% (stock is near recent highs). Replaces "HOLD" (the original valuation-zone HOLD, not the rating-tier HOLD).
+**STRETCHED** — Valuation Zone code when the current drawdown is shallower than -5% (the stock is near its recent high). Replaces "HOLD" (the original valuation-zone HOLD, not the rating-tier HOLD). Shown to readers as **Near high** since 2026-10-03 (owner-approved; the old name read as a verdict on valuation — beta review C-2/B-14/F-4). The stored code is unchanged.
 
 ---
 
@@ -367,11 +367,11 @@
 
 ## V
 
-**VALUE** — Valuation Zone label when current drawdown is between 0.5×typical and typical (in the "discount zone" but not at the worst). Replaces "BUY".
+**VALUE** — Valuation Zone code when the current drawdown is between 0.5×typical and typical. Replaces "BUY". Shown to readers as **Pullback** since 2026-10-03 (owner-approved; the old name read as a verdict on valuation — beta review C-2/B-14/F-4). The stored code is unchanged.
 
 **Valuation Score** — A 0-100 score derived from how today's drawdown compares to typical and lower bound, then **quality-gated** by Financial Health (S3): `score = raw × (FLOOR + (1−FLOOR)·(FH/100)^GAMMA)`, FLOOR 0.30 / GAMMA 1.5, so a cheap-but-financially-weak "value trap" can't score as a bargain. The raw (un-gated) score and the Valuation Zone label still reflect the pure cycle position. Weighted at 35% in the Overall Rating. See `quality_factor` / `valuation_score_raw` in `data-contracts.md`.
 
-**Valuation Zone** — Categorical label: DEEP VALUE, VALUE, FAIR, or STRETCHED. Derived from Valuation Score.
+**Valuation Zone** — Where today's fall sits against the stock's own typical fall, in four bands. Codes DEEP VALUE / VALUE / FAIR / STRETCHED, shown as **Deep pullback / Pullback / Shallow dip / Near high** (`ZONE_DISPLAY` in `web/lib/ratings.ts`, the one name table). ⚠️ Derived from the current and typical drawdown, NOT from the Valuation Score (this entry said so until 2026-10-03), and NOT from the screener's Cycle Position column, which compares with the deepest fall instead.
 
 ---
 

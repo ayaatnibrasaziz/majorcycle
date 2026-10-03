@@ -209,7 +209,10 @@ export function distinctValues(rows: ResultRow[], field: string): string[] {
     const v = f.get(r);
     if (v != null && v !== '') set.add(String(v));
   }
-  return [...set].sort();
+  const order = f.order;
+  if (!order) return [...set].sort();
+  const rank = (v: string) => (order.indexOf(v) === -1 ? order.length : order.indexOf(v));
+  return [...set].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
 }
 
 /** Categorical fields already claimed by another rule (one rule per such field). */
