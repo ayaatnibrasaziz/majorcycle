@@ -169,6 +169,22 @@ export function OnboardingModal() {
           >
             {loading ? 'Continuing…' : 'Continue to MajorCycle →'}
           </Button>
+          {/* The documents this screen asks the reader to accept, and a way out for
+              someone who would rather not (beta review D-10: it had neither). The
+              links open beside this screen so nobody loses their place in it. */}
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11.5px] text-[var(--text-muted)]">
+            <a href="/terms" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-[var(--brand-mid)]">
+              Terms of Service
+            </a>
+            <a href="/privacy" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-[var(--brand-mid)]">
+              Privacy Policy
+            </a>
+            <form action="/auth/signout" method="post">
+              <button type="submit" className="underline underline-offset-2 hover:text-[var(--brand-mid)]">
+                Sign out
+              </button>
+            </form>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
