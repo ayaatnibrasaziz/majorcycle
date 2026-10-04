@@ -2000,26 +2000,28 @@ completed click-through is proof. The same masking hits One Tap, whose `prompt()
 
 ## 7.4 Email — two senders, one house style
 
-**Twenty-two messages leave this system, from two different composers, through one
-provider — twenty-one to customers and one to us.** The split is not arbitrary and it decides where you go to change any of them.
+**Twenty-four messages leave this system, from two different composers, through one
+provider — twenty-three to customers and one to us.** The split is not arbitrary and it decides where you go to change any of them.
 
 | | Composed by | Where the wording lives | Testable |
 |---|---|---|---|
-| **9 app emails** | This repository | `web/lib/email/*`, `app/(public)/contact/actions.ts`, `app/api/resend/webhook/route.ts` | ✅ `e2e/email-render.spec.ts` renders the eight customer ones on every build; the ninth is the alert in Part 3 below |
+| **11 app emails** | This repository | `web/lib/email/*`, `app/(public)/contact/actions.ts`, `app/api/resend/webhook/route.ts` | ✅ `e2e/email-render.spec.ts` renders the ten customer ones (and every variant of the new two) on every build; the eleventh is the alert in Part 3 below. **Added 2026-10-03:** *access paused* (the daily cron, once per failed payment, `lib/billing/pausedNotices.ts`) and *subscription ended* (the Stripe webhook, three versions chosen by `lib/billing/accessEmails.ts`) — until then nothing told a customer their access had stopped |
 | **13 sign-in emails** | **Supabase** | The Supabase dashboard → Authentication → Emails → Templates | 🔴 **Nothing in this project can read them** |
 
 **Why Supabase owns thirteen of them:** it is the thing that knows a password was reset, an
 address confirmed or a magic link requested. The app never sees those moments, so it cannot
 send those emails. Supabase composes them and hands each finished message to **Resend** over
-SMTP — the same account the app calls directly — so all twenty-two leave from
+SMTP — the same account the app calls directly — so all twenty-four leave from
 `noreply@majorcycle.com` in one house style. The single exception is the contact-form
 notification, which comes from the monitored `support@` inbox and carries `reply_to`.
 
 ⚠️ **THE THIRTEEN HAVE NO FILE, AND THAT IS THE THING TO REMEMBER.** There is nothing to
 import, diff, lint or test. A guard cannot be written for them, because a guard needs
-something to read. `reference/email-templates.html` renders all twenty-two and is the **only
+something to read. `reference/email-templates.html` renders all twenty-four and is the **only
 record in this project** of what those thirteen say; keep it current by hand whenever a
-template is edited in the dashboard, because nothing else will.
+template is edited in the dashboard, because nothing else will. The app's own emails in it
+are RENDERED from the code (owner, 2026-10-04: update it whenever an automatic email
+changes), with the localhost links a local render produces replaced by the live address.
 
 ⚠️ **Every email is written TWICE** — an HTML body and a plain-text one, side by side in the
 same function, by hand. That is a copy in the 11c sense and it drifts: the trial-welcome

@@ -81,12 +81,12 @@ B-2 (`VerdictCard.tsx:278` divides by `bandUpper`), F-3 (`overall.py` event scor
 
 | # | What | Findings |
 |---|---|---|
-| 22 | A customer whose card failed sees no warning in the app (only a sidebar chip, and no deadline); lapsed/cancelled readers get the new-customer pitch with no "your payment failed / your plan ended"; **no email at all when access stops**. | D-1, D-4, D-5, D-6 |
+| 22 | A customer whose card failed sees no warning in the app (only a sidebar chip, and no deadline); lapsed/cancelled readers get the new-customer pitch with no "your payment failed / your plan ended"; **no email at all when access stops**. ✅ **2026-10-03:** failed-payment banner + held banner; *access paused* and *subscription ended* emails; recovery email no longer says "uninterrupted" after a lockout; every billing email quotes Stripe's amount. | D-1, D-4, D-5, D-6 |
 | 23 | After a free-trial checkout `/account` says **"Payment received"** (amber alert), also for cancelled/lapsed/no-plan. | D-2 |
-| 24 | Delete-account copy promises the subscription "stays valid until the end of the period you've paid for" — false: the reader is locked to `/reactivate` and the day-30 purge cancels Stripe, so an annual payer loses ~6 months (no refunds). **Owner policy decision.** | D-3 |
-| 25 | Sign-up never shows or links the Terms / Privacy Policy (the Terms bind "by creating an account"; APP 8 disclosure relies on it). | A-22, F-13 |
+| 24 | Delete-account copy promises the subscription "stays valid until the end of the period you've paid for" — false: the reader is locked to `/reactivate` and the day-30 purge cancels Stripe, so an annual payer loses ~6 months (no refunds). **Owner policy decision.** ✅ **Wording fixed 2026-10-04** (`lib/deletionSubscription.ts`: six cases, each true — an annual plan is now told the unused time is not refunded) and reactivating no longer renews a plan the customer had cancelled. **The POLICY (refund or keep the unused annual time?) is still the owner's.** | D-3 |
+| 25 | Sign-up never shows or links the Terms / Privacy Policy (the Terms bind "by creating an account"; APP 8 disclosure relies on it). ✅ **2026-10-03** — sign-up, sign-in and the first-login screen. | A-22, F-13 |
 | 26 | The free 25-new-stocks-a-day cap appears only in the Terms; landing/sign-up/Learn say "browse all / any company"; no "views left" counter; "resets at midnight UTC" (10–11am in Sydney). | A-16, D-18, E-15, B-30 |
-| 27 | The rating is defined three different ways (first-login gate, paywall dialog, landing); `/pricing` keeps its own feature list (11c-i); Stripe product text says premium includes "analyst data" (free). | D-15, F-6, D-14 |
+| 27 | The rating is defined three different ways (first-login gate, paywall dialog, landing); `/pricing` keeps its own feature list (11c-i); Stripe product text says premium includes "analyst data" (free). ✅ **2026-10-03** — one definition (`lib/ratingDefinition.ts`), `/pricing` reads the shared list. **The Stripe product text is the owner's to edit** in the dashboard. | D-15, F-6, D-14 |
 
 ## 🟡 Minor (grouped — see raw files for each)
 
