@@ -12,6 +12,10 @@ import { sendReferralEmail } from '@/lib/email/referralEmails';
 import { cleanReferralInput } from '@/lib/referralInput';
 import { sendTrialEndingEmail } from '@/lib/email/billingEmails';
 import {
+  DELETION_CANCEL_METADATA_KEY,
+  deletionSubscriptionKind,
+} from '@/lib/deletionSubscription';
+import {
   ACCOUNT_DELETION_GRACE_DAYS,
   DELETION_NOTICE_COOKIE,
   deletionNoticeCookieOptions,
@@ -92,15 +96,6 @@ export async function updateProfile(input: {
   return { ok: true };
 }
 
-/** Map a raw subscription status to the reassurance-copy variant for the deletion email. */
-function subscriptionEmailKind(
-  status: string | null | undefined
-): 'paid' | 'trial' | null {
-  if (status === 'trialing') return 'trial';
-  if (status === 'active' || status === 'past_due') return 'paid';
-  return null;
-}
-
 /**
  * Schedule the signed-in user's account for deletion (soft-delete + 30-day grace).
  * Sets `deletion_scheduled_at` via the service role (users can't write that column),
@@ -126,7 +121,7 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
   const { data: profile } = await admin
     .from('profiles')
     .select(
-      'email, display_name, subscription_status, deletion_scheduled_at, stripe_subscription_id'
+      'email, display_name, subscription_status, deletion_scheduled_at, stripe_subscription_id, billing_blocked, current_period_end, cancel_at_period_end'
     )
     .eq('id', user.id)
     .single();
@@ -160,13 +155,19 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
     // paused, never extended — no delete-and-restore loophole to gain time). We only
     // ever schedule (never immediate-cancel) here; the 30-day purge hard-cancels as a
     // backstop. Best-effort: a Stripe hiccup must not block the user's deletion.
+    //
+    // ⚠️ Only when it is not ALREADY set not to renew — a customer who cancelled in the
+    // billing portal first. The marker says this "don't renew" is OURS, so reactivating
+    // undoes only what deletion did (lib/deletionSubscription.ts).
     if (
       profile?.stripe_subscription_id &&
-      LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '')
+      LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '') &&
+      !profile?.cancel_at_period_end
     ) {
       try {
         await getStripe().subscriptions.update(profile.stripe_subscription_id, {
           cancel_at_period_end: true,
+          metadata: { [DELETION_CANCEL_METADATA_KEY]: '1' },
         });
       } catch (err) {
         // ALERT: best-effort by design — the deletion proceeds — which means a
@@ -186,7 +187,8 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
         to: email,
         name: profile?.display_name ?? null,
         deletionDate,
-        subscriptionKind: subscriptionEmailKind(profile?.subscription_status),
+        subscription: deletionSubscriptionKind(profile ?? { subscription_status: null }, deletionDate),
+        periodEnd: profile?.current_period_end ? new Date(profile.current_period_end) : null,
         timeZone,
       });
     }
@@ -253,18 +255,28 @@ export async function reactivateAccount(): Promise<void> {
   // (status canceled / no sub id) there's nothing to undo — the user simply returns as
   // a lapsed free user. Best-effort: the deletion flag is already cleared above, so a
   // Stripe hiccup still reactivates the account (the cancel is recoverable via the
-  // portal). NOTE: if the user had separately cancelled in the portal before deleting,
-  // this un-cancels it — they can re-cancel via "Manage billing" (accepted tradeoff).
+  // portal).
+  //
+  // ⚠️ Only a "don't renew" that DELETION set is undone (its metadata marker). Until
+  // 2026-10-03 this un-cancelled unconditionally, so a customer who had cancelled in the
+  // portal and then deleted found their subscription renewing — and charging — again
+  // the moment they signed back in. It was recorded here as an "accepted tradeoff".
   let subReactivated = false;
   if (
     profile?.stripe_subscription_id &&
     LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '')
   ) {
     try {
-      await getStripe().subscriptions.update(profile.stripe_subscription_id, {
-        cancel_at_period_end: false,
-      });
-      subReactivated = true;
+      const stripe = getStripe();
+      const sub = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
+      if (sub.metadata?.[DELETION_CANCEL_METADATA_KEY] === '1') {
+        await stripe.subscriptions.update(profile.stripe_subscription_id, {
+          cancel_at_period_end: false,
+          // An empty string removes the key.
+          metadata: { [DELETION_CANCEL_METADATA_KEY]: '' },
+        });
+        subReactivated = true;
+      }
     } catch (err) {
       reportIssue('reactivateAccount: could not clear subscription cancel', {
         cause: err,

@@ -116,7 +116,7 @@ async function renderAll(): Promise<Record<MailName, Captured>> {
       to: 'x@example.com',
       name: 'Ayaat',
       deletionDate: new Date('2026-10-05T00:00:00Z'),
-      subscriptionKind: 'paid',
+      subscription: 'cut_short',
       timeZone: 'Australia/Sydney',
     });
     await sendAccountDeletedEmail({ to: 'x@example.com', name: 'Ayaat' });

@@ -16,6 +16,8 @@ import { LocalDate } from '@/components/LocalDate';
 import { PasswordForm } from '@/components/account/PasswordForm';
 import { ReferAFriendCard } from '@/components/account/ReferAFriendCard';
 import { DeleteAccountCard } from '@/components/account/DeleteAccountCard';
+import { deletionSubscriptionKindToday } from '@/lib/deletionSubscription';
+import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
 
 export const metadata: Metadata = {
   title: 'Account',
@@ -247,7 +249,14 @@ export default async function AccountPage({
         <ReferAFriendCard initialName={profile?.display_name ?? ''} />
 
         <DeleteAccountCard
-          subscriptionStatus={profile?.subscription_status ?? null}
+          subscription={deletionSubscriptionKindToday(
+            {
+              subscription_status: profile?.subscription_status ?? null,
+              billing_blocked: profile?.billing_blocked ?? false,
+              current_period_end: profile?.current_period_end ?? null,
+            },
+            ACCOUNT_DELETION_GRACE_DAYS,
+          )}
         />
       </div>
     </div>

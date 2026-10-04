@@ -5,6 +5,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { reactivateAccount } from '@/app/(app)/account/actions';
 import { AuthCard } from '@/components/AuthCard';
 import { Button } from '@/components/ui/button';
+import { reactivateLines } from '@/lib/deletionSubscription';
 
 export const metadata: Metadata = { title: 'Reactivate your account' };
 export const dynamic = 'force-dynamic';
@@ -34,7 +35,7 @@ export default async function ReactivatePage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('deletion_scheduled_at')
+    .select('deletion_scheduled_at, subscription_status')
     .eq('id', user.id)
     .single();
 
@@ -42,6 +43,7 @@ export default async function ReactivatePage() {
   if (!profile?.deletion_scheduled_at) redirect('/stocks');
 
   const dateStr = formatDate(profile.deletion_scheduled_at);
+  const { restores, note } = reactivateLines(profile.subscription_status ?? null);
 
   return (
     <AuthCard
@@ -50,9 +52,11 @@ export default async function ReactivatePage() {
     >
       <div className="flex flex-col gap-5">
         <p className="text-[13.5px] leading-relaxed text-[var(--text-secondary)]">
-          Reactivate to cancel the deletion and restore everything — your profile,
-          your history, and your subscription — exactly as you left it.
+          Reactivate to cancel the deletion and restore {restores}.
         </p>
+        {note && (
+          <p className="text-[13.5px] leading-relaxed text-[var(--text-secondary)]">{note}</p>
+        )}
 
         <form action={reactivateAccount}>
           <Button type="submit" variant="primary" size="lg" className="w-full">

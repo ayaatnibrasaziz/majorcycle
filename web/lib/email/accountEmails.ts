@@ -9,6 +9,7 @@ import {
   greetingText,
   formatDate,
 } from '@/lib/email/format';
+import { deletionSubscriptionLine, type DeletionSubscriptionKind } from '@/lib/deletionSubscription';
 
 /**
  * The two branded account-lifecycle emails (F2 Part B): "deletion scheduled"
@@ -23,8 +24,10 @@ export async function sendDeletionScheduledEmail(opts: {
   to: string;
   name: string | null;
   deletionDate: Date;
-  /** 'paid' and 'trial' get different reassurance copy; null = no subscription line. */
-  subscriptionKind: 'paid' | 'trial' | null;
+  /** What deletion does to their subscription (lib/deletionSubscription.ts). */
+  subscription: DeletionSubscriptionKind;
+  /** The paid period's end, for the "runs out on …" line. */
+  periodEnd?: Date | null;
   /**
    * The user's device IANA timezone, captured in the browser at deletion request
    * time, so the emailed date matches what they saw on screen. Null -> runtime zone.
@@ -33,6 +36,10 @@ export async function sendDeletionScheduledEmail(opts: {
 }): Promise<boolean> {
   const dateStr = formatDate(opts.deletionDate, opts.timeZone);
   const to = escapeHtml(opts.to);
+  const subLine = deletionSubscriptionLine(opts.subscription, {
+    deletionDate: dateStr,
+    periodEnd: opts.periodEnd ? formatDate(opts.periodEnd, opts.timeZone) : null,
+  });
 
   const bodyHtml = [
     greetingHtml(opts.name),
@@ -44,19 +51,7 @@ export async function sendDeletionScheduledEmail(opts: {
       `Until then, your account is deactivated but fully recoverable. To cancel the deletion, ` +
         `just sign back in any time before ${dateStr} — everything picks up right where you left off.`
     ),
-    opts.subscriptionKind === 'paid'
-      ? p(
-          `Your subscription stays valid until the end of the period you've already paid for — ` +
-            `deleting doesn't cut it short or extend it. Sign back in before ${dateStr} to keep your ` +
-            `account; otherwise it's removed then and won't renew, so no further charges go out.`
-        )
-      : opts.subscriptionKind === 'trial'
-        ? p(
-            `You're on a free trial — it stays active until its normal end date, with no charge. Sign ` +
-              `back in before ${dateStr} to keep your account; if the trial ends first, you'll come back ` +
-              `to a free account.`
-          )
-        : '',
+    subLine ? p(subLine) : '',
     button('Sign in to cancel deletion', `${SITE}/login`),
     p(
       `After ${dateStr}, your account, profile, and all associated data are permanently removed ` +
@@ -73,15 +68,7 @@ export async function sendDeletionScheduledEmail(opts: {
     `for permanent deletion on ${dateStr}.\n\n` +
     `Until then your account is deactivated but fully recoverable — sign back in before ${dateStr} ` +
     `to cancel it: ${SITE}/login\n\n` +
-    (opts.subscriptionKind === 'paid'
-      ? `Your subscription stays valid until the end of the period you've already paid for — deleting ` +
-        `doesn't cut it short or extend it. Sign back in before ${dateStr} to keep your account; ` +
-        `otherwise it's removed then and won't renew, so no further charges go out.\n\n`
-      : opts.subscriptionKind === 'trial'
-        ? `You're on a free trial — it stays active until its normal end date, with no charge. Sign back ` +
-          `in before ${dateStr} to keep your account; if the trial ends first, you'll come back to a ` +
-          `free account.\n\n`
-        : '') +
+    (subLine ? `${subLine}\n\n` : '') +
     `After that date, your account and all associated data are permanently removed and can't be ` +
     `restored. If you didn't request this, sign in now to cancel it and change your password.`;
 
