@@ -75,7 +75,7 @@ B-2 (`VerdictCard.tsx:278` divides by `bandUpper`), F-3 (`overall.py` event scor
 | 18 | Screener state: results live in `sessionStorage` only (new tab / reload / tomorrow → "No analysis run yet"); mid-run `/results` says "Your run finished — none could be scored"; Opportunity Map ignores filters; phones have no sort and the view mode does nothing. | F-10, C-13, C-6, C-12, C-11 |
 | 19 | Phones: 14 of 22 article tables cut mid-number with no scroll hint or keyboard access; ⓘ tooltips don't open on an Android tap (likely); Key Metrics value column cut. | A-18, F-11, B-22, F-19 |
 | 20 | `/contact` wipes everything typed when the server rejects the email. | A-21 |
-| 21 | WebKit draws every Sora heading at regular weight since the variable-font change — **check on a real iPhone/Mac before acting**. | A-28 |
+| 21 | WebKit draws every Sora heading at regular weight since the variable-font change — **check on a real iPhone/Mac before acting**. ⚠️ **Measured 2026-10-04, and it is the TEST BROWSER, not the site:** Playwright's Windows WebKit (26.5) lays Sora out at the right weight (text widths identical to Chrome at 300–700) but draws every weight thin — including `font-variation-settings: 'wght' 800`, which no `@font-face` change can affect, while a static bold (Arial) draws bold. Re-registering Sora as one range face (`font-weight: 100 800`) changed **0 pixels** in WebKit on four pages, so it was reverted rather than shipped as a fix for something it does not fix. Real Safari draws with Apple's own text engine, which this build does not have. **Still owner-held: one look at a heading on a real iPhone or Mac.** | A-28 |
 
 ## 🟠 Major — billing, trust and legal
 
