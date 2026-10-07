@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import { GRACE_DAYS, paymentFailedAt } from '../lib/billing/grace';
 import { nextChargeAction, nextChargeFromInvoice, nextChargeFromSubscription } from '../lib/billing/nextCharge';
 import { canPauseOrResume, disputeBillingAction } from '../lib/billing/dispute';
+import { endedEmailKind, renewalReminderDue, renewalTimeZone } from '../lib/billing/accessEmails';
 import { DENIAL_COPY } from '../lib/denialCopy';
 import { disputeEnded, planStatus } from '../lib/planStatus';
 import { SIGNED_OUT_VIEWER, paymentBanner, type ViewerEntitlement } from '../lib/entitlement';
@@ -217,5 +218,66 @@ test.describe('one name for each plan state — the sidebar and the Account page
     expect(disputeEnded(true, 'canceled')).toBe(true);
     expect(disputeEnded(true, 'active')).toBe(false);
     expect(disputeEnded(false, 'canceled')).toBe(false);
+  });
+});
+
+test.describe('who is told their annual plan is about to renew', () => {
+  const SUB = 'sub_annual';
+  const base = {
+    stripe_subscription_id: SUB,
+    subscription_status: 'active',
+    subscription_plan: 'annual',
+    cancel_at_period_end: false,
+    deletion_scheduled_at: null,
+    billing_blocked: false,
+  };
+
+  test('an annual plan that will really renew is told', () => {
+    expect(renewalReminderDue(base, SUB)).toBe(true);
+  });
+
+  const silent: Array<[string, Partial<typeof base> | null, string | null]> = [
+    ['a monthly plan', { subscription_plan: 'monthly' }, SUB],
+    ['a plan set not to renew', { cancel_at_period_end: true }, SUB],
+    ['an account being deleted', { deletion_scheduled_at: '2026-11-01T00:00:00Z' } as never, SUB],
+    ['an open dispute', { billing_blocked: true }, SUB],
+    ['a trial', { subscription_status: 'trialing' }, SUB],
+    ['a failed payment', { subscription_status: 'past_due' }, SUB],
+    ['a different subscription than the one on file', {}, 'sub_other'],
+    ['an event with no subscription', {}, null],
+  ];
+  for (const [name, patch, sub] of silent) {
+    test(`not told: ${name}`, () => {
+      expect(renewalReminderDue({ ...base, ...patch }, sub)).toBe(false);
+    });
+  }
+  test('not told: no profile', () => {
+    expect(renewalReminderDue(null, SUB)).toBe(false);
+  });
+
+  test('the renewal date is written in the plan currency’s zone, never UTC', () => {
+    expect(renewalTimeZone('aud')).toBe('Australia/Sydney');
+    expect(renewalTimeZone('CAD')).toBe('America/Toronto');
+    expect(renewalTimeZone('usd')).toBe('America/New_York');
+    expect(renewalTimeZone(null)).toBe('America/New_York');
+  });
+});
+
+test.describe('who is told their subscription has ended', () => {
+  const was = (o: Partial<{ subscription_status: string | null; billing_blocked: boolean; deletion_scheduled_at: string | null }>) => ({
+    subscription_status: 'active',
+    billing_blocked: false,
+    deletion_scheduled_at: null,
+    ...o,
+  });
+  test('each ending gets its own wording, and three are told nothing', () => {
+    expect(endedEmailKind(was({ subscription_status: 'trialing' }), null)).toBe('trial_ended');
+    expect(endedEmailKind(was({ subscription_status: 'past_due' }), null)).toBe('ended_payment');
+    expect(endedEmailKind(was({}), 'payment_failed')).toBe('ended_payment');
+    expect(endedEmailKind(was({}), 'cancellation_requested')).toBe('ended');
+    expect(endedEmailKind(was({ billing_blocked: true }), null)).toBeNull();
+    expect(endedEmailKind(was({ deletion_scheduled_at: '2026-11-01T00:00:00Z' }), null)).toBeNull();
+    expect(endedEmailKind(was({ subscription_status: 'canceled' }), null)).toBeNull();
+    expect(endedEmailKind(null, null)).toBeNull();
   });
 });

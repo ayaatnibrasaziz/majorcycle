@@ -3,7 +3,12 @@ import type Stripe from 'stripe';
 
 import { GRACE_DAYS } from '@/lib/billing/grace';
 import { canPauseOrResume, disputeBillingAction, type DisputeBillingAction } from '@/lib/billing/dispute';
-import { accessWasPaused, endedEmailKind } from '@/lib/billing/accessEmails';
+import {
+  accessWasPaused,
+  endedEmailKind,
+  renewalReminderDue,
+  renewalTimeZone,
+} from '@/lib/billing/accessEmails';
 import { reportIssue } from '@/lib/observability';
 import { getStripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -23,6 +28,7 @@ import {
   sendPaymentFailedEmail,
   sendPaymentRecoveredEmail,
   sendSubscriptionEndedEmail,
+  sendAnnualRenewalEmail,
 } from '@/lib/email/billingEmails';
 
 /**
@@ -392,6 +398,46 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
         });
       }
       return { userId, customerId: cust, subscriptionId };
+    }
+    case 'invoice.upcoming': {
+      // Fires RENEWAL_REMINDER_DAYS before a renewal (a Dashboard setting — see
+      // lib/billing/accessEmails.ts). Only an ANNUAL plan that will really renew is told
+      // (owner, 2026-10-07: a yearly charge nobody was warned about invites a dispute).
+      // The event's invoice is a preview with no id, so the idempotency key is the
+      // subscription and the period it closes: one reminder per renewal, however often
+      // Stripe redelivers.
+      const invoice = event.data.object as Stripe.Invoice;
+      const cust = customerId(invoice.customer);
+      const subscriptionId = refId(invoice.parent?.subscription_details?.subscription);
+      const userId = await resolveUserIdFromInvoice(admin, invoice);
+      const ctx: EventContext = { userId, customerId: cust, subscriptionId };
+      if (!userId || !subscriptionId) return ctx;
+      const { data: prof } = await admin
+        .from('profiles')
+        .select(
+          'email, display_name, stripe_subscription_id, subscription_status, subscription_plan, subscription_currency, cancel_at_period_end, deletion_scheduled_at, billing_blocked, current_period_end',
+        )
+        .eq('id', userId)
+        .maybeSingle();
+      if (!prof?.email || !renewalReminderDue(prof, subscriptionId)) return ctx;
+      const renewsAt = prof.current_period_end
+        ? new Date(prof.current_period_end)
+        : invoice.next_payment_attempt
+          ? new Date(invoice.next_payment_attempt * 1000)
+          : null;
+      if (!renewsAt || Number.isNaN(renewsAt.getTime())) return ctx;
+      await sendAnnualRenewalEmail({
+        to: prof.email,
+        name: prof.display_name ?? null,
+        charge:
+          invoice.currency && invoice.amount_due != null
+            ? { amount: invoice.amount_due, currency: invoice.currency }
+            : null,
+        renewsAt,
+        timeZone: renewalTimeZone(invoice.currency ?? prof.subscription_currency),
+        idempotencyKey: `${subscriptionId}:annual_renewal:${renewsAt.getTime()}`,
+      });
+      return ctx;
     }
     case 'customer.subscription.trial_will_end': {
       // Fires ~3 days before the trial ends → send the branded trial-ending reminder.

@@ -1898,6 +1898,14 @@ state sync; checkout just links the customer:
   reminder wasn't already sent, it sends the branded trial-ending email then (idempotency-keyed;
   `trial_reminder_sent` set first). Earlier reactivations need nothing — the normal event fires
   again once `cancel_at` is cleared.
+- `invoice.upcoming` — fires 30 days before a renewal (Dashboard → Billing → Subscriptions
+  and emails → "Upcoming renewal events", set to 30 on 2026-10-07; `RENEWAL_REMINDER_DAYS`
+  restates it). Sends the branded **annual renewal** reminder to an ANNUAL plan that will
+  really renew — `renewalReminderDue` in `web/lib/billing/accessEmails.ts` skips monthly,
+  trialing, past_due, set-not-to-renew, deleting and disputed accounts. Amount = the upcoming
+  invoice's `amount_due`; date = `current_period_end`, written in the plan currency's zone
+  (`renewalTimeZone`). Resend key `<sub>:annual_renewal:<period end ms>` — one per renewal.
+  Stripe's own "upcoming renewal" email stays OFF (it would also email every monthly plan).
 - `charge.dispute.created` / `.funds_withdrawn` — set `billing_blocked = true`, but only for
   a **real chargeback** (funds moved / status not `warning_*`); a mere inquiry doesn't lock a
   legit customer. `charge.dispute.closed` — won ⇒ `billing_blocked = false`; lost ⇒ keep
@@ -1914,9 +1922,11 @@ state sync; checkout just links the customer:
 - **Step 7 (done):** `syncSubscription` writes the email trial-tombstone once the sub is
   trialing (the card-fingerprint guard was dropped — that vector is Stripe Radar's job).
 
-**Branded billing emails (four, all in `web/lib/email/billingEmails.ts`):** trial-started
+**Branded billing emails (seven, all in `web/lib/email/billingEmails.ts`):** trial-started
 welcome (`subscription.created`, trialing) · trial-ending reminder (`trial_will_end`, or the
-reactivation gap-fill) · payment-failed (first renewal failure) · payment-recovered. Copy uses
+reactivation gap-fill) · payment-failed (first renewal failure) · payment-recovered · access
+paused (daily cron) · subscription ended (`subscription.deleted`) · annual renewal
+(`invoice.upcoming`, 2026-10-07 — the one email that names a date, in the plan currency's zone). Copy uses
 relative date phrasing ("soon" / "a few days beforehand") — no device date at webhook time — so
 the trial-ending line is also correct on the reactivation path where days-remaining can vary.
 

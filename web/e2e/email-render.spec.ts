@@ -6,7 +6,9 @@ import {
   sendPaymentRecoveredEmail,
   sendAccessPausedEmail,
   sendSubscriptionEndedEmail,
+  sendAnnualRenewalEmail,
 } from '@/lib/email/billingEmails';
+import { renewalTimeZone } from '@/lib/billing/accessEmails';
 import { sendDeletionScheduledEmail, sendAccountDeletedEmail } from '@/lib/email/accountEmails';
 import { sendReferralEmail } from '@/lib/email/referralEmails';
 import { sendContact } from '@/app/(public)/contact/actions';
@@ -77,6 +79,7 @@ const NAMES = [
   'trialEnded',
   'endedPayment',
   'ended',
+  'annualRenewal',
   'deletionScheduled',
   'accountDeleted',
   'referral',
@@ -112,6 +115,14 @@ async function renderAll(): Promise<Record<MailName, Captured>> {
     await sendSubscriptionEndedEmail({ to: 'x@example.com', name: 'Ayaat', kind: 'trial_ended' });
     await sendSubscriptionEndedEmail({ to: 'x@example.com', name: 'Ayaat', kind: 'ended_payment' });
     await sendSubscriptionEndedEmail({ to: 'x@example.com', name: 'Ayaat', kind: 'ended' });
+    // 23:00 UTC on 11 March is 12 March in Sydney — the date must be the reader's, not UTC's.
+    await sendAnnualRenewalEmail({
+      to: 'x@example.com',
+      name: 'Ayaat',
+      charge: { amount: 15900, currency: 'aud' },
+      renewsAt: new Date('2027-03-11T23:00:00Z'),
+      timeZone: renewalTimeZone('aud'),
+    });
     await sendDeletionScheduledEmail({
       to: 'x@example.com',
       name: 'Ayaat',
@@ -244,6 +255,17 @@ test.describe('every transactional email renders, and says the same thing twice'
       expect(m[k].text, `${k}: lost the free-plan line`).toContain('still yours on the free plan');
       expect(m[k].text, `${k}: mentions a refund`).not.toMatch(/refund/i);
     }
+  });
+
+  test('the annual renewal reminder names the date, Stripe’s amount and how to stop it', async () => {
+    const m = await renderAll();
+    for (const half of [m.annualRenewal.text, m.annualRenewal.html]) {
+      expect(half).toContain('12 March 2027');
+      expect(half).not.toContain('11 March 2027');
+      expect(half).toContain(formatCharge(15900, 'aud'));
+      expect(half).toMatch(/cancel from your account/);
+    }
+    expect(m.annualRenewal.subject).toMatch(/annual plan renews soon/);
   });
 });
 

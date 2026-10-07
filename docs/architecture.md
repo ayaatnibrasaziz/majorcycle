@@ -1639,12 +1639,12 @@ the above; it can never skip, unlike the e2e suite.
 > `livemode: true` from the API afterwards.
 
 **Webhook event-subscription policy (F3 Step 8 decision — 2026-07-24).** The production
-LIVE webhook endpoint subscribes to **only the 13 event types the handler acts on**, per
+LIVE webhook endpoint subscribes to **only the 14 event types the handler acts on**, per
 Stripe's best-practice guidance (["only listen to event types your integration
 requires"](https://docs.stripe.com/webhooks#best-practices) — subscribing to extra/all
 events is explicitly discouraged). The list:
 `checkout.session.completed`, `customer.subscription.{created,updated,deleted,trial_will_end}`,
-`invoice.{paid,payment_succeeded,payment_failed,payment_action_required}`,
+`invoice.{paid,payment_succeeded,payment_failed,payment_action_required,upcoming}`,
 `charge.dispute.{created,funds_withdrawn,closed,funds_reinstated}`.
 - **`stripe_events` has two jobs only:** (1) **idempotency** — every received event id is
   claimed so a Stripe re-delivery is a no-op; (2) **attribution** of the events we handle —
@@ -2005,19 +2005,19 @@ provider — twenty-three to customers and one to us.** The split is not arbitra
 
 | | Composed by | Where the wording lives | Testable |
 |---|---|---|---|
-| **11 app emails** | This repository | `web/lib/email/*`, `app/(public)/contact/actions.ts`, `app/api/resend/webhook/route.ts` | ✅ `e2e/email-render.spec.ts` renders the ten customer ones (and every variant of the new two) on every build; the eleventh is the alert in Part 3 below. **Added 2026-10-03:** *access paused* (the daily cron, once per failed payment, `lib/billing/pausedNotices.ts`) and *subscription ended* (the Stripe webhook, three versions chosen by `lib/billing/accessEmails.ts`) — until then nothing told a customer their access had stopped |
+| **12 app emails** | This repository | `web/lib/email/*`, `app/(public)/contact/actions.ts`, `app/api/resend/webhook/route.ts` | ✅ `e2e/email-render.spec.ts` renders the eleven customer ones (and every variant) on every build; the twelfth is the alert in Part 3 below. **Added 2026-10-07:** *annual renewal* (`invoice.upcoming`, 30 days ahead, annual plans only). **Added 2026-10-03:** *access paused* (the daily cron, once per failed payment, `lib/billing/pausedNotices.ts`) and *subscription ended* (the Stripe webhook, three versions chosen by `lib/billing/accessEmails.ts`) — until then nothing told a customer their access had stopped |
 | **13 sign-in emails** | **Supabase** | The Supabase dashboard → Authentication → Emails → Templates | 🔴 **Nothing in this project can read them** |
 
 **Why Supabase owns thirteen of them:** it is the thing that knows a password was reset, an
 address confirmed or a magic link requested. The app never sees those moments, so it cannot
 send those emails. Supabase composes them and hands each finished message to **Resend** over
-SMTP — the same account the app calls directly — so all twenty-four leave from
+SMTP — the same account the app calls directly — so all twenty-five leave from
 `noreply@majorcycle.com` in one house style. The single exception is the contact-form
 notification, which comes from the monitored `support@` inbox and carries `reply_to`.
 
 ⚠️ **THE THIRTEEN HAVE NO FILE, AND THAT IS THE THING TO REMEMBER.** There is nothing to
 import, diff, lint or test. A guard cannot be written for them, because a guard needs
-something to read. `reference/email-templates.html` renders all twenty-four and is the **only
+something to read. `reference/email-templates.html` renders all twenty-five and is the **only
 record in this project** of what those thirteen say; keep it current by hand whenever a
 template is edited in the dashboard, because nothing else will. The app's own emails in it
 are RENDERED from the code (owner, 2026-10-04: update it whenever an automatic email

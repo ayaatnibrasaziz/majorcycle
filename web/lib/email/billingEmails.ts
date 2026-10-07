@@ -1,5 +1,5 @@
 import { sendBrandEmail } from '@/lib/email/send';
-import { SITE, p, muted, button, greetingHtml, greetingText } from '@/lib/email/format';
+import { SITE, p, muted, button, greetingHtml, greetingText, formatDate } from '@/lib/email/format';
 import { formatCharge } from '@/lib/pricing';
 import { TRIAL_PERIOD_DAYS } from '@/lib/stripe';
 
@@ -11,6 +11,7 @@ import { TRIAL_PERIOD_DAYS } from '@/lib/stripe';
  *   4. payment recovered — a failed payment succeeded (invoice.payment_succeeded)
  *   5. access paused     — the 3-day grace window closed unpaid (the daily cron)
  *   6. subscription ended — Stripe ended the subscription (customer.subscription.deleted)
+ *   7. annual renewal     — an annual plan renews in ~30 days (invoice.upcoming; 2026-10-07)
  *
  * ⚠️ Amounts are STRIPE'S figure — the stored next charge, or the invoice that failed —
  * never our price table (owner, 2026-10-03: "the real charged amount… in every case").
@@ -350,6 +351,55 @@ export async function sendSubscriptionEndedEmail(opts: {
     heading: c.heading,
     bodyHtml,
     preheader: c.preheader,
+    text,
+    idempotencyKey: opts.idempotencyKey,
+  });
+}
+
+/**
+ * Email #7 — an ANNUAL plan renews soon (owner, 2026-10-07). Sent once per renewal, about
+ * 30 days ahead, so a yearly charge is never a surprise; who gets it is decided by
+ * `renewalReminderDue` (lib/billing/accessEmails.ts). Wording approved by the owner. The
+ * amount is the upcoming invoice as Stripe calculated it, never our price table.
+ */
+export async function sendAnnualRenewalEmail(opts: {
+  to: string;
+  name: string | null;
+  /** Stripe's upcoming invoice amount. */
+  charge: StripeCharge | null;
+  renewsAt: Date;
+  timeZone: string;
+  idempotencyKey?: string;
+}): Promise<boolean> {
+  const parts = chargeParts(opts.charge, 'annual');
+  const date = formatDate(opts.renewsAt, opts.timeZone);
+  const forHtml = parts ? ` for <strong>${parts.amount}</strong>` : '';
+  const forText = parts ? ` for ${parts.amount}` : '';
+
+  const bodyHtml = [
+    greetingHtml(opts.name),
+    p(`Your MajorCycle annual plan renews on <strong>${date}</strong>${forHtml}.`),
+    p(
+      `Nothing to do if you'd like to keep it; to stop it renewing, cancel from your account ` +
+        `before then.`,
+    ),
+    button('Manage your subscription', `${SITE}/account`),
+    muted(`Questions? Get in touch anytime at ${contactLink}.`),
+  ].join('\n');
+
+  const text =
+    `${greetingText(opts.name)}\n\n` +
+    `Your MajorCycle annual plan renews on ${date}${forText}.\n\n` +
+    `Nothing to do if you'd like to keep it; to stop it renewing, cancel from your account ` +
+    `before then: ${SITE}/account\n\n` +
+    `Questions? Get in touch anytime at ${SITE}/contact`;
+
+  return sendBrandEmail({
+    to: opts.to,
+    subject: 'Your MajorCycle annual plan renews soon',
+    heading: 'Annual plan renewing',
+    bodyHtml,
+    preheader: `Your annual plan renews on ${date}${forText}.`,
     text,
     idempotencyKey: opts.idempotencyKey,
   });
