@@ -108,7 +108,8 @@ test.describe('the Results page on a phone', () => {
       let compared = 0;
       for (const tr of document.querySelectorAll('.results-table tbody tr')) {
         const cells = [...tr.querySelectorAll('td')];
-        const ticker = norm(cells[0]?.textContent);
+        // The symbol only: the cell also carries the market tag (US/AU/CA).
+        const ticker = norm(cells[0]?.querySelector('.ticker-cell')?.childNodes[0]?.textContent);
         const card = [...document.querySelectorAll('.result-card')].find(
           (c) => norm(c.querySelector('.result-card-ticker')?.textContent) === ticker,
         );

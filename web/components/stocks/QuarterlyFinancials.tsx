@@ -43,7 +43,8 @@ const MODE_LABELS: Record<Mode, string> = {
 function toQtrLabel(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
   const q = Math.floor(d.getMonth() / 3) + 1;
-  return `Q${q}'${String(d.getFullYear()).slice(2)}`;
+  // "Q2 '25", spaced like the Earnings chart directly above this card.
+  return `Q${q} '${String(d.getFullYear()).slice(2)}`;
 }
 
 function toYearLabel(dateStr: string): string {
@@ -178,6 +179,11 @@ export function QuarterlyFinancials({
       ? +(((latest.val - against.val) / Math.abs(against.val)) * 100).toFixed(1)
       : null;
   const changeLabel = lag === 4 || isAnnual ? 'YoY' : 'QoQ';
+  // What each bar is coloured against, in words for the key under the chart.
+  const compareWith =
+    lag === 4 ? 'the same quarter a year earlier' : isAnnual ? 'the year before' : 'the quarter before';
+  const firstKey =
+    lag === 4 ? 'No quarter a year earlier on the chart' : isAnnual ? 'First year shown' : 'First quarter shown';
 
   /*
    * The trend tile is EarningsHistory's rule — latest against the third period
@@ -295,7 +301,9 @@ export function QuarterlyFinancials({
                 content={({ active, payload, label }) => {
                   if (!active || !payload?.length) return null;
                   const row  = chartData.find((d) => d.label === label);
-                  const prev = row ? chartData[chartData.indexOf(row) - 1] : null;
+                  // The SAME comparison the bar's colour makes (`lag`): it read the bar
+                  // before, so a green "+16% on a year earlier" bar could say "QoQ −2%".
+                  const prev = row ? chartData[chartData.indexOf(row) - lag] : null;
                   const pct =
                     row?.val !== null &&
                     prev?.val !== null &&
@@ -345,7 +353,7 @@ export function QuarterlyFinancials({
                             fontSize: 11,
                           }}
                         >
-                          {isAnnual ? 'YoY' : 'QoQ'}: {pct >= 0 ? '+' : ''}{pct}%
+                          {changeLabel}: {pct >= 0 ? '+' : ''}{pct}%
                         </div>
                       )}
                     </div>
@@ -365,6 +373,20 @@ export function QuarterlyFinancials({
             </BarChart>
           </ResponsiveContainer>
         </div>
+        )}
+        {chartData.length > 0 && !allZero && (
+          <div className="earnings-legend" aria-label="What the bar colours mean">
+            {[
+              { colour: '#228B22', border: CANDLE.up, text: `Higher than ${compareWith}` },
+              { colour: '#B22222', border: CANDLE.down, text: `Lower than ${compareWith}` },
+              { colour: '#1E5CB3', border: '#1A3A6E', text: firstKey },
+            ].map((k) => (
+              <span key={k.text} className="earnings-legend-item" style={{ cursor: 'default' }}>
+                <span className="earnings-legend-swatch" style={{ background: k.colour, borderColor: k.border }} />
+                {k.text}
+              </span>
+            ))}
+          </div>
         )}
         {latest && !allZero && (
           <div className="summary-strip">

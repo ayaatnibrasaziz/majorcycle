@@ -183,6 +183,10 @@ function renderCell(
           onClick={(e) => e.stopPropagation()}
         >
           {tickerToUrlParts(r.ticker).symbol}
+          {/* The market, as Browse and the phone cards show it (visual audit, 2026-10-07). */}
+          <span className="ml-1.5 align-[1px] text-[9px] font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[4px] px-1.5 py-px flex-shrink-0">
+            {marketLabel(tickerToUrlParts(r.ticker).market)}
+          </span>
         </Link>
       );
     case 'overall':

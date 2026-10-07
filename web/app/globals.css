@@ -1354,6 +1354,9 @@
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap; letter-spacing: .1px;
 }
 .verdict-footnote-divider { width: 1px; height: 10px; background: var(--border); }
+/* Where the two notes wrap onto separate lines the divider was left at the start of the
+   second one, pointing at nothing. */
+@media (max-width: 640px) { .verdict-footnote-divider { display: none; } }
 @media (max-width: 640px) {
   .verdict-top { grid-template-columns: 1fr; gap: 14px; }
   .verdict-bands { grid-template-columns: 1fr; }
@@ -3763,9 +3766,10 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 @media (max-width: 559.98px) {
   .stock-head { grid-template-areas: "id price" "badges badges"; }
 }
-/* Under 360px the price block (which needs ~240px) leaves the name a dozen pixels, so
-   it moves under the identity instead of beside it. */
-@media (max-width: 359.98px) {
+/* On a phone the price block (which needs ~240px) leaves the name too little room: at
+   375px "Commonwealth Bank of Australia · Financial Services" ran to five lines in a
+   ~95px column (visual audit, 2026-10-07). Below 480px it moves under the identity. */
+@media (max-width: 479.98px) {
   .stock-head {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto;

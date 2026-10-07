@@ -2,7 +2,7 @@
 
 import { X } from 'lucide-react';
 
-import { tickerToUrlParts } from '@/lib/ticker';
+import { marketLabel, tickerToUrlParts } from '@/lib/ticker';
 
 // The shared selection list — every source (baskets, search, CSV) feeds this.
 // Showing exactly what will run (live count + per-chip remove) gives the user
@@ -47,6 +47,11 @@ export function SelectedTickers({
         {tickers.map((t) => (
           <span key={t} className="tk-chip">
             {tickerToUrlParts(t).symbol}
+            {/* The market, as Browse shows it: "BHP" alone reads as a US listing, and
+                NEM and NEM.AX were otherwise identical chips (visual audit, 2026-10-07). */}
+            <span className="text-[9px] font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[4px] px-1.5 py-px flex-shrink-0">
+              {marketLabel(tickerToUrlParts(t).market)}
+            </span>
             <button
               type="button"
               aria-label={`Remove ${t}`}

@@ -57,7 +57,7 @@ const VERDICT_CLASS: Record<Verdict, string> = {
 };
 
 export function MetricsTable({ fundamentals, industry, sector, market, medians }: Props) {
-  const { industryLabel, sectorLabel, marketLabel, rows } = buildKeyMetricsTable({
+  const { industryLabel, sectorLabel, marketLabel, hasIndustry, rows } = buildKeyMetricsTable({
     fundamentals,
     industry,
     sector,
@@ -103,7 +103,8 @@ export function MetricsTable({ fundamentals, industry, sector, market, medians }
                 <th className="km-th-metric">Metric</th>
                 <th className="km-th-cat">Category</th>
                 <th className="km-num">Value</th>
-                <th className="km-num">vs {industryLabel}</th>
+                {/* An industry too small for a median would be a whole column of "—". */}
+                {hasIndustry && <th className="km-num">vs {industryLabel}</th>}
                 <th className="km-num">vs {sectorLabel}</th>
                 <th className="km-num">vs {marketLabel}</th>
               </tr>
@@ -126,9 +127,11 @@ export function MetricsTable({ fundamentals, industry, sector, market, medians }
                     <span className={`mt-cat-pill ${CAT_PILL[r.def.cat]}`}>{r.def.cat}</span>
                   </td>
                   <td className="km-num km-value" title={r.valueTitle}>{r.disp}</td>
-                  <td className={`km-num km-cmp ${VERDICT_CLASS[r.industryCmp.verdict]}`} title={r.industryCmp.tip}>
-                    {r.industryCmp.text}
-                  </td>
+                  {hasIndustry && (
+                    <td className={`km-num km-cmp ${VERDICT_CLASS[r.industryCmp.verdict]}`} title={r.industryCmp.tip}>
+                      {r.industryCmp.text}
+                    </td>
+                  )}
                   <td className={`km-num km-cmp ${VERDICT_CLASS[r.sectorCmp.verdict]}`} title={r.sectorCmp.tip}>
                     {r.sectorCmp.text}
                   </td>
