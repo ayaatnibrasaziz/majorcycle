@@ -149,6 +149,8 @@ test.describe('the server-only tables refuse the public roles outright', () => {
     'split_events',
     'stripe_events',
     'trial_tombstones',
+    // Added 2026-10-07: each payment dispute and how it ended (open/won/lost).
+    'billing_disputes',
   ];
 
   for (const table of SERVER_ONLY) {
@@ -167,12 +169,12 @@ test.describe('the server-only tables refuse the public roles outright', () => {
   }
 
   test('CONTROL — the same client CAN still reach a table it is meant to', async () => {
-    // Without this, a broken client or a bad key would satisfy all nine refusals
+    // Without this, a broken client or a bad key would satisfy every refusal
     // above. `analysis_runs` keeps `anon` SELECT on purpose (an expired JWT falls
     // back to this role, and "no rows" is a safer answer than an error on a paying
     // customer's page), so it must succeed AND return nothing.
     const { data, error } = await anonClient().from('analysis_runs').select('id').limit(1);
-    expect(error, 'the anon client must still work — otherwise the nine refusals prove nothing').toBeNull();
+    expect(error, 'the anon client must still work — otherwise the refusals prove nothing').toBeNull();
     expect(data, 'row-level security must still hide every row from an anonymous reader').toEqual([]);
   });
 });

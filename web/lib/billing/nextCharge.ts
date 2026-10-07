@@ -20,6 +20,34 @@ export interface NextCharge {
   amount: number;
   currency: string;
   at: string | null;
+  /**
+   * Which plan that charge is FOR — not always the plan the reader is on today. An
+   * annual customer who switches to monthly keeps the annual plan until the year ends
+   * (Stripe Customer Portal: downgrades wait for the period end, set 2026-10-07), so
+   * their next charge is a MONTHLY one. Without this the account card read
+   * "A$19.00/year" and the renewal email told them their annual plan renews for A$19.
+   */
+  plan: 'monthly' | 'annual' | null;
+}
+
+const DAY_S = 24 * 60 * 60;
+
+/**
+ * The plan an invoice bills, from the length of the period it covers: a year is ~365
+ * days and a month 28–31. The LONGEST line decides, because a plan change can add short
+ * proration lines beside the real one. Null when no line says (unknown is not a guess).
+ */
+export function planFromInvoiceLines(
+  inv: { lines?: { data?: ReadonlyArray<{ period?: { start: number; end: number } | null }> } | null },
+): 'monthly' | 'annual' | null {
+  let longest = 0;
+  for (const line of inv.lines?.data ?? []) {
+    const p = line.period;
+    if (p && p.end > p.start) longest = Math.max(longest, p.end - p.start);
+  }
+  if (longest >= 300 * DAY_S) return 'annual';
+  if (longest >= 25 * DAY_S) return 'monthly';
+  return null;
 }
 
 /**
@@ -41,13 +69,15 @@ export function nextChargeAction(
 
 /** The stored figure from a Stripe invoice (a preview, or the invoice that failed). */
 export function nextChargeFromInvoice(
-  inv: Pick<Stripe.Invoice, 'amount_due' | 'currency' | 'next_payment_attempt' | 'period_end'>,
+  inv: Pick<Stripe.Invoice, 'amount_due' | 'currency' | 'next_payment_attempt' | 'period_end'> &
+    Parameters<typeof planFromInvoiceLines>[0],
 ): NextCharge | null {
   if (typeof inv.amount_due !== 'number' || !inv.currency) return null;
   return {
     amount: inv.amount_due,
     currency: inv.currency,
     at: toISO(inv.next_payment_attempt ?? inv.period_end ?? null),
+    plan: planFromInvoiceLines(inv),
   };
 }
 
@@ -65,11 +95,14 @@ export function nextChargeFromInvoice(
  * currency (the payload carries only the price's default currency).
  */
 export async function nextChargeFromSubscription(
-  sub: Pick<Stripe.Subscription, 'currency' | 'status' | 'trial_end' | 'discounts' | 'automatic_tax' | 'items'>,
+  sub: Pick<Stripe.Subscription, 'currency' | 'status' | 'trial_end' | 'discounts' | 'automatic_tax' | 'items' | 'schedule'>,
   unitAmountIn: (priceId: string, currency: string) => Promise<number | null>,
 ): Promise<NextCharge | null> {
   if ((sub.discounts?.length ?? 0) > 0) return null;
   if (sub.automatic_tax?.enabled) return null;
+  // A scheduled change (e.g. annual → monthly at the year's end) means the next charge
+  // is NOT this item's price, and only an invoice preview can say what it is.
+  if (sub.schedule) return null;
   if (sub.items.data.length !== 1) return null;
   const item = sub.items.data[0]!;
   if ((item.discounts?.length ?? 0) > 0) return null;
@@ -80,5 +113,11 @@ export async function nextChargeFromSubscription(
       : await unitAmountIn(item.price.id, cur);
   if (unit == null) return null;
   const at = sub.status === 'trialing' && sub.trial_end ? sub.trial_end : item.current_period_end;
-  return { amount: unit * (item.quantity ?? 1), currency: cur, at: toISO(at) };
+  const interval = item.price.recurring?.interval;
+  return {
+    amount: unit * (item.quantity ?? 1),
+    currency: cur,
+    at: toISO(at),
+    plan: interval === 'year' ? 'annual' : interval === 'month' ? 'monthly' : null,
+  };
 }

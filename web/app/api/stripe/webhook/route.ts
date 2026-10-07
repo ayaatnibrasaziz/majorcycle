@@ -2,7 +2,13 @@ import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 
 import { GRACE_DAYS } from '@/lib/billing/grace';
-import { canPauseOrResume, disputeBillingAction, type DisputeBillingAction } from '@/lib/billing/dispute';
+import {
+  accountDisputeOutcome,
+  canPauseOrResume,
+  disputeBillingAction,
+  disputeStateFor,
+  type DisputeBillingAction,
+} from '@/lib/billing/dispute';
 import {
   accessWasPaused,
   endedEmailKind,
@@ -15,6 +21,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import {
   customerId,
   nextChargeFromInvoice,
+  planFromInvoiceLines,
   refId,
   resolveUserId,
   syncSubscription,
@@ -179,6 +186,7 @@ async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<Eve
       next_charge_amount: null,
       next_charge_currency: null,
       next_charge_at: null,
+      next_charge_plan: null,
     })
     .eq('id', userId)
     .or(`stripe_subscription_id.eq.${sub.id},stripe_subscription_id.is.null`)
@@ -235,7 +243,7 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       if (ctx.userId && sub.status === 'trialing' && sub.cancel_at == null) {
         const { data: prof } = await admin
           .from('profiles')
-          .select('email, display_name, subscription_plan, next_charge_amount, next_charge_currency')
+          .select('email, display_name, subscription_plan, next_charge_amount, next_charge_currency, next_charge_plan')
           .eq('id', ctx.userId)
           .maybeSingle();
         if (prof?.email) {
@@ -247,7 +255,8 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
               prof.next_charge_amount != null && prof.next_charge_currency
                 ? { amount: prof.next_charge_amount, currency: prof.next_charge_currency }
                 : null,
-            plan: prof.subscription_plan,
+            // The plan the first charge is FOR (a plan switched during the trial).
+            plan: prof.next_charge_plan ?? prof.subscription_plan,
             idempotencyKey: `${event.id}:trial_started`,
           });
         }
@@ -366,6 +375,7 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
                 next_charge_amount: failed.amount,
                 next_charge_currency: failed.currency,
                 next_charge_at: failed.at,
+                next_charge_plan: failed.plan,
               }
             : {}),
         })
@@ -420,6 +430,10 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
         .eq('id', userId)
         .maybeSingle();
       if (!prof?.email || !renewalReminderDue(prof, subscriptionId)) return ctx;
+      // ⚠️ The INVOICE must bill a year too, not just the profile: an annual customer who
+      // has switched to monthly is still "annual" until the year ends, and would be told
+      // their annual plan renews — for the monthly amount.
+      if (planFromInvoiceLines(invoice) !== 'annual') return ctx;
       const renewsAt = prof.current_period_end
         ? new Date(prof.current_period_end)
         : invoice.next_payment_attempt
@@ -452,7 +466,7 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       if (!userId || sub.cancel_at != null) return ctx;
       const { data: prof } = await admin
         .from('profiles')
-        .select('email, display_name, subscription_plan, trial_reminder_sent, next_charge_amount, next_charge_currency')
+        .select('email, display_name, subscription_plan, trial_reminder_sent, next_charge_amount, next_charge_currency, next_charge_plan')
         .eq('id', userId)
         .maybeSingle();
       // Belt-and-suspenders on top of stripe_events idempotency: only send once. Mark
@@ -470,7 +484,7 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
             prof.next_charge_amount != null && prof.next_charge_currency
               ? { amount: prof.next_charge_amount, currency: prof.next_charge_currency }
               : null,
-          plan: prof.subscription_plan,
+          plan: prof.next_charge_plan ?? prof.subscription_plan,
           idempotencyKey: `${event.id}:trial_ending`,
         });
       }
@@ -486,18 +500,60 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       // Access and billing are decided by the SAME rule (lib/billing/dispute.ts):
       // - pause:  a real dispute (funds moved). Lock access, and stop charging a
       //           customer who cannot use what they would be paying for.
-      // - resume: we won. Restore access and billing.
+      // - resume: we won. Restore access and billing — but only once no OTHER dispute on
+      //           the account is open or lost (2026-10-07, billing_disputes).
       // - cancel: we lost. Access stays off and the subscription ends.
       // - null:   a bank INQUIRY (warning_*), which moves no money. ⚠️ Until 2026-10-03
       //           an inquiry that CLOSED fell into the "lost" branch and cancelled a
       //           paying customer's subscription for a question their bank had asked.
       const action = disputeBillingAction(event.type, dispute.status);
-      if (action === 'pause') {
-        await admin.from('profiles').update({ billing_blocked: true }).eq('id', ctx.userId);
-      } else if (action === 'resume') {
-        await admin.from('profiles').update({ billing_blocked: false }).eq('id', ctx.userId);
+      if (!action) return ctx;
+      // Record THIS dispute first (one row per dispute, so two arriving together cannot
+      // overwrite each other), then — for a win — read the OTHER disputes on the account:
+      // the hold lifts only when none is open and none was lost (accountDisputeOutcome).
+      const { error: recordError } = await admin.from('billing_disputes').upsert(
+        {
+          dispute_id: dispute.id,
+          user_id: ctx.userId,
+          state: disputeStateFor(action),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'dispute_id' },
+      );
+      let others: { open: number; lost: number } | null = null;
+      if (action === 'resume') {
+        const { data: rows, error } = await admin
+          .from('billing_disputes')
+          .select('state')
+          .eq('user_id', ctx.userId)
+          .neq('dispute_id', dispute.id)
+          .neq('state', 'won');
+        others =
+          error || recordError
+            ? null
+            : {
+                open: (rows ?? []).filter((r) => r.state === 'open').length,
+                lost: (rows ?? []).filter((r) => r.state === 'lost').length,
+              };
+        if (!others) {
+          reportIssue('stripe webhook: could not check the other disputes; the hold stays', {
+            cause: error ?? recordError,
+            level: 'alert',
+            tags: { userId: ctx.userId, disputeId: dispute.id },
+          });
+        }
+      } else if (recordError) {
+        reportIssue('stripe webhook: could not record a dispute', {
+          cause: recordError,
+          level: 'warning',
+          tags: { userId: ctx.userId, disputeId: dispute.id },
+        });
       }
-      if (action) await applyDisputeToSubscription(admin, ctx.userId, action);
+      const outcome = accountDisputeOutcome(action, others);
+      if (outcome.hold !== null) {
+        await admin.from('profiles').update({ billing_blocked: outcome.hold }).eq('id', ctx.userId);
+      }
+      if (outcome.stripe) await applyDisputeToSubscription(admin, ctx.userId, outcome.stripe);
       return ctx;
     }
     default:

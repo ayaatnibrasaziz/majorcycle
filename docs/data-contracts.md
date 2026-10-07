@@ -1639,6 +1639,7 @@ never forge entitlement. Migration `20260523133635` + `20260711000000` +
 | `cancel_at_period_end` | boolean (default false) | Sub set to end at period end (user cancel / delete-during-paid). |
 | `next_charge_amount` | integer (minor units, e.g. cents) | **Stripe's own figure for the next charge** — `invoices.createPreview` for the subscription, so a discount, tax or grandfathered price is already in it (owner, 2026-10-03: "store the real charged amount… so that it works in every case"). Written by `syncSubscription` for `trialing`/`active` subs not set to cancel. ⚠️ **When Stripe refuses the preview** — the restricted TEST key has no Invoices access (measured 2026-10-03; the live key must be checked) — it falls back to the price on the subscription itself (`nextChargeFromSubscription`), which is exact except under a discount or automatic tax, and stores NULL in exactly those cases rather than a wrong figure; NULL when nothing will be charged (cancelling, cancelled) or when Stripe could not say. Left untouched while `past_due`: the payment-failed handler writes the FAILED invoice's `amount_due` there instead, which is the figure the account card shows ("Payment failed: A$19.00"). The account page shows the date alone when it is NULL — never a price from our own table (11aa). |
 | `next_charge_currency` | text | The preview's currency (`aud`…), stored beside the amount so the two can never be read in different currencies. |
+| `next_charge_plan` | text (`monthly`/`annual`), nullable | Which plan that charge bills, from the longest line period on the preview (≥300 days = annual). Differs from `subscription_plan` only while a portal downgrade waits for the period end (annual → monthly, set 2026-10-07); the account card then shows "Switches to" and the annual renewal email is not sent. NULL = same as `subscription_plan`. Migration `20261007000000`. |
 | `next_charge_at` | timestamptz | When Stripe will take `next_charge_amount` — the preview's `next_payment_attempt`, else its period end. |
 | `access_paused_notified_at` | timestamptz | When the "your access is paused" email went out for the CURRENT payment failure (added 2026-10-03). Stamped by the daily cron when `grace_until` has passed; cleared by a successful payment and by a NEW failure, so each lapse is told once. NULL = not sent. |
 | `grace_until` | timestamptz | **Single-owner dunning marker** — set `now()+3d` on the FIRST `invoice.payment_failed` (renewal only), cleared only by the paid/succeeded handler + `markCanceled`. `past_due` beyond it hard-locks (step 10). |
@@ -1906,6 +1907,13 @@ state sync; checkout just links the customer:
   invoice's `amount_due`; date = `current_period_end`, written in the plan currency's zone
   (`renewalTimeZone`). Resend key `<sub>:annual_renewal:<period end ms>` — one per renewal.
   Stripe's own "upcoming renewal" email stays OFF (it would also email every monthly plan).
+- **`billing_disputes`** (table, 2026-10-07; migration `20261007010000`): one row per REAL
+  dispute — `dispute_id` (pk), `user_id` (→ auth.users, cascade), `state` (`open`/`won`/`lost`),
+  `updated_at`. Server-only (RLS on, no grants to `anon`/`authenticated`). A win lifts the hold
+  and resumes billing only when no OTHER dispute on the account is `open` or `lost`
+  (`accountDisputeOutcome` in `web/lib/billing/dispute.ts`) — before it, winning the first of a
+  stolen card's several disputes unblocked the account and billed the card again. A read
+  failure keeps the hold and alerts.
 - `charge.dispute.created` / `.funds_withdrawn` — set `billing_blocked = true`, but only for
   a **real chargeback** (funds moved / status not `warning_*`); a mere inquiry doesn't lock a
   legit customer. `charge.dispute.closed` — won ⇒ `billing_blocked = false`; lost ⇒ keep

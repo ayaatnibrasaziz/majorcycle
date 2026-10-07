@@ -44,6 +44,10 @@ interface SubscriptionCardProps {
   // the amount row; we never fall back to our own price table (11aa).
   nextChargeAmount?: number | null;
   nextChargeCurrency?: string | null;
+  // The plan that next charge is FOR. Differs from `plan` only while a switch is
+  // waiting for the period to end (annual → monthly), and the card must then say so
+  // rather than print the monthly amount with "/year" after it.
+  nextChargePlan?: 'monthly' | 'annual' | null;
   // End of the payment-failure grace window; the failure date is worked out from it.
   graceUntil?: string | null;
   // How the success / setting-up notice should look (it used to be an amber warning
@@ -173,6 +177,7 @@ export function SubscriptionCard({
   email = '',
   nextChargeAmount = null,
   nextChargeCurrency = null,
+  nextChargePlan = null,
   graceUntil = null,
   noticeTone = 'warning',
   initialPlan,
@@ -202,6 +207,9 @@ export function SubscriptionCard({
   const canStartTrial = !billingBlocked && (!status || status === 'canceled');
   const pastDue = !billingBlocked && status === 'past_due';
 
+  // The plan the next charge belongs to, and whether that is a scheduled switch.
+  const chargePlan = nextChargePlan ?? plan;
+  const switching = nextChargePlan != null && plan != null && nextChargePlan !== plan;
   const amount =
     nextChargeAmount != null && nextChargeCurrency ? (
       <span className="font-mono">
@@ -234,7 +242,8 @@ export function SubscriptionCard({
       );
   } else if (status === 'trialing') {
     if (trialEnd) rows.push(['Trial ends', trialEnd]);
-    if (amount) rows.push(['Then', <>{amount}{perInterval(plan)}</>]);
+    if (switching) rows.push(['Then', planLabel(chargePlan)]);
+    if (amount) rows.push([switching ? 'Price' : 'Then', <>{amount}{perInterval(chargePlan)}</>]);
     if (amount && trialEnd) rows.push(['First charge', trialEnd]);
     sentence = trialEnd ? (
       <>Cancel any time before {trialEnd} and you won&apos;t be charged.</>
@@ -243,8 +252,9 @@ export function SubscriptionCard({
     );
   } else if (status === 'active') {
     const renews = date(currentPeriodEnd);
-    if (renews) rows.push(['Renews on', renews]);
-    if (amount) rows.push(['Amount', <>{amount}{perInterval(plan)}</>]);
+    if (renews) rows.push([switching ? 'Switches on' : 'Renews on', renews]);
+    if (switching) rows.push(['Switches to', planLabel(chargePlan)]);
+    if (amount) rows.push(['Amount', <>{amount}{perInterval(chargePlan)}</>]);
     // A plan with nothing to list (set by hand, no Stripe record) still says something.
     if (rows.length === 0) sentence = meta.detail(plan, trialEnd);
   } else if (pastDue) {

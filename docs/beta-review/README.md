@@ -83,10 +83,10 @@ B-2 (`VerdictCard.tsx:278` divides by `bandUpper`), F-3 (`overall.py` event scor
 |---|---|---|
 | 22 | A customer whose card failed sees no warning in the app (only a sidebar chip, and no deadline); lapsed/cancelled readers get the new-customer pitch with no "your payment failed / your plan ended"; **no email at all when access stops**. ✅ **2026-10-03:** failed-payment banner + held banner; *access paused* and *subscription ended* emails; recovery email no longer says "uninterrupted" after a lockout; every billing email quotes Stripe's amount. | D-1, D-4, D-5, D-6 |
 | 23 | After a free-trial checkout `/account` says **"Payment received"** (amber alert), also for cancelled/lapsed/no-plan. | D-2 |
-| 24 | Delete-account copy promises the subscription "stays valid until the end of the period you've paid for" — false: the reader is locked to `/reactivate` and the day-30 purge cancels Stripe, so an annual payer loses ~6 months (no refunds). **Owner policy decision.** ✅ **Wording fixed 2026-10-04** (`lib/deletionSubscription.ts`: six cases, each true — an annual plan is now told the unused time is not refunded) and reactivating no longer renews a plan the customer had cancelled. **The POLICY (refund or keep the unused annual time?) is still the owner's.** | D-3 |
+| 24 | Delete-account copy promises the subscription "stays valid until the end of the period you've paid for" — false: the reader is locked to `/reactivate` and the day-30 purge cancels Stripe, so an annual payer loses ~6 months (no refunds). **Owner policy decision.** ✅ **Wording fixed 2026-10-04** (`lib/deletionSubscription.ts`: six cases, each true — an annual plan is now told the unused time is not refunded) and reactivating no longer renews a plan the customer had cancelled. ✅ **Policy decided by the owner 2026-10-07:** deletion on day 30 is final — paid time after it is lost, no refund, no Terms change. Deleting with a FAILED payment now cancels at once so the unpaid bill is never retried; `/reactivate` reads `billing_blocked` (open dispute → returns on hold; lost → free + contact support). | D-3 |
 | 25 | Sign-up never shows or links the Terms / Privacy Policy (the Terms bind "by creating an account"; APP 8 disclosure relies on it). ✅ **2026-10-03** — sign-up, sign-in and the first-login screen. | A-22, F-13 |
 | 26 | The free 25-new-stocks-a-day cap appears only in the Terms; landing/sign-up/Learn say "browse all / any company"; no "views left" counter; "resets at midnight UTC" (10–11am in Sydney). | A-16, D-18, E-15, B-30 |
-| 27 | The rating is defined three different ways (first-login gate, paywall dialog, landing); `/pricing` keeps its own feature list (11c-i); Stripe product text says premium includes "analyst data" (free). ✅ **2026-10-03** — one definition (`lib/ratingDefinition.ts`), `/pricing` reads the shared list. **The Stripe product text is the owner's to edit** in the dashboard. | D-15, F-6, D-14 |
+| 27 | The rating is defined three different ways (first-login gate, paywall dialog, landing); `/pricing` keeps its own feature list (11c-i); Stripe product text says premium includes "analyst data" (free). ✅ **2026-10-03** — one definition (`lib/ratingDefinition.ts`), `/pricing` reads the shared list. ✅ Stripe product text replaced on the live product 2026-10-07. | D-15, F-6, D-14 |
 
 ## 🟡 Minor (grouped — see raw files for each)
 
@@ -120,3 +120,24 @@ other exactly; drawer focus in three engines; single `h1`s; 404s.
 
 Real phones and real Safari; actual email delivery; the Stripe portal and resume flow; the
 `billing_blocked` state; production speed (dev server); screen readers beyond the basics.
+
+## 2026-10-07 — owner decisions, Stripe dispute audit, and the pre-merge audit
+
+- **Deferred by the owner** until the rest is merged: the rating method (#5) and the "610 falls"
+  wording/confidence (#7) — a full plan with real before/after runs across every preset,
+  Custom included, comes first.
+- **"Strong ★★★" / "Severe ★★★" tags removed** (B-23): they marked the first two lines by
+  position, not by any measurement.
+- **Stripe dispute audit** (owner: "doesn't trigger any disputes"). Code: deleting with a failed
+  payment cancels at once; Checkout sessions expire after 30 min (double-subscription window);
+  `/reactivate` honest under a dispute. Live Stripe settings (owner-approved): upcoming
+  renewal events 30 days + the webhook listens to `invoice.upcoming`; shortened descriptor
+  `MAJORCYCLE` + "trial over" statement text; portal downgrades wait for the period end;
+  refund emails on. New email: **annual renewal reminder** (30 days ahead, annual plans only).
+- **Pre-merge audit of this whole batch** found three defects, all fixed with tests:
+  1. a portal downgrade now waits for the year end, so an annual customer's NEXT charge can
+     be monthly — the account card said "A$19.00/year" and the renewal email would have said
+     the annual plan renews for A$19 (`profiles.next_charge_plan`, read off the invoice);
+  2. the dispute hold was per dispute, not per account — winning the first of a stolen card's
+     several disputes unblocked the account and billed the card again (`billing_disputes`);
+  3. the delete card told a failed-payment account its plan "ends now" before it had confirmed.

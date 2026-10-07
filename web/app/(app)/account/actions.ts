@@ -243,7 +243,7 @@ export async function reactivateAccount(): Promise<void> {
   const { data: profile } = await admin
     .from('profiles')
     .select(
-      'email, display_name, stripe_subscription_id, subscription_status, subscription_currency, subscription_plan, trial_ends_at, trial_reminder_sent, next_charge_amount, next_charge_currency'
+      'email, display_name, stripe_subscription_id, subscription_status, subscription_currency, subscription_plan, trial_ends_at, trial_reminder_sent, next_charge_amount, next_charge_currency, next_charge_plan'
     )
     .eq('id', user.id)
     .single();
@@ -331,7 +331,7 @@ export async function reactivateAccount(): Promise<void> {
         profile.next_charge_amount != null && profile.next_charge_currency
           ? { amount: profile.next_charge_amount, currency: profile.next_charge_currency }
           : null,
-      plan: profile.subscription_plan,
+      plan: profile.next_charge_plan ?? profile.subscription_plan,
       idempotencyKey: `reactivate-trial-reminder:${user.id}:${trialEndMs}`,
     });
   }

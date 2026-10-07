@@ -1,8 +1,18 @@
 import { expect, test } from '@playwright/test';
 
 import { GRACE_DAYS, paymentFailedAt } from '../lib/billing/grace';
-import { nextChargeAction, nextChargeFromInvoice, nextChargeFromSubscription } from '../lib/billing/nextCharge';
-import { canPauseOrResume, disputeBillingAction } from '../lib/billing/dispute';
+import {
+  nextChargeAction,
+  nextChargeFromInvoice,
+  nextChargeFromSubscription,
+  planFromInvoiceLines,
+} from '../lib/billing/nextCharge';
+import {
+  accountDisputeOutcome,
+  canPauseOrResume,
+  disputeBillingAction,
+  disputeStateFor,
+} from '../lib/billing/dispute';
 import { endedEmailKind, renewalReminderDue, renewalTimeZone } from '../lib/billing/accessEmails';
 import { DENIAL_COPY } from '../lib/denialCopy';
 import { disputeEnded, planStatus } from '../lib/planStatus';
@@ -33,7 +43,7 @@ test.describe('the next charge is Stripe’s own figure', () => {
   test('an invoice becomes the stored figure, discounts and tax already in it', () => {
     expect(
       nextChargeFromInvoice({ amount_due: 14310, currency: 'aud', next_payment_attempt: 1_800_000_000, period_end: 1 }),
-    ).toEqual({ amount: 14310, currency: 'aud', at: new Date(1_800_000_000_000).toISOString() });
+    ).toEqual({ amount: 14310, currency: 'aud', at: new Date(1_800_000_000_000).toISOString(), plan: null });
     // CONTROL: an invoice with no amount or currency stores nothing rather than a guess.
     expect(nextChargeFromInvoice({ amount_due: null as unknown as number, currency: 'aud', next_payment_attempt: null, period_end: 1 })).toBeNull();
     expect(nextChargeFromInvoice({ amount_due: 1900, currency: '', next_payment_attempt: null, period_end: 1 })).toBeNull();
@@ -65,8 +75,13 @@ test.describe('the next charge is Stripe’s own figure', () => {
     const options = async (_id: string, cur: string) => ({ aud: 1900, usd: 1500, cad: 2000 })[cur] ?? null;
 
     expect(await nextChargeFromSubscription(sub(), options)).toEqual({
-      amount: 1900, currency: 'aud', at: new Date(1_800_000_000_000).toISOString(),
+      amount: 1900, currency: 'aud', at: new Date(1_800_000_000_000).toISOString(), plan: null,
     });
+    expect(
+      (await nextChargeFromSubscription(sub({}, { price: { id: 'p', currency: 'aud', unit_amount: 15900, recurring: { interval: 'year' } } }), options))?.plan,
+    ).toBe('annual');
+    // A scheduled switch means the item's price is NOT the next charge: say nothing.
+    expect(await nextChargeFromSubscription(sub({ schedule: 'sub_sched_1' }), options)).toBeNull();
     expect((await nextChargeFromSubscription(sub({ currency: 'usd' }), options))?.amount).toBe(1500);
     // A trial's first charge is at the trial's end.
     expect((await nextChargeFromSubscription(sub({ status: 'trialing', trial_end: 1_799_000_000 }), options))?.at).toBe(
@@ -93,6 +108,29 @@ test.describe('the next charge is Stripe’s own figure', () => {
     expect(paymentFailedAt(until)).toBe(`2026-10-0${5 - GRACE_DAYS}T10:00:00.000Z`);
     expect(paymentFailedAt(null)).toBeNull();
     expect(paymentFailedAt('not a date')).toBeNull();
+  });
+});
+
+test.describe('which plan the next charge is for (annual → monthly waits for the year end)', () => {
+  const DAY = 86_400;
+  const line = (days: number) => ({ period: { start: 1_800_000_000, end: 1_800_000_000 + days * DAY } });
+
+  test('the longest line on the invoice decides, so a proration line beside it cannot', () => {
+    expect(planFromInvoiceLines({ lines: { data: [line(366)] } })).toBe('annual');
+    expect(planFromInvoiceLines({ lines: { data: [line(31)] } })).toBe('monthly');
+    expect(planFromInvoiceLines({ lines: { data: [line(3), line(30)] } })).toBe('monthly');
+    expect(planFromInvoiceLines({ lines: { data: [line(2), line(365)] } })).toBe('annual');
+  });
+
+  test('CONTROL: an invoice that says nothing gets no guess', () => {
+    expect(planFromInvoiceLines({ lines: { data: [] } })).toBeNull();
+    expect(planFromInvoiceLines({})).toBeNull();
+    expect(planFromInvoiceLines({ lines: { data: [line(5)] } })).toBeNull();
+  });
+
+  test('the stored next charge carries the invoice’s plan', () => {
+    const inv = { amount_due: 1900, currency: 'aud', next_payment_attempt: 1_800_000_000, period_end: 1, lines: { data: [line(30)] } };
+    expect(nextChargeFromInvoice(inv)?.plan).toBe('monthly');
   });
 });
 
@@ -279,5 +317,29 @@ test.describe('who is told their subscription has ended', () => {
     expect(endedEmailKind(was({ deletion_scheduled_at: '2026-11-01T00:00:00Z' }), null)).toBeNull();
     expect(endedEmailKind(was({ subscription_status: 'canceled' }), null)).toBeNull();
     expect(endedEmailKind(null, null)).toBeNull();
+  });
+});
+
+test.describe('a dispute holds the ACCOUNT until every dispute on it is settled', () => {
+  test('each action leaves its dispute in a state', () => {
+    expect(disputeStateFor('pause')).toBe('open');
+    expect(disputeStateFor('resume')).toBe('won');
+    expect(disputeStateFor('cancel')).toBe('lost');
+  });
+
+  test('a win lifts the hold only when nothing else is open or lost', () => {
+    expect(accountDisputeOutcome('resume', { open: 0, lost: 0 })).toEqual({ hold: false, stripe: 'resume' });
+    // The stolen card: the owner disputed two charges and we won the first.
+    expect(accountDisputeOutcome('resume', { open: 1, lost: 0 })).toEqual({ hold: null, stripe: null });
+    // An earlier dispute was lost: the paid access ended for good.
+    expect(accountDisputeOutcome('resume', { open: 0, lost: 1 })).toEqual({ hold: null, stripe: null });
+    // Could not read the others: keep the hold rather than bill a disputing card.
+    expect(accountDisputeOutcome('resume', null)).toEqual({ hold: null, stripe: null });
+  });
+
+  test('a new dispute always holds, a loss always cancels, an inquiry does nothing', () => {
+    expect(accountDisputeOutcome('pause', { open: 0, lost: 0 })).toEqual({ hold: true, stripe: 'pause' });
+    expect(accountDisputeOutcome('cancel', { open: 2, lost: 0 })).toEqual({ hold: null, stripe: 'cancel' });
+    expect(accountDisputeOutcome(null, null)).toEqual({ hold: null, stripe: null });
   });
 });

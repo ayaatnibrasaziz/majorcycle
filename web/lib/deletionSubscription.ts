@@ -88,8 +88,9 @@ export function deletionSubscriptionLine(
       );
     case 'payment_failed':
       return (
-        `Your last payment hasn't gone through, so your subscription ends now and we won't try ` +
-        `that payment again. Sign back in${by} to keep your account; it will be on the free plan.`
+        `Your last payment hasn't gone through, so deleting ends your subscription straight ` +
+        `away and we won't try that payment again. Sign back in${by} to keep your account; it ` +
+        `will be on the free plan.`
       );
     case 'held':
       return (

@@ -93,7 +93,7 @@ export default async function AccountPage({
   const { data: profile } = await supabase
     .from('profiles')
     .select(
-      'display_name, country, subscription_status, subscription_plan, trial_ends_at, cancel_at_period_end, current_period_end, billing_blocked, grace_until, stripe_subscription_id, next_charge_amount, next_charge_currency'
+      'display_name, country, subscription_status, subscription_plan, trial_ends_at, cancel_at_period_end, current_period_end, billing_blocked, grace_until, stripe_subscription_id, next_charge_amount, next_charge_currency, next_charge_plan'
     )
     .eq('id', user.id)
     .single();
@@ -102,7 +102,11 @@ export default async function AccountPage({
   // every Stripe change; filled in here, once, when a renewing plan has none yet.
   let nextCharge =
     profile?.next_charge_amount != null && profile.next_charge_currency
-      ? { amount: profile.next_charge_amount, currency: profile.next_charge_currency }
+      ? {
+          amount: profile.next_charge_amount,
+          currency: profile.next_charge_currency,
+          plan: (profile.next_charge_plan ?? null) as 'monthly' | 'annual' | null,
+        }
       : null;
   if (
     !nextCharge &&
@@ -219,6 +223,7 @@ export default async function AccountPage({
           email={email}
           nextChargeAmount={nextCharge?.amount ?? null}
           nextChargeCurrency={nextCharge?.currency ?? null}
+          nextChargePlan={nextCharge?.plan ?? null}
           graceUntil={profile?.grace_until ?? null}
           noticeTone={noticeTone}
         />

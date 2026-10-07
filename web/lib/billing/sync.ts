@@ -10,11 +10,12 @@ import {
   nextChargeAction,
   nextChargeFromInvoice,
   nextChargeFromSubscription,
+  planFromInvoiceLines,
   toISO,
   type NextCharge,
 } from '@/lib/billing/nextCharge';
 
-export { nextChargeAction, nextChargeFromInvoice, toISO };
+export { nextChargeAction, nextChargeFromInvoice, planFromInvoiceLines, toISO };
 
 /**
  * The ONE implementation that writes a Stripe subscription onto a profile.
@@ -130,6 +131,7 @@ export async function fillNextCharge(
       next_charge_amount: next.amount,
       next_charge_currency: next.currency,
       next_charge_at: next.at,
+      next_charge_plan: next.plan,
     })
     .eq('id', userId)
     .eq('stripe_subscription_id', subscriptionId);
@@ -317,6 +319,7 @@ export async function syncSubscription(
     patch.next_charge_amount = next?.amount ?? null;
     patch.next_charge_currency = next?.currency ?? null;
     patch.next_charge_at = next?.at ?? null;
+    patch.next_charge_plan = next?.plan ?? null;
   }
   // NOTE: we deliberately do NOT clear grace_until here. It is the single-owner dunning
   // marker (set only by invoice.payment_failed, cleared only by the paid/succeeded handler
