@@ -76,8 +76,16 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
     out.push(`Strong FCF yield of ${fmtCapped(f.fcfYieldPct, 100)}% — the business generates real cash`);
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 15 && ok('growth'))
     out.push(`Accelerating revenue growth of ${fmtCapped(f.revenueGrowthYoy, 300)}% YoY`);
+  // "Fortress" is a claim about the WHOLE balance sheet, so it needs the scorecard's
+  // Balance Sheet pillar to agree (80+, the Healthy band). Low debt alone sat beside a
+  // Balance Sheet score of 68 on Moderna (visual audit, 2026-10-07); there it says only
+  // what the ratio shows.
   if (f.debtToEquity != null && f.debtToEquity < 0.5 && ok('balanceSheet'))
-    out.push(`Low D/E of ${fmt(f.debtToEquity, 2)} — fortress balance sheet`);
+    out.push(
+      (sub?.balanceSheet ?? 0) >= 80
+        ? `Low D/E of ${fmt(f.debtToEquity, 2)} — fortress balance sheet`
+        : `Low D/E of ${fmt(f.debtToEquity, 2)} — little debt relative to equity`,
+    );
   // "Growing faster than the valuation implies" beside "revenue declining 99%" (Adavale):
   // a low PEG from a one-off earnings jump is not growth, so it needs revenue to agree.
   if (

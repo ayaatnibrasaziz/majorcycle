@@ -9,11 +9,11 @@ import { DISPUTE_ENDED_COPY } from '@/lib/denialCopy';
 import type { PaymentBanner as PaymentBannerState } from '@/lib/entitlement';
 
 /** Server-side placeholder until <LocalDate> reformats in the reader's own time zone. */
-function shortFallback(iso: string): string {
+function longFallback(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? 'the deadline'
-    : d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+    : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
 
 /**
@@ -90,7 +90,9 @@ export function PaymentBanner({
               <>
                 Update your card by{' '}
                 <strong>
-                  <LocalDate iso={state.until} fallback={shortFallback(state.until)} format="short" />
+                  {/* The same date format as the Account card's "Update card by" row: the
+                      two used to print one date as "Fri, Oct 9" and "October 9, 2026". */}
+                  <LocalDate iso={state.until} fallback={longFallback(state.until)} />
                 </strong>{' '}
                 to keep full access.
                 <span className="hidden sm:inline"> Nothing else changes until then.</span>

@@ -17,7 +17,7 @@ import {
 
 import { BENCHMARKS, trimBenchmarks, type BenchmarkSeries } from '@/lib/benchmarks';
 import { relativeRows, type Range } from '@/lib/relativePerformance';
-import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
+import { CHART_RIGHT_AXIS_WIDTH, printedDifference } from '@/lib/format';
 import type { Market, PriceBar } from '@/lib/types';
 import { tickerToUrlParts } from '@/lib/ticker';
 import { INK, SERIES_TEAL } from '@/lib/ink';
@@ -359,7 +359,10 @@ export function RelativePerformance({
   const last = rows[rows.length - 1];
   const stockReturn = last ? last.stock - 100 : 0;
   const homeIdxReturn = last && typeof last[homeMeta.ticker] === 'number' ? last[homeMeta.ticker]! - 100 : null;
-  const alpha = homeIdxReturn !== null ? stockReturn - homeIdxReturn : null;
+  // Alpha is worked out from the two returns AS PRINTED (one decimal), so the strip
+  // adds up for a reader: +30.2% and +15.3% used to show +14.8%, from the unrounded
+  // values (visual audit, 2026-10-07; CLAUDE.md 11c-iii — derive from the displayed figure).
+  const alpha = homeIdxReturn !== null ? printedDifference(stockReturn, homeIdxReturn) : null;
   const outperf = alpha !== null ? alpha >= 0 : null;
 
   return (

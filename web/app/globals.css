@@ -3790,3 +3790,12 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   border: 1px solid var(--status-danger-tint-strong);
   color: var(--status-danger-ink); font-size: 12px; line-height: 1.45;
 }
+
+/* The verb for pressing something: "tap" on a touch screen, "click" with a mouse
+   (components/results/OpportunityMap.tsx). Hidden with display, so a screen reader
+   hears only the one that applies. */
+.word-touch { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .word-mouse { display: none; }
+  .word-touch { display: inline; }
+}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 import { Header } from '@/components/Header';
 import { PaymentBanner } from '@/components/PaymentBanner';
@@ -61,6 +62,7 @@ export function AppShell({
   payment?: PaymentBannerState | null;
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);
 
   /**
@@ -197,7 +199,11 @@ export function AppShell({
         className="min-[768px]:ml-[var(--sidebar-w)] mt-[var(--header-h)] p-6 min-h-[calc(100vh-var(--header-h))]"
         id="main-content"
       >
-        {payment && <PaymentBanner state={payment} email={email ?? ''} displayName={displayName ?? ''} />}
+        {/* Not on /account: its Subscription card already says the same thing, with the
+            same button, so the page said every sentence twice (visual audit, 2026-10-07). */}
+        {payment && pathname !== '/account' && (
+          <PaymentBanner state={payment} email={email ?? ''} displayName={displayName ?? ''} />
+        )}
         {/* Disclaimer strip — required on all authenticated pages (#4, #12). */}
         <div className="mb-4 px-3 py-2 bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[var(--radius-sm)] text-[11px] text-[var(--text-muted)] italic">
           ⚠ For educational and research purposes only. Not financial advice.

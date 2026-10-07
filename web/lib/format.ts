@@ -223,6 +223,8 @@ export function fmtCompact(value: number, currency?: Currency | string): string 
 export function makeCompactAxisFormatter(
   axisMax: number,
   currency?: Currency | string,
+  /** The real tick step when the caller sets the ticks itself (`niceZeroAxis`). */
+  step?: number,
 ): (v: number) => string {
   const prefix = currency ? currencySymbol(currency) : '';
   const m = Math.abs(axisMax);
@@ -234,13 +236,30 @@ export function makeCompactAxisFormatter(
   // recharts draws ~4 intervals across [0, max] and ROUNDS the step to a nice value
   // (e.g. dataMax 271M → ticks every 70M). Decide a single dp for the whole axis from
   // that nice step: 1 dp only when the step isn't whole in the chosen unit (e.g. 1.5B).
-  const niceStep = ceilNiceStep(m / 4);
+  const niceStep = step ?? ceilNiceStep(m / 4);
   const dp = niceStep > 0 && !Number.isInteger(niceStep / div) ? 1 : 0;
   return (v: number) => {
     if (!Number.isFinite(v)) return '—';
     if (v === 0) return `${prefix}0`;
     return `${v < 0 ? '−' : ''}${prefix}${(Math.abs(v) / div).toFixed(dp)}${suffix}`;
   };
+}
+
+/**
+ * Even, round ticks for a value axis that starts at zero: 0, 5, 10, 15, 20… — never the
+ * 0 / 6.5 / 13 / 19.5 / 26 that Recharts picks on its own and that a whole-number label
+ * then prints as "$7B / $13B / $20B / $26B" (visual audit, 2026-10-07, Balance Sheet).
+ * Steps are 1, 2, 2.5 or 5 × 10ⁿ; about four intervals; the top tick covers `max`.
+ */
+export function niceZeroAxis(max: number, intervals = 4): { ticks: number[]; top: number } {
+  if (!(max > 0) || !Number.isFinite(max)) return { ticks: [0, 1], top: 1 };
+  const rough = max / intervals;
+  const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  const n = rough / mag;
+  const step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+  const count = Math.ceil(max / step - 1e-9);
+  const ticks = Array.from({ length: count + 1 }, (_, i) => Math.round(i * step * 1e6) / 1e6);
+  return { ticks, top: ticks[ticks.length - 1]! };
 }
 
 /** Round a rough axis step UP to a "nice" value (1, 1.5, 2, 2.5, 3, 4…×10ⁿ),
@@ -299,4 +318,14 @@ export function normalizeAnalystRecommendation(
     strong_sell: 'Strong Sell',
   };
   return map[key] ?? null;
+}
+
+/**
+ * The gap between two figures AS PRINTED at `dp` decimals, so a strip showing +30.2% and
+ * +15.3% says +14.9% and not the +14.8% the unrounded values give (Relative Performance
+ * alpha, visual audit 2026-10-07; CLAUDE.md 11c-iii — derive from the displayed figure).
+ */
+export function printedDifference(a: number, b: number, dp = 1): number {
+  const k = 10 ** dp;
+  return Math.round((Number(a.toFixed(dp)) - Number(b.toFixed(dp))) * k) / k;
 }

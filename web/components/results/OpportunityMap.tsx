@@ -309,7 +309,9 @@ export function OpportunityMap({
               Showing {rows.length} of {totalCount}: filters below apply ·{' '}
             </span>
           )}
-          Bubble size = Overall Rating · click a tier to toggle · click a bubble (or a stack) to open
+          {/* "tap" on a touch screen, "click" with a mouse (visual audit, 2026-10-07). */}
+          Bubble size = Overall Rating · <PressWord /> a tier to toggle · <PressWord /> a bubble (or a
+          stack) to open
         </div>
       </div>
       <div className="card-body">
@@ -569,4 +571,14 @@ function tierMidScore(label: OverallLabel): number {
     Bearish: 20,
   };
   return mid[label];
+}
+
+/** "click" for a mouse, "tap" for a finger — chosen by CSS (`.word-mouse` / `.word-touch`). */
+function PressWord() {
+  return (
+    <>
+      <span className="word-mouse">click</span>
+      <span className="word-touch">tap</span>
+    </>
+  );
 }

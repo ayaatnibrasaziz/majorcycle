@@ -12,6 +12,7 @@ import {
   type ISeriesApi,
   type Time,
 } from 'lightweight-charts';
+import { edgeSafeTickFormatter } from '@/lib/chartTicks';
 
 import {
   createSyncSource,
@@ -176,7 +177,11 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       // Pin both edges so this overlay (and the Price chart, which does the same)
       // can't scroll past the data into empty whitespace — that desynced the two
       // charts because setVisibleRange can't reproduce an out-of-data range.
-      timeScale: { borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+      timeScale: {
+        borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true,
+        // No date label half-cut by the price scale at the right edge (lib/chartTicks.ts).
+        tickMarkFormatter: edgeSafeTickFormatter(() => chartRef.current),
+      },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
     });

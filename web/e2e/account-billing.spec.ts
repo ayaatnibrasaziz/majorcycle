@@ -117,6 +117,9 @@ test.describe('billing as the customer sees it', () => {
     await expect(card(page)).toBeVisible();
     const t = await text(page);
     expect(t.match(/disputed/g)?.length, 'the hold explained once in the card, not twice').toBe(1);
+    // ...and once on the PAGE: the banner stays off /account, whose card already says
+    // it with the same button (visual audit, 2026-10-07).
+    await expect(page.locator('.payment-banner')).toHaveCount(0);
     // Every signed-in page carries the hold banner; its one action is support.
     await page.goto('/stocks');
     const banner = page.locator('.payment-banner');
@@ -142,6 +145,10 @@ test.describe('billing as the customer sees it', () => {
     await expect(banner).toHaveClass(/payment-banner--grace/);
     await expect(banner).toContainText('Update your card by');
     await expect(banner.getByRole('button', { name: 'Update card' })).toBeVisible();
+    // On /account the card says it instead, so the page does not say it twice.
+    await page.goto('/account');
+    await expect(card(page)).toContainText('Update card by');
+    await expect(page.locator('.payment-banner')).toHaveCount(0);
     await page.context().clearCookies();
 
     await as(page, 'lapsed');

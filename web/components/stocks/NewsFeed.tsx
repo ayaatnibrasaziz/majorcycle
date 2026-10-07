@@ -1,4 +1,5 @@
 import type { NewsItem } from '@/lib/types';
+import { newestFirst } from '@/lib/newsOrder';
 import { InfoTip } from '@/components/ui/InfoTip';
 
 interface Props {
@@ -17,7 +18,8 @@ function fmtDate(iso: string): string {
 }
 
 export function NewsFeed({ news }: Props) {
-  const shown = news ? news.slice(0, 10) : [];
+  // Newest first (lib/newsOrder.ts).
+  const shown = news ? newestFirst(news).slice(0, 10) : [];
   if (!news || news.length === 0) {
     return (
       <div className="card card--stack-base">

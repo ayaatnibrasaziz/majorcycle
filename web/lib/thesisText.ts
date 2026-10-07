@@ -61,8 +61,12 @@ export function bestStrength(f: FundamentalsSnapshot, sub?: HealthSubscores): st
     return `an exceptional ${fmtCapped(f.roe, 300, 0)}% return on equity`;
   if (f.fcfYieldPct != null && f.fcfYieldPct >= 5 && ok('cashflow'))
     return `a strong ${fmtCapped(f.fcfYieldPct, 100, 1)}% free-cash-flow yield`;
+  // "Fortress" only where the scorecard's Balance Sheet pillar agrees (80+); low debt
+  // alone is said as low debt (visual audit, 2026-10-07 — Moderna, pillar 68).
   if (f.debtToEquity != null && f.debtToEquity < 0.4 && ok('balanceSheet'))
-    return `a fortress balance sheet (D/E ${f.debtToEquity.toFixed(2)})`;
+    return (sub?.balanceSheet ?? 0) >= 80
+      ? `a fortress balance sheet (D/E ${f.debtToEquity.toFixed(2)})`
+      : `little debt (D/E ${f.debtToEquity.toFixed(2)})`;
   if (f.grossMargin != null && f.grossMargin >= 60 && ok('profitability'))
     return `gross margins of ${fmtCapped(f.grossMargin, 300, 0)}%`;
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 20 && ok('growth'))

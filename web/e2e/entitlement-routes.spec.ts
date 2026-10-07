@@ -629,9 +629,10 @@ test.describe('entitlement enforcement across subscription states', () => {
     await expect(page.getByRole('button', { name: /start free trial|subscribe/i })).toHaveCount(
       0,
     );
-    // The card's support button — the hold banner at the top carries one too.
+    // The card's support button. The hold banner is left off /account (visual audit,
+    // 2026-10-07): the card says the same thing with the same button.
     await expect(page.locator('.sub-plan').getByRole('button', { name: /contact support/i })).toBeVisible();
-    await expect(page.locator('.payment-banner').getByRole('button', { name: /contact support/i })).toBeVisible();
+    await expect(page.locator('.payment-banner')).toHaveCount(0);
   });
 
   // ── Mid-deletion accounts belong at /reactivate, not /pricing ───────────────
@@ -725,8 +726,12 @@ test.describe('entitlement enforcement across subscription states', () => {
   test('past_due INSIDE grace still promises continued access', async ({ page }) => {
     await setState({ subscription_status: 'past_due', grace_until: iso(2 * DAY) });
     await page.goto('/account');
-    // Wording from the owner-approved account card + banner (2026-10-03).
+    // Wording from the owner-approved account card (2026-10-03)...
     await expect(page.getByText(/your access continues until then/i)).toBeVisible();
+    await expect(page.getByText(/access is paused/i)).toHaveCount(0);
+    // ...and the banner, which shows on every signed-in page except /account, where the
+    // card already says it (visual audit, 2026-10-07).
+    await page.goto('/stocks');
     await expect(page.getByText(/to keep full access/i)).toBeVisible();
     await expect(page.getByText(/access is paused/i)).toHaveCount(0);
   });
@@ -734,7 +739,7 @@ test.describe('entitlement enforcement across subscription states', () => {
   test('past_due PAST grace says access is paused, never "keep access"', async ({ page }) => {
     await setState({ subscription_status: 'past_due', grace_until: iso(-1 * DAY) });
     await page.goto('/account');
-    // Both the card and the banner say it now.
+    // The card says it (the banner says it too, on every other signed-in page).
     await expect(page.getByText(/access is paused/i).first()).toBeVisible();
     await expect(page.getByText(/keep (full )?access/i)).toHaveCount(0);
     await expect(page.getByText(/access continues/i)).toHaveCount(0);

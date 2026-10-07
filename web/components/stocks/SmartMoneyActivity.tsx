@@ -13,6 +13,7 @@ import {
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
+import { edgeSafeTickFormatter } from '@/lib/chartTicks';
 
 import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, fmtPrice } from '@/lib/format';
 import { analystTally, consensusFromTally, gradeGroup, type AnalystTally } from '@/lib/analystConsensus';
@@ -342,7 +343,11 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible, currency }:
         // Headroom for the markers drawn above the price line.
         scaleMargins: { top: 0.18, bottom: 0.1 },
       },
-      timeScale: { borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+      timeScale: {
+        borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true,
+        // No date label half-cut by the price scale at the right edge (lib/chartTicks.ts).
+        tickMarkFormatter: edgeSafeTickFormatter(() => chartRef.current),
+      },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
     });
