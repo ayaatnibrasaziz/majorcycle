@@ -35,7 +35,7 @@ export default async function ReactivatePage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('deletion_scheduled_at, subscription_status')
+    .select('deletion_scheduled_at, subscription_status, billing_blocked')
     .eq('id', user.id)
     .single();
 
@@ -43,7 +43,10 @@ export default async function ReactivatePage() {
   if (!profile?.deletion_scheduled_at) redirect('/stocks');
 
   const dateStr = formatDate(profile.deletion_scheduled_at);
-  const { restores, note } = reactivateLines(profile.subscription_status ?? null);
+  const { restores, note } = reactivateLines(
+    profile.subscription_status ?? null,
+    profile.billing_blocked === true,
+  );
 
   return (
     <AuthCard

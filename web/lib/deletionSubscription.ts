@@ -6,7 +6,11 @@
  * The mechanism: deleting does NOT cancel the subscription. It sets it not to renew
  * (`cancel_at_period_end`), so a trial ends with no charge and a paid period simply runs
  * out; signing back in within the 30 days clears that again. The purge on day 30 cancels
- * whatever is still running.
+ * whatever is still running. The one exception is a FAILED payment (`past_due`): that
+ * subscription is cancelled at once, because otherwise the provider keeps retrying the
+ * unpaid invoice and could charge someone who has just deleted their account and cannot
+ * use it — the textbook "I deleted my account and you still charged me" dispute
+ * (owner, 2026-10-07: "ensure … doesn't trigger any disputes").
  *
  * Until this file, all three surfaces said one sentence to every paying customer —
  * "stays valid until the end of the period you've already paid for — deleting doesn't cut
@@ -14,7 +18,7 @@
  *   - an ANNUAL plan (or a monthly one renewed a day ago in a 31-day month): the period
  *     runs past the deletion date, so the purge DOES cut it short, with no refund (#21);
  *   - a FAILED payment (`past_due`): nothing has been paid for the current period, and
- *     the provider may still retry that one invoice;
+ *     the provider would keep retrying that one invoice (deletion now cancels it);
  *   - a DISPUTE (`billing_blocked`): access is on hold, so nothing is "valid".
  * Pure, so `e2e/deletion-subscription.spec.ts` drives every branch.
  */
@@ -40,9 +44,11 @@ export function deletionSubscriptionKind(
 ): DeletionSubscriptionKind {
   const status = profile.subscription_status;
   if (!status || !DELETION_LIVE_STATES.has(status)) return 'none';
+  // A failed payment first, even under a dispute: deletion cancels that subscription at
+  // once (see the header), so "on hold" would describe a plan that no longer exists.
+  if (status === 'past_due') return 'payment_failed';
   if (profile.billing_blocked) return 'held';
   if (status === 'trialing') return 'trial';
-  if (status === 'past_due') return 'payment_failed';
   const end = profile.current_period_end ? Date.parse(profile.current_period_end) : NaN;
   // Unknown period end: say the cautious thing — it may be cut short — rather than
   // promise a period we cannot see.
@@ -82,9 +88,8 @@ export function deletionSubscriptionLine(
       );
     case 'payment_failed':
       return (
-        `Your last payment hasn't gone through, so your subscription is set to end rather than ` +
-        `renew. We may still retry that one payment; nothing after it will be charged. Sign back ` +
-        `in${by} to keep your account.`
+        `Your last payment hasn't gone through, so your subscription ends now and we won't try ` +
+        `that payment again. Sign back in${by} to keep your account; it will be on the free plan.`
       );
     case 'held':
       return (
@@ -108,7 +113,31 @@ export const DELETION_CANCEL_METADATA_KEY = 'mc_cancelled_by_deletion';
  * trial or the paid period ended inside the 30 days: Stripe has ended that subscription,
  * and the reader comes back on the free plan.
  */
-export function reactivateLines(status: string | null): { restores: string; note: string | null } {
+export function reactivateLines(
+  status: string | null,
+  billingBlocked = false,
+): { restores: string; note: string | null } {
+  // A payment dispute decides what comes back, so it is asked first (owner, 2026-10-07:
+  // "be aware of the dispute cases"). While one is open the subscription returns ON HOLD;
+  // after a lost one it has ended AND a new one cannot be started without support — so
+  // the "subscribe again at any time" sentence below would be untrue (checkout refuses
+  // any account with billing_blocked).
+  if (billingBlocked && status && DELETION_LIVE_STATES.has(status)) {
+    return {
+      restores: 'your profile, your history and your subscription',
+      note:
+        'Your subscription stays on hold while the payment dispute is open, so the paid ' +
+        'analysis stays locked until it is resolved.',
+    };
+  }
+  if (billingBlocked && status === 'canceled') {
+    return {
+      restores: 'your profile and your history',
+      note:
+        'Your subscription ended after a payment dispute, so you will come back on the free ' +
+        'plan. To subscribe again, please contact support.',
+    };
+  }
   if (status && DELETION_LIVE_STATES.has(status)) {
     return {
       restores: 'your profile, your history and your subscription, as they were before you asked to delete it',

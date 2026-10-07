@@ -36,6 +36,9 @@ test.describe('which sentence a subscriber gets when they delete their account',
     ['failed payment', { subscription_status: 'past_due', current_period_end: BEFORE }, 'payment_failed'],
     ['dispute', { subscription_status: 'active', billing_blocked: true, current_period_end: BEFORE }, 'held'],
     ['dispute on a trial', { subscription_status: 'trialing', billing_blocked: true }, 'held'],
+    // Deletion cancels a past_due subscription at once, so "on hold" would describe a
+    // plan that no longer exists.
+    ['dispute AND a failed payment', { subscription_status: 'past_due', billing_blocked: true }, 'payment_failed'],
   ];
   for (const [name, profile, want] of cases) {
     test(name, () => {
@@ -62,10 +65,14 @@ test.describe('the sentences say what actually happens', () => {
     expect(cut).toMatch(/isn't refunded/);
   });
 
-  test('a failed payment is not told it has paid', () => {
+  test('a failed payment is not told it has paid, nor that it may still be charged', () => {
     const line = deletionSubscriptionLine('payment_failed', dates)!;
     expect(line).not.toMatch(/paid for/);
     expect(line).toMatch(/hasn't gone through/);
+    // Deletion cancels it outright (no retries), so no sentence may promise a retry.
+    expect(line).not.toMatch(/may still retry/);
+    expect(line).toMatch(/won't try that payment again/);
+    expect(line).toMatch(/free plan/);
   });
 
   test('a disputed account is not told its plan is active', () => {
@@ -98,6 +105,22 @@ test.describe('reactivating promises only what comes back', () => {
     expect(ended.note).toMatch(/free plan/);
     expect(reactivateLines(null)).toEqual({ restores: 'your profile and your history', note: null });
   });
+
+  test('a dispute decides what comes back', () => {
+    // Open dispute: the subscription returns, but on hold.
+    const open = reactivateLines('active', true);
+    expect(open.restores).toMatch(/subscription/);
+    expect(open.note).toMatch(/on hold/);
+    // Lost dispute: ended, and checkout refuses billing_blocked accounts, so the
+    // ordinary "subscribe again at any time" would be untrue.
+    const lost = reactivateLines('canceled', true);
+    expect(lost.restores).not.toMatch(/subscription/);
+    expect(lost.note).toMatch(/contact support/);
+    expect(lost.note).not.toMatch(/at any time/);
+    // Control: without a dispute, the plain sentences are unchanged.
+    expect(reactivateLines('canceled', false).note).toMatch(/at any time/);
+    expect(reactivateLines('active', false).note).toBeNull();
+  });
 });
 
 test.describe('reactivating undoes only the cancel that deletion set', () => {
@@ -109,8 +132,13 @@ test.describe('reactivating undoes only the cancel that deletion set', () => {
   const src = readFileSync('app/(app)/account/actions.ts', 'utf8');
 
   test('deletion marks its own cancel and leaves an existing one alone', () => {
-    expect(src).toMatch(/!profile\?\.cancel_at_period_end/);
+    expect(src).toMatch(/pastDue \|\| !profile\?\.cancel_at_period_end/);
     expect(src).toMatch(/cancel_at_period_end: true,\s*metadata: \{ \[DELETION_CANCEL_METADATA_KEY\]: '1' \}/);
+  });
+
+  test('deletion cancels a FAILED payment outright, so it can never be retried later', () => {
+    expect(src).toMatch(/const pastDue = profile\?\.subscription_status === 'past_due'/);
+    expect(src).toMatch(/if \(pastDue\) \{\s*await getStripe\(\)\.subscriptions\.cancel\(profile\.stripe_subscription_id\)/);
   });
 
   test('reactivation un-cancels only a subscription carrying the mark', () => {

@@ -46,6 +46,9 @@ const NO_STORE = { 'Cache-Control': 'private, no-store' } as const;
 // instead. `canceled`/null may start a fresh subscription.
 const ACTIVE_STATES = new Set(['active', 'trialing', 'past_due']);
 
+/** How long a Checkout page stays payable. 1800 s is the shortest Stripe allows. */
+const CHECKOUT_SESSION_TTL_SECONDS = 30 * 60;
+
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as { plan?: unknown } | null;
   const plan = body?.plan;
@@ -197,6 +200,13 @@ export async function POST(request: Request) {
       // dynamically; the owner tunes them in Dashboard → Payment methods).
       // Tax stays OFF at launch — one-line flip when GST registration lands (decision D).
       automatic_tax: { enabled: false },
+      // 30 minutes (Stripe's minimum) instead of the default 24 hours. A second live
+      // subscription is caught and cancelled after the fact (lib/billing/sync.ts), but
+      // one that has already CHARGED needs a manual refund, and a customer billed twice
+      // is the likeliest dispute this product can cause. The reachable way to get there
+      // is an abandoned checkout completed hours later from browser history beside a
+      // newer one; a short-lived session closes that window.
+      expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_SESSION_TTL_SECONDS,
       // `{CHECKOUT_SESSION_ID}` is a literal Stripe template — it substitutes the real id
       // on redirect. /account uses it to reconcile immediately rather than waiting on the
       // webhook: Stripe holds this redirect for our 2xx but only for 10 SECONDS, so a slow

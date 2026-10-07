@@ -159,16 +159,27 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
     // ⚠️ Only when it is not ALREADY set not to renew — a customer who cancelled in the
     // billing portal first. The marker says this "don't renew" is OURS, so reactivating
     // undoes only what deletion did (lib/deletionSubscription.ts).
+    //
+    // ⚠️ A FAILED payment (`past_due`) is cancelled outright instead. Left to run out, the
+    // provider keeps retrying the unpaid invoice for weeks and could charge a customer who
+    // has deleted their account and cannot use it. Cancelling stops collection of that
+    // invoice; reactivating brings the account back on the free plan, which is what the
+    // delete card and the email say (lib/deletionSubscription.ts, 'payment_failed').
+    const pastDue = profile?.subscription_status === 'past_due';
     if (
       profile?.stripe_subscription_id &&
       LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '') &&
-      !profile?.cancel_at_period_end
+      (pastDue || !profile?.cancel_at_period_end)
     ) {
       try {
-        await getStripe().subscriptions.update(profile.stripe_subscription_id, {
-          cancel_at_period_end: true,
-          metadata: { [DELETION_CANCEL_METADATA_KEY]: '1' },
-        });
+        if (pastDue) {
+          await getStripe().subscriptions.cancel(profile.stripe_subscription_id);
+        } else {
+          await getStripe().subscriptions.update(profile.stripe_subscription_id, {
+            cancel_at_period_end: true,
+            metadata: { [DELETION_CANCEL_METADATA_KEY]: '1' },
+          });
+        }
       } catch (err) {
         // ALERT: best-effort by design — the deletion proceeds — which means a
         // subscription can keep BILLING an account scheduled for purge, and nothing

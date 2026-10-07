@@ -1447,26 +1447,6 @@
 }
 .insight-icon svg { width: 16px; height: 16px; display: block; }
 .insight-text { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
-.insight-strength {
-  display: inline-flex; align-items: center; gap: 1px; margin-left: 8px;
-  letter-spacing: .5px; vertical-align: 1px; font-size: 9px; font-weight: 600;
-  cursor: help; user-select: none;
-}
-.insight-strength.is-attr { color: var(--c-up-ink); }
-.insight-strength.is-risk { color: var(--c-neutral-ink); }
-.insight-strength-label {
-  font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 700;
-  letter-spacing: 1.2px; text-transform: uppercase; margin-right: 4px;
-  /* ⚠️ `opacity: .75` until 2026-08-22, and it survived the ink change by hiding
-     inside it: the green underneath went from 4.39 to 5.90, and the fade still
-     took the rendered word to 3.55. A colour fixed at full strength is not fixed
-     if something upstream dims it — which is the THIRD instance of this in one
-     day (.verdict-thesis-num, this, and the brand watermark). Recede with a
-     colour, never with transparency (CLAUDE.md 11q). Here there was no room to
-     recede: the ink sits at 5.90 and the floor for 9px is the full 4.5, so the
-     label simply stands at its own colour and the size and letter-spacing carry
-     the hierarchy instead. */
-}
 .insight-invalidation {
   display: flex; align-items: flex-start; gap: 6px; margin-top: 6px;
   padding: 7px 10px; background: rgba(180,140,40,.06);

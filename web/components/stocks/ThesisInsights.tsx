@@ -38,7 +38,6 @@ function fmt(n: number, d = 1): string {
 
 interface Bullet {
   text: string;
-  strong: boolean;
   invalidation?: string;
 }
 
@@ -57,7 +56,7 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
   // attraction when the business is sound. When Financial Health is weak or
   // withheld, this is value-trap territory — the discount likely reflects
   // deteriorating fundamentals — so we drop the "historically attractive entry
-  // zone" claim (and its Strong tag) rather than cheerlead it. FH < 50 is the
+  // zone" claim rather than cheerlead it. FH < 50 is the
   // same "stressed" line the Verdict card uses for its financial-health sentence.
   // A free viewer has no Financial Health at all — which lands on the same branch as
   // a withheld score, exactly as intended above (withheld ⇒ don't cheerlead).
@@ -102,7 +101,7 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
     out.push(`Analyst consensus is Strong Buy, mean target ${fmtPrice(f.analystTargetPrice, currency)}`);
 
   // Fallback when no genuine strength fired: a factual, non-asserting line (it never
-  // claims a metric is good, so it can't contradict a Key Risk) — and never tagged Strong.
+  // claims a metric is good, so it can't contradict a Key Risk).
   const usedFallback = out.length === 0;
   if (usedFallback)
     out.push(
@@ -111,7 +110,7 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
         : `Limited cycle history so far — the case rests on fundamentals rather than the dip pattern`,
     );
 
-  return out.slice(0, 6).map((text, i) => ({ text, strong: !usedFallback && i < 2 }));
+  return out.slice(0, 6).map((text) => ({ text }));
 }
 
 function riskInvalidation(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapshot): string | undefined {
@@ -165,7 +164,7 @@ function buildRisks(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapsho
     out.push(`Revenue growth of ${fmt(f.revenueGrowthYoy)}% is modest — multiple-compression risk`);
 
   // Genuine risks only. If none fired, show one tautological cycle caveat (never a
-  // metric claim → can't contradict Why Attractive); no Severe tag / no invalidation on it.
+  // metric claim → can't contradict Why Attractive); no invalidation on it.
   const hadGenuineRisk = out.length > 0;
   if (!hadGenuineRisk)
     out.push(`Cycle patterns are historical and may not repeat — treat the signal as a guide, not a guarantee`);
@@ -173,7 +172,6 @@ function buildRisks(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapsho
   const inv = hadGenuineRisk ? riskInvalidation(c, f) : undefined;
   return out.slice(0, 6).map((text, i) => ({
     text,
-    strong: hadGenuineRisk && i < 2,
     invalidation: i === 0 ? inv : undefined,
   }));
 }
@@ -194,19 +192,6 @@ function WarnIcon() {
       <path d="M8 6.5v3.2" />
       <circle cx="8" cy="11.6" r="0.6" fill={INK.neutral} stroke="none" />
     </svg>
-  );
-}
-
-function StrengthTag({ kind }: { kind: 'attr' | 'risk' }) {
-  const label = kind === 'attr' ? 'Strong' : 'Severe';
-  const tip =
-    kind === 'attr'
-      ? 'Strongest signal — one of the strongest supportive signals firing on this stock; heavily weighted in the Verdict above.'
-      : 'Most severe risk — one of the most material risks identified for this stock; reflected in the primary-risk line of the Verdict above.';
-  return (
-    <span className={`insight-strength is-${kind}`} title={tip}>
-      <span className="insight-strength-label">{label}</span>★★★
-    </span>
   );
 }
 
@@ -233,7 +218,6 @@ export function ThesisInsights({ cycle, fundamentals, currency, priceBars }: Pro
               <div className="insight-icon"><CheckIcon /></div>
               <div className="insight-text">
                 {b.text}
-                {b.strong && <StrengthTag kind="attr" />}
               </div>
             </div>
           ))}
@@ -256,7 +240,6 @@ export function ThesisInsights({ cycle, fundamentals, currency, priceBars }: Pro
               <div className="insight-icon"><WarnIcon /></div>
               <div className="insight-text">
                 {b.text}
-                {b.strong && <StrengthTag kind="risk" />}
                 {b.invalidation && (
                   <div className="insight-invalidation">
                     <span className="insight-invalidation-icon" aria-hidden="true">
