@@ -23,6 +23,7 @@ import {
   timeToMs,
 } from '@/lib/chartSync';
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
+import { CONFIDENCE_TIERS, HIGH_CONFIDENCE_FROM } from '@/lib/ratingDefinition';
 import type { CycleAnalysisFree, PriceBar } from '@/lib/types';
 
 type Mode = 'drawdown' | 'profit';
@@ -416,9 +417,14 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
           </div>
           <div
             className="stat-pill"
-            title="Cycle Events Count — The number of distinct drawdown or profit cycles identified in the full price history. More events means a larger sample size and higher confidence in the Typical and Bound levels. 10+ events is considered statistically reliable."
+            // ⚠️ "distinct cycles" until 2026-10-10, which they are not: each is a LOW
+            // POINT of the curve past the threshold, and one long fall holds several
+            // (Apple: 611 on Medium, about 173 separate falls). Owner: call them low points.
+            title={isDD
+              ? `Low points — how many times the drawdown curve bottomed out past this horizon's ${cycle.params.pullbackThreshold}% threshold across the full price history. One long fall can hold several. More low points means a larger sample behind the Typical and Bound levels; ${HIGH_CONFIDENCE_FROM}+ (about ${CONFIDENCE_TIERS[0].years} years) gives High confidence.`
+              : `High points — how many times the recovery curve peaked past this horizon's +${cycle.params.profitThreshold}% threshold across the full price history. One long rise can hold several. More high points means a larger sample behind the Typical and Bound levels.`}
           >
-            <div className="stat-pill-label">Events</div>
+            <div className="stat-pill-label">{isDD ? 'Low points' : 'High points'}</div>
             <div className="stat-pill-val">{eventsVal}</div>
           </div>
         </div>

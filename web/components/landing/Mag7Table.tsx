@@ -120,7 +120,7 @@ export function Mag7Table({ snapshot }: { snapshot: Mag7Snapshot }) {
               Lower Bound%
             </th>
             <th className="text-right" scope="col">
-              Pullbacks
+              Low points
             </th>
           </tr>
         </thead>

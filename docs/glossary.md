@@ -68,7 +68,9 @@
 
 **Cycle Params** — The three values that govern a Major Cycle run: pullback threshold, profit threshold, lookback bars. Set by user via presets or custom input.
 
-**Cycle Payoff Score** — A 0-100 sub-score for the Overall Rating (25% weight): 50% from the count of historical pivot events (calibration confidence) and 50% from the reward/risk ratio (typical profit ÷ |typical drawdown|). **Formerly called "Momentum Score"** — renamed in S3 because it contains no price-trend/momentum signal. Computed in `analytics/scoring/overall.py` (field `cycle_payoff_score`).
+**Confidence** — The tier on the Verdict card: how much history the Typical and Bound levels rest on, from the number of **low points** (`totalPullbackEvents`). High 125+ · Solid 60+ · Moderate 25+ · Limited below (about 10 / 5 / 2 years; `CONFIDENCE_TIERS` in `web/lib/ratingDefinition.ts`). It was 15 / 10 / 5 until 2026-10-10, which every stock passed, including one with 1.3 years of history.
+
+**Cycle Payoff Score** — A 0-100 sub-score for the Overall Rating (25% weight), two equal halves (owner, 2026-10-10). **History:** (low points + high points) ÷ `PAYOFF_FULL_EVENTS` (250 — every stock records ~25 a year, so about ten years). **Recovery Ratio** (see R) ÷ `PAYOFF_FULL_RATIO` (2.5). Each half capped at 100; the ratio half is 50 when a stock has no typical fall or rise. Until 2026-10-10 the history half was full at 20 events (every stock passed it inside a year, so it was a flat 50 for all) and the ratio was plain rise ÷ fall, full at 3, which scored crash-and-bounce stocks higher than steady ones. **Formerly called "Momentum Score"** — renamed in S3 because it contains no price-trend/momentum signal. Computed in `analytics/scoring/overall.py` (field `cycle_payoff_score`).
 
 ---
 
@@ -121,7 +123,7 @@
 
 ## F
 
-**FAIR** — Valuation Zone code when the current drawdown sits between 0.5×typical and -5% (a mild pullback). Replaces "WATCH". Shown to readers as **Shallow dip** since 2026-10-03 (owner-approved; the old name read as a verdict on valuation — beta review C-2/B-14/F-4). The stored code is unchanged.
+**FAIR** — Valuation Zone code when the current drawdown sits between 0.5×typical and the horizon's own pullback threshold (−3 Short, −5 Medium, −8 Long, the reader's on Custom — `shallow_edge`; a fixed −5 until 2026-10-10). Replaces "WATCH". Shown to readers as **Shallow dip** since 2026-10-03 (owner-approved; the old name read as a verdict on valuation — beta review C-2/B-14/F-4). The stored code is unchanged.
 
 **FCF Yield** — Free Cash Flow ÷ Market Cap × 100. A measure of how much cash a company generates relative to its market price. Higher = better.
 
@@ -182,6 +184,8 @@
 **Learn illustration** — One of the three wordless topic pictures on `/learn`, shipped at 1600 × 1000 (16:10). Generated on Gemini "Nano Banana Pro" at 4K; the 5056 × 3392 masters live in `reference/learn-masters/` (gitignored) and are **irreplaceable — the same prompt returns a different picture**. An earlier hand-authored SVG set was replaced on the same day because it was accurate and lifeless (see `design-system.md` §11). Rules that make them a set: **teal is always the share price, navy is always the company**, a navy-suited figure seen from behind appears in all three, and there is **no green, no red and no arrow anywhere** — the product tints a *deeper* fall green, so green-up/red-down would contradict the tool one click away, and an arrowhead is the grammar of a forecast this product refuses to make.
 
 **Lookback Bars** — The number of daily price bars used to compute "current" drawdown and profit. One of the three Cycle Params. 63 = ~3 months, 252 = ~1 year, 756 = ~3 years.
+
+**Low point / High point** — What the event counts actually count: each pivot low of the drawdown curve past the horizon's threshold (a **low point**) or pivot high of the recovery curve (a **high point**). One long fall holds several low points — Apple has 611 on Medium against about 173 separate falls — so reader-facing copy says *low points*, never *falls*, *cycles* or *events* (owner, 2026-10-10). Fields `total_pullback_events` / `total_profit_events`.
 
 **Lower Bound** — The deepest **confirmed** pullback event in the stock's history (`min` of the pivot-low drawdowns, computed over the *full* history — see the warmup note under Pivot). It is the deepest dip we've *confirmed*, not necessarily the deepest price ever touched: a sharp one-day spike that never satisfied the pivot confirmation, or the **current still-forming dip** (no right-side bars yet), can run *below* this line. That's why the live drawdown curve can pierce below the Lower Bound — intended behaviour. Feeds scoring only via Valuation's "drawdown ≤ Lower Bound → score 100" rule; it does **not** feed Cycle Payoff.
 
@@ -287,7 +291,7 @@
 
 **Reporting Currency** — The currency a company keeps its books in (`info['financialCurrency']`), governing revenue, EBITDA, debt, cash, EPS and every statement blob. **Not the same as the Share-Price Currency** (`info['currency']`), which governs the price, market cap and analyst targets: **79 of 863** stocks differ — BHP.AX prices in AUD and reports in USD; A2M.AX reports NZD; a third of the Canadian universe differs. Ask `statementCurrency(fundamentals)`, never `fundamentals.currency`. Any ratio mixing the two is withheld rather than published wrong (see `fcf_yield_pct` and the P/E-history chart). `reportingCurrencyNote()` states the difference in words on statement cards, because in `en-US` the US dollar is a bare `$` and "$15.7B" under "A$60.52" is unreadable. **Seven reporting currencies exist in the universe — USD, AUD, CAD, NZD, EUR, TWD, SGD** (all eleven price/report combinations are tabulated in `data-contracts.md`), and all seven were walked on the live site on 2026-08-06. Note that `Intl` gives SGD no short symbol in `en-US`, so Tuas reads `SGD 477M` rather than `S$477M` — correct, not a defect. See `data-contracts.md` and CLAUDE.md 14d.
 
-**Reward / Risk Ratio** — Typical Profit ÷ |Typical Drawdown|. Used in Cycle Payoff scoring. >1.5 = decent; 3.0 = max score.
+**Recovery Ratio** — How many fall-sized climbs the typical rise holds: `ln(1 + typical profit) ÷ ln(1 ÷ (1 + typical drawdown))` (`recovery_ratio()` in `analytics/scoring/overall.py`). A 50% fall then a 100% rise is 1.0, because that rise only gets back to the start. Full marks in Cycle Payoff at 2.5. Replaced the plain **Reward / Risk Ratio** (typical profit ÷ |typical drawdown|, full marks at 3) on 2026-10-10. Never shown to readers as a risk/reward figure: the two averages are measured from different starting points (a rolling high and a rolling low), so they do not describe one trade.
 
 **ROE (Return on Equity)** — Net Income ÷ Shareholder Equity × 100. How efficiently a company generates profit from its equity base.
 
@@ -329,7 +333,7 @@
 
 **Strong Customer Authentication (SCA) / 3-D Secure (3DS)** — A bank-required identity check on a card payment (a one-time code, fingerprint, or banking-app tap), mandatory mainly in the EU/UK. On an automatic renewal the customer isn't present to complete it, so Stripe fires `invoice.payment_action_required`; we treat that like a failed payment (dunning path — see Dunning). Uncommon for our AU/US/CA markets, handled defensively.
 
-**STRETCHED** — Valuation Zone code when the current drawdown is shallower than -5% (the stock is near its recent high). Replaces "HOLD" (the original valuation-zone HOLD, not the rating-tier HOLD). Shown to readers as **Near high** since 2026-10-03 (owner-approved; the old name read as a verdict on valuation — beta review C-2/B-14/F-4). The stored code is unchanged.
+**STRETCHED** — Valuation Zone code when the current drawdown is shallower than the horizon's own pullback threshold (the stock is near its recent high; a fixed −5 until 2026-10-10). Replaces "HOLD" (the original valuation-zone HOLD, not the rating-tier HOLD). Shown to readers as **Near high** since 2026-10-03 (owner-approved; the old name read as a verdict on valuation — beta review C-2/B-14/F-4). The stored code is unchanged.
 
 ---
 

@@ -50,7 +50,7 @@ class CycleAnalysis:
     valuation_score_raw: float        # un-gated cycle-position score
     quality_factor: Optional[float]   # gate multiplier applied (None if no FH to gate by)
     valuation_zone: ValuationZone
-    cycle_payoff_score: float         # signal-reliability + reward/risk (was "momentum")
+    cycle_payoff_score: float         # history + recovery ratio (was "momentum")
     overall_rating: int
     overall_label: OverallLabel
 
@@ -223,7 +223,9 @@ def analyze_ticker(
     if fundamentals is not None:
         fh_score, fh_subscores = score_financial_health(fundamentals)
 
-    valuation_zone, valuation_score_raw = calculate_valuation_zone(cycle)
+    valuation_zone, valuation_score_raw = calculate_valuation_zone(
+        cycle, shallow_edge=params.pullback_threshold
+    )
     valuation_score, quality_factor = apply_quality_gate(valuation_score_raw, fh_score)
 
     overall_rating, overall_label, cycle_payoff_score = calculate_overall_rating(

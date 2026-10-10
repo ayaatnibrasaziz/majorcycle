@@ -19,6 +19,7 @@
  */
 
 import { fmtCapped } from '@/lib/format';
+import { LIMITED_HISTORY_BELOW } from '@/lib/ratingDefinition';
 import type { CycleAnalysis, FundamentalsSnapshot } from '@/lib/types';
 
 export type HealthSubscores = CycleAnalysis['fhSubscores'];
@@ -121,8 +122,8 @@ export function topRisk(
     return 'current ratio below 1 — short-term liquidity pressure';
   if (f.peg != null && f.peg > 3)
     return `PEG of ${fmtCapped(f.peg, 25, 1)} — valuation stretched vs growth`;
-  if (pullbackEvents < 8)
-    return `only ${pullbackEvents} historical cycles — limited statistical confidence`;
+  if (pullbackEvents < LIMITED_HISTORY_BELOW)
+    return `only ${pullbackEvents} past low points in its record — limited history`;
   if (f.netMargin != null && f.netMargin < 0)
     return `loss-making — net margin of ${fmtCapped(f.netMargin, 300, 1)}%`;
   if (f.netMargin != null && f.netMargin < 5)

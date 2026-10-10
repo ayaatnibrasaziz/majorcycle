@@ -318,10 +318,10 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         )}
       </p>
       <p>
-        Its own history is what gives it meaning. Across{' '}
-        {LEARN_FIGURES.pullbackEvents.toLocaleString('en-AU')} separate falls of more
-        than {MEDIUM_FALL}% in its record, the average one ran to{' '}
-        <strong>{depth(LEARN_FIGURES.typicalDrawdownPct)}</strong>.{' '}
+        Its own history is what gives it meaning. Its record holds{' '}
+        {LEARN_FIGURES.pullbackEvents.toLocaleString('en-AU')} low points more than{' '}
+        {MEDIUM_FALL}% below a high, and on average they sat{' '}
+        <strong>{depth(LEARN_FIGURES.typicalDrawdownPct)}</strong>{' '}down.{' '}
         {TODAY_VS_TYPICAL.comparison} And at its worst, the share has fallen{' '}
         <strong>{depth(LEARN_FIGURES.deepestDrawdownPct)}</strong> from a high.
       </p>
@@ -1786,10 +1786,11 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
 
       <h3>Cycle Payoff — has that history been worth anything?</h3>
       <p>
-        Two things at once. How many complete falls and recoveries the company&rsquo;s
-        record actually contains — a company with a handful of cycles gives a more
-        reliable read than one with two. And how its typical recovery has compared
-        with its typical fall.
+        Two things at once. How much history the company&rsquo;s record contains: ten
+        years of falls and recoveries gives a firmer read than two. And how far its
+        typical recovery has gone past its typical fall, once the climb back to where
+        it started is taken out. A share that falls 50% and then rises 100% is only
+        back where it began, so that earns no extra credit.
       </p>
       <p>
         Despite the name, there is nothing about price momentum in it. It measures
@@ -1961,11 +1962,13 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         make an average; they do not make a pattern.
       </p>
       <p>
-        This is why the number of completed cycles matters as much as their size, and
-        why the chart puts it on screen as <strong>Events</strong>{' '}rather than
-        quietly averaging whatever is there. Fewer events is not a reason to ignore a
-        company — it is a reason to hold the reading more loosely, and it feeds
-        directly into how much weight the analysis gives that history.
+        This is why how much history a reading rests on matters as much as the sizes
+        in it, and why the chart puts the count on screen as{' '}
+        <strong>Low points</strong>{' '}— each time a fall bottomed out past the
+        horizon&rsquo;s threshold — rather than quietly averaging whatever is there. A
+        short record is not a reason to ignore a company. It is a reason to hold the
+        reading more loosely, and it feeds directly into the confidence the Verdict
+        shows and the weight the rating gives that history.
       </p>
 
       <h2>When the record is the wrong record</h2>
@@ -2192,7 +2195,7 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
           recovery, not its speed.
         </li>
         <li>
-          <strong>How many separate falls</strong>{' '}its record contains, which is
+          <strong>How many low points</strong>{' '}its record contains, which is
           how much weight any of it deserves.
         </li>
       </ul>
@@ -2454,8 +2457,8 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
       <p>
         There is a Verdict on every stock page, and it is worth being exact about
         what it is. It states where the price sits against this company&rsquo;s own
-        history of falls, how many past cycles that reading rests on, and the price
-        levels those cycles work out to. Every figure in it is back-solved from
+        history of falls, how many past low points that reading rests on, and the
+        price levels they work out to. Every figure in it is back-solved from
         measured history.
       </p>
       <p>

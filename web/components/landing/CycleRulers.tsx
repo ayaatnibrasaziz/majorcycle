@@ -141,7 +141,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
         ]}
         legend={[
           { colour: 'var(--brand-bright)', text: 'Where it is now' },
-          { colour: 'var(--series-reference-ink)', text: `Average of all ${falls} falls` },
+          { colour: 'var(--series-reference-ink)', text: `Average of its ${falls} low points` },
           { colour: 'var(--c-down-ink)', text: 'Deepest single fall on record' },
         ]}
       />
@@ -176,7 +176,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
         ]}
         legend={[
           { colour: 'var(--brand-bright)', text: 'Risen since its last low' },
-          { colour: 'var(--series-reference-ink)', text: `Average of all ${recoveries} recoveries` },
+          { colour: 'var(--series-reference-ink)', text: `Average of its ${recoveries} high points` },
           { colour: 'var(--c-up-ink)', text: 'Largest single recovery on record' },
         ]}
       />

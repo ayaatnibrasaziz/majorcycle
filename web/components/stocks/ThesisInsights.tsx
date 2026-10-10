@@ -11,6 +11,8 @@ import { fmtCapped, fmtPrice } from '@/lib/format';
 import { INK } from '@/lib/ink';
 import { quoteMatchesHistory } from '@/lib/quoteBasis';
 import { pillarIsWeak } from '@/lib/thesisText';
+import { shallowDipEdge } from '@/lib/ratings';
+import { CONFIDENCE_TIERS, HIGH_CONFIDENCE_FROM, LIMITED_HISTORY_BELOW } from '@/lib/ratingDefinition';
 
 interface Props {
   /**
@@ -62,9 +64,11 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
   // a withheld score, exactly as intended above (withheld ⇒ don't cheerlead).
   const fh = isFullCycle(c) ? c.financialHealthScore : null;
   const fhWeak = fh == null || fh < 50;
-  // `tdd <= -5` keeps this disjoint from the "near highs" risk (which needs dd > -5):
-  // a stock whose typical dip is itself < 5% never earns an "attractive entry zone" claim.
-  if (tdd != null && tdd <= -5 && dd <= tdd && !fhWeak)
+  // `tdd <= edge` keeps this disjoint from the "near highs" risk (which needs dd > edge):
+  // a stock whose typical dip is shallower than the horizon's own threshold never earns
+  // an "attractive entry zone" claim. The edge was a fixed −5 until 2026-10-10.
+  const edge = shallowDipEdge(c.params);
+  if (tdd != null && tdd <= edge && dd <= tdd && !fhWeak)
     out.push(`Trading at or below its historical average dip (${fmt(tdd)}%) — historically attractive entry zone`);
   // Never praise a figure from an area the scorecard beside it calls weak (beta review
   // B-7): "fortress balance sheet" sat under a Verdict blaming the balance sheet.
@@ -94,8 +98,9 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
     && ok('growth')
   )
     out.push(`PEG of ${fmt(f.peg, 2)} — growing faster than the valuation implies`);
-  if (c.totalPullbackEvents >= 10)
-    out.push(`${c.totalPullbackEvents} confirmed pullback events — a well-calibrated signal`);
+  // Confidence reads High from here (lib/ratingDefinition.ts), so the two agree.
+  if (c.totalPullbackEvents >= HIGH_CONFIDENCE_FROM)
+    out.push(`${c.totalPullbackEvents.toLocaleString('en-AU')} past low points in its record — a well-established pattern`);
   // ⚠️ The target is a QUOTE and every other price on this page comes from the price
   // HISTORY. `quoteMatchesHistory` is false only when a split has left the two on
   // different bases, in which case this line would print a target 3x the price shown
@@ -123,7 +128,7 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
 
 function riskInvalidation(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapshot): string | undefined {
   const dd = c.currentDrawdownPct;
-  if (dd > -5 && c.typicalDrawdown != null)
+  if (dd > shallowDipEdge(c.params) && c.typicalDrawdown != null)
     return `A pullback past ${fmt(c.typicalDrawdown)}% (the typical-dip level) would restore historical entry-zone characteristics.`;
   if (f.debtToEquity != null && f.debtToEquity >= 1.5)
     return `A reduction in D/E below 1.0 — via debt paydown or equity growth — would remove the rate-sensitivity flag.`;
@@ -133,8 +138,8 @@ function riskInvalidation(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsS
     return `A move in current ratio above 1.2 would clear the short-term liquidity pressure.`;
   if (f.peg != null && f.peg > 3)
     return `Either an acceleration in EPS growth or a meaningful multiple compression would restore a defensible PEG.`;
-  if (c.totalPullbackEvents < 8)
-    return `As more cycles accumulate (target: 10+ events), the band statistics tighten and confidence improves.`;
+  if (c.totalPullbackEvents < LIMITED_HISTORY_BELOW)
+    return `As more history accumulates (${HIGH_CONFIDENCE_FROM}+ low points, about ${CONFIDENCE_TIERS[0].years} years, for High confidence), the band statistics tighten.`;
   if (f.netMargin != null && f.netMargin < 0)
     return `A return to profitability (a positive net margin) would clear the loss-making concern.`;
   if (f.netMargin != null && f.netMargin < 5)
@@ -148,7 +153,7 @@ function buildRisks(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapsho
   const out: string[] = [];
   const dd = c.currentDrawdownPct;
 
-  if (dd > -5)
+  if (dd > shallowDipEdge(c.params))
     out.push(`Near ${c.params.lookbackBars}-day highs (drawdown ${fmt(dd)}%) — limited margin of safety`);
   if (f.debtToEquity != null && f.debtToEquity >= 1.5)
     out.push(`Elevated D/E of ${fmtCapped(f.debtToEquity, 25, 2)} — pressure if rates rise`);
@@ -158,8 +163,9 @@ function buildRisks(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapsho
     out.push(`Current ratio ${fmt(f.currentRatio, 2)} below 1.0 — liquidity concern`);
   if (f.peg != null && f.peg > 3)
     out.push(`PEG of ${fmtCapped(f.peg, 25, 2)} — valuation stretched vs growth`);
-  if (c.totalPullbackEvents < 8)
-    out.push(`Only ${c.totalPullbackEvents} pullback events — limited signal history`);
+  // The point where confidence reads Limited (lib/ratingDefinition.ts).
+  if (c.totalPullbackEvents < LIMITED_HISTORY_BELOW)
+    out.push(`Only ${c.totalPullbackEvents} past low points in its record — limited history`);
   // A loss is not a thin margin (beta review B-4: Moderna −141% read "thin").
   if (f.netMargin != null && f.netMargin < 0)
     out.push(`Loss-making — net margin of ${fmtCapped(f.netMargin, 300)}%`);

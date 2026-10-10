@@ -1,8 +1,15 @@
 """Unit tests for scoring modules — financial_health, valuation, overall."""
 
+import math
+
 from analytics.providers.base import FundamentalsSnapshot
 from analytics.scoring.financial_health import score_financial_health
-from analytics.scoring.overall import calculate_overall_rating
+from analytics.scoring.overall import (
+    PAYOFF_FULL_EVENTS,
+    PAYOFF_FULL_RATIO,
+    calculate_overall_rating,
+    recovery_ratio,
+)
 from analytics.scoring.valuation import (
     QUALITY_GATE_FLOOR,
     apply_quality_gate,
@@ -99,36 +106,57 @@ class TestScoreFinancialHealth:
 class TestCalculateValuationZone:
     def test_deep_value_when_at_typical_drawdown(self) -> None:
         cycle = {"current_drawdown_pct": -12.0, "typical_drawdown": -10.0, "lower_bound": -20.0}
-        zone, score = calculate_valuation_zone(cycle)
+        zone, score = calculate_valuation_zone(cycle, shallow_edge=-5.0)
         assert zone == "DEEP VALUE"
         assert score >= 70.0
 
     def test_value_zone(self) -> None:
         cycle = {"current_drawdown_pct": -6.0, "typical_drawdown": -10.0, "lower_bound": -20.0}
-        zone, score = calculate_valuation_zone(cycle)
+        zone, score = calculate_valuation_zone(cycle, shallow_edge=-5.0)
         assert zone == "VALUE"
         assert 40.0 <= score <= 70.0
 
     def test_fair_zone(self) -> None:
         cycle = {"current_drawdown_pct": -6.0, "typical_drawdown": None, "lower_bound": None}
-        zone, _score = calculate_valuation_zone(cycle)
+        zone, _score = calculate_valuation_zone(cycle, shallow_edge=-5.0)
         assert zone == "FAIR"
 
     def test_stretched_when_near_highs(self) -> None:
         cycle = {"current_drawdown_pct": -1.0, "typical_drawdown": -10.0, "lower_bound": -20.0}
-        zone, score = calculate_valuation_zone(cycle)
+        zone, score = calculate_valuation_zone(cycle, shallow_edge=-5.0)
         assert zone == "STRETCHED"
         assert score < 10.0
 
     def test_lower_bound_gives_max_score(self) -> None:
         cycle = {"current_drawdown_pct": -25.0, "typical_drawdown": -10.0, "lower_bound": -20.0}
-        _zone, score = calculate_valuation_zone(cycle)
+        _zone, score = calculate_valuation_zone(cycle, shallow_edge=-5.0)
         assert score == 100.0
 
     def test_missing_drawdown_returns_fair(self) -> None:
-        zone, score = calculate_valuation_zone({"current_drawdown_pct": None})
+        zone, score = calculate_valuation_zone({"current_drawdown_pct": None}, shallow_edge=-5.0)
         assert zone == "FAIR"
         assert score == 0.0
+
+
+    def test_shallow_dip_edge_follows_the_horizon(self) -> None:
+        # Owner, 2026-10-10: the Near high / Shallow dip edge is the horizon's own
+        # threshold, not a fixed -5. On Short (-3) a 4% dip is already a shallow dip...
+        cycle = {"current_drawdown_pct": -4.0, "typical_drawdown": -10.0, "lower_bound": -20.0}
+        assert calculate_valuation_zone(cycle, shallow_edge=-3.0)[0] == "FAIR"
+        assert calculate_valuation_zone(cycle, shallow_edge=-5.0)[0] == "STRETCHED"
+        # ...and on Long (-8) a 6% dip is still near the high.
+        cycle = {"current_drawdown_pct": -6.0, "typical_drawdown": -20.0, "lower_bound": -40.0}
+        assert calculate_valuation_zone(cycle, shallow_edge=-8.0)[0] == "STRETCHED"
+        assert calculate_valuation_zone(cycle, shallow_edge=-5.0)[0] == "FAIR"
+
+    def test_shallow_dip_score_is_continuous_at_the_edge(self) -> None:
+        # The FAIR band starts at 10 exactly on the edge and reaches 40 at half the
+        # typical fall, whichever edge the horizon sets.
+        for edge in (-3.0, -5.0, -8.0):
+            at_edge = {"current_drawdown_pct": edge, "typical_drawdown": -30.0, "lower_bound": -50.0}
+            at_half = {"current_drawdown_pct": -15.0, "typical_drawdown": -30.0, "lower_bound": -50.0}
+            assert calculate_valuation_zone(at_edge, shallow_edge=edge) == ("FAIR", 10.0)
+            assert calculate_valuation_zone(at_half, shallow_edge=edge)[1] == 40.0
 
 
 class TestQualityGate:
@@ -166,8 +194,8 @@ class TestQualityGate:
 class TestCalculateOverallRating:
     def test_high_conviction_when_all_high(self) -> None:
         cycle = {
-            "total_pullback_events": 15,
-            "total_profit_events": 15,
+            "total_pullback_events": 125,
+            "total_profit_events": 125,
             "typical_drawdown": -10.0,
             "typical_profit": 30.0,
         }
@@ -187,8 +215,10 @@ class TestCalculateOverallRating:
         assert label == "Bearish"
 
     def test_label_thresholds(self) -> None:
-        cycle: dict = {"total_pullback_events": 10, "total_profit_events": 10,
-                       "typical_drawdown": -10.0, "typical_profit": 15.0}
+        # A full Cycle Payoff (ten years of history, rises well past the falls), so the
+        # label is decided by the other two parts.
+        cycle: dict = {"total_pullback_events": 125, "total_profit_events": 125,
+                       "typical_drawdown": -10.0, "typical_profit": 30.0}
         pairs = [
             (90.0, 90.0, "High Conviction"),
             (70.0, 65.0, "Constructive"),
@@ -205,17 +235,53 @@ class TestCalculateOverallRating:
             "total_pullback_events": 10,
             "total_profit_events": 10,
             "typical_drawdown": -10.0,
-            "typical_profit": 30.0,   # R/R = 3.0 -> 100%
+            "typical_profit": 30.0,
         }
         cycle_bad_rr = {
             "total_pullback_events": 10,
             "total_profit_events": 10,
             "typical_drawdown": -10.0,
-            "typical_profit": 3.0,    # R/R = 0.3 -> 10%
+            "typical_profit": 3.0,
         }
         _, _, cp_good = calculate_overall_rating(70.0, 70.0, cycle_good_rr)
         _, _, cp_bad = calculate_overall_rating(70.0, 70.0, cycle_bad_rr)
         assert cp_good > cp_bad
+
+    def test_recovery_ratio_counts_fall_sized_climbs(self) -> None:
+        # A 50% fall then a 100% rise is back to the start: one climb, not "2x".
+        assert recovery_ratio(-50.0, 100.0) == 1.0
+        # Apple on Medium, 2026-10-07: -24.6% typical fall, +78.3% typical rise.
+        r = recovery_ratio(-24.6, 78.3)
+        assert r is not None and abs(r - 2.04) < 0.01
+        # Either side missing, or not a fall and a rise, is no reading at all.
+        for td, tp in ((None, 10.0), (-10.0, None), (0.0, 10.0), (-10.0, 0.0), (-100.0, 10.0)):
+            assert recovery_ratio(td, tp) is None
+
+    def test_payoff_full_marks_need_ten_years_and_a_real_recovery(self) -> None:
+        def payoff(events: int, td: float | None, tp: float | None) -> float:
+            cycle = {"total_pullback_events": events // 2, "total_profit_events": events - events // 2,
+                     "typical_drawdown": td, "typical_profit": tp}
+            return calculate_overall_rating(50.0, 50.0, cycle)[2]
+        # The history half: full at PAYOFF_FULL_EVENTS, half at half of it.
+        strong = math.exp(PAYOFF_FULL_RATIO * -math.log1p(-0.10)) * 100 - 100   # exactly 2.5 climbs
+        assert payoff(PAYOFF_FULL_EVENTS, -10.0, strong) == 100.0
+        assert payoff(PAYOFF_FULL_EVENTS // 2, -10.0, strong) == 75.0
+        assert payoff(PAYOFF_FULL_EVENTS * 4, -10.0, strong) == 100.0
+        # No typical fall or rise: the ratio half is a neutral 50, not a zero.
+        assert payoff(PAYOFF_FULL_EVENTS, None, None) == 75.0
+
+    def test_crash_and_bounce_scores_below_a_steady_recovery(self) -> None:
+        # Both have a plain rise/fall of 3.0, which gave both full marks until
+        # 2026-10-10. The steady one rises well past its falls; the speculative one's
+        # rise mostly just recovers a 40% crash.
+        steady = {"total_pullback_events": 125, "total_profit_events": 125,
+                  "typical_drawdown": -5.0, "typical_profit": 15.0}
+        crash = {"total_pullback_events": 125, "total_profit_events": 125,
+                 "typical_drawdown": -40.0, "typical_profit": 120.0}
+        _, _, cp_steady = calculate_overall_rating(50.0, 50.0, steady)
+        _, _, cp_crash = calculate_overall_rating(50.0, 50.0, crash)
+        assert cp_steady == 100.0
+        assert cp_crash < 85.0
 
     def test_rating_clamped_0_to_100(self) -> None:
         cycle: dict = {"total_pullback_events": 0, "total_profit_events": 0}

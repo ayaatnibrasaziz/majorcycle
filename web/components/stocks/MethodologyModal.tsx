@@ -8,7 +8,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { RATING_BANDS } from '@/lib/ratingDefinition';
+import {
+  CONFIDENCE_TIERS,
+  HIGH_CONFIDENCE_FROM,
+  PAYOFF_FULL_EVENTS,
+  PAYOFF_FULL_RATIO,
+  RATING_BANDS,
+} from '@/lib/ratingDefinition';
+import { PRESETS } from '@/lib/presets';
 import { RATING_WEIGHTS, ZONE_DISPLAY, ZONE_ORDER } from '@/lib/ratings';
 
 interface MethodologyModalProps {
@@ -148,7 +155,11 @@ export function MethodologyModal({ open, onOpenChange }: MethodologyModalProps) 
             <strong className="text-[var(--text-primary)]">cycle position</strong>{' '}
             — how deep today&apos;s drawdown is versus the stock&apos;s{' '}
             <em>typical</em> drawdown — shown as a zone:{' '}
-            <strong>{ZONE_ORDER.map((z) => ZONE_DISPLAY[z]).join(' · ')}</strong>. The score that
+            <strong>{ZONE_ORDER.map((z) => ZONE_DISPLAY[z]).join(' · ')}</strong>.{' '}
+            {ZONE_DISPLAY.STRETCHED} ends at the horizon&apos;s own fall threshold:{' '}
+            {Math.abs(PRESETS.short.pullbackThreshold)}% on Short,{' '}
+            {Math.abs(PRESETS.medium.pullbackThreshold)}% on Medium,{' '}
+            {Math.abs(PRESETS.long.pullbackThreshold)}% on Long, and yours on Custom. The score that
             feeds the Overall Rating is then scaled by company quality, so a
             cheap-but-weak business can&apos;t score as a bargain:
           </p>
@@ -163,13 +174,22 @@ Valuation score = raw cycle score × quality_factor`}</Formula>
           <p className="mb-2.5">
             <strong className="text-[var(--text-primary)]">Not a measure of
             current price trend.</strong>{' '}
-            It blends two things equally: how many
-            historical dip-then-recover cycles we&apos;ve observed (more cycles =
-            a more trustworthy pattern; around 10+ is reliable) and the
-            reward-vs-risk of those cycles:
+            It blends two things equally. How much history the pattern rests on:
+            full marks need {PAYOFF_FULL_EVENTS} low and high points past this
+            horizon&apos;s threshold, about ten years of trading. And how far the
+            typical recovery has gone past the typical fall, after allowing for
+            the climb back. A 50% fall followed by a 100% rise only gets back to
+            the start, so it counts as 1×, not 2×. Full marks need the typical
+            rise to hold {PAYOFF_FULL_RATIO} fall-sized climbs:
           </p>
-          <Formula>{`signal reliability  = how many historical cycles detected
-reward vs risk      = typical profit ÷ |typical drawdown|`}</Formula>
+          <Formula>{`history          = (low points + high points) ÷ ${PAYOFF_FULL_EVENTS}
+rise past fall   = ln(1 + typical rise) ÷ ln(1 ÷ (1 + typical fall))
+                   full marks at ${PAYOFF_FULL_RATIO}
+Cycle Payoff     = average of the two, each capped at 100`}</Formula>
+          <p className="mb-2.5">
+            The confidence shown on the Verdict reads the same history: High
+            from {HIGH_CONFIDENCE_FROM} low points, about {CONFIDENCE_TIERS[0].years} years.
+          </p>
           <p className="mb-2.5">
             To see the actual shape and{' '}
             <strong className="text-[var(--text-primary)]">timing</strong> of

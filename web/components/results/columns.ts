@@ -190,13 +190,13 @@ export const FIELDS: Field[] = [
 
   // Major Cycle
   { key: 'currentDD', label: 'Current DD%', tip: 'Current Drawdown %|How far the stock is below its recent peak right now.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.currentDrawdownPct, filterable: true },
-  { key: 'typicalDD', label: 'Typical DD%', tip: 'Typical Drawdown %|The average dip depth across the stock’s confirmed historical pullbacks.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.typicalDrawdown, filterable: true },
+  { key: 'typicalDD', label: 'Typical DD%', tip: 'Typical Drawdown %|The average depth of the stock’s past low points below this horizon’s threshold.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.typicalDrawdown, filterable: true },
   { key: 'lowerBound', label: 'Lower Bound%', tip: 'Lower Bound %|The deepest confirmed fall in this stock’s whole history — the worst it has been, not a typical outcome. A still-forming dip can run below it.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.lowerBound, filterable: true },
-  { key: 'pullbacks', label: 'Pullbacks', tip: 'Pullbacks|Number of confirmed pullback events found in the price history — more events = a more reliable typical-dip estimate.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'int', align: 'right', get: (r) => r.totalPullbackEvents, filterable: true },
+  { key: 'pullbacks', label: 'Low points', tip: 'Low points|How many times the drawdown curve bottomed out past this horizon’s threshold. One long fall can hold several. More low points = a more reliable typical-dip estimate.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'int', align: 'right', get: (r) => r.totalPullbackEvents, filterable: true },
   { key: 'currentProfit', label: 'Current Profit%', tip: 'Current Profit %|How far the stock is above its recent trough right now.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', tint: 'positive', get: (r) => r.currentProfitPct, filterable: true },
-  { key: 'typicalProfit', label: 'Typical Profit%', tip: 'Typical Profit %|The average recovery size across the stock’s confirmed historical rallies.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.typicalProfit, filterable: true },
+  { key: 'typicalProfit', label: 'Typical Profit%', tip: 'Typical Profit %|The average height of the stock’s past high points above this horizon’s threshold.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.typicalProfit, filterable: true },
   { key: 'upperBound', label: 'Upper Bound%', tip: 'Upper Bound %|The largest confirmed recovery in this stock’s whole history — a single best case, not a target. A still-forming rally can run above it.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', tint: 'positive', get: (r) => r.upperBound, filterable: true },
-  { key: 'rallies', label: 'Rallies', tip: 'Rallies|Number of confirmed recovery events found in the price history.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'int', align: 'right', get: (r) => r.totalProfitEvents, filterable: true },
+  { key: 'rallies', label: 'High points', tip: 'High points|How many times the recovery curve peaked past this horizon’s threshold. One long rise can hold several.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'int', align: 'right', get: (r) => r.totalProfitEvents, filterable: true },
 
   // Valuation Ratios
   { key: 'pe', label: 'P/E', tip: 'Price / Earnings|Share price ÷ earnings per share (trailing). Lower = cheaper relative to earnings.', type: 'numeric', band: 'ratios', cell: 'default', fmt: 'mult1', cap: 150, align: 'right', get: (r) => f(r)?.pe ?? null, filterable: true },
@@ -287,11 +287,11 @@ export const CSV_COLUMNS: ReadonlyArray<{
   { header: 'Current Drawdown %', get: (r) => r.currentDrawdownPct, xf: 'num2' },
   { header: 'Typical Drawdown %', get: (r) => r.typicalDrawdown, xf: 'num2' },
   { header: 'Lower Bound %', get: (r) => r.lowerBound, xf: 'num2' },
-  { header: 'Pullback Events', get: (r) => r.totalPullbackEvents, xf: 'int' },
+  { header: 'Low Points', get: (r) => r.totalPullbackEvents, xf: 'int' },
   { header: 'Current Profit %', get: (r) => r.currentProfitPct, xf: 'num2' },
   { header: 'Typical Profit %', get: (r) => r.typicalProfit, xf: 'num2' },
   { header: 'Upper Bound %', get: (r) => r.upperBound, xf: 'num2' },
-  { header: 'Rally Events', get: (r) => r.totalProfitEvents, xf: 'int' },
+  { header: 'High Points', get: (r) => r.totalProfitEvents, xf: 'int' },
   { header: 'P/E', get: (r) => r.fundamentals?.pe ?? null, xf: 'num2' },
   { header: 'PEG', get: (r) => r.fundamentals?.peg ?? null, xf: 'num2' },
   { header: 'ROE %', get: (r) => r.fundamentals?.roe ?? null, xf: 'num2' },

@@ -167,6 +167,18 @@ export const ZONE_DISPLAY: Record<ValuationZone, string> = {
   STRETCHED: 'Near high',
 };
 
+/**
+ * Where "Near high" ends and "Shallow dip" begins: the horizon's own pullback threshold
+ * (owner, 2026-10-10) — −3 on Short, −5 on Medium, −8 on Long, the reader's on Custom.
+ * The zone itself is decided in Python (`calculate_valuation_zone`, `shallow_edge`) and
+ * is a premium field, so a free viewer never receives it; the stock page's near-high
+ * wording reads this instead, so it agrees with the zone for every viewer. It was a
+ * hard-coded −5 in both places until then.
+ */
+export function shallowDipEdge(params: { pullbackThreshold: number }): number {
+  return Math.min(params.pullbackThreshold, 0);
+}
+
 /** Deepest fall first — the order the zones are listed and offered in. */
 export const ZONE_ORDER: readonly ValuationZone[] = ['DEEP VALUE', 'VALUE', 'FAIR', 'STRETCHED'];
 

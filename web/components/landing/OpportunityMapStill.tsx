@@ -66,12 +66,16 @@ const diameter = (overall: number): number =>
  * on the map, so nothing sits beyond it. The guard found it in 20 seconds; a
  * screenshot would not have, and neither did I when I predicted the collision but
  * guessed the wrong pair (I expected Apple ↔ Amazon).
+ *
+ * ⚠️ **A THIRD time, 2026-10-10** (re-scored on the 9 Oct data): Apple and Microsoft
+ * landed 0.7 Health points apart at the same Valuation (4.1), so their right-hand
+ * labels sat on top of each other. Apple now hangs left.
  */
 const SIDE: Record<string, 'l' | 'r' | 'u' | 'd'> = {
   GOOGL: 'r',
   META: 'l',
   MSFT: 'r',
-  AAPL: 'r',
+  AAPL: 'l',
   NVDA: 'r',
   TSLA: 'r',
   AMZN: 'u',

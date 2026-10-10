@@ -3,8 +3,19 @@ import { join } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
-import { RATING_BANDS, RATING_PARTS, RATING_SUMMARY } from '../lib/ratingDefinition';
-import { RATING_WEIGHTS, tierFromScore } from '../lib/ratings';
+import {
+  CONFIDENCE_TIERS,
+  CONFIDENCE_TIERS_TEXT,
+  HIGH_CONFIDENCE_FROM,
+  LIMITED_HISTORY_BELOW,
+  PAYOFF_FULL_EVENTS,
+  PAYOFF_FULL_RATIO,
+  RATING_BANDS,
+  RATING_PARTS,
+  RATING_SUMMARY,
+  confidenceTier,
+} from '../lib/ratingDefinition';
+import { RATING_WEIGHTS, shallowDipEdge, tierFromScore } from '../lib/ratings';
 
 /**
  * The Overall Rating is described ONE way everywhere (owner, 2026-10-03; beta review
@@ -60,4 +71,47 @@ test('no surface keeps its own wording of the rating', () => {
   };
   for (const root of ['components', 'app', 'lib']) walk(root);
   expect(offenders).toEqual([]);
+});
+
+test('the Cycle Payoff numbers the explanations state are the scorer’s', () => {
+  // Owner, 2026-10-10. The "How we rate" window prints both; the scorer uses both.
+  const py = readFileSync(join('..', 'analytics', 'scoring', 'overall.py'), 'utf8');
+  const n = (k: string) => Number(new RegExp(`^${k}\\s*=\\s*([\\d.]+)`, 'm').exec(py)?.[1]);
+  expect(n('PAYOFF_FULL_EVENTS')).toBe(PAYOFF_FULL_EVENTS);
+  expect(n('PAYOFF_FULL_RATIO')).toBe(PAYOFF_FULL_RATIO);
+  // Control: the read is value-sensitive rather than merely finding a number.
+  expect(n('PAYOFF_FULL_EVENTS')).not.toBe(PAYOFF_FULL_EVENTS + 1);
+});
+
+test('confidence tiers: the boundaries, and the sentence that states them', () => {
+  // Owner, 2026-10-10: 125 / 60 / 25 low points (about 10 / 5 / 2 years).
+  expect(CONFIDENCE_TIERS.map((t) => t.min)).toEqual([125, 60, 25, 0]);
+  for (const [i, t] of CONFIDENCE_TIERS.entries()) {
+    expect(confidenceTier(t.min), `${t.name} at ${t.min}`).toBe(t.name);
+    if (t.min > 0) expect(confidenceTier(t.min - 1), `just below ${t.name}`).toBe(CONFIDENCE_TIERS[i + 1]!.name);
+  }
+  expect(HIGH_CONFIDENCE_FROM).toBe(125);
+  expect(LIMITED_HISTORY_BELOW).toBe(25);
+  expect(CONFIDENCE_TIERS_TEXT).toBe(
+    '125+ (about 10 years) = High · 60–124 = Solid · 25–59 = Moderate · under 25 = Limited',
+  );
+});
+
+test('the near-high edge is the horizon’s own threshold, in both languages', () => {
+  // Owner, 2026-10-10: Near high ends at -3 on Short, -5 on Medium, -8 on Long.
+  expect(shallowDipEdge({ pullbackThreshold: -3 })).toBe(-3);
+  expect(shallowDipEdge({ pullbackThreshold: -8 })).toBe(-8);
+  expect(shallowDipEdge({ pullbackThreshold: 2 })).toBe(0);
+  // The scorer decides the zone; it must be handed the horizon's threshold.
+  const py = readFileSync(join('..', 'analytics', 'major_cycle.py'), 'utf8');
+  expect(py).toContain('shallow_edge=params.pullback_threshold');
+  // And no stock-page wording may go back to a fixed -5 (it did until 2026-10-10).
+  const strip = (f: string) =>
+    readFileSync(f, 'utf8')
+      .split('\n')
+      .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+      .join('\n');
+  for (const f of ['components/stocks/ThesisInsights.tsx', 'components/stocks/VerdictCard.tsx', 'lib/thesisText.ts']) {
+    expect(strip(f), f).not.toMatch(/(dd|tdd)\s*[<>]=?\s*-5\b/);
+  }
 });

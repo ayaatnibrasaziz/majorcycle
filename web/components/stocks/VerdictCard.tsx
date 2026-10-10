@@ -4,7 +4,7 @@ import { fmtPrice } from '@/lib/format';
 import { OVERALL_LABELS, RATING_TIER_HEX, tierFromLabel } from '@/lib/ratings';
 import { healthSentence, topRisk } from '@/lib/thesisText';
 import { tickerToUrlParts } from '@/lib/ticker';
-import { RATING_SUMMARY } from '@/lib/ratingDefinition';
+import { CONFIDENCE_TIERS_TEXT, RATING_SUMMARY, confidenceTier } from '@/lib/ratingDefinition';
 
 interface Props {
   cycle: CycleAnalysis;
@@ -53,13 +53,6 @@ function fmt(n: number, decimals = 1): string {
   return n.toFixed(decimals);
 }
 
-function confidenceTier(ev: number): string {
-  if (ev >= 15) return 'High confidence';
-  if (ev >= 10) return 'Solid confidence';
-  if (ev >= 5)  return 'Moderate confidence';
-  return 'Limited confidence';
-}
-
 // Mirror of reference buildVerdict sentence 1 logic — zone-aware narrative.
 // Maps our ValuationZone labels to the original STRONG BUY/BUY/WATCH/HOLD narrative.
 function sentence1(
@@ -73,9 +66,9 @@ function sentence1(
   const tddAbs = typicalDrawdown != null ? fmt(Math.abs(typicalDrawdown), 1) : '—';
   const ev     = pullbackEvents;
   if (zone === 'DEEP VALUE')
-    return `Trading ${ddAbs}% below its ${lookbackBars}-day peak — beyond the ${tddAbs}% typical pullback seen across ${ev} prior cycles, a historically rich entry zone.`;
+    return `Trading ${ddAbs}% below its ${lookbackBars}-day peak — beyond its ${tddAbs}% typical pullback, the average of ${ev} past low points, a historically rich entry zone.`;
   if (zone === 'VALUE')
-    return `Down ${ddAbs}% from the recent peak, approaching the ${tddAbs}% level where past cycles have found support across ${ev} pullback events.`;
+    return `Down ${ddAbs}% from the recent peak, approaching the ${tddAbs}% level where its ${ev} past low points have typically bottomed.`;
   if (zone === 'FAIR')
     return `Off ${ddAbs}% from highs but still above the ${tddAbs}% typical dip — early in the cycle, with more downside historically available.`;
   return `Trading near its ${lookbackBars}-day highs (${ddAbs}% off peak) — limited cycle-based margin of safety against the ${tddAbs}% typical pullback.`;
@@ -287,10 +280,10 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
           <div className="verdict-label">{overallLabel}</div>
           <div
             className="verdict-confidence"
-            title="Confidence Tier — Derived from the number of distinct historical drawdown cycles detected. More cycles = larger statistical sample = higher confidence in the Typical and Bound levels. 15+ = High · 10–14 = Solid · 5–9 = Moderate · <5 = Limited."
+            title={`Confidence — how much history the Typical and Bound levels rest on, counted in low points past this horizon's threshold. ${CONFIDENCE_TIERS_TEXT}.`}
           >
             <span className="verdict-confidence-dot" />
-            {confidenceTier(totalPullbackEvents)} · {totalPullbackEvents} cycles
+            {confidenceTier(totalPullbackEvents)} confidence · {totalPullbackEvents.toLocaleString('en-AU')} low points
           </div>
         </div>
 
@@ -324,7 +317,7 @@ export function VerdictCard({ cycle, fundamentals, currency }: Props) {
 
       <div className="verdict-footnote">
         <span>
-          Levels derived from {totalPullbackEvents} historical pullback cycles
+          Levels derived from {totalPullbackEvents.toLocaleString('en-AU')} past low points
           {' · '}peak {fmtPrice(peak, currency)}
         </span>
         <span className="verdict-footnote-divider" />

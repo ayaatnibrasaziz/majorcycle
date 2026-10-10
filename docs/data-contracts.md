@@ -340,7 +340,7 @@ class CycleAnalysis:
     valuation_score_raw: float              # un-gated cycle-position score
     quality_factor: Optional[float]         # gate multiplier (None if no FH to gate by)
     valuation_zone: Literal["DEEP VALUE", "VALUE", "FAIR", "STRETCHED"]
-    cycle_payoff_score: float               # signal-reliability + reward/risk (was "momentum_score")
+    cycle_payoff_score: float               # history (÷250 events) + recovery ratio (÷2.5) — was "momentum_score"
     overall_rating: int                     # 0–100, rounded
     overall_label: Literal[
         "High Conviction", "Constructive", "Neutral", "Cautious", "Bearish"
@@ -513,7 +513,7 @@ export interface CycleAnalysis extends CycleAnalysisFree {
   valuationScoreRaw: number; // un-gated cycle-position score
   qualityFactor: number | null; // gate multiplier (null if no FH to gate by)
   valuationZone: ValuationZone;
-  cyclePayoffScore: number; // signal-reliability + reward/risk (was "momentumScore")
+  cyclePayoffScore: number; // history (÷250 events) + recovery ratio (÷2.5) — was "momentumScore"
   overallRating: number;
   overallLabel: OverallLabel;
 
