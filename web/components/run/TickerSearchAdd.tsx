@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 
 import type { Market } from '@/lib/types';
 import { marketLabel, tickerToUrlParts } from '@/lib/ticker';
+import { adoptEarlyInput } from '@/lib/useHydrated';
 import { cn } from '@/lib/utils';
 
 // "Search & add" — type a ticker or company name, pick from autocomplete to add
@@ -114,6 +115,7 @@ export function TickerSearchAdd({
         <input
           type="text"
           value={query}
+          ref={adoptEarlyInput(query, setQuery)}
           onChange={(e) => {
             const v = e.target.value;
             setQuery(v);

@@ -141,6 +141,48 @@ test('every form that submits in the browser waits for the page to be ready', ()
 });
 
 /**
+ * 2026-10-11 — the same defect in a SEARCH box, which the forms rule above cannot see
+ * (a live search has no submit). The cross-browser run caught `/request`: "PLSE" typed
+ * before hydration sat in the box and no search ever ran. So every text box whose value
+ * React controls must adopt early typing, derived from the source like the rule above.
+ * Exempt: read-only boxes (nobody types there), and boxes that only exist after a click,
+ * by which time React owns the page — named, and the exemption must still match.
+ */
+test('every text box React controls keeps what was typed before the page was ready', () => {
+  const root = join(__dirname, '..');
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (p.endsWith('.tsx') && !p.includes('dev-fixtures')) files.push(p);
+    }
+  };
+  walk(join(root, 'app'));
+  walk(join(root, 'components'));
+  // Rendered only once the reader has pressed "+ Add filter".
+  const AFTER_A_CLICK = ['components/results/AdvancedFilters.tsx'];
+
+  const boxes: { at: string; ok: boolean }[] = [];
+  for (const p of files) {
+    const src = readFileSync(p, 'utf8');
+    for (const m of src.matchAll(/<(input|Input|textarea)\b[\s\S]*?\/>/g)) {
+      const el = m[0];
+      if (!/\bvalue=\{/.test(el) || /\breadOnly\b/.test(el)) continue;
+      if (/type="(checkbox|radio|file|hidden|range|number)"/.test(el)) continue;
+      const rel = relative(root, p).replace(/\\/g, '/');
+      const line = src.slice(0, m.index).split('\n').length;
+      boxes.push({ at: `${rel}:${line}`, ok: /adoptEarlyInput\(/.test(el) || AFTER_A_CLICK.includes(rel) });
+    }
+  }
+  expect(boxes.length, 'found no text boxes — the walk is broken').toBeGreaterThanOrEqual(15);
+  expect(boxes.filter((b) => !b.ok).map((b) => b.at)).toEqual([]);
+  for (const f of AFTER_A_CLICK) {
+    expect(boxes.some((b) => b.at.startsWith(`${f}:`)), `${f} is exempt but holds no text box`).toBe(true);
+  }
+});
+
+/**
  * (ii) A `<select>` whose state has no matching option shows its first option and reads
  * `''`, and adopting that blank lit Save on an untouched page and would have erased the
  * saved country (checkout saves the edge country as-is; `XK` is not in `COUNTRIES`).

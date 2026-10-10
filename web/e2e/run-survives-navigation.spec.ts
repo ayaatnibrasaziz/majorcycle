@@ -63,9 +63,35 @@ test.describe('a screen in progress', () => {
     await expect(page.locator('.results-table tbody tr')).toHaveCount(5, { timeout: 30_000 });
   });
 
-  test('the browser asks before a reload ends a run, and only then', async ({ page }) => {
+  test('the browser asks before a reload ends a run, and only then', async ({ page, browserName }) => {
     await signInAs(page, user.email, user.password);
     await page.goto('/run');
+
+    /* ⚠️ Firefox under Playwright never DRAWS the leave prompt — not on a reload and
+       not on `page.close({ runBeforeUnload: true })`, Playwright's own route — although
+       the page has been clicked and the handler cancels the event (measured
+       2026-10-11; Chromium shows the prompt in the same probe). So in Firefox the
+       spec asks the page itself: does a leave get cancelled now? Same claim, same
+       control, one step short of the browser's own dialog. */
+    if (browserName === 'firefox') {
+      const asks = () =>
+        page.evaluate(() => {
+          const e = new Event('beforeunload', { cancelable: true });
+          window.dispatchEvent(e);
+          return e.defaultPrevented;
+        });
+      expect(await asks(), 'CONTROL: nothing running, nothing asked').toBe(false);
+      await startRun(page, LONG);
+      expect(await asks()).toBe(true);
+      await go(page, '/learn');
+      await expect(page).toHaveURL(/\/learn$/);
+      expect(await asks(), 'still asks on a public page mid-run').toBe(true);
+      await go(page, '/run');
+      await page.getByRole('button', { name: 'Cancel' }).click();
+      await expect.poll(asks, { message: 'stops asking once the run is cancelled' }).toBe(false);
+      return;
+    }
+
     const dialogs: string[] = [];
     page.on('dialog', async (d) => {
       dialogs.push(d.type());

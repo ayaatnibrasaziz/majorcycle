@@ -2918,8 +2918,11 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
   position: fixed; left: 12px; top: -60px; z-index: 1000;
   padding: 8px 12px; border-radius: var(--radius-sm);
   background: var(--brand-deep); color: #fff; font: 700 12px 'Sora', sans-serif;
-  text-decoration: none; transition: top .12s;
+  text-decoration: none;
 }
+/* No slide, either way (2026-10-11). Sliding OUT took 0.12s on top of the logo, the
+   control that takes focus next, so the reader's focus sat under it; sliding IN left
+   the focused link off screen for the same 0.12s (both WCAG 2.4.11). */
 .skip-link:focus { top: 12px; outline: 2px solid var(--brand-bright); outline-offset: 2px; }
 
 /* The failed-payment banner at the top of every signed-in page (components/PaymentBanner).

@@ -6,6 +6,7 @@ import { ChevronDown, Download, FileSpreadsheet, FileText, Search, SlidersHorizo
 import { OVERALL_LABELS } from '@/lib/ratings';
 import { marketLabel } from '@/lib/ticker';
 import type { Market, OverallLabel } from '@/lib/types';
+import { adoptEarlyInput } from '@/lib/useHydrated';
 import { FIELD_BY_KEY, VIEW_MODES, VIEW_MODE_LABELS, columnsForBand, type ViewMode } from './columns';
 import { onlyTier, shownTiers, type FilterState } from './filters';
 
@@ -90,6 +91,7 @@ export function ResultsToolbar({
           type="text"
           placeholder="Search ticker or company…"
           value={filter.query}
+          ref={adoptEarlyInput(filter.query, (query) => patch({ query }))}
           onChange={(e) => patch({ query: e.target.value })}
           aria-label="Search results"
         />

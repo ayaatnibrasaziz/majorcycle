@@ -13,6 +13,7 @@ import { fmtCompact } from '@/lib/format';
 import { useNumberDraft } from '@/lib/numberDraft';
 import { boundError, CUSTOM_PARAM_BOUNDS } from '@/lib/presets';
 import { matchesQuery, matchStrength } from '@/lib/stockSearch';
+import { adoptEarlyInput } from '@/lib/useHydrated';
 import { cn } from '@/lib/utils';
 
 // Rows painted per step. ⚠️ Beta review E-2: this was a hard cap with no way past
@@ -410,6 +411,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
           <input
             type="text"
             value={query}
+            ref={adoptEarlyInput(query, search)}
             onChange={(e) => search(e.target.value)}
             placeholder="Search ticker or company…"
             aria-label="Search by ticker or company name"

@@ -64,16 +64,20 @@ test('a failed ticker request reads as a failure, not a success', async ({ page 
   await expect(note).toContainText('could not check that listing');
 });
 
-test('the first Tab on a page reaches "Skip to main content", and it works', async ({ page }) => {
+test('the first Tab on a page reaches "Skip to main content", and it works', async ({ page, browserName }) => {
+  // This WebKit build cannot Tab to a link at all (not even Option+Tab, measured
+  // 2026-10-11), so Safari is checked the way the focus walks check it (`modeFor` in
+  // e2e/lib/focusRing.ts): focus the link directly, then the same assertions.
+  const reach = () => (browserName === 'webkit' ? skip.focus() : page.keyboard.press('Tab'));
   await page.goto('/pricing');
   await expect(page.locator('main')).toBeVisible();
   const skip = page.getByRole('link', { name: 'Skip to main content' });
   // CONTROL: until it is focused it is off screen, so a mouse reader never sees it.
   const hidden = await skip.boundingBox();
   expect(hidden && hidden.y + hidden.height <= 0, 'off screen until focused').toBe(true);
-  await page.keyboard.press('Tab');
+  await reach();
   await expect(skip).toBeFocused();
-  // It slides in over 0.12s, so wait for it to arrive rather than reading mid-slide.
+  // Polled rather than read once: a layout can settle a frame after focus moves.
   await expect
     .poll(async () => ((await skip.boundingBox())?.y ?? -1) >= 0, { message: 'the focused link is on screen' })
     .toBe(true);

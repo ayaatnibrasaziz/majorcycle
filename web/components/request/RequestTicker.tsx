@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AlertCircle, Search, Plus, Check, Clock, Loader2, X } from 'lucide-react';
 
 import { marketLabel, tickerToPath, tickerToUrlParts } from '@/lib/ticker';
+import { adoptEarlyInput } from '@/lib/useHydrated';
 import type { ListingHit, RequestStatus, TickerRequest } from '@/lib/types';
 
 // "Request a Ticker" — choose-only search over the full US/AU/CA listings menu.
@@ -137,6 +138,7 @@ export function RequestTicker({ initialRecent }: { initialRecent: TickerRequest[
           <input
             type="text"
             value={query}
+            ref={adoptEarlyInput(query, setQuery)}
             onChange={(e) => {
               const v = e.target.value;
               setQuery(v);
