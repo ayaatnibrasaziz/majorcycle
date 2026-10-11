@@ -5,7 +5,7 @@ import { LoginForm } from './LoginForm';
 // noindex (crawlable) — a sign-in form is not a search result. See lib/seo.ts.
 export const metadata: Metadata = pageMetadata({
   path: '/login',
-  title: 'Sign In',
+  title: 'Sign in',
   description: 'Sign in to your MajorCycle account.',
 });
 

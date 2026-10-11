@@ -673,7 +673,22 @@ def _load_fundamentals(
     return _row_to_fundamentals(row)
 
 
-_FUNDAMENTALS_COLUMNS = "ticker,market,currency,fundamentals"
+_FUNDAMENTALS_COLUMNS = "ticker,market,currency,fundamentals,is_active"
+
+
+def _is_retired(row: dict[str, Any] | None) -> bool:
+    """True only for a company the staleness sweep has marked as no longer trading.
+
+    ⚠️ Beta review C-4 (2026-09-28). The index presets never offer a retired stock
+    (`lib/universe.server.ts` filters `is_active`), but an UPLOADED list reaches this
+    endpoint with any ticker it likes, and this function used to score whatever was
+    in `stocks`: AOF.AX came back "70 Constructive", measured on a price frozen on the
+    day it stopped trading. A retired stock now goes to `unavailable`, where the
+    Results strip names it as no longer trading. Only an explicit `False` counts — a
+    row read without the column, or a NULL, is treated as trading, so this can never
+    empty a screen by itself.
+    """
+    return row is not None and row.get("is_active") is False
 
 
 def _load_fundamentals_batch(sb: Client, tickers: list[str]) -> dict[str, dict[str, Any]] | None:
@@ -916,6 +931,8 @@ def run_analysis(body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
                     row, fundamentals = _load_fundamentals(sb, ticker)
                 if row is None:
                     return ticker, None  # not in universe
+                if _is_retired(row):
+                    return ticker, None  # no longer trades — never rated
                 df = _load_price_bars(sb, ticker, page_workers)
                 if df is None or df.empty:
                     return ticker, None

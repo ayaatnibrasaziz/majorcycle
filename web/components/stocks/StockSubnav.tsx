@@ -53,6 +53,9 @@ export function StockSubnav({
   const [methodologyOpen, setMethodologyOpen] = useState(false);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // Shown beside the button when a download fails — it used to be a browser pop-up,
+  // which blocks the page and looks like the site broke (beta review B-35).
+  const [downloadError, setDownloadError] = useState(false);
 
   /**
    * Warm the static offline bundle (~1.3 MB, same for every stock) so a later
@@ -112,6 +115,7 @@ export function StockSubnav({
   async function handleDownload() {
     if (downloading) return;
     setDownloading(true);
+    setDownloadError(false);
     try {
       await downloadInteractiveReport({
         market,
@@ -123,9 +127,7 @@ export function StockSubnav({
     } catch {
       // Non-technical owner safety net: never fail silently. The report bundle
       // or data fetch failed — tell the user plainly rather than doing nothing.
-      window.alert(
-        'Sorry — the report could not be prepared just now. Please try again in a moment.',
-      );
+      setDownloadError(true);
     } finally {
       setDownloading(false);
     }
@@ -186,7 +188,12 @@ export function StockSubnav({
           })}
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="relative flex items-center gap-2 flex-shrink-0">
+          {downloadError && (
+            <p role="alert" className="report-error">
+              The report couldn&apos;t be prepared just now. Please try again in a moment.
+            </p>
+          )}
           <button
             type="button"
             onClick={() => setMethodologyOpen(true)}

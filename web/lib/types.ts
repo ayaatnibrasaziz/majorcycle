@@ -450,6 +450,9 @@ export interface TickerRequest {
  */
 export interface SkippedStatus {
   inListings: boolean;
+  /** In our universe AND still trading — history still building. */
   covered: boolean;
+  /** In our universe but marked as no longer trading (beta review C-4) — never rated. */
+  retired: boolean;
   requestStatus: RequestStatus | null;
 }

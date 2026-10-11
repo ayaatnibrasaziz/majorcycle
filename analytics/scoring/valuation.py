@@ -44,16 +44,28 @@ def apply_quality_gate(
     return round(_clamp(val_raw * qf), 1), round(qf, 4)
 
 
-def calculate_valuation_zone(cycle: dict[str, Any]) -> tuple[ValuationZone, float]:
+def calculate_valuation_zone(
+    cycle: dict[str, Any], shallow_edge: float
+) -> tuple[ValuationZone, float]:
     """
     Determine valuation zone and score (0-100) from cycle metrics.
 
     Zones map the current drawdown position relative to historical cycle:
       DEEP VALUE : at or beyond typical_drawdown (historically deep dip)
       VALUE      : between half-typical and typical drawdown
-      FAIR       : mild pullback (between -5% and half-typical)
-      STRETCHED  : near all-time highs, limited safety margin
+      FAIR       : mild pullback (between `shallow_edge` and half-typical)
+      STRETCHED  : near its high, limited safety margin
+
+    `shallow_edge` is the horizon's own pullback threshold (owner, 2026-10-10): -3 on
+    Short, -5 on Medium, -8 on Long, the reader's on Custom. It was a fixed -5 on every
+    horizon, which erased the FAIR zone for 48% of stocks on a one-month window (half
+    their typical fall was shallower than 5%) and called a -6% dip a shallow one on Long.
+    Required rather than defaulted, so a caller cannot silently fall back to -5.
+
+    The no-history fallback (no typical drawdown at all) keeps its fixed -20/-10/-5
+    bands: with no typical fall there is no scale for the horizon to set.
     """
+    edge = min(shallow_edge, 0.0)
     dd: Optional[float] = cycle.get("current_drawdown_pct")
     td: Optional[float] = cycle.get("typical_drawdown")
     lb: Optional[float] = cycle.get("lower_bound")
@@ -72,10 +84,10 @@ def calculate_valuation_zone(cycle: dict[str, Any]) -> tuple[ValuationZone, floa
             half_td = td * 0.5
             span = td - half_td
             val_score = 40.0 + 30.0 * (dd - half_td) / (span if span != 0 else -1e-9)
-        elif dd <= -5.0:
+        elif dd <= edge:
             half_td = td * 0.5
-            span = half_td - (-5.0)
-            val_score = 10.0 + 30.0 * (dd - (-5.0)) / (span if span != 0 else -1e-9)
+            span = half_td - edge
+            val_score = 10.0 + 30.0 * (dd - edge) / (span if span != 0 else -1e-9)
         else:
             val_score = max(0.0, 10.0 + dd * 2.0)
     else:
@@ -89,7 +101,7 @@ def calculate_valuation_zone(cycle: dict[str, Any]) -> tuple[ValuationZone, floa
             zone = "DEEP VALUE"
         elif dd <= td * 0.5:
             zone = "VALUE"
-        elif dd <= -5.0:
+        elif dd <= edge:
             zone = "FAIR"
         else:
             zone = "STRETCHED"

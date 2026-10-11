@@ -6,7 +6,7 @@
 // reason about and reuse. Every label here is one of our five COMPLIANT tiers
 // (CLAUDE.md #2) — no "Buy"/"Sell"/"Avoid" language anywhere.
 
-import { priceDecimals } from '@/lib/format';
+import { normalizeAnalystRecommendation, priceDecimals } from '@/lib/format';
 import { tickerToUrlParts } from '@/lib/ticker';
 import type { CycleAnalysis, OverallLabel, ValuationZone } from '@/lib/types';
 
@@ -143,19 +143,44 @@ function article(word: string): string {
 
 // Valuation zone → tier + display. DEEP VALUE/VALUE are favourable (green),
 // FAIR is neutral (gold), STRETCHED is unfavourable (orange).
-const ZONE_TIER: Record<ValuationZone, 1 | 2 | 3 | 4 | 5> = {
+export const ZONE_TIER: Record<ValuationZone, 1 | 2 | 3 | 4 | 5> = {
   'DEEP VALUE': 1,
   VALUE: 2,
   FAIR: 3,
   STRETCHED: 4,
 };
 
+/**
+ * What each zone is CALLED — the one table every surface reads (owner-approved names,
+ * 2026-10-03; beta review C-2 / B-14 / F-4).
+ *
+ * ⚠️ They were "Deep Value / Value / Fair / Stretched" until then. The zone measures
+ * how far the price has fallen against the stock's own typical fall — a price
+ * POSITION — and the old names read as a verdict on valuation, so CBA showed "Deep
+ * Value" while trading above every analyst's target. The stored codes ('DEEP VALUE'…)
+ * are unchanged: they are identifiers, never shown, and the rating does not move.
+ */
 export const ZONE_DISPLAY: Record<ValuationZone, string> = {
-  'DEEP VALUE': 'Deep Value',
-  VALUE: 'Value',
-  FAIR: 'Fair',
-  STRETCHED: 'Stretched',
+  'DEEP VALUE': 'Deep pullback',
+  VALUE: 'Pullback',
+  FAIR: 'Shallow dip',
+  STRETCHED: 'Near high',
 };
+
+/**
+ * Where "Near high" ends and "Shallow dip" begins: the horizon's own pullback threshold
+ * (owner, 2026-10-10) — −3 on Short, −5 on Medium, −8 on Long, the reader's on Custom.
+ * The zone itself is decided in Python (`calculate_valuation_zone`, `shallow_edge`) and
+ * is a premium field, so a free viewer never receives it; the stock page's near-high
+ * wording reads this instead, so it agrees with the zone for every viewer. It was a
+ * hard-coded −5 in both places until then.
+ */
+export function shallowDipEdge(params: { pullbackThreshold: number }): number {
+  return Math.min(params.pullbackThreshold, 0);
+}
+
+/** Deepest fall first — the order the zones are listed and offered in. */
+export const ZONE_ORDER: readonly ValuationZone[] = ['DEEP VALUE', 'VALUE', 'FAIR', 'STRETCHED'];
 
 export function zoneColor(zone: ValuationZone): string {
   return tierColorVar(ZONE_TIER[zone]);
@@ -348,7 +373,10 @@ export function toCsv<T>(
 /** Trigger a client-side CSV download. No-op on the server. */
 export function downloadCsv(filename: string, csv: string): void {
   if (typeof document === 'undefined') return;
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  // ⚠️ The leading byte-order mark is what tells Excel the file is UTF-8. Without it
+  // Excel assumes the Windows code page and prints "EstÃ©e Lauder" for every accented
+  // name (beta review C-21). Other spreadsheet apps ignore it.
+  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -418,22 +446,11 @@ export function compositionRamp(score: number): [string, string, string] {
  * Normalises yfinance's raw recommendation key to a display string.
  */
 export function fmtAnalyst(raw: string | null): string {
-  if (!raw) return '—';
-  const map: Record<string, string> = {
-    strong_buy: 'Strong Buy',
-    buy: 'Buy',
-    outperform: 'Buy',
-    overweight: 'Buy',
-    hold: 'Hold',
-    neutral: 'Hold',
-    market_perform: 'Hold',
-    underperform: 'Sell',
-    underweight: 'Sell',
-    sell: 'Sell',
-    strong_sell: 'Strong Sell',
-  };
-  const key = String(raw).toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_');
-  return map[key] ?? String(raw).replace(/_/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase());
+  // ⚠️ The Stock Detail page's own rule, not a second table (beta review C-22): this
+  // kept a private map that passed unknown keys through title-cased, so Yahoo's
+  // "none" (no consensus — 107 stocks on 2026-10-03) printed as "None" in the
+  // screener while the stock page showed nothing (CLAUDE.md 11c).
+  return normalizeAnalystRecommendation(raw) ?? '—';
 }
 
 /** Upside % from current price to the analyst target. Null when either is missing. */

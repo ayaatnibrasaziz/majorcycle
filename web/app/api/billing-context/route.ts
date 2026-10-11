@@ -4,6 +4,8 @@ import { headers } from 'next/headers';
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { currencyForCountry, effectiveBillingCountry } from '@/lib/stripe';
 import { hasUsedTrial } from '@/lib/trialGuard';
+import { accessDenialReason } from '@/lib/entitlement';
+import { disputeEnded } from '@/lib/planStatus';
 
 /**
  * What the upgrade dialog needs to offer the RIGHT thing to THIS reader (F3 Step 10).
@@ -32,13 +34,25 @@ export async function GET() {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: readError } = await supabase
     .from('profiles')
-    .select('country, subscription_status, billing_blocked, display_name')
+    .select('country, subscription_status, grace_until, billing_blocked, display_name')
     .eq('id', user.id)
     .single();
+  // ⚠️ An unreadable profile is not a profile with no plan (CLAUDE.md 11e). Treated as
+  // one, a disputed account or a lapsed customer was offered the stranger's free trial.
+  // A failure here makes the dialog offer "Go to your account", which reads it afresh.
+  if (readError) {
+    return NextResponse.json(
+      { error: 'Could not read your plan just now.' },
+      { status: 503, headers: { 'Cache-Control': 'private, no-store', 'Retry-After': '5' } },
+    );
+  }
 
   const hasSubscription = ACTIVE_STATES.has(profile?.subscription_status ?? '');
+  // Why this reader is locked, so the Stock Detail lock window can say so (beta review
+  // D-4) — the same rule the Run / Results lock pages use. NULL for an entitled reader.
+  const reason = accessDenialReason(profile ?? null);
   // Surfaced so a locked feature can say WHY it's locked. A disputed account must
   // never be shown an upsell: /api/checkout 403s it anyway, so offering a plan would
   // be an offer we refuse at the till.
@@ -60,6 +74,9 @@ export async function GET() {
       trialUsed,
       hasSubscription,
       billingBlocked,
+      // A lost dispute has ended the plan: the window must not promise it comes back.
+      disputeEnded: disputeEnded(billingBlocked, profile?.subscription_status ?? null),
+      reason,
       // Prefill the in-place support dialog, so the lock path matches the account
       // page rather than asking a signed-in reader who they are.
       email: user.email ?? null,

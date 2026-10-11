@@ -138,6 +138,10 @@ export interface ViewerEntitlement {
   /** Present so callers needing onboarding state don't re-query. */
   acknowledgedDisclaimerAt: string | null;
   subscriptionStatus: string | null;
+  /** End of the payment-failure grace window, for the in-app warning's deadline. */
+  graceUntil: string | null;
+  /** Set to stop at period end — the sidebar's "Cancelling" (lib/planStatus.ts). */
+  cancelAtPeriodEnd: boolean;
   /**
    * Dispute lock. Exposed separately from `subscriptionStatus` because it is an
    * orthogonal dimension — a disputed account keeps its Stripe status — and any
@@ -169,6 +173,8 @@ export const SIGNED_OUT_VIEWER: ViewerEntitlement = {
   deletionScheduled: false,
   acknowledgedDisclaimerAt: null,
   subscriptionStatus: null,
+  graceUntil: null,
+  cancelAtPeriodEnd: false,
   billingBlocked: false,
   email: null,
   displayName: null,
@@ -184,6 +190,7 @@ export interface ViewerProfileRow {
   billing_blocked?: boolean | null;
   acknowledged_disclaimer_at?: string | null;
   deletion_scheduled_at?: string | null;
+  cancel_at_period_end?: boolean | null;
 }
 
 /**
@@ -222,11 +229,43 @@ export function viewerFromProfileRead(
     deletionScheduled: !!profile.deletion_scheduled_at,
     acknowledgedDisclaimerAt: profile.acknowledged_disclaimer_at ?? null,
     subscriptionStatus: profile.subscription_status ?? null,
+    graceUntil: profile.grace_until ?? null,
+    cancelAtPeriodEnd: !!profile.cancel_at_period_end,
     billingBlocked: !!profile.billing_blocked,
     email: profile.email ?? null,
     displayName: profile.display_name ?? null,
     profileUnreadable: false,
   };
+}
+
+/**
+ * The payment warning at the top of every signed-in page (beta review D-1, owner-approved
+ * design 2026-10-03). Until then a failed card changed only a small sidebar label, with
+ * no date and no action, so a customer could lose access without knowing why.
+ *
+ * - `grace`: the payment failed but access continues until `until` (decision #20);
+ * - `paused`: the grace window has closed and premium is locked;
+ * - `held`: a payment was disputed with the bank — its own banner, whose one action is
+ *   support, because updating a card cannot lift a dispute (owner-approved, 2026-10-03);
+ * - null: nothing to say.
+ */
+export type PaymentBanner =
+  | { kind: 'grace'; until: string | null }
+  | { kind: 'paused' }
+  // A payment disputed with the bank (owner-approved design, 2026-10-03). `ended`: the
+  // dispute went against the customer and cancelled the plan, so nothing is "on hold".
+  | { kind: 'held'; ended: boolean };
+
+export function paymentBanner(viewer: ViewerEntitlement): PaymentBanner | null {
+  if (!viewer.userId || viewer.profileUnreadable) return null;
+  // A dispute outranks a failed card: a new card cannot lift it, so the card banner
+  // would point at the wrong fix. It gets its own, whose one action is support.
+  if (viewer.billingBlocked) return { kind: 'held', ended: viewer.subscriptionStatus === 'canceled' };
+  if (viewer.entitled && viewer.subscriptionStatus === 'past_due') {
+    return { kind: 'grace', until: viewer.graceUntil };
+  }
+  if (!viewer.entitled && viewer.reason === 'payment_failed') return { kind: 'paused' };
+  return null;
 }
 
 /**

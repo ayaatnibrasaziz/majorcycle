@@ -2,10 +2,20 @@
 
 import { useEffect, useState } from 'react';
 
-import { CHUNK_SIZE, type RunMeta, type RunProgress as Progress } from '@/lib/analysis';
+import type { RunMeta, RunProgress as Progress } from '@/lib/analysis';
 
-// Honest progress — driven by REAL completed chunks, not a fake clock. Elapsed
-// ticks live; ETA is extrapolated from the average time per completed chunk.
+// Honest progress — driven by REAL completed requests, not a fake clock. Elapsed
+// ticks live.
+//
+// ⚠️ Three things this got wrong until 2026-10-02 (beta review C-15/16/17):
+// - the bar counted CHUNKS, and a run of 25 or fewer was one chunk, so it sat at 0%
+//   until the end (fixed in `chunkSizeFor`, and the bar now counts tickers);
+// - "Processed" was `chunks done × 25`, which is wrong whenever the short last chunk
+//   comes back before a full one — it now counts the tickers actually returned;
+// - the ETA divided by the solo warm-up chunk, which carries the cold start, and it
+//   grew every tenth of a second while a request was out. It now takes the pace
+//   measured after the warm-up, at the moment the last request came back, and counts
+//   down from there.
 
 function fmtSecs(ms: number): string {
   return `${(ms / 1000).toFixed(1)}s`;
@@ -34,12 +44,21 @@ export function RunProgress({
 
   const startMs = new Date(runMeta.startedAt).getTime();
   const elapsed = Math.max(0, now - startMs);
-  const pct = progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0;
-  const processed = Math.min(progress.done * CHUNK_SIZE, runMeta.tickerCount);
+  const total = runMeta.tickerCount;
+  const processed = Math.min(progress.tickersDone, total);
+  const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+  // Pace after the warm-up chunk. Unknown until a second request has come back.
+  const paced = processed - progress.warmedTickers;
+  const { warmedAt, lastAt } = progress;
   const eta =
-    progress.done > 0 && progress.running
-      ? (elapsed / progress.done) * (progress.total - progress.done)
-      : 0;
+    progress.running &&
+    progress.phase !== 'reconciling' &&
+    paced > 0 &&
+    warmedAt !== null &&
+    lastAt !== null &&
+    lastAt > warmedAt
+      ? Math.max(0, ((total - processed) * (lastAt - warmedAt)) / paced - (now - lastAt))
+      : null;
 
   return (
     <div className="card">
@@ -53,7 +72,7 @@ export function RunProgress({
               ? 'Double-checking skipped tickers…'
               : 'Analysing your selection…'}
           </span>
-          <span className="font-[var(--font-mono)] text-[12px] text-[var(--text-muted)]">{pct}%</span>
+          <span className="font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-muted)]">{pct}%</span>
         </div>
 
         <div
@@ -76,9 +95,9 @@ export function RunProgress({
           <Chip label="Elapsed" value={fmtSecs(elapsed)} />
           <Chip
             label="Est. remaining"
-            value={progress.running && progress.done > 0 ? fmtSecs(eta) : '—'}
+            value={eta === null ? '—' : eta < 500 ? 'Almost done' : fmtSecs(eta)}
           />
-          <Chip label="Processed" value={`${processed} / ${runMeta.tickerCount}`} />
+          <Chip label="Processed" value={`${processed} / ${total}`} />
           <Chip label="Scored" value={String(resultCount)} valueColor="var(--status-success)" />
           {unavailableCount > 0 && (
             <Chip label="Skipped" value={String(unavailableCount)} valueColor="var(--status-warning)" />

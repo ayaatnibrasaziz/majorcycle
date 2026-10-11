@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 import { Header } from '@/components/Header';
+import { PaymentBanner } from '@/components/PaymentBanner';
 import { Sidebar, SidebarBody } from '@/components/Sidebar';
 import { UpgradeDialog } from '@/components/UpgradeDialog';
 import {
@@ -13,6 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { AnalysisProvider } from '@/lib/analysis';
+import type { PaymentBanner as PaymentBannerState } from '@/lib/entitlement';
 import { SHELL_DESKTOP_MIN_PX } from '@/lib/shell';
 
 /**
@@ -34,20 +37,32 @@ import { SHELL_DESKTOP_MIN_PX } from '@/lib/shell';
  * the rail's rather than a file away. All three move together or the layout tears.
  */
 export function AppShell({
+  userId = null,
   email,
+  displayName = null,
   lastRunAt,
   subscriptionStatus,
   entitled = false,
   billingBlocked = false,
+  cancelAtPeriodEnd = false,
+  payment = null,
   children,
 }: {
+  /** Scopes the screener results this browser keeps (lib/analysis.tsx). */
+  userId?: string | null;
   email?: string | null;
+  /** Prefills the support form the dispute banner opens. */
+  displayName?: string | null;
   lastRunAt?: string | null;
   subscriptionStatus?: string | null;
   entitled?: boolean;
   billingBlocked?: boolean;
+  cancelAtPeriodEnd?: boolean;
+  /** A failed payment to warn about — `paymentBanner()` in lib/entitlement.ts. */
+  payment?: PaymentBannerState | null;
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const [navOpen, setNavOpen] = useState(false);
 
   /**
@@ -81,6 +96,7 @@ export function AppShell({
     subscriptionStatus,
     entitled,
     billingBlocked,
+    cancelAtPeriodEnd,
     onLockedClick: setLockedFeature,
   };
 
@@ -183,12 +199,17 @@ export function AppShell({
         className="min-[768px]:ml-[var(--sidebar-w)] mt-[var(--header-h)] p-6 min-h-[calc(100vh-var(--header-h))]"
         id="main-content"
       >
+        {/* Not on /account: its Subscription card already says the same thing, with the
+            same button, so the page said every sentence twice (visual audit, 2026-10-07). */}
+        {payment && pathname !== '/account' && (
+          <PaymentBanner state={payment} email={email ?? ''} displayName={displayName ?? ''} />
+        )}
         {/* Disclaimer strip — required on all authenticated pages (#4, #12). */}
         <div className="mb-4 px-3 py-2 bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[var(--radius-sm)] text-[11px] text-[var(--text-muted)] italic">
           ⚠ For educational and research purposes only. Not financial advice.
           Always conduct independent due diligence.
         </div>
-        <AnalysisProvider>{children}</AnalysisProvider>
+        <AnalysisProvider ownerId={userId}>{children}</AnalysisProvider>
       </main>
 
       <UpgradeDialog

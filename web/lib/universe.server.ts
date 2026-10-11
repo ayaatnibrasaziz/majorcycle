@@ -21,6 +21,7 @@
 
 import { unstable_cache } from 'next/cache';
 
+import { selectAll } from '@/lib/supabase/paginate';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Currency, Market } from '@/lib/types';
 
@@ -98,3 +99,29 @@ export const fetchUniverseIndex = unstable_cache(
   ['universe-index-v1'],
   { revalidate: 86400 },
 );
+
+/**
+ * Tickers we hold that have stopped trading (beta review C-4, 2026-09-28). The
+ * universe above leaves them out, so an uploaded list naming one used to call it
+ * "not in our coverage — request it", send it to the screener anyway, and get it
+ * RATED on a price frozen the day it stopped trading. The CSV preview now names
+ * these as no longer trading and leaves them out of the run; `api/analyze.py`
+ * refuses them too, as the backstop. Same daily cache as the universe.
+ */
+async function _fetchRetiredTickers(): Promise<string[]> {
+  const supabase = createAdminClient();
+  const rows = await selectAll<{ ticker: string }>((from, to) =>
+    supabase
+      .from('stocks')
+      .select('ticker')
+      .neq('market', 'index')
+      .eq('is_active', false)
+      .order('ticker', { ascending: true })
+      .range(from, to),
+  );
+  return rows.map((r) => r.ticker);
+}
+
+export const fetchRetiredTickers = unstable_cache(_fetchRetiredTickers, ['retired-tickers-v1'], {
+  revalidate: 86400,
+});

@@ -65,7 +65,7 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
         <span className="text-[9px] font-bold tracking-[1.2px] uppercase text-[var(--text-muted)] whitespace-nowrap flex-shrink-0 leading-none">
           52W
         </span>
-        <span className="font-[var(--font-mono)] text-[10px] font-semibold text-[var(--text-secondary)] whitespace-nowrap flex-shrink-0 leading-none">
+        <span className="font-[family-name:var(--font-mono)] text-[10px] font-semibold text-[var(--text-secondary)] whitespace-nowrap flex-shrink-0 leading-none">
           {fmtPrice(low, currency)}
         </span>
         <div className="relative flex-1 min-w-0 h-[14px] flex items-center">
@@ -100,14 +100,14 @@ export function WeekRangeGauge({ low, high, current, currency }: Props) {
             aria-label={`Current price position: ${zone}, ${offText}`}
           />
         </div>
-        <span className="font-[var(--font-mono)] text-[10px] font-semibold text-[var(--text-secondary)] whitespace-nowrap flex-shrink-0 leading-none">
+        <span className="font-[family-name:var(--font-mono)] text-[10px] font-semibold text-[var(--text-secondary)] whitespace-nowrap flex-shrink-0 leading-none">
           {fmtPrice(high, currency)}
         </span>
       </div>
       <div className="block text-[9.5px] font-semibold text-[var(--text-muted)] tracking-[0.2px] leading-[1.2] text-right">
         <span className="font-bold text-[var(--text-secondary)]">{zone}</span>
         {' · '}
-        <span className="font-[var(--font-mono)] font-semibold text-[var(--text-secondary)] ml-[3px]">
+        <span className="font-[family-name:var(--font-mono)] font-semibold text-[var(--text-secondary)] ml-[3px]">
           {offText}
         </span>
       </div>

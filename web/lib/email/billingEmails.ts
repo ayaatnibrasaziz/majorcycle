@@ -1,15 +1,22 @@
 import { sendBrandEmail } from '@/lib/email/send';
-import { SITE, p, muted, button, greetingHtml, greetingText } from '@/lib/email/format';
-import { PRICE_TABLE, CURRENCY_SYMBOL } from '@/lib/pricing';
+import { SITE, p, muted, button, greetingHtml, greetingText, formatDate } from '@/lib/email/format';
+import { formatCharge } from '@/lib/pricing';
 import { TRIAL_PERIOD_DAYS } from '@/lib/stripe';
 
 /**
- * The four branded billing-lifecycle emails (F3 Step 8), all fired from the
- * Stripe webhook (`web/app/api/stripe/webhook/route.ts`):
+ * The branded billing-lifecycle emails (F3 Step 8; two added 2026-10-03):
  *   1. trial started    — the trial begins at checkout (customer.subscription.created, trialing)
  *   2. trial ending     — ~3 days before the first charge (customer.subscription.trial_will_end)
  *   3. payment failed    — first renewal failure (invoice.payment_failed)
  *   4. payment recovered — a failed payment succeeded (invoice.payment_succeeded)
+ *   5. access paused     — the 3-day grace window closed unpaid (the daily cron)
+ *   6. subscription ended — Stripe ended the subscription (customer.subscription.deleted)
+ *   7. annual renewal     — an annual plan renews in ~30 days (invoice.upcoming; 2026-10-07)
+ *
+ * ⚠️ Amounts are STRIPE'S figure — the stored next charge, or the invoice that failed —
+ * never our price table (owner, 2026-10-03: "the real charged amount… in every case").
+ * They read the table until then, which is wrong under any discount or tax. With no
+ * Stripe figure the email says "your regular subscription rate" rather than guessing.
  *
  * They render through the shared brand chrome (`renderBrandEmail`) and send from
  * noreply@, exactly like the F2 account emails. Copy signed off with the owner.
@@ -28,26 +35,25 @@ import { TRIAL_PERIOD_DAYS } from '@/lib/stripe';
 // "we'll automatically retry" line so the email never over-promises.
 const SMART_RETRIES_ENABLED = true;
 
-type BillingCurrency = keyof typeof PRICE_TABLE; // 'usd' | 'aud' | 'cad'
+/** Stripe's own figure for a charge, in minor units, as the profile stores it. */
+export interface StripeCharge {
+  amount: number;
+  currency: string;
+}
 
 /**
- * Turn a stored `subscription_currency` + `subscription_plan` into display strings:
- *   { amount: "A$19", rate: "A$19/month" }  (annual → "A$159" / "A$159/year")
- * Returns null when either is missing/unrecognised, so callers fall back to a
- * generic phrase rather than showing a wrong or blank price.
+ * Display strings for a Stripe charge: { amount: "A$19.00", rate: "A$19.00/month" }.
+ * Null when Stripe gave us no figure, so callers fall back to a generic phrase rather
+ * than to our price table.
  */
-function priceParts(
-  currency: string | null,
+function chargeParts(
+  charge: StripeCharge | null | undefined,
   plan: string | null,
 ): { amount: string; rate: string } | null {
-  if (!currency || !plan) return null;
-  const cur = currency.toLowerCase();
-  if (!(cur in PRICE_TABLE)) return null;
-  if (plan !== 'monthly' && plan !== 'annual') return null;
-  const c = cur as BillingCurrency;
-  const amount = `${CURRENCY_SYMBOL[c]}${PRICE_TABLE[c][plan]}`;
-  const period = plan === 'monthly' ? 'month' : 'year';
-  return { amount, rate: `${amount}/${period}` };
+  if (!charge || !charge.currency) return null;
+  const amount = formatCharge(charge.amount, charge.currency);
+  const period = plan === 'monthly' ? '/month' : plan === 'annual' ? '/year' : '';
+  return { amount, rate: `${amount}${period}` };
 }
 
 /** A brand-styled inline link to the monitored contact form (never a reply — noreply@ is unmonitored). */
@@ -57,11 +63,12 @@ const contactLink = `<a href="${SITE}/contact" style="color:#1E5CB3;text-decorat
 export async function sendTrialStartedEmail(opts: {
   to: string;
   name: string | null;
-  currency: string | null;
+  /** Stripe's figure (the stored next charge, or the failed invoice). */
+  charge: StripeCharge | null;
   plan: string | null;
   idempotencyKey?: string;
 }): Promise<boolean> {
-  const parts = priceParts(opts.currency, opts.plan);
+  const parts = chargeParts(opts.charge, opts.plan);
   const rateHtml = parts ? `<strong>${parts.rate}</strong>` : 'your regular subscription rate';
   const rateText = parts ? parts.rate : 'your regular subscription rate';
   const days = `${TRIAL_PERIOD_DAYS}-day`;
@@ -118,11 +125,12 @@ export async function sendTrialStartedEmail(opts: {
 export async function sendTrialEndingEmail(opts: {
   to: string;
   name: string | null;
-  currency: string | null;
+  /** Stripe's figure (the stored next charge, or the failed invoice). */
+  charge: StripeCharge | null;
   plan: string | null;
   idempotencyKey?: string;
 }): Promise<boolean> {
-  const parts = priceParts(opts.currency, opts.plan);
+  const parts = chargeParts(opts.charge, opts.plan);
   const rateHtml = parts ? `<strong>${parts.rate}</strong>` : 'your regular subscription rate';
   const rateText = parts ? parts.rate : 'your regular subscription rate';
 
@@ -163,12 +171,13 @@ export async function sendTrialEndingEmail(opts: {
 export async function sendPaymentFailedEmail(opts: {
   to: string;
   name: string | null;
-  currency: string | null;
+  /** Stripe's figure (the stored next charge, or the failed invoice). */
+  charge: StripeCharge | null;
   plan: string | null;
   graceDays: number;
   idempotencyKey?: string;
 }): Promise<boolean> {
-  const parts = priceParts(opts.currency, opts.plan);
+  const parts = chargeParts(opts.charge, opts.plan);
   const amountHtml = parts ? `<strong>${parts.amount}</strong>` : 'your latest subscription payment';
   const amountText = parts ? parts.amount : 'your latest subscription payment';
   const days = `${opts.graceDays} day${opts.graceDays === 1 ? '' : 's'}`;
@@ -212,22 +221,27 @@ export async function sendPaymentFailedEmail(opts: {
 export async function sendPaymentRecoveredEmail(opts: {
   to: string;
   name: string | null;
+  /**
+   * The grace window had already closed, so access WAS paused. The email used to say
+   * "your access continues uninterrupted" to everyone, including customers who had
+   * been locked out for days (beta review D-6).
+   */
+  wasPaused: boolean;
   idempotencyKey?: string;
 }): Promise<boolean> {
+  const line = opts.wasPaused
+    ? `Good news — your MajorCycle payment went through and your full access is back. Thanks for being a member.`
+    : `Good news — your MajorCycle payment went through and your access continues uninterrupted. Thanks for being a member.`;
   const bodyHtml = [
     greetingHtml(opts.name),
-    p(
-      `Good news — your MajorCycle payment went through and your access continues uninterrupted. ` +
-        `Thanks for being a member.`,
-    ),
+    p(line),
     button('Go to your account', `${SITE}/account`),
     muted(`No action needed — we just wanted to let you know.`),
   ].join('\n');
 
   const text =
     `${greetingText(opts.name)}\n\n` +
-    `Good news — your MajorCycle payment went through and your access continues uninterrupted. ` +
-    `Thanks for being a member.\n\n` +
+    `${line}\n\n` +
     `Go to your account: ${SITE}/account\n\n` +
     `No action needed — we just wanted to let you know.`;
 
@@ -237,6 +251,155 @@ export async function sendPaymentRecoveredEmail(opts: {
     heading: 'Payment received',
     bodyHtml,
     preheader: 'Your MajorCycle payment went through.',
+    text,
+    idempotencyKey: opts.idempotencyKey,
+  });
+}
+
+/** Email #5 — the grace window closed and the payment still has not gone through. */
+export async function sendAccessPausedEmail(opts: {
+  to: string;
+  name: string | null;
+  /** The amount that failed, as Stripe reported it. */
+  charge: StripeCharge | null;
+  idempotencyKey?: string;
+}): Promise<boolean> {
+  const parts = chargeParts(opts.charge, null);
+  const whatHtml = parts ? `your last payment of <strong>${parts.amount}</strong>` : 'your last payment';
+  const whatText = parts ? `your last payment of ${parts.amount}` : 'your last payment';
+
+  const bodyHtml = [
+    greetingHtml(opts.name),
+    p(
+      `We still haven't been able to take ${whatHtml}, so your access to the MajorCycle ` +
+        `analysis is paused for now. Browsing, charts and company financials still work.`,
+    ),
+    p(`Update your card and everything comes straight back — nothing has been lost.`),
+    button('Update your card', `${SITE}/account`),
+    muted(`If you've already updated your card, you can ignore this message. Questions? ${contactLink}.`),
+  ].join('\n');
+
+  const text =
+    `${greetingText(opts.name)}\n\n` +
+    `We still haven't been able to take ${whatText}, so your access to the MajorCycle analysis ` +
+    `is paused for now. Browsing, charts and company financials still work.\n\n` +
+    `Update your card and everything comes straight back — nothing has been lost: ${SITE}/account\n\n` +
+    `If you've already updated your card, you can ignore this message. Questions? ${SITE}/contact`;
+
+  return sendBrandEmail({
+    to: opts.to,
+    subject: 'Your MajorCycle access is paused',
+    heading: 'Access paused',
+    bodyHtml,
+    preheader: 'Your last payment still has not gone through — update your card to get access back.',
+    text,
+    idempotencyKey: opts.idempotencyKey,
+  });
+}
+
+const ENDED_COPY = {
+  trial_ended: {
+    subject: 'Your MajorCycle free trial has ended',
+    heading: 'Your trial has ended',
+    lead: `Your MajorCycle free trial has ended, and you haven't been charged.`,
+    preheader: 'Your free trial has ended — you have not been charged.',
+  },
+  ended_payment: {
+    subject: 'Your MajorCycle subscription has ended',
+    heading: 'Subscription ended',
+    lead: `Your MajorCycle subscription has ended because we couldn't take the payment. You won't be charged again.`,
+    preheader: 'Your subscription has ended because the payment did not go through.',
+  },
+  ended: {
+    subject: 'Your MajorCycle subscription has ended',
+    heading: 'Subscription ended',
+    lead: `Your MajorCycle subscription has now ended. You won't be charged again.`,
+    preheader: 'Your MajorCycle subscription has ended — you will not be charged again.',
+  },
+} as const;
+
+/** Email #6 — Stripe has ended the subscription (lib/billing/accessEmails.ts decides which). */
+export async function sendSubscriptionEndedEmail(opts: {
+  to: string;
+  name: string | null;
+  kind: keyof typeof ENDED_COPY;
+  idempotencyKey?: string;
+}): Promise<boolean> {
+  const c = ENDED_COPY[opts.kind];
+  const back =
+    opts.kind === 'trial_ended'
+      ? `If you'd like the analysis, you can subscribe anytime from your account.`
+      : `If you'd like the analysis back, you can resubscribe anytime from your account.`;
+
+  const bodyHtml = [
+    greetingHtml(opts.name),
+    p(c.lead),
+    p(`Browsing, charts and company financials are still yours on the free plan. ${back}`),
+    button('Go to your account', `${SITE}/account`),
+    muted(`Questions? Get in touch anytime at ${contactLink}.`),
+  ].join('\n');
+
+  const text =
+    `${greetingText(opts.name)}\n\n` +
+    `${c.lead}\n\n` +
+    `Browsing, charts and company financials are still yours on the free plan. ${back} ${SITE}/account\n\n` +
+    `Questions? Get in touch anytime at ${SITE}/contact`;
+
+  return sendBrandEmail({
+    to: opts.to,
+    subject: c.subject,
+    heading: c.heading,
+    bodyHtml,
+    preheader: c.preheader,
+    text,
+    idempotencyKey: opts.idempotencyKey,
+  });
+}
+
+/**
+ * Email #7 — an ANNUAL plan renews soon (owner, 2026-10-07). Sent once per renewal, about
+ * 30 days ahead, so a yearly charge is never a surprise; who gets it is decided by
+ * `renewalReminderDue` (lib/billing/accessEmails.ts). Wording approved by the owner. The
+ * amount is the upcoming invoice as Stripe calculated it, never our price table.
+ */
+export async function sendAnnualRenewalEmail(opts: {
+  to: string;
+  name: string | null;
+  /** Stripe's upcoming invoice amount. */
+  charge: StripeCharge | null;
+  renewsAt: Date;
+  timeZone: string;
+  idempotencyKey?: string;
+}): Promise<boolean> {
+  const parts = chargeParts(opts.charge, 'annual');
+  const date = formatDate(opts.renewsAt, opts.timeZone);
+  const forHtml = parts ? ` for <strong>${parts.amount}</strong>` : '';
+  const forText = parts ? ` for ${parts.amount}` : '';
+
+  const bodyHtml = [
+    greetingHtml(opts.name),
+    p(`Your MajorCycle annual plan renews on <strong>${date}</strong>${forHtml}.`),
+    p(
+      `Nothing to do if you'd like to keep it; to stop it renewing, cancel from your account ` +
+        `before then.`,
+    ),
+    button('Manage your subscription', `${SITE}/account`),
+    muted(`Questions? Get in touch anytime at ${contactLink}.`),
+  ].join('\n');
+
+  const text =
+    `${greetingText(opts.name)}\n\n` +
+    `Your MajorCycle annual plan renews on ${date}${forText}.\n\n` +
+    `Nothing to do if you'd like to keep it; to stop it renewing, cancel from your account ` +
+    `before then: ${SITE}/account\n\n` +
+    `Questions? Get in touch anytime at ${SITE}/contact`;
+
+  return sendBrandEmail({
+    to: opts.to,
+    subject: 'Your MajorCycle annual plan renews soon',
+    heading: 'Annual plan renewing',
+    bodyHtml,
+    preheader: `Your annual plan renews on ${date}${forText}.`,
     text,
     idempotencyKey: opts.idempotencyKey,
   });

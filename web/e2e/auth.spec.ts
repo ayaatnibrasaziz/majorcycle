@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { signInThroughTheForm as signIn } from './lib/session';
 import { passCaptchaForTests } from './lib/captcha';
+import { PW_RECOVERY_COOKIE } from '@/lib/authRecovery';
 
 // Once Supabase enforces the human check, a test's form submission must carry
 // admin credentials to be let through — see e2e/lib/captcha.ts.
@@ -308,12 +309,25 @@ test.describe('authenticated flows', () => {
 
     expect(writes, 'no password change may have been attempted').toBe(0);
 
-    // The escape hatch is present and is a real POST to /auth/signout — a
-    // recovery-confined session has no other way off this page.
+    // A reader who came here from /account to CHANGE their password goes back to it.
+    // "Cancel" signed them out too until 2026-10-03 (beta review A-34).
+    const back = page.getByRole('link', { name: /cancel and return to your account/i });
+    await expect(back).toBeVisible();
+    await expect(back).toHaveAttribute('href', '/account');
+    await expect(page.locator('form[action="/auth/signout"]')).toHaveCount(0);
+
+    // A RESET-LINK session (the recovery marker) is confined to this page, so its
+    // escape hatch must be a real POST to /auth/signout — it has no other way off.
+    // The marker's value is irrelevant; the page asks only whether it is present.
+    await page.context().addCookies([
+      { name: PW_RECOVERY_COOKIE, value: '1', url: page.url() },
+    ]);
+    await page.reload();
     const escape = page.getByRole('button', { name: /cancel and return to sign in/i });
     await expect(escape).toBeVisible();
     const form = page.locator('form[action="/auth/signout"]');
     await expect(form).toHaveAttribute('method', /post/i);
+    await expect(page.getByRole('link', { name: /return to your account/i })).toHaveCount(0);
   });
 
   test('email login → /stocks, sign-out → /login, re-gate works', async ({ page }) => {

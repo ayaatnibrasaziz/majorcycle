@@ -17,6 +17,7 @@ import {
   validateHorizon,
   type HorizonValue,
 } from './HorizonSettings';
+import { InterruptedRunNotice } from './InterruptedRunNotice';
 import { LastAnalysisCard } from './LastAnalysisCard';
 import { RunComplete } from './RunComplete';
 import { RunProgress } from './RunProgress';
@@ -52,9 +53,12 @@ function Section({
 export function RunAnalysis({
   universe,
   membership,
+  retired,
 }: {
   universe: UniverseStock[];
   membership: IndexMembership;
+  /** Tickers that have stopped trading — named, and left out, by the CSV import. */
+  retired: string[];
 }) {
   const router = useRouter();
   const analysis = useAnalysis();
@@ -91,6 +95,7 @@ export function RunAnalysis({
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const knownTickers = useMemo(() => new Set(universe.map((s) => s.ticker)), [universe]);
+  const retiredTickers = useMemo(() => new Set(retired), [retired]);
 
   const addTickers = (tickers: string[]) =>
     setSelected((prev) => {
@@ -149,10 +154,18 @@ export function RunAnalysis({
 
   const finished = !progress.running && runMeta?.finishedAt != null;
   // Show the summary after a run this session (even if 0 scored — the card has
-  // an empty state) or when results were hydrated from a prior session.
-  const showComplete = finished && (hasRun || results.length > 0);
+  // an empty state) or when results were hydrated from a prior session — but not
+  // after a cut-off run, when the hydrated results are an EARLIER screen and its
+  // "complete" summary would read as the run just lost (owner, 2026-10-03).
+  const showComplete =
+    finished && (hasRun || (results.length > 0 && analysis.interrupted == null));
   // Returning user with DB history but no in-session results.
-  const showLastRun = !progress.running && !showComplete && lastRun != null;
+  //
+  // ⚠️ Not after a run this tab was cut off from (owner, 2026-10-03). `lastRun` is the
+  // last run that FINISHED, so beside "your last run did not finish" it offered to re-run
+  // an older, different screen as if it were the one just lost.
+  const showLastRun =
+    !progress.running && !showComplete && lastRun != null && analysis.interrupted == null;
   const runtimeMs =
     runMeta?.finishedAt != null
       ? new Date(runMeta.finishedAt).getTime() - new Date(runMeta.startedAt).getTime()
@@ -164,6 +177,8 @@ export function RunAnalysis({
         Screen a basket or your own list through the Major Cycle + health scoring, then
         rank them. Pick a ready-made basket, search and add, or import a CSV.
       </p>
+
+      <InterruptedRunNotice />
 
       {/* A subscription that lapsed PART WAY through a run (most plausibly a trial
           expiring mid-screen). Without this the aborted chunks would read as
@@ -203,7 +218,7 @@ export function RunAnalysis({
             </div>
             <div>
               <div className="run-sublabel">Import CSV</div>
-              <CsvImport knownTickers={knownTickers} onAdd={addTickers} />
+              <CsvImport knownTickers={knownTickers} retiredTickers={retiredTickers} onAdd={addTickers} />
             </div>
             <div className="border-t border-[var(--border)] pt-3.5">
               <SelectedTickers

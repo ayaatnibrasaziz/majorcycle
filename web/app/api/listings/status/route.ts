@@ -49,12 +49,17 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const [listRes, stockRes, reqRes] = await Promise.all([
     admin.from('listings').select('symbol').eq('is_active', true).in('symbol', symbols),
-    admin.from('stocks').select('ticker').in('ticker', symbols),
+    admin.from('stocks').select('ticker,is_active').in('ticker', symbols),
     admin.from('ticker_requests').select('symbol,status').in('symbol', symbols),
   ]);
 
   const listed = new Set((listRes.data ?? []).map((r) => r.symbol as string));
-  const covered = new Set((stockRes.data ?? []).map((r) => r.ticker as string));
+  // A retired stock is in `stocks` but is not "coverage whose history is still
+  // building" — the screener refuses to rate it (api/analyze.py `_is_retired`), so
+  // the strip must say it no longer trades rather than promise data (C-4).
+  const stockRows = stockRes.data ?? [];
+  const covered = new Set(stockRows.filter((r) => r.is_active !== false).map((r) => r.ticker as string));
+  const retired = new Set(stockRows.filter((r) => r.is_active === false).map((r) => r.ticker as string));
   const reqStatus = new Map(
     (reqRes.data ?? []).map((r) => [r.symbol as string, r.status as RequestStatus]),
   );
@@ -64,6 +69,7 @@ export async function POST(request: Request) {
     statuses[s] = {
       inListings: listed.has(s),
       covered: covered.has(s),
+      retired: retired.has(s),
       requestStatus: reqStatus.get(s) ?? null,
     };
   }

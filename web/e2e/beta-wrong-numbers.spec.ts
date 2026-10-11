@@ -5,6 +5,7 @@ import { insiderTotals } from '../lib/insiderSentiment';
 import { holdersWorthShowing } from '../lib/ownership';
 import { exportText, healthColor, healthRatingLabel, tierFromScore, toCsv, valuationAppealLabel } from '../lib/ratings';
 import { relativeRows } from '../lib/relativePerformance';
+import { LIMITED_HISTORY_BELOW } from '../lib/ratingDefinition';
 import { bestStrength, healthSentence, HEALTH_PILLARS, topRisk, weakPillars, type HealthSubscores } from '../lib/thesisText';
 import type { FundamentalsSnapshot, InsiderTransaction, PriceBar } from '../lib/types';
 import { cellValue } from '../lib/xlsx';
@@ -17,11 +18,15 @@ import { cellValue } from '../lib/xlsx';
 
 const F = (over: Partial<FundamentalsSnapshot>): FundamentalsSnapshot => over as FundamentalsSnapshot;
 
+// Enough history that the short-history risk (below LIMITED_HISTORY_BELOW low points,
+// 25 since 2026-10-10) does not outrank the margin this block is about.
+const PLENTY = LIMITED_HISTORY_BELOW * 4;
+
 test.describe('#2 a loss is not a thin margin', () => {
   test('Moderna (−141%) is loss-making; a 3% margin is still thin', () => {
-    expect(topRisk(F({ netMargin: -141.43 }), -30, 20, 252)).toBe('loss-making — net margin of -141.4%');
-    expect(topRisk(F({ netMargin: 3 }), -30, 20, 252)).toContain('thin net margin of 3.0%');
-    expect(topRisk(F({ netMargin: -0.1 }), -30, 20, 252)).toMatch(/^loss-making/);
+    expect(topRisk(F({ netMargin: -141.43 }), PLENTY)).toBe('loss-making — net margin of -141.4%');
+    expect(topRisk(F({ netMargin: 3 }), PLENTY)).toContain('thin net margin of 3.0%');
+    expect(topRisk(F({ netMargin: -0.1 }), PLENTY)).toMatch(/^loss-making/);
   });
 });
 

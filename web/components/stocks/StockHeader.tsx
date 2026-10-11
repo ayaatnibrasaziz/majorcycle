@@ -12,6 +12,8 @@ import type {
   OverallLabel,
   ValuationZone,
 } from '@/lib/types';
+import { RATING_SUMMARY } from '@/lib/ratingDefinition';
+import { ZONE_DISPLAY, ZONE_TIER } from '@/lib/ratings';
 
 // Match the Browse page: show the clean symbol + a country badge rather than the
 // raw exchange-suffixed storage ticker (BHP.AX / SHOP.TO). Country code via the
@@ -116,7 +118,7 @@ export function StockHeader({ stock, badgeSlot }: Props) {
       <div className="flex items-stretch gap-5 mb-5 fade-in">
         <div className="flex flex-col min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
-            <span className="font-[var(--font-mono)] text-[var(--font-hero)] font-bold text-[var(--text-primary)] tracking-[-1px]">
+            <span className="font-[family-name:var(--font-mono)] text-[var(--font-hero)] font-bold text-[var(--text-primary)] tracking-[-1px]">
               {tickerToUrlParts(stock.ticker).symbol}
             </span>
             <span className="text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[4px] px-[7px] py-[2px] flex-shrink-0">
@@ -177,11 +179,15 @@ export function StockHeader({ stock, badgeSlot }: Props) {
       : `${Math.abs(upsidePct).toFixed(1)}% above target`;
 
   return (
-    <div className="flex items-stretch gap-5 mb-5 fade-in">
-      {/* Left column: identity */}
-      <div className="flex flex-col min-w-0 flex-1">
+    // ⚠️ A grid, so the rating tags can take the full width on a phone (beta review
+    // B-29): in a 375px or narrower window the identity column is narrower than the
+    // tags themselves, which overflowed under the 52-week gauge. On a wider screen the
+    // areas reproduce the old two columns exactly — see `.stock-head` in globals.css.
+    <div className="stock-head mb-5 fade-in">
+      {/* Identity */}
+      <div className="stock-head-id flex flex-col min-w-0">
         <div className="flex items-center gap-2.5">
-          <span className="font-[var(--font-mono)] text-[var(--font-hero)] font-bold text-[var(--text-primary)] tracking-[-1px]">
+          <span className="font-[family-name:var(--font-mono)] text-[var(--font-hero)] font-bold text-[var(--text-primary)] tracking-[-1px]">
             {tickerToUrlParts(stock.ticker).symbol}
           </span>
           <span className="text-[10px] font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[4px] px-[7px] py-[2px] flex-shrink-0">
@@ -190,7 +196,7 @@ export function StockHeader({ stock, badgeSlot }: Props) {
         </div>
         <CompanyName stock={stock} />
         <div
-          className="inline-flex items-center gap-[6px] font-[var(--font-mono)] text-[10px] text-[var(--text-muted)] mt-1 tracking-[0.2px] cursor-help self-start"
+          className="inline-flex items-center gap-[6px] font-[family-name:var(--font-mono)] text-[10px] text-[var(--text-muted)] mt-1 tracking-[0.2px] cursor-help self-start"
           title="Data Freshness — Stock prices and fundamentals refresh overnight, after each market has closed. This shows when we last refreshed this stock, not the date of the price itself: the latest close a provider has published can be a session older."
         >
           <span
@@ -215,17 +221,17 @@ export function StockHeader({ stock, badgeSlot }: Props) {
           />
           <span>Updated {formatUpdatedAt(stock.updatedAt)}</span>
         </div>
-        {badgeSlot}
       </div>
+      <div className="stock-head-badges min-w-0">{badgeSlot}</div>
 
-      {/* Right column: price + delta + upside + 52W gauge */}
-      <div className="ml-auto text-right min-w-[240px] flex flex-col items-stretch justify-start">
-        <div className="font-[var(--font-mono)] text-[var(--font-hero)] font-semibold text-[var(--text-primary)] leading-[1.1]">
+      {/* Price + delta + upside + 52W gauge */}
+      <div className="stock-head-price text-right flex flex-col items-stretch justify-start">
+        <div className="font-[family-name:var(--font-mono)] text-[var(--font-hero)] font-semibold text-[var(--text-primary)] leading-[1.1]">
           {fmtPrice(currentClose, currency)}
         </div>
         {change && (
           <div
-            className="font-[var(--font-mono)] text-[13px] font-semibold mt-1 tracking-[-0.1px]"
+            className="font-[family-name:var(--font-mono)] text-[13px] font-semibold mt-1 tracking-[-0.1px]"
             style={{ color: changeColor }}
           >
             <PriceArrow direction={change.pct >= 0 ? 'up' : 'down'} />
@@ -269,13 +275,7 @@ const LABEL_TIER: Record<OverallLabel, number> = {
   'High Conviction': 1, Constructive: 2, Neutral: 3, Cautious: 4, Bearish: 5,
 };
 
-const ZONE_TIER: Record<ValuationZone, number> = {
-  'DEEP VALUE': 1, VALUE: 2, FAIR: 3, STRETCHED: 4,
-};
-
-const ZONE_DISPLAY: Record<ValuationZone, string> = {
-  'DEEP VALUE': 'Deep Value', VALUE: 'Value', FAIR: 'Fair', STRETCHED: 'Stretched',
-};
+// Zone names and tiers come from lib/ratings.ts — one table, read everywhere.
 
 export function BadgeRow({
   overallLabel,
@@ -295,7 +295,7 @@ export function BadgeRow({
       {overallLabel && (
         <span
           className={`tier-badge tier-badge--${LABEL_TIER[overallLabel]}`}
-          title={`Overall rating: ${overallLabel}. Composite of Financial Health (40%) + Valuation Zone (35%) + Cycle Payoff (25%).`}
+          title={`Overall rating: ${overallLabel}. ${RATING_SUMMARY}`}
         >
           {overallLabel}
         </span>
@@ -315,7 +315,7 @@ export function BadgeRow({
         >
           {/* Attribution is VISIBLE, not just a tooltip, and unconditional. It used to
               appear only when our own badges were absent, on the theory that our label
-              framed this chip. That reads backwards: beside "Neutral" and "Stretched",
+              framed this chip. That reads backwards: beside "Neutral" and "Near high",
               a bare "Buy" looks like the third thing WE concluded, which is precisely
               what CLAUDE.md #2 forbids. Colour and a hover title are not enough — the
               tooltip is invisible on touch, and the entitled view is the one where the
@@ -335,8 +335,8 @@ export function BadgeRow({
           <>
             Three quick reads at a glance. The first is MajorCycle&apos;s overall label
             (High Conviction → Bearish). The second is the Valuation Zone — how the
-            current dip compares with this stock&apos;s typical pullback (Deep Value →
-            Stretched). The third, if shown, is the Wall Street analyst consensus —
+            current dip compares with this stock&apos;s typical pullback (
+            {`${ZONE_DISPLAY['DEEP VALUE']} → ${ZONE_DISPLAY.STRETCHED}`}). The third, if shown, is the Wall Street analyst consensus —
             third-party data, not our rating.
           </>
         ) : (

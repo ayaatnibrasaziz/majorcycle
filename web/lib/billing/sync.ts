@@ -6,6 +6,16 @@ import { reportIssue } from '@/lib/observability';
 import { getStripe, mapStripeStatus, planFromLookupKey } from '@/lib/stripe';
 import type { createAdminClient } from '@/lib/supabase/server';
 import { recordTrialConsumed } from '@/lib/trialGuard';
+import {
+  nextChargeAction,
+  nextChargeFromInvoice,
+  nextChargeFromSubscription,
+  planFromInvoiceLines,
+  toISO,
+  type NextCharge,
+} from '@/lib/billing/nextCharge';
+
+export { nextChargeAction, nextChargeFromInvoice, planFromInvoiceLines, toISO };
 
 /**
  * The ONE implementation that writes a Stripe subscription onto a profile.
@@ -33,9 +43,7 @@ export type EventContext = {
   subscriptionId?: string | null;
 };
 
-export function toISO(unixSeconds: number | null | undefined): string | null {
-  return unixSeconds ? new Date(unixSeconds * 1000).toISOString() : null;
-}
+// `toISO` lives in lib/billing/nextCharge.ts (pure, testable) and is re-exported here.
 
 export function customerId(
   c: string | { id: string } | null | undefined,
@@ -48,6 +56,86 @@ export function customerId(
 export function refId(ref: string | { id: string } | null | undefined): string | null {
   if (!ref) return null;
   return typeof ref === 'string' ? ref : ref.id;
+}
+
+/** Reported once per server instance — the cause is a key setting, not an event. */
+let previewDeniedReported = false;
+
+/**
+ * The next charge for a subscription: Stripe's preview of the next invoice first —
+ * discounts, tax and any old price already in it — and, when Stripe will not preview
+ * (a restricted key without Invoices access), the price on the subscription itself,
+ * which says nothing at all when a discount or tax would make it wrong
+ * (`nextChargeFromSubscription`). NULL means the card shows the date alone.
+ */
+async function computeNextCharge(sub: Stripe.Subscription): Promise<NextCharge | null> {
+  const stripe = getStripe();
+  try {
+    const inv = await stripe.invoices.createPreview({ subscription: sub.id });
+    const next = nextChargeFromInvoice(inv);
+    if (next) return next;
+  } catch (cause) {
+    const denied = (cause as { type?: string }).type === 'StripePermissionError';
+    if (!denied || !previewDeniedReported) {
+      reportIssue(
+        denied
+          ? 'billing sync: the Stripe key cannot preview invoices (grant Invoices: Read); using the subscription price'
+          : 'billing sync: could not preview the next charge; using the subscription price',
+        { level: 'warning', cause, tags: { subscriptionId: sub.id } },
+      );
+      if (denied) previewDeniedReported = true;
+    }
+  }
+  try {
+    return await nextChargeFromSubscription(sub, async (priceId, currency) => {
+      const price = await stripe.prices.retrieve(priceId, { expand: ['currency_options'] });
+      return price.currency_options?.[currency]?.unit_amount ?? null;
+    });
+  } catch (cause) {
+    reportIssue('billing sync: could not read the subscription price', {
+      level: 'warning',
+      cause,
+      tags: { subscriptionId: sub.id },
+    });
+    return null;
+  }
+}
+
+/**
+ * Fill in a live plan's missing next charge, once, from the account page.
+ *
+ * The figure is normally written by `syncSubscription` on every Stripe change. This
+ * covers the two ways it can be missing: a subscription recorded before the columns
+ * existed (2026-10-03), and a figure Stripe could not give at the time. The page calls
+ * it only when the plan will renew and the amount is NULL.
+ */
+export async function fillNextCharge(
+  admin: Admin,
+  userId: string,
+  subscriptionId: string,
+): Promise<NextCharge | null> {
+  let next: NextCharge | null = null;
+  try {
+    next = await computeNextCharge(await getStripe().subscriptions.retrieve(subscriptionId));
+  } catch (cause) {
+    reportIssue('billing: could not read the subscription to fill its next charge', {
+      level: 'warning',
+      cause,
+      tags: { subscriptionId },
+    });
+  }
+  if (!next) return null;
+  await admin
+    .from('profiles')
+    .update({
+      next_charge_amount: next.amount,
+      next_charge_currency: next.currency,
+      next_charge_at: next.at,
+      next_charge_plan: next.plan,
+    })
+    .eq('id', userId)
+    .eq('stripe_subscription_id', subscriptionId);
+  return next;
 }
 
 /** Look up a profile id by its stored Stripe customer id. */
@@ -220,6 +308,19 @@ export async function syncSubscription(
     cancel_at_period_end: sub.cancel_at != null || (sub.cancel_at_period_end ?? false),
     trial_ends_at: toISO(sub.trial_end),
   };
+  // Collection paused (an open dispute, lib/billing/dispute.ts): Stripe voids each
+  // invoice, so nothing is coming — the same as a scheduled cancel for this purpose.
+  const action = nextChargeAction(
+    status,
+    patch.cancel_at_period_end === true || sub.pause_collection != null,
+  );
+  if (action !== 'keep') {
+    const next = action === 'preview' ? await computeNextCharge(sub) : null;
+    patch.next_charge_amount = next?.amount ?? null;
+    patch.next_charge_currency = next?.currency ?? null;
+    patch.next_charge_at = next?.at ?? null;
+    patch.next_charge_plan = next?.plan ?? null;
+  }
   // NOTE: we deliberately do NOT clear grace_until here. It is the single-owner dunning
   // marker (set only by invoice.payment_failed, cleared only by the paid/succeeded handler
   // + markCanceled). If this healthy sync also cleared it, a subscription.updated→active

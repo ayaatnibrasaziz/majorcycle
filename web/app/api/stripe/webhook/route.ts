@@ -1,11 +1,27 @@
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 
+import { GRACE_DAYS } from '@/lib/billing/grace';
+import {
+  accountDisputeOutcome,
+  canPauseOrResume,
+  disputeBillingAction,
+  disputeStateFor,
+  type DisputeBillingAction,
+} from '@/lib/billing/dispute';
+import {
+  accessWasPaused,
+  endedEmailKind,
+  renewalReminderDue,
+  renewalTimeZone,
+} from '@/lib/billing/accessEmails';
 import { reportIssue } from '@/lib/observability';
 import { getStripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/server';
 import {
   customerId,
+  nextChargeFromInvoice,
+  planFromInvoiceLines,
   refId,
   resolveUserId,
   syncSubscription,
@@ -18,6 +34,8 @@ import {
   sendTrialEndingEmail,
   sendPaymentFailedEmail,
   sendPaymentRecoveredEmail,
+  sendSubscriptionEndedEmail,
+  sendAnnualRenewalEmail,
 } from '@/lib/email/billingEmails';
 
 /**
@@ -38,7 +56,7 @@ import {
  * welcome when the sub begins trialing (step 8); `checkout.session.completed` just links
  * the Stripe customer to our user; invoices flip active/past_due + the grace clock AND
  * send the branded dunning / recovery emails (step 8); `trial_will_end` sends the branded
- * trial-ending reminder (step 8); `charge.dispute.*` set/clear `billing_blocked` and cancel the sub on a lost
+ * trial-ending reminder (step 8); `charge.dispute.*` set/clear `billing_blocked`, pause billing while a dispute is open, and cancel the sub on a lost
  * dispute (step 8). The Step-7 email trial-tombstone is written in `syncSubscription` when
  * a sub goes trialing (the same-card vector is handled by Stripe Radar, no code here).
  *
@@ -55,7 +73,7 @@ import {
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const GRACE_DAYS = 3;
+// GRACE_DAYS lives in lib/billing/grace.ts: the account card and the Terms read it too.
 
 // The subscription→profile write, its helpers and EventContext now live in
 // lib/billing/sync.ts, because the checkout landing page reconciles through the SAME
@@ -99,6 +117,41 @@ async function resolveUserIdFromDispute(
   return { userId: await userIdByCustomer(admin, cust), customerId: cust };
 }
 
+/**
+ * The Stripe half of a dispute (lib/billing/dispute.ts): pause collection while it is
+ * open, resume it on a win, cancel on a loss. Failures are ALERTS — a pause that did
+ * not happen means a locked-out customer may be charged, and the owner must know.
+ */
+async function applyDisputeToSubscription(
+  admin: Admin,
+  userId: string,
+  action: Exclude<DisputeBillingAction, null>,
+): Promise<void> {
+  const { data: prof } = await admin
+    .from('profiles')
+    .select('stripe_subscription_id, subscription_status')
+    .eq('id', userId)
+    .maybeSingle();
+  const subId = prof?.stripe_subscription_id;
+  if (!subId) return;
+  try {
+    if (action === 'cancel') {
+      await getStripe().subscriptions.cancel(subId);
+    } else if (canPauseOrResume(prof.subscription_status ?? null)) {
+      await getStripe().subscriptions.update(subId, {
+        // 'void': each invoice while paused is voided rather than charged or left owing.
+        pause_collection: action === 'pause' ? { behavior: 'void' } : '',
+      });
+    }
+  } catch (err) {
+    reportIssue(`stripe webhook: could not ${action} the subscription for a dispute`, {
+      cause: err,
+      level: 'alert',
+      tags: { userId, subscriptionId: subId },
+    });
+  }
+}
+
 /** Subscription ended for good → lapse to a free (canceled) account. */
 async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<EventContext> {
   const cust = customerId(sub.customer);
@@ -115,7 +168,13 @@ async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<Eve
   // cancelled an old sub and started a new one, and Stripe delivered the old
   // `subscription.deleted` out of order (delivery order isn't guaranteed). Guarding on the
   // id means a late deletion of a superseded sub can never clobber a newer active one.
-  await admin
+  // The profile AS IT WAS, to decide which "it has ended" email applies (if any).
+  const { data: prev } = await admin
+    .from('profiles')
+    .select('email, display_name, subscription_status, billing_blocked, deletion_scheduled_at')
+    .eq('id', userId)
+    .maybeSingle();
+  const { data: applied } = await admin
     .from('profiles')
     .update({
       subscription_status: 'canceled',
@@ -123,9 +182,27 @@ async function markCanceled(admin: Admin, sub: Stripe.Subscription): Promise<Eve
       trial_ends_at: null,
       grace_until: null,
       cancel_at_period_end: false,
+      // Nothing more will be charged.
+      next_charge_amount: null,
+      next_charge_currency: null,
+      next_charge_at: null,
+      next_charge_plan: null,
     })
     .eq('id', userId)
-    .or(`stripe_subscription_id.eq.${sub.id},stripe_subscription_id.is.null`);
+    .or(`stripe_subscription_id.eq.${sub.id},stripe_subscription_id.is.null`)
+    .select('id');
+  // Only when THIS deletion actually ended the plan on file (not a stale, superseded
+  // one) — and lib/billing/accessEmails.ts decides whether the customer is told. Until
+  // 2026-10-03 nobody was (beta review D-5). Last and best-effort, like every email here.
+  const kind = applied?.length ? endedEmailKind(prev ?? null, sub.cancellation_details?.reason) : null;
+  if (kind && prev?.email) {
+    await sendSubscriptionEndedEmail({
+      to: prev.email,
+      name: prev.display_name ?? null,
+      kind,
+      idempotencyKey: `${sub.id}:subscription_ended`,
+    });
+  }
   return { userId, customerId: cust, subscriptionId: sub.id };
 }
 
@@ -166,15 +243,20 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       if (ctx.userId && sub.status === 'trialing' && sub.cancel_at == null) {
         const { data: prof } = await admin
           .from('profiles')
-          .select('email, display_name, subscription_currency, subscription_plan')
+          .select('email, display_name, subscription_plan, next_charge_amount, next_charge_currency, next_charge_plan')
           .eq('id', ctx.userId)
           .maybeSingle();
         if (prof?.email) {
           await sendTrialStartedEmail({
             to: prof.email,
             name: prof.display_name ?? null,
-            currency: prof.subscription_currency,
-            plan: prof.subscription_plan,
+            // Stripe's figure, stored by the sync above — never our price table.
+            charge:
+              prof.next_charge_amount != null && prof.next_charge_currency
+                ? { amount: prof.next_charge_amount, currency: prof.next_charge_currency }
+                : null,
+            // The plan the first charge is FOR (a plan switched during the trial).
+            plan: prof.next_charge_plan ?? prof.subscription_plan,
             idempotencyKey: `${event.id}:trial_started`,
           });
         }
@@ -227,9 +309,16 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       // first to clear it emails; the second sees NULL and no-ops. A normal renewal and the
       // $0 trial-start invoice never set grace, so they never trigger this. Email is the
       // last, best-effort action.
+      // Read the grace end BEFORE clearing it: the email must know whether access had
+      // already been paused (beta review D-6). The update returns the NEW row.
+      const { data: before } = await admin
+        .from('profiles')
+        .select('grace_until')
+        .eq('id', userId)
+        .maybeSingle();
       const { data: recovered } = await admin
         .from('profiles')
-        .update({ grace_until: null })
+        .update({ grace_until: null, access_paused_notified_at: null })
         .eq('id', userId)
         .eq('stripe_subscription_id', subscriptionId)
         .not('grace_until', 'is', null)
@@ -239,6 +328,7 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
         await sendPaymentRecoveredEmail({
           to: recovered.email,
           name: recovered.display_name ?? null,
+          wasPaused: accessWasPaused(before?.grace_until ?? null),
           idempotencyKey: `${event.id}:payment_recovered`,
         });
       }
@@ -271,9 +361,24 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       }
       // Reflect past_due (agrees with the subscription.updated event; ordering-safe), for
       // the current sub only.
+      // The amount that FAILED, for the account card's "Payment failed: A$19.00" row.
+      // `syncSubscription` leaves these alone while past_due (nextChargeAction 'keep'),
+      // so a subscription.updated arriving either side of this cannot replace it with
+      // the next period's figure.
+      const failed = nextChargeFromInvoice(invoice);
       await admin
         .from('profiles')
-        .update({ subscription_status: 'past_due' })
+        .update({
+          subscription_status: 'past_due',
+          ...(failed
+            ? {
+                next_charge_amount: failed.amount,
+                next_charge_currency: failed.currency,
+                next_charge_at: failed.at,
+                next_charge_plan: failed.plan,
+              }
+            : {}),
+        })
         .eq('id', userId)
         .eq('stripe_subscription_id', subscriptionId);
       // Anchor grace on the FIRST failure only: grace_until is the single-owner dunning
@@ -284,23 +389,69 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       const graceUntil = new Date(Date.now() + GRACE_DAYS * 24 * 60 * 60 * 1000).toISOString();
       const { data: firstFailure } = await admin
         .from('profiles')
-        .update({ grace_until: graceUntil })
+        // A NEW failure starts a new lapse, so its access-paused email must go out again.
+        .update({ grace_until: graceUntil, access_paused_notified_at: null })
         .eq('id', userId)
         .eq('stripe_subscription_id', subscriptionId)
         .is('grace_until', null)
-        .select('email, display_name, subscription_currency, subscription_plan')
+        .select('email, display_name, subscription_plan')
         .maybeSingle();
       if (firstFailure?.email) {
         await sendPaymentFailedEmail({
           to: firstFailure.email,
           name: firstFailure.display_name ?? null,
-          currency: firstFailure.subscription_currency,
+          // The invoice that failed, as Stripe reported it — not our price table.
+          charge: failed ? { amount: failed.amount, currency: failed.currency } : null,
           plan: firstFailure.subscription_plan,
           graceDays: GRACE_DAYS,
           idempotencyKey: `${event.id}:payment_failed`,
         });
       }
       return { userId, customerId: cust, subscriptionId };
+    }
+    case 'invoice.upcoming': {
+      // Fires RENEWAL_REMINDER_DAYS before a renewal (a Dashboard setting — see
+      // lib/billing/accessEmails.ts). Only an ANNUAL plan that will really renew is told
+      // (owner, 2026-10-07: a yearly charge nobody was warned about invites a dispute).
+      // The event's invoice is a preview with no id, so the idempotency key is the
+      // subscription and the period it closes: one reminder per renewal, however often
+      // Stripe redelivers.
+      const invoice = event.data.object as Stripe.Invoice;
+      const cust = customerId(invoice.customer);
+      const subscriptionId = refId(invoice.parent?.subscription_details?.subscription);
+      const userId = await resolveUserIdFromInvoice(admin, invoice);
+      const ctx: EventContext = { userId, customerId: cust, subscriptionId };
+      if (!userId || !subscriptionId) return ctx;
+      const { data: prof } = await admin
+        .from('profiles')
+        .select(
+          'email, display_name, stripe_subscription_id, subscription_status, subscription_plan, subscription_currency, cancel_at_period_end, deletion_scheduled_at, billing_blocked, current_period_end',
+        )
+        .eq('id', userId)
+        .maybeSingle();
+      if (!prof?.email || !renewalReminderDue(prof, subscriptionId)) return ctx;
+      // ⚠️ The INVOICE must bill a year too, not just the profile: an annual customer who
+      // has switched to monthly is still "annual" until the year ends, and would be told
+      // their annual plan renews — for the monthly amount.
+      if (planFromInvoiceLines(invoice) !== 'annual') return ctx;
+      const renewsAt = prof.current_period_end
+        ? new Date(prof.current_period_end)
+        : invoice.next_payment_attempt
+          ? new Date(invoice.next_payment_attempt * 1000)
+          : null;
+      if (!renewsAt || Number.isNaN(renewsAt.getTime())) return ctx;
+      await sendAnnualRenewalEmail({
+        to: prof.email,
+        name: prof.display_name ?? null,
+        charge:
+          invoice.currency && invoice.amount_due != null
+            ? { amount: invoice.amount_due, currency: invoice.currency }
+            : null,
+        renewsAt,
+        timeZone: renewalTimeZone(invoice.currency ?? prof.subscription_currency),
+        idempotencyKey: `${subscriptionId}:annual_renewal:${renewsAt.getTime()}`,
+      });
+      return ctx;
     }
     case 'customer.subscription.trial_will_end': {
       // Fires ~3 days before the trial ends → send the branded trial-ending reminder.
@@ -309,11 +460,13 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
       const userId = await resolveUserId(admin, sub);
       const ctx: EventContext = { userId, customerId: cust, subscriptionId: sub.id };
       // Skip if the trial is already scheduled to cancel — the user won't be charged, so a
-      // "you'll be charged" reminder would be false (they got the cancellation email).
+      // "you'll be charged" reminder would be false. (This said "they got the cancellation
+      // email" until 2026-10-03; there was none. They now get one when the trial actually
+      // ends — `markCanceled`.)
       if (!userId || sub.cancel_at != null) return ctx;
       const { data: prof } = await admin
         .from('profiles')
-        .select('email, display_name, subscription_currency, subscription_plan, trial_reminder_sent')
+        .select('email, display_name, subscription_plan, trial_reminder_sent, next_charge_amount, next_charge_currency, next_charge_plan')
         .eq('id', userId)
         .maybeSingle();
       // Belt-and-suspenders on top of stripe_events idempotency: only send once. Mark
@@ -326,67 +479,81 @@ async function handleEvent(admin: Admin, event: Stripe.Event): Promise<EventCont
         await sendTrialEndingEmail({
           to: prof.email,
           name: prof.display_name ?? null,
-          currency: prof.subscription_currency,
-          plan: prof.subscription_plan,
+          // Stripe's preview of the first charge — discounts and tax included.
+          charge:
+            prof.next_charge_amount != null && prof.next_charge_currency
+              ? { amount: prof.next_charge_amount, currency: prof.next_charge_currency }
+              : null,
+          plan: prof.next_charge_plan ?? prof.subscription_plan,
           idempotencyKey: `${event.id}:trial_ending`,
         });
       }
       return ctx;
     }
-    case 'charge.dispute.created': {
-      // A chargeback opened. Revoke access ONLY for a real dispute (funds moved) — a mere
-      // inquiry (status warning_*) hasn't taken money, so it must not lock a legit customer.
-      const dispute = event.data.object as Stripe.Dispute;
-      const ctx = await resolveUserIdFromDispute(admin, dispute);
-      if (ctx.userId && !dispute.status.startsWith('warning')) {
-        await admin.from('profiles').update({ billing_blocked: true }).eq('id', ctx.userId);
-      }
-      return ctx;
-    }
-    case 'charge.dispute.funds_withdrawn': {
-      // Funds actually pulled (a real chargeback, incl. an inquiry that escalated) → lock.
-      const dispute = event.data.object as Stripe.Dispute;
-      const ctx = await resolveUserIdFromDispute(admin, dispute);
-      if (ctx.userId) {
-        await admin.from('profiles').update({ billing_blocked: true }).eq('id', ctx.userId);
-      }
-      return ctx;
-    }
+    case 'charge.dispute.created':
+    case 'charge.dispute.funds_withdrawn':
+    case 'charge.dispute.funds_reinstated':
     case 'charge.dispute.closed': {
       const dispute = event.data.object as Stripe.Dispute;
       const ctx = await resolveUserIdFromDispute(admin, dispute);
       if (!ctx.userId) return ctx;
-      if (dispute.status === 'won') {
-        // We won → restore access.
-        await admin.from('profiles').update({ billing_blocked: false }).eq('id', ctx.userId);
-      } else {
-        // Lost → keep access revoked AND cancel the sub so it can't renew / re-dispute.
-        const { data: prof } = await admin
-          .from('profiles')
-          .select('stripe_subscription_id')
-          .eq('id', ctx.userId)
-          .maybeSingle();
-        if (prof?.stripe_subscription_id) {
-          try {
-            await getStripe().subscriptions.cancel(prof.stripe_subscription_id);
-          } catch (err) {
-            reportIssue('stripe webhook: cancel after lost dispute failed', {
-              cause: err,
-              level: 'alert',
-              tags: { userId: ctx.userId, subscriptionId: prof.stripe_subscription_id },
-            });
-          }
+      // Access and billing are decided by the SAME rule (lib/billing/dispute.ts):
+      // - pause:  a real dispute (funds moved). Lock access, and stop charging a
+      //           customer who cannot use what they would be paying for.
+      // - resume: we won. Restore access and billing — but only once no OTHER dispute on
+      //           the account is open or lost (2026-10-07, billing_disputes).
+      // - cancel: we lost. Access stays off and the subscription ends.
+      // - null:   a bank INQUIRY (warning_*), which moves no money. ⚠️ Until 2026-10-03
+      //           an inquiry that CLOSED fell into the "lost" branch and cancelled a
+      //           paying customer's subscription for a question their bank had asked.
+      const action = disputeBillingAction(event.type, dispute.status);
+      if (!action) return ctx;
+      // Record THIS dispute first (one row per dispute, so two arriving together cannot
+      // overwrite each other), then — for a win — read the OTHER disputes on the account:
+      // the hold lifts only when none is open and none was lost (accountDisputeOutcome).
+      const { error: recordError } = await admin.from('billing_disputes').upsert(
+        {
+          dispute_id: dispute.id,
+          user_id: ctx.userId,
+          state: disputeStateFor(action),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'dispute_id' },
+      );
+      let others: { open: number; lost: number } | null = null;
+      if (action === 'resume') {
+        const { data: rows, error } = await admin
+          .from('billing_disputes')
+          .select('state')
+          .eq('user_id', ctx.userId)
+          .neq('dispute_id', dispute.id)
+          .neq('state', 'won');
+        others =
+          error || recordError
+            ? null
+            : {
+                open: (rows ?? []).filter((r) => r.state === 'open').length,
+                lost: (rows ?? []).filter((r) => r.state === 'lost').length,
+              };
+        if (!others) {
+          reportIssue('stripe webhook: could not check the other disputes; the hold stays', {
+            cause: error ?? recordError,
+            level: 'alert',
+            tags: { userId: ctx.userId, disputeId: dispute.id },
+          });
         }
+      } else if (recordError) {
+        reportIssue('stripe webhook: could not record a dispute', {
+          cause: recordError,
+          level: 'warning',
+          tags: { userId: ctx.userId, disputeId: dispute.id },
+        });
       }
-      return ctx;
-    }
-    case 'charge.dispute.funds_reinstated': {
-      // Funds returned (dispute resolved in our favour) → restore access.
-      const dispute = event.data.object as Stripe.Dispute;
-      const ctx = await resolveUserIdFromDispute(admin, dispute);
-      if (ctx.userId) {
-        await admin.from('profiles').update({ billing_blocked: false }).eq('id', ctx.userId);
+      const outcome = accountDisputeOutcome(action, others);
+      if (outcome.hold !== null) {
+        await admin.from('profiles').update({ billing_blocked: outcome.hold }).eq('id', ctx.userId);
       }
+      if (outcome.stripe) await applyDisputeToSubscription(admin, ctx.userId, outcome.stripe);
       return ctx;
     }
     default:

@@ -7,6 +7,7 @@ import { AlertCircle, Mail, Check, Sparkles } from 'lucide-react';
 import { AuthCard } from '@/components/AuthCard';
 import { AuthDivider } from '@/components/AuthDivider';
 import { GoogleSignIn } from '@/components/GoogleSignIn';
+import { AgreeToTerms } from '@/components/AgreeToTerms';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -229,6 +230,8 @@ export function SignupForm() {
       <AuthDivider />
 
       <GoogleSignIn next={next} onError={setError} disabled={loading} label="signup_with" />
+
+      <AgreeToTerms action="creating an account" />
 
       <p className="mt-7 pt-6 border-t border-[var(--border)] text-center text-[13px] text-[var(--text-secondary)]">
         Already have an account?{' '}

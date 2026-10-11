@@ -7,6 +7,7 @@ import { PAYOUT_DISPLAY_CAP } from '../lib/dividends';
 import {
   DAYS_TO_COVER_DECIMALS,
   KEY_METRICS,
+  NEGATIVE_NOT_COMPARABLE,
   SHORT_PCT_DECIMALS,
   buildKeyMetricsTable,
   type MetricCategory,
@@ -57,7 +58,7 @@ const APPROVED: Array<[string, MetricCategory]> = [
   ['Current Ratio', 'Balance Sheet'],
   ['Quick Ratio', 'Balance Sheet'],
   ['Payout Ratio', 'Shareholder'],
-  ['Share Count change', 'Shareholder'],
+  ['Share Count Change', 'Shareholder'],
   ['Beta', 'Risk'],
   ['Short % of Float', 'Risk'],
   ['Days to Cover', 'Risk'],
@@ -165,9 +166,42 @@ test.describe('the Risk rows make no better/worse claim', () => {
     // A table calling either "weaker" where the score calls it stronger would have
     // the page contradict its own rating.
     const payout = all.find((r) => r.label === 'Payout Ratio')!; // 12.04 vs a 5.02 median
-    const shares = all.find((r) => r.label === 'Share Count change')!; // −2.27 vs −2.135
+    const shares = all.find((r) => r.label === 'Share Count Change')!; // −2.27 vs −2.135
     expect(payout.verdict).toBe('worse');
     expect(shares.verdict).toBe('better');
+  });
+});
+
+test.describe('a negative valuation multiple is shown, never compared (visual audit, 2026-10-07)', () => {
+  test('a loss-maker’s negative EV / EBITDA reads "n/m", not "stronger than the typical peer"', () => {
+    const r = rows({ ...VALUES, evToEbitda: -35.2, forwardPe: -12 });
+    for (const label of ['EV / EBITDA', 'Forward P/E']) {
+      const row = r.find((x) => x.label === label)!;
+      expect(row.value, label).toMatch(/^-/);
+      expect(row.verdict, label).toBe('na');
+      expect(row.text, label).toBe('n/m');
+      expect(row.tip, label).not.toMatch(/stronger|weaker/);
+    }
+  });
+
+  test('CONTROL: a negative figure that IS meaningful is still compared', () => {
+    // A falling share count and a negative margin are real readings, not artefacts.
+    const r = rows({ ...VALUES, sharesChangeYoyPct: -2.27, netMargin: -14 });
+    expect(r.find((x) => x.label === 'Share Count Change')!.verdict).toBe('better');
+    expect(r.find((x) => x.label === 'Net Margin')!.verdict).toBe('worse');
+    expect(NEGATIVE_NOT_COMPARABLE.has('netMargin')).toBe(false);
+  });
+
+  test('an industry too small for a median hides its column instead of filling it with dashes', () => {
+    expect(build().hasIndustry).toBe(false);
+    const withIndustry = buildKeyMetricsTable({
+      fundamentals: VALUES as unknown as FundamentalsSnapshot,
+      industry: 'Consumer Electronics',
+      sector: null,
+      market: 'us',
+      medians: { ...medians(), industry: { 'Consumer Electronics': medians().market.us! } },
+    });
+    expect(withIndustry.hasIndustry).toBe(true);
   });
 });
 

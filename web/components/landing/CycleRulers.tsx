@@ -115,7 +115,10 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
         fill="linear-gradient(90deg,rgba(178,34,34,.28),rgba(178,34,34,.09))"
         tail={{
           from: down(s.typicalDrawdownPct),
-          text: `Deeper than average — reached only in the worst of its ${falls} falls`,
+          // ⚠️ Beta review F-12: this labels the ZONE past the average, not where
+          // the stock is — and "reached only in the worst of its falls" was untrue,
+          // since many falls pass the average. Describe the zone and nothing more.
+          text: 'Deeper than its average fall',
         }}
         marks={[
           {
@@ -138,7 +141,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
         ]}
         legend={[
           { colour: 'var(--brand-bright)', text: 'Where it is now' },
-          { colour: 'var(--series-reference-ink)', text: `Average of all ${falls} falls` },
+          { colour: 'var(--series-reference-ink)', text: `Average of its ${falls} low points` },
           { colour: 'var(--c-down-ink)', text: 'Deepest single fall on record' },
         ]}
       />
@@ -150,7 +153,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
         fill="linear-gradient(90deg,rgba(27,116,27,.09),rgba(27,116,27,.28))"
         tail={{
           from: up(s.typicalRecoveryPct),
-          text: `Beyond where past recoveries usually stopped — one of ${recoveries} ran this far`,
+          text: 'Further than its average recovery',
         }}
         marks={[
           {
@@ -173,7 +176,7 @@ export function CycleRulers({ snapshot = LANDING }: { snapshot?: LandingSnapshot
         ]}
         legend={[
           { colour: 'var(--brand-bright)', text: 'Risen since its last low' },
-          { colour: 'var(--series-reference-ink)', text: `Average of all ${recoveries} recoveries` },
+          { colour: 'var(--series-reference-ink)', text: `Average of its ${recoveries} high points` },
           { colour: 'var(--c-up-ink)', text: 'Largest single recovery on record' },
         ]}
       />

@@ -5,6 +5,11 @@ import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requestAccountDeletion } from '@/app/(app)/account/actions';
 import { ACCOUNT_DELETION_GRACE_DAYS } from '@/lib/account';
+import { clearStoredRuns } from '@/lib/analysis';
+import {
+  deletionSubscriptionLine,
+  type DeletionSubscriptionKind,
+} from '@/lib/deletionSubscription';
 
 // The viewer's device IANA timezone (client-only; '' on the server / no JS). Sent
 // with the deletion request so the "deletion scheduled" email shows the date in the
@@ -25,25 +30,21 @@ function getDeviceTimeZone(): string {
  * `requestAccountDeletion` server action (schedules the 30-day soft-delete,
  * emails the user, signs them out, and redirects to /deletion-requested).
  *
- * `subscriptionStatus` drives the reassurance copy shown before confirming:
- * a paying subscriber is told their plan stays valid through the period they've
- * already paid for (deleting neither cuts it short nor extends it — no delete-and-
- * restore loophole); a trial user is told the trial stays active to its normal end
- * with no charge (F3 Step 6 = cancel-at-trial-end, not freeze/restore). Signing back
- * in before the deletion date restores the account (and un-cancels a still-live sub).
+ * `subscription` (computed on the server by lib/deletionSubscription.ts — the same rule
+ * the email and /reactivate read) picks the one sentence about what deletion does to
+ * the subscription. It carries no dates: this card cannot know the reader's time zone
+ * on the server, and the email that follows states them.
  */
 export function DeleteAccountCard({
-  subscriptionStatus = null,
+  subscription = 'none',
 }: {
-  subscriptionStatus?: string | null;
+  subscription?: DeletionSubscriptionKind;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [ack, setAck] = useState(false);
   const timeZone = useSyncExternalStore(noopSubscribe, getDeviceTimeZone, () => '');
 
-  const isTrial = subscriptionStatus === 'trialing';
-  const isPaidSub =
-    subscriptionStatus === 'active' || subscriptionStatus === 'past_due';
+  const subLine = deletionSubscriptionLine(subscription, { deletionDate: null, periodEnd: null });
 
   return (
     <section className="card">
@@ -83,19 +84,9 @@ export function DeleteAccountCard({
               </p>
             </div>
 
-            {isPaidSub && (
+            {subLine && (
               <p className="text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
-                Your subscription stays valid until the end of the period you&apos;ve
-                already paid for — deleting won&apos;t cut it short or extend it. Sign
-                back in before the deletion date to restore your account; otherwise
-                it&apos;s removed then and won&apos;t renew.
-              </p>
-            )}
-            {isTrial && (
-              <p className="text-[12.5px] leading-relaxed text-[var(--text-secondary)]">
-                Your free trial stays active until its normal end date, with{' '}
-                <strong>no charge</strong>. Sign back in before then to keep it; if the
-                trial ends first, you&apos;ll come back to a free account.
+                {subLine}
               </p>
             )}
 
@@ -115,7 +106,8 @@ export function DeleteAccountCard({
                   hidden field carries the device timezone for the email date. */}
               <form action={requestAccountDeletion}>
                 <input type="hidden" name="timeZone" value={timeZone} />
-                <Button type="submit" variant="destructive" disabled={!ack}>
+                {/* Screener results kept in this browser leave with the account. */}
+                <Button type="submit" variant="destructive" disabled={!ack} onClick={clearStoredRuns}>
                   Schedule deletion
                 </Button>
               </form>

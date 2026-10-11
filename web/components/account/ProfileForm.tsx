@@ -134,7 +134,7 @@ export function ProfileForm({
                 setCountry(e.target.value);
                 setSaved(false);
               }}
-              className="w-full h-11 px-3.5 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] text-[13.5px] font-[var(--font-sans)] outline-none transition-all duration-150 hover:border-[var(--border-strong)] focus:border-[var(--brand-bright)] focus:ring-[3px] focus:ring-[var(--brand-bright)]/15 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full h-11 px-3.5 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-primary)] text-[13.5px] font-[family-name:var(--font-sans)] outline-none transition-all duration-150 hover:border-[var(--border-strong)] focus:border-[var(--brand-bright)] focus:ring-[3px] focus:ring-[var(--brand-bright)]/15 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="">Select your country…</option>
               {COUNTRIES.map((c) => (

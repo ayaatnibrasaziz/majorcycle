@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { acknowledgeDisclaimer } from '@/app/(app)/actions';
+import { RATING_PARTS, RATING_PARTS_TEXT } from '@/lib/ratingDefinition';
 
 export function OnboardingModal() {
   const router = useRouter();
@@ -79,27 +80,21 @@ export function OnboardingModal() {
               stock&apos;s price history. For each ticker it calculates:
             </p>
             <ul className="mt-2 space-y-1 pl-4 list-disc">
+              {/* The three parts of the rating, from the ONE definition every surface
+                  reads (lib/ratingDefinition.ts). This list used to name "Cycle
+                  Position" as a part and never mention Cycle Payoff or a weight, so
+                  it described a different rating from the paywall and the landing page
+                  (beta review D-15). Strings, not JSX text, so no entity can eat a
+                  space here (CLAUDE.md 11ac). */}
+              {RATING_PARTS.map((part) => (
+                <li key={part.key}>
+                  <strong>{part.name}</strong>
+                  {` — ${part.what}`}
+                </li>
+              ))}
               <li>
-                <strong>Cycle Position</strong> — where the current price sits relative to
-                typical historical pullbacks and recoveries
-              </li>
-              <li>
-                <strong>Financial Health Score</strong> — a 5-pillar composite of
-                profitability, balance sheet, growth, cashflow, and shareholder returns
-              </li>
-              <li>
-                {/* Literal apostrophes, not &apos;. SWC drops the LEADING space of a
-                    JSX text node that spans more than one line AND contains an entity
-                    (CLAUDE.md 11ac), which rendered this bullet as "Valuation Score—"
-                    while its three siblings kept their space. Guarded by
-                    e2e/jsx-entity-space.spec.ts. */}
-                <strong>Valuation Score</strong> — how far today’s price has
-                pulled back versus the stock’s typical cycle, adjusted for the
-                company’s financial strength
-              </li>
-              <li>
-                <strong>Overall Rating</strong> — a 0–100 composite of all three signals,
-                mapped to one of five labels:{' '}
+                <strong>Overall Rating</strong>
+                {` — a 0–100 score made of those three parts: ${RATING_PARTS_TEXT}, mapped to one of five labels: `}
                 <span className="font-semibold text-[var(--c-tier-1)]">High Conviction</span>
                 ,{' '}
                 <span className="font-semibold text-[var(--c-tier-2)]">Constructive</span>
@@ -169,6 +164,22 @@ export function OnboardingModal() {
           >
             {loading ? 'Continuing…' : 'Continue to MajorCycle →'}
           </Button>
+          {/* The documents this screen asks the reader to accept, and a way out for
+              someone who would rather not (beta review D-10: it had neither). The
+              links open beside this screen so nobody loses their place in it. */}
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11.5px] text-[var(--text-muted)]">
+            <a href="/terms" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-[var(--brand-mid)]">
+              Terms of Service
+            </a>
+            <a href="/privacy" target="_blank" rel="noopener" className="underline underline-offset-2 hover:text-[var(--brand-mid)]">
+              Privacy Policy
+            </a>
+            <form action="/auth/signout" method="post">
+              <button type="submit" className="underline underline-offset-2 hover:text-[var(--brand-mid)]">
+                Sign out
+              </button>
+            </form>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

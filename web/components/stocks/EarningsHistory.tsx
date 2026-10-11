@@ -62,6 +62,12 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
       return next;
     });
 
+  const LEGEND_ITEMS = [
+    { label: 'Estimate', series: 'est', fill: 'rgba(139,157,168,.20)', stroke: 'rgba(139,157,168,.50)' },
+    { label: 'Actual — beat', series: 'act', fill: '#228B22', stroke: CANDLE.up },
+    { label: 'Actual — missed', series: 'act', fill: '#B22222', stroke: CANDLE.down },
+  ];
+
   const data: ChartRow[] = items.map((item) => {
     const est = typeof item['epsestimate'] === 'number' ? (item['epsestimate'] as number) : null;
     const act = typeof item['epsactual'] === 'number' ? (item['epsactual'] as number) : null;
@@ -193,34 +199,38 @@ export function EarningsHistory({ earningsHistory, currency, currencyNote }: Pro
                   );
                 }}
               />
+              {/* ⚠️ Drawn by hand since 2026-10-03 (beta review B-17): Recharts drew ONE
+                  swatch for "Actual" in the series' default colour — black — while every
+                  actual bar is green (beat) or red (missed). The key now shows the three
+                  colours a reader actually sees; clicking either Actual entry toggles the
+                  actual bars, as before. Labels keep readable ink: the Estimate fill is a
+                  20% wash, which as text measured 1.19:1. */}
               <Legend
-                wrapperStyle={{ fontSize: 10, fontFamily: 'Sora', paddingTop: 4, cursor: 'pointer' }}
-                iconSize={10}
-                onClick={(data) => {
-                  const key = (data as { dataKey?: unknown }).dataKey;
-                  if (typeof key === 'string') toggleSeries(key);
-                }}
-                formatter={(value, entry) => {
-                  const key = (entry as { dataKey?: unknown }).dataKey;
-                  const off = typeof key === 'string' && hidden.has(key);
-                  // ⚠️ Recharts colours a visible legend label with its SERIES
-                  // colour, and the Estimate bar is a 20% wash
-                  // (rgba(139,157,168,.20)) chosen to sit behind the actual bar.
-                  // As a fill that is right; as TEXT it measured **1.19:1**, the
-                  // worst reading on the page. This used to leave visible labels
-                  // to the default for exactly that reason -- "keep recharts'
-                  // series-coloured text" -- which is fine until a series is
-                  // deliberately faint. Both states now carry readable ink; the
-                  // struck-through style is what marks a hidden series, not a
-                  // washed-out colour.
-                  return off ? (
-                    <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>
-                      {value}
-                    </span>
-                  ) : (
-                    <span style={{ color: 'var(--text-secondary)' }}>{value}</span>
-                  );
-                }}
+                content={() => (
+                  <div className="earnings-legend">
+                    {LEGEND_ITEMS.map((it) => {
+                      const off = hidden.has(it.series);
+                      return (
+                        <span
+                          key={it.label}
+                          className="earnings-legend-item"
+                          onClick={() => toggleSeries(it.series)}
+                          style={{
+                            color: off ? 'var(--text-muted)' : 'var(--text-secondary)',
+                            textDecoration: off ? 'line-through' : 'none',
+                          }}
+                        >
+                          <span
+                            className="earnings-legend-swatch"
+                            style={{ background: it.fill, borderColor: it.stroke }}
+                            aria-hidden="true"
+                          />
+                          {it.label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               />
               <Bar
                 dataKey="est"

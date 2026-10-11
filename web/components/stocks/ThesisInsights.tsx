@@ -11,6 +11,8 @@ import { fmtCapped, fmtPrice } from '@/lib/format';
 import { INK } from '@/lib/ink';
 import { quoteMatchesHistory } from '@/lib/quoteBasis';
 import { pillarIsWeak } from '@/lib/thesisText';
+import { shallowDipEdge } from '@/lib/ratings';
+import { CONFIDENCE_TIERS, HIGH_CONFIDENCE_FROM, LIMITED_HISTORY_BELOW } from '@/lib/ratingDefinition';
 
 interface Props {
   /**
@@ -38,7 +40,6 @@ function fmt(n: number, d = 1): string {
 
 interface Bullet {
   text: string;
-  strong: boolean;
   invalidation?: string;
 }
 
@@ -57,15 +58,17 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
   // attraction when the business is sound. When Financial Health is weak or
   // withheld, this is value-trap territory — the discount likely reflects
   // deteriorating fundamentals — so we drop the "historically attractive entry
-  // zone" claim (and its Strong tag) rather than cheerlead it. FH < 50 is the
+  // zone" claim rather than cheerlead it. FH < 50 is the
   // same "stressed" line the Verdict card uses for its financial-health sentence.
   // A free viewer has no Financial Health at all — which lands on the same branch as
   // a withheld score, exactly as intended above (withheld ⇒ don't cheerlead).
   const fh = isFullCycle(c) ? c.financialHealthScore : null;
   const fhWeak = fh == null || fh < 50;
-  // `tdd <= -5` keeps this disjoint from the "near highs" risk (which needs dd > -5):
-  // a stock whose typical dip is itself < 5% never earns an "attractive entry zone" claim.
-  if (tdd != null && tdd <= -5 && dd <= tdd && !fhWeak)
+  // `tdd <= edge` keeps this disjoint from the "near highs" risk (which needs dd > edge):
+  // a stock whose typical dip is shallower than the horizon's own threshold never earns
+  // an "attractive entry zone" claim. The edge was a fixed −5 until 2026-10-10.
+  const edge = shallowDipEdge(c.params);
+  if (tdd != null && tdd <= edge && dd <= tdd && !fhWeak)
     out.push(`Trading at or below its historical average dip (${fmt(tdd)}%) — historically attractive entry zone`);
   // Never praise a figure from an area the scorecard beside it calls weak (beta review
   // B-7): "fortress balance sheet" sat under a Verdict blaming the balance sheet.
@@ -77,8 +80,16 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
     out.push(`Strong FCF yield of ${fmtCapped(f.fcfYieldPct, 100)}% — the business generates real cash`);
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 15 && ok('growth'))
     out.push(`Accelerating revenue growth of ${fmtCapped(f.revenueGrowthYoy, 300)}% YoY`);
+  // "Fortress" is a claim about the WHOLE balance sheet, so it needs the scorecard's
+  // Balance Sheet pillar to agree (80+, the Healthy band). Low debt alone sat beside a
+  // Balance Sheet score of 68 on Moderna (visual audit, 2026-10-07); there it says only
+  // what the ratio shows.
   if (f.debtToEquity != null && f.debtToEquity < 0.5 && ok('balanceSheet'))
-    out.push(`Low D/E of ${fmt(f.debtToEquity, 2)} — fortress balance sheet`);
+    out.push(
+      (sub?.balanceSheet ?? 0) >= 80
+        ? `Low D/E of ${fmt(f.debtToEquity, 2)} — fortress balance sheet`
+        : `Low D/E of ${fmt(f.debtToEquity, 2)} — little debt relative to equity`,
+    );
   // "Growing faster than the valuation implies" beside "revenue declining 99%" (Adavale):
   // a low PEG from a one-off earnings jump is not growth, so it needs revenue to agree.
   if (
@@ -87,8 +98,9 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
     && ok('growth')
   )
     out.push(`PEG of ${fmt(f.peg, 2)} — growing faster than the valuation implies`);
-  if (c.totalPullbackEvents >= 10)
-    out.push(`${c.totalPullbackEvents} confirmed pullback events — a well-calibrated signal`);
+  // Confidence reads High from here (lib/ratingDefinition.ts), so the two agree.
+  if (c.totalPullbackEvents >= HIGH_CONFIDENCE_FROM)
+    out.push(`${c.totalPullbackEvents.toLocaleString('en-AU')} past low points in its record — a well-established pattern`);
   // ⚠️ The target is a QUOTE and every other price on this page comes from the price
   // HISTORY. `quoteMatchesHistory` is false only when a split has left the two on
   // different bases, in which case this line would print a target 3x the price shown
@@ -102,7 +114,7 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
     out.push(`Analyst consensus is Strong Buy, mean target ${fmtPrice(f.analystTargetPrice, currency)}`);
 
   // Fallback when no genuine strength fired: a factual, non-asserting line (it never
-  // claims a metric is good, so it can't contradict a Key Risk) — and never tagged Strong.
+  // claims a metric is good, so it can't contradict a Key Risk).
   const usedFallback = out.length === 0;
   if (usedFallback)
     out.push(
@@ -111,12 +123,12 @@ function buildAttractive(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSn
         : `Limited cycle history so far — the case rests on fundamentals rather than the dip pattern`,
     );
 
-  return out.slice(0, 6).map((text, i) => ({ text, strong: !usedFallback && i < 2 }));
+  return out.slice(0, 6).map((text) => ({ text }));
 }
 
 function riskInvalidation(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapshot): string | undefined {
   const dd = c.currentDrawdownPct;
-  if (dd > -5 && c.typicalDrawdown != null)
+  if (dd > shallowDipEdge(c.params) && c.typicalDrawdown != null)
     return `A pullback past ${fmt(c.typicalDrawdown)}% (the typical-dip level) would restore historical entry-zone characteristics.`;
   if (f.debtToEquity != null && f.debtToEquity >= 1.5)
     return `A reduction in D/E below 1.0 — via debt paydown or equity growth — would remove the rate-sensitivity flag.`;
@@ -126,8 +138,8 @@ function riskInvalidation(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsS
     return `A move in current ratio above 1.2 would clear the short-term liquidity pressure.`;
   if (f.peg != null && f.peg > 3)
     return `Either an acceleration in EPS growth or a meaningful multiple compression would restore a defensible PEG.`;
-  if (c.totalPullbackEvents < 8)
-    return `As more cycles accumulate (target: 10+ events), the band statistics tighten and confidence improves.`;
+  if (c.totalPullbackEvents < LIMITED_HISTORY_BELOW)
+    return `As more history accumulates (${HIGH_CONFIDENCE_FROM}+ low points, about ${CONFIDENCE_TIERS[0].years} years, for High confidence), the band statistics tighten.`;
   if (f.netMargin != null && f.netMargin < 0)
     return `A return to profitability (a positive net margin) would clear the loss-making concern.`;
   if (f.netMargin != null && f.netMargin < 5)
@@ -141,7 +153,7 @@ function buildRisks(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapsho
   const out: string[] = [];
   const dd = c.currentDrawdownPct;
 
-  if (dd > -5)
+  if (dd > shallowDipEdge(c.params))
     out.push(`Near ${c.params.lookbackBars}-day highs (drawdown ${fmt(dd)}%) — limited margin of safety`);
   if (f.debtToEquity != null && f.debtToEquity >= 1.5)
     out.push(`Elevated D/E of ${fmtCapped(f.debtToEquity, 25, 2)} — pressure if rates rise`);
@@ -151,8 +163,9 @@ function buildRisks(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapsho
     out.push(`Current ratio ${fmt(f.currentRatio, 2)} below 1.0 — liquidity concern`);
   if (f.peg != null && f.peg > 3)
     out.push(`PEG of ${fmtCapped(f.peg, 25, 2)} — valuation stretched vs growth`);
-  if (c.totalPullbackEvents < 8)
-    out.push(`Only ${c.totalPullbackEvents} pullback events — limited signal history`);
+  // The point where confidence reads Limited (lib/ratingDefinition.ts).
+  if (c.totalPullbackEvents < LIMITED_HISTORY_BELOW)
+    out.push(`Only ${c.totalPullbackEvents} past low points in its record — limited history`);
   // A loss is not a thin margin (beta review B-4: Moderna −141% read "thin").
   if (f.netMargin != null && f.netMargin < 0)
     out.push(`Loss-making — net margin of ${fmtCapped(f.netMargin, 300)}%`);
@@ -165,7 +178,7 @@ function buildRisks(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapsho
     out.push(`Revenue growth of ${fmt(f.revenueGrowthYoy)}% is modest — multiple-compression risk`);
 
   // Genuine risks only. If none fired, show one tautological cycle caveat (never a
-  // metric claim → can't contradict Why Attractive); no Severe tag / no invalidation on it.
+  // metric claim → can't contradict Why Attractive); no invalidation on it.
   const hadGenuineRisk = out.length > 0;
   if (!hadGenuineRisk)
     out.push(`Cycle patterns are historical and may not repeat — treat the signal as a guide, not a guarantee`);
@@ -173,7 +186,6 @@ function buildRisks(c: CycleAnalysis | CycleAnalysisFree, f: FundamentalsSnapsho
   const inv = hadGenuineRisk ? riskInvalidation(c, f) : undefined;
   return out.slice(0, 6).map((text, i) => ({
     text,
-    strong: hadGenuineRisk && i < 2,
     invalidation: i === 0 ? inv : undefined,
   }));
 }
@@ -194,19 +206,6 @@ function WarnIcon() {
       <path d="M8 6.5v3.2" />
       <circle cx="8" cy="11.6" r="0.6" fill={INK.neutral} stroke="none" />
     </svg>
-  );
-}
-
-function StrengthTag({ kind }: { kind: 'attr' | 'risk' }) {
-  const label = kind === 'attr' ? 'Strong' : 'Severe';
-  const tip =
-    kind === 'attr'
-      ? 'Strongest signal — one of the strongest supportive signals firing on this stock; heavily weighted in the Verdict above.'
-      : 'Most severe risk — one of the most material risks identified for this stock; reflected in the primary-risk line of the Verdict above.';
-  return (
-    <span className={`insight-strength is-${kind}`} title={tip}>
-      <span className="insight-strength-label">{label}</span>★★★
-    </span>
   );
 }
 
@@ -233,7 +232,6 @@ export function ThesisInsights({ cycle, fundamentals, currency, priceBars }: Pro
               <div className="insight-icon"><CheckIcon /></div>
               <div className="insight-text">
                 {b.text}
-                {b.strong && <StrengthTag kind="attr" />}
               </div>
             </div>
           ))}
@@ -256,7 +254,6 @@ export function ThesisInsights({ cycle, fundamentals, currency, priceBars }: Pro
               <div className="insight-icon"><WarnIcon /></div>
               <div className="insight-text">
                 {b.text}
-                {b.strong && <StrengthTag kind="risk" />}
                 {b.invalidation && (
                   <div className="insight-invalidation">
                     <span className="insight-invalidation-icon" aria-hidden="true">

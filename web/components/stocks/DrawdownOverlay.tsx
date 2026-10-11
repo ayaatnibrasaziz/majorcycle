@@ -12,6 +12,7 @@ import {
   type ISeriesApi,
   type Time,
 } from 'lightweight-charts';
+import { edgeSafeTickFormatter } from '@/lib/chartTicks';
 
 import {
   createSyncSource,
@@ -22,6 +23,7 @@ import {
   timeToMs,
 } from '@/lib/chartSync';
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
+import { CONFIDENCE_TIERS, HIGH_CONFIDENCE_FROM } from '@/lib/ratingDefinition';
 import type { CycleAnalysisFree, PriceBar } from '@/lib/types';
 
 type Mode = 'drawdown' | 'profit';
@@ -176,7 +178,11 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
       // Pin both edges so this overlay (and the Price chart, which does the same)
       // can't scroll past the data into empty whitespace — that desynced the two
       // charts because setVisibleRange can't reproduce an out-of-data range.
-      timeScale: { borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+      timeScale: {
+        borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true,
+        // No date label half-cut by the price scale at the right edge (lib/chartTicks.ts).
+        tickMarkFormatter: edgeSafeTickFormatter(() => chartRef.current),
+      },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
     });
@@ -209,8 +215,12 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
         lineWidth: 1,
         lineStyle: LineStyle.Dashed,
         priceLineVisible: false,
+        // ⚠️ The name only, not "Avg -58.5%" (beta review B-20): the axis label beside it
+        // already prints the value, so the pair read "Avg -58.5%  -58.54" and on a phone
+        // covered two ticks of the scale. (The chart library draws a line's name only
+        // together with its axis label, so the label itself has to stay.)
         lastValueVisible: true,
-        title: `Avg ${fmt(typLine)}%`,
+        title: 'Avg',
       }).setData(series.map(p => ({ time: p.time, value: typLine })));
     }
 
@@ -221,7 +231,7 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
         lineStyle: LineStyle.LargeDashed,
         priceLineVisible: false,
         lastValueVisible: true,
-        title: `${isDD ? 'Low' : 'High'} ${fmt(boundLine)}%`,
+        title: isDD ? 'Low' : 'High',
       }).setData(series.map(p => ({ time: p.time, value: boundLine })));
     }
 
@@ -407,9 +417,14 @@ export function DrawdownOverlay({ priceBars, cycle }: Props) {
           </div>
           <div
             className="stat-pill"
-            title="Cycle Events Count — The number of distinct drawdown or profit cycles identified in the full price history. More events means a larger sample size and higher confidence in the Typical and Bound levels. 10+ events is considered statistically reliable."
+            // ⚠️ "distinct cycles" until 2026-10-10, which they are not: each is a LOW
+            // POINT of the curve past the threshold, and one long fall holds several
+            // (Apple: 611 on Medium, about 173 separate falls). Owner: call them low points.
+            title={isDD
+              ? `Low points — how many times the drawdown curve bottomed out past this horizon's ${cycle.params.pullbackThreshold}% threshold across the full price history. One long fall can hold several. More low points means a larger sample behind the Typical and Bound levels; ${HIGH_CONFIDENCE_FROM}+ (about ${CONFIDENCE_TIERS[0].years} years) gives High confidence.`
+              : `High points — how many times the recovery curve peaked past this horizon's +${cycle.params.profitThreshold}% threshold across the full price history. One long rise can hold several. More high points means a larger sample behind the Typical and Bound levels.`}
           >
-            <div className="stat-pill-label">Events</div>
+            <div className="stat-pill-label">{isDD ? 'Low points' : 'High points'}</div>
             <div className="stat-pill-val">{eventsVal}</div>
           </div>
         </div>

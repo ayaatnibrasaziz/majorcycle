@@ -4,7 +4,7 @@ import { PremiumLockPage } from '@/components/PremiumLockPage';
 import { RunAnalysis } from '@/components/run/RunAnalysis';
 import { requirePremiumPage } from '@/lib/entitlement.server';
 import { fetchIndexMembership } from '@/lib/index-membership.server';
-import { fetchUniverseIndex } from '@/lib/universe.server';
+import { fetchRetiredTickers, fetchUniverseIndex } from '@/lib/universe.server';
 
 export const metadata: Metadata = {
   title: 'Run Analysis',
@@ -29,15 +29,17 @@ export default async function RunPage() {
         feature="Run Analysis"
         blurb="The screener runs the Major Cycle across a whole basket, your own list or the entire universe at once, instead of one stock at a time."
         reason={viewer.reason ?? 'no_subscription'}
+        subscriptionStatus={viewer.subscriptionStatus}
         displayName={viewer.displayName ?? ''}
         email={viewer.email ?? ''}
       />
     );
   }
 
-  const [universe, membership] = await Promise.all([
+  const [universe, membership, retired] = await Promise.all([
     fetchUniverseIndex(),
     fetchIndexMembership(),
+    fetchRetiredTickers(),
   ]);
-  return <RunAnalysis universe={universe} membership={membership} />;
+  return <RunAnalysis universe={universe} membership={membership} retired={retired} />;
 }

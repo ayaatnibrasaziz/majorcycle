@@ -1354,6 +1354,9 @@
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap; letter-spacing: .1px;
 }
 .verdict-footnote-divider { width: 1px; height: 10px; background: var(--border); }
+/* Where the two notes wrap onto separate lines the divider was left at the start of the
+   second one, pointing at nothing. */
+@media (max-width: 640px) { .verdict-footnote-divider { display: none; } }
 @media (max-width: 640px) {
   .verdict-top { grid-template-columns: 1fr; gap: 14px; }
   .verdict-bands { grid-template-columns: 1fr; }
@@ -1447,26 +1450,6 @@
 }
 .insight-icon svg { width: 16px; height: 16px; display: block; }
 .insight-text { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
-.insight-strength {
-  display: inline-flex; align-items: center; gap: 1px; margin-left: 8px;
-  letter-spacing: .5px; vertical-align: 1px; font-size: 9px; font-weight: 600;
-  cursor: help; user-select: none;
-}
-.insight-strength.is-attr { color: var(--c-up-ink); }
-.insight-strength.is-risk { color: var(--c-neutral-ink); }
-.insight-strength-label {
-  font-family: 'Sora', sans-serif; font-size: 9px; font-weight: 700;
-  letter-spacing: 1.2px; text-transform: uppercase; margin-right: 4px;
-  /* ⚠️ `opacity: .75` until 2026-08-22, and it survived the ink change by hiding
-     inside it: the green underneath went from 4.39 to 5.90, and the fade still
-     took the rendered word to 3.55. A colour fixed at full strength is not fixed
-     if something upstream dims it — which is the THIRD instance of this in one
-     day (.verdict-thesis-num, this, and the brand watermark). Recede with a
-     colour, never with transparency (CLAUDE.md 11q). Here there was no room to
-     recede: the ink sits at 5.90 and the floor for 9px is the full 4.5, so the
-     label simply stands at its own colour and the size and letter-spacing carry
-     the hierarchy instead. */
-}
 .insight-invalidation {
   display: flex; align-items: flex-start; gap: 6px; margin-top: 6px;
   padding: 7px 10px; background: rgba(180,140,40,.06);
@@ -2613,6 +2596,16 @@ td.num             { font-weight: 600; }
 }
 .browse-select:hover { border-color: var(--brand-mid); }
 .browse-select:focus { border-color: var(--brand-bright); }
+/* Browse "Show more" / "Show all" — the list's page size is 120 (beta review E-2). */
+.browse-more {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 14px;
+  font-family: 'Sora', sans-serif; font-size: 12px; font-weight: 600; color: var(--brand-mid);
+  cursor: pointer; transition: border-color .15s;
+}
+.browse-more:hover { border-color: var(--brand-mid); }
 .quick-chip {
   display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid var(--border);
   border-radius: 20px; font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 600;
@@ -2636,6 +2629,51 @@ td.num             { font-weight: 600; }
 .result-count {
   font-size: 11px; color: var(--text-muted); margin-left: auto;
   font-family: var(--font-mono); white-space: nowrap;
+}
+
+/*
+ * The toolbar's two layouts, from ONE set of controls (owner-approved design,
+ * 2026-10-02). From 768px its groups dissolve (`display: contents`) so the controls
+ * sit in the single wrapping row they always have, the labels are visually hidden and
+ * the Sort box is not shown (the table sorts from its headers). Below 768px it is the
+ * phone design: a two-column grid with a label over each box. 768 is the width at
+ * which the table gives way to cards (`md:` in ResultsTable), so the Sort box appears
+ * exactly when the column headers disappear.
+ */
+.rt-label {
+  display: block; font-size: 9.5px; font-weight: 600; letter-spacing: .7px;
+  text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;
+}
+.rt-sort-dir {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 36px; padding: 0; font-family: var(--font-mono); font-size: 14px;
+  color: var(--brand-mid);
+}
+.rt-sort-row { display: flex; gap: 4px; }
+@media (min-width: 768px) {
+  .rt-field, .rt-chips, .rt-view, .rt-foot { display: contents; }
+  .rt-field .rt-label {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+  .rt-view .rt-label, .rt-sort { display: none; }
+}
+@media (max-width: 767.98px) {
+  .results-toolbar {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 8px; align-items: end;
+  }
+  .results-toolbar .rt-search { grid-column: 1 / -1; max-width: none; min-width: 0; padding: 9px 12px; }
+  .rt-field { display: flex; flex-direction: column; min-width: 0; }
+  .rt-field .filter-select { width: 100%; min-width: 0; height: 38px; font-size: 12px; }
+  .rt-sort-row .filter-select:first-child { flex: 1 1 auto; }
+  .rt-sort-row .rt-sort-dir { width: 38px; flex-basis: 38px; }
+  .rt-chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+  .rt-chips .quick-chip { min-height: 34px; }
+  .rt-view { grid-column: 1 / -1; }
+  .rt-view .view-switch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .rt-view .vs-btn { min-height: 32px; font-size: 12px; }
+  .rt-foot { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 }
 
 /* Export dropdown */
@@ -2850,10 +2888,100 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 .result-card-ticker { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--brand-deep); }
 .result-card-name { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .result-card .tier-badge { cursor: pointer; }
-.result-card-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.result-card-stat { background: var(--bg-stripe); border-radius: var(--radius-sm); padding: 6px 8px; }
-.result-card-stat-label { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); margin-bottom: 2px; }
-.result-card-stat-val { font-family: var(--font-mono); font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.result-card-sector { font-size: 10.5px; color: var(--text-muted); margin-top: 1px; }
+/* ⚠️ `auto-fill` rather than a fixed four: a price such as "CA$1,234.56" needs ~76px,
+   and four fixed columns in a 375px card leave 54. The grid gives three columns on a
+   375px phone, two at 320, and four or more as the card widens — measured, not
+   guessed per breakpoint (11bi). */
+.result-card-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; }
+.result-card-stat { background: var(--bg-stripe); border-radius: var(--radius-sm); padding: 6px; min-width: 0; }
+.result-card-stat-label { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .3px; color: var(--text-muted); margin-bottom: 3px; line-height: 1.25; }
+.result-card-stat-val { font-family: var(--font-mono); font-size: 11.5px; font-weight: 700; color: var(--text-primary); min-width: 0; }
+/* The desktop cells are one line in a wide column; in a card box they may wrap. */
+.result-card-stat .score-cell { white-space: normal; flex-wrap: wrap; gap: 3px 6px; }
+.result-card-stat .cyc-track { width: auto; flex: 1 1 auto; min-width: 28px; }
+.result-card-stat .analyst-cell { white-space: normal; }
+/* Group names — the desktop band headers' colours, as a label over each group. */
+.result-card-band {
+  display: inline-block; margin: 10px 0 6px; padding: 3px 8px; border-radius: 4px;
+  font-size: 9px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase;
+}
+.result-card-band.band-identity { background: var(--bg-stripe); color: var(--text-secondary); }
+.result-card-band.band-verdict { background: var(--band-verdict-bg); color: var(--brand-deep); }
+.result-card-band.band-price { background: var(--band-price-bg); color: var(--band-price-ink); }
+.result-card-band.band-growth { background: var(--band-growth-bg); color: var(--band-growth-ink); }
+.result-card-band.band-ratios { background: var(--band-ratios-bg); color: var(--band-ratios-ink); }
+.result-card-band.band-health { background: var(--band-health-bg); color: var(--band-health-ink); }
+
+/* "Skip to main content" — off screen until a keyboard focuses it (app/layout.tsx). */
+.skip-link {
+  position: fixed; left: 12px; top: -60px; z-index: 1000;
+  padding: 8px 12px; border-radius: var(--radius-sm);
+  background: var(--brand-deep); color: #fff; font: 700 12px 'Sora', sans-serif;
+  text-decoration: none;
+}
+/* No slide, either way (2026-10-11). Sliding OUT took 0.12s on top of the logo, the
+   control that takes focus next, so the reader's focus sat under it; sliding IN left
+   the focused link off screen for the same 0.12s (both WCAG 2.4.11). */
+.skip-link:focus { top: 12px; outline: 2px solid var(--brand-bright); outline-offset: 2px; }
+
+/* The failed-payment banner at the top of every signed-in page (components/PaymentBanner).
+   Amber while access continues (the grace window), red once it is paused. */
+.payment-banner {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px;
+  padding: 10px 12px; border: 1px solid; border-radius: var(--radius-sm);
+  font-size: 13px; line-height: 1.5;
+}
+.payment-banner--grace {
+  background: var(--status-warning-tint); border-color: var(--status-warning-tint-strong); color: var(--status-warning-ink);
+}
+.payment-banner--paused,
+.payment-banner--held {
+  background: var(--status-danger-tint); border-color: var(--status-danger-tint-strong); color: var(--status-danger-ink);
+}
+.payment-banner-icon { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+.payment-banner-text { margin: 0; flex: 1; min-width: 0; }
+.payment-banner-action { flex-shrink: 0; }
+.payment-banner-btn {
+  height: 32px; padding: 0 14px; border-radius: var(--radius-sm); cursor: pointer;
+  background: var(--bg-surface); border: 1px solid var(--border-strong);
+  font: 700 12px 'Sora', sans-serif; color: var(--brand-deep); white-space: nowrap;
+}
+.payment-banner-btn:hover { border-color: var(--brand-bright); color: var(--brand-mid); }
+@media (max-width: 639.98px) {
+  .payment-banner { flex-wrap: wrap; }
+  .payment-banner-action { flex-basis: 100%; padding-left: 28px; }
+  .payment-banner-btn { height: 36px; }
+}
+
+/* Account → Subscription: the plan box (owner-approved design, 2026-10-03). Three
+   fixed parts — name + pill, a label/value list, a footer with one sentence and one
+   button — so nothing moves when the wording changes length. */
+.sub-plan {
+  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  background: var(--bg-surface);
+}
+.sub-plan-top {
+  display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sub-plan-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.sub-plan-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.sub-plan-rows { margin: 0; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.sub-plan-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); column-gap: 16px; align-items: baseline; }
+.sub-plan-row dt { font-size: 12px; color: var(--text-muted); }
+.sub-plan-row dd { margin: 0; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.sub-plan-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 12px 16px; border-top: 1px solid var(--border); background: var(--bg-stripe);
+}
+.sub-plan-foot > p { margin: 0; font-size: 12px; color: var(--text-secondary); line-height: 1.55; }
+.sub-plan-foot > :last-child { flex-shrink: 0; }
+@media (max-width: 639.98px) {
+  .sub-plan-row { grid-template-columns: 110px minmax(0, 1fr); }
+  .sub-plan-foot { flex-direction: column; align-items: stretch; }
+  .sub-plan-foot > :last-child, .sub-plan-foot > :last-child button { width: 100%; }
+}
 
 /* Empty states */
 .results-empty {
@@ -2865,6 +2993,13 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
 .results-empty-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
 .results-empty-text { font-size: 12px; color: var(--text-muted); max-width: 380px; line-height: 1.55; }
 .results-empty-link { color: var(--brand-mid); text-decoration: underline; cursor: pointer; background: none; border: none; font: inherit; }
+
+/* "Still running" line above a part-filled Results page (beta review C-6). */
+.results-running {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg-stripe); font-size: 12px; color: var(--text-secondary); line-height: 1.5;
+}
 
 /* Visually-hidden (screen-reader only) — for the Results page-level heading. */
 .sr-only {
@@ -2895,6 +3030,10 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
    been measured by anything we own (CLAUDE.md 14g). The colour was always fine —
    brand-mid is 6.49 on white — and the fade was the whole defect (11q). */
 .req-notice-x { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--brand-mid); }
+.req-notice--error {
+  background: var(--status-danger-tint); border-color: var(--status-danger-tint-strong); color: var(--status-danger-ink);
+}
+.req-notice--error .req-notice-x { color: var(--status-danger-ink); }
 .req-notice-x:hover { opacity: 1; }
 
 .req-empty { margin-top: 12px; font-size: 12px; color: var(--text-muted); font-style: italic; }
@@ -3590,4 +3729,76 @@ a.ticker-cell:focus-visible { outline: 2px solid var(--brand-mid); outline-offse
     outline: 2px solid Highlight;
     outline-offset: 2px;
   }
+}
+
+/* Earnings Performance chart key (components/stocks/EarningsHistory.tsx). Drawn by hand
+   so the Actual swatches show the beat/miss colours the bars actually use (B-17). */
+.earnings-legend {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px;
+  padding-top: 4px; font: 10px 'Sora', sans-serif;
+}
+.earnings-legend-item { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.earnings-legend-swatch {
+  width: 10px; height: 10px; border: 1px solid; border-radius: 2px; flex-shrink: 0;
+}
+
+/* Key Metrics on a phone (beta review B-22): the Category column took the width the
+   Value needed, so a reader saw "Gross Margin · PROFITABILITY ·" and the number was off
+   the right edge. Below 560px the category moves under the metric's name. */
+.km-cat-inline { display: none; }
+@media (max-width: 559.98px) {
+  .km-th-cat, .km-cat-cell { display: none; }
+  .km-cat-inline { display: inline-flex; margin-top: 4px; font-size: 8.5px; }
+  .km-metric-cell .km-metric-label { display: flex; }
+}
+
+/* The Stock Detail header (components/stocks/StockHeader.tsx, beta review B-29).
+   Wide: identity over tags on the left, price block spanning both rows on the right —
+   the old two-column layout. Phone: the tags take a full-width row of their own, so
+   they can no longer run under the 52-week gauge. */
+.stock-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, auto);
+  grid-template-rows: auto 1fr;
+  grid-template-areas: "id price" "badges price";
+  column-gap: 20px;
+}
+.stock-head-id { grid-area: id; }
+.stock-head-badges { grid-area: badges; }
+.stock-head-price { grid-area: price; }
+@media (max-width: 559.98px) {
+  .stock-head { grid-template-areas: "id price" "badges badges"; }
+}
+/* On a phone the price block (which needs ~240px) leaves the name too little room: at
+   375px "Commonwealth Bank of Australia · Financial Services" ran to five lines in a
+   ~95px column (visual audit, 2026-10-07). Below 480px it moves under the identity. */
+@media (max-width: 479.98px) {
+  .stock-head {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    grid-template-areas: "id" "price" "badges";
+  }
+  .stock-head-price { margin-top: 10px; }
+}
+
+/* A failed report download, said beside the button instead of in a browser pop-up
+   (components/stocks/StockSubnav.tsx, beta review B-35). Hangs below the sticky strip. */
+.report-error {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: 5;
+  width: max-content; max-width: min(320px, calc(100vw - 32px));
+  margin: 0; padding: 8px 10px; border-radius: var(--radius-sm);
+  /* Tint over an opaque surface: the strip behind it is frosted glass. */
+  background-color: var(--bg-surface);
+  background-image: linear-gradient(var(--status-danger-tint), var(--status-danger-tint));
+  border: 1px solid var(--status-danger-tint-strong);
+  color: var(--status-danger-ink); font-size: 12px; line-height: 1.45;
+}
+
+/* The verb for pressing something: "tap" on a touch screen, "click" with a mouse
+   (components/results/OpportunityMap.tsx). Hidden with display, so a screen reader
+   hears only the one that applies. */
+.word-touch { display: none; }
+@media (hover: none) and (pointer: coarse) {
+  .word-mouse { display: none; }
+  .word-touch { display: inline; }
 }

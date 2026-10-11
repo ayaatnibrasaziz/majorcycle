@@ -7,6 +7,7 @@ import { getStripe } from '@/lib/stripe';
 import { sendAccountDeletedEmail } from '@/lib/email/accountEmails';
 import { recordTrialConsumed } from '@/lib/trialGuard';
 import { isAuthorisedCronCall, selectDueForPurge } from '@/lib/purge';
+import { notifyPausedAccess } from '@/lib/billing/pausedNotices';
 
 export const dynamic = 'force-dynamic';
 
@@ -130,8 +131,13 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // The day's "your access is paused" emails (lib/billing/pausedNotices.ts). Run here so
+  // the free plan's one daily cron does both jobs; its own errors are reported inside
+  // and can never undo or block the purge above.
+  const paused = await notifyPausedAccess(admin, nowIso);
+
   return NextResponse.json(
-    { purged, failed: failed.length, checkedAt: nowIso },
+    { purged, failed: failed.length, pausedNotices: paused.sent, checkedAt: nowIso },
     { headers: NO_STORE },
   );
 }

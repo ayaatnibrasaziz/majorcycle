@@ -12,9 +12,10 @@
 import { quoteBasisAgrees } from '@/lib/quoteBasis';
 import { fmtPrice } from '@/lib/format';
 import { tickerToUrlParts } from '@/lib/ticker';
-import type { Currency, Market, RunResult } from '@/lib/types';
+import type { Currency, Market, RunResult, ValuationZone } from '@/lib/types';
 import {
   ZONE_DISPLAY,
+  ZONE_ORDER,
   cyclePosition,
   fmtAnalyst,
   healthRatingLabel,
@@ -22,6 +23,7 @@ import {
   valuationAppealLabel,
   type ExportFmt,
 } from '@/lib/ratings';
+import { RATING_BANDS_TEXT, RATING_SUMMARY } from '@/lib/ratingDefinition';
 
 export interface ResultRow extends RunResult {
   name: string | null;
@@ -97,6 +99,10 @@ export interface Field {
   get: (r: ResultRow) => number | string | null;
   /** Appears in the advanced-filter field picker. */
   filterable: boolean;
+  /** Categorical only: how a stored value reads in the filter (default: as stored). */
+  display?: (value: string) => string;
+  /** Categorical only: the order its values are offered in (default: alphabetical). */
+  order?: readonly string[];
 }
 
 export const BAND_META: Record<BandKey, { label: string; tip: string; cssClass: string }> = {
@@ -171,10 +177,10 @@ export const FIELDS: Field[] = [
   { key: 'sector', label: 'Sector', type: 'categorical', band: 'identity', cell: 'default', fmt: 'text', align: 'left', get: (r) => r.sector, filterable: true },
 
   // MajorCycle Verdict
-  { key: 'overall', label: 'Overall', tip: 'Overall Rating|Our 0–100 summary: Financial Health (40%) + Valuation (35%) + Cycle Payoff (25%). 80+ High Conviction · 65+ Constructive · 50+ Neutral · 35+ Cautious · below Bearish.', type: 'numeric', band: 'verdict', cell: 'overall', fmt: 'score', align: 'left', get: (r) => r.overallRating, filterable: true },
+  { key: 'overall', label: 'Overall', tip: `Overall Rating|${RATING_SUMMARY} ${RATING_BANDS_TEXT}.`, type: 'numeric', band: 'verdict', cell: 'overall', fmt: 'score', align: 'left', get: (r) => r.overallRating, filterable: true },
   { key: 'valuation', label: 'Valuation', tip: 'Valuation Score|Our 0–100 score for how attractively a stock is valued, quality-gated by Financial Health (a cheap-but-weak name is marked down). 80+ Compelling · 65+ Attractive · 50+ Reasonable · 35+ Elevated · below Expensive.', type: 'numeric', band: 'verdict', cell: 'valuation', fmt: 'score', align: 'left', get: (r) => r.valuationScore, filterable: true },
   { key: 'health', label: 'Health', tip: 'Financial Health Score|Our 0–100 score across five pillars — profitability, balance sheet, growth, cash flow and shareholder returns. 80+ Healthy · 60+ Adequate · below At Risk.', type: 'numeric', band: 'verdict', cell: 'health', fmt: 'score', align: 'left', get: (r) => r.financialHealthScore, filterable: true },
-  { key: 'cyclePos', label: 'Cycle Position', tip: 'Cycle Position|How deep today’s price sits in the stock’s own historical drawdown band: 0 = near a recent peak, 100 = at its typical worst-case dip. As a rough guide — 75+ Deep Value · 50+ Value · 25+ Fair · below Stretched. Deeper into the band = better value versus its own history.', type: 'numeric', band: 'verdict', cell: 'cyclePos', fmt: 'int', align: 'left', get: (r) => r.cyclePos, filterable: true },
+  { key: 'cyclePos', label: 'Cycle Position', tip: 'Cycle Position|How deep today’s price sits in the stock’s own drawdown band: 0 = at or near a recent peak, 100 = at the deepest fall in its history. A different measure from the Valuation Zone, which compares today’s fall with the stock’s TYPICAL fall.', type: 'numeric', band: 'verdict', cell: 'cyclePos', fmt: 'int', align: 'left', get: (r) => r.cyclePos, filterable: true },
 
   // Price & Analyst Targets
   { key: 'close', label: 'Close', tip: 'Close|Most recent daily closing price, in the stock’s home currency.', type: 'numeric', band: 'price', cell: 'default', fmt: 'price', align: 'right', get: (r) => r.currentClose, filterable: true },
@@ -184,13 +190,13 @@ export const FIELDS: Field[] = [
 
   // Major Cycle
   { key: 'currentDD', label: 'Current DD%', tip: 'Current Drawdown %|How far the stock is below its recent peak right now.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.currentDrawdownPct, filterable: true },
-  { key: 'typicalDD', label: 'Typical DD%', tip: 'Typical Drawdown %|The average dip depth across the stock’s confirmed historical pullbacks.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.typicalDrawdown, filterable: true },
+  { key: 'typicalDD', label: 'Typical DD%', tip: 'Typical Drawdown %|The average depth of the stock’s past low points below this horizon’s threshold.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.typicalDrawdown, filterable: true },
   { key: 'lowerBound', label: 'Lower Bound%', tip: 'Lower Bound %|The deepest confirmed fall in this stock’s whole history — the worst it has been, not a typical outcome. A still-forming dip can run below it.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.lowerBound, filterable: true },
-  { key: 'pullbacks', label: 'Pullbacks', tip: 'Pullbacks|Number of confirmed pullback events found in the price history — more events = a more reliable typical-dip estimate.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'int', align: 'right', get: (r) => r.totalPullbackEvents, filterable: true },
+  { key: 'pullbacks', label: 'Low points', tip: 'Low points|How many times the drawdown curve bottomed out past this horizon’s threshold. One long fall can hold several. More low points = a more reliable typical-dip estimate.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'int', align: 'right', get: (r) => r.totalPullbackEvents, filterable: true },
   { key: 'currentProfit', label: 'Current Profit%', tip: 'Current Profit %|How far the stock is above its recent trough right now.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', tint: 'positive', get: (r) => r.currentProfitPct, filterable: true },
-  { key: 'typicalProfit', label: 'Typical Profit%', tip: 'Typical Profit %|The average recovery size across the stock’s confirmed historical rallies.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.typicalProfit, filterable: true },
+  { key: 'typicalProfit', label: 'Typical Profit%', tip: 'Typical Profit %|The average height of the stock’s past high points above this horizon’s threshold.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', get: (r) => r.typicalProfit, filterable: true },
   { key: 'upperBound', label: 'Upper Bound%', tip: 'Upper Bound %|The largest confirmed recovery in this stock’s whole history — a single best case, not a target. A still-forming rally can run above it.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'pct1', align: 'right', tint: 'positive', get: (r) => r.upperBound, filterable: true },
-  { key: 'rallies', label: 'Rallies', tip: 'Rallies|Number of confirmed recovery events found in the price history.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'int', align: 'right', get: (r) => r.totalProfitEvents, filterable: true },
+  { key: 'rallies', label: 'High points', tip: 'High points|How many times the recovery curve peaked past this horizon’s threshold. One long rise can hold several.', type: 'numeric', band: 'majorCycle', cell: 'default', fmt: 'int', align: 'right', get: (r) => r.totalProfitEvents, filterable: true },
 
   // Valuation Ratios
   { key: 'pe', label: 'P/E', tip: 'Price / Earnings|Share price ÷ earnings per share (trailing). Lower = cheaper relative to earnings.', type: 'numeric', band: 'ratios', cell: 'default', fmt: 'mult1', cap: 150, align: 'right', get: (r) => f(r)?.pe ?? null, filterable: true },
@@ -211,8 +217,11 @@ export const FIELDS: Field[] = [
   { key: 'daysToCover', label: 'Days Cvr', tip: 'Days to Cover|Short interest ÷ average daily volume. Above ~7 days can fuel a short squeeze.', type: 'numeric', band: 'growth', cell: 'default', fmt: 'num1', align: 'right', get: (r) => f(r)?.shortRatio ?? null, filterable: true },
 
   // Filter-only categorical fields (rendered inside the Overall / Valuation cells).
-  { key: 'overallLabel', label: 'Rating Tier', type: 'categorical', cell: 'default', fmt: 'text', align: 'left', get: (r) => r.overallLabel, filterable: true },
-  { key: 'valuationZone', label: 'Cycle Position Zone', type: 'categorical', cell: 'default', fmt: 'text', align: 'left', get: (r) => r.valuationZone, filterable: true },
+  { key: 'overallLabel', label: 'Rating Tier', type: 'categorical', cell: 'default', fmt: 'text', align: 'left', get: (r) => r.overallLabel, filterable: true, order: ['High Conviction', 'Constructive', 'Neutral', 'Cautious', 'Bearish'] },
+  // ⚠️ "Valuation Zone", as on the stock page — it said "Cycle Position Zone", which tied
+  // it to the Cycle Position column it is NOT worked out from (beta review C-2). Its
+  // values are offered by their names, deepest first, not as raw codes (C-23).
+  { key: 'valuationZone', label: 'Valuation Zone', type: 'categorical', cell: 'default', fmt: 'text', align: 'left', get: (r) => r.valuationZone, filterable: true, display: (v) => ZONE_DISPLAY[v as ValuationZone] ?? v, order: ZONE_ORDER },
 ];
 
 export const FIELD_BY_KEY: Record<string, Field> = Object.fromEntries(
@@ -268,7 +277,7 @@ export const CSV_COLUMNS: ReadonlyArray<{
   },
   { header: 'Cycle Payoff', get: (r) => r.cyclePayoffScore, xf: 'int' },
   { header: 'Cycle Position', get: (r) => r.cyclePos, xf: 'int' },
-  { header: 'Cycle Position Zone', get: (r) => ZONE_DISPLAY[r.valuationZone] },
+  { header: 'Valuation Zone', get: (r) => ZONE_DISPLAY[r.valuationZone] },
   { header: 'Close', get: (r) => r.currentClose, xf: 'price' },
   // Withheld in the export exactly as on screen — a figure we will not show is not
   // a figure we will hand over in a spreadsheet (11c: one rule, every surface).
@@ -278,11 +287,11 @@ export const CSV_COLUMNS: ReadonlyArray<{
   { header: 'Current Drawdown %', get: (r) => r.currentDrawdownPct, xf: 'num2' },
   { header: 'Typical Drawdown %', get: (r) => r.typicalDrawdown, xf: 'num2' },
   { header: 'Lower Bound %', get: (r) => r.lowerBound, xf: 'num2' },
-  { header: 'Pullback Events', get: (r) => r.totalPullbackEvents, xf: 'int' },
+  { header: 'Low Points', get: (r) => r.totalPullbackEvents, xf: 'int' },
   { header: 'Current Profit %', get: (r) => r.currentProfitPct, xf: 'num2' },
   { header: 'Typical Profit %', get: (r) => r.typicalProfit, xf: 'num2' },
   { header: 'Upper Bound %', get: (r) => r.upperBound, xf: 'num2' },
-  { header: 'Rally Events', get: (r) => r.totalProfitEvents, xf: 'int' },
+  { header: 'High Points', get: (r) => r.totalProfitEvents, xf: 'int' },
   { header: 'P/E', get: (r) => r.fundamentals?.pe ?? null, xf: 'num2' },
   { header: 'PEG', get: (r) => r.fundamentals?.peg ?? null, xf: 'num2' },
   { header: 'ROE %', get: (r) => r.fundamentals?.roe ?? null, xf: 'num2' },

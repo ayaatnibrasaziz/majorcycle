@@ -352,17 +352,23 @@ test.describe('entitlement enforcement across subscription states', () => {
 
         if (state.entitled) {
           await expect(
-            page.getByRole('button', { name: LOCK_CTA }),
+            // Inside the lock PANEL: a held account's banner has its own "Contact support".
+            page.getByRole('note').getByRole('button', { name: LOCK_CTA }),
             `${route} should not be locked for ${state.name}`,
           ).toHaveCount(0);
         } else {
           await expect(
-            page.getByRole('button', { name: LOCK_CTA }),
+            page.getByRole('note').getByRole('button', { name: LOCK_CTA }),
             `${route} should be locked for ${state.name}`,
           ).toBeVisible();
           // The panel must name what happened, not just that something is locked.
           if (state.reason === 'billing_blocked') {
-            await expect(page.getByText(/your account is on hold/i).first()).toBeVisible();
+            // A LOST dispute has ended the plan, so it must NOT claim to be on hold.
+            const lost = state.patch.subscription_status === 'canceled';
+            await expect(
+              page.getByText(lost ? /switched off on this account/i : /your account is on hold/i).first(),
+            ).toBeVisible();
+            if (lost) await expect(page.getByText(/your account is on hold/i)).toHaveCount(0);
           }
           // The decisive half: locked means the scores were never built, not merely
           // covered up. `NN/100` is the only rendering of a rating anywhere.
@@ -623,7 +629,10 @@ test.describe('entitlement enforcement across subscription states', () => {
     await expect(page.getByRole('button', { name: /start free trial|subscribe/i })).toHaveCount(
       0,
     );
-    await expect(page.getByRole('button', { name: /contact support/i })).toBeVisible();
+    // The card's support button. The hold banner is left off /account (visual audit,
+    // 2026-10-07): the card says the same thing with the same button.
+    await expect(page.locator('.sub-plan').getByRole('button', { name: /contact support/i })).toBeVisible();
+    await expect(page.locator('.payment-banner')).toHaveCount(0);
   });
 
   // ── Mid-deletion accounts belong at /reactivate, not /pricing ───────────────
@@ -717,15 +726,23 @@ test.describe('entitlement enforcement across subscription states', () => {
   test('past_due INSIDE grace still promises continued access', async ({ page }) => {
     await setState({ subscription_status: 'past_due', grace_until: iso(2 * DAY) });
     await page.goto('/account');
-    await expect(page.getByText(/update your card to keep access/i)).toBeVisible();
+    // Wording from the owner-approved account card (2026-10-03)...
+    await expect(page.getByText(/your access continues until then/i)).toBeVisible();
+    await expect(page.getByText(/access is paused/i)).toHaveCount(0);
+    // ...and the banner, which shows on every signed-in page except /account, where the
+    // card already says it (visual audit, 2026-10-07).
+    await page.goto('/stocks');
+    await expect(page.getByText(/to keep full access/i)).toBeVisible();
     await expect(page.getByText(/access is paused/i)).toHaveCount(0);
   });
 
   test('past_due PAST grace says access is paused, never "keep access"', async ({ page }) => {
     await setState({ subscription_status: 'past_due', grace_until: iso(-1 * DAY) });
     await page.goto('/account');
-    await expect(page.getByText(/access is paused/i)).toBeVisible();
-    await expect(page.getByText(/keep access/i)).toHaveCount(0);
+    // The card says it (the banner says it too, on every other signed-in page).
+    await expect(page.getByText(/access is paused/i).first()).toBeVisible();
+    await expect(page.getByText(/keep (full )?access/i)).toHaveCount(0);
+    await expect(page.getByText(/access continues/i)).toHaveCount(0);
   });
 
   // ── Never claim a plan is set up when none is showing ───────────────────────
@@ -737,15 +754,26 @@ test.describe('entitlement enforcement across subscription states', () => {
   }) => {
     await setState({ subscription_status: null });
     await page.goto('/account?checkout=success');
-    await expect(page.getByText(/still setting your plan up/i)).toBeVisible();
+    await expect(page.getByText(/setting up your plan/i)).toBeVisible();
     await expect(page.getByText(/plan is set up below/i)).toHaveCount(0);
+    // Nothing was necessarily charged (a trial charges nothing), so it does not say so.
+    await expect(page.getByText(/payment received/i)).toHaveCount(0);
   });
 
   test('checkout=success with a live plan keeps the confident confirmation', async ({ page }) => {
-    await setState({ subscription_status: 'trialing' });
+    await setState({ subscription_status: 'active' });
     await page.goto('/account?checkout=success');
     await expect(page.getByText(/plan is set up below/i)).toBeVisible();
-    await expect(page.getByText(/still setting your plan up/i)).toHaveCount(0);
+    await expect(page.getByText(/setting up your plan/i)).toHaveCount(0);
+  });
+
+  // A free trial charges nothing, so it must not be told "Payment received" (beta
+  // review D-2, owner-approved wording 2026-10-03).
+  test('checkout=success on a trial says the trial started, not that it paid', async ({ page }) => {
+    await setState({ subscription_status: 'trialing' });
+    await page.goto('/account?checkout=success');
+    await expect(page.getByText(/free trial has started/i)).toBeVisible();
+    await expect(page.getByText(/payment received/i)).toHaveCount(0);
   });
 
   // ── Free-tier daily fence ───────────────────────────────────────────────────

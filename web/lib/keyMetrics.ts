@@ -163,7 +163,7 @@ export const KEY_METRICS: readonly MetricDef[] = [
   // Both "lower = stronger", matching how that pillar scores them.
   { key: 'payoutRatioPct', dbField: 'payout_ratio_pct', label: 'Payout Ratio', cat: 'Shareholder', unit: 'pct', higherBetter: false, cap: PAYOUT_DISPLAY_CAP,
     tip: 'Dividends ÷ net income — the share of profit paid out as dividends. Lower leaves more room to keep paying; above 100% means paying out more than it earns. Also shown in Dividend History.' },
-  { key: 'sharesChangeYoyPct', dbField: 'shares_change_yoy_pct', label: 'Share Count change', cat: 'Shareholder', unit: 'pct', higherBetter: false, cap: 100,
+  { key: 'sharesChangeYoyPct', dbField: 'shares_change_yoy_pct', label: 'Share Count Change', cat: 'Shareholder', unit: 'pct', higherBetter: false, cap: 100,
     tip: 'Change in shares outstanding over the last year. Negative = buybacks, so each share owns more of the company; positive = new shares issued, which dilutes existing holders.' },
 
   // ── Risk 🆕 — facts about the SHARES, carrying no better/worse verdict ──────
@@ -213,12 +213,31 @@ export interface Comparison {
   tip: string;
 }
 
+/**
+ * Valuation multiples where a NEGATIVE value means the denominator is negative (a loss,
+ * negative EBITDA, negative equity) rather than that the stock is cheap. Compared as a
+ * number it read "-47.2x — stronger than the typical peer" in green on a loss-maker
+ * (visual audit, 2026-10-07). Such a value is shown but never compared, and is left out
+ * of the peer medians (lib/medians.server.ts) so it cannot drag them down either.
+ */
+export const NEGATIVE_NOT_COMPARABLE: ReadonlySet<MetricKey> = new Set<MetricKey>([
+  'pe', 'forwardPe', 'peg', 'priceToBook', 'evToEbitda', 'evToRevenue',
+]);
+
 function compare(
   def: MetricDef,
   value: number,
   group: MetricMedians | undefined,
   groupLabel: string,
 ): Comparison {
+  if (value < 0 && NEGATIVE_NOT_COMPARABLE.has(def.key)) {
+    return {
+      verdict: 'na',
+      score: -Infinity,
+      text: 'n/m',
+      tip: `A negative ${def.label} isn't meaningful to compare: it comes from losses (or negative equity), not from a low price.`,
+    };
+  }
   const stat = group?.[def.key];
   if (!stat) return { verdict: 'na', score: -Infinity, text: '—', tip: `No ${groupLabel} median available.` };
 
@@ -279,7 +298,14 @@ export function buildKeyMetricsTable({
   sector: string | null;
   market: string;
   medians: MedianTables;
-}): { industryLabel: string; sectorLabel: string; marketLabel: string; rows: BuiltRow[] } {
+}): {
+  industryLabel: string;
+  sectorLabel: string;
+  marketLabel: string;
+  /** False when the industry has too few peers for a median: the column would be all "—". */
+  hasIndustry: boolean;
+  rows: BuiltRow[];
+} {
   // Industries below the peer floor are absent from medians.industry, so this is
   // undefined for them and the "vs Industry" cells render the graceful "—" state.
   const industryGroup = industry ? medians.industry[industry] : undefined;
@@ -306,5 +332,5 @@ export function buildKeyMetricsTable({
       marketCmp: compare(def, value, marketGroup, marketLabel),
     }];
   });
-  return { industryLabel, sectorLabel, marketLabel, rows };
+  return { industryLabel, sectorLabel, marketLabel, hasIndustry: industryGroup !== undefined, rows };
 }

@@ -8,6 +8,15 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  CONFIDENCE_TIERS,
+  HIGH_CONFIDENCE_FROM,
+  PAYOFF_FULL_EVENTS,
+  PAYOFF_FULL_RATIO,
+  RATING_BANDS,
+} from '@/lib/ratingDefinition';
+import { PRESETS } from '@/lib/presets';
+import { RATING_WEIGHTS, ZONE_DISPLAY, ZONE_ORDER } from '@/lib/ratings';
 
 interface MethodologyModalProps {
   open: boolean;
@@ -31,7 +40,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 /** Monospace formula block with a left brand accent (mirrors `.methodology-formula`). */
 function Formula({ children }: { children: React.ReactNode }) {
   return (
-    <pre className="font-[var(--font-mono)] text-[12px] leading-[1.55] whitespace-pre-wrap bg-[var(--bg-stripe)] border border-[var(--border)] border-l-[3px] border-l-[var(--brand-mid)] rounded-[var(--radius-sm)] px-3.5 py-2.5 my-2.5 text-[var(--text-primary)] overflow-x-auto">
+    <pre className="font-[family-name:var(--font-mono)] text-[12px] leading-[1.55] whitespace-pre-wrap bg-[var(--bg-stripe)] border border-[var(--border)] border-l-[3px] border-l-[var(--brand-mid)] rounded-[var(--radius-sm)] px-3.5 py-2.5 my-2.5 text-[var(--text-primary)] overflow-x-auto">
       {children}
     </pre>
   );
@@ -39,13 +48,12 @@ function Formula({ children }: { children: React.ReactNode }) {
 
 /** The five composite rating tiers. Same hex as the reference grid; only the
  *  labels change to our compliant, advice-free vocabulary (design-system §4). */
-const TIERS = [
-  { range: '80–100', label: 'High Conviction', color: 'var(--c-tier-1)' },
-  { range: '65–79', label: 'Constructive', color: 'var(--c-tier-2)' },
-  { range: '50–64', label: 'Neutral', color: 'var(--c-tier-3)' },
-  { range: '35–49', label: 'Cautious', color: 'var(--c-tier-4)' },
-  { range: '0–34', label: 'Bearish', color: 'var(--c-tier-5)' },
-] as const;
+// Ranges read from the ONE band table (lib/ratingDefinition.ts), so they cannot drift.
+const TIERS = RATING_BANDS.map((b, i) => ({
+  range: `${b.min}–${i === 0 ? 100 : RATING_BANDS[i - 1]!.min - 1}`,
+  label: b.label,
+  color: `var(--c-tier-${i + 1})`,
+}));
 
 /**
  * In-app scoring methodology, opened from the "Methodology" button in the Stock
@@ -82,9 +90,9 @@ export function MethodologyModal({ open, onOpenChange }: MethodologyModalProps) 
             single number, designed to answer one question:{' '}
             <em>is this stock worth my attention right now?</em>
           </p>
-          <Formula>{`Overall Rating = (Financial Health × 0.40)
-               + (Valuation × 0.35)
-               + (Cycle Payoff × 0.25)`}</Formula>
+          <Formula>{`Overall Rating = (Financial Health × ${(RATING_WEIGHTS.health / 100).toFixed(2)})
+               + (Valuation × ${(RATING_WEIGHTS.valuation / 100).toFixed(2)})
+               + (Cycle Payoff × ${(RATING_WEIGHTS.payoff / 100).toFixed(2)})`}</Formula>
           <p className="mb-2.5">
             <strong className="text-[var(--text-primary)]">Why these weights:</strong>{' '}
             Financial Health carries the largest weight because a strong business
@@ -110,7 +118,7 @@ export function MethodologyModal({ open, onOpenChange }: MethodologyModalProps) 
                     below what it was measured at by something upstream. Recede with
                     a colour, never with transparency (CLAUDE.md 11q). Restores
                     5.31 / 5.33 / 5.31 / 9.51 across the five chips. */}
-                <div className="font-[var(--font-mono)] text-[11px] font-semibold mb-[3px]">
+                <div className="font-[family-name:var(--font-mono)] text-[11px] font-semibold mb-[3px]">
                   {t.range}
                 </div>
                 <div className="text-[9px] font-bold uppercase tracking-[0.6px] leading-tight">
@@ -147,7 +155,11 @@ export function MethodologyModal({ open, onOpenChange }: MethodologyModalProps) 
             <strong className="text-[var(--text-primary)]">cycle position</strong>{' '}
             — how deep today&apos;s drawdown is versus the stock&apos;s{' '}
             <em>typical</em> drawdown — shown as a zone:{' '}
-            <strong>Deep Value · Value · Fair · Stretched</strong>. The score that
+            <strong>{ZONE_ORDER.map((z) => ZONE_DISPLAY[z]).join(' · ')}</strong>.{' '}
+            {ZONE_DISPLAY.STRETCHED} ends at the horizon&apos;s own fall threshold:{' '}
+            {Math.abs(PRESETS.short.pullbackThreshold)}% on Short,{' '}
+            {Math.abs(PRESETS.medium.pullbackThreshold)}% on Medium,{' '}
+            {Math.abs(PRESETS.long.pullbackThreshold)}% on Long, and yours on Custom. The score that
             feeds the Overall Rating is then scaled by company quality, so a
             cheap-but-weak business can&apos;t score as a bargain:
           </p>
@@ -162,13 +174,22 @@ Valuation score = raw cycle score × quality_factor`}</Formula>
           <p className="mb-2.5">
             <strong className="text-[var(--text-primary)]">Not a measure of
             current price trend.</strong>{' '}
-            It blends two things equally: how many
-            historical dip-then-recover cycles we&apos;ve observed (more cycles =
-            a more trustworthy pattern; around 10+ is reliable) and the
-            reward-vs-risk of those cycles:
+            It blends two things equally. How much history the pattern rests on:
+            full marks need {PAYOFF_FULL_EVENTS} low and high points past this
+            horizon&apos;s threshold, about ten years of trading. And how far the
+            typical recovery has gone past the typical fall, after allowing for
+            the climb back. A 50% fall followed by a 100% rise only gets back to
+            the start, so it counts as 1×, not 2×. Full marks need the typical
+            rise to hold {PAYOFF_FULL_RATIO} fall-sized climbs:
           </p>
-          <Formula>{`signal reliability  = how many historical cycles detected
-reward vs risk      = typical profit ÷ |typical drawdown|`}</Formula>
+          <Formula>{`history          = (low points + high points) ÷ ${PAYOFF_FULL_EVENTS}
+rise past fall   = ln(1 + typical rise) ÷ ln(1 ÷ (1 + typical fall))
+                   full marks at ${PAYOFF_FULL_RATIO}
+Cycle Payoff     = average of the two, each capped at 100`}</Formula>
+          <p className="mb-2.5">
+            The confidence shown on the Verdict reads the same history: High
+            from {HIGH_CONFIDENCE_FROM} low points, about {CONFIDENCE_TIERS[0].years} years.
+          </p>
           <p className="mb-2.5">
             To see the actual shape and{' '}
             <strong className="text-[var(--text-primary)]">timing</strong> of

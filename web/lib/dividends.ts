@@ -48,3 +48,45 @@ export const DISTRESS_YIELD_PCT = 20;
 
 /** Above this the payout ratio is clamped for display, with the sign kept. */
 export const PAYOUT_DISPLAY_CAP = 300;
+
+/**
+ * Complete calendar years of dividends, with the years NOTHING was paid filled in as 0.
+ *
+ * ⚠️ Beta review B-18, 2026-10-03. The provider lists only years with a payment, so a
+ * company that paid in 1995 and again from 2012 drew 1995 beside 2012 as neighbours,
+ * and the growth streak counted the resumption as a year of growth. Filling the gap
+ * makes the chart and the streak see it. The series runs to LAST year, so a company
+ * that stopped paying ends on zeros rather than on its last payment: 39 stocks (Boeing,
+ * Adobe, Intel…) were showing a "current yield" built from a dividend they no longer pay.
+ *
+ * The current year is left out: it holds only the payments made so far.
+ */
+export function annualDividendSeries(
+  history: ReadonlyArray<{ year: number; amount: number }>,
+  currentYear: number,
+): Array<{ year: number; amount: number }> {
+  const complete = history.filter((d) => d.year < currentYear);
+  if (complete.length === 0) return [];
+  const byYear = new Map(complete.map((d) => [d.year, d.amount]));
+  const first = Math.min(...complete.map((d) => d.year));
+  const out: Array<{ year: number; amount: number }> = [];
+  for (let y = first; y < currentYear; y++) out.push({ year: y, amount: byYear.get(y) ?? 0 });
+  return out;
+}
+
+/** Consecutive latest years in which the dividend rose; a resumption after a gap is not a rise. */
+export function dividendStreak(series: ReadonlyArray<{ year: number; amount: number }>): number {
+  let streak = 0;
+  for (let i = series.length - 1; i > 0; i--) {
+    const prev = series[i - 1]!.amount;
+    if (prev > 0 && series[i]!.amount > prev) streak++;
+    else break;
+  }
+  return streak;
+}
+
+/** The last year anything was paid, or null. */
+export function lastDividendYear(series: ReadonlyArray<{ year: number; amount: number }>): number | null {
+  for (let i = series.length - 1; i >= 0; i--) if (series[i]!.amount > 0) return series[i]!.year;
+  return null;
+}

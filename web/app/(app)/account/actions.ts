@@ -9,7 +9,12 @@ import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/se
 import { getStripe } from '@/lib/stripe';
 import { sendDeletionScheduledEmail } from '@/lib/email/accountEmails';
 import { sendReferralEmail } from '@/lib/email/referralEmails';
+import { cleanReferralInput } from '@/lib/referralInput';
 import { sendTrialEndingEmail } from '@/lib/email/billingEmails';
+import {
+  DELETION_CANCEL_METADATA_KEY,
+  deletionSubscriptionKind,
+} from '@/lib/deletionSubscription';
 import {
   ACCOUNT_DELETION_GRACE_DAYS,
   DELETION_NOTICE_COOKIE,
@@ -91,15 +96,6 @@ export async function updateProfile(input: {
   return { ok: true };
 }
 
-/** Map a raw subscription status to the reassurance-copy variant for the deletion email. */
-function subscriptionEmailKind(
-  status: string | null | undefined
-): 'paid' | 'trial' | null {
-  if (status === 'trialing') return 'trial';
-  if (status === 'active' || status === 'past_due') return 'paid';
-  return null;
-}
-
 /**
  * Schedule the signed-in user's account for deletion (soft-delete + 30-day grace).
  * Sets `deletion_scheduled_at` via the service role (users can't write that column),
@@ -125,7 +121,7 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
   const { data: profile } = await admin
     .from('profiles')
     .select(
-      'email, display_name, subscription_status, deletion_scheduled_at, stripe_subscription_id'
+      'email, display_name, subscription_status, deletion_scheduled_at, stripe_subscription_id, billing_blocked, current_period_end, cancel_at_period_end'
     )
     .eq('id', user.id)
     .single();
@@ -159,14 +155,31 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
     // paused, never extended — no delete-and-restore loophole to gain time). We only
     // ever schedule (never immediate-cancel) here; the 30-day purge hard-cancels as a
     // backstop. Best-effort: a Stripe hiccup must not block the user's deletion.
+    //
+    // ⚠️ Only when it is not ALREADY set not to renew — a customer who cancelled in the
+    // billing portal first. The marker says this "don't renew" is OURS, so reactivating
+    // undoes only what deletion did (lib/deletionSubscription.ts).
+    //
+    // ⚠️ A FAILED payment (`past_due`) is cancelled outright instead. Left to run out, the
+    // provider keeps retrying the unpaid invoice for weeks and could charge a customer who
+    // has deleted their account and cannot use it. Cancelling stops collection of that
+    // invoice; reactivating brings the account back on the free plan, which is what the
+    // delete card and the email say (lib/deletionSubscription.ts, 'payment_failed').
+    const pastDue = profile?.subscription_status === 'past_due';
     if (
       profile?.stripe_subscription_id &&
-      LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '')
+      LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '') &&
+      (pastDue || !profile?.cancel_at_period_end)
     ) {
       try {
-        await getStripe().subscriptions.update(profile.stripe_subscription_id, {
-          cancel_at_period_end: true,
-        });
+        if (pastDue) {
+          await getStripe().subscriptions.cancel(profile.stripe_subscription_id);
+        } else {
+          await getStripe().subscriptions.update(profile.stripe_subscription_id, {
+            cancel_at_period_end: true,
+            metadata: { [DELETION_CANCEL_METADATA_KEY]: '1' },
+          });
+        }
       } catch (err) {
         // ALERT: best-effort by design — the deletion proceeds — which means a
         // subscription can keep BILLING an account scheduled for purge, and nothing
@@ -185,7 +198,8 @@ export async function requestAccountDeletion(formData: FormData): Promise<void> 
         to: email,
         name: profile?.display_name ?? null,
         deletionDate,
-        subscriptionKind: subscriptionEmailKind(profile?.subscription_status),
+        subscription: deletionSubscriptionKind(profile ?? { subscription_status: null }, deletionDate),
+        periodEnd: profile?.current_period_end ? new Date(profile.current_period_end) : null,
         timeZone,
       });
     }
@@ -229,7 +243,7 @@ export async function reactivateAccount(): Promise<void> {
   const { data: profile } = await admin
     .from('profiles')
     .select(
-      'email, display_name, stripe_subscription_id, subscription_status, subscription_currency, subscription_plan, trial_ends_at, trial_reminder_sent'
+      'email, display_name, stripe_subscription_id, subscription_status, subscription_currency, subscription_plan, trial_ends_at, trial_reminder_sent, next_charge_amount, next_charge_currency, next_charge_plan'
     )
     .eq('id', user.id)
     .single();
@@ -252,18 +266,28 @@ export async function reactivateAccount(): Promise<void> {
   // (status canceled / no sub id) there's nothing to undo — the user simply returns as
   // a lapsed free user. Best-effort: the deletion flag is already cleared above, so a
   // Stripe hiccup still reactivates the account (the cancel is recoverable via the
-  // portal). NOTE: if the user had separately cancelled in the portal before deleting,
-  // this un-cancels it — they can re-cancel via "Manage billing" (accepted tradeoff).
+  // portal).
+  //
+  // ⚠️ Only a "don't renew" that DELETION set is undone (its metadata marker). Until
+  // 2026-10-03 this un-cancelled unconditionally, so a customer who had cancelled in the
+  // portal and then deleted found their subscription renewing — and charging — again
+  // the moment they signed back in. It was recorded here as an "accepted tradeoff".
   let subReactivated = false;
   if (
     profile?.stripe_subscription_id &&
     LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '')
   ) {
     try {
-      await getStripe().subscriptions.update(profile.stripe_subscription_id, {
-        cancel_at_period_end: false,
-      });
-      subReactivated = true;
+      const stripe = getStripe();
+      const sub = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
+      if (sub.metadata?.[DELETION_CANCEL_METADATA_KEY] === '1') {
+        await stripe.subscriptions.update(profile.stripe_subscription_id, {
+          cancel_at_period_end: false,
+          // An empty string removes the key.
+          metadata: { [DELETION_CANCEL_METADATA_KEY]: '' },
+        });
+        subReactivated = true;
+      }
     } catch (err) {
       reportIssue('reactivateAccount: could not clear subscription cancel', {
         cause: err,
@@ -300,8 +324,14 @@ export async function reactivateAccount(): Promise<void> {
     await sendTrialEndingEmail({
       to: profile.email,
       name: profile.display_name ?? null,
-      currency: profile.subscription_currency,
-      plan: profile.subscription_plan,
+      // Stripe's figure where it is already stored. Right after un-cancelling it may not
+      // be yet (the sync that stores it is a webhook away), and the email then says
+      // "your regular subscription rate" rather than quoting our own table.
+      charge:
+        profile.next_charge_amount != null && profile.next_charge_currency
+          ? { amount: profile.next_charge_amount, currency: profile.next_charge_currency }
+          : null,
+      plan: profile.next_charge_plan ?? profile.subscription_plan,
       idempotencyKey: `reactivate-trial-reminder:${user.id}:${trialEndMs}`,
     });
   }
@@ -338,21 +368,14 @@ export async function sendReferral(input: {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(friendEmail)) {
     return { ok: false, error: 'Enter a valid email address.' };
   }
-  // `.trim()` does not touch an INTERIOR newline, and this value becomes an email
-  // SUBJECT (`"<name>" thought you'd like MajorCycle`). Control characters are
-  // stripped for the same reason as in the contact action (audit 5A-143), and with
-  // the same honesty about it: `name` reaches Resend as a JSON string and Resend
-  // encodes the header itself, so this is defence in depth, not a demonstrated hole.
-  // Fixed HERE as well because fixing one of two callers is the defect this repo
-  // keeps paying for (CLAUDE.md 11c-iv) — the contact form was the other one.
-  const referrerName = input.referrerName
-    .slice(0, 80)
-    .replace(/[\u0000-\u001F\u007F]/g, ' ')
-    .trim();
-  if (!referrerName) {
-    return { ok: false, error: 'Please add your name so your friend knows who invited them.' };
-  }
-  const message = input.message.trim().slice(0, 300);
+  // Name and note are checked by ONE rule (lib/referralInput.ts, beta review D-17):
+  // the name looks like a name and the note holds no link or address, because this
+  // email goes out from our address with the name in its subject. Control characters
+  // are stripped there too (audit 5A-143, the contact form's twin — 11c-iv).
+  const cleaned = cleanReferralInput(input.referrerName, input.message);
+  if (!cleaned.ok) return { ok: false, error: cleaned.error };
+  const referrerName = cleaned.name;
+  const message = cleaned.note;
 
   if (user.email && friendEmail === user.email.toLowerCase()) {
     return { ok: false, error: "That's your own email — invite a friend instead." };

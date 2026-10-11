@@ -25,6 +25,7 @@ interface Coords {
 
 const POP_MAX_WIDTH = 264;
 const HIDE_DELAY = 100;
+const SAME_GESTURE_MS = 400;
 
 /**
  * Beginner-help explainer (S5). A small ⓘ affordance that reveals a plain-English
@@ -40,6 +41,13 @@ export function InfoTip({ title, children, label, size = 13, className }: InfoTi
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /* When the bubble last went from closed to open. ⚠️ A TAP on Android Chrome fires
+     mouseenter, focus and click in one burst (2026-09-28, measured in Playwright's
+     touch emulation): the first two opened the bubble and the click then toggled it
+     shut, so every ⓘ on the site needed two taps on Android while iPhone Safari
+     worked. A click that lands within `SAME_GESTURE_MS` of the opening is the same
+     gesture, not a request to close. Guarded by e2e/info-tip-tap.spec.ts. */
+  const openedAt = useRef(0);
   const tipId = useId();
 
   const position = useCallback(() => {
@@ -69,8 +77,9 @@ export function InfoTip({ title, children, label, size = 13, className }: InfoTi
   const show = useCallback(() => {
     clearHide();
     position();
+    if (!open) openedAt.current = performance.now();
     setOpen(true);
-  }, [clearHide, position]);
+  }, [clearHide, position, open]);
 
   // Delayed hide so the pointer can travel from the icon onto the bubble.
   const hide = useCallback(() => {
@@ -84,7 +93,7 @@ export function InfoTip({ title, children, label, size = 13, className }: InfoTi
   }, [clearHide]);
 
   const toggle = useCallback(() => {
-    if (open) hideNow();
+    if (open && performance.now() - openedAt.current > SAME_GESTURE_MS) hideNow();
     else show();
   }, [open, hideNow, show]);
 

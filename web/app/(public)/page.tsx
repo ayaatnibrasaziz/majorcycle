@@ -6,7 +6,8 @@ import { jsonLdScript, organizationJsonLd, websiteJsonLd } from '@/lib/jsonld';
 import { JsonLd } from '@/components/JsonLd';
 import { LANDING, UNIVERSE_COUNT, depth, price } from '@/lib/landing';
 import { MAG7, mag7Facts, pct1, shortName } from '@/lib/mag7';
-import { tierFromLabel } from '@/lib/ratings';
+import { RATING_WEIGHTS, tierFromLabel } from '@/lib/ratings';
+import { PRESETS } from '@/lib/presets';
 import { Button } from '@/components/ui/button';
 import { CycleRulers } from '@/components/landing/CycleRulers';
 import { Mag7Table } from '@/components/landing/Mag7Table';
@@ -14,6 +15,9 @@ import { LandingMotion } from '@/components/landing/LandingMotion';
 import { OpportunityMapStill } from '@/components/landing/OpportunityMapStill';
 
 import './landing.css';
+
+// The worked example is Apple on the Medium preset (build_landing_snapshot.py PRESET).
+const MEDIUM_FALL = Math.abs(PRESETS.medium.pullbackThreshold);
 
 export const metadata: Metadata = pageMetadata({
   path: '/',
@@ -305,10 +309,11 @@ export default function LandingPage() {
           >
             Overall is Financial Health 40%, Valuation 35% and Cycle Payoff 25%.{' '}
             <strong>Current DD%</strong> is how far below its last high the stock sits today,{' '}
-            <strong>Typical DD%</strong> is its average fall across every past one, and{' '}
+            <strong>Typical DD%</strong> is the average depth of its past low points,{' '}
             <strong>Lower Bound%</strong> is the deepest fall in its record — worth knowing
-            before you decide how much of a fall you could live with. Information only — not
-            financial advice.
+            before you decide how much of a fall you could live with — and{' '}
+            <strong>Low points</strong> counts how often its falls bottomed out more than {MEDIUM_FALL}%
+            below a high. Information only — not financial advice.
           </p>
         </div>
       </section>
@@ -333,8 +338,9 @@ export default function LandingPage() {
               </h2>
               <p className="lead" style={{ marginTop: '18px' }}>
                 They drop, they bottom out, they climb back — and for most established
-                companies the depth of those drops settles into a range. {s.name} has been
-                through <strong>{s.pullbackEvents.toLocaleString('en-AU')} of them</strong>.
+                companies the depth of those drops settles into a range. {s.name}&rsquo;s record
+                holds <strong>{s.pullbackEvents.toLocaleString('en-AU')} low points</strong>{' '}
+                more than {MEDIUM_FALL}% below a high.
                 That range is the company&rsquo;s <strong>Major Cycle</strong>, and knowing
                 it lets you answer the question that actually matters when a price falls: is
                 this normal for this company, or is this something else?
@@ -407,21 +413,27 @@ export default function LandingPage() {
                     verdicts — and `e2e/landing-copy.spec.ts` fails if that premise stops
                     holding, so the next regeneration is TOLD rather than expected to notice.
                   */}
+                  {/*
+                    ⚠️ Rewritten 2026-10-10 when the worked example moved from the 31 Aug
+                    data to 9 Oct (the rating rules changed, so the frozen run had to be
+                    re-scored, and the only honest re-score is a fresh run). On 9 Oct the
+                    old premise — two companies, the same fall, opposite verdicts — is
+                    false: Tesla is both the deepest faller AND the weakest business. So
+                    the sentence now contrasts the deepest faller with the top-ranked
+                    company, and `e2e/landing-copy.spec.ts` asserts THAT premise.
+                  */}
                   <p>
                     <strong>
-                      {shortName(f.deepestFall.name)} and {shortName(f.weakest.name)} have
-                      fallen almost exactly the same distance —{' '}
-                      {pct1(f.deepestFall.currentDrawdownPct)} and{' '}
-                      {pct1(f.weakest.currentDrawdownPct)}.
+                      {shortName(f.deepestFall.name)} has fallen furthest of the {f.total} stocks —{' '}
+                      {pct1(f.deepestFall.currentDrawdownPct)} — and the ranking puts it{' '}
+                      {f.deepestFallRank}.
                     </strong>{' '}
-                    The ranking puts {shortName(f.deepestFall.name)} {f.deepestFallRank} and{' '}
-                    {shortName(f.weakest.name)} {f.weakestRank}.{' '}
-                    {shortName(f.deepestFall.name)}&rsquo;s Financial Health is{' '}
-                    {f.deepestFall.healthScore.toFixed(1)}; {shortName(f.weakest.name)}
-                    &rsquo;s is {f.weakest.healthScore.toFixed(1)}. The same discount,
-                    opposite verdicts — which is exactly what the second question exists to
-                    catch. The size of the fall told you nothing about which one was worth
-                    owning.
+                    {shortName(f.top.name)} is down {pct1(f.top.currentDrawdownPct)} and ranks
+                    first. {shortName(f.deepestFall.name)}&rsquo;s Financial Health is{' '}
+                    {f.deepestFall.healthScore.toFixed(1)}; {shortName(f.top.name)}&rsquo;s is{' '}
+                    {f.top.healthScore.toFixed(1)}. The bigger discount sits on the weaker
+                    business — which is exactly what the second question exists to catch.
+                    The size of the fall told you nothing about which one was worth owning.
                   </p>
                   <p style={{ marginTop: '11px' }}>
                     Now look at what <em>isn&rsquo;t</em> here.{' '}
@@ -452,7 +464,7 @@ export default function LandingPage() {
               <div className="card">
                 <div className="card-body">
                   <div className="idx" style={{ color: 'var(--c-tier-2-ink)' }}>
-                    40% OF THE RATING
+                    {RATING_WEIGHTS.health}% OF THE RATING
                   </div>
                   <h3 style={{ marginTop: '6px' }}>Financial Health</h3>
                   <p>
@@ -466,7 +478,7 @@ export default function LandingPage() {
               <div className="card">
                 <div className="card-body">
                   <div className="idx" style={{ color: 'var(--brand-mid)' }}>
-                    35% OF THE RATING
+                    {RATING_WEIGHTS.valuation}% OF THE RATING
                   </div>
                   <h3 style={{ marginTop: '6px' }}>Valuation</h3>
                   <p>
@@ -480,12 +492,12 @@ export default function LandingPage() {
               <div className="card">
                 <div className="card-body">
                   <div className="idx" style={{ color: 'var(--accent-warm-ink)' }}>
-                    25% OF THE RATING
+                    {RATING_WEIGHTS.payoff}% OF THE RATING
                   </div>
                   <h3 style={{ marginTop: '6px' }}>Cycle Payoff</h3>
                   <p>
-                    How reliable the pattern is — more past falls means more confidence — and
-                    how the typical recovery compares with the typical fall.
+                    How much history the pattern rests on, and how far the typical recovery
+                    has gone past the typical fall.
                   </p>
                 </div>
               </div>

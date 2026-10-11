@@ -175,42 +175,31 @@ test.describe('/learn reads the LIVE figures, not the frozen ones', () => {
 });
 
 test.describe("the callout's premise still holds", () => {
-  test('the deepest faller and the weakest business are different companies', () => {
-    // If these collapse to one row the copy names the same company twice —
-    // "Tesla and Tesla have fallen almost exactly the same distance".
-    expect(facts.deepestFall.ticker).not.toBe(facts.weakest.ticker);
+  // The callout contrasts the DEEPEST FALLER with the TOP-RANKED company (rewritten
+  // 2026-10-10, 9 Oct data: Tesla −23.3%, seventh, Health 49.8; Alphabet −13.8%,
+  // first, Health 89.9). Each test below is one clause of that sentence; if a
+  // regeneration makes any clause false, this fails rather than the page lying.
+  const ranked = [...MAG7_SNAP.rows].sort((a, b) => b.overallRating - a.overallRating);
+
+  test('the deepest faller and the top-ranked company are different companies', () => {
+    // Otherwise the copy contrasts a company with itself.
+    expect(facts.deepestFall.ticker).not.toBe(facts.top.ticker);
   });
 
-  test('their falls really are "almost exactly the same distance"', () => {
-    const gap = Math.abs(
-      facts.deepestFall.currentDrawdownPct - facts.weakest.currentDrawdownPct,
-    );
-    // 1.2 points apart on the 2026-08-31 data. Five is the outer edge of what the
-    // phrase can honestly carry; past that the sentence is simply false.
-    expect(gap).toBeLessThanOrEqual(5);
+  test('"the ranking puts it" near the bottom', () => {
+    const at = ranked.findIndex((r) => r.ticker === facts.deepestFall.ticker);
+    expect(at, 'rank of the deepest faller (0 = first)').toBeGreaterThanOrEqual(ranked.length - 2);
   });
 
-  test('their verdicts really are opposite', () => {
-    // "The same discount, opposite verdicts" needs BOTH halves to be visibly true:
-    // far apart in the ranking the reader can see, and far apart on the score the
-    // sentence quotes. Either alone would let a pair that differs trivially pass.
-    const ranked = [...MAG7_SNAP.rows].sort((a, b) => b.overallRating - a.overallRating);
-    const rankGap = Math.abs(
-      ranked.findIndex((r) => r.ticker === facts.weakest.ticker) -
-        ranked.findIndex((r) => r.ticker === facts.deepestFall.ticker),
-    );
-    const healthGap = facts.deepestFall.healthScore - facts.weakest.healthScore;
+  test('the top-ranked company really fell less', () => {
+    // "The bigger discount" has to be visibly bigger, not a rounding difference.
+    const gap = facts.top.currentDrawdownPct - facts.deepestFall.currentDrawdownPct;
+    expect(gap, 'points of drawdown between them').toBeGreaterThanOrEqual(5);
+  });
 
-    expect(rankGap, 'places apart in the ranking').toBeGreaterThanOrEqual(3);
+  test('"the bigger discount sits on the weaker business"', () => {
+    const healthGap = facts.top.healthScore - facts.deepestFall.healthScore;
     expect(healthGap, 'Financial Health points apart').toBeGreaterThanOrEqual(15);
-  });
-
-  test('the health score the copy quotes belongs to the company it names', () => {
-    // The bug this replaced: the sentence said "{deepestFall} … ITS Financial
-    // Health is {weakest.healthScore}", which was only ever right because the two
-    // rows happened to be the same company. Asserting the values are DIFFERENT is
-    // what makes the mix-up detectable at all.
-    expect(facts.deepestFall.healthScore).not.toBe(facts.weakest.healthScore);
   });
 });
 

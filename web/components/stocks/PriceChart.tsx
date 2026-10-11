@@ -12,6 +12,7 @@ import {
   type ISeriesApi,
   type Time,
 } from 'lightweight-charts';
+import { edgeSafeTickFormatter } from '@/lib/chartTicks';
 
 import { CHART_RIGHT_AXIS_WIDTH } from '@/lib/format';
 import {
@@ -110,7 +111,11 @@ export function PriceChart({ priceBars, ticker }: Props) {
       // can't follow a range that runs into no-data space (setVisibleRange clamps
       // to the data edge), which desynced the two charts. Pinning both edges
       // keeps them locked together.
-      timeScale: { borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+      timeScale: {
+        borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true,
+        // No date label half-cut by the price scale at the right edge (lib/chartTicks.ts).
+        tickMarkFormatter: edgeSafeTickFormatter(() => chartRef.current),
+      },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
     });

@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 
 import type { Market } from '@/lib/types';
 import { marketLabel, tickerToUrlParts } from '@/lib/ticker';
+import { adoptEarlyInput } from '@/lib/useHydrated';
 import { cn } from '@/lib/utils';
 
 // "Search & add" — type a ticker or company name, pick from autocomplete to add
@@ -114,6 +115,7 @@ export function TickerSearchAdd({
         <input
           type="text"
           value={query}
+          ref={adoptEarlyInput(query, setQuery)}
           onChange={(e) => {
             const v = e.target.value;
             setQuery(v);
@@ -153,7 +155,7 @@ export function TickerSearchAdd({
                   className={already ? 'run-search-opt' : cn('run-search-opt', i === activeIndex && 'run-search-opt--active')}
                 >
                   <span className="flex min-w-0 items-center gap-2">
-                    <span className="font-[var(--font-mono)] text-[12px] font-semibold text-[var(--text-primary)]">
+                    <span className="font-[family-name:var(--font-mono)] text-[12px] font-semibold text-[var(--text-primary)]">
                       {tickerToUrlParts(h.ticker).symbol}
                     </span>
                     <span className="truncate text-[12px] text-[var(--text-secondary)]">

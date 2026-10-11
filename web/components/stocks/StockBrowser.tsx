@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useId, useMemo, useState, useSyncExternalStore } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useId, useMemo, useState, useSyncExternalStore } from 'react';
 import { Search } from 'lucide-react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
@@ -9,16 +10,46 @@ import type { UniverseStock } from '@/lib/universe.server';
 import { marketLabel, tickerToPath, tickerToUrlParts } from '@/lib/ticker';
 import type { Currency, Market } from '@/lib/types';
 import { fmtCompact } from '@/lib/format';
+import { useNumberDraft } from '@/lib/numberDraft';
 import { boundError, CUSTOM_PARAM_BOUNDS } from '@/lib/presets';
+import { matchesQuery, matchStrength } from '@/lib/stockSearch';
+import { adoptEarlyInput } from '@/lib/useHydrated';
 import { cn } from '@/lib/utils';
 
-// Cap how many rows we paint at once. The list is market-cap-descending, so the
-// first slice is the most recognisable names — a beginner browsing without a
-// query sees the giants first, and search/filters narrow to the rest. Keeping
-// the DOM small protects the Lighthouse 90+ target on mobile.
-const RENDER_LIMIT = 120;
+// Rows painted per step. ⚠️ Beta review E-2: this was a hard cap with no way past
+// it, so 133 of the 253 ASX stocks could not be reached from the list at all. It is
+// now a page size behind a "Show more" button — the first screen stays small for
+// phones, and nothing is out of reach.
+const PAGE_SIZE = 120;
 
 type MarketFilter = 'all' | Market;
+
+type SortKey = 'cap' | 'cap-asc' | 'ticker' | 'name' | 'sector';
+
+const SORTS: { value: SortKey; label: string }[] = [
+  { value: 'cap', label: 'Largest first' },
+  { value: 'cap-asc', label: 'Smallest first' },
+  { value: 'ticker', label: 'Ticker A–Z' },
+  { value: 'name', label: 'Name A–Z' },
+  { value: 'sector', label: 'Sector A–Z' },
+];
+
+function isMarketFilter(v: string | null): v is MarketFilter {
+  return v === 'all' || v === 'us' || v === 'au' || v === 'ca';
+}
+function isSortKey(v: string | null): v is SortKey {
+  return SORTS.some((s) => s.value === v);
+}
+
+/** Missing values sort last whichever way the list runs. */
+function byText(a: string | null, b: string | null): number {
+  if (a == null || b == null) return (a == null ? 1 : 0) - (b == null ? 1 : 0);
+  return a.localeCompare(b);
+}
+function byCap(a: number | null, b: number | null, dir: 1 | -1): number {
+  if (a == null || b == null) return (a == null ? 1 : 0) - (b == null ? 1 : 0);
+  return (a - b) * dir;
+}
 
 const MARKET_FILTERS: { value: MarketFilter; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -136,18 +167,73 @@ function formatMarketCap(value: number | null, currency: Currency): string {
 }
 
 export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
-  const [query, setQuery] = useState('');
-  const [market, setMarket] = useState<MarketFilter>('all');
-  const [sector, setSector] = useState<string>('all');
-  const [industry, setIndustry] = useState<string>('all');
+  /* ⚠️ Beta review E-10: opening a stock and pressing Back wiped the search and every
+     filter, because they lived only in component state. They now live in the web
+     address (`?q=&market=&sector=&industry=&sort=&n=`), so Back restores them — and a
+     filtered list can be shared. Read once on mount; written with `replaceState`, so
+     typing does not stack up history entries. */
+  const params = useSearchParams();
+  const [query, setQuery] = useState(() => params.get('q') ?? '');
+  const [market, setMarketState] = useState<MarketFilter>(() => {
+    const m = params.get('market');
+    return isMarketFilter(m) ? m : 'all';
+  });
+  const [sector, setSector] = useState<string>(() => params.get('sector') ?? 'all');
+  const [industry, setIndustryState] = useState<string>(() => params.get('industry') ?? 'all');
+  const [sort, setSortState] = useState<SortKey>(() => {
+    const v = params.get('sort');
+    return isSortKey(v) ? v : 'cap';
+  });
+  const [limit, setLimit] = useState(() => {
+    const n = Number(params.get('n'));
+    return Number.isInteger(n) && n > PAGE_SIZE ? n : PAGE_SIZE;
+  });
+
+  // Any change to what is listed starts again from the first page.
+  const search = (v: string) => {
+    setQuery(v);
+    setLimit(PAGE_SIZE);
+  };
+  const setMarket = (v: MarketFilter) => {
+    setMarketState(v);
+    setLimit(PAGE_SIZE);
+  };
+  const setIndustry = (v: string) => {
+    setIndustryState(v);
+    setLimit(PAGE_SIZE);
+  };
+  const setSort = (v: SortKey) => {
+    setSortState(v);
+    setLimit(PAGE_SIZE);
+  };
 
   // Industry depends on the chosen sector: picking a sector narrows the industry
   // list to that sector's industries. Changing the sector resets a now-orphaned
   // industry back to "All".
   const selectSector = (value: string) => {
     setSector(value);
-    setIndustry('all');
+    setIndustryState('all');
+    setLimit(PAGE_SIZE);
   };
+
+  useEffect(() => {
+    const next = new URLSearchParams(window.location.search);
+    const put = (key: string, value: string, fallback: string) => {
+      if (value && value !== fallback) next.set(key, value);
+      else next.delete(key);
+    };
+    put('q', query.trim(), '');
+    put('market', market, 'all');
+    put('sector', sector, 'all');
+    put('industry', industry, 'all');
+    put('sort', sort, 'cap');
+    put('n', String(limit), String(PAGE_SIZE));
+    const qs = next.toString();
+    const url = `${window.location.pathname}${qs ? `?${qs}` : ''}`;
+    if (url !== `${window.location.pathname}${window.location.search}`) {
+      window.history.replaceState(window.history.state, '', url);
+    }
+  }, [query, market, sector, industry, sort, limit]);
   const horizon = useSyncExternalStore(
     subscribeHorizon,
     getHorizonSnapshot,
@@ -206,21 +292,28 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
   }, [stocks, sector]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return stocks.filter((s) => {
+    const rows = stocks.filter((s) => {
       if (market !== 'all' && s.market !== market) return false;
       if (sector !== 'all' && s.sector !== sector) return false;
       if (industry !== 'all' && s.industry !== industry) return false;
-      if (q) {
-        const inTicker = s.ticker.toLowerCase().includes(q);
-        const inName = (s.name ?? '').toLowerCase().includes(q);
-        if (!inTicker && !inName) return false;
-      }
-      return true;
+      return matchesQuery(s, query);
     });
-  }, [stocks, query, market, sector, industry]);
+    // The index arrives largest-first; every other order is applied here. On the
+    // default order an exact ticker match comes first, so "BHP" leads with BHP.
+    const q = query.trim();
+    const order: Record<SortKey, (a: UniverseStock, b: UniverseStock) => number> = {
+      cap: (a, b) =>
+        (q ? matchStrength(b.ticker, q) - matchStrength(a.ticker, q) : 0) ||
+        byCap(a.marketCap, b.marketCap, -1),
+      'cap-asc': (a, b) => byCap(a.marketCap, b.marketCap, 1),
+      ticker: (a, b) => a.ticker.localeCompare(b.ticker),
+      name: (a, b) => byText(a.name, b.name) || a.ticker.localeCompare(b.ticker),
+      sector: (a, b) => byText(a.sector, b.sector) || byCap(a.marketCap, b.marketCap, -1),
+    };
+    return rows.sort(order[sort]);
+  }, [stocks, query, market, sector, industry, sort]);
 
-  const shown = filtered.slice(0, RENDER_LIMIT);
+  const shown = filtered.slice(0, limit);
   const hiddenCount = filtered.length - shown.length;
 
   return (
@@ -289,8 +382,20 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
               value={custom.lookback}
               step={1}
               error={lookbackErr}
-              onChange={(n) => updateCustom({ lookback: Math.round(n) })}
+              // Not rounded: a rounded value would rewrite "252.5" under the cursor;
+              // "Whole number only." says what is wrong instead (as on Run Analysis).
+              onChange={(n) => updateCustom({ lookback: n })}
             />
+            {/* ⚠️ An invalid Custom value used to be ignored in silence: the stock simply
+                opened on Medium, so the reader thought their window was in use. Say so
+                (owner, 2026-10-03: "when a wrong custom parameter is inputted it is
+                acting properly"). The Run page blocks its button; Browse cannot block
+                a list of stocks, so it states what will happen instead. */}
+            {!customOk && (
+              <p role="status" className="w-full text-[11px] font-semibold text-[var(--status-danger)]">
+                Fix the value marked above. Until then, stocks open with the Medium horizon.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -306,7 +411,8 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            ref={adoptEarlyInput(query, search)}
+            onChange={(e) => search(e.target.value)}
             placeholder="Search ticker or company…"
             aria-label="Search by ticker or company name"
             className="border-none outline-none bg-transparent text-[12px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] w-full"
@@ -325,7 +431,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
               onClick={() => setMarket(m.value)}
               aria-pressed={market === m.value}
               className={cn(
-                'px-[10px] py-[5px] rounded-[var(--radius-sm)] border text-[11px] font-[var(--font-mono)] font-medium transition-all duration-150',
+                'px-[10px] py-[5px] rounded-[var(--radius-sm)] border text-[11px] font-[family-name:var(--font-mono)] font-medium transition-all duration-150',
                 market === m.value
                   ? 'bg-[var(--brand-mid)] border-[var(--brand-mid)] text-white'
                   : 'bg-transparent border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--brand-mid)] hover:text-[var(--brand-mid)]'
@@ -382,16 +488,39 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
       </div>
 
       {/* Result count — a live region so screen readers announce the new count
-          as the user types/filters (mirrors the Results-tab toolbar). */}
-      <div
-        className="text-[11px] text-[var(--text-muted)] mb-2 font-[var(--font-mono)]"
-        role="status"
-        aria-live="polite"
-      >
-        {filtered.length} {filtered.length === 1 ? 'stock' : 'stocks'}
-        {hiddenCount > 0 && (
-          <span> · showing first {shown.length} — refine to see the rest</span>
-        )}
+          as the user types/filters (mirrors the Results-tab toolbar). The sort
+          control sits beside it rather than in the filter row, where it wrapped
+          onto a line of its own at 1280px — and it stays OUTSIDE the live region,
+          so changing the order is not announced as a new count. */}
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div
+          className="text-[11px] text-[var(--text-muted)] font-[family-name:var(--font-mono)]"
+          role="status"
+          aria-live="polite"
+        >
+          {filtered.length} {filtered.length === 1 ? 'stock' : 'stocks'}
+          {hiddenCount > 0 && <span> · showing {shown.length}</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="sort-order"
+            className="text-[10px] font-semibold uppercase tracking-[0.8px] text-[var(--text-muted)]"
+          >
+            Sort
+          </label>
+          <select
+            id="sort-order"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="browse-select"
+          >
+            {SORTS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -426,7 +555,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-[var(--font-mono)] font-semibold text-[13px] text-[var(--text-primary)] group-hover:text-[var(--brand-mid)]">
+                      <span className="font-[family-name:var(--font-mono)] font-semibold text-[13px] text-[var(--text-primary)] group-hover:text-[var(--brand-mid)]">
                         {symbol}
                       </span>
                       <span className="text-[9px] font-semibold uppercase tracking-[0.5px] text-[var(--text-muted)] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-[4px] px-1.5 py-px flex-shrink-0">
@@ -440,7 +569,7 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
                   <div className="hidden sm:block text-[11px] text-[var(--text-muted)] flex-shrink-0 w-[160px] truncate">
                     {s.sector ?? '—'}
                   </div>
-                  <div className="font-[var(--font-mono)] text-[12px] text-[var(--text-secondary)] flex-shrink-0 w-[72px] text-right">
+                  <div className="font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-secondary)] flex-shrink-0 w-[72px] text-right">
                     {formatMarketCap(s.marketCap, s.currency)}
                   </div>
                 </Link>
@@ -448,6 +577,24 @@ export function StockBrowser({ stocks }: { stocks: UniverseStock[] }) {
             );
           })}
           </ul>
+          {hiddenCount > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+              <button
+                type="button"
+                className="browse-more"
+                onClick={() => setLimit((n) => n + PAGE_SIZE)}
+              >
+                Show {Math.min(PAGE_SIZE, hiddenCount)} more
+              </button>
+              <button
+                type="button"
+                className="browse-more"
+                onClick={() => setLimit(filtered.length)}
+              >
+                Show all {filtered.length}
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
@@ -472,7 +619,7 @@ function EmptyState({ query }: { query: string }) {
           {query.trim() ? (
             <>
               We don&apos;t cover a stock matching{' '}
-              <span className="font-[var(--font-mono)] text-[var(--text-secondary)]">
+              <span className="font-[family-name:var(--font-mono)] text-[var(--text-secondary)]">
                 &ldquo;{query.trim()}&rdquo;
               </span>{' '}
               yet. If it&apos;s a valid US, Australian or Canadian stock, request it
@@ -515,6 +662,10 @@ function CustomField({
   // Link the inline error to the input so a screen reader announces the reason
   // (not just `aria-invalid`) — mirrors the C-R3 deep-a11y bar.
   const errorId = useId();
+  // The box keeps what was typed and refuses a leading zero — the same rules as the
+  // Run Analysis horizon (lib/numberDraft.ts), so the two pages cannot disagree.
+  const draft = useNumberDraft(value, onChange);
+  const shown = draft.typingError ?? error;
   return (
     <label className="flex flex-col gap-0.5">
       <span className="flex items-center gap-0.5 text-[9.5px] font-semibold uppercase tracking-[0.5px] text-[var(--brand-mid)]">
@@ -523,24 +674,21 @@ function CustomField({
       </span>
       <input
         type="number"
-        value={Number.isFinite(value) ? value : ''}
+        value={draft.inputValue}
         step={step}
-        aria-invalid={error !== null}
-        aria-describedby={error ? errorId : undefined}
-        onChange={(e) => {
-          const n = Number(e.target.value);
-          if (!Number.isNaN(n)) onChange(n);
-        }}
+        aria-invalid={shown !== null}
+        aria-describedby={shown ? errorId : undefined}
+        onChange={draft.onInput}
         className={cn(
-          'w-[92px] rounded-[var(--radius-sm)] border bg-[var(--bg-surface)] px-2 py-[5px] font-[var(--font-mono)] text-[12px] text-[var(--text-primary)] outline-none',
-          error
+          'w-[92px] rounded-[var(--radius-sm)] border bg-[var(--bg-surface)] px-2 py-[5px] font-[family-name:var(--font-mono)] text-[12px] text-[var(--text-primary)] outline-none',
+          shown
             ? 'border-[var(--status-danger)] focus:border-[var(--status-danger)]'
             : 'border-[var(--border)] focus:border-[var(--brand-bright)]'
         )}
       />
-      {error && (
+      {shown && (
         <span id={errorId} className="text-[9.5px] font-semibold text-[var(--status-danger)]">
-          {error}
+          {shown}
         </span>
       )}
     </label>

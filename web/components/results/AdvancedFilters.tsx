@@ -190,6 +190,7 @@ function CategoricalSelect({
   const ref = useRef<HTMLDivElement>(null);
   const selected = Array.isArray(rule.value) ? rule.value : [];
   const options = distinctValues(rows, rule.field);
+  const show = FIELD_BY_KEY[rule.field]?.display ?? ((v: string) => v);
 
   useEffect(() => {
     if (!open) return;
@@ -200,7 +201,7 @@ function CategoricalSelect({
     return () => document.removeEventListener('click', onDoc);
   }, [open]);
 
-  const caption = selected.length === 0 ? 'Any' : selected.length === 1 ? selected[0] : `${selected.length} selected`;
+  const caption = selected.length === 0 ? 'Any' : selected.length === 1 ? show(selected[0]!) : `${selected.length} selected`;
 
   const toggle = (val: string, checked: boolean) => {
     const set = new Set(selected);
@@ -232,7 +233,7 @@ function CategoricalSelect({
                   checked={selected.includes(o)}
                   onChange={(e) => toggle(o, e.target.checked)}
                 />
-                {o}
+                {show(o)}
               </label>
             ))
           )}

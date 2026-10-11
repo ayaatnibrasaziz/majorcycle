@@ -55,7 +55,7 @@ export default function PublicLayout({
 
           `pt-7` is not decoration: the header is sticky, and a vertically-centred
           auth card otherwise sits flush against it with its own top edge cropped. */}
-      <main className="relative z-10 flex-1 flex flex-col px-5 pt-7 pb-10">
+      <main id="main-content" className="relative z-10 flex-1 flex flex-col px-5 pt-7 pb-10">
         {children}
       </main>
 

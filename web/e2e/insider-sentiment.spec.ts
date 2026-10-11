@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { insiderSentiment } from '@/lib/insiderSentiment';
+import { insiderPositionLabel, insiderSentiment, insiderTotals } from '@/lib/insiderSentiment';
 import type { InsiderTransaction } from '@/lib/types';
 
 /**
@@ -81,5 +81,29 @@ test.describe('insider sentiment says only what the filings support', () => {
     // for a month because nothing tied it to the real one).
     expect(insiderSentiment([tx('Purchase', 1)], INK)?.color).toBe(INK.up);
     expect(insiderSentiment([tx('Sale', 1)], INK)?.color).toBe(INK.down);
+  });
+});
+
+test.describe('a company buying back its own shares is not an insider (beta review F-20)', () => {
+  const issuer = (type: InsiderTransaction['type'], value: number): InsiderTransaction => ({
+    ...tx(type, value),
+    insider: 'Royal Bank of Canada',
+    position: 'Issuer',
+  });
+
+  test('a buyback does not make the insiders net buyers', () => {
+    // RY.TO: the bank's own buybacks were the only "purchases" in the label.
+    expect(insiderSentiment([issuer('Purchase', 71_000_000), tx('Sale', 400_000)], INK)?.label).toBe(
+      'NET SELLER (Bearish)',
+    );
+    expect(insiderSentiment([issuer('Purchase', 71_000_000)], INK)).toBeNull();
+  });
+
+  test('the totals leave it out too, and the list names it for what it is', () => {
+    const totals = insiderTotals([issuer('Purchase', 71_000_000), tx('Purchase', 50_000)]);
+    expect(totals?.bought).toBe(50_000);
+    expect(insiderPositionLabel(issuer('Purchase', 1))).toBe('Company buyback');
+    // CONTROL: an ordinary insider keeps their own title.
+    expect(insiderPositionLabel(tx('Purchase', 1))).toBe('Director');
   });
 });

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import { depth } from '@/lib/landing';
-import { LEARN_FIGURES } from '@/lib/learn-figures';
+import { LEARN_FIGURES, todayAgainstTypical } from '@/lib/learn-figures';
 import type { LearnSlug } from '@/lib/learn';
 import { CUSTOM_PARAM_BOUNDS, PRESETS, PRESET_HORIZONS, PRESET_LABELS } from '@/lib/presets';
 import {
@@ -108,6 +108,11 @@ const asOfWords = new Date(`${LEARN_FIGURES.asOf}T00:00:00Z`).toLocaleDateString
   year: 'numeric',
   timeZone: 'UTC',
 });
+
+const TODAY_VS_TYPICAL = todayAgainstTypical(
+  LEARN_FIGURES.currentDrawdownPct,
+  LEARN_FIGURES.typicalDrawdownPct,
+);
 
 export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
   'what-is-a-drawdown': () => (
@@ -299,16 +304,25 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         Take {LEARN_FIGURES.name}, using its full price record to {asOfWords}, on the{' '}
         {PRESET_LABELS.medium.toLowerCase()} horizon.
       </p>
+      {/* ⚠️ These figures are rebuilt NIGHTLY, so no sentence here may judge them in
+          fixed words — "a meaningful drop" once sat beside a 1.2% dip (beta review
+          A-15). The comparison is worked out from the printed numbers. */}
       <p>
-        It was recently <strong>{depth(LEARN_FIGURES.currentDrawdownPct)}</strong> below
-        its one-year high. On its own, that sounds like a meaningful drop.
+        {TODAY_VS_TYPICAL.atHigh ? (
+          <>It was recently at its one-year high.</>
+        ) : (
+          <>
+            It was recently <strong>{depth(LEARN_FIGURES.currentDrawdownPct)}</strong> below
+            its one-year high. On its own, that number tells you very little.
+          </>
+        )}
       </p>
       <p>
-        Set against its own history, it is unremarkable. Across{' '}
-        {LEARN_FIGURES.pullbackEvents.toLocaleString('en-AU')} separate falls of more
-        than {MEDIUM_FALL}% in its record, the average one ran to{' '}
-        <strong>{depth(LEARN_FIGURES.typicalDrawdownPct)}</strong>. Today&rsquo;s fall is
-        under half of that. And at its worst, the share has fallen{' '}
+        Its own history is what gives it meaning. Its record holds{' '}
+        {LEARN_FIGURES.pullbackEvents.toLocaleString('en-AU')} low points more than{' '}
+        {MEDIUM_FALL}% below a high, and on average they sat{' '}
+        <strong>{depth(LEARN_FIGURES.typicalDrawdownPct)}</strong>{' '}down.{' '}
+        {TODAY_VS_TYPICAL.comparison} And at its worst, the share has fallen{' '}
         <strong>{depth(LEARN_FIGURES.deepestDrawdownPct)}</strong> from a high.
       </p>
 
@@ -1772,10 +1786,11 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
 
       <h3>Cycle Payoff — has that history been worth anything?</h3>
       <p>
-        Two things at once. How many complete falls and recoveries the company&rsquo;s
-        record actually contains — a company with a handful of cycles gives a more
-        reliable read than one with two. And how its typical recovery has compared
-        with its typical fall.
+        Two things at once. How much history the company&rsquo;s record contains: ten
+        years of falls and recoveries gives a firmer read than two. And how far its
+        typical recovery has gone past its typical fall, once the climb back to where
+        it started is taken out. A share that falls 50% and then rises 100% is only
+        back where it began, so that earns no extra credit.
       </p>
       <p>
         Despite the name, there is nothing about price momentum in it. It measures
@@ -1947,11 +1962,13 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
         make an average; they do not make a pattern.
       </p>
       <p>
-        This is why the number of completed cycles matters as much as their size, and
-        why the chart puts it on screen as <strong>Events</strong>{' '}rather than
-        quietly averaging whatever is there. Fewer events is not a reason to ignore a
-        company — it is a reason to hold the reading more loosely, and it feeds
-        directly into how much weight the analysis gives that history.
+        This is why how much history a reading rests on matters as much as the sizes
+        in it, and why the chart puts the count on screen as{' '}
+        <strong>Low points</strong>{' '}— each time a fall bottomed out past the
+        horizon&rsquo;s threshold — rather than quietly averaging whatever is there. A
+        short record is not a reason to ignore a company. It is a reason to hold the
+        reading more loosely, and it feeds directly into the confidence the Verdict
+        shows and the weight the rating gives that history.
       </p>
 
       <h2>When the record is the wrong record</h2>
@@ -2178,7 +2195,7 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
           recovery, not its speed.
         </li>
         <li>
-          <strong>How many separate falls</strong>{' '}its record contains, which is
+          <strong>How many low points</strong>{' '}its record contains, which is
           how much weight any of it deserves.
         </li>
       </ul>
@@ -2440,8 +2457,8 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
       <p>
         There is a Verdict on every stock page, and it is worth being exact about
         what it is. It states where the price sits against this company&rsquo;s own
-        history of falls, how many past cycles that reading rests on, and the price
-        levels those cycles work out to. Every figure in it is back-solved from
+        history of falls, how many past low points that reading rests on, and the
+        price levels they work out to. Every figure in it is back-solved from
         measured history.
       </p>
       <p>

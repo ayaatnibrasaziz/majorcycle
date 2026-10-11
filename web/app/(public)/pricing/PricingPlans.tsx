@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+
+import { useHydrated } from '@/lib/useHydrated';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
 
@@ -8,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { AuthCard } from '@/components/AuthCard';
 import type { BillingCurrency } from '@/lib/stripe';
 import {
+  PREMIUM_UNLOCKS,
   PRICE_TABLE,
   CURRENCY_SYMBOL,
   CURRENCY_CODE_LABEL,
@@ -30,13 +33,11 @@ type PlanKey = keyof PlanPrices; // 'monthly' | 'annual'
  * the free-account line below, never here. Keep this list and lib/entitlement.ts
  * telling the same story.
  */
-const FEATURES = [
-  'Overall Rating and Health Score on every stock',
-  'The full Verdict, five-pillar scorecard and valuation zone',
-  'Screen hundreds of stocks at once — rank, filter and export',
-  'Download a complete report for any stock',
-  'Cancel anytime — no charge until day 7',
-];
+// ⚠️ The SHARED list (lib/pricing.ts PREMIUM_UNLOCKS), not a private one: this page kept
+// its own, worded differently from the upgrade window and the trial modal — CLAUDE.md
+// 11c-i, which names exactly these three surfaces (beta review D-14, 2026-10-03). The
+// last line is a term of the trial, not something the subscription adds.
+const FEATURES = [...PREMIUM_UNLOCKS, 'Cancel anytime — no charge until day 7'];
 
 /** Money with the currency's symbol; whole numbers stay whole, otherwise 2dp. */
 function money(amount: number, currency: BillingCurrency): string {
@@ -64,6 +65,9 @@ function money(amount: number, currency: BillingCurrency): string {
  */
 export function PricingPlans({ currency }: { currency: BillingCurrency }) {
   const [plan, setPlan] = useState<PlanKey>('monthly');
+  // The switch does nothing until React owns it, so it waits to be pressable rather
+  // than swallowing an early tap (beta review A-30; the rule every form follows).
+  const hydrated = useHydrated();
 
   const prices = PRICE_TABLE[currency];
   const isAnnual = plan === 'annual';
@@ -89,6 +93,7 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
           <button
             type="button"
             aria-pressed={!isAnnual}
+            disabled={!hydrated}
             onClick={() => setPlan('monthly')}
             className={`h-9 rounded-[calc(var(--radius-sm)-2px)] text-[12.5px] font-semibold transition-colors ${
               !isAnnual
@@ -101,6 +106,7 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
           <button
             type="button"
             aria-pressed={isAnnual}
+            disabled={!hydrated}
             onClick={() => setPlan('annual')}
             className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-[calc(var(--radius-sm)-2px)] text-[12.5px] font-semibold transition-colors ${
               isAnnual
@@ -155,7 +161,9 @@ export function PricingPlans({ currency }: { currency: BillingCurrency }) {
             the same trial modal and the same /api/checkout finish the job. */}
         <div className="mt-7">
           <Button asChild variant="primary" size="lg" className="w-full">
-            <Link href={`/signup?next=${encodeURIComponent('/account')}`}>
+            {/* The chosen plan rides through sign-up to the Account page's trial window
+                (beta review A-4: it used to be forgotten, though this file said otherwise). */}
+            <Link href={`/signup?next=${encodeURIComponent(`/account?plan=${plan}`)}`}>
               Start 7-day free trial
             </Link>
           </Button>

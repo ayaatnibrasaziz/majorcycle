@@ -1,5 +1,6 @@
 'use client';
 
+import { REFERRAL_NAME_MAX, REFERRAL_NOTE_MAX } from '@/lib/referralInput';
 import { useState } from 'react';
 import { AlertCircle, CheckCircle2, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,8 @@ import { sendReferral } from '@/app/(app)/account/actions';
 import { adoptEarlyInput, useHydrated } from '@/lib/useHydrated';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MESSAGE_MAX = 300;
+// One limit for the form and the server (lib/referralInput.ts).
+const MESSAGE_MAX = REFERRAL_NOTE_MAX;
 
 /**
  * Refer-a-friend card (F2 Part C). Sends a one-off branded invite from the
@@ -89,7 +91,7 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
               id="referrerName"
               type="text"
               autoComplete="name"
-              maxLength={80}
+              maxLength={REFERRAL_NAME_MAX}
               value={name}
               ref={adoptEarlyInput(name, setName)}
               onChange={(e) => {
@@ -133,7 +135,7 @@ export function ReferAFriendCard({ initialName }: { initialName: string }) {
                 setSentTo(null);
               }}
               placeholder="Add a short note…"
-              className="w-full resize-y rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-3.5 py-2.5 text-[13.5px] font-[var(--font-sans)] text-[var(--text-primary)] outline-none transition-all duration-150 hover:border-[var(--border-strong)] focus:border-[var(--brand-bright)] focus:ring-[3px] focus:ring-[var(--brand-bright)]/15"
+              className="w-full resize-y rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg-surface)] px-3.5 py-2.5 text-[13.5px] font-[family-name:var(--font-sans)] text-[var(--text-primary)] outline-none transition-all duration-150 hover:border-[var(--border-strong)] focus:border-[var(--brand-bright)] focus:ring-[3px] focus:ring-[var(--brand-bright)]/15"
             />
             <p className="text-right text-[11px] text-[var(--text-muted)]">
               {message.length}/{MESSAGE_MAX}

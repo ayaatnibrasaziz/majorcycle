@@ -13,9 +13,11 @@ import {
   type SeriesMarker,
   type Time,
 } from 'lightweight-charts';
+import { edgeSafeTickFormatter } from '@/lib/chartTicks';
 
 import { CHART_RIGHT_AXIS_WIDTH, fmtCompact, fmtPrice } from '@/lib/format';
-import { insiderSentiment, insiderTotals } from '@/lib/insiderSentiment';
+import { analystTally, consensusFromTally, gradeGroup, type AnalystTally } from '@/lib/analystConsensus';
+import { insiderPositionLabel, insiderSentiment, insiderTotals, isIssuer } from '@/lib/insiderSentiment';
 import type { AnalystUpgrade, Currency, InsiderTransaction, PriceBar } from '@/lib/types';
 import { ANALYST, INK } from '@/lib/ink';
 
@@ -62,42 +64,16 @@ function classifyAction(action: string): { pill: string; label: string } {
    measured 2.38:1. One function, so it returns ink and the markers darken with
    the words rather than drifting apart from them. */
 function gradeColor(grade: string | undefined): string {
-  const g = (grade ?? '').toLowerCase().trim().replace(/-/g, ' ');
-  if (g.includes('strong buy') || g === 'buy' || g.includes('outperform') || g.includes('overweight') || g === 'accumulate' || g === 'add' || g === 'positive' || g === 'long term buy')
-    return ANALYST.positive;
-  if (g.includes('sell') || g.includes('underperform') || g.includes('underweight') || g === 'reduce' || g === 'negative' || g === 'avoid')
-    return ANALYST.negative;
-  if (g === 'neutral' || g === 'hold' || g.includes('market perform') || g.includes('equal weight') || g.includes('peer perform') || g.includes('sector perform') || g.includes('market weight') || g.includes('in line') || g.includes('fair value'))
-    return ANALYST.neutral;
+  const g = gradeGroup(grade);
+  if (g === 'buy')  return ANALYST.positive;
+  if (g === 'sell') return ANALYST.negative;
+  if (g === 'hold') return ANALYST.neutral;
   return INK.brand;
 }
 
-function classifyGrade(grade: string | undefined): 'bull' | 'bear' | 'neut' {
-  const g = (grade ?? '').toLowerCase().trim().replace(/-/g, ' ');
-  if (g.includes('strong buy') || g === 'buy' || g.includes('outperform') || g.includes('overweight') || g === 'accumulate' || g === 'add' || g === 'positive' || g === 'long term buy')
-    return 'bull';
-  if (g.includes('sell') || g.includes('underperform') || g.includes('underweight') || g === 'reduce' || g === 'negative' || g === 'avoid')
-    return 'bear';
-  return 'neut';
-}
-
-// Computes overall analyst consensus from the most recent rating per firm.
-function analystConsensus(upgrades: AnalystUpgrade[]): { label: string; color: string; bg: string } | null {
-  if (!upgrades.length) return null;
-  const latest = new Map<string, AnalystUpgrade>();
-  for (const u of upgrades) {
-    if (!latest.has(u.firm) || u.date > latest.get(u.firm)!.date) {
-      latest.set(u.firm, u);
-    }
-  }
-  let bull = 0, bear = 0, neut = 0;
-  for (const u of latest.values()) {
-    const cls = classifyGrade(u.to_grade);
-    if (cls === 'bull') bull++;
-    else if (cls === 'bear') bear++;
-    else neut++;
-  }
-  if (!bull && !bear && !neut) return null;
+// The chip: the plurality of each firm's most recent rating (lib/analystConsensus.ts).
+function analystConsensus(tally: AnalystTally | null): { label: string; color: string; bg: string } | null {
+  if (!tally) return null;
   /* ⚠️ ANALYST.*, not INK.* — audit 2026-09-10. This chip SUMMARISES the rating
      pills listed under it, and it was painted from a different palette than they
      were: the pills use the third-party colours (so a Wall Street *Sell* cannot
@@ -113,9 +89,10 @@ function analystConsensus(upgrades: AnalystUpgrade[]): { label: string; color: s
      three backgrounds on the old colour. They read the tokens now — the same ones
      the `.smart-pill` rules use, so a chip and the chip summarising it cannot part
      company again (11c-viii). */
-  if (bull >= bear && bull > neut) return { label: 'BULLISH',  color: ANALYST.positive, bg: 'var(--analyst-positive-tint)' };
-  if (bear > bull  && bear > neut) return { label: 'BEARISH',  color: ANALYST.negative, bg: 'var(--analyst-negative-tint)' };
-  return                                   { label: 'NEUTRAL',  color: ANALYST.neutral,  bg: 'var(--analyst-neutral-tint)' };
+  const label = consensusFromTally(tally);
+  if (label === 'BULLISH') return { label, color: ANALYST.positive, bg: 'var(--analyst-positive-tint)' };
+  if (label === 'BEARISH') return { label, color: ANALYST.negative, bg: 'var(--analyst-negative-tint)' };
+  return                          { label, color: ANALYST.neutral,  bg: 'var(--analyst-neutral-tint)' };
 }
 
 function fmtMonthYear(iso: string): string {
@@ -151,10 +128,18 @@ function fmtDate(iso: string): string {
  * own 52-week range for **94.7% of AU** and **97.0% of CA**. The local currency is
  * right for the overwhelming majority; a bare `$` was right for none of them.
  */
-function fmtValue(v: number | null, currency: Currency): string {
+function fmtValue(v: number | null, currency: Currency, text?: string | null): string {
   if (!v) return '';
+  // ⚠️ A share GRANT priced "0.00 - 40.74 per share" has no trade price: the provider
+  // values it at the midpoint of that range, so it reads as shares bought at half the
+  // market price (beta review B-33, BHP.AX — 154 such grants across the universe,
+  // 2026-10-03). The share count is real; the dollar figure is the provider's guess,
+  // so it is left out rather than corrected (CLAUDE.md 11as: never hand-patch a figure).
+  if (text && ZERO_RANGE_GRANT.test(text)) return '';
   return ` · ${fmtCompact(v, currency)}`;
 }
+
+const ZERO_RANGE_GRANT = /at price 0\.00 - /;
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] ?? c));
@@ -223,12 +208,14 @@ function buildModel(priceBars: PriceBar[], txs: InsiderTransaction[], upgrades: 
     const key = snap(t.date);
     if (!key) continue;
     bucket(key).insiders.push(t);
-    if (t.type === 'Purchase') {
+    // A company's own buyback is not an insider buying: drawn as a neutral dot.
+    if (t.type === 'Purchase' && !isIssuer(t)) {
       markersAll.push({ kind: 'buy', time: key as Time, position: 'belowBar', color: CANDLE.up, shape: 'arrowUp', size: 1 });
-    } else if (t.type === 'Sale') {
+    } else if (t.type === 'Sale' && !isIssuer(t)) {
       markersAll.push({ kind: 'sell', time: key as Time, position: 'aboveBar', color: INK.down, shape: 'arrowDown', size: 1 });
     } else {
-      markersAll.push({ kind: 'other', time: key as Time, position: 'inBar', color: INSIDER_STYLE[t.type].dot, shape: 'circle', size: 1 });
+      const dot = isIssuer(t) ? INSIDER_STYLE.Other.dot : INSIDER_STYLE[t.type].dot;
+      markersAll.push({ kind: 'other', time: key as Time, position: 'inBar', color: dot, shape: 'circle', size: 1 });
     }
   }
   for (const a of upgrades) {
@@ -241,7 +228,21 @@ function buildModel(priceBars: PriceBar[], txs: InsiderTransaction[], upgrades: 
   // LWC requires markers sorted by time ascending (date strings sort chronologically).
   markersAll.sort((m1, m2) => String(m1.time).localeCompare(String(m2.time)));
 
-  return { priceData, priceByTime, eventsByTime, markersAll, lastTime };
+  // ⚠️ ONE marker per kind per day (beta review B-19). The chart stacks every marker on
+  // a bar, so a day with six analyst notes drew a column of six squares that ran off
+  // the top of the chart on a phone. The day's panel still lists every event; a day
+  // whose analyst notes landed in different groups is drawn in the neutral ink rather
+  // than in whichever colour happened to come first.
+  const perDay = new Map<string, KindMarker>();
+  for (const m of markersAll) {
+    const k = `${String(m.time)}|${m.kind}`;
+    const seen = perDay.get(k);
+    if (!seen) perDay.set(k, { ...m });
+    else if (seen.color !== m.color) seen.color = CHART_INK;
+  }
+  const markers = [...perDay.values()];
+
+  return { priceData, priceByTime, eventsByTime, markersAll: markers, lastTime };
 }
 
 /* ── Lightweight-Charts chart (native pan/zoom + combined tooltip) ── */
@@ -339,8 +340,14 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible, currency }:
         borderColor: CHART_CHROME.axis,
         textColor: CHART_INK,
         minimumWidth: CHART_RIGHT_AXIS_WIDTH,
+        // Headroom for the markers drawn above the price line.
+        scaleMargins: { top: 0.18, bottom: 0.1 },
       },
-      timeScale: { borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true },
+      timeScale: {
+        borderColor: CHART_CHROME.axis, timeVisible: false, secondsVisible: false, fixLeftEdge: true, fixRightEdge: true,
+        // No date label half-cut by the price scale at the right edge (lib/chartTicks.ts).
+        tickMarkFormatter: edgeSafeTickFormatter(() => chartRef.current),
+      },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
       handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: false },
     });
@@ -399,7 +406,7 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible, currency }:
         const glyph = t.type === 'Purchase' ? '▲' : t.type === 'Sale' ? '▼' : '●';
         rows.push(`<div class="smart-tip-row"><span style="color:${s.dot}">${glyph}</span> `
           + `<b>${s.label}</b> · ${escapeHtml(t.insider)}`
-          + `<span class="smart-tip-meta">${(t.shares ?? 0).toLocaleString()} sh${fmtValue(t.value, currency)}</span></div>`);
+          + `<span class="smart-tip-meta">${(t.shares ?? 0).toLocaleString()} sh${fmtValue(t.value, currency, t.text)}</span></div>`);
       }
       for (const a of analysts) {
         const cls = classifyAction(a.action);
@@ -548,7 +555,7 @@ function SmartMoneyChart({ priceBars, txs, upgrades, range, visible, currency }:
                   <span className="smart-day-panel-glyph" style={{ color: s.dot }}>{glyph}</span>
                   <div>
                     <div><span className="smart-day-panel-label">{s.label}</span> · <span className="smart-day-panel-name">{t.insider}</span></div>
-                    <div className="smart-day-panel-meta">{t.position} · {(t.shares ?? 0).toLocaleString()} sh{fmtValue(t.value, currency)}</div>
+                    <div className="smart-day-panel-meta">{insiderPositionLabel(t)} · {(t.shares ?? 0).toLocaleString()} sh{fmtValue(t.value, currency, t.text)}</div>
                   </div>
                 </div>
               );
@@ -657,7 +664,8 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
 
   const sentiment  = txs.length      > 0 ? insiderSentiment(txs, INK)  : null;
   const totals     = sentiment ? insiderTotals(txs) : null;
-  const consensus  = upgrades.length  > 0 ? analystConsensus(upgrades)  : null;
+  const tally      = upgrades.length  > 0 ? analystTally(upgrades)      : null;
+  const consensus  = analystConsensus(tally);
 
   return (
     <div className="card card--stack-base">
@@ -740,7 +748,12 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
             {totals && (
               <div className="smart-section-basis">
                 {fmtMonthYear(totals.from)} – {fmtMonthYear(totals.to)}: bought{' '}
-                {fmtCompact(totals.bought, currency)} · sold {fmtCompact(totals.sold, currency)}
+                {fmtCompact(totals.bought, currency)} · sold {fmtCompact(totals.sold, currency)}{' '}
+                <InfoTip title="How the insider label is worked out">
+                  Adds up the value of every Buy and Sell filing on record for this period, not
+                  only the ten listed. NET BUYER when more was bought than sold, NET SELLER when
+                  more was sold. Award, Gift and Other filings are listed but not counted.
+                </InfoTip>
               </div>
             )}
             {txs.length === 0 ? (
@@ -749,20 +762,17 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
               <div className="smart-timeline">
                 {txs.slice(0, 10).map((tx, i) => {
                   const s = INSIDER_STYLE[tx.type];
-                  const shares = tx.shares ?? 0;
-                  const val = tx.value ?? 0;
-                  const sz = (shares >= 100000 || val >= 1e8) ? 'dot-lg' : (shares < 10000 && val < 2e6) ? 'dot-sm' : '';
                   return (
-                    <div key={i} className={`smart-event${sz ? ` ${sz}` : ''}`} style={{ '--dot': s.dot } as React.CSSProperties}>
+                    <div key={i} className="smart-event" style={{ '--dot': s.dot } as React.CSSProperties}>
                       <div>
                         <div className="smart-event-head">
                           <span className={`smart-pill ${s.pill}`}>{s.label}</span>
                           <span className="smart-event-name" title={tx.insider}>{tx.insider}</span>
-                          <span className="smart-event-title">{tx.position}</span>
+                          <span className="smart-event-title">{insiderPositionLabel(tx)}</span>
                         </div>
                         <div className="smart-event-meta">
                           <span className="smart-event-meta-mono">{(tx.shares ?? 0).toLocaleString()}</span>
-                          {' '}shares{fmtValue(tx.value, currency)}
+                          {' '}shares{fmtValue(tx.value, currency, tx.text)}
                         </div>
                       </div>
                       <div className="smart-event-date">{fmtDate(tx.date)}</div>
@@ -783,6 +793,20 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
                 </span>
               )}
             </div>
+            {tally && (
+              <div className="smart-section-basis">
+                {/* A no-break space inside each count, so a phone never strands "10" at the
+                    end of one line and "Hold" at the start of the next. */}
+                {fmtMonthYear(tally.from)} – {fmtMonthYear(tally.to)}: latest view of{' '}
+                {tally.firms}{' '}{tally.firms === 1 ? 'firm' : 'firms'}: {tally.buy}{' '}Buy ·{' '}
+                {tally.hold}{' '}Hold · {tally.sell}{' '}Sell{' '}
+                <InfoTip title="How the ratings are grouped">
+                  Each firm is counted once, by its most recent rating on record. Buy also covers
+                  Outperform, Overweight and Strong Buy; Sell covers Underperform and Underweight;
+                  Hold covers the rest, such as Neutral, Equal-Weight and Market Perform.
+                </InfoTip>
+              </div>
+            )}
             {upgrades.length === 0 ? (
               <div className="smart-empty">No rating changes available.</div>
             ) : (
@@ -791,10 +815,8 @@ export function SmartMoneyActivity({ insiderTransactions, analystUpgradesDowngra
                   const cls = classifyAction(ac.action);
                   const gc  = gradeColor(ac.to_grade);
                   const hasChange = ac.from_grade && ac.from_grade !== ac.to_grade;
-                  const acLower = (ac.action ?? '').toLowerCase();
-                  const acSz = acLower === 'upgrade' || acLower === 'downgrade' ? 'dot-lg' : '';
                   return (
-                    <div key={i} className={`smart-event${acSz ? ` ${acSz}` : ''}`} style={{ '--dot': gc } as React.CSSProperties}>
+                    <div key={i} className="smart-event" style={{ '--dot': gc } as React.CSSProperties}>
                       <div>
                         <div className="smart-event-head">
                           <span className={`smart-pill ${cls.pill}`}>{cls.label}</span>

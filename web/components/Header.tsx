@@ -131,7 +131,7 @@ export function Header({ lastRunAt, email, menuButton }: HeaderProps) {
           /* A convenience, and the first thing to yield on a phone: the title says
              which page this is and the account button is how you sign out, so between
              the three this is the one that can wait for a wider screen. */
-          <div className="hidden min-[768px]:flex items-center gap-[5px] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-full px-3 py-[5px] text-[11px] text-[var(--text-secondary)] font-[var(--font-mono)]">
+          <div className="hidden min-[768px]:flex items-center gap-[5px] bg-[var(--bg-stripe)] border border-[var(--border)] rounded-full px-3 py-[5px] text-[11px] text-[var(--text-secondary)] font-[family-name:var(--font-mono)]">
             <span
               className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"
               aria-hidden="true"

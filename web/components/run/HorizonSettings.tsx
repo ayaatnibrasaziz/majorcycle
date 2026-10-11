@@ -4,6 +4,7 @@ import { useId, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 
 import { InfoTip } from '@/components/ui/InfoTip';
+import { useNumberDraft } from '@/lib/numberDraft';
 import { boundError, CUSTOM_PARAM_BOUNDS, PRESETS } from '@/lib/presets';
 import { cn } from '@/lib/utils';
 
@@ -153,7 +154,10 @@ export function HorizonSettings({
             value={value.lookbackBars}
             step={1}
             error={lookbackErr}
-            onChange={(n) => editField({ lookbackBars: Math.round(n) })}
+            // Not rounded here: a rounded value no longer matches the box, which would
+            // rewrite "252.5" to "253" under the reader's cursor. "Whole number only."
+            // says what is wrong and the Run button waits.
+            onChange={(n) => editField({ lookbackBars: n })}
           />
         </div>
       )}
@@ -166,7 +170,7 @@ export function HorizonSettings({
           onClick={() => setAdvOpen(true)}
           className="mt-2 text-[11px] font-semibold text-[var(--status-danger)] underline"
         >
-          A custom value is out of range — open Advanced to fix it.
+          A custom value needs fixing — open Advanced parameters to see which.
         </button>
       )}
     </div>
@@ -203,6 +207,12 @@ function Field({
    * rather than by reading it: nothing renders differently either way.
    */
   const errorId = useId();
+
+  // The box keeps what was typed and refuses a leading zero — shared with Browse
+  // (lib/numberDraft.ts), so the two Custom horizons behave the same.
+  const draft = useNumberDraft(value, onChange);
+  const shown = draft.typingError ?? error;
+
   return (
     <div>
       <div className="set-field-label">
@@ -211,20 +221,17 @@ function Field({
       </div>
       <input
         type="number"
-        value={Number.isFinite(value) ? value : ''}
+        value={draft.inputValue}
         step={step}
         aria-label={label}
-        aria-invalid={error !== null}
-        aria-describedby={error ? errorId : undefined}
-        onChange={(e) => {
-          const n = Number(e.target.value);
-          if (!Number.isNaN(n)) onChange(n);
-        }}
-        className={cn('set-field-input', error && 'set-field-input--error')}
+        aria-invalid={shown !== null}
+        aria-describedby={shown ? errorId : undefined}
+        onChange={draft.onInput}
+        className={cn('set-field-input', shown && 'set-field-input--error')}
       />
-      {error && (
+      {shown && (
         <p id={errorId} className="mt-1 text-[10.5px] font-semibold text-[var(--status-danger)]">
-          {error}
+          {shown}
         </p>
       )}
     </div>

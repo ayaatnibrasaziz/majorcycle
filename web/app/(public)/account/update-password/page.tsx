@@ -1,10 +1,15 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { PW_RECOVERY_COOKIE } from '@/lib/authRecovery';
 import { UpdatePasswordForm } from './UpdatePasswordForm';
 
 export const metadata: Metadata = { title: 'Set a New Password' };
 
-export default function UpdatePasswordPage() {
-  return <UpdatePasswordForm />;
+export default async function UpdatePasswordPage() {
+  // A reset link confines its session to this page; a signed-in reader who chose to
+  // change their password is not confined, and must not be signed out to leave.
+  const recovery = (await cookies()).has(PW_RECOVERY_COOKIE);
+  return <UpdatePasswordForm recovery={recovery} />;
 }
 
 /**

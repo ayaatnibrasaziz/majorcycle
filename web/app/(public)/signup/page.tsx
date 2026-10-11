@@ -10,7 +10,7 @@ import { SignupForm } from './SignupForm';
 // drawdown overlay with its cycle bands, and every fundamentals section.
 export const metadata: Metadata = pageMetadata({
   path: '/signup',
-  title: 'Create a Free Account',
+  title: 'Create a free account',
   description:
     'Create a free MajorCycle account — no card required. Browse US, Australian and Canadian stocks with price charts, drawdown cycles and full fundamentals.',
 });

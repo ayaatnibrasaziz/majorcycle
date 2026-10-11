@@ -237,6 +237,12 @@ async function sweepRoute(page: Page, widths: number[]): Promise<{ bad: string[]
   let checked = 0;
   for (const width of widths) {
     await page.setViewportSize({ width, height: 900 });
+    /* WebKit can answer the first measurement from the PREVIOUS width: on 2026-10-11 it
+       reported /results at 320px scrolling 700px — the desktop table, measured before
+       the page had re-laid out — and passed on retry. So wait until the page itself
+       says it is this width, then a frame for the layout that follows. */
+    await page.waitForFunction((w) => window.innerWidth === w, width, { timeout: 10_000 });
+    await twoFrames(page);
     const x = await sidewaysScroll(page);
     checked += 1;
     if (x > 0) bad.push(`${width}px scrolled ${x}px`);

@@ -18,7 +18,7 @@ import { unstable_cache } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/server';
 import { selectAll } from '@/lib/supabase/paginate';
 
-import { KEY_METRICS, type MetricKey } from '@/lib/keyMetrics';
+import { KEY_METRICS, NEGATIVE_NOT_COMPARABLE, type MetricKey } from '@/lib/keyMetrics';
 
 export type { MetricKey };
 
@@ -81,6 +81,7 @@ function computeGroup(rows: Row[]): MetricMedians {
       const v = r.fundamentals[field];
       if (typeof v !== 'number' || !Number.isFinite(v)) continue;
       if (bound !== undefined && Math.abs(v) > bound) continue; // skip explosive outliers
+      if (v < 0 && NEGATIVE_NOT_COMPARABLE.has(key)) continue; // a loss, not a cheap price
       vals.push(v);
     }
     // Need a few data points for a median to mean anything.
@@ -160,6 +161,7 @@ export const fetchMetricMedians = unstable_cache(
   // the change has no median for the new metric, so for up to a day after deploy
   // its every comparison would read "—" while looking entirely deliberate.
   // v6: H6a, twelve new rows (2026-09-25).
-  ['metric-medians-v6'],
+  // v7: negative valuation multiples left out of the medians (2026-10-07).
+  ['metric-medians-v7'],
   { revalidate: 86400 },
 );

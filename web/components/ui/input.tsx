@@ -15,7 +15,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           // it. A text box is not a surface; its edge is the affordance. The old
           // hover rule is gone rather than kept as a no-op, so nothing here
           // promises a state change that no longer happens.
-          'w-full h-11 px-3.5 rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--bg-surface)] text-[var(--text-primary)] text-[14px] font-[var(--font-sans)] outline-none transition-all duration-150 placeholder:text-[var(--text-muted)] focus:border-[var(--brand-bright)] focus:ring-[3px] focus:ring-[var(--brand-bright)]/15 disabled:opacity-50 disabled:cursor-not-allowed',
+          'w-full h-11 px-3.5 rounded-[var(--radius-sm)] border border-[var(--border-strong)] bg-[var(--bg-surface)] text-[var(--text-primary)] text-[14px] font-[family-name:var(--font-sans)] outline-none transition-all duration-150 placeholder:text-[var(--text-muted)] focus:border-[var(--brand-bright)] focus:ring-[3px] focus:ring-[var(--brand-bright)]/15 disabled:opacity-50 disabled:cursor-not-allowed',
           className
         )}
         ref={ref}

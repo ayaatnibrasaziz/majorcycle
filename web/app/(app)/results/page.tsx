@@ -27,6 +27,7 @@ export default async function ResultsPage() {
         feature="Results"
         blurb="The ranked output of a screener run — every stock you analysed sorted by rating, with filters, the opportunity map and CSV export."
         reason={viewer.reason ?? 'no_subscription'}
+        subscriptionStatus={viewer.subscriptionStatus}
         displayName={viewer.displayName ?? ''}
         email={viewer.email ?? ''}
       />

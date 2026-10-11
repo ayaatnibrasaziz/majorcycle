@@ -24,7 +24,8 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const BILLING_COLUMNS =
   'subscription_status, subscription_plan, subscription_currency, ' +
   'stripe_subscription_id, stripe_customer_id, cancel_at_period_end, ' +
-  'trial_ends_at, current_period_end, grace_until, trial_reminder_sent, billing_blocked';
+  'trial_ends_at, current_period_end, grace_until, trial_reminder_sent, billing_blocked, ' +
+  'next_charge_amount, next_charge_currency';
 
 // Only used offline for generateTestHeaderString (signs with the webhook secret,
 // never calls the API), so the API key value is irrelevant — any non-empty string.
@@ -579,5 +580,55 @@ test.describe.serial('stripe webhook contract', () => {
     expect(p['subscription_status']).toBe('active');
     expect(p['stripe_subscription_id']).toBe(SUB);
     expect(p['trial_ends_at']).toBeNull();
+  });
+
+  /**
+   * The amount the account card shows (2026-10-03). Stripe is asked for a preview of
+   * the next invoice; this run's fake subscription id cannot be previewed (and the
+   * TEST key may not preview at all), so the sync falls back to the price on the
+   * subscription itself — which is what these assert. lib/billing/nextCharge.ts.
+   */
+  test('the next charge is stored on a sync, kept as the FAILED amount while past_due, cleared on cancel', async ({ request }) => {
+    const priced = (over: Record<string, unknown> = {}) =>
+      subObject({
+        status: 'active',
+        trial_end: null,
+        items: {
+          data: [
+            {
+              current_period_end: periodEnd,
+              quantity: 1,
+              price: { id: 'price_e2e_fake', lookup_key: 'majorcycle_monthly', currency: 'aud', unit_amount: 1900 },
+            },
+          ],
+        },
+        ...over,
+      });
+    const nextCharge = async () => {
+      const p = await profile();
+      return [p['next_charge_amount'], p['next_charge_currency']];
+    };
+
+    expect((await post(request, makeEvent('customer.subscription.updated', priced()))).ok()).toBeTruthy();
+    await expect.poll(nextCharge, { timeout: 15_000 }).toEqual([1900, 'aud']);
+
+    // Cancelling: nothing more will be charged.
+    expect((await post(request, makeEvent('customer.subscription.updated', priced({ cancel_at: periodEnd })))).ok()).toBeTruthy();
+    await expect.poll(nextCharge, { timeout: 15_000 }).toEqual([null, null]);
+
+    // A failed renewal stores the amount that FAILED…
+    await admin.from('profiles').update({ subscription_status: 'active', grace_until: null }).eq('id', userId);
+    expect(
+      (await post(request, makeEvent('invoice.payment_failed', invoiceObject({ amount_due: 2000, currency: 'aud' })))).ok(),
+    ).toBeTruthy();
+    await expect.poll(nextCharge, { timeout: 15_000 }).toEqual([2000, 'aud']);
+    // …and a subscription.updated while past_due does not replace it with the next period's.
+    expect((await post(request, makeEvent('customer.subscription.updated', priced({ status: 'past_due' })))).ok()).toBeTruthy();
+    await expect.poll(async () => (await profile())['subscription_status'], { timeout: 15_000 }).toBe('past_due');
+    expect(await nextCharge()).toEqual([2000, 'aud']);
+
+    // Gone for good: cleared.
+    expect((await post(request, makeEvent('customer.subscription.deleted', subObject({ status: 'canceled' })))).ok()).toBeTruthy();
+    await expect.poll(nextCharge, { timeout: 15_000 }).toEqual([null, null]);
   });
 });

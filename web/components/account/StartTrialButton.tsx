@@ -12,6 +12,8 @@ interface StartTrialButtonProps {
   // True when this email already used its free trial — the button becomes "Subscribe"
   // and the modal explains billing starts today (no free week). See Step 7.
   trialUsed?: boolean;
+  /** The plan chosen on /pricing before signing up (beta review A-4). */
+  initialPlan?: 'monthly' | 'annual';
 }
 
 /**
@@ -21,7 +23,7 @@ interface StartTrialButtonProps {
  * SubscriptionCard can stay a Server Component. When the email has already used its
  * free trial, the label and modal switch to an honest "subscribe, billed today" flow.
  */
-export function StartTrialButton({ currency, trialUsed = false }: StartTrialButtonProps) {
+export function StartTrialButton({ currency, trialUsed = false, initialPlan }: StartTrialButtonProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -40,6 +42,7 @@ export function StartTrialButton({ currency, trialUsed = false }: StartTrialButt
         onOpenChange={setOpen}
         currency={currency}
         trialUsed={trialUsed}
+        initialPlan={initialPlan}
       />
     </>
   );

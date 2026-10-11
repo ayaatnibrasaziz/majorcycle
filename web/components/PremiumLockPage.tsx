@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { UpgradeDialog } from '@/components/UpgradeDialog';
 import { SupportDialog } from '@/components/SupportDialog';
 import type { AccessDenialReason } from '@/lib/entitlement';
+import { DENIAL_COPY, DISPUTE_ENDED_COPY } from '@/lib/denialCopy';
+import { disputeEnded } from '@/lib/planStatus';
 
 /**
  * The locked state of a WHOLE premium page (F3 Step 10, owner-requested).
@@ -29,36 +31,7 @@ import type { AccessDenialReason } from '@/lib/entitlement';
  * (CLAUDE.md 11b). The real boundary is the proxy's 402 and the Python functions.
  */
 
-/** In-app voice: what happened, to a reader who is still inside the product. */
-const DENIAL_COPY: Record<AccessDenialReason, { title: string; body: string } | null> = {
-  // A free user meeting the paywall for the first time hasn't had anything go wrong,
-  // so a warning banner would read as a telling-off. The panel below is the message.
-  no_subscription: null,
-  canceled: {
-    title: 'Your subscription has ended',
-    body: 'Browsing, charts and company financials are still yours on the free plan. Resubscribing brings this back straight away.',
-  },
-  payment_failed: {
-    title: 'We couldn’t take your last payment',
-    body: 'This is paused until the payment goes through. Updating your card on the Account page is usually all it takes — you don’t need to buy a new plan.',
-  },
-  billing_blocked: {
-    title: 'Your account is on hold',
-    body: 'A payment on this account was disputed with the bank, so access is on hold while that’s resolved.',
-  },
-  // ⚠️ These two exist because four Stripe statuses used to fall through to
-  // `no_subscription`, i.e. to `null` above — so a reader whose subscription was
-  // stuck saw the plain upgrade panel, worded for someone who had never subscribed.
-  // Three of the four had already tried to pay us. Audit finding F-005.
-  setup_incomplete: {
-    title: 'Your subscription didn’t finish setting up',
-    body: 'The payment was started but never completed — usually the bank’s confirmation step was closed before it finished. Starting again from the Account page picks up where you left off, and you have not been charged.',
-  },
-  subscription_paused: {
-    title: 'Your subscription is paused',
-    body: 'Browsing, charts and company financials are still yours while it’s paused. Resuming it from the Account page brings this back straight away.',
-  },
-};
+// The reasons themselves live in lib/denialCopy.ts, shared with the Stock Detail lock window.
 
 export function PremiumLockPage({
   /** Key into UpgradeDialog's FEATURES map — it supplies the long explanation. */
@@ -66,6 +39,7 @@ export function PremiumLockPage({
   /** One line naming what this page does, for someone who has never seen it. */
   blurb,
   reason,
+  subscriptionStatus = null,
   /** Prefill the support form so a held reader doesn't retype what we hold. */
   displayName = '',
   email = '',
@@ -73,17 +47,24 @@ export function PremiumLockPage({
   feature: string;
   blurb: string;
   reason: AccessDenialReason;
+  /** Tells a dispute that is still open from one that has ended the plan. */
+  subscriptionStatus?: string | null;
   displayName?: string;
   email?: string;
 }) {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
 
-  const notice = DENIAL_COPY[reason];
   // A hold isn't a sales situation: /api/checkout and /api/portal both refuse this
   // account, so an upgrade prompt would be an offer we decline at the till. Support is
   // the only action that changes anything, and it opens in place.
   const blocked = reason === 'billing_blocked';
+  const ended = disputeEnded(blocked, subscriptionStatus);
+  const cardFailed = reason === 'payment_failed';
+  // A failed card and a dispute are already explained by the banner at the top of every
+  // signed-in page (components/PaymentBanner.tsx), so the panel does not say it a second
+  // time; it offers the fix instead (owner, 2026-10-03).
+  const notice = cardFailed || blocked ? null : DENIAL_COPY[reason];
 
   return (
     <div className="max-w-2xl">
@@ -122,9 +103,11 @@ export function PremiumLockPage({
           )}
 
           <p className="text-[13px] leading-relaxed text-[var(--text-secondary)]">
-            {blocked
-              ? `${feature} is part of the paid analysis, and it comes back as soon as the dispute is settled. If you think this is a mistake, contact us and we’ll sort it out with you.`
-              : blurb}
+            {ended
+              ? `${feature} is part of the paid analysis.`
+              : blocked
+                ? `${feature} is part of the paid analysis, and it comes back as soon as the dispute is settled. If you think this is a mistake, contact us and we’ll sort it out with you.`
+                : blurb}
           </p>
 
           <div className="mt-5">
@@ -132,6 +115,19 @@ export function PremiumLockPage({
               <Button variant="primary" onClick={() => setSupportOpen(true)}>
                 Contact support
               </Button>
+            ) : cardFailed ? (
+              // Stripe's billing page, where the card is changed — the same plain form
+              // POST as the banner and the Account page, so it works before hydration.
+              <div className="flex flex-wrap items-center gap-3">
+                <form action="/api/portal" method="post">
+                  <Button type="submit" variant="primary">
+                    Update card
+                  </Button>
+                </form>
+                <Button variant="ghost" onClick={() => setUpgradeOpen(true)}>
+                  See what&apos;s included
+                </Button>
+              </div>
             ) : (
               <Button variant="primary" onClick={() => setUpgradeOpen(true)}>
                 See what&apos;s included
@@ -153,7 +149,7 @@ export function PremiumLockPage({
         onOpenChange={setSupportOpen}
         defaultName={displayName}
         defaultEmail={email}
-        description="Your account is on hold because a payment was disputed. Tell us what happened and we’ll sort it out with you by email."
+        description={ended ? DISPUTE_ENDED_COPY.support : 'Your account is on hold because a payment was disputed. Tell us what happened and we’ll sort it out with you by email.'}
       />
     </div>
   );

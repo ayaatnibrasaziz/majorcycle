@@ -19,6 +19,7 @@ import {
   CHART_RIGHT_AXIS_WIDTH,
   fmtCompact,
   makeCompactAxisFormatter,
+  niceZeroAxis,
   reportingCurrencyNote,
   statementCurrency,
 } from '@/lib/format';
@@ -118,6 +119,10 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
     const line = hidden.has('debt') || r.debt == null ? 0 : r.debt;
     return Math.max(mx, stacked, line);
   }, 0);
+  // Even, round ticks (0, 5, 10…) — Recharts' own choice was 0 / 6.5 / 13 / 19.5 / 26,
+  // printed as "$7B / $13B / $20B / $26B" (visual audit, 2026-10-07).
+  const yAxis = niceZeroAxis(axisMax);
+  const yStep = yAxis.ticks.length > 1 ? yAxis.ticks[1]! : yAxis.top;
 
   return (
     <div className="card card--stack-base">
@@ -157,7 +162,10 @@ export function BalanceSheet({ balanceSheetAnnual, fundamentals }: Props) {
                     fontSize: 10,
                     fontFamily: "'JetBrains Mono', monospace",
                   }}
-                  tickFormatter={makeCompactAxisFormatter(axisMax, currency)}
+                  tickFormatter={makeCompactAxisFormatter(yAxis.top, currency, yStep)}
+                  domain={[0, yAxis.top]}
+                  ticks={yAxis.ticks}
+                  allowDataOverflow={false}
                   axisLine={false}
                   tickLine={false}
                   width={CHART_RIGHT_AXIS_WIDTH}

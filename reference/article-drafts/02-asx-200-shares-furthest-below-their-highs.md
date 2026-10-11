@@ -9,8 +9,8 @@
 | Field | Value |
 |---|---|
 | **URL** | `/articles/asx-200-shares-furthest-below-their-highs` |
-| **Title tag** | Which ASX 200 shares sit furthest below their own highs (55 chars) |
-| **H1** | Which ASX 200 shares sit furthest below their own highs |
+| **Title tag** | ASX 200 shares furthest below their highs (41 chars; 54 with the site suffix) |
+| **H1** | ASX 200 shares furthest below their highs |
 | **Meta description** | Every ASX 200 company ranked by how far it sits below its own one-year high, as at 27 August 2026. Forty-four per cent are down more than 20%. (141 chars) |
 | **Kind** | Analysis |
 | **Region pill** | Australia |

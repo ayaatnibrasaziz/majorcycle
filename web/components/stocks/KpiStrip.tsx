@@ -4,6 +4,7 @@ import { isFullCycle, type CycleAnalysis, type CycleAnalysisFree } from '@/lib/t
 import { InfoTip } from '@/components/ui/InfoTip';
 import { RATING_TIER_HEX, tierFromScore } from '@/lib/ratings';
 import { PremiumLockKpi } from '@/components/stocks/PremiumLock';
+import { RATING_BANDS_TEXT, RATING_SUMMARY } from '@/lib/ratingDefinition';
 
 interface Props {
   cycle: CycleAnalysis | CycleAnalysisFree;
@@ -124,7 +125,7 @@ export function KpiStrip({ cycle, entitled }: Props) {
           label="Overall Rating"
           value={`${scored.overallRating}/100`}
           accentColor={ratingColor(scored.overallRating)}
-          tipBody="Our single 0–100 summary of the stock, combining Financial Health (40%), Valuation Zone (35%) and Cycle Payoff (25%). 80–100 = High Conviction · 65–79 = Constructive · 50–64 = Neutral · 35–49 = Cautious · 0–34 = Bearish. Higher is more favourable. Information only — not advice."
+          tipBody={`${RATING_SUMMARY} ${RATING_BANDS_TEXT}. Higher is more favourable. Information only — not advice.`}
           note={
             scored.financialHealthScore == null
               ? 'Cycle-only — excludes Financial Health'

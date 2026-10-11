@@ -55,6 +55,22 @@ export const CURRENCY_SYMBOL: Record<BillingCurrency, string> = {
   cad: 'C$',
 };
 
+/**
+ * A charge Stripe reported, in MINOR units (cents), as the reader sees prices
+ * everywhere else: "A$19.00", "US$1,260.00". An unknown currency keeps its own code
+ * ("NZD 19.00") rather than borrowing a symbol that would misstate it (13).
+ */
+export function formatCharge(amountMinor: number, currency: string): string {
+  const code = currency.toLowerCase();
+  const sym =
+    code in CURRENCY_SYMBOL ? CURRENCY_SYMBOL[code as BillingCurrency] : `${code.toUpperCase()} `;
+  const value = (amountMinor / 100).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${amountMinor < 0 ? '−' : ''}${sym}${value.replace('-', '')}`;
+}
+
 /** Uppercase ISO code shown as a small suffix (e.g. "USD"). */
 export const CURRENCY_CODE_LABEL: Record<BillingCurrency, string> = {
   usd: 'USD',

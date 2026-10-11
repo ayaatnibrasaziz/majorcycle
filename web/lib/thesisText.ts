@@ -19,6 +19,7 @@
  */
 
 import { fmtCapped } from '@/lib/format';
+import { LIMITED_HISTORY_BELOW } from '@/lib/ratingDefinition';
 import type { CycleAnalysis, FundamentalsSnapshot } from '@/lib/types';
 
 export type HealthSubscores = CycleAnalysis['fhSubscores'];
@@ -61,8 +62,12 @@ export function bestStrength(f: FundamentalsSnapshot, sub?: HealthSubscores): st
     return `an exceptional ${fmtCapped(f.roe, 300, 0)}% return on equity`;
   if (f.fcfYieldPct != null && f.fcfYieldPct >= 5 && ok('cashflow'))
     return `a strong ${fmtCapped(f.fcfYieldPct, 100, 1)}% free-cash-flow yield`;
+  // "Fortress" only where the scorecard's Balance Sheet pillar agrees (80+); low debt
+  // alone is said as low debt (visual audit, 2026-10-07 — Moderna, pillar 68).
   if (f.debtToEquity != null && f.debtToEquity < 0.4 && ok('balanceSheet'))
-    return `a fortress balance sheet (D/E ${f.debtToEquity.toFixed(2)})`;
+    return (sub?.balanceSheet ?? 0) >= 80
+      ? `a fortress balance sheet (D/E ${f.debtToEquity.toFixed(2)})`
+      : `little debt (D/E ${f.debtToEquity.toFixed(2)})`;
   if (f.grossMargin != null && f.grossMargin >= 60 && ok('profitability'))
     return `gross margins of ${fmtCapped(f.grossMargin, 300, 0)}%`;
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 20 && ok('growth'))
@@ -97,15 +102,18 @@ export function healthSentence(
     : `Financial health is stressed at ${shown}/100.`;
 }
 
-/** The Verdict's primary risk — first match wins. */
+/**
+ * The Verdict's primary risk — first match wins.
+ *
+ * ⚠️ "Near its highs" used to be the FIRST rule here. The Verdict's opening sentence
+ * already says that for every stock near its highs, so the card said it twice and hid
+ * whatever the real risk was — debt, falling revenue, losses (beta review B-23,
+ * 2026-10-03). The fallback also read "Primary risk: the chief risk is…".
+ */
 export function topRisk(
   f: FundamentalsSnapshot,
-  drawdownPct: number,
   pullbackEvents: number,
-  lookbackBars: number,
 ): string {
-  if (drawdownPct > -5)
-    return `near its ${lookbackBars}-day highs with limited cycle-based margin of safety`;
   if (f.debtToEquity != null && f.debtToEquity >= 1.5)
     return `elevated debt at ${fmtCapped(f.debtToEquity, 25, 1)}× equity — sensitive to higher rates`;
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy < 0)
@@ -114,13 +122,13 @@ export function topRisk(
     return 'current ratio below 1 — short-term liquidity pressure';
   if (f.peg != null && f.peg > 3)
     return `PEG of ${fmtCapped(f.peg, 25, 1)} — valuation stretched vs growth`;
-  if (pullbackEvents < 8)
-    return `only ${pullbackEvents} historical cycles — limited statistical confidence`;
+  if (pullbackEvents < LIMITED_HISTORY_BELOW)
+    return `only ${pullbackEvents} past low points in its record — limited history`;
   if (f.netMargin != null && f.netMargin < 0)
     return `loss-making — net margin of ${fmtCapped(f.netMargin, 300, 1)}%`;
   if (f.netMargin != null && f.netMargin < 5)
     return `thin net margin of ${fmtCapped(f.netMargin, 300, 1)}% leaves little buffer`;
   if (f.revenueGrowthYoy != null && f.revenueGrowthYoy >= 0 && f.revenueGrowthYoy < 15)
     return `modest revenue growth of ${f.revenueGrowthYoy.toFixed(1)}% — multiple-compression risk`;
-  return 'the chief risk is the historical cycle pattern not repeating as it has before';
+  return 'the historical cycle pattern not repeating as it has before';
 }

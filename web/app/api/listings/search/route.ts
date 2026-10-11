@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 
+import { rankListingHits } from '@/lib/stockSearch';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { ListingHit, Market, RequestStatus } from '@/lib/types';
 
@@ -47,7 +48,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ results: [] satisfies ListingHit[] }, { headers: NO_STORE });
   }
 
-  const results: ListingHit[] = (data as RawHit[]).map((r) => ({
+  // The RPC ranks by ticker prefix and length alone, so "CBA" listed three strangers
+  // above Commonwealth Bank. Re-ranked here — an exact ticker, then what we already
+  // cover — rather than in the live database function (beta review E-6).
+  const hits: ListingHit[] = (data as RawHit[]).map((r) => ({
     symbol: r.symbol,
     name: r.name,
     exchange: r.exchange,
@@ -55,6 +59,7 @@ export async function GET(request: Request) {
     covered: r.covered,
     requestStatus: r.request_status,
   }));
+  const results = rankListingHits(hits, q);
 
   return NextResponse.json({ results }, { headers: NO_STORE });
 }
