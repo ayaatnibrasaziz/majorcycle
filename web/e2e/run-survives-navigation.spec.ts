@@ -66,6 +66,15 @@ test.describe('a screen in progress', () => {
   test('the browser asks before a reload ends a run, and only then', async ({ page, browserName }) => {
     await signInAs(page, user.email, user.password);
     await page.goto('/run');
+    /* Hold every analysis request for 30s, so the run is still going when the spec
+       reloads and when it presses Cancel at the end. A long ticker list was not enough:
+       with the stored price packs the CI database finished all 20 before the second
+       reload (2026-10-11) — the run had ended, so there was nothing to warn about and
+       no Cancel button. Holding the request makes "still running" a fact, not a race. */
+    await page.route('**/api/analyze**', async (route) => {
+      await new Promise((r) => setTimeout(r, 30_000));
+      await route.continue().catch(() => {});
+    });
 
     /* ⚠️ Firefox under Playwright never DRAWS the leave prompt — not on a reload and
        not on `page.close({ runBeforeUnload: true })`, Playwright's own route — although

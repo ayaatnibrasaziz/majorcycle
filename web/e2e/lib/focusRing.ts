@@ -372,7 +372,21 @@ const SETUP = `(() => {
           // accepting an ancestor made the check unable to fail — my own control,
           // a fixed bar over the header, went unreported until this line changed.
           if (top && (top === el || el.contains(top))) visiblePoints++;
-          else if (top && !coveredBy) coveredBy = top.tagName.toLowerCase() + '.' + String(top.className).slice(0, 60) + ' [' + (top.textContent || '').trim().slice(0, 30) + ']';
+          else if (top && !coveredBy) {
+            coveredBy = top.tagName.toLowerCase() + '.' + String(top.className).slice(0, 60) + ' [' + (top.textContent || '').trim().slice(0, 30) + ']';
+            // Name the geometry too: a verdict that only says "covered" sent a Linux-only
+            // finding round CI blind (2026-10-11). Where it sat, and its scroll box.
+            let box = el.parentElement;
+            while (box && !/(auto|scroll|hidden|clip)/.test(getComputedStyle(box).overflowX)) box = box.parentElement;
+            const f = (n) => Math.round(n);
+            const br = box ? box.getBoundingClientRect() : null;
+            // (Plain concatenation: this whole function is a template literal.)
+            coveredBy +=
+              ' @(' + f(x) + ',' + f(y) + ') el[' + f(r.left) + '..' + f(r.right) + ' x ' + f(r.top) + '..' + f(r.bottom) + '] vw=' + innerWidth +
+              (box && br
+                ? ' box=' + box.tagName.toLowerCase() + '.' + String(box.className).slice(0, 30) + '[' + f(br.left) + '..' + f(br.right) + '] scroll=' + f(box.scrollLeft) + '/' + f(box.scrollWidth - box.clientWidth)
+                : '');
+          }
         }
       }
     }
