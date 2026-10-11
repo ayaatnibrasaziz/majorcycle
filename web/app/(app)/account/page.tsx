@@ -89,6 +89,12 @@ export default async function AccountPage({
     checkout === 'success' && sessionId
       ? await reconcileCheckoutSession(sessionId, user.id)
       : false;
+  /* ⚠️ The shell around this page read the plan BEFORE the line above wrote it (one
+     memoised read per render pass), so a reader whose webhook was slow saw "TRIAL
+     ACTIVE" on the card beside "No plan" and two padlocks in the sidebar — measured on
+     a real test-mode checkout, 2026-10-11. Render once more from the stored plan. This
+     also takes `session_id` out of the address bar. */
+  if (reconciled) redirect('/account?checkout=success');
 
   const { data: profile } = await supabase
     .from('profiles')
