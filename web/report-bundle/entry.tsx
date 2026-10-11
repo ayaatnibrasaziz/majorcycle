@@ -10,6 +10,7 @@
 
 import { createRoot } from 'react-dom/client';
 
+import { RevealFocus } from '@/components/RevealFocus';
 import { ReportDocument } from '@/components/stocks/ReportDocument';
 import type { ReportData } from '@/lib/report-types';
 
@@ -31,7 +32,14 @@ function mount(): void {
     host.textContent = 'Report data could not be loaded.';
     return;
   }
-  createRoot(host).render(<ReportDocument data={data} />);
+  // The report is a second build of the same components (CLAUDE.md 11d), so it needs
+  // the site's focus rule too: its Key Metrics table scrolls sideways on a phone.
+  createRoot(host).render(
+    <>
+      <ReportDocument data={data} />
+      <RevealFocus />
+    </>,
+  );
 }
 
 if (document.readyState === 'loading') {

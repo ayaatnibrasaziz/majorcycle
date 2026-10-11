@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { preload } from 'react-dom';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { RevealFocus } from '@/components/RevealFocus';
 import { SITE_ORIGIN } from '@/lib/url';
 import './globals.css';
 
@@ -52,6 +53,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         {children}
+        <RevealFocus />
         {/*
           Real-user performance, and the ONLY instrument that can answer decision #33.
           Added 2026-09-07 (P9, `5A-006`).
