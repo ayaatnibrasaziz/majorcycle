@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   DELETION_CANCEL_METADATA_KEY,
   deletionSubscriptionKind,
@@ -86,12 +87,26 @@ test.describe('the sentences say what actually happens', () => {
     expect(deletionSubscriptionLine('none', dates)).toBeNull();
   });
 
-  test('every sentence names the deletion date when it has one, and reads without one', () => {
+  // Both the email and the Delete account card say "sign back in before …" in the sentence
+  // directly above this one, so this one must not say it again (owner, 2026-10-12).
+  test('no sentence repeats the sign-in instruction above it, and each reads without dates', () => {
     for (const k of ['trial', 'runs_out', 'cut_short', 'payment_failed', 'held'] as const) {
-      expect(deletionSubscriptionLine(k, dates), k).toContain(dates.deletionDate);
-      const bare = deletionSubscriptionLine(k, { deletionDate: null, periodEnd: null })!;
-      expect(bare, k).toContain('before the deletion date');
-      expect(bare, k).not.toMatch(/null|undefined|\(\)/);
+      for (const d of [dates, { deletionDate: null, periodEnd: null }]) {
+        const line = deletionSubscriptionLine(k, d)!;
+        expect(line, k).not.toMatch(/sign back in/i);
+        expect(line, k).not.toContain(dates.deletionDate);
+        expect(line, k).not.toMatch(/null|undefined|\(\)/);
+      }
+    }
+  });
+
+  test('the email and the card say "sign back in" exactly once', () => {
+    const read = (f: string) => readFileSync(join(process.cwd(), f), 'utf8');
+    for (const f of ['lib/email/accountEmails.ts', 'components/account/DeleteAccountCard.tsx']) {
+      const src = read(f);
+      // The deletion email's HTML half, or the card's whole body.
+      const scope = f.endsWith('.tsx') ? src : src.slice(src.indexOf('const bodyHtml'), src.indexOf('const text'));
+      expect((scope.match(/sign back in/gi) ?? []).length, f).toBe(1);
     }
   });
 });
