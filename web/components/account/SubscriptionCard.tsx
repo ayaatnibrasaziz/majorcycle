@@ -73,10 +73,15 @@ interface StatusMeta {
 function formatFallback(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleDateString(undefined, {
+  // en-AU, like the payment banner's fallback (components/PaymentBanner.tsx). `undefined`
+  // here meant the SERVER's locale, en-US, so for the moment before <LocalDate> swapped
+  // in the reader's own format the card said "October 15, 2026" directly under a banner
+  // saying "15 October 2026" (seen on the live site, 2026-10-12).
+  return d.toLocaleDateString('en-AU', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'UTC',
   });
 }
 

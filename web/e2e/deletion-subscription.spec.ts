@@ -143,9 +143,22 @@ test.describe('reactivating undoes only the cancel that deletion set', () => {
 
   test('reactivation un-cancels only a subscription carrying the mark', () => {
     expect(src).toMatch(
-      /metadata\?\.\[DELETION_CANCEL_METADATA_KEY\] === '1'\)\s*\{\s*await stripe\.subscriptions\.update\([^)]*cancel_at_period_end: false/,
+      /metadata\?\.\[DELETION_CANCEL_METADATA_KEY\] === '1'\)\s*\{\s*(?:reactivated = )?await stripe\.subscriptions\.update\([^)]*cancel_at_period_end: false/,
     );
     // Control: the key is a real, non-empty identifier.
     expect(DELETION_CANCEL_METADATA_KEY).toMatch(/^[a-z_]{8,}$/);
+  });
+
+  test('reactivation records Stripe’s answer before the reader lands, not a webhook later', () => {
+    // 2026-10-12, measured on a test-clock subscription: the redirect beat the
+    // `subscription.updated` webhook, so the sidebar and Account card still said
+    // "Cancelling" to someone who had just pressed Reactivate. Comments stripped, so the
+    // paragraph explaining the fix cannot satisfy the guard (11c-iv).
+    const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    const body = code.slice(code.indexOf('export async function reactivateAccount'));
+    expect(body).toMatch(/reactivated = await stripe\.subscriptions\.update\(/);
+    expect(body).toMatch(/await syncSubscription\(admin, reactivated\)/);
+    // ...and it happens before the reader is sent on.
+    expect(body.indexOf('syncSubscription(admin, reactivated)')).toBeLessThan(body.indexOf("redirect('/stocks')"));
   });
 });
