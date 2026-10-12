@@ -1750,7 +1750,7 @@ export const ARTICLE_BODIES: Record<LearnSlug, () => React.ReactNode> = {
     <>
       <h2>One number, three questions</h2>
       <p>
-        A MajorCycle rating is a score out of 100. It exists to answer one question:{' '}
+        The rating exists to answer one question:{' '}
         <em>
           given what this company is and where its price sits in its own history, how
           interesting is this right now?

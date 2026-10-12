@@ -57,46 +57,47 @@ export function deletionSubscriptionKind(
 }
 
 /**
- * The one sentence about the subscription. `deletionDate` and `periodEnd` are display
- * strings (the email has them; the delete card does not, and passes null — a card
- * rendered on the server cannot know the reader's time zone).
+ * The one sentence about the subscription. `periodEnd` is a display string (the email
+ * has it; the delete card does not, and passes null — a card rendered on the server
+ * cannot know the reader's time zone).
+ *
+ * ⚠️ It never says "sign back in before …". Both places that use it (the deletion email
+ * and the Delete account card) say that in the sentence directly above, and until
+ * 2026-10-12 this line said it a second time a few words later (owner: each thing is said
+ * once). It says only what happens to the PLAN, and what coming back does to it.
  */
 export function deletionSubscriptionLine(
   kind: DeletionSubscriptionKind,
   dates: { deletionDate: string | null; periodEnd: string | null },
 ): string | null {
-  const by = dates.deletionDate ? ` before ${dates.deletionDate}` : ' before the deletion date';
   switch (kind) {
     case 'none':
       return null;
     case 'trial':
       return (
-        `Your free trial stays active until its normal end date, with no charge. Sign back in${by} ` +
-        `to keep it; if the trial ends first, you'll come back to a free account.`
+        `Your free trial stays active until its normal end date, with no charge. If it ends ` +
+        `before you come back, you'll return to a free account.`
       );
     case 'runs_out':
       return (
         `Your subscription stays active until the end of the period you've paid for` +
         (dates.periodEnd ? ` (${dates.periodEnd})` : '') +
-        `, then it won't renew. Sign back in${by} to keep your account and your subscription.`
+        `, then it won't renew. If you come back, it carries on as before.`
       );
     case 'cut_short':
       return (
         `Your subscription won't renew. Your paid period runs past the deletion date, so it ends ` +
-        `when the account is deleted, and the unused time isn't refunded. Sign back in${by} to ` +
-        `keep your account and your subscription.`
+        `when the account is deleted, and the unused time isn't refunded. If you come back ` +
+        `before then, it carries on as before.`
       );
     case 'payment_failed':
       return (
         `Your last payment hasn't gone through, so deleting ends your subscription straight ` +
-        `away and we won't try that payment again. Sign back in${by} to keep your account; it ` +
-        `will be on the free plan.`
+        `away and we won't try that payment again. If you come back, your account will be on ` +
+        `the free plan.`
       );
     case 'held':
-      return (
-        `Your subscription is on hold while a payment dispute is open, and it won't renew. Sign ` +
-        `back in${by} to keep your account.`
-      );
+      return `Your subscription is on hold while a payment dispute is open, and it won't renew.`;
   }
 }
 
