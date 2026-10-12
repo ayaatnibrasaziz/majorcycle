@@ -83,9 +83,13 @@ export async function sendTrialStartedEmail(opts: {
       `When the trial ends, your subscription continues automatically at ${rateHtml}, billed to the ` +
         `card on file. We'll send a reminder a few days beforehand, so the first charge is never a surprise.`,
     ),
+    // "your account" is a link, like the plain-text copy below (it was the one place the
+    // two halves differed that way — 2026-10-12): the button goes to Browse, so without
+    // it the email told a new subscriber how to cancel and gave them nowhere to click.
     p(
-      `You can change your plan or cancel anytime from your account — cancel before the trial ends and ` +
-        `you won't be charged a cent.`,
+      `You can change your plan or cancel anytime from ` +
+        `<a href="${SITE}/account" style="color:#1E5CB3;text-decoration:underline;">your account</a>` +
+        ` — cancel before the trial ends and you won't be charged a cent.`,
     ),
     // Browse, not Results: Results is empty until a screen has been run, so a brand
     // new subscriber clicking "Start exploring" would land on nothing (F3 Step 10).

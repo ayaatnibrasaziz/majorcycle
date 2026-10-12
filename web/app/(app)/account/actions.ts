@@ -3,10 +3,12 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import type Stripe from 'stripe';
 
 import { reportIssue } from '@/lib/observability';
 import { createServerSupabaseClient, createAdminClient } from '@/lib/supabase/server';
 import { getStripe } from '@/lib/stripe';
+import { syncSubscription } from '@/lib/billing/sync';
 import { sendDeletionScheduledEmail } from '@/lib/email/accountEmails';
 import { sendReferralEmail } from '@/lib/email/referralEmails';
 import { cleanReferralInput } from '@/lib/referralInput';
@@ -273,6 +275,7 @@ export async function reactivateAccount(): Promise<void> {
   // portal and then deleted found their subscription renewing — and charging — again
   // the moment they signed back in. It was recorded here as an "accepted tradeoff".
   let subReactivated = false;
+  let reactivated: Stripe.Subscription | null = null;
   if (
     profile?.stripe_subscription_id &&
     LIVE_SUBSCRIPTION_STATES.has(profile?.subscription_status ?? '')
@@ -281,7 +284,7 @@ export async function reactivateAccount(): Promise<void> {
       const stripe = getStripe();
       const sub = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
       if (sub.metadata?.[DELETION_CANCEL_METADATA_KEY] === '1') {
-        await stripe.subscriptions.update(profile.stripe_subscription_id, {
+        reactivated = await stripe.subscriptions.update(profile.stripe_subscription_id, {
           cancel_at_period_end: false,
           // An empty string removes the key.
           metadata: { [DELETION_CANCEL_METADATA_KEY]: '' },
@@ -292,6 +295,24 @@ export async function reactivateAccount(): Promise<void> {
       reportIssue('reactivateAccount: could not clear subscription cancel', {
         cause: err,
         tags: { userId: user.id, subscriptionId: profile.stripe_subscription_id },
+      });
+    }
+  }
+
+  // Record Stripe's answer NOW rather than waiting for its webhook (2026-10-12). The
+  // redirect below lands before `subscription.updated` arrives, so for a few seconds the
+  // sidebar and the Account card still said "Cancelling" to someone who had just pressed
+  // Reactivate — measured on a test-clock subscription. Same full overwrite the webhook
+  // does (lib/billing/sync.ts), so the event arriving after is a no-op; the checkout
+  // landing page reconciles the same way (lib/billing/reconcileCheckout.ts).
+  if (reactivated) {
+    try {
+      await syncSubscription(admin, reactivated);
+    } catch (err) {
+      reportIssue('reactivateAccount: could not record the reactivated subscription', {
+        cause: err,
+        level: 'warning',
+        tags: { userId: user.id, subscriptionId: reactivated.id },
       });
     }
   }

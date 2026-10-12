@@ -20,3 +20,11 @@ allowBuilds:
   esbuild: true
   sharp: true
   unrs-resolver: true
+
+# exceljs 4.4.0 (the newest; the project is unmaintained) pins uuid ^8, which carries
+# GHSA-w5hq-g745-h8pq (v3/v5/v6 with a caller-supplied buffer). exceljs only calls v4
+# with no buffer, so it was never reachable, but 11.1.1 is the fixed line that still
+# ships CommonJS — exceljs `require`s it. 12+ would break the export. Verified
+# 2026-10-12 by the .xlsx export tests.
+overrides:
+  uuid: 11.1.1
