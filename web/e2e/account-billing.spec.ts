@@ -52,6 +52,8 @@ const STATES: Record<string, Record<string, unknown>> = {
   },
   // A dispute that went against the customer: the plan is cancelled and the hold stays.
   disputeLost: { subscription_status: 'canceled', subscription_plan: 'monthly', subscription_currency: 'aud', billing_blocked: true },
+  // Never subscribed: nothing above the locked panel mentions free browsing.
+  free: {},
 };
 
 const users: Record<string, ThrowawayUser> = {};
@@ -186,6 +188,36 @@ test.describe('billing as the customer sees it', () => {
     await expect(card(page)).toBeVisible();
     await expect(card(page)).not.toContainText('Payment received');
     await expect(card(page)).not.toContainText('trial has started');
+  });
+
+  test('each thing is said once: the trial start, and the locked screener under a banner', async ({ page }) => {
+    // 2026-10-12, owner: "is the same message appearing twice for no reason?" It was.
+    // The trial-start notice repeated the card's "won't be charged" date, and the locked
+    // /run panel repeated the banner's "browsing still works" and "we'll sort it out".
+    const said = (t: string, re: RegExp) => (t.match(re) ?? []).length;
+    // The banner renders INSIDE <main> (components/AppShell.tsx), so <main> alone holds
+    // everything the reader sees here; reading the banner as well counted it twice.
+    const visible = async () => (await page.locator('main').innerText()).replace(/\s+/g, ' ');
+    const FREE = /company financials (?:stay free|still work|are still yours)/gi;
+    const SORT = /sort it out with you/gi;
+
+    await as(page, 'trial');
+    await page.goto('/account?checkout=success');
+    await expect(card(page)).toContainText('free trial has started');
+    expect(said(await text(page), /won.t be charged/gi), 'trial start: "won\'t be charged" once').toBe(1);
+    await page.context().clearCookies();
+
+    for (const state of ['lapsed', 'disputed', 'canceled', 'disputeLost', 'free']) {
+      await as(page, state);
+      await page.goto('/run');
+      await expect(page.locator('main [role="note"]')).toBeVisible({ timeout: 30_000 });
+      const t = await visible();
+      // Exactly once — which is also the CONTROL that it is said at all, including for
+      // `free`, where only the panel's closing line says it.
+      expect(said(t, FREE), `${state}: "browsing stays free" said once`).toBe(1);
+      expect(said(t, SORT), `${state}: "we'll sort it out" at most once`).toBeLessThanOrEqual(1);
+      await page.context().clearCookies();
+    }
   });
 
   test('the Stock Detail lock window says why, with the button that fixes it', async ({ page }) => {
