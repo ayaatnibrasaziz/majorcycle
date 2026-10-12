@@ -65,6 +65,13 @@ export function PremiumLockPage({
   // signed-in page (components/PaymentBanner.tsx), so the panel does not say it a second
   // time; it offers the fix instead (owner, 2026-10-03).
   const notice = cardFailed || blocked ? null : DENIAL_COPY[reason];
+  // "Browsing … stays free" is said ONCE per screen (owner, 2026-10-12). The banner says
+  // it for a failed card or a hold, and some reasons' own notice says it; the closing
+  // line then repeated it a few lines lower. Read from the copy, so a new reason that
+  // mentions it is covered without a second list.
+  // ⚠️ Not after a LOST dispute: that banner (DISPUTE_ENDED_COPY) never mentions it, so
+  // dropping the line there left the reader not told at all — the test's control caught it.
+  const saysFreeAlready = cardFailed || (blocked && !ended) || /Browsing/.test(notice?.body ?? '');
 
   return (
     <div className="max-w-2xl">
@@ -106,7 +113,8 @@ export function PremiumLockPage({
             {ended
               ? `${feature} is part of the paid analysis.`
               : blocked
-                ? `${feature} is part of the paid analysis, and it comes back as soon as the dispute is settled. If you think this is a mistake, contact us and we’ll sort it out with you.`
+                ? // "Contact us and we'll sort it out" is the banner's sentence, directly above.
+                  `${feature} is part of the paid analysis, and it comes back as soon as the dispute is settled.`
                 : blurb}
           </p>
 
@@ -136,8 +144,9 @@ export function PremiumLockPage({
           </div>
 
           <p className="mt-5 border-t border-[var(--border)] pt-4 text-[11.5px] leading-relaxed text-[var(--text-muted)]">
-            Browsing, price charts and company financials stay free. Information only —
-            not financial advice.
+            {saysFreeAlready
+              ? 'Information only — not financial advice.'
+              : 'Browsing, price charts and company financials stay free. Information only — not financial advice.'}
           </p>
         </div>
       </div>

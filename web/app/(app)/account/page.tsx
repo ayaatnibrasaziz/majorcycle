@@ -12,7 +12,6 @@ import { TRIAL_PERIOD_DAYS, currencyForCountry, effectiveBillingCountry } from '
 import { hasUsedTrial } from '@/lib/trialGuard';
 import { ProfileForm } from '@/components/account/ProfileForm';
 import { SubscriptionCard, type NoticeTone } from '@/components/account/SubscriptionCard';
-import { LocalDate } from '@/components/LocalDate';
 import { PasswordForm } from '@/components/account/PasswordForm';
 import { ReferAFriendCard } from '@/components/account/ReferAFriendCard';
 import { DeleteAccountCard } from '@/components/account/DeleteAccountCard';
@@ -139,14 +138,11 @@ export default async function AccountPage({
   if (checkout === 'success') {
     if (liveStatus === 'trialing') {
       noticeTone = 'info';
-      checkoutNotice = profile?.trial_ends_at ? (
-        <>
-          <b>Your {TRIAL_PERIOD_DAYS}-day free trial has started.</b> You won’t be charged
-          until <LocalDate iso={profile.trial_ends_at} fallback="the trial ends" />.
-        </>
-      ) : (
-        <b>Your {TRIAL_PERIOD_DAYS}-day free trial has started.</b>
-      );
+      // Only the news. The card directly below already says "Trial ends", "First
+      // charge" and "Cancel any time before <date> and you won't be charged" — this used
+      // to add "You won't be charged until <date>" on top, the same fact three times in
+      // one box (owner, 2026-10-12).
+      checkoutNotice = <b>Your {TRIAL_PERIOD_DAYS}-day free trial has started.</b>;
     } else if (liveStatus === 'active') {
       noticeTone = 'success';
       checkoutNotice = CHECKOUT_SUCCESS_NOTICE;
