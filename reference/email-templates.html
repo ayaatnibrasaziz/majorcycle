@@ -145,12 +145,13 @@
 
   <header class="doc">
     <h1>MajorCycle — Transactional email templates</h1>
-    <p>Every email MajorCycle sends, rendered exactly as it arrives. <strong>Part 1</strong> is the eleven the app sends itself; <strong>Part 2</strong> is the thirteen Supabase sends for signing in. Twenty-four in all, from one address, in one house style.</p>
+    <p>Every email MajorCycle sends, rendered exactly as it arrives. <strong>Part 1</strong> is the eleven the app sends itself; <strong>Part 2</strong> is the thirteen Supabase sends for signing in; <strong>Part 3</strong> is the one alert the system sends to us. Twenty-five in all, in one house style.</p>
   </header>
 
   <div class="meta-note">
     <strong>Source of truth:</strong> the code, not this file. These render from
-    <code>web/lib/email/*</code> and <code>web/app/(public)/contact/actions.ts</code>.
+    <code>web/lib/email/*</code>, <code>web/app/(public)/contact/actions.ts</code> and
+    <code>web/app/api/resend/webhook/route.ts</code>.
     Every email shares one brand wrapper — <code>renderBrandEmail()</code> in
     <code>brandEmail.ts</code> (navy→blue gradient header, brand mark, disclaimer footer).
     The header logo below is the real <code>email-icon.png</code> embedded, exactly as production emails render it. Sample names, dates and addresses are illustrative.
@@ -169,7 +170,7 @@
       </div>
       <div>
         <p class="setup-k">Who delivers it</p>
-        <p><strong>Resend</strong>, for all twenty-four. The app calls its API directly;
+        <p><strong>Resend</strong>, for all twenty-five. The app calls its API directly;
           Supabase hands its finished messages to the same account over SMTP. So every email
           leaves from <code>noreply@majorcycle.com</code> — except the contact-form
           notification, which comes from the monitored <code>support@</code> inbox and can be
@@ -177,7 +178,7 @@
       </div>
       <div>
         <p class="setup-k">Where the wording lives</p>
-        <p>The ten in Part 1 are built by <code>renderBrandEmail()</code> in
+        <p>The eleven in Part 1 and the one in Part 3 are built by <code>renderBrandEmail()</code> in
           <code>web/lib/email/brandEmail.ts</code>, from copy in the files beside it. The
           thirteen in Part 2 are typed into the Supabase dashboard under
           <strong>Authentication → Emails → Templates</strong> — there is no file for them in
@@ -206,10 +207,10 @@
           <code>security@</code> receives the authentication reports.</p>
       </div>
     </div>
-    <p class="setup-foot">The footer line is identical in all twenty-four:
+    <p class="setup-foot">The footer line is identical in all twenty-five:
       <code>&copy; MajorCycle &middot; Educational information only &mdash; not financial
-      advice.</code> It carries no year on purpose — thirteen of the twenty-four are static
-      templates that cannot compute one, and a year would be right in eleven places and frozen
+      advice.</code> It carries no year on purpose — thirteen of the twenty-five are static
+      templates that cannot compute one, and a year would be right in twelve places and frozen
       in thirteen.</p>
   </div>
 
@@ -344,8 +345,10 @@
     <div class="note">
       The 4th paragraph says what deleting does to <b>this</b> subscription, from one rule
       (<code>web/lib/deletionSubscription.ts</code>) that the delete card and
-      <code>/reactivate</code> also read. Deleting never cancels the subscription outright: it
-      is set not to renew, and signing back in within the 30 days undoes that. Shown above:
+      <code>/reactivate</code> also read. Unless the last payment failed (then it is cancelled at
+      once, see below), deleting does not cancel the subscription outright: it is set not to
+      renew, and signing back in within the 30 days undoes that. The 3rd paragraph already says
+      to sign back in before the date, so this one never repeats it (2026-10-12). Shown above:
       <span class="variant">monthly, period ends before the deletion date</span>. The others:
       <br>· <span class="variant">period runs past the deletion date</span> (an annual plan) &mdash; &ldquo;Your subscription won&#x27;t renew. Your paid period runs past the deletion date, so it ends when the account is deleted, and the unused time isn&#x27;t refunded. If you come back before then, it carries on as before.&rdquo;
       <br>· <span class="variant">trial</span> &mdash; &ldquo;Your free trial stays active until its normal end date, with no charge. If it ends before you come back, you&#x27;ll return to a free account.&rdquo;
@@ -873,7 +876,7 @@
           </tr>
         </table>
     </div>
-    <div class="note">Three versions, chosen by <code>web/lib/billing/accessEmails.ts</code> from the account as it was just before Stripe ended the subscription. Shown above: <span class="variant">ended</span> (the customer cancelled and the paid period ran out). The others change only the first line:<br>· <span class="variant">trial ended</span> &mdash; subject &ldquo;Your MajorCycle free trial has ended&rdquo;; &ldquo;Your MajorCycle free trial has ended, and you haven&rsquo;t been charged.&rdquo;<br>· <span class="variant">ended after failed payments</span> &mdash; &ldquo;Your MajorCycle subscription has ended because we couldn&rsquo;t take the payment. You won&rsquo;t be charged again.&rdquo;<br><b>Not sent</b> when a payment dispute ended it (the hold banner and support speak to that), when the account is being deleted (the deletion emails already say what happens), or for a subscription that was already marked ended (a re-delivered event). Idempotency-keyed on the subscription id, so one subscription can only ever produce one of these.</div>
+    <div class="note">Three versions, chosen by <code>web/lib/billing/accessEmails.ts</code> from the account as it was just before Stripe ended the subscription. Shown above: <span class="variant">ended</span> (the customer cancelled and the paid period ran out). The others change only what is listed:<br>· <span class="variant">trial ended</span> &mdash; subject &ldquo;Your MajorCycle free trial has ended&rdquo;, header label &ldquo;Your trial has ended&rdquo;; first line &ldquo;Your MajorCycle free trial has ended, and you haven&rsquo;t been charged.&rdquo;; and, since a trial never had the analysis to get back, the second line ends &ldquo;If you&rsquo;d like the analysis, you can subscribe anytime from your account.&rdquo;<br>· <span class="variant">ended after failed payments</span> &mdash; first line only: &ldquo;Your MajorCycle subscription has ended because we couldn&rsquo;t take the payment. You won&rsquo;t be charged again.&rdquo;<br><b>Not sent</b> when a payment dispute ended it (the hold banner and support speak to that), when the account is being deleted (the deletion emails already say what happens), or for a subscription that was already marked ended (a re-delivered event). Idempotency-keyed on the subscription id, so one subscription can only ever produce one of these.</div>
   </section>
 
   <!-- ============================================================= 11 -->
@@ -952,19 +955,29 @@
   </div>
 
   <div class="meta-note">
-    <strong>Six of the thirteen reach customers today.</strong> Confirm sign up, Magic link,
-    Reset password, Change email address, and the two alarms for a changed password or
-    address. MajorCycle has no phone sign-in, no two-factor and no invitation flow, so the
-    other seven are configured and never fire. They are kept correct regardless: the template
+    <strong>The site itself triggers only three of the thirteen</strong> (checked against the
+    code, 2026-10-13): <strong>Confirm sign up</strong> (signing up with email and password),
+    <strong>Reset password</strong> (&ldquo;Forgot password&rdquo;) and <strong>Password
+    changed</strong> (changing it on /account or after a reset). Nothing on the site offers a
+    passwordless sign-in or a way to change your email address, so <em>Magic link</em>,
+    <em>Change email address</em> and <em>Email address changed</em> fire only if someone
+    calls Supabase directly. MajorCycle has no phone sign-in, no two-factor and no invitation
+    flow, and asks no one to re-confirm a password, so the rest never fire. <em>Sign-in method
+    linked</em> is the one to watch: Supabase links a Google sign-in to an existing account
+    with the same address on its own, and all seven security alerts are switched on in the
+    dashboard (checked 2026-10-13), so a customer who signed up with a password and later
+    uses Google may well receive it. They are kept correct regardless: the template
     nobody has met is the one most likely to be wrong when someone finally does.
   </div>
 
   <div class="meta-note">
-    <strong>The card is narrower here, deliberately.</strong> These sit at
-    <strong>480px</strong> with a 14px radius on <code>#f4f6fb</code>; Part 1 uses
-    <strong>600px</strong>, a 12px radius and <code>#eef2f7</code>. Same gradient header,
-    same mark, same Sora face, same footer line. A sign-in email is one short instruction and
-    reads better narrow; a billing email carries more and needs the width.
+    <strong>Two card widths here.</strong> The six that carry a button or a code (Confirm sign up,
+    Magic link, Reset password, Change email address, Invite user, Reauthentication) sit at
+    <strong>480px</strong> with a 14px radius on <code>#f4f6fb</code>: one short instruction
+    reads better narrow. The seven security alerts use <strong>600px</strong>, a 14px radius
+    and <code>#f1f5f9</code>. Part 1 uses 600px, a 12px radius and <code>#eef2f7</code>.
+    Same gradient header, same mark, same Sora face, same footer line throughout (checked
+    against the dashboard, 2026-10-13).
   </div>
 
   <!-- ============================================================= 12 -->
@@ -1609,7 +1622,7 @@
   </section>
 
   <div class="footer-note">
-A static record, accurate as at 10 September 2026. Not sent to anyone — reference only.
+A static record, accurate as at 13 October 2026. Not sent to anyone — reference only.
     <br><br>
     <strong>Keep it current when any of these change:</strong>
     <code>brandEmail.ts</code>, <code>format.ts</code>, <code>accountEmails.ts</code>,
