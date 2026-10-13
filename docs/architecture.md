@@ -2006,7 +2006,7 @@ provider — twenty-four to customers and one to us.** The split is not arbitrar
 | | Composed by | Where the wording lives | Testable |
 |---|---|---|---|
 | **12 app emails** | This repository | `web/lib/email/*`, `app/(public)/contact/actions.ts`, `app/api/resend/webhook/route.ts` | ✅ `e2e/email-render.spec.ts` renders the eleven customer ones (and every variant) on every build; the twelfth is the alert in Part 3 below. **Added 2026-10-07:** *annual renewal* (`invoice.upcoming`, 30 days ahead, annual plans only). **Added 2026-10-03:** *access paused* (the daily cron, once per failed payment, `lib/billing/pausedNotices.ts`) and *subscription ended* (the Stripe webhook, three versions chosen by `lib/billing/accessEmails.ts`) — until then nothing told a customer their access had stopped |
-| **13 sign-in emails** | **Supabase** | The Supabase dashboard → Authentication → Emails → Templates | 🔴 **Nothing in this project can read them** |
+| **13 sign-in emails** | **Supabase** | Written in `web/lib/email/authTemplates.ts`, built to `reference/supabase-email-templates/` by `pnpm build:auth-emails`, then **pasted by hand** into the Supabase dashboard → Authentication → Emails → Templates | 🟡 `e2e/auth-email-templates.spec.ts` checks the files against the source; **nothing can check the dashboard copy** |
 
 **Why Supabase owns thirteen of them:** it is the thing that knows a password was reset, an
 address confirmed or a magic link requested. The app never sees those moments, so it cannot
@@ -2015,13 +2015,21 @@ SMTP — the same account the app calls directly — so all twenty-five leave fr
 `noreply@majorcycle.com` in one house style. The single exception is the contact-form
 notification, which comes from the monitored `support@` inbox and carries `reply_to`.
 
-⚠️ **THE THIRTEEN HAVE NO FILE, AND THAT IS THE THING TO REMEMBER.** There is nothing to
-import, diff, lint or test. A guard cannot be written for them, because a guard needs
-something to read. `reference/email-templates.html` renders all twenty-five and is the **only
-record in this project** of what those thirteen say; keep it current by hand whenever a
-template is edited in the dashboard, because nothing else will. The app's own emails in it
+⚠️ **THE THIRTEEN HAD NO FILE UNTIL 2026-10-13, AND THEY DRIFTED.** They lived only in the
+dashboard, where nothing could import, diff or test them, and the owner found them looking
+different from the app's emails in a real inbox: slate-grey body text, fine print at 2.56:1,
+a different button, a 480px card and the title in the body. They are now written in
+`lib/email/authTemplates.ts` with the SAME wrapper and helpers as the app's emails, so they
+cannot differ in style again. ⚠️ **The dashboard is still a hand-pasted copy**: after any
+change, run `pnpm build:auth-emails` and paste each changed file into its template (the
+subjects are in `subjects.json`). All thirteen were pasted and read back identical on
+2026-10-13. `reference/email-templates.html` renders all twenty-five; the app's emails in it
 are RENDERED from the code (owner, 2026-10-04: update it whenever an automatic email
 changes), with the localhost links a local render produces replaced by the live address.
+
+⚠️ **The wordmark is an IMAGE in all twenty-five** (`public/email-wordmark.png`, 2026-10-13).
+As white live text, the Gmail app's dark mode darkened it on the navy header until it all
+but vanished; no mail app recolours an image.
 
 ⚠️ **Every email is written TWICE** — an HTML body and a plain-text one, side by side in the
 same function, by hand. That is a copy in the 11c sense and it drifts: the trial-welcome

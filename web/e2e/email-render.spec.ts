@@ -53,11 +53,11 @@ import { TRIAL_PERIOD_DAYS } from '@/lib/stripe';
  * rule as `purge-cron.spec.ts` and its invented `CRON_SECRET`.
  *
  * ⚠️ **What this cannot see** (14g). The Supabase **auth** templates — confirm
- * signup, reset password, magic link, email change — are not in this repo. They
- * live in the Supabase project's own configuration, and neither the Supabase
- * connector (which has no tool for them) nor Resend's API log (an SMTP relay does
- * not appear there) can read them. They are checked by hand, by triggering a real
- * one to a real inbox. Saying which half a guard covers is the whole point of 14g.
+ * signup, reset password, magic link, email change — are written in
+ * lib/email/authTemplates.ts and checked by e2e/auth-email-templates.spec.ts, but
+ * what Supabase actually SENDS is a copy pasted into its dashboard, which neither
+ * test can read. That copy is checked by hand, by triggering a real one to a real
+ * inbox. Saying which half a guard covers is the whole point of 14g.
  *
  * Pure: no browser, no network, no credentials.
  */

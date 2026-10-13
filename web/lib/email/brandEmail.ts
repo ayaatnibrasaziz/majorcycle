@@ -49,8 +49,8 @@ const FONT_STACK =
  * vanished (screenshots from a real iPhone). Gmail never recolours an image, so
  * `public/email-wordmark.png` (Sora 700, white, transparent, drawn at 4×) reads the
  * same in light and dark mode. `wordmark` below now colours only the alt text shown
- * when images are off. The 13 Supabase templates carry the same header and need the
- * same change, by hand, in the dashboard.
+ * when images are off. The 13 Supabase templates are built from this same function
+ * (lib/email/authTemplates.ts), so they carry the image too.
  */
 const EMAIL = {
   pageBg: '#eef2f7',
@@ -98,9 +98,9 @@ export interface BrandEmailOptions {
  * goes and the two halves of the sentence stay separated by the `&middot;` — which
  * is what was actually wrong with the original (audit 5A-137, 5A-147).
  *
- * ⚠️ **This string is duplicated into the Supabase dashboard and nothing can check
- * that.** No test in this repo can see those 13 templates. If you change the line
- * below, change it there too: Authentication → Emails → Templates, all 13.
+ * ⚠️ **The 13 Supabase templates are built from this function too** (lib/email/
+ * authTemplates.ts), but the dashboard holds a PASTED copy that no test can see. If you
+ * change anything below, run `pnpm build:auth-emails` and paste all 13 again.
  */
 export function renderBrandEmail({ heading, bodyHtml, preheader }: BrandEmailOptions): string {
   return `<!DOCTYPE html>
