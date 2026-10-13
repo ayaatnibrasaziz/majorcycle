@@ -1,0 +1,15 @@
+{
+  "confirm-sign-up": "Confirm your MajorCycle email",
+  "invite-user": "You're invited to MajorCycle",
+  "magic-link-or-otp": "Your MajorCycle sign-in link",
+  "change-email-address": "Confirm your new MajorCycle email",
+  "reset-password": "Reset your MajorCycle password",
+  "reauthentication": "Your MajorCycle verification code",
+  "password-changed": "Your MajorCycle password was changed",
+  "email-address-changed": "Your MajorCycle email address was changed",
+  "phone-number-changed": "Your MajorCycle phone number was changed",
+  "sign-in-method-linked": "A new sign-in method was added to your MajorCycle account",
+  "sign-in-method-removed": "A sign-in method was removed from your MajorCycle account",
+  "mfa-method-added": "Two-factor authentication was added to your MajorCycle account",
+  "mfa-method-removed": "Two-factor authentication was removed from your MajorCycle account"
+}

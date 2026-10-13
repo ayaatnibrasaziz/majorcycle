@@ -120,6 +120,9 @@ other exactly; drawer focus in three engines; single `h1`s; 404s.
 
 Real phones and real Safari; actual email delivery; the Stripe portal and resume flow; the
 `billing_blocked` state; production speed (dev server); screen readers beyond the basics.
+✅ **Since covered (2026-10-11 → 10-14, below):** real iPhone Safari (headings), real email
+delivery to a real inbox (22 of 25 fired), the Stripe portal/resume flow and `billing_blocked`
+(test clocks + live states). Still not covered: screen readers beyond the basics.
 
 ## 2026-10-07 — owner decisions, Stripe dispute audit, and the pre-merge audit
 
@@ -141,3 +144,53 @@ Real phones and real Safari; actual email delivery; the Stripe portal and resume
   2. the dispute hold was per dispute, not per account — winning the first of a stolen card's
      several disputes unblocked the account and billed the card again (`billing_disputes`);
   3. the delete card told a failed-payment account its plan "ends now" before it had confirmed.
+
+## 2026-10-11 → 10-14 — merged, verified live, and closed
+
+**The beta review is CLOSED.** Every fix group is merged and verified on the live site; what
+remains is owner-held (Vercel Pro, the beta testers themselves, the 5b pass).
+
+- **Merged and live:** the 35-commit beta batch + the rating change (PR #128) and the security
+  upgrades (#131) on 10-11; then #132 (reactivation shows the restored plan at once; small
+  audit items), #133 and #134 (each thing said once), #135 (email record), #136 and #137
+  (email dark mode and one email layout). CI passed the full suite (1,303–1,305 tests) on each;
+  `pnpm check:live-css` 63/63 after each deploy.
+- **Stripe, end to end (10-12):** every subscription state driven with Stripe test clocks
+  through `stripe listen` to a local server, every billing email read in a real test inbox; the
+  owner's own (manually granted) account flipped through eight states on LIVE via SQL and
+  restored field for field. Live webhook listens to exactly the 14 events the code handles.
+- **"Said once" sweep (owner):** 121 signed-in pages × states, every public page and every
+  email searched for the same thing said twice. Fixed: the trial-start notice repeating the
+  card's date; the locked screener repeating "browsing stays free" and "we'll sort it out";
+  the deletion email and Delete-account card saying "sign back in before …" twice; a Learn
+  article repeating its summary box. Guarded by tests.
+- **Owner decisions, closed — do not re-propose:**
+  - same card + new email can start a second free trial: **accepted** (email guard only);
+  - a duplicate subscription that already charged stays a **manual** refund (alert + Stripe);
+  - article tables needing a sideways swipe at 375px (A-18): **no change**, as the landing table;
+  - `PDIDB.AX` (PDI Gold's temporary ASX code) and `PSKY` (Paramount Skydance's old ticker)
+    **marked no longer trading**; the other same-name pairs are real share classes or
+    cross-listings;
+  - the owner's work laptop blocks majorcycle.com (`ERR_SSL_VERSION_OR_CIPHER_MISMATCH`) while
+    nextjs.org — same Vercel servers, same TLS — opens: the **employer's filter**, ignored.
+- **iPhone heading check (A-28): ✅** bold on a real iPhone; the thin headings were the Windows
+  WebKit test build only.
+- **Email testing with the owner (10-13/14):**
+  - all emails land in the inbox (the friend invite goes to Promotions — accepted);
+  - **Gmail's dark mode darkened the white wordmark** on the navy header until it vanished →
+    the wordmark is now an image (`public/email-wordmark.png`) in all 25;
+  - the **13 Supabase sign-in emails had drifted** from the app's (slate body text, fine print
+    at 2.56:1, other button, 480px card, title in the body) → now written in
+    `lib/email/authTemplates.ts` with the app's own helpers, pasted into the dashboard and
+    read back identical; the security alerts' pink box became a bold lead-in (owner's choice);
+  - **final fire, 2026-10-14:** the 11 app emails and the spam-complaint alert (through the
+    live webhook route) and 10 of Supabase's 13 (sign-up, magic link, reset, change email,
+    email changed, password changed, re-authentication code, 2FA added, 2FA removed, invite)
+    sent for real and read in the inbox; every link opened on the live site and landed where it
+    should (`/stocks` or `/account/update-password`). Not fireable: *phone number changed*
+    (no phone sign-in exists) and the two *sign-in method* alerts (need a real Google sign-in);
+    their wording was verified identical in the dashboard. Test accounts deleted after.
+  - ⚠️ Changing an email needs BOTH addresses to confirm (Supabase's secure email change is
+    on), and the old address receives the template titled "Confirm your new email". Correct,
+    if slightly odd wording; Supabase uses one template for both.
+
