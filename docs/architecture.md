@@ -2000,8 +2000,8 @@ completed click-through is proof. The same masking hits One Tap, whose `prompt()
 
 ## 7.4 Email — two senders, one house style
 
-**Twenty-four messages leave this system, from two different composers, through one
-provider — twenty-three to customers and one to us.** The split is not arbitrary and it decides where you go to change any of them.
+**Twenty-five messages leave this system, from two different composers, through one
+provider — twenty-four to customers and one to us.** The split is not arbitrary and it decides where you go to change any of them.
 
 | | Composed by | Where the wording lives | Testable |
 |---|---|---|---|
