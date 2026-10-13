@@ -28,7 +28,8 @@
     "audit:wire-sweep": "node scripts/audit-wire-sweep.mjs",
     "gates": "node scripts/gates.mjs",
     "ci:wait": "node scripts/ci-wait.mjs",
-    "check:live-css": "node scripts/check-live-css.mjs"
+    "check:live-css": "node scripts/check-live-css.mjs",
+    "build:auth-emails": "node scripts/build-auth-emails.mjs"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.3.3",
