@@ -2,8 +2,8 @@
  * Shared brand wrapper for MajorCycle transactional emails.
  *
  * Matches the Supabase auth email templates (design-system.md §17): a diagonal
- * navy→blue gradient header with the floating transparent `email-icon.png` + a
- * live-text Sora wordmark, a white body card, and a grey footer carrying the
+ * navy→blue gradient header with the floating transparent `email-icon.png` + the
+ * `email-wordmark.png` wordmark, a white body card, and a grey footer carrying the
  * "educational information only" disclaimer. This is the one place the email
  * chrome is defined so every app-sent email (contact notifications today; welcome
  * / trial emails later) stays visually consistent with the auth mail.
@@ -42,6 +42,15 @@ const FONT_STACK =
  * that nothing measured. Now **5.59:1**. The other tones in this file were
  * measured at the same time and all pass: body 17.74, wordmark 17.65,
  * sub-heading 7.76.
+ *
+ * ⚠️ THE WORDMARK IS AN IMAGE, NOT TEXT (owner, 2026-10-13). As live text it was
+ * `#ffffff`, and the Gmail app's dark mode darkens light text while leaving the navy
+ * header gradient alone, so "MajorCycle" turned near-black on navy and all but
+ * vanished (screenshots from a real iPhone). Gmail never recolours an image, so
+ * `public/email-wordmark.png` (Sora 700, white, transparent, drawn at 4×) reads the
+ * same in light and dark mode. `wordmark` below now colours only the alt text shown
+ * when images are off. The 13 Supabase templates carry the same header and need the
+ * same change, by hand, in the dashboard.
  */
 const EMAIL = {
   pageBg: '#eef2f7',
@@ -113,7 +122,7 @@ ${
                     <img src="${SITE}/email-icon.png" width="37" height="44" alt="MajorCycle" style="display:block;height:44px;width:37px;border:0;" />
                   </td>
                   <td style="vertical-align:middle;">
-                    <div style="font-family:${FONT_STACK};font-size:19px;font-weight:700;color:${EMAIL.wordmark};letter-spacing:0.2px;line-height:1.1;">MajorCycle</div>
+                    <img src="${SITE}/email-wordmark.png" width="116" height="24" alt="MajorCycle" style="display:block;height:24px;width:116px;border:0;color:${EMAIL.wordmark};font-family:${FONT_STACK};font-size:19px;font-weight:700;" />
                     <div style="font-family:${FONT_STACK};font-size:12.5px;font-weight:600;color:${EMAIL.subheading};line-height:1.4;padding-top:3px;">${heading}</div>
                   </td>
                 </tr>

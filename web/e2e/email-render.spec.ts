@@ -148,7 +148,9 @@ async function renderAll(): Promise<Record<MailName, Captured>> {
 function paths(body: string): string[] {
   const urls = [...body.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map((m) => m[0].replace(/[.,]$/, ''));
   return [...new Set(urls.map((u) => new URL(u).pathname))]
-    .filter((p) => p !== '/email-icon.png')
+    // The header's own images (the mark, and since 2026-10-13 the wordmark) are
+    // chrome, not places the reader is sent.
+    .filter((p) => !/^\/email-[a-z]+\.png$/.test(p))
     .sort();
 }
 
@@ -201,6 +203,17 @@ test.describe('every transactional email renders, and says the same thing twice'
       .not.toContain('/results');
     expect(trialStarted.text, 'back on /results — empty until a screen has been run')
       .not.toContain('/results');
+  });
+
+  test('the wordmark is an image, so dark mode cannot recolour it', async () => {
+    // Owner, 2026-10-13, from a real iPhone: the Gmail app's dark mode turned the
+    // white live-text "MajorCycle" near-black on the navy header. Gmail never
+    // recolours an image, so the wordmark is one (lib/email/brandEmail.ts).
+    const mail = await renderAll();
+    for (const [name, m] of Object.entries(mail)) {
+      expect(m.html, `${name}: no wordmark image`).toMatch(/<img src="[^"]*\/email-wordmark\.png"[^>]*alt="MajorCycle"/);
+      expect(m.html, `${name}: the wordmark is live text again`).not.toMatch(/>MajorCycle<\/div>/);
+    }
   });
 
   test('every email carries the ONE footer, and it is not the run-on sentence', async () => {
