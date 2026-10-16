@@ -97,6 +97,13 @@ reference/learn-masters/
 # the size of the repo.
 reference/drawdown-recovery-*-DATA.json
 
+# The ASX tech article's RAW price freeze (2026-10-15): 22 MB of full history for
+# all 200 ASX 200 members, when the whole repo was 28 MB. It stays on disk only.
+# The committed `asx-tech-2026-10-15-DERIVED.json.gz` (89 KB) holds every value the
+# article's figures come from; `assert_tech.py --from-raw` proves the two agree
+# whenever the raw file is present.
+reference/asx-tech-*-DATA.json.gz
+
 # A one-time safety net, kept on disk and out of the repo. Taken immediately
 # before deleting the 1,754 split_events rows the 2026-08-30 --repull-prices
 # catch-up created (see roadmap "Stale prices + dead tickers", finding 4). These

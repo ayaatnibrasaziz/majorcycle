@@ -70,9 +70,13 @@ if cmp_rows:
     need("ASX deepest agrees", deep and deep[0].replace("−", "-") == "-74.0%", f"{deep}")
     need("SP deepest agrees", deep and deep[1].replace("−", "-") == "-76.2%", f"{deep}")
 
-# 3. every article states the same as-at date and none states a different one
+# 3. every article states its as-at date and none states a stray one.
+#    ⚠️ Article 6 (ASX tech) is a SEPARATE study taken seven weeks later, so it has
+#    its own date; checking it against the first four's would fail for the right
+#    reason on a correct file. Its figures are checked by assert_tech.py.
+AS_AT = {"05-asx-tech-shares-how-unusual-is-the-fall.md": "15 October 2026"}
 for n, t in F.items():
-    need(f"{n} as-at", "27 August 2026" in t, "missing the as-at date")
+    need(f"{n} as-at", AS_AT.get(n, "27 August 2026") in t, "missing the as-at date")
     for bad in ("28 August 2026", "26 August 2026"):
         need(f"{n} no stray date", bad not in t, f"contains {bad}")
 

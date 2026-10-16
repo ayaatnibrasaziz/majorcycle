@@ -331,6 +331,38 @@ export const ARTICLES = [
     // 879 words, measured on the rendered page.
     minutes: 4,
   },
+  {
+    slug: 'asx-tech-shares-how-far-have-they-fallen',
+    title: 'ASX tech shares are down by half. How unusual is that?',
+    question: 'How far have ASX tech shares fallen?',
+    answer:
+      'The ASX 200 sits 6.2% below its high. The typical technology company in it sits 53.2% below its own, twice the 25.2% it normally falls. Their past falls recovered faster than the rest of the market’s, but eight of the fifteen are now deeper than any fall they have come back from.',
+    summary:
+      'ASX 200 tech companies against their own history, as at 15 October 2026. Down twice their normal fall, and eight deeper than any they came back from.',
+    kind: 'analysis',
+    deck: [
+      'The index is 6.2% off its high and its technology companies are down 53.2%. ',
+      { strong: 'Measured against their own history, this is the fall that is different.' },
+    ],
+    finding: [
+      'The middle technology company is ',
+      { figure: '−53.2%' },
+      ' below its high against a normal fall of ',
+      { figure: '−25.2%' },
+      ', and ',
+      { figure: '8 of 15' },
+      ' are deeper than any fall they have recovered from.',
+    ],
+    facts: [
+      { value: '15', label: 'companies' },
+      { value: '−53.2%', label: 'middle company' },
+      { value: '8 of 15', label: 'past their record' },
+    ],
+    region: 'Australia',
+    published: '2026-10-17',
+    reviewed: '2026-10-17',
+    minutes: 8,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];

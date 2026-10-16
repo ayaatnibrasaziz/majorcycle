@@ -64,6 +64,67 @@ const ASX_DEPTH_LADDER = [
   { depth: 'More than 70%', n: '170', wait: '8.3 years', back: '33%', down: '67%' },
 ] as const;
 
+/**
+ * The ASX tech article (2026-10-17) — its own measurement date.
+ *
+ * ⚠️ A DIFFERENT study from the four above, taken seven weeks later, so it has
+ * its own date constant rather than borrowing `STUDY_END`. Every figure below is
+ * asserted against the draft by `reference/article-drafts/verify/assert_tech.py`,
+ * which re-derives it from `reference/asx-tech-2026-10-15-DATA.json.gz`.
+ *
+ * ⚠️ These are NOT the `ASX_DEPTH_LADDER` figures and must not be merged with
+ * them: same method, different date and different index membership, so the
+ * whole-index columns differ slightly (CLAUDE.md 11k).
+ */
+const TECH_AS_AT = '15 October 2026';
+
+/** [company, below its one-year high, normally falls, times its normal, deepest on record] */
+const TECH_NORMAL_FALLS = [
+  ['Netwealth', '−53.2%', '−20.7%', '2.6×', '−49.4%'],
+  ['Xero', '−63.3%', '−25.2%', '2.5×', '−67.4%'],
+  ['PEXA', '−60.4%', '−24.4%', '2.5×', '−61.4%'],
+  ['NEXTDC', '−47.2%', '−19.8%', '2.4×', '−48.8%'],
+  ['Iress', '−45.4%', '−19.6%', '2.3×', '−55.1%'],
+  ['WiseTech Global', '−60.1%', '−26.6%', '2.3×', '−76.2%'],
+  ['Life360', '−63.1%', '−32.6%', '1.9×', '−82.8%'],
+  ['Silex Systems', '−67.9%', '−40.3%', '1.7×', '−87.4%'],
+  ['Elsight', '−63.9%', '−39.5%', '1.6×', '−76.6%'],
+  ['Weebit Nano', '−72.3%', '−47.1%', '1.5×', '−81.2%'],
+  ['Technology One', '−22.4%', '−19.6%', '1.1×', '−73.9%'],
+  ['Megaport', '−32.6%', '−30.1%', '1.1×', '−78.0%'],
+  ['Codan', '−13.5%', '−24.5%', '0.5×', '−83.2%'],
+  ['Block', '−12.0%', '−32.0%', '0.4×', '−58.7%'],
+  ['Data#3', '−5.7%', '−20.6%', '0.3×', '−83.1%'],
+] as const;
+
+/** [company, 20% falls, came back, typical wait, longest wait, now below record, record set] */
+const TECH_RECOVERIES = [
+  ['Block', '2', '1', '1 month', '1 month', '−44.2%', 'Mar 2022'],
+  ['Codan', '9', '9', '5 months', '5.4 years', '—', '—'],
+  ['Data#3', '11', '11', '1.2 years', '4.9 years', '—', '—'],
+  ['Elsight', '7', '6', '1 month', '7.6 years', '−63.1%', 'Jun 2026'],
+  ['Iress', '9', '8', '1.4 years', '2.1 years', '−58.4%', 'Aug 2021'],
+  ['Life360', '4', '3', '1.9 years', '2.3 years', '−65.9%', 'Oct 2025'],
+  ['Megaport', '9', '8', '4 months', '4.8 years', '−30.0%', 'Oct 2026'],
+  ['NEXTDC', '8', '7', '1.0 years', '2.9 years', '−52.0%', 'Jul 2024'],
+  ['Netwealth', '6', '5', '9 months', '3.0 years', '−58.1%', 'Aug 2025'],
+  ['PEXA', '1', '0', '—', '—', '−68.7%', 'Jan 2022'],
+  ['Silex Systems', '5', '4', '6 months', '5.3 years', '−73.0%', 'Jun 2007'],
+  ['Technology One', '11', '10', '8 months', '6.6 years', '−27.2%', 'Jun 2025'],
+  ['Weebit Nano', '7', '6', '8 months', '2.8 years', '−71.9%', 'Mar 2023'],
+  ['WiseTech Global', '8', '7', '6 months', '1.9 years', '−75.0%', 'Nov 2024'],
+  ['Xero', '7', '6', '7 months', '4.2 years', '−70.3%', 'Jun 2025'],
+] as const;
+
+/** [how far it fell, tech typical wait, tech back within 5y, whole typical wait, whole back within 5y] */
+const TECH_DEPTH_LADDER = [
+  ['20% to 30%', '3 months', '100%', '3 months', '100%'],
+  ['30% to 40%', '6 months', '100%', '8 months', '99%'],
+  ['40% to 50%', '8 months', '100%', '1.4 years', '94%'],
+  ['50% to 70%', '2.8 years', '89%', '3.0 years', '72%'],
+  ['More than 70%', '4.9 years', '58%', '7.7 years', '33%'],
+] as const;
+
 export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
   'how-far-do-asx-shares-fall': () => (
     <>
@@ -1237,6 +1298,274 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         banks and pipelines pay a large part of their return that way. Figures are
         as at {STUDY_END}. Nothing here is advice about any company.
       </p>
+    </>
+  ),
+  'asx-tech-shares-how-far-have-they-fallen': () => (
+    <>
+      <h2>The index looks calm. Most of the market does not</h2>
+      <p>
+        As at {TECH_AS_AT}, the ASX 200 index sat{' '}
+        <strong>6.2% below its high of 6 August</strong>. That is a smaller dip than
+        usual: measured the same way across its history, the index normally falls
+        12.8% before it turns.
+      </p>
+      <p>
+        The companies inside it tell a different story. The middle company in the ASX
+        200 sat <strong>22.1% below its own one-year high</strong>, and 109 of the 200
+        were down more than 20%. The index holds up because it is weighted by size,
+        and its largest companies have fallen far less — Commonwealth Bank 14.4%, BHP
+        13.8%, CSL 13.5%.
+      </p>
+      <DataTable
+        caption={`The middle ASX 200 company in each sector, below its own one-year high, as at ${TECH_AS_AT}`}
+        columns={[
+          { key: 'sector', label: 'Sector' },
+          { key: 'n', label: 'Companies', numeric: true },
+          { key: 'mid', label: 'Middle company, below its one-year high', numeric: true },
+        ]}
+        rows={[
+          { cells: { sector: 'Technology', n: '15', mid: '−53.2%' }, emphasis: true },
+          { cells: { sector: 'Communication Services', n: '10', mid: '−32.3%' } },
+          { cells: { sector: 'Consumer Cyclical', n: '18', mid: '−31.6%' } },
+          { cells: { sector: 'Basic Materials', n: '49', mid: '−30.1%' } },
+          { cells: { sector: 'Energy', n: '13', mid: '−25.8%' } },
+          { cells: { sector: 'Real Estate', n: '19', mid: '−20.8%' } },
+          { cells: { sector: 'Industrials', n: '24', mid: '−19.4%' } },
+          { cells: { sector: 'Healthcare', n: '13', mid: '−18.5%' } },
+          { cells: { sector: 'Consumer Defensive', n: '8', mid: '−12.8%' } },
+          { cells: { sector: 'Financial Services', n: '26', mid: '−10.8%' } },
+          { cells: { sector: 'Utilities', n: '3', mid: '−4.8%' } },
+        ]}
+      />
+      <p>
+        Twelve of the fifteen technology companies are more than 20% below their high,
+        and eight are more than half below. No other sector is close.
+      </p>
+
+      <h2>Down a lot is not the same as down a lot for them</h2>
+      <p>
+        A 50% fall means something different for a small chip developer than for an
+        accounting-software company. Some shares routinely halve and come back; others
+        almost never move that far. So for every company we also measured{' '}
+        <strong>how far it normally falls</strong>: the average of every dip of more
+        than 5% in its own price history, each measured from its highest price of the
+        year before.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="560px"
+        caption={`The fifteen ASX 200 technology companies, each against its own history, as at ${TECH_AS_AT}`}
+        columns={[
+          { key: 'name', label: 'Company', width: '28%' },
+          { key: 'now', label: 'Below its one-year high', numeric: true, width: '18%' },
+          { key: 'normal', label: 'Normally falls', numeric: true, width: '17%' },
+          { key: 'x', label: 'Times its normal fall', numeric: true, width: '17%' },
+          { key: 'record', label: 'Deepest fall on record', numeric: true, width: '20%' },
+        ]}
+        rows={TECH_NORMAL_FALLS.map(([name, now, normal, x, record]) => ({
+          cells: { name, now, normal, x, record },
+        }))}
+      />
+      <p>Three things stand out.</p>
+      <p>
+        <strong>The deepest falls are not the most unusual ones.</strong> Weebit Nano is
+        down the most, 72.3%, but it normally falls 47.1%. It is a small semiconductor
+        developer whose shares have always moved violently. The most unusual falls
+        belong to steadier businesses — Netwealth, Xero, PEXA, NEXTDC, Iress and
+        WiseTech are each down more than twice their normal amount.
+      </p>
+      <p>
+        <strong>One is past anything in its record.</strong> Netwealth is 53.2% below
+        its high, and the deepest fall in its listed history before this one was
+        49.4%. PEXA (−60.4% against a record of −61.4%) and NEXTDC (−47.2% against
+        −48.8%) are within two points of theirs.
+      </p>
+      <p>
+        <strong>It is not the whole sector.</strong> Codan, Block and Data#3 sit well
+        inside their normal range, and Technology One and Megaport only just past it.
+      </p>
+
+      <h2>Technology is the outlier this year</h2>
+      <p>
+        Across the whole ASX 200, 99 of the 200 companies are past their own normal
+        fall, which shows how broad this year’s weakness has been. Being more than
+        twice past it is rarer — 21 companies — and six of those 21 are technology
+        companies, from a sector of fifteen.
+      </p>
+      <DataTable
+        caption={`Technology against the rest of the ASX 200, as at ${TECH_AS_AT}`}
+        columns={[
+          { key: 'what', label: 'Measure' },
+          { key: 'tech', label: 'Technology', numeric: true },
+          { key: 'rest', label: 'Rest of the ASX 200', numeric: true },
+        ]}
+        rows={[
+          { cells: { what: 'Companies', tech: '15', rest: '185' } },
+          { cells: { what: 'Past their normal fall', tech: '12 (80%)', rest: '87 (47%)' } },
+          {
+            cells: { what: 'More than twice their normal fall', tech: '6 (40%)', rest: '15 (8%)' },
+            emphasis: true,
+          },
+          { cells: { what: 'Middle company, below its one-year high', tech: '−53.2%', rest: '−20.8%' } },
+          { cells: { what: 'Middle company, normal fall', tech: '−25.2%', rest: '−21.4%' } },
+        ]}
+      />
+      <p>
+        The last row is the one worth sitting with. Technology companies do not
+        normally fall much further than the rest of the market, 25.2% against 21.4%.
+        This year the middle one is down 53.2%, two and a half times the rest of the
+        market’s 20.8%.
+      </p>
+
+      <h2>Technology falls have usually come back faster</h2>
+      <p>
+        For the history, we used the same method as{' '}
+        <Link href="/articles/how-long-does-an-asx-share-take-to-recover">
+          How long does an ASX share take to recover?
+        </Link>{' '}
+        The clock starts when a share is 20% below its high and stops only when it
+        closes back at that high. We ran it again on these fifteen companies and on
+        the whole index, to the same date as everything above.
+      </p>
+      <DataTable
+        caption={`Every 20% fall since 2000, as at ${TECH_AS_AT}`}
+        columns={[
+          { key: 'what', label: 'Every 20% fall since 2000' },
+          { key: 'tech', label: 'Technology', numeric: true },
+          { key: 'all', label: 'Whole ASX 200', numeric: true },
+        ]}
+        rows={[
+          { cells: { what: 'Falls measured', tech: '104', all: '1,265' } },
+          { cells: { what: 'Typical wait to get back', tech: '9 months', all: '11 months' }, emphasis: true },
+          { cells: { what: 'Back within 1 year', tech: '52.6%', all: '51.9%' } },
+          { cells: { what: 'Back within 3 years', tech: '81.0%', all: '75.7%' } },
+          { cells: { what: 'Back within 5 years', tech: '91.8%', all: '84.3%' } },
+          { cells: { what: 'Not back yet', tech: '13', all: '159' } },
+        ]}
+      />
+      <p>
+        On this record, a 20% fall in an ASX technology share has come back a little
+        faster and a little more often than one in the rest of the market. It is the
+        only good news in this article, and the next two sections explain why it should
+        be held loosely.
+      </p>
+
+      <h2>How each of the fifteen has come back before</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="600px"
+        caption={`Every 20% fall each company has had since 2000, or since it listed, as at ${TECH_AS_AT}`}
+        columns={[
+          { key: 'name', label: 'Company', width: '20%' },
+          { key: 'falls', label: '20% falls', numeric: true, width: '10%' },
+          { key: 'back', label: 'Came back', numeric: true, width: '10%' },
+          { key: 'wait', label: 'Typical wait', numeric: true, width: '14%' },
+          { key: 'longest', label: 'Longest wait', numeric: true, width: '14%' },
+          { key: 'now', label: 'Now, below its record high', numeric: true, width: '18%' },
+          { key: 'when', label: 'Record set', alignRight: true, width: '14%' },
+        ]}
+        rows={TECH_RECOVERIES.map(([name, falls, back, wait, longest, now, when]) => ({
+          cells: { name, falls, back, wait, longest, now, when },
+        }))}
+      />
+      <p>
+        The waits count only the falls that came back, from the day each was first 20%
+        down. Thirteen of the fifteen are in a fall of 20% or more right now. Only Codan
+        and Data#3 are not.
+      </p>
+      <p>Two things in this table matter more than the waits.</p>
+      <p>
+        <strong>Eight of the fifteen are already deeper than any fall they have come
+        back from.</strong> WiseTech’s worst recovered fall was 72.7% and it has now
+        been 79.2% down. Netwealth’s was 44.9% against 58.1% now, NEXTDC’s 48.4%
+        against 52.0%, Iress’s 58.1% against 64.7%, and Block’s 34.3% against 68.8%.
+        Xero’s current fall has gone just past the 71.1% fall it came back from in
+        2018, to 71.5%. Silex has been down 98.8% in a fall that began in 2007, and
+        PEXA has not come back from the only 20% fall it has had since listing in 2021.
+        For these eight, the company’s own history has no precedent for a recovery from
+        here.
+      </p>
+      <p>
+        <strong>Some of these falls are already old.</strong> Silex has waited 19.3
+        years and is still 73.0% below its 2007 record. Iress has waited 5.1 years,
+        PEXA 4.6 and Block 4.5. Each is longer than any wait those companies have come
+        through before.
+      </p>
+
+      <h2>The deeper the fall, the longer the wait</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="560px"
+        caption={`Every 20% fall since 2000, grouped by how far it fell, as at ${TECH_AS_AT}`}
+        columns={[
+          { key: 'depth', label: 'How far it fell', width: '24%' },
+          { key: 'tw', label: 'Technology: typical wait', numeric: true, width: '19%' },
+          { key: 't5', label: 'Technology: back within 5 years', numeric: true, width: '19%' },
+          { key: 'aw', label: 'Whole ASX 200: typical wait', numeric: true, width: '19%' },
+          { key: 'a5', label: 'Whole ASX 200: back within 5 years', numeric: true, width: '19%' },
+        ]}
+        rows={TECH_DEPTH_LADDER.map(([depth, tw, t5, aw, a5]) => ({
+          cells: { depth, tw, t5, aw, a5 },
+        }))}
+      />
+      <p>
+        “Back within 5 years” counts only falls with five full years of history behind
+        them. For technology that is a small number in the bottom two rows — 9 falls of
+        50% to 70%, and 12 past 70% — so those figures could move a long way on one or
+        two companies.
+      </p>
+      <p>
+        The thirteen technology companies in a fall today sit mostly in those bottom two
+        rows. Measured from each company’s record high, eight have been between 50% and
+        70% down at their worst, and four — Silex, Weebit Nano, WiseTech and Xero — more
+        than 70%. Across the whole market, about two in three falls past 70% were still
+        not back five years later.
+      </p>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are the fifteen technology companies in the ASX 200{' '}
+        <strong>today</strong>. Technology companies that fell and were dropped from the
+        index are not here, and they did worse than the ones that stayed. That flatters
+        the recovery figures above, probably more for technology than for the market as
+        a whole, because a company that falls far enough leaves the index. Read them as
+        “what the history of today’s large Australian technology companies looks like”,
+        not as the odds facing any particular share.
+      </p>
+      <p>
+        It is also a description of the past, and the past has no obligation to repeat.
+        A deep fall is where the better opportunities have historically been found, and
+        it is also where the permanent losses are. This cannot tell you which of the two
+        any particular company is. Only the business can.
+      </p>
+
+      <h2>How to read the numbers</h2>
+      <p>
+        Two different highs are used here, on purpose. The first tables measure each
+        company against its <strong>one-year high</strong>, the highest price traded in
+        the past 252 trading days, which is the “current drawdown” on every stock page.
+        The recovery tables measure from the <strong>record high</strong>, the highest
+        close since 2000 or since listing, because a fall has only recovered when the
+        price is back above the last peak. That is why Xero is 63.3% below its one-year
+        high and 70.3% below its record.
+      </p>
+      <p>
+        Eight of the fifteen set their one-year high in October or November 2025, so
+        those highs are about to drop out of the one-year window. When they do, each
+        will be measured from a lower high and its fall will look smaller, without the
+        share price moving. That is why this article is dated and will not be updated in
+        place.
+      </p>
+      <p>
+        “Technology” is each company’s standard sector classification, not our
+        judgement. It includes Netwealth, PEXA and Iress, which some would call
+        financial or property services, and two US-based companies listed in Australia,
+        Block and Life360. Weebit Nano listed in August 2016 through Radar Iron, an
+        iron-ore company, so its figures start on 3 August 2016, its first day of trading
+        as Weebit. This is the one place our figures differ from its stock page, which
+        still includes the older history.
+      </p>
+      <p>Prices include dividends. Nothing here is advice about any company.</p>
     </>
   ),
 };
