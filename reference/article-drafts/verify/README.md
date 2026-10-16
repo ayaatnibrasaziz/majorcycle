@@ -126,3 +126,32 @@ been removed from all four fact-check sheets, because the lag was fixed rather t
 disclosed. `audit_external.py` and `audit_thresholds.py` are kept — they re-fetch
 from outside our database, which is the only check that can catch the next thing
 our own data and our own code agree about.
+
+
+---
+
+## Article 6 — ASX tech shares (as at 15 October 2026)
+
+A separate study, seven weeks after the first four, so it has its own files.
+
+```bash
+python -I reference/article-drafts/verify/assert_tech.py              # 141 figures, draft AND content.tsx
+python -I reference/article-drafts/verify/assert_tech.py --from-raw   # also proves the extract matches the raw freeze
+```
+
+| file | what it is |
+|---|---|
+| `freeze_asx_tech.py` | captured the raw freeze on 2026-10-16: full price history of all 200 ASX 200 members and the index, to 15 October. **Do not re-run it for this article** — prices are re-adjusted every time a company pays a dividend, so a fresh pull is a different measurement |
+| `reference/asx-tech-2026-10-15-DATA.json.gz` | that raw freeze, 22 MB, **gitignored** and kept on the owner's machine only |
+| `asx_tech_figures.py` | derives every figure using the site's own engine (Medium preset). `--derive` writes the committed extract; `--recovery` and `--companies` print the recovery tables |
+| `reference/asx-tech-2026-10-15-DERIVED.json.gz` | the committed extract, 89 KB: each company's drawdown figures and every 20% fall it has had |
+| `recovery_episodes.py` | the recovery study's rule, written down for the first time. The original study's code was never committed; run this file directly to compare it against the August study (193 of 195 companies identical, 1,210 of 1,211 waits) |
+| `assert_tech.py` | checks every figure against the draft AND against `web/app/(public)/articles/content.tsx`, so the two copies cannot drift |
+
+⚠️ **Weebit Nano's history starts on 3 August 2016**, its first day of trading after the
+reverse takeover of Radar Iron (`STARTS` in `asx_tech_figures.py`). Before that the series
+is an iron-ore company's. The stock page does not make this cut, so the article says so.
+
+⚠️ **A finding about the August study:** its working notes give the typical ASX wait as
+0.94 years. Its own estimator gives 0.92; `assert_all.py`'s ±0.05 tolerance hid the gap.
+The published text says "about a year", so nothing a reader sees is wrong.
