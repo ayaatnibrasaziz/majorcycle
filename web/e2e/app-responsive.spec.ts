@@ -839,11 +839,17 @@ test.describe('no signed-in page scrolls sideways — ENTITLED account', () => {
      * has to contain both orientations, and the control below fails the run if it
      * ever stops doing so — a green result over four stocks that all lean the same
      * way is half a test (CLAUDE.md 11k).
+     *
+     * ⚠️ IT DID STOP, on 2026-10-22: T had drifted to 11.7x against an 11.3x average
+     * and GILD drew no chart, so every stock that rendered leaned one way. ADBE
+     * (14.2x vs 34.1x) and PEP (16.9x vs 22.3x) were added because they sit FAR
+     * below their own average, so an ordinary month cannot flip them; T stays
+     * because a stock near its average is the closest case for a collision.
      */
     const seen = { avgAbove: 0, avgBelow: 0 };
     const collisions: string[] = [];
 
-    for (const ticker of ['us/AAPL', 'ca/ENB', 'us/T', 'us/GILD']) {
+    for (const ticker of ['us/AAPL', 'ca/ENB', 'us/T', 'us/ADBE', 'us/PEP']) {
       await ready(page, `/stocks/${ticker}`);
       // ⚠️ Wait for the thing being measured, not for the page. Recharts renders
       // its reference labels after its own async measure pass, and a run that
@@ -897,7 +903,7 @@ test.describe('no signed-in page scrolls sideways — ENTITLED account', () => {
     // which every stock leans the same way, passes having tested nothing.
     expect(
       seen.avgAbove + seen.avgBelow,
-      'no valuation chart rendered on any of the four tickers — this test measured nothing',
+      'no valuation chart rendered on any of the tickers — this test measured nothing',
     ).toBeGreaterThan(1);
     expect(
       Math.min(seen.avgAbove, seen.avgBelow),
