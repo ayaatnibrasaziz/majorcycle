@@ -155,3 +155,32 @@ is an iron-ore company's. The stock page does not make this cut, so the article 
 ⚠️ **A finding about the August study:** its working notes give the typical ASX wait as
 0.94 years. Its own estimator gives 0.92; `assert_all.py`'s ±0.05 tolerance hid the gap.
 The published text says "about a year", so nothing a reader sees is wrong.
+
+## Article 7 — Netflix's third-quarter 2026 results (draft 07)
+
+A results article, so two kinds of figure: Netflix's own (typed once in `assert_nflx.py` from
+the shareholder letter, every comparison computed) and our price measurements.
+
+```bash
+python -I reference/article-drafts/verify/freeze_nflx.py 2026-10-21   # once, after the as-at close lands
+python -I reference/article-drafts/verify/nflx_figures.py             # prints every measured figure
+python -I reference/article-drafts/verify/assert_nflx.py              # the draft's answer box and body, and the site copy
+```
+
+| file | what it is |
+|---|---|
+| `freeze_nflx.py` | freezes Netflix, the S&P 500 and the Nasdaq to the as-at date; refuses if any series stops short |
+| `reference/nflx-q3-2026-DATA.json.gz` | that freeze |
+| `nflx_figures.py` | the record close, 52-week high, falls of 40%+ (the recovery study's rule), the 44 results-day moves, and the engine's normal fall |
+| `assert_nflx.py` | asserts every figure against the reader-facing text of the draft AND the shipped copy (`content.tsx` body + the registry answer, which must equal the draft's word for word). The fact-check sheet is excluded on purpose: it quotes other sources' wrong figures |
+
+⚠️ **The 44 results dates are 8-K filing dates (Item 2.02).** Netflix reports after the US close, so
+the move is the next session's close against the filing day's. Every move, every fall and the record
+close were re-computed from **Netflix's own historical prices** (its investor site) and matched
+exactly; that is the independent check, since the price history otherwise comes from our own data.
+
+
+⚠️ **Two one-year highs, on purpose.** The article's 52-week high is the calendar year after the as-at
+date a year earlier ($116.73, 13 Nov 2025). The model's is the last 252 trading days, which on
+21 Oct 2026 still starts on 21 Oct 2025 ($124.86). The body says so where it uses the model's figure;
+`assert_nflx.py` derives the window from the preset and checks that date, so it cannot drift silently.
