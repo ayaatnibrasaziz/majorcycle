@@ -363,6 +363,38 @@ export const ARTICLES = [
     reviewed: '2026-10-17',
     minutes: 8,
   },
+  {
+    slug: 'netflix-q3-2026-results',
+    title: 'Netflix’s third-quarter 2026 results, explained',
+    question: 'Why did Netflix shares fall after its Q3 2026 results?',
+    answer:
+      'Netflix’s third-quarter revenue of $12.87 billion landed almost exactly on its own forecast, and its operating profit came in 4.5% above it. But it cut its 2026 advertising revenue outlook from about $3 billion to about $2.7 billion. The next day the shares fell 5.3%, closing 51.4% below their June 2025 record.',
+    summary:
+      'Netflix’s Q3 2026 results against its own forecast: revenue, profit, the cut to its ad revenue outlook, the layoffs, and where the shares sit.',
+    kind: 'commentary',
+    deck: [
+      'Profit came in 4.5% above Netflix’s own forecast, and the shares fell 5.3% the next day. ',
+      { strong: 'The number that changed was advertising.' },
+    ],
+    finding: [
+      'Operating profit ',
+      { figure: '4.5%' },
+      ' above its own forecast, ad outlook cut to ',
+      { figure: '$2.7B' },
+      ', shares ',
+      { figure: '−51.4%' },
+      ' from their record.',
+    ],
+    facts: [
+      { value: '+4.5%', label: 'profit vs forecast' },
+      { value: '$2.7B', label: '2026 ad outlook' },
+      { value: '−51.4%', label: 'below its record' },
+    ],
+    region: 'United States',
+    published: '2026-10-22',
+    reviewed: '2026-10-22',
+    minutes: 9,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];

@@ -78,6 +78,13 @@ const ASX_DEPTH_LADDER = [
  */
 const TECH_AS_AT = '15 October 2026';
 
+/**
+ * The Netflix results piece: share prices are at the close of the first full session
+ * after the results. Netflix's own figures (revenue, forecasts, buybacks) are from its
+ * letter of 20 October and do not move with this date.
+ */
+const NFLX_AS_AT = '21 October 2026';
+
 /** [company, below its one-year high, normally falls, times its normal, deepest on record] */
 const TECH_NORMAL_FALLS = [
   ['Netwealth', '−53.2%', '−20.7%', '2.6×', '−49.4%'],
@@ -1566,6 +1573,343 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         still includes the older history.
       </p>
       <p>Prices include dividends. Nothing here is advice about any company.</p>
+    </>
+  ),
+  'netflix-q3-2026-results': () => (
+    <>
+      <h2>The short version</h2>
+      <p>
+        Netflix reported its results for the three months to 30 September after the US
+        market closed on 20 October 2026. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $12.87 billion, up 12% on a year earlier, and within
+          0.1% of the $12.86 billion Netflix had forecast in July.
+        </li>
+        <li>
+          <strong>Profit:</strong> operating income of $4.46 billion, 4.5% above the
+          company’s own forecast, giving an operating margin of 34.6% against the 33.2% it
+          expected. Netflix says this was mainly the timing of expenses, and its full-year
+          margin forecast is unchanged at 31.5%.
+        </li>
+        <li>
+          <strong>Earnings per share:</strong> $0.87, against Netflix’s forecast of $0.82
+          and $0.59 a year earlier.
+        </li>
+        <li>
+          <strong>The full-year outlook:</strong> revenue of $51.1 billion, at the lower
+          half of the $51.0–51.4 billion range it gave in July, with an unchanged operating
+          margin of 31.5%.
+        </li>
+        <li>
+          <strong>What changed:</strong> advertising revenue for 2026 is now expected to be
+          about <strong>$2.7 billion</strong>, not about $3 billion, and free cash flow
+          about <strong>$12.0 billion</strong>, not $12.5 billion.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars. Share prices and earnings per share are on the basis
+        of Netflix’s ten-for-one share split of November 2025, as Netflix itself reports
+        them.
+      </p>
+
+      <h2>The quarter against Netflix’s own forecast</h2>
+      <p>
+        Netflix publishes its own forecast for the next quarter with every set of results,
+        and says it is its “actual internal forecast”, so the cleanest test of a quarter is
+        against that number.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Q3 2026 against Netflix’s own July forecast"
+        columns={[
+          { key: 'what', label: 'Measure', width: '31%' },
+          { key: 'fc', label: 'Netflix’s forecast (July)', numeric: true, width: '23%' },
+          { key: 'rep', label: 'Reported', numeric: true, width: '23%' },
+          { key: 'yago', label: 'A year earlier', numeric: true, width: '23%' },
+        ]}
+        rows={[
+          { cells: { what: 'Revenue', fc: '$12.86B', rep: '$12.87B', yago: '$11.51B' } },
+          { cells: { what: 'Revenue growth', fc: '11.7%', rep: '11.8%', yago: '17.2%' } },
+          { cells: { what: 'Operating income', fc: '$4.27B', rep: '$4.46B', yago: '$3.25B' }, emphasis: true },
+          { cells: { what: 'Operating margin', fc: '33.2%', rep: '34.6%', yago: '28.2%' } },
+          { cells: { what: 'Net income', fc: '$3.45B', rep: '$3.66B', yago: '$2.55B' } },
+          { cells: { what: 'Diluted earnings per share', fc: '$0.82', rep: '$0.87', yago: '$0.59' } },
+        ]}
+      />
+      <p>
+        Growth is slowing. Revenue grew 17.2% in the third quarter of 2025, 16.2% in the
+        first quarter of 2026, 13.4% in the second, and 11.8% now. Netflix forecasts 11.5%
+        for the fourth quarter. That slowdown was in Netflix’s forecast and is not a
+        surprise in itself.
+      </p>
+      <p>By region, measured in US dollars, every part of the business grew by more than 10%:</p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Netflix’s revenue by region, third quarter of 2026"
+        columns={[
+          { key: 'region', label: 'Region', width: '37%' },
+          { key: 'rev', label: 'Revenue', numeric: true, width: '19%' },
+          { key: 'g', label: 'Growth', numeric: true, width: '19%' },
+          { key: 'fx', label: 'Growth without currency moves', numeric: true, width: '25%' },
+        ]}
+        rows={[
+          { cells: { region: 'US and Canada', rev: '$5.63B', g: '11%', fx: '11%' } },
+          { cells: { region: 'Europe, Middle East and Africa', rev: '$4.11B', g: '11%', fx: '9%' } },
+          { cells: { region: 'Latin America', rev: '$1.60B', g: '17%', fx: '12%' } },
+          { cells: { region: 'Asia-Pacific', rev: '$1.54B', g: '12%', fx: '15%' } },
+        ]}
+      />
+      <p>
+        Netflix no longer publishes its number of subscribers each quarter: it stopped with
+        its first-quarter 2025 results, and now announces only milestones. The last was 325
+        million paid memberships, passed in the fourth quarter of 2025. Instead, it says
+        that in the third quarter churn, the rate at which members cancel, improved on a
+        year earlier and was better than forecast, globally and in the US.
+      </p>
+
+      <h2>What changed: the advertising forecast</h2>
+      <p>
+        The biggest change was to advertising. Netflix started selling ads in November
+        2022, and its ad revenue grew more than two and a half times to over $1.5 billion in
+        2025. In January it said it expected ad revenue to roughly double in 2026, and in
+        April and July it put that at about $3 billion.
+      </p>
+      <p>
+        It now expects <strong>about $2.7 billion</strong>. That is around 10% below what it
+        had said, though co-CEO Greg Peters said in the earnings interview that the ads
+        business is still growing by “over 80% this year”. Netflix’s explanation is a
+        “slightly slower than expected rollout of some ad product capabilities”. It also
+        said subscription revenue had done better than it expected. Full-year revenue moved
+        only slightly: $51.1 billion is 0.2% below the middle of its July range.
+      </p>
+      <p>
+        Netflix also confirmed that its cheaper plan with ads will launch in 15 more
+        countries in 2027, starting in March with nine in Europe, the Middle East and
+        Africa, plus Colombia, Peru and <strong>New Zealand</strong>. Australia has had an
+        ads plan since November 2022.
+      </p>
+      <p>
+        In the interview, Peters said Netflix had set itself an “aggressive product road
+        map” and was “currently a bit behind our aggressive target for the year”, because of
+        “delays in the rollout and partner integrations for some of those new ads
+        products”.
+      </p>
+
+      <h2>The layoffs, and a new head of content</h2>
+      <p>In the week before the results, Netflix made two big staff changes.</p>
+      <ul>
+        <li>
+          <strong>Job cuts.</strong> On 14 October, Netflix told staff it would cut about
+          1,000 jobs, around 6% of its workforce, mostly in product, technology, legal and
+          human resources, as reported by{' '}
+          <a href="https://www.nbcnews.com/business/media/netflix-layoffs-rcna603454">NBC News</a> and{' '}
+          <a href="https://techcrunch.com/2026/10/14/netflix-to-lay-off-1000-staff-amid-intensifying-competition-for-user-attention/">
+            TechCrunch
+          </a>
+          , to which Netflix confirmed the cuts. The shareholder letter refers to the
+          “recently announced headcount reductions” and gives their cost: about 1.2
+          percentage points off its fourth-quarter operating margin, which on its revenue
+          forecast is roughly $160 million, and about 0.3 points off the full year.
+        </li>
+        <li>
+          <strong>A new chief content officer.</strong> On 15 October Netflix announced that
+          Peter Rice, formerly chairman of Walt Disney Television, will run its global
+          content team from 26 October. He replaces Bela Bajaria, who is leaving after
+          nearly 10 years (
+          <a href="https://about.netflix.com/en/news/peter-rice-named-netflix-chief-content-officer">
+            Netflix
+          </a>
+          ).
+        </li>
+      </ul>
+      <p>
+        Netflix’s fourth-quarter operating margin forecast is 26.0%, including the cost of
+        the cuts, against 24.5% a year earlier. The letter says the changes let it “continue
+        to aggressively invest in high impact areas”.
+      </p>
+      <p>
+        Asked why, Peters said that after years of fast growth “there are some areas that we
+        built quickly and we ended up over invested in”. CFO Spence Neumann said Netflix will
+        not put a number on the savings, and will give its 2027 forecasts, including its
+        margin, in January.
+      </p>
+
+      <h2>The question about viewing</h2>
+      <p>
+        The concern investors had been raising before the results was viewing time. In July
+        Netflix said view hours grew 2% in the first half of 2026, after 1.5% growth in 2025.
+        This letter gives no global figure for the third quarter. It addresses the concern
+        directly instead: “We know there’s some investor concern about our view hours
+        growth. … But we do seek to accelerate growth in view hours as well.”
+      </p>
+      <p>
+        Its evidence that members are still engaged is that its 2026 price rises have landed
+        the way past ones did. It gives India as an example, where view hours grew 24% on a
+        year earlier and revenue grew about 18% excluding currency moves.
+      </p>
+      <p>
+        The interview was more direct than the letter. Neumann: “we want to grow view hours
+        faster. We’re not satisfied. We’re working on it”. And the weak spot is the US.
+        Co-CEO Ted Sarandos: “We do need better execution in the U.S. … It’s just not
+        growing as fast as it could or as fast as we’d like”. He described bringing in Peter
+        Rice as a chance to take Netflix’s slate “to the next level, especially in the
+        U.S.”.
+      </p>
+      <p>
+        One remark matters for Australian readers. Asked where growth will come from, Peters
+        named the US, the UK and <strong>Australia</strong> as Netflix’s “most mature
+        markets”, where it is “more deeply penetrated”, so its growth there is “going to
+        skew towards” higher revenue per member and advertising. In newer markets such as
+        India, he said, more members will be the biggest driver.
+      </p>
+
+      <h2>Where the cash went</h2>
+      <p>
+        Netflix generated $2.9 billion of free cash flow in the quarter and spent $4.8
+        billion buying back 63.9 million of its own shares, its largest quarter of buybacks
+        ever, at an average of about $75 a share. It has $22.3 billion left under its
+        buyback authorisations. Its average diluted share count was 3.3% lower than a year
+        earlier.
+      </p>
+      <p>
+        It ended September with $8.2 billion of cash and $15.3 billion of debt. The $1
+        billion it borrowed in the quarter is to repay a $1 billion bond falling due in the
+        fourth quarter.
+      </p>
+      <p>
+        It now expects about $12.0 billion of free cash flow for 2026, down from $12.5
+        billion, which it puts mainly down to a real estate transaction it expects to
+        complete in the fourth quarter.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        On {NFLX_AS_AT}, the first full trading day after the results, Netflix closed at
+        $65.04, down 5.3% from $68.69 the day before. It was its lowest close since August
+        2024. At that close, the shares were:
+      </p>
+      <ul>
+        <li>
+          <strong>51.4% below their record close</strong> of $133.91 on 30 June 2025,
+        </li>
+        <li>
+          <strong>44.3% below their</strong>{' '}
+          <Link href="/learn/52-week-high">
+            <strong>highest price of the past year</strong>
+          </Link>
+          , $116.73 on 13 November 2025,
+        </li>
+        <li>
+          <strong>30.6% lower than at the start of 2026.</strong>
+        </li>
+      </ul>
+      <p>
+        The US market has not fallen with it. On the same day the{' '}
+        <Link href="/articles/sp-500-shares-furthest-below-their-highs">S&P 500</Link>{' '}
+        rose 0.6%, closing 0.8% below its record close, set on 6 October.
+      </p>
+
+      <h2>How Netflix shares usually react to results</h2>
+      <p>
+        Big moves the day after results are normal for Netflix. We measured all 44 regular
+        results releases from January 2016 to October 2026, comparing the close on the day
+        after with the close on the day Netflix reported:
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>7.3%</strong>. Since 2022 it was{' '}
+          <strong>8.8%</strong>.
+        </li>
+        <li>
+          13 of the 44 moved by 10% or more. The largest fall was <strong>35.1%</strong> in
+          April 2022, when Netflix reported a loss of 200,000 paid memberships against its
+          own forecast of a gain of 2.5 million. The largest rise was{' '}
+          <strong>19.0%</strong> in October 2016.
+        </li>
+        <li>The shares fell after 28 of the 44.</li>
+        <li>
+          <strong>They have now fallen after each of the last six</strong>: July 2025
+          (−5.1%), October 2025 (−10.1%), January 2026 (−2.2%), April 2026 (−9.7%), July
+          2026 (−7.3%) and October 2026 (−5.3%).
+        </li>
+      </ul>
+
+      <h2>How this fall compares with Netflix’s past falls</h2>
+      <p>
+        Netflix has fallen this far before, several times. These are{' '}
+        <Link href="/learn/what-is-a-drawdown">every fall of 40% or more</Link>, measured
+        from a record close to the lowest close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption={`Netflix’s falls of 40% or more, as at ${NFLX_AS_AT}`}
+        columns={[
+          { key: 'peak', label: 'Record close', width: '24%' },
+          { key: 'low', label: 'Lowest point', width: '28%' },
+          { key: 'fall', label: 'Fall', numeric: true, width: '18%' },
+          { key: 'back', label: 'Back at the record', alignRight: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { peak: 'July 2002', low: 'October 2002', fall: '−70.8%', back: 'March 2003' } },
+          { cells: { peak: 'January 2004', low: 'March 2005', fall: '−76.7%', back: 'April 2008' } },
+          { cells: { peak: 'April 2008', low: 'October 2008', fall: '−55.9%', back: 'March 2009' } },
+          { cells: { peak: 'July 2011', low: 'September 2012', fall: '−82.0%', back: 'September 2013' } },
+          { cells: { peak: 'July 2018', low: 'December 2018', fall: '−44.2%', back: 'April 2020' } },
+          { cells: { peak: 'November 2021', low: 'May 2022', fall: '−75.9%', back: 'August 2024' } },
+          {
+            cells: { peak: 'June 2025', low: 'October 2026 (so far)', fall: '−51.4%', back: 'Not yet' },
+            emphasis: true,
+          },
+        ]}
+      />
+      <p>
+        The current fall reached its deepest point so far on {NFLX_AS_AT}, the day after the
+        results, 51.4% below the record. It is the sixth-deepest of Netflix’s seven falls of
+        40% or more since it listed in 2002. Each of the earlier six got back to its record,
+        taking between about five months and just over three years from the low. That is a
+        record of what happened, not a guide to what will.
+      </p>
+      <p>
+        Our stock page measures a fall from the highest price of the last 252 trading days,
+        which on {NFLX_AS_AT} still included last year’s results day, 21 October 2025, at
+        $124.86. On that setting, Netflix{' '}
+        <Link href="/learn/own-history-vs-market-average">normally falls</Link> about 26.9%
+        below that high before turning. On {NFLX_AS_AT} it was 47.9% below.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The fourth quarter.</strong> Netflix forecasts revenue of $13.44 billion
+          and earnings of $0.67 a share. Its slate includes three NFL games (Thanksgiving Eve
+          and a Christmas Day doubleheader), the Tyson Fury vs Anthony Joshua fight, the
+          final season of Emily in Paris, and the film The Further Mis-Adventures of Cliff
+          Booth.
+        </li>
+        <li>
+          <strong>The next results.</strong> Netflix said it will report next in January,
+          and Neumann said it will give its 2027 forecasts then. It has not set a date. Its
+          fourth-quarter results came out on 23 January 2024, 21 January 2025 and 20 January
+          2026.
+        </li>
+        <li>
+          <strong>Ads in 15 more countries,</strong> from March 2027.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter and Netflix’s own forecasts for the next. A
+        forecast is a company’s estimate and can be wrong, as the advertising number shows.
+        The share-price history is a record of what happened before, not a prediction. This
+        article is general information and does not take into account your objectives,
+        financial situation or needs.
+      </p>
     </>
   ),
 };
