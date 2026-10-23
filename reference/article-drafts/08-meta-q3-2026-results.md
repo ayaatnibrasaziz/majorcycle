@@ -75,14 +75,14 @@ results, so the cleanest test of a quarter is against that range.
 | | Meta's forecast (July) | Reported | A year earlier |
 |---|---|---|---|
 | Revenue | $61–64B | $64.60B | $51.24B |
-| Revenue growth | 19–25% (implied by the range) | 26% | 26% |
+| Revenue growth | 19–25% | 26% | 26% |
 | Operating income | — | $12.99B | $20.54B |
 | Operating margin | — | 20% | 40% |
 | Net income | — | $9.86B | $2.71B |
 | Diluted earnings per share | — | $3.83 | $1.05 |
 
-Revenue came in 0.9% above the top of the range. Meta's quarterly forecast covers revenue, not
-profit, so the profit lines have no forecast to test against.
+The forecast growth of 19–25% is what that range implied. Revenue came in 0.9% above the top of
+the range. Meta's quarterly forecast covers revenue, not profit, so the profit lines have no forecast to test against.
 
 The year-earlier profit figures need a warning. Both quarters carry a large one-off cost, on
 different lines:

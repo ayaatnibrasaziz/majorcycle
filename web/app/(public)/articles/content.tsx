@@ -370,6 +370,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         // the prose says "on the same scale", and a reader cannot run their eye
         // down two columns that do not line up. Left to size themselves, these
         // two put Typical fall 43.6px apart.
+        wrapHeaders
         minWidth="440px"
         caption="Australian banks, typical fall and worst fall since 2000"
         columns={[
@@ -393,6 +394,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       <p>And then the miners, on the same scale:</p>
       <DataTable
         // The same three widths as the banks table above — see the note there.
+        wrapHeaders
         minWidth="440px"
         caption="Australian miners, typical fall and worst fall since 2000"
         columns={[
@@ -557,7 +559,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       <p>Australia is the slowest of the three markets we cover, on both measures.</p>
       <DataTable
         wrapHeaders
-        minWidth="520px"
+        minWidth="600px"
         caption="Every 20% fall in each index since 2000. “Down over 5 years” counts the falls that have been below their old price for more than five years."
         columns={[
           { key: 'index', label: 'Index', width: '17%' },
@@ -1502,14 +1504,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       <h2>The deeper the fall, the longer the wait</h2>
       <DataTable
         wrapHeaders
-        minWidth="560px"
+        minWidth="600px"
         caption={`Every 20% fall since 2000, grouped by how far it fell, as at ${TECH_AS_AT}`}
         columns={[
-          { key: 'depth', label: 'How far it fell', width: '24%' },
-          { key: 'tw', label: 'Technology: typical wait', numeric: true, width: '19%' },
-          { key: 't5', label: 'Technology: back within 5 years', numeric: true, width: '19%' },
-          { key: 'aw', label: 'Whole ASX 200: typical wait', numeric: true, width: '19%' },
-          { key: 'a5', label: 'Whole ASX 200: back within 5 years', numeric: true, width: '19%' },
+          { key: 'depth', label: 'How far it fell', width: '20%' },
+          { key: 'tw', label: 'Technology: typical wait', numeric: true, width: '20%' },
+          { key: 't5', label: 'Technology: back within 5 years', numeric: true, width: '20%' },
+          { key: 'aw', label: 'Whole ASX 200: typical wait', numeric: true, width: '20%' },
+          { key: 'a5', label: 'Whole ASX 200: back within 5 years', numeric: true, width: '20%' },
         ]}
         rows={TECH_DEPTH_LADDER.map(([depth, tw, t5, aw, a5]) => ({
           cells: { depth, tw, t5, aw, a5 },
@@ -1966,7 +1968,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         ]}
         rows={[
           { cells: { c0: 'Revenue', c1: '$61–64B', c2: '$64.60B', c3: '$51.24B' } },
-          { cells: { c0: 'Revenue growth', c1: '19–25% (implied by the range)', c2: '26%', c3: '26%' } },
+          { cells: { c0: 'Revenue growth', c1: '19–25%', c2: '26%', c3: '26%' } },
           { cells: { c0: 'Operating income', c1: '—', c2: '$12.99B', c3: '$20.54B' } },
           { cells: { c0: 'Operating margin', c1: '—', c2: '20%', c3: '40%' } },
           { cells: { c0: 'Net income', c1: '—', c2: '$9.86B', c3: '$2.71B' } },
@@ -1974,8 +1976,9 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         ]}
       />
       <p>
-        Revenue came in 0.9% above the top of the range. Meta’s quarterly forecast covers
-        revenue, not profit, so the profit lines have no forecast to test against.
+        The forecast growth of 19–25% is what that range implied. Revenue came in 0.9% above the
+        top of the range. Meta’s quarterly forecast covers revenue, not profit, so the profit
+        lines have no forecast to test against.
       </p>
       <p>
         The year-earlier profit figures need a warning. Both quarters carry a large one-off
