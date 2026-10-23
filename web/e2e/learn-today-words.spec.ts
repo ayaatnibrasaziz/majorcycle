@@ -30,6 +30,8 @@ test('no fixed judgement survives on the page for tonight’s figures', () => {
   const r = todayAgainstTypical(LEARN_FIGURES.currentDrawdownPct, LEARN_FIGURES.typicalDrawdownPct);
   const today = Math.abs(LEARN_FIGURES.currentDrawdownPct);
   const typical = Math.abs(LEARN_FIGURES.typicalDrawdownPct);
-  if (today * 2 < typical - 0.05) expect(r.comparison).toMatch(/under half/);
+  // A share that prints 0.0% below its high is "not fallen at all", never "under half".
+  if (today < 0.05) expect(r).toEqual({ atHigh: true, comparison: 'Today it has not fallen at all.' });
+  else if (today * 2 < typical - 0.05) expect(r.comparison).toMatch(/under half/);
   if (today > typical + 0.05) expect(r.comparison).toMatch(/further/);
 });
