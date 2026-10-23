@@ -1,0 +1,19 @@
+{
+  "_what": "Meta's ACTUAL (unadjusted) closing prices for the few dates draft 08 prints a dollar level or a percentage of one for. Meta pays a dividend, so our stored series is dividend-adjusted and its older levels sit slightly below these (12 Aug 2025: 786.80 adjusted vs 790.00 actual). A reader checks a price against Meta's investor site or Nasdaq, so the article prints these.",
+  "_source": "Meta investor relations, Historical Price Look Up (investor.atmeta.com/stock-info?section=historicalprice), the site's own price feed, read on 22 Oct 2026 (Sydney). Before 9 Jun 2022 the feed files the shares under FB. The 22 Oct 2026 close (648.85; open 676.35, high 681.07, low 639.69) was read from the same feed on 23 Oct 2026 (Sydney), after the New York close.",
+  "_check": "assert_meta.py re-derives every percentage from these, and fails if any differs from our adjusted series by more than the dividend effect (0.6%).",
+  "closes": {
+    "2025-08-12": 790.0,
+    "2025-12-31": 660.09,
+    "2026-03-27": 525.72,
+    "2026-10-20": 694.25,
+    "2026-10-21": 697.52,
+    "2026-10-22": 648.85
+  },
+  "highs": {
+    "2026-09-24": 779.8192
+  },
+  "record_close_date": "2025-08-12",
+  "one_year_high_date": "2026-09-24",
+  "low_close_in_current_fall_date": "2026-03-27"
+}

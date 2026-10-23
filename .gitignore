@@ -118,13 +118,17 @@ reference/split-events-backup-*.json
 # live outside the repo, so none of it is source.
 reference/video-01/
 reference/video-02/
+reference/video-03/
 
 # Article 7 (Netflix Q3 2026): Netflix's own filings, letters and interview audio,
 # downloaded as sources for the fact-check. Third-party documents (and a 32 MB
 # recording), re-downloadable from the links in the draft, so none of it is source.
 reference/nflx-q3-2026/sources/
+reference/meta-q3-2026/sources/
 
 # Working files for the one-off `--repull-prices` catch-up (2026-08-30): the
 # ticker slices handed to each parallel worker and their logs. The flag is part
 # of the pipeline and stays; these are just what one run of it was given.
 .repull/
+reference/tsla-q3-2026/sources/
+reference/video-04/

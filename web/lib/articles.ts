@@ -395,6 +395,70 @@ export const ARTICLES = [
     reviewed: '2026-10-22',
     minutes: 9,
   },
+  {
+    slug: 'meta-q3-2026-results',
+    title: 'Meta’s third-quarter 2026 results, explained',
+    question: 'Why did Meta shares fall after its Q3 2026 results?',
+    answer:
+      'Meta’s third-quarter revenue of $64.60 billion came in above the top of its own forecast, up 26% on a year earlier. Its operating profit fell 37% because of a $9.89 billion legal charge, and it announced new non-voting shares that will work like a two-for-one stock split in January. The shares fell 7.0% the next day.',
+    summary:
+      'Meta’s Q3 2026 results against its own forecast: revenue, the $9.9 billion legal charge, its spending, the new Class C shares, and where the shares sit.',
+    kind: 'commentary',
+    deck: [
+      'Revenue beat Meta’s own forecast, and the shares fell 7.0% the next day. ',
+      { strong: 'A legal charge cut its profit, and a new class of shares is coming.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '$64.60B' },
+      ' above its own range, operating profit ',
+      { figure: '−37%' },
+      ', shares ',
+      { figure: '−7.0%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$64.60B', label: 'revenue' },
+      { value: '−37%', label: 'operating profit' },
+      { value: '−17.9%', label: 'below its record' },
+    ],
+    region: 'United States',
+    published: '2026-10-23',
+    reviewed: '2026-10-23',
+    minutes: 9,
+  },
+  {
+    slug: 'tesla-q3-2026-results',
+    title: 'Tesla’s third-quarter 2026 results, explained',
+    question: 'Why did Tesla shares fall after its Q3 2026 results?',
+    answer:
+      'Tesla’s third-quarter revenue was $28.05 billion, flat on a year earlier. Its operating profit fell 56%, and it cut its 2026 spending plan to more than $20 billion, from more than $25 billion. Its board has formed a committee to explore a closer tie with SpaceX. The shares fell 3.1% the next day.',
+    summary:
+      'Tesla’s Q3 2026 results from its own filings: revenue, the profit squeeze, spending, Robotaxi, the SpaceX committee, and where the shares sit.',
+    kind: 'commentary',
+    deck: [
+      'Revenue was flat, operating profit fell 56%, and the shares fell 3.1% the next day. ',
+      { strong: 'Tesla cut its spending plan, and its board is looking at SpaceX.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '$28.05B' },
+      ', operating profit ',
+      { figure: '−56%' },
+      ', shares ',
+      { figure: '−23.5%' },
+      ' from their record.',
+    ],
+    facts: [
+      { value: '$28.05B', label: 'revenue' },
+      { value: '−56%', label: 'operating profit' },
+      { value: '−23.5%', label: 'below its record' },
+    ],
+    region: 'United States',
+    published: '2026-10-23',
+    reviewed: '2026-10-23',
+    minutes: 8,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];

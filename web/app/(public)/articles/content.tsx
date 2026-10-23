@@ -1912,6 +1912,627 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
     </>
   ),
+  'meta-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Meta reported its results for the three months to 30 September after the US market
+        closed on 21 October 2026. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $64.60 billion, up 26% on a year earlier, and above the
+          $61–64 billion Meta had forecast in July.
+        </li>
+        <li>
+          <strong>Profit:</strong> operating income of $12.99 billion, down 37%, after a $9.89
+          billion charge for its agreement with US state attorneys general over teen mental
+          health. Without that charge, Meta says operating income would have been $22.88
+          billion, up 11%.
+        </li>
+        <li>
+          <strong>Earnings per share:</strong> $3.83, or $7.40 without the charge.
+        </li>
+        <li>
+          <strong>Spending:</strong> $34.91 billion of capital expenditure in the quarter,
+          mostly servers, data centres and network infrastructure, which left free cash flow at{' '}
+          <strong>negative $2.12 billion</strong>.
+        </li>
+        <li>
+          <strong>What’s new:</strong> a non-voting Class C share, to be given to every
+          shareholder, one for each share they own, after the new class takes effect on 19
+          January 2027.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against Meta’s own forecast</h2>
+      <p>
+        Since October 2021, Meta has given a revenue range for the next quarter with each set of
+        results, so the cleanest test of a quarter is against that range.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against Meta’s own forecast"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Meta’s forecast (July)', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Reported', numeric: true, width: '20%' },
+          { key: 'c3', label: 'A year earlier', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$61–64B', c2: '$64.60B', c3: '$51.24B' } },
+          { cells: { c0: 'Revenue growth', c1: '19–25% (implied by the range)', c2: '26%', c3: '26%' } },
+          { cells: { c0: 'Operating income', c1: '—', c2: '$12.99B', c3: '$20.54B' } },
+          { cells: { c0: 'Operating margin', c1: '—', c2: '20%', c3: '40%' } },
+          { cells: { c0: 'Net income', c1: '—', c2: '$9.86B', c3: '$2.71B' } },
+          { cells: { c0: 'Diluted earnings per share', c1: '—', c2: '$3.83', c3: '$1.05' } },
+        ]}
+      />
+      <p>
+        Revenue came in 0.9% above the top of the range. Meta’s quarterly forecast covers
+        revenue, not profit, so the profit lines have no forecast to test against.
+      </p>
+      <p>
+        The year-earlier profit figures need a warning. Both quarters carry a large one-off
+        cost, on different lines:
+      </p>
+      <ul>
+        <li>
+          <strong>This year,</strong> the $9.89 billion legal charge sits in expenses. Without
+          it, earnings per share would have been $7.40.
+        </li>
+        <li>
+          <strong>A year ago,</strong> a one-time, non-cash tax charge of $15.93 billion, from
+          changes to US tax law, cut net income to $2.71 billion. Without it, earnings per share
+          would have been $7.25.
+        </li>
+      </ul>
+      <p>
+        So the reported 265% rise in earnings per share is mostly those two charges. On Meta’s
+        own figures without them, earnings per share grew by about 2%, from $7.25 to $7.40.
+      </p>
+      <p>
+        Revenue growth has held up. It was 24% in the fourth quarter of 2025, 33% in the first
+        quarter of 2026, 28% in the second, and 26% now. Advertising, almost all of Meta’s
+        revenue, grew 26%: Meta showed 10% more ads and charged 14% more for each one on
+        average. On average, 3.64 billion people used at least one of its apps each day in
+        September, 3% more than a year earlier.
+      </p>
+
+      <h2>The legal charge</h2>
+      <p>
+        In August, Meta reached an agreement with 52 attorneys general across US states,
+        territories and the District of Columbia to settle their lawsuits over teen mental
+        health and social media. It provides for payments of up to about $18.59 billion over ten
+        years, part of which depends on other companies, such as YouTube and TikTok, agreeing to
+        similar terms, and changes to how Facebook and Instagram work for US users under 18.
+      </p>
+      <p>
+        Meta booked a $9.89 billion charge for the agreement in the third quarter. It also
+        warned that it has “a number of youth-related trials scheduled in the coming months” in
+        the US.
+      </p>
+
+      <h2>Where the money is going</h2>
+      <p>
+        Meta’s spending on computing power keeps rising. In the third quarter, capital
+        expenditure was $34.91 billion, against $31.08 billion in the second quarter and $19.37
+        billion a year earlier. Cash from operations was $32.79 billion, so spending ran ahead
+        of it and free cash flow was negative.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the money is going"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Cash from operations', c1: '$32.79B', c2: '$30.00B' } },
+          { cells: { c0: 'Capital expenditure', c1: '$34.91B', c2: '$19.37B' } },
+          { cells: { c0: 'Free cash flow', c1: '−$2.12B', c2: '$10.62B' } },
+        ]}
+      />
+      <p>
+        To pay for it, Meta borrowed $25.00 billion in May, and it did not buy back any of its
+        own shares in the first nine months of the year: $25.03 billion of its buyback
+        authorisation is still unused. It still pays a quarterly dividend of $0.525 a share. It
+        ended September with $82.45 billion of cash and marketable securities and $84.00 billion
+        of bonds outstanding.
+      </p>
+      <p>
+        Its full-year capital expenditure forecast is now $135–145 billion, narrowed from
+        $130–145 billion. Its 2026 expense forecast rose to $175–179 billion, from $165–169
+        billion, an increase of $10 billion that Meta says takes in the legal charge. Meta
+        usually gives the next year’s forecasts with its fourth-quarter results, and says it
+        expects “to continue investing aggressively”.
+      </p>
+
+      <h2>Muse, and why Australia does not have it yet</h2>
+      <p>
+        Most of the call was about Muse, a personal AI agent that can shop, book and manage
+        tasks for its user. CEO Mark Zuckerberg said that in a month and a half, “more than 10
+        million people in the US and Canada have set up Muse personal agents”, and that about a
+        quarter of them use it on any given day.
+      </p>
+      <p>
+        It is not available in Australia. CFO Susan Li: “today Muse is only available in the
+        U.S. and Canada”. Muse takes a lot of computing power to run, which Zuckerberg named as
+        one reason it has not launched more widely, and Meta expects to make it more than ten
+        times more cost-efficient over the next year. For now it makes money only from
+        subscriptions.
+      </p>
+
+      <h2>Is Meta splitting its stock?</h2>
+      <p>
+        In effect, yes. Meta is creating a new class of shares, Class C, which carry no votes.
+        Every shareholder will receive one Class C share for each Class A or Class B share they
+        hold. Li called it “effectively resulting in a two-for-one stock split”.
+      </p>
+      <ul>
+        <li>
+          <strong>When:</strong> the new share class takes effect on 19 January 2027, and Meta
+          expects Class C trading to “begin in late January 2027”. The exact record and payment
+          dates are still to be set.
+        </li>
+        <li>
+          <strong>What happens to the price:</strong> after the payment date, Meta expects the
+          Class A share price to reflect a two-for-one split. In principle a shareholder’s
+          holding is worth the same, spread over twice as many shares.
+        </li>
+        <li>
+          <strong>Votes:</strong> no shareholder’s voting power changes. Class C shares have
+          none.
+        </li>
+        <li>
+          <strong>Why:</strong> Meta says it wants a share it can use to raise money, pay
+          employees and make acquisitions without changing who controls the votes. Li: “We don’t
+          have any specific financing plans to announce at this time”.
+        </li>
+      </ul>
+      <p>
+        How much money might be raised is the open question. The information statement Meta
+        filed with the results says forecasts management showed the board in May pointed to “the
+        Company’s need to raise hundreds of billions of dollars over a period of several years
+        beginning as early as fall 2026”. Asked about it on the follow-up call, Li said the
+        reference was “a theoretical maximum” and “not actually a description of our present
+        equity financing needs or plans”.
+      </p>
+      <p>
+        Zuckerberg holds about 56.1% of the votes, through his Class B shares. Under a separate
+        agreement, he can sell 20% of the Class C shares he receives freely, but for the other
+        80% each sale must be matched by selling or converting one of his voting shares.
+      </p>
+
+      <h2>Two things for Australian readers</h2>
+      <p>
+        Beyond Muse, Meta’s quarterly report names Australia twice as a risk:
+      </p>
+      <ul>
+        <li>
+          <strong>The under-16 social media ban.</strong> It lists “recent legislation in
+          Australia” that “imposes a social media ban for users under 16 years old” among the
+          youth rules it must comply with.
+        </li>
+        <li>
+          <strong>Paying for news.</strong> It notes that “Australia has enacted a tax on
+          revenue to incentivize payments to news publishers”.
+        </li>
+      </ul>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        On 22 October, the first full day of trading after the results, Meta closed at $648.85,
+        down 7.0% from $697.52 the day before. The shares had risen in after-hours trading on 21
+        October, by about 3.8% according to Investing.com, before the full session’s fall. The
+        wider market fell too: the S&P 500 lost 1.2% and the Nasdaq Composite 2.6% that day.
+      </p>
+      <p>
+        It was the third results day in a row on which Meta’s shares fell. After the fall, Meta
+        was:
+      </p>
+      <ul>
+        <li>
+          <strong>17.9% below its record close</strong> of $790.00 on 12 August 2025,
+        </li>
+        <li>
+          <strong>16.8% below its highest price of the past year</strong>, $779.82 on 24
+          September 2026,
+        </li>
+        <li>
+          <strong>1.7% lower than at the start of 2026.</strong>
+        </li>
+      </ul>
+      <p>
+        The current dip has already been deeper. From that August record, Meta fell as far as
+        $525.72 on 27 March 2026, 33.5% below.
+      </p>
+      <p>
+        The US market is still near its high: on 22 October the S&P 500 was 2.0% below its
+        record close, set on 6 October.
+      </p>
+
+      <h2>How Meta shares usually react to results</h2>
+      <p>
+        Results days have become bigger events for Meta. We measured all 44 regular results
+        releases from January 2016 to October 2026, comparing the close on the day after with
+        the close on the day Meta reported:
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>6.0%</strong>. Since 2022 it was{' '}
+          <strong>9.5%</strong>.
+        </li>
+        <li>
+          13 of the 44 moved by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>26.4%</strong> in February 2022, when Meta forecast
+          revenue growth of just 3–11% for the next quarter and pointed to competition for
+          people’s time, the shift to Reels, which earn less, and Apple’s iOS changes. It fell{' '}
+          <strong>24.6%</strong> again in October 2022.
+        </li>
+        <li>
+          The largest rise was <strong>23.3%</strong> in February 2023, when Meta added $40
+          billion to its buyback and cut its expense forecast.
+        </li>
+        <li>
+          The shares fell after 21 of the 44. The last four: January 2026 (+10.4%), April 2026
+          (−8.6%), July 2026 (−8.0%) and October 2026 (−7.0%).
+        </li>
+      </ul>
+
+      <h2>How far Meta has fallen before</h2>
+      <p>
+        Meta has fallen 30% or more six times since it listed in May 2012, counting the current
+        fall. These are measured from a record close to the lowest close before the shares got
+        back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Meta has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'May 2012', c1: 'September 2012', c2: '−53.6%', c3: 'August 2013' } },
+          { cells: { c0: 'July 2018', c1: 'December 2018', c2: '−43.0%', c3: 'January 2020' } },
+          { cells: { c0: 'January 2020', c1: 'March 2020', c2: '−34.6%', c3: 'May 2020' } },
+          { cells: { c0: 'September 2021', c1: 'November 2022', c2: '−76.7%', c3: 'January 2024' } },
+          { cells: { c0: 'February 2025', c1: 'April 2025', c2: '−34.2%', c3: 'June 2025' } },
+          { cells: { c0: 'August 2025', c1: 'March 2026 (deepest so far)', c2: '−33.5%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The first was the slide after its listing; the 2018 fall began with the results day of
+        July 2018 (−19.0%); the 2020 fall came in the market crash of March 2020; and the
+        2021–22 fall took in both of the 2022 results-day falls above.
+      </p>
+      <p>
+        The first five all got back to their record, and how long it took followed how far they
+        fell. The two falls of about a third, in 2020 and 2025, were back about two months after
+        the low. The three deeper ones, of 43% to 77%, took between 11 and 15 months. The
+        current fall is, so far, about the size of the two quick ones. That is a record of what
+        happened, not a guide to what will.
+      </p>
+      <p>
+        Measured on our stock page’s setting, Meta normally falls about 21.7% below its one-year
+        high before turning. On 22 October it was 16.8% below, inside its normal range.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The fourth quarter.</strong> Meta forecasts revenue of $73–76 billion, 22–27%
+          more than a year earlier, and a tax rate of 15–17%.
+        </li>
+        <li>
+          <strong>2027.</strong> No revenue forecast yet. Meta says it expects to “sustain
+          strong overall revenue growth throughout 2027”, and that Reality Labs, its glasses and
+          headsets unit, will lose about $15 billion, down from $18–19 billion in 2026.
+        </li>
+        <li>
+          <strong>The share split.</strong> The Class C shares take effect on 19 January 2027.
+        </li>
+        <li>
+          <strong>The next results.</strong> Meta has not set a date. Its fourth-quarter results
+          came out on 1 February 2024, 29 January 2025 and 28 January 2026.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter and Meta’s own forecasts for the next. A forecast is a
+        company’s estimate and can be wrong. The share-price history is a record of what
+        happened before, not a prediction. This article is general information and does not take
+        into account your objectives, financial situation or needs.
+      </p>
+    </>
+  ),
+  'tesla-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Tesla reported its results for the three months to 30 September after the US market
+        closed on 21 October 2026. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $28.05 billion, against $28.10 billion a year earlier.
+        </li>
+        <li>
+          <strong>Profit:</strong> operating income of $718 million, down 56% from $1.62
+          billion. Net income was $787 million, down 43%.
+        </li>
+        <li>
+          <strong>Earnings per share:</strong> $0.22, or $0.48 on Tesla’s adjusted measure,
+          which leaves out share-based pay and some investment gains and losses.
+        </li>
+        <li>
+          <strong>Cash:</strong> $1.53 billion of free cash flow, and $45.45 billion of cash and
+          investments.
+        </li>
+        <li>
+          <strong>Cars:</strong> 486,532 delivered, 2% fewer than a year earlier. Production
+          rose 4%, to 464,391.
+        </li>
+        <li>
+          <strong>What’s new:</strong> a board committee to explore a deeper relationship with
+          SpaceX, and a lower spending forecast for 2026.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <p>
+        Tesla does not give a revenue forecast, so the cleanest test is against the same quarter
+        a year earlier.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$28.05B', c2: '$28.10B', c3: '−0.2%' } },
+          { cells: { c0: 'Car sales and leasing', c1: '$20.56B', c2: '$21.21B', c3: '−3.0%' } },
+          { cells: { c0: 'Energy storage and solar', c1: '$2.88B', c2: '$3.42B', c3: '−15.6%' } },
+          { cells: { c0: 'Services and other', c1: '$4.61B', c2: '$3.48B', c3: '+32.5%' } },
+          { cells: { c0: 'Gross profit', c1: '$5.49B', c2: '$5.05B', c3: '+8.7%' } },
+          { cells: { c0: 'Operating expenses', c1: '$4.78B', c2: '$3.43B', c3: '+39.2%' } },
+          { cells: { c0: 'Operating income', c1: '$0.72B', c2: '$1.62B', c3: '−55.8%' } },
+          { cells: { c0: 'Operating margin', c1: '2.6%', c2: '5.8%', c3: '' } },
+          { cells: { c0: 'Diluted earnings per share', c1: '$0.22', c2: '$0.39', c3: '' } },
+        ]}
+      />
+      <p>
+        Tesla made more on each sale: its gross margin rose to 19.6%, from 18.0%. The profit
+        went on spending. Operating expenses rose 39%, which Tesla puts down to its AI work,
+        which it calls Super Intelligence, and other research projects, to share-based pay,
+        including its CEO’s 2025 pay award, and to overheads. Research and development alone
+        cost $2.76 billion, up from $1.63 billion, a rise of 69%.
+      </p>
+      <p>
+        Energy storage revenue fell, which Tesla says was partly due to “tariff-related customer
+        refunds”. It also says it has its “highest-ever order rate and backlog” for storage.
+        Services and other grew 32.5%. Within car revenue, Tesla points to higher sales of Full
+        Self-Driving: its active customers, counting both one-off purchases and monthly
+        subscriptions, reached 1.74 million, up from 1.04 million a year earlier.
+      </p>
+
+      <h2>Where the money is going</h2>
+      <p>
+        Tesla’s spending is rising quickly, but less quickly than it said in July.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the money is going"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Cash from operations', c1: '$6.26B', c2: '$6.24B' } },
+          { cells: { c0: 'Capital expenditure', c1: '$4.73B', c2: '$2.25B' } },
+          { cells: { c0: 'Free cash flow', c1: '$1.53B', c2: '$3.99B' } },
+        ]}
+      />
+      <p>
+        In its second-quarter report, Tesla said it expected capital expenditure of “in excess
+        of $25 billion in 2026”. In this quarter’s report the figure is “in excess of $20
+        billion in 2026”. It has spent $13.01 billion in the first nine months, so the new
+        figure points to about $7 billion or more in the last three.
+      </p>
+      <p>
+        Tesla says the spending is driven by its Super Intelligence projects: computing power
+        and data centres, new manufacturing and research production lines, and the fleet of cars
+        and other assets it runs itself. It plans to take its computing power for training its
+        driving and robot software to 400 megawatts by the end of the year, and to start
+        commissioning equipment in 2027 at a chip factory it is building in Austin.
+      </p>
+
+      <h2>Robotaxi, Optimus and the Semi</h2>
+      <ul>
+        <li>
+          <strong>Robotaxi.</strong> Tesla started giving Robotaxi rides in Cybercabs in Austin
+          on 3 September. Its Robotaxi service had driven nearly two million miles unsupervised
+          by the end of September.
+        </li>
+        <li>
+          <strong>Optimus.</strong> Production of its humanoid robot began on Tesla’s
+          high-volume line in Fremont.
+        </li>
+        <li>
+          <strong>Tesla Semi.</strong> Volume production of its heavy truck began in Nevada.
+        </li>
+      </ul>
+
+      <h2>SpaceX</h2>
+      <p>
+        Tesla’s quarterly report, filed the day after the results, says its board “has formed a
+        special committee … comprising disinterested directors to explore deepening Tesla’s
+        relationship with SpaceX, which could be through certain arrangements including without
+        limitation a business combination”. It adds that “there is no assurance that any such
+        Transaction will be consummated”, and that one would need the committee’s recommendation
+        and, if agreed, shareholder approval.
+      </p>
+      <p>
+        Tesla already owns a small part of SpaceX: it invested $2.00 billion in SpaceX shares in
+        March 2026, a stake of less than 1%. Elon Musk is the chief executive of both companies.
+      </p>
+
+      <h2>For Australian readers</h2>
+      <p>
+        Tesla says it achieved “record quarterly deliveries in several markets, including
+        Canada, Australia, Japan and Taiwan”. It does not give a figure for Australia.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        On 22 October, the first full day of trading after the results, Tesla closed at $374.58,
+        down 3.1% from $386.47 the day before. The wider market fell too: the S&P 500 lost 1.2%
+        and the Nasdaq Composite 2.6% that day.
+      </p>
+      <p>
+        It was the fourth results day in a row on which Tesla’s shares fell. After the fall,
+        Tesla was:
+      </p>
+      <ul>
+        <li>
+          <strong>23.5% below its record close</strong> of $489.88 on 16 December 2025,
+        </li>
+        <li>
+          <strong>24.9% below its highest price of the past year</strong>, $498.83 on 22
+          December 2025,
+        </li>
+        <li>
+          <strong>16.7% lower than at the start of 2026.</strong>
+        </li>
+      </ul>
+      <p>
+        The current dip has already been deeper. From that December record, Tesla fell as far as
+        $298.32 on 29 July 2026, 39.1% below.
+      </p>
+      <p>
+        The US market is still near its high: on 22 October the S&P 500 was 2.0% below its
+        record close, set on 6 October.
+      </p>
+
+      <h2>How Tesla shares usually react to results</h2>
+      <p>
+        Tesla’s results days are big events. We measured all 44 regular results releases from
+        February 2016 to October 2026, comparing the close on the day after with the close on
+        the day Tesla reported:
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>6.0%</strong>. Since 2022 it was{' '}
+          <strong>9.5%</strong>.
+        </li>
+        <li>
+          11 of the 44 moved by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>14.5%</strong> in July 2026. That quarter, free cash flow
+          was negative $1.09 billion, the first negative quarter since early 2024.
+        </li>
+        <li>
+          The largest rise was <strong>21.9%</strong> in October 2024.
+        </li>
+        <li>
+          The shares fell after 26 of the 44. The last four: January 2026 (−3.5%), April 2026
+          (−3.6%), July 2026 (−14.5%) and October 2026 (−3.1%).
+        </li>
+      </ul>
+
+      <h2>How far Tesla has fallen before</h2>
+      <p>
+        Tesla has fallen 35% or more nine times since it listed in June 2010, counting the
+        current fall. These are measured from a record close to the lowest close before the
+        shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Tesla has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'November 2010', c1: 'February 2011', c2: '−38.5%', c3: 'March 2012' } },
+          { cells: { c0: 'September 2013', c1: 'November 2013', c2: '−37.7%', c3: 'February 2014' } },
+          { cells: { c0: 'September 2014', c1: 'February 2016', c2: '−49.8%', c3: 'April 2017' } },
+          { cells: { c0: 'September 2017', c1: 'June 2019', c2: '−53.5%', c3: 'December 2019' } },
+          { cells: { c0: 'February 2020', c1: 'March 2020', c2: '−60.6%', c3: 'June 2020' } },
+          { cells: { c0: 'January 2021', c1: 'March 2021', c2: '−36.2%', c3: 'October 2021' } },
+          { cells: { c0: 'November 2021', c1: 'January 2023', c2: '−73.6%', c3: 'December 2024' } },
+          { cells: { c0: 'December 2024', c1: 'April 2025', c2: '−53.8%', c3: 'December 2025' } },
+          { cells: { c0: 'December 2025', c1: 'July 2026 (deepest so far)', c2: '−39.1%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The first eight all got back to their record. How long it took did not follow how far
+        they fell: the 60.6% fall of 2020 was back about three months after its low, while the
+        73.6% fall of 2021–23 took almost two years. At 39.1%, the current fall is, so far,
+        smaller than five of the eight before it. That is a record of what happened, not a guide
+        to what will.
+      </p>
+      <p>
+        Measured on our stock page’s setting, Tesla normally falls about 27.3% below its
+        one-year high before turning. On 22 October it was 24.9% below, inside its normal range.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Spending.</strong> Tesla expects capital expenditure of more than $20 billion
+          in 2026.
+        </li>
+        <li>
+          <strong>SpaceX.</strong> The board committee’s work has no stated end date.
+        </li>
+        <li>
+          <strong>Robotaxi.</strong> Tesla says it expects to reduce wait times in Austin with
+          more cars in the fleet.
+        </li>
+        <li>
+          <strong>The next results.</strong> Tesla has not set a date. Its fourth-quarter
+          results came out on 29 January 2025 and 28 January 2026.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. The share-price history is a record of what happened
+        before, not a prediction. This article is general information and does not take into
+        account your objectives, financial situation or needs.
+      </p>
+    </>
+  ),
 };
 
 /**
