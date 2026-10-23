@@ -716,6 +716,44 @@ test.describe('the Articles section', () => {
     expect(checked, 'no ranked tables were measured — the slug filter is stale').toBe(3);
   });
 
+  test('no table cell prints past its own column', async ({ page }) => {
+    // ⚠️ Owner review, 2026-10-24: Meta's forecast cell "19–25% (implied by the
+    // range)" ran across the Reported cell beside it. Numeric cells do not wrap, so a
+    // long one simply paints over its neighbour — nothing scrolls and nothing clips,
+    // which is why the page-scroll guards were green. Measured on the text's own ink
+    // against the cell's content box, at a phone and a desktop width.
+    let measured = 0;
+    for (const width of [375, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      for (const path of PATHS) {
+        await page.goto(path);
+        await ready(page);
+        const r = await page.evaluate(() => {
+          const bad: string[] = [];
+          let n = 0;
+          for (const c of document.querySelectorAll<HTMLElement>('.art-table th, .art-table td')) {
+            const range = document.createRange();
+            range.selectNodeContents(c);
+            const ink = range.getBoundingClientRect();
+            if (ink.width === 0) continue;
+            n += 1;
+            const box = c.getBoundingClientRect();
+            const cs = getComputedStyle(c);
+            const left = box.left + parseFloat(cs.paddingLeft);
+            const right = box.right - parseFloat(cs.paddingRight);
+            if (ink.left < left - 1 || ink.right > right + 1) bad.push((c.textContent ?? '').trim());
+          }
+          return { bad, n };
+        });
+        expect(r.bad, `${path} at ${width}px: these cells print past their column`).toEqual([]);
+        measured += r.n;
+      }
+    }
+    // The control: every article has at least one table, so a selector that matched
+    // nothing would otherwise pass having measured nothing (CLAUDE.md 14g).
+    expect(measured, 'no table cells were measured — the selector is stale').toBeGreaterThan(PATHS.length * 10);
+  });
+
   test('a table scrolls inside its own box — the page never does', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
     for (const path of [ARTICLES_INDEX_PATH, ...PATHS]) {
