@@ -1504,14 +1504,14 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       <h2>The deeper the fall, the longer the wait</h2>
       <DataTable
         wrapHeaders
-        minWidth="620px"
+        minWidth="600px"
         caption={`Every 20% fall since 2000, grouped by how far it fell, as at ${TECH_AS_AT}`}
         columns={[
-          { key: 'depth', label: 'How far it fell', width: '24%' },
-          { key: 'tw', label: 'Technology: typical wait', numeric: true, width: '19%' },
-          { key: 't5', label: 'Technology: back within 5 years', numeric: true, width: '19%' },
-          { key: 'aw', label: 'Whole ASX 200: typical wait', numeric: true, width: '19%' },
-          { key: 'a5', label: 'Whole ASX 200: back within 5 years', numeric: true, width: '19%' },
+          { key: 'depth', label: 'How far it fell', width: '20%' },
+          { key: 'tw', label: 'Technology: typical wait', numeric: true, width: '20%' },
+          { key: 't5', label: 'Technology: back within 5 years', numeric: true, width: '20%' },
+          { key: 'aw', label: 'Whole ASX 200: typical wait', numeric: true, width: '20%' },
+          { key: 'a5', label: 'Whole ASX 200: back within 5 years', numeric: true, width: '20%' },
         ]}
         rows={TECH_DEPTH_LADDER.map(([depth, tw, t5, aw, a5]) => ({
           cells: { depth, tw, t5, aw, a5 },
