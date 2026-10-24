@@ -131,4 +131,6 @@ reference/meta-q3-2026/sources/
 # of the pipeline and stays; these are just what one run of it was given.
 .repull/
 reference/tsla-q3-2026/sources/
+reference/nxt-2026-10/sources/
 reference/video-04/
+reference/video-05/

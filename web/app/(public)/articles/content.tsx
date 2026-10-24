@@ -2536,6 +2536,273 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
     </>
   ),
+  'nextdc-shares-power-poles': () => (
+    <>
+
+      <h2>The short version</h2>
+      <ul>
+        <li>
+          <strong>The fall:</strong> NEXTDC’s shares were halted on Monday 19 October. When they
+          traded again on Wednesday, they closed at <strong>$5.35</strong>, down{' '}
+          <strong>41.7%</strong> from <strong>$9.18</strong>. It was the company’s worst day
+          since it listed in December 2010.
+        </li>
+        <li>
+          <strong>The money:</strong> with 759.6 million shares on issue, that is about{' '}
+          <strong>A$2.9 billion</strong> of market value gone in a day, from about A$7.0 billion
+          to A$4.1 billion.
+        </li>
+        <li>
+          <strong>The cause:</strong> Jemena, the electricity distributor that supplies M3 in
+          West Footscray, has suspended part of the 66,000-volt line work needed to bring it
+          more power. NEXTDC says Jemena blamed safety concerns and lost access to work sites
+          because of community opposition, and the absence of council consent, and does not
+          expect to restart before February 2027.
+        </li>
+        <li>
+          <strong>What NEXTDC changed:</strong> it took the affected M3 contracts out of its
+          forecast for the year to June 2027. Underlying EBITDA is now forecast at{' '}
+          <strong>A$245–265 million</strong>, down from A$385–410 million, and it has put all
+          new projects and land purchases on hold.
+        </li>
+      </ul>
+      <p>
+        All figures are in Australian dollars.
+      </p>
+
+      <h2>What happened on the street</h2>
+      <p>
+        The new poles are the most visible part of the work. Jemena has been replacing 7-metre
+        wooden poles with 15-metre poles rated for up to 66,000 volts, about 160 times the
+        voltage previously on one resident’s street, the ABC reported in September. That
+        resident told the ABC he learned what the poles were for only when they went up.
+      </p>
+      <p>
+        In Sanderson Street, Yarraville, the suburb next to West Footscray, residents had
+        watched the poles go up a few blocks away. The ABC reported that on the day Jemena’s
+        crews arrived in August, residents left their cars and bins in the street so the
+        equipment could not be put in position, and some taped notes to their car windows
+        explaining why. The crews filled in the holes they had dug and left. They had not been
+        back by late October.
+      </p>
+      <p>
+        “Everyone decided this is not happening on our watch,” resident Milco Bogoevski told the
+        ABC.
+      </p>
+      <p>
+        Maribyrnong City Council says the poles did not need a planning permit, but Jemena
+        needed its consent to work in the road reserve (the footpaths and nature strips), and
+        that the permits it was contacted about earlier this year were not approved. The council
+        has said it wants the lines put underground. Jemena told the ABC that underground cables
+        cost more and are more complex, and that its communication “could have been better”.
+      </p>
+      <p>
+        One caution on the story as it is often told. The council describes two sets of works in
+        the area: lines for the data centre in West Footscray, and upgrades to ageing power
+        infrastructure in Yarraville. The ABC’s reporting links the Sanderson Street blockade to
+        the power for NEXTDC’s next stage. NEXTDC’s own release does not mention any street; it
+        says Jemena suspended parts of its works in September, citing safety concerns and lack
+        of access to work sites arising from “community and stakeholder opposition”, and the
+        lack of council consent.
+      </p>
+
+      <h2>Why the power matters so much</h2>
+      <p>
+        A data centre is a building full of computers that companies rent. Its product is, in
+        effect, electricity delivered safely to those computers, so a data centre can only
+        charge for the space its power supply can run.
+      </p>
+      <p>
+        That is why NEXTDC’s results in August mattered. At 30 June 2026 it had signed customers
+        for <strong>740.1 megawatts</strong> of capacity but was billing for <strong>175.0
+        megawatts</strong>. The difference, <strong>565.1 megawatts</strong>, more than three
+        times what it bills today, is contracted revenue that only starts once the capacity is
+        built and powered. Much of the company’s value rests on that backlog turning into
+        billing.
+      </p>
+      <p>
+        M3 in West Footscray is part of that backlog. NEXTDC added 42 megawatts there in the
+        year to June and had another 165 megawatts in progress. The ABC describes the site as
+        about 15 metres from homes, with planned capacity of 225 megawatts. When the next
+        increase in its power supply slipped, so did the date NEXTDC can bill for it.
+      </p>
+
+      <h2>What NEXTDC changed on 21 October</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="What NEXTDC changed on 21 October"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Forecast in August', width: '30%' },
+          { key: 'c2', label: 'Forecast now', width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Net revenue, year to June 2027', c1: 'A$615–640M', c2: 'A$475–500M' } },
+          { cells: { c0: 'Underlying EBITDA', c1: 'A$385–410M', c2: 'A$245–265M' } },
+          { cells: { c0: 'Capital expenditure', c1: 'A$5.25–5.75B', c2: 'A$4.5–5.0B' } },
+        ]}
+      />
+      <ul>
+        <li>
+          <strong>Why:</strong> the August forecast included about <strong>A$140
+          million</strong> each of net revenue and underlying EBITDA from the affected M3
+          contracts. NEXTDC has taken them out until it can estimate them reliably. That is
+          about a third of the earnings forecast at the midpoints.
+        </li>
+        <li>
+          <strong>The customer:</strong> the capacity “remains under contract, subject to the
+          customer’s rights”. Those contracts allow credits if capacity is late, and in some
+          circumstances let the customer terminate. NEXTDC is considering whether force majeure
+          relief applies. It has not named the customer.
+        </li>
+        <li>
+          <strong>Spending:</strong> all new development projects and land acquisitions are on
+          hold “for the foreseeable future”, and the board will look at selling some development
+          sites it does not need soon.
+        </li>
+        <li>
+          <strong>Debt:</strong> NEXTDC had <strong>A$8.7 billion</strong> of cash and undrawn
+          facilities at 30 September and says it meets its covenants. It also warned that a
+          material change to when customers start paying could limit how much of its A$6.7
+          billion of undrawn senior debt it can draw.
+        </li>
+        <li>
+          <strong>More delay:</strong> later power increases at M3 depend on new transformers at
+          Brooklyn Terminal Station, now expected later than planned, and NEXTDC no longer
+          expects the Victorian government’s decision on a permit for M3’s next two stages until
+          2027, after the state election on 28 November.
+        </li>
+      </ul>
+
+      <h2>How the shares reacted</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How the shares reacted"
+        columns={[
+          { key: 'c0', label: 'Date', width: '40%' },
+          { key: 'c1', label: 'Close', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Change', width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Fri 16 Oct', c1: '$9.18', c2: 'last close before the halt' } },
+          { cells: { c0: 'Wed 21 Oct', c1: '$5.35', c2: '−41.7% (low of the day $5.07, −44.8%)' } },
+          { cells: { c0: 'Thu 22 Oct', c1: '$5.75', c2: '+7.5%' } },
+          { cells: { c0: 'Fri 23 Oct', c1: '$5.61', c2: '−2.4%' } },
+        ]}
+      />
+      <p>
+        Two prices from this year put the fall in context. In April and May, NEXTDC sold new
+        shares to its existing investors at <strong>$12.70</strong> to raise about A$1.5
+        billion. In September, it raised A$1.1 billion of convertible notes against a share
+        price of <strong>$12.60</strong>. On 23 October the shares were <strong>$5.61</strong>,
+        more than 55% below both.
+      </p>
+
+      <h2>The worst day in its history</h2>
+      <p>
+        We measured every trading day since NEXTDC listed in December 2010, close to close.
+        Before 21 October, it had fallen 10% or more in a day only once: <strong>13.9%</strong>{' '}
+        in November 2020. The 41.7% fall is three times that.
+      </p>
+
+      <h2>How far NEXTDC has fallen before</h2>
+      <p>
+        Measured from a record close to the lowest close before the shares got back to it,
+        NEXTDC has had seven falls of 20% or more before this one, and came back from all seven:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far NEXTDC has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Jul 2011', c1: 'Sep 2011', c2: '−30.5%', c3: 'Mar 2012' } },
+          { cells: { c0: 'Mar 2012', c1: 'Jan 2013', c2: '−27.9%', c3: 'May 2013' } },
+          { cells: { c0: 'Jul 2013', c1: 'Jul 2014', c2: '−48.4%', c3: 'Apr 2016' } },
+          { cells: { c0: 'Sep 2016', c1: 'Dec 2016', c2: '−36.5%', c3: 'May 2017' } },
+          { cells: { c0: 'Jun 2018', c1: 'Nov 2018', c2: '−29.0%', c3: 'Mar 2020' } },
+          { cells: { c0: 'Mar 2020', c1: 'Mar 2020', c2: '−23.9%', c3: 'Mar 2020' } },
+          { cells: { c0: 'Nov 2020', c1: 'Oct 2022', c2: '−40.8%', c3: 'Jan 2024' } },
+          { cells: { c0: 'Jul 2024', c1: 'Oct 2026 (so far)', c2: '−71.0%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The record close was <strong>$18.44</strong> on 9 July 2024. On 21 October the shares
+        were 71.0% below it, and 69.6% below on 23 October. The deepest fall NEXTDC had come
+        back from before was 48.4%, in 2013–14, and that took until April 2016. So the current
+        fall has no precedent in its own history.
+      </p>
+      <p>
+        This was already unusual before the halt. Our article of 15 October found NEXTDC 52.0%
+        below its record, past the deepest fall it had recovered from. That is a record of what
+        happened, not a guide to what will.
+      </p>
+      <p>
+        Measured on our stock page’s setting, NEXTDC normally falls about <strong>19.8%</strong>{' '}
+        below its one-year high before turning. On 23 October it was <strong>66.6%</strong>{' '}
+        below.
+      </p>
+
+      <h2>Is this about AI?</h2>
+      <p>
+        That is the question many readers are asking, and the evidence points both ways.
+      </p>
+      <ul>
+        <li>
+          <strong>Against a demand problem:</strong> NEXTDC says the capacity is still under
+          contract and construction of the data halls continues. Luke Laretive of Seneca
+          Financial Solutions told SBS the episode probably says little about AI demand.
+        </li>
+        <li>
+          <strong>For a wider worry:</strong> the same month, the AI data centre company Firmus
+          withdrew its planned ASX listing, and on 22 October the Nasdaq fell 2.6% on what
+          reports put down to worries about AI spending.
+        </li>
+        <li>
+          <strong>What is clearly new</strong> is the risk itself: the ABC called it a dispute
+          in a suburban street wiping A$3 billion off a listed company in a day, and in
+          September the Victorian government announced rules to ban data centres in residential
+          areas, with a 150-metre buffer from homes. NEXTDC’s chief executive, Craig Scroggie,
+          also chairs the industry body, Data Centres Australia.
+        </li>
+      </ul>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>3 November:</strong> Victoria’s caretaker period begins ahead of the 28
+          November election.
+        </li>
+        <li>
+          <strong>20 November:</strong> NEXTDC’s AGM, where it has promised the outcome of its
+          spending review.
+        </li>
+        <li>
+          <strong>February 2027:</strong> the earliest Jemena expects to restart the suspended
+          works.
+        </li>
+        <li>
+          <strong>The year to June 2028:</strong> when NEXTDC now expects the next increase in
+          power at M3.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are NEXTDC’s own forecasts and Jemena’s estimate, as reported by NEXTDC; both can
+        change. The share-price history is a record of what happened before, not a prediction.
+        This article is general information and does not take into account your objectives,
+        financial situation or needs.
+      </p>
+    </>
+  ),
 };
 
 /**
