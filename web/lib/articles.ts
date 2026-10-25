@@ -459,6 +459,38 @@ export const ARTICLES = [
     reviewed: '2026-10-23',
     minutes: 8,
   },
+  {
+    slug: 'nextdc-shares-power-poles',
+    title: 'Why NEXTDC shares fell 42% in one day',
+    question: 'Why did NEXTDC shares fall 42% in one day?',
+    answer:
+      'NEXTDC shares fell 41.7% on 21 October, wiping about A$2.9 billion off its value, after it cut its forecasts for the year to June 2027. Power work its M3 Melbourne data centre needs has been suspended after community opposition, so it cannot count on billing for that capacity this financial year.',
+    summary:
+      'NEXTDC lost A$2.9 billion of market value in a day. What residents did, why the power matters, what NEXTDC changed, and how far it has fallen before.',
+    kind: 'commentary',
+    deck: [
+      'The shares fell 41.7% in a day, the worst since NEXTDC listed in 2010. ',
+      { strong: 'The power its Melbourne data centre needs is held up by community opposition.' },
+    ],
+    finding: [
+      'Shares ',
+      { figure: '−41.7%' },
+      ' in a day, about ',
+      { figure: 'A$2.9B' },
+      ' of value gone, ',
+      { figure: '−69.6%' },
+      ' from their record.',
+    ],
+    facts: [
+      { value: '−41.7%', label: 'on 21 October' },
+      { value: 'A$2.9B', label: 'of value lost' },
+      { value: '−69.6%', label: 'below its record' },
+    ],
+    region: 'Australia',
+    published: '2026-10-25',
+    reviewed: '2026-10-25',
+    minutes: 8,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];
