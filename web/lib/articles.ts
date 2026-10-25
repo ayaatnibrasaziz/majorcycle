@@ -466,7 +466,7 @@ export const ARTICLES = [
     answer:
       'NEXTDC shares fell 41.7% on 21 October, wiping about A$2.9 billion off its value, after it cut its forecasts for the year to June 2027. Power work its M3 Melbourne data centre needs has been suspended after community opposition, so it cannot count on billing for that capacity this financial year.',
     summary:
-      'NEXTDC lost A$2.9 billion of market value in a day. What residents did, why the power matters, what NEXTDC changed, and how far the shares have fallen before.',
+      'NEXTDC lost A$2.9 billion of market value in a day. What residents did, why the power matters, what NEXTDC changed, and how far it has fallen before.',
     kind: 'commentary',
     deck: [
       'The shares fell 41.7% in a day, the worst since NEXTDC listed in 2010. ',

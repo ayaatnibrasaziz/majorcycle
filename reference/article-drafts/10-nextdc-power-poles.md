@@ -17,7 +17,7 @@
 | **URL** | `/articles/nextdc-shares-power-poles` |
 | **Title tag** | Why NEXTDC shares fell 42% in a day: the power poles explained (60 chars) |
 | **H1** | Why NEXTDC shares fell 42% in one day |
-| **Meta description** | NEXTDC lost A$2.9 billion of market value in a day. What residents did, why the power matters, what NEXTDC changed, and how far the shares have fallen before. (154 chars) |
+| **Meta description** | NEXTDC lost A$2.9 billion of market value in a day. What residents did, why the power matters, what NEXTDC changed, and how far it has fallen before. (149 chars) |
 | **Kind** | Market commentary |
 | **Region pill** | Australia |
 | **Reading time** | about 8 minutes (~1,700 words, tables included) |
