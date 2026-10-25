@@ -487,8 +487,8 @@ export const ARTICLES = [
       { value: '−69.6%', label: 'below its record' },
     ],
     region: 'Australia',
-    published: '2026-10-26',
-    reviewed: '2026-10-26',
+    published: '2026-10-25',
+    reviewed: '2026-10-25',
     minutes: 8,
   },
 ] as const satisfies readonly Article[];
