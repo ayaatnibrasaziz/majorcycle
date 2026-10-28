@@ -2803,6 +2803,444 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
     </>
   ),
+  'rba-rate-rises-asx-bank-shares': () => (
+    <>
+
+      <h2>The short version</h2>
+      <ul>
+        <li>
+          <strong>Rates have gone up four times this year.</strong> The Reserve Bank of
+          Australia (RBA) raised its cash rate in February, March, May and September 2026, from{' '}
+          <strong>3.60%</strong> to <strong>4.60%</strong>. Counting the 13 rises of 2022–23,
+          that is <strong>17 rises</strong> since May 2022.
+        </li>
+        <li>
+          <strong>On the day of a rise, the banks barely moved.</strong> We took the average of
+          the four big banks’ share prices on each decision day. They closed higher on{' '}
+          <strong>6</strong> of the 17 days and lower on <strong>11</strong>, and the average
+          move was <strong>+0.04%</strong>, close to nothing.
+        </li>
+        <li>
+          <strong>The reason: by 2:30pm the news was usually old.</strong> The RBA announces at
+          2:30pm on decision day. When nearly everyone expects a rise, share prices have already
+          adjusted in the days or weeks before, so the announcement itself changes little.
+        </li>
+        <li>
+          <strong>The big days were the surprises.</strong> The banks’ worst decision day
+          (<strong>−2.37%</strong>) was in June 2022, when the RBA raised rates by more than
+          expected. Their best (<strong>+4.39%</strong>) was in October 2022, when it raised by
+          less than expected.
+        </li>
+        <li>
+          <strong>This year, each bank’s own results mattered more than the RBA.</strong>{' '}
+          Westpac fell <strong>5.88%</strong> on the day of its August update and ANZ{' '}
+          <strong>2.84%</strong> on its results day. No 2026 rate decision moved any of the four
+          by as much.
+        </li>
+        <li>
+          <strong>Rate rises cut both ways for a bank.</strong> All four say higher rates help
+          them earn more on some of their customers’ savings. All four also say competition for
+          loans takes much of that back, and they have set more money aside in case borrowers
+          struggle.
+        </li>
+      </ul>
+
+      <h2>Five terms used in this article</h2>
+      <ul>
+        <li>
+          <strong>Cash rate:</strong> the interest rate the RBA sets. Banks’ own rates, on home
+          loans and savings accounts, tend to follow it. It is now 4.60%.
+        </li>
+        <li>
+          <strong>Percentage point:</strong> a rise from 4.35% to 4.60% is a rise of 0.25
+          percentage points. You will also see this called “25 basis points”; 100 basis points
+          make one percentage point.
+        </li>
+        <li>
+          <strong>The big four:</strong> Commonwealth Bank (CBA), Westpac, National Australia
+          Bank (NAB) and ANZ, Australia’s four largest banks.
+        </li>
+        <li>
+          <strong>ASX 200:</strong> an index of about 200 of the largest companies on the
+          Australian share market. When people say “the market rose 1%”, they usually mean this
+          index. The big four are part of it.
+        </li>
+        <li>
+          <strong>“Priced in”:</strong> when investors already expect something, they trade on
+          that expectation before it happens, so the share price already reflects it. When it
+          then happens, the price has little left to adjust.
+        </li>
+      </ul>
+
+      <h2>Why would interest rates matter to a bank?</h2>
+      <p>
+        A bank makes most of its money from the gap between the interest it earns and the
+        interest it pays. It pays interest to savers and to the investors it borrows from, and
+        it earns interest on the home loans and business loans it makes. That gap is called the{' '}
+        <strong>net interest margin</strong>.
+      </p>
+      <p>
+        CBA’s net interest margin in the year to June 2026 was <strong>2.05%</strong>. Put
+        simply, for every $100 it has lent out or invested, it kept about $2.05 over the year
+        after paying interest on the money it used. The other three banks’ latest figures:
+        Westpac <strong>1.89%</strong> (three months to June 2026), NAB <strong>1.81%</strong>{' '}
+        and ANZ <strong>1.53%</strong> (both the six months to March 2026).
+      </p>
+      <p>
+        When the RBA raises rates, three things happen to that margin, and they pull in
+        different directions:
+      </p>
+      <p>
+        1. <strong>Some savings earn the bank more.</strong> Part of the money customers keep in
+        everyday accounts earns them little or no interest. The bank invests that money, and
+        when rates go up it earns more on it. All four banks named this as a benefit in their
+        latest results. 2. <strong>Competition takes some of it back.</strong> Banks compete
+        hard for loans by offering lower rates, and savers move money into accounts that pay
+        bonus interest. All four named competition as a pressure on their margin. 3.{' '}
+        <strong>More borrowers may struggle.</strong> Higher repayments make it harder for some
+        customers to keep up, so banks set money aside for loans that may not be repaid. These
+        are called <strong>provisions</strong>, and they reduce profit.
+      </p>
+      <p>
+        Here is what each bank said about those three things in its latest results:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Why would interest rates matter to a bank?"
+        columns={[
+          { key: 'c0', label: 'Bank', width: '40%' },
+          { key: 'c1', label: 'Benefit from higher rates', width: '20%' },
+          { key: 'c2', label: 'Pressure', width: '20%' },
+          { key: 'c3', label: 'Money set aside', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'CBA (year to June 2026)', c1: '“higher earnings on replicating portfolio and capital hedges”', c2: '“largely offset by lower lending margins”', c3: 'Loan impairment expense up 9% to $788 million; “arrears rose in some consumer portfolios”' } },
+          { cells: { c0: 'Westpac (quarter to June 2026)', c1: '“benefits from the higher interest rate environment”', c2: '“competitive pressures in lending, deposit mix and a higher proportion of customers qualifying for saving bonus rates”', c3: 'Provisions above its central forecast rose to $2.0 billion' } },
+          { cells: { c0: 'NAB (half to March 2026)', c1: '“higher earnings from the deposit replicating portfolio”', c2: '“offset by lending competition”', c3: 'An extra $300 million of forward-looking provisions, for “potential stress related to the Middle East conflict”' } },
+          { cells: { c0: 'ANZ (half to March 2026)', c1: 'Replicating portfolios added 0.02 percentage points to the margin, “benefiting from higher rates”', c2: '“continued Australia home loan pricing competition”', c3: 'A $175 million charge for “the potential impacts of the Middle East conflict”' } },
+        ]}
+      />
+      <p>
+        (A “replicating portfolio” is the bank’s name for the way it invests that low-interest
+        savings money.)
+      </p>
+      <p>
+        <strong>What happened last time.</strong> CBA’s results show how these forces played out
+        over the 2022–23 rises:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Why would interest rates matter to a bank?"
+        columns={[
+          { key: 'c0', label: 'CBA’s results for', width: '40%' },
+          { key: 'c1', label: 'Net interest margin', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Cash rate at the end of the period', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Year to June 2022', c1: '1.90%', c2: '0.85%' } },
+          { cells: { c0: 'Six months to December 2022', c1: '2.10%', c2: '3.10%' } },
+          { cells: { c0: 'Year to June 2023', c1: '2.07%', c2: '4.10%' } },
+          { cells: { c0: 'Year to June 2024', c1: '1.99%', c2: '4.35%' } },
+          { cells: { c0: 'Year to June 2025', c1: '2.08%', c2: '3.85%' } },
+          { cells: { c0: 'Year to June 2026', c1: '2.05%', c2: '4.35%' } },
+        ]}
+      />
+      <p>
+        The first rises lifted CBA’s margin by about 0.2 percentage points within six months.
+        After that, rates kept rising but the margin did not: CBA said its monthly margins
+        peaked in late 2022 and blamed competition for home loans and customers switching their
+        savings. So higher rates helped, but only for a while, and not by much.
+      </p>
+
+      <h2>What we measured, and how to read the table</h2>
+      <p>
+        For each of the 17 rises, we compared each bank’s closing share price on decision day
+        with its closing price the trading day before. The RBA announces at 2:30pm Sydney time
+        and the ASX’s trading day ends just after 4pm, so the decision-day close includes the
+        market’s reaction.
+      </p>
+      <p>
+        The table’s columns:
+      </p>
+      <ul>
+        <li>
+          <strong>Decision:</strong> the day the RBA announced the rise.
+        </li>
+        <li>
+          <strong>Rise:</strong> how much the cash rate went up, in percentage points.
+        </li>
+        <li>
+          <strong>New cash rate:</strong> the cash rate after the rise.
+        </li>
+        <li>
+          <strong>Big four banks:</strong> how much the four banks’ share prices moved that day,
+          on average. A minus sign means they fell.
+        </li>
+        <li>
+          <strong>ASX 200:</strong> how much the whole market moved that day, for comparison.
+        </li>
+      </ul>
+      <p>
+        <strong>Reading one row:</strong> on 7 June 2022, the RBA raised the cash rate by 0.50
+        percentage points, to 0.85%. That day, the big four’s shares fell 2.37% on average,
+        while the market as a whole fell 1.53%. So the banks fell, and by more than the market.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="What we measured, and how to read the table"
+        columns={[
+          { key: 'c0', label: 'Decision', width: '40%' },
+          { key: 'c1', label: 'Rise', numeric: true, width: '15%' },
+          { key: 'c2', label: 'New cash rate', numeric: true, width: '15%' },
+          { key: 'c3', label: 'Big four banks', numeric: true, width: '15%' },
+          { key: 'c4', label: 'ASX 200', numeric: true, width: '15%' },
+        ]}
+        rows={[
+          { cells: { c0: '3 May 2022', c1: '+0.25', c2: '0.35%', c3: '−0.35%', c4: '−0.42%' } },
+          { cells: { c0: '7 Jun 2022', c1: '+0.50', c2: '0.85%', c3: '−2.37%', c4: '−1.53%' } },
+          { cells: { c0: '5 Jul 2022', c1: '+0.50', c2: '1.35%', c3: '−0.23%', c4: '+0.25%' } },
+          { cells: { c0: '2 Aug 2022', c1: '+0.50', c2: '1.85%', c3: '+1.00%', c4: '+0.07%' } },
+          { cells: { c0: '6 Sep 2022', c1: '+0.50', c2: '2.35%', c3: '−0.32%', c4: '−0.38%' } },
+          { cells: { c0: '4 Oct 2022', c1: '+0.25', c2: '2.60%', c3: '+4.39%', c4: '+3.75%' } },
+          { cells: { c0: '1 Nov 2022', c1: '+0.25', c2: '2.85%', c3: '+1.15%', c4: '+1.65%' } },
+          { cells: { c0: '6 Dec 2022', c1: '+0.25', c2: '3.10%', c3: '−0.46%', c4: '−0.47%' } },
+          { cells: { c0: '7 Feb 2023', c1: '+0.25', c2: '3.35%', c3: '−0.27%', c4: '−0.46%' } },
+          { cells: { c0: '7 Mar 2023', c1: '+0.25', c2: '3.60%', c3: '+0.90%', c4: '+0.49%' } },
+          { cells: { c0: '2 May 2023', c1: '+0.25', c2: '3.85%', c3: '−0.28%', c4: '−0.92%' } },
+          { cells: { c0: '6 Jun 2023', c1: '+0.25', c2: '4.10%', c3: '−1.45%', c4: '−1.20%' } },
+          { cells: { c0: '7 Nov 2023', c1: '+0.25', c2: '4.35%', c3: '−1.29%', c4: '−0.29%' } },
+          { cells: { c0: '3 Feb 2026', c1: '+0.25', c2: '3.85%', c3: '+0.59%', c4: '+0.89%' } },
+          { cells: { c0: '17 Mar 2026', c1: '+0.25', c2: '4.10%', c3: '+0.70%', c4: '+0.36%' } },
+          { cells: { c0: '5 May 2026', c1: '+0.25', c2: '4.35%', c3: '−0.86%', c4: '−0.19%' } },
+          { cells: { c0: '29 Sep 2026', c1: '+0.25', c2: '4.60%', c3: '−0.21%', c4: '+0.34%' } },
+        ]}
+      />
+      <p>
+        <strong>What the table shows:</strong>
+      </p>
+      <ul>
+        <li>
+          The banks fell on 11 of the 17 days and rose on 6. A rate rise was not reliably good
+          or bad news for their shares on the day.
+        </li>
+        <li>
+          On 11 of the 17 days the banks moved by less than 1% either way, and on 15 of the 17
+          they moved in the same direction as the market.
+        </li>
+        <li>
+          The banks did better than the market on 9 days and worse on 8, so a rise did not
+          reliably favour them over other companies either.
+        </li>
+        <li>
+          The reactions look much the same whether rates were rising from near zero, as in 2022,
+          or from 3.60%, as in 2026.
+        </li>
+      </ul>
+
+      <h2>Why the day itself is usually quiet</h2>
+      <p>
+        By 2:30pm on decision day, the news was usually out. September 2026 shows how.
+      </p>
+      <ul>
+        <li>
+          <strong>On Tuesday 8 September,</strong> Westpac’s economists said they now expected
+          the RBA to raise rates again this year, which meant all four big banks’ economists
+          did, the Motley Fool reported. That day the four banks’ shares fell{' '}
+          <strong>1.77%</strong> on average and the ASX 200 fell <strong>1.00%</strong>.
+        </li>
+        <li>
+          <strong>The day before the decision,</strong> the ABC reported that markets put the
+          chance of a rise at about 90%, and that all 29 economists surveyed by Bloomberg
+          expected one.
+        </li>
+        <li>
+          <strong>On Tuesday 29 September,</strong> the RBA raised the cash rate to 4.60%. The
+          four banks’ shares moved <strong>−0.21%</strong> on average that day, while the ASX
+          200 rose 0.34%.
+        </li>
+      </ul>
+      <p>
+        So the banks’ bigger move came three weeks before the rise, on the day the expectation
+        formed, not on the day the rise was announced.
+      </p>
+
+      <h2>The two days that were different</h2>
+      <p>
+        <strong>7 June 2022: a bigger rise than expected.</strong> Reuters reported that markets
+        had been split between a rise of 0.25 and 0.40 percentage points. The RBA raised by
+        0.50. The ASX 200 fell 1.53% and the four banks fell 2.37% on average, their worst
+        decision day in the run.
+      </p>
+      <p>
+        <strong>4 October 2022: a smaller rise than expected.</strong> After four rises of 0.50
+        points in a row, Market Index reported that the market widely expected a fifth. The RBA
+        raised by 0.25. The ASX 200 rose 3.75% and the four banks rose 4.39% on average, their
+        best decision day in the run. Asia Financial (Reuters) reported it was the market’s best
+        session since June 2020.
+      </p>
+      <p>
+        Both days had a rate rise. What made them different was how the rise compared with what
+        investors had expected.
+      </p>
+
+      <h2>This year, bank by bank</h2>
+      <p>
+        Each bank’s share price on the four decision days of 2026:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="This year, bank by bank"
+        columns={[
+          { key: 'c0', label: 'Decision', width: '40%' },
+          { key: 'c1', label: 'CBA', numeric: true, width: '15%' },
+          { key: 'c2', label: 'Westpac', numeric: true, width: '15%' },
+          { key: 'c3', label: 'NAB', numeric: true, width: '15%' },
+          { key: 'c4', label: 'ANZ', numeric: true, width: '15%' },
+        ]}
+        rows={[
+          { cells: { c0: '3 Feb 2026', c1: '+1.06%', c2: '+1.03%', c3: '+0.19%', c4: '+0.08%' } },
+          { cells: { c0: '17 Mar 2026', c1: '+0.34%', c2: '+1.39%', c3: '+0.85%', c4: '+0.21%' } },
+          { cells: { c0: '5 May 2026', c1: '+0.38%', c2: '−2.26%', c3: '−0.64%', c4: '−0.94%' } },
+          { cells: { c0: '29 Sep 2026', c1: '−0.82%', c2: '−0.06%', c3: '−0.03%', c4: '+0.05%' } },
+        ]}
+      />
+      <p>
+        Westpac’s fall on 5 May came on the same day it released its half-year results, so that
+        day’s move reflects more than the RBA.
+      </p>
+      <p>
+        Now compare the days each bank reported its own results:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="This year, bank by bank"
+        columns={[
+          { key: 'c0', label: 'Bank', width: '40%' },
+          { key: 'c1', label: 'Results day', width: '20%' },
+          { key: 'c2', label: 'Share price that day', numeric: true, width: '20%' },
+          { key: 'c3', label: 'ASX 200 that day', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'ANZ', c1: 'Fri 1 May 2026 (half-year results)', c2: '−2.84%', c3: '+0.74%' } },
+          { cells: { c0: 'NAB', c1: 'Mon 4 May 2026 (half-year results)', c2: '−1.58%', c3: '−0.37%' } },
+          { cells: { c0: 'Westpac', c1: 'Tue 5 May 2026 (half-year results)', c2: '−2.26%', c3: '−0.19%' } },
+          { cells: { c0: 'Westpac', c1: 'Mon 10 Aug 2026 (quarterly update)', c2: '−5.88%', c3: '−0.33%' } },
+          { cells: { c0: 'CBA', c1: 'Wed 12 Aug 2026 (full-year results)', c2: '−0.69%', c3: '−0.45%' } },
+        ]}
+      />
+      <p>
+        Westpac’s 5.88% fall on 10 August is bigger than any move by any of the four on a 2026
+        decision day. In the update released that day, Westpac said its provisions above its
+        central forecast had risen to $2.0 billion. A share price on one day reflects many
+        things, and we cannot say for certain what any one move was about, but the pattern is
+        clear: in 2026, news about each bank moved its shares more than news about rates.
+      </p>
+
+      <h2>How the big four have done this year</h2>
+      <p>
+        From the last close of 2025 to 27 October 2026:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How the big four have done this year"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Share price', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Including dividends', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'ANZ', c1: '+9.7%', c2: '+12.2%' } },
+          { cells: { c0: 'CBA', c1: '+0.9%', c2: '+4.0%' } },
+          { cells: { c0: 'NAB', c1: '−4.8%', c2: '−2.7%' } },
+          { cells: { c0: 'Westpac', c1: '−6.3%', c2: '−4.4%' } },
+          { cells: { c0: 'S&P/ASX 200', c1: '+1.6%', c2: '' } },
+        ]}
+      />
+      <p>
+        “Including dividends” adds back the dividends each bank paid this year, for someone who
+        held the shares all year. The ASX 200 figure is the index itself, which does not include
+        dividends.
+      </p>
+      <p>
+        Four rate rises, and four different results. Each bank had the same rate rises; what
+        differed was what each told investors about its own business this year:
+      </p>
+      <ul>
+        <li>
+          <strong>ANZ</strong> said it had cut costs sharply: operating expenses fell 9% in the
+          half to March, as part of a plan that removes 3,500 roles. Its cash profit rose 14% on
+          the previous half, excluding one-off items.
+        </li>
+        <li>
+          <strong>CBA</strong> said its cash profit rose 7% to $11.0 billion in the year to
+          June, and that it grew at or above the market in all five of its main lending and
+          deposit businesses for the first time.
+        </li>
+        <li>
+          <strong>NAB</strong> said its cash profit, excluding a one-off accounting charge for
+          software, rose 2.3% in the half to March, and it set aside an extra $300 million for
+          the Middle East conflict.
+        </li>
+        <li>
+          <strong>Westpac</strong> said its margin fell 0.06 percentage points to 1.89% in the
+          half to March, naming competition as a cause, and its provisions above its central
+          forecast reached $2.0 billion by June.
+        </li>
+      </ul>
+      <p>
+        These are the banks’ own statements. We report them beside the share prices; we do not
+        claim any one of them caused a particular move.
+      </p>
+
+      <h2>What comes next</h2>
+      <p>
+        <strong>Inflation, Wednesday 28 October, 11:30am.</strong> Inflation is how fast prices
+        are rising. The RBA raises interest rates to slow it down, and it aims to keep inflation
+        within its target range of 2–3% a year. On 28 October the ABS (the Australian Bureau of
+        Statistics) reported that inflation is now <strong>4.3%</strong>, meaning prices in
+        September were 4.3% higher than a year earlier. A month ago, inflation was{' '}
+        <strong>4.0%</strong>. So inflation is above the RBA’s target, and it went up rather
+        than down.
+      </p>
+      <p>
+        <strong>The RBA, Tuesday 3 November, 2:30pm.</strong> Melbourne Cup day. On the evidence
+        above, what matters for bank shares on the day is less whether rates rise than whether
+        the decision matches what investors expect by then.
+      </p>
+      <p>
+        <strong>The banks’ own results, the same fortnight.</strong> Westpac reports its
+        full-year results on Monday 2 November, NAB on Thursday 5 November and ANZ on Monday 9
+        November, according to their financial calendars. This year, results days moved the
+        banks more than decision days did.
+      </p>
+
+      <h2>What this does not tell you</h2>
+      <ul>
+        <li>
+          <strong>Seventeen days is a small sample</strong>, and 13 of them came in one run of
+          rises in 2022–23, which started from a cash rate of 0.10%.
+        </li>
+        <li>
+          <strong>A share price moves for many reasons at once.</strong> A decision day can also
+          carry company news or news from overseas, as 5 May 2026 did.
+        </li>
+        <li>
+          <strong>The past is a record, not a forecast.</strong> None of this tells you what
+          bank shares will do on 3 November.
+        </li>
+      </ul>
+      <p>
+        This article is general information only, not financial advice. It does not take into
+        account your objectives, financial situation or needs.
+      </p>
+    </>
+  ),
 };
 
 /**
