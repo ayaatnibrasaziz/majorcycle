@@ -2992,11 +2992,11 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         minWidth="520px"
         caption="What we measured, and how to read the table"
         columns={[
-          { key: 'c0', label: 'Decision', width: '40%' },
-          { key: 'c1', label: 'Rise', numeric: true, width: '15%' },
-          { key: 'c2', label: 'New cash rate', numeric: true, width: '15%' },
-          { key: 'c3', label: 'Big four banks', numeric: true, width: '15%' },
-          { key: 'c4', label: 'ASX 200', numeric: true, width: '15%' },
+          { key: 'c0', label: 'Decision', width: '28%' },
+          { key: 'c1', label: 'Rise', numeric: true, width: '18%' },
+          { key: 'c2', label: 'New cash rate', numeric: true, width: '18%' },
+          { key: 'c3', label: 'Big four banks', numeric: true, width: '18%' },
+          { key: 'c4', label: 'ASX 200', numeric: true, width: '18%' },
         ]}
         rows={[
           { cells: { c0: '3 May 2022', c1: '+0.25', c2: '0.35%', c3: '−0.35%', c4: '−0.42%' } },
@@ -3095,11 +3095,11 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         minWidth="520px"
         caption="This year, bank by bank"
         columns={[
-          { key: 'c0', label: 'Decision', width: '40%' },
-          { key: 'c1', label: 'CBA', numeric: true, width: '15%' },
-          { key: 'c2', label: 'Westpac', numeric: true, width: '15%' },
-          { key: 'c3', label: 'NAB', numeric: true, width: '15%' },
-          { key: 'c4', label: 'ANZ', numeric: true, width: '15%' },
+          { key: 'c0', label: 'Decision', width: '28%' },
+          { key: 'c1', label: 'CBA', numeric: true, width: '18%' },
+          { key: 'c2', label: 'Westpac', numeric: true, width: '18%' },
+          { key: 'c3', label: 'NAB', numeric: true, width: '18%' },
+          { key: 'c4', label: 'ANZ', numeric: true, width: '18%' },
         ]}
         rows={[
           { cells: { c0: '3 Feb 2026', c1: '+1.06%', c2: '+1.03%', c3: '+0.19%', c4: '+0.08%' } },
