@@ -46,7 +46,9 @@ def table(rows: list[list[str]], caption: str, ind: int) -> str:
     head, body = rows[0], rows[2:]
     n = len(head)
     keys = [f"c{k}" for k in range(n)]
-    first_w = 40 if n > 2 else 50
+    # Five or more columns: the first (a date or name) gives way, so a one-word header such as
+    # "Westpac" fits its numeric column at 375px. At 40% it overflowed by 0.4px (CI, 28 Oct).
+    first_w = 28 if n >= 5 else 40 if n > 2 else 50
     rest_w = (100 - first_w) / (n - 1)
     cols = []
     for k, h in enumerate(head):

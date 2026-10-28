@@ -491,6 +491,38 @@ export const ARTICLES = [
     reviewed: '2026-10-25',
     minutes: 8,
   },
+  {
+    slug: 'rba-rate-rises-asx-bank-shares',
+    title: 'What happened to ASX bank shares each time the RBA raised rates',
+    question: 'What happens to ASX bank shares when the RBA raises rates?',
+    answer:
+      'Across 17 RBA rate rises since 2022, the big four banks’ shares barely moved on the day: the average move was almost exactly zero, because the rise was usually expected. The big moves came on the two days the RBA surprised the market. In 2026, the banks’ own results moved their shares far more than any decision did.',
+    summary:
+      'The RBA has raised rates 17 times since 2022. We measured how CBA, Westpac, NAB and ANZ shares moved each time, and what made the big days different.',
+    kind: 'commentary',
+    deck: [
+      'Across 17 rate rises since 2022, the big four banks barely moved on the day. ',
+      { strong: 'The big days were the two the RBA surprised the market.' },
+    ],
+    finding: [
+      'An average move of ',
+      { figure: '+0.04%' },
+      ' on decision day. The surprises: ',
+      { figure: '+4.39%' },
+      ' and ',
+      { figure: '−2.37%' },
+      '.',
+    ],
+    facts: [
+      { value: '17', label: 'rate rises since 2022' },
+      { value: '+0.04%', label: 'average move on the day' },
+      { value: '+4.39%', label: 'the best surprise day' },
+    ],
+    region: 'Australia',
+    published: '2026-10-28',
+    reviewed: '2026-10-28',
+    minutes: 12,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];
