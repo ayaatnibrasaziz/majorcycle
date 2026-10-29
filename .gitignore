@@ -136,3 +136,13 @@ reference/video-04/
 reference/video-05/
 reference/rba-2026-10/sources/
 reference/video-06/
+
+# Earnings videos 7-12 (Q3 2026 results, MSFT GOOGL LLY AMZN INTC SNDK): the companies' releases,
+# filings and timestamped after-hours quotes saved as sources, and the rendered videos.
+reference/earnings-2026-q3/sources/
+reference/video-07/
+reference/video-08/
+reference/video-09/
+reference/video-10/
+reference/video-11/
+reference/video-12/

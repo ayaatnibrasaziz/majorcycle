@@ -3241,6 +3241,422 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
     </>
   ),
+  'microsoft-q1-fy27-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Microsoft reported its results for the three months to 30 September 2026, the first
+        quarter of its 2027 financial year, after the US market closed on 28 October 2026. In
+        short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $92.3 billion, up 19% from $77.7 billion a year earlier.
+        </li>
+        <li>
+          <strong>Profit:</strong> operating income of $45.9 billion, up 21%. Net income was
+          $36.6 billion, up 32%, or $36.4 billion and up 18% on Microsoft’s adjusted measure,
+          which leaves out its investment in OpenAI.
+        </li>
+        <li>
+          <strong>Earnings per share:</strong> $4.92, or $4.89 adjusted.
+        </li>
+        <li>
+          <strong>Azure:</strong> revenue of $33.2 billion, up 48%.
+        </li>
+        <li>
+          <strong>Spending:</strong> $39.4 billion on property and equipment, against $19.4
+          billion a year earlier.
+        </li>
+        <li>
+          <strong>Orders already signed:</strong> commercial remaining performance obligation of
+          $677 billion, up 73%.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <p>
+        Microsoft now reports two segments, Agents and Infra and Devices and Consumer, and has
+        recast the year-earlier figures to match.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Sep quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$92.3B', c2: '$77.7B', c3: '+18.8%' } },
+          { cells: { c0: 'Agents and Infra', c1: '$76.8B', c2: '$61.7B', c3: '+24.5%' } },
+          { cells: { c0: 'Devices and Consumer', c1: '$15.5B', c2: '$16.0B', c3: '−3.2%' } },
+          { cells: { c0: 'Operating income', c1: '$45.9B', c2: '$38.0B', c3: '+21.0%' } },
+          { cells: { c0: 'Operating margin', c1: '49.8%', c2: '48.9%', c3: '' } },
+          { cells: { c0: 'Net income', c1: '$36.6B', c2: '$27.7B', c3: '+32.0%' } },
+          { cells: { c0: 'Net income, excluding OpenAI', c1: '$36.4B', c2: '$30.8B', c3: '+18.1%' } },
+          { cells: { c0: 'Diluted earnings per share', c1: '$4.92', c2: '$3.72', c3: '' } },
+        ]}
+      />
+      <p>
+        Agents and Infra holds Azure and Microsoft 365. Inside it, Azure brought in $33.2
+        billion, up from $22.4 billion, and Microsoft Cloud revenue as a whole was $63.9
+        billion, up 30%. Microsoft’s chief financial officer, Amy Hood, said growth was
+        “accelerating”. Devices and Consumer holds Windows, Xbox and search: Windows OEM and
+        devices revenue fell 22%, to $3.6 billion, and Xbox content and services fell 2%.
+      </p>
+
+      <h2>The OpenAI effect</h2>
+      <p>
+        Microsoft’s reported profit swings with the value of its investment in OpenAI. A year
+        ago that investment cut net income by $3.1 billion. This quarter it added $207 million.
+        Leave it out, as Microsoft’s own adjusted figures do, and net income grew 18% rather
+        than 32%.
+      </p>
+
+      <h2>Where the money is going</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the money is going"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Sep quarter 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Cash from operations', c1: '$58.0B', c2: '$45.1B' } },
+          { cells: { c0: 'Spent on property and equipment', c1: '$39.4B', c2: '$19.4B' } },
+          { cells: { c0: 'Free cash flow', c1: '$18.6B', c2: '$25.7B' } },
+          { cells: { c0: 'Depreciation, amortisation and other', c1: '$11.7B', c2: '$8.1B' } },
+        ]}
+      />
+      <p>
+        Free cash flow here is cash from operations less spending on property and equipment,
+        both from Microsoft’s cash flow statement. Cash from operations rose 29%, but spending
+        rose 103%, so free cash flow fell 27%. The depreciation charge, which spreads the cost
+        of that equipment over the years it is used, rose 44%.
+      </p>
+      <p>
+        Microsoft returned $10.2 billion to shareholders in dividends and share buybacks.
+      </p>
+
+      <h2>What management said</h2>
+      <p>
+        Hood said: “Results exceeded expectations across revenue, operating income, and earnings
+        per share.” Microsoft gives its forecast for the next quarter on its results call, not
+        in its release.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Microsoft closed at $531.01 on 28 October, before the results came out. In after-hours
+        trading, at 6:47pm New York time, it was at $546.35, up 2.9%. After-hours trading is
+        thin, and the price can move a long way before the next day’s close, so this is the
+        reaction at that moment, not a final one.
+      </p>
+      <p>
+        On 27 October, the day before the results, Microsoft closed at $531.33. That was:
+      </p>
+      <ul>
+        <li>
+          <strong>2.2% below its record close</strong> of $543.45 on 13 October 2026,
+        </li>
+        <li>
+          <strong>9.9% higher than at the start of 2026</strong>, when it stood at $483.62.
+        </li>
+      </ul>
+
+      <h2>How Microsoft shares usually react to results</h2>
+      <p>
+        We measured all 43 regular results releases from January 2016 to July 2026, comparing
+        the close on the day after with the close on the day Microsoft reported:
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>3.3%</strong>.
+        </li>
+        <li>
+          13 of the 43 moved by 5% or more, and one by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>10.0%</strong> in January 2026.
+        </li>
+        <li>
+          The largest rise was <strong>15.5%</strong> in July 2026.
+        </li>
+        <li>
+          The shares rose after 25 of the 43 and fell after 18.
+        </li>
+      </ul>
+
+      <h2>How far Microsoft has fallen before</h2>
+      <p>
+        Counting dividends, Microsoft has fallen 30% or more five times since it listed in March
+        1986. These are measured from a record close to the lowest close before the shares got
+        back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Microsoft has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'October 1987', c1: 'October 1987', c2: '−50.3%', c3: 'October 1989' } },
+          { cells: { c0: 'July 1990', c1: 'August 1990', c2: '−34.7%', c3: 'January 1991' } },
+          { cells: { c0: 'December 1999', c1: 'March 2009', c2: '−69.4%', c3: 'July 2014' } },
+          { cells: { c0: 'November 2021', c1: 'November 2022', c2: '−37.1%', c3: 'June 2023' } },
+          { cells: { c0: 'October 2025', c1: 'June 2026', c2: '−34.5%', c3: 'October 2026' } },
+        ]}
+      />
+      <p>
+        All five got back to their record. The quickest was back about four months after its
+        low, in October 2026; the slowest, after the dot-com fall, took about five years from
+        its 2009 low. That is a record of what happened, not a guide to what will.
+      </p>
+      <p>
+        Measured on our stock page’s setting, Microsoft normally falls about 17.2% below its
+        one-year high before turning. On 27 October it was 3.6% below.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Spending.</strong> Whether property and equipment spending keeps rising, and
+          what that does to free cash flow.
+        </li>
+        <li>
+          <strong>Azure.</strong> Whether its growth holds near 48%.
+        </li>
+        <li>
+          <strong>OpenAI.</strong> The investment can move reported profit in either direction
+          from quarter to quarter.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. The share-price history is a record of what happened
+        before, not a prediction. This article is general information and does not take into
+        account your objectives, financial situation or needs.
+      </p>
+    </>
+  ),
+  'alphabet-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Alphabet reported its results for the three months to 30 September after the US market
+        closed on 28 October 2026. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $127.6 billion, up 25% from $102.3 billion a year earlier.
+        </li>
+        <li>
+          <strong>Google Cloud:</strong> revenue of $30.7 billion, up 103%, and operating income
+          of $11.1 billion, up from $3.6 billion.
+        </li>
+        <li>
+          <strong>Profit:</strong> operating income of $40.6 billion, up 30%. Net income was
+          $26.5 billion, down 24%, because of an $8.7 billion loss on shares Alphabet holds.
+        </li>
+        <li>
+          <strong>Earnings per share:</strong> $2.12, down from $2.87.
+        </li>
+        <li>
+          <strong>Spending:</strong> $51.4 billion on property and equipment, against $24.0
+          billion a year earlier.
+        </li>
+        <li>
+          <strong>Free cash flow:</strong> negative $9.1 billion, after negative $5.9 billion
+          the quarter before.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$127.6B', c2: '$102.3B', c3: '+24.7%' } },
+          { cells: { c0: 'Google Search & other', c1: '$63.4B', c2: '$56.6B', c3: '+12.0%' } },
+          { cells: { c0: 'YouTube ads', c1: '$11.2B', c2: '$10.3B', c3: '+9.2%' } },
+          { cells: { c0: 'Google subscriptions, platforms and devices', c1: '$14.3B', c2: '$12.9B', c3: '+11.0%' } },
+          { cells: { c0: 'Google Cloud', c1: '$30.7B', c2: '$15.2B', c3: '+102.6%' } },
+          { cells: { c0: 'Operating income', c1: '$40.6B', c2: '$31.2B', c3: '+29.9%' } },
+          { cells: { c0: 'Net income', c1: '$26.5B', c2: '$35.0B', c3: '−24.3%' } },
+          { cells: { c0: 'Diluted earnings per share', c1: '$2.12', c2: '$2.87', c3: '' } },
+        ]}
+      />
+      <p>
+        Google Cloud was the engine. Alphabet says sales of its TPU systems “were also a
+        meaningful contributor to revenue growth”, and Cloud’s operating income more than
+        tripled. Chief executive Sundar Pichai said Alphabet is “now on a half-trillion dollar
+        revenue run rate”, and that the Gemini app “has reached one billion users”.
+      </p>
+
+      <h2>Why profit fell</h2>
+      <p>
+        The fall in net income came from below the operating line. A year earlier, gains on the
+        shares Alphabet holds in other companies added $10.7 billion. This quarter they lost
+        $8.7 billion, and Alphabet says that loss cut its net income by $6.7 billion after tax.
+        Operating income, which leaves those investments out, rose 30%.
+      </p>
+
+      <h2>Where the money is going</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the money is going"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Cash from operations', c1: '$42.3B', c2: '$48.4B' } },
+          { cells: { c0: 'Spent on property and equipment', c1: '$51.4B', c2: '$24.0B' } },
+          { cells: { c0: 'Free cash flow', c1: '−$9.1B', c2: '$24.5B' } },
+        ]}
+      />
+      <p>
+        Alphabet defines free cash flow as cash from operations less capital spending. Spending
+        rose 114% and for the second quarter in a row it was more than the business brought in.
+      </p>
+      <p>
+        To pay for it, Alphabet raised $28.7 billion from new bonds and sold $12.4 billion of
+        new shares through its at-the-market program. It bought back no shares this quarter,
+        against $11.5 billion a year earlier.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Alphabet’s Class A shares closed at $324.89 on 28 October, before the results came out.
+        In after-hours trading, at 6:47pm New York time, they were at $292.90, down 9.8%. That
+        is 27.3% below their record close. After-hours trading is thin, and the price can move a
+        long way before the next day’s close, so this is the reaction at that moment, not a
+        final one.
+      </p>
+      <p>
+        On 27 October, the day before the results, Alphabet’s Class A shares closed at $320.58.
+        That was:
+      </p>
+      <ul>
+        <li>
+          <strong>20.4% below their record close</strong> of $402.62 on 13 May 2026,
+        </li>
+        <li>
+          <strong>2.4% higher than at the start of 2026</strong>, when they stood at $313.00.
+        </li>
+      </ul>
+
+      <h2>How Alphabet shares usually react to results</h2>
+      <p>
+        We measured all 43 regular results releases from February 2016 to July 2026, comparing
+        the close on the day after with the close on the day Alphabet reported:
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>3.8%</strong>.
+        </li>
+        <li>
+          17 of the 43 moved by 5% or more, and one by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>9.5%</strong> in October 2023.
+        </li>
+        <li>
+          The largest rise was <strong>10.2%</strong> in April 2024.
+        </li>
+        <li>
+          The shares rose after 23 of the 43 and fell after 20.
+        </li>
+      </ul>
+
+      <h2>How far Alphabet has fallen before</h2>
+      <p>
+        Counting dividends, Alphabet has fallen 20% or more nine times since it listed in August
+        2004, counting the current fall. These are measured from a record close to the lowest
+        close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Alphabet has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'January 2006', c1: 'March 2006', c2: '−28.5%', c3: 'October 2006' } },
+          { cells: { c0: 'November 2007', c1: 'November 2008', c2: '−65.3%', c3: 'September 2012' } },
+          { cells: { c0: 'July 2018', c1: 'December 2018', c2: '−23.4%', c3: 'April 2019' } },
+          { cells: { c0: 'February 2020', c1: 'March 2020', c2: '−30.9%', c3: 'July 2020' } },
+          { cells: { c0: 'November 2021', c1: 'November 2022', c2: '−44.3%', c3: 'January 2024' } },
+          { cells: { c0: 'July 2024', c1: 'September 2024', c2: '−22.1%', c3: 'December 2024' } },
+          { cells: { c0: 'February 2025', c1: 'April 2025', c2: '−29.8%', c3: 'August 2025' } },
+          { cells: { c0: 'February 2026', c1: 'March 2026', c2: '−20.4%', c3: 'April 2026' } },
+          { cells: { c0: 'May 2026', c1: 'October 2026 (deepest so far, before these results)', c2: '−21.2%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The first eight all got back to their record. The quickest was back about a month after
+        its low, in April 2026; the slowest, after the 2008 fall, took almost four years. That
+        is a record of what happened, not a guide to what will.
+      </p>
+      <p>
+        Measured on our stock page’s setting, Alphabet normally falls about 15.8% below its
+        one-year high before turning. On 27 October it was 21.4% below, past its normal fall.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Google Cloud.</strong> Whether growth near 100% holds.
+        </li>
+        <li>
+          <strong>Spending and cash.</strong> Whether spending keeps running ahead of cash from
+          operations.
+        </li>
+        <li>
+          <strong>Investments.</strong> Gains and losses on the shares Alphabet holds can move
+          its net income in either direction from quarter to quarter.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. The share-price history is a record of what happened
+        before, not a prediction. This article is general information and does not take into
+        account your objectives, financial situation or needs.
+      </p>
+    </>
+  ),
 };
 
 /**

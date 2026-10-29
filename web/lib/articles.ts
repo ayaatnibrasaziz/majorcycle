@@ -523,6 +523,70 @@ export const ARTICLES = [
     reviewed: '2026-10-28',
     minutes: 12,
   },
+  {
+    slug: 'microsoft-q1-fy27-results',
+    title: 'Microsoft’s September-quarter 2026 results, explained',
+    question: 'What did Microsoft report for the September quarter of 2026?',
+    answer:
+      'Microsoft’s revenue for the three months to September 2026 was $92.3 billion, up 19%. Azure grew 48%. It spent $39.4 billion on property and equipment, more than double a year earlier, and its free cash flow fell 27%. In after-hours trading, the shares rose 2.9%.',
+    summary:
+      'Microsoft’s results for the quarter to September 2026, from its own release: revenue, Azure, the OpenAI effect, spending and free cash flow.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 19% and Azure grew 48%. ',
+      { strong: 'Spending on property and equipment more than doubled.' },
+    ],
+    finding: [
+      'Azure ',
+      { figure: '+48%' },
+      ', spending ',
+      { figure: '$39.4B' },
+      ', shares ',
+      { figure: '+2.9%' },
+      ' after hours.',
+    ],
+    facts: [
+      { value: '$92.3B', label: 'revenue' },
+      { value: '+48%', label: 'Azure growth' },
+      { value: '$39.4B', label: 'spent on property and equipment' },
+    ],
+    region: 'United States',
+    published: '2026-10-29',
+    reviewed: '2026-10-29',
+    minutes: 5,
+  },
+  {
+    slug: 'alphabet-q3-2026-results',
+    title: 'Alphabet’s third-quarter 2026 results, explained',
+    question: 'Why did Alphabet’s free cash flow turn negative in Q3 2026?',
+    answer:
+      'Alphabet’s third-quarter revenue was $127.6 billion, up 25%, and Google Cloud’s more than doubled. But it spent $51.4 billion on property and equipment, so free cash flow was negative $9.1 billion, and a loss on shares it holds cut net income 24%. In after-hours trading, the shares fell 9.8%.',
+    summary:
+      'Alphabet’s Q3 2026 results from its own release: revenue, Google Cloud, why profit fell, record spending, negative free cash flow and the shares.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 25% and Google Cloud more than doubled. ',
+      { strong: 'Spending ran ahead of the cash coming in.' },
+    ],
+    finding: [
+      'Cloud ',
+      { figure: '+103%' },
+      ', free cash flow ',
+      { figure: '−$9.1B' },
+      ', shares ',
+      { figure: '−9.8%' },
+      ' after hours.',
+    ],
+    facts: [
+      { value: '$127.6B', label: 'revenue' },
+      { value: '+103%', label: 'Google Cloud growth' },
+      { value: '−$9.1B', label: 'free cash flow' },
+    ],
+    region: 'United States',
+    published: '2026-10-29',
+    reviewed: '2026-10-29',
+    minutes: 5,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];
