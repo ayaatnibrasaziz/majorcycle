@@ -2890,17 +2890,24 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         When the RBA raises rates, three things happen to that margin, and they pull in
         different directions:
       </p>
-      <p>
-        1. <strong>Some savings earn the bank more.</strong> Part of the money customers keep in
-        everyday accounts earns them little or no interest. The bank invests that money, and
-        when rates go up it earns more on it. All four banks named this as a benefit in their
-        latest results. 2. <strong>Competition takes some of it back.</strong> Banks compete
-        hard for loans by offering lower rates, and savers move money into accounts that pay
-        bonus interest. All four named competition as a pressure on their margin. 3.{' '}
-        <strong>More borrowers may struggle.</strong> Higher repayments make it harder for some
-        customers to keep up, so banks set money aside for loans that may not be repaid. These
-        are called <strong>provisions</strong>, and they reduce profit.
-      </p>
+      <ol>
+        <li>
+          <strong>Some savings earn the bank more.</strong> Part of the money customers keep in
+          everyday accounts earns them little or no interest. The bank invests that money, and
+          when rates go up it earns more on it. All four banks named this as a benefit in their
+          latest results.
+        </li>
+        <li>
+          <strong>Competition takes some of it back.</strong> Banks compete hard for loans by
+          offering lower rates, and savers move money into accounts that pay bonus interest. All
+          four named competition as a pressure on their margin.
+        </li>
+        <li>
+          <strong>More borrowers may struggle.</strong> Higher repayments make it harder for
+          some customers to keep up, so banks set money aside for loans that may not be repaid.
+          These are called <strong>provisions</strong>, and they reduce profit.
+        </li>
+      </ol>
       <p>
         Here is what each bank said about those three things in its latest results:
       </p>
@@ -3238,6 +3245,1033 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       <p>
         This article is general information only, not financial advice. It does not take into
         account your objectives, financial situation or needs.
+      </p>
+    </>
+  ),
+  'microsoft-q1-fy27-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Microsoft reported its results for the three months to 30 September 2026, the first
+        quarter of its 2027 financial year, after the US market closed on 28 October 2026. In
+        short:
+      </p>
+      <ul>
+        <li>
+          <strong>Against its own forecast:</strong> revenue of $92.3 billion was $1.3 billion
+          above the top of the range Microsoft gave in July, and Azure grew 48% against a
+          forecast of about 45%.
+        </li>
+        <li>
+          <strong>Profit:</strong> operating income of $45.9 billion, up 21%. Net income was
+          $36.6 billion, up 32%, or up 18% without the effect of its investment in OpenAI.
+        </li>
+        <li>
+          <strong>Spending:</strong> $39.4 billion of cash spent on property and equipment,
+          double the $19.4 billion of a year earlier. Counting new data centre leases,
+          Microsoft’s own capital spending figure was $45.2 billion, up 30%.
+        </li>
+        <li>
+          <strong>Cash:</strong> free cash flow fell 27%, to $18.6 billion.
+        </li>
+        <li>
+          <strong>Orders:</strong> contracted revenue not yet counted rose 73%, to $677 billion.
+        </li>
+        <li>
+          <strong>Next quarter:</strong> Microsoft expects revenue of $96 billion to $97.1
+          billion, Azure growth of 49% to 50%, and more than $50 billion of capital spending.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>Against Microsoft’s own forecast</h2>
+      <p>
+        In July, on its previous results call, Microsoft gave a forecast for this quarter. That
+        is the test the company sets itself, so it is the one we start with.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Against Microsoft’s own forecast"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'July forecast', width: '30%' },
+          { key: 'c2', label: 'Result', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$89.85B to $90.95B', c2: '$92.28B' } },
+          { cells: { c0: 'Azure revenue growth', c1: 'about 45% (constant currency)', c2: '48%' } },
+          { cells: { c0: 'Operating expenses', c1: '$16.8B to $16.9B', c2: '$16.64B' } },
+          { cells: { c0: 'Capital spending', c1: 'over $50B', c2: '$45.2B' } },
+        ]}
+      />
+      <p>
+        Revenue and Azure came in above the forecast and costs below it. Capital spending was
+        the one line short of it: Microsoft’s finance chief, Amy Hood, said “some third-party
+        capacity deliveries we expected in Q1 were delayed”. So the spending doubled in cash
+        terms and still came in under plan.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <p>
+        Microsoft now reports two segments, Agents and Infra and Devices and Consumer, and has
+        recast the year-earlier figures to match.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Sep quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$92.3B', c2: '$77.7B', c3: '+18.8%' } },
+          { cells: { c0: 'Agents and Infra', c1: '$76.8B', c2: '$61.7B', c3: '+24.5%' } },
+          { cells: { c0: 'Devices and Consumer', c1: '$15.5B', c2: '$16.0B', c3: '−3.2%' } },
+          { cells: { c0: 'Gross margin', c1: '$62.6B', c2: '$53.6B', c3: '+16.6%' } },
+          { cells: { c0: 'Operating income', c1: '$45.9B', c2: '$38.0B', c3: '+21.0%' } },
+          { cells: { c0: 'Operating margin', c1: '49.8%', c2: '48.9%', c3: '' } },
+          { cells: { c0: 'Net income', c1: '$36.6B', c2: '$27.7B', c3: '+32.0%' } },
+          { cells: { c0: 'Net income, excluding OpenAI', c1: '$36.4B', c2: '$30.8B', c3: '+18.1%' } },
+          { cells: { c0: 'Diluted earnings per share', c1: '$4.92', c2: '$3.72', c3: '' } },
+        ]}
+      />
+      <p>
+        Operating expenses rose 6% while revenue rose 19%, and Microsoft’s 10-Q says its total
+        headcount fell 2%. That is how the operating margin edged up to almost 50% even as the
+        cost of running Azure rose.
+      </p>
+
+      <h2>Where the revenue came from</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the revenue came from"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Sep quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Azure', c1: '$33.2B', c2: '$22.4B', c3: '+48.2%' } },
+          { cells: { c0: 'Microsoft 365 cloud', c1: '$27.8B', c2: '$23.7B', c3: '+17.2%' } },
+          { cells: { c0: 'Productivity and server licensing', c1: '$8.4B', c2: '$8.7B', c3: '−3.1%' } },
+          { cells: { c0: 'Search and advertising', c1: '$6.6B', c2: '$5.9B', c3: '+10.3%' } },
+          { cells: { c0: 'Xbox', c1: '$5.4B', c2: '$5.5B', c3: '−2.3%' } },
+          { cells: { c0: 'Industry solutions', c1: '$5.3B', c2: '$4.9B', c3: '+9.1%' } },
+          { cells: { c0: 'Windows OEM and devices', c1: '$3.6B', c2: '$4.6B', c3: '−22.0%' } },
+          { cells: { c0: 'Frontier and support services', c1: '$2.1B', c2: '$2.0B', c3: '+4.3%' } },
+        ]}
+      />
+      <p>
+        Azure is now Microsoft’s largest single revenue line, and under the new reporting it has
+        a dollar figure of its own each quarter. In the June quarter, when Microsoft reported it
+        as “Azure and other cloud services”, it grew 43%. Microsoft Cloud revenue, a wider
+        measure that includes Azure, was $63.9 billion, up 30%.
+      </p>
+
+      <h2>Devices and Consumer, line by line</h2>
+      <p>
+        The Devices and Consumer segment fell 3%, to $15.5 billion. Its parts moved in different
+        directions:
+      </p>
+      <ul>
+        <li>
+          <strong>Search and advertising</strong> grew 10% in total, or 12% after the traffic
+          acquisition costs Microsoft pays to partners. Microsoft says Bing and Edge took share.
+        </li>
+        <li>
+          <strong>Xbox</strong> revenue fell 2%. Content and services fell 2%, with declines in
+          third-party games and Game Pass.
+        </li>
+        <li>
+          <strong>Windows OEM and devices</strong> fell 22%. Within it, Windows OEM revenue, the
+          Windows licences sold with new PCs, fell 27%. Microsoft puts this down to strong
+          demand a year earlier, when Windows 10 support was ending, to PC makers running down
+          their stock, and to weaker PC demand. It says inventory levels “remain elevated” and
+          expects the line to fall again next quarter, by a percentage in the mid-thirties.
+        </li>
+      </ul>
+      <p>
+        So the segment’s 3% fall is the sum of a growing advertising business and a shrinking
+        Windows one.
+      </p>
+
+      <h2>The OpenAI effect</h2>
+      <p>
+        OpenAI touches Microsoft’s results in three places:
+      </p>
+      <ul>
+        <li>
+          <strong>Profit.</strong> Microsoft owns about 24% of OpenAI, accounted for under the
+          equity method. A year ago, that investment cut its net income by $3.1 billion. This
+          quarter it added $207 million. Leave it out, as Microsoft’s own adjusted figures do,
+          and net income grew 18% rather than 32%.
+        </li>
+        <li>
+          <strong>Revenue.</strong> Microsoft’s 10-Q says it recorded $10.0 billion of revenue
+          from commercial arrangements with OpenAI, including revenue-sharing payments, in the
+          quarter. That is about 11% of Microsoft’s revenue.
+        </li>
+        <li>
+          <strong>Money owed.</strong> OpenAI owed Microsoft $7.2 billion at the end of
+          September, up from $6.0 billion in June. Microsoft has committed $13.0 billion of
+          funding to the investment, of which $12.0 billion has been paid.
+        </li>
+      </ul>
+
+      <h2>Where the money is going</h2>
+      <p>
+        Microsoft gives two measures of its spending, and they tell different stories:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the money is going"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Sep quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Cash spent on property and equipment', c1: '$39.4B', c2: '$19.4B', c3: '+103%' } },
+          { cells: { c0: 'Capital spending, including finance leases', c1: '$45.2B', c2: '$34.9B', c3: '+30%' } },
+          { cells: { c0: 'Cash from operations', c1: '$58.0B', c2: '$45.1B', c3: '+29%' } },
+          { cells: { c0: 'Free cash flow', c1: '$18.6B', c2: '$25.7B', c3: '−27%' } },
+        ]}
+      />
+      <p>
+        The cash figure doubled; the wider figure, which counts the full value of a data centre
+        lease when it starts, rose 30%. Hood said roughly three quarters of the spending was on
+        “short-lived assets, primarily CPUs and GPUs”, the chips that run AI and cloud
+        workloads, and the rest on long-lived assets. Free cash flow is cash from operations
+        less the cash spent on property and equipment.
+      </p>
+      <p>
+        The spending is set to rise from here:
+      </p>
+      <ul>
+        <li>
+          <strong>Next quarter:</strong> “over $50 billion”.
+        </li>
+        <li>
+          <strong>Calendar 2026:</strong> “approximately $170 billion”.
+        </li>
+        <li>
+          <strong>Leases not yet started:</strong> Microsoft’s 10-Q says it has signed further
+          leases, “primarily for datacenters”, worth $364.6 billion that have not yet commenced.
+          They start between fiscal 2027 and fiscal 2034, some subject to conditions being met.
+        </li>
+      </ul>
+      <p>
+        The reason Microsoft gives is demand: “Customer demand continues to exceed available
+        supply.” Hood said Microsoft expects to “remain free cash flow positive in FY27”, and
+        that it will “access additional sources of funding” when it is attractive to do so.
+      </p>
+
+      <h2>The order book</h2>
+      <p>
+        Microsoft’s commercial remaining performance obligation, the revenue customers have
+        contracted for that it has not yet recognised, rose 73% to $677 billion. Microsoft
+        expects about 30% of it to be recognised within the next 12 months, and the weighted
+        average duration is about 2.3 years.
+      </p>
+      <p>
+        Not every order measure grew. Commercial bookings fell 12%, which Hood put down to
+        “large Azure commitments in the prior year”. She also pointed to “weaker sales
+        execution” in some Microsoft 365 products, the E3 plans and standalone products.
+      </p>
+
+      <h2>What Microsoft expects next quarter</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="What Microsoft expects next quarter"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '50%' },
+          { key: 'c1', label: 'Forecast for the December quarter', width: '50%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$96.0B to $97.1B (growth of 18% to 19%)' } },
+          { cells: { c0: 'Agents and Infra', c1: '$80.1B to $80.7B' } },
+          { cells: { c0: 'Devices and Consumer', c1: '$15.9B to $16.4B' } },
+          { cells: { c0: 'Azure revenue growth', c1: '49% to 50% (constant currency)' } },
+          { cells: { c0: 'Windows OEM and devices', c1: 'a decline in the mid-thirties' } },
+          { cells: { c0: 'Capital spending', c1: 'over $50B' } },
+          { cells: { c0: 'Operating margin', c1: 'down slightly on a year earlier' } },
+        ]}
+      />
+      <p>
+        Microsoft’s cost forecast includes an estimate for an employee voluntary exit offer it
+        announced recently.
+      </p>
+
+      <h2>What management said</h2>
+      <p>
+        Hood: “Results exceeded expectations across revenue, operating income, and earnings per
+        share.”
+      </p>
+      <p>
+        Chief executive Satya Nadella closed his remarks by saying that, “based on the demand we
+        see, the strength of our products, and the efficiencies we are driving across the stack,
+        I have never been more confident in the long-term returns on our investments.”
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Microsoft closed at $531.01 on 28 October, before the results came out. In after-hours
+        trading, at 6:47pm New York time, the shares were at $546.35, up 2.9%. By the close on
+        29 October that gain had gone: they finished at $530.14, down 0.2%. Of the 43 earlier
+        results measured below, only two were followed by a smaller move, in either direction.
+      </p>
+
+      <h2>How Microsoft shares usually react to results</h2>
+      <p>
+        We measured all 43 regular results releases from January 2016 to July 2026, comparing
+        the close on the day after with the close on the day Microsoft reported:
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>3.3%</strong>.
+        </li>
+        <li>
+          13 of the 43 moved by 5% or more, and one by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>10.0%</strong> in January 2026.
+        </li>
+        <li>
+          The largest rise was <strong>15.5%</strong> in July 2026.
+        </li>
+        <li>
+          The shares rose after 25 of the 43 and fell after 18.
+        </li>
+      </ul>
+
+      <h2>How far Microsoft has fallen before</h2>
+      <p>
+        Counting dividends, Microsoft has fallen 30% or more five times since it listed in March
+        1986. These are measured from a record close to the lowest close before the shares got
+        back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Microsoft has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'October 1987', c1: 'October 1987', c2: '−50.3%', c3: 'October 1989' } },
+          { cells: { c0: 'July 1990', c1: 'August 1990', c2: '−34.7%', c3: 'January 1991' } },
+          { cells: { c0: 'December 1999', c1: 'March 2009', c2: '−69.4%', c3: 'July 2014' } },
+          { cells: { c0: 'November 2021', c1: 'November 2022', c2: '−37.1%', c3: 'June 2023' } },
+          { cells: { c0: 'October 2025', c1: 'June 2026', c2: '−34.5%', c3: 'October 2026' } },
+        ]}
+      />
+      <p>
+        All five got back to their record. The quickest was back about four months after its
+        low, in October 2026; the slowest, after the dot-com fall, took about five years from
+        its 2009 low. That is a record of what happened, not a guide to what will.
+      </p>
+      <p>
+        Measured on our stock page’s setting, Microsoft normally falls about 17.1% below its
+        one-year high before turning. On 29 October, it was 3.8% below.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Azure.</strong> Microsoft expects growth of 49% to 50% next quarter, and says
+          capacity, not demand, is the limit.
+        </li>
+        <li>
+          <strong>Spending.</strong> Over $50 billion next quarter and about $170 billion for
+          calendar 2026, with $364.6 billion of signed leases still to start.
+        </li>
+        <li>
+          <strong>Cash.</strong> Whether free cash flow stays positive for the year, as
+          Microsoft expects.
+        </li>
+        <li>
+          <strong>OpenAI.</strong> The investment can move reported profit either way from
+          quarter to quarter.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Microsoft’s own, not ours. The
+        share-price history is a record of what happened before, not a prediction. This article
+        is general information and does not take into account your objectives, financial
+        situation or needs.
+      </p>
+    </>
+  ),
+  'alphabet-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Alphabet reported its results for the three months to 30 September after the US market
+        closed on 28 October 2026. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $127.6 billion, up 25% from $102.3 billion a year earlier.
+          Alphabet says it is now on a “half-trillion dollar revenue run rate”.
+        </li>
+        <li>
+          <strong>Google Cloud:</strong> revenue of $30.7 billion, up 103%, and operating income
+          of $11.1 billion, up from $3.6 billion.
+        </li>
+        <li>
+          <strong>Profit:</strong> operating income of $40.6 billion, up 30%. Net income was
+          $26.5 billion, down 24%, because of an $8.7 billion loss on shares Alphabet holds,
+          which its 10-Q says came largely from SpaceX.
+        </li>
+        <li>
+          <strong>Spending:</strong> $51.4 billion of cash spent on property and equipment,
+          against $24.0 billion a year earlier.
+        </li>
+        <li>
+          <strong>Free cash flow:</strong> negative $9.1 billion, after negative $5.9 billion
+          the quarter before.
+        </li>
+        <li>
+          <strong>Backlog:</strong> $567.7 billion of signed revenue not yet recognised, $560.8
+          billion of it in Google Cloud.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$127.6B', c2: '$102.3B', c3: '+24.7%' } },
+          { cells: { c0: 'Google Services', c1: '$96.3B', c2: '$87.1B', c3: '+10.6%' } },
+          { cells: { c0: 'Google Cloud', c1: '$30.7B', c2: '$15.2B', c3: '+102.6%' } },
+          { cells: { c0: 'Operating income', c1: '$40.6B', c2: '$31.2B', c3: '+29.9%' } },
+          { cells: { c0: 'Operating margin', c1: '31.8%', c2: '30.5%', c3: '' } },
+          { cells: { c0: 'Net income', c1: '$26.5B', c2: '$35.0B', c3: '−24.3%' } },
+          { cells: { c0: 'Diluted earnings per share', c1: '$2.12', c2: '$2.87', c3: '' } },
+        ]}
+      />
+      <p>
+        Costs grew more slowly than revenue: total costs and expenses rose 22%, with research
+        and development up 36%. Alphabet had 204,757 employees at the end of September, 8% more
+        than a year earlier.
+      </p>
+
+      <h2>Where the revenue came from</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the revenue came from"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Google Search & other', c1: '$63.4B', c2: '$56.6B', c3: '+12.0%' } },
+          { cells: { c0: 'YouTube ads', c1: '$11.2B', c2: '$10.3B', c3: '+9.2%' } },
+          { cells: { c0: 'Google Network', c1: '$7.5B', c2: '$7.4B', c3: '+1.4%' } },
+          { cells: { c0: 'Google subscriptions, platforms and devices', c1: '$14.3B', c2: '$12.9B', c3: '+11.0%' } },
+          { cells: { c0: 'Google Cloud', c1: '$30.7B', c2: '$15.2B', c3: '+102.6%' } },
+          { cells: { c0: 'Other Bets', c1: '$0.4B', c2: '$0.3B', c3: '+8.1%' } },
+        ]}
+      />
+      <p>
+        Alphabet says Search query growth was the highest it has been in the last five years,
+        and that it passed 150 million YouTube Music and Premium subscribers, including trials.
+        Google Cloud is now almost a quarter of Alphabet’s revenue, up from about 15% a year
+        earlier.
+      </p>
+
+      <h2>Google Cloud</h2>
+      <p>
+        Cloud’s revenue doubled, and its profit rose faster. Operating income more than tripled,
+        from $3.6 billion to $11.1 billion, so its operating margin rose to 36.2%, from 23.7%.
+      </p>
+      <p>
+        Alphabet says sales of TPU systems, built on its own Tensor Processing Unit chips, “were
+        also a meaningful contributor to revenue growth”. Its 10-Q describes these as hardware,
+        software, installation and support sold to enterprise customers. Chief executive Sundar
+        Pichai said Alphabet’s own AI models are processing “nearly 32 billion tokens per
+        minute, more than four times what we processed a year ago”, and that the Gemini app “has
+        reached one billion users”.
+      </p>
+
+      <h2>Why profit fell: SpaceX</h2>
+      <p>
+        The fall in net income came from below the operating line. Alphabet’s 10-Q shows it held
+        $75.2 billion of SpaceX shares at the end of September, subject to short-term limits on
+        selling them. SpaceX went public this year, so the value of those shares now moves with
+        its share price, and every move runs through Alphabet’s profit.
+      </p>
+      <p>
+        A year earlier, gains on the shares Alphabet holds added $10.7 billion. This quarter
+        they lost $8.7 billion, and Alphabet says that loss cut its net income by $6.7 billion
+        after tax. Its 10-Q says the swing in other income came from “net unrealized losses in
+        our marketable equity securities largely from SpaceX”. Operating income, which leaves
+        investments out, rose 30%.
+      </p>
+
+      <h2>Where the money is going</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the money is going"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Cash from operations', c1: '$42.3B', c2: '$48.4B' } },
+          { cells: { c0: 'Cash spent on property and equipment', c1: '$51.4B', c2: '$24.0B' } },
+          { cells: { c0: 'Free cash flow', c1: '−$9.1B', c2: '$24.5B' } },
+          { cells: { c0: 'Depreciation of property and equipment', c1: '$8.4B', c2: '$5.6B' } },
+        ]}
+      />
+      <p>
+        Alphabet defines free cash flow as cash from operations less capital spending. Spending
+        rose 114%, and for the second quarter in a row it was more than the business brought in.
+        The depreciation charge, which spreads the cost of that equipment over its life, rose
+        49%.
+      </p>
+      <p>
+        In July, Alphabet said it expected 2026 capital spending of $195 billion to $205
+        billion. It spent $132.0 billion in the first nine months, which leaves $63 billion to
+        $73 billion for the last three, more than in any quarter so far. In July it also said
+        spending would “increase significantly in 2027”. And it warned that renting outside
+        computing capacity while it builds its own would “create modest margin pressure in the
+        near-term”.
+      </p>
+      <p>
+        Its 10-Q adds a commitment that is not yet on the balance sheet: leases, “primarily
+        related to data centers and energy infrastructure”, with future payments of $130.5
+        billion that have not yet commenced. They start between 2026 and 2031.
+      </p>
+
+      <h2>How Alphabet is paying for it</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How Alphabet is paying for it"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'New debt raised', c1: '$29.0B', c2: '$6.6B' } },
+          { cells: { c0: 'New shares sold', c1: '$12.4B', c2: '$0' } },
+          { cells: { c0: 'Shares bought back', c1: '$0', c2: '$11.5B' } },
+        ]}
+      />
+      <p>
+        In the quarter, Alphabet issued senior unsecured notes for net proceeds of $28.7 billion
+        and sold $12.4 billion of new shares through its at-the-market program. That follows its
+        June announcement of an $84.75 billion equity raise to expand its AI infrastructure and
+        computing capacity, which included a $10 billion investment by Berkshire Hathaway. It
+        still pays a dividend: $0.22 a share on its common stock, payable on 14 December.
+      </p>
+
+      <h2>The backlog</h2>
+      <p>
+        At the end of September, Alphabet had $567.7 billion of revenue backlog, contracts
+        signed but not yet recognised, of which $560.8 billion was Google Cloud. It expects to
+        recognise just over 55% of it over the next 24 months. In July, Google Cloud’s backlog
+        was $514 billion.
+      </p>
+
+      <h2>Other Bets and Waymo</h2>
+      <p>
+        Other Bets, which earns its revenue primarily from autonomous transportation and
+        internet services, brought in $372 million and lost $2.0 billion, against a $1.4 billion
+        loss a year earlier. In October, Waymo took out a $5.0 billion senior secured loan
+        maturing in October 2032, at Term SOFR plus 5.25%. Alphabet’s 10-Q says the loan is not
+        guaranteed by Alphabet or any of its other subsidiaries.
+      </p>
+
+      <h2>What management said</h2>
+      <p>
+        Pichai: “We had a strong quarter and are now on a half-trillion dollar revenue run rate.
+        Our deep full stack approach is driving momentum across the business,” with revenue up
+        25%.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Alphabet’s Class A shares closed at $324.89 on 28 October, before the results came out.
+        By the close on 29 October they were at $283.82, down 12.6%. Of the 43 earlier results
+        measured below, going back to February 2016, none was followed by a move that large in
+        either direction: the largest fall was 9.5%, in October 2023, and the largest rise
+        10.2%, in April 2024.
+      </p>
+
+      <h2>How Alphabet shares usually react to results</h2>
+      <p>
+        We measured all 43 regular results releases from February 2016 to July 2026, comparing
+        the close on the day after with the close on the day Alphabet reported:
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>3.8%</strong>.
+        </li>
+        <li>
+          17 of the 43 moved by 5% or more, and one by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>9.5%</strong> in October 2023.
+        </li>
+        <li>
+          The largest rise was <strong>10.2%</strong> in April 2024.
+        </li>
+        <li>
+          The shares rose after 23 of the 43 and fell after 20.
+        </li>
+      </ul>
+
+      <h2>How far Alphabet has fallen before</h2>
+      <p>
+        Counting dividends, Alphabet has fallen 20% or more nine times since it listed in August
+        2004, counting the current fall. These are measured from a record close to the lowest
+        close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Alphabet has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'January 2006', c1: 'March 2006', c2: '−28.5%', c3: 'October 2006' } },
+          { cells: { c0: 'November 2007', c1: 'November 2008', c2: '−65.3%', c3: 'September 2012' } },
+          { cells: { c0: 'July 2018', c1: 'December 2018', c2: '−23.4%', c3: 'April 2019' } },
+          { cells: { c0: 'February 2020', c1: 'March 2020', c2: '−30.9%', c3: 'July 2020' } },
+          { cells: { c0: 'November 2021', c1: 'November 2022', c2: '−44.3%', c3: 'January 2024' } },
+          { cells: { c0: 'July 2024', c1: 'September 2024', c2: '−22.1%', c3: 'December 2024' } },
+          { cells: { c0: 'February 2025', c1: 'April 2025', c2: '−29.8%', c3: 'August 2025' } },
+          { cells: { c0: 'February 2026', c1: 'March 2026', c2: '−20.4%', c3: 'April 2026' } },
+          { cells: { c0: 'May 2026', c1: '29 October 2026, the day after these results', c2: '−29.4%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The first eight all got back to their record. The quickest was back about a month after
+        its low, in April 2026; the slowest, after the 2008 fall, took almost four years. That
+        is a record of what happened, not a guide to what will.
+      </p>
+      <p>
+        Measured on our stock page’s setting, Alphabet normally falls about 15.8% below its
+        one-year high before turning. On 29 October, it was 30.5% below, past its normal fall.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Spending.</strong> Whether the last three months of 2026 come in at the $63
+          billion to $73 billion that Alphabet’s range implies, and what it says about 2027.
+        </li>
+        <li>
+          <strong>Cash.</strong> Whether free cash flow turns positive again.
+        </li>
+        <li>
+          <strong>SpaceX.</strong> The value of Alphabet’s stake now moves Alphabet’s profit, in
+          either direction.
+        </li>
+        <li>
+          <strong>Google Cloud.</strong> Whether growth near 100% holds as the backlog is
+          delivered.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Alphabet’s own, not ours. The
+        share-price history is a record of what happened before, not a prediction. This article
+        is general information and does not take into account your objectives, financial
+        situation or needs.
+      </p>
+    </>
+  ),
+  'eli-lilly-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Eli Lilly reported its results for the three months to 30 September before the US market
+        opened on 29 October 2026. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $24.4 billion, up 39% from $17.6 billion a year earlier.
+          Volume rose 53% and realized prices fell 15%.
+        </li>
+        <li>
+          <strong>Mounjaro and Zepbound:</strong> $10.7 billion and $5.4 billion, up 65% and
+          49%. On their own they brought in two dollars of every three Lilly earned.
+        </li>
+        <li>
+          <strong>Profit:</strong> net income of $6.5 billion, up 16%. Non-GAAP earnings per
+          share rose only 7%, to $7.48, after $4.57 a share of charges for research Lilly bought
+          from other companies.
+        </li>
+        <li>
+          <strong>The outlook:</strong> 2026 revenue of $91 billion to $92 billion, up from $85
+          billion to $87 billion in August and $80 billion to $83 billion in February.
+        </li>
+        <li>
+          <strong>The shares:</strong> up 6.6% on the day, to a record close of $1,373.70.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$24.4B', c2: '$17.6B', c3: '+39%' } },
+          { cells: { c0: 'Gross margin', c1: '83.9%', c2: '82.9%', c3: '+1.0 points' } },
+          { cells: { c0: 'Research and development', c1: '$4.2B', c2: '$3.5B', c3: '+23%' } },
+          { cells: { c0: 'Marketing, selling and administrative', c1: '$3.1B', c2: '$2.7B', c3: '+14%' } },
+          { cells: { c0: 'Acquired research (IPR&D) charges', c1: '$4.2B', c2: '$0.7B', c3: '' } },
+          { cells: { c0: 'Operating income', c1: '$8.6B', c2: '$7.4B', c3: '+17%' } },
+          { cells: { c0: 'Net income', c1: '$6.5B', c2: '$5.6B', c3: '+16%' } },
+          { cells: { c0: 'Earnings per share, reported', c1: '$7.22', c2: '$6.21', c3: '+16%' } },
+          { cells: { c0: 'Earnings per share, non-GAAP', c1: '$7.48', c2: '$7.02', c3: '+7%' } },
+        ]}
+      />
+      <p>
+        Revenue grew more than twice as fast as profit. The gap is the line Lilly calls acquired
+        in-process research and development: when it buys a company or a drug that is still in
+        trials, it charges the cost straight to profit. That charge was $4.2 billion this
+        quarter, mostly for AtaiBeckley and Curevo, against $656 million a year earlier. It cost
+        $4.57 a share, and Lilly does not add it back in its non-GAAP figures.
+      </p>
+      <p>
+        Lilly also says the quarter’s revenue included about $900 million of benefits, mainly
+        $410 million of milestone payments on Jardiance, a diabetes medicine it sells with
+        Boehringer Ingelheim, and “favorable adjustments to rebate and discount estimates”. It
+        says no further Jardiance milestones remain.
+      </p>
+
+      <h2>Selling more, for less</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Selling more, for less"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '28%' },
+          { key: 'c1', label: 'Revenue', numeric: true, width: '18%' },
+          { key: 'c2', label: 'Change', numeric: true, width: '18%' },
+          { key: 'c3', label: 'Price', numeric: true, width: '18%' },
+          { key: 'c4', label: 'Volume', numeric: true, width: '18%' },
+        ]}
+        rows={[
+          { cells: { c0: 'United States', c1: '$15.1B', c2: '+34%', c3: '−7%', c4: '+41%' } },
+          { cells: { c0: 'Outside the United States', c1: '$9.3B', c2: '+47%', c3: '−29%', c4: '+76%' } },
+          { cells: { c0: 'Total', c1: '$24.4B', c2: '+39%', c3: '−15%', c4: '+53%' } },
+        ]}
+      />
+      <p>
+        Lilly sold more of its medicines for less money each. Outside the US, prices fell 29%,
+        mostly because China added Mounjaro to its national reimbursement drug list, which
+        lowers the price and raises the number of patients. In the US, prices fell 7%, which
+        Lilly puts mainly down to Zepbound.
+      </p>
+      <p>
+        This is not new. Lilly’s realized prices have been lower than a year earlier in each of
+        the last five quarters:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Selling more, for less"
+        columns={[
+          { key: 'c0', label: 'Quarter', width: '40%' },
+          { key: 'c1', label: 'Revenue growth', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Volume', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Price', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Third quarter 2025', c1: '+54%', c2: '+62%', c3: '−10%' } },
+          { cells: { c0: 'Fourth quarter 2025', c1: '+43%', c2: '+46%', c3: '−5%' } },
+          { cells: { c0: 'First quarter 2026', c1: '+56%', c2: '+65%', c3: '−13%' } },
+          { cells: { c0: 'Second quarter 2026', c1: '+48%', c2: '+60%', c3: '−13%' } },
+          { cells: { c0: 'Third quarter 2026', c1: '+39%', c2: '+53%', c3: '−15%' } },
+        ]}
+      />
+      <p>
+        Growth is still very fast, but it has come down from 56% in the first quarter, and the
+        fall in prices is the deepest of the five.
+      </p>
+
+      <h2>Mounjaro, Zepbound and the rest</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Mounjaro, Zepbound and the rest"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', width: '20%' },
+          { key: 'c3', label: 'Change', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Mounjaro', c1: '$10.7B', c2: '$6.5B', c3: '+65%' } },
+          { cells: { c0: 'Zepbound', c1: '$5.4B', c2: '$3.6B', c3: '+49%' } },
+          { cells: { c0: 'Foundayo', c1: '$184M', c2: 'none', c3: 'new' } },
+          { cells: { c0: 'Kisunla', c1: '$193M', c2: '$70M', c3: '+175%' } },
+          { cells: { c0: 'Jaypirca', c1: '$228M', c2: '$143M', c3: '+59%' } },
+          { cells: { c0: 'Ebglyss', c1: '$202M', c2: '$127M', c3: '+59%' } },
+        ]}
+      />
+      <p>
+        Mounjaro, for type 2 diabetes, brought in $5.0 billion in the US, up 41%, and $5.7
+        billion elsewhere, up 93%. Zepbound, the same medicine, tirzepatide, sold for weight
+        loss, brought in $5.3 billion in the US, up 48%. Foundayo is Lilly’s weight-loss pill,
+        launched in the US in the second quarter; Lilly says it is the only approved GLP-1 pill
+        “that can be taken any time of day, without food and water restrictions”. Its slides say
+        Foundayo’s “share of new patient starts exited Q3 at ~40%”.
+      </p>
+      <p>
+        Its 10-Q puts the concentration plainly: Mounjaro, Zepbound and Foundayo “accounted for
+        66 percent of our total revenue for the nine months ended September 30, 2026”.
+      </p>
+
+      <h2>Against Novo Nordisk</h2>
+      <p>
+        Lilly’s slides, using IQVIA prescription data, put its share of US prescriptions for
+        this class of medicines, the incretins, at 63.0% in the four weeks to 25 September,
+        against 36.6% for Novo Nordisk, which makes Ozempic and Wegovy. Outside the US, measured
+        by sales over July and August, Lilly’s share was 58.4%. The US market grew 32% in the
+        quarter and the international market 53%.
+      </p>
+      <p>
+        In the US, a Medicare program, the Medicare GLP-1 Bridge, that opened on 1 July lets
+        Medicare patients buy Lilly’s weight-loss medicines at a discount until the end of 2027.
+        Lilly says more than 500,000 patients are using its medicines through it, and that 7 in
+        10 new patients in the program chose Lilly. Monthly prescriptions rose from 222,000 in
+        July to 527,000 in September.
+      </p>
+
+      <h2>The outlook, raised again</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The outlook, raised again"
+        columns={[
+          { key: 'c0', label: 'Released', width: '50%' },
+          { key: 'c1', label: '2026 revenue outlook', numeric: true, width: '50%' },
+        ]}
+        rows={[
+          { cells: { c0: 'February', c1: '$80 to $83 billion' } },
+          { cells: { c0: 'April', c1: '$82 to $85 billion' } },
+          { cells: { c0: 'August', c1: '$85 to $87 billion' } },
+          { cells: { c0: 'October', c1: '$91 to $92 billion' } },
+        ]}
+      />
+      <p>
+        Lilly has raised its revenue outlook at every results release this year, three times in
+        all. The middle of the range is now $91.5 billion, $10 billion higher than in February.
+        Its outlook for non-GAAP earnings per share went the other way, to $35.00 to $36.00,
+        from $35.50 to $36.50: it raised the underlying figure by $4.07 at the midpoint, then
+        took off the $4.57 of acquired research charges. The outlook leaves out any such charges
+        after 30 September.
+      </p>
+
+      <h2>Where the money is going</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the money is going"
+        columns={[
+          { key: 'c0', label: 'First nine months', width: '40%' },
+          { key: 'c1', label: '2026', numeric: true, width: '30%' },
+          { key: 'c2', label: '2025', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Cash from operations', c1: '$27.4B', c2: '$13.6B' } },
+          { cells: { c0: 'Spent on property and equipment', c1: '$8.4B', c2: '$5.3B' } },
+          { cells: { c0: 'Paid for acquisitions and research deals', c1: '$18.2B', c2: '' } },
+          { cells: { c0: 'Dividends', c1: '$4.6B', c2: '$4.0B' } },
+          { cells: { c0: 'Shares bought back', c1: '$4.3B', c2: '$2.6B' } },
+        ]}
+      />
+      <p>
+        Cash from operations doubled. But Lilly spent more than it brought in. Its 10-Q says it
+        paid $18.2 billion for business development in the first nine months, “primarily driven
+        by the acquisitions of” Centessa, Kelonia, AtaiBeckley and Orna, among others. On top of
+        that came $8.4 billion on property and equipment, and $9.0 billion returned to
+        shareholders as dividends and buybacks.
+      </p>
+      <p>
+        The gap was borrowed. Total debt rose $7.0 billion this year, to $49.5 billion, and cash
+        fell to $4.9 billion. Lilly started building a $6.5 billion plant in Houston and a $5
+        billion plant in Richmond, Virginia, this quarter, two of the ten US sites it has
+        announced since 2020.
+      </p>
+
+      <h2>The pipeline</h2>
+      <p>
+        Lilly’s next weight-loss medicine, retatrutide, was tested head to head against Ozempic
+        at its highest approved dose, 2 mg, in adults with type 2 diabetes. After 80 weeks, its
+        slides show weight loss of 20.1 kg and 21.5 kg on the two retatrutide doses against 9.5
+        kg on Ozempic, and a fall in blood sugar, measured as A1C, of 2.2 points against 1.8.
+        More people stopped taking retatrutide because of side effects: 5% to 8%, against 3% on
+        Ozempic.
+      </p>
+      <p>
+        The FDA also approved Mounjaro to reduce cardiovascular risk in adults with type 2
+        diabetes, and a once-weekly insulin, Onswik.
+      </p>
+
+      <h2>Risks Lilly names</h2>
+      <ul>
+        <li>
+          <strong>Prices.</strong> The 10-Q says US efforts to align drug prices “with
+          international benchmarks” “may result in reduced revenue in certain markets”. The US
+          government has already picked Jardiance for set prices from 2026, and Trulicity and
+          Verzenio from 2028.
+        </li>
+        <li>
+          <strong>Concentration.</strong> Two thirds of revenue comes from three medicines built
+          on the same idea.
+        </li>
+        <li>
+          <strong>Copies.</strong> Lilly says it continues to see counterfeit and
+          “mass-compounded” versions of its medicines sold.
+        </li>
+      </ul>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Lilly closed at $1,288.30 on 28 October. It reported before the market opened the next
+        day, and by the close on 29 October the shares were at $1,373.70, up 6.6%, a record
+        close. Of the 41 earlier results measured below, seven were followed by a bigger move,
+        in either direction.
+      </p>
+
+      <h2>How Lilly shares usually react to results</h2>
+      <p>
+        We measured all 41 regular results releases from July 2016 to August 2026, comparing the
+        close on the day Lilly reported, before the market opened, with the close the day
+        before:
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>3.3%</strong>.
+        </li>
+        <li>
+          12 of the 41 moved by 5% or more, and four by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>14.1%</strong> in August 2025.
+        </li>
+        <li>
+          The largest rise was <strong>14.9%</strong> in August 2023.
+        </li>
+        <li>
+          The shares rose after 19 of the 41 and fell after 22.
+        </li>
+      </ul>
+
+      <h2>How far Lilly has fallen before</h2>
+      <p>
+        Counting dividends, Lilly has fallen 35% or more five times since 1972, the start of our
+        price history. These are measured from a record close to the lowest close before the
+        shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Lilly has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'July 1973', c1: 'September 1977', c2: '−60.8%', c3: 'June 1983' } },
+          { cells: { c0: 'September 1987', c1: 'October 1987', c2: '−40.7%', c3: 'March 1989' } },
+          { cells: { c0: 'January 1992', c1: 'August 1993', c2: '−46.4%', c3: 'March 1995' } },
+          { cells: { c0: 'March 1999', c1: 'March 2000', c2: '−43.3%', c3: 'June 2000' } },
+          { cells: { c0: 'August 2000', c1: 'March 2009', c2: '−68.3%', c3: 'October 2014' } },
+        ]}
+      />
+      <p>
+        All five got back to their record. The quickest was back about four months after its
+        low, in 2000; the slowest, after the 1977 low, took almost six years. That is a record
+        of what happened, not a guide to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Prices against volume.</strong> Whether volume keeps growing faster than
+          prices fall, as the Medicare program and Foundayo add patients.
+        </li>
+        <li>
+          <strong>Foundayo.</strong> Lilly expects a decision on its use in type 2 diabetes, and
+          it is under review in more than 40 countries.
+        </li>
+        <li>
+          <strong>Borrowing.</strong> How much more of the deal-making and building is funded
+          with debt.
+        </li>
+        <li>
+          <strong>Novo Nordisk.</strong> Its own third-quarter results, and whether Lilly keeps
+          its lead.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Lilly’s own, not ours. The share-price
+        history is a record of what happened before, not a prediction. This article is general
+        information and does not take into account your objectives, financial situation or
+        needs.
       </p>
     </>
   ),

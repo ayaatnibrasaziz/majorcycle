@@ -91,6 +91,16 @@ def convert(md: str, slug: str) -> str:
                 out.append(wrap(inline(text), 10))
                 out.append("        </li>")
             out.append("      </ul>")
+        elif re.match(r"1\. ", b):
+            # A numbered list. Until 30 Oct this fell through to <p> and printed "1. … 2. … 3." as one paragraph.
+            items = re.split(r"\n\d+\. ", "\n" + b)[1:]
+            out.append("      <ol>")
+            for it in items:
+                text = " ".join(x.strip() for x in it.splitlines())
+                out.append("        <li>")
+                out.append(wrap(inline(text), 10))
+                out.append("        </li>")
+            out.append("      </ol>")
         else:
             text = " ".join(x.strip() for x in b.splitlines())
             out.append("      <p>")
