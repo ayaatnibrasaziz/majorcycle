@@ -594,7 +594,7 @@ export const ARTICLES = [
     answer:
       'Eli Lilly’s third-quarter revenue rose 39% to $24.4 billion, even though its prices were 15% lower than a year earlier: it sold 53% more. It raised its 2026 revenue outlook for a third time, to $91 billion to $92 billion, and its shares rose 6.6% to a record close.',
     summary:
-      'Eli Lilly’s Q3 2026 results from its own filings: price against volume, Mounjaro and Zepbound, its share against Novo Nordisk, a forecast raised three times, where the cash went, and the shares.',
+      'Eli Lilly’s Q3 2026 results from its own filings: lower prices, 53% more volume, Mounjaro and Zepbound, Novo Nordisk, and a forecast raised three times.',
     kind: 'commentary',
     deck: [
       'Revenue rose 39% while prices fell 15%. ',
