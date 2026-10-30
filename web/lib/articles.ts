@@ -528,7 +528,7 @@ export const ARTICLES = [
     title: 'Microsoft’s September-quarter 2026 results, explained',
     question: 'What did Microsoft report for the September quarter of 2026?',
     answer:
-      'Microsoft’s revenue for the three months to September 2026 was $92.3 billion, up 19%. Azure grew 48%. It spent $39.4 billion on property and equipment, more than double a year earlier, and its free cash flow fell 27%. In after-hours trading, the shares rose 2.9%.',
+      'Microsoft’s revenue for the three months to September 2026 was $92.3 billion, up 19% and above its own forecast. Azure grew 48%. Its cash spending on property and equipment doubled, to $39.4 billion, and free cash flow fell 27%. After hours the shares rose 2.9%, but by the next day’s close they were 0.2% lower.',
     summary:
       'Microsoft’s results for the quarter to September 2026, from its own release: revenue, Azure, the OpenAI effect, spending and free cash flow.',
     kind: 'commentary',
@@ -542,8 +542,8 @@ export const ARTICLES = [
       ', spending ',
       { figure: '$39.4B' },
       ', shares ',
-      { figure: '+2.9%' },
-      ' after hours.',
+      { figure: '−0.2%' },
+      ' the next day.',
     ],
     facts: [
       { value: '$92.3B', label: 'revenue' },
@@ -551,16 +551,16 @@ export const ARTICLES = [
       { value: '$39.4B', label: 'spent on property and equipment' },
     ],
     region: 'United States',
-    published: '2026-10-29',
-    reviewed: '2026-10-29',
-    minutes: 5,
+    published: '2026-10-30',
+    reviewed: '2026-10-30',
+    minutes: 8,
   },
   {
     slug: 'alphabet-q3-2026-results',
     title: 'Alphabet’s third-quarter 2026 results, explained',
     question: 'Why did Alphabet’s free cash flow turn negative in Q3 2026?',
     answer:
-      'Alphabet’s third-quarter revenue was $127.6 billion, up 25%, and Google Cloud’s more than doubled. But it spent $51.4 billion on property and equipment, so free cash flow was negative $9.1 billion, and a loss on shares it holds cut net income 24%. In after-hours trading, the shares fell 9.8%.',
+      'Alphabet’s third-quarter revenue was $127.6 billion, up 25%, and Google Cloud’s more than doubled. Its cash spending, $51.4 billion, was more than its operations brought in, and a loss on its SpaceX shares cut net income 24%. The next day, its shares fell 12.6%, their biggest fall after results in more than ten years.',
     summary:
       'Alphabet’s Q3 2026 results from its own release: revenue, Google Cloud, why profit fell, record spending, negative free cash flow and the shares.',
     kind: 'commentary',
@@ -574,8 +574,8 @@ export const ARTICLES = [
       ', free cash flow ',
       { figure: '−$9.1B' },
       ', shares ',
-      { figure: '−9.8%' },
-      ' after hours.',
+      { figure: '−12.6%' },
+      ' the next day.',
     ],
     facts: [
       { value: '$127.6B', label: 'revenue' },
@@ -583,9 +583,41 @@ export const ARTICLES = [
       { value: '−$9.1B', label: 'free cash flow' },
     ],
     region: 'United States',
-    published: '2026-10-29',
-    reviewed: '2026-10-29',
-    minutes: 5,
+    published: '2026-10-30',
+    reviewed: '2026-10-30',
+    minutes: 7,
+  },
+  {
+    slug: 'eli-lilly-q3-2026-results',
+    title: 'Eli Lilly’s third-quarter 2026 results, explained',
+    question: 'How did Eli Lilly grow revenue 39% while its prices fell 15%?',
+    answer:
+      'Eli Lilly’s third-quarter revenue rose 39% to $24.4 billion, even though its prices were 15% lower than a year earlier: it sold 53% more. It raised its 2026 revenue outlook for a third time, to $91 billion to $92 billion, and its shares rose 6.6% to a record close.',
+    summary:
+      'Eli Lilly’s Q3 2026 results from its own filings: price against volume, Mounjaro and Zepbound, its share against Novo Nordisk, a forecast raised three times, where the cash went, and the shares.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 39% while prices fell 15%. ',
+      { strong: 'Two dollars in every three came from three medicines.' },
+    ],
+    finding: [
+      'Volume ',
+      { figure: '+53%' },
+      ', prices ',
+      { figure: '−15%' },
+      ', shares ',
+      { figure: '+6.6%' },
+      ' on results day.',
+    ],
+    facts: [
+      { value: '$24.4B', label: 'revenue' },
+      { value: '$10.7B', label: 'Mounjaro revenue' },
+      { value: '66%', label: 'of 2026 revenue from three medicines' },
+    ],
+    region: 'United States',
+    published: '2026-10-30',
+    reviewed: '2026-10-30',
+    minutes: 8,
   },
 ] as const satisfies readonly Article[];
 

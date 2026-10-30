@@ -2,15 +2,14 @@
 
 > Nothing here is published. This file holds the draft, the SEO plan and the fact-check sheet.
 >
-> Every figure from Microsoft comes from its own results release and SEC filings (links in the
-> fact-check sheet). Every share-price history figure is re-derived by `verify/earn_figures.py`
-> from frozen data, and `verify/assert_msft.py` checks each one against the text of this file.
-> Microsoft pays a dividend, so our stored prices are dividend-adjusted, and the history of falls
-> says "counting dividends".
+> Every figure from Microsoft comes from its own documents, downloaded and saved: the results release and
+> 8-Ks (28 Oct 2026), the 10-Q (28 Oct 2026), and the transcripts of its results calls on 28 October 2026,
+> 29 July 2026 (the forecasts for this quarter) and 29 October 2025 (the year-earlier spending figure).
+> Every share-price figure is re-derived by `verify/earn_figures.py` from frozen data, or read from the saved
+> Nasdaq history, and `verify/assert_msft.py` checks each one against the text of this file.
 >
-> Share-price history is frozen at the close of 27 October 2026, the last full day before the
-> results (`freeze_earn.py`). The results-day close and the after-hours move come from Nasdaq,
-> saved with their timestamps.
+> Share-price history is frozen at the close of 29 October 2026. The reaction is the regular-session close on
+> 29 October, the first full day after the results.
 
 ---
 
@@ -19,29 +18,29 @@
 | Field | Value |
 |---|---|
 | **URL** | `/articles/microsoft-q1-fy27-results` |
-| **Title tag** | Microsoft Q1 FY27 results: Azure up 48%, spending doubles (56 chars) |
+| **Title tag** | Microsoft doubled its cash spending. Why did shares rise? (56 chars) |
 | **H1** | Microsoft's September-quarter 2026 results, explained |
-| **Meta description** | Microsoft's results for the quarter to September 2026, from its own release: revenue, Azure, the OpenAI effect, spending and free cash flow. (142 chars) |
+| **Meta description** | Microsoft's results to September 2026 from its own filings: against its own forecast, the $45.2 billion of spending, OpenAI, and the outlook. (146 chars) |
 | **Kind** | Market commentary |
 | **Region pill** | United States |
-| **Reading time** | about 5 minutes (~1,000 words, tables included) |
-| **As at** | Results: 28 October 2026 (US time). Share-price history: the close on 27 October 2026 |
+| **Reading time** | see the site check |
+| **As at** | Results: 28 October 2026 (US time). Reaction: the close on 29 October 2026 |
 | **Refresh** | Do not refresh in place. The December-quarter results get their own article. |
 
-**The searches this targets:** "microsoft earnings", "microsoft q1 fy27 earnings", "microsoft
-earnings october 2026", "azure growth", "microsoft capex", "microsoft openai impact", "msft stock",
-"why is microsoft stock up", "microsoft free cash flow".
+**The searches this targets:** "microsoft earnings", "microsoft q1 fy27 earnings", "microsoft earnings
+october 2026", "azure growth", "microsoft capex", "microsoft capital expenditure 2026", "microsoft openai
+revenue", "microsoft guidance q2 fy27", "msft stock", "why is microsoft stock up", "microsoft free cash flow".
 
-**Internal links:** `/learn/what-is-a-drawdown`, `/learn/own-history-vs-market-average`, and the
+**Internal links:** `/learn/what-is-a-drawdown`, `/learn/own-history-vs-market-average`, and the Alphabet,
 Netflix, Meta and Tesla results articles (same format).
 
 ---
 
 ## The answer, shown under the heading
 
-Microsoft's revenue for the three months to September 2026 was $92.3 billion, up 19%. Azure grew
-48%. It spent $39.4 billion on property and equipment, more than double a year earlier, and its
-free cash flow fell 27%. In after-hours trading, the shares rose 2.9%.
+Microsoft's revenue for the three months to September 2026 was $92.3 billion, up 19% and above its own
+forecast. Azure grew 48%. Its cash spending on property and equipment doubled, to $39.4 billion, and free
+cash flow fell 27%. After hours the shares rose 2.9%, but by the next day's close they were 0.2% lower.
 
 ---
 
@@ -49,19 +48,37 @@ free cash flow fell 27%. In after-hours trading, the shares rose 2.9%.
 
 ### The short version
 
-Microsoft reported its results for the three months to 30 September 2026, the first quarter of
-its 2027 financial year, after the US market closed on 28 October 2026. In short:
+Microsoft reported its results for the three months to 30 September 2026, the first quarter of its 2027
+financial year, after the US market closed on 28 October 2026. In short:
 
-- **Revenue:** $92.3 billion, up 19% from $77.7 billion a year earlier.
-- **Profit:** operating income of $45.9 billion, up 21%. Net income was $36.6 billion, up 32%, or
-  $36.4 billion and up 18% on Microsoft's adjusted measure, which leaves out its investment in
-  OpenAI.
-- **Earnings per share:** $4.92, or $4.89 adjusted.
-- **Azure:** revenue of $33.2 billion, up 48%.
-- **Spending:** $39.4 billion on property and equipment, against $19.4 billion a year earlier.
-- **Orders already signed:** commercial remaining performance obligation of $677 billion, up 73%.
+- **Against its own forecast:** revenue of $92.3 billion was $1.3 billion above the top of the range
+  Microsoft gave in July, and Azure grew 48% against a forecast of about 45%.
+- **Profit:** operating income of $45.9 billion, up 21%. Net income was $36.6 billion, up 32%, or up 18%
+  without the effect of its investment in OpenAI.
+- **Spending:** $39.4 billion of cash spent on property and equipment, double the $19.4 billion of a year
+  earlier. Counting new data centre leases, Microsoft's own capital spending figure was $45.2 billion, up 30%.
+- **Cash:** free cash flow fell 27%, to $18.6 billion.
+- **Orders:** contracted revenue not yet counted rose 73%, to $677 billion.
+- **Next quarter:** Microsoft expects revenue of $96 billion to $97.1 billion, Azure growth of 49% to 50%,
+  and more than $50 billion of capital spending.
 
 All figures are in US dollars.
+
+### Against Microsoft's own forecast
+
+In July, on its previous results call, Microsoft gave a forecast for this quarter. That is the test the
+company sets itself, so it is the one we start with.
+
+| | July forecast | Result |
+|---|---|---|
+| Revenue | $89.85B to $90.95B | $92.28B |
+| Azure revenue growth | about 45% (constant currency) | 48% |
+| Operating expenses | $16.8B to $16.9B | $16.64B |
+| Capital spending | over $50B | $45.2B |
+
+Revenue and Azure came in above the forecast and costs below it. Capital spending was the one line short of
+it: Microsoft's finance chief, Amy Hood, said "some third-party capacity deliveries we expected in Q1 were
+delayed". So the spending doubled in cash terms and still came in under plan.
 
 ### The quarter against a year earlier
 
@@ -73,58 +90,128 @@ year-earlier figures to match.
 | Revenue | $92.3B | $77.7B | +18.8% |
 | Agents and Infra | $76.8B | $61.7B | +24.5% |
 | Devices and Consumer | $15.5B | $16.0B | −3.2% |
+| Gross margin | $62.6B | $53.6B | +16.6% |
 | Operating income | $45.9B | $38.0B | +21.0% |
 | Operating margin | 49.8% | 48.9% | |
 | Net income | $36.6B | $27.7B | +32.0% |
 | Net income, excluding OpenAI | $36.4B | $30.8B | +18.1% |
 | Diluted earnings per share | $4.92 | $3.72 | |
 
-Agents and Infra holds Azure and Microsoft 365. Inside it, Azure brought in $33.2 billion, up from
-$22.4 billion, and Microsoft Cloud revenue as a whole was $63.9 billion, up 30%. Microsoft's chief
-financial officer, Amy Hood, said growth was "accelerating". Devices and Consumer holds Windows,
-Xbox and search: Windows OEM and devices revenue fell 22%, to $3.6 billion, and Xbox content and
-services fell 2%.
+Operating expenses rose 6% while revenue rose 19%, and Microsoft's 10-Q says its total headcount fell 2%.
+That is how the operating margin edged up to almost 50% even as the cost of running Azure rose.
+
+### Where the revenue came from
+
+| | Sep quarter 2026 | A year earlier | Change |
+|---|---|---|---|
+| Azure | $33.2B | $22.4B | +48.2% |
+| Microsoft 365 cloud | $27.8B | $23.7B | +17.2% |
+| Productivity and server licensing | $8.4B | $8.7B | −3.1% |
+| Search and advertising | $6.6B | $5.9B | +10.3% |
+| Xbox | $5.4B | $5.5B | −2.3% |
+| Industry solutions | $5.3B | $4.9B | +9.1% |
+| Windows OEM and devices | $3.6B | $4.6B | −22.0% |
+| Frontier and support services | $2.1B | $2.0B | +4.3% |
+
+Azure is now Microsoft's largest single revenue line, and under the new reporting it has a dollar figure of
+its own each quarter. In the June quarter, when Microsoft reported it as "Azure and other cloud services",
+it grew 43%. Microsoft Cloud revenue, a wider measure that includes Azure, was $63.9 billion, up 30%.
+
+### Devices and Consumer, line by line
+
+The Devices and Consumer segment fell 3%, to $15.5 billion. Its parts moved in different directions:
+
+- **Search and advertising** grew 10% in total, or 12% after the traffic acquisition costs Microsoft pays to
+  partners. Microsoft says Bing and Edge took share.
+- **Xbox** revenue fell 2%. Content and services fell 2%, with declines in third-party games and Game Pass.
+- **Windows OEM and devices** fell 22%. Within it, Windows OEM revenue, the Windows licences sold with new
+  PCs, fell 27%. Microsoft puts this down to strong demand a year earlier, when Windows 10 support was
+  ending, to PC makers running down their stock, and to weaker PC demand. It says inventory levels "remain
+  elevated" and expects the line to fall again next quarter, by a percentage in the mid-thirties.
+
+So the segment's 3% fall is the sum of a growing advertising business and a shrinking Windows one.
 
 ### The OpenAI effect
 
-Microsoft's reported profit swings with the value of its investment in OpenAI. A year ago that
-investment cut net income by $3.1 billion. This quarter it added $207 million. Leave it out, as
-Microsoft's own adjusted figures do, and net income grew 18% rather than 32%.
+OpenAI touches Microsoft's results in three places:
+
+- **Profit.** Microsoft owns about 24% of OpenAI, accounted for under the equity method. A year ago, that
+  investment cut its net income by $3.1 billion. This quarter it added $207 million. Leave it out, as
+  Microsoft's own adjusted figures do, and net income grew 18% rather than 32%.
+- **Revenue.** Microsoft's 10-Q says it recorded $10.0 billion of revenue from commercial arrangements
+  with OpenAI, including revenue-sharing payments, in the quarter. That is about 11% of Microsoft's revenue.
+- **Money owed.** OpenAI owed Microsoft $7.2 billion at the end of September, up from $6.0 billion in
+  June. Microsoft has committed $13.0 billion of funding to the investment, of which $12.0 billion has been
+  paid.
 
 ### Where the money is going
 
-| | Sep quarter 2026 | A year earlier |
-|---|---|---|
-| Cash from operations | $58.0B | $45.1B |
-| Spent on property and equipment | $39.4B | $19.4B |
-| Free cash flow | $18.6B | $25.7B |
-| Depreciation, amortisation and other | $11.7B | $8.1B |
+Microsoft gives two measures of its spending, and they tell different stories:
 
-Free cash flow here is cash from operations less spending on property and equipment, both from
-Microsoft's cash flow statement. Cash from operations rose 29%, but spending rose 103%, so free
-cash flow fell 27%. The depreciation charge, which spreads the cost of that equipment over the
-years it is used, rose 44%.
+| | Sep quarter 2026 | A year earlier | Change |
+|---|---|---|---|
+| Cash spent on property and equipment | $39.4B | $19.4B | +103% |
+| Capital spending, including finance leases | $45.2B | $34.9B | +30% |
+| Cash from operations | $58.0B | $45.1B | +29% |
+| Free cash flow | $18.6B | $25.7B | −27% |
 
-Microsoft returned $10.2 billion to shareholders in dividends and share buybacks.
+The cash figure doubled; the wider figure, which counts the full value of a data centre lease when it
+starts, rose 30%. Hood said roughly three quarters of the spending was on "short-lived assets, primarily
+CPUs and GPUs", the chips that run AI and cloud workloads, and the rest on long-lived assets. Free cash flow
+is cash from operations less the cash spent on property and equipment.
+
+The spending is set to rise from here:
+
+- **Next quarter:** "over $50 billion".
+- **Calendar 2026:** "approximately $170 billion".
+- **Leases not yet started:** Microsoft's 10-Q says it has signed further leases, "primarily for
+  datacenters", worth $364.6 billion that have not yet commenced. They start between fiscal 2027 and
+  fiscal 2034, some subject to conditions being met.
+
+The reason Microsoft gives is demand: "Customer demand continues to exceed available supply." Hood said
+Microsoft expects to "remain free cash flow positive in FY27", and that it will "access additional sources of
+funding" when it is attractive to do so.
+
+### The order book
+
+Microsoft's commercial remaining performance obligation, the revenue customers have contracted for that it
+has not yet recognised, rose 73% to $677 billion. Microsoft expects about 30% of it to be recognised within
+the next 12 months, and the weighted average duration is about 2.3 years.
+
+Not every order measure grew. Commercial bookings fell 12%, which Hood put down to "large Azure commitments
+in the prior year". She also pointed to "weaker sales execution" in some Microsoft 365 products, the E3
+plans and standalone products.
+
+### What Microsoft expects next quarter
+
+| | Forecast for the December quarter |
+|---|---|
+| Revenue | $96.0B to $97.1B (growth of 18% to 19%) |
+| Agents and Infra | $80.1B to $80.7B |
+| Devices and Consumer | $15.9B to $16.4B |
+| Azure revenue growth | 49% to 50% (constant currency) |
+| Windows OEM and devices | a decline in the mid-thirties |
+| Capital spending | over $50B |
+| Operating margin | down slightly on a year earlier |
+
+Microsoft's cost forecast includes an estimate for an employee voluntary exit offer it announced recently.
 
 ### What management said
 
-Hood said: "Results exceeded expectations across revenue, operating income, and earnings per
-share." Microsoft gives its forecast for the next quarter on its results call, not in its release.
+Hood: "Results exceeded expectations across revenue, operating income, and earnings per share."
+
+Chief executive Satya Nadella closed his remarks by saying that, "based on the demand we see, the strength of our products,
+and the efficiencies we are driving across the stack, I have never been more confident in the long-term
+returns on our investments."
 
 ### How the shares reacted
 
-Microsoft closed at $531.01 on 28 October, before the results came out. In after-hours trading, at 6:47pm New York time, it was at $546.35, up 2.9%. After-hours trading is thin, and the price can move a long way before the next day's close, so this is the reaction at that moment, not a final one.
-
-On 27 October, the day before the results, Microsoft closed at $531.33. That was:
-
-- **2.2% below its record close** of $543.45 on 13 October 2026,
-- **9.9% higher than at the start of 2026**, when it stood at $483.62.
+Microsoft closed at $531.01 on 28 October, before the results came out. In after-hours trading, at 6:47pm New York time, the shares were at $546.35, up 2.9%. By the close on 29 October that gain had gone: they finished at $530.14, down 0.2%. Of the 43 earlier results measured below, only two were followed by a smaller move, in either direction.
 
 ### How Microsoft shares usually react to results
 
-We measured all 43 regular results releases from January 2016 to July 2026, comparing the close
-on the day after with the close on the day Microsoft reported:
+We measured all 43 regular results releases from January 2016 to July 2026, comparing the close on the day
+after with the close on the day Microsoft reported:
 
 - The middle move, up or down, was **3.3%**.
 - 13 of the 43 moved by 5% or more, and one by 10% or more.
@@ -134,8 +221,8 @@ on the day after with the close on the day Microsoft reported:
 
 ### How far Microsoft has fallen before
 
-Counting dividends, Microsoft has fallen 30% or more five times since it listed in March 1986.
-These are measured from a record close to the lowest close before the shares got back to it:
+Counting dividends, Microsoft has fallen 30% or more five times since it listed in March 1986. These are
+measured from a record close to the lowest close before the shares got back to it:
 
 | Record close | Lowest point | Fall | Back at the record |
 |---|---|---|---|
@@ -145,48 +232,45 @@ These are measured from a record close to the lowest close before the shares got
 | November 2021 | November 2022 | −37.1% | June 2023 |
 | October 2025 | June 2026 | −34.5% | October 2026 |
 
-All five got back to their record. The quickest was back about four months after its low, in
-October 2026; the slowest, after the dot-com fall, took about five years from its 2009 low. That
-is a record of what happened, not a guide to what will.
+All five got back to their record. The quickest was back about four months after its low, in October 2026;
+the slowest, after the dot-com fall, took about five years from its 2009 low. That is a record of what
+happened, not a guide to what will.
 
-Measured on our stock page's setting, Microsoft normally falls about 17.2% below its one-year high
-before turning. On 27 October it was 3.6% below.
+Measured on our stock page's setting, Microsoft normally falls about 17.1% below its one-year high before
+turning. On 29 October, it was 3.8% below.
 
 ### What comes next
 
-- **Spending.** Whether property and equipment spending keeps rising, and what that does to free
-  cash flow.
-- **Azure.** Whether its growth holds near 48%.
-- **OpenAI.** The investment can move reported profit in either direction from quarter to quarter.
+- **Azure.** Microsoft expects growth of 49% to 50% next quarter, and says capacity, not demand, is the
+  limit.
+- **Spending.** Over $50 billion next quarter and about $170 billion for calendar 2026, with $364.6 billion
+  of signed leases still to start.
+- **Cash.** Whether free cash flow stays positive for the year, as Microsoft expects.
+- **OpenAI.** The investment can move reported profit either way from quarter to quarter.
 
 ### What this cannot tell you
 
-These are results for one quarter. The share-price history is a record of what happened before,
-not a prediction. This article is general information and does not take into account your
-objectives, financial situation or needs.
+These are results for one quarter. Forecasts are Microsoft's own, not ours. The share-price history is a
+record of what happened before, not a prediction. This article is general information and does not take
+into account your objectives, financial situation or needs.
 
 ---
 
 ## Fact-check sheet
 
-**Microsoft's figures come from Microsoft's own documents.** Every share-price history figure is
-re-derived by `verify/earn_figures.py` from `reference/earn-q3-2026-DATA.json.gz`, and
-`verify/assert_msft.py` fails if this file does not contain each figure.
+**Microsoft's figures come from Microsoft's own documents, saved in `reference/earnings-2026-q3/sources/`.**
+`verify/assert_msft.py` recomputes every derived figure from the raw numbers, checks every raw number and
+quote against the saved source text, and fails if this file does not contain each figure.
 
 | Source | What it gives |
 |---|---|
-| [Press release, SEC 8-K Exhibit 99.1](https://www.sec.gov/Archives/edgar/data/789019/000119312526436122/msft-ex99_1.htm) (28 Oct 2026) | Every quarterly figure and the recast year-earlier quarter; the OpenAI adjustment; Azure, Microsoft Cloud, commercial RPO; the Hood and Nadella quotes; $10.2B returned |
-| [8-K Item 8.01](https://www.sec.gov/Archives/edgar/data/789019/000119312526436149/msft-20261028.htm) (28 Oct 2026) | Prior-year financial statements recast for the new segments |
-| [SEC EDGAR filing list](https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000789019&type=8-K) | The 43 results dates (8-Ks with Item 2.02) |
-| Nasdaq quote, saved with timestamps | The 28 October close and the after-hours price |
-
-| Check | Result |
-|---|---|
-| Derived figures | Revenue 92,279 vs 77,673 = +18.80%; A&I 76,795 vs 61,672 = +24.52%; D&C 15,484 vs 16,001 = −3.23%; operating income 45,915 vs 37,961 = +20.95%; margin 49.76% vs 48.87%; net income 36,629 vs 27,747 = +32.01%; adjusted 36,422 vs 30,833 = +18.13%; Azure 33,165 vs 22,384 = +48.16%; Windows OEM and devices 3,551 vs 4,551 = −21.97%; capex 39,367 vs 19,394 = +102.99%; CFO 58,000 vs 45,057 = +28.73%; FCF 18,633 vs 25,663 = −27.39%; D&A and other 11,744 vs 8,147 = +44.15% |
-| Results dates | 43 Item 2.02 8-Ks, January 2016 to July 2026 |
-| Dividend vs actual prices | Microsoft pays a dividend; our stored series includes dividends. The record close ($543.45) and the 27 October close ($531.33) are actual closes on both. The start-of-year level is printed as Microsoft's ACTUAL close ($483.62, Nasdaq history, saved), so this year's rise reads 9.9% (10.6% on adjusted data). The history of falls and the results-day moves use the stored series, counting dividends |
-| Rating words / provider | None. No buy, sell or avoid. The data provider is not named |
-| Advice line | General information |
+| [Press release, SEC 8-K Exhibit 99.1](https://www.sec.gov/Archives/edgar/data/789019/000119312526436122/msft-ex99_1.htm) (28 Oct 2026) | Every quarterly figure and the recast year-earlier quarter; product-line revenue; segment results; OpenAI adjustment; cash flow |
+| [10-Q](https://www.sec.gov/Archives/edgar/data/789019/000119312526436133/msft-20260930.htm) (28 Oct 2026) | $364.6B of leases not yet commenced (Note 12, p.22); ~24% OpenAI interest; $10.0B OpenAI revenue; $7.2B/$6.0B receivable; $13.0B/$12.0B funding; $677B RPO, 2.3 years, ~30% in 12 months; headcount −2% |
+| [FY27 Q1 call transcript](https://www.microsoft.com/en-us/investor/earnings/fy-2027-q1/press-release-webcast) (28 Oct 2026) | $45.2B capex; three quarters short-lived; delayed third-party capacity; Windows OEM −27%; inventory; bookings −12%; Q2 guidance; ~$170B CY2026; demand exceeds supply; FCF positive FY27; quotes |
+| [FY26 Q4 call transcript](https://www.microsoft.com/en-us/investor/earnings/fy-2026-q4/press-release-webcast) (29 Jul 2026) | The forecasts for this quarter: revenue $89.85–90.95B, Azure ~45%, opex $16.8–16.9B, capex over $50B |
+| [FY26 Q1 call transcript](https://www.microsoft.com/en-us/investor/earnings/fy-2026-q1/press-release-webcast) (29 Oct 2025) | "Capital expenditures were $34.9 billion" |
+| [July release, 8-K Ex. 99.1](https://www.sec.gov/Archives/edgar/data/789019/000119312526323632/msft-ex99_1.htm) (29 Jul 2026) | "Azure and other cloud services revenue increased 43%" in the June quarter |
+| Nasdaq history, saved | The closes on 27, 28 and 29 October |
 
 ### Spot-checks you can confirm yourself
 
@@ -194,6 +278,7 @@ re-derived by `verify/earn_figures.py` from `reference/earn-q3-2026-DATA.json.gz
 |---|---|---|
 | 1 | Revenue $92,279M; a year earlier $77,673M | Release, Income Statements |
 | 2 | Azure $33,165M vs $22,384M | Release, Product and Service Offerings Revenue |
-| 3 | Additions to property and equipment $39,367M vs $19,394M | Release, Cash Flows Statements |
-| 4 | OpenAI: +$207M this quarter, −$3.1B a year earlier | Release, Non-GAAP Definition |
-| 5 | Close of $531.33 on 27 October | [Nasdaq — MSFT history](https://www.nasdaq.com/market-activity/stocks/msft/historical) |
+| 3 | Cash on property and equipment $39,367M vs $19,394M | Release, Cash Flows Statements |
+| 4 | $364.6B leases not yet commenced | 10-Q, Note 12 — Leases |
+| 5 | $10.0B revenue from OpenAI | 10-Q, notes to the financial statements (OpenAI related-party disclosure) |
+| 6 | July forecast $89.85–90.95B | FY26 Q4 call transcript, outlook section |
