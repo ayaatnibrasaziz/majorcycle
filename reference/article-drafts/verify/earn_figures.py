@@ -1,4 +1,4 @@
-"""Derive the measured figures for the Q3 2026 earnings videos (MSFT GOOGL LLY AMZN INTC SNDK).
+"""Derive the measured figures for the Q3 2026 earnings videos (MSFT GOOGL LLY AMZN INTC SNDK NOW).
 
 Same rules as `tsla_figures.py`, one ticker at a time, from `earn-q3-2026-DATA.json.gz` only:
 the site's engine (Medium preset) for "how far it normally falls", the recovery study's episode
@@ -36,7 +36,9 @@ from recovery_episodes import episodes  # noqa: E402
 #: The whole stored history, not the recovery study's 2000 window: "record" must mean the record.
 recovery_episodes.WINDOW_START = "1900-01-01"
 
-DATA = ROOT / "reference" / "earn-q3-2026-DATA.json.gz"
+#: Batch 1 (MSFT, GOOGL, LLY) is frozen at 29 Oct in the default file; batch 2 (INTC, AMZN, SNDK, reaction on 30 Oct)
+#: uses its own file so re-freezing it cannot move a published article's figures (11ad). Set EARN_DATA to choose.
+DATA = Path(__import__("os").environ.get("EARN_DATA") or ROOT / "reference" / "earn-q3-2026-DATA.json.gz")
 RAW = Path.home() / "mc-video-tools" / "earnings-q3" / "edgar" / "releases_raw.json"
 P = PRESETS["medium"]
 PARAMS = CycleParams(
@@ -51,6 +53,7 @@ PRE_MARKET = {"LLY"}
 DROP = {
     "GOOGL": {"2023-04-20": "segment recast ahead of the Q1 2023 release"},
     "INTC": {"2021-01-14": "preliminary figures with the CEO change, before the 2021-01-21 release"},
+    "NOW": {"2016-04-13": "litigation settlement charges, not a quarterly release"},
     "LLY": {
         "2017-12-13": "annual guidance", "2018-12-19": "annual guidance", "2019-12-17": "annual guidance",
         "2020-12-15": "annual guidance", "2021-12-15": "annual guidance", "2022-12-13": "annual guidance",
@@ -59,7 +62,7 @@ DROP = {
 }
 
 #: The size of fall listed. Owner's rule (23 Oct 2026): the threshold that leaves 5-10 falls.
-FALL_THRESHOLD = {"MSFT": -30, "GOOGL": -20, "LLY": -35, "AMZN": -40, "INTC": -40, "SNDK": -20}
+FALL_THRESHOLD = {"MSFT": -30, "GOOGL": -20, "LLY": -35, "AMZN": -40, "INTC": -40, "SNDK": -20, "NOW": -40}
 
 
 def load() -> dict[str, Any]:
@@ -69,7 +72,9 @@ def load() -> dict[str, Any]:
 
 def releases(t: str) -> list[str]:
     raw = json.loads(RAW.read_text())[t]
-    days = [r[0][:10] for r in raw]
+    # dict.fromkeys: one release per day. ServiceNow's preliminary Q3 2019 figures (filed 01:41 UTC on 23 Oct, the
+    # evening of the 22nd in New York, with the CEO change) share a UTC date with the full release that afternoon.
+    days = list(dict.fromkeys(r[0][:10] for r in raw))
     return [d for d in days if d not in DROP.get(t, {})]
 
 
@@ -142,6 +147,8 @@ def figures(t: str) -> dict[str, Any]:
         "rx_worst": min(rx, key=lambda r: r["move"]) if rx else None,
         "rx_best": max(rx, key=lambda r: r["move"]) if rx else None,
         "index": idx,
+        "full_dates": [r[0] for r in nf],
+        "full_closes": [float(r[3]) for r in nf],
     }
 
 
@@ -149,6 +156,8 @@ def main() -> None:
     f = figures(sys.argv[1])
     rx = f.pop("reactions")
     big = f.pop("big_falls")
+    f.pop("full_dates")
+    f.pop("full_closes")
     print(json.dumps(f, indent=1, default=str))
     print(f"\nfalls of {f['fall_threshold']}% or more, whole history (peak close -> lowest close):")
     for e in big:

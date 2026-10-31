@@ -118,38 +118,6 @@ export interface Article {
 }
 
 /**
- * Titles that are planned but not written — the "Coming next" section.
- *
- * ⚠️ **Plain data, deliberately not `Article`s.** The moment one becomes a
- * registry entry it acquires a URL, a sitemap row, a middleware allow-list entry
- * and a canonical tag, and `content.tsx` would have to hold a body for it because
- * `Record<ArticleSlug, …>` refuses to compile without one. A promise about a
- * future piece must cost none of that. There is nothing here that can become a
- * link by accident, and `articles.spec.ts` asserts none of them ever does.
- */
-export interface PlannedArticle {
-  readonly title: string;
-  readonly blurb: string;
-  /** Human month, e.g. "Sep 2026". Not an ISO date — we are not promising a day. */
-  readonly due: string;
-}
-
-export const PLANNED_ARTICLES: readonly PlannedArticle[] = [
-  // ⚠️ Two entries came OUT of this list on 2026-08-30, and they had to: "How
-  // long does an ASX share take to recover?" and "Which ASX 200 shares sit
-  // furthest below their own highs" are both published below, the second having
-  // become three pieces (AU, US, CA) as its blurb promised. A "Coming next" row
-  // for an article a reader can already open is not a stale detail — it is the
-  // section telling the reader it has not written something it has.
-  {
-    title: 'Do bank shares fall differently to mining shares?',
-    blurb:
-      'Banks and miners are most of the ASX. Canada is built the same way, which makes the comparison worth running.',
-    due: 'Oct 2026',
-  },
-] as const;
-
-/**
  * ⚠️ `satisfies`, NOT `: readonly Article[]`.
  *
  * An explicit annotation widens every `slug` to `string`, which destroys the
@@ -619,6 +587,134 @@ export const ARTICLES = [
     reviewed: '2026-10-30',
     minutes: 8,
   },
+  {
+    slug: 'intel-q3-2026-results',
+    title: 'Intel’s third-quarter 2026 results, explained',
+    question: 'Why did Intel’s shares fall 28.6% after it beat its own forecast?',
+    answer:
+      'Intel’s third-quarter revenue rose 21% to $16.5 billion, ahead of its own forecast, and its data-centre sales rose 78%. But it forecast lower revenue and a gross margin six points lower for the fourth quarter, blaming a memory-driven PC slump, and its shares fell 28.6% the next day, their worst day since at least 1980.',
+    summary:
+      'Intel’s Q3 2026 results from its own filings: data-centre sales up 78%, a weaker fourth-quarter forecast, a memory-driven PC slump, and the shares’ fall.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 21% and data-centre sales 78%. ',
+      { strong: 'The forecast for the next quarter was lower.' },
+    ],
+    finding: [
+      'Data centre ',
+      { figure: '+78%' },
+      ', next quarter’s revenue ',
+      { figure: '$15–16B' },
+      ', shares ',
+      { figure: '−28.6%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$16.5B', label: 'revenue' },
+      { value: '+78%', label: 'data-centre growth' },
+      { value: '$15–16B', label: 'fourth-quarter revenue forecast' },
+    ],
+    region: 'United States',
+    published: '2026-10-31',
+    reviewed: '2026-10-31',
+    minutes: 7,
+  },
+  {
+    slug: 'amazon-q3-2026-results',
+    title: 'Amazon’s third-quarter 2026 results, explained',
+    question: 'How did Amazon post its best margin and a $42 billion cash outflow?',
+    answer:
+      'Amazon’s third-quarter revenue rose 12% to $201.9 billion, AWS grew 39%, its fastest in nearly five years, and its operating margin was its highest ever. But it spent $77.3 billion on property and equipment, its free cash flow over the past year was an outflow of $42.4 billion, and its shares fell 1.4% the next day.',
+    summary:
+      'Amazon’s Q3 2026 results from its own filings: AWS up 39%, a record operating margin, $77 billion of spending in a quarter, and a $42 billion cash outflow.',
+    kind: 'commentary',
+    deck: [
+      'AWS grew 39% and the operating margin was Amazon’s highest ever. ',
+      { strong: 'Over the past year, spending ran $42.4 billion ahead of the cash coming in.' },
+    ],
+    finding: [
+      'AWS ',
+      { figure: '+39%' },
+      ', free cash flow ',
+      { figure: '−$42.4B' },
+      ', shares ',
+      { figure: '−1.4%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$201.9B', label: 'revenue' },
+      { value: '+39%', label: 'AWS growth' },
+      { value: '$77.3B', label: 'spent on property and equipment' },
+    ],
+    region: 'United States',
+    published: '2026-10-31',
+    reviewed: '2026-10-31',
+    minutes: 5,
+  },
+  {
+    slug: 'sandisk-q1-fy27-results',
+    title: 'Sandisk’s first-quarter fiscal 2027 results, explained',
+    question: 'How did Sandisk go from $112 million of profit to $8.1 billion in a year?',
+    answer:
+      'Sandisk’s revenue rose 378% to $11.0 billion in the three months to 2 October, its gross margin was 85.0%, and it made $8.1 billion of net income, against $112 million a year earlier. It also announced an 8-for-1 share split. The next day, its shares fell 13.5%, to $1,150.89, 50.7% below their June record close.',
+    summary:
+      'Sandisk’s results from its own filings: revenue up 378%, an 85% gross margin, data-centre sales up 61% in three months, and an 8-for-1 share split.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 378%, at a gross margin of 85%. ',
+      { strong: 'The memory shortage that hurt Intel paid Sandisk.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '+378%' },
+      ', net income ',
+      { figure: '$8.1B' },
+      ', shares ',
+      { figure: '−13.5%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$11.0B', label: 'revenue' },
+      { value: '85.0%', label: 'gross margin' },
+      { value: '$8.1B', label: 'net income' },
+    ],
+    region: 'United States',
+    published: '2026-10-31',
+    reviewed: '2026-10-31',
+    minutes: 5,
+  },
+  {
+    slug: 'servicenow-q3-2026-results',
+    title: 'ServiceNow’s third-quarter 2026 results, explained',
+    question: 'Why did ServiceNow’s shares fall 26.9% after it beat its own forecast?',
+    answer:
+      'ServiceNow’s subscription revenue rose 21% to $3.99 billion in the third quarter of 2026, above the top of its own forecast, and it raised its targets for the year. But it forecast slower growth in the revenue it has under contract, and its shares fell 26.9% the next day, their worst day since it listed in 2012.',
+    summary:
+      'ServiceNow’s Q3 2026 results from its own filings: revenue up 21%, a lower backlog forecast, $9.2 billion of deals, and its worst day since 2012.',
+    kind: 'commentary',
+    deck: [
+      'Subscription revenue rose 21%, above its own forecast. ',
+      { strong: 'Its forecast for revenue under contract was the lowest in five quarters.' },
+    ],
+    finding: [
+      'Subscription revenue ',
+      { figure: '+21%' },
+      ', backlog forecast ',
+      { figure: '18.5%' },
+      ', shares ',
+      { figure: '−26.9%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$3.99B', label: 'subscription revenue' },
+      { value: '$1.7B', label: 'AI contracts target' },
+      { value: '$9.2B', label: 'spent on acquisitions this year' },
+    ],
+    region: 'United States',
+    published: '2026-10-31',
+    reviewed: '2026-10-31',
+    minutes: 6,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];
@@ -639,6 +735,33 @@ export function findArticle(slug: string): Article | undefined {
  */
 export function articlesNewestFirst(): readonly Article[] {
   return [...ARTICLES].sort((a, b) => b.published.localeCompare(a.published));
+}
+
+/** How many related articles an article page lists. */
+export const RELATED_LIMIT = 4;
+
+/** A company's quarterly results piece, by its slug ("…-q3-2026-results", "…-q1-fy27-results"). */
+const isResults = (a: Article): boolean => a.slug.endsWith('-results');
+
+/**
+ * The few articles worth offering at the foot of `article` (owner, 1 Nov 2026: "if we have 500 articles, you
+ * can't list all of them in every article — just list the ones that are related and most likely people will
+ * click"). Every listing used to be the whole catalogue, newest first, which reads as a site map and grows
+ * without bound.
+ *
+ * Ranked by what makes a reader of THIS piece likely to want the next one: the same series first (a results
+ * piece leads to other results pieces; a study to other studies), then the same market, then the same kind,
+ * and the newest within a tie. Pure data, so the order is decided here once and `articles.spec.ts` can drive it.
+ */
+export function relatedArticles(article: Article, limit = RELATED_LIMIT): readonly Article[] {
+  const score = (a: Article): number =>
+    (isResults(a) === isResults(article) ? 4 : 0) + (a.region === article.region ? 2 : 0) + (a.kind === article.kind ? 1 : 0);
+  return articlesNewestFirst()
+    .filter((a) => a.slug !== article.slug)
+    .map((a, i) => ({ a, s: score(a), i }))
+    .sort((x, y) => y.s - x.s || x.i - y.i)
+    .slice(0, limit)
+    .map((x) => x.a);
 }
 
 /**

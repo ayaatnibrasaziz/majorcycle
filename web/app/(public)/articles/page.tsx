@@ -5,7 +5,6 @@ import { LegalNotice } from '@/components/LegalNotice';
 import { PageFrame } from '@/components/PageFrame';
 import { RichText } from '@/components/articles/RichText';
 import {
-  PLANNED_ARTICLES,
   articleDate,
   articleDateShort,
   articlePath,
@@ -156,31 +155,6 @@ export default function ArticlesIndexPage() {
               </div>
             </div>
           </div>
-        )}
-
-        {PLANNED_ARTICLES.length > 0 && (
-          <>
-            <div className="art-secn">
-              <h2>Coming next</h2>
-              <span className="art-secn-c">
-                {PLANNED_ARTICLES.length} in progress
-              </span>
-            </div>
-            {/* ⚠️ A `<div>`, never an `<a>`. These are promises, and a promise
-                that looks clickable is worse than no promise at all — the reader
-                clicks, nothing happens, and the section stops being believable.
-                `articles.spec.ts` asserts no link exists inside a planned row. */}
-            {PLANNED_ARTICLES.map((p) => (
-              <div className="art-row art-soon" key={p.title}>
-                <div className="art-d">{p.due}</div>
-                <div>
-                  <div className="art-t">{p.title}</div>
-                  <div className="art-f">{p.blurb}</div>
-                </div>
-                <span className="art-soonk">Planned</span>
-              </div>
-            ))}
-          </>
         )}
 
         {rest.length > 0 && (

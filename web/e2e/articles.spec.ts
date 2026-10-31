@@ -4,8 +4,9 @@ import {
   ARTICLES,
   ARTICLES_INDEX_PATH,
   FEATURED_SLUG,
-  PLANNED_ARTICLES,
+  RELATED_LIMIT,
   articlePath,
+  relatedArticles,
   featuredArticle,
   richText,
 } from '../lib/articles';
@@ -134,40 +135,37 @@ test.describe('the Articles section', () => {
     expect(articles).toEqual(landing);
   });
 
-  test('a planned row is never a link, and never recedes by opacity', async ({ page }) => {
+  test('the index has no "Coming next" section (owner, 1 Nov 2026)', async ({ page }) => {
     await page.goto(ARTICLES_INDEX_PATH);
     await ready(page);
+    await expect(page.locator('.art-row.art-soon')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Coming next' })).toHaveCount(0);
+    // Control: the published list this sat above is still there, so a page that failed to render cannot pass.
+    await expect(page.getByRole('heading', { name: 'Published' })).toHaveCount(1);
+  });
 
-    const soon = page.locator('.art-row.art-soon');
-    await expect(soon).toHaveCount(PLANNED_ARTICLES.length);
-
-    // ⚠️ A promise that looks clickable is worse than no promise: the reader
-    // clicks, nothing happens, and the section stops being believable.
-    //
-    // ⚠️ THE ROW ITSELF COUNTS. The first version of this asserted
-    // `soon.locator('a').count() === 0`, which only sees a link INSIDE the row —
-    // and the way this actually breaks is the whole row becoming an `<a>`, since
-    // that is one character away from the published rows right below it. Proven:
-    // that sabotage passed the narrower check. Both are asserted now.
-    const linkish = await soon.evaluateAll((els) =>
-      els.flatMap((el) => [
-        el.tagName,
-        ...[...el.querySelectorAll('a')].map((a) => a.tagName),
-      ]),
-    );
-    expect(linkish, 'a planned row is, or contains, a link').not.toContain('A');
-
-    // ⚠️ Recede with colour and weight, never transparency. The Learn "coming
-    // soon" rows were `--text-secondary` at 70% opacity and rendered at 3.38:1
-    // against a 4.5 floor — while the contrast guard scored them 6.81, because
-    // it could not see `opacity` at all (CLAUDE.md 11q).
-    const opacities = await soon.evaluateAll((els) =>
-      els.flatMap((el) => [
-        parseFloat(getComputedStyle(el).opacity),
-        ...[...el.querySelectorAll('*')].map((n) => parseFloat(getComputedStyle(n).opacity)),
-      ]),
-    );
-    expect(Math.min(...opacities), 'a planned row is fading with opacity').toBe(1);
+  test('each article lists a few related pieces, not the whole catalogue', async ({ page }) => {
+    // Owner, 1 Nov 2026: "if we have 500 articles, you can't list all of them in every article".
+    const results = (x: { slug: string }) => x.slug.endsWith('-results');
+    for (const a of ARTICLES) {
+      const rel = relatedArticles(a);
+      expect(rel.length, a.slug).toBe(Math.min(RELATED_LIMIT, ARTICLES.length - 1));
+      expect(rel.some((r) => r.slug === a.slug), `${a.slug} lists itself`).toBe(false);
+      // A results piece leads to other results pieces first; a study to other studies.
+      const pool = ARTICLES.filter((x) => x.slug !== a.slug && results(x) === results(a)).length;
+      expect(rel.filter((r) => results(r) === results(a)).length, a.slug).toBe(Math.min(RELATED_LIMIT, pool));
+    }
+    // And the page draws exactly that list: every /articles/ link in the related block, and nothing else.
+    const a = ARTICLES.find((x) => x.slug === 'servicenow-q3-2026-results')!;
+    await page.goto(articlePath(a.slug));
+    await ready(page);
+    const want = relatedArticles(a).map((r) => articlePath(r.slug));
+    const hrefs = await page
+      .locator('a[href^="/articles/"]')
+      .evaluateAll((els) => els.map((e) => e.getAttribute('href') ?? ''));
+    for (const w of want) expect(hrefs, `missing related link ${w}`).toContain(w);
+    const others = ARTICLES.filter((x) => x.slug !== a.slug && !want.includes(articlePath(x.slug)));
+    for (const o of others) expect(hrefs, `${o.slug} should not be listed`).not.toContain(articlePath(o.slug));
   });
 
   test('the date and reading time are separated by real space', async ({ page }) => {
