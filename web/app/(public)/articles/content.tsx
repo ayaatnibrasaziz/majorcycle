@@ -4275,6 +4275,1162 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
     </>
   ),
+  'intel-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Intel reported its results for the three months to 26 September after the US market
+        closed on 29 October 2026. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $16.5 billion, up 21% from $13.7 billion a year earlier, and
+          $0.2 billion above the middle of Intel’s own July forecast.
+        </li>
+        <li>
+          <strong>Data centre:</strong> $7.3 billion, up 78%. Intel’s chief executive called it
+          “the strongest revenue growth for the segment in 15 years”.
+        </li>
+        <li>
+          <strong>PCs:</strong> $8.1 billion, down 5%, which Intel puts down to higher memory
+          prices and limited IT budgets.
+        </li>
+        <li>
+          <strong>The forecast:</strong> fourth-quarter revenue of $15.0 billion to $16.0
+          billion, a non-GAAP gross margin of 38.0% and non-GAAP earnings per share of $0.25,
+          all below the third quarter.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 28.6% the next day, to $65.76, their worst day since
+          at least 1980, when our price history starts.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$16.5B', c2: '$13.7B', c3: '+21%' } },
+          { cells: { c0: 'Gross margin, non-GAAP', c1: '44.1%', c2: '40.0%', c3: '+4.1 points' } },
+          { cells: { c0: 'Operating income, reported', c1: '$2.5B', c2: '$0.7B', c3: '' } },
+          { cells: { c0: 'Net income, reported', c1: '$3.3B', c2: '$4.1B', c3: '−18%' } },
+          { cells: { c0: 'Earnings per share, reported', c1: '$0.60', c2: '$0.90', c3: '−33%' } },
+          { cells: { c0: 'Earnings per share, non-GAAP', c1: '$0.52', c2: '$0.23', c3: '+126%' } },
+        ]}
+      />
+      <p>
+        Two sets of earnings point in opposite directions. Reported earnings per share fell a
+        third, because a year earlier Intel booked a large one-off gain, worth $1.20 a share,
+        from selling 51% of its Altera business. Intel’s non-GAAP figure leaves out such gains
+        and more than doubled.
+      </p>
+
+      <h2>Against Intel’s own July forecast</h2>
+      <p>
+        In July Intel forecast third-quarter revenue of $15.8 billion to $16.8 billion and
+        non-GAAP earnings per share of $0.38. Its slides compare the outcome with the middle of
+        that range:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Against Intel’s own July forecast"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Forecast in July', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Actual', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Difference', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$16.3B', c2: '$16.5B', c3: '+$0.2B' } },
+          { cells: { c0: 'Gross margin, non-GAAP', c1: '42.0%', c2: '44.1%', c3: '+2.1 points' } },
+          { cells: { c0: 'Earnings per share, non-GAAP', c1: '$0.38', c2: '$0.52', c3: '+$0.14' } },
+        ]}
+      />
+      <p>
+        Intel’s finance chief, Dave Zinsner, said on the call: “This marks the eighth
+        consecutive quarter of exceeding our financial expectations.”
+      </p>
+
+      <h2>Data centres up, PCs down</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Data centres up, PCs down"
+        columns={[
+          { key: 'c0', label: 'Quarter', width: '40%' },
+          { key: 'c1', label: 'Data centre and AI', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Change on a year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'PCs (CCPG)', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Third quarter 2025', c1: '$4.1B', c2: '−1%', c3: '$8.5B' } },
+          { cells: { c0: 'Fourth quarter 2025', c1: '$4.7B', c2: '+9%', c3: '$8.2B' } },
+          { cells: { c0: 'First quarter 2026', c1: '$5.1B', c2: '+22%', c3: '$7.7B' } },
+          { cells: { c0: 'Second quarter 2026', c1: '$6.3B', c2: '+59%', c3: '$8.9B' } },
+          { cells: { c0: 'Third quarter 2026', c1: '$7.3B', c2: '+78%', c3: '$8.1B' } },
+        ]}
+      />
+      <p>
+        Data-centre growth has sped up in every one of the last five quarters, and its operating
+        margin rose from 23.4% to 41.5% over the same five quarters. Intel’s 10-Q says that in
+        the third quarter “demand for certain data center products continued to exceed available
+        supply”, held back by an industry-wide shortage of the substrates its server chips are
+        packaged on.
+      </p>
+      <p>
+        PCs went the other way. The 10-Q says client demand fell “due to industry-wide impacts
+        from higher component prices, particularly memory, constrained IT budgets and tighter
+        inventory management”, and adds: “We expect these trends to worsen in Q4 2026 and
+        persist in 2027.”
+      </p>
+
+      <h2>Why the forecast disappointed</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Why the forecast disappointed"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Fourth-quarter forecast', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$16.5B', c2: '$15.0B to $16.0B' } },
+          { cells: { c0: 'Gross margin, non-GAAP', c1: '44.1%', c2: '38.0%' } },
+          { cells: { c0: 'Earnings per share, non-GAAP', c1: '$0.52', c2: '$0.25' } },
+        ]}
+      />
+      <p>
+        At the middle of the range, fourth-quarter revenue would be $1.0 billion lower than the
+        third quarter’s, though still $1.8 billion higher than a year earlier. Intel gave three
+        reasons on its call:
+      </p>
+      <ul>
+        <li>
+          <strong>The PC market.</strong> Intel now expects PC units to fall about 12% in 2026,
+          with the second half “down more than 20%”, and “roughly 10%” in 2027. It expects PC
+          revenue to fall more than 20% from the third quarter as computer makers cut their
+          stock of chips.
+        </li>
+        <li>
+          <strong>An accident in Israel.</strong> In mid-October, an accident at Intel’s factory
+          in Kiryat Gat “resulted in employee casualties and injuries and halted manufacturing
+          operations”, its 10-Q says. Intel puts the cost at about $300 million of
+          fourth-quarter revenue and 2 points of gross margin, and expects a similar revenue hit
+          in the first quarter of 2027.
+        </li>
+        <li>
+          <strong>Factories running below capacity.</strong> Zinsner said the fall in gross
+          margin “primarily reflects lower overall revenue against our fixed cost base”.
+        </li>
+      </ul>
+      <p>
+        Data centres are still expected to grow. Intel forecasts data-centre revenue up by a
+        mid-teens percentage from the third quarter.
+      </p>
+
+      <h2>Intel Foundry</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Intel Foundry"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$6.7B', c2: '$4.2B' } },
+          { cells: { c0: 'Operating loss', c1: '−$1.9B', c2: '−$2.3B' } },
+          { cells: { c0: 'Sales to outside customers', c1: '$411M', c2: '' } },
+        ]}
+      />
+      <p>
+        Intel Foundry, which makes chips for Intel and, it hopes, for other companies, still
+        lost $1.9 billion, though the loss has narrowed in each of the last three quarters. Most
+        of its revenue comes from Intel itself; sales to outside customers were $411 million.
+        Intel released the 0.9 version of the design kit for its next process, Intel 14A, in
+        October, and says it will not name foundry customers.
+      </p>
+
+      <h2>Where the money is going</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the money is going"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Cash from operations', c1: '$5.1B', c2: '$2.5B' } },
+          { cells: { c0: 'Spent on property and equipment', c1: '$4.2B', c2: '$3.0B' } },
+          { cells: { c0: 'Adjusted free cash flow (Intel’s measure)', c1: '$1.6B', c2: '$0.9B' } },
+        ]}
+      />
+      <p>
+        In August Intel sold about 242 million new shares at $95 each, raising $23.0 billion
+        before costs, and $22.6 billion after. It ended September with $54.0 billion of cash and
+        short-term investments, and $50.1 billion of debt.
+      </p>
+      <p>
+        It plans to spend much more. Zinsner said 2026 capital spending is on track to be $20
+        billion and 2027’s will be “up strongly”, and said of 2027: “So I don’t think that this
+        will be a year in which we see positive cash flow.”
+      </p>
+
+      <h2>A profit that moves with Intel’s own share price</h2>
+      <p>
+        Intel has an unusual line in its results. Under its agreement with the US government,
+        shares of Intel are held in escrow and released to the US Department of Commerce as
+        Intel is paid under its Secure Enclave program. Intel counts those shares as a liability
+        at their market value. So when its own share price rises, its reported profit falls, and
+        the reverse. The 10-Q shows a $1.0 billion gain in the third quarter, “driven by a
+        decrease in our stock price”, and a $12.6 billion loss for the first nine months, driven
+        by the year’s rise. Intel’s non-GAAP figures leave this out.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Intel closed at $92.07 on 29 October. It reported after the market closed, and by the
+        close on 30 October the shares were at $65.76, down 28.6%. That was Intel’s worst day
+        since at least March 1980, the start of our price history; the previous worst was a
+        26.1% fall on 2 August 2024. In August, investors paid $95 a share for $23.0 billion of
+        new Intel stock.
+      </p>
+
+      <h2>How Intel shares usually react to results</h2>
+      <p>
+        We measured all 43 regular results releases from January 2016 to July 2026, comparing
+        the close on the day after Intel reported with the close on the day it reported:
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>7.4%</strong>.
+        </li>
+        <li>
+          31 of the 43 moved by 5% or more, and nine by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>26.1%</strong> in August 2024.
+        </li>
+        <li>
+          The largest rise was <strong>23.6%</strong> in April 2026.
+        </li>
+        <li>
+          The shares rose after 16 of the 43 and fell after 27.
+        </li>
+      </ul>
+
+      <h2>How far Intel has fallen before</h2>
+      <p>
+        Counting dividends, Intel has fallen 40% or more seven times since 1980, the start of
+        our price history, counting the current fall. These are measured from a record close to
+        the lowest close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Intel has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'November 1980', c1: 'January 1982', c2: '−58.1%', c3: 'April 1983' } },
+          { cells: { c0: 'July 1983', c1: 'August 1986', c2: '−63.3%', c3: 'April 1987' } },
+          { cells: { c0: 'October 1987', c1: 'October 1987', c2: '−57.0%', c3: 'March 1990' } },
+          { cells: { c0: 'July 1990', c1: 'October 1990', c2: '−43.2%', c3: 'March 1991' } },
+          { cells: { c0: 'August 2000', c1: 'October 2002', c2: '−82.2%', c3: 'March 2018' } },
+          { cells: { c0: 'April 2021', c1: 'April 2025', c2: '−70.8%', c3: 'April 2026' } },
+          { cells: { c0: 'June 2026', c1: 'October 2026', c2: '−53.3%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The first six all got back to their record. The quickest was back about five months
+        after its low, in 1991; the slowest, after the 2002 low, took more than 15 years. The
+        current fall began at a record close of $140.94 on 22 June 2026, and Intel is now 53.3%
+        below it. That is a record of what happened, not a guide to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The PC market.</strong> Whether Intel’s forecast of a 10% fall in PC units in
+          2027 holds, and when memory prices ease.
+        </li>
+        <li>
+          <strong>Supply.</strong> Whether Intel can make enough server chips; it expects the
+          industry “to remain supply constrained throughout 2027 and into 2028”.
+        </li>
+        <li>
+          <strong>Israel.</strong> How long the Kiryat Gat factory takes to get back to full
+          production, and what it finally costs.
+        </li>
+        <li>
+          <strong>Cash.</strong> How much 2027 capital spending rises, with Intel not expecting
+          positive free cash flow that year.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Intel’s own, not ours. The share-price
+        history is a record of what happened before, not a prediction. This article is general
+        information and does not take into account your objectives, financial situation or
+        needs.
+      </p>
+    </>
+  ),
+  'amazon-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Amazon reported its results for the three months to 30 September after the US market
+        closed on 29 October 2026. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $201.9 billion, up 12% from $180.2 billion a year earlier.
+          Amazon says moving Prime Day into the second quarter took about 4 points off the
+          growth rate.
+        </li>
+        <li>
+          <strong>AWS:</strong> $46.0 billion, up 39%, which Amazon calls “its fastest growth in
+          nearly five years”.
+        </li>
+        <li>
+          <strong>Profit:</strong> operating income of $28.1 billion, up from $17.4 billion, and
+          an operating margin of 13.9%, “Amazon’s highest operating margin ever”.
+        </li>
+        <li>
+          <strong>Spending:</strong> $77.3 billion on property and equipment in the quarter,
+          more than double the $35.1 billion a year earlier.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 1.4% the next day, to $240.35.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Third quarter 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$201.9B', c2: '$180.2B', c3: '+12%' } },
+          { cells: { c0: 'AWS', c1: '$46.0B', c2: '$33.0B', c3: '+39%' } },
+          { cells: { c0: 'North America', c1: '$112.9B', c2: '$106.3B', c3: '+6%' } },
+          { cells: { c0: 'International', c1: '$43.1B', c2: '$40.9B', c3: '+5%' } },
+          { cells: { c0: 'Advertising', c1: '$19.6B', c2: '$17.7B', c3: '+11%' } },
+          { cells: { c0: 'Operating income', c1: '$28.1B', c2: '$17.4B', c3: '+61%' } },
+          { cells: { c0: 'Net income', c1: '$20.7B', c2: '$21.2B', c3: '−2%' } },
+          { cells: { c0: 'Earnings per share', c1: '$1.89', c2: '$1.95', c3: '−3%' } },
+        ]}
+      />
+      <p>
+        Net income fell even though operating income rose 61%. A year earlier Amazon booked $9.5
+        billion of pre-tax gains on its investment in Anthropic; this quarter it had none of
+        that size.
+      </p>
+
+      <h2>Against Amazon’s own July forecast</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Against Amazon’s own July forecast"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Forecast in July', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Actual', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$197.0B to $202.0B', c2: '$201.9B' } },
+          { cells: { c0: 'Operating income', c1: '$22.5B to $26.5B', c2: '$28.1B' } },
+        ]}
+      />
+      <p>
+        Revenue came in near the top of Amazon’s range, and operating income $1.6 billion above
+        the top of it.
+      </p>
+
+      <h2>AWS speeds up, cash runs out</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="AWS speeds up, cash runs out"
+        columns={[
+          { key: 'c0', label: 'Quarter', width: '40%' },
+          { key: 'c1', label: 'AWS growth', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Free cash flow, past twelve months', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Third quarter 2025', c1: '+20%', c2: '$14.8B' } },
+          { cells: { c0: 'Fourth quarter 2025', c1: '+24%', c2: '$11.2B' } },
+          { cells: { c0: 'First quarter 2026', c1: '+28%', c2: '$1.2B' } },
+          { cells: { c0: 'Second quarter 2026', c1: '+37%', c2: '−$7.6B' } },
+          { cells: { c0: 'Third quarter 2026', c1: '+39%', c2: '−$42.4B' } },
+        ]}
+      />
+      <p>
+        AWS growth has sped up in every one of the last five quarters, and its operating margin
+        was 38.7%. Over the same five quarters, free cash flow, Amazon’s own measure of cash
+        from operations less spending on property and equipment, went from a $14.8 billion
+        inflow to a $42.4 billion outflow. Amazon puts it down to a $94.8 billion rise in that
+        spending, which it says “primarily reflects investments in artificial intelligence”.
+      </p>
+      <p>
+        In the third quarter alone, cash from operations was $42.4 billion and spending on
+        property and equipment, net of sales and incentives, was $75.9 billion. By Amazon’s own
+        definition, that is an outflow of $33.5 billion in three months.
+      </p>
+
+      <h2>Where the money is going</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the money is going"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: '31 December 2025', numeric: true, width: '30%' },
+          { key: 'c2', label: '30 September 2026', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Long-term debt', c1: '$65.6B', c2: '$173.1B' } },
+        ]}
+      />
+      <p>
+        Amazon expects to spend about $220 billion on capital this year. To pay for it, it has
+        borrowed: long-term debt rose $107.5 billion in nine months, and its 10-Q says: “We
+        expect to undertake additional financing activities in 2026.”
+      </p>
+      <p>
+        It is also investing in the AI companies it sells computing to. In the first nine months
+        it put $50.0 billion into OpenAI and $10.0 billion into Anthropic. At 30 September its
+        holdings in private companies, mainly those two, were carried at $143.7 billion.
+      </p>
+
+      <h2>The orders behind the spending</h2>
+      <p>
+        Amazon’s 10-Q puts the contracted revenue it has not yet earned, mostly at AWS, at about
+        $578 billion, with an average remaining life of 6.1 years. Two deals this year added
+        about $100 billion each: OpenAI expanded its commitment to AWS by $100.0 billion over
+        8.0 years, and Anthropic expanded its commitment by more than $100.0 billion over 10.0
+        years.
+      </p>
+      <p>
+        Amazon’s chief executive, Andy Jassy, said in the release that AWS has “projected
+        revenue growth rates of over 40% both in 2027 and in 2028”.
+      </p>
+
+      <h2>The outlook</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The outlook"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Fourth-quarter forecast', numeric: true, width: '30%' },
+          { key: 'c2', label: 'A year earlier', width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$240.0B to $247.0B', c2: 'growth of 12% to 16%' } },
+          { cells: { c0: 'Operating income', c1: '$28.5B to $33.5B', c2: '$25.0B' } },
+        ]}
+      />
+      <p>
+        Amazon expects advertising revenue to grow “in the high teens” in the fourth quarter,
+        after 12% growth this quarter, excluding currency moves, which it says was held back by
+        the timing of Prime Day.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Amazon closed at $243.79 on 29 October. It reported after the market closed, and by the
+        close on 30 October the shares were at $240.35, down 1.4%. Of the 43 earlier results
+        measured below, 36 were followed by a bigger move, in either direction. Amazon is now
+        15.4% below its record close of $284.02, set on 3 August 2026.
+      </p>
+
+      <h2>How Amazon shares usually react to results</h2>
+      <p>
+        We measured all 43 regular results releases before this one, from January 2016 to July
+        2026, comparing the close on the day after Amazon reported, after the market closed,
+        with the close on the day it reported:
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>5.4%</strong>.
+        </li>
+        <li>
+          24 of the 43 moved by 5% or more, and five by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>14.0%</strong> in April 2022.
+        </li>
+        <li>
+          The largest rise was <strong>15.3%</strong> in July 2026.
+        </li>
+        <li>
+          The shares rose after 20 of the 43 and fell after 23.
+        </li>
+      </ul>
+
+      <h2>How far Amazon has fallen before</h2>
+      <p>
+        Amazon has fallen 40% or more five times since it listed in 1997. These are measured
+        from a record close to the lowest close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Amazon has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'July 1998', c1: 'September 1998', c2: '−47.7%', c3: 'November 1998' } },
+          { cells: { c0: 'January 1999', c1: 'February 1999', c2: '−51.5%', c3: 'April 1999' } },
+          { cells: { c0: 'April 1999', c1: 'August 1999', c2: '−59.3%', c3: 'December 1999' } },
+          { cells: { c0: 'December 1999', c1: 'September 2001', c2: '−94.4%', c3: 'October 2009' } },
+          { cells: { c0: 'July 2021', c1: 'December 2022', c2: '−56.1%', c3: 'April 2024' } },
+        ]}
+      />
+      <p>
+        All five got back to their record. The quickest, in 1999, was back within about two
+        months of its low; the slowest, after the 2001 low, took eight years. That is a record
+        of what happened, not a guide to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>AWS.</strong> Whether growth keeps rising towards the “over 40%” Jassy has
+          projected for 2027.
+        </li>
+        <li>
+          <strong>Cash.</strong> How much of this year’s $220 billion of capital spending is
+          paid for with new debt.
+        </li>
+        <li>
+          <strong>AI investments.</strong> The value of the OpenAI and Anthropic holdings, which
+          already swing Amazon’s net income.
+        </li>
+        <li>
+          <strong>Advertising.</strong> Whether growth returns to the high teens in the fourth
+          quarter, as Amazon expects.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Amazon’s own, not ours. The share-price
+        history is a record of what happened before, not a prediction. This article is general
+        information and does not take into account your objectives, financial situation or
+        needs.
+      </p>
+    </>
+  ),
+  'sandisk-q1-fy27-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Sandisk, which makes flash memory and the drives built on it, reported results for its
+        first quarter of fiscal 2027, the three months to 2 October 2026, after the US market
+        closed on 29 October. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $11.0 billion, up 378% from $2.3 billion a year earlier, and
+          up 23% from $9.0 billion in the quarter before.
+        </li>
+        <li>
+          <strong>Profit:</strong> a gross margin of 85.0%, against 29.8% a year earlier, and
+          net income of $8.1 billion, against $112 million.
+        </li>
+        <li>
+          <strong>Data centres:</strong> $4.8 billion of revenue, up 61% in three months, from
+          $269 million a year earlier.
+        </li>
+        <li>
+          <strong>The forecast:</strong> second-quarter revenue of $12.2 billion to $12.6
+          billion.
+        </li>
+        <li>
+          <strong>The split:</strong> eight shares for every one held, with split-adjusted
+          trading expected to begin on 20 November.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 13.5% the next day, to $1,150.89, still 50.7% below
+          the record close of $2,335.00 set in June.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to 2 October 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$11.0B', c2: '$2.3B', c3: '+378%' } },
+          { cells: { c0: 'Gross margin', c1: '85.0%', c2: '29.8%', c3: '+55.2 points' } },
+          { cells: { c0: 'Operating income', c1: '$8.8B', c2: '$0.2B', c3: '' } },
+          { cells: { c0: 'Net income', c1: '$8.1B', c2: '$0.1B', c3: '' } },
+          { cells: { c0: 'Earnings per share, reported', c1: '$52.60', c2: '$0.75', c3: '' } },
+          { cells: { c0: 'Earnings per share, non-GAAP', c1: '$49.51', c2: '$1.22', c3: '' } },
+        ]}
+      />
+      <p>
+        Sandisk’s finance chief, Luis Visoso, said about 60% of the rise in revenue from the
+        quarter before came from selling more and about 40% from higher prices.
+      </p>
+
+      <h2>Against Sandisk’s own forecast</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Against Sandisk’s own forecast"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Forecast in August', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Actual', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$10.3B to $10.8B', c2: '$11.0B' } },
+          { cells: { c0: 'Gross margin, non-GAAP', c1: '83% to 85%', c2: '85.1%' } },
+          { cells: { c0: 'Earnings per share, non-GAAP', c1: '$44 to $46', c2: '$49.51' } },
+        ]}
+      />
+      <p>
+        All three came in above the top of the range Sandisk gave in August.
+      </p>
+
+      <h2>Five quarters of the memory shortage</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Five quarters of the memory shortage"
+        columns={[
+          { key: 'c0', label: 'Quarter to', width: '40%' },
+          { key: 'c1', label: 'Revenue', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Gross margin', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Data centre', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'October 2025', c1: '$2.3B', c2: '29.8%', c3: '$0.3B' } },
+          { cells: { c0: 'January 2026', c1: '$3.0B', c2: '50.9%', c3: '$0.4B' } },
+          { cells: { c0: 'April 2026', c1: '$6.0B', c2: '78.4%', c3: '$1.5B' } },
+          { cells: { c0: 'July 2026', c1: '$9.0B', c2: '84.6%', c3: '$3.0B' } },
+          { cells: { c0: 'October 2026', c1: '$11.0B', c2: '85.0%', c3: '$4.8B' } },
+        ]}
+      />
+      <p>
+        In five quarters, quarterly revenue rose nearly fivefold and data-centre revenue nearly
+        eighteenfold. Sandisk’s chief executive, David Goeckeler, said data centres have grown
+        from “approximately 20% of industry bits early in the decade to roughly half of the
+        industry bits today”, as AI systems store more of what they work on in flash memory.
+      </p>
+
+      <h2>Who paid more, and who bought less</h2>
+      <p>
+        Not every customer grew. Sandisk’s revenue split three ways:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Who paid more, and who bought less"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to 2 October 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Data centre', c1: '$4.8B', c2: '$0.3B', c3: '' } },
+          { cells: { c0: 'Edge (phones, PCs, cars)', c1: '$5.8B', c2: '$1.4B', c3: '+320%' } },
+          { cells: { c0: 'Consumer', c1: '$0.4B', c2: '$0.7B', c3: '−39%' } },
+        ]}
+      />
+      <p>
+        Consumer sales, its memory cards and drives sold in shops, were $397 million, down 29%
+        from the quarter before, “as the market adjusts to higher pricing”, Visoso said. Within
+        Edge, he said growth was “partially offset by contraction at the lower end”.
+      </p>
+      <p>
+        The higher memory prices that lifted Sandisk’s revenue are the same ones Intel,
+        reporting the same day, blamed for weaker demand for PCs.
+      </p>
+
+      <h2>Selling ahead</h2>
+      <p>
+        Sandisk now sells much of its future output under long-term agreements it calls “new
+        business models”. Visoso said about 50% of its bits are under these agreements for 2027
+        and about two-thirds for 2028, and: “Our NBM pipeline exceeds our supply throughout the
+        end of the decade.”
+      </p>
+      <p>
+        For the coming quarter, Sandisk’s forecast “includes modest like-for-like price
+        increases”, and Visoso said he expects “pricing to continue to increase modestly
+        throughout the year”.
+      </p>
+
+      <h2>Where the money is going</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the money is going"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '50%' },
+          { key: 'c1', label: 'Three months to 2 October 2026', numeric: true, width: '50%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Cash from operations', c1: '$6.4B' } },
+          { cells: { c0: 'Adjusted free cash flow (Sandisk’s measure)', c1: '$5.7B' } },
+          { cells: { c0: 'Shares bought back', c1: '$5.0B' } },
+          { cells: { c0: 'Cash at the end of the quarter', c1: '$5.1B' } },
+        ]}
+      />
+      <p>
+        Sandisk spent $5.0 billion buying back about 3.2 million of its own shares in the
+        quarter, and says it is returning “100% of excess cash to shareholders”. It has no debt.
+        Its spending on equipment is small for a chip company: $378 million in the quarter, 3.4%
+        of revenue, which Visoso expects to rise to a mid-single-digit percentage of revenue for
+        the year.
+      </p>
+
+      <h2>The outlook</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The outlook"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Second-quarter forecast', numeric: true, width: '30%' },
+          { key: 'c2', label: 'First quarter', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$12.2B to $12.6B', c2: '$11.0B' } },
+          { cells: { c0: 'Gross margin, non-GAAP', c1: '84.5% to 85.5%', c2: '85.1%' } },
+          { cells: { c0: 'Earnings per share, non-GAAP', c1: '$55.00 to $57.00', c2: '$49.51' } },
+        ]}
+      />
+      <p>
+        After the 8-for-1 split, the forecast earnings per share would be $6.88 to $7.13.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Sandisk closed at $1,330.05 on 29 October. It reported after the market closed, and by
+        the close on 30 October the shares were at $1,150.89, down 13.5%. Of its six earlier
+        results, only one was followed by a bigger move.
+      </p>
+
+      <h2>How Sandisk shares usually react to results</h2>
+      <p>
+        Sandisk has reported six times before this since it became a separate company in
+        February 2025. Comparing the close on the day after it reported with the close on the
+        day it reported:
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>6.8%</strong>.
+        </li>
+        <li>
+          Four of the six moved by 5% or more, and one by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>6.8%</strong> in August 2026.
+        </li>
+        <li>
+          The largest rise was <strong>15.3%</strong> in November 2025.
+        </li>
+        <li>
+          The shares rose after four of the six and fell after two.
+        </li>
+      </ul>
+
+      <h2>How far Sandisk has fallen before</h2>
+      <p>
+        Sandisk has fallen 20% or more five times since it listed in February 2025, counting the
+        current fall. These are measured from a record close to the lowest close before the
+        shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Sandisk has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'March 2025', c1: 'April 2025', c2: '−47.5%', c3: 'September 2025' } },
+          { cells: { c0: 'November 2025', c1: 'December 2025', c2: '−31.3%', c3: 'January 2026' } },
+          { cells: { c0: 'February 2026', c1: 'March 2026', c2: '−24.2%', c3: 'March 2026' } },
+          { cells: { c0: 'March 2026', c1: 'March 2026', c2: '−25.9%', c3: 'April 2026' } },
+          { cells: { c0: 'June 2026', c1: 'July 2026', c2: '−56.5%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The first four got back to their record, the slowest about four months after its low.
+        The current fall began at a record close of $2,335.00 on 25 June 2026; at its lowest, on
+        29 July, the shares were 56.5% below it. That is a record of what happened, not a guide
+        to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Prices.</strong> Whether memory prices keep rising “modestly”, as Sandisk
+          expects, or start to fall.
+        </li>
+        <li>
+          <strong>Data centres.</strong> Whether data-centre demand grows about 40% in 2027, as
+          Visoso expects, after more than doubling in 2026.
+        </li>
+        <li>
+          <strong>Consumers and PCs.</strong> Whether higher prices keep shrinking the cheaper
+          end of the market.
+        </li>
+        <li>
+          <strong>The split.</strong> Split-adjusted trading is expected to begin on 20
+          November.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Sandisk’s own, not ours. The
+        share-price history is a record of what happened before, not a prediction, and Sandisk
+        has been a separate company only since February 2025. This article is general
+        information and does not take into account your objectives, financial situation or
+        needs.
+      </p>
+    </>
+  ),
+  'servicenow-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        ServiceNow, which sells software that companies use to run their IT, customer service
+        and other workflows, reported results for the three months to 30 September 2026 after
+        the US market closed on 28 October. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> subscription revenue of $3.99 billion, up 21% from $3.30
+          billion a year earlier, and $8 million above the top of the forecast it gave in July.
+        </li>
+        <li>
+          <strong>Profit:</strong> net income of $277 million, down from $502 million a year
+          earlier, as the cost of its acquisitions and borrowing came through.
+        </li>
+        <li>
+          <strong>AI:</strong> it raised its year-end target for AI contracts for the second
+          time this year, to $1.7 billion.
+        </li>
+        <li>
+          <strong>The forecast:</strong> revenue under contract for the next 12 months to grow
+          18.5% in the fourth quarter, the lowest of its last five forecasts.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 26.9% the next day, to $109.67, the worst day since
+          ServiceNow listed in 2012.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to 30 September 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Subscription revenue', c1: '$3.99B', c2: '$3.30B', c3: '+21%' } },
+          { cells: { c0: 'Total revenue', c1: '$4.11B', c2: '$3.41B', c3: '+20.5%' } },
+          { cells: { c0: 'Operating income', c1: '$385M', c2: '$572M', c3: '−33%' } },
+          { cells: { c0: 'Net income', c1: '$277M', c2: '$502M', c3: '−45%' } },
+          { cells: { c0: 'Earnings per share, reported', c1: '$0.27', c2: '$0.48', c3: '' } },
+          { cells: { c0: 'Earnings per share, non-GAAP', c1: '$1.00', c2: '$0.95', c3: '' } },
+          { cells: { c0: 'Free cash flow (ServiceNow’s measure)', c1: '$822M', c2: '$592M', c3: '+39%' } },
+        ]}
+      />
+      <p>
+        ServiceNow’s own adjusted measures leave out share-based pay, the amortisation of what
+        it bought, deal costs and severance. On those, its operating margin was 32.5%, against
+        33.5% a year earlier.
+      </p>
+
+      <h2>Against ServiceNow’s own forecast</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Against ServiceNow’s own forecast"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Forecast in July', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Actual', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Subscription revenue', c1: '$3,975M to $3,980M', c2: '$3,988M' } },
+          { cells: { c0: 'Revenue under contract for the next 12 months, growth', c1: '20%', c2: '21%' } },
+          { cells: { c0: 'Operating margin, non-GAAP', c1: '31%', c2: '32.5%' } },
+        ]}
+      />
+      <p>
+        Growth in revenue under contract, which ServiceNow calls current remaining performance
+        obligations, is measured at steady exchange rates. Its finance chief, Gina Mastantuono,
+        said “strong early renewals in Q3” contributed “about half of the beat in Q3”, and that
+        “we pulled those deals out of Q4 and into Q3”.
+      </p>
+
+      <h2>Where the profit went</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the profit went"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to 30 September 2026', width: '30%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Amortisation of purchased intangibles', c1: '$198M', c2: '$33M' } },
+          { cells: { c0: 'Interest expense', c1: '$81M', c2: '$6M' } },
+          { cells: { c0: 'Severance costs', c1: '$87M', c2: '$24M' } },
+          { cells: { c0: 'Shares bought back', c1: 'None', c2: '$584M' } },
+        ]}
+      />
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the profit went"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: '30 September 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: '31 December 2025', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Goodwill', c1: '$10.0B', c2: '$3.6B' } },
+          { cells: { c0: 'Debt (principal)', c1: '$7.6B', c2: '$1.5B' } },
+        ]}
+      />
+      <p>
+        ServiceNow spent $9.2 billion on acquisitions in the first nine months of 2026. The
+        largest was Armis, a security company, bought in April for about $7.6 billion in cash;
+        it also bought Veza, an identity security company, for about $1.2 billion. To pay for
+        Armis it borrowed $4.0 billion in April, then issued $4.0 billion of bonds in May. Its
+        debt is now $5.5 billion of bonds and $2.1 billion of commercial paper.
+      </p>
+      <p>
+        It bought back $2.2 billion of its own shares earlier in the year, but none in the third
+        quarter.
+      </p>
+
+      <h2>The forecast that moved the shares</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The forecast that moved the shares"
+        columns={[
+          { key: 'c0', label: 'Quarter to', width: '40%' },
+          { key: 'c1', label: 'ServiceNow’s forecast', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Actual', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'December 2025', c1: '19%', c2: '21%' } },
+          { cells: { c0: 'March 2026', c1: '20%', c2: '21%' } },
+          { cells: { c0: 'June 2026', c1: '19.5%', c2: '21.5%' } },
+          { cells: { c0: 'September 2026', c1: '20%', c2: '21%' } },
+          { cells: { c0: 'December 2026', c1: '18.5%', c2: '' } },
+        ]}
+      />
+      <p>
+        These are its forecasts for growth in revenue under contract for the next 12 months, at
+        steady exchange rates. The new one is the lowest of the five. In each of the four
+        quarters before it, ServiceNow beat its own forecast by one or two points.
+      </p>
+      <p>
+        Mastantuono gave three reasons for the lower figure: the early renewals, “higher on-prem
+        mix in Q4” from strong public-sector demand, and its investment in helping large
+        customers deploy AI. She said the on-premises deals “contribute to revenue but not
+        cRPO”.
+      </p>
+
+      <h2>The question on the call</h2>
+      <p>
+        Analysts asked when AI would lift growth across the whole business. One asked whether AI
+        “is cannibalistic or accretive to software companies”. Chief executive Bill McDermott
+        said the “true acceleration” would come in 2027.
+      </p>
+      <p>
+        ServiceNow raised its target for AI annual contract value to $1.7 billion by the end of
+        2026, from $1 billion at the start of the year. Mastantuono said its own use of AI had
+        crossed “$1 billion in efficiency gains”, and McDermott said “our ultimate headcount has
+        actually slightly declined”.
+      </p>
+
+      <h2>The outlook</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The outlook"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '50%' },
+          { key: 'c1', label: 'ServiceNow’s forecast', numeric: true, width: '50%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Subscription revenue, fourth quarter', c1: '$4,245M to $4,255M' } },
+          { cells: { c0: 'Subscription revenue, 2026', c1: '$15,780M to $15,790M' } },
+          { cells: { c0: 'Operating margin, non-GAAP, 2026', c1: '31.5%' } },
+          { cells: { c0: 'Free cash flow margin, 2026', c1: '36%, up from 35%' } },
+        ]}
+      />
+
+      <h2>How the shares reacted</h2>
+      <p>
+        ServiceNow closed at $150.13 on 28 October. It reported after the market closed, and by
+        the close on 29 October the shares were at $109.67, down 26.9%, the worst day since it
+        listed in June 2012. On 30 October they closed at $105.12, 55.1% below their record
+        close of $234.08 in January 2025 (adjusted for its five-for-one share split in December
+        2025).
+      </p>
+      <p>
+        It was the fourth time in a row the shares fell after results: by 9.9% in January, 17.7%
+        in April, 3.7% in July, and now 26.9%.
+      </p>
+
+      <h2>How ServiceNow shares usually react to results</h2>
+      <p>
+        We measured all 43 regular results releases before this one, from January 2016 to July
+        2026, comparing the close on the day after ServiceNow reported, after the market closed,
+        with the close on the day it reported:
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>4.6%</strong>.
+        </li>
+        <li>
+          20 of the 43 moved by 5% or more, and eight by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>17.7%</strong> in April 2026.
+        </li>
+        <li>
+          The largest rise was <strong>15.5%</strong> in April 2025.
+        </li>
+        <li>
+          The shares rose after 32 of the 43 and fell after 11.
+        </li>
+      </ul>
+
+      <h2>How far ServiceNow has fallen before</h2>
+      <p>
+        ServiceNow has fallen 40% or more three times since it listed in 2012. These are
+        measured from a record close to the lowest close before the shares got back to it,
+        adjusted for the share split:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far ServiceNow has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'December 2015', c1: 'February 2016', c2: '−47.6%', c3: 'January 2017' } },
+          { cells: { c0: 'November 2021', c1: 'October 2022', c2: '−51.3%', c3: 'December 2023' } },
+          { cells: { c0: 'January 2025', c1: 'April 2026', c2: '−64.5%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The first two got back to their record, about 12 and 14 months after their lows. The
+        current fall is the deepest of the three. That is a record of what happened, not a guide
+        to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The backlog.</strong> Whether revenue under contract grows by more than the
+          18.5% ServiceNow has forecast, as it has in each of the last four quarters.
+        </li>
+        <li>
+          <strong>AI contracts.</strong> Whether they reach the $1.7 billion target by the end
+          of the year.
+        </li>
+        <li>
+          <strong>The debt.</strong> How fast the $7.6 billion is paid down, and whether
+          buybacks resume.
+        </li>
+        <li>
+          <strong>2027.</strong> Whether the acceleration its chief executive expects shows up
+          in the numbers.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are ServiceNow’s own, not ours. The
+        share-price history is a record of what happened before, not a prediction. This article
+        is general information and does not take into account your objectives, financial
+        situation or needs.
+      </p>
+    </>
+  ),
 };
 
 /**

@@ -1,4 +1,4 @@
-"""Freeze every price the Q3 2026 earnings videos (MSFT GOOGL LLY AMZN INTC SNDK) derive a figure from.
+"""Freeze every price the Q3 2026 earnings videos (MSFT GOOGL LLY AMZN INTC SNDK NOW) derive a figure from.
 
 Tesla, the S&P 500 and the Nasdaq Composite, every stored bar up to AS_OF, written
 once to `reference/earn-q3-2026-DATA.json.gz`. `tsla_figures.py` and `assert_tsla.py`
@@ -20,8 +20,8 @@ from typing import Any, cast
 from supabase import create_client
 
 ROOT = Path(__file__).resolve().parents[3]
-OUT = ROOT / "reference" / "earn-q3-2026-DATA.json.gz"
-TICKERS = ["MSFT", "GOOGL", "LLY", "AMZN", "INTC", "SNDK", "^GSPC", "^IXIC"]
+OUT = Path(os.environ.get("EARN_DATA") or ROOT / "reference" / "earn-q3-2026-DATA.json.gz")
+TICKERS = ["MSFT", "GOOGL", "LLY", "AMZN", "INTC", "SNDK", "NOW", "^GSPC", "^IXIC"]
 PAGE = 1000  # PostgREST caps a request at 1000 rows and says nothing (14c).
 
 

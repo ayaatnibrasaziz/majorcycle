@@ -9,7 +9,7 @@ import {
   ARTICLES,
   ARTICLES_INDEX_PATH,
   articlePath,
-  articlesNewestFirst,
+  relatedArticles,
   findArticle,
 } from '@/lib/articles';
 import { articlePageJsonLd, jsonLdScript } from '@/lib/jsonld';
@@ -87,9 +87,7 @@ export default async function ArticlePage({
   // entirely deliberate (CLAUDE.md 11j).
   if (!Body) notFound();
 
-  const related = articlesNewestFirst()
-    .filter((a) => a.slug !== article.slug)
-    .map((a) => ({ href: articlePath(a.slug), label: a.title }));
+  const related = relatedArticles(article).map((a) => ({ href: articlePath(a.slug), label: a.title }));
 
   return (
     <>
