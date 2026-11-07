@@ -146,3 +146,22 @@ reference/video-09/
 reference/video-10/
 reference/video-11/
 reference/video-12/
+# Nov 2026 earnings batch: saved sources (third-party documents) and render outputs stay local.
+reference/nab-2026-fy/sources/
+reference/amd-2026-q3/sources/
+reference/video-13/
+reference/video-14/
+reference/video-15/
+reference/video-16/
+reference/video-17/
+reference/video-18/
+reference/video-19/
+reference/video-20/
+reference/video-21/
+sweep_run.log
+reference/aapl-2026-q4/sources/
+reference/wbc-2026-fy/sources/
+reference/pltr-2026-q3/sources/
+reference/arm-2026-q2/sources/
+reference/alab-2026-q3/sources/
+reference/nvo-2026-q3/sources/

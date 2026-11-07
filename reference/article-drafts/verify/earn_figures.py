@@ -47,13 +47,46 @@ PARAMS = CycleParams(
     lookback_bars=int(P["lookback_bars"]),
 )
 
-PRE_MARKET = {"LLY"}
+PRE_MARKET = {"LLY", "NAB.AX", "WBC.AX", "NVO"}
+
+#: Companies that file no 8-K (ASX-listed): results days from the ASX announcements list, saved in
+#: reference/nab-2026-fy/sources/asx-ann-<year>.html (each Appendix 4D/4E, all lodged ~8am, before the open).
+RELEASES = {
+    "NAB.AX": ["2016-05-05", "2016-10-27", "2017-05-04", "2017-11-02", "2018-05-03", "2018-11-01", "2019-05-02",
+               "2019-11-07", "2020-04-27", "2020-11-05", "2021-05-06", "2021-11-09", "2022-05-05", "2022-11-09",
+               "2023-05-04", "2023-11-09", "2024-05-02", "2024-11-07", "2025-05-07", "2025-11-06", "2026-05-04",
+               "2026-11-05"],
+    #: Westpac: reference/wbc-2026-fy/sources/asx-ann-<year>.html, each Interim / Full Year Financial Results
+    #: Announcement, all lodged 7:30-7:50am, before the open.
+    "WBC.AX": ["2016-05-02", "2016-11-07", "2017-05-08", "2017-11-06", "2018-05-07", "2018-11-05", "2019-05-06",
+               "2019-11-04", "2020-05-04", "2020-11-02", "2021-05-03", "2021-11-01", "2022-05-09", "2022-11-07",
+               "2023-05-08", "2023-11-06", "2024-05-06", "2024-11-04", "2025-05-05", "2025-11-03", "2026-05-05",
+               "2026-11-02"],
+    #: Novo Nordisk (ADR): the date each financial report gives itself (nvo-2026-q3/sources/edgar/, every caq*.htm,
+    #: "for the period 1 January ... to <period end> <date>"), equal to its 6-K filing date. Announced in Copenhagen
+    #: hours, before the US close; Q3 2026 was on CNBC at 1:40am ET, before the US open.
+    "NVO": ['2018-05-02', '2018-08-08', '2018-11-01', '2019-02-01', '2019-05-03', '2019-08-09', '2019-11-01', '2020-02-05', '2020-05-06', '2020-08-06', '2020-10-30', '2021-02-03', '2021-05-05', '2021-08-04', '2021-11-03', '2022-02-02', '2022-04-29', '2022-08-03', '2022-11-02', '2023-02-01', '2023-05-04', '2023-08-10', '2023-11-02', '2024-01-31', '2024-05-02', '2024-08-07', '2024-11-06', '2025-02-05', '2025-05-07', '2025-08-06', '2025-11-05', '2026-02-03', '2026-05-06', '2026-08-04', '2026-11-04'],
+}
+
+#: Single releases made BEFORE the open by an after-close reporter (reaction = that day's close vs the day before).
+#: AMD 2020-10-27: filed 06:34 ET with the Xilinx acquisition announcement.
+#: PLTR: from Feb 2021 to Nov 2023 it filed around 07:00 ET (11:00-12:10 UTC), before the open (EDGAR acceptance times).
+PRE_MARKET_DAYS = {"AMD": {"2020-10-27"},
+                   "PLTR": {"2021-02-16", "2021-05-11", "2021-08-12", "2021-11-09", "2022-02-17", "2022-05-09",
+                            "2022-08-08", "2022-11-07", "2023-11-02"}}
+
+#: The benchmark per market (US default).
+INDICES = {"NAB.AX": ["^AXJO"], "WBC.AX": ["^AXJO"]}
 
 #: Item 2.02 filings that are not a quarterly results release.
 DROP = {
     "GOOGL": {"2023-04-20": "segment recast ahead of the Q1 2023 release"},
     "INTC": {"2021-01-14": "preliminary figures with the CEO change, before the 2021-01-21 release"},
     "NOW": {"2016-04-13": "litigation settlement charges, not a quarterly release"},
+    "AMD": {"2018-02-27": "ASC 606 recast of earlier results, not a quarterly release",
+            "2022-10-06": "preliminary third-quarter revenue, before the 2022-11-01 release"},
+    "AAPL": {"2019-01-02": "letter cutting the December-quarter revenue forecast, before the 2019-01-29 release"},
+    "NAB.AX": {"2020-04-27": "trading halt all day (capital raising announced with the results); no reaction to measure"},
     "LLY": {
         "2017-12-13": "annual guidance", "2018-12-19": "annual guidance", "2019-12-17": "annual guidance",
         "2020-12-15": "annual guidance", "2021-12-15": "annual guidance", "2022-12-13": "annual guidance",
@@ -62,7 +95,7 @@ DROP = {
 }
 
 #: The size of fall listed. Owner's rule (23 Oct 2026): the threshold that leaves 5-10 falls.
-FALL_THRESHOLD = {"MSFT": -30, "GOOGL": -20, "LLY": -35, "AMZN": -40, "INTC": -40, "SNDK": -20, "NOW": -40}
+FALL_THRESHOLD = {"NVO": -40, "ARM": -20, "ALAB": -20, "PLTR": -20, "WBC.AX": -25, "AAPL": -40, "AMD": -50, "NAB.AX": -30, "MSFT": -30, "GOOGL": -20, "LLY": -35, "AMZN": -40, "INTC": -40, "SNDK": -20, "NOW": -40}
 
 
 def load() -> dict[str, Any]:
@@ -71,6 +104,8 @@ def load() -> dict[str, Any]:
 
 
 def releases(t: str) -> list[str]:
+    if t in RELEASES:
+        return [d for d in RELEASES[t] if d not in DROP.get(t, {})]
     raw = json.loads(RAW.read_text())[t]
     # dict.fromkeys: one release per day. ServiceNow's preliminary Q3 2019 figures (filed 01:41 UTC on 23 Oct, the
     # evening of the 22nd in New York, with the CEO change) share a UTC date with the full release that afternoon.
@@ -96,7 +131,7 @@ def reactions(t: str, rows: list[list[Any]]) -> list[dict[str, Any]]:
         if d not in close:
             continue  # before the first stored bar (SNDK) or a non-trading day
         i = dates.index(d)
-        if t in PRE_MARKET:
+        if t in PRE_MARKET or d in PRE_MARKET_DAYS.get(t, set()):
             before, after = dates[i - 1], d
         else:
             if i + 1 >= len(dates):
@@ -119,7 +154,7 @@ def figures(t: str) -> dict[str, Any]:
     rx = reactions(t, nf)
     moves = [r["move"] for r in rx]
     idx = {}
-    for i in ("^GSPC", "^IXIC"):
+    for i in INDICES.get(t, ["^GSPC", "^IXIC"]):
         f = frame(d["full"][i])
         idx[i] = {"last": f["Close"].iloc[-1], "below_high": pct(f["Close"].iloc[-1], f["Close"].max())}
     return {

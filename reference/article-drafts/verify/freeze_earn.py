@@ -22,6 +22,9 @@ from supabase import create_client
 ROOT = Path(__file__).resolve().parents[3]
 OUT = Path(os.environ.get("EARN_DATA") or ROOT / "reference" / "earn-q3-2026-DATA.json.gz")
 TICKERS = ["MSFT", "GOOGL", "LLY", "AMZN", "INTC", "SNDK", "NOW", "^GSPC", "^IXIC"]
+#: Nov 2026 batch: EARN_TICKERS="NAB.AX,^AXJO" (with its own EARN_DATA file) freezes only those.
+if __import__("os").environ.get("EARN_TICKERS"):
+    TICKERS = __import__("os").environ["EARN_TICKERS"].split(",")
 PAGE = 1000  # PostgREST caps a request at 1000 rows and says nothing (14c).
 
 

@@ -5431,6 +5431,770 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
     </>
   ),
+  'nab-fy26-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        National Australia Bank, one of Australia’s four big banks and the one whose largest
+        division serves business customers, reported its results for the year to 30 September
+        2026 before the market opened on 5 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Profit:</strong> cash earnings, the measure NAB uses for its own performance,
+          of $6,141 million, down 13.4% from $7,091 million.
+        </li>
+        <li>
+          <strong>The write-down:</strong> most of that fall is a $1,347 million charge, $949
+          million after tax, from changing how it accounts for software. Without it, cash
+          earnings were $7,090 million, flat on a year earlier.
+        </li>
+        <li>
+          <strong>Bad debts:</strong> a credit impairment charge of $1,547 million, up from $833
+          million.
+        </li>
+        <li>
+          <strong>The dividend:</strong> a final dividend of 85 cents, fully franked, the same
+          as a year ago, for 170 cents for the year.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 5.4% on the day, to $38.96, while the S&P/ASX 200
+          rose 2.6%.
+        </li>
+      </ul>
+      <p>
+        All figures are in Australian dollars.
+      </p>
+
+      <h2>The year against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The year against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Year to 30 September 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Net interest income', c1: '$18,512M', c2: '$17,398M', c3: '+6.4%' } },
+          { cells: { c0: 'Net operating income', c1: '$22,014M', c2: '$20,813M', c3: '+5.8%' } },
+          { cells: { c0: 'Operating expenses, without the write-down', c1: '$10,292M', c2: '$9,848M', c3: '+4.5%' } },
+          { cells: { c0: 'Credit impairment charge', c1: '$1,547M', c2: '$833M', c3: '+85.7%' } },
+          { cells: { c0: 'Cash earnings', c1: '$6,141M', c2: '$7,091M', c3: '−13.4%' } },
+          { cells: { c0: 'Cash earnings, without the write-down', c1: '$7,090M', c2: '$7,091M', c3: 'Flat' } },
+          { cells: { c0: 'Statutory net profit', c1: '$6,143M', c2: '$6,759M', c3: '−9.1%' } },
+          { cells: { c0: 'Dividend per share', c1: '170c', c2: '170c', c3: 'Flat' } },
+        ]}
+      />
+      <p>
+        NAB’s net interest margin, what it earns on its loans less what it pays for its funding,
+        was 1.80% for the year, up 0.06 of a percentage point. Without the write-down, its
+        underlying profit, before bad debts and tax, rose 6.9%.
+      </p>
+
+      <h2>The write-down, and why it is not the whole story</h2>
+      <p>
+        In the first half of the year NAB changed how it accounts for the software it builds. It
+        shortened the life it gives that software, and raised the cost at which a project is
+        treated as an asset from $5 million to $20 million, which NAB says brings it in line
+        with its peers. That produced the $1,347 million charge. NAB says it has no effect on
+        its capital ratio, because software is already deducted from its capital.
+      </p>
+      <p>
+        So the 13.4% fall is mostly an accounting change. Without it, profit was flat. The part
+        that is not accounting is the next line.
+      </p>
+
+      <h2>The bad debts</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The bad debts"
+        columns={[
+          { key: 'c0', label: 'Year to September', width: '50%' },
+          { key: 'c1', label: 'Credit impairment charge', numeric: true, width: '50%' },
+        ]}
+        rows={[
+          { cells: { c0: '2022', c1: '$125M' } },
+          { cells: { c0: '2023', c1: '$802M' } },
+          { cells: { c0: '2024', c1: '$728M' } },
+          { cells: { c0: '2025', c1: '$833M' } },
+          { cells: { c0: '2026', c1: '$1,547M' } },
+        ]}
+      />
+      <p>
+        Of this year’s charge, $1,083 million was for individual customers, mainly businesses,
+        and $464 million was general provisions, including $403 million set aside because NAB
+        expects a harder economy. In the second half, NAB said more business customers were
+        “experiencing early signs of stress”, and that falling house prices had hit its
+        home-loan book.
+      </p>
+      <p>
+        Before the results, analysts had expected a charge of about $1,327 million and cash
+        earnings of about $6,382 million, according to The Bull. NAB reported $1,547 million and
+        $6,141 million.
+      </p>
+
+      <h2>The second half on its own</h2>
+      <p>
+        NAB reports twice a year. The second half, April to September, was weaker than the first
+        on the measures that leave out the write-down:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The second half on its own"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Six months to Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Six months to Mar 2026', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Cash earnings, without the write-down', c1: '$3,502M', c2: '$3,588M', c3: '−2.4%' } },
+          { cells: { c0: 'Credit impairment charge', c1: '$841M', c2: '$706M', c3: '+19.1%' } },
+          { cells: { c0: 'Net interest margin', c1: '1.79%', c2: '1.81%', c3: '−0.02 points' } },
+        ]}
+      />
+
+      <h2>Its business lending</h2>
+      <p>
+        Business customers are where most of NAB’s growth, and most of its bad debts, came from.
+        Its Business and Private Banking division earned $3,685 million, up 10.7%, and NAB’s
+        Australian business lending grew 9.8% over the year. Its corporate and institutional
+        bank earned $1,740 million, down 6.1%, and its New Zealand bank earned NZ$1,381 million,
+        down 7.0% in New Zealand dollars, both mainly on higher bad-debt charges. (These
+        divisional figures leave out the software write-down, which NAB books centrally.)
+      </p>
+
+      <h2>The job cuts and next year</h2>
+      <p>
+        On 20 October, two weeks before the results, NAB said it would cut up to 2,500 roles,
+        about 6% of its workforce, in the year to September 2027, with the focus on its
+        corporate functions, and expects a restructuring charge of about $300 million.
+      </p>
+      <p>
+        For the year ahead, NAB expects its underlying costs to grow by less than 3%, before
+        that charge and the software change. Its economists expect Australia’s economy to grow
+        1.4% in 2026 and 1.0% in 2027, and the unemployment rate to rise to about 5.5% by early
+        2028. Chief executive Andrew Irvine said he did not see a recession as the most likely
+        outcome, but that its chance had “probably increased”.
+      </p>
+
+      <h2>Its capital</h2>
+      <p>
+        NAB’s common equity tier 1 ratio, the main measure of a bank’s capital cushion, was
+        11.87% at 30 September, against a regulatory minimum of 10.25% and NAB’s own target of
+        more than 11.25%. It will issue new shares at a 1.5% discount to shareholders who take
+        this dividend in shares, expected to raise about $0.9 billion and lift the ratio to
+        about 12.07%.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        NAB closed at $41.17 on 4 November. It released its results before the market opened on
+        5 November, and the shares closed that day at $38.96, down 5.4%, having been as low as
+        $37.91 during the day. The S&P/ASX 200 rose 2.6% the same day. Of the other big banks,
+        Commonwealth Bank closed flat, Westpac fell 1.0% and ANZ fell 0.6%.
+      </p>
+      <p>
+        That leaves NAB 20.7% below its record close of $49.10 on 25 February 2026.
+      </p>
+
+      <h2>How NAB shares usually react to results</h2>
+      <p>
+        We measured all 20 half-year and full-year results NAB released from May 2016 to May
+        2026, comparing the close on the day of each release with the close the day before. We
+        left out April 2020, when NAB’s shares were in a trading halt all day for a capital
+        raising announced with its results.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>1.2%</strong>.
+        </li>
+        <li>
+          Only one of the 20 moved by 5% or more: May 2023.
+        </li>
+        <li>
+          The largest fall was <strong>6.4%</strong> in May 2023.
+        </li>
+        <li>
+          The largest rise was <strong>3.3%</strong> in November 2020.
+        </li>
+        <li>
+          The shares rose on 8 of the 20 days and fell on 12.
+        </li>
+      </ul>
+      <p>
+        So this was NAB’s second-largest results-day fall in more than ten years.
+      </p>
+
+      <h2>How far NAB has fallen before</h2>
+      <p>
+        NAB’s shares have fallen 30% or more four times since 1988, the start of our price
+        history. These are measured from a record close to the lowest close before the shares
+        got back to it, counting dividends:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far NAB has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'April 1999', c1: 'February 2000', c2: '−30.8%', c3: 'November 2000' } },
+          { cells: { c0: 'November 2007', c1: 'March 2009', c2: '−60.7%', c3: 'March 2013' } },
+          { cells: { c0: 'April 2015', c1: 'February 2016', c2: '−31.6%', c3: 'March 2017' } },
+          { cells: { c0: 'September 2019', c1: 'March 2020', c2: '−52.2%', c3: 'August 2021' } },
+        ]}
+      />
+      <p>
+        All four got back to their record, the longest four years after its low. Counting
+        dividends, the shares are now 18.9% below their February 2026 record. That is a record
+        of what happened, not a guide to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Bad debts.</strong> Whether the charge keeps rising in the first half of next
+          year, especially in business lending.
+        </li>
+        <li>
+          <strong>Costs.</strong> Whether underlying costs grow by less than the 3% NAB expects,
+          as it cuts up to 2,500 roles.
+        </li>
+        <li>
+          <strong>The margin.</strong> Whether the second half’s small fall in its net interest
+          margin continues.
+        </li>
+        <li>
+          <strong>The dividend.</strong> The final dividend of 85 cents goes ex-dividend on 10
+          November and is paid on 15 December 2026.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one year. Forecasts are NAB’s own, or analysts’ as reported, not
+        ours. The share-price history is a record of what happened before, not a prediction.
+        This article is general information and does not take into account your objectives,
+        financial situation or needs.
+      </p>
+    </>
+  ),
+  'amd-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        AMD, which designs processors and AI chips for data centres, PCs and games consoles,
+        reported results for the three months to 26 September 2026 after the US market closed on
+        3 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> a record $13,377 million, up 45% from $9,246 million a year
+          earlier, and above the top of the forecast it gave in August.
+        </li>
+        <li>
+          <strong>Data centre:</strong> a record $8.5 billion, up 97%.
+        </li>
+        <li>
+          <strong>Profit:</strong> net income of $2,428 million, up 95%, after a $1,097 million
+          charge for warrants issued under a customer agreement.
+        </li>
+        <li>
+          <strong>The forecast:</strong> revenue of about $17 billion in the fourth quarter, up
+          about 66%, and more than 80% growth in 2027.
+        </li>
+        <li>
+          <strong>Cash:</strong> free cash flow of $554 million, down from $1,530 million a year
+          earlier, as inventory rose by about $3 billion in the quarter.
+        </li>
+        <li>
+          <strong>The shares:</strong> up 1.0% the next day, to $488.78.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$13,377M', c2: '$9,246M', c3: '+45%' } },
+          { cells: { c0: 'Gross margin', c1: '54%', c2: '52%', c3: '+2 points' } },
+          { cells: { c0: 'Operating income', c1: '$2,832M', c2: '$1,270M', c3: '+123%' } },
+          { cells: { c0: 'Net income', c1: '$2,428M', c2: '$1,243M', c3: '+95%' } },
+          { cells: { c0: 'Earnings per share, reported', c1: '$1.46', c2: '$0.75', c3: '+95%' } },
+          { cells: { c0: 'Earnings per share, non-GAAP', c1: '$2.09', c2: '$1.20', c3: '+74%' } },
+          { cells: { c0: 'Free cash flow (AMD’s measure)', c1: '$554M', c2: '$1,530M', c3: '−64%' } },
+        ]}
+      />
+      <p>
+        AMD’s own non-GAAP measures leave out share-based pay, the amortisation of what it
+        bought, and the warrant charge. On those, its gross margin was 56% and its operating
+        margin 29%.
+      </p>
+
+      <h2>Where the growth came from</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the growth came from"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to Sep 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Change on a year earlier', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Data Center', c1: '$8.5B', c2: '+97%' } },
+          { cells: { c0: 'Client (PC processors)', c1: '$2.9B', c2: '+7%' } },
+          { cells: { c0: 'Gaming', c1: '$773M', c2: '−40%' } },
+          { cells: { c0: 'Embedded', c1: '$1.1B', c2: '+29%' } },
+        ]}
+      />
+      <p>
+        AMD said data centre sales came from its EPYC server processors and the launch of its
+        Instinct MI450 AI chips. Chief executive Lisa Su said both cloud and enterprise server
+        sales more than doubled. Gaming fell on lower sales of the custom chips it makes for
+        games consoles, and of graphics cards.
+      </p>
+
+      <h2>Against AMD’s own forecast</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Against AMD’s own forecast"
+        columns={[
+          { key: 'c0', label: 'Quarter to', width: '40%' },
+          { key: 'c1', label: 'AMD’s forecast', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Actual', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'September 2026', c1: '$12.7B to $13.3B', c2: '$13.4B' } },
+          { cells: { c0: 'December 2026', c1: '$16.5B to $17.5B', c2: '' } },
+        ]}
+      />
+      <p>
+        The new forecast is about 27% more revenue than the quarter just reported. AMD expects
+        its data centre sales to grow about 50% on a year earlier in the fourth quarter, and its
+        PC and gaming sales to fall by more than 20%. It expects a gross margin of about 55% on
+        its own non-GAAP measure, against 56% in the third quarter.
+      </p>
+
+      <h2>2027</h2>
+      <p>
+        On the call, Su said AMD now expects “revenue to grow more than 80% in 2027”, which she
+        said was “more than twice the long-term financial model” it set out a year ago. She said
+        data centre would be “more than 80% of our total revenue in 2027”, and that server
+        revenue would double. She said customers had expanded their plans, and that AMD had
+        “secured more supply to support that growth”. AMD also agreed to buy two companies in
+        the quarter, World Labs and Taalas, and expects both deals to close by the end of the
+        year.
+      </p>
+      <p>
+        She also said “PC sell-through slowed late in the quarter as higher memory and component
+        costs weighed on demand”, and that AMD is planning for PC shipments across the market to
+        fall by a double-digit percentage in 2027.
+      </p>
+
+      <h2>The fine print</h2>
+      <p>
+        Three numbers in the report move the other way.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The fine print"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: '26 September 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: '27 June 2026', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Inventory', c1: '$11.5B', c2: '$8.5B' } },
+          { cells: { c0: 'Total debt', c1: '$7.1B', c2: '$3.2B' } },
+          { cells: { c0: 'Free cash flow, three months', c1: '$554M', c2: '$1,558M' } },
+        ]}
+      />
+      <p>
+        Finance chief Jean Hu said inventory rose “approximately $3 billion sequentially to
+        $11.5 billion to fulfill our strong data center demand”. AMD’s debt includes $4.75
+        billion of bonds it sold in August.
+      </p>
+      <p>
+        The warrant charge is an accounting cost: AMD issued warrants, rights to buy its shares,
+        under an AI chip agreement with a customer, and records changes in their value as its
+        share price moves. Hu said these “quarterly noncash fair value adjustments are expected
+        to increase”.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        AMD closed at $483.90 on 3 November. It reported after the market closed, and by the
+        close on 4 November the shares were at $488.78, up 1.0%. During the day they had been as
+        high as $514.61, up 6.3%.
+      </p>
+      <p>
+        In the three sessions before the results, the shares fell 19.3%, from $578.44 on 28
+        October to $466.84 on 2 November, including a 10.9% fall on 30 October, when chip stocks
+        fell after Intel’s forecast, as Gotrade reported. On 4 November they were 24.7% below
+        their record close of $649.42 on 6 October 2026, and up 128% since the end of 2025.
+      </p>
+
+      <h2>How AMD shares usually react to results</h2>
+      <p>
+        We measured all 43 regular results releases before this one, from January 2016 to August
+        2026. For releases after the market closed, we compared the close on the next day with
+        the close on the day AMD reported. One, in October 2020, came out before the open,
+        alongside AMD’s bid for Xilinx, so we used that day’s close.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>7.0%</strong>.
+        </li>
+        <li>
+          30 of the 43 moved by 5% or more, and 15 by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>24.2%</strong> in May 2017.
+        </li>
+        <li>
+          The largest rise was <strong>52.3%</strong> in April 2016.
+        </li>
+        <li>
+          The shares rose after 19 of the 43 and fell after 24.
+        </li>
+      </ul>
+      <p>
+        Only two of the 43 moved less than this one.
+      </p>
+
+      <h2>How far AMD has fallen before</h2>
+      <p>
+        AMD has fallen 50% or more six times since 1980, the start of our price history. These
+        are measured from a record close to the lowest close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far AMD has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'November 1980', c1: 'September 1981', c2: '−66.5%', c3: 'January 1983' } },
+          { cells: { c0: 'August 1984', c1: 'October 1990', c2: '−90.9%', c3: 'March 1997' } },
+          { cells: { c0: 'March 1997', c1: 'August 1998', c2: '−72.6%', c3: 'March 2000' } },
+          { cells: { c0: 'June 2000', c1: 'July 2015', c2: '−96.6%', c3: 'January 2020' } },
+          { cells: { c0: 'November 2021', c1: 'October 2022', c2: '−65.4%', c3: 'January 2024' } },
+          { cells: { c0: 'March 2024', c1: 'April 2025', c2: '−63.0%', c3: 'October 2025' } },
+        ]}
+      />
+      <p>
+        All six got back to their record. The longest took more than 19 years from the record;
+        measured from the low, the longest took more than six years. That is a record of what
+        happened, not a guide to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The forecast.</strong> Whether fourth-quarter revenue reaches about $17
+          billion.
+        </li>
+        <li>
+          <strong>2027.</strong> Whether growth of more than 80% shows up, and how much of it
+          comes from the MI450.
+        </li>
+        <li>
+          <strong>Cash.</strong> Whether free cash flow recovers as the inventory built up for
+          those sales is shipped.
+        </li>
+        <li>
+          <strong>PCs.</strong> How AMD’s PC business holds up if the market falls by double
+          digits, as it expects.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are AMD’s own, not ours. The share-price
+        history is a record of what happened before, not a prediction. This article is general
+        information and does not take into account your objectives, financial situation or
+        needs.
+      </p>
+    </>
+  ),
+  'apple-q4-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Apple, which makes the iPhone, the Mac and the iPad and sells services such as the App
+        Store and iCloud, reported results for the three months to 26 September 2026, the last
+        quarter of its financial year, after the US market closed on 2 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $114,477 million, up 12% from $102,466 million a year
+          earlier, a record for a September quarter.
+        </li>
+        <li>
+          <strong>iPhone:</strong> $57.6 billion, up 17%.
+        </li>
+        <li>
+          <strong>Profit:</strong> net income of $30,711 million, up 12%.
+        </li>
+        <li>
+          <strong>Gross margin:</strong> 47.9%, which Apple said included about 1 percentage
+          point from tariff refunds, down from 50.1% in the June quarter.
+        </li>
+        <li>
+          <strong>The forecast:</strong> December-quarter revenue up 7% to 10%, with a gross
+          margin of 45% to 46%.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 1.9% the next day, to $331.90.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$114,477M', c2: '$102,466M', c3: '+12%' } },
+          { cells: { c0: 'Products', c1: '$82,904M', c2: '$73,716M', c3: '+12%' } },
+          { cells: { c0: 'Services', c1: '$31,573M', c2: '$28,750M', c3: '+10%' } },
+          { cells: { c0: 'Gross margin', c1: '47.9%', c2: '47.2%', c3: '+0.7 points' } },
+          { cells: { c0: 'Operating expenses', c1: '$19,189M', c2: '$15,914M', c3: '+21%' } },
+          { cells: { c0: 'Net income', c1: '$30,711M', c2: '$27,466M', c3: '+12%' } },
+          { cells: { c0: 'Earnings per share', c1: '$2.10', c2: '$1.85', c3: '+14%' } },
+        ]}
+      />
+      <p>
+        Apple said earnings per share included $0.05 from tariff refunds. Spending on research
+        and development rose 32%, to $11,730 million. For the full financial year, revenue was a
+        record $478,834 million, up 15%.
+      </p>
+
+      <h2>Where the growth came from</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the growth came from"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Three months to Sep 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Change on a year earlier', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'iPhone', c1: '$57,583M', c2: '+17%' } },
+          { cells: { c0: 'Mac', c1: '$10,792M', c2: '+24%' } },
+          { cells: { c0: 'iPad', c1: '$6,229M', c2: '−10%' } },
+          { cells: { c0: 'Wearables, Home and Accessories', c1: '$8,300M', c2: '−8%' } },
+          { cells: { c0: 'Services', c1: '$31,573M', c2: '+10%' } },
+        ]}
+      />
+      <p>
+        Services revenue was an all-time high, and Parekh said Apple’s “installed base of over
+        2.5 billion active devices” had reached another record. By region, sales in Greater
+        China rose 21%, to $17,539 million. Finance chief Kevan Parekh said the quarter had
+        “supply constraints on iPhone, Mac and iPad”, and that iPad also faced “a continued
+        difficult compare” with a new model launched a year earlier.
+      </p>
+
+      <h2>The margin</h2>
+      <p>
+        Apple’s gross margin is the share of revenue left after the cost of making what it sold.
+        It had risen for three quarters in a row before this one.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The margin"
+        columns={[
+          { key: 'c0', label: 'Three months to', width: '50%' },
+          { key: 'c1', label: 'Gross margin', numeric: true, width: '50%' },
+        ]}
+        rows={[
+          { cells: { c0: 'September 2025', c1: '47.2%' } },
+          { cells: { c0: 'December 2025', c1: '48.2%' } },
+          { cells: { c0: 'March 2026', c1: '49.3%' } },
+          { cells: { c0: 'June 2026', c1: '50.1%' } },
+          { cells: { c0: 'September 2026', c1: '47.9%' } },
+          { cells: { c0: 'December 2026 (Apple’s forecast)', c1: '45% to 46%' } },
+        ]}
+      />
+      <p>
+        Chief executive John Ternus said “memory pricing right now is unprecedented”, and that
+        for the December quarter Apple expects “even higher memory costs”. Parekh said the
+        margin forecast “includes primarily the impact of higher memory costs as well as some
+        costs related to the ramp of Siri AI”. Ternus said Apple had changed the prices of many
+        of its products, the Mac and iPad in June and the iPhone in September.
+      </p>
+
+      <h2>The forecast</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The forecast"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'December 2025 quarter', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Apple’s forecast for December 2026', width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$143,756M', c2: 'Up 7% to 10%' } },
+          { cells: { c0: 'Gross margin', c1: '48.2%', c2: '45% to 46%' } },
+          { cells: { c0: 'Operating expenses', c1: '$18,379M', c2: '$20.4B to $20.8B' } },
+        ]}
+      />
+      <p>
+        Growth of 7% to 10% on the December 2025 quarter would be revenue of about $153.8
+        billion to $158.1 billion, more than any quarter Apple has reported. Parekh said the
+        forecast “reflects our best view of constrained supply”, and that Apple expects services
+        revenue to grow 8% to 9%. He said operating expenses would grow 11% to 13%, “driven by
+        increased and continued investment in R&D, in particular, AI”.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Apple closed at $338.32 on 2 November. It reported after the market closed, and by the
+        close on 3 November the shares were at $331.90, down 1.9%. The same day, the S&P 500
+        rose 0.4% and the Nasdaq Composite 0.8%.
+      </p>
+      <p>
+        CNBC reported a “disappointing margin forecast” and said iPad sales had missed analysts’
+        estimates.
+      </p>
+      <p>
+        The next day, 4 November, big technology shares rallied, and Apple rose 5.3% to $349.51,
+        a record close. CNBC and Gotrade linked that rise to the US midterm election results,
+        not to Apple’s results. By then the shares were up 29% since the end of 2025.
+      </p>
+
+      <h2>How Apple shares usually react to results</h2>
+      <p>
+        We measured all 43 results releases before this one, from January 2016 to July 2026.
+        Apple reports after the market closes, so we compared the close on the next day with the
+        close on the day it reported. We left out the letter Apple released in January 2019
+        cutting its revenue forecast, because it was not a results release.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>3.5%</strong>.
+        </li>
+        <li>
+          13 of the 43 moved by 5% or more, and 1 by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>7.4%</strong> in July 2026, after the last results.
+        </li>
+        <li>
+          The largest rise was <strong>10.5%</strong> in July 2020.
+        </li>
+        <li>
+          The shares rose after 21 of the 43 and fell after 22.
+        </li>
+      </ul>
+      <p>
+        31 of the 43 moved more than this one.
+      </p>
+
+      <h2>How far Apple has fallen before</h2>
+      <p>
+        Apple has fallen 40% or more eight times since 1980, the start of our price history.
+        These are measured from a record close to the lowest close before the shares got back to
+        it, counting dividends:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Apple has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'December 1980', c1: 'July 1982', c2: '−69.4%', c3: 'January 1983' } },
+          { cells: { c0: 'June 1983', c1: 'August 1985', c2: '−76.9%', c3: 'February 1987' } },
+          { cells: { c0: 'October 1987', c1: 'October 1990', c2: '−56.5%', c3: 'February 1991' } },
+          { cells: { c0: 'April 1991', c1: 'December 1997', c2: '−81.2%', c3: 'September 1999' } },
+          { cells: { c0: 'March 2000', c1: 'April 2003', c2: '−81.8%', c3: 'January 2005' } },
+          { cells: { c0: 'January 2006', c1: 'July 2006', c2: '−40.8%', c3: 'November 2006' } },
+          { cells: { c0: 'December 2007', c1: 'January 2009', c2: '−60.9%', c3: 'October 2009' } },
+          { cells: { c0: 'September 2012', c1: 'April 2013', c2: '−43.8%', c3: 'July 2014' } },
+        ]}
+      />
+      <p>
+        All eight got back to their record. The longest took more than eight years from the
+        record; measured from the low, none took more than two years. That is a record of what
+        happened, not a guide to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The forecast.</strong> Whether December-quarter revenue grows 7% to 10%, to a
+          record.
+        </li>
+        <li>
+          <strong>The margin.</strong> Whether it lands between 45% and 46%, and what Apple says
+          about memory costs after that.
+        </li>
+        <li>
+          <strong>Supply.</strong> Whether the constraints on iPhone, Mac and iPad ease.
+        </li>
+        <li>
+          <strong>Spending.</strong> Operating expenses of $20.4 billion to $20.8 billion, as
+          Apple spends more on AI.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Apple’s own, not ours. The share-price
+        history is a record of what happened before, not a prediction. This article is general
+        information and does not take into account your objectives, financial situation or
+        needs.
+      </p>
+    </>
+  ),
 };
 
 /**
