@@ -715,6 +715,102 @@ export const ARTICLES = [
     reviewed: '2026-10-31',
     minutes: 6,
   },
+  {
+    slug: 'nab-fy26-results',
+    title: 'NAB’s full-year 2026 results, explained',
+    question: 'Why did NAB’s shares fall 5.4% on a day the ASX 200 rose 2.6%?',
+    answer:
+      'NAB’s cash earnings fell 13.4% to $6.14 billion in the year to September 2026, mostly because of a $1.35 billion software write-down. Without it, earnings were flat. But its charge for bad debts nearly doubled, and its shares fell 5.4% on results day, while the ASX 200 rose 2.6%.',
+    summary:
+      'NAB’s 2026 results from its own reports: cash earnings down 13.4%, bad-debt charges up 86%, and a 5.4% fall on a day the ASX 200 rose 2.6%.',
+    kind: 'commentary',
+    deck: [
+      'Cash earnings fell 13.4%, mostly from a software write-down. ',
+      { strong: 'Its charge for bad debts nearly doubled.' },
+    ],
+    finding: [
+      'Cash earnings ',
+      { figure: '−13.4%' },
+      ', bad debts ',
+      { figure: '+86%' },
+      ', shares ',
+      { figure: '−5.4%' },
+      ' on results day.',
+    ],
+    facts: [
+      { value: '$6.14B', label: 'cash earnings' },
+      { value: '$1.55B', label: 'bad-debt charge' },
+      { value: '85c', label: 'final dividend, fully franked' },
+    ],
+    region: 'Australia',
+    published: '2026-11-07',
+    reviewed: '2026-11-07',
+    minutes: 6,
+  },
+  {
+    slug: 'amd-q3-2026-results',
+    title: 'AMD’s third-quarter 2026 results, explained',
+    question: 'Why did AMD’s shares barely move after it forecast 80% growth?',
+    answer:
+      'AMD’s revenue rose 45% to a record $13.4 billion in the third quarter of 2026, as its data centre sales nearly doubled, and it said it expects revenue to grow more than 80% in 2027. Its shares rose just 1.0% the next day, one of their quietest results days since 2016, after a 19.3% fall in the three sessions before.',
+    summary:
+      'AMD’s Q3 2026 results from its own filings: revenue up 45%, data centre up 97%, a forecast of 80% growth in 2027, and why the shares barely moved.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 45% and data-centre sales 97%. ',
+      { strong: 'Free cash flow fell as inventory rose $3 billion.' },
+    ],
+    finding: [
+      'Data centre ',
+      { figure: '+97%' },
+      ', free cash flow ',
+      { figure: '−64%' },
+      ', shares ',
+      { figure: '+1.0%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$13.4B', label: 'revenue' },
+      { value: '+97%', label: 'data-centre growth' },
+      { value: '>80%', label: 'revenue growth AMD expects in 2027' },
+    ],
+    region: 'United States',
+    published: '2026-11-07',
+    reviewed: '2026-11-07',
+    minutes: 6,
+  },
+  {
+    slug: 'apple-q4-2026-results',
+    title: 'Apple’s fourth-quarter 2026 results, explained',
+    question: 'Why did Apple’s shares fall after it forecast its best quarter ever?',
+    answer:
+      'Apple’s revenue rose 12% to $114.5 billion in its September quarter, and it said the December quarter would be “the best quarter for revenue in the history of the company”. But it forecast a lower gross margin, blaming higher memory costs, and its shares fell 1.9% the next day, while the S&P 500 rose 0.4%.',
+    summary:
+      'Apple’s Q4 2026 results from its own filings: revenue up 12%, a record December-quarter forecast, a lower margin forecast, and why the shares fell.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 12% and iPhone sales 17%. ',
+      { strong: 'But Apple forecast a lower margin, blaming memory costs.' },
+    ],
+    finding: [
+      'iPhone ',
+      { figure: '+17%' },
+      ', margin forecast ',
+      { figure: '45–46%' },
+      ', shares ',
+      { figure: '−1.9%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$114.5B', label: 'revenue' },
+      { value: '+17%', label: 'iPhone growth' },
+      { value: '45–46%', label: 'gross margin Apple expects next quarter' },
+    ],
+    region: 'United States',
+    published: '2026-11-07',
+    reviewed: '2026-11-07',
+    minutes: 7,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];
