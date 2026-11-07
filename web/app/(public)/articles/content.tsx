@@ -6195,6 +6195,1365 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
       </p>
     </>
   ),
+  'westpac-fy26-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Westpac, one of Australia’s four big banks, reported its results for the year to 30
+        September 2026 before the market opened on 2 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Profit:</strong> net profit excluding Notable Items, the measure Westpac uses
+          for its own performance, of $6,992 million, against $6,972 million a year earlier.
+          That is flat.
+        </li>
+        <li>
+          <strong>Statutory profit:</strong> $6,813 million, down 1% from $6,916 million. The
+          gap is $179 million after tax of Notable Items, mostly costs from selling its RAMS
+          home-loan book.
+        </li>
+        <li>
+          <strong>Bad debts:</strong> an impairment charge of $864 million, up 104% from $424
+          million.
+        </li>
+        <li>
+          <strong>The dividend:</strong> a final dividend of 77 cents, fully franked, the same
+          as the interim, for 154 cents for the year, up from 153 cents.
+        </li>
+        <li>
+          <strong>The shares:</strong> up 1.0% on the day, to $37.19, while the S&P/ASX 200 fell
+          0.6%.
+        </li>
+      </ul>
+      <p>
+        All figures are in Australian dollars.
+      </p>
+
+      <h2>The year against a year earlier</h2>
+      <p>
+        These figures leave out Notable Items, as Westpac reports them.
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The year against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Year to Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Net interest income', c1: '$19,687M', c2: '$19,473M', c3: '+1%' } },
+          { cells: { c0: 'Net operating income', c1: '$22,708M', c2: '$22,464M', c3: '+1%' } },
+          { cells: { c0: 'Operating expenses', c1: '$11,781M', c2: '$11,916M', c3: '−1%' } },
+          { cells: { c0: 'Pre-provision profit', c1: '$10,927M', c2: '$10,548M', c3: '+4%' } },
+          { cells: { c0: 'Impairment charges', c1: '$864M', c2: '$424M', c3: '+104%' } },
+          { cells: { c0: 'Net profit excluding Notable Items', c1: '$6,992M', c2: '$6,972M', c3: 'Flat' } },
+          { cells: { c0: 'Statutory net profit', c1: '$6,813M', c2: '$6,916M', c3: '−1%' } },
+          { cells: { c0: 'Dividend per share', c1: '154c', c2: '153c', c3: '+1%' } },
+        ]}
+      />
+      <p>
+        Before bad debts and tax, profit rose 4%, because costs fell while income rose. The
+        higher charge for bad debts took all of that gain away.
+      </p>
+
+      <h2>The bad debts</h2>
+      <p>
+        The charge was 10 basis points of Westpac’s average gross loans, against 5 a year
+        earlier. Westpac put the increase down to a “the revised economic outlook, new portfolio
+        overlays and an increase in new IAPs”, its individually assessed provisions against
+        particular customers. It also said it had set aside new overlays “for energy-intensive
+        sectors and discretionary spending”, given economic and geopolitical uncertainty.
+      </p>
+      <p>
+        The charge was lower in the second half, $421 million, than in the first, $443 million.
+        And Westpac said its stressed loans fell, from 1.28% of its exposures to 1.17%.
+      </p>
+
+      <h2>What analysts had expected</h2>
+      <p>
+        Before the results, analysts’ average forecast for profit excluding one-off items was
+        $6.96 billion, according to ABC News. Westpac reported $6,992 million, slightly above
+        it.
+      </p>
+      <p>
+        Analysts did not all see it that way. JP Morgan’s bank analyst, Andrew Triggs, said the
+        result was “softer than expected”, with a “0.7% miss” on profit excluding Notable Items,
+        “driven by weakness in core NIM”, its core net interest margin. UBS’s bank analyst, John
+        Storey, said “weaker revenue trends” in the second half “were offset by cost discipline
+        and lower than expected credit impairment charges”.
+      </p>
+
+      <h2>The margin</h2>
+      <p>
+        Westpac’s net interest margin, what it earns on its loans less what it pays for its
+        funding, was 1.87% for the year, down from 1.94%. Analysts had expected 1.89%, according
+        to ABC News. The margin was lower in the second half, 1.86%, than in the first, 1.89%.
+      </p>
+
+      <h2>Where its profit came from</h2>
+      <p>
+        Profit before bad debts and tax, by division:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where its profit came from"
+        columns={[
+          { key: 'c0', label: 'Division', width: '40%' },
+          { key: 'c1', label: 'Year to Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Consumer', c1: '$3,616M', c2: '$3,437M', c3: '+5%' } },
+          { cells: { c0: 'Business & Wealth', c1: '$3,755M', c2: '$3,383M', c3: '+11%' } },
+          { cells: { c0: 'Institutional', c1: '$2,342M', c2: '$2,161M', c3: '+8%' } },
+          { cells: { c0: 'Westpac New Zealand', c1: '$1,298M', c2: '$1,472M', c3: '−12%' } },
+        ]}
+      />
+      <p>
+        (Westpac calls this pre-provision profit. The New Zealand figure is in Australian
+        dollars.)
+      </p>
+      <p>
+        Its loans grew 5% over the year, to $901.3 billion, and its deposits 6%, to $766.2
+        billion. Business lending grew 12% and institutional lending 18%.
+      </p>
+
+      <h2>Next year, in Westpac’s words</h2>
+      <p>
+        Chief executive Anthony Miller said the economy was “holding up relatively well”, but
+        that “inflation remains above the Reserve Bank’s target range and interest rates are
+        likely to remain elevated into 2027”.
+      </p>
+      <p>
+        Westpac’s economists expect Australia’s economy to grow 1.5% in 2026 and 1.6% in 2027,
+        the unemployment rate to be 4.7% at the end of both years, and the Reserve Bank’s cash
+        rate to be 4.85% at the end of 2026.
+      </p>
+
+      <h2>Its capital</h2>
+      <p>
+        Westpac’s common equity tier 1 ratio, the main measure of a bank’s capital cushion, was
+        12.46% at 30 September, against its own target of 11.25%. Westpac says that is $2.9
+        billion of capital above the target after paying the final dividend.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Westpac closed at $36.82 on Friday 30 October. It released its results before the market
+        opened on Monday 2 November, and the shares closed that day at $37.19, up 1.0%. The
+        S&P/ASX 200 fell 0.6% the same day.
+      </p>
+      <p>
+        The other big banks fell. Commonwealth Bank fell 1.0%, ANZ fell 0.6%, and NAB, which
+        reported three days later, fell 1.4%.
+      </p>
+      <p>
+        On 5 November, Westpac’s shares went ex-dividend: from then, buyers no longer received
+        its 77-cent final dividend. They closed that day at $36.64, which leaves them 14.7%
+        below their record close, set on 25 February 2026.
+      </p>
+
+      <h2>How Westpac shares usually react to results</h2>
+      <p>
+        We measured all 21 half-year and full-year results Westpac released from May 2016 to May
+        2026, comparing the close on the day of each release with the close the day before.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>2.3%</strong>.
+        </li>
+        <li>
+          Only two of the 21 moved by 5% or more.
+        </li>
+        <li>
+          The largest fall was <strong>7.4%</strong> in November 2021.
+        </li>
+        <li>
+          The largest rise was <strong>5.0%</strong> in May 2021.
+        </li>
+        <li>
+          The shares rose on 12 of the 21 days, fell on 8, and closed unchanged on one, in
+          November 2019.
+        </li>
+      </ul>
+      <p>
+        So this was a smaller move than usual: 15 of those 21 results moved the shares further.
+      </p>
+
+      <h2>How far Westpac has fallen before</h2>
+      <p>
+        Westpac’s shares have fallen 25% or more five times since 1988, the start of our price
+        history. These are measured from a record close to the lowest close before the shares
+        got back to it, counting dividends:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Westpac has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'February 1990', c1: 'October 1992', c2: '−42.8%', c3: 'December 1993' } },
+          { cells: { c0: 'November 2007', c1: 'January 2009', c2: '−49.2%', c3: 'March 2010' } },
+          { cells: { c0: 'April 2010', c1: 'September 2011', c2: '−27.5%', c3: 'August 2012' } },
+          { cells: { c0: 'March 2015', c1: 'September 2015', c2: '−25.0%', c3: 'March 2017' } },
+          { cells: { c0: 'May 2017', c1: 'March 2020', c2: '−51.7%', c3: 'February 2024' } },
+        ]}
+      />
+      <p>
+        All five got back to their record. The longest took almost seven years from the record,
+        and almost four from the low. Counting dividends, the shares are now 11.1% below their
+        February 2026 record. That is a record of what happened, not a guide to what will.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Bad debts.</strong> Whether the second half’s lower charge continues, as
+          Westpac adds provisions for businesses.
+        </li>
+        <li>
+          <strong>The margin.</strong> Whether the fall in its net interest margin, which
+          analysts focused on, continues.
+        </li>
+        <li>
+          <strong>Costs.</strong> Whether costs keep falling while Westpac spends more on UNITE,
+          its programme to simplify the bank.
+        </li>
+        <li>
+          <strong>The dividend.</strong> The final dividend of 77 cents is paid on 21 December
+          2026.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one year. Forecasts are Westpac’s own, or analysts’ as reported,
+        not ours. The share-price history is a record of what happened before, not a prediction.
+        This article is general information and does not take into account your objectives,
+        financial situation or needs.
+      </p>
+    </>
+  ),
+  'palantir-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Palantir, which sells software that organisations use to bring their data together and
+        run artificial intelligence on it, reported its results for the three months to 30
+        September 2026 after the market closed on 2 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $2,313 million, up 96% from $1,181 million a year earlier,
+          and its first quarter above $2 billion.
+        </li>
+        <li>
+          <strong>US commercial:</strong> revenue from American companies of $984 million, up
+          148%, more than it earned from the American government, $953 million, for the first
+          time.
+        </li>
+        <li>
+          <strong>Profit:</strong> net income of $1,128 million, up from $476 million.
+        </li>
+        <li>
+          <strong>New contracts:</strong> total contract value, the lifetime value of the
+          contracts it signed in the quarter, of $2,918 million, up 6%.
+        </li>
+        <li>
+          <strong>Palantir’s explanation:</strong> it said several of its largest new deals were
+          “shorter in duration than usual”, and that it expects contracts to grow longer and
+          larger over time.
+        </li>
+        <li>
+          <strong>The forecast:</strong> revenue for 2026 of $8,530 million to $8,534 million,
+          up from the $8,150 million to $8,158 million it forecast in August.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 1.6% on 3 November, to $175.40, while the Nasdaq
+          Composite rose 0.8%.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Jul–Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$2,313M', c2: '$1,181M', c3: '+96%' } },
+          { cells: { c0: 'Income from operations', c1: '$1,085M', c2: '$393M', c3: '+176%' } },
+          { cells: { c0: 'Net income', c1: '$1,128M', c2: '$476M', c3: '+137%' } },
+        ]}
+      />
+      <p>
+        On its own accounting, that is an operating margin of 47% and a net margin of 49%.
+        Palantir’s own adjusted measure, which mainly leaves out the cost of the shares it pays
+        its staff in, put operating income at $1,427 million, a 62% margin.
+      </p>
+      <p>
+        Net income was $144 million in the same quarter of 2024, so in two years it has grown
+        nearly eightfold.
+      </p>
+
+      <h2>Where the revenue came from</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the revenue came from"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Jul–Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'On a year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'On the quarter before', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'US commercial', c1: '$984M', c2: '+148%', c3: '+29%' } },
+          { cells: { c0: 'US government', c1: '$953M', c2: '+96%', c3: '+18%' } },
+          { cells: { c0: 'All US revenue', c1: '$1,937M', c2: '+119%', c3: '+23%' } },
+          { cells: { c0: 'All revenue', c1: '$2,313M', c2: '+96%', c3: '+20%' } },
+        ]}
+      />
+      <p>
+        So 84% of Palantir’s revenue came from the United States. Chief executive Alex Karp
+        said: “Our U.S. commercial revenue has surpassed our U.S. government revenue for the
+        first time in our company’s history.”
+      </p>
+
+      <h2>Its customers</h2>
+      <p>
+        Palantir closed 212 deals worth at least $1 million in the quarter, including 107 worth
+        at least $5 million and 64 worth at least $10 million. On the results call, its chief
+        financial officer, Dave Glazer, said:
+      </p>
+      <ul>
+        <li>it had 686 US commercial customers, up 29% on a year earlier;</li>
+        <li>
+          its 20 largest customers each spent an average of $146 million with it over the past
+          12 months, up 76%;
+        </li>
+        <li>
+          its net dollar retention, its measure of how much more existing customers spend than a
+          year earlier, was 165%, up 8 points on the quarter before.
+        </li>
+      </ul>
+      <p>
+        Its chief revenue officer, Ryan Taylor, gave examples of trials turning into much larger
+        contracts within months. One industrial materials company “piloted a nearly $3 million
+        engagement in Q2 2026 before converting to a $29 million ACV deal last quarter”. ACV,
+        annual contract value, is a contract’s value per year.
+      </p>
+
+      <h2>Against what analysts expected</h2>
+      <p>
+        Before the results, analysts’ average forecast was revenue of $2.18 billion and adjusted
+        earnings per share of $0.41, according to XTB. Palantir reported $2,313 million and
+        $0.44. In August, Palantir itself had forecast third-quarter revenue of $2,160 million
+        to $2,164 million.
+      </p>
+      <p>
+        For the fourth quarter, Palantir forecast revenue of $2,649 million to $2,653 million.
+        Analysts had expected about $2.46 billion, according to XTB.
+      </p>
+
+      <h2>The new contracts</h2>
+      <p>
+        Revenue is what Palantir earned in the quarter. Its contract figures say what it signed,
+        and they slowed sharply:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The new contracts"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Jul–Sep 2026', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Apr–Jun 2026', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Contract value signed', c1: '$2,918M', c2: '$3,373M' } },
+          { cells: { c0: 'Change on a year earlier', c1: '+6%', c2: '+49%' } },
+          { cells: { c0: 'Signed with US companies', c1: '$1,463M', c2: '$2,132M' } },
+          { cells: { c0: 'Change on a year earlier', c1: '+11%', c2: '+153%' } },
+        ]}
+      />
+      <p>
+        Its remaining performance obligations, the revenue it is owed under contracts that
+        customers cannot cancel, were $4.9 billion at 30 September, the same as at 30 June. A
+        year earlier they were $2.6 billion.
+      </p>
+
+      <h2>What Palantir said about its contracts</h2>
+      <p>
+        On the results call, Glazer gave Palantir’s explanation: “We signed multiple 8-figure
+        deals in the quarter that were shorter in duration than usual, as customers rapidly
+        adopted initial Sovereign AI capabilities in their enterprise.” He added: “over time,
+        we expect both the duration and size of these contracts to increase.”
+      </p>
+      <p>
+        Total contract value counts a contract’s whole life, so a one-year contract adds less to
+        it than a three-year contract worth the same each year.
+      </p>
+      <p>Some of Palantir’s other contract figures grew faster:</p>
+      <ul>
+        <li>
+          Over the past 12 months, the contracts it signed with US companies had a total value of
+          $6,114 million, up 62% on the 12 months before.
+        </li>
+        <li>
+          Its remaining deal value, the total still to come from all its contracts, was $13.4
+          billion, up 55% on a year earlier but only 2% on the quarter before.
+        </li>
+        <li>
+          Its remaining performance obligations were up 88% on a year earlier. Glazer said the
+          measure “does not take into account contracts with an initial term of less than 12
+          months and contractual obligations that fall beyond termination for convenience
+          clauses, both of which are common in most of our government business”.
+        </li>
+      </ul>
+
+      <h2>Profit, cash and the full-year forecast</h2>
+      <p>
+        Palantir generated $1,216 million of adjusted free cash flow in the quarter, 53% of its
+        revenue, and ended September with $10.4 billion of cash and US Treasury securities. Its
+        “Rule of 40” score, which adds its revenue growth to its adjusted operating margin, was
+        158%: growth of 96% plus a margin of 62%.
+      </p>
+      <p>
+        It also raised its forecasts for the year: adjusted operating income of $5,245 million
+        to $5,249 million, and adjusted free cash flow of $4.8 billion to $5.0 billion.
+      </p>
+
+      <h2>What its chief executive said</h2>
+      <p>
+        In his letter to shareholders, Karp called the quarter’s results “extraordinary”. He
+        wrote that demand for its software “has been absolutely ravenous and remains far from
+        sated in the United States”, and that sales that once took “months and years” “can now
+        take days and weeks”. He repeated Palantir’s aim “to take the entire market, the whole
+        thing”. On the results call, he said: “we really cannot satiate demand.”
+      </p>
+      <p>These are Palantir’s views of its own business, not ours.</p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Palantir closed at $178.34 on 2 November, already down 3.1% that day before the results
+        came out. On 3 November it opened at $168.18 and was as low as $165.25, down 7.3%,
+        before closing at $175.40, down 1.6%. The Nasdaq Composite rose 0.8% and the S&P 500
+        0.4% the same day.
+      </p>
+      <p>
+        Coverage of the fall pointed to the contract figures. Gotrade reported that the Motley
+        Fool tied the drop to “slowing contract growth, with total contract value up 6% and
+        remaining performance obligations unchanged at $4.9 billion”.
+      </p>
+      <p>
+        On 4 November the shares fell again, to $171.70. That leaves them 17.9% below their
+        record close of $209.05, set on 9 October 2026, and down 3.4% this year.
+      </p>
+
+      <h2>How Palantir shares usually react to results</h2>
+      <p>
+        We measured all 24 quarterly results Palantir released from November 2020, after it
+        listed in September 2020, to August 2026, comparing the close before each release with
+        the close after it.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>12.4%</strong>.
+        </li>
+        <li>
+          Every one of the 24 moved the shares by 5% or more, and 16 by 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>21.3%</strong> in May 2022.
+        </li>
+        <li>
+          The largest rise was <strong>30.8%</strong> in February 2024.
+        </li>
+        <li>
+          The last results, in August 2026, sent the shares up <strong>29.5%</strong>.
+        </li>
+        <li>
+          The shares rose after 13 of the 24 and fell after 11.
+        </li>
+      </ul>
+      <p>
+        So this was the smallest results-day move in Palantir’s history as a listed company.
+      </p>
+
+      <h2>How far Palantir has fallen before</h2>
+      <p>
+        Palantir’s shares have fallen 20% or more five times since they listed. These are
+        measured from a record close to the lowest close before the shares got back to it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Palantir has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'November 2020', c1: 'December 2020', c2: '−22.5%', c3: 'January 2021' } },
+          { cells: { c0: 'January 2021', c1: 'December 2022', c2: '−84.6%', c3: 'October 2024' } },
+          { cells: { c0: 'December 2024', c1: 'January 2025', c2: '−21.1%', c3: 'January 2025' } },
+          { cells: { c0: 'February 2025', c1: 'April 2025', c2: '−40.6%', c3: 'May 2025' } },
+          { cells: { c0: 'November 2025', c1: 'June 2026', c2: '−48.2%', c3: 'October 2026' } },
+        ]}
+      />
+      <p>
+        All five got back to their record. The longest took more than three and a half years
+        from the record. That is a record of what happened, not a guide to what will.
+      </p>
+
+      <h2>Legal matters</h2>
+      <p>
+        In 2022, shareholders filed a lawsuit alleging that Palantir had made false and misleading
+        statements about its business and prospects. A court dismissed it in April 2025, and the
+        shareholders appealed; the appeals court heard arguments on 16 March 2026.
+      </p>
+      <p>
+        As of 30 September 2026, Palantir said it was not aware of any pending legal matters
+        expected to have a material adverse impact on its accounts.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Contracts.</strong> Whether the value of new contracts picks up again after
+          this quarter’s 6%, and whether contracts grow longer again, as Palantir says it
+          expects.
+        </li>
+        <li>
+          <strong>The forecast.</strong> Whether fourth-quarter revenue lands in the $2,649
+          million to $2,653 million Palantir expects.
+        </li>
+        <li>
+          <strong>US commercial.</strong> Palantir expects more than $3,559 million of US
+          commercial revenue in 2026, growth of at least 143%.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Palantir’s own, or analysts’ as
+        reported, not ours. The share-price history is a record of what happened before, not a
+        prediction. This article is general information and does not take into account your
+        objectives, financial situation or needs.
+      </p>
+    </>
+  ),
+  'arm-q2-fy27-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Arm, the British company that licenses chip designs to the companies that make the
+        chips, reported its results for the three months to 30 September 2026, the second
+        quarter of its financial year, after the market closed on 4 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $1,443 million, up 27% from $1,135 million a year earlier,
+          its best second quarter.
+        </li>
+        <li>
+          <strong>Licences:</strong> licence and other revenue of $773 million, up 50%.
+        </li>
+        <li>
+          <strong>Royalties:</strong> royalty revenue of $670 million, up 8%, held back, Arm
+          said, by the impact of memory pricing on the smartphone market.
+        </li>
+        <li>
+          <strong>Profit:</strong> net income of $130 million, down from $238 million. On Arm’s
+          own adjusted measure, earnings per share rose 33% to $0.52.
+        </li>
+        <li>
+          <strong>The forecast:</strong> revenue of $1.54 billion, give or take $50 million, for
+          the three months to December.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 13.1% on 5 November, to $166.72, on a day the Nasdaq
+          Composite fell 5.5%.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter against a year earlier</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Jul–Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$1,443M', c2: '$1,135M', c3: '+27%' } },
+          { cells: { c0: 'Licence and other revenue', c1: '$773M', c2: '$515M', c3: '+50%' } },
+          { cells: { c0: 'Royalty revenue', c1: '$670M', c2: '$620M', c3: '+8%' } },
+          { cells: { c0: 'Operating income', c1: '$201M', c2: '$163M', c3: '+23%' } },
+          { cells: { c0: 'Net income', c1: '$130M', c2: '$238M', c3: '−45%' } },
+        ]}
+      />
+      <p>
+        Arm’s adjusted measure, which leaves out the cost of the shares it pays its staff in,
+        among other items, put operating income at $638 million, a margin of 44.2%, up from
+        41.1%.
+      </p>
+      <p>
+        Net income fell for a reason outside the business itself. A year earlier, Arm had $128
+        million of other non-operating income; this quarter that line was a $2 million loss. So
+        its income before tax was $208 million, against $302 million.
+      </p>
+
+      <h2>The royalties</h2>
+      <p>
+        Arm earns money in two ways. Companies pay a licence fee to use its designs, and then a
+        royalty on every chip they ship that uses them. Licences are the leading indicator;
+        royalties are the money that follows once those chips are in production.
+      </p>
+      <p>
+        This quarter the two parted company. Licence revenue grew 50%. Royalty revenue grew 8%,
+        which Arm said was driven by data centres but “partially offset by the impact of memory
+        pricing on the smartphone market”. Its data-centre royalties, it said, doubled, and
+        Arm-based chips’ share of the servers at the biggest cloud companies rose from 15% in
+        calendar 2024 to more than 50% in calendar 2025.
+      </p>
+      <p>
+        Arm’s explanation is timing. It called strong licensing “an important leading indicator
+        of future royalty growth as these new designs enter production where we expect royalty
+        revenue to accelerate”. Its annualised contract value, which smooths out the timing of
+        licence deals, rose 12% to $1,790 million. And royalties from cars and robots, which Arm
+        calls physical AI, grew 50%.
+      </p>
+
+      <h2>Its customers</h2>
+      <p>
+        For the first time, Arm said, its partners shipped more than 10 billion Arm-based chips
+        in a quarter, 1.5 billion more than a year earlier.
+      </p>
+      <ul>
+        <li>
+          <strong>Data centres.</strong> Arm named Google’s Axion, Amazon’s Graviton and
+          Microsoft’s Cobalt chips and NVIDIA’s platforms, and said it expects Arm’s share of
+          servers at the biggest cloud companies to pass 60% by the end of 2026. It wrote that
+          “Amazon recently reported that Graviton revenue commitments increased more than 20x
+          year over year”.
+        </li>
+        <li>
+          <strong>PCs.</strong> Arm-based PCs, it said, are now about 20% of global shipments.
+        </li>
+        <li>
+          <strong>Phones.</strong> It named OPPO and vivo as adopting its latest phone designs,
+          and Xiaomi its newest graphics chip.
+        </li>
+      </ul>
+
+      <h2>Against what analysts expected</h2>
+      <p>
+        Before the results, analysts had expected revenue of $1.38 billion and adjusted earnings
+        of $0.47 a share, according to the Motley Fool. Arm reported $1,443 million and $0.52.
+        For the three months to December, Arm’s forecast of $1.54 billion compared with an
+        analysts’ consensus of $1.53 billion, according to Proactive.
+      </p>
+      <p>
+        Coverage of the fall focused on the royalties. The Motley Fool wrote: “Chief among the
+        red flags behind today’s sizable sell-off is Arm Holdings’ Q2 royalty revenue.”
+      </p>
+
+      <h2>Its new chip business</h2>
+      <p>
+        Arm has started selling a chip of its own, the Arm AGI CPU, rather than only licensing
+        designs. It said it had purchase orders from multiple customers extending through
+        calendar 2027, with first commercial deliveries on track for the last quarter of its
+        financial year, January to March 2027, and that its confidence in “achieving up to $2
+        billion in Arm AGI CPU revenue over FY27–28” had increased.
+      </p>
+
+      <h2>Profit, cash and the forecast</h2>
+      <p>
+        Arm keeps almost all of the money it earns after the cost of what it sells: its gross
+        margin was 97.1%. It spent $857 million on research and development, up 24%. Cash from
+        its operations fell to $207 million, from $567 million a year earlier, and its free cash
+        flow over the past 12 months was $1,096 million. At 30 September it held $3,621 million
+        in cash and short-term investments.
+      </p>
+      <p>
+        For the three months to December, Arm forecast revenue of $1.54 billion, give or take
+        $50 million, and adjusted earnings of $0.56 a share, give or take $0.04.
+      </p>
+
+      <h2>What its chief executive said</h2>
+      <p>
+        In Arm’s letter to shareholders, chief executive Rene Haas said: “Our IP business
+        continues to grow, with 50% licensing growth demonstrating the increasing investment in
+        the power efficient Arm compute platform which will drive even higher royalty growth in
+        the future.”
+      </p>
+      <p>
+        He added: “Arm is becoming the compute platform of choice as AI transforms every
+        market.”
+      </p>
+      <p>
+        These are Arm’s views of its own business, not ours.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Arm closed at $191.80 on 4 November. It released its results after the market closed,
+        and on 5 November the shares were as low as $163.13, before closing at $166.72, down
+        13.1%.
+      </p>
+      <p>
+        It was a bad day for the whole market. The Nasdaq Composite fell 5.5% and the S&P 500
+        4.4%.
+      </p>
+      <p>
+        That leaves Arm 62.1% below its record close of $439.46, set on 18 June 2026, though
+        still up 52.5% this year.
+      </p>
+
+      <h2>How Arm shares usually react to results</h2>
+      <p>
+        We measured all 12 quarterly results Arm released from November 2023, soon after it
+        listed in September 2023, to July 2026, comparing the close on the day of each release
+        with the close the next day.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>5.9%</strong>.
+        </li>
+        <li>
+          Eight of the 12 moved the shares 5% or more, and four 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>15.7%</strong> in July 2024.
+        </li>
+        <li>
+          The largest rise was <strong>47.9%</strong> in February 2024.
+        </li>
+        <li>
+          The shares rose after 4 of the 12 and fell after 8.
+        </li>
+      </ul>
+      <p>
+        So this was Arm’s third-largest fall after results since it listed.
+      </p>
+
+      <h2>How far Arm has fallen before</h2>
+      <p>
+        Arm’s shares have fallen 20% or more five times since they listed, counting this one.
+        These are measured from a record close to the lowest close before the shares got back to
+        it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Arm has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'September 2023', c1: 'October 2023', c2: '−24.7%', c3: 'November 2023' } },
+          { cells: { c0: 'February 2024', c1: 'April 2024', c2: '−41.5%', c3: 'June 2024' } },
+          { cells: { c0: 'July 2024', c1: 'April 2025', c2: '−54.0%', c3: 'April 2026' } },
+          { cells: { c0: 'June 2026', c1: 'June 2026', c2: '−25.4%', c3: 'June 2026' } },
+          { cells: { c0: 'June 2026', c1: 'November 2026', c2: '−62.1%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The four earlier falls all got back to their record, the longest after almost two years.
+        That is a record of what happened, not a guide to what will.
+      </p>
+
+      <h2>Legal matters</h2>
+      <p>
+        Arm is in two court cases with the chipmaker Qualcomm. In the first, which Arm brought in
+        2022, the court ruled in Qualcomm’s favour in September 2025, and Arm has appealed.
+      </p>
+      <p>
+        In the second, brought by Qualcomm in 2024, a jury found in October 2026 for Arm on four
+        claims and for Qualcomm on two, awarding Qualcomm nominal damages. The court has yet to
+        decide whether Qualcomm can withhold certain royalties from Arm. Arm said it disagrees
+        with Qualcomm’s claims and intends “to vigorously defend against them”.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>Royalties.</strong> Whether smartphone royalties recover as memory prices
+          settle.
+        </li>
+        <li>
+          <strong>The forecast.</strong> Whether revenue for the three months to December lands
+          near the $1.54 billion Arm expects.
+        </li>
+        <li>
+          <strong>Its own chips.</strong> Whether the first commercial deliveries of the Arm AGI
+          CPU arrive on time.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Arm’s own, or analysts’ as reported,
+        not ours. The share-price history is a record of what happened before, not a prediction.
+        This article is general information and does not take into account your objectives,
+        financial situation or needs.
+      </p>
+    </>
+  ),
+  'astera-labs-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Astera Labs, which makes the chips that move data between the processors, memory and
+        racks inside artificial intelligence data centres, reported its results for the three
+        months to 30 September 2026 after the market closed on 3 November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Revenue:</strong> $584.9 million, a record, up 154% on a year earlier and up
+          49% on the quarter before.
+        </li>
+        <li>
+          <strong>Its biggest product:</strong> its Scorpio fabric switches became its largest
+          product family.
+        </li>
+        <li>
+          <strong>Profit:</strong> net income of $182.9 million, and earnings per share of
+          $0.99. On Astera’s own adjusted measure, earnings per share were $1.32.
+        </li>
+        <li>
+          <strong>The forecast:</strong> revenue of $730 million to $750 million for the three
+          months to December.
+        </li>
+        <li>
+          <strong>The shares:</strong> down 4.4% on 4 November, to $223.27, while the Nasdaq
+          Composite rose 1.4%. Then down a further 19.6% on 5 November, to $179.47.
+        </li>
+      </ul>
+      <p>
+        All figures are in US dollars.
+      </p>
+
+      <h2>The quarter</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter against a year earlier"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Jul–Sep 2026', numeric: true, width: '20%' },
+          { key: 'c2', label: 'A year earlier', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Change', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Revenue', c1: '$584.9M', c2: '$230.6M', c3: '+154%' } },
+          { cells: { c0: 'Operating income', c1: '$179.1M', c2: '$55.4M', c3: '+223%' } },
+          { cells: { c0: 'Net income', c1: '$182.9M', c2: '$91.1M', c3: '+101%' } },
+          { cells: { c0: 'Earnings per share', c1: '$0.99', c2: '$0.50', c3: '+98%' } },
+        ]}
+      />
+      <p>
+        Against the three months to June, revenue rose 49%, from $392.4 million. Its gross
+        margin was 72.3%, against 76.2% a year earlier, and its operating margin 30.6%, against
+        24.0%.
+      </p>
+      <p>
+        On Astera’s own adjusted measure, operating income was $261.6 million, a margin of
+        44.7%.
+      </p>
+      <p>
+        Its chief executive, Jitendra Mohan, said growth was “led by Scorpio, which ramped to
+        high-volume production and became our largest product family by revenue”.
+      </p>
+
+      <h2>Its products and customers</h2>
+      <p>
+        Astera sells several families of chips, and said on its results call that each one
+        widened its list of customers:
+      </p>
+      <ul>
+        <li>
+          <strong>Scorpio</strong>, its fabric switches, which connect the processors inside an
+          AI system. Its chief executive said “Scorpio represented over $1 billion in annualized
+          revenues”. The X-Series shipped to two customers in the quarter, and the P-Series to two
+          US cloud companies.
+        </li>
+        <li>
+          <strong>Aries</strong>, which keeps signals clean over longer distances, grew on demand
+          for the newest PCIe Gen 6 standard.
+        </li>
+        <li>
+          <strong>Taurus</strong>, for faster network cables, is shipping in volume to its lead
+          customer and being tested by several more.
+        </li>
+        <li>
+          <strong>Leo</strong>, its memory controllers, has passed testing at several customers,
+          including two of the largest cloud companies, with volume shipments expected from
+          mid-2027.
+        </li>
+      </ul>
+      <p>
+        Its finance chief, Desmond Lynch, said: “Revenue also diversified across a broader base
+        of customers and platforms during the quarter.”
+      </p>
+
+      <h2>Against what analysts expected</h2>
+      <p>
+        Before the results, analysts had expected revenue of $550.8 million and adjusted
+        earnings of $1.19 a share, according to Investing.com. Astera reported $584.9 million
+        and $1.32.
+      </p>
+      <p>
+        For the three months to December, Astera forecast revenue of $730 million to $750
+        million. At the midpoint, that would be 27% more than in the third quarter. It expects a
+        gross margin of about 72%, and earnings per share of about $1.13 to $1.17.
+      </p>
+
+      <h2>Profit, cash and the forecast</h2>
+      <p>
+        Astera’s adjusted gross margin was 72.4%, above the 72% it had forecast. Its adjusted
+        operating costs were $162 million, up 19% on the quarter before, which it said reflected
+        more spending on research. It ended September with $1.38 billion in cash and marketable
+        securities, up $125.3 million from June, helped by a record $179.2 million of cash from
+        its operations.
+      </p>
+      <p>
+        For the three months to December, besides the revenue range above, it expects an
+        adjusted operating margin of about 45% and adjusted earnings of $1.62 to $1.66 a share.
+      </p>
+      <p>
+        On the call, Investing.com reported, “Analysts also pressed on whether Scorpio X could
+        plateau before newer protocols such as UALink take over.” Executives said it remains on
+        track, while Astera expands into new platforms and customers.
+      </p>
+
+      <h2>What its chief executive said</h2>
+      <p>
+        Jitendra Mohan called it “an important milestone in our journey to be a critical
+        rack-scale AI infrastructure solutions provider”. He added: “Our design-in activities
+        picked up significantly in Q3 at both new and existing customers.”
+      </p>
+      <p>
+        These are Astera’s views of its own business, not ours.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Astera’s shares had already fallen before the results: from $290.43 on 29 October to
+        $233.62 at the close on 3 November, the day it reported.
+      </p>
+      <p>
+        On 4 November the shares were as low as $208.40, before closing at $223.27, down 4.4%.
+        The Nasdaq Composite rose 1.4% that day, and the S&P 500 1.6%.
+      </p>
+      <p>
+        On 5 November they fell another 19.6%, to $179.47, on a day the whole market fell: the
+        Nasdaq Composite was down 5.5% and the S&P 500 4.4%. Over the two days, the shares fell
+        23.2%, almost a quarter of their value.
+      </p>
+      <p>
+        That leaves the shares 62.8% below their record close of $483.02, set on 30 June 2026,
+        though still up 7.9% this year.
+      </p>
+
+      <h2>How Astera shares usually react to results</h2>
+      <p>
+        We measured all 10 quarterly results Astera released from May 2024, after it listed in
+        March 2024, to August 2026, comparing the close on the day of each release with the
+        close the next day.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>11.4%</strong>.
+        </li>
+        <li>
+          Seven of the 10 moved the shares 5% or more, and six 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>21.4%</strong> in February 2026.
+        </li>
+        <li>
+          The largest rise was <strong>37.7%</strong> in November 2024.
+        </li>
+        <li>
+          The shares rose after 3 of the 10 and fell after 7.
+        </li>
+      </ul>
+      <p>
+        So the 4.4% fall after these results was smaller than usual: seven of the 10 earlier
+        results moved the shares more.
+      </p>
+
+      <h2>How far Astera has fallen before</h2>
+      <p>
+        Astera’s shares have fallen 20% or more five times since they listed, counting this one.
+        These are measured from a record close to the lowest close before the shares got back to
+        it:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Astera has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'March 2024', c1: 'April 2024', c2: '−24.1%', c3: 'April 2024' } },
+          { cells: { c0: 'April 2024', c1: 'August 2024', c2: '−57.6%', c3: 'November 2024' } },
+          { cells: { c0: 'December 2024', c1: 'April 2025', c2: '−63.7%', c3: 'August 2025' } },
+          { cells: { c0: 'September 2025', c1: 'March 2026', c2: '−60.2%', c3: 'May 2026' } },
+          { cells: { c0: 'June 2026', c1: 'November 2026', c2: '−62.8%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The four earlier falls all got back to their record, the longest after about eight
+        months. That is a record of what happened, not a guide to what will.
+      </p>
+
+      <h2>Customers and legal matters</h2>
+      <p>
+        Astera relies on a small number of customers. One, which it calls Customer A, accounted
+        for 53% of its revenue in the quarter, against 23% a year earlier, and its three largest
+        together for 77%. Astera said some of these are manufacturing partners that buy its chips
+        on behalf of the companies that use them.
+      </p>
+      <p>
+        It said it is not currently a party to any material legal proceedings.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The forecast.</strong> Whether revenue for the three months to December lands
+          within the $730 million to $750 million Astera expects.
+        </li>
+        <li>
+          <strong>Scorpio.</strong> Whether its largest product family keeps growing.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Astera’s own, or analysts’ as reported,
+        not ours. The share-price history is a record of what happened before, not a prediction.
+        This article is general information and does not take into account your objectives,
+        financial situation or needs.
+      </p>
+    </>
+  ),
+  'novo-nordisk-q3-2026-results': () => (
+    <>
+
+      <h2>The short version</h2>
+      <p>
+        Novo Nordisk, the Danish company that makes the diabetes and weight-loss medicines
+        Ozempic and Wegovy, reported its results for the three months to 30 September 2026 on 4
+        November. In short:
+      </p>
+      <ul>
+        <li>
+          <strong>Sales:</strong> DKK 79,195 million, up 4% at constant exchange rates, which
+          leave out the effect of currency moves, and up 6% in Danish kroner.
+        </li>
+        <li>
+          <strong>The Wegovy pill:</strong> sales of DKK 5,394 million in the quarter.
+        </li>
+        <li>
+          <strong>Profit:</strong> adjusted operating profit of DKK 31,720 million, up 27% at
+          constant exchange rates. Reported operating profit fell 9%, after DKK 8.7 billion of
+          impairment charges.
+        </li>
+        <li>
+          <strong>The outlook:</strong> sales and adjusted operating profit for 2026 now
+          expected to change by between −2% and +2% at constant exchange rates, up from 0% to
+          −6% in August.
+        </li>
+        <li>
+          <strong>The shares:</strong> Novo’s US-listed shares rose 5.0% on 4 November, to
+          $42.18.
+        </li>
+      </ul>
+
+      <h2>The quarter</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The quarter"
+        columns={[
+          { key: 'c0', label: 'Measure', width: '40%' },
+          { key: 'c1', label: 'Jul–Sep 2026, DKK', numeric: true, width: '20%' },
+          { key: 'c2', label: 'Growth in DKK', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Growth at constant exchange rates', numeric: true, width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Net sales', c1: '79,195M', c2: '+6%', c3: '+4%' } },
+          { cells: { c0: 'Adjusted operating profit', c1: '31,720M', c2: '+34%', c3: '+27%' } },
+          { cells: { c0: 'Operating profit', c1: '23,011M', c2: '−3%', c3: '−9%' } },
+        ]}
+      />
+      <p>
+        Novo said adjusted operating profit was helped by “a favourable comparison base
+        following DKK 9 billion of company-wide transformation costs recognised in Q3 2025”. The
+        reported figure fell because of DKK 8.7 billion of non-cash impairment charges: DKK 4.6
+        billion for ziltivekimab, a drug in development, and DKK 4.1 billion for “right-sizing
+        of manufacturing network”. The ziltivekimab charge followed two late-stage trials, ZEUS
+        and HERMES, which Novo said “did not meet the primary endpoint”.
+      </p>
+
+      <h2>Its medicines</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Its medicines"
+        columns={[
+          { key: 'c0', label: 'Medicine', width: '50%' },
+          { key: 'c1', label: 'Jul–Sep 2026, DKK', numeric: true, width: '50%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Ozempic', c1: '29,706M' } },
+          { cells: { c0: 'Wegovy, injectable', c1: '20,407M' } },
+          { cells: { c0: 'Wegovy pill', c1: '5,394M' } },
+          { cells: { c0: 'Ozempic pill and Rybelsus', c1: '4,938M' } },
+        ]}
+      />
+      <p>
+        Novo said the Wegovy pill had been launched in eight markets, and that the Wegovy
+        franchise had “more than 50% share in the branded obesity market” in the US.
+      </p>
+
+      <h2>Where the sales came from</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="Where the sales came from"
+        columns={[
+          { key: 'c0', label: 'Jul–Sep 2026', width: '40%' },
+          { key: 'c1', label: 'DKK', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Growth at constant exchange rates', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'US Operations', c1: '41,880M', c2: '+1%' } },
+          { cells: { c0: 'International Operations', c1: '37,315M', c2: '+8%' } },
+          { cells: { c0: 'Obesity medicines', c1: '26,146M', c2: '+22%' } },
+          { cells: { c0: 'Diabetes medicines', c1: '47,545M', c2: '−5%' } },
+        ]}
+      />
+      <p>
+        So the growth came from outside the US and from obesity. Novo said sales grew because it
+        sold more of its GLP-1 medicines, “partly offset by lower realised prices”, the prices it
+        actually receives after discounts.
+      </p>
+      <p>
+        It also said the Ozempic pill, launched in the US in May, was off to an encouraging start:
+        weekly new prescriptions were “currently up around 100% compared with pre-launch levels
+        under the Rybelsus” brand.
+      </p>
+
+      <h2>Against what analysts expected</h2>
+      <p>
+        Before the results, analysts had expected sales of DKK 73.6 billion and adjusted
+        operating profit of DKK 28.6 billion, according to FactSet figures reported by CNBC.
+        Novo reported DKK 79,195 million and DKK 31,720 million.
+      </p>
+
+      <h2>The outlook</h2>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="The outlook"
+        columns={[
+          { key: 'c0', label: '2026, at constant exchange rates', width: '40%' },
+          { key: 'c1', label: 'In August', numeric: true, width: '30%' },
+          { key: 'c2', label: 'Now', numeric: true, width: '30%' },
+        ]}
+        rows={[
+          { cells: { c0: 'Adjusted sales growth', c1: '0% to −6%', c2: '−2% to +2%' } },
+          { cells: { c0: 'Adjusted operating profit growth', c1: '0% to −6%', c2: '−2% to +2%' } },
+        ]}
+      />
+      <p>
+        Novo said the higher outlook was “driven by increased expectations for GLP-1 product
+        sales”, the class of medicines Ozempic and Wegovy belong to.
+      </p>
+      <p>
+        Chief executive Mike Doustdar said: “We delivered a stronger-than-expected third quarter
+        and are raising our full-year outlook for adjusted sales and adjusted operating profit.”
+        He added: “We are particularly pleased to see both US Operations and International
+        Operations deliver sales growth this quarter.”
+      </p>
+
+      <h2>Profit and cash</h2>
+      <p>
+        Novo’s adjusted gross margin was 82.1%. Its net profit fell 16% to DKK 16,740 million,
+        after the impairment charges. In the quarter, its free cash flow was DKK 28,483 million,
+        down 13%.
+      </p>
+      <p>
+        Over the first nine months of 2026, Novo generated DKK 121.0 billion of cash from its
+        operations and returned DKK 61.9 billion to shareholders: DKK 51.9 billion in dividends
+        and DKK 10.0 billion in share buybacks.
+      </p>
+      <p>
+        Mike Doustdar also said: “Our focus is on sustaining this progress through disciplined
+        execution and broader access to our medicines.”
+      </p>
+      <p>
+        These are Novo’s views of its own business, not ours.
+      </p>
+
+      <h2>How the shares reacted</h2>
+      <p>
+        Novo’s US-listed shares closed at $40.19 on 3 November. On 4 November, the day of the
+        results, they closed at $42.18, up 5.0%. The S&P 500 rose 1.6% the same day.
+      </p>
+      <p>
+        On 5 November, when the Nasdaq Composite fell 5.5% and the S&P 500 4.4%, the shares fell
+        back to $40.30.
+      </p>
+      <p>
+        Counting dividends, that leaves them 70.3% below their record close in June 2024.
+      </p>
+
+      <h2>How Novo shares usually react to results</h2>
+      <p>
+        We measured all 34 of Novo’s results from May 2018 to August 2026, comparing the
+        US-listed shares’ close on the day of each announcement with the close the day before.
+      </p>
+      <ul>
+        <li>
+          The middle move, up or down, was <strong>3.6%</strong>.
+        </li>
+        <li>
+          Nine of the 34 moved the shares 5% or more, and two 10% or more.
+        </li>
+        <li>
+          The largest fall was <strong>14.6%</strong> in February 2026.
+        </li>
+        <li>
+          The largest rise was <strong>6.4%</strong> in November 2022.
+        </li>
+        <li>
+          The shares rose on 18 of the 34 days and fell on 16.
+        </li>
+      </ul>
+      <p>
+        So this was a bigger move than usual: only nine of the 34 earlier results moved the
+        shares more.
+      </p>
+
+      <h2>How far Novo has fallen before</h2>
+      <p>
+        Novo’s US-listed shares have fallen 40% or more six times since 1981, the start of our
+        price history, counting this one. These are measured from a record close to the lowest
+        close before the shares got back to it, counting dividends:
+      </p>
+      <DataTable
+        wrapHeaders
+        minWidth="520px"
+        caption="How far Novo has fallen before"
+        columns={[
+          { key: 'c0', label: 'Record close', width: '40%' },
+          { key: 'c1', label: 'Lowest point', width: '20%' },
+          { key: 'c2', label: 'Fall', numeric: true, width: '20%' },
+          { key: 'c3', label: 'Back at the record', width: '20%' },
+        ]}
+        rows={[
+          { cells: { c0: 'September 1983', c1: 'October 1987', c2: '−71.3%', c3: 'February 1991' } },
+          { cells: { c0: 'May 1998', c1: 'March 1999', c2: '−42.9%', c3: 'May 2000' } },
+          { cells: { c0: 'August 2001', c1: 'August 2002', c2: '−51.3%', c3: 'February 2004' } },
+          { cells: { c0: 'April 2008', c1: 'April 2009', c2: '−41.3%', c3: 'February 2010' } },
+          { cells: { c0: 'August 2015', c1: 'November 2016', c2: '−46.1%', c3: 'January 2018' } },
+          { cells: { c0: 'June 2024', c1: 'March 2026', c2: '−74.7%', c3: 'Not yet' } },
+        ]}
+      />
+      <p>
+        The five earlier falls all got back to their record, the longest after more than seven
+        years. That is a record of what happened, not a guide to what will.
+      </p>
+
+      <h2>Legal matters</h2>
+      <p>
+        Novo faces several class actions in the US over an IT security incident it disclosed on 11
+        June 2026. On 9 September, at the plaintiffs’ request, the court dismissed them without
+        prejudice, which means they can be filed again.
+      </p>
+      <p>
+        Separately, on 27 August 2026 a US appeals court upheld the dismissal of a lawsuit that
+        compounding businesses brought against the US Food and Drug Administration over its
+        decision that a shortage of semaglutide injections, the medicine in Ozempic and Wegovy,
+        had ended. Novo had joined the case to oppose them.
+      </p>
+      <p>
+        Novo said it does not expect either matter to have a material impact on its financial
+        position, operating profit or cash flow.
+      </p>
+
+      <h2>What comes next</h2>
+      <ul>
+        <li>
+          <strong>The outlook.</strong> Whether sales for 2026 land within the −2% to +2% Novo
+          now expects.
+        </li>
+        <li>
+          <strong>The Wegovy pill.</strong> Whether its sales keep growing as it launches in
+          more markets.
+        </li>
+        <li>
+          <strong>CagriSema.</strong> Novo is preparing for its US launch in early 2027, subject
+          to approval. In the REDEFINE 9 trial it gave weight loss of 21% at week 68, Novo said.
+          In another trial, REIMAGINE 5, it said CagriSema gave weight loss of 12.4% against 9.1%
+          for tirzepatide 5 mg, a rival medicine, in adults with type 2 diabetes and obesity.
+        </li>
+      </ul>
+
+      <h2>What this cannot tell you</h2>
+      <p>
+        These are results for one quarter. Forecasts are Novo’s own, or analysts’ as reported,
+        not ours. The share-price history is a record of what happened before, not a prediction.
+        This article is general information and does not take into account your objectives,
+        financial situation or needs.
+      </p>
+    </>
+  ),
 };
 
 /**
