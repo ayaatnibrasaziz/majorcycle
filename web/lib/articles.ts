@@ -811,6 +811,166 @@ export const ARTICLES = [
     reviewed: '2026-11-07',
     minutes: 7,
   },
+  {
+    slug: 'westpac-fy26-results',
+    title: 'Westpac’s full-year 2026 results, explained',
+    question: 'Why did Westpac’s shares rise after its bad-debt charge doubled?',
+    answer:
+      'Westpac’s profit was flat at $7.0 billion, excluding one-off items, in the year to September 2026, and its charge for bad debts doubled to $864 million. But one analyst said that charge was lower than he expected, and its shares rose 1.0% on results day, while the ASX 200 fell 0.6%.',
+    summary:
+      'Westpac’s 2026 results from its own reports: profit flat at $7.0 billion, bad-debt charges doubled, and a 1.0% rise on a day the ASX 200 fell 0.6%.',
+    kind: 'commentary',
+    deck: [
+      'Profit was flat and its bad-debt charge doubled. ',
+      { strong: 'Its shares still rose as the market fell.' },
+    ],
+    finding: [
+      'Bad debts ',
+      { figure: '+104%' },
+      ', profit ',
+      { figure: 'flat' },
+      ', shares ',
+      { figure: '+1.0%' },
+      ' on results day.',
+    ],
+    facts: [
+      { value: '$7.0B', label: 'profit, excluding one-off items' },
+      { value: '$864M', label: 'bad-debt charge' },
+      { value: '77c', label: 'final dividend, fully franked' },
+    ],
+    region: 'Australia',
+    published: '2026-11-07',
+    reviewed: '2026-11-07',
+    minutes: 6,
+  },
+  {
+    slug: 'palantir-q3-2026-results',
+    title: 'Palantir’s third-quarter 2026 results, explained',
+    question: 'Why did Palantir’s shares fall after its revenue nearly doubled?',
+    answer:
+      'Palantir’s revenue rose 96% to $2.31 billion in the third quarter of 2026, above analysts’ forecasts, and it raised its forecast for the year. But the value of the new contracts it signed grew just 6%, and its shares fell 1.6% the next day, the smallest move after any of its results since it listed.',
+    summary:
+      'Palantir’s Q3 2026 results from its own filings: revenue up 96%, new contract value up just 6%, and its smallest results-day move since it listed.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 96% and passed $2 billion for the first time. ',
+      { strong: 'But new contract value grew just 6%.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '+96%' },
+      ', new contracts ',
+      { figure: '+6%' },
+      ', shares ',
+      { figure: '−1.6%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$2.31B', label: 'revenue' },
+      { value: '+148%', label: 'US commercial growth' },
+      { value: '$4.9B', label: 'remaining performance obligations, flat on June' },
+    ],
+    region: 'United States',
+    published: '2026-11-07',
+    reviewed: '2026-11-07',
+    minutes: 7,
+  },
+  {
+    slug: 'arm-q2-fy27-results',
+    title: 'Arm’s results for the quarter to September 2026, explained',
+    question: 'Why did Arm’s shares fall 13% after record revenue?',
+    answer:
+      'Arm’s revenue rose 27% to a record $1.44 billion in the quarter to September 2026, above analysts’ forecasts. But its royalties, the fee it earns on every chip made with its designs, grew just 8%, and its shares fell 13.1% the next day, a day the Nasdaq Composite fell 5.5%.',
+    summary:
+      'Arm’s quarter from its own filings: record revenue up 27%, royalties up just 8%, and a 13.1% fall on a day the Nasdaq fell 5.5%.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 27% to a record. ',
+      { strong: 'But royalties grew just 8%.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '+27%' },
+      ', royalties ',
+      { figure: '+8%' },
+      ', shares ',
+      { figure: '−13.1%' },
+      ' the next day.',
+    ],
+    facts: [
+      { value: '$1.44B', label: 'revenue' },
+      { value: '+50%', label: 'licence revenue growth' },
+      { value: '$1.54B', label: 'revenue Arm expects next quarter' },
+    ],
+    region: 'United States',
+    published: '2026-11-07',
+    reviewed: '2026-11-07',
+    minutes: 6,
+  },
+  {
+    slug: 'astera-labs-q3-2026-results',
+    title: 'Astera Labs’ third-quarter 2026 results, explained',
+    question: 'Why did Astera Labs’ shares fall after its revenue rose 154%?',
+    answer:
+      'Astera Labs’ revenue rose 154% to a record $584.9 million in the third quarter of 2026, above analysts’ forecasts, and it forecast $730 million to $750 million for the next quarter. But its shares fell 4.4% the next day, while the Nasdaq Composite rose 1.4%, and a further 19.6% the day after.',
+    summary:
+      'Astera Labs’ quarter from its own filings: revenue up 154%, a forecast above analysts’, and shares down 4.4% and then 19.6%.',
+    kind: 'commentary',
+    deck: [
+      'Revenue rose 154% to a record. ',
+      { strong: 'The shares fell for two days.' },
+    ],
+    finding: [
+      'Revenue ',
+      { figure: '+154%' },
+      ', next day ',
+      { figure: '−4.4%' },
+      ', the day after ',
+      { figure: '−19.6%' },
+      '.',
+    ],
+    facts: [
+      { value: '$584.9M', label: 'revenue' },
+      { value: '$730M–$750M', label: 'revenue Astera expects next quarter' },
+      { value: '−62.8%', label: 'below its June record' },
+    ],
+    region: 'United States',
+    published: '2026-11-07',
+    reviewed: '2026-11-07',
+    minutes: 5,
+  },
+  {
+    slug: 'novo-nordisk-q3-2026-results',
+    title: 'Novo Nordisk’s third-quarter 2026 results, explained',
+    question: 'Why did Novo Nordisk raise its outlook again?',
+    answer:
+      'Novo Nordisk’s sales rose 4% at constant exchange rates in the third quarter of 2026, to DKK 79.2 billion, and its new Wegovy pill sold DKK 5.4 billion. It raised its outlook for the year, and its US-listed shares rose 5.0% on results day, though they remain about 70% below their 2024 record.',
+    summary:
+      'Novo Nordisk’s quarter from its own report: sales and profit ahead of forecasts, a higher outlook, and a 5% rise.',
+    kind: 'commentary',
+    deck: [
+      'Sales rose 4% and the Wegovy pill sold DKK 5.4 billion. ',
+      { strong: 'Novo raised its outlook for the year.' },
+    ],
+    finding: [
+      'Sales ',
+      { figure: '+4%' },
+      ', Wegovy pill ',
+      { figure: 'DKK 5.4B' },
+      ', shares ',
+      { figure: '+5.0%' },
+      ' on results day.',
+    ],
+    facts: [
+      { value: 'DKK 79.2B', label: 'sales' },
+      { value: 'DKK 5.4B', label: 'Wegovy pill sales' },
+      { value: '−2% to +2%', label: 'sales growth Novo now expects in 2026' },
+    ],
+    region: 'United States',
+    published: '2026-11-07',
+    reviewed: '2026-11-07',
+    minutes: 5,
+  },
 ] as const satisfies readonly Article[];
 
 export type ArticleSlug = (typeof ARTICLES)[number]['slug'];
