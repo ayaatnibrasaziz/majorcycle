@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
 
-import { BROWSER_NOISE, sharedOptions } from '@/lib/sentryOptions';
+import { BROWSER_NOISE, isGoogleSignInNoise, sharedOptions } from '@/lib/sentryOptions';
 
 /**
  * Sentry, in the reader's browser.
@@ -22,7 +22,12 @@ import { BROWSER_NOISE, sharedOptions } from '@/lib/sentryOptions';
  * ⚠️ With no `NEXT_PUBLIC_SENTRY_DSN` this is a no-op and no network request is
  * made — see `lib/sentryOptions.ts`.
  */
-Sentry.init({ ...sharedOptions, ignoreErrors: [...BROWSER_NOISE] });
+Sentry.init({
+  ...sharedOptions,
+  ignoreErrors: [...BROWSER_NOISE],
+  // Google's sign-in script failing inside itself is not ours to fix (MAJORCYCLE-WEB-F).
+  beforeSend: (event) => (isGoogleSignInNoise(event) ? null : sharedOptions.beforeSend(event)),
+});
 
 /**
  * Report slow or failed client-side route changes.
