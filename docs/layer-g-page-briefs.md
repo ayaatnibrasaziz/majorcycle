@@ -270,7 +270,7 @@ click and return.
 > ✅ **THE FIRST FIVE ARE PUBLISHED — the last four wired up 2026-08-30.** The
 > section now carries the opening measurement plus a recovery study and one ranked
 > piece per market, all five sharing a single as-at date of 27 August 2026 and one
-> frozen input file (`reference/drawdown-recovery-2026-08-27-DATA.json.gz`). "Coming
+> frozen input file (`reference/drawdown-recovery-2026-08-27-DATA.json.gz` (removed 2026-11-13 by the owner; still in git history)). "Coming
 > next" is down to one row, and the two promises it lost were both kept.
 >
 > ⚠️ **The lead is now DECLARED rather than dated** — `FEATURED_SLUG`, owner

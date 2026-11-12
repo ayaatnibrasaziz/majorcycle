@@ -11,7 +11,7 @@
  * `p`, `muted`, `button`), so they cannot differ in style again — only in wording.
  *
  * ⚠️ WHAT THIS FILE CANNOT DO: reach the dashboard. `pnpm build:auth-emails` writes
- * the finished HTML to `reference/supabase-email-templates/`, and somebody pastes each
+ * the finished HTML to `reference/email/supabase-email-templates/`, and somebody pastes each
  * file into Authentication → Emails → Templates by hand. `e2e/auth-email-templates.spec.ts`
  * fails if those files and this source disagree; nothing can fail if the DASHBOARD and
  * those files disagree. Paste after every change here.

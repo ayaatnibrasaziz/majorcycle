@@ -182,7 +182,7 @@
           <code>web/lib/email/brandEmail.ts</code>, so they share one header, one body style
           and one footer. Part 1 and Part 3 are sent by the app. The thirteen in Part 2 are
           written in <code>web/lib/email/authTemplates.ts</code>, built into
-          <code>reference/supabase-email-templates/</code> by <code>pnpm build:auth-emails</code>,
+          <code>reference/email/supabase-email-templates/</code> by <code>pnpm build:auth-emails</code>,
           and <strong>pasted by hand</strong> into Supabase under Authentication → Emails →
           Templates (since 2026-10-13; before that they existed only in the dashboard).</p>
       </div>
@@ -948,7 +948,7 @@
 <div class="part-head">
     <h2>Part 2 &mdash; the thirteen Supabase sends</h2>
     <p>Written in <code>web/lib/email/authTemplates.ts</code> with the same wrapper and
-      helpers as Part 1, built into <code>reference/supabase-email-templates/</code>, pasted
+      helpers as Part 1, built into <code>reference/email/supabase-email-templates/</code>, pasted
       into the Supabase dashboard, and handed to Resend over SMTP. Each preview is the
       committed template with Supabase&rsquo;s own placeholders filled in &mdash;
       <code>&#123;&#123;&nbsp;.SiteURL&nbsp;&#125;&#125;</code>,

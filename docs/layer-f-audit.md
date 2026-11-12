@@ -592,7 +592,7 @@ console/DNS steps are owner-driven (see `plan-mode-auth-virtual-ladybug.md`).
 - [x] Reply **as** `security@majorcycle.com` from Gmail via a **"Send mail as"** identity
       relaying through **Resend SMTP** (`smtp.resend.com:465`) + "reply from same address"
 - [x] **Branded reply/signature email template** — on-brand Gmail signature for replies from
-      `security@majorcycle.com` (`reference/email-signature.html` + `web/public/signature-logo.png`)
+      `security@majorcycle.com` (`reference/email/email-signature.html` + `web/public/signature-logo.png`)
 - [x] Live end-to-end test: Google no-flash sign-in + branded reset-email delivery (both verified live)
 
 **F0.5 — Auth hardening & security pass (shipped + live-verified 2026-07-05, PR #61).**
@@ -996,7 +996,7 @@ Full plan: `~/.claude/plans/moonlit-prancing-lantern.md`. Verification is done e
       anchor + dunning email once; paid/succeeded → guarded recover + recovery email; `charge.dispute.*`
       → `billing_blocked` (real chargeback only) + cancel-on-lost. `grace_until` made single-owner
       (removed the healthy-sync clear) → ordering-proof, dedup-safe. Email previews 05–08 in
-      `reference/email-templates.html`.
+      `reference/email/email-templates.html`.
       **Audit-driven additions (2026-07-22, this session):** full re-audit vs the *latest* Stripe docs +
       the live account (all 3 MCP connectors verified). Findings: (a) no unhandled event can error — the
       webhook no-ops unknown types; (b) collection works (card_payments/charges/payouts all active), and
@@ -1988,7 +1988,7 @@ only on Stripe's side, so the only way to learn them is to be refused. Suite is 
 - [x] **Sender profile image / BIMI — DROPPED (owner decision 2026-07-08).** The "logo next to the
       sender in the recipient's inbox" = BIMI (one domain-wide logo). Not worth it now: **Gmail** needs a
       paid **VMC** (~US$1k+/yr + a registered trademark) to show it (Apple Mail/Yahoo are free), and it
-      requires a simplified ≤32KB **SVG Tiny-PS** (the owner's 1.7MB traced `reference/email-logo.svg`
+      requires a simplified ≤32KB **SVG Tiny-PS** (the owner's 1.7MB traced `reference/email/email-logo.svg`
       is too large/complex). Revisit only with a trademark + revenue. **Email-hosting review done:**
       staying on the free Cloudflare Routing + Resend + Gmail send-as stack (Workspace/private hosting
       not worth it pre-revenue). **Resend Return-Path verified aligned** (custom `send.majorcycle.com`
