@@ -9,6 +9,49 @@ import { sendContact, type ContactState } from './actions';
 
 const initialState: ContactState = { status: 'idle' };
 
+/** Only reached when the call itself fails — the action's own errors come back as state. */
+export const CONTACT_SEND_FAILED = {
+  stale:
+    'MajorCycle was updated while this page was open, so your message was not sent. Copy it, reload the page, then paste it back and press Send.',
+  network: 'Your message could not be sent. Check your connection and press Send again.',
+} as const;
+
+/**
+ * Next's `UnrecognizedActionError`, recognised by its NAME rather than by importing
+ * `unstable_isUnrecognizedActionError` from `next/navigation`: this form is compiled into
+ * the offline report too (via SupportDialog), and that import drags Next's server-variable
+ * reads into a file a customer opens from disk — `assertNoServerCode()` refuses the build.
+ */
+function isStaleDeploy(err: unknown): boolean {
+  return err instanceof Error && err.name === 'UnrecognizedActionError';
+}
+
+/**
+ * The server action, wrapped so a FAILED CALL keeps the reader's message on screen.
+ *
+ * ⚠️ MAJORCYCLE-WEB-D (2026-09-25 → 11-08, 11 events): a Contact page opened before a
+ * deploy posts an action id the new deployment does not know, the call throws, and
+ * without this the form fell through to the error page and the message was lost. Vercel
+ * prevents that only with Skew Protection, a Pro feature; on Hobby the reader's page is
+ * the one place it can be caught. React clears a form after its action, so the typed
+ * values are handed back exactly as the action's own errors do.
+ */
+async function sendOrExplain(prev: ContactState, formData: FormData): Promise<ContactState> {
+  try {
+    return await sendContact(prev, formData);
+  } catch (err) {
+    return {
+      status: 'error',
+      message: isStaleDeploy(err) ? CONTACT_SEND_FAILED.stale : CONTACT_SEND_FAILED.network,
+      values: {
+        name: String(formData.get('name') ?? ''),
+        email: String(formData.get('email') ?? ''),
+        message: String(formData.get('message') ?? ''),
+      },
+    };
+  }
+}
+
 /**
  * Also rendered inside the app, in the support dialog a dispute-locked reader opens
  * from a lock (see components/SupportDialog.tsx) — hence the props: a signed-in user
@@ -26,7 +69,7 @@ export function ContactForm({
   defaultName?: string;
   defaultEmail?: string;
 } = {}) {
-  const [state, formAction, pending] = useActionState(sendContact, initialState);
+  const [state, formAction, pending] = useActionState(sendOrExplain, initialState);
 
   if (state.status === 'success') {
     return (

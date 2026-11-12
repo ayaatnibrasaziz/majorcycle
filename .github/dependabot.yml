@@ -1,0 +1,23 @@
+# Dependabot (owner, 2026-11-13): security fixes for the website arrive as ONE grouped pull
+# request instead of one per package, and routine version bumps are off.
+#
+# - `open-pull-requests-limit: 0` switches OFF routine version-update PRs. It does NOT touch
+#   security updates, which Dependabot raises from its alerts regardless of this limit.
+# - `applies-to: security-updates` groups every security fix for /web into one PR.
+#
+# ⚠️ A Dependabot PR's CI cannot pass here: GitHub gives Dependabot runs no repository
+# secrets, so every E2E shard fails before running a test (seen on #143/#146/#148). The fix
+# is rebuilt on our own branch so the full suite runs, as in PR #153. A red Dependabot PR is
+# therefore a prompt to act, never a verdict on the update.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 0
+    groups:
+      web-security-fixes:
+        applies-to: security-updates
+        patterns: ["*"]

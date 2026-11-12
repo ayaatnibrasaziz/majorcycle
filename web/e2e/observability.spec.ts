@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
 
 import { contentSecurityPolicy, sentryOriginForCsp } from '../lib/csp';
 import { alertTagValue, reportIssue } from '../lib/observability';
-import { BROWSER_NOISE, scrub, sharedOptions } from '../lib/sentryOptions';
+import { BROWSER_NOISE, isGoogleSignInNoise, scrub, sharedOptions } from '../lib/sentryOptions';
 
 /**
  * Error monitoring — Layer H2, 2026-09-16.
@@ -272,6 +272,23 @@ test.describe('scrub — what may leave this machine', () => {
     // to Sentry.init is the inert-line defect (11ak).
     const client = readFileSync(join(__dirname, '..', 'instrumentation-client.ts'), 'utf8');
     expect(client).toMatch(/ignoreErrors:\s*\[\.\.\.BROWSER_NOISE\]/);
+  });
+
+  test("an error wholly inside Google's sign-in script is dropped, and one of OURS never is", () => {
+    const ev = (...files: string[]) => ({
+      exception: { values: [{ type: 'Error', value: 'pa', stacktrace: { frames: files.map((filename) => ({ filename })) } }] },
+    });
+    const sentryWrap = 'web/node_modules/.pnpm/@sentry+browser@10.74.0/node_modules/@sentry/browser/src/helpers.ts';
+    // The exact frames MAJORCYCLE-WEB-F recorded.
+    expect(isGoogleSignInNoise(ev('app:///gsi/client', 'app:///gsi/client', sentryWrap))).toBe(true);
+    expect(isGoogleSignInNoise(ev('https://accounts.google.com/gsi/client'))).toBe(true);
+    // CONTROLS: one frame of ours keeps it; no stack keeps it; a message-only event keeps it.
+    expect(isGoogleSignInNoise(ev('app:///gsi/client', 'app:///_next/static/chunks/login.js'))).toBe(false);
+    expect(isGoogleSignInNoise(ev(sentryWrap))).toBe(false);
+    expect(isGoogleSignInNoise({ message: 'pa' })).toBe(false);
+    // And the client really applies it, AFTER which the privacy scrub still runs.
+    const client = readFileSync(join(__dirname, '..', 'instrumentation-client.ts'), 'utf8');
+    expect(client).toMatch(/isGoogleSignInNoise\(event\)\s*\?\s*null\s*:\s*sharedOptions\.beforeSend\(event\)/);
   });
 });
 

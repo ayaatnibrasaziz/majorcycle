@@ -205,6 +205,27 @@ export const BROWSER_NOISE: readonly RegExp[] = [
   /Object Not Found Matching Id:\d+, MethodName:\w+, ParamCount:\d+/,
 ];
 
+/**
+ * An error thrown ENTIRELY inside Google's sign-in script (`accounts.google.com/gsi/client`)
+ * — every frame is Google's, or Sentry's own wrapper around the XHR callback that called it.
+ * Seen as MAJORCYCLE-WEB-F (2026-11-03): "Error: pa", three events on /login, zero users.
+ * We cannot change or even read that code, so a report about it is noise.
+ *
+ * ⚠️ Matched on the STACK, never on the message: Google's messages are minified two-letter
+ * names that change with every release, and a message rule would also swallow an error of
+ * OURS that happened to share one. One frame of our own code keeps the event.
+ */
+export function isGoogleSignInNoise(event: unknown): boolean {
+  const values =
+    (event as { exception?: { values?: { stacktrace?: { frames?: { filename?: string }[] } }[] } })
+      ?.exception?.values ?? [];
+  const files = values
+    .flatMap((v) => v.stacktrace?.frames ?? [])
+    .map((f) => f.filename ?? '')
+    .filter((f) => f && !/@sentry\//.test(f));
+  return files.length > 0 && files.every((f) => /\/gsi\/client/.test(f));
+}
+
 export const sharedOptions = {
   dsn: SENTRY_DSN,
   enabled: SENTRY_DSN.length > 0,
