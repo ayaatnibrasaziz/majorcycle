@@ -1466,7 +1466,7 @@ because an explainer describes how the product behaves *today*. ⚠️ That file
 of `landing-snapshot.json` on 2026-09-01 (finding 5A-013) precisely so this rule could
 survive the landing page's example being frozen. An article is a record of one day, so a live read would leave the
 drawing disagreeing with the prose beside it the first time a price moved. The guarantee is a **workbook** instead —
-`reference/how-far-do-asx-shares-fall-WORKING.xlsx`, every published figure a live
+`reference/how-far-do-asx-shares-fall-WORKING.xlsx` (removed 2026-11-13 by the owner; still in git history), every published figure a live
 formula over the underlying rows — so each one can be re-derived rather than taken on
 trust. Re-taking a measurement is an edit to the article, never a data refresh (11k).
 

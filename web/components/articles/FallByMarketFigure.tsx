@@ -145,7 +145,7 @@ interface Series {
  * not a data refresh.
  *
  * ⚠️ And "frozen" now means a FILE rather than a promise:
- * `reference/how-far-do-asx-shares-fall-DATA.json` holds every input these
+ * `reference/how-far-do-asx-shares-fall-DATA.json` (removed 2026-11-13 by the owner; still in git history) holds every input these
  * numbers were derived from, and the workbook rebuilds them from it with no
  * database at all. That file exists because one input was still live — market
  * cap, which decides which sixty companies are "the largest sixty". The ASX

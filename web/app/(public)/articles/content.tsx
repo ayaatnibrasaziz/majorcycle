@@ -29,7 +29,7 @@ import type { ArticleSlug } from '@/lib/articles';
  * plausible.
  *
  * ⚠️ So the guarantee is different in kind, and it is a WORKBOOK rather than a
- * live read: `reference/how-far-do-asx-shares-fall-WORKING.xlsx` holds the full
+ * live read: `reference/how-far-do-asx-shares-fall-WORKING.xlsx` (removed 2026-11-13 by the owner; still in git history) holds the full
  * study, every published figure as a live formula over the underlying rows, so
  * each one can be re-derived rather than taken on trust. Re-taking a measurement
  * is an edit to the article, never a data refresh (CLAUDE.md 11k).
