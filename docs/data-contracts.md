@@ -1772,6 +1772,21 @@ the newly added 503 branch shipped without it.
 
 ### Supporting tables (server-only — RLS on, no policies)
 
+- **`tester_grants`** (`id bigint pk`, `user_id uuid` FK `auth.users` **ON DELETE CASCADE**,
+  `email`, `source` e.g. `'reddit'`, `source_handle`, `granted_at`, `expires_at`, `ended_at`,
+  `end_outcome` ∈ `ended | skipped_now_paying | skipped_not_active | revoked_by_hand`,
+  `notes`; at most ONE open grant per user) — **beta-tester free premium with an end date**
+  (2026-11-12, migration `20261112000000_tester_grants`). A tester is granted with
+  `grant_tester_access(email, source, handle, months, notes)`, which sets
+  `profiles.subscription_status = 'active'` with **no Stripe record** and refuses an account
+  that already has one. pg_cron `end-expired-tester-grants` (daily 14:00 UTC) runs
+  `end_expired_tester_grants()`: a due grant sets the profile to `'canceled'` **only while it
+  still has no Stripe customer/subscription and is still `active`** — a tester who started
+  paying is left alone (`skipped_now_paying`). No email fires on grant or end (every billing
+  email is Stripe-driven). Both functions are service-role only. Guarded by
+  `e2e/tester-grants.spec.ts`. The tester log with personal details is
+  `reference/reddit-beta/TESTERS.local.md` (gitignored — the repo is public).
+
 - **`stripe_events`** (`id text pk`, `type text`, `received_at timestamptz`, plus
   traceability columns `user_id uuid` (FK `auth.users` **ON DELETE SET NULL**),
   `stripe_customer_id text`, `stripe_subscription_id text`; indexed on `user_id` +
