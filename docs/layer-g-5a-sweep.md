@@ -2366,7 +2366,7 @@ header icon from `SITE_ORIGIN` (always production) while `format.ts` builds link
 coincide; and for an email the icon *should* be absolute-production, or an inbox would
 render a broken image. Correct by accident is still correct — but now written down.
 
-### 5A-150 🟢 · `reference/email-templates.html` is now the only record of thirteen live templates
+### 5A-150 🟢 · `reference/email/email-templates.html` is now the only record of thirteen live templates
 
 The repository had a visual record of the **eight** emails the app sends — each one rendered
 exactly as it arrives, from the real `renderBrandEmail()` chrome. It opened by saying the

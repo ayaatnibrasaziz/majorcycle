@@ -283,7 +283,7 @@
 > so the check read Supabase's stored copy. **One rule had five copies**: an HTML button, a
 > plain-text line, and three rows of somebody else's database.
 >
-> ⚠️ **`reference/email-templates.html` was rebuilt to cover all twenty-one** (5A-150). It
+> ⚠️ **`reference/email/email-templates.html` was rebuilt to cover all twenty-one** (5A-150). It
 > recorded the eight app emails and said the Supabase ones were "not included here" — which
 > was true, and was the gap. The thirteen are now rendered from their real dashboard HTML.
 > **That page is the only record in this project of what those thirteen say**, because they

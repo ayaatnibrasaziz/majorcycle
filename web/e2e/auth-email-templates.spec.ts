@@ -7,14 +7,14 @@ import { AUTH_TEMPLATES, renderAuthTemplate, type AuthTemplateSlug } from '@/lib
  * The 13 Supabase sign-in emails (owner, 2026-10-13).
  *
  * They are written in lib/email/authTemplates.ts, built into
- * reference/supabase-email-templates/ by `pnpm build:auth-emails`, and PASTED into the
+ * reference/email/supabase-email-templates/ by `pnpm build:auth-emails`, and PASTED into the
  * Supabase dashboard by hand. This file can check the first two steps and never the
  * third: no test can read the dashboard. If a template here changes, paste it.
  *
  * Pure: no browser, no network.
  */
 
-const DIR = join(process.cwd(), '..', 'reference', 'supabase-email-templates');
+const DIR = join(process.cwd(), '..', 'reference', 'email', 'supabase-email-templates');
 const SLUGS = Object.keys(AUTH_TEMPLATES) as AuthTemplateSlug[];
 
 test.describe('the Supabase sign-in emails', () => {

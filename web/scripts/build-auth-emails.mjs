@@ -1,5 +1,5 @@
 // Writes the 13 Supabase sign-in templates from lib/email/authTemplates.ts to
-// reference/supabase-email-templates/, one HTML file per template plus subjects.json.
+// reference/email/supabase-email-templates/, one HTML file per template plus subjects.json.
 //
 // Those files are what gets pasted into Supabase → Authentication → Emails →
 // Templates. Nothing can paste them for you, and nothing can check the dashboard:
@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const web = join(dirname(fileURLToPath(import.meta.url)), '..');
-const outDir = join(web, '..', 'reference', 'supabase-email-templates');
+const outDir = join(web, '..', 'reference', 'email', 'supabase-email-templates');
 const bundle = join(web, 'node_modules', '.cache', 'auth-emails', 'authTemplates.mjs');
 
 mkdirSync(dirname(bundle), { recursive: true });

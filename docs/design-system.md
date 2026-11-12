@@ -2505,7 +2505,7 @@ and accessibility.)* The header row is:
   `bgcolor` + `background-color` (Outlook ignores CSS gradients and gets the solid).
 - **Accent:** `border-bottom: 3px solid #2E7DE8` (brand-bright).
 - **Mark:** the **floating transparent icon** `https://www.majorcycle.com/email-icon.png`
-  at `height:44px`. Source `reference/email-icon.png` (pristine, transparent); optimized
+  at `height:44px`. Source `reference/email/email-icon.png` (pristine, transparent); optimized
   web copy `web/public/email-icon.png` (107×128, ~17KB). Transparent so it floats on the
   gradient with no square/ghost — do **not** use the navy-square `logo.png` here (it
   blends into the navy).
@@ -2548,7 +2548,7 @@ owner Gmail; see `architecture.md` §7).
 `support@majorcycle.com` go out from Gmail via Resend-SMTP "Send mail as" identities, each
 with its own **branded HTML signature** (navy header mark + Sora + `#1E5CB3`/grey palette,
 role line "Security Team" / "Support Team") so human replies match the transactional emails.
-They live as per-identity Gmail signatures (`reference/email-signature.html` +
+They live as per-identity Gmail signatures (`reference/email/email-signature.html` +
 `web/public/signature-logo.png`), not Supabase templates. Both inboxes forward to owner Gmail
 via Cloudflare Email Routing and are filed under `MajorCycle/Security` and `MajorCycle/Support`
 labels. The `/contact` form's own inbound notification email is rendered through the shared
