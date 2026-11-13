@@ -172,7 +172,7 @@ def main() -> None:
     # Regions: revenue NZ$M (rounded), growth, customers
     for lbl, rev, g, cust in [("Australia", 670060, "+23%", "2,192,000"), ("New Zealand", 125428, "+6%", "656,000"),
                               ("United Kingdom", 419425, "+24%", "1,404,000"),
-                              ("United States", 365156, "+51% pro-forma", "455,000")]:
+                              ("United States (pro-forma)", 365156, "+51%", "455,000")]:
         need(f"region {lbl}", f"| {lbl} | {round(rev / 1000)}M | {g} | {cust} |")
     assert round(pct(670060, 545693)) == 23 and round(pct(2192000, 2016000)) == 9
     need("au", "revenue up 23%, or 17% at constant currency, and 2,192,000 customers, up 9%")
@@ -294,11 +294,6 @@ def measured(f: dict, need, keystats: dict) -> None:  # noqa: ANN001
     longest = max(yrs(e["peak_date"], e["recovery_date"]) for e in done)
     assert len(done) == 6 and 4 < longest < 4.5, longest
     need("falls back", "The six earlier falls all got back to their record, the longest after more than four years")
-    # Rating (mc-video-tools/video22/rating_XRO_1112.json, the site engine, Medium preset, prices to 12 Nov)
-    rt = json.loads((Path.home() / "mc-video-tools" / "video22" / "rating_XRO_1112.json").read_text(encoding="utf-8"))
-    assert rt["last_bar"] == "2026-11-12" and rt["overall_label"] == "Constructive"
-    need("rating", f"Our model rates Xero **{rt['overall_label']}**, {rt['overall_rating']} out of 100")
-    need("rating parts", f"Its Financial Health score is {rt['financial_health_score']}, its Valuation score {rt['valuation_score']} and its Cycle Payoff score {rt['cycle_payoff_score']}")
 
 
 if __name__ == "__main__":

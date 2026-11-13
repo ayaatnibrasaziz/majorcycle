@@ -126,7 +126,7 @@ comparison.
 | Australia | 670M | +23% | 2,192,000 |
 | New Zealand | 125M | +6% | 656,000 |
 | United Kingdom | 419M | +24% | 1,404,000 |
-| United States | 365M | +51% pro-forma | 455,000 |
+| United States (pro-forma) | 365M | +51% | 455,000 |
 
 - **Australia** is still the biggest market: revenue up 23%, or 17% at constant currency, and 2,192,000 customers,
   up 9%. New Zealand, where Xero started, added 6,000 customers in the half.
@@ -223,12 +223,6 @@ November 2012. Xero does not pay a dividend, so these are price-only:
 The six earlier falls all got back to their record, the longest after more than four years. Until February 2018,
 Xero's main listing was in New Zealand, so the first fall is measured on its thinner-traded ASX shares. This is a
 record of what happened, not a guide to what will.
-
-### What our model makes of Xero
-
-Our model rates Xero **Constructive**, 67 out of 100, using share prices to 12 November and the financial data it
-held before these results. Its Financial Health score is 63.8, its Valuation score 53.1 and its Cycle Payoff score
-90.1. This is our model's rating, not a recommendation.
 
 ### What comes next
 

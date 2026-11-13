@@ -7699,7 +7699,7 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
           { cells: { c0: 'Australia', c1: '670M', c2: '+23%', c3: '2,192,000' } },
           { cells: { c0: 'New Zealand', c1: '125M', c2: '+6%', c3: '656,000' } },
           { cells: { c0: 'United Kingdom', c1: '419M', c2: '+24%', c3: '1,404,000' } },
-          { cells: { c0: 'United States', c1: '365M', c2: '+51% pro-forma', c3: '455,000' } },
+          { cells: { c0: 'United States (pro-forma)', c1: '365M', c2: '+51%', c3: '455,000' } },
         ]}
       />
       <ul>
@@ -7869,14 +7869,6 @@ export const ARTICLE_BODIES: Record<ArticleSlug, () => React.ReactNode> = {
         years. Until February 2018, Xero’s main listing was in New Zealand, so the first fall is
         measured on its thinner-traded ASX shares. This is a record of what happened, not a
         guide to what will.
-      </p>
-
-      <h2>What our model makes of Xero</h2>
-      <p>
-        Our model rates Xero <strong>Constructive</strong>, 67 out of 100, using share prices to
-        12 November and the financial data it held before these results. Its Financial Health
-        score is 63.8, its Valuation score 53.1 and its Cycle Payoff score 90.1. This is our
-        model’s rating, not a recommendation.
       </p>
 
       <h2>What comes next</h2>
